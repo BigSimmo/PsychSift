@@ -1029,8 +1029,10 @@ export function UniversalSearchCommandSurface({
   }, [dropdownOpen, onDropdownOpenChange]);
 
   useEffect(() => {
-    function handleSlashFocus(event: KeyboardEvent) {
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+    function handleSearchFocusShortcut(event: KeyboardEvent) {
+      const slashShortcut = event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey;
+      const commandShortcut = event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey) && !event.altKey;
+      if (!slashShortcut && !commandShortcut) return;
       const target = event.target as HTMLElement | null;
       if (
         target &&
@@ -1044,8 +1046,8 @@ export function UniversalSearchCommandSurface({
       event.preventDefault();
       onFocusSearchInput?.();
     }
-    window.addEventListener("keydown", handleSlashFocus);
-    return () => window.removeEventListener("keydown", handleSlashFocus);
+    window.addEventListener("keydown", handleSearchFocusShortcut);
+    return () => window.removeEventListener("keydown", handleSearchFocusShortcut);
   }, [onFocusSearchInput]);
 
   if (!config) {

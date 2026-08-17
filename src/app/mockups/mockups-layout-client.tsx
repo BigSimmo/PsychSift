@@ -60,6 +60,10 @@ export function MockupsLayoutClient({ children }: { children: ReactNode }) {
   // Draws its own phone frames with an in-frame Choose mode sheet; shared chrome
   // would read as a second real header over the study.
   const isPhoneModeSheetYesMockup = pathname === "/mockups/phone-mode-sheet-yes";
+  // A full-shell sidebar study: it owns the desktop rail, phone slide-over,
+  // command surface, and composer inside one frame. Shared mockup chrome would
+  // duplicate every surface under review and distort the responsive contract.
+  const isSidebarLiveMockup = pathname === "/mockups/sidebar-live";
   // These studies render their own top bar and composer inside each device
   // frame. Suppress shared chrome so it cannot be mistaken for the concept.
   const isTherapyNavigationMockup = pathname.startsWith("/mockups/therapy-navigation-");
@@ -112,7 +116,8 @@ export function MockupsLayoutClient({ children }: { children: ReactNode }) {
         !isPrivacyLiveSignalPerfectedMockup &&
         !isSearchLensMenuMockup &&
         !isPinnedPlusMenuMockup &&
-        !isPhoneModeSheetYesMockup
+        !isPhoneModeSheetYesMockup &&
+        !isSidebarLiveMockup
       }
       chromeVisible={
         !isSourceOverlayRedesignMockup &&
@@ -132,7 +137,8 @@ export function MockupsLayoutClient({ children }: { children: ReactNode }) {
         !isPrivacyLiveSignalPerfectedMockup &&
         !isSearchLensMenuMockup &&
         !isPinnedPlusMenuMockup &&
-        !isPhoneModeSheetYesMockup
+        !isPhoneModeSheetYesMockup &&
+        !isSidebarLiveMockup
       }
     >
       {children}

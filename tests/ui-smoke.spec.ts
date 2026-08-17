@@ -796,9 +796,11 @@ async function openMobileClinicalGuideMenu(page: Page) {
   expect(menuBox).not.toBeNull();
   expect(menuBox!.x).toBeGreaterThanOrEqual(0);
   await expect(menu.getByRole("button", { name: "New chat" })).toBeVisible();
-  await expect(menu.getByPlaceholder("Search chats")).toBeVisible();
-  await expect(menu.getByText("Recent chats", { exact: true })).toBeVisible();
-  const navigation = menu.getByRole("navigation", { name: "Navigation" });
+  await expect(menu.getByRole("button", { name: "Search Clinical Guide" })).toBeVisible();
+  await expect(menu.getByText("Recent chats", { exact: true })).toHaveCount(0);
+  await expect(menu.getByText("Shortcuts", { exact: true })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Edit" })).toBeVisible();
+  const navigation = menu.getByRole("navigation", { name: "Pinned shortcuts" });
   await expect(navigation).toBeVisible();
   expect(
     await navigation
@@ -812,8 +814,10 @@ async function openMobileClinicalGuideMenu(page: Page) {
     { name: "Factsheets", href: "/factsheets" },
     { name: "Tools", href: "/tools" },
   ]);
+  await expect(navigation.getByRole("button", { name: "More modes" })).toBeVisible();
   await expect(menu.getByRole("button", { name: "Guide & help", exact: true })).toHaveCount(0);
   await expect(menu.getByRole("button", { name: /^(Switch to )?(dark|light) mode$/i })).toHaveCount(0);
+  await expect(menu.getByRole("button", { name: /Appearance Auto/ })).toBeVisible();
   await expect(menu.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   await expect(menu.getByText("Guest")).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Clinical KB guide" })).toHaveCount(0);
@@ -1185,9 +1189,9 @@ test.describe("Clinical KB UI smoke coverage", () => {
     expect(buttonFocus.outlineStyle).toBe("solid");
     expect(buttonFocus.boxShadow).toBe(restingButtonShadow);
 
-    const chatSearch = menu.getByRole("searchbox", { name: "Search recent chats" });
-    await chatSearch.focus();
-    const fieldFocus = await chatSearch.evaluate((element) => {
+    const guideSearch = menu.getByRole("button", { name: "Search Clinical Guide" });
+    await guideSearch.focus();
+    const fieldFocus = await guideSearch.evaluate((element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       const outlineWidth = Number.parseFloat(style.outlineWidth);
@@ -1210,6 +1214,9 @@ test.describe("Clinical KB UI smoke coverage", () => {
     expect(fieldFocus.paintedRight).toBeLessThanOrEqual(fieldFocus.rect.right);
     expect(fieldFocus.paintedBottom).toBeLessThanOrEqual(fieldFocus.rect.bottom);
     expect(fieldFocus.paintedLeft).toBeGreaterThanOrEqual(fieldFocus.rect.left);
+    await guideSearch.click();
+    await expect(menu).toHaveCount(0);
+    await expect(visibleQuestionInput(page)).toBeFocused();
     await expectNoPageHorizontalOverflow(page);
   });
 
@@ -1261,6 +1268,14 @@ test.describe("Clinical KB UI smoke coverage", () => {
     );
 
     const collapseSidebar = page.getByRole("button", { name: "Collapse sidebar" });
+    const guideSearch = sidebar.getByRole("button", { name: "Search Clinical Guide" });
+    await expect(guideSearch).toHaveAttribute("aria-keyshortcuts", "Control+K Meta+K");
+    await guideSearch.click();
+    await expect(visibleQuestionInput(page)).toBeFocused();
+    await collapseSidebar.focus();
+    await page.keyboard.press("Control+K");
+    await expect(visibleQuestionInput(page)).toBeFocused();
+
     await expectMinTouchTarget(collapseSidebar);
     await collapseSidebar.click();
     await expect(page.getByTestId("collapsed-account-settings")).toHaveAccessibleName(
@@ -1293,7 +1308,7 @@ test.describe("Clinical KB UI smoke coverage", () => {
 
     const rail = page.getByLabel("Clinical Guide collapsed sidebar");
     const scrollRegion = rail.getByTestId("collapsed-sidebar-scroll-region");
-    const navigation = rail.getByRole("navigation", { name: "Navigation" });
+    const navigation = rail.getByRole("navigation", { name: "Pinned shortcuts" });
     const library = rail.getByRole("navigation", { name: "Your library" });
     await expect(rail.getByRole("button", { name: "New chat" })).toBeVisible();
     await expect(rail.getByRole("button", { name: "Settings" })).toBeVisible();
@@ -1333,6 +1348,14 @@ test.describe("Clinical KB UI smoke coverage", () => {
     await expect(moreModesSheet.getByRole("navigation", { name: "More modes" })).toBeVisible();
     await expect(moreModesSheet.getByRole("link", { name: "Differentials", exact: true })).toBeVisible();
     await expect(moreModesSheet.getByRole("link", { name: "Therapy", exact: true })).toBeVisible();
+    await moreModesSheet.getByRole("button", { name: "Pin Forms" }).click();
+    await moreModesSheet.getByRole("button", { name: "Move Forms up" }).click();
+    await moreModesSheet.getByRole("button", { name: "Close more modes" }).click();
+    expect(
+      await navigation.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("aria-label"))),
+    ).toEqual(["Answer", "Documents", "Services", "Medication", "Factsheets", "Forms", "Tools"]);
+    await expect(rail.getByTestId("sidebar-more-modes")).toBeVisible();
+    await expect(rail.getByTestId("sidebar-more-modes")).toBeFocused();
 
     await expectNoPageHorizontalOverflow(page);
   });

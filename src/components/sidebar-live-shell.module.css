@@ -1,0 +1,339 @@
+.shell {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: block;
+  background: var(--overlay-backdrop);
+}
+
+.rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 30;
+  width: min(22rem, 100vw);
+  height: 100dvh;
+  pointer-events: none;
+  transform: translateX(-100%);
+  transition: transform var(--duration-base) var(--ease-out-soft);
+  will-change: transform;
+}
+
+.shell[data-mobile-open="true"] .rail {
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.expandedContent {
+  display: flex;
+}
+
+.collapsedContent,
+.desktopMain,
+.desktopOnly {
+  display: none;
+}
+
+.mobileMain {
+  display: block;
+}
+
+.mobileOnly {
+  display: grid;
+}
+
+.railDivider {
+  width: 2rem;
+  height: 1px;
+  margin-block: 0.625rem;
+  flex: none;
+  background: var(--border);
+}
+
+.collapsedScroller {
+  display: grid;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  align-content: start;
+  justify-items: center;
+  gap: 0.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.collapsedScroller::-webkit-scrollbar {
+  display: none;
+}
+
+.collapsedUtilities {
+  display: grid;
+  width: 100%;
+  flex: none;
+  justify-items: center;
+  gap: 0.75rem;
+}
+
+.railAction {
+  position: relative;
+  transition: transform var(--duration-fast) var(--ease-out-soft);
+}
+
+.railAction:active,
+.pressable:active {
+  transform: scale(0.98);
+}
+
+.railPlain {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+.railPlain:hover {
+  color: var(--text);
+}
+
+.railPlainActive {
+  border-color: var(--clinical-accent-border);
+  background: var(--clinical-accent-soft);
+  color: var(--clinical-accent);
+  box-shadow: var(--shadow-inset);
+}
+
+.railLauncher {
+  border-color: var(--clinical-accent-border);
+  background: color-mix(in srgb, var(--clinical-accent-soft) 72%, var(--surface-raised));
+  color: var(--clinical-accent);
+  box-shadow: var(--shadow-inset);
+}
+
+.railAccount {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border: 1px solid var(--clinical-accent-border);
+  border-radius: 999px;
+  background: var(--clinical-accent-soft);
+  color: var(--clinical-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-inset);
+  outline: none;
+}
+
+.railAccount:hover {
+  border-color: var(--clinical-accent);
+}
+
+.railAccount:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.railFlyout {
+  position: absolute;
+  z-index: 50;
+  bottom: 0;
+  left: calc(100% + 0.75rem);
+  width: 17rem;
+  padding: 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-overlay);
+}
+
+.pressable {
+  transition: transform var(--duration-fast) var(--ease-out-soft);
+}
+
+.chatRow {
+  isolation: isolate;
+}
+
+.iconWell {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-subtle) 70%, transparent);
+}
+
+.iconWellActive {
+  border-color: var(--clinical-accent-border);
+  color: var(--clinical-accent);
+  background: var(--clinical-accent-soft);
+  box-shadow: var(--shadow-inset);
+}
+
+.moreModesRow .iconWell {
+  color: var(--clinical-accent);
+}
+
+.disclosureIcon {
+  transition: transform var(--duration-base) var(--ease-out-soft);
+}
+
+.popupMenu {
+  transform-origin: top right;
+}
+
+.popupMenuBottom {
+  transform-origin: bottom center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .contentEntrance {
+    animation: sidebar-content-in var(--duration-base) var(--ease-out-soft) both;
+  }
+
+  .popupMenu {
+    animation: sidebar-popup-in var(--duration-base) var(--ease-out-soft) both;
+  }
+}
+
+@keyframes sidebar-content-in {
+  from {
+    opacity: 0;
+    transform: translateX(-0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sidebar-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail {
+    transition: none;
+    will-change: auto;
+  }
+
+  .railAction,
+  .pressable,
+  .disclosureIcon {
+    transition: none;
+  }
+}
+
+@media (min-width: 64rem) {
+  .shell {
+    display: flex;
+  }
+
+  .backdrop,
+  .mobileMain,
+  .mobileOnly {
+    display: none;
+  }
+
+  .rail {
+    position: static;
+    width: 20rem;
+    max-width: none;
+    pointer-events: auto;
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+
+  .desktopMain {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .desktopOnly {
+    display: grid;
+  }
+
+  .shell[data-collapsed="true"] .rail {
+    width: 5.5rem;
+    height: calc(100dvh - 0.25rem);
+    margin: 0.125rem 0.4375rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.625rem;
+  }
+
+  .shell[data-collapsed="true"] .expandedContent {
+    display: none;
+  }
+
+  .shell[data-collapsed="true"] .collapsedContent {
+    display: flex;
+  }
+
+  .railAction::after {
+    position: absolute;
+    z-index: 60;
+    top: 50%;
+    left: calc(100% + 0.75rem);
+    padding: 0.375rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-overlay);
+    color: var(--text);
+    content: attr(data-tooltip);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(0.25rem, -50%);
+    transition:
+      opacity var(--duration-fast) var(--ease-out-soft),
+      transform var(--duration-fast) var(--ease-out-soft);
+    white-space: nowrap;
+  }
+
+  .railAction:hover::after,
+  .railAction:focus-visible::after {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .railAction::after {
+    transition: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .railLauncher,
+  .railAccount,
+  .railAction::after,
+  .railFlyout,
+  .iconWell,
+  .popupMenu {
+    border: 1px solid ButtonText;
+  }
+}

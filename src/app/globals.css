@@ -811,6 +811,12 @@ select,
   outline-offset: 2px;
 }
 
+/* Controls that sit flush inside clipped sheets keep the shared focus outline
+   inside their own border box so no edge of the ring is cut off. */
+.focus-ring-contained:focus-visible {
+  outline-offset: -2px;
+}
+
 :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select):focus-visible {
   box-shadow: var(--shadow-inset);
   outline: 2px solid var(--focus);
