@@ -152,15 +152,12 @@ describe("DocumentViewer — shell states", () => {
     expect(heading).toBeVisible();
 
     // Open the document actions sheet and verify the exact filename is visible.
-    // There are two "Open document actions" buttons (header and floating composer);
-    // click the first one (header button) to open the actions sheet.
-    const actionsButtons = screen.getAllByRole("button", { name: "Open document actions" });
-    expect(actionsButtons).toHaveLength(2);
-    expect(actionsButtons[0]).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("link", { name: "Add this document to scope" })).toBeNull();
-    fireEvent.click(actionsButtons[0]);
+    const actionsButton = screen.getByRole("button", { name: "Open document actions" });
+    expect(actionsButton).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(actionsButton);
     expect(await screen.findByText("clozapine-titration.pdf")).toBeVisible();
-    expect(actionsButtons[0]).toHaveAttribute("aria-expanded", "true");
+    expect(actionsButton).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByRole("button", { name: "Add to scope" })).toBeNull();
 
     // Close the sheet before teardown so focus-restore timers settle while jsdom
     // is still alive (avoids an unhandled post-test `document` ReferenceError
@@ -212,7 +209,7 @@ describe("DocumentViewer — shell states", () => {
     expect(scrolledIds).not.toContain("pdf-preview-section");
   });
 
-  it("requires two characters and ignores an aborted search response after the query changes", async () => {
+  it("opens document search on demand, ignores stale responses, and clears it on close", async () => {
     const pendingSearches: Array<{
       url: string;
       resolve: (response: Response) => void;
@@ -229,7 +226,19 @@ describe("DocumentViewer — shell states", () => {
     );
 
     render(<DocumentViewer documentId="doc-1" initialPage={1} initialDetail={detailPayload()} />);
+    expect(screen.queryByRole("textbox", { name: "Search within this document" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add to scope" })).toBeNull();
+
+    const searchTriggers = await screen.findAllByRole("button", { name: "Search document" });
+    expect(searchTriggers).toHaveLength(2);
+    const searchTrigger = searchTriggers[1]!;
+    expect(searchTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(searchTrigger).not.toHaveAttribute("aria-controls");
+    fireEvent.click(searchTrigger);
     const composerSearch = await screen.findByRole("textbox", { name: "Search within this document" });
+    await waitFor(() => expect(composerSearch).toHaveFocus());
+    expect(searchTrigger).toHaveAttribute("aria-expanded", "true");
+    expect(searchTrigger).toHaveAttribute("aria-controls", "document-viewer-search");
 
     fireEvent.change(composerSearch, { target: { value: "r" } });
     expect(await screen.findByText("Enter at least 2 characters to search all indexed passages.")).toBeVisible();
@@ -281,6 +290,40 @@ describe("DocumentViewer — shell states", () => {
       expect(indexedTextPanel).not.toHaveTextContent("First query stale result");
       expect(indexedTextPanel).toHaveTextContent("Second query current result");
     });
+
+    fireEvent.change(composerSearch, { target: { value: "closing query" } });
+    await waitFor(() => expect(pendingSearches).toHaveLength(3));
+    fireEvent.click(screen.getByRole("button", { name: "Close document search" }));
+    expect(screen.queryByRole("textbox", { name: "Search within this document" })).toBeNull();
+    expect(indexedTextPanel).not.toHaveTextContent("Second query current result");
+    expect(searchTrigger).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(searchTrigger).toHaveFocus());
+
+    pendingSearches[2]?.resolve(
+      Response.json({
+        query: "closing query",
+        results: [
+          {
+            id: "closed-hit",
+            page_number: 3,
+            chunk_index: 2,
+            section_heading: "Closed result",
+            snippet: "A closed search must ignore this result",
+            matched_terms: ["closing", "query"],
+            image_ids: [],
+            score: 1,
+          },
+        ],
+      }),
+    );
+    await waitFor(() => expect(indexedTextPanel).not.toHaveTextContent("A closed search must ignore this result"));
+
+    fireEvent.click(searchTrigger);
+    const reopenedSearch = await screen.findByRole("textbox", { name: "Search within this document" });
+    expect(reopenedSearch).toHaveValue("");
+    fireEvent.keyDown(reopenedSearch, { key: "Escape" });
+    expect(screen.queryByRole("textbox", { name: "Search within this document" })).toBeNull();
+    await waitFor(() => expect(searchTrigger).toHaveFocus());
   });
 
   // A private document's signed URL is a bearer link. The viewer holds the

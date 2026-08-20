@@ -4414,6 +4414,7 @@ test.describe("Clinical KB UI smoke coverage", () => {
 
     // The fixed document composer is the single search owner; the indexed-text
     // disclosure must not duplicate a large search field inside its content.
+    await page.getByRole("button", { name: "Search document" }).click();
     const sourceSearch = page.getByRole("textbox", { name: "Search within this document" });
     await expect(page.getByLabel("Search within indexed source text")).toHaveCount(0);
     await waitForReactEventHandler(sourceSearch, "onChange");
@@ -4437,6 +4438,9 @@ test.describe("Clinical KB UI smoke coverage", () => {
     const nextActiveHit = desktopTextPanel.locator('details[data-source-active-hit="true"]');
     await expect(nextActiveHit).toHaveJSProperty("open", true);
     await expect(initialActiveDisclosure).toHaveJSProperty("open", false);
+    await page.getByRole("button", { name: "Close document search" }).click();
+    await expect(sourceSearch).toHaveCount(0);
+    await expect(desktopTextPanel.getByText("Hit 2 of 2")).toHaveCount(0);
     await expectNoPageHorizontalOverflow(page);
   });
 
@@ -4708,8 +4712,12 @@ test.describe("Clinical KB UI smoke coverage", () => {
     const documentActions = page.getByRole("dialog", { name: "This document" });
     await expect(documentActions).toBeVisible();
     await expect(openDocumentActions).toHaveAttribute("aria-expanded", "true");
-    await expect(documentActions.getByRole("button", { name: "Add to scope" })).toBeVisible();
+    await expect(documentActions.getByRole("button", { name: "Add to scope" })).toHaveCount(0);
+    await documentActions.getByRole("button", { name: "Search document" }).click();
     const composer = page.locator("form.document-viewer-composer");
+    await expect(composer).toBeVisible();
+    await openDocumentActions.click();
+    await expect(documentActions).toBeVisible();
     const composerBox = await composer.boundingBox();
     expect(composerBox).not.toBeNull();
     const sheetOwnsComposerPoint = await documentActions.evaluate(
@@ -5164,7 +5172,10 @@ test.describe("Clinical KB UI smoke coverage", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Synthetic lithium monitoring protocol" })).toBeVisible();
     const composer = page.locator("form.document-viewer-composer");
+    await page.getByRole("button", { name: "Open document actions" }).click();
+    await page.getByRole("dialog", { name: "This document" }).getByRole("button", { name: "Search document" }).click();
     await expect(composer).toBeVisible();
+    await composer.locator("input").evaluate((element) => element.blur());
     // The chunk deep link intentionally scrolls the highlighted passage into
     // view, which can initially hide the phone composer. Returning to the top
     // must restore it before the explicit hide-on-scroll checks below.
@@ -5228,6 +5239,16 @@ test.describe("Clinical KB UI smoke coverage", () => {
       )
       .toBeGreaterThan(250);
     await expect.poll(async () => readMobileComposerReservePx(main)).toBeLessThanOrEqual(13);
+
+    await scrollPrimarySurface(page, 0);
+    await composer.getByRole("button", { name: "Close document search" }).click();
+    await expect(composer).toHaveCount(0);
+    await expect(viewerContent).toHaveAttribute("data-phone-footer-owner", "none");
+    await expect
+      .poll(async () =>
+        viewerContent.evaluate((node) => Number.parseFloat(window.getComputedStyle(node).paddingBottom)),
+      )
+      .toBeLessThanOrEqual(13);
   });
 
   test("document search stays separate from the shared answer stream and summary action", async ({ page }) => {
@@ -5254,12 +5275,18 @@ test.describe("Clinical KB UI smoke coverage", () => {
     );
 
     const composer = page.locator("form.document-viewer-composer");
+    await page.getByRole("button", { name: "Open document actions" }).click();
+    await page.getByRole("dialog", { name: "This document" }).getByRole("button", { name: "Search document" }).click();
     await composer.getByRole("textbox", { name: "Search within this document" }).fill("safety plan include");
     await activateFocusedControl(page, composer.getByRole("button", { name: "Search within this document" }));
     await expect(page.getByTestId("source-chunk-indexed-text-panel").getByText("Hit 1 of 2").first()).toBeVisible();
     expect(answerRequests).toEqual([]);
 
-    await composer.getByRole("button", { name: "Open document actions" }).click();
+    const openDocumentActions = page.getByRole("button", { name: "Open document actions" });
+    await composer.getByRole("button", { name: "Close document search" }).click();
+    await expect(composer).toHaveCount(0);
+    await expect(openDocumentActions).toBeFocused();
+    await openDocumentActions.click();
     const documentActions = page.getByRole("dialog", { name: "This document" });
     await documentActions.getByRole("button", { name: "Answer from this", exact: true }).click();
 

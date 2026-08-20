@@ -8,11 +8,11 @@ import {
   Download,
   Ellipsis,
   ExternalLink,
-  FilePlus2,
   FileText,
   Loader2,
   Search,
   Sparkles,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { documentDisplayTitle } from "@/components/DocumentOrganizationBadges";
@@ -149,7 +149,10 @@ export function DocumentViewer({
   // change / successful reload so only an unrecoverable URL exhausts the budget.
   const signedUrlRefreshCountRef = useRef(0);
   const sourceSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const documentActionsTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const documentSearchReturnFocusRef = useRef<HTMLElement | null>(null);
   const viewerRootRef = useRef<HTMLElement | null>(null);
+  const [documentSearchOpen, setDocumentSearchOpen] = useState(false);
   const [sourceSearch, setSourceSearch] = useState("");
   const [documentSearchState, setDocumentSearchState] = useState<{
     query: string;
@@ -212,6 +215,7 @@ export function DocumentViewer({
     mobileActionsOpen || sectionSheetOpen,
     composerChromeFocused,
   );
+  const composerVisible = documentSearchOpen && !composerScrollHidden;
   const activeScrollOwner = useActiveScrollOwner(shellScrollContainer, documentId);
   // DocumentFrame owns every viewing control for the canvas PDF — there is one
   // reader, so there is one toolbar. Reset viewing chrome when the document
@@ -228,6 +232,12 @@ export function DocumentViewer({
   const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
   if (pdfViewingDocumentId !== documentId) {
     setPdfViewingDocumentId(documentId);
+    setDocumentSearchOpen(false);
+    setSourceSearch("");
+    setDocumentSearchState({ query: "", results: [] });
+    setSearchingDocument(false);
+    setDocumentSearchError(null);
+    setInspectRevealKey(null);
     setPdfFitWidth(true);
     setPdfZoom(VIEWER_DEFAULT_ZOOM);
     setPdfViewingAid(false);
@@ -319,6 +329,7 @@ export function DocumentViewer({
       setIndexHealth(null);
       setSummary(null);
       setSummaryError(null);
+      setDocumentSearchOpen(false);
       setSourceSearch("");
       setDocumentSearchState({ query: "", results: [] });
       setDocumentSearchError(null);
@@ -899,9 +910,6 @@ export function DocumentViewer({
         ? "Document"
         : "Source unavailable";
   const documentHomeHref = "/?mode=documents";
-  const scopedDocumentHref = readyDocument
-    ? `/?mode=documents&q=${encodeURIComponent(documentDisplayTitle(readyDocument))}&documentId=${encodeURIComponent(documentId)}`
-    : documentHomeHref;
   const usefulPageHref = (page: number) => documentPageHref(documentId, page);
   const canSummarizeDocument = viewerState === "ready" && !loadingSummary && canUsePrivateApis;
   const summarizeTitle = !canUsePrivateApis
@@ -1051,6 +1059,28 @@ export function DocumentViewer({
       behavior: resolveScrollBehavior(),
     });
   };
+  const openDocumentSearch = (returnFocusTarget?: HTMLElement | null) => {
+    documentSearchReturnFocusRef.current = returnFocusTarget ?? documentActionsTriggerRef.current;
+    setMobileActionsOpen(false);
+    setDocumentSearchOpen(true);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => sourceSearchInputRef.current?.focus());
+    });
+  };
+  const closeDocumentSearch = () => {
+    const returnFocusTarget = documentSearchReturnFocusRef.current;
+    setDocumentSearchOpen(false);
+    setComposerChromeFocused(false);
+    setSourceSearch("");
+    setDocumentSearchState({ query: "", results: [] });
+    setSearchingDocument(false);
+    setDocumentSearchError(null);
+    setInspectRevealKey(null);
+    window.requestAnimationFrame(() => {
+      const focusTarget = returnFocusTarget?.isConnected ? returnFocusTarget : documentActionsTriggerRef.current;
+      focusTarget?.focus();
+    });
+  };
   async function reviewTableFact(fact: TableFactRow, reviewClass: string) {
     setReviewingTableFactId(fact.id);
     try {
@@ -1147,6 +1177,7 @@ export function DocumentViewer({
             <div className="ml-auto flex shrink-0 items-center">
               <button
                 type="button"
+                ref={documentActionsTriggerRef}
                 onClick={() => setMobileActionsOpen(true)}
                 className="grid h-tap w-tap place-items-center rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                 aria-label="Open document actions"
@@ -1201,18 +1232,15 @@ export function DocumentViewer({
             <div className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2">
               <button
                 type="button"
-                onClick={() => {
-                  setMobileActionsOpen(false);
-                  window.requestAnimationFrame(() => {
-                    window.requestAnimationFrame(() => sourceSearchInputRef.current?.focus());
-                  });
-                }}
+                onClick={() => openDocumentSearch(documentActionsTriggerRef.current)}
+                aria-expanded={documentSearchOpen}
+                aria-controls={documentSearchOpen ? "document-viewer-search" : undefined}
                 className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
               >
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
                   <Search aria-hidden="true" className="h-4 w-4" />
                 </span>
-                Search in document
+                Search document
               </button>
               <button
                 type="button"
@@ -1276,19 +1304,6 @@ export function DocumentViewer({
                 </span>
                 {downloadingSource ? "Preparing PDF" : "Download PDF"}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileActionsOpen(false);
-                  router.push(scopedDocumentHref);
-                }}
-                className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]">
-                  <FilePlus2 aria-hidden="true" className="h-4 w-4" />
-                </span>
-                Add to scope
-              </button>
             </div>
             {canUseAdministrativeApis ? (
               <details className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3">
@@ -1310,14 +1325,14 @@ export function DocumentViewer({
 
       <section
         data-testid="document-viewer-content"
-        data-scroll-hidden={composerScrollHidden ? "true" : undefined}
-        data-reserve-transitioning={reserveTransitioning ? "true" : undefined}
+        data-scroll-hidden={documentSearchOpen && composerScrollHidden ? "true" : undefined}
+        data-reserve-transitioning={documentSearchOpen && reserveTransitioning ? "true" : undefined}
         data-phone-scroll-owner={activeScrollOwner}
-        data-phone-footer-owner={readyDocument ? "document-viewer" : "none"}
+        data-phone-footer-owner={readyDocument && documentSearchOpen ? "document-viewer" : "none"}
         data-phone-composer-reserve={
-          composerScrollHidden ? "0.75rem" : "calc(9rem + var(--safe-area-bottom) + var(--keyboard-height, 0px))"
+          composerVisible ? "calc(9rem + var(--safe-area-bottom) + var(--keyboard-height, 0px))" : "0.75rem"
         }
-        data-phone-chrome-transition={reserveTransitioning ? "active" : "idle"}
+        data-phone-chrome-transition={documentSearchOpen && reserveTransitioning ? "active" : "idle"}
         data-document-view={compactView ? "condensed" : "full"}
         // Hidden state releases the composer's own 9rem clearance, but keeps a
         // small resting gap (0.75rem — the same figure the floating pill itself
@@ -1334,14 +1349,14 @@ export function DocumentViewer({
           // explicit track this is an implicit `auto` column sized by its items'
           // min-content, so a single child that forgets `min-w-0` can widen the
           // whole page past the viewport and get clipped by `overflow-x: clip`.
-          "mx-auto grid max-w-[1440px] grid-cols-1 gap-4 px-3 py-4 sm:gap-5 sm:px-4 sm:py-5 sm:pb-40 lg:grid-cols-[minmax(0,1fr)_480px] lg:items-start lg:px-8",
+          "mx-auto grid max-w-[1440px] grid-cols-1 gap-4 px-3 py-4 sm:gap-5 sm:px-4 sm:py-5 lg:grid-cols-[minmax(0,1fr)_480px] lg:items-start lg:px-8",
           // The visible fixed composer needs endpoint clearance. Once hidden,
           // release the composer-height clearance so Safari can paint document
           // content beneath its translucent toolbar instead of showing a blank
           // band — but keep a small 0.75rem resting pad (see comment above).
-          composerScrollHidden
-            ? "max-sm:pb-3"
-            : "max-sm:pb-[calc(9rem+var(--safe-area-bottom)+var(--keyboard-height,0px))] max-sm:[--phone-focus-bottom-clearance:calc(9rem+var(--safe-area-bottom)+var(--keyboard-height,0px))]",
+          composerVisible
+            ? "max-sm:pb-[calc(9rem+var(--safe-area-bottom)+var(--keyboard-height,0px))] max-sm:[--phone-focus-bottom-clearance:calc(9rem+var(--safe-area-bottom)+var(--keyboard-height,0px))] sm:pb-40"
+            : "max-sm:pb-3",
         )}
       >
         {downloadError ? (
@@ -1398,7 +1413,8 @@ export function DocumentViewer({
               signedUrl={signedUrl}
               pages={pages}
               onAskFromDocument={() => void summarize()}
-              onAddToScope={() => router.push(scopedDocumentHref)}
+              onSearchDocument={(event) => openDocumentSearch(event.currentTarget)}
+              searchOpen={documentSearchOpen}
               onDownload={() => void openSourceDownload()}
               downloading={downloadingSource}
               canSummarizeDocument={canSummarizeDocument}
@@ -1582,12 +1598,19 @@ export function DocumentViewer({
           onSelectPage={navigateToPage}
         />
       </section>
-      {readyDocument ? (
+      {readyDocument && documentSearchOpen ? (
         <PhoneFooterLayerPortal>
           <form
+            id="document-viewer-search"
             onSubmit={(event) => {
               event.preventDefault();
               submitSourceSearch();
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return;
+              event.preventDefault();
+              event.stopPropagation();
+              closeDocumentSearch();
             }}
             data-scroll-hidden={composerScrollHidden ? "true" : undefined}
             onFocusCapture={() => setComposerChromeFocused(true)}
@@ -1604,14 +1627,12 @@ export function DocumentViewer({
           >
             <button
               type="button"
-              onClick={() => setMobileActionsOpen(true)}
+              onClick={closeDocumentSearch}
               className="grid h-tap w-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)]"
-              aria-label="Open document actions"
-              aria-haspopup="dialog"
-              aria-expanded={mobileActionsOpen}
-              title="Document actions"
+              aria-label="Close document search"
+              title="Close document search"
             >
-              <Ellipsis aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
+              <X aria-hidden="true" className="h-5 w-5" strokeWidth={2.25} />
             </button>
             <label className="relative flex min-w-0 flex-1 items-center overflow-hidden">
               <span className="sr-only">Search within this document</span>

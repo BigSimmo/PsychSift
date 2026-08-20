@@ -5,7 +5,8 @@
 // PDF on phones — most of the first viewport spent before any of the source.
 // DocumentViewer now places it after the source, matching the order
 // `buildDocumentSectionIndex` has always described.
-import { Download, Loader2, MoreHorizontal, Sparkles, Target } from "lucide-react";
+import { Download, Loader2, MoreHorizontal, Search, Sparkles } from "lucide-react";
+import type { MouseEventHandler } from "react";
 import { documentDisplayTitle, documentOrganizationProfile } from "@/components/DocumentOrganizationBadges";
 import { formatDocumentLabelDisplay } from "@/lib/document-tags";
 import {
@@ -48,7 +49,8 @@ export function DocumentOverviewLanding({
   signedUrl,
   pages,
   onAskFromDocument,
-  onAddToScope,
+  onSearchDocument,
+  searchOpen,
   onDownload,
   downloading,
   canSummarizeDocument,
@@ -57,7 +59,8 @@ export function DocumentOverviewLanding({
   signedUrl: string | null;
   pages: PageRow[];
   onAskFromDocument: () => void;
-  onAddToScope: () => void;
+  onSearchDocument: MouseEventHandler<HTMLButtonElement>;
+  searchOpen: boolean;
   onDownload: () => void;
   downloading: boolean;
   canSummarizeDocument: boolean;
@@ -87,7 +90,7 @@ export function DocumentOverviewLanding({
             {/* Search relevance badges are rendered in document search results; the viewer has no ranking context. */}
           </div>
         </div>
-        {/* Phone: primary reading actions only. Download / scope stay behind More
+        {/* Phone: primary reading actions only. Download / search stay behind More
             so the first viewport reaches the PDF and clinical summary faster. */}
         <div className="mt-3 grid grid-cols-2 gap-2 sm:hidden">
           {signedUrl ? (
@@ -136,11 +139,13 @@ export function DocumentOverviewLanding({
               {downloading ? "Preparing" : "Download"}
             </DocumentActionButton>
             <DocumentActionButton
-              onClick={onAddToScope}
-              icon={Target}
+              onClick={onSearchDocument}
+              icon={Search}
+              aria-expanded={searchOpen}
+              aria-controls={searchOpen ? "document-viewer-search" : undefined}
               className={cn(secondaryButton, "w-full min-h-12 px-2 text-xs")}
             >
-              Add to scope
+              Search document
             </DocumentActionButton>
           </div>
         </details>
@@ -171,11 +176,13 @@ export function DocumentOverviewLanding({
             {downloading ? "Preparing" : "Download"}
           </DocumentActionButton>
           <DocumentActionButton
-            onClick={onAddToScope}
-            icon={Target}
+            onClick={onSearchDocument}
+            icon={Search}
+            aria-expanded={searchOpen}
+            aria-controls={searchOpen ? "document-viewer-search" : undefined}
             className={cn(secondaryButton, "w-full min-h-12 px-2 text-sm")}
           >
-            Add to scope
+            Search document
           </DocumentActionButton>
           <DocumentActionButton
             onClick={onAskFromDocument}

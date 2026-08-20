@@ -114,6 +114,11 @@ for (const phoneOwner of ["browser document", "standalone PWA main"] as const) {
     const content = page.getByTestId("document-viewer-content");
     const sectionTrigger = page.getByTestId("document-section-trigger");
 
+    await expect(composer).toHaveCount(0);
+    await expect(content).toHaveAttribute("data-phone-footer-owner", "none");
+    await expect(content).toHaveAttribute("data-phone-composer-reserve", "0.75rem");
+    await page.getByRole("button", { name: "Open document actions" }).click();
+    await page.getByRole("dialog", { name: "This document" }).getByRole("button", { name: "Search document" }).click();
     await expect(composer).toBeVisible({ timeout: 20_000 });
     await expect(content).toHaveAttribute("data-phone-scroll-owner", expectedOwner);
     await expect(content).toHaveAttribute("data-phone-footer-owner", "document-viewer");
@@ -419,6 +424,13 @@ for (const footerCase of standalonePageOwnedFooterRoutes) {
     await page.setViewportSize(phoneViewport);
     await gotoPhoneSurface(page, footerCase.route, 112);
 
+    if (footerCase.openViaDocumentActions) {
+      await page.getByRole("button", { name: "Open document actions" }).click();
+      await page
+        .getByRole("dialog", { name: "This document" })
+        .getByRole("button", { name: "Search document" })
+        .click();
+    }
     const footer = page.locator(footerCase.selector);
     await expect(footer).toBeVisible({ timeout: 20_000 });
     expect(
