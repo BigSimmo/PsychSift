@@ -1,6 +1,6 @@
 # RAG answer quality, repository content, and Australian source augmentation — design
 
-**Status:** Approved programme design, reconciled against `origin/main` `aa0c04bce12995894a9287cb1a084f89f2ed6ef8` on 2026-08-22. The new programme implementation has not started; the existing RAG improvement Track A, buffered-final path, and flag-gated evidence-preview prerequisites are recorded below and are not to be reimplemented.
+**Status:** Approved programme design, reconciled against `origin/main` `dea32b8d26b32f03827bf71c0814315d92a7cb5c` on 2026-08-22. The new programme implementation has not started; the existing RAG improvement Track A, buffered-final path, and flag-gated evidence-preview prerequisites are recorded below and are not to be reimplemented.
 
 **Date:** 2026-08-20
 

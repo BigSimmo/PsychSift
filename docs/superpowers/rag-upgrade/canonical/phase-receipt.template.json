@@ -6,9 +6,9 @@
   "status": "draft",
   "packageVariant": "local",
   "packageHash": "0000000000000000000000000000000000000000000000000000000000000000",
-  "packageBaseSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
-  "packageHeadSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
-  "programmeImplementationBase": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "packageBaseSha": "dea32b8d26b32f03827bf71c0814315d92a7cb5c",
+  "packageHeadSha": "dea32b8d26b32f03827bf71c0814315d92a7cb5c",
+  "programmeImplementationBase": "dea32b8d26b32f03827bf71c0814315d92a7cb5c",
   "branch": "codex/rag-upgrade-p00",
   "modelRouting": {
     "provider": "codex",
@@ -24,8 +24,8 @@
     "fallbackUsed": false,
     "escalationReason": null
   },
-  "phaseStartSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
-  "phaseEndSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "phaseStartSha": "dea32b8d26b32f03827bf71c0814315d92a7cb5c",
+  "phaseEndSha": "dea32b8d26b32f03827bf71c0814315d92a7cb5c",
   "startedAt": "2026-08-22T00:00:00.000Z",
   "completedAt": null,
   "tasks": [],

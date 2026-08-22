@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "programmeId": "rag-answer-quality-and-repository-coverage-v1",
-  "reconciledBase": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "reconciledBase": "dea32b8d26b32f03827bf71c0814315d92a7cb5c",
   "basePolicy": "Before publication and Phase P00, fetch and verify current origin/main. If it differs from reconciledBase, materialize on the new base, revalidate implementation/evidence/paths/migrations/dependencies, update reconciledBase and regenerate both packages before execution.",
   "packagePolicy": {
     "sharedBodiesMustMatch": true,
