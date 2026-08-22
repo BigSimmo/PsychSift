@@ -62,7 +62,6 @@ describe("B1 telemetry canary absence", () => {
           routingReason: canaryTokens[0],
           fallbackReason: canaryTokens[1],
         },
-        0,
       ),
     ).toEqual({ interaction_id: interactionId });
   });
@@ -73,7 +72,6 @@ describe("B1 telemetry canary absence", () => {
       answerProgrammeTelemetryMetadata(
         { interactionId: "patient-name-canary", rolloutMode: "legacy" },
         { grounded: true, confidence: "high", sources: [] },
-        0,
       ),
     ).toThrow("opaque UUID interaction ID");
   });
@@ -126,7 +124,6 @@ describe("B1 telemetry canary absence", () => {
         routingReason: canaryTokens[0],
         fallbackReason: canaryTokens[1],
       },
-      0,
     );
     expect(programmeMetadata).toMatchObject({
       version: "rag-programme-telemetry-v1",

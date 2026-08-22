@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildRagProgrammeDiagnostics,
   buildRagProgrammeTelemetry,
   buildRagQueryMetadata,
   buildRagRetrievalMetadata,
 } from "../src/lib/rag/rag-programme-telemetry";
+import type { RagAnswer, SearchResult, SourceCorpusScope } from "../src/lib/types";
 
 const INTERACTION_ID = "33333333-3333-4333-8333-333333333333";
 
@@ -47,6 +49,61 @@ const contaminatedInput = {
 };
 
 describe("RAG programme telemetry", () => {
+  it("uses real candidate and selected corpus outcomes instead of sources.length or an uploaded-local default", () => {
+    const candidateScopes: SourceCorpusScope[] = [
+      "uploaded_local",
+      "uploaded_local",
+      "clinical_kb_site",
+      "clinical_kb_site",
+      "clinical_kb_site",
+      "australian_public",
+      "australian_public",
+      "australian_public",
+      "international_supplementary",
+    ];
+    const candidates = candidateScopes.map(
+      (corpus_scope, index) =>
+        ({
+          id: `candidate-${index}`,
+          corpus_scope,
+          site_content_domain: corpus_scope === "clinical_kb_site" ? "medications" : null,
+        }) as unknown as SearchResult,
+    );
+    const answer = {
+      answer: "bounded",
+      grounded: true,
+      confidence: "high",
+      citations: [],
+      sources: [candidates[2]!, candidates[5]!],
+      retrievalDiagnostics: {
+        candidateCount: 9,
+        retrievalDepth: 9,
+        distinctDocumentCount: 4,
+        topScore: 0.9,
+        secondScore: 0.8,
+        scoreSpread: 0.1,
+        gateStatus: "passed",
+      },
+    } satisfies RagAnswer;
+
+    const diagnostics = buildRagProgrammeDiagnostics(answer, candidates);
+
+    expect(diagnostics.candidateCounts).toEqual({
+      uploaded_local: 2,
+      clinical_kb_site: 3,
+      australian_public: 3,
+      international_supplementary: 1,
+    });
+    expect(Object.values(diagnostics.candidateCounts).reduce((total, count) => total + count, 0)).toBe(9);
+    expect(diagnostics.selectedCounts).toEqual({
+      uploaded_local: 0,
+      clinical_kb_site: 1,
+      australian_public: 1,
+      international_supplementary: 0,
+    });
+    expect(diagnostics.selectedSiteDomains).toEqual(["medications"]);
+  });
+
   it("projects only allow-listed counts, enums, booleans, and the opaque interaction id", () => {
     const projected = buildRagProgrammeTelemetry(contaminatedInput);
 

@@ -38,6 +38,8 @@ import { answerRequestSchema, type AnswerRequestBody } from "@/lib/validation/an
 import type { AnswerStreamEventMap, AnswerStreamEventName } from "@/lib/answer-stream-contract";
 import { toPublicAnswerProgressEvent } from "@/lib/answer-progress-public";
 import { answerFeedbackMetadata } from "@/lib/answer-feedback-token";
+import { logRagQueryOutcome } from "@/lib/rag/rag-query-telemetry";
+import { withRagProgrammeDiagnostics } from "@/lib/rag/rag-programme-telemetry";
 
 export const runtime = "nodejs";
 
@@ -216,6 +218,33 @@ function streamAnswer(
               });
           sendProgress({ stage: "retrieving" });
           if (scope?.documentIds?.length === 0) {
+            const telemetryAnswer = withRagProgrammeDiagnostics(
+              {
+                answer: emptyScopeAnswer,
+                grounded: false,
+                confidence: "unsupported",
+                citations: [],
+                sources: [],
+                routingMode: "unsupported",
+                routingReason: "empty_scope",
+                responseMode: "evidence_gap",
+              },
+              [],
+            );
+            void logRagQueryOutcome({
+              query: body.query,
+              ownerId,
+              answer: telemetryAnswer,
+              observationContext,
+              outcome: "empty_scope",
+            });
+            void logAnswerDiagnostics({
+              supabase: createAdminClient(),
+              query: body.query,
+              ownerId,
+              answer: telemetryAnswer,
+              observationContext,
+            });
             sendFinal({
               answer: emptyScopeAnswer,
               grounded: false,
@@ -243,7 +272,7 @@ function streamAnswer(
           }
           const answer =
             body.summaryMode && body.documentId
-              ? await summarizeDocument(body.documentId, ownerId, { signal })
+              ? await summarizeDocument(body.documentId, ownerId, { signal, observationContext })
               : await answerQuestionWithScope({
                   query: body.query,
                   documentId: singleDocumentScope ? body.documentId : undefined,

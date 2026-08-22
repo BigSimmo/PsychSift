@@ -31,6 +31,8 @@ import { nonProductionSupabaseDemoFallbackReason } from "@/lib/supabase/errors";
 import * as serverAuth from "@/lib/supabase/auth";
 import { answerRequestSchema, type AnswerRequestBody } from "@/lib/validation/answer-request";
 import { answerFeedbackMetadata } from "@/lib/answer-feedback-token";
+import { logRagQueryOutcome } from "@/lib/rag/rag-query-telemetry";
+import { withRagProgrammeDiagnostics } from "@/lib/rag/rag-programme-telemetry";
 
 export const runtime = "nodejs";
 
@@ -113,6 +115,33 @@ export async function POST(request: Request) {
     });
     const scopeMs = Date.now() - scopeStartedAt;
     if (scope.documentIds?.length === 0) {
+      const telemetryAnswer = withRagProgrammeDiagnostics(
+        {
+          answer: emptyScopeAnswer,
+          grounded: false,
+          confidence: "unsupported",
+          citations: [],
+          sources: [],
+          routingMode: "unsupported",
+          routingReason: "empty_scope",
+          responseMode: "evidence_gap",
+        },
+        [],
+      );
+      void logRagQueryOutcome({
+        query: answerBody.query,
+        ownerId: access.ownerId,
+        answer: telemetryAnswer,
+        observationContext,
+        outcome: "empty_scope",
+      });
+      void logAnswerDiagnostics({
+        supabase,
+        query: answerBody.query,
+        ownerId: access.ownerId,
+        answer: telemetryAnswer,
+        observationContext,
+      });
       const serverTiming = buildServerTimingHeader([
         ...preambleServerTimingEntries({ authMs, rateLimitMs, scopeMs }),
         { name: "total", durMs: Date.now() - routeStartedAt },

@@ -6,6 +6,8 @@ import type {
   RagInsufficiencyReason,
   RagQueryPlanKind,
   RagReconciliationOutcome,
+  RagProgrammeDiagnostics,
+  SearchResult,
   SiteContentDomain,
   SiteContentPartitionState,
   SourceCorpusScope,
@@ -77,8 +79,8 @@ const reconciliationOutcomes = [
   "mismatch",
 ] as const satisfies readonly RagReconciliationOutcome[];
 
-type CorpusCounts = Record<SourceCorpusScope, number>;
-type CoverageCounts = { direct: number; partial: number; conflicting: number; absent: number };
+type CorpusCounts = RagProgrammeDiagnostics["candidateCounts"];
+type CoverageCounts = RagProgrammeDiagnostics["coverageCounts"];
 
 export type RagProgrammeTelemetry = {
   version: "rag-programme-telemetry-v1";
@@ -105,28 +107,23 @@ export type RagProgrammeTelemetry = {
   reconciliation_outcome: RagReconciliationOutcome;
 };
 
-export type RagProgrammeTelemetryInput = {
+export type RagProgrammeTelemetryInput = RagProgrammeDiagnostics & {
   observationContext: RagObservationContext;
-  queryPlanKind: RagQueryPlanKind;
-  subquestionCount: number;
-  materialAmbiguity: boolean;
-  coverageCounts: CoverageCounts;
-  candidateCounts: CorpusCounts;
-  selectedCounts: CorpusCounts;
-  selectedSiteDomains: readonly SiteContentDomain[];
-  siteCandidateCount: number;
-  siteSelectedCount: number;
-  publicSiteContentState: SiteContentPartitionState;
-  siteStaticManifestMatch: boolean | null;
-  sitePendingCount: number | null;
-  augmentationOutcome: RagAugmentationOutcome;
-  roleExclusionCount: number;
-  insufficiencyReason: RagInsufficiencyReason | null;
-  generationOutcome: RagGenerationOutcome;
-  verifiedUnitsEmitted: number;
-  verifiedUnitsDiscarded: number;
-  reconciliationOutcome: RagReconciliationOutcome;
 };
+
+type RagProgrammeAnswer = Pick<
+  RagAnswer,
+  | "answerQualityTier"
+  | "confidence"
+  | "fallbackReason"
+  | "grounded"
+  | "modelUsed"
+  | "programmeDiagnostics"
+  | "retrievalDiagnostics"
+  | "routingMode"
+  | "routingReason"
+  | "sources"
+>;
 
 function boundedCount(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
@@ -256,8 +253,37 @@ function insufficiencyReason(answer: Pick<RagAnswer, "confidence" | "fallbackRea
   return answer.confidence === "unsupported" ? ("retrieval_miss" as const) : null;
 }
 
-export function programmeTelemetryInputForAnswer(args: {
-  observationContext: RagObservationContext;
+function emptyCorpusCounts(): CorpusCounts {
+  return {
+    uploaded_local: 0,
+    clinical_kb_site: 0,
+    australian_public: 0,
+    international_supplementary: 0,
+  };
+}
+
+function corpusCountsForResults(results: readonly SearchResult[]) {
+  const counts = emptyCorpusCounts();
+  for (const result of results) {
+    const scope = (result as SearchResult & { corpus_scope?: SourceCorpusScope }).corpus_scope;
+    if (scope && corpusScopes.includes(scope)) counts[scope] += 1;
+  }
+  return counts;
+}
+
+function selectedSiteDomains(results: readonly SearchResult[]) {
+  return [
+    ...new Set(
+      results.flatMap((result) => {
+        const domain = (result as SearchResult & { site_content_domain?: SiteContentDomain | null })
+          .site_content_domain;
+        return domain ? [domain] : [];
+      }),
+    ),
+  ];
+}
+
+export function buildRagProgrammeDiagnostics(
   answer: Pick<
     RagAnswer,
     | "answerQualityTier"
@@ -268,40 +294,60 @@ export function programmeTelemetryInputForAnswer(args: {
     | "routingMode"
     | "routingReason"
     | "sources"
-  >;
-  candidateCount: number;
-}): RagProgrammeTelemetryInput {
-  const supported = args.answer.grounded && args.answer.confidence !== "unsupported";
+  >,
+  candidateResults: readonly SearchResult[],
+): RagProgrammeDiagnostics {
+  const selectedResults = answer.sources ?? [];
+  const candidateCounts = corpusCountsForResults(candidateResults);
+  const selectedCounts = corpusCountsForResults(selectedResults);
+  const domains = selectedSiteDomains(selectedResults);
+  const supported = answer.grounded && answer.confidence !== "unsupported";
   return {
-    observationContext: args.observationContext,
     queryPlanKind: "single",
     subquestionCount: 1,
     materialAmbiguity: false,
     coverageCounts: { direct: supported ? 1 : 0, partial: 0, conflicting: 0, absent: supported ? 0 : 1 },
-    candidateCounts: {
-      uploaded_local: boundedCount(args.candidateCount),
-      clinical_kb_site: 0,
-      australian_public: 0,
-      international_supplementary: 0,
-    },
-    selectedCounts: {
-      uploaded_local: boundedCount(args.answer.sources?.length),
-      clinical_kb_site: 0,
-      australian_public: 0,
-      international_supplementary: 0,
-    },
-    selectedSiteDomains: [],
-    siteCandidateCount: 0,
-    siteSelectedCount: 0,
+    candidateCounts,
+    selectedCounts,
+    selectedSiteDomains: domains,
+    siteCandidateCount: candidateCounts.clinical_kb_site,
+    siteSelectedCount: selectedCounts.clinical_kb_site,
     publicSiteContentState: "disabled",
     siteStaticManifestMatch: null,
     sitePendingCount: null,
     augmentationOutcome: "disabled",
     roleExclusionCount: 0,
-    insufficiencyReason: insufficiencyReason(args.answer),
-    generationOutcome: generationOutcome(args.answer),
+    insufficiencyReason: insufficiencyReason(answer),
+    generationOutcome: generationOutcome(answer),
     verifiedUnitsEmitted: 0,
     verifiedUnitsDiscarded: 0,
     reconciliationOutcome: "not_applicable",
   };
+}
+
+export function withRagProgrammeDiagnostics(answer: RagAnswer, candidateResults: readonly SearchResult[]): RagAnswer {
+  return answer.programmeDiagnostics
+    ? answer
+    : { ...answer, programmeDiagnostics: buildRagProgrammeDiagnostics(answer, candidateResults) };
+}
+
+export function programmeTelemetryInputForAnswer(args: {
+  observationContext: RagObservationContext;
+  answer: RagProgrammeAnswer;
+}): RagProgrammeTelemetryInput {
+  const diagnostics = args.answer.programmeDiagnostics ?? buildRagProgrammeDiagnostics(args.answer, []);
+  return {
+    observationContext: args.observationContext,
+    ...diagnostics,
+  };
+}
+
+export function boundedAnswerTelemetryReasons(answer: RagProgrammeAnswer) {
+  const route = enumValue(
+    answer.routingMode ?? answer.retrievalDiagnostics?.routeMode,
+    ["unsupported", "extractive", "fast", "strong"],
+    "unsupported",
+  );
+  const diagnostics = answer.programmeDiagnostics ?? buildRagProgrammeDiagnostics(answer, []);
+  return { route, insufficiencyReason: diagnostics.insufficiencyReason };
 }

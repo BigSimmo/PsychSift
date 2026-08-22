@@ -43,14 +43,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     // Group this request's LLM calls into one Sentry agent-monitoring conversation
     // before any OpenAI work starts. Synthetic UUID only — never document/query text.
     const interactionId = randomUUID();
+    const observationContext = { interactionId, rolloutMode: "legacy" as const };
     setAgentConversationId(interactionId);
-    const answer = await summarizeDocument(id, user.id, { signal: request.signal });
+    const answer = await summarizeDocument(id, user.id, { signal: request.signal, observationContext });
     const governedResponse = buildGovernedAnswerClientResponse(answer);
     logAnswerDiagnostics({
       supabase,
       query: documentSummaryQuestion,
       ownerId: user.id,
       answer: governedResponse.telemetryAnswer,
+      observationContext,
     });
     return NextResponse.json({
       ...governedResponse.payload,

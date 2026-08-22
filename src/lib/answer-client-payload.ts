@@ -74,6 +74,15 @@ export function trimSourceForClient(source: SearchResult): SearchResult {
 }
 
 export function toClientAnswerPayload<T extends Pick<RagAnswer, "sources">>(answer: T): T {
-  if (!answer.sources?.length) return answer;
-  return { ...answer, sources: answer.sources.map(trimSourceForClient) };
+  // Programme diagnostics belong to the two server-side telemetry owners. Keep
+  // them out of JSON/SSE payloads without changing legacy answer identity when
+  // the diagnostic attachment is absent.
+  const clientAnswer =
+    "programmeDiagnostics" in answer
+      ? (({ programmeDiagnostics: _programmeDiagnostics, ...rest }) => rest)(
+          answer as T & Pick<RagAnswer, "programmeDiagnostics">,
+        )
+      : answer;
+  if (!clientAnswer.sources?.length) return clientAnswer as T;
+  return { ...clientAnswer, sources: clientAnswer.sources.map(trimSourceForClient) } as T;
 }

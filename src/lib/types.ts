@@ -173,6 +173,31 @@ export type RagInsufficiencyReason =
   | "timeout"
   | "provider_failure";
 
+export type RagProgrammeCorpusCounts = Record<SourceCorpusScope, number>;
+export type RagProgrammeCoverageCounts = { direct: number; partial: number; conflicting: number; absent: number };
+
+export type RagProgrammeDiagnostics = {
+  queryPlanKind: RagQueryPlanKind;
+  subquestionCount: number;
+  materialAmbiguity: boolean;
+  coverageCounts: RagProgrammeCoverageCounts;
+  candidateCounts: RagProgrammeCorpusCounts;
+  selectedCounts: RagProgrammeCorpusCounts;
+  selectedSiteDomains: readonly SiteContentDomain[];
+  siteCandidateCount: number;
+  siteSelectedCount: number;
+  publicSiteContentState: SiteContentPartitionState;
+  siteStaticManifestMatch: boolean | null;
+  sitePendingCount: number | null;
+  augmentationOutcome: RagAugmentationOutcome;
+  roleExclusionCount: number;
+  insufficiencyReason: RagInsufficiencyReason | null;
+  generationOutcome: RagGenerationOutcome;
+  verifiedUnitsEmitted: number;
+  verifiedUnitsDiscarded: number;
+  reconciliationOutcome: RagReconciliationOutcome;
+};
+
 export type RagProgrammeExpectation = {
   expectedCorpusScopes: SourceCorpusScope[];
   expectedSourceRoles: ClinicalSourceRole[];
@@ -1132,6 +1157,8 @@ export type RagAnswer = {
   supportedClaims?: SupportedClaim[];
   evidenceAssessments?: Record<string, EvidenceAssessment>;
   retrievalDiagnostics?: RetrievalDiagnostics;
+  /** Server-only bounded diagnostics shared by both telemetry stores. Client projection excludes it. */
+  programmeDiagnostics?: RagProgrammeDiagnostics;
   modelUsed?: string | null;
   routingMode?: "unsupported" | "extractive" | "fast" | "strong";
   routingReason?: string;

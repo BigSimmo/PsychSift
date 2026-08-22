@@ -85,6 +85,32 @@ describe("buildAnswerLogRow (per-answer observability)", () => {
     expect(typeof row.query).toBe("string");
   });
 
+  it("never persists free-form provider errors or protected source text in the complete metadata row", () => {
+    const row = buildAnswerLogRow({
+      query: "safe query",
+      answer: answer({
+        grounded: false,
+        confidence: "unsupported",
+        routingReason: "provider-error-canary: upstream response body",
+        fallbackReason: "protected-source-text-canary: patient excerpt",
+      }),
+      observationContext: { interactionId: INTERACTION_ID, rolloutMode: "legacy" },
+    });
+    const serialized = JSON.stringify(row);
+
+    expect(serialized).not.toContain("provider-error-canary");
+    expect(serialized).not.toContain("protected-source-text-canary");
+    expect(row.miss_reason).toBe("provider_failure");
+    expect(row.metadata).toEqual(
+      expect.objectContaining({
+        answer: expect.objectContaining({
+          routing_reason: "strong",
+          fallback_reason: "provider_failure",
+        }),
+      }),
+    );
+  });
+
   it("marks unsupported/ungrounded answers as a miss with a reason", () => {
     const row = buildAnswerLogRow({
       query: "unknown drug?",

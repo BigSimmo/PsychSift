@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { documentSummaryQuestion } from "@/lib/answer-contract";
 import { loadDocumentSummaryContext } from "@/lib/rag/rag-document-summary-context";
 import { generationFailureDetailToken } from "@/lib/rag/rag-generation-failure-diagnostics";
 import { answerLatencyMetadata, answerProgrammeTelemetryMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
@@ -25,7 +26,6 @@ export {
   loadChunksForSignalMatches,
 } from "@/lib/rag/rag-candidate-sources";
 import { classifyCorpusGrounding } from "@/lib/corpus-grounding";
-import type { Database, Json } from "@/lib/supabase/database.types";
 import {
   embedTextWithTelemetry,
   generateParsedTextResult,
@@ -166,11 +166,12 @@ import {
   ragSummaryPromptVersion,
 } from "@/lib/rag/rag-versioning";
 import {
-  answerPrivacyMetadata,
-  answerTextForStorage,
-  queryPrivacyMetadata,
-  queryTextForStorage,
-} from "@/lib/query-privacy";
+  logRagQuery,
+  logRagQueryOutcome,
+  logRagQueryOutcomeForAnswerArgs,
+  type RagQueryInsert,
+} from "@/lib/rag/rag-query-telemetry";
+import { withRagProgrammeDiagnostics } from "@/lib/rag/rag-programme-telemetry";
 import { normalizeOptionalSourceMetadata } from "@/lib/source-metadata";
 import { safeErrorLogDetails } from "@/lib/privacy";
 import {
@@ -1243,41 +1244,6 @@ function expandClinicalQueryWithCandidateMetadata(query: string, expandedQuery: 
   const metadataTerms = candidateMetadataExpansionTerms(query, candidates);
   if (metadataTerms.length === 0) return expandedQuery;
   return uniqueTextValues([expandedQuery, ...metadataTerms], 24).join(" ");
-}
-
-type RagQueryInsert = Omit<Database["public"]["Tables"]["rag_queries"]["Insert"], "metadata"> & {
-  metadata?: Record<string, unknown>;
-};
-
-/** Insert rag query. */
-async function insertRagQuery(row: RagQueryInsert) {
-  const supabase = createAdminClient();
-  // Redact potential-PHI raw query text centrally so every logRagQuery caller is
-  // covered, and fold a stable hash + retention flag into metadata (RET-H4).
-  // The generated answer can restate patient specifics, so it is dropped at rest
-  // unless answer retention is explicitly enabled (PIA-3, default off).
-  const rawQuery = typeof row.query === "string" ? row.query : "";
-  const safeRow = {
-    ...row,
-    query: queryTextForStorage(rawQuery),
-    answer: answerTextForStorage(row.answer),
-    metadata: {
-      ...(row.metadata ?? {}),
-      ...queryPrivacyMetadata(rawQuery),
-      ...answerPrivacyMetadata(),
-    } as Json,
-  };
-  await supabase.from("rag_queries").insert(safeRow);
-}
-
-/** Log rag query. */
-async function logRagQuery(row: RagQueryInsert) {
-  if (env.RAG_AWAIT_QUERY_LOGS) {
-    await insertRagQuery(row);
-    return;
-  }
-
-  void insertRagQuery(row).catch(() => undefined);
 }
 
 /** Score explanation log metadata. */
@@ -2473,7 +2439,7 @@ export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs)
         ...answer.latencyTimings,
         total_latency_ms: Date.now() - startedAt,
       };
-      return answer;
+      return logRagQueryOutcomeForAnswerArgs(args, answer, "coalesced");
     } catch {
       throwIfAborted(args.signal);
       // The in-flight request we coalesced onto failed — most often because the ORIGINATING
@@ -2548,7 +2514,7 @@ async function answerQuestionWithScopeUncoalesced(
       weakSourceCount: cachedRelevance.weakSourceCount,
       relevance: cachedRelevance,
     });
-    return assessAndEnforceClaimSupport({
+    const answer = assessAndEnforceClaimSupport({
       ...cachedAnswer,
       sources: cachedSources,
       relevance: cachedRelevance,
@@ -2556,6 +2522,7 @@ async function answerQuestionWithScopeUncoalesced(
         ? { ...cachedAnswer.smartPanel, relevance: cachedRelevance }
         : cachedAnswer.smartPanel,
     });
+    return logRagQueryOutcomeForAnswerArgs(args, answer, "cache");
   }
   const sharedCachedAnswer = adversarialQuery
     ? null
@@ -2576,7 +2543,7 @@ async function answerQuestionWithScopeUncoalesced(
       weakSourceCount: cachedRelevance.weakSourceCount,
       relevance: cachedRelevance,
     });
-    return assessAndEnforceClaimSupport({
+    const answer = assessAndEnforceClaimSupport({
       ...sharedCachedAnswer,
       sources: cachedSources,
       relevance: cachedRelevance,
@@ -2584,6 +2551,7 @@ async function answerQuestionWithScopeUncoalesced(
         ? { ...sharedCachedAnswer.smartPanel, relevance: cachedRelevance }
         : sharedCachedAnswer.smartPanel,
     });
+    return logRagQueryOutcomeForAnswerArgs(args, answer, "cache");
   }
 
   const searchStartedAt = Date.now();
@@ -2928,7 +2896,7 @@ async function answerQuestionWithScopeUncoalesced(
       retrievalDiagnostics,
     );
 
-    const finalizedAnswer = finalizeAnswer(answer);
+    const finalizedAnswer = withRagProgrammeDiagnostics(finalizeAnswer(answer), results);
 
     if (args.logQuery !== false)
       await logRagQuery({
@@ -2938,7 +2906,7 @@ async function answerQuestionWithScopeUncoalesced(
         source_chunk_ids: answerInputResults.map((result) => result.id),
         model: null,
         metadata: {
-          ...answerProgrammeTelemetryMetadata(args.observationContext, finalizedAnswer, results.length),
+          ...answerProgrammeTelemetryMetadata(args.observationContext, finalizedAnswer),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
           grounded: finalizedAnswer.grounded,
@@ -3128,6 +3096,7 @@ async function answerQuestionWithScopeUncoalesced(
       });
     }
 
+    finalizedAnswer = withRagProgrammeDiagnostics(finalizedAnswer, results);
     if (args.logQuery !== false)
       await logRagQuery({
         owner_id: args.ownerId ?? null,
@@ -3136,7 +3105,7 @@ async function answerQuestionWithScopeUncoalesced(
         source_chunk_ids: answerInputResults.map((result) => result.id),
         model: null,
         metadata: {
-          ...answerProgrammeTelemetryMetadata(args.observationContext, finalizedAnswer, results.length),
+          ...answerProgrammeTelemetryMetadata(args.observationContext, finalizedAnswer),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
           grounded: finalizedAnswer.grounded,
@@ -3830,7 +3799,7 @@ ${qualityRetryInstruction}`
       ...retrievalDiagnostics,
       routeMode: answer.routingMode ?? retrievalDiagnostics.routeMode,
     });
-    answer = finalizeAnswer(answer, numericVerificationSources);
+    answer = withRagProgrammeDiagnostics(finalizeAnswer(answer, numericVerificationSources), results);
 
     // A provider response can be schema-valid yet still fail the deterministic claim/numeric
     // provenance gates after its citations are scoped to individual claims. Reuse the existing
@@ -3862,7 +3831,7 @@ ${qualityRetryInstruction}`
         source_chunk_ids: answerInputResults.map((result) => result.id),
         model: modelUsed,
         metadata: {
-          ...answerProgrammeTelemetryMetadata(args.observationContext, answer, results.length),
+          ...answerProgrammeTelemetryMetadata(args.observationContext, answer),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
           grounded: answer.grounded,
@@ -4214,6 +4183,7 @@ ${qualityRetryInstruction}`
       );
     }
     await args.onProgress?.({ stage: "verifying", message: "Checking citations and source metadata." });
+    fallbackAnswer = withRagProgrammeDiagnostics(fallbackAnswer, results);
     if (args.logQuery !== false)
       await logRagQuery({
         owner_id: args.ownerId ?? null,
@@ -4222,7 +4192,7 @@ ${qualityRetryInstruction}`
         source_chunk_ids: generationFallbackResults.map((result) => result.id),
         model: null,
         metadata: {
-          ...answerProgrammeTelemetryMetadata(args.observationContext, fallbackAnswer, results.length),
+          ...answerProgrammeTelemetryMetadata(args.observationContext, fallbackAnswer),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
           grounded: fallbackAnswer.grounded,
@@ -4296,20 +4266,35 @@ ${qualityRetryInstruction}`
 }
 
 /** Summarize the committed document context; the route applies the shared client-response governance contract. */
-export async function summarizeDocument(documentId: string, ownerId?: string, options?: { signal?: AbortSignal }) {
+export async function summarizeDocument(
+  documentId: string,
+  ownerId?: string,
+  options?: { signal?: AbortSignal; observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext },
+) {
   const { document, chunks } = await loadDocumentSummaryContext(documentId, ownerId, options?.signal);
   const committedGeneration = committedIndexGeneration((document as { metadata?: unknown }).metadata);
   const committedChunks = chunks.filter(
     (chunk) => !chunk.index_generation_id || chunk.index_generation_id === committedGeneration,
   );
   if (!committedChunks.length) {
-    return {
-      answer: "This document has not been indexed yet, so no summary can be generated.",
-      grounded: false,
-      confidence: "unsupported",
-      citations: [],
-      sources: [],
-    } satisfies RagAnswer;
+    const answer = withRagProgrammeDiagnostics(
+      {
+        answer: "This document has not been indexed yet, so no summary can be generated.",
+        grounded: false,
+        confidence: "unsupported",
+        citations: [],
+        sources: [],
+      } satisfies RagAnswer,
+      [],
+    );
+    await logRagQueryOutcome({
+      query: documentSummaryQuestion,
+      ownerId,
+      answer,
+      observationContext: options?.observationContext,
+      outcome: "summary",
+    });
+    return answer;
   }
 
   const results = buildDocumentSummaryResults(committedChunks, document);
@@ -4358,5 +4343,14 @@ ${buildRagSourceBlock(results)}`;
     generation_latency_ms: generated.latencyMs,
     total_latency_ms: generated.latencyMs,
   };
-  return assessAndEnforceClaimSupport(answer);
+  const finalizedAnswer = withRagProgrammeDiagnostics(assessAndEnforceClaimSupport(answer), results);
+  await logRagQueryOutcome({
+    query: documentSummaryQuestion,
+    ownerId,
+    answer: finalizedAnswer,
+    candidateResults: results,
+    observationContext: options?.observationContext,
+    outcome: "summary",
+  });
+  return finalizedAnswer;
 }

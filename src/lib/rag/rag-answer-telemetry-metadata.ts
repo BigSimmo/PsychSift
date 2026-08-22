@@ -50,22 +50,18 @@ export function ragProgrammeTelemetryMetadata(input: RagProgrammeTelemetryInput 
 export function answerProgrammeTelemetryMetadata(
   observationContext: RagObservationContext | null | undefined,
   answer: Parameters<typeof programmeTelemetryInputForAnswer>[0]["answer"],
-  candidateCount: number,
 ) {
   return observationContext
-    ? ragProgrammeTelemetryMetadata(programmeTelemetryInputForAnswer({ observationContext, answer, candidateCount }))
+    ? ragProgrammeTelemetryMetadata(programmeTelemetryInputForAnswer({ observationContext, answer }))
     : {};
 }
 
 export function retrievalProgrammeTelemetryMetadata(
   observationContext: RagObservationContext | null | undefined,
   answer: Parameters<typeof programmeTelemetryInputForAnswer>[0]["answer"],
-  candidateCount: number,
 ) {
   if (!observationContext) return {};
-  const metadata = buildRagRetrievalMetadata(
-    programmeTelemetryInputForAnswer({ observationContext, answer, candidateCount }),
-  );
+  const metadata = buildRagRetrievalMetadata(programmeTelemetryInputForAnswer({ observationContext, answer }));
   return env.RAG_TELEMETRY_EXTENDED ? metadata : { interaction_id: metadata.interaction_id };
 }
 

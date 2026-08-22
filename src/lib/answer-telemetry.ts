@@ -1,6 +1,7 @@
 import { normalizedQueryTextForStorage, queryTextForStorage } from "@/lib/query-privacy";
 import { retrievalProgrammeTelemetryMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
 import type { RagObservationContext } from "@/lib/rag/rag-contracts";
+import { boundedAnswerTelemetryReasons } from "@/lib/rag/rag-programme-telemetry";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import type { RagAnswer } from "@/lib/types";
@@ -43,6 +44,7 @@ export type AnswerTelemetrySource = Pick<
   | "openAIRequestIds"
   | "latencyTimings"
   | "retrievalDiagnostics"
+  | "programmeDiagnostics"
 >;
 
 function finiteOrNull(value: number | null | undefined): number | null {
@@ -71,19 +73,22 @@ export function buildAnswerLogRow(args: {
   const timings = answer.latencyTimings ?? {};
   const usage = answer.openAIUsage ?? {};
   const isMiss = answer.grounded === false || answer.confidence === "unsupported";
+  const boundedReasons = boundedAnswerTelemetryReasons(answer as RagAnswer);
 
   const answerTelemetry = {
-    ...retrievalProgrammeTelemetryMetadata(args.observationContext, answer, sources.length),
+    ...retrievalProgrammeTelemetryMetadata(args.observationContext, answer as RagAnswer),
     log_source: "answer",
-    route: answer.routingMode ?? answer.retrievalDiagnostics?.routeMode ?? null,
+    route: boundedReasons.route,
     model: answer.modelUsed ?? null,
     provider_mode: answer.providerMode ?? null,
     quality_tier: answer.answerQualityTier ?? null,
     confidence: answer.confidence,
     grounded: answer.grounded,
     response_mode: answer.responseMode ?? null,
-    routing_reason: answer.routingReason ?? null,
-    fallback_reason: answer.fallbackReason ?? null,
+    // The legacy keys remain, but free-form provider/source text is a global
+    // privacy stop condition. Persist only bounded route/insufficiency tokens.
+    routing_reason: boundedReasons.route,
+    fallback_reason: boundedReasons.insufficiencyReason,
     degraded: answer.degradedMode?.active ?? false,
     generation_latency_ms: finiteOrNull(timings.generation_latency_ms),
     search_latency_ms: finiteOrNull(timings.search_latency_ms),
@@ -127,7 +132,11 @@ export function buildAnswerLogRow(args: {
     embedding_field_count: finiteOrNull(timings.embedding_field_count),
     embedding_cache_hit: typeof timings.embedding_cache_hit === "boolean" ? timings.embedding_cache_hit : null,
     is_miss: isMiss,
-    miss_reason: isMiss ? (answer.fallbackReason ?? answer.responseMode ?? "unsupported") : null,
+    miss_reason: isMiss
+      ? answer.fallbackReason
+        ? (boundedReasons.insufficiencyReason ?? "insufficient_claim_support")
+        : (answer.responseMode ?? boundedReasons.insufficiencyReason ?? "unsupported")
+      : null,
     metadata: { answer: answerTelemetry } as unknown as Json,
   };
 }
