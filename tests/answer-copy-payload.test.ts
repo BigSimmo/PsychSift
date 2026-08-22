@@ -7,6 +7,7 @@ import {
   singleDocumentClipboardMetadata,
 } from "@/components/clinical-dashboard/answer-copy-payload";
 import { primaryAnswerDisplayText } from "@/components/clinical-dashboard/answer-content";
+import { buildAnswerRenderModel } from "@/lib/answer-render-policy";
 import type { ClinicalSourceMetadata, RagAnswer, SearchResult } from "@/lib/types";
 
 // ClinicalSourceMetadata's governance fields are required-and-nullable rather
@@ -101,16 +102,35 @@ describe("answerStateForAnswer · empty sources fallback", () => {
 });
 
 describe("buildAnswerClipboardText · single-document provenance", () => {
-  it("keeps the complete finalized v19 lead in the clipboard projection", () => {
-    const lead =
-      "Start the prescribed treatment after confirming the indication. Check the baseline observations before administration. Review the response at the planned interval. Record the decision and clinical rationale in the notes. Continue monitoring for the documented adverse effects.";
-    const answer: RagAnswer = { ...answerWith([currentSource]), answer: lead };
+  it("uses the visible sanitized lead in the render-model clipboard path", () => {
+    const answer: RagAnswer = {
+      ...answerWith([currentSource]),
+      answer:
+        "Source mentions: Start the prescribed treatment after confirming the indication. Synthetic demo only: illustrative content.",
+    };
     const displayText = primaryAnswerDisplayText(answer.answer);
+    const renderModel = buildAnswerRenderModel(answer, { sources: [currentSource] });
 
-    const copied = buildAnswerClipboardText({ answer, renderCopyText: displayText });
+    const copied = buildAnswerClipboardText({ answer, renderCopyText: renderModel.copyText });
 
-    expect(displayText).toBe(lead);
-    expect(copied).toContain(lead);
+    expect(displayText).toBe("Start the prescribed treatment after confirming the indication.");
+    expect(copied).toContain(displayText);
+    expect(copied).not.toContain("Source mentions:");
+    expect(copied).not.toContain("Synthetic demo only:");
+  });
+
+  it("keeps preformatted content while removing bold markers from the copied lead", () => {
+    const answer: RagAnswer = {
+      ...answerWith([currentSource]),
+      answer: "Facility code: WA-ABC-9\nUse the **local protocol**.",
+      preformatted: true,
+    };
+    const renderModel = buildAnswerRenderModel(answer, { sources: [currentSource] });
+    const copied = buildAnswerClipboardText({ answer, renderCopyText: renderModel.copyText });
+
+    expect(primaryAnswerDisplayText(answer.answer, { preformatted: true, preserveBold: true })).toBe(answer.answer);
+    expect(copied).toContain("Facility code: WA-ABC-9\nUse the local protocol.");
+    expect(copied).not.toContain("**");
   });
 
   it("includes the provenance audit line for a one-document answer", () => {

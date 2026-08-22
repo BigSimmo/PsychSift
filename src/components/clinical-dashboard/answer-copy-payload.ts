@@ -15,6 +15,10 @@
 // retrieval layer in, and `RagAnswer` is the retrieval layer.
 
 import { answerStateFromRetrieval, type AnswerState } from "@/components/ui/answer-state";
+import {
+  isPreformattedGroundedAnswer,
+  primaryAnswerDisplayText,
+} from "@/components/clinical-dashboard/answer-content";
 import { composeAnswerClipboardText } from "@/lib/answer-clipboard";
 import type { RagAnswer, SearchResult } from "@/lib/types";
 
@@ -58,6 +62,27 @@ export function answerStateForAnswer({ answer, sources, weakEvidence }: AnswerCo
     unverifiedNumericTokens: answer.unverifiedNumericTokens,
     weakEvidence,
   });
+}
+
+/**
+ * The answer portion of a clinical clipboard payload. It is deliberately the
+ * same final-lead projection shown on screen, with bold markers removed for
+ * plain-text records.
+ */
+export function answerTextForClipboard(answer: RagAnswer): string {
+  return primaryAnswerDisplayText(answer.answer, {
+    preformatted: isPreformattedGroundedAnswer(answer),
+  });
+}
+
+function replaceRenderCopyAnswerText(answer: RagAnswer, renderCopyText: string): string {
+  // `buildAnswerRenderModel` strips server bold markers before placing the
+  // finalized answer in its policy-owned copy block. Replace that one answer
+  // occurrence so warnings, source links, tables, and trust metadata remain
+  // under the render policy's ownership.
+  const renderedAnswerText = answer.answer.trim().replace(/\*\*/g, "");
+  if (!renderedAnswerText) return renderCopyText;
+  return renderCopyText.replace(renderedAnswerText, answerTextForClipboard(answer));
 }
 
 /**
@@ -126,7 +151,7 @@ export function buildAnswerClipboardText({
 }: AnswerCopyInput & { renderCopyText: string }): string {
   const resolvedSources = resolveAnswerSources(answer.sources, sources);
   return composeAnswerClipboardText({
-    renderCopyText,
+    renderCopyText: replaceRenderCopyAnswerText(answer, renderCopyText),
     sourceOnly: answer.answerQualityTier === "source_only",
     state: answerStateForAnswer({ answer, sources, weakEvidence }),
     // Cited set, not every candidate: an uncited candidate from another document
