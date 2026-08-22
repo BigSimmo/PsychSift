@@ -115,6 +115,134 @@ export type ClinicalSourceMetadata = {
   extraction_quality: "good" | "partial" | "poor" | "unknown";
 };
 
+export type SourceCorpusScope =
+  "uploaded_local" | "clinical_kb_site" | "australian_public" | "international_supplementary";
+
+export type ClinicalSourceRole =
+  | "local_guideline"
+  | "clinical_guideline"
+  | "clinical_reference"
+  | "service_directory"
+  | "form_reference"
+  | "tool_reference"
+  | "safety_alert"
+  | "regulatory"
+  | "quality_standard"
+  | "legal"
+  | "subsidy"
+  | "professional_review"
+  | "service_policy"
+  | "reference_link";
+
+export type SiteContentDomain =
+  | "services"
+  | "forms"
+  | "medications"
+  | "differentials"
+  | "specifiers"
+  | "dsm"
+  | "formulation"
+  | "therapies"
+  | "dictionary"
+  | "factsheets"
+  | "calculators"
+  | "tools";
+
+export type SiteContentPartitionState = "current" | "updating" | "stale" | "unavailable" | "disabled";
+
+export type RagSubquestionPurpose =
+  "primary" | "comparison_side" | "required_action" | "monitoring" | "risk" | "special_population";
+
+export type RagQueryPlanKind = "single" | "decomposed" | "clarification_required";
+export type AdaptiveAnswerShape = "narrow" | "focused" | "comprehensive" | "comparison" | "partial";
+export type RagProgrammeMode = "legacy" | "shadow" | "canary";
+export type RagAugmentationOutcome = "not_needed" | "used" | "no_eligible_evidence" | "unavailable" | "disabled";
+export type RagGenerationOutcome = "generated" | "extractive" | "source_only" | "failed";
+export type RagReconciliationOutcome = "not_applicable" | "matched" | "mismatch";
+
+export type RagInsufficiencyReason =
+  | "not_in_corpus"
+  | "retrieval_miss"
+  | "insufficient_claim_support"
+  | "source_role_mismatch"
+  | "source_conflict"
+  | "governance_block"
+  | "site_content_updating"
+  | "site_content_stale"
+  | "site_content_unavailable"
+  | "timeout"
+  | "provider_failure";
+
+export type RagProgrammeExpectation = {
+  expectedCorpusScopes: SourceCorpusScope[];
+  expectedSourceRoles: ClinicalSourceRole[];
+  expectedSiteDomains: SiteContentDomain[];
+  expectedPublicSiteContentState: SiteContentPartitionState | "not_applicable";
+  expectedSubquestionPurposes: RagSubquestionPurpose[];
+  minimumDirectSubquestions: number;
+  allowedAnswerShapes: AdaptiveAnswerShape[];
+  requireSupportedPart: boolean;
+  requireExactGap: boolean;
+  expectedConflict: {
+    localDocumentId: string;
+    australianDocumentId: string;
+    requireVisibleFields: Array<
+      | "source_identity"
+      | "publication_or_effective_date"
+      | "jurisdiction"
+      | "source_role"
+      | "material_difference"
+      | "local_primary_decision"
+      | "review_flag"
+    >;
+  } | null;
+  forbiddenFallbackReasons: RagInsufficiencyReason[];
+  requiredFacts: string[];
+  forbiddenPatterns: string[];
+  incrementalEligibility: "none" | "lead" | "independent_sections";
+};
+
+export type RagProgrammeHardViolation =
+  | "access_boundary"
+  | "healthdirect_used"
+  | "link_only_content_used"
+  | "source_role_mismatch"
+  | "unsupported_citation"
+  | "unsupported_number"
+  | "prompt_injection"
+  | "governance"
+  | "conflict_contract"
+  | "stale_site_content"
+  | "site_public_read_mismatch"
+  | "site_non_admin_mutation"
+  | "site_authority_escalation"
+  | "site_domain_miss"
+  | "incremental_reconciliation";
+
+export type RagProgrammeCaseResult = {
+  id: string;
+  caseFingerprint: string;
+  passed: boolean;
+  falseInsufficiency: boolean;
+  supportedPartRetained: boolean;
+  documentReciprocalRank: number;
+  contentReciprocalRank: number;
+  hardViolations: RagProgrammeHardViolation[];
+  failedExpectations: string[];
+  totalLatencyMs: number | null;
+  estimatedCostUsd: number | null;
+};
+
+export type RagProgrammeGatePolicy = {
+  version: "rag-programme-gate-v1";
+  requireDocumentRecall: 1;
+  requireContentRecall: 1;
+  maximumHardViolations: 0;
+  maximumPerCaseRankRegressions: 0;
+  maximumP95LatencyMultiplier: 1.1;
+  maximumEstimatedCostMultiplier: 1.15;
+};
+
 export type ClinicalQueryMode =
   | "auto"
   | "monitoring_schedule"

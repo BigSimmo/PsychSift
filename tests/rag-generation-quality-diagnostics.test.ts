@@ -85,4 +85,23 @@ describe("generation quality diagnostics (#231)", () => {
     expect(generationQualityFailureDiagnostics("provider_timeout")).toBeNull();
     expect(generationQualityFailureDiagnostics(undefined)).toBeNull();
   });
+
+  it("records eight-section incompleteness as bounded shape data without section prose", () => {
+    const shape = summarizeGenerationQualityAnswerShape({
+      answer: "A complete synthetic lead that remains safe to summarize.",
+      answerSections: Array.from({ length: 8 }, (_, index) => ({
+        heading: `Synthetic section ${index + 1}`,
+        body: `Synthetic protected body ${index + 1}`,
+      })),
+      citations: [],
+    });
+    const error = new GenerationQualityError("strong_gate", "max_output_tokens", shape);
+
+    expect(generationQualityFailureDiagnostics(error)).toMatchObject({
+      stage: "strong_gate",
+      gateReason: "max_output_tokens",
+      answerShape: { section_count: 8 },
+    });
+    expect(JSON.stringify(generationQualityFailureDiagnostics(error))).not.toContain("Synthetic protected body");
+  });
 });

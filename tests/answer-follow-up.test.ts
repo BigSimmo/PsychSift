@@ -26,6 +26,14 @@ describe("buildAnswerFollowUpQuery", () => {
     );
   });
 
+  it("retains exactly one prior topic for the programme anaphoric follow-up control", () => {
+    const result = buildAnswerFollowUpQuery("synthetic lithium monitoring", "what about them?");
+
+    expect(result).toBe('Follow-up to "synthetic lithium monitoring": what about them?');
+    expect(result.match(/Follow-up to/g)).toHaveLength(1);
+    expect(result).not.toContain("history");
+  });
+
   it("does not wrap a follow-up that restates the prior topic", () => {
     expect(buildAnswerFollowUpQuery("lithium dosing", "lithium levels in the elderly")).toBe(
       "lithium levels in the elderly",

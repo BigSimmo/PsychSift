@@ -9,6 +9,7 @@ import {
   scoreAnswerQualityEvalCase,
   scoreAnswerTargeting,
   type AnswerQualityEvalCase,
+  type RagEvalCase,
 } from "../src/lib/rag/rag-eval-cases";
 import type { RagAnswer } from "../src/lib/types";
 
@@ -220,6 +221,15 @@ describe("captured RAG eval cases", () => {
     ]);
     expect(answerQualityEvalCases.some((testCase) => testCase.expectedIntent === "document_lookup")).toBe(true);
     expect(answerQualityEvalCases.some((testCase) => testCase.supported === false)).toBe(true);
+  });
+
+  it("extends the canonical RagEvalCase registry with programme expectations", () => {
+    const promptInjection = ragEvalCases.find((item) => item.id === "unsupported-prompt-injection-secrets");
+    expect(promptInjection?.programmeExpectation).toMatchObject({
+      requireExactGap: true,
+      requiredFacts: ["prompt_injection_rejected"],
+      incrementalEligibility: "none",
+    } satisfies Partial<NonNullable<RagEvalCase["programmeExpectation"]>>);
   });
 
   it("marks the diffuse discharge cases as source-only-acceptable, still supported", () => {

@@ -1038,6 +1038,25 @@ describe("RAG answer routing", () => {
     expect(selected.reason).toBe("broad_clinical_management_synthesis");
   });
 
+  it("keeps the programme broad-management control on the existing strong route", () => {
+    const selected = route("Provide broad management of bulimia nervosa", [
+      source({
+        title: "Bulimia Nervosa",
+        file_name: "bulimia-nervosa.pdf",
+        section_heading: "Management",
+        content: "Bulimia nervosa management includes an acute treatment algorithm and therapy options.",
+        similarity: 0.95,
+        hybrid_score: 0.97,
+      }),
+    ]);
+
+    expect(selected).toMatchObject({
+      mode: "strong",
+      model: "strong-model",
+      reason: "broad_clinical_management_synthesis",
+    });
+  });
+
   it("uses the dedicated deterministic path for structured multi-document comparisons", () => {
     const selected = route("Compare the admission and discharge requirements", [
       source({
