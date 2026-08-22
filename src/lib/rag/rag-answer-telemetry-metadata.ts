@@ -1,4 +1,11 @@
 import { env } from "@/lib/env";
+import type { RagObservationContext } from "@/lib/rag/rag-contracts";
+import {
+  buildRagQueryMetadata,
+  buildRagRetrievalMetadata,
+  programmeTelemetryInputForAnswer,
+  type RagProgrammeTelemetryInput,
+} from "@/lib/rag/rag-programme-telemetry";
 import type { RagAnswer } from "@/lib/types";
 
 type AnswerLatencyTimings = NonNullable<RagAnswer["latencyTimings"]>;
@@ -32,6 +39,34 @@ export function extendedAnswerTelemetryFields(
     if (typeof value === "number" && Number.isFinite(value)) fields[key] = value;
   }
   return fields;
+}
+
+export function ragProgrammeTelemetryMetadata(input: RagProgrammeTelemetryInput | null | undefined) {
+  if (!input) return {};
+  const metadata = buildRagQueryMetadata(input);
+  return env.RAG_TELEMETRY_EXTENDED ? metadata : { interaction_id: metadata.interaction_id };
+}
+
+export function answerProgrammeTelemetryMetadata(
+  observationContext: RagObservationContext | null | undefined,
+  answer: Parameters<typeof programmeTelemetryInputForAnswer>[0]["answer"],
+  candidateCount: number,
+) {
+  return observationContext
+    ? ragProgrammeTelemetryMetadata(programmeTelemetryInputForAnswer({ observationContext, answer, candidateCount }))
+    : {};
+}
+
+export function retrievalProgrammeTelemetryMetadata(
+  observationContext: RagObservationContext | null | undefined,
+  answer: Parameters<typeof programmeTelemetryInputForAnswer>[0]["answer"],
+  candidateCount: number,
+) {
+  if (!observationContext) return {};
+  const metadata = buildRagRetrievalMetadata(
+    programmeTelemetryInputForAnswer({ observationContext, answer, candidateCount }),
+  );
+  return env.RAG_TELEMETRY_EXTENDED ? metadata : { interaction_id: metadata.interaction_id };
 }
 
 export function answerLatencyMetadata(

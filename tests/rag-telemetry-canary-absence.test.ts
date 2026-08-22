@@ -12,6 +12,7 @@ type TimingsArg = Parameters<TelemetryModule["extendedAnswerTelemetryFields"]>[0
 // input object is deliberately contaminated with them.
 const dataset = JSON.parse(readFileSync("scripts/fixtures/rag-adversarial-cases.v1.json", "utf8"));
 const canaryTokens: string[] = collectCanaryTokens(dataset);
+const interactionId = "33333333-3333-4333-8333-333333333333";
 
 function contaminatedTimings(): TimingsArg {
   const timings: Record<string, unknown> = {
@@ -45,11 +46,36 @@ describe("B1 telemetry canary absence", () => {
   });
 
   it("flag off (default): emits exactly the legacy three fields even from contaminated input", async () => {
-    const { answerLatencyMetadata, extendedAnswerTelemetryFields } = await loadTelemetryModule("false");
+    const { answerLatencyMetadata, answerProgrammeTelemetryMetadata, extendedAnswerTelemetryFields } =
+      await loadTelemetryModule("false");
     expect(extendedAnswerTelemetryFields(contaminatedTimings())).toEqual({});
     const emitted = answerLatencyMetadata(120, 340, contaminatedTimings(), Date.now());
     expect(Object.keys(emitted)).toEqual(["search_latency_ms", "generation_latency_ms", "total_latency_ms"]);
     expect(findCanaryLeaks(JSON.stringify(emitted), canaryTokens)).toEqual([]);
+    expect(
+      answerProgrammeTelemetryMetadata(
+        { interactionId, rolloutMode: "legacy" },
+        {
+          grounded: false,
+          confidence: "unsupported",
+          sources: [],
+          routingReason: canaryTokens[0],
+          fallbackReason: canaryTokens[1],
+        },
+        0,
+      ),
+    ).toEqual({ interaction_id: interactionId });
+  });
+
+  it("rejects a non-UUID interaction join before either flag state can persist it", async () => {
+    const { answerProgrammeTelemetryMetadata } = await loadTelemetryModule("false");
+    expect(() =>
+      answerProgrammeTelemetryMetadata(
+        { interactionId: "patient-name-canary", rolloutMode: "legacy" },
+        { grounded: true, confidence: "high", sources: [] },
+        0,
+      ),
+    ).toThrow("opaque UUID interaction ID");
   });
 
   it("flag on: admits only finite numbers under allow-listed keys, so canaries cannot pass", async () => {
@@ -77,7 +103,7 @@ describe("B1 telemetry canary absence", () => {
   });
 
   it("flag on: a clean timings object emits the extended field alongside the legacy three", async () => {
-    const { answerLatencyMetadata } = await loadTelemetryModule("true");
+    const { answerLatencyMetadata, answerProgrammeTelemetryMetadata } = await loadTelemetryModule("true");
     const emitted = answerLatencyMetadata(
       120,
       340,
@@ -90,6 +116,25 @@ describe("B1 telemetry canary absence", () => {
       total_latency_ms: 500,
       verification_latency_ms: 17,
     });
+
+    const programmeMetadata = answerProgrammeTelemetryMetadata(
+      { interactionId, rolloutMode: "shadow" },
+      {
+        grounded: false,
+        confidence: "unsupported",
+        sources: [],
+        routingReason: canaryTokens[0],
+        fallbackReason: canaryTokens[1],
+      },
+      0,
+    );
+    expect(programmeMetadata).toMatchObject({
+      version: "rag-programme-telemetry-v1",
+      interaction_id: interactionId,
+      rollout_mode: "shadow",
+      insufficiency_reason: "retrieval_miss",
+    });
+    expect(findCanaryLeaks(JSON.stringify(programmeMetadata), canaryTokens)).toEqual([]);
   });
 
   it("generation-quality answer shape (PR #1899) never carries canary text", () => {

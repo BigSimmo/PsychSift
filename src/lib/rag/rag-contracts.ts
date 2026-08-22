@@ -1,6 +1,7 @@
 import type {
   ClinicalQueryMode,
   CorpusGroundingVerdict,
+  RagProgrammeMode,
   RagQueryClass,
   RetrievalIntent,
   RetrievalSelectionSummary,
@@ -31,6 +32,11 @@ export type SearchChunksArgs = {
   cacheContext?: {
     indexingVersionAtRequestStart?: Promise<string>;
   };
+};
+
+export type RagObservationContext = {
+  interactionId: string;
+  rolloutMode: RagProgrammeMode;
 };
 
 export type SearchTelemetry = {

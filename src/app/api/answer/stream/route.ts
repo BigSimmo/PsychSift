@@ -159,6 +159,7 @@ function streamAnswer(
   const ownerId = accessScope.ownerId;
   const encoder = new TextEncoder();
   const interactionId = randomUUID();
+  const observationContext = { interactionId, rolloutMode: "legacy" as const };
   // Group this request's LLM calls into one Sentry agent-monitoring
   // conversation keyed by the synthetic interaction UUID — never by query text.
   setAgentConversationId(interactionId);
@@ -253,6 +254,7 @@ function streamAnswer(
                   accessScope,
                   allowGlobalSearch: !ownerId,
                   queryMode: body.queryMode,
+                  observationContext,
                   onProgress,
                   signal,
                 });
@@ -263,6 +265,7 @@ function streamAnswer(
             query: body.query,
             ownerId,
             answer: governedResponse.telemetryAnswer,
+            observationContext,
           });
 
           sendFinal({

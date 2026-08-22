@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadDocumentSummaryContext } from "@/lib/rag/rag-document-summary-context";
 import { generationFailureDetailToken } from "@/lib/rag/rag-generation-failure-diagnostics";
-import { answerLatencyMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
+import { answerLatencyMetadata, answerProgrammeTelemetryMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
 import { assertRetrievalRows, buildDocumentSummaryResults } from "@/lib/rag/rag-row-contracts";
 import { answerInstructions } from "@/lib/rag/rag-answer-instructions";
 import { retrievalAccessScopeForArgs, retrievalRpcScopeArgs } from "@/lib/owner-scope";
@@ -519,9 +519,8 @@ export type AnswerProgressEvent = {
 type AnswerQuestionWithScopeArgs = SearchChunksArgs & {
   logQuery?: boolean;
   onProgress?: (event: AnswerProgressEvent) => void | Promise<void>;
-  signal?: AbortSignal;
+  observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext;
 };
-
 /** Provenance layer keys. */
 function provenanceLayerKeys(result: SearchResult) {
   const layers = new Set<string>(["chunk"]);
@@ -2447,7 +2446,6 @@ function buildContextDerivedArtifacts(query: string, results: SearchResult[]) {
 export async function answerQuestion(query: string, documentId?: string) {
   return answerQuestionWithScope({ query, documentId, allowGlobalSearch: true });
 }
-
 /** Answer question with scope. */
 export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs): Promise<RagAnswer> {
   const startedAt = Date.now();
@@ -2506,7 +2504,6 @@ export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs)
   if (inflightKey) answerInflight.set(inflightKey, pending);
   return pending;
 }
-
 /** Answer question with scope uncoalesced. */
 async function answerQuestionWithScopeUncoalesced(
   args: AnswerQuestionWithScopeArgs,
@@ -2941,6 +2938,7 @@ async function answerQuestionWithScopeUncoalesced(
         source_chunk_ids: answerInputResults.map((result) => result.id),
         model: null,
         metadata: {
+          ...answerProgrammeTelemetryMetadata(args.observationContext, finalizedAnswer, results.length),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
           grounded: finalizedAnswer.grounded,
@@ -3138,6 +3136,7 @@ async function answerQuestionWithScopeUncoalesced(
         source_chunk_ids: answerInputResults.map((result) => result.id),
         model: null,
         metadata: {
+          ...answerProgrammeTelemetryMetadata(args.observationContext, finalizedAnswer, results.length),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
           grounded: finalizedAnswer.grounded,
@@ -3184,7 +3183,6 @@ async function answerQuestionWithScopeUncoalesced(
     routeDeadline.dispose();
     return finalizedAnswer;
   }
-
   /** Build answer input. */
   function buildAnswerInput(contextResults: SearchResult[]) {
     const sourceGuide = crossDocumentPlan.enabled ? buildCrossDocumentSourceGuide(contextResults) : "";
@@ -3864,6 +3862,7 @@ ${qualityRetryInstruction}`
         source_chunk_ids: answerInputResults.map((result) => result.id),
         model: modelUsed,
         metadata: {
+          ...answerProgrammeTelemetryMetadata(args.observationContext, answer, results.length),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
           grounded: answer.grounded,
@@ -4223,6 +4222,7 @@ ${qualityRetryInstruction}`
         source_chunk_ids: generationFallbackResults.map((result) => result.id),
         model: null,
         metadata: {
+          ...answerProgrammeTelemetryMetadata(args.observationContext, fallbackAnswer, results.length),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
           grounded: fallbackAnswer.grounded,

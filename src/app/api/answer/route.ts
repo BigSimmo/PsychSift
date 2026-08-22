@@ -59,6 +59,7 @@ function buildDemoAnswerPayload(body: AnswerRequestBody, fallbackReason?: string
 
 export async function POST(request: Request) {
   const interactionId = randomUUID();
+  const observationContext = { interactionId, rolloutMode: "legacy" as const };
   // Group this request's LLM calls (embedding, generation, verification) into
   // one Sentry agent-monitoring conversation keyed by the synthetic interaction
   // UUID — never by query text.
@@ -147,6 +148,7 @@ export async function POST(request: Request) {
       accessScope,
       allowGlobalSearch: !access.ownerId,
       queryMode: answerBody.queryMode,
+      observationContext,
       signal: request.signal,
     });
     const governedResponse = buildGovernedAnswerClientResponse(answer);
@@ -155,6 +157,7 @@ export async function POST(request: Request) {
       query: answerBody.query,
       ownerId: access.ownerId,
       answer: governedResponse.telemetryAnswer,
+      observationContext,
     });
 
     // Durations only — see server-timing.ts for the trust-boundary constraint.

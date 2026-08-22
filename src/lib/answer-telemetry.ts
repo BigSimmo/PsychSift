@@ -1,4 +1,6 @@
 import { normalizedQueryTextForStorage, queryTextForStorage } from "@/lib/query-privacy";
+import { retrievalProgrammeTelemetryMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
+import type { RagObservationContext } from "@/lib/rag/rag-contracts";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import type { RagAnswer } from "@/lib/types";
@@ -56,7 +58,12 @@ function meanHybridScore(sources: AnswerTelemetrySource["sources"]): number | nu
 
 // Build the rag_retrieval_logs insert row for an answered request. Pure and
 // synchronous so it can be unit-tested without a database.
-export function buildAnswerLogRow(args: { query: string; ownerId?: string | null; answer: AnswerTelemetrySource }) {
+export function buildAnswerLogRow(args: {
+  query: string;
+  ownerId?: string | null;
+  answer: AnswerTelemetrySource;
+  observationContext?: RagObservationContext;
+}) {
   const { answer } = args;
   const sources = answer.sources ?? [];
   const topSource = sources[0] ?? null;
@@ -66,6 +73,7 @@ export function buildAnswerLogRow(args: { query: string; ownerId?: string | null
   const isMiss = answer.grounded === false || answer.confidence === "unsupported";
 
   const answerTelemetry = {
+    ...retrievalProgrammeTelemetryMetadata(args.observationContext, answer, sources.length),
     log_source: "answer",
     route: answer.routingMode ?? answer.retrievalDiagnostics?.routeMode ?? null,
     model: answer.modelUsed ?? null,
@@ -134,6 +142,7 @@ export async function logAnswerDiagnostics(args: {
   query: string;
   ownerId?: string | null;
   answer: AnswerTelemetrySource;
+  observationContext?: RagObservationContext;
 }) {
   try {
     const { error } = await args.supabase.from("rag_retrieval_logs").insert(buildAnswerLogRow(args));

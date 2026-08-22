@@ -4,6 +4,7 @@ import type { SearchResult } from "../src/lib/types";
 
 const UUID_A = "11111111-1111-1111-1111-111111111111";
 const UUID_B = "22222222-2222-2222-2222-222222222222";
+const INTERACTION_ID = "33333333-3333-4333-8333-333333333333";
 
 function sourceRow(overrides: Partial<SearchResult>): SearchResult {
   return {
@@ -52,9 +53,15 @@ type AnswerMetadata = { answer: Record<string, unknown> & { tokens: Record<strin
 
 describe("buildAnswerLogRow (per-answer observability)", () => {
   it("persists route, model, and token usage in metadata.answer", () => {
-    const row = buildAnswerLogRow({ query: "max clozapine dose?", ownerId: "owner-1", answer: answer() });
+    const row = buildAnswerLogRow({
+      query: "max clozapine dose?",
+      ownerId: "owner-1",
+      answer: answer(),
+      observationContext: { interactionId: INTERACTION_ID, rolloutMode: "legacy" },
+    });
     const meta = row.metadata as unknown as AnswerMetadata;
 
+    expect(meta.answer.interaction_id).toBe(INTERACTION_ID);
     expect(meta.answer.log_source).toBe("answer");
     expect(meta.answer.route).toBe("strong");
     expect(meta.answer.model).toBe("gpt-5.5");
@@ -73,6 +80,7 @@ describe("buildAnswerLogRow (per-answer observability)", () => {
     expect(row.candidate_count).toBe(1);
     expect(row.is_miss).toBe(false);
     expect(row.owner_id).toBe("owner-1");
+    expect(JSON.stringify(row.metadata)).not.toContain("owner-1");
     // The stored query is routed through the privacy helper, not raw.
     expect(typeof row.query).toBe("string");
   });
