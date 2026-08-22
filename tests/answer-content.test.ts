@@ -3,6 +3,28 @@ import { primaryAnswerDisplayText } from "../src/components/clinical-dashboard/a
 import { sourceQuoteDisplayText } from "../src/components/clinical-dashboard/display-text";
 
 describe("primaryAnswerDisplayText", () => {
+  it("keeps every sentence of a finalized v19 lead instead of selecting a compact subset", () => {
+    // Removing any one of these five governed sentences is a display defect,
+    // not an opportunity for the client to choose a more useful answer.
+    const answer =
+      "Start the prescribed treatment after confirming the indication. Check the baseline observations before administration. Review the response at the planned interval. Record the decision and clinical rationale in the notes. Continue monitoring for the documented adverse effects.";
+
+    expect(primaryAnswerDisplayText(answer)).toBe(answer);
+  });
+
+  it("keeps lossless sanitation safeguards while preserving the complete lead", () => {
+    const noisyAnswer =
+      "Source mentions: Start the prescribed treatment after confirming the indication. Synthetic demo only: illustrative content.";
+    const unsafeAnswer = "<script>alert('unsafe')</script> Start the prescribed treatment after confirming the indication.";
+    const preformattedAnswer = "Facility code: WA-ABC-9\nUse the local protocol.";
+
+    expect(primaryAnswerDisplayText(noisyAnswer)).toBe("Start the prescribed treatment after confirming the indication.");
+    // This helper returns text, not HTML; SafeBoldText renders these characters
+    // inertly, so lossless sanitation must not make them executable markup.
+    expect(primaryAnswerDisplayText(unsafeAnswer)).toBe(unsafeAnswer);
+    expect(primaryAnswerDisplayText(preformattedAnswer, { preformatted: true })).toBe(preformattedAnswer);
+  });
+
   it("keeps a safety cue in a long leading fragment beyond the compact word budget", () => {
     const lead = `${Array.from({ length: 90 }, (_, index) => `detail${index + 1}`).join(" ")} Do not administer the medicine.`;
 

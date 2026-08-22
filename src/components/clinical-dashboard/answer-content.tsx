@@ -83,23 +83,6 @@ export function isPreformattedGroundedAnswer(answer: Pick<RagAnswer, "preformatt
   return Boolean(answer?.preformatted && answer?.grounded);
 }
 
-// Fragments carrying a safety-critical signal must never be dropped by the
-// compact 3-fragment / 85-word cap — a withhold/threshold/escalation caveat
-// hidden from the primary prose is a clinical-safety regression.
-// Covers the common withhold / withdrawal / contraindication / negation /
-// escalation directives so a short safety caveat is never dropped from the
-// compact primary answer. Kept deliberately broad (matching a non-safety
-// fragment only preserves it verbatim — the safe direction).
-const primaryAnswerSafetySignalPattern =
-  /\b(?:withhold|withheld|stop|cease|discontinue\w*|suspend\w*|hold|held|threshold|escalat\w*|urgent|immediately|never|avoid|contraindicat\w*|toxic|red\s*zone|amber|(?:do|must|should|will)\s+not|not\s+recommended)\b/i;
-
-// Test against a de-bolded copy so server bold markers inside a phrase
-// ("do **not** administer", "red **zone**") on the preserveBold path can never
-// defeat the safety match and let a caveat be dropped by the compact cap.
-function isPrimaryAnswerSafetyFragment(fragment: string) {
-  return primaryAnswerSafetySignalPattern.test(fragment.replace(/\*\*/g, ""));
-}
-
 // Shared tail of the sanitize path: run the display sanitizer, then strip the
 // synthetic-demo notice both plainAnswerText and primaryAnswerDisplayText need
 // removed before the text reaches the screen.
@@ -129,73 +112,14 @@ export function plainAnswerText(value: string, options: AnswerDisplayTextOptions
 }
 
 /**
- * Selects and compacts the primary answer text while preserving safety-critical guidance.
+ * Produces the complete sanitized primary answer text.
  *
  * @param value - The answer text to prepare for display
  * @param options - Formatting options, including preformatted mode
  * @returns The display-ready answer text
  */
 export function primaryAnswerDisplayText(value: string, options: AnswerDisplayTextOptions = {}) {
-  // Deterministic preformatted answers are already concise and display-ready;
-  // the fragment-level usefulness pass below would re-strip the very names/codes
-  // the preformatted path just preserved, so return them as-is.
-  if (options.preformatted) return plainAnswerText(value, options);
-  // Skip whole-text clinicalProseUsefulness: its 3-token floor drops short
-  // safety sentences ("Stop lithium.") before the fragment-level safety
-  // bypass below can rescue them.
-  const cleaned = sanitizeAndStripSyntheticNotice(value, { preformatted: false, preserveBold: options.preserveBold });
-  const fragments = cleaned
-    .split(/\r?\n+/)
-    .flatMap((line: string) =>
-      line.split(/(?<=[.!?])\s+(?=(?:[A-Z]|\*\*|If\b|When\b|Do\b|Use\b|Monitor\b|Escalate\b|Document\b))/),
-    )
-    .map((fragment: string) =>
-      fragment
-        .replace(/^(?:[-*•]|\d+[.)])\s+/, "")
-        .replace(
-          /^(?:\*\*)?(?:answer|summary|bottom line|direct answer|clinical point|key point|required actions?|monitoring(?:\/timing)?|thresholds?|dose detail|medication(?:\/dose details?)?|escalation(?:\/risk)?|risk|safety|documentation(?:\/forms)?|source gaps?)(?:\*\*)?:\s+/i,
-          "",
-        )
-        .trim(),
-    )
-    // Safety-bearing fragments pass through untouched and are never dropped by
-    // the usefulness/length gate — a short caveat like "Contraindicated in
-    // pregnancy" (under the 8-word floor) must still reach the display.
-    .map((fragment: string) =>
-      isPrimaryAnswerSafetyFragment(fragment) ? fragment : clinicalProseUsefulness(fragment).text || fragment,
-    )
-    .filter((fragment: string) => {
-      if (!fragment) return false;
-      if (isPrimaryAnswerSafetyFragment(fragment)) return true;
-      const useful = clinicalProseUsefulness(fragment);
-      return useful.useful || fragment.split(/\s+/).length >= 8;
-    });
-  const uniqueFragments = Array.from(new Set(fragments));
-  const selected: string[] = [];
-  let nonSafetyKept = 0;
-  let wordBudget = 85;
-  for (const fragment of uniqueFragments) {
-    if (isPrimaryAnswerSafetyFragment(fragment)) {
-      selected.push(fragment);
-      continue;
-    }
-    if (nonSafetyKept >= 3 || wordBudget <= 0) continue;
-    nonSafetyKept += 1;
-    const words = fragment.split(/\s+/).filter(Boolean);
-    if (words.length <= wordBudget) {
-      selected.push(fragment);
-      wordBudget -= words.length;
-    } else {
-      selected.push(
-        `${words
-          .slice(0, wordBudget)
-          .join(" ")
-          .replace(/[;,:-]\s*$/, "")}...`,
-      );
-      wordBudget = 0;
-    }
-  }
-  return selected.join(" ") || cleaned;
+  return sanitizeAndStripSyntheticNotice(value, options);
 }
 
 // One compact "Sources" pill in every state: the amber Source-only pill and the

@@ -6,6 +6,7 @@ import {
   resolveAnswerSources,
   singleDocumentClipboardMetadata,
 } from "@/components/clinical-dashboard/answer-copy-payload";
+import { primaryAnswerDisplayText } from "@/components/clinical-dashboard/answer-content";
 import type { ClinicalSourceMetadata, RagAnswer, SearchResult } from "@/lib/types";
 
 // ClinicalSourceMetadata's governance fields are required-and-nullable rather
@@ -100,6 +101,18 @@ describe("answerStateForAnswer · empty sources fallback", () => {
 });
 
 describe("buildAnswerClipboardText · single-document provenance", () => {
+  it("keeps the complete finalized v19 lead in the clipboard projection", () => {
+    const lead =
+      "Start the prescribed treatment after confirming the indication. Check the baseline observations before administration. Review the response at the planned interval. Record the decision and clinical rationale in the notes. Continue monitoring for the documented adverse effects.";
+    const answer: RagAnswer = { ...answerWith([currentSource]), answer: lead };
+    const displayText = primaryAnswerDisplayText(answer.answer);
+
+    const copied = buildAnswerClipboardText({ answer, renderCopyText: displayText });
+
+    expect(displayText).toBe(lead);
+    expect(copied).toContain(lead);
+  });
+
   it("includes the provenance audit line for a one-document answer", () => {
     const copied = buildAnswerClipboardText({
       answer: answerWith([currentSource]),
