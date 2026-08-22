@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "programmeId": "rag-answer-quality-and-repository-coverage-v1",
+  "phaseId": "P00",
+  "executionPredecessor": null,
+  "status": "accepted",
+  "packageVariant": "local",
+  "packageHash": "2ada405d103719fb8a921bac8b08ca6ca922850c27530185995d647a10dfa7d9",
+  "packageBaseSha": "dea32b8d26b32f03827bf71c0814315d92a7cb5c",
+  "packageHeadSha": "7252eb6312edf634e887578a322c53f23be7ab28",
+  "programmeImplementationBase": "7252eb6312edf634e887578a322c53f23be7ab28",
+  "branch": "codex/rag-local-build-20260822",
+  "modelRouting": {
+    "provider": "codex",
+    "plannedImplementationModel": "gpt-5.6-terra",
+    "actualImplementationModel": "gpt-5.6-terra",
+    "implementationCapabilityClass": "workhorse-high",
+    "implementationReasoning": "high",
+    "plannedReviewModel": "gpt-5.6-sol",
+    "actualReviewModel": "gpt-5.6-sol",
+    "reviewCapabilityClass": "frontier-high",
+    "reviewReasoning": "high",
+    "providerMappingUsed": false,
+    "fallbackUsed": false,
+    "escalationReason": null
+  },
+  "phaseStartSha": "7252eb6312edf634e887578a322c53f23be7ab28",
+  "phaseEndSha": "523c3189de763b6bfd39cf26bb9515fa754f2a08",
+  "startedAt": "2026-08-22T07:30:39.555Z",
+  "completedAt": "2026-08-22T08:43:34.747Z",
+  "tasks": [
+    {
+      "globalTaskKey": "P00/adaptive/task-0",
+      "strategy": "tdd",
+      "taskBaseSha": "7252eb6312edf634e887578a322c53f23be7ab28",
+      "taskHeadSha": "523c3189de763b6bfd39cf26bb9515fa754f2a08",
+      "commits": [
+        "a2449c536be04d56b4f7e5070e8f2f3011ade201",
+        "523c3189de763b6bfd39cf26bb9515fa754f2a08"
+      ],
+      "briefPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/P00-adaptive-task-0-brief.md",
+      "briefSha256": "b085f11b044ab6b94144c11a85420644f7b0796a7f9f7e20e7ac19d1712b6daa",
+      "implementerReportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/P00-adaptive-task-0-implementer-report.md",
+      "implementerReportSha256": "b0743291163ba02f66ed19190f916d714ce80b715973a970c5be699ec7f555e7",
+      "implementerAgentId": "/root/p00_adaptive_task0_impl",
+      "evidence": {
+        "red": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/answer-content.test.ts tests/answer-copy-payload.test.ts",
+            "expected": "After adding the specified lossless-display assertions and before implementation, fail because the current v19 display/copy path clips or drops governed lead text.",
+            "outcome": "failed-as-expected",
+            "result": "The finalized five-sentence governed lead expected full screen and clipboard parity, but the selector returned only its first three sentences and omitted sentences four and five."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/answer-content.test.ts tests/answer-copy-payload.test.ts",
+            "expected": "The correction assertion fails before implementation because the real render-model clipboard path retains source-noise and synthetic-demo text removed from the visible projection.",
+            "outcome": "failed-as-expected",
+            "result": "After the unrelated exclusive Playwright lease released, the real buildAnswerRenderModel copy path contained Source mentions and Synthetic demo only in its Answer block."
+          }
+        ],
+        "green": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/answer-content.test.ts tests/answer-copy-payload.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "Initial implementation GREEN passed 2 files and 24 tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/answer-content.test.ts tests/answer-copy-payload.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "Final correction GREEN passed 2 files and 25 tests."
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "baseSha": "7252eb6312edf634e887578a322c53f23be7ab28",
+          "headSha": "a2449c536be04d56b4f7e5070e8f2f3011ade201",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/P00-adaptive-task-0-review-1.diff",
+          "diffPackageSha256": "473d5479e19c21d3641576cbdb70ca501024feadc1806f678feb5e3d8bccb55b",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/P00-adaptive-task-0-review-1-report.md",
+          "reportSha256": "10bfcfd6a66dc0b9d3acaf8035d9b9bc451605b33fbdcc59d3412b5ffb73c668",
+          "reviewerAgentId": "/root/p00_adaptive_task0_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "7252eb6312edf634e887578a322c53f23be7ab28",
+          "headSha": "523c3189de763b6bfd39cf26bb9515fa754f2a08",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/P00-adaptive-task-0-review-2.diff",
+          "diffPackageSha256": "e19e45c1e6ee4b32e4e42ca137036e38a3b39928b6de2092d0579a0d27c0932b",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/P00-adaptive-task-0-review-2-report.md",
+          "reportSha256": "6c2e792a82ce02c2d811aba2b65e810efc31126c8b783b6187b934db1d14ddd7",
+          "reviewerAgentId": "/root/p00_adaptive_task0_review1",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        }
+      ]
+    }
+  ],
+  "phaseReviews": [
+    {
+      "baseSha": "7252eb6312edf634e887578a322c53f23be7ab28",
+      "headSha": "523c3189de763b6bfd39cf26bb9515fa754f2a08",
+      "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/P00-phase-review-1.diff",
+      "diffPackageSha256": "e19e45c1e6ee4b32e4e42ca137036e38a3b39928b6de2092d0579a0d27c0932b",
+      "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/P00-phase-review-1-report.md",
+      "reportSha256": "1f8f4c94010738c808ef95261d79629cc2cbf25fcd5ea4f5cf312277d2f75995",
+      "reviewerAgentId": "/root/p00_phase_review1",
+      "specVerdict": "PASS",
+      "qualityVerdict": "PASS"
+    }
+  ],
+  "residualGates": [],
+  "acceptedAt": "2026-08-22T08:43:34.747Z"
+}

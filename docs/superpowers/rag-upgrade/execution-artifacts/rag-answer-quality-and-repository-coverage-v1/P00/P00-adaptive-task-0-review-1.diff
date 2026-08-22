@@ -1,0 +1,237 @@
+# Review package: 7252eb6312edf634e887578a322c53f23be7ab28..a2449c536be04d56b4f7e5070e8f2f3011ade201
+
+## Commits
+a2449c536be04d56b4f7e5070e8f2f3011ade201
+
+## Diff
+diff --git a/src/components/clinical-dashboard/answer-content.tsx b/src/components/clinical-dashboard/answer-content.tsx
+index 33da72f0c11f824ed05cb29da8cdc0de739abaa3..7a8b8c7cb71dca84e4cf81ebb894197af8556163 100644
+--- a/src/components/clinical-dashboard/answer-content.tsx
++++ b/src/components/clinical-dashboard/answer-content.tsx
+@@ -76,37 +76,20 @@ export type AnswerDisplayTextOptions = {
+  * Reports whether an answer is a server-`preformatted`, grounded answer whose
+  * display text should bypass prose sanitization and be shown as-is.
+  *
+  * @param answer - The answer to check, or `null`/`undefined` when unavailable
+  * @returns `true` when the answer is preformatted and grounded
+  */
+ export function isPreformattedGroundedAnswer(answer: Pick<RagAnswer, "preformatted" | "grounded"> | null | undefined) {
+   return Boolean(answer?.preformatted && answer?.grounded);
+ }
+ 
+-// Fragments carrying a safety-critical signal must never be dropped by the
+-// compact 3-fragment / 85-word cap — a withhold/threshold/escalation caveat
+-// hidden from the primary prose is a clinical-safety regression.
+-// Covers the common withhold / withdrawal / contraindication / negation /
+-// escalation directives so a short safety caveat is never dropped from the
+-// compact primary answer. Kept deliberately broad (matching a non-safety
+-// fragment only preserves it verbatim — the safe direction).
+-const primaryAnswerSafetySignalPattern =
+-  /\b(?:withhold|withheld|stop|cease|discontinue\w*|suspend\w*|hold|held|threshold|escalat\w*|urgent|immediately|never|avoid|contraindicat\w*|toxic|red\s*zone|amber|(?:do|must|should|will)\s+not|not\s+recommended)\b/i;
+-
+-// Test against a de-bolded copy so server bold markers inside a phrase
+-// ("do **not** administer", "red **zone**") on the preserveBold path can never
+-// defeat the safety match and let a caveat be dropped by the compact cap.
+-function isPrimaryAnswerSafetyFragment(fragment: string) {
+-  return primaryAnswerSafetySignalPattern.test(fragment.replace(/\*\*/g, ""));
+-}
+-
+ // Shared tail of the sanitize path: run the display sanitizer, then strip the
+ // synthetic-demo notice both plainAnswerText and primaryAnswerDisplayText need
+ // removed before the text reaches the screen.
+ function sanitizeAndStripSyntheticNotice(value: string, options: AnswerDisplayTextOptions) {
+   return sanitizeAnswerDisplayText(value, {
+     minLength: 8,
+     minTokens: 2,
+     preformatted: options.preformatted,
+     preserveBold: options.preserveBold,
+   })
+@@ -122,87 +105,28 @@ function sanitizeAndStripSyntheticNotice(value: string, options: AnswerDisplayTe
+  * @returns The sanitized answer text
+  */
+ export function plainAnswerText(value: string, options: AnswerDisplayTextOptions = {}) {
+   // clinicalProseUsefulness runs the source-noise stripper, so preformatted
+   // answers bypass it and go straight to the lossless display path.
+   const base = options.preformatted ? value : clinicalProseUsefulness(value).text || value;
+   return sanitizeAndStripSyntheticNotice(base, options);
+ }
+ 
+ /**
+- * Selects and compacts the primary answer text while preserving safety-critical guidance.
++ * Produces the complete sanitized primary answer text.
+  *
+  * @param value - The answer text to prepare for display
+  * @param options - Formatting options, including preformatted mode
+  * @returns The display-ready answer text
+  */
+ export function primaryAnswerDisplayText(value: string, options: AnswerDisplayTextOptions = {}) {
+-  // Deterministic preformatted answers are already concise and display-ready;
+-  // the fragment-level usefulness pass below would re-strip the very names/codes
+-  // the preformatted path just preserved, so return them as-is.
+-  if (options.preformatted) return plainAnswerText(value, options);
+-  // Skip whole-text clinicalProseUsefulness: its 3-token floor drops short
+-  // safety sentences ("Stop lithium.") before the fragment-level safety
+-  // bypass below can rescue them.
+-  const cleaned = sanitizeAndStripSyntheticNotice(value, { preformatted: false, preserveBold: options.preserveBold });
+-  const fragments = cleaned
+-    .split(/\r?\n+/)
+-    .flatMap((line: string) =>
+-      line.split(/(?<=[.!?])\s+(?=(?:[A-Z]|\*\*|If\b|When\b|Do\b|Use\b|Monitor\b|Escalate\b|Document\b))/),
+-    )
+-    .map((fragment: string) =>
+-      fragment
+-        .replace(/^(?:[-*•]|\d+[.)])\s+/, "")
+-        .replace(
+-          /^(?:\*\*)?(?:answer|summary|bottom line|direct answer|clinical point|key point|required actions?|monitoring(?:\/timing)?|thresholds?|dose detail|medication(?:\/dose details?)?|escalation(?:\/risk)?|risk|safety|documentation(?:\/forms)?|source gaps?)(?:\*\*)?:\s+/i,
+-          "",
+-        )
+-        .trim(),
+-    )
+-    // Safety-bearing fragments pass through untouched and are never dropped by
+-    // the usefulness/length gate — a short caveat like "Contraindicated in
+-    // pregnancy" (under the 8-word floor) must still reach the display.
+-    .map((fragment: string) =>
+-      isPrimaryAnswerSafetyFragment(fragment) ? fragment : clinicalProseUsefulness(fragment).text || fragment,
+-    )
+-    .filter((fragment: string) => {
+-      if (!fragment) return false;
+-      if (isPrimaryAnswerSafetyFragment(fragment)) return true;
+-      const useful = clinicalProseUsefulness(fragment);
+-      return useful.useful || fragment.split(/\s+/).length >= 8;
+-    });
+-  const uniqueFragments = Array.from(new Set(fragments));
+-  const selected: string[] = [];
+-  let nonSafetyKept = 0;
+-  let wordBudget = 85;
+-  for (const fragment of uniqueFragments) {
+-    if (isPrimaryAnswerSafetyFragment(fragment)) {
+-      selected.push(fragment);
+-      continue;
+-    }
+-    if (nonSafetyKept >= 3 || wordBudget <= 0) continue;
+-    nonSafetyKept += 1;
+-    const words = fragment.split(/\s+/).filter(Boolean);
+-    if (words.length <= wordBudget) {
+-      selected.push(fragment);
+-      wordBudget -= words.length;
+-    } else {
+-      selected.push(
+-        `${words
+-          .slice(0, wordBudget)
+-          .join(" ")
+-          .replace(/[;,:-]\s*$/, "")}...`,
+-      );
+-      wordBudget = 0;
+-    }
+-  }
+-  return selected.join(" ") || cleaned;
++  return sanitizeAndStripSyntheticNotice(value, options);
+ }
+ 
+ // One compact "Sources" pill in every state: the amber Source-only pill and the
+ // "Review source match" banner already carry the verify-first caveat, so the
+ // capsule label no longer restates grounding strength.
+ // With the compact-citations preference on, the pill drops its text label to
+ // icon + count; the "No direct source found" warning always stays worded —
+ // compact mode must never hide a missing-source signal.
+ export function sourceCapsuleDisplay({ sourceCount, compact = false }: { sourceCount: number; compact?: boolean }): {
+   label: string;
+diff --git a/tests/answer-content.test.ts b/tests/answer-content.test.ts
+index b784defbd77224351ab821e162ac72a58ef90488..d3aee6bc3dd0c1fea050e9ba44f004c237452566 100644
+--- a/tests/answer-content.test.ts
++++ b/tests/answer-content.test.ts
+@@ -1,15 +1,37 @@
+ import { describe, expect, it } from "vitest";
+ import { primaryAnswerDisplayText } from "../src/components/clinical-dashboard/answer-content";
+ import { sourceQuoteDisplayText } from "../src/components/clinical-dashboard/display-text";
+ 
+ describe("primaryAnswerDisplayText", () => {
++  it("keeps every sentence of a finalized v19 lead instead of selecting a compact subset", () => {
++    // Removing any one of these five governed sentences is a display defect,
++    // not an opportunity for the client to choose a more useful answer.
++    const answer =
++      "Start the prescribed treatment after confirming the indication. Check the baseline observations before administration. Review the response at the planned interval. Record the decision and clinical rationale in the notes. Continue monitoring for the documented adverse effects.";
++
++    expect(primaryAnswerDisplayText(answer)).toBe(answer);
++  });
++
++  it("keeps lossless sanitation safeguards while preserving the complete lead", () => {
++    const noisyAnswer =
++      "Source mentions: Start the prescribed treatment after confirming the indication. Synthetic demo only: illustrative content.";
++    const unsafeAnswer = "<script>alert('unsafe')</script> Start the prescribed treatment after confirming the indication.";
++    const preformattedAnswer = "Facility code: WA-ABC-9\nUse the local protocol.";
++
++    expect(primaryAnswerDisplayText(noisyAnswer)).toBe("Start the prescribed treatment after confirming the indication.");
++    // This helper returns text, not HTML; SafeBoldText renders these characters
++    // inertly, so lossless sanitation must not make them executable markup.
++    expect(primaryAnswerDisplayText(unsafeAnswer)).toBe(unsafeAnswer);
++    expect(primaryAnswerDisplayText(preformattedAnswer, { preformatted: true })).toBe(preformattedAnswer);
++  });
++
+   it("keeps a safety cue in a long leading fragment beyond the compact word budget", () => {
+     const lead = `${Array.from({ length: 90 }, (_, index) => `detail${index + 1}`).join(" ")} Do not administer the medicine.`;
+ 
+     expect(primaryAnswerDisplayText(lead)).toContain("Do not administer the medicine.");
+   });
+ 
+   it("keeps a full-word escalation caveat that appears beyond the compact head", () => {
+     // A bare `escalat\b` stem never matched "Escalate", so this caveat (the
+     // fourth fragment) was silently dropped before the fix.
+     const answer =
+diff --git a/tests/answer-copy-payload.test.ts b/tests/answer-copy-payload.test.ts
+index aa2e15f006c0915d6a29755c7809f8e67ab1584a..f0cedebb039f547960a02b7569434ac0a6ad7bd4 100644
+--- a/tests/answer-copy-payload.test.ts
++++ b/tests/answer-copy-payload.test.ts
+@@ -1,18 +1,19 @@
+ import { describe, expect, it } from "vitest";
+ 
+ import {
+   answerStateForAnswer,
+   buildAnswerClipboardText,
+   resolveAnswerSources,
+   singleDocumentClipboardMetadata,
+ } from "@/components/clinical-dashboard/answer-copy-payload";
++import { primaryAnswerDisplayText } from "@/components/clinical-dashboard/answer-content";
+ import type { ClinicalSourceMetadata, RagAnswer, SearchResult } from "@/lib/types";
+ 
+ // ClinicalSourceMetadata's governance fields are required-and-nullable rather
+ // than optional, so a fixture cannot quietly omit the provenance a real source
+ // always carries. Annotated once here and varied by spread below: spreading
+ // `overdueSource.source_metadata` instead would widen every field back to
+ // optional, because `source_metadata` is optional on `SearchResult`.
+ const overdueMetadata: ClinicalSourceMetadata = {
+   source_title: "Superseded WA protocol",
+   publisher: null,
+@@ -93,20 +94,32 @@ describe("answerStateForAnswer · empty sources fallback", () => {
+     const state = answerStateForAnswer({
+       answer: answerWith([]),
+       sources: [],
+     });
+ 
+     expect(state).toEqual({ kind: "ready", sourceCount: 0 });
+   });
+ });
+ 
+ describe("buildAnswerClipboardText · single-document provenance", () => {
++  it("keeps the complete finalized v19 lead in the clipboard projection", () => {
++    const lead =
++      "Start the prescribed treatment after confirming the indication. Check the baseline observations before administration. Review the response at the planned interval. Record the decision and clinical rationale in the notes. Continue monitoring for the documented adverse effects.";
++    const answer: RagAnswer = { ...answerWith([currentSource]), answer: lead };
++    const displayText = primaryAnswerDisplayText(answer.answer);
++
++    const copied = buildAnswerClipboardText({ answer, renderCopyText: displayText });
++
++    expect(displayText).toBe(lead);
++    expect(copied).toContain(lead);
++  });
++
+   it("includes the provenance audit line for a one-document answer", () => {
+     const copied = buildAnswerClipboardText({
+       answer: answerWith([currentSource]),
+       renderCopyText: "Clinical answer draft\n\nStart at 12.5 mg at night.",
+     });
+ 
+     expect(copied).toContain("Designation:");
+     expect(copied).toContain("Review status:");
+   });
+ 
