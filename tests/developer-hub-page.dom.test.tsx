@@ -34,8 +34,8 @@ vi.mock("@/components/account-data-provider", () => ({
  * snapshot — so the band is exercised against the shape the route actually
  * loads rather than a hand-built fixture that could drift from it. `null` means
  * "do not override", which is also how the assertions below read the true
- * count. The committed snapshot has `p1 === 2`, so without this the singular
- * and zero branches are never reached at all.
+ * count. The committed snapshot can have `p1 === 0` (no open P1s), so the
+ * override is what reaches the singular and non-zero branches.
  */
 const p1 = vi.hoisted(() => ({ value: null as number | null }));
 
@@ -109,12 +109,17 @@ describe("developer hub page — synthetic-data warning", () => {
 describe("developer hub page — needs-you-now band", () => {
   it("reports the snapshot's own P1 count", () => {
     // No override, so this is the real committed snapshot: the band must agree
-    // with the data the route actually loads, not merely with itself.
+    // with the data the route actually loads, not merely with itself. When the
+    // snapshot has no P1s the page must omit the band rather than render a
+    // settled-looking "0 blocking items" line — that is the same contract as
+    // the explicit zero-override case below.
     const { counts } = loadLedgerSnapshot();
-    expect(counts.p1).toBeGreaterThan(0);
-
     render(<DeveloperHubPage />);
-    expect(screen.getByTestId("developer-hub-needs-you-now")).toHaveTextContent(String(counts.p1));
+    if (counts.p1 > 0) {
+      expect(screen.getByTestId("developer-hub-needs-you-now")).toHaveTextContent(String(counts.p1));
+    } else {
+      expect(screen.queryByTestId("developer-hub-needs-you-now")).toBeNull();
+    }
   });
 
   it("carries no text beyond the computed count", () => {
@@ -144,9 +149,9 @@ describe("developer hub page — needs-you-now band", () => {
   });
 
   it("renders nothing rather than a reassuring all-clear when there are no blockers", () => {
-    // The committed snapshot has p1 = 2, so this branch is otherwise never
-    // exercised. A band reading "0 blocking items" would be a settled-looking
-    // statement about work the page cannot see.
+    // A band reading "0 blocking items" would be a settled-looking statement
+    // about work the page cannot see. The override keeps this branch explicit
+    // even on days the committed snapshot already has no P1s.
     p1.value = 0;
     render(<DeveloperHubPage />);
 

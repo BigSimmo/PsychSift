@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "049e0356-b6ad-4382-8f34-958d2681c60e",
+  "createdOn": "2026-08-20",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Caring Contacts: grow the safety-incident responder note into a lightweight patient case-note capability, and settle its retention disposition then",
+    "detail": "caring_contacts.service_stops.note is free text a responder writes mid-incident and the schema comments it as patient data. Today nothing can remove it: retention.ts covers episodes and audit events only and never reaches this table; UPDATE is blocked by the assert_service_stop_immutable trigger (Rulings 30 and 32); DELETE is the only remaining path and Ruling 34 deliberately left it unblocked. Owner decision 2026-08-21: keep patient case notes as an available capability and KEEP the patient record - build this part brief and lightweight now, to be extended later. So no purge or de-identification path is required at this stage and no code change is owed; what is owed is that when case notes are actually built in a later phase, the retention disposition of this note and of any patient case note is settled deliberately at that point rather than inherited by accident. Do NOT resolve this by blocking DELETE on service_stops without providing a removal path first, or the data becomes permanently unremovable. Synthetic prototype only - no real patient data is or has been involved.",
+    "source": "Task 11a fix-round-2 review (Ruling 34) and owner decision 2026-08-21; docs/caring-contacts/phase-2a-build-record.md",
+    "issueUlid": "01M0G8YCHGJZ8B36C97ZTNRZ4E"
+  }
+}

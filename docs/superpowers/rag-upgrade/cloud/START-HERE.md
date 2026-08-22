@@ -1,30 +1,63 @@
 # Cloud execution package — start here
 
-This is the Linux/Cloud launcher for the complete RAG upgrade programme. Shared specifications, task bodies, execution order, models, gates and acceptance criteria are byte-identical to the Local package. Only this environment bootstrap differs.
+This package executes P00–P17 only. One fresh Cloud session completes exactly one declared `TARGET_PHASE`, publishes its accepted tip to the same programme branch and stops. L00–L10 are local-only.
 
-## Package availability and base
+## Launch inputs before inspection
 
-Cloud must check out a committed, pushed branch containing this package that was materialized and verified on a fresh current-`origin/main` branch. A local drive/worktree path or stale planning-branch commit is never a Cloud handoff. Record the remote branch, the verified materialization base as `packageBaseSha`, and the committed package tip as `packageHeadSha`; the manifest `reconciledBase` must equal that package base. If main moved after materialization, revalidate paths, migration versions, package parity, dependency graph, current implementation state, and baseline/evaluation evidence, then regenerate before P00.
+The user prompt must declare `TARGET_PHASE`, `PACKAGE_SOURCE_REF`, `PACKAGE_HEAD_SHA`, `PACKAGE_BASE_SHA`, `PROGRAMME_BRANCH` and selected Cloud effort. Do not inspect receipts to choose a phase after launch. Confirm the declared target is exactly next using the receipt checker.
 
-## Environment setup
+- Use high for P00, P04, P10 and P11.
+- Use xhigh for every other P01–P17 phase. The prompt must begin with the exact repository xhigh confirmation marker and the user must select xhigh in the Cloud control before launch.
 
-- Codex Cloud environment setup must already run `bash scripts/setup-codex-cloud.sh && bash scripts/install-codex-cloud-command-shims.sh`.
-- Claude web uses the checked-in SessionStart hooks and `bash scripts/setup-claude-cloud.sh --session`; before intentional browser/worker proof use `bash scripts/setup-claude-cloud.sh browsers python`.
-- In the task, run `npm run check:runtime` and `npm run check:installed-lock-parity`. In Codex Cloud also run `npm run check:codex-cloud`.
-- The required runtime is Node `>=24.15.0 <25`, npm 11, with package manager `npm@11.17.0`. Do not weaken engine-strict when an image starts on Node 22.
-- Run `git fetch --no-tags origin main`, `git rev-parse --verify origin/main`, and record `git rev-parse HEAD` plus `git merge-base HEAD origin/main`. Stop if fetch/ref verification fails; a shallow single-branch checkout without a verified current `origin/main` is not sufficient.
-- Run `npm run plans:rag:check` before using the package; it fails closed when `origin/main` or the recorded reconciliation commit is unavailable. Immediately before P00 also run `npm run plans:rag:publish-check`; it fails if current `origin/main` moved after package materialization, requiring reconciliation and regeneration before any implementation receipt exists. P01 and later validate the immutable package/base plus accepted receipt ancestry with `plans:rag:check`; unrelated later movement on main does not rewrite already accepted programme history.
+If target, prompt marker or UI effort is wrong, stop before substantive inspection. Cloud cannot raise its own effort.
 
-Ordinary Cloud implementation is offline/source-only: no credentials, protected documents, production data, provider calls or current-source browsing are assumed. Hosted Supabase-generated types, current publisher/licence verification, provider canaries, migrations and reindex operations remain explicitly gated evidence.
+As the first repository-local validation after the raw boundary and setup, run `node scripts/rag-phase-launch-check.mjs --target TARGET_PHASE --effort SELECTED_EFFORT`. Add `--xhigh-confirmed` only when the xhigh prompt marker is present. A failure stops the task.
 
-## Superpowers and SDD
+## Raw environment boundary — first command
 
-Read `programme-manifest.json`, `execution-order.md`, `approval-matrix.md`, `sdd-execution.md`, `task-verification-matrix.json`, `phase-receipt.schema.json`, both specifications, and the selected plan slice. Capability-probe every named Superpowers skill; installations differ between Codex and Claude Cloud, so stop rather than silently substituting a weaker workflow.
+Before a login shell, profile, setup script or OpenAI-capable binary, run:
 
-The manifest records the Codex model/effort calibration. In Codex Cloud, use those exact IDs and reasoning levels when available. In Claude Cloud, map `gpt-5.6-sol` high/xhigh work to the highest-reasoning frontier/Opus-class option available in that session, and map `gpt-5.6-terra` high work to the available highest-capability workhorse/Sonnet-class option; preserve the phase's relative effort/risk intent and record the actual provider/model/reasoning choice in the phase receipt. Do not pin an unverified Claude version name. Stop if the environment cannot provide an equivalent high-risk reviewer/implementer capability.
+```bash
+set +e
+bash scripts/check-codex-cloud-raw-env.sh
+raw_status=$?
+set -e
+```
 
-Obtain explicit authority for local per-task commits on the Cloud task branch before dispatch. This does not authorize pushing the branch or any hosted/provider action. Run exactly one manifest phase per Cloud session/worktree, with one fresh implementer and one fresh two-verdict reviewer per task. Before a phase, validate accepted predecessors with `npm run plans:rag:receipts:check -- --before` followed by that phase's literal manifest ID. A later phase can consume the work only after its receipt and code commit are available on an explicitly authorized published branch.
+Exit 0 continues. Exit 1 is a hard stop and requires a fresh task. Exit 2 continues only for the documented `OPENAI_BASE_URL`-alone restricted path: never run OpenAI clients from the raw parent or bypass the generated profile and `node`/`npm`/`npx` shims. No other inherited name may use that path.
 
-P18 is never an ordinary Cloud implementation phase. It runs only in a connected, approved environment with exact service/project identity and a separate authorization for each action in `approval-matrix.md`.
+Cloud has no Windows task-start script. Perform the equivalent read-only repository identity, branch, HEAD, status and worktree checks. Require a clean disposable checkout on a task-specific non-protected branch.
 
-Repository authorization overrides finishing-a-development-branch defaults. Without separately explicit target-specific authority, do not merge, push, open/update a PR, delete the worktree, deploy, or run provider actions; retain the accepted branch/worktree and stop after recording its receipt.
+## Setup and acceptance order
+
+After the raw boundary:
+
+```bash
+bash scripts/setup-codex-cloud.sh
+bash scripts/install-codex-cloud-command-shims.sh
+npm run check:codex-cloud
+CODEX_CLOUD_EXPECTED_BASE_SHA="$PACKAGE_BASE_SHA" npm run check:codex-cloud -- --runtime
+npm run check:runtime
+npm run check:installed-lock-parity
+npm run plans:rag:check
+```
+
+Use the verified intended base SHA, not arbitrary HEAD, for `PACKAGE_BASE_SHA`. Before P00 also run `npm run plans:rag:publish-check`. Once P00 is accepted, preserve the immutable recorded package/base identity; unrelated later main movement does not rewrite accepted history.
+
+## Branch and package identity
+
+For P00, fetch the published package ref and verify its exact immutable `PACKAGE_HEAD_SHA`, then create the declared programme branch from that commit. For P01–P17, fetch and check out the exact remote programme tip without rebase. Do not absorb current main or the quarantined local RAG worktree.
+
+Compute the committed generated Cloud package hash with the receipt checker. Record package base/head, programme implementation base, branch and hashes in the receipt. A mismatch is a hard stop.
+
+## Mandatory SDD capability probe
+
+Read `.agents/skills/rag-cloud-sdd/SKILL.md`, `sdd-execution.md`, the manifest skill profiles and the selected repo-local skill files completely. Hash them, `scripts/rag-phase-launch-check.mjs` and `scripts/rag-task-brief.mjs`. Dispatch one fresh read-only probe agent and record its agent ID and authoritative dispatch metadata. No actual fresh subagent runtime means `BLOCKED_MISSING_SUBAGENT_RUNTIME`; no controller/helper/required skill means `BLOCKED_MISSING_CAPABILITY`.
+
+Prove controller and every dispatched agent route from sanitized host metadata using `route-evidence.schema.json`. Store the host-emitted record directly; do not synthesize it from model prose. The checker parses and binds its routing fields, but cannot turn an unsigned self-authored file into host proof. Cloud requires Codex, exact model and exact effort with no mapping or fallback. Stop with `BLOCKED_MODEL_ROUTE_UNVERIFIED` if the host cannot directly provide the evidence.
+
+## Execute and stop
+
+Validate the declared target with `npm run plans:rag:receipts:check -- --before TARGET_PHASE`. Execute exactly that phase through the tracked SDD contract. Task commits and the one atomic phase-receipt commit are authorized by the launch prompt; no connected action is.
+
+P17 is additionally authorized to create one separate add-only atomic `PROGRAMME.json` metadata commit after its fresh full-programme review passes. It pushes that accepted tip and stops. Report the exact local handover prompt path, but do not begin L00 or any hosted/provider/reindex/deployment action in Cloud.

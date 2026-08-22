@@ -10,6 +10,8 @@ import { ManagementPlanFormSurface } from "./management-plan-form";
 import { ManagementPlanPrintSurface } from "./management-plan-print";
 import { ManagementPlanSurface } from "./management-plan-read";
 import { ManagementPlanReviewSurface } from "./management-plan-review";
+import { PatientPlanFormSurface } from "./patient-plan-form";
+import { PatientPlanPrintSurface, PatientPlanSurface } from "./patient-plan-pages";
 import { PresentationFormSurface } from "./presentation-form";
 import {
   PresentationDetailSurface,
@@ -290,8 +292,10 @@ export function carePlanPatientIdFromPathname(pathname: string): string | null {
  * surface. Task 7 added the three ED Presentation routes — the timeline, the
  * recording form, and one episode with its corrections. Task 8 added the three
  * Personal Safety Plan routes — the person's own document, the form that writes
- * it, and the patient copy that prints. Every remaining route still renders a
- * specimen.
+ * it, and the patient copy that prints. Task 9 added the three Patient Plan
+ * routes — the person's own edition of the Management Plan, the form that fills
+ * the gaps the conversion refused to guess at, and the copy that prints. Every
+ * remaining route still renders a specimen.
  */
 const SNAPSHOT_VARIANT_BY_ROUTE_KEY: Partial<Record<string, ClinicalSnapshotVariant>> = {
   home: "home",
@@ -401,6 +405,12 @@ export function CarePlanRouteSurface({ pathname, query = "", navigate }: CarePla
           presentationId={presentationIdFromPathname(pathname)}
           scenario={scenario}
         />
+      ) : route.key === ROUTE_DEFINITIONS.patientPlan.key ? (
+        <PatientPlanSurface patientId={patientId} scenario={scenario} />
+      ) : route.key === ROUTE_DEFINITIONS.patientPlanEdit.key ? (
+        <PatientPlanFormSurface patientId={patientId} scenario={scenario} navigate={navigate} />
+      ) : route.key === ROUTE_DEFINITIONS.patientPlanPrint.key ? (
+        <PatientPlanPrintSurface patientId={patientId} scenario={scenario} />
       ) : route.key === ROUTE_DEFINITIONS.safetyPlan.key ? (
         <SafetyPlanSurface patientId={patientId} scenario={scenario} />
       ) : route.key === ROUTE_DEFINITIONS.safetyPlanEdit.key ? (

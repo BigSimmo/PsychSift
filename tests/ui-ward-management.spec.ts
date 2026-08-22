@@ -42,18 +42,22 @@ test.describe("Ward Flow command view", () => {
   // "supports role-aware queue review and human-confirmed destination choice" and "collapses
   // the queue, opens the action inbox, and reaches the patient workspace" asserted against
   // WardManagementConsole, which Task 3 stopped rendering at /ward-management. That component is
-  // unreferenced now and is deleted in Task 9; the equivalent coverage on the coordinator screen
-  // has no home yet. See the fixme placeholders in tests/ui-ward-coordinator.spec.ts.
+  // unreferenced and Task 9 deletes it; the equivalent coverage on the coordinator screen has no
+  // home yet. See the fixme placeholders in tests/ui-ward-coordinator.spec.ts.
+  //
+  // Task 9 retires Constellation into the coordinator screen. Its own behaviour (the
+  // ward-constellation gate check, the WF-002 confirm journey) already has a home: the confirm
+  // journey and the failing-gate icon guard both live in tests/ui-ward-coordinator.spec.ts
+  // ("shows a failing gate as a failure and never auto-allocates"), so the Constellation step is
+  // removed here rather than repointed — leaving it would assert a route that no longer exists.
 
   test("opens every Ward Flow mode", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1024 });
     await gotoWardFlow(page);
 
-    // Constellation-specific behaviour (the ward-constellation gate check, the WF-002 confirm
-    // journey) is out of scope here — this only proves every mode link still opens its route.
-    // Constellation stays in this walk until Task 9 retires the route.
+    // This only proves every remaining mode link still opens its route; per-mode behaviour is
+    // covered by each mode's own tests elsewhere.
     const modes = [
-      ["Constellation", "ward-constellation"],
       ["Network", "ward-mode-network"],
       ["Priority queue", "ward-mode-queue"],
       ["Capacity", "ward-mode-capacity"],
@@ -66,6 +70,30 @@ test.describe("Ward Flow command view", () => {
       await page.getByRole("link", { name: linkName }).click();
       await expect(page.getByTestId(testId)).toBeVisible();
       await expectNoPageOverflow(page);
+    }
+  });
+
+  /**
+   * Task 9 review Critical 1: `.modeNavigation` (ward-management-modes.module.css) is a flex
+   * column, and flex items shrink by default even with an explicit `height` unless
+   * `flex-shrink: 0` is set. Without it, the eight rail mode links compressed to as little as
+   * 22px on narrow viewports — under half the mandated 3rem/48px tap-target floor — while a
+   * check run only at 1440x1024 (where the rail had room to spare) stayed green. 320x640 is
+   * short enough on both axes to force the rail's mode-link section into its scrollable
+   * fallback, which is exactly the condition that exposed the regression.
+   */
+  test("keeps every rail mode link at the 3rem tap-target floor on a short, narrow viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await gotoWardFlow(page);
+
+    const nav = page.getByRole("navigation", { name: "Ward Flow views" });
+    const links = await nav.getByRole("link").all();
+    expect(links.length).toBe(8);
+    for (const link of links) {
+      const box = await link.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(48);
+      expect(box!.width).toBeGreaterThanOrEqual(48);
     }
   });
 

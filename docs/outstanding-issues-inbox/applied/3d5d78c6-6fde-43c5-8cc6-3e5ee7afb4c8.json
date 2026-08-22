@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "3d5d78c6-6fde-43c5-8cc6-3e5ee7afb4c8",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "tests/gate-receipts.test.ts has two file-mode assertions that can never pass on the Windows workstation, so npm run test is permanently 2-red locally",
+    "detail": "Measured 2026-08-22. 'gate receipts - file modes (Codex review, PR #2216)' has two cases that call chmodSync(path, 0o755) and then assert the computed input signature changed: 'changes the signature when only the WORKING-TREE mode changes' (line 160) and 'keeps both modes, so one cannot cancel the other' (line 170). The primary workstation is a Windows ReFS Dev Drive with core.fileMode=false, where chmod is a silent no-op, so the working-tree mode never changes and the signatures collide. Reproduced on an unmodified main at 73b1e71a0 with a clean working tree for those files: Tests 2 failed | 32 passed (34). Also seen inside a full local suite run as Tests 2 failed | 7728 passed | 72 skipped (7802). CI is Linux so it stays green there, which is why this has not surfaced before. Cost: every local npm run test and every verify:pr-local exits non-zero on this machine, which both hides real regressions in the noise and stops verify:pr-local before it reaches build, bundle-budget and the RAG fixture checks. Suggested fix: skip the two cases when the filesystem cannot represent an exec bit (probe once by chmod-ing a temp file and re-statting, rather than testing process.platform), keeping the index-mode half of the coverage which does work. See also the related exec-bit trap already documented in AGENTS.md under 'Claude Code hook scripts'.",
+    "source": "session 2026-08-22, GitHub issue #2270 Part A",
+    "issueUlid": "01M0MY72TQXN95DMJ8T9T339P7"
+  }
+}

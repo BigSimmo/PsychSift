@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "82838fb1-7ed2-4f37-bd50-191a603ecd0f",
+  "createdOn": "2026-08-18",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "docs:check-links passes over a broken relative markdown link in a spec, so a binding document went missing unnoticed",
+    "detail": "scripts/check-docs-links.mjs reported 1905 references resolving while docs/superpowers/specs/2026-08-15-caring-contact-coordination-design.md line 180 linked to ../../caring-contacts/design-handoff.md, a file that has never existed, and line 131 described it as binding. Found by hand on 2026-08-19 and repointed to interaction-matrix.md, which actually holds the 24-row modality matrix. The gate is a check that cannot fail for this class of link: verify whether relative markdown links outside a recognised prefix are skipped, and close the gap. Same family as the mutation-testing concerns already recorded for stderr hooks and tail-masked exit codes.",
+    "source": "Caring Contacts doc repair 2026-08-19",
+    "issueUlid": "01M0B6WNK5ZM8902PCKT80QZPA"
+  }
+}

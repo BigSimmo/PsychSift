@@ -5,6 +5,13 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import {
+  AUTOMATED_REPLY_RESPONSE,
+  EXACT_MESSAGE_GSM7,
+  EXACT_PATIENT_VISIBLE_MESSAGE,
+  PATIENT_VISIBLE_NO_REPLY_NOTICE,
+} from "@/lib/caring-contacts/message-copy";
+import { calculateGsm7, type Gsm7Evidence } from "@/lib/caring-contacts/message-policy";
 
 import {
   ROWAN_SELECTED_SENDING_PREFERENCE,
@@ -13,40 +20,16 @@ import {
   syntheticTemplates,
 } from "./fixtures";
 import { DefinitionRow, OperationalStatus } from "./prototype-primitives";
-import { FICTIONAL_CONTACTS_BY_ROLE, type SyntheticPathway, type SyntheticTemplate } from "./types";
+import type { SyntheticPathway, SyntheticTemplate } from "./types";
 
-export const PATIENT_VISIBLE_NO_REPLY_NOTICE = "Replies are not received, stored, analysed or monitored";
-
-export const EXACT_PATIENT_VISIBLE_MESSAGE = `Hi Rowan, Alex from Example Aftercare Team is thinking of you. This is a one-way message. ${PATIENT_VISIBLE_NO_REPLY_NOTICE}. For timing changes call ${FICTIONAL_CONTACTS_BY_ROLE.programmeStaffedLine}, 9 am-6 pm. In an emergency call 000. Fictional Support Line: ${FICTIONAL_CONTACTS_BY_ROLE.crisisSupportContact}. - Alex`;
-
-const GSM_7_BASIC_CHARACTERS = new Set(
-  "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà",
-);
-const GSM_7_EXTENSION_CHARACTERS = new Set("\f^{}\\[~]|€");
-
-export type Gsm7Evidence = {
-  valid: boolean;
-  septets: number;
-  segments: number;
-  invalidCharacters: string[];
+export {
+  calculateGsm7,
+  type Gsm7Evidence,
+  AUTOMATED_REPLY_RESPONSE,
+  EXACT_MESSAGE_GSM7,
+  EXACT_PATIENT_VISIBLE_MESSAGE,
+  PATIENT_VISIBLE_NO_REPLY_NOTICE,
 };
-
-export function calculateGsm7(value: string): Gsm7Evidence {
-  let septets = 0;
-  const invalidCharacters: string[] = [];
-
-  for (const character of value) {
-    if (GSM_7_BASIC_CHARACTERS.has(character)) septets += 1;
-    else if (GSM_7_EXTENSION_CHARACTERS.has(character)) septets += 2;
-    else if (!invalidCharacters.includes(character)) invalidCharacters.push(character);
-  }
-
-  if (invalidCharacters.length > 0) return { valid: false, septets, segments: 0, invalidCharacters };
-  const segments = septets === 0 ? 0 : septets <= 160 ? 1 : Math.ceil(septets / 153);
-  return { valid: true, septets, segments, invalidCharacters };
-}
-
-export const EXACT_MESSAGE_GSM7 = calculateGsm7(EXACT_PATIENT_VISIBLE_MESSAGE);
 
 export type ActivationGovernanceState = {
   pathway: SyntheticPathway;

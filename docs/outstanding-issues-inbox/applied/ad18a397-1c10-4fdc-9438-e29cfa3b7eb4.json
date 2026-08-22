@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ad18a397-1c10-4fdc-9438-e29cfa3b7eb4",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Antipsychotic metabolic monitoring returns a source-backed stub instead of a written answer, and the eval case must not be relaxed to hide it",
+    "detail": "FOUND BY THE PACKET 2 CANARY, run 32589154243 (2026-08-22). \"What metabolic monitoring is required for antipsychotics?\" now returns the source-backed review stub — \"The uploaded documents contain relevant guidance on metabolic monitoring for antipsychotics, but a full written answer could not be completed just now. Relevant document passages are cited below\" — because the extractive candidate behind it was one of the two incoherent guidance-wrapper answers that #NPQJKP shipped a predicate to reject. The degradation is correct behaviour; the underlying defect it exposes is that the answer path cannot produce a usable written answer for this query at all. THIS IS NOT AN EVAL-CASE BUG AND MUST NOT BE FIXED BY ADDING acceptSourceOnly. All four cases carrying that flag document the same rationale: the corpus has no single authoritative source, so a source pointer is a legitimate answer, and quality-discharge-documentation deliberately drops mustContainAny for exactly that reason. quality-antipsychotic-metabolic-monitoring is the opposite case — it names expectedFiles [\"MHSP.MetabolicScreening.pdf\"], an authoritative source exists, and antipsychotic metabolic monitoring is a routine question a psychiatrist should get answered in prose. Adding the flag would silence a true signal. The targeting eval already grades it correctly at score 0 with reason \"source-backed review stub\", even though its mustContainAny [\"metabolic\", \"monitor\"] is satisfied by the stub text, so the instrument is working and only the answer is missing. FIRST DIAGNOSTIC STEP, because it splits the problem in two: determine whether generation was attempted for this case at all. The same run recorded provider_attempted:false for 11 of 30 targeting cases. If OpenAI was never called for this one, the cause is upstream of answer quality entirely (routing, admission control, or the retry ladder — note Packet 1 covers deadline admission control and should be checked for overlap before starting). If it was called and returned nothing usable, the cause is in extraction or generation for the medication_dose_risk class against this document. Do not begin work without checking Packet 1 and Packet 3 (#S4R2W3) for overlap: all three touch rag.ts, and overlapping changes ruin canary attribution.",
+    "source": "canary run 32589154243; src/lib/rag/rag-eval-cases.ts quality-antipsychotic-metabolic-monitoring; ledger #NPQJKP",
+    "issueUlid": "01M0NBN19QJ8SJQ9V3D7Y09DKK"
+  }
+}

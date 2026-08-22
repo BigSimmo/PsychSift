@@ -13,15 +13,14 @@ then the plan for the phase being executed.
 
 ## Where the build is
 
-Branch `codex/ward-management-design`, worktree
-`C:/Users/joshs/.codex/worktrees/ward-management-design/Database`. Nothing pushed. No PR.
+Branch `codex/ward-management-design` (PR #2289). Phase 3 is the successor of the #2140 squash on main; constellation remains only as a redirect.
 
-| Phase                                      | Plan                                                                                                       | State                                                                            |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| 1 — the model                              | [`plans/2026-08-18-ward-flow-phase-1-model.md`](./superpowers/plans/2026-08-18-ward-flow-phase-1-model.md) | **Complete.** All 8 tasks reviewed; whole-branch review clean after one fix wave |
-| 2 — coordinator screen                     | not written                                                                                                | Next to plan                                                                     |
-| 3 — ED, ward and transport officer screens | not written                                                                                                |                                                                                  |
-| 4 — specialist boards and escalation       | not written                                                                                                |                                                                                  |
+| Phase                                      | Plan                                                                                                                                 | State                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| 1 — the model                              | [`plans/2026-08-18-ward-flow-phase-1-model.md`](./superpowers/plans/2026-08-18-ward-flow-phase-1-model.md)                           | **Complete.** Landed on main via PR #2140; Phase 3 continues that lineage on PR #2289 |
+| 2 — coordinator screen                     | [`plans/2026-08-18-ward-flow-phase-2-coordinator-screen.md`](./superpowers/plans/2026-08-18-ward-flow-phase-2-coordinator-screen.md) | **Complete.** Live coordinator plus retired constellation (redirect to network)       |
+| 3 — ED, ward and transport officer screens | [`plans/2026-08-19-ward-flow-phase-3-role-screens.md`](./superpowers/plans/2026-08-19-ward-flow-phase-3-role-screens.md)             | **Complete on this branch.** Live reducer, Form 1A→3B, role screens                   |
+| 4 — specialist boards and escalation       | not written                                                                                                                          | Not started                                                                           |
 
 Phase boundaries are in §18 of the spec.
 

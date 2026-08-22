@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { DECLINE_REASONS, MOVEMENT_STAGES, PARALLEL_REFERRAL_CAP } from "../src/components/ward-management/ward-model";
+import {
+  DECLINE_REASONS,
+  ED_ACCESS_TARGET_MINUTES,
+  MOVEMENT_STAGES,
+  PARALLEL_REFERRAL_CAP,
+} from "../src/components/ward-management/ward-model";
 import { allEmergencyDepartments, allUnits, siteByCode, wardSites } from "../src/components/ward-management/ward-sites";
 import { requiresAuthorisedDestination } from "../src/components/ward-management/ward-eligibility";
 import { isOpen, unitCapacity } from "../src/components/ward-management/ward-derivations";
@@ -30,6 +35,17 @@ describe("ward model constants", () => {
 
   it("caps parallel referrals so wards are not spammed", () => {
     expect(PARALLEL_REFERRAL_CAP).toBe(3);
+  });
+
+  it("pins the ED access target as a departmental performance measure, not a legal clock", () => {
+    // Task 6A: the Mental Health Act imposes no post-examination deadline — the clinician
+    // confirmed the post-examination clock is elapsed ED wait, counting up, not a legal
+    // countdown. This constant is the real, separately named figure from spec §7 (originally the
+    // four-hour access target departments are judged on; the product owner superseded that
+    // figure to 24 hours on 2026-08-22 — see the constant's own doc comment); Task 11's ED
+    // screen renders it against `openedAt`. Pinned here so a later task cannot silently redefine
+    // it as, or attach it to, a legal deadline.
+    expect(ED_ACCESS_TARGET_MINUTES).toBe(1440);
   });
 });
 

@@ -1,0 +1,426 @@
+/*
+ * Task 11: one emergency department's own view. Its own small module, following the same
+ * convention `ward.module.css` and `officer.module.css` document on their own `.screen` —
+ * every local token this file needs is declared here, never borrowed from another module's scope.
+ */
+.screen {
+  --ed-space-2: 0.125rem;
+  --ed-space-4: 0.25rem;
+  --ed-space-6: 0.375rem;
+  --ed-space-8: 0.5rem;
+  --ed-space-10: 0.625rem;
+  --ed-space-12: 0.75rem;
+  --ed-space-14: 0.875rem;
+  --ed-space-16: 1rem;
+  --ed-space-20: 1.25rem;
+  --ed-space-48: var(--spacing-tap);
+  --ed-leading-body: 1.4;
+  --ed-leading-prose: 1.5;
+  display: grid;
+  min-height: 100dvh;
+  /* The rail track stays reserved at every supported width, same as the ward, officer and
+     coordinator screens — see ward-management.module.css's own note on this. */
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  background: var(--surface);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.main {
+  grid-column: 2;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--ed-space-16);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--ed-space-16) var(--ed-space-20) var(--ed-space-20);
+}
+
+.notFoundHeading {
+  margin: var(--ed-space-20) 0 var(--ed-space-8);
+  color: var(--text-heading);
+  font-size: var(--text-lg, 1.125rem);
+}
+
+.notFoundBody {
+  max-width: 32rem;
+  margin: 0;
+  color: var(--text-muted);
+  line-height: var(--ed-leading-prose);
+}
+
+.governanceBanner {
+  display: flex;
+  min-height: var(--ed-space-48);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ed-space-12);
+  border-bottom: 0.0625rem solid var(--border);
+  background: var(--surface-chrome);
+  padding: var(--ed-space-8) var(--ed-space-12);
+}
+
+.governanceBanner p {
+  min-width: 0;
+  flex: 1 1 12rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--ed-leading-body);
+}
+
+.prototypeBadge {
+  flex-shrink: 0;
+  border: 0.0625rem solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  padding: var(--ed-space-2) var(--ed-space-8);
+  color: var(--warning-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.unitCard {
+  min-width: 0;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-chrome);
+  padding: var(--ed-space-14);
+}
+
+.unitName {
+  margin: 0 0 var(--ed-space-4);
+  overflow-wrap: anywhere;
+  color: var(--text-heading);
+  font-size: var(--text-lg, 1.125rem);
+  font-weight: 700;
+}
+
+.unitMeta {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.sectionHeading {
+  margin: 0 0 var(--ed-space-8);
+  color: var(--text-heading);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.listSection {
+  min-width: 0;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: var(--ed-space-14);
+}
+
+.placeholder {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.cardList {
+  display: grid;
+  gap: var(--ed-space-10);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  min-width: 0;
+  gap: var(--ed-space-6);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  padding: var(--ed-space-10);
+}
+
+.cardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ed-space-8);
+}
+
+.cardHeader strong {
+  color: var(--text-heading);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.cardMeta {
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+}
+
+/* Police attendance is a real, invisible pressure on a department (spec §3) — a deliberately
+   loud, distinct chip so it is never mistaken for a routine meta detail. */
+.policeFlag {
+  justify-self: start;
+  border: 0.0625rem solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  padding: var(--ed-space-4) var(--ed-space-8);
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/*
+ * Both clocks, side by side and visually equal weight — neither is subordinate to the other,
+ * because the whole point of showing both (spec §3) is that a reader must never assume the
+ * department clock is the only one running. The departmental access target sits in the same
+ * grid, in the SAME visual register as the two clocks (never a bigger or redder chip) — its own
+ * row's `data-state="over"` only ever changes colour, never introduces the vocabulary ("due",
+ * "breach", "overdue") the two clocks above it are not using either.
+ */
+.clockGrid {
+  display: grid;
+  gap: var(--ed-space-4);
+  margin: 0;
+  border-top: 0.0625rem solid var(--border);
+  border-bottom: 0.0625rem solid var(--border);
+  padding: var(--ed-space-8) 0;
+}
+
+.clockRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ed-space-8);
+  font-size: var(--text-xs);
+}
+
+.clockRow dt {
+  color: var(--text-muted);
+}
+
+.clockRow dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Over-target colours as a warning (an operational fact worth attention), deliberately NOT the
+   danger tone the two restriction notices elsewhere in Ward Flow use for a genuine legal
+   concern — this is a departmental performance measure, not a legal one, and must never share a
+   visual register with the notices that are. */
+.clockRow[data-state="over"] dd {
+  color: var(--warning-text);
+}
+
+.referralState {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+}
+
+.outstandingItem {
+  margin: 0;
+  border-radius: var(--radius-sm);
+  background: var(--info-bg);
+  padding: var(--ed-space-6) var(--ed-space-8);
+  color: var(--info-text);
+  font-size: var(--text-3xs);
+  line-height: var(--ed-leading-body);
+}
+
+.outstandingLabel {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ed-space-8);
+}
+
+.acceptButton,
+.declineButton {
+  display: inline-flex;
+  min-height: var(--ed-space-48);
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  padding: 0 var(--ed-space-14);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.acceptButton {
+  border: 0.0625rem solid var(--clinical-accent-border);
+  background: var(--clinical-accent);
+  color: var(--clinical-accent-contrast);
+}
+
+.acceptButton[aria-disabled="true"] {
+  cursor: not-allowed;
+  border-color: var(--border);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+.declineButton {
+  border: 0.0625rem solid var(--border);
+  background: var(--surface);
+  color: var(--text-heading);
+}
+
+.declineButton[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--text-muted);
+}
+
+.declineForm {
+  display: grid;
+  gap: var(--ed-space-8);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: var(--ed-space-10);
+}
+
+.declineFieldset {
+  display: grid;
+  gap: var(--ed-space-6);
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.declineLegend {
+  padding: 0;
+  color: var(--text-heading);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.declineOption {
+  display: flex;
+  min-height: var(--ed-space-48);
+  align-items: center;
+  gap: var(--ed-space-8);
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: var(--text-xs);
+}
+
+.declineSubmit {
+  display: inline-flex;
+  min-height: var(--ed-space-48);
+  align-items: center;
+  justify-content: center;
+  border: 0.0625rem solid var(--clinical-accent-border);
+  border-radius: var(--radius-md);
+  background: var(--clinical-accent);
+  padding: 0 var(--ed-space-14);
+  color: var(--clinical-accent-contrast);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.declineSubmit:disabled {
+  cursor: not-allowed;
+  border-color: var(--border);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+.referralForm {
+  display: grid;
+  gap: var(--ed-space-10);
+}
+
+.referralGrid {
+  display: grid;
+  gap: var(--ed-space-8);
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.referralField {
+  display: grid;
+  gap: var(--ed-space-4);
+  color: var(--text-heading);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.referralField select {
+  min-height: var(--ed-space-48);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 0 var(--ed-space-10);
+  color: var(--text);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.referralCheckbox {
+  display: flex;
+  min-height: var(--ed-space-48);
+  align-items: center;
+  gap: var(--ed-space-8);
+  color: var(--text);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+.capacityTableWrap {
+  overflow-x: auto;
+}
+
+.capacityTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-3xs);
+}
+
+.capacityTable th,
+.capacityTable td {
+  border-bottom: 0.0625rem solid var(--border);
+  padding: var(--ed-space-6) var(--ed-space-8);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.capacityTable thead th {
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.capacityTable tbody th {
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+@media (max-width: 20rem) {
+  .clockRow {
+    flex-direction: column;
+  }
+
+  .clockRow dd {
+    text-align: left;
+  }
+}

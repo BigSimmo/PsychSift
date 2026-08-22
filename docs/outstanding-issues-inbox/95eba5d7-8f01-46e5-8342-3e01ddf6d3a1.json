@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "95eba5d7-8f01-46e5-8342-3e01ddf6d3a1",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Caring Contacts: a non-dismissible overlay opens with focus outside its own dialog (WCAG 2.4.3)",
+    "detail": "Confirmed at source during the Task 19 review. In src/components/caring-contacts/workspace/overlays/overlay-host.tsx the Sheet is rendered with title={dismissible ? definition.title : \"\"}, so a recovery-only row (session-expiry, offline-banner) passes an empty title. src/components/ui/sheet.tsx renders no header block when title is falsy, so closeRef.current stays null; startSheetOpenFocus resolves its target as initialFocusRef ?? [data-sheet-autofocus] ?? closeRef, all three of which are null, and the controller returns early without falling back to the panel element. Measured in Chromium at both 390 and 1440: document.activeElement is BODY after session-expiry opens. The result is an aria-modal dialog whose focus starts outside it, on the one overlay a user cannot dismiss and must act on; a screen-reader user hears nothing happen. This fails WCAG 2.4.3 Focus Order. The Sheet keyboard trap does pull the first Tab into the panel, so it is reachable, which is why it is a defect rather than a total block. THIS IS A SHARED DESIGN-SYSTEM FIX, NOT A WORKSPACE ONE: the right change is in sheet.tsx's open-focus controller (fall back to focusing the panel, which needs tabIndex -1, when no other target resolves), and it affects every consumer of Sheet, so it needs its own change and its own browser proof. Task 19 deliberately asserted nothing either way, because pinning the current behaviour would be wrong and pinning the desired behaviour would redden a gate on a fix nobody has agreed.",
+    "source": "docs/caring-contacts/phase-2a-sdd-archive/task-19-report.md (Concerns 2); Task 19 review",
+    "issueUlid": "01M0M6S95046SP1XKG9KATT31P"
+  }
+}

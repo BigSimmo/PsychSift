@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { assertSingleCurrentVersion, getOpenManagementDraft } from "@/components/care-plan/mockups/domain";
+import {
+  assertSingleCurrentVersion,
+  getCurrentPatientPlanVersion,
+  getOpenManagementDraft,
+  isPatientPlanVersionStale,
+} from "@/components/care-plan/mockups/domain";
 import { PROTOTYPE_NOW } from "@/components/care-plan/mockups/fixtures";
 import {
   createInitialPrototypeState,
@@ -16,6 +21,7 @@ import type {
   NewEdPresentationInput,
   PrototypeScenario,
   SafetyPlanDraftInput,
+  SyntheticId,
 } from "@/components/care-plan/mockups/types";
 
 const ED_CLINICIAN = "SYN-USER-ED-001";
@@ -108,6 +114,27 @@ function safetyDraftInput(overrides: Partial<SafetyPlanDraftInput> = {}): Safety
     },
     ...overrides,
   };
+}
+
+/** Complete the conversion's deliberate gaps without changing the resource list.
+ * The state tests care about the document lifecycle, not its prose. */
+function completePatientPlanDraft(state: CarePlanPrototypeState, patientId: SyntheticId): CarePlanPrototypeState {
+  const withDraft = prototypeReducer(state, { type: "create-patient-plan-draft", patientId });
+  const draft = withDraft.patientPlanVersions.find((version) => version.state === "draft");
+  if (draft === undefined) throw new Error("the Patient Plan draft was not created");
+  return prototypeReducer(withDraft, {
+    type: "save-patient-plan-draft",
+    versionId: draft.id,
+    input: {
+      sections: draft.sections.map((section) => ({
+        ...section,
+        body: section.body.length > 0 ? section.body : ["Written with the person before approval."],
+        gap: false,
+        gapReason: null,
+      })),
+      resources: draft.resources,
+    },
+  });
 }
 
 /** The lines this application may never write: it knows what it asked an
@@ -744,6 +771,74 @@ describe("Care Plan ED Presentation recording", () => {
     expect(third.presentationAmendments).toHaveLength(first.presentationAmendments.length + 2);
     expect(third.edPresentations.find(({ id }) => id === "SYN-PRESENTATION-001")?.planHelpfulness).toBe("helpful");
   });
+
+  it("raises each applicable review trigger from corrected effective values, once", () => {
+    const withoutOpenTriggers = { ...createInitialPrototypeState(), reviewTriggers: [] };
+    const lessHelpful = prototypeReducer(withoutOpenTriggers, {
+      type: "amend-presentation",
+      presentationId: "SYN-PRESENTATION-001",
+      field: "planHelpfulness",
+      replacementValue: "not_helpful",
+      reason: "The original account was corrected after speaking with Rowan.",
+    });
+    const twiceCorrected = prototypeReducer(lessHelpful, {
+      type: "amend-presentation",
+      presentationId: "SYN-PRESENTATION-001",
+      field: "planHelpfulness",
+      replacementValue: "mixed",
+      reason: "A further correction recorded the more precise account.",
+    });
+    const admission = prototypeReducer(twiceCorrected, {
+      type: "amend-presentation",
+      presentationId: "SYN-PRESENTATION-002",
+      field: "disposition",
+      replacementValue: "mental_health_admission",
+      reason: "The final disposition was corrected from the contemporaneous record.",
+    });
+
+    expect(lessHelpful.reviewTriggers.filter((trigger) => trigger.source === "plan_use_feedback")).toHaveLength(1);
+    expect(twiceCorrected.reviewTriggers.filter((trigger) => trigger.source === "plan_use_feedback")).toHaveLength(1);
+    expect(admission.reviewTriggers.filter((trigger) => trigger.source === "presentation_outcome")).toHaveLength(1);
+    expect(admission.lastOutcome?.message).toMatch(/Review Trigger was raised/i);
+  });
+});
+
+describe("Care Plan Patient Plan source currency", () => {
+  it("marks a current patient copy stale and raises a review trigger when its source is withdrawn", () => {
+    let state = completePatientPlanDraft(createInitialPrototypeState(), ROWAN);
+    const draft = state.patientPlanVersions.find((version) => version.state === "draft")!;
+    state = prototypeReducer(state, { type: "approve-patient-plan-version", versionId: draft.id });
+    const currentCopy = getCurrentPatientPlanVersion(state.patientPlanVersions, state.patientPlans[0]!.id);
+    expect(currentCopy).not.toBeNull();
+
+    const withdrawn = prototypeReducer(withUser(state, SENIOR), {
+      type: "withdraw-current-management-version",
+      patientId: ROWAN,
+      reason: "The current plan was withdrawn while it is rewritten with Rowan.",
+    });
+
+    expect(isPatientPlanVersionStale(currentCopy, null)).toBe(true);
+    expect(withdrawn.reviewTriggers).toContainEqual(
+      expect.objectContaining({ source: "patient_plan_stale", sourceId: currentCopy?.id }),
+    );
+    expect(withdrawn.lastOutcome?.message).toMatch(/needs updating/i);
+  });
+
+  it("refuses approval of a completed draft after its Management Plan source is superseded", () => {
+    let state = completePatientPlanDraft(createInitialPrototypeState("overdue-plan"), MIRA);
+    const patientDraft = state.patientPlanVersions.find((version) => version.state === "draft")!;
+    state = prototypeReducer(withUser(state, SENIOR), {
+      type: "approve-management-version",
+      versionId: MIRA_AWAITING_VERSION,
+    });
+    const before = state.auditEvents;
+
+    const refused = prototypeReducer(state, { type: "approve-patient-plan-version", versionId: patientDraft.id });
+
+    expect(refused.patientPlanVersions.find((version) => version.id === patientDraft.id)?.state).toBe("draft");
+    expect(refused.auditEvents).toEqual(before);
+    expect(refused.lastOutcome?.message).toMatch(/no longer Current/i);
+  });
 });
 
 // --- Personal Safety Plan --------------------------------------------------------
@@ -1307,10 +1402,23 @@ describe("Care Plan scenarios, reset, and determinism", () => {
       versionConflict: { active: false },
       patientPlans: [],
       patientPlanVersions: [],
-      patientResources: [],
       auditEvents: [],
       lastOutcome: null,
     });
+    /**
+     * The two Patient Plan collections start empty because a patient copy is
+     * produced when somebody makes one, and seeding an edition would put
+     * patient-facing wording on the record that nobody wrote.
+     *
+     * The resource catalogue is not an edition of anything. It is the list a
+     * clinician chooses from, so Task 9 seeds it: an empty one would mean every
+     * patient copy started with nothing to offer, and the housing and money
+     * entries are frequently the whole point of the sheet.
+     */
+    expect(createInitialPrototypeState().patientResources.length).toBeGreaterThan(0);
+    expect(createInitialPrototypeState().patientResources.every((resource) => resource.id.startsWith("SYN-"))).toBe(
+      true,
+    );
     expect(createInitialPrototypeState("empty").selectedPatientId).toBeNull();
     expect(createInitialPrototypeState("overdue-plan").selectedPatientId).toBe(MIRA);
     expect(createInitialPrototypeState("withdrawn-plan").selectedPatientId).toBe(EVELYN);

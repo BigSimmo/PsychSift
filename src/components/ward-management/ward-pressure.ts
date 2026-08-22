@@ -36,9 +36,12 @@ export function edPressure(now: Instant, movements: Movement[] = wardMovements):
         longestWaitMinutes: waits.length ? Math.max(...waits) : 0,
         // "Breached" already has one definition, owned by ward-clock.ts: `clockState` returns
         // "breached" exactly when the deadline has passed. Reuse it rather than re-deriving the
-        // same condition inline, so the two never quietly drift apart.
+        // same condition inline, so the two never quietly drift apart. A form with no `dueAt`
+        // (Task 6A: a Form 3B honestly carries none) is never breached — `undefined` must never
+        // reach `clockState`'s arithmetic.
         breaching: open.filter(
-          (movement) => movement.legalForm !== undefined && clockState(movement.legalForm.dueAt, now) === "breached",
+          (movement) =>
+            movement.legalForm?.dueAt !== undefined && clockState(movement.legalForm.dueAt, now) === "breached",
         ).length,
       };
     })

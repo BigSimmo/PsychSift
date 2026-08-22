@@ -205,11 +205,20 @@ export type PatientResourceCategory =
 
 export type PatientResource = {
   id: SyntheticId;
+  /** Resources are chosen for one person, not offered from a single national
+   *  list: a housing service in one catchment is no use in another, and a
+   *  resource sheet that cannot be wrong for somebody is not a resource sheet.
+   *  So every entry names the person it was chosen for. */
+  patientId: SyntheticId;
   category: PatientResourceCategory;
   name: string;
   detail: string;
   contact: string | null;
   sourceUrl: string | null;
+  /** True only for the verified public crisis lines. Everything else in the
+   *  prototype is invented, and a printed sheet must be able to say which is
+   *  which rather than leaving a reader to dial a fictional number. */
+  isRealContact: boolean;
 };
 
 export type PatientPlan = {
@@ -345,7 +354,14 @@ export type ReviewTrigger = {
      *  participation, so involving the person stays on somebody's list. The
      *  persistent on-screen marker alone is not enough: a marker is read only
      *  by whoever opens that plan, while a trigger reaches the Reviews queue. */
-    | "participation";
+    | "participation"
+    /** Raised when a newer Management Plan Version is approved while the person
+     *  holds a Current Patient Plan derived from the version it replaced. The
+     *  patient copy is never regenerated or withdrawn automatically — the person
+     *  may be holding it on paper — so the discrepancy has to reach a human
+     *  instead. Deduplicated per plan: one open trigger, however many versions
+     *  are approved before somebody acts on it. */
+    | "patient_plan_stale";
   sourceId: SyntheticId;
   reason: string;
   status: "open" | "resolved";
@@ -456,6 +472,17 @@ export type SafetyPlanDraftInput = {
   content: SafetyPlanContent;
 };
 
+/**
+ * What a clinician's edit of a patient copy replaces. Sections and resources are
+ * replaced whole rather than patched: a partial update of a document written in
+ * somebody's own voice is how half a converted sentence and half a clinician's
+ * rewrite end up in one paragraph.
+ */
+export type PatientPlanDraftInput = {
+  sections: readonly PatientPlanSection[];
+  resources: readonly PatientResource[];
+};
+
 export type NewEdPresentationInput = Omit<EdPresentation, "id" | "recordedBy" | "recordedAt">;
 
 /**
@@ -544,8 +571,8 @@ export type PrototypeCapability =
  * would only be a dead branch in an otherwise exhaustive switch, and a dead
  * branch is where an unenforced transition hides.
  *
- * Deferred to their own tasks, deliberately absent here: the four Patient Plan
- * actions.
+ * The four Patient Plan actions joined in Task 9, which is the task that
+ * implements them. Nothing else is outstanding.
  */
 export type CarePlanPrototypeAction =
   | { type: "select-patient"; patientId: SyntheticId }
@@ -576,6 +603,18 @@ export type CarePlanPrototypeAction =
   | { type: "create-safety-plan-draft"; patientId: SyntheticId }
   | { type: "save-safety-plan-draft"; versionId: SyntheticId; input: SafetyPlanDraftInput }
   | { type: "make-safety-plan-current"; versionId: SyntheticId }
+  /** Derives a patient edition from the Current Management Plan Version. It
+   *  refuses when there is none: a patient copy of a plan nobody has approved
+   *  would be a document in somebody's hands describing care nobody agreed. */
+  | { type: "create-patient-plan-draft"; patientId: SyntheticId }
+  | { type: "save-patient-plan-draft"; versionId: SyntheticId; input: PatientPlanDraftInput }
+  /** Any clinical role may approve a patient copy. Requiring a senior clinician
+   *  would mean a person waits days for their own copy of their own plan, which
+   *  defeats the point of giving them one. What approval does require is that
+   *  every flagged gap has been filled: a gap is a place the transformation
+   *  refused to guess, and an unfilled one would print as a blank heading. */
+  | { type: "approve-patient-plan-version"; versionId: SyntheticId }
+  | { type: "record-patient-plan-print-intent"; patientId: SyntheticId }
   | { type: "record-safety-plan-print-intent"; patientId: SyntheticId }
   | { type: "record-management-plan-print-intent"; patientId: SyntheticId }
   | { type: "record-contact-intent"; patientId: SyntheticId; cmhtId: SyntheticId; channel: "email" | "call" }

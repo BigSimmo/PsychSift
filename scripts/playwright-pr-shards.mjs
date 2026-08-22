@@ -19,7 +19,7 @@ import { childProcessExitCode } from "./child-process-result.mjs";
 
 /** Same matcher as playwright.config.ts `productionSpecPattern` (keep in sync). */
 export const productionSpecFilePattern =
-  /^(?:answer-progress-ui-smoke|dsm-ui-smoke|ui-(?:smoke|stress|accessibility|dictionary|document-canvas|tools|ward-(?:management|coordinator)|overlap|universal-search|specifiers|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|mode-nav-density|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|route-coverage|style-contract|visual-artifacts|hydration))\.spec\.ts$/;
+  /^(?:answer-progress-ui-smoke|dsm-ui-smoke|ui-(?:smoke|stress|accessibility|caring-contacts-workspace|dictionary|document-canvas|tools|ward-(?:management|coordinator|roles)|overlap|universal-search|specifiers|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|mode-nav-density|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|route-coverage|style-contract|visual-artifacts|hydration))\.spec\.ts$/;
 
 /**
  * One source of truth for shard membership and its latest hosted timing sample.
@@ -38,22 +38,36 @@ export const prUiSpecProfiles = Object.freeze([
   { file: "tests/ui-formulation.spec.ts", shard: 1, fullSeconds: 11.0, criticalSeconds: 0 },
   // New route-focused suite; keep on the lightest measured shard until hosted timing is available.
   { file: "tests/ui-dictionary.spec.ts", shard: 1, fullSeconds: 0, criticalSeconds: 0 },
+  // Added after the timing sample. Measured locally at ~4.8s for 3 tests; replace
+  // with hosted evidence at the next timing refresh. Moved here from shard 2 by
+  // Task 19 to offset the re-measured Caring Contacts workspace spec.
+  { file: "tests/ui-phone-motion.spec.ts", shard: 1, fullSeconds: 5.0, criticalSeconds: 0 },
 
   { file: "tests/ui-phone-scroll-routes.spec.ts", shard: 2, fullSeconds: 129.6, criticalSeconds: 0 },
   { file: "tests/ui-phone-scroll.spec.ts", shard: 2, fullSeconds: 66.3, criticalSeconds: 0 },
   { file: "tests/ui-universal-search.spec.ts", shard: 2, fullSeconds: 24.3, criticalSeconds: 0 },
-  { file: "tests/answer-progress-ui-smoke.spec.ts", shard: 2, fullSeconds: 13.7, criticalSeconds: 0 },
   // Added after the timing sample; place it on the lightest measured shard and
   // replace this zero with hosted evidence at the next timing refresh.
   { file: "tests/dsm-ui-smoke.spec.ts", shard: 2, fullSeconds: 0, criticalSeconds: 0 },
-  // Added after the timing sample. Measured locally at ~4.8s for 3 tests; replace
-  // with hosted evidence at the next timing refresh.
-  { file: "tests/ui-phone-motion.spec.ts", shard: 2, fullSeconds: 5.0, criticalSeconds: 0 },
+  // Added by Task 15 with the production Caring Contacts workspace and re-measured
+  // by Task 19, which grew it from 9 tests to 18 (the 24-overlay matrix at two
+  // widths, focus return, reflow and the focus-ring modes). Measured locally at
+  // ~34.2s for 18 tests; replace with hosted evidence at the next timing refresh.
+  //
+  // That +24.2s forced a rebalance rather than just a new number: at 34.2 on this
+  // shard the post-critical spread went to 32.4s against the 10s ceiling in
+  // `tests/playwright-pr-shards.test.ts`. Two small specs moved out to lift the
+  // other two shards instead of packing this one.
+  { file: "tests/ui-caring-contacts-workspace.spec.ts", shard: 2, fullSeconds: 34.2, criticalSeconds: 0 },
   // New ward-management/ward-coordinator suites; keep on the lightest measured
   // shard until hosted timing is available.
   { file: "tests/ui-ward-coordinator.spec.ts", shard: 2, fullSeconds: 0, criticalSeconds: 0 },
   { file: "tests/ui-ward-management.spec.ts", shard: 2, fullSeconds: 0, criticalSeconds: 0 },
+  { file: "tests/ui-ward-roles.spec.ts", shard: 2, fullSeconds: 0, criticalSeconds: 0 },
 
+  // Moved here from shard 2 by Task 19 to offset the re-measured Caring Contacts
+  // workspace spec; its own timing is unchanged.
+  { file: "tests/answer-progress-ui-smoke.spec.ts", shard: 3, fullSeconds: 13.7, criticalSeconds: 0 },
   { file: "tests/ui-tools.spec.ts", shard: 3, fullSeconds: 110.5, criticalSeconds: 3.1 },
   { file: "tests/ui-chrome-scroll.spec.ts", shard: 3, fullSeconds: 60.7, criticalSeconds: 0 },
   { file: "tests/ui-overlap.spec.ts", shard: 3, fullSeconds: 10.1, criticalSeconds: 0 },

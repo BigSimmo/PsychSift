@@ -48,6 +48,7 @@ export type PatientWorkspaceProps = {
   activeSection: PatientSectionKey | null;
   reviewsHref: string;
   onRecordContactIntent: (contact: CmhtContact, channel: "email" | "call") => void;
+  contactActionBlockedReason: string | null;
   /** Home renders the workspace beside the directory and offers the full record. */
   showFullRecordLink?: boolean;
   /**
@@ -76,6 +77,7 @@ export function PatientWorkspace({
   activeSection,
   reviewsHref,
   onRecordContactIntent,
+  contactActionBlockedReason,
   showFullRecordLink = false,
   ref,
 }: PatientWorkspaceProps) {
@@ -225,6 +227,7 @@ export function PatientWorkspace({
               scenario={scenario}
               reviewsHref={reviewsHref}
               onIntent={(channel) => onRecordContactIntent(cmht, channel)}
+              blockedReason={contactActionBlockedReason}
             />
           )}
         </>

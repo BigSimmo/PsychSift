@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "6a617628-6b65-4f7f-b361-f96da2d0880a",
+  "createdOn": "2026-08-18",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Railway has no Australian region, so the current app tier cannot host a real-patient Caring Contacts deployment",
+    "detail": "docs/deployment-architecture.md records Railway regions as US West, US East, Amsterdam and Singapore; the app tier runs in Singapore against Supabase in ap-southeast-2 Sydney. The Caring Contacts decision lock requires identifiers, message content, application data, backups, logs and provider processing to remain in Australia. A real-patient pilot therefore needs a separately contracted Australian PHI-capable environment, not the current Clinical KB deployment. Does not block the synthetic build, which holds no real patient data. Hazard H-36.",
+    "source": "docs/deployment-architecture.md; Caring Contacts decision lock hosting controls",
+    "issueUlid": "01M0B6WFEPNCAWAFRW03H3WSDY"
+  }
+}

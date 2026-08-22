@@ -1,6 +1,6 @@
 # Scripts index
 
-Curated map of `scripts/` (263 files) and the `package.json` script surface (267 entries),
+Curated map of `scripts/` (267 files) and the `package.json` script surface (268 entries),
 grouped by purpose. This is orientation, not an exhaustive per-file listing — the authoritative
 command list is `package.json`, and `npm run docs:check-scripts` verifies every `npm run <x>`
 referenced in docs resolves to a real script. `npm run docs:update` refreshes the exact counts above.
@@ -67,6 +67,8 @@ guards `check-pr-policy-workflow.mjs` and `check-codex-autofix-workflow.mjs`.
 `install-codex-cloud-command-shims.sh` reproduce the provider-free Cloud runtime documented in
 `docs/codex-cloud.md`; `npm run check:codex-cloud` verifies that
 the runtime pins, install commands, offline defaults, and documentation stay aligned.
+Programme execution helpers (no retrieval/ranking behaviour change): `rag-phase-launch-check.mjs`,
+`rag-task-brief.mjs`, `check-rag-phase-receipts.mjs`, and `build-rag-plan-packages.mjs`.
 
 For executable phone-chrome changes, use `verify:phone-chrome` before the broad UI gate. It checks installed-lock parity, then selects focused contracts and Playwright owners from the changed paths; shared foundations add `verify:ui` last. Documentation-only scopes run only documentation guards. `audit:final-merge` is local-only unless both `--providers` and `ALLOW_PROVIDER_READS=true` are supplied.
 

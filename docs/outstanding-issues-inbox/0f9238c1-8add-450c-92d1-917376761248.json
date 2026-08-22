@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "0f9238c1-8add-450c-92d1-917376761248",
+  "createdOn": "2026-08-18",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "issue",
+    "summary": "Caring Contacts patient-visible reply wording is now factually wrong and must change before any demonstration",
+    "detail": "The 2026-08-19 decision revision (production build spec 2.1) changed replies from a non-receiving sender to a receiving-capable number that auto-responds and discards. PATIENT_VISIBLE_NO_REPLY_NOTICE in src/components/caring-contacts/mockups/personalisation-screen.tsx still reads 'Replies are not received, stored, analysed or monitored'. The first clause is no longer true: replies ARE received by the number, then discarded unread. Telling patients something inaccurate about a safety boundary is exactly the failure this programme cannot afford. Replacement wording is a clinical decision requiring dual approval, and is the first item in docs/caring-contacts/message-review-pack.md.",
+    "source": "Production build spec 2.1; message review pack section 1",
+    "issueUlid": "01M0B6TQ332YXE61JXSY5AYNX0"
+  }
+}

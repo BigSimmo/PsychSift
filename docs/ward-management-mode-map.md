@@ -7,6 +7,17 @@ That design has not been built yet — Phase 2 is what actually retires these mo
 document still describes the routes as they exist today. Read the design spec for where the
 product is headed; read this document for what is currently live.
 
+**Phase 2 update (Task 9):** Constellation (`/ward-management/constellation`) is retired. The
+route remains as a server `redirect()` to `/ward-management/network` so live-main bookmarks do
+not 404. Command
+is rebuilt as the coordinator screen (`CoordinatorScreen`) — priority queue, statewide flow
+diagram and explainable shortlist in one view — and absorbs the working-surface role Constellation
+used to carry; the table below is corrected to drop the Constellation row. The eight remaining
+mode links (Command, Network, Priority queue, Capacity, Movements, Exceptions, Transport,
+Governance) moved out of the horizontal mode strip and into the left `ClinicalRail`, per the
+owner's direction that Ward Flow is its own application inside the Clinical KB shell and free to
+use that rail for its own navigation. See "Navigation" below.
+
 **Status:** Synthetic product wireframe. The routes below model a WA mental-health patient-flow coordination layer; they do not claim to reproduce an internal WA Health system or current allocation policy.
 
 ## Operating model
@@ -27,27 +38,33 @@ The public WA sources used to ground the wireframes establish five important con
 
 ## Primary route system
 
-| Mode           | Route                            | Primary question                                                            | Dominant visual                                                        | Primary owner         |
-| -------------- | -------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------- |
-| Command        | `/ward-management`               | What needs a decision now?                                                  | Priority queue + pipeline + capacity ledger + AI decision dock         | Flow coordinator      |
-| Constellation  | `/ward-management/constellation` | How is demand moving across the statewide network?                          | Full-screen spatial service network with selective patient routes      | Flow coordinator      |
-| Network        | `/ward-management/network`       | Where is bed pressure concentrated, and which movements cross a catchment?  | Schematic node/edge diagram: fill is bed pressure, edges are movements | Flow coordinator      |
-| Priority queue | `/ward-management/queue`         | Which placement-ready movement should be reviewed next, and why?            | Sortable queue with tier, operational score and current blocker        | Flow coordinator / ED |
-| Capacity       | `/ward-management/capacity`      | Which currently confirmed bed states could support a review?                | Hospital and ward capacity matrix with freshness and capability        | Ward manager          |
-| Movements      | `/ward-management/movements`     | Where is every patient movement in the six-stage pathway?                   | Stage board with owned next action and elapsed time                    | All roles             |
-| Exceptions     | `/ward-management/exceptions`    | Which time-sensitive exception needs an owner action?                       | Action inbox organised by overdue, expiring and stale state            | All roles             |
-| Transport      | `/ward-management/transport`     | Is the legal/document/booking chain ready for safe transfer?                | Transport readiness board and metro/country pathway cues               | ED / Flow coordinator |
-| Governance     | `/ward-management/governance`    | Why did the system recommend this, who confirmed it, and what is synthetic? | AI assurance, audit trail, data boundary and source register           | Authorised reviewers  |
+| Mode           | Route                         | Primary question                                                            | Dominant visual                                                        | Primary owner         |
+| -------------- | ----------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------- |
+| Command        | `/ward-management`            | What needs a decision now?                                                  | Priority queue + statewide flow diagram + explainable shortlist        | Flow coordinator      |
+| Network        | `/ward-management/network`    | Where is bed pressure concentrated, and which movements cross a catchment?  | Schematic node/edge diagram: fill is bed pressure, edges are movements | Flow coordinator      |
+| Priority queue | `/ward-management/queue`      | Which placement-ready movement should be reviewed next, and why?            | Sortable queue with tier, operational score and current blocker        | Flow coordinator / ED |
+| Capacity       | `/ward-management/capacity`   | Which currently confirmed bed states could support a review?                | Hospital and ward capacity matrix with freshness and capability        | Ward manager          |
+| Movements      | `/ward-management/movements`  | Where is every patient movement in the six-stage pathway?                   | Stage board with owned next action and elapsed time                    | All roles             |
+| Exceptions     | `/ward-management/exceptions` | Which time-sensitive exception needs an owner action?                       | Action inbox organised by overdue, expiring and stale state            | All roles             |
+| Transport      | `/ward-management/transport`  | Is the legal/document/booking chain ready for safe transfer?                | Transport readiness board and metro/country pathway cues               | ED / Flow coordinator |
+| Governance     | `/ward-management/governance` | Why did the system recommend this, who confirmed it, and what is synthetic? | AI assurance, audit trail, data boundary and source register           | Authorised reviewers  |
 
-The global Clinical KB rail remains the application switcher. The Ward Flow mode strip is the local navigation owner and appears consistently on every route.
+**Navigation:** the left `ClinicalRail` carries both the global Clinical KB application switcher
+and, below it, Ward Flow's own eight mode links (icon-only, each with its own accessible name) —
+there is no separate horizontal mode strip. This follows from Ward Flow being its own application
+inside the Clinical KB shell, free to use that rail as its own local navigation, and it also gives
+the coordinator screen back the vertical space the horizontal strip used to take. The rail stays
+visible and reachable down to 320px; on a short viewport the mode-link section scrolls
+independently of the pinned app-switcher icons above it and the pinned favourites/settings/avatar
+controls below it.
 
 ## Role-to-mode defaults
 
-| Role             | Default focus           | Can act on                                                                       | Read-only context                                |
-| ---------------- | ----------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------ |
-| Flow coordinator | Command / Constellation | Match review, cross-catchment escalation, hold coordination, exception ownership | ED readiness, ward capacity, transport documents |
-| ED mental health | Queue / Transport       | Referral readiness, legal/form timing, handover and transport request readiness  | Destination shortlist and ward response          |
-| Ward manager     | Capacity / Movements    | Capacity freshness, suitability response, acceptance and hold                    | ED handover and transport status                 |
+| Role             | Default focus        | Can act on                                                                       | Read-only context                                |
+| ---------------- | -------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Flow coordinator | Command              | Match review, cross-catchment escalation, hold coordination, exception ownership | ED readiness, ward capacity, transport documents |
+| ED mental health | Queue / Transport    | Referral readiness, legal/form timing, handover and transport request readiness  | Destination shortlist and ward response          |
+| Ward manager     | Capacity / Movements | Capacity freshness, suitability response, acceptance and hold                    | ED handover and transport status                 |
 
 Role switching changes task emphasis and owned controls, not the underlying record.
 
@@ -79,9 +96,9 @@ legibility and carry no geographic meaning; the mode says so on the page.
   bed states, freshness and inbound movements. Nothing on this mode confirms or changes a
   placement; it is a read surface that hands off to the queue and decision surfaces.
 
-Constellation and Network deliberately overlap. Constellation is the working surface — it
-carries the queue and the decision dock. Network is the diagnostic one: it answers "where is
-the system under strain" without asking the coordinator to act.
+Command and Network deliberately overlap now that Constellation is retired. Command is the
+working surface — it carries the queue and the explainable shortlist. Network is the diagnostic
+one: it answers "where is the system under strain" without asking the coordinator to act.
 
 ## Capacity semantics
 

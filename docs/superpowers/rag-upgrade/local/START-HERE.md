@@ -1,27 +1,35 @@
-# Local execution package — start here
+# Local operational package — start here
 
-This is the Windows/local launcher for the complete RAG upgrade programme. Shared specifications, task bodies, execution order, models, gates and acceptance criteria are byte-identical to the Cloud package. Only this environment bootstrap differs.
+This is the new-session Windows/local handover for L00–L10 after accepted Cloud P00–P17 work. It is not an alternative implementation launcher.
 
-## Package publication boundary
+## L00 start contract
 
-Do not commit or publish this package from a stale authoring/planning worktree. Materialize only the reviewed package diff onto a fresh branch created at the verified current `origin/main`, run setup and every package/docs/focused gate there, and record that exact `origin/main` as `packageBaseSha` plus the committed package tip as `packageHeadSha` in every phase receipt. The manifest `reconciledBase` must equal `packageBaseSha` at generation. If `origin/main` moves before an authorized publication, repeat the reconciliation/materialization and regenerate; never hide source drift inside an old branch.
+1. Run the root repository task-start preflight once for this new local task.
+2. Fetch `origin/main` and the exact remote Cloud programme branch named by the handover. Verify the remote tip and the commit that atomically introduced accepted `PROGRAMME.json`.
+3. Create a brand-new isolated local operations branch/worktree from that programme metadata commit. Do not use, mutate, rebase, merge or cherry-pick the registered `codex/rag-local-build-20260822` worktree.
+4. Run setup, runtime, installed-lock parity, package parity, tracked programme-receipt validation, and `npm run plans:rag:receipts:check -- --before-local L00`. That flag belongs to `scripts/check-rag-phase-receipts.mjs`; `scripts/rag-phase-launch-check.mjs` is Cloud P00–P17 only.
+5. Bind the exact Cloud tip, package hash and programme receipt commit/hash. Compare current `origin/main` and the quarantined local WIP. Classify overlap; never absorb it silently.
+6. Select Sol/high for both the L00 controller and the L00 reviewer in the local session control and prove both routes from authoritative metadata. L00 is the only local phase whose reviewer is high.
+7. Produce and independently review the L00 receipt. No hosted or provider action occurs.
 
-## Before implementation
+## Later local phases
 
-1. Run the repository task-start preflight from the root `AGENTS.md` once for the execution task.
-2. In the source checkout run `git fetch --no-tags origin main`, `git rev-parse --verify origin/main`, and record `git rev-parse HEAD` plus `git merge-base HEAD origin/main`. Stop if fetch/ref verification fails.
-3. Use a fresh isolated task worktree based on that current `origin/main`; do not implement from the planning worktree or absorb unrelated/untracked work.
-4. Run `node scripts/setup-codex-worktree.mjs`, then `npm run check:runtime` and `npm run check:installed-lock-parity`.
-5. Before package publication and again immediately before P00, run `npm run plans:rag:publish-check`. It requires current `origin/main` to equal the manifest `reconciledBase`; if main moved, revalidate paths, migration versions, dependencies, current implementation state, and baseline/evaluation evidence, update the base, and regenerate. P01 and later sessions run `npm run plans:rag:check`, which verifies immutable package/base integrity without invalidating accepted receipts merely because unrelated main work advanced.
-6. Read `programme-manifest.json`, `execution-order.md`, `approval-matrix.md`, `sdd-execution.md`, `task-verification-matrix.json`, `phase-receipt.schema.json`, both specifications, and the plan slice for the selected phase.
-7. Capability-probe every Superpowers skill named in `sdd-execution.md`. Stop if any required capability is unavailable.
+Start each L01–L10 phase in a fresh local session from the exact accepted predecessor receipt commit. Before inspection, run `npm run plans:rag:receipts:check -- --before-local` with that phase id. Select controller AND reviewer effort before launch; after L00 the reviewer is always xhigh:
 
-## Commit authority required by SDD
+- L01: controller high / reviewer xhigh. Do not launch the L01 reviewer at high.
+- L06: controller high / reviewer xhigh. Do not launch the L06 reviewer at high.
+- L02–L05 and L07–L10: controller xhigh / reviewer xhigh.
 
-Before the first implementer is dispatched, obtain one explicit authorization for local per-task commits on the named task branch. That authorization does not include push, PR, merge, deploy, provider calls, hosted reads/writes, migrations, reindex, promotion or cleanup. If local task commits are not authorized, stop: the required `BASE..HEAD` review packages would otherwise omit the implementation.
+Read `programme-manifest.json`, `execution-order.md`, `approval-matrix.md`, `connected-execution.md`, the connected receipt schema/template, both specifications and the P17-produced operational runbooks. Load and hash the phase skills. Dispatch a fresh reviewer distinct from the controller and prove both routes.
 
-## Execute
+The local launch prompt does not itself authorize hosted reads/writes, source browsing, provider calls, migrations, deployment, reindex, activation, rollback or cleanup. Before each action, obtain and record the exact target-specific approval required by the matrix. Stop if approval is missing, expired or mismatched.
 
-Run exactly one manifest phase per session/worktree and the per-task loop in `sdd-execution.md`. Before a phase, validate its accepted predecessors with `npm run plans:rag:receipts:check -- --before` followed by that phase's literal manifest ID. Use the model/reasoning recorded for that phase. Use the task plan's exact focused gates and repository arbiter/receipt rules. Do not start P18 locally without a new explicit per-operation approval.
+Accept one local phase receipt, push only when separately authorized, then stop. L10 may resume after retention/observation; do not run a permanent watcher.
 
-At phase end, preserve the tracked phase receipt and use finishing-a-development-branch only within the authority recorded here. Repository authorization overrides any skill default: without separately explicit target-specific authority, do not merge, push, open/update a PR, delete the worktree, deploy, or run provider actions. Retain the accepted branch/worktree and stop. Publishing the phase for a later Cloud session is a separate action requiring explicit push/PR authority.
+## L10 finalization contract
+
+L10 may resume across the retention period, but no watcher remains running. It cannot pass merely because cleanup is waiting. It passes only when the approved manifest proves either that zero objects are eligible or that the exact eligible set was deleted and independently verified.
+
+`PROGRAMME.json` remains immutable with all connected gates open. After accepted L10, one fresh Sol/xhigh reviewer validates the complete `PROGRAMME`-commit-to-L10-receipt range with both verdicts. `OPERATIONAL.json`, its parsed route record and its exact review artifacts form one add-only atomic metadata commit; it never edits or replaces the offline or local acceptance receipts.
+
+Accepted `PROGRAMME.json` and P00–P17 receipts remain immutable throughout local execution.

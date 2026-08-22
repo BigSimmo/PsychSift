@@ -32,6 +32,12 @@ function validateNode(value, schema, rootSchema, path, errors) {
     return;
   }
 
+  if (schema.allOf) {
+    for (const branch of schema.allOf) {
+      validateNode(value, branch, rootSchema, path, errors);
+    }
+  }
+
   if (schema.oneOf) {
     const branchErrors = schema.oneOf.map((branch) => {
       const candidateErrors = [];

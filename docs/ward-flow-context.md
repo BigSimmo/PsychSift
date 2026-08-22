@@ -151,21 +151,22 @@ from its own data. Supply arrives instead as a ward-reported bed release.
 Worktree `C:/Users/joshs/.codex/worktrees/ward-management-design/Database`, branch
 `codex/ward-management-design`. **Nothing pushed. No PR.** 15 commits.
 
-| Phase                         | Scope                                                                                           | State                                                     |
-| ----------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| **1 — the model**             | Six modules; ten routes migrated; old fixture deleted                                           | ✅ Complete, whole-branch review clean after one fix wave |
-| **2 — coordinator screen**    | Pressure strip, queue, flow diagram, shortlist, exceptions, phone form; retires Constellation   | Planned, not started                                      |
-| **3 — the other three roles** | ED screen, ward screen, transport officer phone screen, live tracker                            | Not planned                                               |
-| **4 — specialist boards**     | Statutory clock, escalation, shift handover, patient search, governance and capacity extensions | Not planned                                               |
+| Phase                         | Scope                                                                                           | State                                                                |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **1 — the model**             | Six modules; ten routes migrated; old fixture deleted                                           | ✅ Complete, whole-branch review clean after one fix wave            |
+| **2 — coordinator screen**    | Pressure strip, queue, flow diagram, shortlist, exceptions, phone form; retired Constellation   | ✅ Complete 2026-08-19, whole-branch review clean after one fix wave |
+| **3 — the other three roles** | ED screen, ward screen, transport officer phone screen, live tracker                            | Spec written 2026-08-19; plan next                                   |
+| **4 — specialist boards**     | Statutory clock, escalation, shift handover, patient search, governance and capacity extensions | Not planned                                                          |
 
 Phase boundaries and their reasoning are in §18 of the design spec.
 
 ### Routes today
 
-`/ward-management` (command) · `/constellation` · `/network` · `/queue` · `/capacity` ·
-`/movements` · `/exceptions` · `/transport` · `/governance` · `/patients/[patientId]`
+`/ward-management` (coordinator) · `/network` · `/queue` · `/capacity` · `/movements` ·
+`/exceptions` · `/transport` · `/governance` · `/patients/[patientId]`
 
-Phase 2 rebuilds `/ward-management` properly and **retires `/constellation`**.
+`/constellation` was retired by Phase 2. The mode navigation now lives in the left rail, not in a
+horizontal strip.
 
 ---
 
@@ -265,8 +266,11 @@ first contact with reality.
 
 ### What does not exist
 
-**There is no operational score.** Phase 1 deleted `operationalPriorityScore` because it folded
-urgency into a number labelled "not clinical severity". Phase 2 Task 1 rebuilds it honestly.
+**The operational score exists again.** Phase 1 deleted `operationalPriorityScore` for folding
+urgency into a number labelled "not clinical severity"; Phase 2 rebuilt it honestly in
+`ward-priority.ts` as `operationalScore(movement, now)` plus `queueOrder(movements, now)`. It is
+blind to `movement.urgency` and a test asserts two tiers score identically. Phase 2 also added
+`ward-pressure.ts` — `edPressure(now, movements)`.
 
 ---
 
@@ -465,7 +469,21 @@ Recorded so they can be found and undone. Full text with costs in
 
 ---
 
-## 11. Phase 2 in brief
+## 11. Phase 2 as built, and Phase 3 next
+
+Phase 2 shipped the coordinator screen in 21 commits across ten tasks and eleven review rounds.
+Its whole-branch review initially returned **not fit to hand over** on two Criticals — a shortlist
+headed "Nearest candidates" when the model holds no proximity data of any kind, and a Confirm
+button that acted on a system-chosen default the human never selected — and passed after one fix
+wave plus one ruled follow-up. New modules: `ward-priority.ts`, `ward-pressure.ts`, and
+`src/components/ward-management/coordinator/`. The statutory form codes in the fixture were
+corrected to 3A / 4A / 4C to match this document and the spec.
+
+**Phase 3 is specified**: `docs/superpowers/specs/2026-08-19-ward-flow-phase-3-role-screens-design.md`.
+It adds the ED, ward and transport-officer screens plus the live tracker, and introduces the first
+mutable state this build has ever had. Read that spec before doing any Phase 3 work.
+
+## Phase 2 as originally planned
 
 Ten tasks. Full detail in
 [`docs/superpowers/plans/2026-08-18-ward-flow-phase-2-coordinator-screen.md`](./superpowers/plans/2026-08-18-ward-flow-phase-2-coordinator-screen.md).

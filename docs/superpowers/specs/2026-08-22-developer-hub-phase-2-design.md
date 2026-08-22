@@ -1,7 +1,7 @@
 # Developer hub — Phase 2 design (repo awareness)
 
 Date: 2026-08-22
-Status: proposed — awaiting owner approval
+Status: **approved 2026-08-22.** The §4.1 scope question is decided — see the ruling there.
 Scope: Phase 2 of four. Phase 1 shipped; phases 3–4 remain outline only.
 
 ## 1. Purpose
@@ -92,10 +92,17 @@ answer "has this ref been reviewed at this exact head, with what outcome, and is
 current?" — precisely the question `npm run ledger:lookup` exists to answer, and one currently
 answerable only from a terminal.
 
-**Owner decision required.** The alternative — defer the panel to a later phase that takes GitHub
-access as an explicit, approved dependency — is equally legitimate. What is _not_ legitimate is
-shipping a panel called "Work in flight" that quietly shows review history instead. A label
-promising more than its data delivers is the `#338` failure wearing different clothes.
+**DECIDED 2026-08-22 by the owner: rename the panel to "Review state" and scope it to the repository's
+own records.** The alternative considered and rejected for now was deferring the panel to a later
+phase that takes GitHub access as an explicit, approved dependency; it remains available if live PR
+state is ever wanted, as a separate phase with its own approval.
+
+What this decision forecloses, stated so a later reader does not re-open it by accident: the panel
+will **not** show which pull requests are open, whether their CI is green, or whether a review is
+outstanding. It answers "has this ref been reviewed at this exact head, with what outcome" — history,
+not live state. The registry entry's `id` stays `work-in-flight` so the Phase 1 extension mechanism
+is untouched; only its `name` and `summary` change, because a label promising more than its data
+delivers is the `#338` failure wearing different clothes.
 
 ### 4.2 One snapshot and one gate, not four
 
@@ -186,9 +193,8 @@ proved the cheaper gates blind to it:
 
 ## 9. Open questions for the owner
 
-1. **§4.1 — re-scope "Work in flight" to "Review state", or defer it to a GitHub-enabled phase?**
-   This is the only question that changes the shape of the phase, and it should be answered before
-   an implementation plan is written.
+1. ~~**§4.1 — re-scope "Work in flight" to "Review state", or defer it to a GitHub-enabled phase?**~~
+   **Answered 2026-08-22: re-scope to "Review state".** See §4.1.
 2. Should the routes panel flag _orphan_ routes — a production page with no inbound nav link? CI
    already enforces that, so the panel would re-display a fact a gate guarantees. Cheap, but
    duplication.

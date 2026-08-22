@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
-import { FreshnessStamp } from "@/components/developer-area/hub/freshness-stamp";
 import { LEDGER_DETAIL_CLASS, LEDGER_DISCLOSURE_CLASS, LedgerItem } from "@/components/developer-area/hub/ledger-item";
+import { PanelPageShell } from "@/components/developer-area/hub/panel-page-shell";
 import {
   loadLedgerSnapshot,
   openItemsByPriority,
@@ -77,25 +75,7 @@ export default function DeveloperLedgerPage() {
   const unrecognised: LedgerOpenItem[] = snapshot.open.filter((item) => !recognised.has(item));
 
   return (
-    <main data-testid="developer-ledger" className="mx-auto grid w-full max-w-[64rem] gap-6 px-4 py-8 sm:px-6">
-      <Link
-        data-testid="developer-ledger-back"
-        href="/mockups/development"
-        className="inline-flex min-h-12 w-fit items-center gap-2 text-sm font-bold text-[color:var(--text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-      >
-        <ArrowLeft aria-hidden="true" className="size-icon-sm" />
-        Developer hub
-      </Link>
-
-      <h1 className="text-2xl font-extrabold text-[color:var(--text-heading)]">Task ledger</h1>
-
-      {/*
-       * Unconditional, and directly under the title. Every number below is read
-       * from a snapshot committed at build time, so the one thing a reader must
-       * never have to guess is how old it is.
-       */}
-      <FreshnessStamp freshness={freshness} />
-
+    <PanelPageShell testId="developer-ledger" title="Task ledger" freshness={freshness}>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <CountTile id="open" value={snapshot.counts.open} label="open items" />
         <CountTile id="p1" value={snapshot.counts.p1} label="blocking, priority P1" />
@@ -256,6 +236,6 @@ export default function DeveloperLedgerPage() {
           </p>
         )}
       </section>
-    </main>
+    </PanelPageShell>
   );
 }

@@ -16,7 +16,8 @@
         "audit",
         "export",
         "ledger",
-        "prompt-perfector"
+        "prompt-perfector",
+        "rag-cloud-sdd"
       ]
     },
     {

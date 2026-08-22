@@ -40,6 +40,55 @@ describe("operational score", () => {
     expect(operationalScore(breached, NOW_ANCHOR).score).toBeGreaterThan(operationalScore(clear, NOW_ANCHOR).score);
   });
 
+  it("awards Bed need confirmed points when an examination outcome is recorded as inpatient_order", () => {
+    const base = movementById("WF-001");
+    const confirmed: Movement = { ...base, examination: { at: NOW_ANCHOR - 30, outcome: "inpatient_order" } };
+    const { factors } = operationalScore(confirmed, NOW_ANCHOR);
+    const factor = factors.find((factor) => factor.label === "Bed need confirmed");
+    expect(factor).toBeDefined();
+    expect(factor?.points).toBe(25);
+  });
+
+  it("does not award Bed need confirmed points for any other examination outcome, or no examination at all", () => {
+    const base = movementById("WF-001");
+    expect(base.examination).toBeUndefined();
+    expect(operationalScore(base, NOW_ANCHOR).factors.find((f) => f.label === "Bed need confirmed")).toBeUndefined();
+
+    const communityOrder: Movement = { ...base, examination: { at: NOW_ANCHOR - 30, outcome: "community_order" } };
+    expect(
+      operationalScore(communityOrder, NOW_ANCHOR).factors.find((f) => f.label === "Bed need confirmed"),
+    ).toBeUndefined();
+
+    const revoked: Movement = { ...base, examination: { at: NOW_ANCHOR - 30, outcome: "revoked" } };
+    expect(operationalScore(revoked, NOW_ANCHOR).factors.find((f) => f.label === "Bed need confirmed")).toBeUndefined();
+  });
+
+  it("ranks a movement with a confirmed bed need above an otherwise-identical unassessed one — the clinician's rule that review precedes referral", () => {
+    const base = movementById("WF-001");
+    const unassessed: Movement = { ...base, legalForm: undefined, examination: undefined };
+    const confirmed: Movement = {
+      ...unassessed,
+      examination: { at: NOW_ANCHOR - 30, outcome: "inpatient_order" },
+    };
+    expect(operationalScore(confirmed, NOW_ANCHOR).score).toBeGreaterThan(
+      operationalScore(unassessed, NOW_ANCHOR).score,
+    );
+  });
+
+  it("awards no Statutory timing points to a legal form with no dueAt", () => {
+    // Task 6A: a Form 3B honestly carries no dueAt (the Mental Health Act imposes no
+    // post-examination deadline). This must never score as breached, critical or due — the
+    // patient's priority rides on "Time waiting" alone, which is precisely the clinician's rule,
+    // and this must never gain a compensating bonus for being detained instead.
+    const base = movementById("WF-003");
+    const noDeadline: Movement = {
+      ...base,
+      legalForm: { code: "3B", label: "Inpatient treatment order", kind: "detention" },
+    };
+    const { factors } = operationalScore(noDeadline, NOW_ANCHOR);
+    expect(factors.find((factor) => factor.label === "Statutory timing")).toBeUndefined();
+  });
+
   it("explains itself — every point scored is attributed to a named factor", () => {
     for (const movement of wardMovements) {
       const { score, factors } = operationalScore(movement, NOW_ANCHOR);
@@ -121,5 +170,15 @@ describe("queue order", () => {
     const ordered = queueOrder(wardMovements, NOW_ANCHOR);
     expect(ordered.every((movement) => !movement.closure && movement.stage !== "arrived")).toBe(true);
     expect(ordered.length).toBe(wardMovements.filter(isOpen).length);
+  });
+
+  it("puts a tier 1 movement with a confirmed bed need ahead of a tier 1 movement nobody has assessed — WF-009's examined, confirmed need outranks WF-303's unassessed wait", () => {
+    // Real fixture, not a synthetic pair: before this factor existed, WF-303 (no examination,
+    // score 61) led every tier-1 movement and WF-009 (examination outcome inpatient_order, score
+    // 53) sat behind it. That ordering was exactly backwards under the clinician's rule — a
+    // patient confirmed to need a bed should not sit behind one nobody has reviewed.
+    const ordered = queueOrder(wardMovements, NOW_ANCHOR);
+    const tierOneIds = ordered.filter((movement) => movement.urgency === 1).map((movement) => movement.id);
+    expect(tierOneIds.indexOf("WF-009")).toBeLessThan(tierOneIds.indexOf("WF-303"));
   });
 });

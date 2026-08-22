@@ -1,0 +1,139 @@
+/*
+ * Task 12. A small module in its own right, following the same convention every other
+ * ward-management module documents on its own root class (see `ward.module.css` and
+ * `officer.module.css`): every local token this file needs is declared here, never borrowed
+ * from `ClinicalRail`'s own `--ward-*` scope even though this component is always mounted
+ * inside it — this stays self-sufficient regardless of where it is placed.
+ */
+.switcher {
+  --rs-blue: var(--clinical-accent);
+  --rs-blue-soft: var(--clinical-accent-soft);
+  --rs-blue-border: var(--clinical-accent-border);
+  --rs-canvas: var(--surface);
+  --rs-raised: var(--surface-raised);
+  --rs-subtle: var(--surface-subtle);
+  --rs-border: var(--border);
+  --rs-heading: var(--text-heading);
+  --rs-muted: var(--text-muted);
+  --rs-disabled: var(--disabled);
+  --rs-space-4: 0.25rem;
+  --rs-space-6: 0.375rem;
+  --rs-space-8: 0.5rem;
+  --rs-space-10: 0.625rem;
+  --rs-space-12: 0.75rem;
+  --rs-space-16: 1rem;
+  --rs-tap: var(--spacing-tap);
+  --rs-menu-width: 16rem;
+  --rs-menu-gap: var(--rs-space-8);
+  --rs-z-menu: var(--z-popover);
+  --rs-leading-tight: 1.15;
+  --rs-leading-body: 1.35;
+  position: relative;
+  display: inline-block;
+}
+
+.trigger {
+  display: grid;
+  width: var(--rs-tap);
+  height: var(--rs-tap);
+  flex-shrink: 0;
+  place-items: center;
+  border: 0.0625rem solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--rs-muted);
+  transition:
+    color var(--duration-fast),
+    border-color var(--duration-fast),
+    background-color var(--duration-fast);
+}
+
+.trigger:hover {
+  border-color: var(--rs-border);
+  background: var(--rs-canvas);
+  color: var(--rs-heading);
+}
+
+.trigger[aria-expanded="true"] {
+  border-color: var(--rs-blue-border);
+  background: var(--rs-blue-soft);
+  color: var(--rs-blue);
+  box-shadow: var(--shadow-inset);
+}
+
+.trigger svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.menu {
+  position: absolute;
+  top: 0;
+  left: calc(100% + var(--rs-menu-gap));
+  z-index: var(--rs-z-menu);
+  display: flex;
+  width: var(--rs-menu-width);
+  flex-direction: column;
+  gap: var(--rs-space-4);
+  border: 0.0625rem solid var(--rs-border);
+  border-radius: var(--radius-lg);
+  background: var(--rs-raised);
+  padding: var(--rs-space-8);
+  box-shadow: var(--e3);
+}
+
+.menuGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rs-space-4);
+}
+
+.menuGroupLabel {
+  padding: var(--rs-space-4) var(--rs-space-8) 0;
+  color: var(--rs-muted);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: var(--rs-leading-tight);
+  text-transform: uppercase;
+}
+
+.menuItem,
+.menuItemDisabled {
+  display: flex;
+  min-height: var(--rs-tap);
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--rs-space-4);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  padding: var(--rs-space-6) var(--rs-space-8);
+  text-align: left;
+}
+
+.menuItem {
+  color: var(--rs-heading);
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background: var(--rs-subtle);
+}
+
+.menuItemDisabled {
+  color: var(--rs-disabled);
+  cursor: not-allowed;
+}
+
+.menuItemLabel {
+  font-size: var(--text-sm-minus);
+  font-weight: 700;
+  line-height: var(--rs-leading-body);
+}
+
+.menuItemDetail {
+  color: var(--rs-muted);
+  font-size: var(--text-2xs);
+  line-height: var(--rs-leading-body);
+}

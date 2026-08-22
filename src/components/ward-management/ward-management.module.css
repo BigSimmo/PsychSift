@@ -1,5 +1,3 @@
-.console,
-.consoleCollapsed,
 .patientWorkspace {
   --ward-blue: var(--clinical-accent);
   --ward-blue-soft: var(--clinical-accent-soft);
@@ -51,21 +49,34 @@
   font-variant-numeric: tabular-nums;
 }
 
-.console,
-.consoleCollapsed {
-  display: grid;
-  grid-template-columns: 4.5rem 16rem minmax(0, 1fr);
-  grid-template-rows: 4rem minmax(0, 1fr);
-  height: 100dvh;
-  min-height: 44rem;
-  overflow: hidden;
-}
-
-.consoleCollapsed {
-  grid-template-columns: 4.5rem 4.75rem minmax(0, 1fr);
-}
-
 .clinicalRail {
+  /*
+   * Own its color/spacing tokens directly, rather than only relying on a host shell to define
+   * them. `.console`/`.consoleCollapsed`/`.patientWorkspace` (this file) and `.modeShell`
+   * (ward-management-modes.module.css) each declare `--ward-*`, but `.screen`
+   * (coordinator.module.css) uses an unrelated `--co-*` prefix and never did — so on the
+   * coordinator route (`/ward-management`) every `var(--ward-*)` below was silently invalid
+   * (computed background transparent, border 0px, z-index auto, padding 0px, nav gap `normal`),
+   * found empirically while verifying Task 9's rail-nav move — a real pre-existing gap, not
+   * something this task introduced, but one this task's own new `.modeNavigation` gap would
+   * otherwise inherit too. Declaring exactly the tokens this component's own subtree consumes
+   * (rail chrome/border/z-index, `.railRule` background, `.railLink`/`.railLinkActive` colors,
+   * `.avatar` colors, and the padding/gap spacing) here makes `ClinicalRail` self-sufficient
+   * regardless of which shell hosts it.
+   */
+  --ward-blue: var(--clinical-accent);
+  --ward-blue-soft: var(--clinical-accent-soft);
+  --ward-blue-border: var(--clinical-accent-border);
+  --ward-canvas: var(--surface);
+  --ward-chrome: var(--surface-chrome);
+  --ward-border: var(--border);
+  --ward-heading: var(--text-heading);
+  --ward-muted: var(--text-muted);
+  --ward-space-6: 0.375rem;
+  --ward-space-8: 0.5rem;
+  --ward-space-10: 0.625rem;
+  --ward-space-12: 0.75rem;
+  --ward-z-sticky: 3;
   grid-column: 1;
   grid-row: 1 / -1;
   z-index: var(--ward-z-sticky);
@@ -80,6 +91,7 @@
 
 .railBrand {
   display: grid;
+  flex-shrink: 0;
   width: 3rem;
   height: 3rem;
   place-items: center;
@@ -92,6 +104,7 @@
 }
 
 .railRule {
+  flex-shrink: 0;
   width: 2rem;
   height: 0.0625rem;
   margin: 0.25rem 0 0.625rem;
@@ -101,6 +114,7 @@
 .railNav,
 .railBottom {
   display: grid;
+  flex-shrink: 0;
   justify-items: center;
   gap: var(--ward-space-6);
 }
@@ -112,6 +126,17 @@
 .railLink,
 .railLinkActive {
   display: grid;
+  /*
+   * Controller review Critical 1: `.railLink`/`.railLinkActive` are also used inside
+   * `.modeNavigation` (ward-management-modes.module.css), a flex column that can be shorter
+   * than its natural content on a narrow viewport. Flex items shrink by default (`flex-shrink:
+   * 1`) even with an explicit `height`, so without `flex-shrink: 0` these were compressing to
+   * as little as 22px — well under the mandated 3rem/48px tap-target floor — on every viewport
+   * narrower than the one screenshot that happened to have room to spare. `flex-shrink: 0` is a
+   * no-op for the app-switcher's grid-item usage (`.railNav`/`.railBottom`), so this is safe
+   * there too.
+   */
+  flex-shrink: 0;
   width: 3rem;
   height: 3rem;
   place-items: center;
@@ -157,121 +182,6 @@
   font-weight: 700;
 }
 
-.commandHeader {
-  grid-column: 2 / -1;
-  grid-row: 1;
-  z-index: var(--ward-z-raised);
-  display: grid;
-  min-width: 0;
-  grid-template-columns: minmax(14rem, 1fr) minmax(20rem, 1.5fr) minmax(24rem, auto);
-  align-items: center;
-  gap: var(--ward-space-16);
-  border-bottom: 0.0625rem solid var(--ward-border);
-  background: var(--ward-canvas);
-  padding: 0 var(--ward-space-16);
-}
-
-.productIdentity,
-.pageIdentity,
-.headerMeta {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-}
-
-.productIdentity span,
-.pageIdentity {
-  min-width: 0;
-}
-
-.productIdentity strong {
-  display: block;
-  color: var(--ward-heading);
-  font-size: var(--text-lg);
-  font-weight: 650;
-  line-height: var(--ward-leading-dense);
-}
-
-.productIdentity small {
-  display: block;
-  overflow: hidden;
-  color: var(--ward-muted);
-  font-size: var(--text-xs);
-  line-height: var(--ward-leading-copy);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pageIdentity {
-  gap: var(--ward-space-16);
-  border-left: 0.0625rem solid var(--ward-border);
-  padding-left: var(--ward-space-20);
-}
-
-.pageIdentity h1 {
-  flex: 0 0 auto;
-  color: var(--ward-heading);
-  font-size: var(--text-lg);
-  font-weight: 650;
-  letter-spacing: -0.015em;
-}
-
-.pageIdentity label {
-  display: flex;
-  min-width: 11rem;
-  height: 2.5rem;
-  align-items: center;
-  gap: var(--ward-space-8);
-  border: 0.0625rem solid var(--ward-border);
-  border-radius: var(--radius-md);
-  background: var(--ward-canvas);
-  padding: 0 var(--ward-space-10);
-  color: var(--ward-heading);
-}
-
-.pageIdentity label > svg {
-  width: 1rem;
-  height: 1rem;
-  color: var(--ward-blue);
-}
-
-.pageIdentity label > svg:last-child {
-  width: 0.875rem;
-  height: 0.875rem;
-  color: var(--ward-muted);
-}
-
-.pageIdentity select {
-  min-width: 0;
-  flex: 1;
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-size: var(--text-xs);
-  font-weight: 650;
-  outline: none;
-}
-
-.headerMeta {
-  justify-content: flex-end;
-  gap: var(--ward-space-16);
-  color: var(--ward-muted);
-  font-size: var(--text-xs);
-  white-space: nowrap;
-}
-
-.headerMeta > span {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ward-space-6);
-}
-
-.headerMeta svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
 .prototypeBadge {
   display: inline-flex;
   min-height: 1.75rem;
@@ -286,434 +196,11 @@
   letter-spacing: 0.01em;
 }
 
-.queuePanel,
-.queueCollapsed {
-  grid-column: 2;
-  grid-row: 2;
-  z-index: var(--ward-z-base);
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-  border-right: 0.0625rem solid var(--ward-border);
-  background: var(--ward-canvas);
-}
-
-.queueHeader {
-  flex: 0 0 auto;
-  border-bottom: 0.0625rem solid var(--ward-border);
-  padding: var(--ward-space-14) var(--ward-space-12) var(--ward-space-10);
-}
-
-.queueHeader h2 {
-  color: var(--ward-heading);
-  font-size: var(--text-base);
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.queueHeader h2 span {
-  display: inline-grid;
-  min-width: 1.625rem;
-  height: 1.625rem;
-  margin-left: 0.25rem;
-  place-items: center;
-  border: 0.0625rem solid var(--ward-border);
-  border-radius: var(--radius-pill, 9999px);
-  background: var(--ward-subtle);
-  font-size: var(--text-xs);
-}
-
-.queueHeader p {
-  margin-top: 0.125rem;
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-}
-
-.collapseQueue,
-.filterButton {
-  display: flex;
-  width: 100%;
-  min-height: 2.5rem;
-  align-items: center;
-  gap: var(--ward-space-8);
-  border: 0.0625rem solid var(--ward-blue-border);
-  border-radius: var(--radius-md);
-  background: var(--ward-canvas);
-  color: var(--ward-blue);
-  font-size: var(--text-xs);
-  font-weight: 650;
-}
-
-.collapseQueue {
-  justify-content: center;
-  margin-top: 0.625rem;
-  box-shadow: var(--shadow-inset);
-}
-
-.collapseQueue svg,
-.filterButton svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.filterButton {
-  margin-top: 0.5rem;
-  justify-content: flex-start;
-  border-color: var(--ward-border);
-  color: var(--ward-heading);
-  padding: 0 var(--ward-space-10);
-}
-
-.filterButton svg:last-child {
-  margin-left: auto;
-  color: var(--ward-muted);
-}
-
-.filterSummary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ward-space-4);
-  padding-top: var(--ward-space-8);
-}
-
-.filterSummary span {
-  border: 0.0625rem solid var(--ward-border);
-  border-radius: var(--radius-pill, 9999px);
-  background: var(--ward-subtle);
-  padding: var(--ward-space-3) var(--ward-space-7);
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-}
-
-.queueScroll {
-  min-height: 0;
-  flex: 1;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-color: var(--ward-muted) transparent;
-  scrollbar-width: thin;
-}
-
-.queueScroll:focus-visible {
-  outline: 0.125rem solid var(--focus);
-  outline-offset: -0.125rem;
-}
-
-.queueSectionLabel {
-  margin: 0;
-  border-bottom: 0.0625rem solid var(--ward-border);
-  background: var(--ward-subtle);
-  padding: var(--ward-space-8) var(--ward-space-12);
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-  font-weight: 600;
-}
-
-.patientRow,
-.patientRowSelected {
-  display: block;
-  width: 100%;
-  min-height: 6rem;
-  border: 0;
-  border-bottom: 0.0625rem solid var(--ward-border);
-  background: var(--ward-canvas);
-  padding: var(--ward-space-8) var(--ward-space-12);
-  color: var(--ward-text);
-  text-align: left;
-  transition: background-color var(--duration-fast);
-}
-
-.patientRow:hover {
-  background: var(--ward-subtle);
-}
-
-.patientRowSelected {
-  position: relative;
-  background: var(--ward-blue-soft);
-  box-shadow: inset 0.1875rem 0 0 var(--ward-blue);
-}
-
-.patientRowTop {
-  display: grid;
-  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--ward-space-6);
-  color: var(--ward-heading);
-  font-size: var(--text-xs);
-}
-
-.patientRowTop strong {
-  font-weight: 700;
-}
-
-.queuePosition {
-  width: 1rem;
-  color: var(--ward-muted);
-  text-align: center;
-}
-
-.elapsed {
-  overflow: hidden;
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.destinationCode {
-  color: var(--ward-blue);
-  font-weight: 700;
-}
-
-.queueBadge,
-.queueBadgeDanger {
-  display: inline-flex;
-  min-height: 1.25rem;
-  align-items: center;
-  border: 0.0625rem solid var(--ward-border);
-  border-radius: var(--radius-sm);
-  background: var(--ward-canvas);
-  padding: 0 var(--ward-space-5);
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-  font-weight: 600;
-}
-
-.queueBadgeDanger {
-  border-color: var(--danger-border);
-  background: var(--ward-danger-soft);
-  color: var(--ward-danger);
-  font-weight: 750;
-}
-
-.patientBadges {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: var(--ward-space-4);
-  margin-top: var(--ward-space-4);
-}
-
-.patientBadges strong {
-  margin-left: auto;
-  color: var(--ward-success);
-  font-size: var(--text-xs);
-}
-
-.patientMeta {
-  display: block;
-  margin-top: var(--ward-space-4);
-  overflow: hidden;
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-  line-height: var(--ward-leading-ui);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.queueFooter {
-  display: flex;
-  min-height: 3.25rem;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ward-space-8);
-  border-top: 0.0625rem solid var(--ward-border);
-  padding: 0 var(--ward-space-12);
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-}
-
-.queueFooter button,
-.queueFooter a {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ward-space-6);
-  border: 0;
-  background: transparent;
-  color: var(--ward-blue);
-  font-weight: 650;
-}
-
-.queueFooter svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-.queueCollapsed {
-  align-items: center;
-  gap: var(--ward-space-12);
-  padding: var(--ward-space-12) var(--ward-space-8);
-}
-
-.expandQueue {
-  display: grid;
-  width: 3rem;
-  height: 3rem;
-  place-items: center;
-  border: 0.0625rem solid var(--ward-blue-border);
-  border-radius: var(--radius-lg);
-  background: var(--ward-blue-soft);
-  color: var(--ward-blue);
-}
-
-.expandQueue svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.collapsedCount {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  border-radius: var(--radius-pill, 9999px);
-  background: var(--ward-subtle);
-  color: var(--ward-heading);
-  font-size: var(--text-xs);
-}
-
-.priorityMarkers {
-  display: grid;
-  width: 100%;
-  min-height: 0;
-  gap: var(--ward-space-8);
-  overflow-y: auto;
-}
-
-.priorityMarker,
-.priorityMarkerSelected {
-  display: grid;
-  width: var(--spacing-tap);
-  min-height: var(--spacing-tap);
-  margin: 0 auto;
-  place-items: center;
-  border: 0.0625rem solid var(--ward-border);
-  border-radius: var(--radius-md);
-  background: var(--ward-canvas);
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-  font-weight: 700;
-}
-
-.priorityMarkerSelected {
-  border-color: var(--ward-blue-border);
-  background: var(--ward-blue-soft);
-  color: var(--ward-blue);
-  box-shadow: var(--shadow-inset);
-}
-
-.commandMain {
-  grid-column: 3;
-  grid-row: 2;
-  display: grid;
-  min-width: 0;
-  min-height: 0;
-  grid-template-rows: auto auto auto minmax(17rem, 1fr) auto;
-  gap: var(--ward-space-8);
-  overflow: hidden;
-  background: var(--ward-canvas);
-  padding: var(--ward-space-8) var(--ward-space-12) var(--ward-space-10);
-}
-
-.actionInbox,
-.movementPipeline,
-.networkPanel,
-.decisionDock,
-.reopenDecision {
+.movementPipeline {
   border: 0.0625rem solid var(--ward-border);
   border-radius: var(--radius-lg);
   background: var(--ward-canvas);
   box-shadow: var(--e0);
-}
-
-.actionInbox {
-  display: grid;
-  min-height: 3.125rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  align-items: stretch;
-  overflow: hidden;
-}
-
-.inboxItem,
-.viewInbox {
-  display: flex;
-  min-width: 0;
-  min-height: 3rem;
-  align-items: center;
-  gap: var(--ward-space-10);
-  border: 0;
-  border-right: 0.0625rem solid var(--ward-border);
-  background: transparent;
-  padding: var(--ward-space-6) var(--ward-space-12);
-  color: var(--ward-text);
-  text-align: left;
-}
-
-.inboxItem:hover,
-.viewInbox:hover {
-  background: var(--ward-subtle);
-}
-
-.inboxItem > svg {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex: 0 0 auto;
-}
-
-.inboxItem > svg[data-tone="danger"] {
-  color: var(--ward-danger);
-}
-
-.inboxItem > svg[data-tone="warning"] {
-  color: var(--ward-warning);
-}
-
-.inboxItem > span:nth-child(2) {
-  min-width: 0;
-  flex: 1;
-}
-
-.inboxItem strong,
-.inboxItem small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.inboxItem strong {
-  color: var(--ward-heading);
-  font-size: var(--text-2xs);
-  font-weight: 650;
-}
-
-.inboxItem small,
-.inboxItem > span:last-child {
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-}
-
-.inboxItem > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.viewInbox {
-  justify-content: center;
-  border-right: 0;
-  color: var(--ward-blue);
-  font-size: var(--text-2xs);
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.viewInbox svg {
-  width: 0.875rem;
-  height: 0.875rem;
 }
 
 .movementPipeline {
@@ -812,291 +299,6 @@
   color: var(--ward-muted);
 }
 
-.networkPanel {
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  padding: var(--ward-space-8) var(--ward-space-8) 0;
-}
-
-.regionGrid {
-  display: grid;
-  min-width: 58rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.regionColumn {
-  min-width: 0;
-  border-right: 0.0625rem solid var(--ward-border);
-}
-
-.regionColumn:last-child {
-  border-right: 0;
-}
-
-.regionHeading {
-  display: grid;
-  grid-template-columns: 2rem minmax(2rem, 1fr);
-  grid-template-rows: auto auto auto;
-  align-items: center;
-  column-gap: var(--ward-space-8);
-  padding: var(--ward-space-2) var(--ward-space-12) var(--ward-space-8);
-  text-align: center;
-}
-
-.regionIcon {
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  grid-column: 1;
-  grid-row: 1 / 3;
-  place-items: center;
-  border: 0.0625rem solid var(--ward-blue-border);
-  border-radius: var(--radius-md);
-  background: var(--ward-blue-soft);
-  color: var(--ward-blue);
-}
-
-.regionIcon svg {
-  width: 1.125rem;
-  height: 1.125rem;
-}
-
-.networkLine {
-  position: relative;
-  grid-column: 2;
-  height: 0.125rem;
-  background: var(--ward-blue);
-}
-
-.networkLine svg {
-  position: absolute;
-  right: 42%;
-  top: 50%;
-  width: 0.875rem;
-  height: 0.875rem;
-  transform: translateY(-50%);
-  background: var(--ward-canvas);
-  color: var(--ward-blue);
-}
-
-.regionHeading h3 {
-  grid-column: 1 / -1;
-  color: var(--ward-heading);
-  font-size: var(--text-sm);
-  font-weight: 700;
-}
-
-.regionHeading p {
-  grid-column: 1 / -1;
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-}
-
-.regionHeading p strong {
-  color: var(--ward-heading);
-}
-
-.regionHeading p b {
-  color: var(--ward-success);
-}
-
-.hospitalList {
-  border-top: 0.0625rem solid var(--ward-border);
-}
-
-.hospitalNode,
-.hospitalNodeSelected {
-  display: block;
-  width: 100%;
-  min-height: 7rem;
-  border: 0;
-  border-bottom: 0.0625rem solid var(--ward-border);
-  background: transparent;
-  padding: var(--ward-space-8) var(--ward-space-12) var(--ward-space-6);
-  color: var(--ward-text);
-  text-align: left;
-}
-
-.hospitalNode:hover {
-  background: var(--ward-subtle);
-}
-
-.hospitalNodeSelected {
-  position: relative;
-  z-index: var(--ward-z-base);
-  background: var(--ward-blue-soft);
-  box-shadow: inset 0 0 0 0.125rem var(--ward-blue);
-}
-
-.hospitalHeading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ward-space-8);
-}
-
-.hospitalHeading > span strong,
-.hospitalHeading > span small {
-  display: block;
-}
-
-.hospitalHeading strong {
-  color: var(--ward-heading);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  line-height: var(--ward-leading-dense);
-}
-
-.hospitalHeading small {
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-  line-height: var(--ward-leading-dense);
-}
-
-.hospitalHeading svg {
-  width: 0.875rem;
-  height: 0.875rem;
-  color: var(--ward-muted);
-}
-
-.capacityGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0;
-  margin-top: 0.125rem;
-}
-
-.capacityLine {
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  gap: var(--ward-space-6);
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-  line-height: var(--ward-leading-compact);
-}
-
-.capacityLine strong {
-  color: var(--ward-heading);
-  font-weight: 650;
-}
-
-.status-available,
-.status-held,
-.status-potential,
-.status-blocked,
-.status-occupied {
-  width: 0.5rem;
-  height: 0.5rem;
-  flex: 0 0 auto;
-  border: 0.0625rem solid currentColor;
-  border-radius: var(--radius-pill, 9999px);
-}
-
-.status-available {
-  border-color: var(--ward-success);
-  background: var(--ward-success);
-}
-
-.status-held {
-  border-radius: var(--ward-radius-pixel);
-  border-color: var(--ward-warning);
-  background: transparent;
-  transform: rotate(45deg);
-}
-
-.status-potential {
-  border-style: dotted;
-  border-color: var(--ward-warning);
-  background: transparent;
-}
-
-.status-blocked {
-  border-color: var(--ward-danger);
-  background: var(--ward-danger);
-}
-
-.status-occupied {
-  border-color: var(--ward-muted);
-  background: var(--ward-muted);
-}
-
-.lastConfirmed {
-  display: block;
-  margin-top: 0.25rem;
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-}
-
-.networkLegend {
-  position: sticky;
-  bottom: 0;
-  display: grid;
-  min-width: 58rem;
-  grid-template-columns: repeat(5, minmax(8rem, 1fr)) minmax(18rem, auto);
-  gap: var(--ward-space-8);
-  align-items: center;
-  border-top: 0.0625rem solid var(--ward-border);
-  background: var(--ward-canvas);
-  padding: var(--ward-space-10) var(--ward-space-12);
-}
-
-.networkLegend .capacityLine strong {
-  display: none;
-}
-
-.catchmentRule {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--ward-space-6);
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-  text-align: right;
-}
-
-.catchmentRule svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-.decisionDock {
-  position: relative;
-  display: grid;
-  min-height: 9.5rem;
-  grid-template-columns: minmax(13rem, 1.15fr) minmax(12rem, 1.15fr) minmax(10rem, 0.9fr) minmax(9rem, 0.8fr) minmax(
-      12rem,
-      1fr
-    );
-  grid-template-rows: 1fr auto;
-  align-items: stretch;
-  border-color: var(--ward-blue);
-  overflow: hidden;
-}
-
-.decisionIdentity,
-.matchReasons,
-.prioritySummary,
-.readiness,
-.decisionActions {
-  min-width: 0;
-  border-right: 0.0625rem solid var(--ward-border);
-  padding: var(--ward-space-12);
-}
-
-.decisionIdentity p {
-  display: flex;
-  gap: var(--ward-space-8);
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-}
-
-.decisionIdentity p strong {
-  color: var(--ward-heading);
-  font-size: var(--text-xs);
-}
-
 .aiLabel {
   display: inline-flex;
   align-items: center;
@@ -1111,111 +313,6 @@
   width: 0.875rem;
   height: 0.875rem;
   color: var(--ward-blue);
-}
-
-.decisionIdentity h3 {
-  margin-top: 0.25rem;
-  color: var(--ward-blue);
-  font-size: var(--text-xl);
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  line-height: var(--ward-leading-tight);
-}
-
-.decisionIdentity h3 span {
-  color: var(--ward-heading);
-  font-size: var(--text-sm);
-}
-
-.decisionIdentity h3 b {
-  color: var(--ward-success);
-  font-size: var(--text-base);
-}
-
-.matchReasons,
-.prioritySummary,
-.readiness {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--ward-space-6);
-}
-
-.matchReasons > span,
-.readiness > span {
-  display: flex;
-  align-items: center;
-  gap: var(--ward-space-8);
-  overflow: hidden;
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.matchReasons svg,
-.readiness svg {
-  width: 0.875rem;
-  height: 0.875rem;
-  flex: 0 0 auto;
-  color: var(--ward-success);
-}
-
-.matchReasons > span:first-child svg {
-  color: var(--ward-blue);
-}
-
-.matchReasons button,
-.prioritySummary button {
-  display: flex;
-  width: fit-content;
-  align-items: center;
-  gap: var(--ward-space-4);
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: var(--ward-blue);
-  font-size: var(--text-2xs);
-  font-weight: 650;
-}
-
-.matchReasons button svg {
-  color: currentColor;
-}
-
-.prioritySummary p {
-  display: flex;
-  gap: var(--ward-space-6);
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-}
-
-.prioritySummary p strong {
-  color: var(--ward-heading);
-}
-
-.prioritySummary > span,
-.readiness > strong {
-  color: var(--ward-heading);
-  font-size: var(--text-2xs);
-  font-weight: 650;
-}
-
-.prioritySummary button {
-  width: 100%;
-  justify-content: space-between;
-}
-
-.prioritySummary button strong {
-  color: var(--ward-success);
-}
-
-.decisionActions {
-  display: grid;
-  border-right: 0;
-  place-content: center stretch;
-  gap: var(--ward-space-8);
-  padding-right: var(--ward-space-24);
 }
 
 .confirmButton,
@@ -1243,124 +340,6 @@
 .confirmedButton svg {
   width: 1rem;
   height: 1rem;
-}
-
-.decisionActions a {
-  display: inline-flex;
-  min-height: 2rem;
-  align-items: center;
-  justify-content: center;
-  gap: var(--ward-space-6);
-  color: var(--ward-blue);
-  font-size: var(--text-2xs);
-  font-weight: 650;
-  text-align: center;
-}
-
-.decisionActions a svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-.closeDock {
-  position: absolute;
-  right: 0.25rem;
-  top: 0.25rem;
-  z-index: var(--ward-z-raised);
-  display: grid;
-  width: 2rem;
-  height: 2rem;
-  place-items: center;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--ward-muted);
-}
-
-.closeDock:hover {
-  background: var(--ward-subtle);
-  color: var(--ward-heading);
-}
-
-.closeDock svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.aiBoundary {
-  grid-column: 1 / -1;
-  display: flex;
-  min-height: 1.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: var(--ward-space-8);
-  border-top: 0.0625rem solid var(--ward-border);
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-}
-
-.reopenDecision {
-  display: inline-flex;
-  min-height: 3.5rem;
-  align-items: center;
-  justify-content: center;
-  gap: var(--ward-space-8);
-  border-color: var(--ward-blue-border);
-  color: var(--ward-blue);
-  font-size: var(--text-xs);
-  font-weight: 650;
-}
-
-.reopenDecision svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.inboxSheet {
-  max-width: 28rem;
-}
-
-.inboxSheetBody {
-  display: grid;
-  gap: var(--ward-space-12);
-  padding: var(--ward-space-16);
-}
-
-.inboxSheetBody h3 {
-  color: var(--ward-heading);
-  font-size: var(--text-sm);
-  font-weight: 650;
-}
-
-.inboxSheetBody p {
-  color: var(--ward-muted);
-  font-size: var(--text-sm);
-  line-height: var(--ward-leading-prose);
-}
-
-.inboxSheetBody button {
-  display: flex;
-  min-height: 3rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ward-space-12);
-  border: 0.0625rem solid var(--ward-border);
-  border-radius: var(--radius-md);
-  background: var(--ward-canvas);
-  padding: var(--ward-space-10) var(--ward-space-12);
-  color: var(--ward-heading);
-  text-align: left;
-}
-
-.inboxSheetBody button > span {
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-}
-
-.inboxSheetBody button svg {
-  width: 1rem;
-  height: 1rem;
-  color: var(--ward-blue);
 }
 
 .patientWorkspace {
@@ -1680,157 +659,7 @@
   line-height: var(--ward-leading-relaxed);
 }
 
-@media (max-width: 78rem) {
-  .productIdentity small,
-  .headerMeta > span:not(.prototypeBadge):nth-of-type(3) {
-    display: none;
-  }
-
-  .commandHeader {
-    grid-template-columns: minmax(10rem, 0.7fr) minmax(18rem, 1.4fr) auto;
-  }
-
-  .decisionDock {
-    grid-template-columns: minmax(12rem, 1.1fr) minmax(11rem, 1fr) minmax(9rem, 0.8fr) minmax(11rem, 1fr);
-  }
-
-  .readiness {
-    display: none;
-  }
-
-  .decisionActions {
-    border-right: 0;
-  }
-}
-
 @media (max-width: 62rem) {
-  .console,
-  .consoleCollapsed {
-    grid-template-columns: 4rem minmax(0, 1fr);
-    grid-template-rows: 4rem auto minmax(0, 1fr);
-    min-height: 40rem;
-  }
-
-  .clinicalRail {
-    grid-column: 1;
-    grid-row: 1 / -1;
-  }
-
-  .commandHeader {
-    grid-column: 2;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .productIdentity,
-  .headerMeta > span:not(.prototypeBadge) {
-    display: none;
-  }
-
-  .pageIdentity {
-    border-left: 0;
-    padding-left: 0;
-  }
-
-  .queuePanel,
-  .queueCollapsed {
-    grid-column: 2;
-    grid-row: 2;
-    display: block;
-    border-right: 0;
-    border-bottom: 0.0625rem solid var(--ward-border);
-  }
-
-  .queueHeader {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: var(--ward-space-8);
-    padding: var(--ward-space-8) var(--ward-space-12);
-  }
-
-  .queueHeader p {
-    display: none;
-  }
-
-  .collapseQueue,
-  .filterButton {
-    width: auto;
-    min-width: 3rem;
-    min-height: 3rem;
-    margin: 0;
-    padding: 0 var(--ward-space-12);
-  }
-
-  .collapseQueue span {
-    display: none;
-  }
-
-  .filterSummary {
-    grid-column: 1 / -1;
-  }
-
-  .queueScroll,
-  .queueFooter {
-    display: none;
-  }
-
-  .queueCollapsed {
-    display: flex;
-    min-height: 4rem;
-    flex-direction: row;
-    padding: var(--ward-space-8) var(--ward-space-12);
-  }
-
-  .collapsedCount {
-    flex: 0 0 auto;
-  }
-
-  .priorityMarkers {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .priorityMarker,
-  .priorityMarkerSelected {
-    flex: 0 0 var(--spacing-tap);
-  }
-
-  .commandMain {
-    grid-column: 2;
-    grid-row: 3;
-    overflow-y: auto;
-  }
-
-  .actionInbox {
-    grid-template-columns: repeat(3, minmax(13rem, 1fr)) auto;
-    overflow-x: auto;
-  }
-
-  .networkPanel {
-    min-height: 25rem;
-  }
-
-  .decisionDock {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .decisionIdentity,
-  .matchReasons,
-  .prioritySummary,
-  .decisionActions {
-    border-bottom: 0.0625rem solid var(--ward-border);
-  }
-
-  .matchReasons,
-  .decisionActions {
-    border-right: 0;
-  }
-
-  .aiBoundary {
-    grid-column: 1 / -1;
-  }
-
   .workspaceGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1841,8 +670,6 @@
 }
 
 @media (max-width: 40rem) {
-  .console,
-  .consoleCollapsed,
   .patientWorkspace {
     display: block;
     min-height: 100dvh;
@@ -1850,11 +677,19 @@
     overflow: visible;
   }
 
-  .clinicalRail {
+  /*
+   * Task 9 Ruling 4: the coordinator (`.screen`, coordinator.module.css) and mode-workspace
+   * (`.modeShell`, ward-management-modes.module.css) shells now render their eight Ward Flow
+   * mode links inside this rail, so it stays visible and reachable down to 320px there. The
+   * patient movement workspace (`.patientWorkspace`) is a single detail route, not one of the
+   * eight modes, and never gained rail-based navigation — it keeps its original phone-collapsed,
+   * rail-free layout. `WardManagementConsole` (formerly `.console`/`.consoleCollapsed` here) is
+   * deleted (Ruling 3), so this rule no longer needs to name it.
+   */
+  .patientWorkspace .clinicalRail {
     display: none;
   }
 
-  .commandHeader,
   .workspaceHeader {
     position: sticky;
     top: 0;
@@ -1865,70 +700,11 @@
       var(--ward-space-8) max(var(--ward-space-12), env(safe-area-inset-left));
   }
 
-  .commandHeader {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .pageIdentity h1 {
-    font-size: var(--text-base);
-  }
-
-  .pageIdentity label {
-    min-width: 0;
-    height: var(--spacing-tap);
-  }
-
-  .pageIdentity label > svg:first-child {
-    display: none;
-  }
-
-  .headerMeta {
-    gap: 0;
-  }
-
   .prototypeBadge {
     max-width: 5.25rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .queuePanel,
-  .queueCollapsed {
-    position: relative;
-    display: block;
-  }
-
-  .queuePanel .queueScroll {
-    display: flex;
-    min-height: 6.25rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .queuePanel .queueSectionLabel,
-  .queuePanel .queueFooter {
-    display: none;
-  }
-
-  .patientRow,
-  .patientRowSelected {
-    min-width: 17rem;
-    flex: 0 0 17rem;
-    border-right: 0.0625rem solid var(--ward-border);
-  }
-
-  .commandMain {
-    display: grid;
-    grid-template-rows: auto auto auto auto auto;
-    min-height: 0;
-    overflow: visible;
-    padding-bottom: max(var(--ward-space-12), env(safe-area-inset-bottom));
-  }
-
-  .actionInbox {
-    grid-template-columns: repeat(3, minmax(15rem, 1fr)) auto;
   }
 
   .movementPipeline {
@@ -1938,34 +714,6 @@
   .stageGroup {
     min-width: 10rem;
     flex-basis: 10rem;
-  }
-
-  .networkPanel {
-    min-height: 29rem;
-  }
-
-  .decisionDock {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .decisionIdentity,
-  .matchReasons,
-  .prioritySummary,
-  .decisionActions {
-    border-right: 0;
-  }
-
-  .prioritySummary {
-    display: none;
-  }
-
-  .decisionActions {
-    padding-right: var(--ward-space-12);
-  }
-
-  .aiBoundary {
-    padding: var(--ward-space-8) var(--ward-space-32) var(--ward-space-8) var(--ward-space-12);
-    text-align: left;
   }
 
   .workspaceHeader {
@@ -2008,30 +756,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .railLink,
-  .railLinkActive,
-  .patientRow,
-  .patientRowSelected {
+  .railLinkActive {
     transition: none;
   }
 }
 
 @media (forced-colors: active) {
   .railLinkActive,
-  .patientRowSelected,
-  .hospitalNodeSelected,
-  .priorityMarkerSelected,
   .stageActive {
     border: 0.125rem solid Highlight;
-  }
-
-  .status-available,
-  .status-blocked,
-  .status-occupied {
-    background: CanvasText;
-  }
-
-  .status-held,
-  .status-potential {
-    border-color: CanvasText;
   }
 }

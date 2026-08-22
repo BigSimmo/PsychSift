@@ -6,7 +6,28 @@
   --co-space-12: 0.75rem;
   --co-space-14: 0.875rem;
   --co-space-20: 1.25rem;
-  --co-space-48: 3rem;
+  --co-space-48: var(--spacing-tap);
+  /*
+   * Task 7: the phone-pinned referral bar's own vertical footprint, computed rather than
+   * measured — one `--co-space-48` button row, `--co-shortlist-bar-pad-y` above it, at least the
+   * same padding (more on a device with a taller home-indicator safe area) below it, plus its own
+   * `0.0625rem` top border. `.shortlistActionRow`'s padding and `.main:has(.shortlistActionRow)`'s
+   * reserve both read these same tokens rather than restating the numbers, so the bar's real
+   * height and the space carved out for it can never drift apart.
+   */
+  --co-shortlist-bar-pad-y: var(--co-space-8);
+  --co-shortlist-bar-safe-bottom: max(var(--co-space-8), var(--safe-area-bottom));
+  --co-shortlist-bar-reserve: calc(
+    var(--co-space-48) + var(--co-shortlist-bar-pad-y) + var(--co-shortlist-bar-safe-bottom) + 0.0625rem
+  );
+  /* Custom-property assignments, not `z-index:` declarations — the design-system contract
+     ratchets raw `z-index:` literals, not the tokens that hold them. Every actual `z-index`
+     declaration in this file reads through `var(--co-z-*)`, except the phone referral bar below,
+     which reaches straight for the global `--z-overlay` ladder rung: once pinned, it escapes this
+     component's own stacking context and has to sort against page-level chrome, not against the
+     flow-diagram's local connectors/nodes pair. */
+  --co-z-connectors: 1;
+  --co-z-nodes: 2;
   --co-leading-compact: 1.1;
   --co-leading-tight: 1.2;
   --co-leading-body: 1.4;
@@ -26,26 +47,21 @@
   display: grid;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  /*
+   * Task 9 Ruling 4: the horizontal `WardModeNavigation` row this used to reserve is gone — the
+   * eight mode links live in `ClinicalRail` (grid-column 1) now — so `.main` is down to three
+   * rows: the governance banner, the scrollable body, and the exceptions drawer.
+   */
+  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
 }
 
 /*
- * `ClinicalRail` (from the shared ward-management.module.css) sets `display: none` on itself at
- * <=40rem, but that only removes the element — a fixed `4.5rem` track in `.screen`'s own
- * grid-template-columns still reserves the width regardless of what occupies it, leaving a
- * blank 72px band down the left edge of the narrowest supported layout. Collapse to one column
- * at the same breakpoint the rail already hides at.
+ * `ClinicalRail` (shared ward-management.module.css) now carries Ward Flow's own mode
+ * navigation (Task 9 Ruling 4), so it stays visible and reachable down to 320px on this screen —
+ * it no longer collapses to `display: none` here, and `.screen`'s fixed `4.5rem` rail track
+ * stays reserved at every supported width rather than collapsing to one column.
  */
-@media (max-width: 40rem) {
-  .screen {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .main {
-    grid-column: 1;
-  }
-}
 
 .governanceBanner {
   display: flex;
@@ -158,6 +174,13 @@
  * the strip's only job is a one-second read). `auto-fit` sizes eight columns comfortably at
  * 1600px and wraps onto more rows as the region narrows, without ever clipping a card.
  */
+.pressureRule {
+  margin: 0 0 var(--co-space-8);
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--co-leading-body);
+}
+
 .pressureList {
   display: grid;
   min-width: 0;
@@ -188,7 +211,24 @@
 .pressureCardSelected {
   border-color: var(--clinical-accent-border);
   background: var(--clinical-accent-soft);
+  /*
+   * `outline` rather than another border/background/box-shadow property: the breaching rule
+   * below sets border-color and background on `.pressureCardSelected[data-breaching]` too (a
+   * breaching card is always danger-tinted, selected or not), which fully overrides those two
+   * properties here regardless of selector order. `outline` is never touched by that rule, so
+   * it survives on a selected+breaching card — previously the only surviving difference there
+   * was a 1px inset shadow, which forced-colors flattens to `none`, leaving zero visible
+   * difference between selected and unselected on any breaching card (Task 4 review Important
+   * 4). `outline-offset: -0.125rem` draws it just inside the border so it doesn't add to the
+   * card's footprint in the grid.
+   */
+  outline: 0.125rem solid var(--clinical-accent-border);
+  outline-offset: -0.125rem;
   box-shadow: var(--shadow-inset);
+}
+
+.pressureCardSelected:hover {
+  outline-width: 0.1875rem;
 }
 
 /*
@@ -196,10 +236,11 @@
  * see `edPressure`), but ordering alone reads as arbitrary at a glance. A department with a
  * breached legal deadline gets the danger tint regardless of selection state, so the reason it
  * leads is visible on the card itself, not just implied by its position (Task 4 ruling — "the
- * worst card must say why it is worst").
+ * worst card must say why it is worst"). `data-breaching` is always the real numeric count
+ * (never a boolean), so this matches any non-zero count rather than one hard-coded sentinel.
  */
-.pressureCard[data-breaching="true"],
-.pressureCardSelected[data-breaching="true"] {
+.pressureCard:not([data-breaching="0"]),
+.pressureCardSelected:not([data-breaching="0"]) {
   border-color: var(--danger-border);
   background: var(--danger-bg);
 }
@@ -244,10 +285,25 @@
  * real phone composition (hiding the diagram, one-tap confirm); this only keeps the frame from
  * breaking in the meantime.
  */
+/*
+ * `align-self: start` (rather than the grid default `stretch`) is load-bearing for the diagram's
+ * own `min-height` floor below to actually work. Without it, `.body`'s `minmax(0, 1fr)` row
+ * force-stretches this grid to a fixed, viewport-derived height, and when `.diagramRegion`'s
+ * explicit floor exceeds that fixed budget, CSS Grid's row-sizing algorithm satisfies it by
+ * squeezing the SIBLING rows that have no floor of their own — measured: the priority queue's
+ * list collapsed to zero visible rows (its own `overflow-y: auto` absorbing the entire deficit)
+ * at 1280x900, breaking the queue's click target along with it (Controller finding 8 follow-up).
+ * `align-self: start` instead lets this grid size to its own natural content height — including
+ * every row's own explicit minimum — and overflow `.body`'s box when that natural height is
+ * taller than the viewport, which `.body`'s own `overflow: auto` (declared above) already
+ * reveals via one ordinary page-level scrollbar. No sibling is squeezed below its own minimum to
+ * pay for another row's floor.
+ */
 .regionGrid {
   display: grid;
   min-width: 0;
   min-height: 0;
+  align-self: start;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--co-space-10);
 }
@@ -255,14 +311,53 @@
 @media (min-width: 90rem) {
   .regionGrid {
     grid-template-columns: 14rem minmax(38rem, 1fr) 23rem;
+    /*
+     * Restores the ORIGINAL `stretch` (the grid default; `align-self: start` above is what
+     * overrides it) — at this width the three regions share one row, and stretch-then-squeeze
+     * is what already gave every region (queue's own internal scroll included) a sensible,
+     * viewport-proportional height before this task touched anything, exactly as Controller
+     * finding 8's own 1600x1100 screenshot showed working. Content-sizing (`start`) is only
+     * needed below this width, where the region grid switches to separate stacked rows and
+     * `.diagramRegion`'s floor would otherwise steal space from a sibling that shares no row
+     * with it — see that override's own comment. Verified empirically: applying `start`
+     * unscoped here let `.queueRegion`'s now-uncapped natural height (41 unclamped rows,
+     * ~4300px) become the shared row's height, stretching every column to match it.
+     */
+    align-self: stretch;
   }
 }
 
+/*
+ * `max-height` here is what makes `.queueList`'s own `overflow-y: auto` below actually engage
+ * now that `.regionGrid` sizes to its own content (`align-self: start`, above) rather than being
+ * force-stretched to a fixed, viewport-derived height. Before that change, this region's compact,
+ * internally-scrolling card relied entirely on the OUTER grid squeeze to give it a bounded box —
+ * with that squeeze gone (deliberately, so the diagram's own floor below can be honoured without
+ * stealing this region's space), this needs its own explicit cap to keep behaving the same way,
+ * rather than growing to show all 41 movements unclamped.
+ */
 .queueRegion {
   display: flex;
   min-height: 0;
+  max-height: 26rem;
   flex-direction: column;
   padding: var(--co-space-12);
+}
+
+/*
+ * The 26rem cap above exists only to keep the STACKED layout's page length sane (see its own
+ * comment). At >=90rem the three regions share one row instead, and `.queueRegion` should
+ * stretch to fill whatever height that shared row naturally ends up being — its own long-standing
+ * behaviour, unchanged since Task 5 — not stay pinned to a fixed cap regardless of how much room
+ * the row actually has. This rule must stay AFTER the base `.queueRegion` rule above: CSS resolves
+ * two equal-specificity declarations of the same property by source order, not by which one sits
+ * inside a media query, so placing this earlier let the unconditional 26rem cap win even at wide
+ * viewports (found and fixed while verifying this task's own review fix empirically).
+ */
+@media (min-width: 90rem) {
+  .queueRegion {
+    max-height: none;
+  }
 }
 
 /* The 14rem queue column is too narrow for "Priority queue" and the open-movement count to
@@ -318,12 +413,582 @@
   line-height: var(--co-leading-body);
 }
 
+/*
+ * The tier badge is a pill rather than plain text so it reads as a distinct field at a glance,
+ * not a continuation of the id line above it — with 16 tier-1, 13 tier-2 and 12 tier-3 open
+ * movements, a coordinator scans this field on nearly every row (Task 5 ruling 2).
+ * `justify-self: start` keeps the pill sized to its own text rather than stretching across the
+ * full 14rem row width the way an ordinary grid item would.
+ */
+.queueRow .queueTier,
+.queueRowSelected .queueTier {
+  justify-self: start;
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--surface-subtle);
+  padding: 0 var(--co-space-8);
+  font-weight: 650;
+}
+
+/* Overrides the plain-span colour above: the operational score is the number a coordinator
+   reads off this row, so it gets heading weight rather than the muted metadata tone. */
+.queueRow .queueScore,
+.queueRowSelected .queueScore {
+  color: var(--text-heading);
+  font-weight: 700;
+}
+
+/*
+ * The one line on this row a coordinator must not miss (Task 5 ruling — WF-001 ranks above
+ * WF-006 despite waiting 6 hours less because its Form 1A deadline has already passed). Danger
+ * tone, same token pair `pressureBreach` uses on the pressure strip for the same reason.
+ */
+.queueRow .queueLegalBreach,
+.queueRowSelected .queueLegalBreach {
+  color: var(--danger-text);
+  font-weight: 700;
+}
+
 .diagramRegion,
 .shortlistRegion {
   display: flex;
   min-height: 0;
   flex-direction: column;
   padding: var(--co-space-14);
+}
+
+/*
+ * Controller finding 8: the region grid's row-sizing algorithm treats a `min-height: 0` item as
+ * free to squeeze toward zero when the grid's own available height is tight — that is what let
+ * this region collapse to 208px at 1280x900. This override applies to the diagram only (later in
+ * source, same specificity as the shared selector above, so it wins for `.diagramRegion` without
+ * touching `.shortlistRegion`), giving the whole region — header plus the `.diagramScroll` panel
+ * below it — a floor the grid squeeze cannot compress past.
+ */
+.diagramRegion {
+  min-height: 32rem;
+}
+
+/*
+ * Controller finding 8: the region grid squeezes `.diagramRegion` to fit whatever share of
+ * `.body`'s available height the grid's row-sizing algorithm allocates it — measured 208px for
+ * ~1080px of content at 1280x900, an unusable letterbox for a common laptop width. This scroll
+ * wrapper gives the diagram its own bounded, independently-scrolling box instead: a real
+ * `min-height` floor the outer grid squeeze cannot compress past, plus `overflow-y: auto` so
+ * whatever height it ends up with beyond that floor, the excess scrolls cleanly rather than
+ * clipping or spilling into whatever sits below it in the grid.
+ *
+ * Deliberately a SEPARATE element from `.diagramCanvas`, not `overflow-y: auto` on the canvas
+ * itself. `.diagramCanvas` is the positioning root for the absolutely-positioned connector
+ * `<svg>` (`inset: 0`, sized to the canvas's own padding box). If the canvas itself scrolled,
+ * that padding box would only be as tall as the visible slice, and the svg would size to that
+ * slice rather than the full scrollable content — misaligning every connector the moment the
+ * user scrolls. With the scroll boundary here instead, `.diagramCanvas` (svg and every node
+ * together) is ordinary in-flow content inside this scroller: scrolling moves the whole block as
+ * one rigid unit, so the svg and the nodes it draws lines between never drift apart.
+ */
+/*
+ * Deliberately NOT `flex: 1 1 auto`. A flex-grow item asks to "fill the flex container's
+ * available height" — but `.diagramRegion`'s own height is itself resolved from ITS content
+ * (via `.regionGrid`'s `align-self: start`, above), so "available height" has no independent
+ * value to grow toward: it circularly depends on how tall this element decides to be. Verified
+ * empirically — with `flex: 1 1 auto` here, `.diagramRegion` inflated to several thousand pixels
+ * at 1600x1100 (and dragged the stretch-aligned `.queueRegion` up with it) rather than the
+ * ~1400px its real content actually needs. Plain intrinsic sizing (`min-height` as a floor,
+ * content grows it further when taller) has no such loop.
+ */
+.diagramScroll {
+  min-height: 30rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/*
+ * `position: relative` is the positioning root every connector coordinate in
+ * `flow-diagram.tsx` is measured against (`getBoundingClientRect()` minus this box's own
+ * `left`/`top`) — move this rule's positioning scheme and every connector goes wrong. No
+ * `overflow` is set here — see `.diagramScroll` above for why the scroll boundary lives one
+ * level up instead.
+ */
+.diagramCanvas {
+  position: relative;
+  min-height: 20rem;
+}
+
+/*
+ * Absolutely positioned, `aria-hidden`, `pointer-events: none` — a rendering of relationships
+ * the node buttons already carry in their own `data-*` attributes, never itself a click target.
+ */
+.diagramConnectors {
+  position: absolute;
+  z-index: var(--co-z-connectors);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.diagramConnectorDemand,
+.diagramConnectorRouteEligible,
+.diagramConnectorRouteIneligible,
+.diagramConnectorDestination {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.diagramConnectorDemand {
+  stroke: var(--border-strong);
+  stroke-width: 0.0625rem;
+}
+
+.diagramConnectorRouteEligible {
+  stroke: var(--clinical-accent);
+  stroke-width: 0.125rem;
+}
+
+/*
+ * `eligibleCandidates` sorts eligible-first but never filters, so a shortlisted unit can still
+ * fail a gate (Critical 1 — already declined, wrong security tier, stale capacity, ...). This
+ * line must never look like the eligible route above: dashed, and danger-toned rather than
+ * accent-toned, so the arrow itself does not read as an endorsement of a route the data denies.
+ */
+.diagramConnectorRouteIneligible {
+  stroke: var(--danger-text);
+  stroke-width: 0.125rem;
+  stroke-dasharray: 6 4;
+}
+
+.diagramArrowDemand {
+  fill: var(--border-strong);
+}
+
+.diagramArrowRouteEligible {
+  fill: var(--clinical-accent);
+}
+
+.diagramArrowRouteIneligible {
+  fill: var(--danger-text);
+}
+
+/*
+ * Whole-branch review Important 3: the unit a movement is actually recorded against (accepted, or
+ * a live parallel referral) had no connector at all for 18 of the 41 open movements, while three
+ * candidate arrows pointed at wards the patient is not going to. This is a RECORDED FACT, not a
+ * suggestion, so it must not borrow either candidate treatment: solid and heavier than the
+ * eligible-candidate line, success-toned rather than accent-toned, and entering the node higher up
+ * its left edge so a unit that is both recorded and a candidate shows two separable lines rather
+ * than one drawn twice.
+ */
+.diagramConnectorDestination {
+  stroke: var(--success-text);
+  stroke-width: 0.1875rem;
+}
+
+.diagramArrowDestination {
+  fill: var(--success-text);
+}
+
+/*
+ * Mobile-first, same convention as `.regionGrid` above: one column by default, so the diagram
+ * keeps reflowing without overflow down to 320px (this task's own responsibility — Task 8 owns
+ * hiding the diagram entirely on phones, but until then it must not break the frame). The
+ * three-column layout with departments left, hub centre, units right only turns on at a width
+ * comfortably wider than the three tracks' combined minimum (ruling 1, below).
+ *
+ * Ruling 4 continued: this is the "node container" — `pointer-events: none` here, with
+ * `pointer-events: auto` re-enabled only on the interactive unit buttons inside
+ * `.diagramUnitsColumn`. Without this the container sits on top of everything (it shares the
+ * same stacking area as the connector overlay) and swallows every click meant for a node.
+ */
+.diagramNodes {
+  position: relative;
+  z-index: var(--co-z-nodes);
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--co-space-20);
+  pointer-events: none;
+}
+
+.diagramDepartmentsColumn {
+  grid-column: 1 / 2;
+  min-width: 0;
+}
+
+.diagramHub {
+  grid-column: 1 / 2;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--co-space-2);
+  border: 0.0625rem solid var(--clinical-accent-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: var(--co-space-12) var(--co-space-10);
+  text-align: center;
+  box-shadow: var(--e1);
+}
+
+.diagramHub svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--clinical-accent);
+}
+
+.diagramHub strong {
+  color: var(--clinical-accent);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.diagramHub span {
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--co-leading-tight);
+}
+
+.diagramUnitsColumn {
+  grid-column: 1 / 2;
+  min-width: 0;
+}
+
+/*
+ * Ruling 1: the brief's `grid-column: 1 / 2 / 3` is invalid — `grid-column` takes at most two
+ * values. Each of the three tracks is pinned explicitly with the valid `start / end` form
+ * instead (never left to auto-placement, which is what put the hub in the wrong column
+ * previously). `64rem` leaves a comfortable margin over the three tracks' combined minimum
+ * (13 + 10 + 16 = 39rem of column content plus two 1.25rem gaps = 41.5rem) once the region
+ * grid's own chrome (the rail, `.body` padding, `.diagramRegion` padding) is subtracted from
+ * the viewport width — cutting it closer risked overflowing right at the boundary.
+ */
+@media (min-width: 64rem) {
+  .diagramNodes {
+    grid-template-columns: minmax(11rem, 13rem) minmax(9rem, 10rem) minmax(16rem, 1fr);
+  }
+
+  .diagramDepartmentsColumn {
+    grid-column: 1 / 2;
+  }
+
+  .diagramHub {
+    grid-column: 2 / 3;
+  }
+
+  .diagramUnitsColumn {
+    grid-column: 3 / 4;
+  }
+}
+
+.diagramColumnHeading {
+  margin: 0 0 var(--co-space-8);
+  color: var(--text-heading);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.diagramDepartmentsList {
+  display: grid;
+  gap: var(--co-space-8);
+}
+
+.diagramEdCard {
+  display: grid;
+  gap: var(--co-space-2);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  padding: var(--co-space-8) var(--co-space-10);
+}
+
+.diagramEdCard[data-origin="true"] {
+  border-color: var(--clinical-accent-border);
+  background: var(--clinical-accent-soft);
+  outline: 0.125rem solid var(--clinical-accent-border);
+  outline-offset: -0.125rem;
+}
+
+.diagramEdCode {
+  color: var(--text-heading);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.diagramEdName {
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--co-leading-body);
+}
+
+.diagramEdStats {
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+}
+
+.diagramOriginBadge {
+  justify-self: start;
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--clinical-accent-soft);
+  padding: 0 var(--co-space-6);
+  color: var(--clinical-accent);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.diagramServiceGroup {
+  display: grid;
+  gap: var(--co-space-6);
+  margin-bottom: var(--co-space-10);
+}
+
+.diagramServiceHeading {
+  margin: 0;
+  color: var(--text-heading);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.diagramUnitGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--co-space-8);
+}
+
+.diagramUnit,
+.diagramUnitSelected {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--co-space-48);
+  align-content: start;
+  gap: var(--co-space-2);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: var(--co-space-8) var(--co-space-10);
+  color: var(--text);
+  text-align: left;
+  /* Re-enables clicks on this one interactive node inside the otherwise `pointer-events: none`
+     `.diagramNodes` container (ruling 4). */
+  pointer-events: auto;
+}
+
+.diagramUnit:hover {
+  background: var(--surface-subtle);
+}
+
+.diagramUnitSelected {
+  border-color: var(--clinical-accent-border);
+  background: var(--clinical-accent-soft);
+  box-shadow: var(--shadow-inset);
+}
+
+.diagramUnit[data-routed="true"][data-eligible="true"],
+.diagramUnitSelected[data-routed="true"][data-eligible="true"] {
+  outline: 0.125rem solid var(--clinical-accent-border);
+  outline-offset: -0.125rem;
+}
+
+/*
+ * Review Critical 1: a routed-but-ineligible node must not share the accent outline above — that
+ * reads as the same kind of endorsement the connector line and hub wording were also fixed to
+ * stop giving it. Dashed and danger-toned instead, matching the ineligible connector line.
+ */
+.diagramUnit[data-routed="true"][data-eligible="false"],
+.diagramUnitSelected[data-routed="true"][data-eligible="false"] {
+  outline: 0.125rem dashed var(--danger-border);
+  outline-offset: -0.125rem;
+}
+
+.diagramUnitName {
+  color: var(--text-heading);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.diagramUnitCapability {
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+}
+
+.diagramBedRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--co-space-6);
+}
+
+.diagramBedChip {
+  display: inline-flex;
+  align-items: center;
+  border: 0.0625rem solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  padding: 0 var(--co-space-6);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.diagramBedChip[data-state="available"] {
+  border-color: var(--success-text);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.diagramBedChip[data-state="held"] {
+  border-color: var(--warning-text);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.diagramBedChip[data-state="blocked"] {
+  border-color: var(--danger-text);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.diagramBedChip[data-state="occupied"] {
+  border-color: var(--border-strong);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+/*
+ * `potential` is drawn from bed releases, never from `unit.beds`, and must never be summed into
+ * the four states above (ruling 3). Dashed styling marks it visually as the separate,
+ * forward-looking figure it is — the same convention the Phase 1 network diagram already uses.
+ */
+.diagramBedChip[data-state="potential"] {
+  border-style: dashed;
+  border-color: var(--clinical-accent);
+  color: var(--clinical-accent);
+}
+
+.diagramUnauthorisedBadge {
+  justify-self: start;
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+/*
+ * Every shortlisted node's real eligibility, in text — never colour alone, so it survives
+ * forced-colors, and never conveyed only by the connector's own colour (review Important 5:
+ * routed state was previously invisible to a screen reader, carried only by an outline colour
+ * plus an aria-hidden svg). `candidateReason(verdict)` supplies the exact wording either way:
+ * "Eligible now", or the specific failing gate's own detail text.
+ */
+.diagramEligibleBadge {
+  justify-self: start;
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--clinical-accent-soft);
+  padding: 0 var(--co-space-6);
+  color: var(--clinical-accent);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+/*
+ * Review Critical 1: a shortlisted unit that fails a gate (already declined, wrong security
+ * tier, stale capacity, ...) must never read as a viable route. Danger-toned and textual, paired
+ * with the dashed `.diagramConnectorRouteIneligible` line — colour is never the only signal.
+ */
+.diagramIneligibleBadge {
+  justify-self: start;
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--danger-bg);
+  padding: 0 var(--co-space-6);
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+/*
+ * Review Important 2: an accepted bed and an outstanding referral are different facts a
+ * coordinator acts on differently — `destinationUnit`'s single conflated field used to badge
+ * both the same way (and only the first of a movement's parallel referrals). Two distinct badges
+ * instead, one per unit that actually carries that fact.
+ */
+.diagramAcceptedBadge {
+  justify-self: start;
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--success-bg);
+  padding: 0 var(--co-space-6);
+  color: var(--success-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.diagramReferredBadge {
+  justify-self: start;
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--warning-bg);
+  padding: 0 var(--co-space-6);
+  color: var(--warning-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+/*
+ * Whole-branch review Important 5: the security gate passes a locked ward for an open-status
+ * movement, with the affirmative detail "Secure ward meets an open requirement". That is correct
+ * and `ward-eligibility.ts` is a protected surface, so the fact is surfaced here rather than the
+ * gate being changed. Solid border, not colour alone, so it survives forced-colors; wraps rather
+ * than truncating, because the whole point is that it is read.
+ */
+.diagramRestrictiveBadge {
+  justify-self: start;
+  border: 0.0625rem solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  padding: 0 var(--co-space-6);
+  color: var(--warning-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+/*
+ * Task 5 fix: the voluntary-on-locked warning (`restrictionNotice`'s sharper level) reads more
+ * prominently than the plain over-restrictive one above -- a voluntary person who cannot leave a
+ * locked ward is detained in fact without an order. Danger-toned rather than warning-toned, same
+ * shape as `.diagramRestrictiveBadge` and the same "never colour alone" real-text discipline as
+ * `.shortlistRestrictiveBadgeProminent`, so the diagram and the shortlist read as one system.
+ */
+.diagramRestrictiveBadgeProminent {
+  justify-self: start;
+  border: 0.0625rem solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  padding: 0 var(--co-space-6);
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+/*
+ * Review Minor 6: a unit whose `siteByCode` lookup misses would otherwise vanish from every
+ * service group with nothing on screen accounting for it. Rendered as an explicit anomaly
+ * instead — never a normal actionable node (no button, no click handler), so it cannot be
+ * mistaken for a real routing candidate.
+ */
+.diagramUnplacedUnit {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: var(--co-space-2);
+  border: 0.0625rem dashed var(--danger-border);
+  border-radius: var(--radius-md);
+  background: var(--danger-bg);
+  padding: var(--co-space-8) var(--co-space-10);
+  color: var(--text);
+  text-align: left;
 }
 
 .shortlistColumn {
@@ -341,6 +1006,549 @@
   color: var(--text-muted);
   font-size: var(--text-2xs);
   line-height: var(--co-leading-prose);
+}
+
+/*
+ * Task 7: the explainable shortlist. `.shortlistRegion` above is already `display: flex;
+ * flex-direction: column` with its own padding — this is the scrolling body inside it, the same
+ * convention `.queueList` and `.diagramScroll` already use elsewhere in this file, so a long
+ * movement (many declines, an expanded score) scrolls inside its own box rather than growing the
+ * whole region past its grid track.
+ */
+.shortlistBody {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--co-space-12);
+  overflow-y: auto;
+}
+
+.shortlistHeader {
+  display: grid;
+  gap: var(--co-space-2);
+  border-bottom: 0.0625rem solid var(--border);
+  padding-bottom: var(--co-space-10);
+}
+
+.shortlistHeaderTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--co-space-8);
+}
+
+.shortlistMovementId {
+  color: var(--text-heading);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  line-height: var(--co-leading-tight);
+}
+
+/* Same pill convention as `.queueTier` in the priority queue, kept as a distinct rule (rather
+   than composed with it) since the two live in different regions and must be free to diverge. */
+.shortlistTierBadge {
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--surface-subtle);
+  padding: 0 var(--co-space-8);
+  color: var(--text-heading);
+  font-size: var(--text-3xs);
+  font-weight: 650;
+}
+
+.shortlistMetaLine {
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  line-height: var(--co-leading-body);
+}
+
+/*
+ * The one line a coordinator must not miss on this movement, same danger tone `.queueLegalBreach`
+ * and `.pressureBreach` already use elsewhere for the same reason: a passed statutory deadline.
+ */
+.shortlistLegalBreach {
+  color: var(--danger-text);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  line-height: var(--co-leading-body);
+}
+
+/*
+ * Review ruling 5: an accepted destination, an outstanding referral, and a merely-suggested
+ * candidate are three different facts a coordinator acts on differently, so each gets its own
+ * badge rather than one conflated "destination" field. The suggested badge is deliberately never
+ * accent- or success-toned — it is a computed guess, not a recommendation, and reads as neutral.
+ */
+.shortlistAcceptedBadge,
+.shortlistReferredBadge,
+.shortlistSuggestedBadge,
+.shortlistUnresolvedBadge {
+  justify-self: start;
+  border-radius: var(--radius-pill, 9999px);
+  padding: 0 var(--co-space-8);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.shortlistAcceptedBadge {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.shortlistReferredBadge {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.shortlistSuggestedBadge {
+  border: 0.0625rem dashed var(--border-strong);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+.shortlistUnresolvedBadge {
+  border: 0.0625rem dashed var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+/*
+ * Whole-branch review Important 5. Deliberately NOT pill-shaped like the badges above: those
+ * report what a movement is, this reports a restriction a coordinator has to weigh, and it must
+ * wrap to full sentences rather than being squeezed into a chip.
+ */
+.shortlistRestrictiveBadge {
+  justify-self: start;
+  border: 0.0625rem solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  padding: var(--co-space-2) var(--co-space-8);
+  color: var(--warning-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+/*
+ * Task 5: the voluntary-on-locked warning (`restrictionNotice`'s sharper level) reads more
+ * prominently than the plain over-restrictive one — a voluntary person who cannot leave a locked
+ * ward is detained in fact without an order. Danger-toned rather than warning-toned, with the same
+ * "never colour alone" real-text discipline as the warning variant above.
+ */
+.shortlistRestrictiveBadgeProminent {
+  justify-self: start;
+  border: 0.0625rem solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  padding: var(--co-space-2) var(--co-space-8);
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.shortlistSectionHeading {
+  margin: 0 0 var(--co-space-8);
+  color: var(--text-heading);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/*
+ * Whole-branch review Critical 1: the candidate list used to be headed "Nearest candidates", a
+ * proximity claim nothing in the model can support. The heading now says only "Candidates" and
+ * this note carries the real ordering rule, so the reader is told how the list is sorted instead
+ * of being left to assume.
+ */
+.shortlistSectionNote {
+  margin: calc(-1 * var(--co-space-2)) 0 var(--co-space-8);
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--co-leading-body);
+}
+
+/*
+ * Whole-branch review Important 5, stated at the moment of decision: immediately above the gate
+ * list, where the security check will read "Met". Warning-toned with a real border so it is not
+ * carried by colour alone under forced-colors.
+ */
+.shortlistRestrictiveNote {
+  margin: 0 0 var(--co-space-8);
+  border: 0.0625rem solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  padding: var(--co-space-6) var(--co-space-8);
+  color: var(--warning-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  line-height: var(--co-leading-body);
+}
+
+/* Task 5: same shape as `.shortlistRestrictiveNote`, danger-toned for the sharper
+ * voluntary-on-locked case (see `.shortlistRestrictiveBadgeProminent` above). */
+.shortlistRestrictiveNoteProminent {
+  margin: 0 0 var(--co-space-8);
+  border: 0.0625rem solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  padding: var(--co-space-6) var(--co-space-8);
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  line-height: var(--co-leading-body);
+}
+
+.shortlistCandidateList {
+  display: grid;
+  gap: var(--co-space-8);
+}
+
+/*
+ * Ruling 1: every candidate row states its own verdict in text (the row's own last line, driven
+ * by `candidateReason`), and an ineligible row is visually distinct by BORDER STYLE, not colour
+ * alone, so the distinction survives `forced-colors`. Eligible and ineligible share this one base
+ * rule; the two states below only ever add a dashed danger outline for the ineligible case, never
+ * an accent/success treatment that would read as a recommendation.
+ */
+.shortlistCandidateRow {
+  display: grid;
+  width: 100%;
+  min-height: var(--co-space-48);
+  gap: var(--co-space-2);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: var(--co-space-8) var(--co-space-10);
+  color: var(--text);
+  text-align: left;
+}
+
+.shortlistCandidateRow:hover {
+  background: var(--surface-subtle);
+}
+
+/*
+ * `data-showing`, not `aria-pressed` — this highlight marks which candidate's gates the panel
+ * is currently displaying, including the default (nothing explicitly selected) candidate.
+ * `aria-pressed` is reserved for the real, explicit selection the component was given
+ * (`selectedUnitId`), so a screen reader is never told a control is pressed when nobody
+ * pressed it (review Minor 5).
+ */
+.shortlistCandidateRow[data-showing="true"] {
+  border-color: var(--clinical-accent-border);
+  background: var(--clinical-accent-soft);
+  box-shadow: var(--shadow-inset);
+}
+
+.shortlistCandidateRow[data-eligible="false"] {
+  border-style: dashed;
+  border-color: var(--danger-border);
+}
+
+.shortlistCandidateRow[data-showing="true"][data-eligible="false"] {
+  background: var(--danger-bg);
+  box-shadow: none;
+}
+
+.shortlistCandidateName {
+  color: var(--text-heading);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.shortlistCandidateCapacity {
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+}
+
+.shortlistCandidateReasonOk {
+  color: var(--clinical-accent);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.shortlistCandidateReasonBad {
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+/* Whole-branch review Important 5, on the candidate row itself, so the restriction is visible
+ * while scanning the list rather than only after opening the gates for that unit. */
+.shortlistCandidateRestrictive {
+  color: var(--warning-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  line-height: var(--co-leading-body);
+}
+
+/* Task 5: the voluntary-on-locked case, danger-toned to read more prominently on the row itself
+ * (see `.shortlistRestrictiveBadgeProminent` above for the same distinction on the badge). */
+.shortlistCandidateRestrictiveProminent {
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  line-height: var(--co-leading-body);
+}
+
+/*
+ * Ruling 2/3: all eight gates render every time (never `.slice()`), failures first. The icon is
+ * driven ONLY by `gate.pass` in the component — nothing in this stylesheet may substitute for
+ * that, which is the exact defect this task exists to close (a green tick beside a failing gate).
+ * "Met"/"Not met" is real text in every row, not merely implied by the icon or by colour.
+ */
+.shortlistGateList {
+  display: grid;
+  gap: var(--co-space-6);
+}
+
+.shortlistGateRow {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--co-space-2) var(--co-space-8);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: var(--co-space-6) var(--co-space-8);
+}
+
+.shortlistGateRow[data-pass="false"] {
+  border-style: dashed;
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.shortlistGateRow svg {
+  grid-row: 1 / 3;
+  width: 1rem;
+  height: 1rem;
+}
+
+.shortlistGateIconOk {
+  color: var(--success-text);
+}
+
+.shortlistGateIconBad {
+  color: var(--danger-text);
+}
+
+.shortlistGateLabel {
+  grid-column: 2 / 3;
+  color: var(--text-heading);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.shortlistGateVerdictOk {
+  grid-column: 3 / 4;
+  justify-self: end;
+  color: var(--success-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.shortlistGateVerdictBad {
+  grid-column: 3 / 4;
+  justify-self: end;
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.shortlistGateDetail {
+  grid-column: 2 / 4;
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--co-leading-body);
+}
+
+.shortlistDeclineList {
+  display: grid;
+  gap: var(--co-space-6);
+}
+
+.shortlistDeclineRow {
+  display: grid;
+  gap: var(--co-space-2);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  padding: var(--co-space-6) var(--co-space-8);
+  font-size: var(--text-3xs);
+}
+
+.shortlistDeclineRow strong {
+  color: var(--text-heading);
+}
+
+.shortlistDeclineRow span {
+  color: var(--text-muted);
+  line-height: var(--co-leading-body);
+}
+
+.shortlistScoreDetails {
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  padding: var(--co-space-8) var(--co-space-10);
+}
+
+.shortlistScoreSummary {
+  min-height: var(--co-space-48);
+  display: flex;
+  align-items: center;
+  color: var(--text-heading);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.shortlistScoreNote {
+  margin: var(--co-space-6) 0;
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--co-leading-body);
+}
+
+.shortlistScoreList {
+  display: grid;
+  gap: var(--co-space-6);
+}
+
+.shortlistScoreFactor {
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--co-leading-body);
+}
+
+.shortlistScoreFactor strong {
+  color: var(--text-heading);
+}
+
+.shortlistActions {
+  display: grid;
+  gap: var(--co-space-8);
+  border-top: 0.0625rem solid var(--border);
+  padding-top: var(--co-space-10);
+}
+
+.shortlistAutoAllocationNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  font-weight: 650;
+  line-height: var(--co-leading-body);
+}
+
+.shortlistConfirmationRecord {
+  margin: 0;
+  border: 0.0625rem solid var(--success-border);
+  border-radius: var(--radius-md);
+  background: var(--success-bg);
+  padding: var(--co-space-8) var(--co-space-10);
+  color: var(--success-text);
+  font-size: var(--text-2xs);
+  font-weight: 650;
+  line-height: var(--co-leading-body);
+}
+
+.shortlistActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--co-space-8);
+}
+
+.shortlistConfirmButton,
+.shortlistOverrideButton {
+  display: inline-flex;
+  min-height: var(--co-space-48);
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  padding: 0 var(--co-space-14);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.shortlistConfirmButton {
+  border: 0.0625rem solid var(--clinical-accent-border);
+  background: var(--clinical-accent);
+  color: var(--clinical-accent-contrast);
+}
+
+.shortlistConfirmButton[aria-disabled="true"] {
+  cursor: not-allowed;
+  border-color: var(--border);
+  background: var(--surface-subtle);
+  color: var(--text-muted);
+}
+
+.shortlistOverrideButton {
+  border: 0.0625rem solid var(--border);
+  background: var(--surface);
+  color: var(--text-heading);
+}
+
+.shortlistOverrideButton[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--text-muted);
+}
+
+.shortlistOverrideForm {
+  display: grid;
+  gap: var(--co-space-6);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle);
+  padding: var(--co-space-10);
+}
+
+.shortlistOverrideLabel {
+  color: var(--text-heading);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
+.shortlistOverrideTextarea {
+  min-height: var(--co-space-48);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: var(--co-space-8);
+  color: var(--text);
+  font-size: var(--text-2xs);
+  line-height: var(--co-leading-body);
+}
+
+.shortlistOverrideSubmit {
+  display: inline-flex;
+  min-height: var(--co-space-48);
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 0 var(--co-space-14);
+  color: var(--text-heading);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+@media (forced-colors: active) {
+  .shortlistCandidateRow[data-showing="true"] {
+    border: 0.125rem solid Highlight;
+  }
+
+  .shortlistCandidateRow[data-eligible="false"] {
+    border-color: GrayText;
+  }
+
+  .shortlistGateRow[data-pass="false"] {
+    border-color: GrayText;
+  }
 }
 
 .exceptionsDrawer {
@@ -369,8 +1577,264 @@
   color: var(--clinical-accent);
 }
 
+/*
+ * Ruling 3: this count is always `items.length` from the same array the rows in
+ * `.exceptionsPanel` below are mapped from — a pill styled distinctly from the "Exceptions"
+ * label so the true count reads as its own field, not decoration, the same convention
+ * `.regionCount` uses elsewhere for "N open movements" / "N departments".
+ */
+.exceptionsToggleCount {
+  display: inline-flex;
+  min-width: var(--co-space-20);
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill, 9999px);
+  background: var(--clinical-accent-soft);
+  padding: 0 var(--co-space-8);
+  color: var(--clinical-accent);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+}
+
 .exceptionsDrawer[data-open="true"] .placeholder {
   margin-top: var(--co-space-8);
+}
+
+/*
+ * Task 8: the exceptions drawer is the coordinator's work list, not a report — every row
+ * `buildActionInbox` returns is real work, so this panel gets its own bounded, scrolling box
+ * (the same pattern `.queueList` already uses) rather than pushing the fixed-height chrome above
+ * it off screen when the inbox is long.
+ */
+/*
+ * Task 8 review Important 2: a fixed `18rem` cap showed only 4 of the real fixture's 8 rows —
+ * a header that says "8" over a box that shows 4 is the "48 open movements" defect Ruling 3
+ * exists to prevent, and it held at every width, desktop included. Bounded against the viewport
+ * instead of a flat rem value, so it scales with the screen rather than silently truncating
+ * again if the fixture's exception count grows. Measured: the real fixture's eight rows need
+ * ~37rem (each row wraps to three text lines, not the `3rem` tap-target floor) — an EARLIER fix
+ * here that used `34rem` still clipped the eighth row by ~30px, the exact defect this ruling
+ * exists to close, just moved from "4 of 8" to "7.5 of 8". `40rem` clears that with margin;
+ * `60vh` is what actually governs on anything shorter than a genuinely tall screen, so a truly
+ * short viewport still scrolls honestly rather than pretending to fit.
+ */
+.exceptionsPanel {
+  margin-top: var(--co-space-8);
+  max-height: min(60vh, 40rem);
+  overflow-y: auto;
+}
+
+.exceptionsList {
+  display: grid;
+  min-width: 0;
+  gap: var(--co-space-6);
+}
+
+.exceptionRow {
+  display: grid;
+  width: 100%;
+  min-height: var(--co-space-48);
+  grid-template-columns: 1.125rem minmax(0, 1fr);
+  align-items: start;
+  gap: var(--co-space-8);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--co-space-8) var(--co-space-10);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.exceptionRowBody {
+  display: grid;
+  min-width: 0;
+  gap: var(--co-space-2);
+}
+
+.exceptionRow:hover {
+  background: var(--surface-subtle);
+}
+
+/*
+ * Tone-coded like `.pressureCard`'s breaching state and `.diagramUnplacedUnit` elsewhere in this
+ * file: danger and warning are real, distinct facts about the movement (a legal breach is not
+ * merely "worth a look" the way a stalled transport job is), so each gets its own border and
+ * background rather than one generic "exception" tint. Colour is never the only signal — the icon
+ * below and `item.title`/`item.detail` text carry the same distinction in words.
+ */
+.exceptionRow[data-tone="danger"] {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.exceptionRow[data-tone="warning"] {
+  border-color: var(--warning-border);
+  background: var(--warning-bg);
+}
+
+.exceptionRow svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.exceptionIconDanger {
+  color: var(--danger-text);
+}
+
+.exceptionIconWarning {
+  color: var(--warning-text);
+}
+
+.exceptionTitle {
+  color: var(--text-heading);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.exceptionDetail {
+  color: var(--text);
+  font-size: var(--text-3xs);
+  line-height: var(--co-leading-body);
+}
+
+.exceptionOwner {
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+}
+
+/*
+ * Task 5: the refusals list. A refused transition (`wardFlowReducer`'s `reject`) is otherwise
+ * silent — this section is present even with zero rows so a coordinator learns where to look
+ * before the first refusal ever happens, the same "present even when empty" reasoning
+ * `.exceptionsPanel` already applies to the exceptions list above it.
+ */
+.refusalsSection {
+  margin-top: var(--co-space-12);
+  border-top: 0.0625rem solid var(--border);
+  padding-top: var(--co-space-8);
+}
+
+.refusalsHeading {
+  margin: 0 0 var(--co-space-6);
+  color: var(--text-heading);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.refusalsList {
+  display: grid;
+  min-width: 0;
+  gap: var(--co-space-6);
+}
+
+.refusalRow {
+  display: grid;
+  gap: var(--co-space-2);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--co-space-8) var(--co-space-10);
+  background: var(--surface);
+}
+
+.refusalAttempt {
+  color: var(--text-heading);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.refusalReason {
+  color: var(--text);
+  font-size: var(--text-3xs);
+  line-height: var(--co-leading-body);
+}
+
+.refusalAt {
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+}
+
+@media (forced-colors: active) {
+  .exceptionRow[data-tone="danger"],
+  .exceptionRow[data-tone="warning"] {
+    border-color: GrayText;
+  }
+}
+
+/*
+ * Task 8 ruling: after-hours coordination happens on a phone, and the screen collapses to
+ * queue, exceptions and one-tap confirm. A node/edge canvas is unreadable at 390px, and showing
+ * an unreadable one is worse than showing none — so the diagram is hidden outright rather than
+ * shrunk. The eight-department pressure strip is hidden alongside it: its own worst-first
+ * ordering exists to answer "which ED is worst", a question the queue already answers per-row via
+ * `.queueLegalBreach`, and the strip's `repeat(auto-fit, minmax(9rem, 1fr))` grid has no useful
+ * arrangement left once its track width drops under 390px. `.regionGrid` is already a single
+ * column below 90rem (see its own comment), so hiding the diagram here leaves the priority queue
+ * and the shortlist column stacked directly on top of each other — the shortlist's own Confirm
+ * button is one selection tap away, never behind a second navigation step.
+ */
+@media (max-width: 48rem) {
+  .pressureStrip,
+  .diagramRegion {
+    display: none;
+  }
+
+  /*
+   * Task 8 review Important 4 (controller finding): `.queueRegion`'s base `max-height: 26rem`
+   * was sized for the STACKED desktop layout, where the queue still competes with a diagram and
+   * a shortlist for the same page. On a real phone the diagram and pressure strip above are both
+   * gone, so that cap left the queue — the phone's primary surface — squeezed to about 3.5 of 41
+   * rows while empty space sat below the shortlist placeholder. `min(60vh, 34rem)` gives the
+   * queue most of the screen instead, and stays viewport-relative rather than a flat rem value
+   * for the same reason `.exceptionsPanel` above does. Source order matters here: this must
+   * follow the base `.queueRegion` rule (same specificity, later wins) — see that rule's own
+   * comment on why the >=90rem override already relies on the same ordering.
+   */
+  .queueRegion {
+    max-height: min(60vh, 34rem);
+  }
+
+  /*
+   * Task 7: the coordinator screen used to chase the Confirm control into view with a nested
+   * double-`requestAnimationFrame` `scrollIntoView` effect (deleted from `coordinator-screen.tsx`)
+   * because the control could land off-screen below the fold. A bar pinned by CSS to the literal
+   * viewport bottom cannot land off-screen, so there is nothing left to measure or chase — the
+   * comment on the deleted effect named a measurement race against `.main`'s grid rows and
+   * `.screen`'s `100dvh` height not having settled after a resize; a fixed-position bar never
+   * reads either of those, so that race dissolves rather than needing a fix here.
+   *
+   * Flush to the viewport edge (no `bottom` gap — search-chrome-behaviour.md's edge-to-edge
+   * contract) and painting its own `--safe-area-bottom` inset via
+   * `--co-shortlist-bar-safe-bottom`, so a coordinator on a notched phone never has to reach past
+   * the home-indicator region to tap Refer.
+   */
+  .shortlistActionRow {
+    position: fixed;
+    z-index: var(--z-overlay);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    flex-wrap: nowrap;
+    border-top: 0.0625rem solid var(--border);
+    background: var(--surface);
+    box-shadow: var(--e2);
+    padding: var(--co-shortlist-bar-pad-y) var(--co-space-20) var(--co-shortlist-bar-safe-bottom);
+  }
+
+  /*
+   * `ShortlistPanel` renders `.shortlistActionRow` only once a movement is selected (with nothing
+   * selected it returns just its placeholder paragraph), so `:has()` scopes this reserve to
+   * exactly the moment the bar exists — deselecting a movement gives the queue and the exceptions
+   * drawer the full screen back rather than paying for a bar that is not rendered. `.main` is a
+   * `100dvh`-tall grid (`auto` governance banner, `1fr` `.body`, `auto` exceptions drawer); adding
+   * bottom padding here shrinks the `1fr` `.body` row by the same amount, which is what keeps the
+   * exceptions drawer — and the tail of `.body`'s own scrolled content — clear of the fixed bar
+   * rather than sitting underneath it. No separate reserve is needed on `.body` itself: it is the
+   * only row here, so shrinking `.main`'s available height already shrinks `.body` by the same
+   * amount.
+   */
+  .main:has(.shortlistActionRow) {
+    padding-bottom: var(--co-shortlist-bar-reserve);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -383,5 +1847,32 @@
 @media (forced-colors: active) {
   .queueRowSelected {
     border: 0.125rem solid Highlight;
+  }
+
+  /*
+   * The system palette forced-colors substitutes for `--clinical-accent-border` and
+   * `--danger-border` can render close enough to each other that the outline alone (still an
+   * author-specified colour subject to the same substitution) risks blending into a breaching
+   * card's forced border too. Pin it explicitly to `Highlight` so the selected state stays
+   * legible even when every other colour on the card has been flattened to the system palette
+   * (Task 4 review Important 4).
+   */
+  .pressureCardSelected {
+    outline-color: Highlight;
+  }
+
+  /* Same reasoning as `.pressureCardSelected` above, applied to the flow diagram's own selected,
+     origin and routed states — all three currently rely on an author-specified outline colour
+     that forced-colors can otherwise flatten into indistinguishability from the default border. */
+  .diagramUnitSelected {
+    border: 0.125rem solid Highlight;
+  }
+
+  .diagramEdCard[data-origin="true"],
+  .diagramUnit[data-routed="true"][data-eligible="true"],
+  .diagramUnitSelected[data-routed="true"][data-eligible="true"],
+  .diagramUnit[data-routed="true"][data-eligible="false"],
+  .diagramUnitSelected[data-routed="true"][data-eligible="false"] {
+    outline-color: Highlight;
   }
 }

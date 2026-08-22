@@ -215,7 +215,29 @@ const qualityThresholds = {
   ragGroundedSupportedRate: 0.9,
   ragUnsupportedCorrectRate: 1,
   ragCitationFailureRate: 0,
-  ragSourceBackedReviewFallbackCount: 0,
+  // A source-backed review fallback is a DEGRADED answer, not a defective one: the written
+  // answer failed a quality gate, so the reader is shown the cited documents instead of prose
+  // that cannot be checked against them. A threshold of 0 encoded the opposite assumption —
+  // that any degradation is a failure — which only held while the quality gates were missing
+  // the answers they should have caught. Packet 2 of #231 (PR #2285, ledger #NPQJKP) added the
+  // `guidance_wrapper_fragment` predicate, and canary run 32589154243 (2026-08-22) converted
+  // exactly the two answers it was built for — `antipsychotic-metabolic-monitoring` and
+  // `discharge-documentation`, both `final_quality_gate:guidance_wrapper_fragment` — from
+  // fluent non-sentences into source pointers. That is the gate working, so a permanently red
+  // weekly canary would teach us to ignore it.
+  //
+  // The allowance is keyed by CASE ID AND REASON, never by a bare count. A count of 2 would let
+  // a substitution through: one named case recovers while an unrelated supported case starts
+  // returning a review stub, the total stays at 2, and `ragGroundedSupportedRate` (0.9) absorbs
+  // a single swap in a 30-44 case run, so neither gate fires. Keying both dimensions means the
+  // gate answers "are these the degradations we accounted for?" rather than "how many are there?".
+  //
+  // Do not add an entry to clear a red run. A block here names the offending case and reason:
+  // investigate that case, exactly as canary 32589154243 did for these two.
+  ragSourceBackedReviewFallbackAllowance: [
+    { id: "quality-antipsychotic-metabolic-monitoring", reason: "guidance_wrapper_fragment" },
+    { id: "quality-discharge-documentation", reason: "guidance_wrapper_fragment" },
+  ] as ReadonlyArray<{ id: string; reason: string }>,
   numericGroundingFailureRate: 0,
   staleTopResultRate: 0.25,
   reviewRequiredTopResultRate: 0.25,
@@ -582,9 +604,22 @@ function summarizeRagQualityResults(results: RagQualityResult[], providerMode: E
   const generationFallbacks = results.filter((result) =>
     /(?:^|;\s*)generation_fallback:/i.test(result.routingReason ?? ""),
   ).length;
-  const sourceBackedReviewFallbacks = results.filter((result) =>
+  const sourceBackedReviewFallbackResults = results.filter((result) =>
     isSourceBackedReviewFallback(result.routingReason),
-  ).length;
+  );
+  const sourceBackedReviewFallbacks = sourceBackedReviewFallbackResults.length;
+  // Every fallback that the allowance does not account for, by BOTH its case id and the quality
+  // reason that produced it. Reported as data so the threshold check can name what to investigate
+  // instead of printing a count that cannot say which case moved.
+  const sourceBackedReviewFallbackUnaccounted = sourceBackedReviewFallbackResults
+    .filter(
+      (result) =>
+        !qualityThresholds.ragSourceBackedReviewFallbackAllowance.some(
+          (allowed) => allowed.id === result.id && (result.routingReason ?? "").toLowerCase().includes(allowed.reason),
+        ),
+    )
+    .map((result) => `${result.id} (${result.routingReason ?? "no routing reason"})`)
+    .sort();
   const substantiveGrounded = supported.filter(
     (result) => result.grounded === true && !isSourceBackedReviewFallback(result.routingReason),
   ).length;
@@ -622,6 +657,7 @@ function summarizeRagQualityResults(results: RagQualityResult[], providerMode: E
     route_ceiling_failure_count: routeCeilingFailures,
     generation_fallback_count: generationFallbacks,
     source_backed_review_fallback_count: sourceBackedReviewFallbacks,
+    source_backed_review_fallback_unaccounted: sourceBackedReviewFallbackUnaccounted,
     source_backed_review_fallback_rate: rate(sourceBackedReviewFallbacks, results.length),
     substantive_grounded_count: substantiveGrounded,
     substantive_grounded_rate: rate(substantiveGrounded, supported.length),
@@ -725,9 +761,9 @@ export function buildEvalQualityReport(args: {
     if (ragSummary.citation_failure_rate > qualityThresholds.ragCitationFailureRate) {
       thresholdFailures.push(`RAG citation_failure_rate ${ragSummary.citation_failure_rate} above 0`);
     }
-    if (ragSummary.source_backed_review_fallback_count > qualityThresholds.ragSourceBackedReviewFallbackCount) {
+    if (ragSummary.source_backed_review_fallback_unaccounted.length > 0) {
       thresholdFailures.push(
-        `RAG source_backed_review_fallback_count ${ragSummary.source_backed_review_fallback_count} above ${qualityThresholds.ragSourceBackedReviewFallbackCount}`,
+        `RAG source_backed_review_fallback unaccounted: ${ragSummary.source_backed_review_fallback_unaccounted.join(", ")}`,
       );
     }
     if (ragSummary.numeric_grounding_failure_rate > qualityThresholds.numericGroundingFailureRate) {

@@ -1,0 +1,179 @@
+/*
+ * Task 10: the coordinator's live tracker. A small module in its own right — every local token
+ * this file needs is declared here on `.screen`, never borrowed from another module's scope
+ * (see `officer.module.css`'s own note on the same convention).
+ */
+.screen {
+  --tr-space-4: 0.25rem;
+  --tr-space-6: 0.375rem;
+  --tr-space-8: 0.5rem;
+  --tr-space-10: 0.625rem;
+  --tr-space-12: 0.75rem;
+  --tr-space-14: 0.875rem;
+  --tr-space-16: 1rem;
+  --tr-space-20: 1.25rem;
+  --tr-space-48: var(--spacing-tap);
+  --tr-leading-body: 1.4;
+  --tr-leading-prose: 1.5;
+  display: grid;
+  min-height: 100dvh;
+  /* The rail track stays reserved at every supported width, same as every other Ward Flow
+     screen — see ward-management.module.css's own note on this. */
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  background: var(--surface);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.main {
+  grid-column: 2;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--tr-space-16);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--tr-space-16) var(--tr-space-20) var(--tr-space-20);
+}
+
+.governanceBanner {
+  display: flex;
+  min-height: var(--tr-space-48);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tr-space-12);
+  border-bottom: 0.0625rem solid var(--border);
+  background: var(--surface-chrome);
+  padding: var(--tr-space-8) var(--tr-space-12);
+}
+
+.governanceBanner p {
+  min-width: 0;
+  flex: 1 1 12rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-3xs);
+  line-height: var(--tr-leading-body);
+}
+
+.prototypeBadge {
+  flex-shrink: 0;
+  border: 0.0625rem solid var(--warning-border);
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  padding: var(--tr-space-4) var(--tr-space-8);
+  color: var(--warning-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.placeholder {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.vehicleList {
+  display: grid;
+  gap: var(--tr-space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vehicleRow {
+  display: grid;
+  min-width: 0;
+  gap: var(--tr-space-8);
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-subtle);
+  padding: var(--tr-space-12);
+}
+
+.vehicleHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tr-space-8);
+}
+
+.vehicleHeader strong {
+  color: var(--text-heading);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.legBadge {
+  flex-shrink: 0;
+  border: 0.0625rem solid var(--clinical-accent-border);
+  border-radius: var(--radius-sm);
+  background: var(--clinical-accent-soft);
+  padding: var(--tr-space-4) var(--tr-space-8);
+  color: var(--text-heading);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.legBadgeCancelled {
+  flex-shrink: 0;
+  border: 0.0625rem solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  padding: var(--tr-space-4) var(--tr-space-8);
+  color: var(--danger-text);
+  font-size: var(--text-3xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.vehicleDetails {
+  display: grid;
+  gap: var(--tr-space-6);
+  margin: 0;
+}
+
+.vehicleDetailRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--tr-space-8);
+  font-size: var(--text-xs);
+}
+
+.vehicleDetailRow dt {
+  color: var(--text-muted);
+}
+
+.vehicleDetailRow dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+}
+
+.reviewLink {
+  display: inline-flex;
+  min-height: var(--tr-space-48);
+  align-items: center;
+  justify-content: center;
+  border: 0.0625rem solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  padding: 0 var(--tr-space-14);
+  color: var(--text-heading);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen * {
+    transition: none !important;
+  }
+}

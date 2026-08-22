@@ -26,8 +26,9 @@ function routeFileFor(href: string) {
 
 describe("Ward Flow synthetic prototype", () => {
   it("declares every queue and capacity header as a column header", () => {
-    expect(modesSource.match(/<th scope="col">/g)).toHaveLength(12);
-    expect(modesSource).not.toMatch(/<th>/);
+    const thTags = [...modesSource.matchAll(/<th(?:\s[^>]*)?>/g)].map((match) => match[0]);
+    expect(thTags).toHaveLength(12);
+    expect(thTags.every((tag) => tag.includes('scope="col"'))).toBe(true);
   });
 
   it("keeps the production route reachable from the Tools catalogue", () => {
@@ -38,7 +39,6 @@ describe("Ward Flow synthetic prototype", () => {
     const hrefs = wardModeHrefs();
     expect(hrefs).toEqual([
       "/ward-management",
-      "/ward-management/constellation",
       "/ward-management/network",
       "/ward-management/queue",
       "/ward-management/capacity",

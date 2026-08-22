@@ -114,6 +114,21 @@ describe("Care Plan route registry", () => {
     );
     expect(carePlanRoute.safetyPlanEdit("SYN-PATIENT-001")).toBe(CARE_PLAN_ROUTES.safetyPlanEdit);
     expect(carePlanRoute.safetyPlanPrint("SYN-PATIENT-001")).toBe(CARE_PLAN_ROUTES.safetyPlanPrint);
+    // The Patient Plan's own two addresses were in `CARE_PLAN_ROUTES` from
+    // Task 3 with no builder beside them, exactly as the Management Plan's and
+    // the Safety Plan's were. This is the copy handed to a person, so a
+    // hand-written print link is how one ends up addressed to somebody else.
+    expect(carePlanRoute.patientPlan("SYN-PATIENT-003")).toBe(
+      "/mockups/care-plan/patients/SYN-PATIENT-003/patient-plan",
+    );
+    expect(carePlanRoute.patientPlanEdit("SYN-PATIENT-003")).toBe(
+      "/mockups/care-plan/patients/SYN-PATIENT-003/patient-plan/edit",
+    );
+    expect(carePlanRoute.patientPlanPrint("SYN-PATIENT-003")).toBe(
+      "/mockups/care-plan/patients/SYN-PATIENT-003/patient-plan/print",
+    );
+    expect(carePlanRoute.patientPlanEdit("SYN-PATIENT-001")).toBe(CARE_PLAN_ROUTES.patientPlanEdit);
+    expect(carePlanRoute.patientPlanPrint("SYN-PATIENT-001")).toBe(CARE_PLAN_ROUTES.patientPlanPrint);
     expect(carePlanRoute.presentations("SYN-PATIENT-003")).toBe(
       "/mockups/care-plan/patients/SYN-PATIENT-003/presentations",
     );
@@ -358,6 +373,71 @@ describe("Care Plan synthetic, memory-only boundary", () => {
     }
   });
 
+  /**
+   * The Patient Plan transformation, named explicitly.
+   *
+   * The scan above covers the whole namespace, which is why it would keep
+   * passing if this module were deleted, renamed, or quietly moved outside the
+   * directory — and this is the one module in the prototype where "no model, no
+   * provider, no network" is a product boundary rather than a house style. A
+   * later implementation may replace the function; it may not replace it with
+   * something that calls out.
+   */
+  const PATIENT_PLAN_MODULES = [
+    `${COMPONENT_ROOT}/patient-plan-transform.ts`,
+    `${COMPONENT_ROOT}/patient-plan-fixtures.ts`,
+    `${COMPONENT_ROOT}/patient-plan-pages.tsx`,
+    `${COMPONENT_ROOT}/patient-plan-form.tsx`,
+    `${COMPONENT_ROOT}/fixtures.ts`,
+  ] as const;
+
+  it("keeps the Patient Plan transformation offline, deterministic, and free of any model", () => {
+    for (const file of PATIENT_PLAN_MODULES) {
+      expect(existsSync(resolve(process.cwd(), file)), `${file} is missing`).toBe(true);
+    }
+
+    const transform = readFileSync(resolve(process.cwd(), `${COMPONENT_ROOT}/patient-plan-transform.ts`), "utf8");
+
+    // It imports nothing from outside its own namespace. A relative import can
+    // only reach a sibling; anything else would be an alias or a package.
+    for (const match of transform.matchAll(/from\s+["']([^"']+)["']/g)) {
+      const specifier = match[1] ?? "";
+      expect(
+        specifier.startsWith("./"),
+        `patient-plan-transform.ts imports ${specifier} from outside the namespace`,
+      ).toBe(true);
+      expect(specifier.includes(".."), `patient-plan-transform.ts reaches up out of the namespace: ${specifier}`).toBe(
+        false,
+      );
+    }
+
+    // No language model, AI service, or provider call is reachable from any part
+    // of the Patient Plan, including the transformation.
+    const forbidden: readonly { label: string; pattern: RegExp }[] = [
+      { label: "a language-model provider", pattern: /\b(?:openai|anthropic|claude|gemini|bedrock|azure_?openai)\b/i },
+      {
+        label: "a model call",
+        pattern: /\b(?:createCompletion|chat\.completions|generateText|streamText|invokeModel)\b/,
+      },
+      { label: "an inference or embedding call", pattern: /\b(?:inference|embedding|embeddings|tokeni[sz]er)\b/i },
+      { label: "a prompt", pattern: /\b(?:systemPrompt|userPrompt|promptTemplate)\b/ },
+      {
+        label: "a network call",
+        pattern: /\bfetch\s*\(|\baxios\b|\bhttps?:\/\/(?!example\.org|www\.triplezero|emhs\.health)/i,
+      },
+      { label: "a wall-clock read", pattern: /Date\.now\s*\(|new Date\s*\(\s*\)/ },
+      { label: "randomness", pattern: /Math\.random\s*\(|crypto\./ },
+      { label: "a timer", pattern: /\bsetTimeout\s*\(|\bsetInterval\s*\(/ },
+      { label: "storage", pattern: /\b(?:localStorage|sessionStorage|indexedDB)\b/ },
+    ];
+    for (const file of PATIENT_PLAN_MODULES) {
+      const source = readFileSync(resolve(process.cwd(), file), "utf8");
+      for (const { label, pattern } of forbidden) {
+        expect(pattern.test(source), `${file} contains ${label}`).toBe(false);
+      }
+    }
+  });
+
   it("registers no route handler and no production route outside the mockup namespace", () => {
     const handlers = readdirSync(resolve(process.cwd(), APP_ROOT), { recursive: true, withFileTypes: true }).filter(
       (entry) => entry.isFile() && /^route\.(?:ts|tsx|js)$/.test(entry.name),
@@ -427,8 +507,12 @@ describe("Care Plan synthetic, memory-only boundary", () => {
     // building, it carries a person's own words about what keeps them safe, and
     // it lists real crisis telephone numbers — a rule that clipped any of it
     // would leave every DOM assertion green.
+    // Extended in Task 9 to the Patient Plan. It is the second document that
+    // leaves the building, it is written to be read by the person it is about,
+    // and a rule that clipped one of its eight sections would leave every DOM
+    // assertion green — Vitest runs with `css: false`.
     const protectedSelector =
-      /\.(?:firstMinuteSection\w*|pinnedBoundary\w*|fullPlanSection\w*|currentPlanCard|printPaper|printRecordWarning|printIdentity|printCmht|safetyPaper\w*|safetySection\w*|safetySupport\w*|crisis\w*)\b/;
+      /\.(?:firstMinuteSection\w*|pinnedBoundary\w*|fullPlanSection\w*|currentPlanCard|printPaper|printRecordWarning|printIdentity|printCmht|safetyPaper\w*|safetySection\w*|safetySupport\w*|crisis\w*|patientPlanPaper\w*|patientPlanSection\w*|patientPlanLeadIn|patientPlanResource\w*)\b/;
 
     /**
      * Declarations are parsed rather than pattern-matched over the block text.
@@ -598,28 +682,31 @@ describe("Care Plan synthetic, memory-only boundary", () => {
       return (match[2] === "rem" ? size * 16 : size) * 0.75;
     }
 
-    const paper = declarationsFor("safetyPaper", printRules);
-    const printedSize = paper.get("font-size");
-    expect(
-      printedSize,
-      ".safetyPaper declares no printed font size, so the patient copy is not sized for paper",
-    ).toBeDefined();
-    expect(
-      pointsOf(printedSize ?? ""),
-      `.safetyPaper prints at ${printedSize ?? "nothing"}, which is too small for the document a person reads in a crisis`,
-    ).toBeGreaterThanOrEqual(11);
+    // Both documents that leave the building: the person's own safety plan, and
+    // their own copy of the Management Plan.
+    for (const paperClass of ["safetyPaper", "patientPlanPaper"]) {
+      const printedSize = declarationsFor(paperClass, printRules).get("font-size");
+      expect(
+        printedSize,
+        `.${paperClass} declares no printed font size, so the patient copy is not sized for paper`,
+      ).toBeDefined();
+      expect(
+        pointsOf(printedSize ?? ""),
+        `.${paperClass} prints at ${printedSize ?? "nothing"}, which is too small for the document a person reads in a crisis`,
+      ).toBeGreaterThanOrEqual(11);
+    }
 
-    for (const className of ["safetySection", "crisisEntry"]) {
+    for (const className of ["safetySection", "crisisEntry", "patientPlanSection", "patientPlanResource"]) {
       expect(
         declarationsFor(className, printRules).get("break-inside"),
         `.${className} may be split across a page break, so half of it can be lost on the previous sheet`,
       ).toBe("avoid");
     }
 
-    // Nothing on the patient copy is pinned to a viewport that does not exist on
-    // a sheet of paper — a fixed dock prints once, over the content, or not at all.
+    // Nothing on either patient copy is pinned to a viewport that does not exist
+    // on a sheet of paper — a fixed dock prints once, over the content, or not at all.
     for (const rule of rules) {
-      if (!rule.selectors.some((selector) => /\.(?:safety|crisis)[A-Za-z]*\b/.test(selector))) continue;
+      if (!rule.selectors.some((selector) => /\.(?:safety|crisis|patientPlan)[A-Za-z]*\b/.test(selector))) continue;
       const position = declarationsFor(rule.selectors[0]?.replace(".appRoot .", "") ?? "", [rule]).get("position");
       expect(["fixed", "sticky"], `${rule.selectors.join(", ")} pins printed content to the viewport`).not.toContain(
         position,
@@ -643,6 +730,8 @@ describe("Care Plan synthetic, memory-only boundary", () => {
       `${COMPONENT_ROOT}/management-plan-review.tsx`,
       `${COMPONENT_ROOT}/safety-plan-pages.tsx`,
       `${COMPONENT_ROOT}/safety-plan-form.tsx`,
+      `${COMPONENT_ROOT}/patient-plan-pages.tsx`,
+      `${COMPONENT_ROOT}/patient-plan-form.tsx`,
     ];
     for (const file of consumers) {
       const source = readFileSync(resolve(process.cwd(), file), "utf8");

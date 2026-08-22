@@ -651,6 +651,8 @@ git commit -m "feat(rag): expose typed fallback and gap reasons"
 **Files:**
 
 - Inspect: `docs/rag-improvement/231-diagnosis-2026-08-22.md`
+- Reuse: `src/lib/rag/rag-extractive-answer.ts`
+- Reuse: `tests/rag-guidance-wrapper-quality-gate.test.ts`
 - Create: `src/lib/rag/rag-generation-degradation.ts`
 - Modify: `src/lib/rag/rag-provider.ts`
 - Modify: `src/lib/rag/rag-route-budget.ts`
@@ -667,7 +669,7 @@ git commit -m "feat(rag): expose typed fallback and gap reasons"
 
 - [ ] **Step 1: Reproduce the reported symptom deterministically**
 
-Add offline cases where retrieval and `AnswerCoveragePlan` are healthy but generation times out, truncates, fails parsing, or collapses at verification and falls back to a brief source-only answer. Include both evidence-supported mechanisms from the accepted Gate E diagnosis: a response-bearing first attempt rejected for an allowlisted quality reason before timeout/exhaustion, and an initial attempt that returns no response. Assert exact classification, per-attempt content-free response/latency telemetry, useful supported fallback, preserved citations/numbers, abort propagation, and no retry after the route reserve is exhausted. Also add the two demonstrated incoherent grounded extractive shapes as predicate-characterisation fixtures; do not claim a reachability fix unless the selected predicate actually rejects them.
+Add offline cases where retrieval and `AnswerCoveragePlan` are healthy but generation times out, truncates, fails parsing, or collapses at verification and falls back to a brief source-only answer. Include both evidence-supported mechanisms from the accepted Gate E diagnosis: a response-bearing first attempt rejected for an allowlisted quality reason before timeout/exhaustion, and an initial attempt that returns no response. Assert exact classification, per-attempt content-free response/latency telemetry, useful supported fallback, preserved citations/numbers, abort propagation, and no retry after the route reserve is exhausted. Treat the current `rag-extractive-answer.ts` predicate hardening and `rag-guidance-wrapper-quality-gate.test.ts` as the reconciled baseline: verify and extend those owners rather than recreating their already-landed incoherent-shape rejection. Do not claim reachability until the provider/fallback path is proven to invoke the selected predicate.
 
 - [ ] **Step 2: Add a shadow-only alternative comparator**
 
@@ -675,11 +677,11 @@ First add per-attempt response/latency and retry-admission telemetry so response
 
 - [ ] **Step 3: Implement only the smallest measured fix**
 
-Offline code may land behind the programme shadow flag. Implement only the measured mechanism: a deadline-admission change is eligible for the response-bearing quality-retry subset after the new telemetry proves it, while zero-response initial timeouts remain separately diagnosed and cannot be claimed fixed by retry admission. Any predicate change requires focused clinical-quality fixtures because the two recorded incoherent answers currently pass the existing predicates. Behaviour activation requires separately approved provider baseline/post evidence showing the chosen alternative reduces its exact target slice while keeping useful supported output, citation/numeric/role invariants, abort/deadline behavior, and p95 inside the existing route ceiling. If no alternative meets those gates, retain legacy behavior and leave this task operationally blocked rather than claiming the significant answer-quality issue fixed.
+Offline code may land behind the programme shadow flag. Implement only the measured mechanism: a deadline-admission change is eligible for the response-bearing quality-retry subset after the new telemetry proves it, while zero-response initial timeouts remain separately diagnosed and cannot be claimed fixed by retry admission. Preserve the current predicate hardening; any further predicate change requires new focused clinical-quality fixtures and proof that it fixes a still-reachable failure. Behaviour activation requires separately approved provider baseline/post evidence showing the chosen alternative reduces its exact target slice while keeping useful supported output, citation/numeric/role invariants, abort/deadline behavior, and p95 inside the existing route ceiling. If no alternative meets those gates, retain legacy behavior and leave this task operationally blocked rather than claiming the significant answer-quality issue fixed.
 
 - [ ] **Step 4: Run the focused offline proof**
 
-Run: `node scripts/run-vitest.mjs run tests/rag-generation-degradation.test.ts tests/rag-provider.test.ts tests/rag-route-budget.test.ts tests/rag-answer-fallback.test.ts tests/rag-eval-cases.test.ts`
+Run: `node scripts/run-vitest.mjs run tests/rag-generation-degradation.test.ts tests/rag-provider.test.ts tests/rag-route-budget.test.ts tests/rag-answer-fallback.test.ts tests/rag-eval-cases.test.ts tests/rag-guidance-wrapper-quality-gate.test.ts`
 
 Expected: PASS/source-only. Provider comparison and the target-slice acceptance threshold remain explicitly unrun until authorized.
 

@@ -12,7 +12,7 @@ use clearly fictional synthetic identities and details; real patient information
 appear in them. All other fixtures, messages, people, services, identifiers and phone numbers are
 fictional too.
 
-Callback is a dedicated operational workspace inside this repository. It inherits the Clinical KB
+Caring Contacts is a dedicated operational workspace inside this repository. It inherits the Clinical KB
 v2 visual and accessibility contracts but is not a search mode. Patient or referral information must
 not enter shared search, RAG, OpenAI, favourites, recent-search, query-log or analytics paths.
 
@@ -43,7 +43,7 @@ Reporting never moves above actionable work. `Needs action` is not an inferred-r
 ## 3. Referral, identity and episode boundaries
 
 The hospital workflow supplies minimum identity, discharge, mobile provenance, an explicit
-patient-controlled/suitable-for-discreet-SMS flag and `Agreement confirmed: Yes/No`. Callback does
+patient-controlled/suitable-for-discreet-SMS flag and `Agreement confirmed: Yes/No`. Caring Contacts does
 not represent the imported mobile as independently re-verified or the agreement as legal/treatment
 consent.
 
@@ -52,7 +52,7 @@ reason. Before acceptance, the UI shows `Awaiting handover` and the referring te
 Acceptance moves the referral into the aftercare queue; a coordinator then explicitly claims it or a
 team lead assigns it. There is no automatic round robin.
 
-Patient search is limited to the active pilot team's referrals and Callback episodes. Results are
+Patient search is limited to the active pilot team's referrals and Caring Contacts episodes. Results are
 identity-forward rows followed by a separate assurance step. The chosen identity remains visible in
 flow through activation; `Change patient` requires object-specific confirmation. Team switching
 clears patient state before the new context renders.
@@ -128,7 +128,7 @@ phone bottom sheets; inspection is a wide right drawer and phone full-height she
 withdrawal, activation and conflicts become full-screen phone stages. Every overlay is named,
 focus-safe, scrollable and leaves validation, focus and safe-area navigation uncovered.
 The frozen per-item 24-row modality and dismissal matrix in
-`docs/caring-contacts/design-handoff.md` is binding; a generic one-modality Sheet path is not an
+`docs/caring-contacts/interaction-matrix.md` is binding; a generic one-modality Sheet path is not an
 acceptable implementation substitute.
 
 ## 7. Content, visual and responsive contract
@@ -177,7 +177,8 @@ design handoff:
 - [content style guide](../../caring-contacts/content-style-guide.md);
 - [clinical-language review](../../caring-contacts/clinical-language-review.md);
 - [accessibility and responsive acceptance](../../caring-contacts/accessibility-acceptance.md); and
-- [developer handoff](../../caring-contacts/design-handoff.md).
+- [interaction matrix](../../caring-contacts/interaction-matrix.md) — the binding 24-row modality and dismissal decisions.
+- [linked prototype handoff](../../caring-contacts/linked-prototype-handoff.md).
 
 The local evidence is synthetic Chromium/source evidence only. Physical iPhone Safari and installed-
 PWA acceptance are unrun and required later. None of these documents converts the prototype into a

@@ -29,16 +29,27 @@ export function ContactActions({
   scenario,
   reviewsHref,
   onIntent,
+  blockedReason,
 }: {
   contact: CmhtContact;
   scenario: PrototypeScenario;
   reviewsHref: string;
   onIntent: (channel: ContactChannel) => void;
+  /** The reducer's current refusal, if an attempted contact action cannot be recorded. */
+  blockedReason: string | null;
 }) {
   const [failedChannel, setFailedChannel] = useState<ContactChannel | null>(null);
 
   function handleLaunch(channel: ContactChannel) {
     return (event: MouseEvent<HTMLAnchorElement>) => {
+      // The URI and audit event are one action. If the reducer would refuse the
+      // audit event, do not open an external application and create an
+      // unrecorded contact attempt.
+      if (blockedReason !== null) {
+        event.preventDefault();
+        setFailedChannel(null);
+        return;
+      }
       // The launch-failure specimen: the external application never opens, so
       // the anchor's default navigation is stopped and the failure is stated.
       // The details stay exactly where they were — withholding them would send
@@ -89,16 +100,40 @@ export function ContactActions({
       </dl>
 
       <div className={styles.contactActions} data-print-hide="true">
-        <a href={buildCmhtMailto(contact)} className={styles.contactAction} onClick={handleLaunch("email")}>
+        <a
+          href={buildCmhtMailto(contact)}
+          className={styles.contactAction}
+          aria-disabled={blockedReason === null ? undefined : true}
+          aria-describedby={blockedReason === null ? undefined : "care-plan-contact-action-blocked"}
+          onClick={handleLaunch("email")}
+        >
           {`Email ${contact.name}`}
         </a>
-        <a href={buildCmhtTel(contact)} className={styles.contactAction} onClick={handleLaunch("call")}>
+        <a
+          href={buildCmhtTel(contact)}
+          className={styles.contactAction}
+          aria-disabled={blockedReason === null ? undefined : true}
+          aria-describedby={blockedReason === null ? undefined : "care-plan-contact-action-blocked"}
+          onClick={handleLaunch("call")}
+        >
           {`Call ${contact.name}`}
         </a>
-        <a href={buildCmhtTel(contact, "after_hours")} className={styles.contactAction} onClick={handleLaunch("call")}>
+        <a
+          href={buildCmhtTel(contact, "after_hours")}
+          className={styles.contactAction}
+          aria-disabled={blockedReason === null ? undefined : true}
+          aria-describedby={blockedReason === null ? undefined : "care-plan-contact-action-blocked"}
+          onClick={handleLaunch("call")}
+        >
           Call the after-hours line
         </a>
       </div>
+
+      {blockedReason === null ? null : (
+        <p id="care-plan-contact-action-blocked" role="alert" className={styles.contactWarning}>
+          {blockedReason}
+        </p>
+      )}
 
       <p className={styles.contactBoundary}>
         These controls open an application on this device. This prototype transmits nothing and holds no evidence of

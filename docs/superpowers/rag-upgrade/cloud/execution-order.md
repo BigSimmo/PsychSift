@@ -1,58 +1,44 @@
-# RAG upgrade programme execution order
+# RAG upgrade execution order
 
-This is the single scheduling authority for the two execution packages. The eight plans remain the task specifications; `programme-manifest.json` owns their interleaving. Do not execute an entire plan simply because it appears earlier alphabetically.
+The manifest is the scheduling authority. Execute one phase per fresh session and never execute plans alphabetically. P00–P17 are Cloud/offline implementation. L00–L10 begin only in a new local session after the accepted offline programme is published.
 
-The planning-only Mode-aware Clinical Ask plan on the reconciled base is a separate programme with overlapping environment, dashboard, feedback, operations-document and migration owners. Do not run it concurrently. The recommended order is this RAG programme first, then a fresh-current-main revalidation of Mode-aware Clinical Ask; reverse that order only by revalidating this package before P00.
+## Cloud implementation sequence
 
-## Ordered phases
+`P00 → P01 → P02 → P03 → P04 → P05 → P06 → P07 → P08A → P08B → P08C → P09 → P10 → P11 → P12A → P12B → P12C → P13A → P13B → P13C → P14A → P14B → P14C → P15 → P16A → P16B → P16C → P16D → P17`
 
-| Phase | Work                            | Why it is here                                                                                                                                                        |
-| ----- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| P00   | Lossless current-answer display | Removes the independent display-only clipping without changing answer semantics.                                                                                      |
-| P01   | Evaluation Tasks 1–2            | Establishes cases, gates, and privacy-safe telemetry before behavioural work.                                                                                         |
-| P02   | Australian Tasks 1–4            | Establishes source roles, uploaded-guideline priority, Healthdirect exclusion, and link-only policy.                                                                  |
-| P03   | Repository Tasks 1–2            | Registers every approved public knowledge producer and deterministic adapters.                                                                                        |
-| P04   | Ingestion Task 1                | Distinguishes missing corpus content from retrieval failure through an expected-source inventory.                                                                     |
-| P05   | Ingestion Tasks 2–3             | Adds controlled acquisition contracts and shared recovery/activation receipts without fetching or activating.                                                         |
-| P06   | Repository Tasks 3–5            | Makes public site synchronization durable and binds every question/cache entry to the newest valid snapshot.                                                          |
-| P07   | Retrieval Tasks 1–2             | Defines bounded decomposition, ambiguity handling, coverage, and fallback contracts.                                                                                  |
-| P08A  | Retrieval Tasks 3–4             | Adds repository-wide retrieval and uploaded-guideline priority.                                                                                                       |
-| P08B  | Retrieval Tasks 5–6             | Adds claim-oriented context packing, numeric/table preservation, and typed gap classification.                                                                        |
-| P08C  | Retrieval Tasks 7–8             | Measures and remediates healthy-retrieval generation failures, then closes retrieval acceptance.                                                                      |
-| P09   | Evaluation Tasks 3–4            | Adds reviewed feedback flow and the isolated rollout/cache owner required downstream.                                                                                 |
-| P10   | Repository Task 6               | Closes repository-wide cases and creates the initial programme operating runbook.                                                                                     |
-| P11   | Australian Tasks 5–6            | Adds eTG/AMH link-only presentation and final source-governance handoff.                                                                                              |
-| P12A  | Adaptive Tasks 1–2              | Defines answer coverage and schema contracts.                                                                                                                         |
-| P12B  | Adaptive Tasks 3–4              | Implements adaptive composition and governed response integration.                                                                                                    |
-| P12C  | Adaptive Tasks 5–6              | Renders every governed section in the conversation and closes adaptive acceptance.                                                                                    |
-| P13A  | Verified-delivery Tasks 1–2     | Defines the delivery protocol and citation-complete parser.                                                                                                           |
-| P13B  | Verified-delivery Tasks 3–4     | Implements route and client state machines.                                                                                                                           |
-| P13C  | Verified-delivery Tasks 5–6     | Completes verified rendering and rollout acceptance while preserving buffered fallback.                                                                               |
-| P14A  | Ingestion Task 4                | Retires duplicate processing and establishes the sole processor.                                                                                                      |
-| P14B  | Ingestion Task 5                | Anchors summaries and reconstruction.                                                                                                                                 |
-| P14C  | Ingestion Task 6                | Fences leases, generations, repair, and status ownership.                                                                                                             |
-| P15   | Ingestion Tasks 7–9             | Builds dry-run shadow reindex, non-destructive rollback, and the operator runbook.                                                                                    |
-| P16A  | Trusted-ingestion Tasks 0–2     | Verifies prerequisites and adds administrator/backend admission plus the durable state model.                                                                         |
-| P16B  | Trusted-ingestion Tasks 3–4     | Adds extraction evidence and atomic activation.                                                                                                                       |
-| P16C  | Trusted-ingestion Tasks 5–6     | Adds durable queue ownership and retrieval lineage.                                                                                                                   |
-| P16D  | Trusted-ingestion Tasks 7–8     | Adds lifecycle controls and closes offline acceptance.                                                                                                                |
-| P17   | Evaluation Tasks 5–6            | Runs the final offline comparison and finalizes SLOs and stop/promotion criteria.                                                                                     |
-| P18   | Connected operator gates        | Verifies official source metadata, hosted schema/types, provider canaries, targeted waves, promotion, rollback and cleanup only with explicit per-operation approval. |
+Every phase owns exactly the plan tasks listed in `programme-manifest.json`. Every task is implemented by one fresh implementer and reviewed by one distinct fresh reviewer; the whole phase receives another fresh review. Writers are serial. Read-only research may run in parallel only when it cannot race the phase worktree.
 
-## Why repository-wide answering is early
+### Adaptive Cloud effort
 
-Repository content is an input to retrieval scope, cache identity, answer coverage and evaluation. It is therefore implemented before adaptive answer generation, not bolted on after the previous work. The more operational ingestion/reindex and trusted-upload hardening can follow the answer path because those tasks are separable, but they still block any claim of full production completion.
+| Launch effort | Target phases              | Build effort | Task/phase review   |
+| ------------- | -------------------------- | ------------ | ------------------- |
+| high          | P00, P04, P10, P11         | high         | manifest high/xhigh |
+| xhigh         | P01–P03, P05–P09, P12A–P17 | high         | xhigh               |
 
-## Non-negotiable order constraints
+The exact lettered phase list is in the manifest and is machine-validated. `TARGET_PHASE` must be present before substantive inspection. A running Cloud task cannot raise its own effort. An xhigh target therefore starts from the xhigh launch prompt with the repository confirmation marker; a high target starts from the high prompt. Implementations remain high because the task plans name files, interfaces, ordered steps and proof gates. P00 and P11 may use Terra/high implementers; all other implementation and all reviews use Sol at the manifest effort. No provider mapping or silent fallback is allowed.
 
-- Evaluation Task 4 must create the rollout owner before Repository Task 6 modifies it.
-- Ingestion Task 3 must create recovery/receipt primitives before Repository Tasks 3–5 consume them.
-- Repository Tasks 3–5 must create the public release/snapshot contract before Retrieval Task 3 serves site content.
-- Retrieval/context work must land before adaptive answer composition, and adaptive schema limits must land before verified incremental delivery.
-- P14A–P14C must establish the sole processor, anchored summaries and lease fencing before any document shadow stage, evaluation, promotion, rollback or cleanup.
-- Evaluation Tasks 5–6 remain last so their artifacts represent the complete candidate, not a partial programme.
-- P18 never begins merely because code is merged. Every connected read or mutation uses the approval matrix and exact project/service identity.
+Before dispatch, prove the controller route and one real fresh subagent dispatch from authoritative sanitized host metadata. Each task receipt binds the controller, implementer, task reviewer and phase reviewer separately. Self-report is invalid evidence.
 
-## Completion rule
+## P17 offline completion
 
-Offline completion means all P00–P17 task gates, per-task reviews, phase reviews, package parity, migration uniqueness, documentation links, and the final whole-branch review pass. It does not mean deployed, migrated, reindexed, provider-validated or production-ready. Full operational completion additionally requires every applicable P18 receipt and explicit acceptance thresholds, including reduction of healthy-retrieval timeout/source-only fallback without citation, numeric, access, latency or usefulness regression.
+Accept the P17 phase receipt first. Then dispatch a new Sol/xhigh reviewer over the immutable full programme range, run the manifest offline completion commands and atomically commit `PROGRAMME.json` with its referenced tracked evidence. `PROGRAMME.json` retains all six connected gates as open. It is offline acceptance only—not migration, provider, reindex, deployment or production acceptance.
+
+Push the exact accepted programme metadata tip to the single programme branch and stop. Do not begin connected work in Cloud.
+
+## New-session local sequence
+
+`L00 → L01 → L02 → L03 → L04 → L05 → L06 → L07 → L08 → L09 → L10 → OPERATIONAL.json`
+
+L00 starts a brand-new local worktree from the exact remote commit that introduced the accepted `PROGRAMME.json`. It binds and checks the Cloud lineage, compares current-main drift and quarantined local WIP, and performs no connected action. L01–L10 follow `connected-execution.md`; each phase requires its own target-specific authority and receipt.
+
+The local controller effort is high for L00, L01 and L06, and xhigh for L02–L05 and L07–L10. Review effort is high only for L00; all other local reviews are xhigh. The local phase cannot alter effort after launch, so select the matching Desktop control before starting the new session.
+
+Residual gates close only at their manifest owner. L10 requires an empty residual set and a fresh whole-operational review before atomically committing `OPERATIONAL.json`. Neither local receipt lineage may edit or replace accepted Cloud receipts.
+
+## Continuity rules
+
+- Accepted implementation phases start at the exact predecessor receipt commit.
+- P17 programme metadata is one later immutable commit; L00 starts from that programme metadata commit, not the P17 phase-receipt commit.
+- Local phases start at the exact predecessor local receipt commit, including phases that close no gate.
+- A missing receipt, hash mismatch, route mismatch, wrong effort, reused identity, expired/mismatched authority or untracked evidence is fail-closed.
+- A source, schema, type or runtime mismatch after Cloud acceptance produces `NO_GO` and a separate remediation programme; never rewrite accepted history.

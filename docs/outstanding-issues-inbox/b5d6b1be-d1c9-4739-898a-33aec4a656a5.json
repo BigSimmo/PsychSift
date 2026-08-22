@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "b5d6b1be-d1c9-4739-898a-33aec4a656a5",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Document /ward-management/constellation as an intentional unlinked compatibility redirect",
+    "detail": "PR #2303 restored /ward-management/constellation as a server redirect to /ward-management/network so live-main bookmarks do not 404 after Phase 3 retired the constellation command view. The route is on the reachability allowlist because in-app navigation uses the remaining rail modes and must not send readers through the redirect. STOP: do not add inbound nav to this route, and do not treat it as a visual Ward Flow surface; it is a bookmark/deep-link backstop only. Related: tests/route-reachability.test.ts REACHABILITY_ALLOWLIST, src/app/ward-management/constellation/page.tsx, docs/design-system/adoption-contract.json ward-management-constellation-legacy-redirect.",
+    "source": "PR #2303 CodeRabbit review; AGENTS.md new-route checklist requiring an /issues note for allowlisted orphans",
+    "issueUlid": "01M0NKTEQJHXY7QJXR82WCBXBT"
+  }
+}

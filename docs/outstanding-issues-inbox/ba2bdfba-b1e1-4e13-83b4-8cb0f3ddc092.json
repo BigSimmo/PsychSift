@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ba2bdfba-b1e1-4e13-83b4-8cb0f3ddc092",
+  "createdOn": "2026-08-18",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "task",
+    "summary": "Caring Contacts: three unmitigated hazards block any real-patient pilot (safety officer, lived-experience review, Aboriginal health review)",
+    "detail": "docs/caring-contacts/hazard-log.md records H-00 (no named clinical safety officer, so nobody owns clinical risk), H-04 (the message set has never been read by anyone with lived experience) and H-05 (no Aboriginal cultural safety review, in a WA suicide-aftercare service). All three are Open with no control. None blocks the synthetic build; every one blocks a pilot. H-04 is ready to run today: docs/caring-contacts/message-review-pack.md is a complete facilitation pack. Owner Josh for H-00 and H-04; Aboriginal health governance for H-05.",
+    "source": "Caring Contacts design session 2026-08-19; hazard log H-00/H-04/H-05",
+    "issueUlid": "01M0B6SSW31S81R85ACX1CVPHG"
+  }
+}

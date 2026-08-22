@@ -34,20 +34,21 @@ Structured map for AI agents and onboarding. For live routes, see `docs/site-map
 
 Smaller top-level directories that are easy to miss:
 
-| Path            | Purpose                                                                                                                                                                                                                                                                                                             |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data/`         | Committed clinical **snapshot exports** loaded at runtime by `src/lib/` (differentials, forms, medications, services, specifiers). Regenerate via the matching `scripts/import-*-export.ts` / `build-*-index.mjs`; do not hand-edit. Distinct from `src/data/`, which holds hand-authored static content.           |
-| `eval/`         | Isolated evaluation labs, outside the product/runtime dependency graph. `eval/docling/` is the sandboxed, dispatch-only Docling extraction benchmark (own hashed Python lock + venvs, egress-blocked Docker run, synthetic fixtures + hostile corpus, aggregate-only reports; `docs/rag-improvement/README.md` §B3) |
-| `eslint-rules/` | Repo-specific lint rules enforced by `npm run lint` (button wiring, hardcoded hex, type/icon scale, z-index ladder)                                                                                                                                                                                                 |
-| `mockups/`      | Notes for the design-scratch routes under `src/app/mockups/` (the routes themselves 404 in production)                                                                                                                                                                                                              |
-| `plugins/`      | `plugins/clinical-kb/` Codex plugin manifest and workflow skill                                                                                                                                                                                                                                                     |
-| `.agents/`      | Canonical single-word skill catalogue (`npm run skills`); `npm run check:skills` also validates Claude, Cursor, and plugin skill policies                                                                                                                                                                           |
-| `.claude/`      | Claude Code agents, skills, hooks, settings — plus the `.claude/worktrees/` working copies                                                                                                                                                                                                                          |
-| `.codex/`       | Trusted Desktop/CLI config; tracked `config.toml` has disabled, secret-free Figma, Supabase, Railway, and Sentry MCP templates. Hosted ChatGPT/Codex apps are installed and authenticated separately; OAuth stays in the host credential store.                                                                     |
-| `.cursor/`      | Cursor project rules and local-agent configuration                                                                                                                                                                                                                                                                  |
-| `.design-sync/` | Generated design-system package metadata, validation notes, and project-sync artifacts                                                                                                                                                                                                                              |
-| `.githooks/`    | Installed by `npm install`; `pre-push` runs `scripts/guard-push.mjs` (user-owned auto-merge preservation, format, drift staleness, static lint+typecheck, ledger write discipline)                                                                                                                                  |
-| `.vscode/`      | Shared VS Code workspace recommendations and settings                                                                                                                                                                                                                                                               |
+| Path               | Purpose                                                                                                                                                                                                                                                                                                             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `caring-contacts/` | Isolated Caring Contacts module migrations and local database-test runner. These migrations are deliberately separate from `supabase/migrations/` and must never target the Clinical KB project.                                                                                                                    |
+| `data/`            | Committed clinical **snapshot exports** loaded at runtime by `src/lib/` (differentials, forms, medications, services, specifiers). Regenerate via the matching `scripts/import-*-export.ts` / `build-*-index.mjs`; do not hand-edit. Distinct from `src/data/`, which holds hand-authored static content.           |
+| `eval/`            | Isolated evaluation labs, outside the product/runtime dependency graph. `eval/docling/` is the sandboxed, dispatch-only Docling extraction benchmark (own hashed Python lock + venvs, egress-blocked Docker run, synthetic fixtures + hostile corpus, aggregate-only reports; `docs/rag-improvement/README.md` §B3) |
+| `eslint-rules/`    | Repo-specific lint rules enforced by `npm run lint` (button wiring, hardcoded hex, type/icon scale, z-index ladder)                                                                                                                                                                                                 |
+| `mockups/`         | Notes for the design-scratch routes under `src/app/mockups/` (the routes themselves 404 in production)                                                                                                                                                                                                              |
+| `plugins/`         | `plugins/clinical-kb/` Codex plugin manifest and workflow skill                                                                                                                                                                                                                                                     |
+| `.agents/`         | Canonical single-word skill catalogue (`npm run skills`); `npm run check:skills` also validates Claude, Cursor, and plugin skill policies                                                                                                                                                                           |
+| `.claude/`         | Claude Code agents, skills, hooks, settings — plus the `.claude/worktrees/` working copies                                                                                                                                                                                                                          |
+| `.codex/`          | Trusted Desktop/CLI config; tracked `config.toml` has disabled, secret-free Figma, Supabase, Railway, and Sentry MCP templates. Hosted ChatGPT/Codex apps are installed and authenticated separately; OAuth stays in the host credential store.                                                                     |
+| `.cursor/`         | Cursor project rules and local-agent configuration                                                                                                                                                                                                                                                                  |
+| `.design-sync/`    | Generated design-system package metadata, validation notes, and project-sync artifacts                                                                                                                                                                                                                              |
+| `.githooks/`       | Installed by `npm install`; `pre-push` runs `scripts/guard-push.mjs` (user-owned auto-merge preservation, format, drift staleness, static lint+typecheck, ledger write discipline)                                                                                                                                  |
+| `.vscode/`         | Shared VS Code workspace recommendations and settings                                                                                                                                                                                                                                                               |
 
 **Do not commit:** `.next/`, `node_modules/`, `coverage/`, `.env*`, `sample-documents/`, logs.
 
@@ -68,50 +69,52 @@ Smaller top-level directories that are easy to miss:
 
 ### Product pages (`src/app/`)
 
-| Route                                                                                                                                                      | File                                                                                      |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `/`                                                                                                                                                        | `src/app/(search-app)/page.tsx`                                                           |
-| Shared mode-home route group (`/(search-app)`)                                                                                                             | `src/app/(search-app)/`                                                                   |
-| Mode homes (`/services`, `/dsm`, `/documents/…`, …)                                                                                                        | `src/app/(search-app)/` shared shell group                                                |
-| `/applications`                                                                                                                                            | `src/app/applications/route.ts`                                                           |
-| `/differentials`, `/diagnoses`, `/presentations`, `/compare`                                                                                               | `src/app/(search-app)/differentials/`                                                     |
-| `/dsm`, `/dsm/search`, `/dsm/compare`, `/dsm/diagnoses/[slug]`                                                                                             | `src/app/(search-app)/dsm/`                                                               |
-| `/documents/search`, `/source`, `/evidence`, `/[id]`                                                                                                       | `src/app/(search-app)/documents/`                                                         |
-| `/factsheets`, `/factsheets/search`, `/factsheets/[slug]`                                                                                                  | `src/app/(search-app)/factsheets/`                                                        |
-| `/dictionary`, Terms (`/search`, one catalogue — `/browse` redirects to it), Topics, Definition, Compare, Sources                                          | `src/app/(search-app)/dictionary/`                                                        |
-| `/favourites`                                                                                                                                              | `src/app/(search-app)/favourites/page.tsx`                                                |
-| `/forms`, `/forms/[slug]`                                                                                                                                  | `src/app/(search-app)/forms/`                                                             |
-| `/medications`, `/medications/[slug]`                                                                                                                      | `src/app/(search-app)/medications/`                                                       |
-| `/privacy`                                                                                                                                                 | `src/app/privacy/page.tsx` → `privacy-quiet-signal-page.tsx` + `privacy-page-content.tsx` |
-| `/reference/colour-coding`                                                                                                                                 | `src/app/reference/`                                                                      |
-| `/safety-plan`                                                                                                                                             | `src/app/safety-plan/page.tsx`                                                            |
-| `/calculators`, `/calculators/search`                                                                                                                      | `src/app/(search-app)/calculators/`                                                       |
-| `/services`, `/services/[slug]`                                                                                                                            | `src/app/(search-app)/services/`                                                          |
-| `/therapy-compass`                                                                                                                                         | `src/app/(search-app)/therapy-compass/`                                                   |
-| `/tools`                                                                                                                                                   | `src/app/(search-app)/tools/`                                                             |
-| `/specifiers`, `/specifiers/[slug]`, `/specifiers/builder`, `/specifiers/compare`, `/specifiers/map`                                                       | `src/app/(search-app)/specifiers/`                                                        |
-| `/formulation`, `/formulation/[slug]`, `/formulation/builder`, `/formulation/compare`, `/formulation/map`                                                  | `src/app/(search-app)/formulation/`                                                       |
-| `/ward-management`, `/constellation`, `/network`, `/queue`, `/capacity`, `/movements`, `/exceptions`, `/transport`, `/governance`, `/patients/[patientId]` | `src/app/ward-management/` — Ward Flow synthetic patient-flow prototype                   |
-| `/mockups/*`                                                                                                                                               | `src/app/mockups/` (404 in production)                                                    |
-| `/auth/callback`                                                                                                                                           | `src/app/auth/callback/route.ts`                                                          |
+| Route                                                                                                                                                                                          | File                                                                                      |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `/`                                                                                                                                                                                            | `src/app/(search-app)/page.tsx`                                                           |
+| Shared mode-home route group (`/(search-app)`)                                                                                                                                                 | `src/app/(search-app)/`                                                                   |
+| Mode homes (`/services`, `/dsm`, `/documents/…`, …)                                                                                                                                            | `src/app/(search-app)/` shared shell group                                                |
+| `/caring-contacts` (standalone workspace; own nav, entered from Tools)                                                                                                                         | `src/app/caring-contacts/`                                                                |
+| `/applications`                                                                                                                                                                                | `src/app/applications/route.ts`                                                           |
+| `/differentials`, `/diagnoses`, `/presentations`, `/compare`                                                                                                                                   | `src/app/(search-app)/differentials/`                                                     |
+| `/dsm`, `/dsm/search`, `/dsm/compare`, `/dsm/diagnoses/[slug]`                                                                                                                                 | `src/app/(search-app)/dsm/`                                                               |
+| `/documents/search`, `/source`, `/evidence`, `/[id]`                                                                                                                                           | `src/app/(search-app)/documents/`                                                         |
+| `/factsheets`, `/factsheets/search`, `/factsheets/[slug]`                                                                                                                                      | `src/app/(search-app)/factsheets/`                                                        |
+| `/dictionary`, Terms (`/search`, one catalogue — `/browse` redirects to it), Topics, Definition, Compare, Sources                                                                              | `src/app/(search-app)/dictionary/`                                                        |
+| `/favourites`                                                                                                                                                                                  | `src/app/(search-app)/favourites/page.tsx`                                                |
+| `/forms`, `/forms/[slug]`                                                                                                                                                                      | `src/app/(search-app)/forms/`                                                             |
+| `/medications`, `/medications/[slug]`                                                                                                                                                          | `src/app/(search-app)/medications/`                                                       |
+| `/privacy`                                                                                                                                                                                     | `src/app/privacy/page.tsx` → `privacy-quiet-signal-page.tsx` + `privacy-page-content.tsx` |
+| `/reference/colour-coding`                                                                                                                                                                     | `src/app/reference/`                                                                      |
+| `/safety-plan`                                                                                                                                                                                 | `src/app/safety-plan/page.tsx`                                                            |
+| `/calculators`, `/calculators/search`                                                                                                                                                          | `src/app/(search-app)/calculators/`                                                       |
+| `/services`, `/services/[slug]`                                                                                                                                                                | `src/app/(search-app)/services/`                                                          |
+| `/therapy-compass`                                                                                                                                                                             | `src/app/(search-app)/therapy-compass/`                                                   |
+| `/tools`                                                                                                                                                                                       | `src/app/(search-app)/tools/`                                                             |
+| `/specifiers`, `/specifiers/[slug]`, `/specifiers/builder`, `/specifiers/compare`, `/specifiers/map`                                                                                           | `src/app/(search-app)/specifiers/`                                                        |
+| `/formulation`, `/formulation/[slug]`, `/formulation/builder`, `/formulation/compare`, `/formulation/map`                                                                                      | `src/app/(search-app)/formulation/`                                                       |
+| `/ward-management`, `/network`, `/queue`, `/capacity`, `/movements`, `/exceptions`, `/transport`, `/transport/officer`, `/governance`, `/ed/[edId]`, `/patients/[patientId]`, `/ward/[unitId]` | `src/app/ward-management/` — Ward Flow synthetic patient-flow prototype                   |
+| `/mockups/*`                                                                                                                                                                                   | `src/app/mockups/` (404 in production)                                                    |
+| `/auth/callback`                                                                                                                                                                               | `src/app/auth/callback/route.ts`                                                          |
 
 ### API routes (`src/app/api/`)
 
-| Area          | Routes                                                                                                                 | Entry files                                                     |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Account       | `/api/account/favourites`, `/api/account/preferences`                                                                  | `account/`                                                      |
-| Answers       | `/api/answer`, `/api/answer/stream`, `/api/answer-feedback`                                                            | `answer/route.ts`, `answer/stream/route.ts`, `answer-feedback/` |
-| Search        | `/api/search`, `/api/search/interaction`, `/api/search/universal`                                                      | `search/`                                                       |
-| Upload        | `/api/upload`                                                                                                          | `upload/route.ts`                                               |
-| Documents     | `/api/documents`, `/api/documents/[id]`, bulk/reindex, labels, reviews, search, signed URLs, summaries, table facts    | `documents/`                                                    |
-| Differentials | `/api/differentials`, `/api/differentials/[slug]`, `/api/differentials/presentations/[slug]`                           | `differentials/`                                                |
-| Medications   | `/api/medications`, `/api/medications/[slug]`                                                                          | `medications/`                                                  |
-| Ingestion     | `/api/ingestion/batches`, `/api/ingestion/jobs`, retry, quality                                                        | `ingestion/`                                                    |
-| Registry      | `/api/registry/records`, `/api/registry/records/[slug]`                                                                | `registry/records/`                                             |
-| Images        | `/api/images/[id]/signed-url`                                                                                          | `images/[id]/signed-url/route.ts`                               |
-| Ops           | `/api/health`, `/api/health/ready`, `/api/setup-status`, `/api/local-project-id`                                       | `health/`, `setup-status/`, `local-project-id/`                 |
-| Eval / jobs   | `/api/eval-cases`; `/api/jobs` (admin/ops listing — see `docs/api-jobs-ops-surface.md`; UI uses `/api/ingestion/jobs`) | `eval-cases/`, `jobs/`                                          |
-| Webhooks      | `/api/webhooks/railway`, `/api/webhooks/supabase/document-change` (inbound; secret-gated — see docs/webhooks.md)       | `webhooks/`                                                     |
+| Area            | Routes                                                                                                                 | Entry files                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Account         | `/api/account/favourites`, `/api/account/preferences`                                                                  | `account/`                                                      |
+| Answers         | `/api/answer`, `/api/answer/stream`, `/api/answer-feedback`                                                            | `answer/route.ts`, `answer/stream/route.ts`, `answer-feedback/` |
+| Search          | `/api/search`, `/api/search/interaction`, `/api/search/universal`                                                      | `search/`                                                       |
+| Upload          | `/api/upload`                                                                                                          | `upload/route.ts`                                               |
+| Documents       | `/api/documents`, `/api/documents/[id]`, bulk/reindex, labels, reviews, search, signed URLs, summaries, table facts    | `documents/`                                                    |
+| Differentials   | `/api/differentials`, `/api/differentials/[slug]`, `/api/differentials/presentations/[slug]`                           | `differentials/`                                                |
+| Medications     | `/api/medications`, `/api/medications/[slug]`                                                                          | `medications/`                                                  |
+| Ingestion       | `/api/ingestion/batches`, `/api/ingestion/jobs`, retry, quality                                                        | `ingestion/`                                                    |
+| Registry        | `/api/registry/records`, `/api/registry/records/[slug]`                                                                | `registry/records/`                                             |
+| Images          | `/api/images/[id]/signed-url`                                                                                          | `images/[id]/signed-url/route.ts`                               |
+| Ops             | `/api/health`, `/api/health/ready`, `/api/setup-status`, `/api/local-project-id`                                       | `health/`, `setup-status/`, `local-project-id/`                 |
+| Eval / jobs     | `/api/eval-cases`; `/api/jobs` (admin/ops listing — see `docs/api-jobs-ops-surface.md`; UI uses `/api/ingestion/jobs`) | `eval-cases/`, `jobs/`                                          |
+| Webhooks        | `/api/webhooks/railway`, `/api/webhooks/supabase/document-change` (inbound; secret-gated — see docs/webhooks.md)       | `webhooks/`                                                     |
+| Caring Contacts | `/api/caring-contacts/*` (synthetic demo session, team-scoped workspace, access trail and workflow actions)            | `caring-contacts/`                                              |
 
 ---
 
@@ -187,6 +190,16 @@ domain-extracted directory; imported as `@/lib/rag/rag*`). Other modules below r
 | `validation/`                                                                                                          | `body.ts`, `query.ts`, `params.ts`, `http.ts`, `form-data.ts`                                                                                                            |
 | `app-modes.ts`, `document-flow-routes.ts`, `local-project-identity.ts`, `local-server-utils.mjs`                       | Routing and project identity                                                                                                                                             |
 | `tailwind-merge.ts`                                                                                                    | The `extendTailwindMerge` config behind `cn()` — declares this repo's custom `@theme` scales so twMerge does not misclassify them (`docs/design-system/TOKENS.md`)       |
+
+### Caring Contacts
+
+`src/lib/caring-contacts/` is an isolated, synthetic caring-contact domain. It uses only
+relative imports within its directory, provides deny-by-default team-scoped permissions and
+privacy-safe audit records, and is exercised against both in-memory and local Postgres
+repositories. `src/lib/caring-contacts-server/` is the server-side seam for the demo session
+and optional separate database connection. It must fail closed in production and must never
+connect to the Clinical KB Supabase project. The standalone `src/app/caring-contacts/` workspace
+is noindex, visibly marked synthetic, and has a single inbound entry from the Tools catalogue.
 
 ---
 
@@ -344,8 +357,36 @@ visible reasons and a human confirms or overrides.
   `ward-movements.ts` (48 movements, 6 bed releases), `ward-derivations.ts` (shared pure UI
   derivations)
 - **Surfaces:** `ward-management-console.tsx` (command), `ward-management-modes.tsx` (mode
-  workspaces), `ward-management-network.tsx` (network diagram), `ward-management-navigation.tsx`
-- **Tests:** `tests/ward-management.test.ts`, `tests/ui-ward-management.spec.ts`
+  workspaces), `ward-management-network.tsx` (network diagram), `ward-management-navigation.tsx`,
+  `src/app/ward-management/constellation/page.tsx` (retired constellation; server redirect to
+  `/ward-management/network`), `coordinator/coordinator-screen.tsx` (Phase 3 live coordinator screen — priority queue, statewide
+  flow diagram, explainable shortlist), `ward/ward-screen.tsx` (Task 8: one inpatient unit's own
+  view — `/ward-management/ward/[unitId]`; capacity confirmation, incoming-referral accept/hold/
+  decline, restriction notices, withdrawn referrals), `officer/officer-screen.tsx` (Task 9: the
+  transport officer's phone — `/ward-management/transport/officer`; every transport job not yet
+  arrived, since `TransportJob` carries a `provider` organisation and no officer identity;
+  queue-plus-pinned-action-bar pattern inherited from `shortlist-panel.tsx`, one job "active" at a
+  time with its four transport actions — accepted, en route, collected, arrived — pinned to the
+  viewport bottom on phone widths), `tracker/live-tracker.tsx` (Task 10: the coordinator's live
+  tracker, rewriting the existing route — `/ward-management/transport`; every open movement that
+  carries a transport job, its leg via `tracker/tracker-derivations.ts`'s `trackerRowState`
+  (delegating to `transportLeg`) and how long since that leg's own stamp via `stampAgeText`; a
+  movement with no transport job at all is never listed as a row — the banner states the excluded
+  count in real text instead, the same on-screen-honesty discipline as the officer screen's "no
+  officer identity" notice), `ed/ed-screen.tsx` (Task 11: one emergency department's own view —
+  `/ward-management/ed/[edId]`, resolved via `ward-sites.ts`'s `edById`; both clocks (time in
+  department from `openedAt`, the legal clock from `formedAt` where earlier, marked
+  `data-community-formed`), the four-hour `ED_ACCESS_TARGET_MINUTES` departmental access target
+  — labelled and computed so it can never be mistaken for a legal deadline and never touches a
+  `LegalForm`/`dueAt` — a police-attendance flag, and each movement's single outstanding item; a
+  raise-referral form (`RAISE_REFERRAL`), a record-examination form (`RECORD_EXAMINATION`), and
+  the mark-handover-ready control (`HANDOVER_READY`) that is the only producer of a transport job;
+  statewide capacity shown read-only)
+- **State layer (Phase 3):** `ward-flow-provider.tsx` (`WardFlowProvider`/`useWardFlow`, mounted at
+  `src/app/ward-management/layout.tsx`), `ward-flow-reducer.ts` (the one mutation path),
+  `ward-flow-events.ts` (event/role table)
+- **Tests:** `tests/ward-management.test.ts`, `tests/ui-ward-management.spec.ts`,
+  `tests/ui-ward-coordinator.spec.ts`, `tests/ui-ward-roles.spec.ts`
 
 ### Developer hub (`src/app/mockups/development/`, `src/lib/developer-area/`)
 

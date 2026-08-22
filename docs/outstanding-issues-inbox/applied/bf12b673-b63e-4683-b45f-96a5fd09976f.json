@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "bf12b673-b63e-4683-b45f-96a5fd09976f",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Seven Claude Code sessions point at .claude/worktrees directories that are empty and not registered git worktrees, so those chats have no working copy",
+    "detail": "Measured 2026-08-22 while taking the fleet worktree inventory for #6GW95D. Seven directories under .claude/worktrees contain zero regular files AND are NOT registered git worktrees - none appears in git worktree list, and none has a .git entry: caring-contacts-phase-2a-a4f69a, database-test-queue-contention-6baedb, developer-button-settings-fb9b51, ed-care-plans-impl-7f44cd, phase-4-index-restoration-b0f4ea, vibrant-diffie-c93450 and wave-1-canary-s2-unlock-17d673. They are bare empty directories, neither worktree debris nor live checkouts. Each is the recorded cwd of an existing session in the session registry, titled respectively Suicide, Dev Drive, Developer, Care Plan, Database, Ward Flow and RAG; the Database one was still marked running. They were already empty before this session touched anything: the inventory counted files first and only then attempted removal, and all seven then refused with EPERM because a live process holds the directory handle open, so nothing was deleted from them here. No git history is at risk - every branch still exists at its recorded head. Impact is that resuming any of those chats operates on an empty directory. REPAIR, VERIFIED BY EXECUTION 2026-08-22 rather than assumed, because an earlier review comment and an automated fix both asserted the opposite: since the path is unregistered and the branch is checked out nowhere, git -C D:/Repos/Database worktree add <path> <branch> succeeds directly into the existing empty directory - probed on a scratch copy with branch claude/ward-flow-phase-3-7eda97, exit 0, 3812 files checked out. Do NOT add -f: it is unnecessary here and it disables the branch-already-checked-out guard. Then run node scripts/setup-codex-worktree.mjs inside the directory to restore dependencies by byte-identical copy, about 90 seconds rather than an hour-long npm ci. Two conditions would change that command and should be re-checked first: if git worktree list ever DOES name the path, run git worktree prune before adding (the stale-registration path, still not -f); if the branch is checked out in another worktree, add under a different branch rather than using -f. Permit -f only with explicit owner approval after proving the existing worktree is stale and inactive. Worth understanding the cause before repairing them - something is emptying directories that sessions still treat as their cwd.",
+    "source": "session 2026-08-22, GitHub issue #2270 Part A",
+    "issueUlid": "01M0MY8HPCRVK6BJGG9A8BY6HG"
+  }
+}

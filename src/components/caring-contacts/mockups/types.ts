@@ -1,3 +1,11 @@
+import {
+  DESIGNATED_FICTIONAL_MOBILE_NUMBERS,
+  FICTIONAL_CONTACTS_BY_ROLE,
+  type DesignatedFictionalMobileNumber,
+  type FictionalContactRole,
+  type SyntheticPatientMobile,
+} from "@/lib/caring-contacts/synthetic-contacts";
+
 export type PrimaryDestination = "Today" | "Patients" | "Schedule" | "Templates";
 export type MoreDestination = "Team" | "Guidance" | "Reports";
 export type WorkspaceDestination = PrimaryDestination | MoreDestination;
@@ -25,23 +33,13 @@ export const SUPERSEDED_CARING_CONTACT_ROUTE_PATTERNS = [
   "/caring-contacts/templates/[versionId]",
 ] as const;
 
-export const FICTIONAL_CONTACTS_BY_ROLE = {
-  miraPatientMobile: "+61 491 570 006",
-  rowanPatientMobile: "+61 491 570 156",
-  programmeStaffedLine: "+61 491 570 157",
-  crisisSupportContact: "+61 491 570 158",
-} as const;
-
-export type FictionalContactRole = keyof typeof FICTIONAL_CONTACTS_BY_ROLE;
-export const DESIGNATED_FICTIONAL_MOBILE_NUMBERS = [
-  FICTIONAL_CONTACTS_BY_ROLE.miraPatientMobile,
-  FICTIONAL_CONTACTS_BY_ROLE.rowanPatientMobile,
-  FICTIONAL_CONTACTS_BY_ROLE.programmeStaffedLine,
-  FICTIONAL_CONTACTS_BY_ROLE.crisisSupportContact,
-] as const;
-export type DesignatedFictionalMobileNumber = (typeof DESIGNATED_FICTIONAL_MOBILE_NUMBERS)[number];
-export type SyntheticPatientMobile =
-  (typeof FICTIONAL_CONTACTS_BY_ROLE)["miraPatientMobile"] | (typeof FICTIONAL_CONTACTS_BY_ROLE)["rowanPatientMobile"];
+export {
+  DESIGNATED_FICTIONAL_MOBILE_NUMBERS,
+  FICTIONAL_CONTACTS_BY_ROLE,
+  type DesignatedFictionalMobileNumber,
+  type FictionalContactRole,
+  type SyntheticPatientMobile,
+};
 
 export type ContactWindow = "Morning" | "Afternoon" | "Early evening";
 export type SyntheticSendingPreference = {

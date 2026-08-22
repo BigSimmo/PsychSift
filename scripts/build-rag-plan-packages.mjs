@@ -40,10 +40,19 @@ const sharedFiles = [
   ["docs/superpowers/rag-upgrade/canonical/execution-order.md", "execution-order.md"],
   ["docs/superpowers/rag-upgrade/canonical/approval-matrix.md", "approval-matrix.md"],
   ["docs/superpowers/rag-upgrade/canonical/sdd-execution.md", "sdd-execution.md"],
+  ["docs/superpowers/rag-upgrade/canonical/route-evidence.schema.json", "route-evidence.schema.json"],
   ["docs/superpowers/rag-upgrade/canonical/phase-receipt.schema.json", "phase-receipt.schema.json"],
   ["docs/superpowers/rag-upgrade/canonical/phase-receipt.template.json", "phase-receipt.template.json"],
   ["docs/superpowers/rag-upgrade/canonical/programme-receipt.schema.json", "programme-receipt.schema.json"],
   ["docs/superpowers/rag-upgrade/canonical/programme-receipt.template.json", "programme-receipt.template.json"],
+  ["docs/superpowers/rag-upgrade/canonical/connected-execution.md", "connected-execution.md"],
+  ["docs/superpowers/rag-upgrade/canonical/connected-phase-receipt.schema.json", "connected-phase-receipt.schema.json"],
+  [
+    "docs/superpowers/rag-upgrade/canonical/connected-phase-receipt.template.json",
+    "connected-phase-receipt.template.json",
+  ],
+  ["docs/superpowers/rag-upgrade/canonical/operational-receipt.schema.json", "operational-receipt.schema.json"],
+  ["docs/superpowers/rag-upgrade/canonical/operational-receipt.template.json", "operational-receipt.template.json"],
   ["docs/superpowers/rag-upgrade/canonical/task-verification-matrix.json", "task-verification-matrix.json"],
 ];
 
@@ -134,6 +143,104 @@ function validateCanonicalBodies() {
   const templateResidualIds = programmeTemplate.residualGates.map((gate) => gate.gateId);
   if (JSON.stringify(templateResidualIds.sort()) !== JSON.stringify([...residualGateIds].sort())) {
     errors.push("programme-receipt.template.json: residual gate IDs must exactly match the manifest");
+  }
+  const cloudPhaseIds = manifest.phases.map((phase) => phase.id);
+  const highLaunchPhases = manifest.adaptiveEffortPolicy?.highLaunchPhases ?? [];
+  const xhighLaunchPhases = manifest.adaptiveEffortPolicy?.xhighLaunchPhases ?? [];
+  const launchIds = [...highLaunchPhases, ...xhighLaunchPhases];
+  if (
+    new Set(launchIds).size !== launchIds.length ||
+    JSON.stringify([...launchIds].sort()) !== JSON.stringify([...cloudPhaseIds].sort())
+  ) {
+    errors.push("programme-manifest.json: adaptive effort launch sets must partition every Cloud phase exactly once");
+  }
+  if (manifest.adaptiveEffortPolicy?.xhighConfirmationMarker !== "[xhigh-confirmed]") {
+    errors.push("programme-manifest.json: xhigh confirmation marker must match the repository Cloud gate");
+  }
+  if (manifest.defaultAgentPolicy?.allowModelFallback !== false) {
+    errors.push("programme-manifest.json: model fallback must remain disabled");
+  }
+  if (manifest.defaultAgentPolicy?.authoritativeRouteEvidenceRequired !== true) {
+    errors.push("programme-manifest.json: authoritative route evidence must be required");
+  }
+  for (const [phaseId, profiles] of Object.entries(manifest.phaseSkillProfiles ?? {})) {
+    if (!cloudPhaseIds.includes(phaseId))
+      errors.push(`programme-manifest.json: unknown skill-profile phase ${phaseId}`);
+    for (const profile of profiles) {
+      if (!manifest.skillProfiles?.[profile]) {
+        errors.push(`programme-manifest.json: ${phaseId} references unknown skill profile ${profile}`);
+      }
+    }
+  }
+  const requiredSkillNames = new Set([
+    ...Object.values(manifest.skillProfiles ?? {}).flat(),
+    ...(manifest.localPhases ?? []).flatMap((phase) => phase.skills ?? []),
+  ]);
+  for (const skill of requiredSkillNames) {
+    if (!existsSync(absolute(`.agents/skills/${skill}/SKILL.md`))) {
+      errors.push(`programme-manifest.json: required repo-local skill is missing: ${skill}`);
+    }
+  }
+  for (const phaseId of cloudPhaseIds) {
+    if (!(manifest.phaseSkillProfiles?.[phaseId]?.length > 0)) {
+      errors.push(`programme-manifest.json: ${phaseId} has no phase-specific skill profile`);
+    }
+    const phase = manifest.phases.find((candidate) => candidate.id === phaseId);
+    const expectedReviewReasoning = manifest.adaptiveEffortPolicy?.phaseReviewEscalations?.includes(phaseId)
+      ? "xhigh"
+      : "high";
+    if (phase?.reviewReasoning !== expectedReviewReasoning) {
+      errors.push(`${phaseId}: reviewReasoning must be ${expectedReviewReasoning}`);
+    }
+  }
+  for (const requiredPath of [
+    manifest.capabilityContract?.trackedControllerSkill,
+    manifest.capabilityContract?.trackedTaskBriefHelper,
+    manifest.capabilityContract?.trackedLaunchHelper,
+  ]) {
+    if (!requiredPath || !existsSync(absolute(requiredPath))) {
+      errors.push(`programme-manifest.json: required tracked Cloud capability is missing: ${requiredPath ?? "unset"}`);
+    }
+  }
+  const localPhases = manifest.localPhases ?? [];
+  const localPhaseIds = new Set();
+  const closedGateOwners = new Map();
+  for (const [index, phase] of localPhases.entries()) {
+    const expectedId = `L${String(index).padStart(2, "0")}`;
+    if (phase.id !== expectedId) errors.push(`programme-manifest.json: local phase ${index} must be ${expectedId}`);
+    const expectedPredecessor = index === 0 ? null : localPhases[index - 1].id;
+    if (phase.executionPredecessor !== expectedPredecessor) {
+      errors.push(`${phase.id}: local executionPredecessor must be ${expectedPredecessor ?? "null"}`);
+    }
+    if (!["high", "xhigh"].includes(phase.controllerReasoning)) {
+      errors.push(`${phase.id}: local controllerReasoning must be high or xhigh`);
+    }
+    if (!Array.isArray(phase.skills) || phase.skills.length === 0)
+      errors.push(`${phase.id}: local skills are required`);
+    if (
+      !Array.isArray(phase.requiredOperationClasses) ||
+      phase.requiredOperationClasses.length === 0 ||
+      new Set(phase.requiredOperationClasses).size !== phase.requiredOperationClasses.length
+    ) {
+      errors.push(`${phase.id}: unique requiredOperationClasses are required`);
+    }
+    if (phase.closesGate !== null) {
+      if (!residualGateIds.includes(phase.closesGate))
+        errors.push(`${phase.id}: closes unknown gate ${phase.closesGate}`);
+      if (closedGateOwners.has(phase.closesGate)) {
+        errors.push(
+          `${phase.id}: gate ${phase.closesGate} is already closed by ${closedGateOwners.get(phase.closesGate)}`,
+        );
+      }
+      closedGateOwners.set(phase.closesGate, phase.id);
+    }
+    localPhaseIds.add(phase.id);
+  }
+  for (const gate of manifest.requiredResidualGates ?? []) {
+    if (!localPhaseIds.has(gate.owner)) errors.push(`${gate.id}: owner ${gate.owner} is not a local phase`);
+    if (closedGateOwners.get(gate.id) !== gate.owner) {
+      errors.push(`${gate.id}: closure owner must be exactly ${gate.owner}`);
+    }
   }
   const tasksByPlan = new Map();
   const taskBodiesByPlan = new Map();

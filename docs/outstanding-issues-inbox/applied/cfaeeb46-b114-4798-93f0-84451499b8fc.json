@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "cfaeeb46-b114-4798-93f0-84451499b8fc",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "The Claude push-format-guard hook blocks every push from a linked worktree, because it compares core.hooksPath against the worktree root instead of the common git dir",
+    "detail": "Measured 2026-08-22 pushing from D:/Repos/Database/.claude/worktrees/. .claude/hooks/push-format-guard.sh only intends to act when the repository pre-push hook is NOT wired. It computes repo_root from CLAUDE_PROJECT_DIR (the linked worktree) and compares the resolved core.hooksPath against repo_root/.githooks. In a linked worktree core.hooksPath is the absolute path of the MAIN checkout's .githooks (D:/Repos/Database/.githooks), which never equals <worktree>/.githooks, so the guard concludes the push is unguarded even though .githooks/pre-push is present, executable and does in fact run. It then performs a whole-tree prettier --check, which additionally flags git-IGNORED files: the only offender was .claude/settings.local.json, untracked and matched by a global gitignore, so it could not possibly be part of any push. Net effect: pushes from worktrees are blocked on a file that cannot be committed, and the documented CLAUDE_ALLOW_UNFORMATTED_PUSH=1 escape only works as the LEADING token of the whole shell command, so the natural 'cd <dir> && CLAUDE_ALLOW_... git push' form silently fails to unlock it. Three fixes, all small: resolve the repo root with git rev-parse --path-format=absolute --git-common-dir (or compare against the common dir's parent) so a linked worktree is recognised as guarded; restrict the fallback prettier check to tracked files (git ls-files) so ignored local state can never block a push; and mention the leading-token requirement in the block message itself. Related but distinct from the already-merged claude/push-guard-hookspath-relative work, which fixed relative and case-folded hooksPath values but not the worktree case.",
+    "source": "session 2026-08-22, GitHub issue #2270 Part A",
+    "issueUlid": "01M0MY8G5JCM7DG9AYWNH4Y5X9"
+  }
+}

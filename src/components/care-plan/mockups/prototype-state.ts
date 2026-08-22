@@ -21,10 +21,14 @@ import {
   assertSingleCurrentVersion,
   canPerformAction,
   getCurrentManagementPlanVersion,
+  getCurrentPatientPlanVersion,
   getCurrentSafetyPlanVersion,
   getEffectivePresentationValue,
   getOpenManagementDraft,
+  getOpenPatientPlanDraft,
 } from "./domain";
+import { getPatientResources, syntheticPatientResources } from "./patient-plan-fixtures";
+import { buildPatientPlanDraft, unfilledGapSections } from "./patient-plan-transform";
 import {
   PROTOTYPE_NOW,
   identificationPolicy,
@@ -60,6 +64,9 @@ import {
   type ManagementPlanContent,
   type ManagementPlanVersion,
   type Patient,
+  type PatientPlan,
+  type PatientPlanVersion,
+  type PatientResource,
   type PersonalSafetyPlan,
   type PersonalSafetyPlanVersion,
   type PlanAvailability,
@@ -162,8 +169,11 @@ const SCENARIO_PATIENT: Record<PrototypeScenario, SyntheticId | null> = {
  * flags from the scenario without reading a browser API.
  *
  * The Patient Plan collections start empty. A Patient Plan is produced from an
- * approved Management Plan Version by a later task; inventing fixture editions
- * of it here would put patient-facing wording on the record that nobody wrote.
+ * approved Management Plan Version when somebody makes one; inventing fixture
+ * editions here would put patient-facing wording on the record that nobody
+ * wrote. The resource catalogue is not an edition of anything, so it is seeded:
+ * it is the list a clinician chooses from, and an empty one would mean every
+ * patient copy started with nothing to offer.
  */
 export function createInitialPrototypeState(scenario: PrototypeScenario = "normal"): CarePlanPrototypeState {
   return {
@@ -185,7 +195,7 @@ export function createInitialPrototypeState(scenario: PrototypeScenario = "norma
     personalSafetyPlanVersions: cloneFixtures<PersonalSafetyPlanVersion>(syntheticPersonalSafetyPlanVersions),
     patientPlans: [],
     patientPlanVersions: [],
-    patientResources: [],
+    patientResources: cloneFixtures<PatientResource>(syntheticPatientResources),
     edPresentations: cloneFixtures<EdPresentation>(syntheticEdPresentations),
     presentationAmendments: cloneFixtures<PresentationAmendment>(syntheticPresentationAmendments),
     reviewTriggers: cloneFixtures<ReviewTrigger>(syntheticReviewTriggers),
@@ -231,6 +241,14 @@ const CAPABILITY_BY_ACTION: Record<CarePlanPrototypeAction["type"], PrototypeCap
   "create-safety-plan-draft": "author_safety_plan",
   "save-safety-plan-draft": "author_safety_plan",
   "make-safety-plan-current": "author_safety_plan",
+  // Writing the patient copy and approving it carry the same capability, which
+  // every clinical role holds and the non-clinical plan coordinator does not.
+  // Approval deliberately does not need a senior clinician: requiring one would
+  // mean a person waits days for their own copy of their own plan.
+  "create-patient-plan-draft": "approve_patient_plan",
+  "save-patient-plan-draft": "approve_patient_plan",
+  "approve-patient-plan-version": "approve_patient_plan",
+  "record-patient-plan-print-intent": "read_plan",
   "record-safety-plan-print-intent": "read_plan",
   "record-management-plan-print-intent": "read_plan",
   "record-contact-intent": "contact_cmht",
@@ -265,6 +283,7 @@ const CAPABILITY_BY_ACTION: Record<CarePlanPrototypeAction["type"], PrototypeCap
 const CONNECTIVITY_EXEMPT_ACTIONS: readonly CarePlanPrototypeAction["type"][] = [
   "record-safety-plan-print-intent",
   "record-management-plan-print-intent",
+  "record-patient-plan-print-intent",
 ];
 
 /**
@@ -378,6 +397,33 @@ function patientOfManagementPlan(state: CarePlanPrototypeState, planId: Syntheti
 
 function patientOfSafetyPlan(state: CarePlanPrototypeState, planId: SyntheticId): SyntheticId | null {
   return state.personalSafetyPlans.find(({ id }) => id === planId)?.patientId ?? null;
+}
+
+function patientOfPatientPlan(state: CarePlanPrototypeState, planId: SyntheticId): SyntheticId | null {
+  return state.patientPlans.find(({ id }) => id === planId)?.patientId ?? null;
+}
+
+/**
+ * The person's Patient Plan record, or a new empty one.
+ *
+ * Unlike the Management Plan and the Personal Safety Plan, a Patient Plan record
+ * is not seeded per patient in the fixtures. Inventing fixture editions would
+ * have put patient-facing wording on the record that nobody wrote, so the plan
+ * record comes into existence the first time somebody actually makes a copy.
+ * The caller adds it to the state; this only decides its identity.
+ */
+function findOrCreatePatientPlan(state: CarePlanPrototypeState, patient: Patient): PatientPlan {
+  const existing = state.patientPlans.find((plan) => plan.patientId === patient.id) ?? null;
+  if (existing !== null) return existing;
+  return {
+    id: nextSyntheticId(
+      "SYN-PATIENT-PLAN",
+      state.patientPlans.map(({ id }) => id),
+    ),
+    patientId: patient.id,
+    versionIds: [],
+    currentVersionId: null,
+  };
 }
 
 function nextVersionNumber(versions: readonly { planId: SyntheticId; version: number }[], planId: SyntheticId): number {
@@ -824,14 +870,54 @@ export function prototypeReducer(
             }
           : null;
 
+      /**
+       * The person may already hold a patient copy of the version this one
+       * replaces — possibly on paper, in a bag, at home. Nothing here touches
+       * it: it is not regenerated, hidden, or withdrawn, because the
+       * application cannot reach the sheet and must not claim to have. What it
+       * does instead is put the discrepancy in front of a human, once. The
+       * trigger is deduplicated per plan, so approving three versions in a row
+       * raises one item rather than three.
+       */
+      const patientPlan = state.patientPlans.find((candidate) => candidate.patientId === plan.patientId) ?? null;
+      const currentPatientVersion =
+        patientPlan === null ? null : getCurrentPatientPlanVersion(state.patientPlanVersions, patientPlan.id);
+      const patientCopyNowStale =
+        currentPatientVersion !== null && currentPatientVersion.derivedFromManagementVersionId !== version.id;
+      const staleTriggerAlreadyOpen = state.reviewTriggers.some(
+        (trigger) =>
+          trigger.managementPlanId === plan.id && trigger.source === "patient_plan_stale" && trigger.status === "open",
+      );
+      const staleTrigger: ReviewTrigger | null =
+        patientCopyNowStale && !staleTriggerAlreadyOpen && currentPatientVersion !== null
+          ? {
+              id: nextSyntheticId("SYN-TRIGGER", [
+                ...state.reviewTriggers.map(({ id }) => id),
+                ...(participationTrigger === null ? [] : [participationTrigger.id]),
+              ]),
+              patientId: plan.patientId,
+              managementPlanId: plan.id,
+              source: "patient_plan_stale",
+              sourceId: currentPatientVersion.id,
+              reason: `Patient Plan version ${currentPatientVersion.version} was written from Management Plan version ${version.version - 1} or earlier, and the Current Plan is now version ${version.version}. The person may be holding a printed copy, so it stays readable and unchanged until somebody goes through it with them.`,
+              status: "open",
+              createdAt: prototypeTimestamp(state, 2),
+              resolvedAt: null,
+              resolution: null,
+            }
+          : null;
+
+      const raisedTriggers = [participationTrigger, staleTrigger].filter(
+        (trigger): trigger is ReviewTrigger => trigger !== null,
+      );
+
       return {
         ...state,
         managementPlanVersions,
         managementPlans: state.managementPlans.map((candidate) =>
           candidate.id === plan.id ? { ...candidate, currentVersionId: version.id } : candidate,
         ),
-        reviewTriggers:
-          participationTrigger === null ? state.reviewTriggers : [...state.reviewTriggers, participationTrigger],
+        reviewTriggers: [...state.reviewTriggers, ...raisedTriggers],
         auditEvents: withAudit(state, {
           type: "management_version_approved",
           patientId: plan.patientId,
@@ -841,9 +927,11 @@ export function prototypeReducer(
         lastOutcome: {
           kind: "success",
           message:
-            participationTrigger === null
+            raisedTriggers.length === 0
               ? `Version ${version.version} is now the Current Plan, approved by ${approver.displayName}.`
-              : `Version ${version.version} is now the Current Plan, approved by ${approver.displayName}. No involvement was recorded for this person, so an open Review Trigger was raised for the team.`,
+              : staleTrigger === null
+                ? `Version ${version.version} is now the Current Plan, approved by ${approver.displayName}. No involvement was recorded for this person, so an open Review Trigger was raised for the team.`
+                : `Version ${version.version} is now the Current Plan, approved by ${approver.displayName}. This person's Patient Plan was written from an earlier version and now needs updating; it stays readable and an open Review Trigger was raised.`,
         },
       };
     }
@@ -865,6 +953,40 @@ export function prototypeReducer(
       const withdrawnAt = prototypeTimestamp(state);
       const actor = state.users.find(({ id }) => id === state.activeUserId);
 
+      /**
+       * Withdrawal leaves the plan with no Current version at all — not merely
+       * a different one — and a Current Patient Plan copy derived from what
+       * was just withdrawn is exactly as out of date as one derived from a
+       * superseded version. The same mechanism `approve-management-version`
+       * uses applies here: the copy is never touched, and the discrepancy goes
+       * in front of a human once, deduplicated per plan.
+       */
+      const patientPlan = state.patientPlans.find((candidate) => candidate.patientId === plan.patientId) ?? null;
+      const currentPatientVersion =
+        patientPlan === null ? null : getCurrentPatientPlanVersion(state.patientPlanVersions, patientPlan.id);
+      const staleTriggerAlreadyOpen = state.reviewTriggers.some(
+        (trigger) =>
+          trigger.managementPlanId === plan.id && trigger.source === "patient_plan_stale" && trigger.status === "open",
+      );
+      const staleTrigger: ReviewTrigger | null =
+        currentPatientVersion !== null && !staleTriggerAlreadyOpen
+          ? {
+              id: nextSyntheticId(
+                "SYN-TRIGGER",
+                state.reviewTriggers.map(({ id }) => id),
+              ),
+              patientId: plan.patientId,
+              managementPlanId: plan.id,
+              source: "patient_plan_stale",
+              sourceId: currentPatientVersion.id,
+              reason: `Version ${current.version} was withdrawn and ${patient.preferredName} now has no Current Plan. Patient Plan version ${currentPatientVersion.version} was written from it, so it stays readable and unchanged until somebody goes through it with them.`,
+              status: "open",
+              createdAt: prototypeTimestamp(state, 1),
+              resolvedAt: null,
+              resolution: null,
+            }
+          : null;
+
       return {
         ...state,
         managementPlanVersions: state.managementPlanVersions.map((candidate) =>
@@ -882,6 +1004,7 @@ export function prototypeReducer(
         managementPlans: state.managementPlans.map((candidate) =>
           candidate.id === plan.id ? { ...candidate, currentVersionId: null } : candidate,
         ),
+        reviewTriggers: staleTrigger === null ? state.reviewTriggers : [...state.reviewTriggers, staleTrigger],
         auditEvents: withAudit(state, {
           type: "management_version_withdrawn",
           patientId: patient.id,
@@ -890,7 +1013,10 @@ export function prototypeReducer(
         }),
         lastOutcome: {
           kind: "success",
-          message: `Version ${current.version} withdrawn. ${patient.preferredName} now has no Current Plan, and no earlier version was put back into use.`,
+          message:
+            staleTrigger === null
+              ? `Version ${current.version} withdrawn. ${patient.preferredName} now has no Current Plan, and no earlier version was put back into use.`
+              : `Version ${current.version} withdrawn. ${patient.preferredName} now has no Current Plan, and their Patient Plan stays readable but needs updating; an open Review Trigger was raised.`,
         },
       };
     }
@@ -1134,11 +1260,54 @@ export function prototypeReducer(
         amendedAt: prototypeTimestamp(state),
       };
 
+      // The timeline renders an amendment over the original record. Review
+      // triggers must make the same decision from that effective record; using
+      // the stored original here leaves a newly corrected admission or adverse
+      // plan-use answer visible on screen but absent from Reviews.
+      const amendments = [...state.presentationAmendments, amendment];
+      const reviewRelevant = action.field === "planHelpfulness" || action.field === "disposition";
+      const effectivePresentation: EdPresentation = {
+        ...presentation,
+        planHelpfulness: getEffectivePresentationValue(amendments, presentation, "planHelpfulness") as PlanHelpfulness,
+        disposition: getEffectivePresentationValue(amendments, presentation, "disposition") as Disposition,
+      };
+      const patient = findPatient(state, presentation.patientId);
+      const plan = patient === null ? null : findManagementPlan(state, patient);
+      const hasEverHadAVersion =
+        plan !== null && state.managementPlanVersions.some((existing) => existing.planId === plan.id);
+      const candidate = reviewRelevant && hasEverHadAVersion ? reviewTriggerReasonFor(effectivePresentation) : null;
+      const alreadyOpen =
+        plan !== null &&
+        candidate !== null &&
+        state.reviewTriggers.some(
+          (trigger) =>
+            trigger.managementPlanId === plan.id && trigger.source === candidate.source && trigger.status === "open",
+        );
+      const newTrigger: ReviewTrigger | null =
+        plan !== null && candidate !== null && !alreadyOpen
+          ? {
+              id: nextSyntheticId(
+                "SYN-TRIGGER",
+                state.reviewTriggers.map(({ id }) => id),
+              ),
+              patientId: presentation.patientId,
+              managementPlanId: plan.id,
+              source: candidate.source,
+              sourceId: presentation.id,
+              reason: candidate.reason,
+              status: "open",
+              createdAt: prototypeTimestamp(state, 1),
+              resolvedAt: null,
+              resolution: null,
+            }
+          : null;
+
       return {
         ...state,
         // The episode is untouched. A correction is appended beside it, with who
         // made it, when, what it replaced, and why.
-        presentationAmendments: [...state.presentationAmendments, amendment],
+        presentationAmendments: amendments,
+        reviewTriggers: newTrigger === null ? state.reviewTriggers : [...state.reviewTriggers, newTrigger],
         auditEvents: withAudit(state, {
           type: "presentation_amended",
           patientId: presentation.patientId,
@@ -1147,7 +1316,10 @@ export function prototypeReducer(
         }),
         lastOutcome: {
           kind: "success",
-          message: "Correction recorded beside the original. The original ED Presentation record is unchanged.",
+          message:
+            newTrigger === null
+              ? "Correction recorded beside the original. The original ED Presentation record is unchanged."
+              : "Correction recorded beside the original. The original ED Presentation record is unchanged, and an open Review Trigger was raised for the team to look at.",
         },
       };
     }
@@ -1289,6 +1461,216 @@ export function prototypeReducer(
         lastOutcome: {
           kind: "success",
           message: `Personal Safety Plan version ${version.version} is now the current one.`,
+        },
+      };
+    }
+
+    case "create-patient-plan-draft": {
+      const patient = findPatient(state, action.patientId);
+      if (patient === null) return refuse(state, "That synthetic patient record does not exist.");
+      const managementPlan = findManagementPlan(state, patient);
+      const currentManagement =
+        managementPlan === null
+          ? null
+          : getCurrentManagementPlanVersion(state.managementPlanVersions, managementPlan.id);
+      // A patient copy of a plan nobody has approved would be a document in
+      // somebody's hands describing care nobody agreed to.
+      if (currentManagement === null) {
+        return refuse(
+          state,
+          `${patient.preferredName} has no Current Plan, so there is nothing to make a patient copy of. A draft or a withdrawn version is not an agreed plan.`,
+        );
+      }
+
+      const plan = findOrCreatePatientPlan(state, patient);
+      if (getOpenPatientPlanDraft(state.patientPlanVersions, plan.id) !== null) {
+        return refuse(
+          state,
+          `A Patient Plan draft for ${patient.preferredName} is already open. Continue that one rather than starting another.`,
+        );
+      }
+
+      const draftContent = buildPatientPlanDraft(
+        currentManagement,
+        patient,
+        getPatientResources(state.patientResources, patient.id),
+      );
+      const draft: PatientPlanVersion = {
+        id: nextSyntheticId(
+          "SYN-PATIENT-PLAN-VERSION",
+          state.patientPlanVersions.map(({ id }) => id),
+        ),
+        planId: plan.id,
+        version: nextVersionNumber(state.patientPlanVersions, plan.id),
+        state: "draft",
+        derivedFromManagementVersionId: currentManagement.id,
+        sections: cloneJson(draftContent.sections),
+        resources: cloneJson(draftContent.resources),
+        approvedBy: null,
+        approvedAt: null,
+        createdAt: prototypeTimestamp(state),
+      };
+
+      const gaps = unfilledGapSections(draft.sections).length;
+
+      return {
+        ...state,
+        patientPlans: state.patientPlans.some(({ id }) => id === plan.id)
+          ? state.patientPlans.map((candidate) =>
+              candidate.id === plan.id ? { ...candidate, versionIds: [...candidate.versionIds, draft.id] } : candidate,
+            )
+          : [...state.patientPlans, { ...plan, versionIds: [draft.id] }],
+        patientPlanVersions: [...state.patientPlanVersions, draft],
+        auditEvents: withAudit(state, {
+          type: "patient_plan_draft_created",
+          patientId: patient.id,
+          objectId: draft.id,
+          evidence: `Patient Plan draft version ${draft.version} produced from Management Plan version ${currentManagement.version} by the offline plain-language conversion. ${gaps} of ${draft.sections.length} sections were left as gaps for a clinician to write. No language model was used.`,
+        }),
+        lastOutcome: {
+          kind: gaps === 0 ? "success" : "info",
+          message:
+            gaps === 0
+              ? `Patient Plan draft version ${draft.version} created. Read it through before approving it.`
+              : `Patient Plan draft version ${draft.version} created, with ${gaps} of ${draft.sections.length} sections left blank for you to write. The conversion refuses to guess, so a gap is a section it would not risk getting wrong.`,
+        },
+      };
+    }
+
+    case "save-patient-plan-draft": {
+      const version = state.patientPlanVersions.find(({ id }) => id === action.versionId) ?? null;
+      if (version === null) return refuse(state, "That Patient Plan Version does not exist.");
+      if (version.state !== "draft") {
+        return refuse(
+          state,
+          `Only a draft can be edited. Patient Plan version ${version.version} is ${version.state}, and a copy the person may already be holding is never rewritten underneath them.`,
+        );
+      }
+
+      const saved: PatientPlanVersion = {
+        ...version,
+        // Replaced whole rather than patched: half a converted sentence and half
+        // a clinician's rewrite in one paragraph is nobody's voice.
+        sections: cloneJson(action.input.sections),
+        resources: cloneJson(action.input.resources),
+      };
+      const remaining = unfilledGapSections(saved.sections).length;
+
+      return {
+        ...state,
+        patientPlanVersions: state.patientPlanVersions.map((candidate) =>
+          candidate.id === saved.id ? saved : candidate,
+        ),
+        auditEvents: withAudit(state, {
+          type: "patient_plan_draft_saved",
+          patientId: patientOfPatientPlan(state, version.planId),
+          objectId: saved.id,
+          evidence: `Patient Plan draft version ${saved.version} saved with ${saved.sections.length} sections and ${saved.resources.length} resources. ${remaining} sections are still gaps.`,
+        }),
+        lastOutcome: {
+          kind: "success",
+          message:
+            remaining === 0
+              ? `Patient Plan draft version ${saved.version} saved. Every section now has something in it.`
+              : `Patient Plan draft version ${saved.version} saved. ${remaining} sections are still blank and it cannot be approved until they are written.`,
+        },
+      };
+    }
+
+    case "approve-patient-plan-version": {
+      const version = state.patientPlanVersions.find(({ id }) => id === action.versionId) ?? null;
+      if (version === null) return refuse(state, "That Patient Plan Version does not exist.");
+      if (version.state !== "draft") {
+        return refuse(
+          state,
+          `Only a draft can be approved. Patient Plan version ${version.version} is ${version.state}.`,
+        );
+      }
+      const plan = state.patientPlans.find(({ id }) => id === version.planId) ?? null;
+      if (plan === null) return refuse(state, "That version has no Patient Plan record.");
+
+      const patient = findPatient(state, plan.patientId);
+      const managementPlan = patient === null ? null : findManagementPlan(state, patient);
+      const currentManagement =
+        managementPlan === null
+          ? null
+          : getCurrentManagementPlanVersion(state.managementPlanVersions, managementPlan.id);
+      if (currentManagement === null || currentManagement.id !== version.derivedFromManagementVersionId) {
+        return refuse(
+          state,
+          `Patient Plan version ${version.version} was made from a Management Plan that is no longer Current, so it cannot be approved. Start a new copy from the agreed plan instead.`,
+        );
+      }
+
+      const approver = state.users.find(({ id }) => id === state.activeUserId) ?? null;
+      if (approver === null || isBlank(approver.displayName)) {
+        return refuse(state, "Approval must name the clinician approving it. Nothing was changed.");
+      }
+
+      /**
+       * The gap block. A gap is a place the conversion refused to guess, and an
+       * unfilled one prints as a heading with nothing under it — handed to the
+       * person it is about. The form makes the control unavailable with this
+       * reason; the reducer is the guard that means it cannot happen anyway.
+       */
+      const gaps = unfilledGapSections(version.sections);
+      if (gaps.length > 0) {
+        return refuse(
+          state,
+          `Patient Plan version ${version.version} cannot be approved while ${gaps.length} ${gaps.length === 1 ? "section is" : "sections are"} still blank: ${gaps.map((section) => section.heading).join("; ")}. A blank heading on a copy handed to somebody reads as though nothing about them was worth writing.`,
+        );
+      }
+
+      const approvedAt = prototypeTimestamp(state);
+
+      return {
+        ...state,
+        patientPlanVersions: state.patientPlanVersions.map((candidate) => {
+          if (candidate.id === version.id) {
+            return { ...candidate, state: "current" as const, approvedBy: approver.id, approvedAt };
+          }
+          if (candidate.planId === version.planId && candidate.state === "current") {
+            return { ...candidate, state: "superseded" as const };
+          }
+          return candidate;
+        }),
+        patientPlans: state.patientPlans.map((candidate) =>
+          candidate.id === plan.id ? { ...candidate, currentVersionId: version.id } : candidate,
+        ),
+        auditEvents: withAudit(state, {
+          type: "patient_plan_approved",
+          patientId: plan.patientId,
+          objectId: version.id,
+          evidence: `Patient Plan version ${version.version} approved by ${approver.displayName} and is now the copy given to this person. Any earlier copy is superseded and stays readable in history.`,
+        }),
+        lastOutcome: {
+          kind: "success",
+          message: `Patient Plan version ${version.version} approved by ${approver.displayName}. It can now be printed and given to this person.`,
+        },
+      };
+    }
+
+    case "record-patient-plan-print-intent": {
+      const patient = findPatient(state, action.patientId);
+      if (patient === null) return refuse(state, "That synthetic patient record does not exist.");
+      const plan = state.patientPlans.find((candidate) => candidate.patientId === patient.id) ?? null;
+      const current = plan === null ? null : getCurrentPatientPlanVersion(state.patientPlanVersions, plan.id);
+      if (current === null) {
+        return refuse(state, `${patient.preferredName} has no approved Patient Plan to print.`);
+      }
+
+      return {
+        ...state,
+        auditEvents: withAudit(state, {
+          type: "patient_plan_print_intent_opened",
+          patientId: patient.id,
+          objectId: current.id,
+          evidence: `The browser print view was opened for Patient Plan version ${current.version}. This records the request only, and is not evidence that anything reached a printer or reached this person.`,
+        }),
+        lastOutcome: {
+          kind: "info",
+          message:
+            "The print view was opened. What happens after that is handled by the browser and is not recorded here.",
         },
       };
     }

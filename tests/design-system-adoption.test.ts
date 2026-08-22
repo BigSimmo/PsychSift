@@ -33,6 +33,17 @@ function writeFixtureFile(fixtureRoot: string, relativePath: string, content: st
   fs.writeFileSync(absolutePath, content);
 }
 
+const NON_VISUAL_REDIRECT_PAGES = [
+  "src/app/(search-app)/documents/source/page.tsx",
+  "src/app/ward-management/constellation/page.tsx",
+] as const;
+
+function writeNonVisualRedirectFixtures(fixtureRoot: string) {
+  for (const relativePath of NON_VISUAL_REDIRECT_PAGES) {
+    writeFixtureFile(fixtureRoot, relativePath, read(relativePath));
+  }
+}
+
 function createCheckerFixture() {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-system-adoption-check-"));
   writeFixtureFile(
@@ -396,6 +407,15 @@ describe("design-system adoption manifest", () => {
     ).toBe(true);
   });
 
+  it("recognises the retired constellation route as redirect-only", () => {
+    expect(
+      analyzeNextRedirectOnlyRoute(
+        "src/app/ward-management/constellation/page.tsx",
+        read("src/app/ward-management/constellation/page.tsx"),
+      ).redirectOnly,
+    ).toBe(true);
+  });
+
   it("fails the adoption contract when a declared root constructs ckb-v2", () => {
     const current = JSON.parse(read("docs/design-system/adoption-manifest.json"));
     const manifest = {
@@ -442,13 +462,33 @@ describe("design-system adoption manifest", () => {
     const manifest = {
       ...current,
       surfaces: current.surfaces.map((surface: { id: string }) =>
-        surface.id === "documents-source-legacy-redirect" ? { ...surface, documentedDisposition: null } : surface,
+        surface.id === "documents-source-legacy-redirect" ||
+        surface.id === "ward-management-constellation-legacy-redirect"
+          ? { ...surface, documentedDisposition: null }
+          : surface,
       ),
     };
 
-    expect(checkAdoptionManifest(manifest)).toContain(
-      "documents-source-legacy-redirect legacy-redirect disposition is undocumented",
+    const failures = checkAdoptionManifest(manifest);
+    expect(failures).toContain("documents-source-legacy-redirect legacy-redirect disposition is undocumented");
+    expect(failures).toContain(
+      "ward-management-constellation-legacy-redirect legacy-redirect disposition is undocumented",
     );
+  });
+
+  it("models the retired constellation route as a non-visual legacy redirect", () => {
+    const manifest = JSON.parse(read("docs/design-system/adoption-manifest.json"));
+    const redirect = manifest.surfaces.find(
+      (surface: { id: string }) => surface.id === "ward-management-constellation-legacy-redirect",
+    );
+    const owned = manifest.surfaces.find((surface: { id: string }) => surface.id === "ward-management");
+
+    expect(redirect).toMatchObject({
+      disposition: "legacy-redirect",
+      proofApplicability: "not-applicable",
+      routes: ["src/app/ward-management/constellation/page.tsx"],
+    });
+    expect(owned.routes).not.toContain("src/app/ward-management/constellation/page.tsx");
   });
 
   it("does not let a visual catalogue opt out by relabelling itself as a legacy redirect", () => {
@@ -561,11 +601,7 @@ describe("design-system adoption manifest", () => {
     const fixtureRoot = createCheckerFixture();
     try {
       writeFixtureFile(fixtureRoot, "tests/proof.test.ts");
-      writeFixtureFile(
-        fixtureRoot,
-        "src/app/(search-app)/documents/source/page.tsx",
-        read("src/app/(search-app)/documents/source/page.tsx"),
-      );
+      writeNonVisualRedirectFixtures(fixtureRoot);
       initialiseCandidateRepository(fixtureRoot);
       setCurrentAwaitingValues(fixtureRoot, "");
       const baselineSet = writeBaselineSet(fixtureRoot);
@@ -1238,14 +1274,15 @@ describe("design-system adoption manifest", () => {
           ["committed", "not-committed", "not-applicable"].includes(surface.baseline.status),
       ),
     ).toBe(true);
-    // 75 = 59 + 6 + 10: the 59 production pages that preceded both changes, the
-    // six `<mode>/search` routes home consolidation split out of the bare paths,
-    // and the ten-route Ward Flow synthetic patient-flow prototype (mode home,
-    // six workspace routes, governance, transport, and the per-patient detail
-    // route). Redirect stubs keep legacy deep links resolving and still count as
-    // declared routes. The conflict resolution on this branch kept the pre-merge
-    // 69, which counted Ward Flow but not the six search routes.
-    expect(manifest.routeCoverage.discovered).toHaveLength(75);
+    // 79 = 59 + 6 + 13 + 1: the 59 production pages that preceded both changes,
+    // the six `<mode>/search` routes home consolidation split out of the bare paths,
+    // the thirteen-route Ward Flow synthetic patient-flow prototype (mode home,
+    // eight remaining workspace routes, ED/ward/officer role screens, the per-patient
+    // detail route, and the retired constellation redirect), and the Caring Contacts
+    // workspace. Redirect stubs keep legacy deep links resolving and still count as
+    // declared routes. This is a census, so a route nobody intended to add still
+    // fails the contract.
+    expect(manifest.routeCoverage.discovered).toHaveLength(79);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

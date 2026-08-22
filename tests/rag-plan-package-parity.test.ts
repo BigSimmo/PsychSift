@@ -1,5 +1,7 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { validateJsonSchema } from "../scripts/lib/json-schema-contract-validator.mjs";
@@ -10,11 +12,16 @@ import {
   agentReuseErrors,
   atomicMetadataCommitErrors,
   buildReviewPackageBytes,
+  connectedMetadataPaths,
+  connectedOperationAcceptanceErrors,
   finalReviewRoutingErrors,
   packageIdentityErrors,
+  operationalMetadataPaths,
+  phaseMetadataPaths,
   phaseAcceptanceContinuityErrors,
   predecessorStartErrors,
   programmeFinalHeadErrors,
+  programmeMetadataPaths,
   p00AnchorErrors,
   programmeVerificationErrors,
   resumeStateErrors,
@@ -30,6 +37,9 @@ import {
 const phaseSchema = JSON.parse(
   readFileSync("docs/superpowers/rag-upgrade/canonical/phase-receipt.schema.json", "utf8"),
 );
+const routeEvidenceSchema = JSON.parse(
+  readFileSync("docs/superpowers/rag-upgrade/canonical/route-evidence.schema.json", "utf8"),
+);
 const phaseTemplate = JSON.parse(
   readFileSync("docs/superpowers/rag-upgrade/canonical/phase-receipt.template.json", "utf8"),
 );
@@ -39,6 +49,30 @@ const programmeSchema = JSON.parse(
 const programmeTemplate = JSON.parse(
   readFileSync("docs/superpowers/rag-upgrade/canonical/programme-receipt.template.json", "utf8"),
 );
+const connectedSchema = JSON.parse(
+  readFileSync("docs/superpowers/rag-upgrade/canonical/connected-phase-receipt.schema.json", "utf8"),
+);
+const connectedTemplate = JSON.parse(
+  readFileSync("docs/superpowers/rag-upgrade/canonical/connected-phase-receipt.template.json", "utf8"),
+);
+const operationalSchema = JSON.parse(
+  readFileSync("docs/superpowers/rag-upgrade/canonical/operational-receipt.schema.json", "utf8"),
+);
+const operationalTemplate = JSON.parse(
+  readFileSync("docs/superpowers/rag-upgrade/canonical/operational-receipt.template.json", "utf8"),
+);
+type ProgrammeManifest = {
+  phases: Array<{ id: string }>;
+  localPhases: Array<{ id: string; closesGate?: string | null }>;
+  requiredResidualGates: Array<{ id: string }>;
+  adaptiveEffortPolicy: {
+    highLaunchPhases: string[];
+    xhighLaunchPhases: string[];
+  };
+};
+const manifest = JSON.parse(
+  readFileSync("docs/superpowers/rag-upgrade/canonical/programme-manifest.json", "utf8"),
+) as ProgrammeManifest;
 
 describe("RAG plan execution packages", () => {
   it("keeps Local and Cloud task bodies identical and executable", () => {
@@ -48,6 +82,48 @@ describe("RAG plan execution packages", () => {
         encoding: "utf8",
         stdio: "pipe",
       }),
+    ).not.toThrow();
+  });
+
+  it("extracts the exact manifest-selected task with the tracked Cloud helper", () => {
+    const brief = execFileSync(
+      process.execPath,
+      ["scripts/rag-task-brief.mjs", "--variant", "cloud", "--phase", "P00", "--task", "0"],
+      { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" },
+    );
+    expect(brief).toContain("# Exact task brief: P00/adaptive/task-0");
+    expect(brief).toContain("### Task 0:");
+    expect(brief).not.toContain("### Task 1:");
+  });
+
+  it("rejects a valueless --out flag", () => {
+    try {
+      execFileSync(
+        process.execPath,
+        ["scripts/rag-task-brief.mjs", "--variant", "cloud", "--phase", "P00", "--task", "0", "--out"],
+        { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" },
+      );
+      throw new Error("expected rag-task-brief to fail");
+    } catch (error) {
+      expect(error).toMatchObject({ status: 1 });
+      expect(String((error as { stderr?: string }).stderr)).toContain("--out requires a value");
+    }
+  });
+
+  it("fails closed when the declared Cloud phase uses the wrong adaptive effort", () => {
+    expect(() =>
+      execFileSync(process.execPath, ["scripts/rag-phase-launch-check.mjs", "--target", "P01", "--effort", "high"], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        stdio: "pipe",
+      }),
+    ).toThrow();
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        ["scripts/rag-phase-launch-check.mjs", "--target", "P01", "--effort", "xhigh", "--xhigh-confirmed"],
+        { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" },
+      ),
     ).not.toThrow();
   });
 
@@ -61,12 +137,43 @@ describe("RAG plan execution packages", () => {
     ).not.toThrow();
   });
 
+  it("fails closed with schema errors instead of throwing on malformed connected receipts", () => {
+    const tmp = join(tmpdir(), `rag-connected-${process.pid}.json`);
+    writeFileSync(tmp, JSON.stringify({ schemaVersion: 1 }));
+    try {
+      execFileSync(process.execPath, ["scripts/check-rag-phase-receipts.mjs", "--connected", tmp], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        stdio: "pipe",
+      });
+      throw new Error("expected connected receipt validation to fail");
+    } catch (error) {
+      expect(error).toMatchObject({ status: 1 });
+      const stderr = String((error as { stderr?: string }).stderr);
+      expect(stderr).toContain("missing required property");
+      expect(stderr).not.toContain("TypeError");
+    } finally {
+      unlinkSync(tmp);
+    }
+  });
+
+  it("validates operational prerequisite receipts against HEAD", () => {
+    const source = readFileSync("scripts/check-rag-phase-receipts.mjs", "utf8");
+    const start = source.indexOf("function validateOperationalReceipt");
+    const end = source.indexOf("const printVariant");
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(source.slice(start, end)).toContain("readWorkingOrHeadJson(path, errors, requireTracked)");
+  });
+
   it("enforces required, additional, enum, pattern, and strategy fields from the JSON Schema", () => {
     expect(validateJsonSchema(phaseTemplate, phaseSchema)).toEqual([]);
 
     const missing = structuredClone(phaseTemplate);
-    delete missing.modelRouting;
-    expect(validateJsonSchema(missing, phaseSchema).join("\n")).toContain("missing required property modelRouting");
+    delete missing.controllerRouting;
+    expect(validateJsonSchema(missing, phaseSchema).join("\n")).toContain(
+      "missing required property controllerRouting",
+    );
 
     const additional = { ...structuredClone(phaseTemplate), unexpected: true };
     expect(validateJsonSchema(additional, phaseSchema).join("\n")).toContain(
@@ -74,7 +181,7 @@ describe("RAG plan execution packages", () => {
     );
 
     const badEnum = structuredClone(phaseTemplate);
-    badEnum.modelRouting.provider = "unknown";
+    badEnum.controllerRouting.routeEvidence.source = "self-report";
     expect(validateJsonSchema(badEnum, phaseSchema).join("\n")).toContain("must be one of");
 
     const badPattern = { ...structuredClone(phaseTemplate), phaseId: "phase-zero" };
@@ -94,7 +201,17 @@ describe("RAG plan execution packages", () => {
         implementerReportPath:
           "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/P00-adaptive-task-0-implementer-report.md",
         implementerReportSha256: "0".repeat(64),
-        implementerAgentId: "implementer-1",
+        implementerRouting: {
+          ...structuredClone(phaseTemplate.controllerRouting),
+          agentId: "implementer-1",
+          plannedModel: "gpt-5.6-terra",
+          actualModel: "gpt-5.6-terra",
+          capabilityClass: "workhorse-high",
+          routeEvidence: {
+            ...structuredClone(phaseTemplate.controllerRouting.routeEvidence),
+            source: "codex-dispatch-metadata",
+          },
+        },
         evidence: {
           precondition: [{ command: "check", expected: "selected", outcome: "passed", result: "selected" }],
           acceptance: [{ command: "verify", expected: "pass", outcome: "passed", result: "pass" }],
@@ -128,6 +245,179 @@ describe("RAG plan execution packages", () => {
 
     const badProgrammePattern = { ...structuredClone(programmeTemplate), finalHeadSha: "not-a-sha" };
     expect(validateJsonSchema(badProgrammePattern, programmeSchema).join("\n")).toContain("does not match");
+
+    expect(validateJsonSchema(connectedTemplate, connectedSchema)).toEqual([]);
+    expect(validateJsonSchema(operationalTemplate, operationalSchema)).toEqual([]);
+
+    const acceptedWithoutTimestamp = structuredClone(operationalTemplate);
+    acceptedWithoutTimestamp.status = "accepted";
+    expect(validateJsonSchema(acceptedWithoutTimestamp, operationalSchema).join("\n")).toContain("oneOf");
+
+    const acceptedWithoutPass = structuredClone(operationalTemplate);
+    acceptedWithoutPass.status = "accepted";
+    acceptedWithoutPass.acceptedAt = "2026-08-23T00:00:00.000Z";
+    expect(validateJsonSchema(acceptedWithoutPass, operationalSchema).join("\n")).toContain("oneOf");
+
+    const acceptedOperational = structuredClone(operationalTemplate);
+    acceptedOperational.status = "accepted";
+    acceptedOperational.acceptedAt = "2026-08-23T00:00:00.000Z";
+    acceptedOperational.review.specVerdict = "PASS";
+    acceptedOperational.review.qualityVerdict = "PASS";
+    expect(validateJsonSchema(acceptedOperational, operationalSchema)).toEqual([]);
+    const selfReportedLocalRoute = structuredClone(connectedTemplate);
+    selfReportedLocalRoute.controllerRouting.routeEvidence.source = "self-report";
+    expect(validateJsonSchema(selfReportedLocalRoute, connectedSchema).join("\n")).toContain("must be one of");
+
+    const authoritativeRouteEvidence = {
+      schemaVersion: 1,
+      evidenceKind: "codex-authoritative-route",
+      source: "codex-host-runtime-metadata",
+      sourceEventId: "host-event-p00-controller",
+      capturedAt: "2026-08-23T00:00:00.000Z",
+      agentId: "controller-p00",
+      runtimeHost: "codex-cloud",
+      provider: "codex",
+      plannedModel: "gpt-5.6-sol",
+      actualModel: "gpt-5.6-sol",
+      plannedReasoning: "high",
+      actualReasoning: "high",
+      providerMappingUsed: false,
+      fallbackUsed: false,
+      escalationUsed: false,
+      capabilityClass: "frontier-high",
+      sanitized: true,
+    };
+    expect(validateJsonSchema(authoritativeRouteEvidence, routeEvidenceSchema)).toEqual([]);
+    expect(validateJsonSchema({ ...authoritativeRouteEvidence, agentId: "" }, routeEvidenceSchema)).not.toEqual([]);
+  });
+
+  it("includes every route, capability, and review artifact in immutable metadata commits", () => {
+    const phasePaths = phaseMetadataPaths(phaseTemplate, "receipts/P00.json");
+    expect(phasePaths).toContain(phaseTemplate.controllerRouting.routeEvidence.artifactPath);
+    for (const capability of phaseTemplate.capabilityEvidence) {
+      expect(phasePaths).toContain(capability.evidenceArtifactPath);
+      if (capability.probeRouting) {
+        expect(phasePaths).toContain(capability.probeRouting.routeEvidence.artifactPath);
+      }
+    }
+
+    const programmePaths = programmeMetadataPaths(programmeTemplate, "receipts/PROGRAMME.json");
+    expect(programmePaths).toContain(programmeTemplate.finalReviewRouting.routeEvidence.artifactPath);
+
+    const connectedPaths = connectedMetadataPaths(connectedTemplate, "receipts/local/L00.json");
+    expect(connectedPaths).toContain(connectedTemplate.controllerRouting.routeEvidence.path);
+    expect(connectedPaths).toContain(connectedTemplate.reviewerRouting.routeEvidence.path);
+    expect(connectedPaths).toContain(connectedTemplate.phaseReview.diffPackagePath);
+    expect(connectedPaths).toContain(connectedTemplate.phaseReview.reportPath);
+
+    const operationalPaths = operationalMetadataPaths(operationalTemplate, "receipts/local/OPERATIONAL.json");
+    expect(operationalPaths).toContain(operationalTemplate.finalReviewRouting.routeEvidence.path);
+    expect(operationalPaths).toContain(operationalTemplate.review.diffPackagePath);
+    expect(operationalPaths).toContain(operationalTemplate.review.reportPath);
+  });
+
+  it("partitions adaptive Cloud effort and owns every local residual gate exactly once", () => {
+    const cloudIds = manifest.phases.map((phase) => phase.id);
+    const launchIds = [
+      ...manifest.adaptiveEffortPolicy.highLaunchPhases,
+      ...manifest.adaptiveEffortPolicy.xhighLaunchPhases,
+    ];
+    expect(new Set(launchIds).size).toBe(cloudIds.length);
+    expect([...launchIds].sort()).toEqual([...cloudIds].sort());
+    expect(manifest.phases.at(-1)?.id).toBe("P17");
+    expect(manifest.localPhases.map((phase) => phase.id)).toEqual(
+      Array.from({ length: 11 }, (_, index) => `L${String(index).padStart(2, "0")}`),
+    );
+    const closures = manifest.localPhases.map((phase) => phase.closesGate).filter(Boolean);
+    expect(closures).toHaveLength(manifest.requiredResidualGates.length);
+    expect(new Set(closures).size).toBe(closures.length);
+    expect(new Set(closures)).toEqual(new Set(manifest.requiredResidualGates.map((gate) => gate.id)));
+  });
+
+  it("fails closed when an accepted connected operation failed or exceeds its exact approval", () => {
+    const approval = {
+      authorizationId: "approval-1",
+      actionClasses: ["migration-deploy"],
+      service: "supabase",
+      target: "project-a",
+      approvedAt: "2026-08-23T00:00:00.000Z",
+      expiresAt: "2026-08-23T02:00:00.000Z",
+      destructive: false,
+    };
+    const operation = {
+      approvalId: "approval-1",
+      operationClass: "migration-deploy",
+      service: "supabase",
+      target: "project-a",
+      performedAt: "2026-08-23T01:00:00.000Z",
+      outcome: "failed",
+    };
+    expect(
+      connectedOperationAcceptanceErrors(
+        "L03",
+        ["migration-deploy"],
+        [approval],
+        [operation],
+        "2026-08-23T01:30:00.000Z",
+      ).join("\n"),
+    ).toContain("must have outcome passed");
+    expect(
+      connectedOperationAcceptanceErrors(
+        "L03",
+        ["post-apply-acceptance"],
+        [approval],
+        [{ ...operation, operationClass: "post-apply-acceptance", outcome: "passed" }],
+        "2026-08-23T01:30:00.000Z",
+      ).join("\n"),
+    ).toContain("does not authorize operation class");
+    expect(
+      connectedOperationAcceptanceErrors(
+        "L03",
+        ["migration-deploy"],
+        [approval],
+        [{ ...operation, performedAt: "2026-08-23T03:00:00.000Z", outcome: "passed" }],
+        "2026-08-23T03:30:00.000Z",
+      ).join("\n"),
+    ).toContain("not valid when operation");
+    expect(
+      connectedOperationAcceptanceErrors(
+        "L03",
+        ["migration-deploy"],
+        [{ ...approval, actions: ["supabase db inspect"] }],
+        [{ ...operation, outcome: "passed", commandOrAction: "supabase db push" }],
+        "2026-08-23T01:30:00.000Z",
+      ).join("\n"),
+    ).toContain("outside the approved action list");
+    expect(
+      connectedOperationAcceptanceErrors(
+        "L03",
+        ["migration-deploy"],
+        [{ ...approval, actions: ["supabase db inspect"] }],
+        [{ ...operation, outcome: "passed", commandOrAction: "supabase db inspect" }],
+        "2026-08-23T01:30:00.000Z",
+      ),
+    ).toEqual([]);
+    expect(
+      connectedOperationAcceptanceErrors(
+        "L03",
+        ["migration-deploy"],
+        [{ ...approval, approvedAt: "not-a-date" }],
+        [{ ...operation, outcome: "passed", commandOrAction: "supabase db inspect" }],
+        "2026-08-23T01:30:00.000Z",
+      ).join("\n"),
+    ).toContain("unparseable timestamp");
+    expect(
+      connectedOperationAcceptanceErrors(
+        "L03",
+        ["migration-deploy"],
+        [approval],
+        [{ ...operation, performedAt: "not-a-date", outcome: "passed" }],
+        "2026-08-23T01:30:00.000Z",
+      ).join("\n"),
+    ).toContain("unparseable performedAt");
+    expect(
+      connectedOperationAcceptanceErrors("L03", ["migration-deploy"], [approval], [operation], "not-a-date").join("\n"),
+    ).toContain("not a parseable timestamp");
   });
 
   it("fails closed on broken phase lineage, package identity, resume state, and reused agents", () => {
@@ -256,16 +546,25 @@ describe("RAG plan execution packages", () => {
     ]);
     expect(programmeFinalHeadErrors("a".repeat(40), "a".repeat(40))).toEqual([]);
     const finalReviewRouting = {
+      agentId: "final-reviewer",
+      runtimeHost: "codex-cloud",
       provider: "codex",
       plannedModel: "gpt-5.6-sol",
       actualModel: "gpt-5.6-terra",
       capabilityClass: "workhorse-high",
-      reasoning: "high",
+      plannedReasoning: "high",
+      actualReasoning: "high",
       providerMappingUsed: false,
       fallbackUsed: true,
+      routeEvidence: {
+        source: "self-report",
+        artifactPath:
+          "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/programme/route.json",
+        sha256: "0".repeat(64),
+      },
     };
     expect(finalReviewRoutingErrors(finalReviewRouting, "gpt-5.6-sol", "xhigh").join("\n")).toContain(
-      "final review reasoning must be xhigh",
+      "final review plannedReasoning must be xhigh",
     );
     expect(finalReviewRoutingErrors(finalReviewRouting, "gpt-5.6-sol", "xhigh").join("\n")).toContain(
       "Codex final review actual model must match the plan",

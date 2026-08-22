@@ -1,4 +1,5 @@
 import { canAccessFavouritesMode } from "@/lib/app-modes";
+import { CARING_CONTACTS_ROUTES } from "@/lib/caring-contacts-routes";
 import { normalizeSearchText, rankCatalogRecords } from "@/lib/catalog-search";
 
 // Canonical Tools dataset. Previously duplicated between the live launcher
@@ -33,6 +34,7 @@ export type ToolCatalogId =
   | "safety-plan"
   | "calculators"
   | "monitoring"
+  | "caring-contacts"
   | "favourites"
   | "ward-management";
 
@@ -368,6 +370,26 @@ export const toolCatalogRecords: ToolCatalogRecord[] = [
     checkFirst: ["Monitoring indication", "Last result date", "Thresholds and alerts"],
     neededInput: ["Medication or condition", "Recent results", "Monitoring timeframe"],
     output: "Monitoring schedule, thresholds, and review prompts.",
+  },
+  {
+    // The one card that is the front door to a standalone workspace. Caring Contacts owns
+    // its own navigation once you are inside it, so this catalogue entry is the only place
+    // the host application names it — see docs/codebase-index.md.
+    id: "caring-contacts",
+    title: "Caring Contacts",
+    description: "A synthetic demonstration of caring-contact follow-up after a hospital stay.",
+    bestFor: "Seeing how caring-contact follow-up is coordinated",
+    detail:
+      "A working demonstration built on invented patients and invented numbers. Nothing in it is ever sent to a real number, and none of it is patient data.",
+    href: CARING_CONTACTS_ROUTES.today,
+    area: "coordination",
+    status: "ready",
+    sourceBacked: false,
+    actionLabel: "Open",
+    keywords: ["caring contacts", "follow-up", "aftercare", "discharge", "coordination", "demonstration"],
+    checkFirst: ["Everything shown is invented", "No message is ever sent", "Not a clinical record"],
+    neededInput: ["Nothing — the workspace carries its own synthetic examples"],
+    output: "A demonstration workspace showing how caring-contact follow-up is coordinated.",
   },
   {
     id: "favourites",

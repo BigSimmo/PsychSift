@@ -12,12 +12,17 @@ import {
   agentReuseErrors,
   atomicMetadataCommitErrors,
   buildReviewPackageBytes,
+  connectedMetadataPaths,
+  connectedOperationAcceptanceErrors,
   packageIdentityErrors,
   phaseAcceptanceContinuityErrors,
   predecessorStartErrors,
   finalReviewRoutingErrors,
   programmeFinalHeadErrors,
   p00AnchorErrors,
+  operationalMetadataPaths,
+  phaseMetadataPaths,
+  programmeMetadataPaths,
   programmeVerificationErrors,
   resumeStateErrors,
   reviewPackageEvidenceErrors,
@@ -36,13 +41,28 @@ const canonicalRoot = join(upgradeRoot, "canonical");
 const receiptRoot = join(upgradeRoot, "execution-receipts", programmeId);
 const artifactRoot = join(upgradeRoot, "execution-artifacts", programmeId);
 const manifest = readJson(join(canonicalRoot, "programme-manifest.json"));
+const routeEvidenceSchema = readJson(join(canonicalRoot, "route-evidence.schema.json"));
 const phaseSchema = readJson(join(canonicalRoot, "phase-receipt.schema.json"));
 const programmeSchema = readJson(join(canonicalRoot, "programme-receipt.schema.json"));
+const connectedPhaseSchema = readJson(join(canonicalRoot, "connected-phase-receipt.schema.json"));
+const operationalSchema = readJson(join(canonicalRoot, "operational-receipt.schema.json"));
 const verificationMatrix = readJson(join(canonicalRoot, "task-verification-matrix.json"));
 const shaPattern = /^[0-9a-f]{40}$/;
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function readWorkingOrHeadJson(path, errors, requireTracked) {
+  const relativePath = relative(repositoryRoot, path).split(sep).join("/");
+  if (requireTracked) validateTrackedReceipt(path, errors);
+  try {
+    const raw = requireTracked ? runGit(["show", `HEAD:${relativePath}`]) : readFileSync(path, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    errors.push(`${relativePath}: receipt is not valid JSON${requireTracked ? " at HEAD" : ""}`);
+    return null;
+  }
 }
 
 function argument(name) {
@@ -164,6 +184,49 @@ function validateArtifact(path, expectedHash, label, errors, requireTracked) {
   if (!bytes.equals(trackedBytes)) errors.push(`${label}: working artifact differs from HEAD: ${path}`);
 }
 
+function validateArtifactAtCommit(path, expectedHash, commit, label, errors) {
+  let bytes;
+  try {
+    bytes = runGit(["show", `${commit}:${path}`], null);
+  } catch {
+    errors.push(`${label}: artifact must exist at phaseEndSha: ${path}`);
+    return;
+  }
+  if (sha256(bytes) !== expectedHash) errors.push(`${label}: phaseEndSha artifact hash differs: ${path}`);
+}
+
+function validateFullRangeReview(review, base, head, reviewerId, label, errors, requireTracked, accepted) {
+  if (!review) return;
+  if (review.reviewerAgentId !== reviewerId) errors.push(`${label}: reviewer ID must match reviewer routing`);
+  if (review.baseSha !== base || review.headSha !== head) {
+    errors.push(`${label}: review must cover the exact immutable ${base}..${head} range`);
+  }
+  validateArtifact(review.diffPackagePath, review.diffPackageSha256, `${label}/diff`, errors, requireTracked);
+  validateArtifact(review.reportPath, review.reportSha256, `${label}/report`, errors, requireTracked);
+  const diffPath = repositoryPath(review.diffPackagePath);
+  if (existsSync(diffPath) && shaPattern.test(base) && shaPattern.test(head)) {
+    try {
+      const actualBytes = readFileSync(diffPath);
+      const expectedBytes = reviewPackageBytes(base, head);
+      errors.push(
+        ...reviewPackageEvidenceErrors(
+          actualBytes,
+          base,
+          head,
+          commitList(base, head),
+          reviewPackageDigest(actualBytes),
+          reviewPackageDigest(expectedBytes),
+        ).map((error) => `${label}: ${error}`),
+      );
+    } catch (error) {
+      errors.push(`${label}: could not reconstruct review package: ${error.message}`);
+    }
+  }
+  if (accepted && (review.specVerdict !== "PASS" || review.qualityVerdict !== "PASS")) {
+    errors.push(`${label}: accepted review requires PASS spec and quality verdicts`);
+  }
+}
+
 function validateTrackedReceipt(path, errors) {
   const relativePath = relative(repositoryRoot, path).split(sep).join("/");
   let tracked = null;
@@ -179,11 +242,13 @@ function packageIdentityDiff(receipt, p00Receipt, label, errors) {
 
 function agentIdsFromReceipt(receipt) {
   const ids = new Set();
+  ids.add(receipt.controllerRouting?.agentId);
+  for (const capability of receipt.capabilityEvidence ?? []) ids.add(capability.probeAgentId);
   for (const task of receipt.tasks ?? []) {
-    ids.add(task.implementerAgentId);
-    for (const review of task.reviews ?? []) ids.add(review.reviewerAgentId);
+    ids.add(task.implementerRouting?.agentId);
+    for (const review of task.reviews ?? []) ids.add(review.reviewerRouting?.agentId);
   }
-  for (const review of receipt.phaseReviews ?? []) ids.add(review.reviewerAgentId);
+  for (const review of receipt.phaseReviews ?? []) ids.add(review.reviewerRouting?.agentId);
   ids.delete(undefined);
   return ids;
 }
@@ -234,53 +299,165 @@ function taskContract(globalTaskKey) {
   return literalTddContract(plan, taskNumber);
 }
 
-function validateModelRouting(receipt, phase, errors) {
-  const routing = receipt.modelRouting;
-  const plannedImplementationModel = phase.implementationModel ?? manifest.defaultAgentPolicy.implementationModel;
-  const plannedReviewModel = phase.reviewModel ?? manifest.defaultAgentPolicy.reviewModel;
-  const implementationReasoning = phase.implementationReasoning ?? manifest.defaultAgentPolicy.implementationReasoning;
-  const reviewReasoning = phase.reviewReasoning ?? manifest.defaultAgentPolicy.reviewReasoning;
-  if (routing.plannedImplementationModel !== plannedImplementationModel)
-    errors.push(`plannedImplementationModel must be ${plannedImplementationModel}`);
-  if (routing.plannedReviewModel !== plannedReviewModel)
-    errors.push(`plannedReviewModel must be ${plannedReviewModel}`);
-  if (routing.implementationReasoning !== implementationReasoning)
-    errors.push(`implementationReasoning must be ${implementationReasoning}`);
-  if (routing.reviewReasoning !== reviewReasoning) errors.push(`reviewReasoning must be ${reviewReasoning}`);
-  if (routing.fallbackUsed !== false) errors.push("fallbackUsed must remain false");
-  if (routing.provider === "codex") {
-    if (routing.providerMappingUsed) errors.push("Codex routing cannot claim a provider mapping");
-    const exact = routing.actualImplementationModel === plannedImplementationModel;
-    const allowedEscalation =
-      plannedImplementationModel === "gpt-5.6-terra" &&
-      routing.actualImplementationModel === "gpt-5.6-sol" &&
-      routing.implementationCapabilityClass === "frontier-high" &&
-      Boolean(routing.escalationReason);
-    if (!exact && !allowedEscalation) errors.push("Codex actual implementation model is an unapproved fallback");
-    if (
-      routing.actualImplementationModel === "gpt-5.6-terra" &&
-      routing.implementationCapabilityClass !== "workhorse-high"
-    ) {
-      errors.push("Codex Terra execution must record workhorse-high capability");
-    }
-    if (
-      routing.actualImplementationModel === "gpt-5.6-sol" &&
-      routing.implementationCapabilityClass !== "frontier-high"
-    ) {
-      errors.push("Codex Sol execution must record frontier-high capability");
-    }
-    if (routing.actualReviewModel !== plannedReviewModel) errors.push("Codex actual review model must match the plan");
-  } else if (!routing.providerMappingUsed) {
-    errors.push("Claude routing must record providerMappingUsed=true");
+function validateAgentRouting(routing, expected, label, receipt, errors, requireTracked) {
+  if (!routing) return;
+  const expectedHost = "codex-cloud";
+  if (routing.runtimeHost !== expectedHost) errors.push(`${label}: runtimeHost must be ${expectedHost}`);
+  if (routing.provider !== "codex" || routing.providerMappingUsed !== false) {
+    errors.push(`${label}: only unmapped Codex routing is accepted`);
   }
-  const requiredImplementationClass = plannedImplementationModel === "gpt-5.6-sol" ? "frontier-high" : "workhorse-high";
+  if (routing.plannedModel !== expected.model) errors.push(`${label}: plannedModel must be ${expected.model}`);
+  if (routing.plannedReasoning !== expected.reasoning) {
+    errors.push(`${label}: plannedReasoning must be ${expected.reasoning}`);
+  }
+  if (routing.actualReasoning !== expected.reasoning)
+    errors.push(`${label}: actualReasoning must match the selected effort`);
+  const exact = routing.actualModel === expected.model;
+  const allowedEscalation =
+    expected.allowTerraEscalation &&
+    expected.model === "gpt-5.6-terra" &&
+    routing.actualModel === "gpt-5.6-sol" &&
+    routing.escalationUsed === true &&
+    Boolean(routing.escalationReason);
+  if (!exact && !allowedEscalation) errors.push(`${label}: actual model is an unapproved fallback`);
+  if (routing.fallbackUsed !== false) errors.push(`${label}: fallbackUsed must remain false`);
+  const requiredClass = routing.actualModel === "gpt-5.6-terra" ? "workhorse-high" : "frontier-high";
+  if (routing.capabilityClass !== requiredClass) errors.push(`${label}: capabilityClass must be ${requiredClass}`);
   if (
-    routing.implementationCapabilityClass !== requiredImplementationClass &&
-    !(plannedImplementationModel === "gpt-5.6-terra" && routing.implementationCapabilityClass === "frontier-high")
+    !routing.routeEvidence ||
+    !manifest.capabilityContract.routeEvidenceSources.includes(routing.routeEvidence.source)
   ) {
-    errors.push(`implementationCapabilityClass cannot satisfy ${plannedImplementationModel}`);
+    errors.push(`${label}: authoritative route evidence is required`);
+  } else {
+    validateRouteEvidenceArtifact(
+      routing.routeEvidence,
+      routing,
+      `${label}/route`,
+      errors,
+      requireTracked,
+      "artifactPath",
+    );
   }
-  if (routing.reviewCapabilityClass !== "frontier-high") errors.push("reviewCapabilityClass must be frontier-high");
+}
+
+function validateRouteEvidenceArtifact(evidence, routing, label, errors, requireTracked, pathKey) {
+  const path = evidence?.[pathKey];
+  if (!path) return;
+  validateArtifact(path, evidence.sha256, label, errors, requireTracked);
+  const absolutePath = repositoryPath(path);
+  if (!existsSync(absolutePath)) return;
+  let payload;
+  try {
+    payload = readJson(absolutePath);
+  } catch (error) {
+    errors.push(`${label}: route evidence must be structured JSON: ${error.message}`);
+    return;
+  }
+  errors.push(...validateJsonSchema(payload, routeEvidenceSchema).map((error) => `${label}: ${error}`));
+  const expected = {
+    source: evidence.source,
+    agentId: routing.agentId,
+    runtimeHost: routing.runtimeHost,
+    provider: routing.provider,
+    plannedModel: routing.plannedModel,
+    actualModel: routing.actualModel,
+    plannedReasoning: routing.plannedReasoning,
+    actualReasoning: routing.actualReasoning,
+    providerMappingUsed: routing.providerMappingUsed ?? false,
+    fallbackUsed: routing.fallbackUsed,
+    escalationUsed: routing.escalationUsed ?? false,
+    capabilityClass:
+      routing.capabilityClass ?? (routing.actualModel === "gpt-5.6-terra" ? "workhorse-high" : "frontier-high"),
+  };
+  for (const [field, value] of Object.entries(expected)) {
+    if (payload[field] !== value) errors.push(`${label}: evidence ${field} must bind to receipt value ${value}`);
+  }
+}
+
+function capabilitySubjectPath(capability) {
+  if (capability === "rag-task-brief") return "scripts/rag-task-brief.mjs";
+  if (capability === "rag-phase-launch-check") return "scripts/rag-phase-launch-check.mjs";
+  const skillPath = `.agents/skills/${capability}/SKILL.md`;
+  return existsSync(repositoryPath(skillPath)) ? skillPath : null;
+}
+
+function validateCapabilityEvidence(items, label, errors, requireTracked) {
+  const seen = new Set();
+  for (const item of items ?? []) {
+    if (seen.has(item.capability)) errors.push(`${label}: duplicate capability ${item.capability}`);
+    seen.add(item.capability);
+    validateArtifact(
+      item.evidenceArtifactPath,
+      item.evidenceArtifactSha256,
+      `${label}/${item.capability}`,
+      errors,
+      requireTracked,
+    );
+    const subjectPath = capabilitySubjectPath(item.capability);
+    if (!subjectPath) continue;
+    if (item.resolvedPathOrTool !== subjectPath) {
+      errors.push(`${label}/${item.capability}: resolved path must be ${subjectPath}`);
+      continue;
+    }
+    if (sha256(readFileSync(repositoryPath(subjectPath))) !== item.sha256) {
+      errors.push(`${label}/${item.capability}: subject hash does not match the resolved file`);
+    }
+  }
+}
+
+function validateModelRouting(receipt, phase, errors, requireTracked) {
+  const controllerReasoning = manifest.adaptiveEffortPolicy.highLaunchPhases.includes(phase.id) ? "high" : "xhigh";
+  if (receipt.launchProfile !== controllerReasoning) errors.push(`launchProfile must be ${controllerReasoning}`);
+  if (receipt.xhighConfirmed !== (controllerReasoning === "xhigh")) {
+    errors.push(`xhighConfirmed must be ${controllerReasoning === "xhigh"}`);
+  }
+  validateAgentRouting(
+    receipt.controllerRouting,
+    { model: manifest.defaultAgentPolicy.controllerModel, reasoning: controllerReasoning },
+    `${phase.id}/controller`,
+    receipt,
+    errors,
+    requireTracked,
+  );
+  const requiredCapabilities = new Set([
+    "rag-cloud-sdd",
+    "rag-task-brief",
+    "rag-phase-launch-check",
+    "fresh-subagent-dispatch",
+  ]);
+  for (const profile of manifest.phaseSkillProfiles[phase.id] ?? []) {
+    for (const skill of manifest.skillProfiles[profile] ?? []) requiredCapabilities.add(skill);
+  }
+  const actualCapabilities = new Set((receipt.capabilityEvidence ?? []).map((item) => item.capability));
+  for (const capability of requiredCapabilities) {
+    if (!actualCapabilities.has(capability)) errors.push(`${phase.id}: missing capability evidence for ${capability}`);
+  }
+  validateCapabilityEvidence(receipt.capabilityEvidence, `${phase.id}/capabilities`, errors, requireTracked);
+  const probe = receipt.capabilityEvidence?.find((item) => item.capability === "fresh-subagent-dispatch");
+  if (!probe?.probeAgentId || !probe.probeRouting) {
+    errors.push(`${phase.id}: fresh-subagent-dispatch requires a non-null probeAgentId and probeRouting`);
+  } else {
+    if (probe.probeRouting.agentId !== probe.probeAgentId) {
+      errors.push(`${phase.id}: probe routing agentId must match probeAgentId`);
+    }
+    if (probe.probeRouting.routeEvidence?.source !== "codex-dispatch-metadata") {
+      errors.push(`${phase.id}: probe requires authoritative Codex dispatch metadata`);
+    }
+    if (probe.probeAgentId === receipt.controllerRouting?.agentId) {
+      errors.push(`${phase.id}: probe agent must be fresh and distinct from the controller`);
+    }
+    validateAgentRouting(
+      probe.probeRouting,
+      {
+        model: manifest.capabilityContract.subagentProbeModel,
+        reasoning: manifest.capabilityContract.subagentProbeReasoning,
+      },
+      `${phase.id}/probe`,
+      receipt,
+      errors,
+      requireTracked,
+    );
+  }
 }
 
 function validateReviewHistory(reviews, immutableBase, finalHead, label, implementerIds, errors, requireTracked) {
@@ -293,7 +470,8 @@ function validateReviewHistory(reviews, immutableBase, finalHead, label, impleme
       errors.push(`${reviewLabel}: review head is not in the final reviewed range`);
     if (review.specVerdict === "PENDING" || review.qualityVerdict === "PENDING")
       errors.push(`${reviewLabel}: completed review history cannot retain PENDING verdicts`);
-    if (implementerIds.has(review.reviewerAgentId)) errors.push(`${reviewLabel}: reviewer must be fresh and distinct`);
+    const reviewerId = review.reviewerRouting?.agentId ?? review.reviewerAgentId;
+    if (implementerIds.has(reviewerId)) errors.push(`${reviewLabel}: reviewer must be fresh and distinct`);
     validateArtifact(review.diffPackagePath, review.diffPackageSha256, reviewLabel, errors, requireTracked);
     validateArtifact(review.reportPath, review.reportSha256, reviewLabel, errors, requireTracked);
     const diffPath = repositoryPath(review.diffPackagePath);
@@ -343,6 +521,7 @@ function validateTaskEvidence(task, errors) {
 
 function validatePhaseReceipt(receipt, expectedPhaseId = null, requireTracked = false) {
   const errors = validateJsonSchema(receipt, phaseSchema);
+  if (errors.length > 0) return errors;
   const phase = manifest.phases.find((candidate) => candidate.id === receipt.phaseId);
   const accepted = receipt.status === "accepted";
   if (!phase) return [...errors, `unknown phaseId ${receipt.phaseId ?? "(missing)"}`];
@@ -351,7 +530,7 @@ function validatePhaseReceipt(receipt, expectedPhaseId = null, requireTracked = 
     errors.push(`executionPredecessor must be ${phase.executionPredecessor ?? "null"}`);
   if (receipt.packageBaseSha !== manifest.reconciledBase)
     errors.push(`packageBaseSha must equal reconciledBase ${manifest.reconciledBase}`);
-  validateModelRouting(receipt, phase, errors);
+  validateModelRouting(receipt, phase, errors, requireTracked);
   try {
     if (receipt.packageHash !== packageHashFromCommit(receipt.packageVariant, receipt.packageHeadSha))
       errors.push("packageHash does not match package blobs at packageHeadSha");
@@ -370,15 +549,33 @@ function validatePhaseReceipt(receipt, expectedPhaseId = null, requireTracked = 
     if (!receipt.completedAt || !receipt.acceptedAt) errors.push("accepted receipt requires completion timestamps");
   }
 
-  const phaseAgentIds = new Set();
+  const phaseAgentIds = new Set(
+    [
+      receipt.controllerRouting?.agentId,
+      ...receipt.capabilityEvidence.map((capability) => capability.probeAgentId).filter(Boolean),
+    ].filter(Boolean),
+  );
   for (const [index, task] of receipt.tasks.entries()) {
     const label = `${receipt.phaseId}/tasks/${index}`;
     if (!isAncestor(task.taskBaseSha, task.taskHeadSha)) errors.push(`${label}: task head does not descend from base`);
     const actualCommits = commitList(task.taskBaseSha, task.taskHeadSha);
     if (JSON.stringify(task.commits) !== JSON.stringify(actualCommits))
       errors.push(`${label}: commits must exactly equal git rev-list --reverse taskBase..taskHead`);
-    if (phaseAgentIds.has(task.implementerAgentId)) errors.push(`${label}: implementer was already used in this phase`);
-    phaseAgentIds.add(task.implementerAgentId);
+    const implementerId = task.implementerRouting?.agentId;
+    if (phaseAgentIds.has(implementerId)) errors.push(`${label}: implementer was already used in this phase`);
+    phaseAgentIds.add(implementerId);
+    validateAgentRouting(
+      task.implementerRouting,
+      {
+        model: phase.implementationModel ?? manifest.defaultAgentPolicy.implementationModel,
+        reasoning: phase.implementationReasoning ?? manifest.defaultAgentPolicy.implementationReasoning,
+        allowTerraEscalation: ["P00", "P11"].includes(phase.id),
+      },
+      `${label}/implementer`,
+      receipt,
+      errors,
+      requireTracked,
+    );
     validateArtifact(task.briefPath, task.briefSha256, label, errors, requireTracked);
     validateArtifact(task.implementerReportPath, task.implementerReportSha256, label, errors, requireTracked);
     validateTaskEvidence(task, errors);
@@ -391,7 +588,20 @@ function validatePhaseReceipt(receipt, expectedPhaseId = null, requireTracked = 
       errors,
       requireTracked,
     );
-    const thisTaskReviewers = new Set(task.reviews.map((review) => review.reviewerAgentId));
+    const taskReviewReasoning = manifest.adaptiveEffortPolicy.taskReviewEscalations.includes(phase.id)
+      ? "xhigh"
+      : "high";
+    for (const [reviewIndex, review] of task.reviews.entries()) {
+      validateAgentRouting(
+        review.reviewerRouting,
+        { model: manifest.defaultAgentPolicy.taskReviewModel, reasoning: taskReviewReasoning },
+        `${label}/reviews/${reviewIndex}/reviewer`,
+        receipt,
+        errors,
+        requireTracked,
+      );
+    }
+    const thisTaskReviewers = new Set(task.reviews.map((review) => review.reviewerRouting?.agentId));
     if (thisTaskReviewers.size !== 1) errors.push(`${label}: all attempts must use the one fresh task reviewer`);
     const taskReviewerId = [...thisTaskReviewers][0];
     if (taskReviewerId) {
@@ -400,7 +610,20 @@ function validatePhaseReceipt(receipt, expectedPhaseId = null, requireTracked = 
     }
   }
   if (accepted) {
-    const phaseReviewerIds = new Set(receipt.phaseReviews.map((review) => review.reviewerAgentId));
+    const phaseReviewReasoning = manifest.adaptiveEffortPolicy.phaseReviewEscalations.includes(phase.id)
+      ? "xhigh"
+      : "high";
+    for (const [reviewIndex, review] of receipt.phaseReviews.entries()) {
+      validateAgentRouting(
+        review.reviewerRouting,
+        { model: manifest.defaultAgentPolicy.phaseReviewModel, reasoning: phaseReviewReasoning },
+        `${receipt.phaseId}/phase/reviews/${reviewIndex}/reviewer`,
+        receipt,
+        errors,
+        requireTracked,
+      );
+    }
+    const phaseReviewerIds = new Set(receipt.phaseReviews.map((review) => review.reviewerRouting?.agentId));
     if (phaseReviewerIds.size !== 1) errors.push("phase review attempts must use one fresh phase reviewer");
     const phaseReviewerId = [...phaseReviewerIds][0];
     if (phaseAgentIds.has(phaseReviewerId)) errors.push("phase reviewer must be distinct from all phase task agents");
@@ -443,32 +666,6 @@ function commitChanges(commit) {
       const [status, ...pathParts] = line.split("\t");
       return { status, path: pathParts.join("\t") };
     });
-}
-
-function phaseMetadataPaths(receipt, receiptRelativePath) {
-  const paths = new Set([receiptRelativePath]);
-  for (const task of receipt.tasks) {
-    paths.add(task.briefPath);
-    paths.add(task.implementerReportPath);
-    for (const review of task.reviews) {
-      paths.add(review.diffPackagePath);
-      paths.add(review.reportPath);
-    }
-  }
-  for (const review of receipt.phaseReviews) {
-    paths.add(review.diffPackagePath);
-    paths.add(review.reportPath);
-  }
-  return [...paths];
-}
-
-function programmeMetadataPaths(receipt, receiptRelativePath) {
-  const paths = new Set([receiptRelativePath]);
-  for (const review of receipt.reviews) {
-    paths.add(review.diffPackagePath);
-    paths.add(review.reportPath);
-  }
-  return [...paths];
 }
 
 function validateAtomicMetadataCommit(base, commit, receiptRelativePath, expectedPaths, label, errors) {
@@ -563,6 +760,7 @@ function validateRequiredReceipt(phaseId, currentHead, errors) {
 
 function validateProgrammeReceipt(receipt, requireTracked) {
   const errors = validateJsonSchema(receipt, programmeSchema);
+  if (errors.length > 0) return errors;
   const accepted = receipt.status === "accepted";
   if (receipt.packageBaseSha !== manifest.reconciledBase)
     errors.push(`packageBaseSha must equal reconciledBase ${manifest.reconciledBase}`);
@@ -579,10 +777,20 @@ function validateProgrammeReceipt(receipt, requireTracked) {
   errors.push(
     ...finalReviewRoutingErrors(
       receipt.finalReviewRouting,
-      manifest.defaultAgentPolicy.reviewModel,
+      manifest.defaultAgentPolicy.phaseReviewModel,
       manifest.defaultAgentPolicy.finalReviewReasoning,
     ),
   );
+  if (receipt.finalReviewRouting?.routeEvidence) {
+    validateRouteEvidenceArtifact(
+      receipt.finalReviewRouting.routeEvidence,
+      receipt.finalReviewRouting,
+      "programme/final-review-route",
+      errors,
+      requireTracked,
+      "artifactPath",
+    );
+  }
   if (accepted) {
     const requiredPhases = manifest.phases.filter((phase) => phase.phaseType !== "operator-gate");
     const priorAgentIds = new Set();
@@ -606,16 +814,26 @@ function validateProgrammeReceipt(receipt, requireTracked) {
       programmeBase ??= result.receipt.programmeImplementationBase;
       if (result.receipt.programmeImplementationBase !== programmeBase)
         errors.push(`${phase.id}: programmeImplementationBase differs from earlier receipts`);
+      const controllerId = result.receipt.controllerRouting?.agentId;
+      if (priorAgentIds.has(controllerId)) errors.push(`${phase.id}: controller agent was reused`);
+      if (controllerId) priorAgentIds.add(controllerId);
+      for (const capability of result.receipt.capabilityEvidence ?? []) {
+        const probeAgentId = capability.probeAgentId;
+        if (probeAgentId && priorAgentIds.has(probeAgentId)) {
+          errors.push(`${phase.id}: capability probe agent was reused`);
+        }
+        if (probeAgentId) priorAgentIds.add(probeAgentId);
+      }
       for (const task of result.receipt.tasks) {
-        if (priorAgentIds.has(task.implementerAgentId))
+        if (priorAgentIds.has(task.implementerRouting?.agentId))
           errors.push(`${task.globalTaskKey}: implementer agent was reused across phases`);
-        priorAgentIds.add(task.implementerAgentId);
-        const taskReviewerId = task.reviews[0]?.reviewerAgentId;
+        priorAgentIds.add(task.implementerRouting?.agentId);
+        const taskReviewerId = task.reviews[0]?.reviewerRouting?.agentId;
         if (taskReviewerId && priorAgentIds.has(taskReviewerId))
           errors.push(`${task.globalTaskKey}: reviewer agent was reused across tasks/phases`);
         if (taskReviewerId) priorAgentIds.add(taskReviewerId);
       }
-      const phaseReviewerId = result.receipt.phaseReviews[0]?.reviewerAgentId;
+      const phaseReviewerId = result.receipt.phaseReviews[0]?.reviewerRouting?.agentId;
       if (phaseReviewerId && priorAgentIds.has(phaseReviewerId))
         errors.push(`${phase.id}: phase reviewer agent was reused`);
       if (phaseReviewerId) priorAgentIds.add(phaseReviewerId);
@@ -645,6 +863,9 @@ function validateProgrammeReceipt(receipt, requireTracked) {
     );
     const programmeReviewerIds = new Set(receipt.reviews.map((review) => review.reviewerAgentId));
     if (programmeReviewerIds.size !== 1) errors.push("programme attempts must use one fresh final reviewer");
+    if (!programmeReviewerIds.has(receipt.finalReviewRouting?.agentId)) {
+      errors.push("programme finalReviewRouting agentId must match the fresh final reviewer");
+    }
     errors.push(...programmeVerificationErrors(receipt.verificationEvidence, manifest.offlineCompletionCommands ?? []));
     errors.push(
       ...requiredResidualGateErrors(
@@ -653,6 +874,243 @@ function validateProgrammeReceipt(receipt, requireTracked) {
       ),
     );
     if (!receipt.acceptedAt) errors.push("accepted programme requires acceptedAt");
+  }
+  return errors;
+}
+
+const connectedReceiptRoot = join(receiptRoot, "local");
+
+function connectedReceiptPath(phaseId) {
+  return join(connectedReceiptRoot, `${phaseId}.json`);
+}
+
+function validateLocalRouting(routing, expectedReasoning, label, errors, requireTracked) {
+  if (!routing) return;
+  if (routing.runtimeHost !== "codex-desktop" || routing.provider !== "codex") {
+    errors.push(`${label}: local execution requires Codex Desktop routing`);
+  }
+  if (routing.plannedModel !== "gpt-5.6-sol" || routing.actualModel !== "gpt-5.6-sol") {
+    errors.push(`${label}: local execution requires exact gpt-5.6-sol routing`);
+  }
+  if (routing.plannedReasoning !== expectedReasoning || routing.actualReasoning !== expectedReasoning) {
+    errors.push(`${label}: reasoning must be ${expectedReasoning}`);
+  }
+  if (routing.fallbackUsed !== false) errors.push(`${label}: fallbackUsed must remain false`);
+  const evidence = routing.routeEvidence;
+  if (!evidence || !manifest.capabilityContract.routeEvidenceSources.includes(evidence.source)) {
+    errors.push(`${label}: authoritative route evidence is required`);
+  } else {
+    validateRouteEvidenceArtifact(evidence, routing, `${label}/route`, errors, requireTracked, "path");
+  }
+}
+
+function programmeReceiptIdentity(errors, requireTracked = false) {
+  const path = join(receiptRoot, "PROGRAMME.json");
+  if (!existsSync(path)) {
+    errors.push("local execution requires accepted PROGRAMME.json");
+    return null;
+  }
+  const receipt = readWorkingOrHeadJson(path, errors, requireTracked);
+  if (!receipt) return null;
+  if (receipt.status !== "accepted") errors.push("local execution requires accepted PROGRAMME.json status");
+  const commit = receiptCommit(path);
+  const relativePath = relative(repositoryRoot, path).split(sep).join("/");
+  let bytes;
+  try {
+    bytes = requireTracked ? Buffer.from(runGit(["show", `HEAD:${relativePath}`])) : readFileSync(path);
+  } catch {
+    errors.push(`${relativePath}: programme receipt bytes are unavailable${requireTracked ? " at HEAD" : ""}`);
+    return null;
+  }
+  return {
+    path: relativePath,
+    receipt,
+    commit,
+    sha256: sha256(bytes),
+  };
+}
+
+function connectedAgentIds(receipt) {
+  return new Set([receipt.controllerRouting?.agentId, receipt.reviewerRouting?.agentId].filter(Boolean));
+}
+
+function validateConnectedAgentHistory(receipts, errors, candidate = null) {
+  const reserved = new Set();
+  for (const receipt of receipts) {
+    for (const agentId of connectedAgentIds(receipt)) {
+      if (reserved.has(agentId)) errors.push(`${receipt.phaseId}: local controller/reviewer agent was reused`);
+      reserved.add(agentId);
+    }
+  }
+  if (candidate) {
+    for (const agentId of connectedAgentIds(candidate)) {
+      if (reserved.has(agentId))
+        errors.push(`${candidate.phaseId}: agent ${agentId} was reused from prior local history`);
+    }
+  }
+  return reserved;
+}
+
+function expectedRemainingGates(phaseId) {
+  const phaseIndex = manifest.localPhases.findIndex((phase) => phase.id === phaseId);
+  const closed = new Set(
+    manifest.localPhases
+      .slice(0, phaseIndex + 1)
+      .map((phase) => phase.closesGate)
+      .filter(Boolean),
+  );
+  return manifest.requiredResidualGates.map((gate) => gate.id).filter((gateId) => !closed.has(gateId));
+}
+
+function validateConnectedReceipt(receipt, expectedPhaseId = null, requireTracked = false) {
+  const errors = validateJsonSchema(receipt, connectedPhaseSchema);
+  if (errors.length > 0) return errors;
+  const phase = manifest.localPhases.find((candidate) => candidate.id === receipt.phaseId);
+  const accepted = receipt.status === "accepted";
+  if (!phase) return [...errors, `unknown local phaseId ${receipt.phaseId ?? "(missing)"}`];
+  if (expectedPhaseId && receipt.phaseId !== expectedPhaseId) errors.push(`expected local phase ${expectedPhaseId}`);
+  if (receipt.executionPredecessor !== phase.executionPredecessor) {
+    errors.push(`${phase.id}: executionPredecessor must be ${phase.executionPredecessor ?? "null"}`);
+  }
+  if (receipt.closesGate !== phase.closesGate) errors.push(`${phase.id}: closesGate must match the manifest`);
+  const expectedRemaining = expectedRemainingGates(phase.id);
+  if (JSON.stringify(receipt.remainingResidualGates) !== JSON.stringify(expectedRemaining)) {
+    errors.push(`${phase.id}: remainingResidualGates must preserve the exact manifest closure order`);
+  }
+  validateLocalRouting(
+    receipt.controllerRouting,
+    phase.controllerReasoning,
+    `${phase.id}/controller`,
+    errors,
+    requireTracked,
+  );
+  validateLocalRouting(receipt.reviewerRouting, phase.reviewReasoning, `${phase.id}/reviewer`, errors, requireTracked);
+  if (receipt.controllerRouting?.agentId === receipt.reviewerRouting?.agentId) {
+    errors.push(`${phase.id}: reviewer must be fresh and distinct from controller`);
+  }
+  validateFullRangeReview(
+    receipt.phaseReview,
+    receipt.phaseStartSha,
+    receipt.phaseEndSha,
+    receipt.reviewerRouting?.agentId,
+    `${phase.id}/phase-review`,
+    errors,
+    requireTracked,
+    accepted,
+  );
+  const capabilityNames = new Set((receipt.capabilityEvidence ?? []).map((item) => item.capability));
+  for (const skill of phase.skills) {
+    if (!capabilityNames.has(skill)) errors.push(`${phase.id}: missing capability evidence for ${skill}`);
+  }
+  validateCapabilityEvidence(receipt.capabilityEvidence, `${phase.id}/capabilities`, errors, requireTracked);
+  const programme = programmeReceiptIdentity(errors, requireTracked);
+  if (programme) {
+    const binding = receipt.offlineProgrammeBinding;
+    if (binding.programmeReceiptPath !== programme.path) errors.push(`${phase.id}: programme receipt path mismatch`);
+    if (binding.programmeReceiptSha256 !== programme.sha256)
+      errors.push(`${phase.id}: programme receipt hash mismatch`);
+    if (binding.programmeReceiptCommit !== programme.commit)
+      errors.push(`${phase.id}: programme receipt commit mismatch`);
+    if (binding.packageHash !== programme.receipt.packageHash) errors.push(`${phase.id}: package hash mismatch`);
+    if (binding.remoteTipSha !== programme.commit)
+      errors.push(`${phase.id}: remote tip must equal PROGRAMME.json commit`);
+    if (phase.id === "L00" && receipt.phaseStartSha !== programme.commit) {
+      errors.push("L00: phaseStartSha must equal the atomic PROGRAMME.json commit");
+    }
+  }
+  if (phase.executionPredecessor) {
+    const predecessorPath = connectedReceiptPath(phase.executionPredecessor);
+    if (!existsSync(predecessorPath)) errors.push(`${phase.id}: predecessor receipt is missing`);
+    else {
+      const predecessorCommit = receiptCommit(predecessorPath);
+      if (receipt.phaseStartSha !== predecessorCommit) {
+        errors.push(`${phase.id}: phaseStartSha must equal predecessor local receipt commit`);
+      }
+    }
+  }
+  if (accepted) {
+    if (receipt.decision !== "GO") errors.push(`${phase.id}: accepted receipt requires GO`);
+    if (!receipt.completedAt || !receipt.acceptedAt) errors.push(`${phase.id}: accepted receipt requires timestamps`);
+    if (!isAncestor(receipt.phaseStartSha, receipt.phaseEndSha)) {
+      errors.push(`${phase.id}: phaseEndSha must descend from phaseStartSha`);
+    }
+    if (receipt.capabilityEvidence.length === 0 || receipt.evidenceArtifacts.length === 0) {
+      errors.push(`${phase.id}: accepted receipt requires capability and tracked evidence`);
+    }
+    if (phase.id !== "L00" && (receipt.approvals.length === 0 || receipt.operations.length === 0)) {
+      errors.push(`${phase.id}: accepted connected phase requires approval-bound operations`);
+    }
+    errors.push(
+      ...connectedOperationAcceptanceErrors(
+        phase.id,
+        phase.requiredOperationClasses,
+        receipt.approvals,
+        receipt.operations,
+        receipt.acceptedAt,
+      ),
+    );
+  }
+  for (const artifact of receipt.evidenceArtifacts) {
+    validateArtifact(artifact.path, artifact.sha256, `${phase.id}/evidence`, errors, requireTracked);
+    if (accepted)
+      validateArtifactAtCommit(artifact.path, artifact.sha256, receipt.phaseEndSha, `${phase.id}/evidence`, errors);
+  }
+  return errors;
+}
+
+function validateOperationalReceipt(receipt, requireTracked = false) {
+  const errors = validateJsonSchema(receipt, operationalSchema);
+  if (errors.length > 0) return errors;
+  const programme = programmeReceiptIdentity(errors, requireTracked);
+  const localReceipts = [];
+  let l10Commit = null;
+  for (const phase of manifest.localPhases) {
+    const path = connectedReceiptPath(phase.id);
+    if (!existsSync(path)) {
+      errors.push(`operational acceptance requires ${phase.id} receipt`);
+      continue;
+    }
+    const local = readWorkingOrHeadJson(path, errors, requireTracked);
+    if (!local) continue;
+    localReceipts.push(local);
+    errors.push(...validateConnectedReceipt(local, phase.id, requireTracked).map((error) => `${phase.id}: ${error}`));
+    if (local.status !== "accepted" || local.decision !== "GO") {
+      errors.push(`operational acceptance requires accepted GO ${phase.id}`);
+    }
+    if (phase.id === "L10") {
+      l10Commit = receiptCommit(path);
+      if (local.remainingResidualGates.length !== 0) {
+        errors.push("operational acceptance requires L10 with no residual gates");
+      }
+    }
+  }
+  const reservedAgents = validateConnectedAgentHistory(localReceipts, errors);
+  validateLocalRouting(receipt.finalReviewRouting, "xhigh", "operational/final-reviewer", errors, requireTracked);
+  if (reservedAgents.has(receipt.finalReviewRouting?.agentId)) {
+    errors.push("operational final reviewer must be fresh across the complete local programme");
+  }
+  if (programme) {
+    if (receipt.offlineProgrammeCommit !== programme.commit) errors.push("operational offlineProgrammeCommit mismatch");
+    if (receipt.phaseStartSha !== programme.commit)
+      errors.push("operational phaseStartSha must equal PROGRAMME commit");
+  }
+  if (l10Commit) {
+    if (receipt.finalLocalReceiptCommit !== l10Commit) errors.push("operational finalLocalReceiptCommit mismatch");
+    if (receipt.phaseEndSha !== l10Commit)
+      errors.push("operational phaseEndSha must equal accepted L10 receipt commit");
+  }
+  validateFullRangeReview(
+    receipt.review,
+    receipt.phaseStartSha,
+    receipt.phaseEndSha,
+    receipt.finalReviewRouting?.agentId,
+    "operational/full-review",
+    errors,
+    requireTracked,
+    receipt.status === "accepted",
+  );
+  if (receipt.status === "accepted") {
+    if (!receipt.acceptedAt) errors.push("accepted OPERATIONAL.json requires acceptedAt");
   }
   return errors;
 }
@@ -704,10 +1162,22 @@ const errors = [];
 const messages = [];
 const phaseTemplatePath = join(canonicalRoot, "phase-receipt.template.json");
 const programmeTemplatePath = join(canonicalRoot, "programme-receipt.template.json");
+const connectedTemplatePath = join(canonicalRoot, "connected-phase-receipt.template.json");
+const operationalTemplatePath = join(canonicalRoot, "operational-receipt.template.json");
 errors.push(...validateJsonSchema(readJson(phaseTemplatePath), phaseSchema).map((error) => `phase template: ${error}`));
 errors.push(
   ...validateJsonSchema(readJson(programmeTemplatePath), programmeSchema).map(
     (error) => `programme template: ${error}`,
+  ),
+);
+errors.push(
+  ...validateJsonSchema(readJson(connectedTemplatePath), connectedPhaseSchema).map(
+    (error) => `connected phase template: ${error}`,
+  ),
+);
+errors.push(
+  ...validateJsonSchema(readJson(operationalTemplatePath), operationalSchema).map(
+    (error) => `operational template: ${error}`,
   ),
 );
 
@@ -724,6 +1194,18 @@ if (explicitReceipt) {
       const p00 = readJson(receiptPath("P00"));
       packageIdentityDiff(receipt, p00, receipt.phaseId, errors);
     }
+  }
+}
+
+const explicitConnectedReceipt = argument("--connected");
+if (explicitConnectedReceipt) {
+  const path = resolve(repositoryRoot, explicitConnectedReceipt);
+  if (!existsSync(path)) errors.push(`connected receipt does not exist: ${explicitConnectedReceipt}`);
+  else {
+    const requireTracked = process.argv.includes("--require-tracked");
+    const receipt = readJson(path);
+    errors.push(...validateConnectedReceipt(receipt, null, requireTracked));
+    if (requireTracked) validateTrackedReceipt(path, errors);
   }
 }
 
@@ -767,6 +1249,40 @@ if (beforePhaseId) {
   }
 }
 
+const beforeLocalPhaseId = argument("--before-local");
+if (beforeLocalPhaseId) {
+  const phaseIndex = manifest.localPhases.findIndex((phase) => phase.id === beforeLocalPhaseId);
+  if (phaseIndex === -1) errors.push(`unknown --before-local phase ${beforeLocalPhaseId}`);
+  else {
+    const currentHead = runGit(["rev-parse", "HEAD"]).trim();
+    const programme = programmeReceiptIdentity(errors, true);
+    if (programme) {
+      errors.push(...validateProgrammeReceipt(programme.receipt, true).map((error) => `PROGRAMME: ${error}`));
+    }
+    const priorLocalReceipts = [];
+    for (const phase of manifest.localPhases.slice(0, phaseIndex)) {
+      const path = connectedReceiptPath(phase.id);
+      if (!existsSync(path)) errors.push(`${beforeLocalPhaseId}: missing accepted local receipt ${phase.id}`);
+      else {
+        const receipt = readWorkingOrHeadJson(path, errors, true);
+        if (!receipt) continue;
+        priorLocalReceipts.push(receipt);
+        errors.push(...validateConnectedReceipt(receipt, phase.id, true).map((error) => `${phase.id}: ${error}`));
+        if (receipt.status !== "accepted" || receipt.decision !== "GO") {
+          errors.push(`${beforeLocalPhaseId}: predecessor ${phase.id} is not accepted GO`);
+        }
+      }
+    }
+    validateConnectedAgentHistory(priorLocalReceipts, errors);
+    const predecessorPath = phaseIndex === 0 ? null : connectedReceiptPath(manifest.localPhases[phaseIndex - 1].id);
+    const expectedHead =
+      phaseIndex === 0 ? programme?.commit : existsSync(predecessorPath) ? receiptCommit(predecessorPath) : null;
+    if (expectedHead && currentHead !== expectedHead) {
+      errors.push(`${beforeLocalPhaseId}: current HEAD must equal the exact predecessor metadata commit`);
+    }
+  }
+}
+
 const acceptPhaseId = argument("--accept-phase");
 if (acceptPhaseId) {
   const currentHead = runGit(["rev-parse", "HEAD"]).trim();
@@ -791,6 +1307,44 @@ if (acceptPhaseId) {
           priorAgentIds(allPriorResults),
           acceptPhaseId,
         ),
+      );
+    }
+  }
+}
+
+const acceptLocalPhaseId = argument("--accept-local-phase");
+if (acceptLocalPhaseId) {
+  const path = connectedReceiptPath(acceptLocalPhaseId);
+  if (!existsSync(path)) errors.push(`${acceptLocalPhaseId}: connected receipt does not exist`);
+  else {
+    const receipt = readJson(path);
+    errors.push(...validateConnectedReceipt(receipt, acceptLocalPhaseId, true));
+    if (receipt.status !== "accepted" || receipt.decision !== "GO") {
+      errors.push(`${acceptLocalPhaseId}: acceptance requires accepted GO`);
+    }
+    const phaseIndex = manifest.localPhases.findIndex((phase) => phase.id === acceptLocalPhaseId);
+    const priorLocalReceipts = [];
+    for (const phase of manifest.localPhases.slice(0, Math.max(phaseIndex, 0))) {
+      const priorPath = connectedReceiptPath(phase.id);
+      if (!existsSync(priorPath)) continue;
+      const prior = readWorkingOrHeadJson(priorPath, errors, true);
+      if (prior) priorLocalReceipts.push(prior);
+    }
+    validateConnectedAgentHistory(priorLocalReceipts, errors, receipt);
+    validateTrackedReceipt(path, errors);
+    const commit = receiptCommit(path);
+    if (commit !== runGit(["rev-parse", "HEAD"]).trim()) {
+      errors.push(`${acceptLocalPhaseId}: current HEAD must equal the atomic connected-receipt commit`);
+    }
+    if (shaPattern.test(commit)) {
+      const relativePath = relative(repositoryRoot, path).split(sep).join("/");
+      validateAtomicMetadataCommit(
+        receipt.phaseEndSha,
+        commit,
+        relativePath,
+        connectedMetadataPaths(receipt, relativePath),
+        acceptLocalPhaseId,
+        errors,
       );
     }
   }
@@ -851,6 +1405,41 @@ if (programmeReceiptPath) {
         if (acceptedProgrammePath && commit !== runGit(["rev-parse", "HEAD"]).trim()) {
           errors.push("programme: current HEAD must equal the atomic accepted-receipt commit");
         }
+      }
+    }
+  }
+}
+
+const acceptedOperationalPath = argument("--accept-operational");
+const operationalReceiptPath = argument("--operational") ?? acceptedOperationalPath;
+if (operationalReceiptPath) {
+  const path = resolve(repositoryRoot, operationalReceiptPath);
+  const expectedPath = join(connectedReceiptRoot, "OPERATIONAL.json");
+  if (path !== expectedPath) errors.push(`operational receipt must use ${relative(repositoryRoot, expectedPath)}`);
+  if (!existsSync(path)) errors.push(`operational receipt does not exist: ${operationalReceiptPath}`);
+  else {
+    const receipt = readJson(path);
+    if (acceptedOperationalPath && receipt.status !== "accepted") {
+      errors.push("operational acceptance requires status accepted");
+    }
+    const requireTracked = process.argv.includes("--require-tracked") || Boolean(acceptedOperationalPath);
+    errors.push(...validateOperationalReceipt(receipt, requireTracked));
+    if (requireTracked) validateTrackedReceipt(path, errors);
+    if (acceptedOperationalPath) {
+      const commit = receiptCommit(path);
+      if (commit !== runGit(["rev-parse", "HEAD"]).trim()) {
+        errors.push("operational: current HEAD must equal the atomic OPERATIONAL.json commit");
+      }
+      if (shaPattern.test(commit) && shaPattern.test(receipt.finalLocalReceiptCommit)) {
+        const relativePath = relative(repositoryRoot, path).split(sep).join("/");
+        validateAtomicMetadataCommit(
+          receipt.finalLocalReceiptCommit,
+          commit,
+          relativePath,
+          operationalMetadataPaths(receipt, relativePath),
+          "operational",
+          errors,
+        );
       }
     }
   }

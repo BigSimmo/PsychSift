@@ -13,7 +13,7 @@ export const repositorySkillSurfaces = [
   { name: "Clinical KB plugin", root: path.join(repositoryRoot, "plugins", "clinical-kb", "skills") },
 ];
 export const expectedRepositorySkillSurfaceCounts = {
-  Codex: 42,
+  Codex: 43,
   Claude: 8,
   Cursor: 15,
   "Clinical KB plugin": 1,

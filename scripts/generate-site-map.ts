@@ -80,11 +80,14 @@ const documentedRedirectTargets: Record<string, string> = {
   // Pinned because the page forwards the incoming query string, so its
   // `redirect()` argument is a template literal the regex above cannot read.
   "/dictionary/browse": "/dictionary/search",
+  "/ward-management/constellation": "/ward-management/network",
 };
 
 const routeDescriptions: Record<string, string> = {
   "/": "Main Clinical KB shell.",
   "/applications": "Legacy application launcher redirect to Tools.",
+  "/caring-contacts":
+    "Caring Contacts workspace — a synthetic, non-clinical demonstration of caring-contact follow-up. Standalone: it owns its own navigation and is entered from the Tools catalogue.",
   "/calculators": "Psychiatry rating scale scoring and clinical decision calculators.",
   "/dictionary": "Clinical dictionary home with term search and category navigation.",
   "/dictionary/[slug]": "Source-governed clinical term definition, distinction, and reference detail.",
@@ -148,7 +151,9 @@ const routeDescriptions: Record<string, string> = {
   "/tools": "Clinical tools and applications launcher directory.",
   "/ward-management": "Statewide psychiatry ward demand, bed capacity, and patient flow console.",
   "/ward-management/capacity": "Ward bed availability, unit occupancy, and staffing capacity.",
-  "/ward-management/constellation": "Statewide psychiatric hospital network constellation view.",
+  "/ward-management/constellation":
+    "Compatibility redirect to `/ward-management/network`. Phase 2 retired the constellation command view.",
+  "/ward-management/ed/[edId]": "Synthetic emergency-department role screen for one origin department.",
   "/ward-management/exceptions": "Patient flow exceptions, delays, and escalation alerts.",
   "/ward-management/governance": "Ward coordination governance, compliance, and audit log.",
   "/ward-management/movements": "Scheduled and completed patient transfers and bed movements.",
@@ -156,6 +161,8 @@ const routeDescriptions: Record<string, string> = {
   "/ward-management/patients/[patientId]": "Synthetic patient placement and transfer trajectory detail.",
   "/ward-management/queue": "Priority referral queue and triage waiting list.",
   "/ward-management/transport": "Patient inter-hospital transfer and transport logistics.",
+  "/ward-management/transport/officer": "Synthetic transport-officer phone screen for in-flight jobs.",
+  "/ward-management/ward/[unitId]": "Synthetic ward-manager screen for one inpatient unit.",
 };
 
 const publicRouteHandlerDescriptions: Record<string, string> = {
@@ -234,6 +241,10 @@ const routeOwnershipRows = [
   ["Safety Plan", "src/app/safety-plan, src/components/patient-safety-plan.tsx"],
   ["Privacy", "src/app/privacy"],
   ["Tools", "src/components/applications-launcher-page.tsx"],
+  [
+    "Caring Contacts workspace",
+    "src/app/caring-contacts, src/components/caring-contacts/workspace, src/lib/caring-contacts-routes.ts",
+  ],
   ["Mockups", "src/app/mockups"],
 ] as const;
 

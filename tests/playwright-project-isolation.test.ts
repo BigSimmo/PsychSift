@@ -58,6 +58,32 @@ describe("Playwright production-project isolation", () => {
   });
 
   /**
+   * The production Caring Contacts workspace spec is the surface's only browser
+   * proof, and it is what `docs/design-system/adoption-contract.json` cites for
+   * all five proof categories. A spec listed in only one of the two
+   * hand-maintained regexes does not fail — it silently never runs, and the
+   * adoption declaration it backs becomes a claim nothing checks. Pin both, and
+   * pin that it stays out of the advisory mockup project.
+   */
+  it("collects the production caring-contacts workspace spec in the chromium project only", () => {
+    const source = readFileSync(resolve(process.cwd(), "playwright.config.ts"), "utf8");
+    const productionSpecPattern = configPattern(source, "productionSpecPattern");
+    const mockupSpecPattern = configPattern(source, "mockupSpecPattern");
+    const testMatch = source.match(/testMatch:\s*(\/.*\/),/);
+    expect(testMatch, "playwright.config.ts: could not read the top-level testMatch regex").not.toBeNull();
+    const testMatchPattern = new RegExp(testMatch![1].slice(1, -1));
+
+    const spec = "tests/ui-caring-contacts-workspace.spec.ts";
+    expect(existsSync(resolve(process.cwd(), spec)), `${spec} is missing`).toBe(true);
+    expect(testMatchPattern.test(spec), `${spec} is not collected by top-level testMatch`).toBe(true);
+    expect(
+      productionSpecPattern.test(spec),
+      `${spec} is not collected by productionSpecPattern, so the workspace has no browser gate at all`,
+    ).toBe(true);
+    expect(mockupSpecPattern.test(spec), `${spec} leaked into the advisory mockup project`).toBe(false);
+  });
+
+  /**
    * The phone-scroll coverage is split across sibling spec files so no single
    * file can dominate one `--shard`. That split only holds if every sibling is
    * actually collected: `productionSpecPattern` and `testMatch` are two more

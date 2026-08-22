@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { relative, resolve, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const routeFiles = [
@@ -18,6 +18,22 @@ const routeFiles = [
   "src/app/mockups/caring-contacts/system-states/page.tsx",
 ] as const;
 
+const MOCKUP_ROOTS = ["src/app/mockups/caring-contacts", "src/components/caring-contacts/mockups"] as const;
+
+/** Every `.ts`/`.tsx` file under the given repo-relative roots, keyed by repo-relative path. */
+function collectSources(roots: readonly string[]): Map<string, string> {
+  const sources = new Map<string, string>();
+  for (const root of roots) {
+    const absoluteRoot = resolve(process.cwd(), root);
+    for (const entry of readdirSync(absoluteRoot, { recursive: true, withFileTypes: true })) {
+      if (!entry.isFile() || !/\.(?:ts|tsx)$/.test(entry.name)) continue;
+      const absolute = resolve(entry.parentPath, entry.name);
+      sources.set(relative(process.cwd(), absolute).split(sep).join("/"), readFileSync(absolute, "utf8"));
+    }
+  }
+  return sources;
+}
+
 describe("Caring Contact mockup route registration", () => {
   it("registers every approved page inside the synthetic mockup namespace", () => {
     for (const file of routeFiles) {
@@ -33,21 +49,38 @@ describe("Caring Contact mockup route registration", () => {
   });
 
   it("keeps the prototype memory-only and provider-free inside its mockup namespace", () => {
-    const roots = ["src/app/mockups/caring-contacts", "src/components/caring-contacts/mockups"].map((path) =>
-      resolve(process.cwd(), path),
-    );
-    const sourceFiles = roots.flatMap((root) =>
-      readdirSync(root, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && /\.(?:ts|tsx)$/.test(entry.name))
-        .map((entry) => readFileSync(resolve(entry.parentPath, entry.name), "utf8")),
-    );
-    const source = sourceFiles.join("\n");
+    const source = [...collectSources(MOCKUP_ROOTS).values()].join("\n");
 
     expect(source).not.toMatch(/\b(?:localStorage|sessionStorage|indexedDB)\b|document\.cookie/);
     expect(source).not.toMatch(/from\s+["'][^"']*(?:openai|supabase|twilio|analytics)[^"']*["']/i);
     expect(source).not.toMatch(/\bfetch\s*\(/);
-    expect(existsSync(resolve(process.cwd(), "src/app/caring-contacts"))).toBe(false);
     expect(existsSync(resolve(process.cwd(), "src/app/plans"))).toBe(false);
     expect(existsSync(resolve(process.cwd(), "src/app/contacts"))).toBe(false);
+  });
+
+  // Replaces the former `src/app/caring-contacts` non-existence assertion. That
+  // assertion was reserving the production namespace *for* production, and
+  // production has now arrived (Task 15). The separation it protected is kept,
+  // and strengthened: it is now enforced in both directions instead of by the
+  // absence of one side. The prototype's storage and `fetch(` bans above stay
+  // scoped to the mockup roots they were written for — the production tree
+  // legitimately fetches, the prototype still may not.
+  it("keeps the prototype and the production workspace from reaching into each other", () => {
+    const mockupSources = collectSources(MOCKUP_ROOTS);
+    expect(mockupSources.size).toBeGreaterThan(0);
+    for (const [file, source] of mockupSources) {
+      expect(source, `${file} imports production workspace code`).not.toMatch(
+        /from\s+["']@\/components\/caring-contacts\/workspace/,
+      );
+      expect(source, `${file} imports a production caring-contacts route`).not.toMatch(
+        /from\s+["']@\/lib\/caring-contacts-server/,
+      );
+    }
+
+    const productionSources = collectSources(["src/app/caring-contacts", "src/components/caring-contacts/workspace"]);
+    expect(productionSources.size).toBeGreaterThan(0);
+    for (const [file, source] of productionSources) {
+      expect(source, `${file} imports mockup code`).not.toMatch(/caring-contacts\/mockups/);
+    }
   });
 });

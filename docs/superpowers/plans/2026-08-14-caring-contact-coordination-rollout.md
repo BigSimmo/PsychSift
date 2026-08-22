@@ -36,22 +36,22 @@ These decisions refine the approved concept and must not be reopened during rout
 ### Service, referral and ownership model
 
 - The first real-patient pilot serves one dedicated hospital aftercare/transition team at one hospital/service. It is not a statewide or multi-health-service tenancy pilot.
-- The discharging clinician confirms the source-system identity, mobile information and verbal agreement. The existing hospital record/referral workflow sends a structured referral to Callback.
+- The discharging clinician confirms the source-system identity, mobile information and verbal agreement. The existing hospital record/referral workflow sends a structured referral to Caring Contacts.
 - The dedicated aftercare team reviews, personalises, activates and owns the caring-contact plan for its full duration.
 - New referrals appear first on Today in `Referrals to review`, ordered by discharge and first eligible contact-window timing, never inferred clinical risk.
 - The aftercare team may accept, return for clarification or decline using structured reasons. Clarification and decline write back to the hospital referral system, which owns referrer notification.
-- The referring team retains responsibility until explicit acceptance. Callback must not imply that a pending or returned referral has transferred ownership.
+- The referring team retains responsibility until explicit acceptance. Caring Contacts must not imply that a pending or returned referral has transferred ownership.
 - Accepted referrals enter the team queue and require an explicit coordinator claim or team-lead assignment. There is no automatic round-robin assignment.
 - Authorised teammates provide audited coverage during coordinator absence; the named coordinator and any formal reassignment remain visible.
 - Eligibility uses objective prerequisites only: adult status, qualifying discharge/referral, pilot-service scope, patient-controlled mobile flag and agreement. Diagnosis, presentation details and risk assessments never drive automated eligibility.
-- Search is restricted to referrals and caring-contact episodes belonging to the pilot team. Callback is not a hospital-wide patient directory.
+- Search is restricted to referrals and caring-contact episodes belonging to the pilot team. Caring Contacts is not a hospital-wide patient directory.
 
 ### Mobile, agreement and patient control
 
-- Callback imports the current hospital-record mobile number without test SMS, verbal read-back or separate referrer attestation.
+- Caring Contacts imports the current hospital-record mobile number without test SMS, verbal read-back or separate referrer attestation.
 - Activation nevertheless requires an explicit source-system flag that the destination is patient-controlled and suitable for discreet SMS. A plain mobile-number field is insufficient. Family, carer and shared destinations are ineligible.
-- The agreement interface is a simple `Agreement confirmed: Yes/No`. The audit automatically retains the source referral, referring clinician and received timestamp; no separate Callback agreement ceremony is added.
-- A source-system mobile-number change automatically pauses future contacts and creates a coordinator-review exception. Callback never silently switches the destination.
+- The agreement interface is a simple `Agreement confirmed: Yes/No`. The audit automatically retains the source referral, referring clinician and received timestamp; no separate Caring Contacts agreement ceremony is added.
+- A source-system mobile-number change automatically pauses future contacts and creates a coordinator-review exception. Caring Contacts never silently switches the destination.
 - Patients request timing changes, pause or withdrawal through the named programme phone. It is staffed seven days during every sending window, and any authorised team member can act immediately.
 - Withdrawal immediately cancels all unsent contacts, requires no approval, retains immutable history and writes back the milestone. A reason is optional.
 - A pause keeps the original discharge-anchored calendar. Contacts falling inside the pause are skipped permanently; explicit resumption begins with the next future contact.
@@ -66,7 +66,7 @@ These decisions refine the approved concept and must not be reopened during rout
 - Personalisation is structured only: preferred name, neutral team identity, coordinator signature and approved message variants. There is no unrestricted clinician free text or dynamic translation.
 - The first pilot uses approved English content only. Interpreter-supported enrolment uses existing service processes; translated pathways require separate professional translation and cultural approval.
 - Patient-visible sender and message wording are discreet but recognisable and never expose suicide, crisis or mental-health treatment on a lock screen.
-- Use a non-receiving sender. Callback receives, stores, analyses and displays no replies.
+- Use a non-receiving sender. Caring Contacts receives, stores, analyses and displays no replies.
 - Enrolment and the first SMS provide complete support information. The first SMS includes the programme phone and hours, emergency direction and one approved crisis-support contact in plain text; later messages retain the short no-reply boundary and programme contact.
 - Every fully substituted message, including required notices and signature, is limited to two concatenated SMS segments. The UI shows encoding and exact segment count and blocks overflow.
 
@@ -77,7 +77,7 @@ These decisions refine the approved concept and must not be reopened during rout
 - Hospital readmission automatically pauses future contacts. A later discharge requires a new linked referral and coordinator decision; the old episode never automatically resumes or rebases.
 - A recorded death immediately and irreversibly cancels all unsent contacts. A later source correction is an incident and requires a new referral for any future plan.
 - Completed, cancelled and withdrawn plans become read-only, leave active worklists and remain available for the formally approved retention period.
-- Structured clinical-record write-back covers referral outcome, activation, pause, withdrawal, cancellation, material delivery exception and completion. Detailed transport and access evidence remains in Callback.
+- Structured clinical-record write-back covers referral outcome, activation, pause, withdrawal, cancellation, material delivery exception and completion. Detailed transport and access evidence remains in Caring Contacts.
 - Transient transport failures receive two bounded application retries, for three attempts total, within the original window. The application never retries outside that window.
 - A permanent failure pauses future contacts and creates a same-day operational task. It never automatically triggers patient contact or clinical review.
 - Provider outage contacts that miss their window are marked missed and never sent late. Future cadence remains unchanged after restoration.
@@ -87,9 +87,9 @@ These decisions refine the approved concept and must not be reopened during rout
 
 - A clinical programme lead and a lived-experience/content representative both approve new or materially changed pathway/message versions. Privacy or legal review joins when disclosure or agreement changes.
 - The pilot proves operational safety, reliability, clinician usability and patient acceptability. It is not a clinical-effectiveness study.
-- Patient acceptability uses a separately consented evaluation process outside Callback, with aggregate reporting only.
-- WA Health enterprise SSO/MFA and service-managed team groups control access. No Callback-local credentials exist.
-- Any device may access Callback only when WA Health SSO/MFA, conditional access and managed-session controls succeed. No patient download or persistent browser-local patient storage is permitted.
+- Patient acceptability uses a separately consented evaluation process outside Caring Contacts, with aggregate reporting only.
+- WA Health enterprise SSO/MFA and service-managed team groups control access. No Caring Contacts-local credentials exist.
+- Any device may access Caring Contacts only when WA Health SSO/MFA, conditional access and managed-session controls succeed. No patient download or persistent browser-local patient storage is permitted.
 - Enterprise policy controls session timeout. Activation, withdrawal, reassignment and any allowed export require fresh authentication.
 - The pilot permits no patient-level export. Approved aggregate reporting may include imported clinical-source demographic fields with a governance-configured small-cell threshold and a non-inferable `Suppressed` state.
 - Every patient search, view, decision, mutation, write-back and administrative access enters an immutable audit trail. Clinicians see episode-relevant operational history; privacy/security auditors see the complete access trail.
@@ -108,7 +108,7 @@ These decisions refine the approved concept and must not be reopened during rout
 - The single-team pilot has no numeric patient cap and accepts every eligible referral while open. This is a conscious exposure choice; strict automatic stopping rules, workload monitoring and the 6–8-week early governance review are mandatory.
 - Production access requires assessed simulation of identity review, activation, withdrawal, delivery failure, readmission, downtime and incident handling.
 - Lived-experience approval is required at message-content, complete-prototype and pilot-findings gates, and may block progression.
-- Go-live receives two weeks of seven-day hypercare with named clinical, service, technical, privacy and incident leads plus daily Callback queue/state review. Provider-side reconciliation remains event-triggered by outage, discrepancy or suspected incident.
+- Go-live receives two weeks of seven-day hypercare with named clinical, service, technical, privacy and incident leads plus daily Caring Contacts queue/state review. Provider-side reconciliation remains event-triggered by outage, discrepancy or suspected incident.
 - Rollout remains sequential: approved design specification → complete synthetic prototype → secure datastore/tenancy → fake-provider simulation → authorised non-production provider → staged real-patient pilot.
 
 ### Approved visual direction
@@ -124,13 +124,13 @@ These decisions refine the approved concept and must not be reopened during rout
 
 ## 1. Outcome and recommended direction
 
-Build Callback as a **dedicated caring-contact workspace inside this codebase, with a separate operational shell and a separately approved runtime/data boundary**.
+Build Caring Contacts as a **dedicated caring-contact workspace inside this codebase, with a separate operational shell and a separately approved runtime/data boundary**.
 
 That choice deliberately separates three things:
 
 1. **Shared design language** — tokens, typography, controls, overlays, focus behaviour, accessibility, responsive states, iconography and quality gates come from Clinical KB.
 2. **Dedicated product navigation** — Today, Patients, Schedule, Templates and More belong to caring-contact coordination, not to the global search composer or the thirteen reference modes.
-3. **Patient-data boundary** — the current product and PIA assume no solicited patient-identifiable data. Callback cannot silently widen that assumption by adding a route to the existing RAG deployment.
+3. **Patient-data boundary** — the current product and PIA assume no solicited patient-identifiable data. Caring Contacts cannot silently widen that assumption by adding a route to the existing RAG deployment.
 
 The memorable product signature is one restrained **continuity thread**: close early nodes that widen across the approved cadence. It is a schedule and continuity device only. It never changes colour or geometry based on clinical state, inferred risk, delivery success or patient behaviour.
 
@@ -166,7 +166,7 @@ Use the repository's declared order, not historical preference:
 
 The repository's six canonical Linux baselines are human-approved hosted-CI artifacts recorded in `tests/__screenshots__/linux/provenance.json` and governed by `docs/design-system/adoption-contract.json`:
 
-| Rendered surface         | Evidence file                                               | Callback lesson                                                                           |
+| Rendered surface         | Evidence file                                               | Caring Contacts lesson                                                                    |
 | ------------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Dashboard shell, desktop | `tests/__screenshots__/linux/dashboard-shell.png`           | Quiet centred hierarchy, one obvious command and minimal chrome.                          |
 | Dashboard shell, phone   | `tests/__screenshots__/linux/dashboard-shell-phone.png`     | Compact header, large reachable action and safe-area discipline.                          |
@@ -194,9 +194,9 @@ The local app identity was also confirmed through `/api/local-project-id` as `Cl
 | Launcher entry                                                      | `src/lib/tools-catalog.ts`, `/tools`                                                        | Add one `coordination` destination after production-route approval. Do not add a searchable `AppModeId`.                                     |
 | Route reachability                                                  | `docs/wiring-conventions.md`, `tests/route-reachability.test.ts`                            | Every production route has a real inbound path or a documented, tested exception.                                                            |
 
-### 2.5 Components not to extend as Callback foundations
+### 2.5 Components not to extend as Caring Contacts foundations
 
-- `GlobalSearchShell`, `MasterSearchHeader` and the shared composer: Callback is patient-first, not query-first.
+- `GlobalSearchShell`, `MasterSearchHeader` and the shared composer: Caring Contacts is patient-first, not query-first.
 - `app-modes.ts`: every current mode declares a search contract; caring-contact coordination is not a search result surface.
 - `patient-profile-storage.ts`: browser-local reference context is not an acceptable patient-plan datastore.
 - `AsyncButton`: deprecated; use `Button` busy state.
@@ -206,20 +206,20 @@ The local app identity was also confirmed through `/api/local-project-id` as `Cl
 
 ### 2.6 Repository maturity conflict that changes the rollout
 
-The existing product explicitly tells clinicians not to enter patient-identifiable information. Its current persistence is individual-owner scoped, and its PIA describes Clinical KB as a knowledge base rather than a patient record. Callback requires deliberate identity confirmation, mobile details, agreement, team ownership and longitudinal communication history. Therefore:
+The existing product explicitly tells clinicians not to enter patient-identifiable information. Its current persistence is individual-owner scoped, and its PIA describes Clinical KB as a knowledge base rather than a patient record. Caring Contacts requires deliberate identity confirmation, mobile details, agreement, team ownership and longitudinal communication history. Therefore:
 
 - Design work can proceed in this repository with synthetic data.
 - Production code can proceed only behind a non-production feature boundary.
 - Real-patient use cannot proceed on the current deployment assumptions without a new privacy, security, records, tenancy and hosting decision.
-- The current Railway/OpenAI RAG route is irrelevant to message generation and must not receive Callback data.
+- The current Railway/OpenAI RAG route is irrelevant to message generation and must not receive Caring Contacts data.
 
 ## 3. WA clinical, service and evidence grounding
 
 ### 3.1 What the authoritative sources support
 
 - The WA Mental Health Commission announced an Aftercare Services Program on 15 June 2026 providing brief interventions, psychosocial support and care coordination for people discharged after a suicidal crisis. This supports the cohort and coordination context, not a particular SMS workflow: [Aftercare Services launched](https://www.mhc.wa.gov.au/news-and-resources/latest-news/aftercare-services-launched).
-- WA guidance emphasises direct, coordinated post-discharge follow-up, documented clinician responsibility, collaborative discharge planning and local protocols. Callback must remain additive to these arrangements, never their substitute: [Principles and Best Practice for the Care of People Who May Be Suicidal](https://www.health.wa.gov.au/-/media/Files/Corporate/general-documents/Mental-health/PDF/Best-Practice-for-the-Care-of-People-Who-May-Be-Suicidal.pdf).
-- NSQHS Action 5.32 requires follow-up arrangements to be developed, communicated and implemented. Callback may coordinate one bounded element of an approved follow-up plan but cannot claim to satisfy the standard by itself: [Comprehensive Care Standard](https://www.safetyandquality.gov.au/national-standards/nsqhs-standards/comprehensive-care-standard).
+- WA guidance emphasises direct, coordinated post-discharge follow-up, documented clinician responsibility, collaborative discharge planning and local protocols. Caring Contacts must remain additive to these arrangements, never their substitute: [Principles and Best Practice for the Care of People Who May Be Suicidal](https://www.health.wa.gov.au/-/media/Files/Corporate/general-documents/Mental-health/PDF/Best-Practice-for-the-Care-of-People-Who-May-Be-Suicidal.pdf).
+- NSQHS Action 5.32 requires follow-up arrangements to be developed, communicated and implemented. Caring Contacts may coordinate one bounded element of an approved follow-up plan but cannot claim to satisfy the standard by itself: [Comprehensive Care Standard](https://www.safetyandquality.gov.au/national-standards/nsqhs-standards/comprehensive-care-standard).
 - EMHS distinguishes clinically relevant community follow-up from administrative contact. Caring-contact delivery must not be counted as clinical follow-up unless the health service's measure owner explicitly defines it that way: [Community follow-up within seven days](https://emhs.health.wa.gov.au/Patient-Care/Safety-and-Quality/Mental-Health/Community-Follow-Up).
 - WA Health's consent policy requires collaborative, informed decision-making and consistent documentation. Local governance must decide how the caring-contact agreement maps to treatment consent, communication preference and the clinical record: [Consent to Treatment Policy](https://www.health.wa.gov.au/About-us/Policy-frameworks/Clinical-Governance-Safety-and-Quality/Mandatory-requirements/Consent-to-Treatment-Policy).
 - WA Health's Digital Health and Information Security policies make consumer consent, privacy, cyber security, confidentiality, integrity and availability mandatory design inputs: [Digital Health Policy Framework](https://www.health.wa.gov.au/about-us/policy-frameworks/digital-health), [Information Security Policy](https://www.health.wa.gov.au/about-us/policy-frameworks/digital-health/mandatory-requirements/information-security-policy).
@@ -244,7 +244,7 @@ Every design and implementation review must reject copy or visuals that imply:
 
 ## 4. Repository-native approaches considered
 
-### Approach A — add Callback as another shared search mode
+### Approach A — add Caring Contacts as another shared search mode
 
 **Shape:** Extend `app-modes.ts`, `GlobalSearchShell` and the shared composer.
 
@@ -266,7 +266,7 @@ Every design and implementation review must reject copy or visuals that imply:
 
 ### Approach C — separate application repository with copied design assets
 
-**Shape:** Build Callback independently and manually mirror Clinical KB tokens/components.
+**Shape:** Build Caring Contacts independently and manually mirror Clinical KB tokens/components.
 
 **Benefits:** Strongest operational and deployment isolation.
 
@@ -305,7 +305,7 @@ Today keeps the approved action-first order on every viewport: `Referrals to rev
 | `/caring-contacts/guidance`  | Programme boundaries and contextual help                    | readable wide/rail                                |
 | `/caring-contacts/reports`   | Privacy-conscious aggregate operations                      | stacked/wide                                      |
 
-The `More` control opens a navigation sheet on compact layouts and exposes direct links on wide layouts. Patient search is scoped to the pilot team's received referrals and retained Callback episodes. It never queries the hospital-wide directory directly and never writes to browser search history or the Clinical KB search store.
+The `More` control opens a navigation sheet on compact layouts and exposes direct links on wide layouts. Patient search is scoped to the pilot team's received referrals and retained Caring Contacts episodes. It never queries the hospital-wide directory directly and never writes to browser search history or the Clinical KB search store.
 
 ### 5.3 Overlay and full-screen decision inventory
 
@@ -343,7 +343,7 @@ Use `Sheet`/`ConfirmDialog`; on phone, promote clinical decisions to a bottom sh
 1. The hospital referral workflow sends a structured referral containing the approved minimum identity, discharge, mobile-source and agreement fields.
 2. Today lists the referral under `Referrals to review`, ordered by first eligible contact-window timing without risk ranking.
 3. An authorised aftercare clinician chooses `Accept`, `Return for clarification` or `Decline` with a structured reason. The latter two outcomes write back to the source workflow.
-4. Until acceptance, the referring team remains responsible and Callback displays `Awaiting handover`; it never shows an aftercare owner.
+4. Until acceptance, the referring team remains responsible and Caring Contacts displays `Awaiting handover`; it never shows an aftercare owner.
 5. Acceptance moves the referral to the team queue. A coordinator explicitly claims it or a team lead assigns it before activation.
 6. Search and selection reveal only the minimum identifiers needed to distinguish this team's referrals and episodes.
 7. A deliberate identity-confirmation step repeats the selected referral, source identifiers, patient-controlled-mobile flag and imported agreement status.
@@ -389,7 +389,7 @@ Use `Sheet`/`ConfirmDialog`; on phone, promote clinical decisions to a bottom sh
 - A later discharge after readmission requires a new linked referral and never automatically resumes or rebases the earlier episode.
 - A contact already claimed by the dispatcher shows `Processing — too late to change` and cannot be silently cancelled.
 - Contact-detail changes pause future sends until updated source-system mobile, patient-controlled
-  and discreet-SMS-suitability evidence is imported and reviewed; no test SMS, read-back or Callback
+  and discreet-SMS-suitability evidence is imported and reviewed; no test SMS, read-back or Caring Contacts
   attestation is added.
 - A retired template never silently edits activated message snapshots. Governance defines whether affected future contacts continue, pause for review or require a replacement pathway.
 
@@ -486,7 +486,7 @@ Every read and mutation is team-scoped and deny-by-default. Service-role access 
 
 ### 8.4 Record of truth
 
-Callback is not the clinical record. The design requires structured milestone write-back while detailed transport and access evidence remains in Callback. Before pilot, the service must approve:
+Caring Contacts is not the clinical record. The design requires structured milestone write-back while detailed transport and access evidence remains in Caring Contacts. Before pilot, the service must approve:
 
 - which system is authoritative for patient identity and mobile details;
 - where agreement, activation, pause, withdrawal, exception resolution and plan completion are recorded clinically;
@@ -861,7 +861,7 @@ Follow this exact order so the shell and product signature stabilise before edge
 
 - Create: `src/lib/caring-contacts/sms-provider.ts`.
 - Create: `src/lib/caring-contacts/fake-sms-provider.ts`.
-- Create: `callback-worker/index.ts`, `callback-worker/run-loop.ts`, `callback-worker/dispatcher.ts` and `callback-worker/types.ts` as a separate responsibility from the ingestion worker.
+- Create: `caring-contact-worker/index.ts`, `caring-contact-worker/run-loop.ts`, `caring-contact-worker/dispatcher.ts` and `caring-contact-worker/types.ts` as a separate responsibility from the ingestion worker.
 - Create: `src/app/api/webhooks/caring-contacts/delivery/route.ts` with provider-neutral contract tests.
 - Add package scripts and worker/API tests through repository wrappers.
 
@@ -888,7 +888,7 @@ Follow this exact order so the shell and product signature stabilise before edge
 - [ ] Implement the adapter behind the provider-neutral interface without changing domain logic.
 - [ ] Verify webhook signatures, replay prevention, status mapping and redacted observability.
 - [ ] Run canaries only with approved synthetic/test numbers and an explicit send budget.
-- [ ] Prove the selected sender cannot receive replies and that no inbound payload, route, log or user interface exists in Callback.
+- [ ] Prove the selected sender cannot receive replies and that no inbound payload, route, log or user interface exists in Caring Contacts.
 - [ ] Test webhook-primary status handling plus manual reconciliation after simulated outage, discrepancy and suspected incident; prove uncertain contacts are never resent automatically.
 - [ ] Complete `npm run check:production-readiness`, local release checks and the clinical-governance PR preflight.
 - [ ] Record hosted evidence separately from local evidence.
@@ -906,8 +906,8 @@ Follow this exact order so the shell and product signature stabilise before edge
 - [ ] Perform accessibility acceptance with clinicians using ward desktops and supported phones, including physical iPhone Safari/PWA boundaries where applicable.
 - [ ] Open enrolment to every objectively eligible referral from the one pilot team; monitor queue age and workload continuously because there is no numeric patient cap.
 - [ ] Monitor duplicate sends, schedule drift, delivery exceptions, unresolved exceptions, withdrawals processed, access anomalies and privacy/security incidents.
-- [ ] Run the separately consented patient-acceptability evaluation outside Callback and review aggregate lived-experience findings on tone, timing, sender identity and the one-way boundary.
-- [ ] Run two weeks of seven-day hypercare with named clinical, service, technical, privacy and incident leads plus daily Callback queue/state review; provider-side reconciliation remains event-triggered.
+- [ ] Run the separately consented patient-acceptability evaluation outside Caring Contacts and review aggregate lived-experience findings on tone, timing, sender identity and the one-way boundary.
+- [ ] Run two weeks of seven-day hypercare with named clinical, service, technical, privacy and incident leads plus daily Caring Contacts queue/state review; provider-side reconciliation remains event-triggered.
 - [ ] Trigger an immediate service-wide pause for any confirmed wrong-recipient send, duplicate send, unauthorised content, material privacy/security incident or loss of audit integrity.
 - [ ] Permit restart only after joint incident-lead, privacy/security and clinical-programme approval.
 - [ ] Hold the first governance review at 6–8 weeks; permit only a controlled extension, then require longer-term pathway evidence before broad rollout.

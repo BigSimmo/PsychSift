@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ebf42f52-3e74-484f-81cd-ebcbd4954b10",
+  "createdOn": "2026-08-18",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Caring Contacts synthetic production build: spec approved and committed, implementation plan not yet written",
+    "detail": "docs/superpowers/specs/2026-08-19-caring-contact-production-build-design.md is the binding spec: ten decision-lock revisions, the sealed domain rules layer, a dedicated Supabase project hard-separated from the Clinical KB project, seven screens required by existing decisions but never designed, four recommended screens, the design non-regression contract and the elevation brief. Delivery is two pull requests with subagent-driven development: (1) rules plus datastore plus doc repairs, (2) screens plus demo clock, synthetic caseload and training mode. Next step is the writing-plans skill to produce the implementation plan for part one. Design phase itself is complete and merged (PR #2095, #2133).",
+    "source": "Caring Contacts design session 2026-08-19",
+    "issueUlid": "01M0B6VQJC4STSM1XD22Y0XPWJ"
+  }
+}

@@ -143,7 +143,9 @@ export function CaringContactShellFrame({
             <HeartHandshake aria-hidden="true" className="size-icon-lg" />
           </span>
           <div className="sr-only">
-            <p className="truncate text-base font-semibold tracking-tight text-[color:var(--text-heading)]">Callback</p>
+            <p className="truncate text-base font-semibold tracking-tight text-[color:var(--text-heading)]">
+              Caring Contacts
+            </p>
             <p className="truncate text-xs text-[color:var(--text-muted)]">Caring-contact coordination</p>
           </div>
         </div>
@@ -254,7 +256,7 @@ export function CaringContactShellFrame({
                 <HeartHandshake aria-hidden="true" className="size-icon-lg" />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[color:var(--text-heading)]">Callback</p>
+                <p className="truncate text-sm font-semibold text-[color:var(--text-heading)]">Caring Contacts</p>
                 <p className="truncate text-xs text-[color:var(--text-muted)]">{title}</p>
               </div>
             </div>

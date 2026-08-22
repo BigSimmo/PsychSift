@@ -4,7 +4,7 @@ import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { childProcessExitCode, childProcessFailureSummary } from "../scripts/child-process-result.mjs";
 import {
   offlineTestEnvironment,
@@ -852,9 +852,44 @@ describe("provider-safe test environment", () => {
     expect(providerFreeCloudLiveTestGap({ ...environment, CODEX_CLOUD_ACCESS_PROFILE: "connected" })).toBeNull();
   });
 
-  it("keeps live tests out of default Vitest discovery", () => {
-    const config = readFileSync(new URL("../vitest.config.mts", import.meta.url), "utf8");
-    expect(config).toContain('exclude: liveProviderTests ? [] : ["tests/**/*.live.test.ts"]');
+  it("keeps live tests out of default Vitest discovery", async () => {
+    // Asserted against the loaded config rather than a literal line of its source. The guarantee
+    // is "the default node project never collects a live test", and a source-text match reported
+    // that guarantee broken whenever anything unrelated was added to the same exclude list --
+    // a guard that goes red for the wrong reason gets edited to match the source, which is how a
+    // real regression would slip through.
+    type ProjectTest = { name: string; include: string[]; exclude?: string[] };
+    type LoadedConfig = { default: { test: { projects: { test: ProjectTest }[] } } };
+
+    async function nodeProject(allowProviderTests: string | undefined): Promise<ProjectTest> {
+      const previous = process.env.ALLOW_PROVIDER_TESTS;
+      if (allowProviderTests === undefined) delete process.env.ALLOW_PROVIDER_TESTS;
+      else process.env.ALLOW_PROVIDER_TESTS = allowProviderTests;
+      try {
+        vi.resetModules();
+        // Specifier held in a variable: a literal `.mts` path is rejected by the repository
+        // tsconfig (TS5097), and this file is typechecked like any other source.
+        const specifier = "../vitest.config.mts";
+        const loaded = (await import(specifier)) as unknown as LoadedConfig;
+        const project = loaded.default.test.projects.map((entry) => entry.test).find((t) => t.name === "node");
+        if (!project) throw new Error("vitest.config.mts declares no node project");
+        return project;
+      } finally {
+        if (previous === undefined) delete process.env.ALLOW_PROVIDER_TESTS;
+        else process.env.ALLOW_PROVIDER_TESTS = previous;
+        vi.resetModules();
+      }
+    }
+
+    const offline = await nodeProject(undefined);
+    expect(offline.include).toEqual(["tests/**/*.test.ts"]);
+    expect(offline.exclude).toContain("tests/**/*.live.test.ts");
+
+    // With permission granted the live glob becomes the only thing collected, so the offline
+    // suite can never be run under provider credentials by accident either.
+    const live = await nodeProject("true");
+    expect(live.include).toEqual(["tests/**/*.live.test.ts"]);
+    expect(live.exclude).not.toContain("tests/**/*.live.test.ts");
   });
 
   it("keeps residual source surfaces visible without lowering the core coverage floor", () => {

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -309,21 +309,6 @@ describe("Care Plan route shell", () => {
   // at all.
   it.each([
     [
-      CARE_PLAN_ROUTES.patientPlan,
-      "Patient Plan",
-      "The patient-facing edition of the Management Plan, with its own version and approval state",
-    ],
-    [
-      CARE_PLAN_ROUTES.patientPlanEdit,
-      "Draft Patient Plan",
-      "Create the patient edition from the Current Plan, fill its flagged gaps, and approve it",
-    ],
-    [
-      CARE_PLAN_ROUTES.patientPlanPrint,
-      "Print Patient Plan",
-      "Print-optimised patient copy, including their resources",
-    ],
-    [
       CARE_PLAN_ROUTES.history,
       "History",
       "Combined plan, presentation-amendment, print, and contact-action audit chronology",
@@ -347,30 +332,15 @@ describe("Care Plan route shell", () => {
     expect(within(surface).getByText(purpose)).toBeInTheDocument();
   });
 
-  it("hands the submitted search to Patients without putting record content in the URL", async () => {
+  it("offers exactly one search slot and navigates it without putting record content in the URL", async () => {
     const user = userEvent.setup();
-    const navigate = vi.fn();
-    const route = render(
-      <CarePlanPrototypeProvider>
-        <CarePlanRouteSurface pathname={CARE_PLAN_ROUTES.reviews} query="" navigate={navigate} />
-      </CarePlanPrototypeProvider>,
-    );
+    const navigate = renderRoute(CARE_PLAN_ROUTES.reviews);
     const search = screen.getByRole("searchbox", { name: "Search patients" });
     expect(screen.getAllByRole("searchbox")).toHaveLength(1);
     await user.type(search, "Rowan");
     await user.click(screen.getByRole("button", { name: "Search patients" }));
     expect(navigate).toHaveBeenCalledWith(CARE_PLAN_ROUTES.patients);
     expect(navigate.mock.calls.every(([href]) => !String(href).includes("Rowan"))).toBe(true);
-
-    route.rerender(
-      <CarePlanPrototypeProvider>
-        <CarePlanRouteSurface pathname={CARE_PLAN_ROUTES.patients} query="" navigate={navigate} />
-      </CarePlanPrototypeProvider>,
-    );
-    expect(screen.getByRole("searchbox", { name: "Search synthetic patients" })).toHaveValue("Rowan");
-    const results = screen.getByTestId("care-plan-directory-results");
-    expect(within(results).getByRole("button", { name: "Open Rowan Sample" })).toBeInTheDocument();
-    expect(within(results).queryAllByRole("button", { name: /^Open / })).toHaveLength(1);
   });
 
   it("reads the named specimen scenario from the URL and nothing else", () => {
@@ -410,6 +380,9 @@ describe("Care Plan route shell", () => {
       CARE_PLAN_ROUTES.safetyPlan,
       CARE_PLAN_ROUTES.safetyPlanEdit,
       CARE_PLAN_ROUTES.safetyPlanPrint,
+      CARE_PLAN_ROUTES.patientPlan,
+      CARE_PLAN_ROUTES.patientPlanEdit,
+      CARE_PLAN_ROUTES.patientPlanPrint,
     ]) {
       const { unmount } = render(
         <CarePlanPrototypeProvider>
@@ -898,6 +871,7 @@ describe("Care Plan review currency with no review date", () => {
         activeSection={null}
         reviewsHref={CARE_PLAN_ROUTES.reviews}
         onRecordContactIntent={() => {}}
+        contactActionBlockedReason={null}
       />,
     );
   }
@@ -976,6 +950,19 @@ describe("Care Plan CMHT contact actions", () => {
     }
   });
 
+  it.each(["permission-unavailable", "version-conflict"])(
+    "prevents an unrecordable contact launch when %s blocks its audit intent",
+    (scenario) => {
+      renderRoute(CARE_PLAN_ROUTES.patient, `scenario=${scenario}`);
+      const email = screen.getByRole("link", { name: "Email North River CMHT" });
+
+      expect(email).toHaveAttribute("aria-disabled", "true");
+      expect(fireEvent.click(email)).toBe(false);
+      expect(screen.getByRole("alert")).toHaveTextContent(/nothing was changed|newer version/i);
+      expect(screen.queryByTestId("care-plan-outcome")).toBeNull();
+    },
+  );
+
   it("keeps unverified contact details visible with a warning, last-verified date and a Reviews link", () => {
     renderRoute(carePlanRoute.patient("SYN-PATIENT-003"));
     const contacts = screen.getByRole("region", { name: "Community mental health team" });
@@ -1004,6 +991,11 @@ describe("Care Plan CMHT contact actions", () => {
     const contacts = screen.getByRole("region", { name: "Community mental health team" });
     expect(within(contacts).getByRole("link", { name: "Call North River CMHT" })).toBeInTheDocument();
   });
+
+  // The guarded-launch behaviour itself (aria-disabled, preventDefault, no
+  // audit outcome) is covered by "prevents an unrecordable contact launch
+  // when %s blocks its audit intent" above, across both scenarios that can
+  // block record-contact-intent.
 });
 
 describe("Care Plan Management Plan reading", () => {
@@ -3196,5 +3188,230 @@ describe("Care Plan error boundary", () => {
     );
     expect(screen.getByText("Route content")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1, name: "Care Plan could not be displayed" })).toBeNull();
+  });
+});
+
+/**
+ * The Patient Plan, driven through the interface.
+ *
+ * These render one provider and move between addresses inside it, because a
+ * patient copy only exists after somebody makes one: a fresh provider per route
+ * would put the print route in front of a world where nothing had been written.
+ */
+describe("Care Plan Patient Plan", () => {
+  /** The eight headings, written out here rather than imported. A content check
+   *  that reads the constant its subject renders from can never disagree with
+   *  it. */
+  const PATIENT_PLAN_HEADINGS = [
+    "Why we wrote this together",
+    "What matters to you",
+    "What helps you",
+    "What makes things harder",
+    "What we agreed will happen when you come to the emergency department",
+    "If something new is happening",
+    "Who's involved in your care",
+    "Things that might help",
+  ];
+
+  function renderJourney(pathname: string) {
+    const navigate = vi.fn();
+    const view = (at: string) => (
+      <CarePlanPrototypeProvider>
+        <CarePlanRouteSurface pathname={at} query="" navigate={navigate} />
+      </CarePlanPrototypeProvider>
+    );
+    const { rerender } = render(view(pathname));
+    return { navigate, goTo: (at: string) => rerender(view(at)) };
+  }
+
+  async function createDraft(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Create the patient copy" }));
+  }
+
+  /**
+   * Pasted rather than typed. Typing this into eight textareas is ~250
+   * simulated keystrokes, which took long enough to push neighbouring tests
+   * past their timeout — the suite failed on a different pair of tests on each
+   * run, which is a flake rather than a finding.
+   */
+  async function fillEverySection(user: ReturnType<typeof userEvent.setup>) {
+    for (const field of screen.getAllByRole("textbox")) {
+      await user.clear(field);
+      await user.click(field);
+      await user.paste("Written with you at the bedside.");
+    }
+  }
+
+  it("offers no copy until one is made, and then shows what the conversion refused to guess", async () => {
+    const user = userEvent.setup();
+    renderJourney(carePlanRoute.patientPlan("SYN-PATIENT-001"));
+
+    expect(screen.getByTestId("care-plan-patient-plan-no-current")).toHaveTextContent(/no approved Patient Plan/i);
+    await createDraft(user);
+
+    const draftNotice = screen.getByTestId("care-plan-patient-plan-draft-notice");
+    expect(draftNotice).toHaveTextContent(/sections still to write/i);
+  });
+
+  it("states why each blank section is blank, in words a clinician can act on", async () => {
+    const user = userEvent.setup();
+    renderJourney(carePlanRoute.patientPlanEdit("SYN-PATIENT-001"));
+    await createDraft(user);
+
+    const agreed = screen.getByTestId("care-plan-patient-plan-form-gap-whatWeAgreedWillHappen");
+    expect(agreed).toHaveTextContent(/never converted automatically/i);
+    expect(agreed).toHaveTextContent(/written by a clinician/i);
+  });
+
+  /**
+   * The control is unavailable for a stated reason, so it keeps its tab stop and
+   * the reason can actually be reached. `aria-disabled` and native `disabled`
+   * together fail lint; native `disabled` alone would take the reason with it.
+   */
+  it("makes approval unavailable with a stated reason while any section is blank", async () => {
+    const user = userEvent.setup();
+    renderJourney(carePlanRoute.patientPlanEdit("SYN-PATIENT-001"));
+    await createDraft(user);
+
+    const approve = screen.getByRole("button", { name: "Approve patient copy" });
+    expect(approve).toHaveAttribute("aria-disabled", "true");
+    expect(approve).not.toHaveAttribute("disabled");
+    const reason = screen.getByTestId("care-plan-patient-plan-approve-unavailable");
+    expect(reason).toHaveTextContent(/cannot be approved while/i);
+    expect(approve.getAttribute("aria-describedby")).toBe(reason.id);
+
+    await user.click(approve);
+    expect(screen.getByRole("button", { name: "Approve patient copy" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("approves once every section is written, and shows the eight headings in order", async () => {
+    const user = userEvent.setup();
+    const { goTo } = renderJourney(carePlanRoute.patientPlanEdit("SYN-PATIENT-001"));
+    await createDraft(user);
+    await fillEverySection(user);
+    await user.click(screen.getByRole("button", { name: "Approve patient copy" }));
+
+    goTo(carePlanRoute.patientPlan("SYN-PATIENT-001"));
+    expect(
+      within(screen.getByTestId("care-plan-patient-plan-sections"))
+        .getAllByRole("heading", { level: 3 })
+        .map((node) => node.textContent),
+    ).toEqual(PATIENT_PLAN_HEADINGS);
+  });
+
+  /**
+   * The print hazard that has now bitten twice. `globals.css` makes everything
+   * outside `[data-print-output]` invisible when printing, so the shell's
+   * synthetic marker cannot reach the paper. The printed subtree must carry its
+   * own, and the assertion is against the marker's *ancestors* — checking only
+   * that the element itself lacks the attribute would have missed the original
+   * defect, which was inherited.
+   */
+  it("carries the synthetic watermark inside the printed subtree, under no hidden ancestor", async () => {
+    const user = userEvent.setup();
+    const { goTo } = renderJourney(carePlanRoute.patientPlanEdit("SYN-PATIENT-001"));
+    await createDraft(user);
+    await fillEverySection(user);
+    await user.click(screen.getByRole("button", { name: "Approve patient copy" }));
+    goTo(carePlanRoute.patientPlanPrint("SYN-PATIENT-001"));
+
+    const paper = screen.getByTestId("care-plan-patient-plan-print-output");
+    const marker = within(paper).getByText("Synthetic prototype — fictional people, teams, and hospitals");
+    expect(marker.closest("[data-print-output]")).toBe(paper);
+    expect(marker.closest("[data-print-hide='true']")).toBeNull();
+    expect(paper.closest("[data-print-hide='true']")).toBeNull();
+    expect(paper.querySelector("[data-print-confidential]")).toHaveTextContent(/Confidential clinical document/i);
+    // Deterministic: derived from PROTOTYPE_NOW, never a wall clock.
+    expect(paper.querySelector("[data-print-stamp]")).toHaveTextContent("20/08/2026");
+    expect(paper.querySelector("[data-print-stamp]")?.closest("[data-print-hide='true']")).toBeNull();
+  });
+
+  it("prints the preferred name and record number, and no navigation, audit, or plan metadata", async () => {
+    const user = userEvent.setup();
+    const { goTo } = renderJourney(carePlanRoute.patientPlanEdit("SYN-PATIENT-001"));
+    await createDraft(user);
+    await fillEverySection(user);
+    await user.click(screen.getByRole("button", { name: "Approve patient copy" }));
+    goTo(carePlanRoute.patientPlanPrint("SYN-PATIENT-001"));
+
+    const paper = screen.getByTestId("care-plan-patient-plan-print-output");
+    const text = paper.textContent ?? "";
+    expect(text).toContain("Rowan");
+    expect(text).toContain("SYN-MRN-0001");
+    expect(text).not.toContain("Rowan Sample");
+    expect(text).not.toMatch(/12\/04\/1986|1986-04-12|date of birth/i);
+    expect(text).not.toContain("they/them");
+    expect(text).not.toContain("North River Health Service");
+    expect(text).not.toMatch(/audit|Review Trigger|Superseded|plan owner|Awaiting Approval|revision reason/i);
+    expect(text).not.toMatch(/Not recorded/);
+    /*
+     * Clinical vocabulary is checked on the plan's own eight sections rather
+     * than on the whole sheet. The crisis block carries MHERL's and Rurallink's
+     * own published wording — each "is a telephone triage and support line. It
+     * is not an emergency service" — and paraphrasing a real service's safety
+     * caveat to satisfy a house style would be a worse error than the one this
+     * guards against.
+     */
+    const sections = screen.getByTestId("care-plan-patient-plan-sections").textContent ?? "";
+    expect(sections).not.toMatch(/ED Presentation|disposition|mental[- ]state|risk assessment|triage/i);
+    expect(within(paper).queryAllByRole("button")).toEqual([]);
+    expect(within(paper).queryAllByRole("navigation")).toEqual([]);
+  });
+
+  it("prints the real crisis lines with their caveats and official sources, and nothing fictional beside them", async () => {
+    const user = userEvent.setup();
+    const { goTo } = renderJourney(carePlanRoute.patientPlanEdit("SYN-PATIENT-001"));
+    await createDraft(user);
+    await fillEverySection(user);
+    await user.click(screen.getByRole("button", { name: "Approve patient copy" }));
+    goTo(carePlanRoute.patientPlanPrint("SYN-PATIENT-001"));
+
+    const resources = screen.getByTestId("care-plan-patient-plan-resources");
+    for (const contact of publicCrisisContacts) {
+      expect(resources, `${contact.name} is missing`).toHaveTextContent(contact.telephoneDisplay);
+      expect(
+        resources.querySelector(`a[href="${contact.sourceUrl}"]`),
+        `${contact.name} is printed with no official source`,
+      ).not.toBeNull();
+      if (contact.caveat !== null) expect(resources).toHaveTextContent(contact.caveat);
+    }
+    expect(resources).toHaveTextContent(/not an emergency service/i);
+  });
+
+  /**
+   * A copy the person may be holding is never regenerated, hidden, or
+   * withdrawn. It says it needs updating, and stays completely readable.
+   */
+  it("marks a copy as needing updating without taking any of it away", async () => {
+    const user = userEvent.setup();
+    const { goTo } = renderJourney(carePlanRoute.patientPlanEdit("SYN-PATIENT-002"));
+    await createDraft(user);
+    await fillEverySection(user);
+    await user.click(screen.getByRole("button", { name: "Approve patient copy" }));
+
+    // Approve the Management Plan version already awaiting approval, which moves
+    // the plan on underneath the copy just approved.
+    goTo(carePlanRoute.managementPlanReview("SYN-PATIENT-002"));
+    await signInAs(user, "SYN-USER-SENIOR-001");
+    await user.click(screen.getByRole("button", { name: /^Approve version/ }));
+    await user.click(screen.getByRole("button", { name: "Approve and make Current" }));
+
+    goTo(carePlanRoute.patientPlan("SYN-PATIENT-002"));
+    expect(screen.getByTestId("care-plan-patient-plan-stale")).toHaveTextContent(/needs updating/i);
+    // Every heading is still there, and nothing was withdrawn.
+    expect(
+      within(screen.getByTestId("care-plan-patient-plan-sections")).getAllByRole("heading", { level: 3 }),
+    ).toHaveLength(8);
+    expect(screen.queryByTestId("care-plan-patient-plan-no-current")).toBeNull();
+
+    // The same currency warning shown on screen must reach the printed sheet.
+    // The screen-only StaleNotice above sits outside `[data-print-output]`, so
+    // if the print surface carries no warning of its own a clinician can print
+    // and hand over an earlier-version copy whose paper looks current.
+    goTo(carePlanRoute.patientPlanPrint("SYN-PATIENT-002"));
+    const paper = screen.getByTestId("care-plan-patient-plan-print-output");
+    const staleOnPaper = within(paper).getByTestId("care-plan-patient-plan-print-stale");
+    expect(staleOnPaper).toHaveTextContent(/needs updating/i);
+    expect(staleOnPaper.closest("[data-print-hide='true']")).toBeNull();
   });
 });

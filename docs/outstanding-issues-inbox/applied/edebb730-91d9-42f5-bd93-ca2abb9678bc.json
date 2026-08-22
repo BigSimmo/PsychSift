@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "edebb730-91d9-42f5-bd93-ca2abb9678bc",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Document that a bare verify:phone-chrome run proves nothing about already-merged work, because its selector reads the working-tree diff and a clean tree selects no browser stage",
+    "detail": "Reporting/documentation guidance, NOT a verifier defect - reframed 2026-08-22 after review correctly refuted the original framing, and the refutation was checked against the code rather than accepted on assertion. tests/verify-phone-chrome.test.ts pins 'keeps documentation-only work out of browser suites' (docs-only input maps exactly to ['docs-index','docs-links']), so selecting no browser stage for a docs-only diff is the intended, tested contract. The original request proposed a named skip OR a non-zero advisory exit code; the non-zero half was wrong and would have broken legitimate docs-only verification and contradicted the affected-owner/journey selection contract. That suggestion is withdrawn. The residual hazard is real and is about REPORTING, not behaviour. Measured 2026-08-22 while producing the A2 evidence for issue #2270: asked to prove the browser gates against the merged Dictionary work, a bare `npm run verify:phone-chrome` on a main checkout with no tracked changes (the only untracked file was this inbox record, `docs/outstanding-issues-inbox/edebb730-91d9-42f5-bd93-ca2abb9678bc.json`) derived its inputs from the working-tree diff, found that untracked inbox JSON, printed 'Note: No phone-chrome-affecting file was detected; only prerequisite checks were selected', ran docs:check-index and docs:check-links, and exited 0. Every part of that is correct behaviour; the trap is that the exit code is identical to a full pass, so quoting it as 'verify:phone-chrome green' would have been a false green of exactly the class AGENTS.md's evidence rule exists to catch. The real gate only engaged after an explicit --files list of the merged scope (git diff --name-only 66594ddc1^1..main filtered to src/ and tests/ui-), which then selected lock-parity, runtime, contracts, focused-browser and full-ui and produced 133 contract tests, 12 focused phone journeys and 473 Chromium tests, all green. ACTION: add one line to docs/search-chrome-behaviour.md and to the gates skill stating that proving phone chrome for work already on main requires `-- --files <scope>` (or a branch carrying those changes), because a bare run against a clean tree selects nothing and its exit 0 is not evidence about that work. Do NOT change the selector or the exit code.",
+    "source": "session 2026-08-22, GitHub issue #2270 Part A",
+    "issueUlid": "01M0MY702G5MMK5R0M2J1N778C"
+  }
+}

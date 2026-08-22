@@ -19,8 +19,8 @@ describe("Database skill catalog", () => {
     const result = validateSkillCatalog();
 
     expect(result.errors).toEqual([]);
-    expect(result.canonical).toHaveLength(34);
-    expect(new Set(result.canonical.map((skill: { name: string }) => skill.name))).toHaveProperty("size", 34);
+    expect(result.canonical).toHaveLength(35);
+    expect(new Set(result.canonical.map((skill: { name: string }) => skill.name))).toHaveProperty("size", 35);
     expect(result.aliases).toHaveLength(8);
     for (const category of catalog.categories) {
       expect(category.skills.every((skill: unknown) => typeof skill === "string")).toBe(true);
@@ -30,7 +30,7 @@ describe("Database skill catalog", () => {
   it("discovers each declared skill from its folder metadata", () => {
     const discovered = discoverSkillDefinitions();
 
-    expect(discovered).toHaveLength(42);
+    expect(discovered).toHaveLength(43);
     for (const skill of discovered) {
       if (!skill) continue;
       const metadataPath = path.join(skillsRoot, skill.name, "agents", "openai.yaml");
@@ -86,9 +86,9 @@ describe("Database skill catalog", () => {
     const result = validateRepositorySkillPolicies(files);
 
     expect(result.errors).toEqual([]);
-    expect(files).toHaveLength(66);
+    expect(files).toHaveLength(67);
     expect(result.surfaceCounts).toEqual({
-      Codex: 42,
+      Codex: 43,
       Claude: 8,
       Cursor: 15,
       "Clinical KB plugin": 1,

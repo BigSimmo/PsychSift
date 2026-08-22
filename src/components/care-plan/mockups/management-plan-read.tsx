@@ -568,6 +568,12 @@ export function ManagementPlanSurface({
           scenario={scenario}
           reviewsHref={CARE_PLAN_ROUTES.reviews}
           onIntent={(channel) => recordContactIntent(cmht, channel)}
+          blockedReason={getPrototypeMutationBlockReason(state, {
+            type: "record-contact-intent",
+            patientId: patient.id,
+            cmhtId: cmht.id,
+            channel: "email",
+          })}
         />
       )}
 

@@ -121,16 +121,22 @@ export function finalReviewRoutingErrors(routing, plannedModel, plannedReasoning
   if (!routing) return ["programme finalReviewRouting is required"];
   const errors = [];
   if (routing.plannedModel !== plannedModel) errors.push(`final review plannedModel must be ${plannedModel}`);
-  if (routing.reasoning !== plannedReasoning) errors.push(`final review reasoning must be ${plannedReasoning}`);
+  if (routing.plannedReasoning !== plannedReasoning)
+    errors.push(`final review plannedReasoning must be ${plannedReasoning}`);
+  if (routing.actualReasoning !== plannedReasoning)
+    errors.push(`final review actualReasoning must be ${plannedReasoning}`);
   if (routing.capabilityClass !== "frontier-high") errors.push("final review capability must be frontier-high");
   if (routing.fallbackUsed !== false) errors.push("final review fallbackUsed must remain false");
-  if (routing.provider === "codex") {
-    if (routing.providerMappingUsed) errors.push("Codex final review cannot claim a provider mapping");
-    if (routing.actualModel !== plannedModel) errors.push("Codex final review actual model must match the plan");
-  } else if (routing.provider === "claude") {
-    if (!routing.providerMappingUsed) errors.push("Claude final review must record providerMappingUsed=true");
-  } else {
-    errors.push("final review provider must be codex or claude");
+  if (routing.escalationUsed !== false) errors.push("final review escalationUsed must remain false");
+  if (routing.runtimeHost !== "codex-cloud") errors.push("final review runtimeHost must be codex-cloud");
+  if (routing.provider !== "codex") errors.push("final review provider must be codex");
+  if (routing.providerMappingUsed) errors.push("Codex final review cannot claim a provider mapping");
+  if (routing.actualModel !== plannedModel) errors.push("Codex final review actual model must match the plan");
+  if (
+    !routing.routeEvidence ||
+    !["codex-host-runtime-metadata", "codex-dispatch-metadata"].includes(routing.routeEvidence.source)
+  ) {
+    errors.push("final review requires authoritative route evidence");
   }
   return errors;
 }
@@ -195,6 +201,142 @@ export function atomicMetadataCommitErrors({
   }
   for (const change of changes) {
     if (change.status !== "A") errors.push(`${label}: metadata path must be added atomically: ${change.path}`);
+  }
+  return errors;
+}
+
+export function phaseMetadataPaths(receipt, receiptPath) {
+  const paths = new Set([receiptPath]);
+  if (receipt.controllerRouting?.routeEvidence?.artifactPath)
+    paths.add(receipt.controllerRouting.routeEvidence.artifactPath);
+  for (const capability of receipt.capabilityEvidence ?? []) paths.add(capability.evidenceArtifactPath);
+  for (const capability of receipt.capabilityEvidence ?? []) {
+    if (capability.probeRouting?.routeEvidence?.artifactPath)
+      paths.add(capability.probeRouting.routeEvidence.artifactPath);
+  }
+  for (const task of receipt.tasks ?? []) {
+    paths.add(task.briefPath);
+    paths.add(task.implementerReportPath);
+    if (task.implementerRouting?.routeEvidence?.artifactPath)
+      paths.add(task.implementerRouting.routeEvidence.artifactPath);
+    for (const review of task.reviews ?? []) {
+      paths.add(review.diffPackagePath);
+      paths.add(review.reportPath);
+      if (review.reviewerRouting?.routeEvidence?.artifactPath)
+        paths.add(review.reviewerRouting.routeEvidence.artifactPath);
+    }
+  }
+  for (const review of receipt.phaseReviews ?? []) {
+    paths.add(review.diffPackagePath);
+    paths.add(review.reportPath);
+    if (review.reviewerRouting?.routeEvidence?.artifactPath)
+      paths.add(review.reviewerRouting.routeEvidence.artifactPath);
+  }
+  return [...paths];
+}
+
+export function programmeMetadataPaths(receipt, receiptPath) {
+  const paths = new Set([receiptPath]);
+  if (receipt.finalReviewRouting?.routeEvidence?.artifactPath)
+    paths.add(receipt.finalReviewRouting.routeEvidence.artifactPath);
+  for (const review of receipt.reviews ?? []) {
+    paths.add(review.diffPackagePath);
+    paths.add(review.reportPath);
+  }
+  return [...paths];
+}
+
+export function connectedMetadataPaths(receipt, receiptPath) {
+  const paths = new Set([receiptPath]);
+  for (const routing of [receipt.controllerRouting, receipt.reviewerRouting]) {
+    if (routing?.routeEvidence?.path) paths.add(routing.routeEvidence.path);
+  }
+  for (const capability of receipt.capabilityEvidence ?? []) paths.add(capability.evidenceArtifactPath);
+  if (receipt.phaseReview?.diffPackagePath) paths.add(receipt.phaseReview.diffPackagePath);
+  if (receipt.phaseReview?.reportPath) paths.add(receipt.phaseReview.reportPath);
+  return [...paths];
+}
+
+export function operationalMetadataPaths(receipt, receiptPath) {
+  return [
+    receiptPath,
+    receipt.finalReviewRouting?.routeEvidence?.path,
+    receipt.review?.diffPackagePath,
+    receipt.review?.reportPath,
+  ].filter(Boolean);
+}
+
+function parsedTimestamp(value) {
+  if (typeof value !== "string" || value.trim() === "") return Number.NaN;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}
+
+export function connectedOperationAcceptanceErrors(phaseId, requiredClasses, approvals, operations, acceptedAt) {
+  const errors = [];
+  const acceptedAtMs = parsedTimestamp(acceptedAt);
+  if (!Number.isFinite(acceptedAtMs)) {
+    errors.push(`${phaseId}: acceptedAt is not a parseable timestamp`);
+  }
+  const approvalsById = new Map(approvals.map((approval) => [approval.authorizationId, approval]));
+  const operationClasses = new Set(operations.map((operation) => operation.operationClass));
+  for (const requiredClass of requiredClasses) {
+    if (!operationClasses.has(requiredClass)) errors.push(`${phaseId}: missing required operation ${requiredClass}`);
+  }
+  for (const operation of operations) {
+    const performedAt = parsedTimestamp(operation.performedAt);
+    if (!Number.isFinite(performedAt)) {
+      errors.push(`${phaseId}: operation ${operation.operationClass} has an unparseable performedAt`);
+    } else if (Number.isFinite(acceptedAtMs) && performedAt > acceptedAtMs) {
+      errors.push(`${phaseId}: operation ${operation.operationClass} must occur no later than acceptance`);
+    }
+    if (operation.outcome !== "passed") {
+      errors.push(`${phaseId}: accepted GO operation ${operation.operationClass} must have outcome passed`);
+    }
+    if (phaseId === "L00") {
+      if (operation.approvalId !== null) errors.push("L00: local drift classification must not invent approval");
+      continue;
+    }
+    const approval = approvalsById.get(operation.approvalId);
+    if (!approval) {
+      errors.push(`${phaseId}: operation ${operation.operationClass} references unknown approval`);
+      continue;
+    }
+    const approvedAt = parsedTimestamp(approval.approvedAt);
+    const expiresAt = parsedTimestamp(approval.expiresAt);
+    if (!Number.isFinite(approvedAt) || !Number.isFinite(expiresAt)) {
+      errors.push(`${phaseId}: approval has an unparseable timestamp`);
+    } else if (Number.isFinite(performedAt) && (approvedAt > performedAt || expiresAt < performedAt)) {
+      errors.push(`${phaseId}: approval is not valid when operation ${operation.operationClass} was performed`);
+    }
+    if (!approval.actionClasses.includes(operation.operationClass)) {
+      errors.push(`${phaseId}: approval does not authorize operation class ${operation.operationClass}`);
+    }
+    if (approval.service !== operation.service || approval.target !== operation.target) {
+      errors.push(`${phaseId}: operation ${operation.operationClass} must match approval service and target`);
+    }
+    if (Array.isArray(approval.actions) && approval.actions.length > 0) {
+      if (!approval.actions.includes(operation.commandOrAction)) {
+        errors.push(
+          `${phaseId}: command ${operation.commandOrAction ?? "(missing)"} is outside the approved action list`,
+        );
+      }
+    }
+  }
+  if (phaseId === "L08") {
+    const promotionApproval = operations.find(
+      (operation) => operation.operationClass === "controlled-promotion",
+    )?.approvalId;
+    const rollbackApproval = operations.find((operation) => operation.operationClass === "rollback-proof")?.approvalId;
+    if (!promotionApproval || !rollbackApproval || promotionApproval === rollbackApproval) {
+      errors.push("L08: promotion and rollback proof require separate exact approvals");
+    }
+  }
+  if (phaseId === "L10") {
+    const cleanup = operations.find((operation) => operation.operationClass === "bounded-cleanup");
+    if (!cleanup || approvalsById.get(cleanup.approvalId)?.destructive !== true) {
+      errors.push("L10: bounded cleanup requires its own explicit destructive approval");
+    }
   }
   return errors;
 }

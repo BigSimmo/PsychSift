@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "programmeId": "rag-answer-quality-and-repository-coverage-v1",
-  "reconciledBase": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "reconciledBase": "f3d1a3cce2c943ad3083425ed9c7c46dbef23087",
   "basePolicy": "Before publication and Phase P00, fetch and verify current origin/main. If it differs from reconciledBase, materialize on the new base, revalidate implementation/evidence/paths/migrations/dependencies, update reconciledBase and regenerate both packages before execution.",
   "packagePolicy": {
     "sharedBodiesMustMatch": true,
@@ -37,15 +37,172 @@
     "trustedIngestion": "plans/2026-08-21-trusted-admin-document-ingestion.md"
   },
   "defaultAgentPolicy": {
+    "controllerModel": "gpt-5.6-sol",
     "implementationModel": "gpt-5.6-sol",
     "implementationReasoning": "high",
-    "reviewModel": "gpt-5.6-sol",
-    "reviewReasoning": "high",
+    "taskReviewModel": "gpt-5.6-sol",
+    "taskReviewReasoning": "high",
+    "phaseReviewModel": "gpt-5.6-sol",
+    "phaseReviewReasoning": "high",
     "finalReviewReasoning": "xhigh",
     "allowModelFallback": false,
+    "allowProviderMapping": false,
+    "authoritativeRouteEvidenceRequired": true,
     "oneFreshImplementerPerTask": true,
     "oneFreshReviewerWithTwoVerdictsPerTask": true,
+    "oneFreshPhaseReviewer": true,
     "parallelWrites": false
+  },
+  "adaptiveEffortPolicy": {
+    "mode": "phase-explicit",
+    "selectionRule": "Scale controller and review effort to irreversibility times branching factor. Implement from the concrete plan at high unless the phase explicitly says otherwise. A Cloud session cannot raise its own effort.",
+    "highLaunchPhases": ["P00", "P04", "P10", "P11"],
+    "xhighLaunchPhases": [
+      "P01",
+      "P02",
+      "P03",
+      "P05",
+      "P06",
+      "P07",
+      "P08A",
+      "P08B",
+      "P08C",
+      "P09",
+      "P12A",
+      "P12B",
+      "P12C",
+      "P13A",
+      "P13B",
+      "P13C",
+      "P14A",
+      "P14B",
+      "P14C",
+      "P15",
+      "P16A",
+      "P16B",
+      "P16C",
+      "P16D",
+      "P17"
+    ],
+    "implementationReasoning": "high",
+    "taskReviewEscalations": [
+      "P01",
+      "P02",
+      "P03",
+      "P05",
+      "P06",
+      "P07",
+      "P08A",
+      "P08B",
+      "P08C",
+      "P09",
+      "P12A",
+      "P12B",
+      "P12C",
+      "P13A",
+      "P13B",
+      "P13C",
+      "P14A",
+      "P14B",
+      "P14C",
+      "P15",
+      "P16A",
+      "P16B",
+      "P16C",
+      "P16D",
+      "P17"
+    ],
+    "phaseReviewEscalations": [
+      "P01",
+      "P02",
+      "P03",
+      "P05",
+      "P06",
+      "P07",
+      "P08A",
+      "P08B",
+      "P08C",
+      "P09",
+      "P12A",
+      "P12B",
+      "P12C",
+      "P13A",
+      "P13B",
+      "P13C",
+      "P14A",
+      "P14B",
+      "P14C",
+      "P15",
+      "P16A",
+      "P16B",
+      "P16C",
+      "P16D",
+      "P17"
+    ],
+    "xhighConfirmationMarker": "[xhigh-confirmed]",
+    "launchContract": "TARGET_PHASE must be supplied before repository inspection. The Cloud UI effort must match the target launch set. An xhigh target prompt must begin with the confirmation marker; a high target prompt must not claim that marker.",
+    "allowedEscalations": [
+      {
+        "fromModel": "gpt-5.6-terra",
+        "toModel": "gpt-5.6-sol",
+        "phases": ["P00", "P11"],
+        "requires": "recorded concern, fresh dispatch, exact actual route evidence and escalationUsed=true"
+      }
+    ]
+  },
+  "capabilityContract": {
+    "trackedControllerSkill": ".agents/skills/rag-cloud-sdd/SKILL.md",
+    "trackedTaskBriefHelper": "scripts/rag-task-brief.mjs",
+    "trackedLaunchHelper": "scripts/rag-phase-launch-check.mjs",
+    "requiredSubagentProbe": true,
+    "subagentProbeModel": "gpt-5.6-terra",
+    "subagentProbeReasoning": "high",
+    "missingRuntimeStop": "BLOCKED_MISSING_SUBAGENT_RUNTIME",
+    "missingCapabilityStop": "BLOCKED_MISSING_CAPABILITY",
+    "unverifiedRouteStop": "BLOCKED_MODEL_ROUTE_UNVERIFIED",
+    "routeEvidenceSources": ["codex-host-runtime-metadata", "codex-dispatch-metadata"]
+  },
+  "skillProfiles": {
+    "core-sdd": ["rag-cloud-sdd", "plan", "test", "review", "handover"],
+    "evaluation": ["rag", "clinical", "privacy", "performance", "test"],
+    "sources": ["rag", "sources", "clinical", "privacy", "documents"],
+    "repository": ["rag", "sources", "documents", "data", "privacy"],
+    "ingestion": ["rag", "ingest", "reindex", "recovery", "data", "security", "privacy"],
+    "retrieval": ["rag", "clinical", "sources", "performance", "test"],
+    "delivery": ["rag", "api", "ui", "clinical", "privacy", "test"],
+    "trusted-ingestion": ["rag", "ingest", "documents", "access", "security", "privacy", "recovery"],
+    "local-operations": ["handover", "rag", "operations", "recovery", "security", "privacy", "release"]
+  },
+  "phaseSkillProfiles": {
+    "P00": ["core-sdd", "delivery"],
+    "P01": ["core-sdd", "evaluation"],
+    "P02": ["core-sdd", "sources"],
+    "P03": ["core-sdd", "repository"],
+    "P04": ["core-sdd", "ingestion"],
+    "P05": ["core-sdd", "ingestion"],
+    "P06": ["core-sdd", "repository", "ingestion"],
+    "P07": ["core-sdd", "retrieval"],
+    "P08A": ["core-sdd", "retrieval"],
+    "P08B": ["core-sdd", "retrieval"],
+    "P08C": ["core-sdd", "retrieval", "evaluation"],
+    "P09": ["core-sdd", "evaluation", "delivery"],
+    "P10": ["core-sdd", "repository", "evaluation"],
+    "P11": ["core-sdd", "sources", "delivery"],
+    "P12A": ["core-sdd", "delivery", "retrieval"],
+    "P12B": ["core-sdd", "delivery", "retrieval"],
+    "P12C": ["core-sdd", "delivery", "evaluation"],
+    "P13A": ["core-sdd", "delivery"],
+    "P13B": ["core-sdd", "delivery"],
+    "P13C": ["core-sdd", "delivery", "evaluation"],
+    "P14A": ["core-sdd", "ingestion"],
+    "P14B": ["core-sdd", "ingestion"],
+    "P14C": ["core-sdd", "ingestion"],
+    "P15": ["core-sdd", "ingestion"],
+    "P16A": ["core-sdd", "trusted-ingestion"],
+    "P16B": ["core-sdd", "trusted-ingestion"],
+    "P16C": ["core-sdd", "trusted-ingestion"],
+    "P16D": ["core-sdd", "trusted-ingestion", "evaluation"],
+    "P17": ["core-sdd", "evaluation", "local-operations"]
   },
   "offlineCompletionCommands": [
     "npm run plans:rag:check",
@@ -66,27 +223,27 @@
   "requiredResidualGates": [
     {
       "id": "official-source-and-licence-verification",
-      "owner": "P18 connected source-governance checkpoint"
+      "owner": "L01"
     },
     {
       "id": "hosted-supabase-security-and-migrations",
-      "owner": "P18 hosted database checkpoint"
+      "owner": "L03"
     },
     {
       "id": "targeted-reindex-shadow-evaluation",
-      "owner": "P18 controlled corpus wave"
+      "owner": "L05"
     },
     {
       "id": "provider-canary-and-generation-acceptance",
-      "owner": "P18 live-provider checkpoint"
+      "owner": "L06"
     },
     {
       "id": "controlled-activation-rollback-and-cleanup",
-      "owner": "P18 corpus activation checkpoint"
+      "owner": "L10"
     },
     {
       "id": "deployment-and-production-acceptance",
-      "owner": "P18 production release checkpoint"
+      "owner": "L09"
     }
   ],
   "phases": [
@@ -112,7 +269,7 @@
       "dependsOn": [],
       "implementationModel": "gpt-5.6-sol",
       "implementationReasoning": "high",
-      "reviewReasoning": "high",
+      "reviewReasoning": "xhigh",
       "environment": "offline",
       "authority": "local-code-and-focused-tests"
     },
@@ -138,7 +295,7 @@
       "dependsOn": ["P01", "P02"],
       "implementationModel": "gpt-5.6-sol",
       "implementationReasoning": "high",
-      "reviewReasoning": "high",
+      "reviewReasoning": "xhigh",
       "environment": "offline",
       "authority": "local-code-and-fixtures"
     },
@@ -190,7 +347,7 @@
       "dependsOn": ["P01", "P02", "P03"],
       "implementationModel": "gpt-5.6-sol",
       "implementationReasoning": "high",
-      "reviewReasoning": "high",
+      "reviewReasoning": "xhigh",
       "environment": "offline-shadow",
       "authority": "local-code-and-fixtures"
     },
@@ -242,7 +399,7 @@
       "dependsOn": ["P08C"],
       "implementationModel": "gpt-5.6-sol",
       "implementationReasoning": "high",
-      "reviewReasoning": "high",
+      "reviewReasoning": "xhigh",
       "environment": "offline",
       "authority": "local-code-no-canary"
     },
@@ -255,7 +412,7 @@
       "dependsOn": ["P08C", "P09"],
       "implementationModel": "gpt-5.6-sol",
       "implementationReasoning": "high",
-      "reviewReasoning": "xhigh",
+      "reviewReasoning": "high",
       "environment": "offline",
       "authority": "local-code-and-documents"
     },
@@ -268,7 +425,7 @@
       "dependsOn": ["P02", "P10"],
       "implementationModel": "gpt-5.6-terra",
       "implementationReasoning": "high",
-      "reviewReasoning": "xhigh",
+      "reviewReasoning": "high",
       "environment": "offline",
       "authority": "local-code-and-documents"
     },
@@ -466,20 +623,140 @@
       "reviewReasoning": "xhigh",
       "environment": "offline",
       "authority": "local-code-and-final-offline-gates"
+    }
+  ],
+  "localPhases": [
+    {
+      "id": "L00",
+      "executionPredecessor": null,
+      "name": "Immutable Cloud programme takeover and drift classification",
+      "controllerReasoning": "high",
+      "reviewReasoning": "high",
+      "environment": "fresh-windows-local-offline",
+      "authority": "read-only-local-and-isolated-worktree",
+      "requiredOperationClasses": ["drift-classification"],
+      "skills": ["plan", "handover", "rag"],
+      "closesGate": null
     },
     {
-      "id": "P18",
-      "executionPredecessor": "P17",
-      "name": "Connected evidence and production acceptance",
-      "phaseType": "operator-gate",
-      "plan": null,
-      "tasks": [],
-      "dependsOn": ["P17"],
-      "implementationModel": "gpt-5.6-sol",
-      "implementationReasoning": "xhigh",
+      "id": "L01",
+      "executionPredecessor": "L00",
+      "name": "Current official-source and licence verification",
+      "controllerReasoning": "high",
       "reviewReasoning": "xhigh",
-      "environment": "separately-authorized-connected",
-      "authority": "explicit-per-operation-approval-required"
+      "environment": "connected-read-only",
+      "authority": "explicit-source-metadata-verification-approval",
+      "requiredOperationClasses": ["official-source-verification"],
+      "skills": ["sources", "clinical", "rag", "privacy"],
+      "closesGate": "official-source-and-licence-verification"
+    },
+    {
+      "id": "L02",
+      "executionPredecessor": "L01",
+      "name": "Hosted Supabase identity, schema, RLS, grants and migration inspection",
+      "controllerReasoning": "xhigh",
+      "reviewReasoning": "xhigh",
+      "environment": "hosted-read-only",
+      "authority": "explicit-hosted-project-read-approval",
+      "requiredOperationClasses": ["hosted-readonly-inspection"],
+      "skills": ["data", "migrate", "security", "privacy", "recovery"],
+      "closesGate": null
+    },
+    {
+      "id": "L03",
+      "executionPredecessor": "L02",
+      "name": "Approved migration deployment and hosted post-apply acceptance",
+      "controllerReasoning": "xhigh",
+      "reviewReasoning": "xhigh",
+      "environment": "hosted-mutating",
+      "authority": "separate-explicit-main-merge-deploy-and-post-apply-approval",
+      "requiredOperationClasses": ["migration-deploy", "post-apply-acceptance"],
+      "skills": ["data", "migrate", "security", "privacy", "recovery", "deploy"],
+      "closesGate": "hosted-supabase-security-and-migrations"
+    },
+    {
+      "id": "L04",
+      "executionPredecessor": "L03",
+      "name": "Targeted shadow reindex staging",
+      "controllerReasoning": "xhigh",
+      "reviewReasoning": "xhigh",
+      "environment": "hosted-mutating-shadow",
+      "authority": "explicit-exact-manifest-stage-approval",
+      "requiredOperationClasses": ["shadow-reindex-stage"],
+      "skills": ["rag", "ingest", "reindex", "recovery", "performance"],
+      "closesGate": null
+    },
+    {
+      "id": "L05",
+      "executionPredecessor": "L04",
+      "name": "Shadow retrieval and paired evaluation acceptance",
+      "controllerReasoning": "xhigh",
+      "reviewReasoning": "xhigh",
+      "environment": "hosted-shadow-evaluation",
+      "authority": "explicit-evaluation-case-provider-and-cost-approval",
+      "requiredOperationClasses": ["paired-shadow-evaluation"],
+      "skills": ["rag", "clinical", "reindex", "performance", "test"],
+      "closesGate": "targeted-reindex-shadow-evaluation"
+    },
+    {
+      "id": "L06",
+      "executionPredecessor": "L05",
+      "name": "Provider canaries and blinded generation acceptance",
+      "controllerReasoning": "high",
+      "reviewReasoning": "xhigh",
+      "environment": "provider-connected",
+      "authority": "explicit-case-set-provider-cost-data-exposure-and-abort-approval",
+      "requiredOperationClasses": ["provider-canary", "blinded-generation"],
+      "skills": ["rag", "clinical", "privacy", "test", "performance"],
+      "closesGate": "provider-canary-and-generation-acceptance"
+    },
+    {
+      "id": "L07",
+      "executionPredecessor": "L06",
+      "name": "Dark deployment and release verification",
+      "controllerReasoning": "xhigh",
+      "reviewReasoning": "xhigh",
+      "environment": "production-dark",
+      "authority": "explicit-deployment-target-and-window-approval",
+      "requiredOperationClasses": ["dark-deploy", "release-verification"],
+      "skills": ["deploy", "release", "health", "operations", "security", "privacy"],
+      "closesGate": null
+    },
+    {
+      "id": "L08",
+      "executionPredecessor": "L07",
+      "name": "Controlled activation and rollback proof",
+      "controllerReasoning": "xhigh",
+      "reviewReasoning": "xhigh",
+      "environment": "production-active",
+      "authority": "separate-explicit-promotion-and-rollback-approvals",
+      "requiredOperationClasses": ["controlled-promotion", "rollback-proof"],
+      "skills": ["operations", "reindex", "recovery", "security", "rag"],
+      "closesGate": null
+    },
+    {
+      "id": "L09",
+      "executionPredecessor": "L08",
+      "name": "Production parity, SLO and release acceptance",
+      "controllerReasoning": "xhigh",
+      "reviewReasoning": "xhigh",
+      "environment": "production-observation",
+      "authority": "explicit-production-acceptance-and-observation-approval",
+      "requiredOperationClasses": ["production-acceptance"],
+      "skills": ["deploy", "release", "health", "operations", "security", "privacy", "rag", "clinical"],
+      "closesGate": "deployment-and-production-acceptance"
+    },
+    {
+      "id": "L10",
+      "executionPredecessor": "L09",
+      "name": "Retention-qualified bounded cleanup and final operational acceptance",
+      "controllerReasoning": "xhigh",
+      "reviewReasoning": "xhigh",
+      "environment": "production-destructive-bounded",
+      "authority": "separate-explicit-exact-count-digest-and-cleanup-approval",
+      "requiredOperationClasses": ["retention-check", "bounded-cleanup", "final-operational-acceptance"],
+      "skills": ["operations", "reindex", "recovery", "security", "privacy", "release"],
+      "closesGate": "controlled-activation-rollback-and-cleanup"
     }
   ]
 }

@@ -17,6 +17,7 @@ import {
   type PresentationAmendment,
   type ManagementPlanVersion,
   type Patient,
+  type PatientPlanVersion,
   type PatientSnapshot,
   type PatientSnapshotSource,
   type PersonalSafetyPlanVersion,
@@ -247,6 +248,60 @@ export function getOpenSafetyPlanDraft(
   const open = versions.filter((version) => version.planId === planId && version.state === "draft");
   if (open.length === 0) return null;
   return open.reduce((latest, version) => (version.version > latest.version ? version : latest));
+}
+
+export function getCurrentPatientPlanVersion(
+  versions: readonly PatientPlanVersion[],
+  planId: SyntheticId,
+): PatientPlanVersion | null {
+  return versions.find((version) => version.planId === planId && version.state === "current") ?? null;
+}
+
+/** The patient edition being worked on. As with the Personal Safety Plan there
+ *  is no `awaiting_approval` state: a patient copy waits on any clinical role,
+ *  not on a senior decision. */
+export function getOpenPatientPlanDraft(
+  versions: readonly PatientPlanVersion[],
+  planId: SyntheticId,
+): PatientPlanVersion | null {
+  const open = versions.filter((version) => version.planId === planId && version.state === "draft");
+  if (open.length === 0) return null;
+  return open.reduce((latest, version) => (version.version > latest.version ? version : latest));
+}
+
+/**
+ * Whether a patient copy still describes the Management Plan in use.
+ *
+ * Always derived from the two identifiers, never stored. A stored flag would
+ * have to be written by whatever changed the Management Plan, and the one thing
+ * certain about a document already printed and carried away is that nothing in
+ * this application can reach it — so the flag would be the part most likely to
+ * be wrong, on the question that most needs to be right.
+ *
+ * A stale copy stays fully readable and is never regenerated, hidden, or
+ * withdrawn on the person's behalf. They may be holding the paper; the
+ * application's account of what they were given has to stay true to it.
+ *
+ * A `null` Management Plan current-version identifier means the Management
+ * Plan was withdrawn with nothing approved to replace it — not that nothing
+ * ever compares. A current Patient Plan version can only exist if a
+ * Management Plan was once approved for it to be derived from, so a source
+ * that is now current-less is exactly the "moved on underneath the copy"
+ * case this function exists to catch, and is stale by the same reasoning as
+ * a source that moved on to a different version.
+ */
+export function isPatientPlanVersionStale(
+  version: PatientPlanVersion | null,
+  managementPlanCurrentVersionId: SyntheticId | null,
+): boolean {
+  if (version === null || version.state !== "current") return false;
+  // A withdrawn source is not a safe exception. The patient copy still exists
+  // and may already be on paper, but there is no Current Management Plan for it
+  // to represent, so it has to carry the same needs-updating state as a copy
+  // made from an older Current version. `derivedFromManagementVersionId` is
+  // never `null` on a real version, so this comparison alone already covers
+  // it without a separate early return.
+  return version.derivedFromManagementVersionId !== managementPlanCurrentVersionId;
 }
 
 /** The most recent withdrawn version, used only to keep a withdrawn plan from

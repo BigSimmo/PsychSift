@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "a06c9a8d-8c82-47a0-be9f-58f2a2a0273f",
+  "createdOn": "2026-08-19",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "The Caring Contacts service safety stop halts sending across every patient and team, but the rule that it is stored as ONE record rather than one row per team is currently carried only by a field name (reportedByTeamId) and a doc comment in src/lib/caring-contacts/service-state.ts. Migration 0003 (Phase 2A Task 11) must enforce it in the schema with a fixed-key singleton row plus a test, and every dispatch path must read that one record regardless of the dispatching team. Without it, a stop raised by one team would leave every other team still sending during an incident.",
+    "issueUlid": "01M0CETTJRKMM6R62MVWSYGQKZ"
+  }
+}

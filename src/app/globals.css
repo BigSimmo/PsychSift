@@ -4287,6 +4287,24 @@ html[data-motion="reduced"] .source-capsule-hit[aria-expanded="true"]:hover .sou
   }
 }
 
+/* Caring Contacts workspace (/caring-contacts) print safeguard.
+ * The transitional `header, nav, button { display: none }` rule above removes the
+ * workspace header when printing, and the "fictional data only" marker lives in
+ * it — so a printed page of invented patients would carry nothing saying they are
+ * invented. That marker is a safeguard, not chrome. Restore it and only it,
+ * scoped to its own attributes, the same way the safety-plan patient copy
+ * restores its document header below. */
+@media print {
+  [data-synthetic-marker-host] {
+    display: block !important;
+    position: static !important;
+  }
+
+  [data-synthetic-marker] {
+    display: inline-flex !important;
+  }
+}
+
 /* Safety plan generator (/safety-plan) print export.
  * "Print / PDF" (and Cmd+P) should hand over the patient copy only, so the
  * builder/editor chrome is removed and the patient-copy document header — which

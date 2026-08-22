@@ -21,6 +21,10 @@ const acuityOverride = vi.hoisted(() => ({ value: null as string | null }));
  */
 const openDetailOverride = vi.hoisted(() => ({ value: null as string | null }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ back: vi.fn(), replace: vi.fn() }),
+}));
+
 vi.mock("@/lib/developer-area/ledger-snapshot", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/developer-area/ledger-snapshot")>();
   return {

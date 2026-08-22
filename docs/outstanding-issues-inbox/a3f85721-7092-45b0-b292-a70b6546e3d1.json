@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "a3f85721-7092-45b0-b292-a70b6546e3d1",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Caring Contacts Phase 2B — the screens",
+    "detail": "Phase 2A closed at Task 19 with one production screen built (/caring-contacts, Today) plus the frozen 24-overlay renderer. Plan 2B builds the remaining screens: patients, patient overview, patient and agreement, pathway selection, personalisation, review and activation, plan detail, schedule, contact and delivery exception, governed templates, team, guidance, reports — plus the Today dashboard body itself (referral queue, needs-action list, sending windows, recent activity, summary counts). Their rules and data already exist from Phase 1 and Tasks 3-11; only the surfaces are missing. The visual specification for each is the committed mockup atlas: 26 of its 44 images have no production counterpart today, listed in docs/caring-contacts/phase-2a-visual-differences.md. Building a screen also means giving its rail/dock destination an href in shell.tsx (Ruling 52) and raising its overlays through openWorkspaceOverlay, which nothing yet does.",
+    "source": "docs/caring-contacts/phase-2a-visual-differences.md; docs/caring-contacts/phase-2a-sdd-archive/task-19-report.md",
+    "issueUlid": "01M0M306KGEWWJVX74Y2YVAV56"
+  }
+}

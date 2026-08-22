@@ -16,13 +16,17 @@
     "packageHeadSha",
     "programmeImplementationBase",
     "branch",
-    "modelRouting",
+    "launchProfile",
+    "xhighConfirmed",
+    "controllerRouting",
+    "capabilityEvidence",
     "phaseStartSha",
     "phaseEndSha",
     "startedAt",
     "completedAt",
     "tasks",
     "phaseReviews",
+    "minorFindings",
     "residualGates",
     "acceptedAt"
   ],
@@ -34,19 +38,39 @@
       "oneOf": [{ "type": "string", "pattern": "^P(?:0[0-9]|1[0-8])[A-Z]?$" }, { "type": "null" }]
     },
     "status": { "enum": ["draft", "accepted"] },
-    "packageVariant": { "enum": ["local", "cloud"] },
+    "packageVariant": { "const": "cloud" },
     "packageHash": { "$ref": "#/$defs/sha256" },
     "packageBaseSha": { "$ref": "#/$defs/gitSha" },
     "packageHeadSha": { "$ref": "#/$defs/gitSha" },
     "programmeImplementationBase": { "$ref": "#/$defs/gitSha" },
     "branch": { "type": "string", "minLength": 1 },
-    "modelRouting": { "$ref": "#/$defs/modelRouting" },
+    "launchProfile": { "enum": ["high", "xhigh"] },
+    "xhighConfirmed": { "type": "boolean" },
+    "controllerRouting": { "$ref": "#/$defs/agentRouting" },
+    "capabilityEvidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/capabilityEvidence" }
+    },
     "phaseStartSha": { "$ref": "#/$defs/gitSha" },
     "phaseEndSha": { "$ref": "#/$defs/gitSha" },
     "startedAt": { "$ref": "#/$defs/timestamp" },
     "completedAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] },
     "tasks": { "type": "array", "items": { "$ref": "#/$defs/taskReceipt" } },
     "phaseReviews": { "type": "array", "items": { "$ref": "#/$defs/reviewReceipt" } },
+    "minorFindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["finding", "owner", "disposition"],
+        "properties": {
+          "finding": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string", "minLength": 1 },
+          "disposition": { "enum": ["resolved", "carried-to-phase-review", "carried-to-programme-review"] }
+        }
+      }
+    },
     "residualGates": { "type": "array", "items": { "$ref": "#/$defs/residualGate" } },
     "acceptedAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] }
   },
@@ -60,36 +84,70 @@
       "minLength": 1,
       "pattern": "^docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/"
     },
-    "modelRouting": {
+    "routeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "artifactPath", "sha256"],
+      "properties": {
+        "source": { "enum": ["codex-host-runtime-metadata", "codex-dispatch-metadata"] },
+        "artifactPath": { "$ref": "#/$defs/artifactPath" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "agentRouting": {
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "agentId",
+        "runtimeHost",
         "provider",
-        "plannedImplementationModel",
-        "actualImplementationModel",
-        "implementationCapabilityClass",
-        "implementationReasoning",
-        "plannedReviewModel",
-        "actualReviewModel",
-        "reviewCapabilityClass",
-        "reviewReasoning",
+        "plannedModel",
+        "actualModel",
+        "capabilityClass",
+        "plannedReasoning",
+        "actualReasoning",
         "providerMappingUsed",
         "fallbackUsed",
-        "escalationReason"
+        "escalationUsed",
+        "escalationReason",
+        "routeEvidence"
       ],
       "properties": {
-        "provider": { "enum": ["codex", "claude"] },
-        "plannedImplementationModel": { "type": "string", "minLength": 1 },
-        "actualImplementationModel": { "type": "string", "minLength": 1 },
-        "implementationCapabilityClass": { "enum": ["workhorse-high", "frontier-high"] },
-        "implementationReasoning": { "enum": ["low", "medium", "high", "xhigh"] },
-        "plannedReviewModel": { "type": "string", "minLength": 1 },
-        "actualReviewModel": { "type": "string", "minLength": 1 },
-        "reviewCapabilityClass": { "const": "frontier-high" },
-        "reviewReasoning": { "enum": ["low", "medium", "high", "xhigh"] },
-        "providerMappingUsed": { "type": "boolean" },
+        "agentId": { "$ref": "#/$defs/agentId" },
+        "runtimeHost": { "const": "codex-cloud" },
+        "provider": { "const": "codex" },
+        "plannedModel": { "type": "string", "minLength": 1 },
+        "actualModel": { "type": "string", "minLength": 1 },
+        "capabilityClass": { "enum": ["workhorse-high", "frontier-high"] },
+        "plannedReasoning": { "enum": ["low", "medium", "high", "xhigh"] },
+        "actualReasoning": { "enum": ["low", "medium", "high", "xhigh"] },
+        "providerMappingUsed": { "const": false },
         "fallbackUsed": { "const": false },
-        "escalationReason": { "type": ["string", "null"] }
+        "escalationUsed": { "type": "boolean" },
+        "escalationReason": { "type": ["string", "null"] },
+        "routeEvidence": { "$ref": "#/$defs/routeEvidence" }
+      }
+    },
+    "capabilityEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability",
+        "resolvedPathOrTool",
+        "sha256",
+        "evidenceArtifactPath",
+        "evidenceArtifactSha256",
+        "status"
+      ],
+      "properties": {
+        "capability": { "type": "string", "minLength": 1 },
+        "resolvedPathOrTool": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "evidenceArtifactPath": { "$ref": "#/$defs/artifactPath" },
+        "evidenceArtifactSha256": { "$ref": "#/$defs/sha256" },
+        "status": { "const": "available" },
+        "probeAgentId": { "oneOf": [{ "$ref": "#/$defs/agentId" }, { "type": "null" }] },
+        "probeRouting": { "oneOf": [{ "$ref": "#/$defs/agentRouting" }, { "type": "null" }] }
       }
     },
     "commandEvidence": {
@@ -131,7 +189,7 @@
         "diffPackageSha256",
         "reportPath",
         "reportSha256",
-        "reviewerAgentId",
+        "reviewerRouting",
         "specVerdict",
         "qualityVerdict"
       ],
@@ -142,7 +200,7 @@
         "diffPackageSha256": { "$ref": "#/$defs/sha256" },
         "reportPath": { "$ref": "#/$defs/artifactPath" },
         "reportSha256": { "$ref": "#/$defs/sha256" },
-        "reviewerAgentId": { "$ref": "#/$defs/agentId" },
+        "reviewerRouting": { "$ref": "#/$defs/agentRouting" },
         "specVerdict": { "enum": ["PENDING", "PASS", "FAIL"] },
         "qualityVerdict": { "enum": ["PENDING", "PASS", "FAIL"] }
       }
@@ -160,7 +218,7 @@
         "briefSha256",
         "implementerReportPath",
         "implementerReportSha256",
-        "implementerAgentId",
+        "implementerRouting",
         "evidence",
         "reviews"
       ],
@@ -174,7 +232,7 @@
         "briefSha256": { "$ref": "#/$defs/sha256" },
         "implementerReportPath": { "$ref": "#/$defs/artifactPath" },
         "implementerReportSha256": { "$ref": "#/$defs/sha256" },
-        "implementerAgentId": { "$ref": "#/$defs/agentId" },
+        "implementerRouting": { "$ref": "#/$defs/agentRouting" },
         "evidence": {
           "oneOf": [{ "$ref": "#/$defs/tddEvidence" }, { "$ref": "#/$defs/verificationEvidence" }]
         },

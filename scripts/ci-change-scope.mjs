@@ -270,6 +270,15 @@ const perfExclusionPatterns = [
   "src/instrumentation.ts",
   "src/sentry.server.config.ts",
   "src/sentry.edge.config.ts",
+  // Developer-hub payload only. `src/lib/developer-area/ledger-snapshot.ts`
+  // imports this JSON, and the only route importers are under
+  // `src/app/mockups/development/` (already excluded; 404 in production). A
+  // ledger reconcile that closes the last P1 must not pay a 7-minute
+  // Lighthouse budget run, and must not fail merge on TBT noise from
+  // `/documents/search`. Measured on PR #2302: this file alone flipped
+  // perf_changed and the job failed mobile TBT +32.7% against a baseline
+  // the same change cannot move.
+  "data/outstanding-issues-snapshot.json",
 ];
 
 function isPerfChangedPath(filePath) {
@@ -983,6 +992,12 @@ function selfTest() {
     ["public/therapy-compass-data/therapies-home.json", "data/medications-snapshot.json"],
     { perf_changed: true },
   );
+  // Mockup-only ledger snapshot: same `data/` root as medications, but it
+  // cannot reach a budgeted route. Closing the last P1 on PR #2302 otherwise
+  // forced Lighthouse onto a docs/ledger reconcile.
+  assertScope("perf-off-for-outstanding-issues-snapshot", ["data/outstanding-issues-snapshot.json"], {
+    perf_changed: false,
+  });
   assertScope("perf-on-for-build-config", ["next.config.ts", "postcss.config.mjs", "tsconfig.json"], {
     perf_changed: true,
   });

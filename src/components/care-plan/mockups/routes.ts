@@ -80,6 +80,15 @@ export const carePlanRoute = {
   patientPlan(patientId: string) {
     return `${patientPath(patientId)}/patient-plan`;
   },
+  /** Where the person's own copy is written and its gaps are filled. Any
+   *  clinical role may approve it, so this is the only authoring address the
+   *  Patient Plan has. */
+  patientPlanEdit(patientId: string) {
+    return `${patientPath(patientId)}/patient-plan/edit`;
+  },
+  patientPlanPrint(patientId: string) {
+    return `${patientPath(patientId)}/patient-plan/print`;
+  },
   safetyPlan(patientId: string) {
     return `${patientPath(patientId)}/safety-plan`;
   },

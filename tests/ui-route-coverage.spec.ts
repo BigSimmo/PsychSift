@@ -459,10 +459,13 @@ test.describe("previously uncovered production routes", () => {
         // guaranteed to leave the URL where this step asserts it. Waiting for
         // the handler makes the assign hop the only path the click can take.
         await waitForReactEventHandler(remove);
+        // Same-route `?ids=` assign can update the URL without a new document
+        // load. `waitUntil: "domcontentloaded"` then hangs for 30s after the
+        // hop already happened (Production UI on #2299: waitForURL timeout
+        // while the heading assertion never ran). Wait for the URL only.
         await Promise.all([
           currentPage.waitForURL(/\/dsm\/compare\?ids=bipolar-ii-disorder$/, {
             timeout: 30_000,
-            waitUntil: "domcontentloaded",
           }),
           remove.click(),
         ]);

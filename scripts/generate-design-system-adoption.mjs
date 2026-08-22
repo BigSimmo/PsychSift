@@ -81,6 +81,10 @@ const CANONICAL_NON_VISUAL_ROUTES = Object.freeze({
     route: "src/app/(search-app)/documents/source/page.tsx",
     kind: "next-redirect-only",
   },
+  "ward-management-constellation-legacy-redirect": {
+    route: "src/app/ward-management/constellation/page.tsx",
+    kind: "next-redirect-only",
+  },
 });
 
 const toPosix = (value) => value.split(path.sep).join("/");
@@ -1331,8 +1335,8 @@ export function manifestSections(manifest) {
     "`generate-design-system-adoption.mjs` discovers every production `src/app/**/page.tsx` and",
     "requires each route to appear exactly once in `adoption-contract.json`. Undeclared, missing, or",
     "multiply-owned routes fail the check. `src/app/api/**` and `src/app/mockups/**` are non-page",
-    "product exclusions; the only route-only disposition is the documented legacy document-source",
-    "redirect. Shared shell/component roots carry their own explicit `shared-shell` disposition.",
+    "product exclusions; the only route-only dispositions are the documented legacy-redirect",
+    "surfaces. Shared shell/component roots carry their own explicit `shared-shell` disposition.",
     "",
     `Registered public components: ${manifest.summary.registeredComponentCount}`,
     `Declared product roots: ${manifest.summary.rootCount}`,
@@ -1626,7 +1630,7 @@ export function checkAdoptionManifest(manifest, { root = ROOT, trackedFiles = tr
   if (contract.defaultProofApplicability !== CANONICAL_DEFAULT_PROOF_APPLICABILITY)
     failures.push("default proof applicability must remain required");
   if (JSON.stringify(contract.nonVisualRouteContracts) !== JSON.stringify(CANONICAL_NON_VISUAL_ROUTES))
-    failures.push("non-visual route contracts drifted from the canonical redirect-only route");
+    failures.push("non-visual route contracts drifted from the canonical redirect-only routes");
   if (JSON.stringify(contract.proofEvidencePolicy) !== JSON.stringify(CANONICAL_PROOF_EVIDENCE_POLICY))
     failures.push("proof evidence path policy drifted from the canonical contract");
   if (JSON.stringify(contract.visualBaselinePolicy) !== JSON.stringify(CANONICAL_VISUAL_BASELINE_POLICY))

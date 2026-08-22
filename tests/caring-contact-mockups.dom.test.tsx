@@ -17,10 +17,11 @@ import {
   OverlaySpecimens,
 } from "@/components/caring-contacts/mockups/overlay-specimens";
 import {
-  calculateGsm7,
-  canActivateGovernedVersions,
+  AUTOMATED_REPLY_RESPONSE,
   EXACT_MESSAGE_GSM7,
   EXACT_PATIENT_VISIBLE_MESSAGE,
+  calculateGsm7,
+  canActivateGovernedVersions,
 } from "@/components/caring-contacts/mockups/personalisation-screen";
 import { ReviewActivationScreen } from "@/components/caring-contacts/mockups/review-activation-screen";
 import {
@@ -126,7 +127,19 @@ describe("Caring Contact governance contracts", () => {
       ({ approvalState }) => approvalState === "Illustrative — approval pending",
     )!;
 
-    expect(EXACT_MESSAGE_GSM7).toEqual({ invalidCharacters: [], segments: 2, septets: 272, valid: true });
+    expect(EXACT_MESSAGE_GSM7).toEqual({ invalidCharacters: [], segments: 2, septets: 252, valid: true });
+    // The automated reply (production-build spec §2.1) is patient-visible too, so it carries the same
+    // two-segment ceiling and the same prohibition on echoing a patient mobile number.
+    expect(calculateGsm7(AUTOMATED_REPLY_RESPONSE)).toEqual({
+      invalidCharacters: [],
+      segments: 2,
+      septets: 218,
+      valid: true,
+    });
+    expect(AUTOMATED_REPLY_RESPONSE).toContain(FICTIONAL_CONTACTS_BY_ROLE.programmeStaffedLine);
+    expect(AUTOMATED_REPLY_RESPONSE).toContain(FICTIONAL_CONTACTS_BY_ROLE.crisisSupportContact);
+    expect(AUTOMATED_REPLY_RESPONSE).not.toContain(FICTIONAL_CONTACTS_BY_ROLE.miraPatientMobile);
+    expect(AUTOMATED_REPLY_RESPONSE).not.toContain(FICTIONAL_CONTACTS_BY_ROLE.rowanPatientMobile);
     expect(EXACT_PATIENT_VISIBLE_MESSAGE).toContain(FICTIONAL_CONTACTS_BY_ROLE.programmeStaffedLine);
     expect(EXACT_PATIENT_VISIBLE_MESSAGE).toContain(FICTIONAL_CONTACTS_BY_ROLE.crisisSupportContact);
     expect(EXACT_PATIENT_VISIBLE_MESSAGE).not.toContain(FICTIONAL_CONTACTS_BY_ROLE.miraPatientMobile);

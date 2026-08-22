@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "d9c78396-1cea-45bd-a4a7-067865151dd3",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "run-playwright reported a production build failure with no compile error, once, unreproduced",
+    "detail": "Seen during Task 19 on 2026-08-22. node scripts/run-playwright.mjs tests/ui-caring-contacts-workspace.spec.ts --project=chromium printed 'Playwright production build failed (status 1)' with no TypeScript or bundler error anywhere in its output; the identical command run immediately afterwards, against an unchanged tree, built and ran cleanly. It did not recur across roughly a dozen further invocations that session, including six mutation runs. Recorded rather than explained. Why it matters: the wrapper's own contract is that a non-zero exit is either a genuine red or the distinguishable exit 75 admission-busy case, and a silent build failure is neither - a session that hit it once and stopped would report a red gate that does not exist, and a session that retried without noticing would never learn the run had been lost. The machine was under heavy concurrent load at the time (other agents held Vitest and lint leases in the same repository), so a resource or lock interaction during the Next build is the first place to look. Next step if it recurs: capture the full unfiltered output of the failing invocation before retrying, and check whether scripts/run-playwright.mjs is swallowing the child build's stderr rather than the build having produced none.",
+    "source": "docs/caring-contacts/phase-2a-sdd-archive/task-19-report.md (Concerns 5)",
+    "issueUlid": "01M0M6TPVNW53DY5GT1GAF45M3"
+  }
+}

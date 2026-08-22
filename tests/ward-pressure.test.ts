@@ -50,7 +50,7 @@ describe("emergency department pressure", () => {
         (movement) =>
           isOpen(movement) &&
           movement.originEdId === row.ed.id &&
-          movement.legalForm !== undefined &&
+          movement.legalForm?.dueAt !== undefined &&
           movement.legalForm.dueAt < NOW_ANCHOR,
       ).length;
       expect(row.breaching).toBe(breaching);
@@ -146,6 +146,23 @@ describe("emergency department pressure", () => {
         id: "TEST-due-now",
         originEdId: "sjgm-ed",
         legalForm: { code: "1A", label: "Referral for examination", kind: "examination", dueAt: NOW_ANCHOR },
+      }),
+    ];
+    const rows = edPressure(NOW_ANCHOR, movements);
+    const row = rows.find((candidate) => candidate.ed.id === "sjgm-ed");
+    expect(row?.breaching).toBe(0);
+  });
+
+  // Task 6A: a Form 3B honestly carries no dueAt at all (the Mental Health Act imposes no
+  // post-examination deadline) — a form in that state must never reach `clockState`'s
+  // arithmetic and must never be counted as breaching, however long the patient has waited.
+  it("never counts a legal form with no dueAt as breaching, however old the movement", () => {
+    const movements: Movement[] = [
+      movementFrom({
+        id: "TEST-no-deadline",
+        originEdId: "sjgm-ed",
+        openedAt: NOW_ANCHOR - 10_000,
+        legalForm: { code: "3B", label: "Inpatient treatment order", kind: "detention" },
       }),
     ];
     const rows = edPressure(NOW_ANCHOR, movements);

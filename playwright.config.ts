@@ -23,7 +23,7 @@ const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 // `tests/playwright-project-isolation.test.ts` asserts every such file on disk is
 // matched here.
 const productionSpecPattern =
-  /.*(?:answer-progress-ui-smoke|dsm-ui-smoke|ui-(smoke|stress|accessibility|dictionary|document-canvas|tools|ward-(?:management|coordinator)|overlap|universal-search|specifiers|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|mode-nav-density|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|route-coverage|style-contract|visual-artifacts|hydration))\.spec\.ts/;
+  /.*(?:answer-progress-ui-smoke|dsm-ui-smoke|ui-(smoke|stress|accessibility|caring-contacts-workspace|dictionary|document-canvas|tools|ward-(?:management|coordinator|roles)|overlap|universal-search|specifiers|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|mode-nav-density|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|route-coverage|style-contract|visual-artifacts|hydration))\.spec\.ts/;
 const mockupSpecPattern =
   /.*ui-(caring-contact-mockup|document-top-navigation-mockup|sidebar-live-mockup|therapy-navigation-mockup|tools|tools-collapse|tools-search-mode-mockup|tools-task-directory)\.spec\.ts/;
 const mockupTag = /@mockup/;
@@ -31,7 +31,7 @@ const mockupTag = /@mockup/;
 export default defineConfig({
   testDir: "./tests",
   testMatch:
-    /.*(?:answer-progress-ui-smoke|dsm-ui-smoke|ui-(smoke|stress|accessibility|caring-contact-mockup|dictionary|document-canvas|document-top-navigation-mockup|sidebar-live-mockup|therapy-navigation-mockup|tools|tools-collapse|tools-search-mode-mockup|tools-task-directory|ward-(?:management|coordinator)|overlap|universal-search|specifiers|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|mode-nav-density|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|route-coverage|style-contract|visual-artifacts|hydration))\.spec\.ts/,
+    /.*(?:answer-progress-ui-smoke|dsm-ui-smoke|ui-(smoke|stress|accessibility|caring-contact-mockup|caring-contacts-workspace|dictionary|document-canvas|document-top-navigation-mockup|sidebar-live-mockup|therapy-navigation-mockup|tools|tools-collapse|tools-search-mode-mockup|tools-task-directory|ward-(?:management|coordinator|roles)|overlap|universal-search|specifiers|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|mode-nav-density|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|route-coverage|style-contract|visual-artifacts|hydration))\.spec\.ts/,
   timeout: 60_000,
   retries: 0,
   // Fail the run if a stray `test.only` is committed: otherwise it silently

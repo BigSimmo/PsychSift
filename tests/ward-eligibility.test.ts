@@ -41,6 +41,7 @@ function movement(overrides: Partial<Movement> = {}): Movement {
     referredUnitIds: [],
     declines: [],
     blocker: "No blocker",
+    withdrawnReferrals: [],
     ...overrides,
   };
 }

@@ -62,6 +62,7 @@
 !/.agents/skills/prompt-perfector/
 !/.agents/skills/rag-change-lab/
 !/.agents/skills/rag/
+!/.agents/skills/rag-cloud-sdd/
 !/.agents/skills/recovery/
 !/.agents/skills/reindex/
 !/.agents/skills/release/

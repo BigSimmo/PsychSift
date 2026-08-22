@@ -1,0 +1,4 @@
+interface:
+  display_name: "RAG Cloud SDD"
+  short_description: "Run one fail-closed RAG Cloud phase with fresh agents"
+  default_prompt: "Use $rag-cloud-sdd to execute the declared RAG phase with adaptive effort, fresh implementer/reviewer agents, and authoritative route evidence."

@@ -9,9 +9,27 @@ export type Instant = number;
 
 export type ClockState = "breached" | "critical" | "due" | "clear";
 
+/** Minutes in a day. `wallClockNow()` wraps to 0 at 24:00, so anything that measures elapsed
+ * time across two of its readings has to know this to unwrap the rollover. */
+export const MINUTES_PER_DAY = 24 * 60;
+
 export function wallClockNow(): Instant {
   const date = new Date();
   return date.getHours() * 60 + date.getMinutes();
+}
+
+/**
+ * Minutes elapsed between two `wallClockNow()` readings — a mount instant and a later
+ * reading, both already resolved by the caller. `wallClockNow()` wraps to 0 at 24:00: a
+ * session mounted late in the day and read again after midnight sees `current < mountedAt`
+ * even though real time moved forward, so a plain subtraction goes negative and, clamped at
+ * zero, makes the clock look frozen. A negative difference here can only mean the day rolled
+ * over exactly once, so add one day's worth of minutes back in. This function never reads the
+ * wall clock itself — both instants are supplied by the caller.
+ */
+export function elapsedMinutesSinceMount(mountedAt: Instant, current: Instant): number {
+  const raw = current - mountedAt;
+  return raw < 0 ? raw + MINUTES_PER_DAY : raw;
 }
 
 export function minutesUntil(due: Instant, now: Instant) {

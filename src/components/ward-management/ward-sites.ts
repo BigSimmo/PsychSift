@@ -507,6 +507,15 @@ export function unitById(id: string): Unit | undefined {
   return allUnits().find((unit) => unit.id === id);
 }
 
+/**
+ * Task 9: added alongside `unitById` (per the Task 9-12 preflight's "no `edById`" note) rather
+ * than leaving every future caller to write its own inline `.find()`. Returns `undefined` for an
+ * unknown id — never falls back to a different department.
+ */
+export function edById(id: string): EmergencyDepartment | undefined {
+  return allEmergencyDepartments().find((ed) => ed.id === id);
+}
+
 /** Returns `undefined` for an unknown code. Never falls back to a different site. */
 export function siteByCode(code: string): Site | undefined {
   return wardSites.find((site) => site.code === code);

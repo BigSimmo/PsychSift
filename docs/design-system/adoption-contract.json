@@ -10,6 +10,10 @@
     "documents-source-legacy-redirect": {
       "route": "src/app/(search-app)/documents/source/page.tsx",
       "kind": "next-redirect-only"
+    },
+    "ward-management-constellation-legacy-redirect": {
+      "route": "src/app/ward-management/constellation/page.tsx",
+      "kind": "next-redirect-only"
     }
   },
   "proofEvidencePolicy": {
@@ -428,6 +432,43 @@
       "documentedDisposition": "Legacy source URLs validate the document id and redirect to the canonical /documents/[id] route; they do not own a visual surface."
     },
     {
+      "id": "ward-management-constellation-legacy-redirect",
+      "disposition": "legacy-redirect",
+      "routes": ["src/app/ward-management/constellation/page.tsx"],
+      "routeRoots": false,
+      "roots": [],
+      "permittedComponentFamilies": [],
+      "expectedShellState": "v2",
+      "proof": {
+        "dark": {
+          "status": "not-applicable",
+          "evidence": []
+        },
+        "forcedColours": {
+          "status": "not-applicable",
+          "evidence": []
+        },
+        "compact320": {
+          "status": "not-applicable",
+          "evidence": []
+        },
+        "print": {
+          "status": "not-applicable",
+          "evidence": []
+        },
+        "browser": {
+          "status": "not-applicable",
+          "evidence": []
+        }
+      },
+      "baseline": {
+        "status": "not-applicable",
+        "files": []
+      },
+      "sanctionedSpecialPatterns": [],
+      "documentedDisposition": "Retired Phase 1 constellation URLs redirect to /ward-management/network; they do not own a visual surface."
+    },
+    {
       "id": "favourites",
       "disposition": "owned",
       "routes": ["src/app/(search-app)/favourites/page.tsx"],
@@ -504,27 +545,68 @@
       "sanctionedSpecialPatterns": ["ToolsSearchResultsPage", "CalculatorsSearchPage"]
     },
     {
+      "id": "caring-contacts-workspace",
+      "disposition": "owned",
+      "routes": ["src/app/caring-contacts/page.tsx"],
+      "routeRoots": true,
+      "roots": [],
+      "permittedComponentFamilies": [],
+      "expectedShellState": "v2",
+      "proof": {
+        "dark": {
+          "status": "passed",
+          "evidence": ["tests/ui-caring-contacts-workspace.spec.ts"]
+        },
+        "forcedColours": {
+          "status": "passed",
+          "evidence": ["tests/ui-caring-contacts-workspace.spec.ts"]
+        },
+        "compact320": {
+          "status": "passed",
+          "evidence": ["tests/ui-caring-contacts-workspace.spec.ts"]
+        },
+        "print": {
+          "status": "passed",
+          "evidence": ["tests/ui-caring-contacts-workspace.spec.ts"]
+        },
+        "browser": {
+          "status": "passed",
+          "evidence": ["tests/ui-caring-contacts-workspace.spec.ts"]
+        }
+      },
+      "baseline": {
+        "status": "not-committed",
+        "files": []
+      },
+      "sanctionedSpecialPatterns": ["CaringContactsShell"]
+    },
+    {
       "id": "ward-management",
       "disposition": "owned",
       "routes": [
         "src/app/ward-management/page.tsx",
         "src/app/ward-management/capacity/page.tsx",
-        "src/app/ward-management/constellation/page.tsx",
+        "src/app/ward-management/ed/[edId]/page.tsx",
         "src/app/ward-management/exceptions/page.tsx",
         "src/app/ward-management/governance/page.tsx",
         "src/app/ward-management/movements/page.tsx",
         "src/app/ward-management/network/page.tsx",
         "src/app/ward-management/patients/[patientId]/page.tsx",
         "src/app/ward-management/queue/page.tsx",
-        "src/app/ward-management/transport/page.tsx"
+        "src/app/ward-management/transport/page.tsx",
+        "src/app/ward-management/transport/officer/page.tsx",
+        "src/app/ward-management/ward/[unitId]/page.tsx"
       ],
       "routeRoots": true,
       "roots": [
         "src/components/ward-management/coordinator/coordinator-screen.tsx",
+        "src/components/ward-management/ed/ed-screen.tsx",
+        "src/components/ward-management/officer/officer-screen.tsx",
         "src/components/ward-management/ward-management-console.tsx",
         "src/components/ward-management/ward-management-modes.tsx",
         "src/components/ward-management/ward-management-navigation.tsx",
-        "src/components/ward-management/ward-management-network.tsx"
+        "src/components/ward-management/ward-management-network.tsx",
+        "src/components/ward-management/ward/ward-screen.tsx"
       ],
       "permittedComponentFamilies": ["controls", "feedback", "layout"],
       "expectedShellState": "v2",
@@ -556,14 +638,13 @@
       },
       "sanctionedSpecialPatterns": [
         "CoordinatorScreen",
-        "WardManagementConsole",
         "PatientMovementWorkspace",
         "WardModeWorkspace",
         "WardModeNavigation",
         "ClinicalRail",
         "WardNetworkWorkspace"
       ],
-      "documentedDisposition": "Ward Flow is a synthetic operational coordination surface with a command home, full-screen constellation, role-aware queue-first phone fallback, linked operational workspaces, and an explainable human-confirmed destination workflow."
+      "documentedDisposition": "Ward Flow is a synthetic operational coordination surface with a coordinator command home, statewide flow diagram and explainable shortlist, rail-based mode navigation, role-aware queue-first phone fallback, linked operational workspaces, and an explainable human-confirmed destination workflow."
     },
     {
       "id": "privacy-safety-and-reference",

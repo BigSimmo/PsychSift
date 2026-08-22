@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "0807d756-ecd5-4988-b4e3-9c5ec5e41ee3",
+  "createdOn": "2026-08-22",
+  "action": "cancel",
+  "payload": {
+    "requestId": "95eba5d7-8f01-46e5-8342-3e01ddf6d3a1",
+    "reason": "Fixed on branch claude/suicide-contact-mockup-b5aaa0 before this request was ever reconciled, so there is no open row to close. The request's premise was wrong: it says THIS IS A SHARED DESIGN-SYSTEM FIX, NOT A WORKSPACE ONE, but sheet.tsx already exposes the hook its own controller looks for. src/components/caring-contacts/workspace/overlays/overlay-host.tsx now stamps data-sheet-autofocus=\"true\" on the overlay action control when the overlay is not dismissible and is not the status banner, so startSheetOpenFocus resolves the recovery action instead of falling through to document.body. No change to sheet.tsx, so no blast radius across other Sheet consumers. Pinned by \"puts opening focus on the recovery action of an overlay that cannot be dismissed\" in tests/caring-contacts-overlay-host.dom.test.tsx, which was watched failing on document.body first."
+  }
+}

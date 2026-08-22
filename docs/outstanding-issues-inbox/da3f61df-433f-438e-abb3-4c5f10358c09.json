@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "id": "da3f61df-433f-438e-abb3-4c5f10358c09",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Caring Contacts database and row-level-security suite runs in no automated gate",
+    "detail": "The caring-contacts-db Vitest project is conditional on CARING_CONTACTS_DATABASE_URL, and the two database files are excluded from the default project unconditionally, so roughly 1,330 lines of row-level-security and cross-team-isolation proof are collected by no automated gate. grep over .github/ returns no reference to the suite. NOT unexecuted: it was run repeatedly during Phase 2A, most recently at 174 passed, so the evidence exists for that branch - what is missing is automation, so nothing would catch a future regression. An absent Vitest project prints nothing at all, which is worse than a skip. The fix is a CI job with a postgres:17 service container running npm run caring-contacts:db:test, plus a static contract test asserting the script is reachable from a workflow. Deliberately not done inside the Phase 2A final fix wave: wiring it into an offline verify chain would break every offline run because the suite hard-fails without a container, and a dedicated alias would be a check that cannot fail. Needs a repository-wide CI change with its own review.",
+    "issueUlid": "01M0MD493AB0530FS8NG22EMH3"
+  }
+}

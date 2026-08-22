@@ -39,7 +39,10 @@
   height: 100dvh;
   min-height: 44rem;
   grid-template-columns: 4.5rem minmax(0, 1fr);
-  grid-template-rows: 4rem auto minmax(0, 1fr);
+  /* Task 9 Ruling 4: the nav row this used to reserve for the horizontal `WardModeNavigation`
+     strip is gone — those eight links now live inside `ClinicalRail` (grid-column 1), so
+     `.modeContent` is the second and last row. */
+  grid-template-rows: 4rem minmax(0, 1fr);
   overflow: hidden;
   background: var(--ward-canvas);
   color: var(--ward-text);
@@ -133,14 +136,6 @@
   outline: 0;
 }
 
-/* The native ring is suppressed above, so the visible shell owns focus. Scoped
-   to the wrapper because the phone layout sets the select to opacity:0 - a ring
-   on the control itself would be invisible there. */
-.roleSelect:has(select:focus-visible) {
-  outline: 0.125rem solid var(--focus);
-  outline-offset: 0.125rem;
-}
-
 .headerMeta {
   display: flex;
   align-items: center;
@@ -202,64 +197,30 @@
   color: var(--ward-muted);
 }
 
+/*
+ * Task 9 Ruling 4: `WardModeNavigation` now renders inside `ClinicalRail` (ward-management.module.css's
+ * flex-column `.clinicalRail`), not as a `.modeShell` grid child — this is a flex item within that
+ * column, not a positioned grid row. `flex: 1 1 0` + `min-height: 0` + `overflow-y: auto` means the
+ * eight mode links get their own scrollable region between the pinned app-switcher icons above and
+ * the pinned favourites/settings/avatar block below, so a short viewport scrolls this segment instead
+ * of squeezing or clipping the pinned ones. Individual links reuse `shellStyles.railLink` /
+ * `railLinkActive` directly (same 3rem icon-only tap targets as the app switcher) rather than the
+ * former `.modeLink`/`.modeLinkActive`/`.modeLabel`/`.modeShortLabel` rules, which this replaces.
+ */
 .modeNavigation {
   display: flex;
-  min-width: 0;
-  min-height: var(--spacing-tap);
-  align-items: stretch;
-  gap: var(--ward-space-2);
-  overflow-x: auto;
-  border-bottom: 0.0625rem solid var(--ward-border);
-  background: var(--ward-chrome);
-  padding: var(--ward-space-4) var(--ward-space-16);
-  scrollbar-width: thin;
-}
-
-.modeShell > .modeNavigation {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.modeLink,
-.modeLinkActive {
-  display: inline-flex;
-  min-width: max-content;
+  flex: 1 1 0;
+  min-height: 0;
+  flex-direction: column;
   align-items: center;
-  gap: var(--ward-space-7);
-  border: 0.0625rem solid transparent;
-  border-radius: var(--radius-md);
-  padding: 0 var(--ward-space-12);
-  color: var(--ward-muted);
-  font-size: var(--text-2xs);
-  font-weight: 650;
-}
-
-.modeLink:hover {
-  border-color: var(--ward-border);
-  background: var(--ward-canvas);
-  color: var(--ward-heading);
-}
-
-.modeLinkActive {
-  border-color: var(--ward-blue-border);
-  background: var(--ward-blue-soft);
-  color: var(--ward-blue);
-  box-shadow: var(--shadow-inset);
-}
-
-.modeLink svg,
-.modeLinkActive svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.modeShortLabel {
-  display: none;
+  gap: var(--ward-space-6);
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .modeContent {
   grid-column: 2;
-  grid-row: 3;
+  grid-row: 2;
   display: grid;
   min-width: 0;
   min-height: 0;
@@ -291,24 +252,14 @@
   color: var(--ward-muted);
 }
 
-.pageGrid,
-.constellationGrid {
+.pageGrid {
   display: grid;
   min-height: 100%;
   gap: var(--ward-space-10);
-}
-
-.pageGrid {
   grid-template-columns: minmax(34rem, 1.55fr) minmax(19rem, 0.75fr);
 }
 
-.constellationGrid {
-  grid-template-columns: 14rem minmax(38rem, 1fr) 22rem;
-}
-
 .panel,
-.panelInset,
-.regionCluster,
 .summaryCard,
 .stageColumn,
 .exceptionRow,
@@ -354,13 +305,6 @@
   font-size: var(--text-2xs);
 }
 
-.compactQueue {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  overflow: hidden;
-}
-
 .queueList,
 .dataList,
 .exceptionList,
@@ -369,29 +313,6 @@
   min-height: 0;
   gap: var(--ward-space-6);
   overflow: auto;
-}
-
-.queueRow,
-.queueRowSelected {
-  display: grid;
-  min-width: 0;
-  gap: var(--ward-space-6);
-  border: 0.0625rem solid var(--ward-border);
-  border-radius: var(--radius-md);
-  padding: var(--ward-space-10);
-  background: var(--ward-canvas);
-  color: var(--ward-text);
-  text-align: left;
-}
-
-.queueRow:hover {
-  background: var(--ward-subtle);
-}
-
-.queueRowSelected {
-  border-color: var(--ward-blue-border);
-  background: var(--ward-blue-soft);
-  box-shadow: var(--shadow-inset);
 }
 
 .rowTop strong {
@@ -410,156 +331,6 @@
   color: var(--ward-success);
   font-size: var(--text-xs);
   font-weight: 750;
-}
-
-.networkCanvas {
-  display: grid;
-  min-width: 0;
-  min-height: 38rem;
-  grid-template-columns: repeat(2, minmax(15rem, 1fr));
-  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: var(--ward-space-10);
-}
-
-.regionCluster {
-  min-width: 0;
-  padding: var(--ward-space-12);
-}
-
-.regionCluster:nth-of-type(3) {
-  grid-column: 1;
-  grid-row: 3;
-}
-
-.regionCluster:nth-of-type(4) {
-  grid-column: 2;
-  grid-row: 3;
-}
-
-.regionCluster header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ward-space-8);
-  margin-bottom: 0.5rem;
-}
-
-.regionTitle {
-  display: flex;
-  align-items: center;
-  gap: var(--ward-space-8);
-  color: var(--ward-heading);
-}
-
-.regionTitle svg {
-  width: 1rem;
-  height: 1rem;
-  color: var(--ward-blue);
-}
-
-.regionCluster header small {
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-}
-
-.hospitalChipGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ward-space-6);
-}
-
-.hospitalChip,
-.hospitalChipSelected {
-  display: grid;
-  min-width: 0;
-  gap: var(--ward-space-4);
-  border: 0.0625rem solid var(--ward-border);
-  border-radius: var(--radius-md);
-  padding: var(--ward-space-8);
-  background: var(--ward-canvas);
-  color: var(--ward-text);
-  text-align: left;
-}
-
-.hospitalChipSelected {
-  border-color: var(--ward-blue);
-  background: var(--ward-blue-soft);
-  box-shadow: var(--shadow-inset);
-}
-
-.hospitalChip strong,
-.hospitalChipSelected strong {
-  overflow: hidden;
-  color: var(--ward-heading);
-  font-size: var(--text-2xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hospitalState {
-  display: flex;
-  align-items: center;
-  gap: var(--ward-space-4);
-  color: var(--ward-muted);
-  font-size: var(--text-3xs);
-}
-
-.hospitalState b {
-  color: var(--ward-success);
-}
-
-.flowHub {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  display: grid;
-  min-height: 7.25rem;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: var(--ward-space-12);
-  border: 0.0625rem solid var(--ward-blue-border);
-  border-radius: var(--radius-lg);
-  background: var(--ward-blue-soft);
-  padding: var(--ward-space-12) var(--ward-space-16);
-  color: var(--ward-blue);
-}
-
-.flowHub > div:nth-child(2) {
-  min-width: 11rem;
-  text-align: center;
-}
-
-.flowHub strong,
-.flowHub span {
-  display: block;
-}
-
-.flowHub strong {
-  color: var(--ward-heading);
-  font-size: var(--text-sm);
-}
-
-.flowHub span {
-  margin-top: 0.25rem;
-  font-size: var(--text-3xs);
-}
-
-.routeSignal {
-  display: flex;
-  align-items: center;
-  gap: var(--ward-space-6);
-  color: var(--ward-blue);
-  font-size: var(--text-3xs);
-  font-weight: 700;
-}
-
-.routeSignal:last-child {
-  justify-content: flex-end;
-}
-
-.routeSignal svg {
-  width: 1rem;
-  height: 1rem;
-  flex: 0 0 auto;
 }
 
 .decisionPanel {
@@ -762,7 +533,7 @@
 
 .bedStates span {
   display: grid;
-  min-height: 2.75rem;
+  min-height: var(--spacing-tap);
   place-items: center;
   border: 0.0625rem solid var(--ward-border);
   border-radius: var(--radius-sm);
@@ -932,15 +703,6 @@
   .headerMeta > span:not(.prototypeBadge) {
     display: none;
   }
-
-  .constellationGrid {
-    grid-template-columns: 12rem minmax(32rem, 1fr) 19rem;
-  }
-
-  .modeLink,
-  .modeLinkActive {
-    padding-inline: var(--ward-space-10);
-  }
 }
 
 @media (max-width: 62rem) {
@@ -949,7 +711,6 @@
   }
 
   .modeHeader,
-  .modeShell > .modeNavigation,
   .modeContent {
     display: block;
     grid-column: 2;
@@ -973,16 +734,10 @@
     display: none;
   }
 
-  .constellationGrid,
   .pageGrid {
     grid-template-columns: 1fr;
   }
 
-  .constellationGrid {
-    min-width: 48rem;
-  }
-
-  .compactQueue,
   .decisionPanel {
     min-height: 24rem;
   }
@@ -992,18 +747,13 @@
   }
 }
 
+/*
+ * Task 9 Ruling 4: `ClinicalRail` (and the eight mode links it now carries) stays visible and
+ * reachable down to 320px, so `.modeShell` keeps its two-column grid at every width rather than
+ * collapsing to one column and hiding the rail the way this used to. Only the header and content
+ * get the phone-specific sticky/compact treatment below.
+ */
 @media (max-width: 40rem) {
-  .modeShell {
-    display: block;
-    min-height: 100dvh;
-    height: auto;
-    overflow: visible;
-  }
-
-  .modeShell > aside {
-    display: none;
-  }
-
   .modeHeader {
     position: sticky;
     top: 0;
@@ -1033,54 +783,19 @@
     opacity: 0;
   }
 
-  .modeShell > .modeNavigation {
-    position: sticky;
-    top: 4.25rem;
-    z-index: calc(var(--ward-z-phone) - 1);
-    min-height: 3.25rem;
-    padding-inline: var(--ward-space-8);
-  }
-
-  .modeLink,
-  .modeLinkActive {
-    min-width: 4.25rem;
-    min-height: var(--spacing-tap);
-    justify-content: center;
-    padding: 0 var(--ward-space-8);
-  }
-
-  .modeLabel {
-    display: none;
-  }
-
-  .modeShortLabel {
-    display: inline;
-  }
-
   .modeContent {
-    min-height: calc(100dvh - 7.5rem);
-    overflow: visible;
+    min-height: calc(100dvh - 4.25rem);
+    overflow: auto;
     padding: var(--ward-space-8);
   }
 
-  .pageGrid,
-  .constellationGrid {
+  .pageGrid {
     display: block;
     min-width: 0;
   }
 
-  .pageGrid > *,
-  .constellationGrid > * {
+  .pageGrid > * {
     margin-bottom: 0.5rem;
-  }
-
-  .networkCanvas {
-    min-width: 42rem;
-    min-height: 36rem;
-  }
-
-  .panel:has(.networkCanvas) {
-    overflow-x: auto;
   }
 
   .capacitySummary {
@@ -1123,9 +838,6 @@
 }
 
 @media (forced-colors: active) {
-  .modeLinkActive,
-  .queueRowSelected,
-  .hospitalChipSelected,
   .candidateRowSelected,
   .primaryButton {
     border: 0.125rem solid Highlight;
@@ -1283,8 +995,7 @@
   color: var(--ward-success);
 }
 
-/* See serviceCard: selection outline yields to the focus ring. */
-.networkNode[aria-pressed="true"]:not(:focus-visible) {
+.networkNode[aria-pressed="true"] {
   box-shadow: var(--e2);
   outline: 0.1875rem solid var(--ward-blue);
   outline-offset: 0.125rem;

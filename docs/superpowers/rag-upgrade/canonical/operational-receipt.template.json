@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "programmeId": "rag-answer-quality-and-repository-coverage-v1",
+  "status": "draft",
+  "offlineProgrammeCommit": "0000000000000000000000000000000000000000",
+  "finalLocalPhase": "L10",
+  "finalLocalReceiptCommit": "0000000000000000000000000000000000000000",
+  "phaseStartSha": "0000000000000000000000000000000000000000",
+  "phaseEndSha": "0000000000000000000000000000000000000000",
+  "finalReviewRouting": {
+    "agentId": "local-final-reviewer",
+    "runtimeHost": "codex-desktop",
+    "provider": "codex",
+    "plannedModel": "gpt-5.6-sol",
+    "actualModel": "gpt-5.6-sol",
+    "plannedReasoning": "xhigh",
+    "actualReasoning": "xhigh",
+    "providerMappingUsed": false,
+    "fallbackUsed": false,
+    "escalationUsed": false,
+    "capabilityClass": "frontier-high",
+    "routeEvidence": {
+      "source": "codex-dispatch-metadata",
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/OPERATIONAL/final-reviewer-route.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "review": {
+    "reviewerAgentId": "local-final-reviewer",
+    "baseSha": "0000000000000000000000000000000000000000",
+    "headSha": "0000000000000000000000000000000000000000",
+    "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/OPERATIONAL/full-programme.diff",
+    "diffPackageSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/OPERATIONAL/final-review.md",
+    "reportSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "specVerdict": "PENDING",
+    "qualityVerdict": "PENDING"
+  },
+  "residualGates": [],
+  "acceptedAt": null
+}

@@ -1,6 +1,6 @@
 import { Clock } from "lucide-react";
 
-import type { Freshness } from "@/lib/developer-area/ledger-snapshot";
+import type { Freshness } from "@/lib/developer-area/freshness";
 
 /**
  * Returns `null` for a date the snapshot recorded but that cannot be parsed, so
@@ -17,8 +17,12 @@ function formatDate(iso: string): string | null {
 /**
  * Unconditional by design. There is no "fresh" short-circuit that could
  * suppress it — a page that can hide its own age is the `#338` defect.
+ *
+ * `label` names what the content date belongs to. It defaults to "Ledger" so
+ * every Phase 1 call site is unchanged; a page rendering a different snapshot
+ * must pass its own, or it will claim to be showing the task ledger.
  */
-export function FreshnessStamp({ freshness }: { freshness: Freshness }) {
+export function FreshnessStamp({ freshness, label = "Ledger" }: { freshness: Freshness; label?: string }) {
   const contentAt = freshness.contentAt === null ? null : formatDate(freshness.contentAt);
   const viewedAt = formatDate(freshness.viewedAt);
 
@@ -36,12 +40,14 @@ export function FreshnessStamp({ freshness }: { freshness: Freshness }) {
            * the moment the page was rendered, and this is the one surface whose
            * whole job is stating age unambiguously.
            */}
-          Ledger content as of {contentAt}
+          {label} content as of {contentAt}
           {viewedAt ? ` · viewed ${viewedAt}` : ""} · {freshness.ageHours} {freshness.ageHours === 1 ? "hour" : "hours"}{" "}
           old
         </span>
       ) : (
-        <span>Ledger revision unknown{viewedAt ? ` · viewed ${viewedAt}` : ""}</span>
+        <span>
+          {label} revision unknown{viewedAt ? ` · viewed ${viewedAt}` : ""}
+        </span>
       )}
     </p>
   );

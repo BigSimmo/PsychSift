@@ -4,32 +4,97 @@
   "phaseId": "P00",
   "executionPredecessor": null,
   "status": "draft",
-  "packageVariant": "local",
+  "packageVariant": "cloud",
   "packageHash": "0000000000000000000000000000000000000000000000000000000000000000",
-  "packageBaseSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
-  "packageHeadSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
-  "programmeImplementationBase": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "packageBaseSha": "f3d1a3cce2c943ad3083425ed9c7c46dbef23087",
+  "packageHeadSha": "f3d1a3cce2c943ad3083425ed9c7c46dbef23087",
+  "programmeImplementationBase": "f3d1a3cce2c943ad3083425ed9c7c46dbef23087",
   "branch": "codex/rag-upgrade-p00",
-  "modelRouting": {
+  "launchProfile": "high",
+  "xhighConfirmed": false,
+  "controllerRouting": {
+    "agentId": "controller-p00",
+    "runtimeHost": "codex-cloud",
     "provider": "codex",
-    "plannedImplementationModel": "gpt-5.6-terra",
-    "actualImplementationModel": "gpt-5.6-terra",
-    "implementationCapabilityClass": "workhorse-high",
-    "implementationReasoning": "high",
-    "plannedReviewModel": "gpt-5.6-sol",
-    "actualReviewModel": "gpt-5.6-sol",
-    "reviewCapabilityClass": "frontier-high",
-    "reviewReasoning": "high",
+    "plannedModel": "gpt-5.6-sol",
+    "actualModel": "gpt-5.6-sol",
+    "capabilityClass": "frontier-high",
+    "plannedReasoning": "high",
+    "actualReasoning": "high",
     "providerMappingUsed": false,
     "fallbackUsed": false,
-    "escalationReason": null
+    "escalationUsed": false,
+    "escalationReason": null,
+    "routeEvidence": {
+      "source": "codex-host-runtime-metadata",
+      "artifactPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/controller-route.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
   },
-  "phaseStartSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
-  "phaseEndSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "capabilityEvidence": [
+    {
+      "capability": "rag-cloud-sdd",
+      "resolvedPathOrTool": ".agents/skills/rag-cloud-sdd/SKILL.md",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "evidenceArtifactPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/capability-probe.json",
+      "evidenceArtifactSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "available",
+      "probeAgentId": null
+    },
+    {
+      "capability": "fresh-subagent-dispatch",
+      "resolvedPathOrTool": "host-subagent-dispatch-tool",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "evidenceArtifactPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/capability-probe.json",
+      "evidenceArtifactSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "available",
+      "probeAgentId": "probe-agent",
+      "probeRouting": {
+        "agentId": "probe-agent",
+        "runtimeHost": "codex-cloud",
+        "provider": "codex",
+        "plannedModel": "gpt-5.6-terra",
+        "actualModel": "gpt-5.6-terra",
+        "capabilityClass": "workhorse-high",
+        "plannedReasoning": "high",
+        "actualReasoning": "high",
+        "providerMappingUsed": false,
+        "fallbackUsed": false,
+        "escalationUsed": false,
+        "escalationReason": null,
+        "routeEvidence": {
+          "source": "codex-dispatch-metadata",
+          "artifactPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/probe-agent-route.json",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    },
+    {
+      "capability": "rag-task-brief",
+      "resolvedPathOrTool": "scripts/rag-task-brief.mjs",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "evidenceArtifactPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/capability-probe.json",
+      "evidenceArtifactSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "available",
+      "probeAgentId": null
+    },
+    {
+      "capability": "rag-phase-launch-check",
+      "resolvedPathOrTool": "scripts/rag-phase-launch-check.mjs",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "evidenceArtifactPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P00/capability-probe.json",
+      "evidenceArtifactSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "available",
+      "probeAgentId": null
+    }
+  ],
+  "phaseStartSha": "f3d1a3cce2c943ad3083425ed9c7c46dbef23087",
+  "phaseEndSha": "f3d1a3cce2c943ad3083425ed9c7c46dbef23087",
   "startedAt": "2026-08-22T00:00:00.000Z",
   "completedAt": null,
   "tasks": [],
   "phaseReviews": [],
+  "minorFindings": [],
   "residualGates": [],
   "acceptedAt": null
 }

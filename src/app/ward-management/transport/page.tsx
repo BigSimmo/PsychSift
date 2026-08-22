@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-import { WardModeWorkspace } from "@/components/ward-management/ward-management-modes";
+import { LiveTracker } from "@/components/ward-management/tracker/live-tracker";
 
 export const metadata: Metadata = {
-  title: "Transport - Ward Flow",
-  description: "Synthetic legal, document, booking and handover transport-readiness view.",
+  title: "Live tracker - Ward Flow",
+  description: "Synthetic coordinator's live tracker of every vehicle: which patient, which leg, how long since.",
 };
 
 export default function WardTransportPage() {
-  return <WardModeWorkspace mode="transport" />;
+  return <LiveTracker />;
 }

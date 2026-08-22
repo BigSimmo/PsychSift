@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clinical-kb.local/schemas/rag-upgrade-operational-receipt-v1.json",
+  "title": "RAG upgrade final operational acceptance receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "programmeId",
+    "status",
+    "offlineProgrammeCommit",
+    "finalLocalPhase",
+    "finalLocalReceiptCommit",
+    "phaseStartSha",
+    "phaseEndSha",
+    "finalReviewRouting",
+    "review",
+    "residualGates",
+    "acceptedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "programmeId": { "const": "rag-answer-quality-and-repository-coverage-v1" },
+    "status": { "enum": ["draft", "accepted"] },
+    "offlineProgrammeCommit": { "$ref": "#/$defs/gitSha" },
+    "finalLocalPhase": { "const": "L10" },
+    "finalLocalReceiptCommit": { "$ref": "#/$defs/gitSha" },
+    "phaseStartSha": { "$ref": "#/$defs/gitSha" },
+    "phaseEndSha": { "$ref": "#/$defs/gitSha" },
+    "finalReviewRouting": { "$ref": "#/$defs/agentRouting" },
+    "review": { "$ref": "#/$defs/review" },
+    "residualGates": { "type": "array", "maxItems": 0 },
+    "acceptedAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] }
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": { "const": "draft" },
+            "acceptedAt": { "type": "null" }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": { "const": "accepted" },
+            "acceptedAt": { "$ref": "#/$defs/timestamp" },
+            "review": {
+              "type": "object",
+              "properties": {
+                "specVerdict": { "const": "PASS" },
+                "qualityVerdict": { "const": "PASS" }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "agentId": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._:/-]+$" },
+    "artifactPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/OPERATIONAL/"
+    },
+    "routeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "path", "sha256"],
+      "properties": {
+        "source": { "enum": ["codex-host-runtime-metadata", "codex-dispatch-metadata"] },
+        "path": { "$ref": "#/$defs/artifactPath" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "agentRouting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agentId",
+        "runtimeHost",
+        "provider",
+        "plannedModel",
+        "actualModel",
+        "plannedReasoning",
+        "actualReasoning",
+        "providerMappingUsed",
+        "fallbackUsed",
+        "escalationUsed",
+        "capabilityClass",
+        "routeEvidence"
+      ],
+      "properties": {
+        "agentId": { "$ref": "#/$defs/agentId" },
+        "runtimeHost": { "const": "codex-desktop" },
+        "provider": { "const": "codex" },
+        "plannedModel": { "const": "gpt-5.6-sol" },
+        "actualModel": { "const": "gpt-5.6-sol" },
+        "plannedReasoning": { "const": "xhigh" },
+        "actualReasoning": { "const": "xhigh" },
+        "providerMappingUsed": { "const": false },
+        "fallbackUsed": { "const": false },
+        "escalationUsed": { "const": false },
+        "capabilityClass": { "const": "frontier-high" },
+        "routeEvidence": { "$ref": "#/$defs/routeEvidence" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewerAgentId",
+        "baseSha",
+        "headSha",
+        "diffPackagePath",
+        "diffPackageSha256",
+        "reportPath",
+        "reportSha256",
+        "specVerdict",
+        "qualityVerdict"
+      ],
+      "properties": {
+        "reviewerAgentId": { "$ref": "#/$defs/agentId" },
+        "baseSha": { "$ref": "#/$defs/gitSha" },
+        "headSha": { "$ref": "#/$defs/gitSha" },
+        "diffPackagePath": { "$ref": "#/$defs/artifactPath" },
+        "diffPackageSha256": { "$ref": "#/$defs/sha256" },
+        "reportPath": { "$ref": "#/$defs/artifactPath" },
+        "reportSha256": { "$ref": "#/$defs/sha256" },
+        "specVerdict": { "enum": ["PENDING", "PASS", "FAIL"] },
+        "qualityVerdict": { "enum": ["PENDING", "PASS", "FAIL"] }
+      }
+    }
+  }
+}

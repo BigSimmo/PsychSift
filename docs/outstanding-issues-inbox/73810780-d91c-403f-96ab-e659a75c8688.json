@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "73810780-d91c-403f-96ab-e659a75c8688",
+  "createdOn": "2026-08-18",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Caring Contacts hospital referral feed feasibility is unconfirmed and is the largest programme risk",
+    "detail": "Every screen, rule and table assumes a structured referral arrives from a WA hospital system and a structured outcome is written back. No document names an actual system; nobody has confirmed the feed is possible, who owns it, or what it costs. The build is insulated by a provider-neutral referral interface with a synthetic adapter, so this does not block development. docs/caring-contacts/referral-feasibility.md holds the twelve questions to ask, who to ask, and the manual-entry fallback if a structured feed is not achievable. Hazard H-44. One conversation with a WA Health clinical informatics lead is worth more than a month of code.",
+    "source": "Caring Contacts design session 2026-08-19; hazard log H-44",
+    "issueUlid": "01M0B6VK0YTDKW4WDTWF4T8VN1"
+  }
+}

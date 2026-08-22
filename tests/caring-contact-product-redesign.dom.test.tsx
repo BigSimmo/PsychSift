@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { CaringContactDesignSuite } from "@/components/caring-contacts/mockups";
-import { EXACT_PATIENT_VISIBLE_MESSAGE } from "@/components/caring-contacts/mockups/personalisation-screen";
+import {
+  EXACT_PATIENT_VISIBLE_MESSAGE,
+  PATIENT_VISIBLE_NO_REPLY_NOTICE,
+} from "@/components/caring-contacts/mockups/personalisation-screen";
 
 function desktopNavigation() {
   return screen.getByRole("navigation", { name: "Desktop workspace" });
@@ -71,7 +74,9 @@ describe("Caring Contact product redesign", () => {
     expect(screen.getByRole("heading", { name: "Review and activation", level: 1 })).toBeInTheDocument();
     const activationSchedule = screen.getByRole("list", { name: "Caring-contact schedule" });
     expect(within(activationSchedule).getAllByRole("listitem")).toHaveLength(10);
-    expect(screen.getAllByText(/Replies are not received, stored, analysed or monitored/i).length).toBeGreaterThan(0);
+    // Assert against the exported constant, not a literal: the wording is provisional pending clinical
+    // approval, and a hard-coded copy silently goes stale the next time it changes.
+    expect(screen.getAllByText(new RegExp(PATIENT_VISIBLE_NO_REPLY_NOTICE, "i")).length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: "Activate 10-contact plan" }));
     const activation = screen.getByRole("dialog", { name: "Final activation assurance" });

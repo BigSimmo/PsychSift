@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "7dc2d09a-b05c-4d10-b198-263af3c0f45e",
+  "createdOn": "2026-08-22",
+  "action": "update",
+  "payload": {
+    "id": "#RSD9EJ",
+    "source": "PR #2298 push attempts 2026-08-22/23 (squash-merged as f3d1a3cce2c943ad3083425ed9c7c46dbef23087; the feature branch and its commits 90b5de61f/7703188ef/55f3a47fa are NOT reachable from any ref -- view them on the PR page, not via git); scripts/guard-push.mjs; scripts/check-ledger-write-discipline.mjs; commit 9a382a050 (#2294) is the reconcile whose applied/ records triggered the false positive and IS on main. REPRODUCTION without those commits: branch from main, let a reconcile PR land on main, merge origin/main into the branch, then push -- guard-push refuses with 'applied/<uuid>.json was introduced without moving the identical pending request from the base' while 'node scripts/check-ledger-write-discipline.mjs --base origin/main --head HEAD' passes on the same tree. The divergence between those two results is the bug.",
+    "baseRowFingerprint": "b687cb212853e6b4c4df866ea79d625556cad416a0c3e406a2044f82691a4d4b"
+  }
+}

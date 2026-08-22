@@ -1,5 +1,7 @@
 import snapshotJson from "../../../data/outstanding-issues-snapshot.json";
 
+import { resolveFreshnessFrom, type Freshness } from "./freshness";
+
 export const LEDGER_SNAPSHOT_VERSION = "outstanding-issues-snapshot-v1";
 
 export type LedgerPriority = "P1" | "P2" | "P3";
@@ -53,13 +55,10 @@ export function loadLedgerSnapshot(): LedgerSnapshot {
   return snapshot;
 }
 
-export type Freshness = { contentAt: string | null; viewedAt: string; ageHours: number | null };
+export type { Freshness };
 
 export function resolveFreshness(snapshot: LedgerSnapshot, now: Date): Freshness {
-  const contentAt = snapshot.ledger_revision?.committed_at ?? null;
-  const viewedAt = now.toISOString();
-  const ageHours = contentAt ? Math.round((now.getTime() - new Date(contentAt).getTime()) / 3_600_000) : null;
-  return { contentAt, viewedAt, ageHours };
+  return resolveFreshnessFrom(snapshot.ledger_revision?.committed_at ?? null, now);
 }
 
 export function openItemsByPriority(snapshot: LedgerSnapshot): Record<LedgerPriority, LedgerOpenItem[]> {

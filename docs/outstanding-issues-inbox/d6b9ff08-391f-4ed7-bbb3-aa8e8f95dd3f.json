@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "d6b9ff08-391f-4ed7-bbb3-aa8e8f95dd3f",
+  "createdOn": "2026-08-22",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "rec",
+    "summary": "Caring Contacts: the desktop session gate renders as a 1392x170 letterbox, not a gate",
+    "detail": "Owner decision surfaced by the Task 19 browser proof and the atlas comparison. At 1440 the session-expiry overlay measures 1392x170: full bleed but only 170px tall, floating mid-screen. The behaviour is correct and proved - it survives Escape, offers only its recovery action, renders no close control and is a modal dialog - but the shape reads as a notification bar rather than as something blocking work, which is the opposite of what a session gate is for. The committed mockup atlas drew it as a centred 512x382 dialog (docs/caring-contacts/atlas/desktop-overlay-session-expiry.png). The current shape follows from two things Task 19 could not change: the frozen interaction matrix gives session-expiry the desktop modality session-gate rather than dialog, and Task 18's one renderer maps session-gate onto the shared Sheet with fullscreen mobile placement, which above lg resolves to an auto-height panel with sm:max-w-none. So the decision is between amending the frozen matrix row (docs/caring-contacts/interaction-matrix.md, which then needs the definitions table and its row-for-row test to follow) and giving the session-gate modality its own geometry in the shared Sheet. Task 19 asserts only that the gate is wider than a dialog may ever be, so either resolution keeps that assertion true. Recorded as a design-record question, not a regression.",
+    "source": "docs/caring-contacts/phase-2a-visual-differences.md (D5); docs/caring-contacts/phase-2a-sdd-archive/task-19-report.md (Concerns 1)",
+    "issueUlid": "01M0M6T2V0SRZ6AKV508THBVJE"
+  }
+}

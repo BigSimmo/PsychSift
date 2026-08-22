@@ -5,6 +5,7 @@ import {
   ClipboardList,
   FileCheck2,
   FileText,
+  HeartHandshake,
   Pill,
   Search,
   Star,
@@ -125,6 +126,18 @@ const fixtureExtras: ToolFixtureExtras[] = [
     lastUsed: "Today, 9:20 AM",
     primaryAction: "Open",
     secondary: "Rating scales, severity bands, bedside scoring",
+  },
+  {
+    // Identity comes from the shared catalogue; this entry exists so the mockup grid and
+    // `route-reachability.test.ts` (which reads the exported `tools` array as a nav-builder
+    // source) both see the workspace's front door.
+    id: "caring-contacts",
+    icon: HeartHandshake,
+    area: "coordination",
+    status: "ready",
+    lastUsed: "Today, 7:55 AM",
+    primaryAction: "Open",
+    secondary: "Synthetic workspace, invented patients, nothing sent",
   },
   {
     id: "favourites",

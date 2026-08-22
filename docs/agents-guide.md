@@ -46,7 +46,7 @@ below defers to it, so rules live in one place and cannot drift.
 | **Cursor**                | Editor skills + project MCP (Supabase, Context7, …)        | `.cursor/` (skills, `mcp.json`)                                                                                                                            |
 | **Railway MCP**           | Desktop/CLI template; hosted app is separate               | Root `.mcp.json` / `.codex/config.toml` use `https://mcp.railway.com` with OAuth; hosted ChatGPT/Codex requires a workspace-installed app                  |
 | **CodeRabbit**            | Advisory PR review (never blocking)                        | `.coderabbit.yaml` (`commit_status: false`)                                                                                                                |
-| **`.agents/`**            | Home-grown single-word skill catalogue                     | `.agents/skills/catalog.json`; list with `npm run skills`                                                                                                  |
+| **`.agents/`**            | Home-grown skill catalogue                                 | `.agents/skills/catalog.json`; list with `npm run skills`                                                                                                  |
 
 Rule of thumb: change agent behaviour in `AGENTS.md`, then let each system inherit it.
 Do not add a new AI system or grow the skill count without retiring something — the
