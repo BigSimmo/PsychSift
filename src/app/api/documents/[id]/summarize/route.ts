@@ -5,7 +5,11 @@ import { demoSummary, getDemoDocument } from "@/lib/demo-data";
 import { isDemoMode } from "@/lib/env";
 import { documentSummaryQuestion } from "@/lib/answer-contract";
 import { summarizeDocument } from "@/lib/rag/rag";
-import { buildGovernedAnswerClientResponse, buildGovernedDemoAnswerClientResponse } from "@/lib/answer-response";
+import {
+  buildGovernedAnswerClientResponse,
+  buildGovernedDemoAnswerClientResponse,
+  governedAnswerForTelemetry,
+} from "@/lib/answer-response";
 import { logAnswerDiagnostics } from "@/lib/answer-telemetry";
 import { answerFeedbackMetadata } from "@/lib/answer-feedback-token";
 import { jsonError } from "@/lib/http";
@@ -45,7 +49,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const interactionId = randomUUID();
     const observationContext = { interactionId, rolloutMode: "legacy" as const };
     setAgentConversationId(interactionId);
-    const answer = await summarizeDocument(id, user.id, { signal: request.signal, observationContext });
+    const answer = await summarizeDocument(id, user.id, {
+      signal: request.signal,
+      observationContext,
+      finalizeTelemetryAnswer: governedAnswerForTelemetry,
+    });
     const governedResponse = buildGovernedAnswerClientResponse(answer);
     logAnswerDiagnostics({
       supabase,

@@ -19,6 +19,7 @@ vi.mock("@/lib/answer-response", () => ({
   answerDegradedModeSignal: () => ({ active: false }),
   buildGovernedAnswerClientResponse: (answer: unknown) => ({ payload: answer, telemetryAnswer: answer }),
   buildGovernedDemoAnswerClientResponse: vi.fn(),
+  governedAnswerForTelemetry: (answer: unknown) => answer,
 }));
 vi.mock("@/lib/search-scope", async (importOriginal) => ({
   ...(await importOriginal()),

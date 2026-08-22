@@ -166,9 +166,11 @@ import {
   ragSummaryPromptVersion,
 } from "@/lib/rag/rag-versioning";
 import {
+  finalRagQueryFields,
   logRagQuery,
   logRagQueryOutcome,
   logRagQueryOutcomeForAnswerArgs,
+  type RagQueryTelemetryFinalizer,
   type RagQueryInsert,
 } from "@/lib/rag/rag-query-telemetry";
 import { withRagProgrammeDiagnostics } from "@/lib/rag/rag-programme-telemetry";
@@ -518,6 +520,7 @@ export type AnswerProgressEvent = {
   verifiedUnit?: VerifiedUnit;
 };
 type AnswerQuestionWithScopeArgs = SearchChunksArgs & {
+  finalizeTelemetryAnswer?: RagQueryTelemetryFinalizer;
   logQuery?: boolean;
   onProgress?: (event: AnswerProgressEvent) => void | Promise<void>;
   observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext;
@@ -2897,26 +2900,24 @@ async function answerQuestionWithScopeUncoalesced(
     );
 
     const finalizedAnswer = withRagProgrammeDiagnostics(finalizeAnswer(answer), results);
+    const telemetry = finalRagQueryFields(finalizedAnswer, args.finalizeTelemetryAnswer, answerInputResults);
+    const telemetryAnswer = telemetry.answer;
 
     if (args.logQuery !== false)
       await logRagQuery({
         owner_id: args.ownerId ?? null,
         query: args.query,
-        answer: finalizedAnswer.answer,
-        source_chunk_ids: answerInputResults.map((result) => result.id),
+        answer: telemetryAnswer.answer,
+        source_chunk_ids: telemetry.sourceChunkIds,
         model: null,
         metadata: {
-          ...answerProgrammeTelemetryMetadata(args.observationContext, finalizedAnswer),
+          ...answerProgrammeTelemetryMetadata(args.observationContext, telemetryAnswer),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
-          grounded: finalizedAnswer.grounded,
-          confidence: finalizedAnswer.confidence,
-          routing_mode: route.mode,
-          routing_reason: route.reason,
+          ...telemetry.outcomeMetadata,
           query_class: queryClass,
-          fallback_reason: fallbackReasonFromRouting(route.reason),
-          degraded: finalizedAnswer.degradedMode?.active ?? false,
-          provider_generation_degraded: isProviderGenerationDegraded(finalizedAnswer.routingReason),
+          degraded: telemetryAnswer.degradedMode?.active ?? false,
+          provider_generation_degraded: isProviderGenerationDegraded(telemetryAnswer.routingReason),
           model_used: null,
           retrieved_candidate_count: results.length,
           ...smartApiLogMetadata(smartApiPlan),
@@ -3097,25 +3098,23 @@ async function answerQuestionWithScopeUncoalesced(
     }
 
     finalizedAnswer = withRagProgrammeDiagnostics(finalizedAnswer, results);
+    const telemetry = finalRagQueryFields(finalizedAnswer, args.finalizeTelemetryAnswer, answerInputResults);
+    const telemetryAnswer = telemetry.answer;
     if (args.logQuery !== false)
       await logRagQuery({
         owner_id: args.ownerId ?? null,
         query: args.query,
-        answer: finalizedAnswer.answer,
-        source_chunk_ids: answerInputResults.map((result) => result.id),
+        answer: telemetryAnswer.answer,
+        source_chunk_ids: telemetry.sourceChunkIds,
         model: null,
         metadata: {
-          ...answerProgrammeTelemetryMetadata(args.observationContext, finalizedAnswer),
+          ...answerProgrammeTelemetryMetadata(args.observationContext, telemetryAnswer),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
-          grounded: finalizedAnswer.grounded,
-          confidence: finalizedAnswer.confidence,
-          routing_mode: finalizedAnswer.routingMode,
-          routing_reason: finalizedAnswer.routingReason,
+          ...telemetry.outcomeMetadata,
           query_class: queryClass,
-          fallback_reason: fallbackReasonFromRouting(finalizedAnswer.routingReason),
-          degraded: finalizedAnswer.degradedMode?.active ?? false,
-          provider_generation_degraded: isProviderGenerationDegraded(finalizedAnswer.routingReason),
+          degraded: telemetryAnswer.degradedMode?.active ?? false,
+          provider_generation_degraded: isProviderGenerationDegraded(telemetryAnswer.routingReason),
           model_used: null,
           retrieved_candidate_count: results.length,
           ...smartApiLogMetadata(extractiveSmartApiPlan),
@@ -3123,7 +3122,7 @@ async function answerQuestionWithScopeUncoalesced(
           ...memoryLogMetadata,
           ...scoreLogMetadata,
           ...searchTelemetryDecisionMetadata(),
-          cited_chunk_count: finalizedAnswer.citations.length,
+          cited_chunk_count: telemetryAnswer.citations.length,
           quote_count: finalizedAnswer.quoteCards?.length ?? 0,
           visual_evidence_count: finalizedAnswer.visualEvidence?.length ?? 0,
           related_document_count: relatedDocuments.length,
@@ -3823,25 +3822,23 @@ ${qualityRetryInstruction}`
       );
     }
 
+    const telemetry = finalRagQueryFields(answer, args.finalizeTelemetryAnswer, answerInputResults, routingReason);
+    const telemetryAnswer = telemetry.answer;
     if (args.logQuery !== false)
       await logRagQuery({
         owner_id: args.ownerId ?? null,
         query: args.query,
-        answer: answer.answer,
-        source_chunk_ids: answerInputResults.map((result) => result.id),
+        answer: telemetryAnswer.answer,
+        source_chunk_ids: telemetry.sourceChunkIds,
         model: modelUsed,
         metadata: {
-          ...answerProgrammeTelemetryMetadata(args.observationContext, answer),
+          ...answerProgrammeTelemetryMetadata(args.observationContext, telemetryAnswer),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
-          grounded: answer.grounded,
-          confidence: answer.confidence,
-          routing_mode: answer.routingMode,
-          routing_reason: routingReason,
+          ...telemetry.outcomeMetadata,
           query_class: queryClass,
-          fallback_reason: fallbackReasonFromRouting(answer.routingReason),
-          degraded: answer.degradedMode?.active ?? false,
-          provider_generation_degraded: isProviderGenerationDegraded(answer.routingReason),
+          degraded: telemetryAnswer.degradedMode?.active ?? false,
+          provider_generation_degraded: isProviderGenerationDegraded(telemetryAnswer.routingReason),
           model_used: modelUsed,
           requested_fast_model: requestedOpenAIAnswerModels.fastAnswer,
           requested_strong_model: requestedOpenAIAnswerModels.strongAnswer,
@@ -3857,7 +3854,7 @@ ${qualityRetryInstruction}`
           ...memoryLogMetadata,
           ...scoreLogMetadata,
           ...searchTelemetryDecisionMetadata(),
-          cited_chunk_count: answer.citations.length,
+          cited_chunk_count: telemetryAnswer.citations.length,
           quote_count: answer.quoteCards?.length ?? 0,
           visual_evidence_count: answer.visualEvidence?.length ?? 0,
           related_document_count: relatedDocuments.length,
@@ -4184,25 +4181,23 @@ ${qualityRetryInstruction}`
     }
     await args.onProgress?.({ stage: "verifying", message: "Checking citations and source metadata." });
     fallbackAnswer = withRagProgrammeDiagnostics(fallbackAnswer, results);
+    const telemetry = finalRagQueryFields(fallbackAnswer, args.finalizeTelemetryAnswer, generationFallbackResults);
+    const telemetryAnswer = telemetry.answer;
     if (args.logQuery !== false)
       await logRagQuery({
         owner_id: args.ownerId ?? null,
         query: args.query,
-        answer: fallbackAnswer.answer,
-        source_chunk_ids: generationFallbackResults.map((result) => result.id),
+        answer: telemetryAnswer.answer,
+        source_chunk_ids: telemetry.sourceChunkIds,
         model: null,
         metadata: {
-          ...answerProgrammeTelemetryMetadata(args.observationContext, fallbackAnswer),
+          ...answerProgrammeTelemetryMetadata(args.observationContext, telemetryAnswer),
           document_id: args.documentId ?? null,
           document_ids: args.documentIds ?? null,
-          grounded: fallbackAnswer.grounded,
-          confidence: fallbackAnswer.confidence,
-          routing_mode: fallbackAnswer.routingMode,
-          routing_reason: fallbackAnswer.routingReason,
+          ...telemetry.outcomeMetadata,
           query_class: queryClass,
-          fallback_reason: fallbackReasonFromRouting(fallbackAnswer.routingReason),
-          degraded: fallbackAnswer.degradedMode?.active ?? false,
-          provider_generation_degraded: isProviderGenerationDegraded(fallbackAnswer.routingReason),
+          degraded: telemetryAnswer.degradedMode?.active ?? false,
+          provider_generation_degraded: isProviderGenerationDegraded(telemetryAnswer.routingReason),
           model_used: null,
           requested_fast_model: requestedOpenAIAnswerModels.fastAnswer,
           requested_strong_model: requestedOpenAIAnswerModels.strongAnswer,
@@ -4224,7 +4219,7 @@ ${qualityRetryInstruction}`
           wa_source_count: generationFallbackSelectionSummary.waSelectedCount,
           source_authority_conflict_count: generationFallbackSelectionSummary.authorityConflictCount,
           used_supplementary_fallback: generationFallbackSelectionSummary.usedSupplementaryFallback,
-          cited_chunk_count: fallbackAnswer.citations.length,
+          cited_chunk_count: telemetryAnswer.citations.length,
           quote_count: fallbackAnswer.quoteCards?.length ?? 0,
           visual_evidence_count: fallbackAnswer.visualEvidence?.length ?? 0,
           ...retrievalLogMetadata(fallbackAnswer.retrievalDiagnostics ?? retrievalDiagnostics),
@@ -4269,7 +4264,11 @@ ${qualityRetryInstruction}`
 export async function summarizeDocument(
   documentId: string,
   ownerId?: string,
-  options?: { signal?: AbortSignal; observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext },
+  options?: {
+    signal?: AbortSignal;
+    observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext;
+    finalizeTelemetryAnswer?: RagQueryTelemetryFinalizer;
+  },
 ) {
   const { document, chunks } = await loadDocumentSummaryContext(documentId, ownerId, options?.signal);
   const committedGeneration = committedIndexGeneration((document as { metadata?: unknown }).metadata);
@@ -4292,6 +4291,7 @@ export async function summarizeDocument(
       ownerId,
       answer,
       observationContext: options?.observationContext,
+      finalizeTelemetryAnswer: options?.finalizeTelemetryAnswer,
       outcome: "summary",
     });
     return answer;
@@ -4350,6 +4350,7 @@ ${buildRagSourceBlock(results)}`;
     answer: finalizedAnswer,
     candidateResults: results,
     observationContext: options?.observationContext,
+    finalizeTelemetryAnswer: options?.finalizeTelemetryAnswer,
     outcome: "summary",
   });
   return finalizedAnswer;

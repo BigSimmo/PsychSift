@@ -84,7 +84,7 @@ export function buildAnswerLogRow(args: {
     quality_tier: answer.answerQualityTier ?? null,
     confidence: answer.confidence,
     grounded: answer.grounded,
-    response_mode: answer.responseMode ?? null,
+    response_mode: boundedReasons.responseMode,
     // The legacy keys remain, but free-form provider/source text is a global
     // privacy stop condition. Persist only bounded route/insufficiency tokens.
     routing_reason: boundedReasons.route,
@@ -135,7 +135,7 @@ export function buildAnswerLogRow(args: {
     miss_reason: isMiss
       ? answer.fallbackReason
         ? (boundedReasons.insufficiencyReason ?? "insufficient_claim_support")
-        : (answer.responseMode ?? boundedReasons.insufficiencyReason ?? "unsupported")
+        : (boundedReasons.responseMode ?? boundedReasons.insufficiencyReason ?? "unsupported")
       : null,
     metadata: { answer: answerTelemetry } as unknown as Json,
   };

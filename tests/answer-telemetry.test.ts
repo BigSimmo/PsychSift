@@ -111,6 +111,23 @@ describe("buildAnswerLogRow (per-answer observability)", () => {
     );
   });
 
+  it("rejects a free-form response mode from the complete insert when no fallback reason exists", () => {
+    const row = buildAnswerLogRow({
+      query: "safe query",
+      answer: answer({
+        grounded: false,
+        confidence: "unsupported",
+        responseMode: "protected-source-text-canary" as AnswerTelemetrySource["responseMode"],
+        fallbackReason: undefined,
+      }),
+      observationContext: { interactionId: INTERACTION_ID, rolloutMode: "legacy" },
+    });
+
+    expect(JSON.stringify(row)).not.toContain("protected-source-text-canary");
+    expect(row.miss_reason).toBe("retrieval_miss");
+    expect(row.metadata).toEqual(expect.objectContaining({ answer: expect.objectContaining({ response_mode: null }) }));
+  });
+
   it("marks unsupported/ungrounded answers as a miss with a reason", () => {
     const row = buildAnswerLogRow({
       query: "unknown drug?",

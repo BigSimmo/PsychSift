@@ -5,6 +5,7 @@ import {
   sourceGovernanceRefusalAnswer,
   sourceGovernanceWarnings,
 } from "@/lib/source-governance";
+import { withFinalRagProgrammeOutcome } from "@/lib/rag/rag-programme-telemetry";
 import type { RagAnswer, SafetyWarning } from "@/lib/types";
 
 function clientSafetyWarning(warning: SafetyWarning): SafetyWarning {
@@ -55,7 +56,7 @@ export function buildGovernedAnswerClientResponse(answer: RagAnswer) {
 
   if (shouldRefuse) {
     const routingReason = [answer.routingReason, "source_governance_refusal"].filter(Boolean).join("; ");
-    const telemetryAnswer = {
+    const telemetryAnswer = withFinalRagProgrammeOutcome({
       ...answer,
       answer: sourceGovernanceRefusalAnswer,
       grounded: false,
@@ -65,7 +66,7 @@ export function buildGovernedAnswerClientResponse(answer: RagAnswer) {
       responseMode: "evidence_gap",
       fallbackReason: "source_governance_refusal",
       routingReason,
-    } satisfies RagAnswer;
+    } satisfies RagAnswer);
 
     return {
       refused: true as const,
@@ -95,6 +96,10 @@ export function buildGovernedAnswerClientResponse(answer: RagAnswer) {
       safetyWarnings,
     },
   };
+}
+
+export function governedAnswerForTelemetry(answer: RagAnswer) {
+  return buildGovernedAnswerClientResponse(answer).telemetryAnswer;
 }
 
 /** Apply the governed browser contract while preserving explicit demo/degraded state. */

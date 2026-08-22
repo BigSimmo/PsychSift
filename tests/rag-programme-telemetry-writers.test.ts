@@ -18,6 +18,88 @@ function answer(): RagAnswer {
   };
 }
 
+function governanceRefusalAnswer(): RagAnswer {
+  const source = {
+    id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    document_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    title: "Outdated clinical guideline",
+    file_name: "outdated-guideline.pdf",
+    page_number: 1,
+    chunk_index: 0,
+    section_heading: "Monitoring",
+    content: "Use the superseded monitoring pathway.",
+    image_ids: [],
+    images: [],
+    similarity: 0.9,
+    source_metadata: {
+      source_title: "Outdated clinical guideline",
+      publisher: "WA Health",
+      publisher_code: "WA_HEALTH",
+      jurisdiction: "Australia/WA",
+      version: null,
+      publication_date: null,
+      review_date: null,
+      uploaded_at: null,
+      indexed_at: null,
+      uploaded_by: null,
+      document_status: "outdated" as const,
+      clinical_validation_status: "approved" as const,
+      extraction_quality: "good" as const,
+    },
+  };
+  return {
+    answer: "Generated answer that must not be served.",
+    grounded: true,
+    confidence: "high",
+    citations: [
+      {
+        chunk_id: source.id,
+        document_id: source.document_id,
+        title: source.title,
+        file_name: source.file_name,
+        page_number: source.page_number,
+        chunk_index: source.chunk_index,
+      },
+    ],
+    sources: [source],
+    responseMode: "document_lookup",
+    routingMode: "strong",
+    routingReason: "strong_routine_retrieval",
+    modelUsed: "test-model",
+    programmeDiagnostics: {
+      queryPlanKind: "single",
+      subquestionCount: 1,
+      materialAmbiguity: false,
+      coverageCounts: { direct: 1, partial: 0, conflicting: 0, absent: 0 },
+      candidateCounts: {
+        uploaded_local: 1,
+        clinical_kb_site: 0,
+        australian_public: 0,
+        international_supplementary: 0,
+      },
+      selectedCounts: {
+        uploaded_local: 1,
+        clinical_kb_site: 0,
+        australian_public: 0,
+        international_supplementary: 0,
+      },
+      selectedSiteDomains: [],
+      siteCandidateCount: 0,
+      siteSelectedCount: 0,
+      publicSiteContentState: "disabled",
+      siteStaticManifestMatch: null,
+      sitePendingCount: null,
+      augmentationOutcome: "disabled",
+      roleExclusionCount: 0,
+      insufficiencyReason: null,
+      generationOutcome: "generated",
+      verifiedUnitsEmitted: 0,
+      verifiedUnitsDiscarded: 0,
+      reconciliationOutcome: "not_applicable",
+    },
+  };
+}
+
 async function responseInteractionId(response: Response) {
   const payload = (await response.json()) as { interactionId: string; programmeDiagnostics?: unknown };
   expect(payload).not.toHaveProperty("programmeDiagnostics");
@@ -194,5 +276,42 @@ describe("RAG programme telemetry writers", () => {
     const interactionId = await responseInteractionId(response);
     await vi.waitFor(() => expect(inserts).toHaveLength(2));
     expectJoinedWrites(inserts, interactionId);
+  });
+
+  it("records the final served governance refusal in both stores", async () => {
+    const { inserts } = await installHarness({ cache: governanceRefusalAnswer() });
+    const { POST } = await import("../src/app/api/answer/route");
+    const response = await POST(
+      new Request("http://localhost/api/answer", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: "use the outdated monitoring guideline" }),
+      }),
+    );
+    const payload = (await response.json()) as { grounded: boolean; confidence: string; interactionId: string };
+    await vi.waitFor(() => expect(inserts).toHaveLength(2));
+    const query = inserts.find((insert) => insert.table === "rag_queries")?.row;
+    const retrieval = inserts.find((insert) => insert.table === "rag_retrieval_logs")?.row;
+
+    expect(payload).toMatchObject({ grounded: false, confidence: "unsupported" });
+    expect(query?.metadata).toMatchObject({
+      interaction_id: payload.interactionId,
+      grounded: false,
+      confidence: "unsupported",
+      coverage_counts: { direct: 0, partial: 0, conflicting: 0, absent: 1 },
+      insufficiency_reason: "governance_block",
+      generation_outcome: "failed",
+    });
+    expect(retrieval).toMatchObject({
+      metadata: {
+        answer: {
+          interaction_id: payload.interactionId,
+          grounded: false,
+          confidence: "unsupported",
+          response_mode: "evidence_gap",
+          fallback_reason: "governance_block",
+        },
+      },
+    });
   });
 });

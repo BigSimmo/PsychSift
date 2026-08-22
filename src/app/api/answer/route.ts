@@ -23,6 +23,7 @@ import {
   answerDegradedModeSignal,
   buildGovernedAnswerClientResponse,
   buildGovernedDemoAnswerClientResponse,
+  governedAnswerForTelemetry,
 } from "@/lib/answer-response";
 import { answerServerTimingEntries, buildServerTimingHeader, preambleServerTimingEntries } from "@/lib/server-timing";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -177,6 +178,7 @@ export async function POST(request: Request) {
       accessScope,
       allowGlobalSearch: !access.ownerId,
       queryMode: answerBody.queryMode,
+      finalizeTelemetryAnswer: governedAnswerForTelemetry,
       observationContext,
       signal: request.signal,
     });

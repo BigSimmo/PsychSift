@@ -16,6 +16,7 @@ import {
   answerDegradedModeSignal,
   buildGovernedAnswerClientResponse,
   buildGovernedDemoAnswerClientResponse,
+  governedAnswerForTelemetry,
 } from "@/lib/answer-response";
 import { answerQuestionWithScope, summarizeDocument, type AnswerProgressEvent } from "@/lib/rag/rag";
 import { classifyRagQuery } from "@/lib/clinical-search";
@@ -272,7 +273,11 @@ function streamAnswer(
           }
           const answer =
             body.summaryMode && body.documentId
-              ? await summarizeDocument(body.documentId, ownerId, { signal, observationContext })
+              ? await summarizeDocument(body.documentId, ownerId, {
+                  signal,
+                  observationContext,
+                  finalizeTelemetryAnswer: governedAnswerForTelemetry,
+                })
               : await answerQuestionWithScope({
                   query: body.query,
                   documentId: singleDocumentScope ? body.documentId : undefined,
@@ -283,6 +288,7 @@ function streamAnswer(
                   accessScope,
                   allowGlobalSearch: !ownerId,
                   queryMode: body.queryMode,
+                  finalizeTelemetryAnswer: governedAnswerForTelemetry,
                   observationContext,
                   onProgress,
                   signal,

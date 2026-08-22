@@ -1,5 +1,6 @@
 import type { RagObservationContext } from "@/lib/rag/rag-contracts";
 import type {
+  AnswerResponseMode,
   RagAnswer,
   RagAugmentationOutcome,
   RagGenerationOutcome,
@@ -21,6 +22,14 @@ const corpusScopes = [
   "australian_public",
   "international_supplementary",
 ] as const satisfies readonly SourceCorpusScope[];
+const answerResponseModes = [
+  "checklist",
+  "comparison_matrix",
+  "threshold_table",
+  "clinical_pathway",
+  "document_lookup",
+  "evidence_gap",
+] as const satisfies readonly AnswerResponseMode[];
 const siteContentDomains = [
   "services",
   "forms",
@@ -120,6 +129,7 @@ type RagProgrammeAnswer = Pick<
   | "modelUsed"
   | "programmeDiagnostics"
   | "retrievalDiagnostics"
+  | "responseMode"
   | "routingMode"
   | "routingReason"
   | "sources"
@@ -331,6 +341,19 @@ export function withRagProgrammeDiagnostics(answer: RagAnswer, candidateResults:
     : { ...answer, programmeDiagnostics: buildRagProgrammeDiagnostics(answer, candidateResults) };
 }
 
+export function withFinalRagProgrammeOutcome(answer: RagAnswer): RagAnswer {
+  const finalDiagnostics = buildRagProgrammeDiagnostics(answer, []);
+  return {
+    ...answer,
+    programmeDiagnostics: {
+      ...(answer.programmeDiagnostics ?? finalDiagnostics),
+      coverageCounts: finalDiagnostics.coverageCounts,
+      insufficiencyReason: finalDiagnostics.insufficiencyReason,
+      generationOutcome: answer.confidence === "unsupported" ? "failed" : finalDiagnostics.generationOutcome,
+    },
+  };
+}
+
 export function programmeTelemetryInputForAnswer(args: {
   observationContext: RagObservationContext;
   answer: RagProgrammeAnswer;
@@ -348,6 +371,9 @@ export function boundedAnswerTelemetryReasons(answer: RagProgrammeAnswer) {
     ["unsupported", "extractive", "fast", "strong"],
     "unsupported",
   );
+  const responseMode = answerResponseModes.includes(answer.responseMode as AnswerResponseMode)
+    ? (answer.responseMode as AnswerResponseMode)
+    : null;
   const diagnostics = answer.programmeDiagnostics ?? buildRagProgrammeDiagnostics(answer, []);
-  return { route, insufficiencyReason: diagnostics.insufficiencyReason };
+  return { route, responseMode, insufficiencyReason: diagnostics.insufficiencyReason };
 }

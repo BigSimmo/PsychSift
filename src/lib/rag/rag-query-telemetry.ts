@@ -6,6 +6,7 @@ import {
   queryTextForStorage,
 } from "@/lib/query-privacy";
 import { answerProgrammeTelemetryMetadata } from "@/lib/rag/rag-answer-telemetry-metadata";
+import { fallbackReasonFromRouting } from "@/lib/rag/rag-answer-support";
 import type { RagObservationContext } from "@/lib/rag/rag-contracts";
 import { boundedAnswerTelemetryReasons, withRagProgrammeDiagnostics } from "@/lib/rag/rag-programme-telemetry";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,6 +16,48 @@ import type { RagAnswer, SearchResult } from "@/lib/types";
 export type RagQueryInsert = Omit<Database["public"]["Tables"]["rag_queries"]["Insert"], "metadata"> & {
   metadata?: Record<string, unknown>;
 };
+export type RagQueryTelemetryFinalizer = (answer: RagAnswer) => RagAnswer;
+
+export function finalRagQueryTelemetryAnswer(answer: RagAnswer, finalizer?: RagQueryTelemetryFinalizer) {
+  return finalizer?.(answer) ?? answer;
+}
+
+export function finalRagQueryOutcomeMetadata(answer: RagAnswer) {
+  const bounded = boundedAnswerTelemetryReasons(answer);
+  return {
+    grounded: answer.grounded,
+    confidence: answer.confidence,
+    routing_mode: bounded.route,
+    routing_reason: bounded.route,
+    fallback_reason: bounded.insufficiencyReason,
+  };
+}
+
+export function finalRagQueryFields(
+  originalAnswer: RagAnswer,
+  finalizer: RagQueryTelemetryFinalizer | undefined,
+  originalSources: readonly Pick<SearchResult, "id">[],
+  routingReason = originalAnswer.routingReason,
+) {
+  const answer = finalRagQueryTelemetryAnswer(originalAnswer, finalizer);
+  return answer === originalAnswer
+    ? {
+        answer,
+        sourceChunkIds: originalSources.map((source) => source.id),
+        outcomeMetadata: {
+          grounded: originalAnswer.grounded,
+          confidence: originalAnswer.confidence,
+          routing_mode: originalAnswer.routingMode,
+          routing_reason: routingReason,
+          fallback_reason: fallbackReasonFromRouting(originalAnswer.routingReason),
+        },
+      }
+    : {
+        answer,
+        sourceChunkIds: answer.sources.map((source) => source.id),
+        outcomeMetadata: finalRagQueryOutcomeMetadata(answer),
+      };
+}
 
 async function insertRagQuery(row: RagQueryInsert) {
   const supabase = createAdminClient();
@@ -46,24 +89,22 @@ export async function logRagQueryOutcome(args: {
   answer: RagAnswer;
   candidateResults?: readonly SearchResult[];
   observationContext?: RagObservationContext;
+  finalizeTelemetryAnswer?: RagQueryTelemetryFinalizer;
   outcome: "cache" | "coalesced" | "summary" | "empty_scope";
 }) {
   if (!args.observationContext) return args.answer;
   const answer = withRagProgrammeDiagnostics(args.answer, args.candidateResults ?? []);
-  const bounded = boundedAnswerTelemetryReasons(answer);
+  const telemetryAnswer = finalRagQueryTelemetryAnswer(answer, args.finalizeTelemetryAnswer);
   await logRagQuery({
     owner_id: args.ownerId ?? null,
     query: args.query,
-    answer: answer.answer,
-    source_chunk_ids: answer.sources.map((source) => source.id),
-    model: answer.modelUsed ?? null,
+    answer: telemetryAnswer.answer,
+    source_chunk_ids: telemetryAnswer.sources.map((source) => source.id),
+    model: telemetryAnswer.modelUsed ?? null,
     metadata: {
-      ...answerProgrammeTelemetryMetadata(args.observationContext, answer),
+      ...answerProgrammeTelemetryMetadata(args.observationContext, telemetryAnswer),
       telemetry_outcome: args.outcome,
-      grounded: answer.grounded,
-      confidence: answer.confidence,
-      routing_mode: bounded.route,
-      fallback_reason: bounded.insufficiencyReason,
+      ...finalRagQueryOutcomeMetadata(telemetryAnswer),
     },
   });
   return answer;
@@ -75,6 +116,7 @@ export async function logRagQueryOutcomeForAnswerArgs(
     ownerId?: string;
     logQuery?: boolean;
     observationContext?: RagObservationContext;
+    finalizeTelemetryAnswer?: RagQueryTelemetryFinalizer;
   },
   answer: RagAnswer,
   outcome: "cache" | "coalesced",
@@ -86,6 +128,7 @@ export async function logRagQueryOutcomeForAnswerArgs(
         ownerId: args.ownerId,
         answer,
         observationContext: args.observationContext,
+        finalizeTelemetryAnswer: args.finalizeTelemetryAnswer,
         outcome,
       });
 }
