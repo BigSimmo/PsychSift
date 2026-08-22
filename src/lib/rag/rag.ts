@@ -3573,6 +3573,7 @@ ${qualityRetryInstruction}`
       retrievalDiagnostics.routeMode = "strong";
     }
     if (generated.truncated) {
+      if (generated.text.trim()) answerRetryReasons.push("partial_structure_not_served");
       const retryReason = generationRetryReason(retriedWithStrong ? "strong" : "generation", generated);
       answerRetryCount += 1;
       answerRetryReasons.push(retryReason);
@@ -3661,6 +3662,7 @@ ${qualityRetryInstruction}`
       });
       retrievalDiagnostics.routeMode = "strong";
       if (generated.truncated) {
+        if (generated.text.trim()) answerRetryReasons.push("partial_structure_not_served");
         const truncatedReason = generationRetryReason("strong", generated);
         answerRetryCount += 1;
         answerRetryReasons.push(truncatedReason);
@@ -3723,6 +3725,7 @@ ${qualityRetryInstruction}`
       });
       retrievalDiagnostics.routeMode = "strong";
       if (generated.truncated) {
+        if (generated.text.trim()) answerRetryReasons.push("partial_structure_not_served");
         const truncatedReason = generationRetryReason("strong_quality_retry", generated);
         answerRetryCount += 1;
         answerRetryReasons.push(truncatedReason);

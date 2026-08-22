@@ -59,6 +59,12 @@ export type RagProgrammeRun = {
   cases: RagProgrammeCaseResult[];
 };
 
+export type RagProgrammePopulationContract = {
+  caseSetFingerprint: string;
+  populationFingerprint: string;
+  cases: Array<{ id: string; caseFingerprint: string }>;
+};
+
 export type RagProgrammeGateDecision = {
   decision: "GO" | "NO_GO";
   reasons: string[];
@@ -256,12 +262,59 @@ function sumKnown(values: Array<number | null>): number | null {
   return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
 }
 
+function populationFingerprint(cases: Array<{ id: string; caseFingerprint: string }>): string {
+  return fingerprint(
+    cases
+      .map(({ id, caseFingerprint }) => ({ id, caseFingerprint }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+  );
+}
+
+function hasExactPopulation(run: RagProgrammeRun, canonical: RagProgrammePopulationContract): boolean {
+  if (
+    run.caseSetFingerprint !== canonical.caseSetFingerprint ||
+    run.populationFingerprint !== canonical.populationFingerprint ||
+    populationFingerprint(run.cases) !== canonical.populationFingerprint ||
+    run.cases.length !== canonical.cases.length
+  ) {
+    return false;
+  }
+  const expected = new Map(canonical.cases.map((item) => [item.id, item.caseFingerprint]));
+  return (
+    expected.size === canonical.cases.length &&
+    run.cases.every((item) => expected.get(item.id) === item.caseFingerprint)
+  );
+}
+
+function hasConsistentCaseResult(item: RagProgrammeCaseResult): boolean {
+  const hasFailureEvidence =
+    item.falseInsufficiency || item.hardViolations.length > 0 || item.failedExpectations.length > 0;
+  return item.passed === !hasFailureEvidence && !(item.falseInsufficiency && item.supportedPartRetained);
+}
+
+function isFiniteNonNegative(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
+}
+
 export function compareRagProgrammeRuns(
   baseline: RagProgrammeRun,
   candidate: RagProgrammeRun,
+  canonicalPopulation: RagProgrammePopulationContract,
   policy: RagProgrammeGatePolicy = ragProgrammeGatePolicy,
 ): RagProgrammeGateDecision {
   const reasons = new Set<string>();
+  const canonicalPopulationIsValid =
+    canonicalPopulation.cases.length > 0 &&
+    new Set(canonicalPopulation.cases.map((item) => item.id)).size === canonicalPopulation.cases.length &&
+    populationFingerprint(canonicalPopulation.cases) === canonicalPopulation.populationFingerprint;
+  if (!canonicalPopulationIsValid) reasons.add("canonical_population_contract_invalid");
+  if (
+    !canonicalPopulationIsValid ||
+    !hasExactPopulation(baseline, canonicalPopulation) ||
+    !hasExactPopulation(candidate, canonicalPopulation)
+  ) {
+    reasons.add("canonical_population_mismatch");
+  }
   if (baseline.caseSetFingerprint !== candidate.caseSetFingerprint) reasons.add("case_set_fingerprint_mismatch");
   if (baseline.populationFingerprint !== candidate.populationFingerprint) {
     reasons.add("population_fingerprint_mismatch");
@@ -277,6 +330,9 @@ export function compareRagProgrammeRuns(
     reasons.add("evaluated_case_population_mismatch");
   }
   if (candidate.cases.some((item) => !item.passed)) reasons.add("must_pass_case_failed");
+  if ([...baseline.cases, ...candidate.cases].some((item) => !hasConsistentCaseResult(item))) {
+    reasons.add("case_result_invariant_violation");
+  }
   if (
     [...baseline.cases, ...candidate.cases].some(
       (item) => !isUnitInterval(item.documentReciprocalRank) || !isUnitInterval(item.contentReciprocalRank),
@@ -323,12 +379,28 @@ export function compareRagProgrammeRuns(
   if (candidate.cases.some((item) => item.totalLatencyMs === null)) reasons.add("latency_metric_missing");
   if (baseline.cases.some((item) => item.estimatedCostUsd === null)) reasons.add("baseline_cost_metric_missing");
   if (candidate.cases.some((item) => item.estimatedCostUsd === null)) reasons.add("estimated_cost_metric_missing");
+  if (baseline.cases.some((item) => item.totalLatencyMs !== null && !isFiniteNonNegative(item.totalLatencyMs))) {
+    reasons.add("baseline_latency_metric_invalid");
+  }
+  if (candidate.cases.some((item) => item.totalLatencyMs !== null && !isFiniteNonNegative(item.totalLatencyMs))) {
+    reasons.add("latency_metric_invalid");
+  }
+  if (baseline.cases.some((item) => item.estimatedCostUsd !== null && !isFiniteNonNegative(item.estimatedCostUsd))) {
+    reasons.add("baseline_cost_metric_invalid");
+  }
+  if (candidate.cases.some((item) => item.estimatedCostUsd !== null && !isFiniteNonNegative(item.estimatedCostUsd))) {
+    reasons.add("estimated_cost_metric_invalid");
+  }
 
   const baselineP95 = percentile95(
-    baseline.cases.flatMap((item) => (item.totalLatencyMs === null ? [] : [item.totalLatencyMs])),
+    baseline.cases.flatMap((item) =>
+      item.totalLatencyMs !== null && isFiniteNonNegative(item.totalLatencyMs) ? [item.totalLatencyMs] : [],
+    ),
   );
   const candidateP95 = percentile95(
-    candidate.cases.flatMap((item) => (item.totalLatencyMs === null ? [] : [item.totalLatencyMs])),
+    candidate.cases.flatMap((item) =>
+      item.totalLatencyMs !== null && isFiniteNonNegative(item.totalLatencyMs) ? [item.totalLatencyMs] : [],
+    ),
   );
   if (
     baselineP95 !== null &&
@@ -338,8 +410,16 @@ export function compareRagProgrammeRuns(
     reasons.add("latency_multiplier_exceeded");
   }
 
-  const baselineCost = sumKnown(baseline.cases.map((item) => item.estimatedCostUsd));
-  const candidateCost = sumKnown(candidate.cases.map((item) => item.estimatedCostUsd));
+  const baselineCost = sumKnown(
+    baseline.cases.map((item) =>
+      item.estimatedCostUsd !== null && isFiniteNonNegative(item.estimatedCostUsd) ? item.estimatedCostUsd : null,
+    ),
+  );
+  const candidateCost = sumKnown(
+    candidate.cases.map((item) =>
+      item.estimatedCostUsd !== null && isFiniteNonNegative(item.estimatedCostUsd) ? item.estimatedCostUsd : null,
+    ),
+  );
   if (
     baselineCost !== null &&
     candidateCost !== null &&
@@ -374,8 +454,104 @@ function stringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim().length > 0);
 }
 
+function enumArray<T extends string>(value: unknown, allowed: ReadonlySet<T>, allowEmpty = true): value is T[] {
+  return (
+    Array.isArray(value) &&
+    (allowEmpty || value.length > 0) &&
+    value.every((item) => typeof item === "string" && allowed.has(item as T))
+  );
+}
+
+const sourceCorpusScopes = new Set<SourceCorpusScope>([
+  "uploaded_local",
+  "clinical_kb_site",
+  "australian_public",
+  "international_supplementary",
+]);
+const clinicalSourceRoles = new Set<ClinicalSourceRole>([
+  "local_guideline",
+  "clinical_guideline",
+  "clinical_reference",
+  "service_directory",
+  "form_reference",
+  "tool_reference",
+  "safety_alert",
+  "regulatory",
+  "quality_standard",
+  "legal",
+  "subsidy",
+  "professional_review",
+  "service_policy",
+  "reference_link",
+]);
+const siteContentDomains = new Set<SiteContentDomain>([
+  "services",
+  "forms",
+  "medications",
+  "differentials",
+  "specifiers",
+  "dsm",
+  "formulation",
+  "therapies",
+  "dictionary",
+  "factsheets",
+  "calculators",
+  "tools",
+]);
+const siteContentStates = new Set<SiteContentPartitionState | "not_applicable">([
+  "current",
+  "updating",
+  "stale",
+  "unavailable",
+  "disabled",
+  "not_applicable",
+]);
+const subquestionPurposes = new Set<RagSubquestionPurpose>([
+  "primary",
+  "comparison_side",
+  "required_action",
+  "monitoring",
+  "risk",
+  "special_population",
+]);
+const answerShapes = new Set<AdaptiveAnswerShape>(["narrow", "focused", "comprehensive", "comparison", "partial"]);
+const insufficiencyReasons = new Set<RagInsufficiencyReason>([
+  "not_in_corpus",
+  "retrieval_miss",
+  "insufficient_claim_support",
+  "source_role_mismatch",
+  "source_conflict",
+  "governance_block",
+  "site_content_updating",
+  "site_content_stale",
+  "site_content_unavailable",
+  "timeout",
+  "provider_failure",
+]);
+const conflictVisibleFields = new Set<ConflictVisibleField>([
+  "source_identity",
+  "publication_or_effective_date",
+  "jurisdiction",
+  "source_role",
+  "material_difference",
+  "local_primary_decision",
+  "review_flag",
+]);
+const incrementalEligibility = new Set<RagProgrammeExpectation["incrementalEligibility"]>([
+  "none",
+  "lead",
+  "independent_sections",
+]);
+
 function assertPrivacyBoundary(value: Record<string, unknown>, prefix: string): void {
-  if (value.reviewed !== true) throw new Error(`${prefix}: privacy review must be complete.`);
+  if (
+    value.reviewed !== true ||
+    typeof value.reviewDate !== "string" ||
+    !value.reviewDate.trim() ||
+    value.classification !== "synthetic_and_deidentified"
+  ) {
+    throw new Error(`${prefix}: privacy review metadata is incomplete or invalid.`);
+  }
   for (const key of [
     "containsPatientData",
     "containsProductionTraceData",
@@ -383,24 +559,28 @@ function assertPrivacyBoundary(value: Record<string, unknown>, prefix: string): 
     "containsProtectedReferenceContent",
     "containsUserOrAdministratorIdentifiers",
   ]) {
-    if (key in value && value[key] !== false) throw new Error(`${prefix}: privacy review must declare ${key}=false.`);
+    if (!Object.hasOwn(value, key) || value[key] !== false) {
+      throw new Error(`${prefix}: privacy review must declare ${key}=false.`);
+    }
   }
 }
 
 function validateExpectation(value: unknown, prefix: string): asserts value is RagProgrammeExpectation {
   if (!isRecord(value)) throw new Error(`${prefix}: expectation is required.`);
-  for (const field of [
-    "expectedCorpusScopes",
-    "expectedSourceRoles",
-    "expectedSiteDomains",
-    "expectedSubquestionPurposes",
-    "allowedAnswerShapes",
-    "forbiddenFallbackReasons",
-    "requiredFacts",
-    "forbiddenPatterns",
-  ]) {
-    if (!Array.isArray(value[field])) throw new Error(`${prefix}: ${field} must be an array.`);
-  }
+  if (!enumArray(value.expectedCorpusScopes, sourceCorpusScopes))
+    throw new Error(`${prefix}: expectedCorpusScopes contains an invalid value.`);
+  if (!enumArray(value.expectedSourceRoles, clinicalSourceRoles))
+    throw new Error(`${prefix}: expectedSourceRoles contains an invalid value.`);
+  if (!enumArray(value.expectedSiteDomains, siteContentDomains))
+    throw new Error(`${prefix}: expectedSiteDomains contains an invalid value.`);
+  if (!siteContentStates.has(value.expectedPublicSiteContentState as SiteContentPartitionState | "not_applicable"))
+    throw new Error(`${prefix}: expectedPublicSiteContentState is invalid.`);
+  if (!enumArray(value.expectedSubquestionPurposes, subquestionPurposes))
+    throw new Error(`${prefix}: expectedSubquestionPurposes contains an invalid value.`);
+  if (!enumArray(value.allowedAnswerShapes, answerShapes, false))
+    throw new Error(`${prefix}: allowedAnswerShapes contains an invalid value.`);
+  if (!enumArray(value.forbiddenFallbackReasons, insufficiencyReasons))
+    throw new Error(`${prefix}: forbiddenFallbackReasons contains an invalid value.`);
   if (!Number.isInteger(value.minimumDirectSubquestions) || Number(value.minimumDirectSubquestions) < 0) {
     throw new Error(`${prefix}: minimumDirectSubquestions must be a non-negative integer.`);
   }
@@ -408,6 +588,27 @@ function validateExpectation(value: unknown, prefix: string): asserts value is R
     throw new Error(`${prefix}: supported-part and exact-gap flags must be boolean.`);
   }
   if (!stringArray(value.requiredFacts)) throw new Error(`${prefix}: requiredFacts must contain explicit facts.`);
+  if (
+    !Array.isArray(value.forbiddenPatterns) ||
+    !value.forbiddenPatterns.every((item) => typeof item === "string" && item.trim())
+  ) {
+    throw new Error(`${prefix}: forbiddenPatterns must contain only non-empty strings.`);
+  }
+  if (!incrementalEligibility.has(value.incrementalEligibility as RagProgrammeExpectation["incrementalEligibility"])) {
+    throw new Error(`${prefix}: incrementalEligibility is invalid.`);
+  }
+  if (value.expectedConflict !== null) {
+    if (
+      !isRecord(value.expectedConflict) ||
+      typeof value.expectedConflict.localDocumentId !== "string" ||
+      !value.expectedConflict.localDocumentId.trim() ||
+      typeof value.expectedConflict.australianDocumentId !== "string" ||
+      !value.expectedConflict.australianDocumentId.trim() ||
+      !enumArray(value.expectedConflict.requireVisibleFields, conflictVisibleFields, false)
+    ) {
+      throw new Error(`${prefix}: expectedConflict is malformed.`);
+    }
+  }
 }
 
 type RawFixtureCase = Omit<RagProgrammeFixtureCase, "caseFingerprint">;
@@ -420,16 +621,26 @@ function validateFixtureCase(value: unknown, index: number): asserts value is Ra
   if (
     !isRecord(value.privacyReview) ||
     value.privacyReview.reviewed !== true ||
+    !new Set(["synthetic_non_patient", "deidentified_failure_reproduction"]).has(
+      String(value.privacyReview.classification),
+    ) ||
+    !Object.hasOwn(value.privacyReview, "containsPatientText") ||
     value.privacyReview.containsPatientText !== false
   ) {
     throw new Error(`${prefix}: privacy review must be complete and declare containsPatientText=false.`);
   }
-  if (!stringArray(value.protectedFailureClasses)) {
+  if (
+    !enumArray(
+      value.protectedFailureClasses,
+      new Set<RagProgrammeProtectedFailureClass>(requiredRagProgrammeFailureClasses),
+      false,
+    )
+  ) {
     throw new Error(`${prefix}: protectedFailureClasses must name at least one class.`);
   }
   if (
     !Array.isArray(value.expectedDocumentIds) ||
-    !value.expectedDocumentIds.every((item) => typeof item === "string")
+    !value.expectedDocumentIds.every((item) => typeof item === "string" && item.trim().length > 0)
   ) {
     throw new Error(`${prefix}: expectedDocumentIds must be an array.`);
   }
@@ -440,6 +651,7 @@ export function parseRagProgrammeFixture(input: unknown): {
   raw: RagProgrammeFixture;
   cases: RagProgrammeFixtureCase[];
   caseSetFingerprint: string;
+  population: RagProgrammePopulationContract;
 } {
   if (!isRecord(input) || input.version !== 1 || input.fixtureId !== "rag-programme-failures-v1") {
     throw new Error("RAG programme fixture must be the versioned rag-programme-failures-v1 contract.");
@@ -478,7 +690,12 @@ export function parseRagProgrammeFixture(input: unknown): {
     throw new Error(`RAG programme case-set fingerprint mismatch: expected ${computedFingerprint}.`);
   }
 
-  const cases = input.cases.map((item) => ({ ...item, caseFingerprint: fingerprint(item) }));
+  const cases = casesWithoutFingerprints.map((item) => ({ ...item, caseFingerprint: fingerprint(item) }));
   const raw = { ...input, cases } as RagProgrammeFixture;
-  return { raw, cases, caseSetFingerprint: computedFingerprint };
+  const population: RagProgrammePopulationContract = {
+    caseSetFingerprint: computedFingerprint,
+    populationFingerprint: populationFingerprint(cases),
+    cases: cases.map(({ id, caseFingerprint }) => ({ id, caseFingerprint })),
+  };
+  return { raw, cases, caseSetFingerprint: computedFingerprint, population };
 }

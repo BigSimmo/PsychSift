@@ -3455,7 +3455,7 @@ describe("RAG structured-output fallback", () => {
     expect(answer.answer).not.toMatch(/^Dosage and monitoring/i);
   });
 
-  it("recovers lithium dosing from validated WA evidence when both generated drafts hit max output", async () => {
+  it("rejects an incomplete eight-section provider result and uses bounded source-backed recovery", async () => {
     vi.stubEnv("OPENAI_API_KEY", "test-key");
     vi.stubEnv("RAG_SEARCH_CACHE_TTL_MS", "0");
     vi.stubEnv("RAG_ANSWER_CACHE_TTL_MS", "0");
@@ -3553,8 +3553,17 @@ describe("RAG structured-output fallback", () => {
       return { data: [], error: null };
     });
     let requestIndex = 0;
+    const incompleteStructuredText = JSON.stringify({
+      answer: "Synthetic partial provider lead that must never be served.",
+      answerSections: Array.from({ length: 8 }, (_, index) => ({
+        heading: `Synthetic provider section ${index + 1}`,
+        body: `Synthetic provider partial body ${index + 1}`,
+        citation_chunk_ids: ["fsh-lithium-1"],
+      })),
+      citations: [{ chunk_id: "fsh-lithium-1" }],
+    });
     const generateStructuredTextResult = vi.fn(async () => ({
-      text: "",
+      text: incompleteStructuredText,
       model: "gpt-5.4-mini",
       operation: "answer",
       latencyMs: 12,
@@ -3606,6 +3615,8 @@ describe("RAG structured-output fallback", () => {
     expect(answer.routingReason).toContain("source_backed_extractive_fallback");
     expect(answer.routingReason).not.toContain("OpenAI generation incomplete");
     expect(answer.answerQualityTier).toBe("source_only");
+    expect(answer.answerSections).toEqual([]);
+    expect(JSON.stringify(answer)).not.toContain("Synthetic provider partial");
     expect(answer.answer.replace(/\*\*/g, "")).toMatch(/lithium|250 mg/i);
     expect(answer.answer).not.toContain("could not generate a finalized answer");
     expect(answer.unverifiedNumericTokens ?? []).toEqual([]);
@@ -3615,6 +3626,7 @@ describe("RAG structured-output fallback", () => {
     expect(answer.latencyTimings?.answer_retry_count).toBe(2);
     expect(answer.latencyTimings?.answer_retry_reasons).toEqual([
       "strong_max_output_tokens_retry_strong",
+      "partial_structure_not_served",
       "strong_max_output_tokens",
     ]);
     expect(answer.openAIRequestIds).toEqual(["req_truncated_1", "req_truncated_2"]);

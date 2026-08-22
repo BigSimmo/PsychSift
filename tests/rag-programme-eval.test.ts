@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
@@ -12,6 +13,37 @@ import {
   type RagProgrammeRun,
 } from "@/lib/rag/rag-programme-eval";
 import type { RagProgrammeExpectation, RagProgrammeHardViolation } from "@/lib/types";
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function sha256(value: unknown): string {
+  return `sha256:${createHash("sha256").update(stableJson(value)).digest("hex")}`;
+}
+
+function fixtureFingerprint(raw: Record<string, unknown>): string {
+  const { caseSetFingerprint: _caseSetFingerprint, ...payload } = raw;
+  payload.cases = (payload.cases as Array<Record<string, unknown>>).map(
+    ({ caseFingerprint: _caseFingerprint, ...item }) => item,
+  );
+  return sha256(payload);
+}
+
+function populationFingerprint(cases: Array<{ id: string; caseFingerprint: string }>): string {
+  return sha256(
+    cases
+      .map(({ id, caseFingerprint }) => ({ id, caseFingerprint }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+  );
+}
 
 const expectation: RagProgrammeExpectation = {
   expectedCorpusScopes: ["uploaded_local"],
@@ -107,14 +139,20 @@ const fixture = {
 } satisfies Record<string, RagProgrammeCaseEvaluationInput>;
 
 const passingCase = evaluateRagProgrammeCase(evaluation());
+const oneCasePopulationFingerprint = populationFingerprint([passingCase]);
 const baseline: RagProgrammeRun = {
   caseSetFingerprint: "case-set-v1",
-  populationFingerprint: "population-v1",
+  populationFingerprint: oneCasePopulationFingerprint,
   cases: [passingCase],
 };
 const candidate: RagProgrammeRun = {
   ...baseline,
   cases: [{ ...passingCase, totalLatencyMs: 105, estimatedCostUsd: 0.0105 }],
+};
+const oneCasePopulation = {
+  caseSetFingerprint: baseline.caseSetFingerprint,
+  populationFingerprint: oneCasePopulationFingerprint,
+  cases: [{ id: passingCase.id, caseFingerprint: passingCase.caseFingerprint }],
 };
 
 function candidateWith(violation: RagProgrammeHardViolation): RagProgrammeRun {
@@ -125,6 +163,10 @@ function candidateWith(violation: RagProgrammeHardViolation): RagProgrammeRun {
 }
 
 describe("RAG programme gate", () => {
+  it("accepts a complete internally consistent run bound to its canonical population", () => {
+    expect(compareRagProgrammeRuns(baseline, candidate, oneCasePopulation)).toEqual({ decision: "GO", reasons: [] });
+  });
+
   it("marks a generic refusal as false insufficiency when a required subquestion has direct evidence", () => {
     const result = evaluateRagProgrammeCase(fixture.directEvidenceGenericRefusal);
     expect(result).toMatchObject({ falseInsufficiency: true, passed: false });
@@ -150,14 +192,17 @@ describe("RAG programme gate", () => {
     "conflict_contract",
     "incremental_reconciliation",
   ] satisfies RagProgrammeHardViolation[])("fails the run for one %s violation", (violation) => {
-    expect(compareRagProgrammeRuns(baseline, candidateWith(violation)).decision).toBe("NO_GO");
+    expect(compareRagProgrammeRuns(baseline, candidateWith(violation), oneCasePopulation).decision).toBe("NO_GO");
   });
 
   it("fails when either the case set or evaluated population fingerprint differs", () => {
-    expect(compareRagProgrammeRuns(baseline, { ...candidate, caseSetFingerprint: "different" }).decision).toBe("NO_GO");
-    expect(compareRagProgrammeRuns(baseline, { ...candidate, populationFingerprint: "different" }).decision).toBe(
-      "NO_GO",
-    );
+    expect(
+      compareRagProgrammeRuns(baseline, { ...candidate, caseSetFingerprint: "different" }, oneCasePopulation).decision,
+    ).toBe("NO_GO");
+    expect(
+      compareRagProgrammeRuns(baseline, { ...candidate, populationFingerprint: "different" }, oneCasePopulation)
+        .decision,
+    ).toBe("NO_GO");
   });
 
   it("fails when any must-pass case fails even if aggregate recall remains perfect", () => {
@@ -167,8 +212,74 @@ describe("RAG programme gate", () => {
       failedExpectations: ["visible_conflict_metadata_missing"],
     };
     expect(
-      compareRagProgrammeRuns(baseline, { ...candidate, cases: [failedCase, ...candidate.cases.slice(1)] }).decision,
+      compareRagProgrammeRuns(
+        baseline,
+        { ...candidate, cases: [failedCase, ...candidate.cases.slice(1)] },
+        oneCasePopulation,
+      ).decision,
     ).toBe("NO_GO");
+  });
+
+  it("fails when a run copies the real case-set fingerprint but omits canonical must-pass cases", () => {
+    const parsed = parseRagProgrammeFixture(
+      JSON.parse(readFileSync("scripts/fixtures/rag-programme-failures.v1.json", "utf8")),
+    );
+    const canonicalPopulation = parsed.population;
+    const firstCaseOnly: RagProgrammeRun = {
+      caseSetFingerprint: parsed.caseSetFingerprint,
+      populationFingerprint: canonicalPopulation.populationFingerprint,
+      cases: [{ ...passingCase, id: parsed.cases[0].id, caseFingerprint: parsed.cases[0].caseFingerprint }],
+    };
+
+    expect(compareRagProgrammeRuns(firstCaseOnly, firstCaseOnly, canonicalPopulation).reasons).toContain(
+      "canonical_population_mismatch",
+    );
+  });
+
+  it.each([
+    { passed: true, failedExpectations: ["tampered_failure"] },
+    { passed: false, failedExpectations: [] },
+    { passed: false, falseInsufficiency: true, supportedPartRetained: true, failedExpectations: ["exact_gap"] },
+  ])("rejects caller-supplied outcomes that contradict their evidence: $passed", (overrides) => {
+    const contradictory: RagProgrammeRun = {
+      ...candidate,
+      cases: [{ ...candidate.cases[0], ...overrides }],
+    };
+
+    expect(compareRagProgrammeRuns(baseline, contradictory, oneCasePopulation).reasons).toContain(
+      "case_result_invariant_violation",
+    );
+  });
+
+  it.each([
+    ["baseline", "latency", Number.NaN, "baseline_latency_metric_invalid"],
+    ["baseline", "latency", Number.POSITIVE_INFINITY, "baseline_latency_metric_invalid"],
+    ["baseline", "latency", -1, "baseline_latency_metric_invalid"],
+    ["baseline", "cost", Number.NaN, "baseline_cost_metric_invalid"],
+    ["baseline", "cost", Number.POSITIVE_INFINITY, "baseline_cost_metric_invalid"],
+    ["baseline", "cost", -1, "baseline_cost_metric_invalid"],
+    ["candidate", "latency", Number.NaN, "latency_metric_invalid"],
+    ["candidate", "latency", Number.POSITIVE_INFINITY, "latency_metric_invalid"],
+    ["candidate", "latency", -1, "latency_metric_invalid"],
+    ["candidate", "cost", Number.NaN, "estimated_cost_metric_invalid"],
+    ["candidate", "cost", Number.POSITIVE_INFINITY, "estimated_cost_metric_invalid"],
+    ["candidate", "cost", -1, "estimated_cost_metric_invalid"],
+  ] as const)("rejects %s %s metric value %s", (runName, metric, value, reason) => {
+    const changedCase = {
+      ...(runName === "baseline" ? baseline.cases[0] : candidate.cases[0]),
+      ...(metric === "latency" ? { totalLatencyMs: value } : { estimatedCostUsd: value }),
+    };
+    const changedRun = {
+      ...(runName === "baseline" ? baseline : candidate),
+      cases: [changedCase],
+    };
+    const decision = compareRagProgrammeRuns(
+      runName === "baseline" ? changedRun : baseline,
+      runName === "candidate" ? changedRun : candidate,
+      oneCasePopulation,
+    );
+
+    expect(decision.reasons).toContain(reason);
   });
 
   it("pins zero hard violations, perfect recall, no rank regression, and bounded latency and cost", () => {
@@ -183,40 +294,60 @@ describe("RAG programme gate", () => {
     });
 
     expect(
-      compareRagProgrammeRuns(baseline, {
-        ...candidate,
-        cases: [{ ...candidate.cases[0], documentReciprocalRank: 0.5 }],
-      }).reasons,
+      compareRagProgrammeRuns(
+        baseline,
+        {
+          ...candidate,
+          cases: [{ ...candidate.cases[0], documentReciprocalRank: 0.5 }],
+        },
+        oneCasePopulation,
+      ).reasons,
     ).toContain("per_case_rank_regression");
     expect(
-      compareRagProgrammeRuns(baseline, {
-        ...candidate,
-        cases: [{ ...candidate.cases[0], totalLatencyMs: 111 }],
-      }).reasons,
+      compareRagProgrammeRuns(
+        baseline,
+        {
+          ...candidate,
+          cases: [{ ...candidate.cases[0], totalLatencyMs: 111 }],
+        },
+        oneCasePopulation,
+      ).reasons,
     ).toContain("latency_multiplier_exceeded");
     expect(
-      compareRagProgrammeRuns(baseline, {
-        ...candidate,
-        cases: [{ ...candidate.cases[0], estimatedCostUsd: 0.0116 }],
-      }).reasons,
+      compareRagProgrammeRuns(
+        baseline,
+        {
+          ...candidate,
+          cases: [{ ...candidate.cases[0], estimatedCostUsd: 0.0116 }],
+        },
+        oneCasePopulation,
+      ).reasons,
     ).toContain("estimated_cost_multiplier_exceeded");
   });
 
   it("fails closed for an empty population or missing rank, latency, and cost metrics", () => {
-    expect(compareRagProgrammeRuns(baseline, { ...candidate, cases: [] }).reasons).toContain(
+    expect(compareRagProgrammeRuns(baseline, { ...candidate, cases: [] }, oneCasePopulation).reasons).toContain(
       "evaluated_case_population_empty",
     );
     expect(
-      compareRagProgrammeRuns(baseline, {
-        ...candidate,
-        cases: [{ ...candidate.cases[0], documentReciprocalRank: Number.NaN }],
-      }).reasons,
+      compareRagProgrammeRuns(
+        baseline,
+        {
+          ...candidate,
+          cases: [{ ...candidate.cases[0], documentReciprocalRank: Number.NaN }],
+        },
+        oneCasePopulation,
+      ).reasons,
     ).toContain("rank_metric_invalid");
     expect(
-      compareRagProgrammeRuns(baseline, {
-        ...candidate,
-        cases: [{ ...candidate.cases[0], totalLatencyMs: null, estimatedCostUsd: null }],
-      }).reasons,
+      compareRagProgrammeRuns(
+        baseline,
+        {
+          ...candidate,
+          cases: [{ ...candidate.cases[0], totalLatencyMs: null, estimatedCostUsd: null }],
+        },
+        oneCasePopulation,
+      ).reasons,
     ).toEqual(expect.arrayContaining(["latency_metric_missing", "estimated_cost_metric_missing"]));
   });
 });
@@ -228,7 +359,12 @@ describe("RAG programme fixture", () => {
 
     expect(parsed.caseSetFingerprint).toBe(raw.caseSetFingerprint);
     expect(parsed.cases).toHaveLength(29);
-    expect(parseRagProgrammeFixture(parsed.raw).caseSetFingerprint).toBe(parsed.caseSetFingerprint);
+    expect(parsed.population.populationFingerprint).toBe(populationFingerprint(parsed.cases));
+    const reparsed = parseRagProgrammeFixture(JSON.parse(JSON.stringify(parsed.raw)));
+    expect(reparsed.caseSetFingerprint).toBe(parsed.caseSetFingerprint);
+    expect(reparsed.cases.map((item) => item.caseFingerprint)).toEqual(
+      parsed.cases.map((item) => item.caseFingerprint),
+    );
     expect(parsed.cases.every((item) => item.caseFingerprint.startsWith("sha256:"))).toBe(true);
     expect(parsed.cases.every((item) => item.privacyReview.reviewed && !item.privacyReview.containsPatientText)).toBe(
       true,
@@ -261,5 +397,33 @@ describe("RAG programme fixture", () => {
         ],
       }),
     ).toThrow(/privacy review/i);
+  });
+
+  it.each([
+    ["invalid corpus enum", (raw: Record<string, any>) => (raw.cases[0].expectation.expectedCorpusScopes = [42])],
+    [
+      "invalid public-state boolean",
+      (raw: Record<string, any>) => (raw.cases[0].expectation.expectedPublicSiteContentState = false),
+    ],
+    [
+      "malformed conflict",
+      (raw: Record<string, any>) =>
+        (raw.cases[0].expectation.expectedConflict = {
+          localDocumentId: false,
+          australianDocumentId: "synthetic-australian-v1",
+          requireVisibleFields: ["not_canonical"],
+        }),
+    ],
+    [
+      "invalid case privacy classification",
+      (raw: Record<string, any>) => (raw.cases[0].privacyReview.classification = "private_patient"),
+    ],
+    ["missing fixture privacy declaration", (raw: Record<string, any>) => delete raw.privacyReview.containsPatientData],
+  ])("rejects %s even after the case-set fingerprint is recomputed", (_label, mutate) => {
+    const raw = JSON.parse(readFileSync("scripts/fixtures/rag-programme-failures.v1.json", "utf8"));
+    mutate(raw);
+    raw.caseSetFingerprint = fixtureFingerprint(raw);
+
+    expect(() => parseRagProgrammeFixture(raw)).toThrow();
   });
 });

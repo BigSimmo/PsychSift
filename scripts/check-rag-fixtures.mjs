@@ -39,6 +39,78 @@ const requiredProgrammeFailureClasses = [
   "anaphoric_follow_up",
   "incremental_reconciliation",
 ];
+const programmeEnums = {
+  expectedCorpusScopes: new Set([
+    "uploaded_local",
+    "clinical_kb_site",
+    "australian_public",
+    "international_supplementary",
+  ]),
+  expectedSourceRoles: new Set([
+    "local_guideline",
+    "clinical_guideline",
+    "clinical_reference",
+    "service_directory",
+    "form_reference",
+    "tool_reference",
+    "safety_alert",
+    "regulatory",
+    "quality_standard",
+    "legal",
+    "subsidy",
+    "professional_review",
+    "service_policy",
+    "reference_link",
+  ]),
+  expectedSiteDomains: new Set([
+    "services",
+    "forms",
+    "medications",
+    "differentials",
+    "specifiers",
+    "dsm",
+    "formulation",
+    "therapies",
+    "dictionary",
+    "factsheets",
+    "calculators",
+    "tools",
+  ]),
+  expectedSubquestionPurposes: new Set([
+    "primary",
+    "comparison_side",
+    "required_action",
+    "monitoring",
+    "risk",
+    "special_population",
+  ]),
+  allowedAnswerShapes: new Set(["narrow", "focused", "comprehensive", "comparison", "partial"]),
+  forbiddenFallbackReasons: new Set([
+    "not_in_corpus",
+    "retrieval_miss",
+    "insufficient_claim_support",
+    "source_role_mismatch",
+    "source_conflict",
+    "governance_block",
+    "site_content_updating",
+    "site_content_stale",
+    "site_content_unavailable",
+    "timeout",
+    "provider_failure",
+  ]),
+};
+const publicSiteStates = new Set(["current", "updating", "stale", "unavailable", "disabled", "not_applicable"]);
+const conflictFields = new Set([
+  "source_identity",
+  "publication_or_effective_date",
+  "jurisdiction",
+  "source_role",
+  "material_difference",
+  "local_primary_decision",
+  "review_flag",
+]);
+const incrementalEligibility = new Set(["none", "lead", "independent_sections"]);
+const casePrivacyClassifications = new Set(["synthetic_non_patient", "deidentified_failure_reproduction"]);
 
 function stableJson(value) {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
@@ -53,6 +125,14 @@ function stableJson(value) {
 
 function fingerprint(value) {
   return `sha256:${createHash("sha256").update(stableJson(value)).digest("hex")}`;
+}
+
+function isEnumArray(value, allowed, allowEmpty = true) {
+  return Array.isArray(value) && (allowEmpty || value.length > 0) && value.every((item) => allowed.has(item));
+}
+
+function isStringArray(value, allowEmpty = true) {
+  return Array.isArray(value) && (allowEmpty || value.length > 0) && value.every(hasText);
 }
 
 function validateTerm(term, caseId, fieldName) {
@@ -105,10 +185,17 @@ if (
   const privacyReview = programmeFixture.privacyReview;
   if (
     privacyReview?.reviewed !== true ||
+    !hasText(privacyReview?.reviewDate) ||
+    privacyReview?.classification !== "synthetic_and_deidentified" ||
+    !Object.hasOwn(privacyReview ?? {}, "containsPatientData") ||
     privacyReview?.containsPatientData !== false ||
+    !Object.hasOwn(privacyReview ?? {}, "containsProductionTraceData") ||
     privacyReview?.containsProductionTraceData !== false ||
+    !Object.hasOwn(privacyReview ?? {}, "containsProviderOutput") ||
     privacyReview?.containsProviderOutput !== false ||
+    !Object.hasOwn(privacyReview ?? {}, "containsProtectedReferenceContent") ||
     privacyReview?.containsProtectedReferenceContent !== false ||
+    !Object.hasOwn(privacyReview ?? {}, "containsUserOrAdministratorIdentifiers") ||
     privacyReview?.containsUserOrAdministratorIdentifiers !== false
   ) {
     fail(
@@ -121,6 +208,7 @@ if (
   const requiredSet = new Set(requiredProgrammeFailureClasses);
   if (
     !Array.isArray(declaredClasses) ||
+    declaredClasses.length !== requiredSet.size ||
     declaredSet.size !== requiredSet.size ||
     requiredProgrammeFailureClasses.some((item) => !declaredSet.has(item)) ||
     [...declaredSet].some((item) => !requiredSet.has(item))
@@ -136,7 +224,12 @@ if (
     if (ids.has(item?.id)) fail(`${caseId}: duplicate programme case id.`);
     ids.add(item?.id);
     if (!hasText(item?.question)) fail(`${caseId}: question is required.`);
-    if (item?.privacyReview?.reviewed !== true || item?.privacyReview?.containsPatientText !== false) {
+    if (
+      item?.privacyReview?.reviewed !== true ||
+      !casePrivacyClassifications.has(item?.privacyReview?.classification) ||
+      !Object.hasOwn(item?.privacyReview ?? {}, "containsPatientText") ||
+      item?.privacyReview?.containsPatientText !== false
+    ) {
       fail(`${caseId}: privacy review must be complete and declare containsPatientText=false.`);
     }
     if (!Array.isArray(item?.protectedFailureClasses) || item.protectedFailureClasses.length === 0) {
@@ -155,20 +248,40 @@ if (
       fail(`${caseId}: expectation is required.`);
       continue;
     }
-    for (const field of [
-      "expectedCorpusScopes",
-      "expectedSourceRoles",
-      "expectedSiteDomains",
-      "expectedSubquestionPurposes",
-      "allowedAnswerShapes",
-      "forbiddenFallbackReasons",
-      "requiredFacts",
-      "forbiddenPatterns",
-    ]) {
-      if (!Array.isArray(expectation[field])) fail(`${caseId}: ${field} must be an array.`);
+    for (const [field, allowed] of Object.entries(programmeEnums)) {
+      if (!isEnumArray(expectation[field], allowed, field !== "allowedAnswerShapes")) {
+        fail(`${caseId}: ${field} contains an invalid value.`);
+      }
     }
-    if (!Array.isArray(expectation.requiredFacts) || !expectation.requiredFacts.every(hasText)) {
+    if (!publicSiteStates.has(expectation.expectedPublicSiteContentState)) {
+      fail(`${caseId}: expectedPublicSiteContentState is invalid.`);
+    }
+    if (!Number.isInteger(expectation.minimumDirectSubquestions) || expectation.minimumDirectSubquestions < 0) {
+      fail(`${caseId}: minimumDirectSubquestions must be a non-negative integer.`);
+    }
+    if (typeof expectation.requireSupportedPart !== "boolean" || typeof expectation.requireExactGap !== "boolean") {
+      fail(`${caseId}: supported-part and exact-gap flags must be boolean.`);
+    }
+    if (!isStringArray(expectation.requiredFacts, false)) {
       fail(`${caseId}: requiredFacts must contain explicit facts.`);
+    }
+    if (!isStringArray(expectation.forbiddenPatterns)) {
+      fail(`${caseId}: forbiddenPatterns must contain only non-empty strings.`);
+    }
+    if (!incrementalEligibility.has(expectation.incrementalEligibility)) {
+      fail(`${caseId}: incrementalEligibility is invalid.`);
+    }
+    if (expectation.expectedConflict !== null) {
+      const conflict = expectation.expectedConflict;
+      if (
+        !conflict ||
+        typeof conflict !== "object" ||
+        !hasText(conflict.localDocumentId) ||
+        !hasText(conflict.australianDocumentId) ||
+        !isEnumArray(conflict.requireVisibleFields, conflictFields, false)
+      ) {
+        fail(`${caseId}: expectedConflict is malformed.`);
+      }
     }
   }
 
