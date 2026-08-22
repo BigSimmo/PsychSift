@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clinical-kb.local/schemas/rag-upgrade-programme-receipt-v1.json",
+  "title": "RAG upgrade whole-programme review receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "programmeId",
+    "status",
+    "packageVariant",
+    "packageHash",
+    "packageBaseSha",
+    "packageHeadSha",
+    "programmeImplementationBase",
+    "finalHeadSha",
+    "finalReviewRouting",
+    "reviews",
+    "verificationEvidence",
+    "residualGates",
+    "acceptedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "programmeId": { "const": "rag-answer-quality-and-repository-coverage-v1" },
+    "status": { "enum": ["draft", "accepted"] },
+    "packageVariant": { "enum": ["local", "cloud"] },
+    "packageHash": { "$ref": "#/$defs/sha256" },
+    "packageBaseSha": { "$ref": "#/$defs/gitSha" },
+    "packageHeadSha": { "$ref": "#/$defs/gitSha" },
+    "programmeImplementationBase": { "$ref": "#/$defs/gitSha" },
+    "finalHeadSha": { "$ref": "#/$defs/gitSha" },
+    "finalReviewRouting": { "$ref": "#/$defs/finalReviewRouting" },
+    "reviews": { "type": "array", "items": { "$ref": "#/$defs/review" } },
+    "verificationEvidence": { "type": "array", "items": { "$ref": "#/$defs/commandEvidence" } },
+    "residualGates": { "type": "array", "items": { "$ref": "#/$defs/residualGate" } },
+    "acceptedAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] }
+  },
+  "$defs": {
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "finalReviewRouting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "plannedModel",
+        "actualModel",
+        "capabilityClass",
+        "reasoning",
+        "providerMappingUsed",
+        "fallbackUsed"
+      ],
+      "properties": {
+        "provider": { "enum": ["codex", "claude"] },
+        "plannedModel": { "const": "gpt-5.6-sol" },
+        "actualModel": { "type": "string", "minLength": 1 },
+        "capabilityClass": { "const": "frontier-high" },
+        "reasoning": { "const": "xhigh" },
+        "providerMappingUsed": { "type": "boolean" },
+        "fallbackUsed": { "const": false }
+      }
+    },
+    "artifactPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/programme/"
+    },
+    "commandEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "expected", "outcome", "result"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "expected": { "type": "string", "minLength": 1 },
+        "outcome": { "enum": ["passed", "failed-unexpectedly", "blocked", "reused"] },
+        "result": { "type": "string", "minLength": 1 }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseSha",
+        "headSha",
+        "diffPackagePath",
+        "diffPackageSha256",
+        "reportPath",
+        "reportSha256",
+        "reviewerAgentId",
+        "specVerdict",
+        "qualityVerdict"
+      ],
+      "properties": {
+        "baseSha": { "$ref": "#/$defs/gitSha" },
+        "headSha": { "$ref": "#/$defs/gitSha" },
+        "diffPackagePath": { "$ref": "#/$defs/artifactPath" },
+        "diffPackageSha256": { "$ref": "#/$defs/sha256" },
+        "reportPath": { "$ref": "#/$defs/artifactPath" },
+        "reportSha256": { "$ref": "#/$defs/sha256" },
+        "reviewerAgentId": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._:/-]+$" },
+        "specVerdict": { "enum": ["PENDING", "PASS", "FAIL"] },
+        "qualityVerdict": { "enum": ["PENDING", "PASS", "FAIL"] }
+      }
+    },
+    "residualGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gateId", "gate", "reason", "requiredAuthority"],
+      "properties": {
+        "gateId": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9-]+$" },
+        "gate": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "requiredAuthority": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

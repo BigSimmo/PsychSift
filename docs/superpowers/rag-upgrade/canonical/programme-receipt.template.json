@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "programmeId": "rag-answer-quality-and-repository-coverage-v1",
+  "status": "draft",
+  "packageVariant": "local",
+  "packageHash": "0000000000000000000000000000000000000000000000000000000000000000",
+  "packageBaseSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "packageHeadSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "programmeImplementationBase": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "finalHeadSha": "aa0c04bce12995894a9287cb1a084f89f2ed6ef8",
+  "finalReviewRouting": {
+    "provider": "codex",
+    "plannedModel": "gpt-5.6-sol",
+    "actualModel": "gpt-5.6-sol",
+    "capabilityClass": "frontier-high",
+    "reasoning": "xhigh",
+    "providerMappingUsed": false,
+    "fallbackUsed": false
+  },
+  "reviews": [],
+  "verificationEvidence": [],
+  "residualGates": [
+    {
+      "gateId": "official-source-and-licence-verification",
+      "gate": "Connected verification of current official Australian source URLs, publishers, licences, and permitted content modes",
+      "reason": "Requires current internet access and accountable source review.",
+      "requiredAuthority": "Explicit connected read-only source-verification approval"
+    },
+    {
+      "gateId": "hosted-supabase-security-and-migrations",
+      "gate": "Hosted Supabase project, RLS/grant, schema type, and migration acceptance",
+      "reason": "Offline source and schema evidence cannot prove hosted database state.",
+      "requiredAuthority": "Explicit hosted Supabase inspection and migration approval"
+    },
+    {
+      "gateId": "targeted-reindex-shadow-evaluation",
+      "gate": "Dry-run, targeted reindex, shadow retrieval, and paired evaluation waves",
+      "reason": "Mutates indexed corpus state and consumes hosted/provider capacity.",
+      "requiredAuthority": "Explicit per-wave reindex and evaluation approval"
+    },
+    {
+      "gateId": "provider-canary-and-generation-acceptance",
+      "gate": "Live answer-provider canaries for quality, timeout, citation, abort, and fallback behaviour",
+      "reason": "Requires provider calls and may incur cost or expose approved test queries.",
+      "requiredAuthority": "Explicit provider-canary approval"
+    },
+    {
+      "gateId": "controlled-activation-rollback-and-cleanup",
+      "gate": "Controlled corpus activation with rollback proof and only then bounded cleanup",
+      "reason": "Changes live retrieval eligibility and may retire superseded indexed generations.",
+      "requiredAuthority": "Explicit activation, rollback, and cleanup approval"
+    },
+    {
+      "gateId": "deployment-and-production-acceptance",
+      "gate": "Deployment, production monitoring, anonymous/authenticated/admin parity canaries, and release acceptance",
+      "reason": "Changes production state and requires accountable operational observation.",
+      "requiredAuthority": "Explicit deployment and production acceptance approval"
+    }
+  ],
+  "acceptedAt": null
+}

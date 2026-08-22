@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "programmeId": "rag-answer-quality-and-repository-coverage-v1",
+  "purpose": "Literal RED/GREEN supplements for tasks whose prose previously named only a passing gate or used shorthand. Other tasks retain the literal RED/GREEN commands in their task bodies.",
+  "tasks": {
+    "adaptive/task-0": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/answer-content.test.ts tests/answer-copy-payload.test.ts",
+      "redExpected": "After adding the specified lossless-display assertions and before implementation, fail because the current v19 display/copy path clips or drops governed lead text.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/answer-content.test.ts tests/answer-copy-payload.test.ts"
+    },
+    "adaptive/task-6": {
+      "strategy": "verification-only",
+      "preCommand": "npm run verify:pr-local -- --dry-run --files src/lib/rag/adaptive-answer-plan.ts,src/lib/rag/answer-composition.ts,src/lib/rag/rag-answer-instructions.ts,src/lib/rag/rag.ts,src/lib/answer-verification.ts,src/components/clinical-dashboard/answer-content.tsx",
+      "preExpected": "The selector reports the exact handoff plan without executing provider or hosted work.",
+      "acceptanceCommands": [
+        {
+          "command": "npm run check:rag:fixtures",
+          "expected": "The governed RAG fixture gate passes."
+        },
+        {
+          "command": "npm run eval:rag:offline",
+          "expected": "The offline evaluator completes successfully with its repository-owned fixtures."
+        },
+        {
+          "command": "npm run check:production-readiness",
+          "expected": "The readiness check passes its offline contract while retaining hosted and provider gates as residual evidence."
+        }
+      ]
+    },
+    "australian/task-6": {
+      "strategy": "verification-only",
+      "preCommand": "npm run verify:pr-local -- --dry-run",
+      "preExpected": "The selector reports the source-governance handoff gates without applying migrations or contacting providers.",
+      "acceptanceCommands": [
+        {
+          "command": "node scripts/run-vitest.mjs run tests/australian-source-catalogue.test.ts tests/source-role-policy.test.ts tests/australian-source-priority.test.ts tests/source-metadata.test.ts tests/source-authority-tooling.test.ts tests/publication-manifest.test.ts tests/supabase-schema.test.ts tests/source-reference-links.test.ts tests/answer-reference-links.dom.test.tsx tests/answer-client-payload.test.ts",
+          "expected": "The Australian source-governance and link-only rendering contract tests pass."
+        },
+        {
+          "command": "npm run check:rag:fixtures",
+          "expected": "The governed RAG fixture gate passes with Healthdirect excluded and eTG and AMH link-only."
+        },
+        {
+          "command": "npm run check:production-readiness",
+          "expected": "The readiness check passes its offline source-governance contract while retaining connected verification as residual evidence."
+        }
+      ]
+    },
+    "evaluation/task-3": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/feedback-eval-triage.test.ts tests/answer-feedback-route.test.ts tests/eval-cases-route.test.ts tests/rag-eval-cases.test.ts",
+      "redExpected": "After adding the specified feedback-triage assertions and before implementation, fail because reviewed promotion is absent or feedback can bypass the reviewed fixture boundary.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/feedback-eval-triage.test.ts tests/answer-feedback-route.test.ts tests/eval-cases-route.test.ts tests/rag-eval-cases.test.ts"
+    },
+    "evaluation/task-5": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/rag-programme-eval.test.ts tests/eval-rag-programme-offline.test.ts tests/compare-rag-programme-eval.test.ts tests/rag-eval-cases.test.ts tests/rag-eval-source-governance.test.ts tests/eval-canary-workflow.test.ts",
+      "redExpected": "After adding comparator and default-branch canary assertions and before implementation, fail because paired fingerprint enforcement or the mandatory evaluated SHA is absent.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/rag-programme-eval.test.ts tests/eval-rag-programme-offline.test.ts tests/compare-rag-programme-eval.test.ts tests/rag-eval-cases.test.ts tests/rag-eval-source-governance.test.ts tests/eval-canary-workflow.test.ts"
+    },
+    "evaluation/task-6": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/rag-rollout.test.ts tests/eval-canary-workflow.test.ts tests/rag-programme-eval.test.ts",
+      "redExpected": "After adding final ownership, stop-rule, and evidence-status assertions and before implementation, fail because the finalized SLO/runbook contract is incomplete.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/rag-rollout.test.ts tests/eval-canary-workflow.test.ts tests/rag-programme-eval.test.ts"
+    },
+    "ingestion/task-3": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/recovery-readiness-evidence.test.ts tests/reindex-pipeline.test.ts",
+      "redExpected": "After adding the shared recovery and activation-receipt assertions and before implementation, fail because the durable digest-bound receipt contract is absent.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/recovery-readiness-evidence.test.ts tests/reindex-pipeline.test.ts"
+    },
+    "ingestion/task-4": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-run-loop.test.ts tests/worker-row-contract.test.ts tests/supabase-schema.test.ts",
+      "redExpected": "After adding sole-processor and committed-generation visibility assertions and before implementation, fail because duplicate processing or generation-unaware reads remain.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-run-loop.test.ts tests/worker-row-contract.test.ts tests/supabase-schema.test.ts"
+    },
+    "ingestion/task-5": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/document-enrichment.test.ts tests/worker-shadow-extraction.test.ts tests/check-indexing-contract.test.ts",
+      "redExpected": "After adding source-anchor and deterministic reconstruction assertions and before implementation, fail because structured source-anchored summaries are absent.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/document-enrichment.test.ts tests/worker-shadow-extraction.test.ts tests/check-indexing-contract.test.ts"
+    },
+    "ingestion/task-6": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-behavior.test.ts tests/worker-run-loop.test.ts tests/worker-runtime-control.test.ts tests/worker-row-contract.test.ts tests/check-indexing-contract.test.ts",
+      "redExpected": "After adding stale-lease, generation-fence, bounded-repair, and status-owner assertions and before implementation, fail on at least one missing fence or repair invariant.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-behavior.test.ts tests/worker-run-loop.test.ts tests/worker-runtime-control.test.ts tests/worker-row-contract.test.ts tests/check-indexing-contract.test.ts"
+    },
+    "ingestion/task-9": {
+      "strategy": "verification-only",
+      "preCommand": "npm run verify:pr-local -- --dry-run",
+      "preExpected": "The selector reports the exact final ingestion/reindex handoff gates without running live waves.",
+      "acceptanceCommands": [
+        {
+          "command": "npm run check:rag:fixtures",
+          "expected": "The governed RAG fixture gate passes after the offline ingestion and reindex contract work."
+        },
+        {
+          "command": "npm run eval:rag:offline",
+          "expected": "The offline evaluator completes successfully without running a live reindex wave."
+        },
+        {
+          "command": "npm run check:production-readiness",
+          "expected": "The readiness check passes its offline ingestion contract while leaving live acquisition, migration, reindex, and activation gated."
+        }
+      ]
+    },
+    "retrieval/task-5": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/rag-context-pack.test.ts tests/rag-context-budget.test.ts tests/rag-claim-support.test.ts tests/table-fact-ranking.test.ts tests/rag-governed-corpus-retrieval.test.ts",
+      "redExpected": "After adding the specified rule/population/exception/action/table/unit assertions and before implementation, fail because adjacency-only packing drops a required fact or exceeds allocation constraints.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/rag-context-pack.test.ts tests/rag-context-budget.test.ts tests/rag-claim-support.test.ts tests/table-fact-ranking.test.ts tests/rag-governed-corpus-retrieval.test.ts"
+    },
+    "retrieval/task-3": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/rag-governed-corpus-retrieval.test.ts tests/rag-site-content-retrieval.test.ts tests/owner-scope.test.ts tests/owner-scope-guard.test.ts tests/retrieval-access-scope.test.ts tests/retrieval-owner-filter-guard.test.ts tests/retrieval-hydration-scope.test.ts tests/function-grants.test.ts tests/supabase-schema.test.ts",
+      "redExpected": "After adding public candidate-parity and staging/private-row exclusions and before implementation, the new assertions fail while existing owner-scope behavior remains green.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/rag-governed-corpus-retrieval.test.ts tests/rag-site-content-retrieval.test.ts tests/owner-scope.test.ts tests/owner-scope-guard.test.ts tests/retrieval-access-scope.test.ts tests/retrieval-owner-filter-guard.test.ts tests/retrieval-hydration-scope.test.ts tests/function-grants.test.ts tests/supabase-schema.test.ts"
+    },
+    "retrieval/task-6": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/rag-provider.test.ts tests/rag-answer-support.test.ts tests/answer-response.test.ts tests/answer-state-contract.test.ts tests/rag-route-budget.test.ts tests/rag-answer-fallback.test.ts",
+      "redExpected": "After adding typed public fallback-reason assertions and before implementation, the typed-field assertions fail while the existing deadline/abort invariants remain green.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/rag-provider.test.ts tests/rag-answer-support.test.ts tests/answer-response.test.ts tests/answer-state-contract.test.ts tests/rag-route-budget.test.ts tests/rag-answer-fallback.test.ts"
+    },
+    "retrieval/task-7": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/rag-generation-degradation.test.ts tests/rag-provider.test.ts tests/rag-route-budget.test.ts tests/rag-answer-fallback.test.ts tests/rag-eval-cases.test.ts",
+      "redExpected": "After adding separate response-bearing quality-retry exhaustion, zero-response initial-timeout, per-attempt telemetry, and protected deadline/abort assertions and before implementation, fail because the measured mechanism distinction or remediation seam is absent.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/rag-generation-degradation.test.ts tests/rag-provider.test.ts tests/rag-route-budget.test.ts tests/rag-answer-fallback.test.ts tests/rag-eval-cases.test.ts"
+    },
+    "retrieval/task-8": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/rag-cache-invalidation.test.ts tests/answer-telemetry.test.ts tests/rag-telemetry-canary-absence.test.ts tests/rag-eval-cases.test.ts",
+      "redExpected": "After adding release/scope isolation and privacy-safe diagnostic assertions and before implementation, fail because a cache key or telemetry classification omits required snapshot/coverage identity.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/rag-cache-invalidation.test.ts tests/answer-telemetry.test.ts tests/rag-telemetry-canary-absence.test.ts tests/rag-eval-cases.test.ts"
+    },
+    "verifiedDelivery/task-5": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/answer-progress.test.ts tests/answer-request.test.ts",
+      "redExpected": "After adding append-only, ordered, accessible lead/section assertions and before implementation, fail because the progress renderer cannot present verified units incrementally.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/answer-progress.test.ts tests/answer-request.test.ts"
+    },
+    "verifiedDelivery/task-6": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/answer-telemetry.test.ts tests/answer-incremental-delivery.test.ts tests/answer-semantic-unit-parser.test.ts tests/answer-unit-finalization.test.ts tests/answer-progress.test.ts tests/answer-stream-preview-order.test.ts",
+      "redExpected": "After adding staged-rollout and immutable-preview telemetry assertions and before implementation, fail because the rollout/telemetry reconciliation is incomplete.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/answer-telemetry.test.ts tests/answer-incremental-delivery.test.ts tests/answer-semantic-unit-parser.test.ts tests/answer-unit-finalization.test.ts tests/answer-progress.test.ts tests/answer-stream-preview-order.test.ts"
+    },
+    "repositoryContent/task-2": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/site-content-manifest.test.ts tests/site-content-registry.test.ts tests/registry-corpus.test.ts tests/specifiers-content.test.ts tests/medications.test.ts tests/differentials.test.ts",
+      "redExpected": "After adding complete static/dynamic adapter coverage assertions and before implementation, fail because at least one approved knowledge producer is unregistered or non-deterministic.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/site-content-manifest.test.ts tests/site-content-registry.test.ts tests/registry-corpus.test.ts tests/specifiers-content.test.ts tests/medications.test.ts tests/differentials.test.ts"
+    },
+    "repositoryContent/task-3": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/site-content-sync.test.ts tests/site-content-sync-worker.test.ts tests/site-content-publication-access.test.ts tests/registry-records-route.test.ts tests/medications-route.test.ts tests/differentials-route.test.ts tests/registry-corpus.test.ts tests/function-grants.test.ts tests/supabase-schema.test.ts tests/ingestion-mutation-safety.test.ts tests/reindex-pipeline.test.ts",
+      "redExpected": "After adding durable outbox, public-reader parity, and admin-only mutation assertions and before implementation, fail because synchronization is best-effort or reader results vary by identity.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/site-content-sync.test.ts tests/site-content-sync-worker.test.ts tests/site-content-publication-access.test.ts tests/registry-records-route.test.ts tests/medications-route.test.ts tests/differentials-route.test.ts tests/registry-corpus.test.ts tests/function-grants.test.ts tests/supabase-schema.test.ts tests/ingestion-mutation-safety.test.ts tests/reindex-pipeline.test.ts"
+    },
+    "repositoryContent/task-4": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/site-content-freshness-workflow.test.ts tests/site-content-health.test.ts tests/ci-scope-contract.test.ts",
+      "redExpected": "After adding digest-bound activation assertions and before implementation, fail because static and administrator-published content do not share one activation contract.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/site-content-freshness-workflow.test.ts tests/site-content-health.test.ts tests/ci-scope-contract.test.ts"
+    },
+    "repositoryContent/task-5": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/rag-site-content-freshness.test.ts tests/rag-cache-invalidation.test.ts tests/rag-shared-cache.test.ts tests/rag-rollout.test.ts tests/rag-abort-signal.test.ts",
+      "redExpected": "After adding request-local snapshot and cache-identity assertions and before implementation, fail because a question can observe mixed releases or reuse a stale cross-release answer.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/rag-site-content-freshness.test.ts tests/rag-cache-invalidation.test.ts tests/rag-shared-cache.test.ts tests/rag-rollout.test.ts tests/rag-abort-signal.test.ts"
+    },
+    "repositoryContent/task-6": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/rag-site-content-programme.test.ts tests/rag-programme-eval.test.ts tests/rag-programme-telemetry.test.ts tests/site-content-manifest.test.ts tests/site-content-sync.test.ts tests/rag-site-content-retrieval.test.ts tests/rag-site-content-freshness.test.ts",
+      "redExpected": "After adding repository-wide must-pass and rollout-evidence assertions and before implementation, fail because a required domain or operating-evidence field is absent.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/rag-site-content-programme.test.ts tests/rag-programme-eval.test.ts tests/rag-programme-telemetry.test.ts tests/site-content-manifest.test.ts tests/site-content-sync.test.ts tests/rag-site-content-retrieval.test.ts tests/rag-site-content-freshness.test.ts"
+    },
+    "trustedIngestion/task-3": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/ocr-evidence-contract.test.ts tests/pdf-extractor.test.ts tests/pdf-extraction-budget.test.ts tests/index-quality.test.ts tests/worker-shadow-extraction.test.ts tests/docling-lab-contract.test.ts",
+      "redExpected": "After adding reproducible class-specific extraction evidence assertions and before implementation, fail because OCR/layout provenance or bounded promotion is absent.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/ocr-evidence-contract.test.ts tests/pdf-extractor.test.ts tests/pdf-extraction-budget.test.ts tests/index-quality.test.ts tests/worker-shadow-extraction.test.ts tests/docling-lab-contract.test.ts"
+    },
+    "trustedIngestion/task-0": {
+      "strategy": "verification-only",
+      "preCommand": "npm run ledger:lookup -- HEAD --scope \"trusted admin document ingestion\"",
+      "preExpected": "The command returns an explicit exact-head review disposition; the worker records, but does not infer or overwrite, that evidence.",
+      "acceptanceCommands": [
+        {
+          "command": "npm run verify:pr-local -- --dry-run --files src/app/api/upload/route.ts,src/lib/trusted-document-admission.ts,supabase/schema.sql",
+          "expected": "The selector reports the exact trusted-ingestion route, admission, and schema gates without executing them."
+        }
+      ]
+    },
+    "trustedIngestion/task-4": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/document-technical-eligibility.test.ts tests/trusted-document-activation-schema.test.ts tests/publication-manifest.test.ts tests/source-review-schema.test.ts tests/function-grants.test.ts tests/index-quality.test.ts tests/ingestion-mutation-safety.test.ts tests/reindex-pipeline.test.ts",
+      "redExpected": "After adding digest-bound eligibility and atomic activation assertions and before implementation, fail because an ineligible or mismatched candidate can activate.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/document-technical-eligibility.test.ts tests/trusted-document-activation-schema.test.ts tests/publication-manifest.test.ts tests/source-review-schema.test.ts tests/function-grants.test.ts tests/index-quality.test.ts tests/ingestion-mutation-safety.test.ts tests/reindex-pipeline.test.ts"
+    },
+    "trustedIngestion/task-5": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/ingestion-quality-route.test.ts tests/ingestion-quality-task-route.test.ts tests/ingestion-quality-console.dom.test.tsx tests/document-admin.dom.test.tsx tests/api-route-coverage.test.ts tests/api-validation-contract.test.ts",
+      "redExpected": "After adding durable administrator queue and authorization assertions and before implementation, fail because quality discovery is bounded/transient or exposed to a non-admin.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/ingestion-quality-route.test.ts tests/ingestion-quality-task-route.test.ts tests/ingestion-quality-console.dom.test.tsx tests/document-admin.dom.test.tsx tests/api-route-coverage.test.ts tests/api-validation-contract.test.ts"
+    },
+    "trustedIngestion/task-6": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/staging-document-retrieval-exclusion.test.ts tests/document-withdrawal-propagation.test.ts tests/owner-scope.test.ts tests/retrieval-access-scope.test.ts tests/api-search.test.ts tests/rag-answer-support.test.ts tests/source-review-policy.test.ts tests/document-mutation-routes.test.ts tests/rag-trust.test.ts tests/answer-verification.test.ts",
+      "redExpected": "After adding active-only public candidate, lineage, conflict, withdrawal, and anonymous/authenticated/admin parity assertions and before implementation, fail because staging/withdrawn content can leak or lineage is incomplete.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/staging-document-retrieval-exclusion.test.ts tests/document-withdrawal-propagation.test.ts tests/owner-scope.test.ts tests/retrieval-access-scope.test.ts tests/api-search.test.ts tests/rag-answer-support.test.ts tests/source-review-policy.test.ts tests/document-mutation-routes.test.ts tests/rag-trust.test.ts tests/answer-verification.test.ts"
+    },
+    "trustedIngestion/task-7": {
+      "strategy": "tdd",
+      "redCommand": "node scripts/run-vitest.mjs run tests/document-pipeline-version-audit.test.ts tests/reindex-pipeline.test.ts tests/storage-cleanup-safety.test.ts tests/ingestion-recovery.test.ts",
+      "redExpected": "After adding selective reprocessing, rollback, and non-destructive cleanup assertions and before implementation, fail because lifecycle provenance or a recovery fence is absent.",
+      "greenCommand": "node scripts/run-vitest.mjs run tests/document-pipeline-version-audit.test.ts tests/reindex-pipeline.test.ts tests/storage-cleanup-safety.test.ts tests/ingestion-recovery.test.ts"
+    },
+    "trustedIngestion/task-8": {
+      "strategy": "verification-only",
+      "preCommand": "npm run verify:pr-local -- --dry-run",
+      "preExpected": "The selector reports the exact RAG, ingestion, database, UI, documentation, and production-readiness gates for the final phase diff without executing them.",
+      "acceptanceCommands": [
+        {
+          "command": "node scripts/run-vitest.mjs run tests/rag-eval-cases.test.ts tests/rag-adversarial-fixtures.test.ts",
+          "expected": "The final offline RAG evaluation and adversarial fixture tests pass."
+        },
+        {
+          "command": "npm run verify:pr-local",
+          "expected": "The repository-selected PR-local handoff gate passes for the completed programme diff."
+        },
+        {
+          "command": "npm run check:production-readiness",
+          "expected": "The readiness check passes its offline contract while all hosted, provider, migration, reindex, and production evidence remains explicitly gated."
+        }
+      ]
+    }
+  }
+}

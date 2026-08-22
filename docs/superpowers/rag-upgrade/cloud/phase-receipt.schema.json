@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clinical-kb.local/schemas/rag-upgrade-phase-receipt-v1.json",
+  "title": "RAG upgrade phase receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "programmeId",
+    "phaseId",
+    "executionPredecessor",
+    "status",
+    "packageVariant",
+    "packageHash",
+    "packageBaseSha",
+    "packageHeadSha",
+    "programmeImplementationBase",
+    "branch",
+    "modelRouting",
+    "phaseStartSha",
+    "phaseEndSha",
+    "startedAt",
+    "completedAt",
+    "tasks",
+    "phaseReviews",
+    "residualGates",
+    "acceptedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "programmeId": { "const": "rag-answer-quality-and-repository-coverage-v1" },
+    "phaseId": { "type": "string", "pattern": "^P(?:0[0-9]|1[0-8])[A-Z]?$" },
+    "executionPredecessor": {
+      "oneOf": [{ "type": "string", "pattern": "^P(?:0[0-9]|1[0-8])[A-Z]?$" }, { "type": "null" }]
+    },
+    "status": { "enum": ["draft", "accepted"] },
+    "packageVariant": { "enum": ["local", "cloud"] },
+    "packageHash": { "$ref": "#/$defs/sha256" },
+    "packageBaseSha": { "$ref": "#/$defs/gitSha" },
+    "packageHeadSha": { "$ref": "#/$defs/gitSha" },
+    "programmeImplementationBase": { "$ref": "#/$defs/gitSha" },
+    "branch": { "type": "string", "minLength": 1 },
+    "modelRouting": { "$ref": "#/$defs/modelRouting" },
+    "phaseStartSha": { "$ref": "#/$defs/gitSha" },
+    "phaseEndSha": { "$ref": "#/$defs/gitSha" },
+    "startedAt": { "$ref": "#/$defs/timestamp" },
+    "completedAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] },
+    "tasks": { "type": "array", "items": { "$ref": "#/$defs/taskReceipt" } },
+    "phaseReviews": { "type": "array", "items": { "$ref": "#/$defs/reviewReceipt" } },
+    "residualGates": { "type": "array", "items": { "$ref": "#/$defs/residualGate" } },
+    "acceptedAt": { "oneOf": [{ "$ref": "#/$defs/timestamp" }, { "type": "null" }] }
+  },
+  "$defs": {
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "agentId": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._:/-]+$" },
+    "artifactPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/"
+    },
+    "modelRouting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "plannedImplementationModel",
+        "actualImplementationModel",
+        "implementationCapabilityClass",
+        "implementationReasoning",
+        "plannedReviewModel",
+        "actualReviewModel",
+        "reviewCapabilityClass",
+        "reviewReasoning",
+        "providerMappingUsed",
+        "fallbackUsed",
+        "escalationReason"
+      ],
+      "properties": {
+        "provider": { "enum": ["codex", "claude"] },
+        "plannedImplementationModel": { "type": "string", "minLength": 1 },
+        "actualImplementationModel": { "type": "string", "minLength": 1 },
+        "implementationCapabilityClass": { "enum": ["workhorse-high", "frontier-high"] },
+        "implementationReasoning": { "enum": ["low", "medium", "high", "xhigh"] },
+        "plannedReviewModel": { "type": "string", "minLength": 1 },
+        "actualReviewModel": { "type": "string", "minLength": 1 },
+        "reviewCapabilityClass": { "const": "frontier-high" },
+        "reviewReasoning": { "enum": ["low", "medium", "high", "xhigh"] },
+        "providerMappingUsed": { "type": "boolean" },
+        "fallbackUsed": { "const": false },
+        "escalationReason": { "type": ["string", "null"] }
+      }
+    },
+    "commandEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "expected", "outcome", "result"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "expected": { "type": "string", "minLength": 1 },
+        "outcome": { "enum": ["passed", "failed-as-expected", "failed-unexpectedly", "blocked", "reused"] },
+        "result": { "type": "string", "minLength": 1 }
+      }
+    },
+    "tddEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["red", "green"],
+      "properties": {
+        "red": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/commandEvidence" } },
+        "green": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/commandEvidence" } }
+      }
+    },
+    "verificationEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["precondition", "acceptance"],
+      "properties": {
+        "precondition": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/commandEvidence" } },
+        "acceptance": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/commandEvidence" } }
+      }
+    },
+    "reviewReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseSha",
+        "headSha",
+        "diffPackagePath",
+        "diffPackageSha256",
+        "reportPath",
+        "reportSha256",
+        "reviewerAgentId",
+        "specVerdict",
+        "qualityVerdict"
+      ],
+      "properties": {
+        "baseSha": { "$ref": "#/$defs/gitSha" },
+        "headSha": { "$ref": "#/$defs/gitSha" },
+        "diffPackagePath": { "$ref": "#/$defs/artifactPath" },
+        "diffPackageSha256": { "$ref": "#/$defs/sha256" },
+        "reportPath": { "$ref": "#/$defs/artifactPath" },
+        "reportSha256": { "$ref": "#/$defs/sha256" },
+        "reviewerAgentId": { "$ref": "#/$defs/agentId" },
+        "specVerdict": { "enum": ["PENDING", "PASS", "FAIL"] },
+        "qualityVerdict": { "enum": ["PENDING", "PASS", "FAIL"] }
+      }
+    },
+    "taskReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "globalTaskKey",
+        "strategy",
+        "taskBaseSha",
+        "taskHeadSha",
+        "commits",
+        "briefPath",
+        "briefSha256",
+        "implementerReportPath",
+        "implementerReportSha256",
+        "implementerAgentId",
+        "evidence",
+        "reviews"
+      ],
+      "properties": {
+        "globalTaskKey": { "type": "string", "pattern": "^P(?:0[0-9]|1[0-7])[A-Z]?/[a-zA-Z]+/task-[0-9]+$" },
+        "strategy": { "enum": ["tdd", "verification-only"] },
+        "taskBaseSha": { "$ref": "#/$defs/gitSha" },
+        "taskHeadSha": { "$ref": "#/$defs/gitSha" },
+        "commits": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/gitSha" } },
+        "briefPath": { "$ref": "#/$defs/artifactPath" },
+        "briefSha256": { "$ref": "#/$defs/sha256" },
+        "implementerReportPath": { "$ref": "#/$defs/artifactPath" },
+        "implementerReportSha256": { "$ref": "#/$defs/sha256" },
+        "implementerAgentId": { "$ref": "#/$defs/agentId" },
+        "evidence": {
+          "oneOf": [{ "$ref": "#/$defs/tddEvidence" }, { "$ref": "#/$defs/verificationEvidence" }]
+        },
+        "reviews": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/reviewReceipt" } }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "strategy": { "const": "tdd" },
+            "evidence": { "$ref": "#/$defs/tddEvidence" }
+          }
+        },
+        {
+          "properties": {
+            "strategy": { "const": "verification-only" },
+            "evidence": { "$ref": "#/$defs/verificationEvidence" }
+          }
+        }
+      ]
+    },
+    "residualGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate", "reason", "requiredAuthority"],
+      "properties": {
+        "gate": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "requiredAuthority": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
