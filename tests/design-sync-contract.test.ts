@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { previewTypeFailures } from "../scripts/check-design-sync-contract.mjs";
 
 const root = path.resolve(__dirname, "..");
+const subprocessTestTimeoutMs = 120_000;
 
 function withPreviewCompilerFixture(tsconfig: object, run: (fixtureRoot: string) => void) {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-sync-compiler-"));
@@ -22,11 +23,15 @@ function withPreviewCompilerFixture(tsconfig: object, run: (fixtureRoot: string)
 }
 
 describe("design-sync public contract", () => {
-  it("keeps sources, entry exports, previews and published props in parity", () => {
-    expect(() =>
-      execFileSync(process.execPath, ["scripts/check-design-sync-contract.mjs"], { cwd: root, stdio: "pipe" }),
-    ).not.toThrow();
-  });
+  it(
+    "keeps sources, entry exports, previews and published props in parity",
+    () => {
+      expect(() =>
+        execFileSync(process.execPath, ["scripts/check-design-sync-contract.mjs"], { cwd: root, stdio: "pipe" }),
+      ).not.toThrow();
+    },
+    subprocessTestTimeoutMs,
+  );
 
   it("publishes source-derived answer and EmptyState contracts", () => {
     const config = JSON.parse(fs.readFileSync(path.join(root, ".design-sync/config.json"), "utf8"));
@@ -49,22 +54,26 @@ describe("design-sync public contract", () => {
     expect(previewTsconfig.compilerOptions.paths[config.pkg]).toEqual(["./entry.tsx"]);
   });
 
-  it("passes the actual configured preview TypeScript project", () => {
-    expect(() =>
-      execFileSync(
-        process.execPath,
-        [
-          path.join(root, "node_modules/typescript/bin/tsc"),
-          "--project",
-          ".design-sync/tsconfig.previews.json",
-          "--noEmit",
-          "--pretty",
-          "false",
-        ],
-        { cwd: root, stdio: "pipe" },
-      ),
-    ).not.toThrow();
-  });
+  it(
+    "passes the actual configured preview TypeScript project",
+    () => {
+      expect(() =>
+        execFileSync(
+          process.execPath,
+          [
+            path.join(root, "node_modules/typescript/bin/tsc"),
+            "--project",
+            ".design-sync/tsconfig.previews.json",
+            "--noEmit",
+            "--pretty",
+            "false",
+          ],
+          { cwd: root, stdio: "pipe" },
+        ),
+      ).not.toThrow();
+    },
+    subprocessTestTimeoutMs,
+  );
 
   it("reports configured compiler-option diagnostics instead of passing green", () => {
     withPreviewCompilerFixture(

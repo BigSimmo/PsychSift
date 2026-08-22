@@ -30,6 +30,18 @@ const applier = join(repoRoot, "scripts", "apply-claude-cloud-profile.mjs");
 const provisioner = join(repoRoot, "scripts", "setup-claude-cloud.sh");
 const profileDir = join(repoRoot, ".claude", "cloud-profile");
 const skillsDir = join(profileDir, "skills");
+const bashCommand =
+  process.platform === "win32"
+    ? ([
+        "C:\\Program Files\\Git\\bin\\bash.exe",
+        join(process.env.ProgramFiles || "C:\\Program Files", "Git/bin/bash.exe"),
+      ].find((candidate) => existsSync(candidate)) ?? "bash")
+    : "bash";
+
+function bashPathEntry(entry: string): string {
+  if (process.platform !== "win32") return entry;
+  return entry.replace(/^([A-Za-z]):/, (_, drive: string) => `/${drive.toLowerCase()}`).replaceAll("\\", "/");
+}
 
 // The vendored third-party skill tree is ~90,000 lines across ~400 files that no reviewer reads, so it
 // ships in its own pull request and the rest of the profile — all of it ours — lands separately. A
@@ -215,9 +227,10 @@ describe("setup-claude-cloud", () => {
   // the applier needs CLAUDE_CONFIG_DIR instead, for the Windows reason recorded at the top of this
   // file.
   function runProvisioner(args: string[], env: Record<string, string> = {}) {
-    return spawnSync("bash", [provisioner, ...args], {
+    const sandboxHome = env.HOME ?? makeSandboxHome();
+    return spawnSync(bashCommand, [bashPathEntry(provisioner), ...args], {
       encoding: "utf8",
-      env: { ...process.env, CLAUDE_CODE_REMOTE: "", HOME: makeSandboxHome(), ...env },
+      env: { ...process.env, CLAUDE_CODE_REMOTE: "", ...env, HOME: bashPathEntry(sandboxHome) },
     });
   }
 

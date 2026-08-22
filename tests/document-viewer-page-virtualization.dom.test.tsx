@@ -76,6 +76,15 @@ let idleCallbacks: (() => void)[] = [];
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
 let nextAnimationFrame = 1;
 
+async function flushPendingIdle() {
+  const pending = idleCallbacks;
+  idleCallbacks = [];
+  await act(async () => {
+    for (const callback of pending) callback();
+    await Promise.resolve();
+  });
+}
+
 async function flushIdle() {
   try {
     await waitFor(() => expect(idleCallbacks.length).toBeGreaterThan(0));
@@ -99,12 +108,7 @@ async function flushIdle() {
       { cause },
     );
   }
-  const pending = idleCallbacks;
-  idleCallbacks = [];
-  await act(async () => {
-    for (const callback of pending) callback();
-    await Promise.resolve();
-  });
+  await flushPendingIdle();
 }
 
 async function flushAnimationFrames() {
@@ -295,6 +299,7 @@ describe("PDF reader page virtualization", () => {
   });
 
   it("reads exactly one page ahead and one behind, and only once idle", async () => {
+    stubColumnLayout();
     await renderViewer({ initialPage: 4 });
     expect(renderedPages()).toEqual([4]);
 
@@ -315,8 +320,9 @@ describe("PDF reader page virtualization", () => {
     // page size, zoom and density a single canvas costs ~16.8M backing pixels
     // against a 24M budget, so `resolveLiveCanvasWindow` returns 1 and
     // render-ahead is vetoed by memory rather than by the idle gate — which is
-    // why this asserts AFTER `flushIdle()`, not before.
+    // why this asserts after any pending idle work is drained, not before.
     vi.stubGlobal("devicePixelRatio", 3);
+    stubColumnLayout();
 
     await renderViewer({ initialPage: 4, fitWidth: false, zoom: VIEWER_MAX_ZOOM });
 
@@ -326,7 +332,9 @@ describe("PDF reader page virtualization", () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
     });
-    await flushIdle();
+    // A limit of one intentionally schedules no idle callback. Drain an earlier
+    // cheap-zoom callback if one raced the debounce, but do not require one.
+    await flushPendingIdle();
 
     await waitFor(() => expect(renderedPages()).toEqual([4]));
     expect(getPageCalls).not.toContain(3);
