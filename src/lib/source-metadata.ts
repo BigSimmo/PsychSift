@@ -5,7 +5,7 @@ import {
   type SourceLicencePolicy,
 } from "@/lib/australian-source-catalogue";
 import {
-  authorityIdentityForCatalogueEntry,
+  catalogueDocumentIdentityCompatible,
   classifySourceAuthority,
   normalizeSourceAuthorityText,
   type SourceDesignation,
@@ -137,20 +137,23 @@ function hasExactCatalogueIdentity(value: Record<string, unknown>, sourceKind: s
   const jurisdiction = stringOrNull(value.jurisdiction);
   if (!key || !publisherCode || !jurisdiction) return false;
   const entry = australianSourceByKey(key);
-  if (!entry || publisherCode.toUpperCase() !== entry.publisherCode.toUpperCase()) return false;
+  const publisher = stringOrNull(value.publisher);
+  if (!entry || !publisher) return false;
   const normalizedJurisdiction = normalizeSourceAuthorityText(jurisdiction);
   const catalogueJurisdiction = normalizeSourceAuthorityText(entry.jurisdiction);
   const jurisdictionMatches =
     normalizedJurisdiction === catalogueJurisdiction ||
     (catalogueJurisdiction === normalizeSourceAuthorityText("Australia/National") &&
       compatibleNationalJurisdictions.has(normalizedJurisdiction));
-  if (!jurisdictionMatches) return false;
-  if (entry.contentMode === "link_only") return true;
-
-  const identity = authorityIdentityForCatalogueEntry(entry);
-  return Boolean(
-    identity?.jurisdictions.some((candidate) => normalizeSourceAuthorityText(candidate) === normalizedJurisdiction),
-  );
+  if (entry.contentMode === "link_only") {
+    return Boolean(
+      publisher &&
+      publisherCode.toUpperCase() === entry.publisherCode.toUpperCase() &&
+      normalizeSourceAuthorityText(publisher) === normalizeSourceAuthorityText(entry.publisher) &&
+      jurisdictionMatches,
+    );
+  }
+  return catalogueDocumentIdentityCompatible(entry, { publisherCode, publisher, jurisdiction });
 }
 
 function normalizedClinicalSourceMetadata(input: unknown): ClinicalSourceMetadata {

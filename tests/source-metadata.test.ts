@@ -284,6 +284,78 @@ describe("source metadata helpers", () => {
     expect(authorityIdentityForCatalogueEntry({ ...source!, jurisdiction: "Australia/National" })).toBeNull();
   });
 
+  it("retains governed policy for the Department key difference and registered WA identity aliases", () => {
+    const cases = [
+      {
+        source: australianSourceByKey("australian-health-disability-ageing")!,
+        publisher_code: "AUSDOH",
+        publisher: "Australian Department of Health and Aged Care",
+        jurisdiction: "Commonwealth of Australia",
+        source_role: "clinical_guideline" as const,
+      },
+      {
+        source: australianSourceByKey("wa-health")!,
+        publisher_code: "DOHWA",
+        publisher: "WA Department of Health",
+        jurisdiction: "WA",
+        source_role: "service_policy" as const,
+      },
+    ];
+
+    for (const testCase of cases) {
+      expect(
+        normalizeClinicalSourceMetadata({
+          source_kind: "document",
+          publisher_code: testCase.publisher_code,
+          publisher: testCase.publisher,
+          jurisdiction: testCase.jurisdiction,
+          corpus_scope: "australian_public",
+          source_role: testCase.source_role,
+          source_catalogue_key: testCase.source.key,
+          source_policy_version: australianSourcePolicyVersion,
+          content_mode: "indexed_content",
+          licence_policy: "public_index_permitted",
+        }),
+      ).toMatchObject({
+        publisher_code: testCase.publisher_code,
+        publisher: testCase.publisher,
+        jurisdiction: testCase.jurisdiction,
+        source_catalogue_key: testCase.source.key,
+        source_policy_version: australianSourcePolicyVersion,
+        content_mode: "indexed_content",
+        licence_policy: "public_index_permitted",
+      });
+    }
+  });
+
+  it("does not retain governed policy for false registered publishers or jurisdictions", () => {
+    const source = australianSourceByKey("wa-health")!;
+    for (const hostile of [
+      { publisher: "NPS MedicineWise", jurisdiction: "WA" },
+      { publisher: "WA Department of Health", jurisdiction: "Australia/National" },
+    ]) {
+      expect(
+        normalizeClinicalSourceMetadata({
+          source_kind: "document",
+          publisher_code: "WAHEALTH",
+          publisher: hostile.publisher,
+          jurisdiction: hostile.jurisdiction,
+          corpus_scope: "australian_public",
+          source_role: "service_policy",
+          source_catalogue_key: source.key,
+          source_policy_version: australianSourcePolicyVersion,
+          content_mode: "indexed_content",
+          licence_policy: "public_index_permitted",
+        }),
+      ).toMatchObject({
+        source_catalogue_key: null,
+        source_policy_version: null,
+        content_mode: null,
+        licence_policy: null,
+      });
+    }
+  });
+
   it("normalizes missing legacy metadata to explicit unknown labels without suppressing content", () => {
     const metadata = normalizeSourceMetadata(null);
 

@@ -3,6 +3,8 @@ import {
   australianSourcePolicyVersion,
   type AustralianSourceDefinition,
 } from "@/lib/australian-source-catalogue";
+import { hasActiveAustralianChangeState } from "@/lib/australian-source-state";
+import { catalogueDocumentIdentityCompatible } from "@/lib/source-authority-registry";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import type {
   ClinicalClaimRole,
@@ -62,9 +64,11 @@ function matchesCatalogueIdentity(source: ClinicalSourceMetadata, catalogue: Aus
   return (
     source.source_policy_version === australianSourcePolicyVersion &&
     source.content_mode === catalogue.contentMode &&
-    source.publisher_code?.trim().toUpperCase() === catalogue.publisherCode.toUpperCase() &&
-    source.publisher === catalogue.publisher &&
-    source.jurisdiction === catalogue.jurisdiction &&
+    catalogueDocumentIdentityCompatible(catalogue, {
+      publisherCode: source.publisher_code,
+      publisher: source.publisher,
+      jurisdiction: source.jurisdiction,
+    }) &&
     Boolean(source.source_role && catalogue.roles.includes(source.source_role))
   );
 }
@@ -84,13 +88,13 @@ export function sourceEligibilityForClaim(args: {
     return { eligible: false, reason: "catalogue_mismatch" };
   }
 
-  if (
-    source.change_state === "withdrawn" ||
-    source.change_state === "superseded" ||
-    nonEmpty(source.superseded_by_document_id) ||
-    catalogue?.lifecycle === "historical" ||
-    catalogue?.lifecycle === "retired"
-  ) {
+  const inactiveChangeState =
+    source.corpus_scope === "australian_public"
+      ? !hasActiveAustralianChangeState(source)
+      : source.change_state === "withdrawn" ||
+        source.change_state === "superseded" ||
+        nonEmpty(source.superseded_by_document_id);
+  if (inactiveChangeState || catalogue?.lifecycle === "historical" || catalogue?.lifecycle === "retired") {
     return { eligible: false, reason: "inactive" };
   }
 

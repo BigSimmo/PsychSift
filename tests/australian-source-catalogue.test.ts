@@ -9,7 +9,11 @@ import {
   australianSourcePolicyVersion,
   isIndexableAustralianSource,
 } from "@/lib/australian-source-catalogue";
-import { sourceAuthorityForPublisherCode } from "@/lib/source-authority-registry";
+import {
+  authorityIdentityForCatalogueEntry,
+  catalogueDocumentIdentityCompatible,
+  sourceAuthorityForPublisherCode,
+} from "@/lib/source-authority-registry";
 
 describe("Australian source catalogue", () => {
   it("keeps Healthdirect completely outside the catalogue", () => {
@@ -69,10 +73,54 @@ describe("Australian source catalogue", () => {
     );
   });
 
-  it("reuses exactly one existing authority identity per indexed catalogue entry", () => {
+  it("resolves every indexed catalogue entry through exactly one compatible authority identity", () => {
     for (const source of australianSourceCatalogue.filter((entry) => entry.contentMode === "indexed_content")) {
-      expect(sourceAuthorityForPublisherCode(source.publisherCode)?.key).toBeTruthy();
+      const identity = authorityIdentityForCatalogueEntry(source);
+      expect(identity).not.toBeNull();
+      expect(sourceAuthorityForPublisherCode(source.publisherCode)).toBe(identity);
+      expect(
+        catalogueDocumentIdentityCompatible(source, {
+          publisherCode: source.publisherCode,
+          publisher: source.publisher,
+          jurisdiction: source.jurisdiction,
+        }),
+      ).toBe(true);
     }
+  });
+
+  it("keeps catalogue policy keys separate from authority identity keys", () => {
+    const source = australianSourceByKey("australian-health-disability-ageing")!;
+    expect(source.key).not.toBe("australian-department-of-health");
+    expect(authorityIdentityForCatalogueEntry(source)).toMatchObject({
+      key: "australian-department-of-health",
+      codes: expect.arrayContaining(["AUSDOH"]),
+    });
+  });
+
+  it("accepts registered WA publisher, code, and jurisdiction aliases but rejects hostile mismatches", () => {
+    const source = australianSourceByKey("wa-health")!;
+    expect(
+      catalogueDocumentIdentityCompatible(source, {
+        publisherCode: "DOHWA",
+        publisher: "WA Department of Health",
+        jurisdiction: "WA",
+      }),
+    ).toBe(true);
+
+    for (const documentIdentity of [
+      { publisherCode: "TGA", publisher: "WA Department of Health", jurisdiction: "WA" },
+      { publisherCode: "WAHEALTH", publisher: "NPS MedicineWise", jurisdiction: "WA" },
+      { publisherCode: "WAHEALTH", publisher: "WA Department of Health", jurisdiction: "Australia/National" },
+      { publisherCode: "UNKNOWN", publisher: "Unknown publisher", jurisdiction: "Unknown jurisdiction" },
+    ]) {
+      expect(catalogueDocumentIdentityCompatible(source, documentIdentity)).toBe(false);
+    }
+    expect(
+      catalogueDocumentIdentityCompatible(
+        { ...source, lifecycle: "historical" },
+        { publisherCode: "WAHEALTH", publisher: "WA Health", jurisdiction: "Australia/WA" },
+      ),
+    ).toBe(false);
   });
 
   it("uses precise authority identities for independently governed publishers", () => {

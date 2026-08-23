@@ -1449,14 +1449,26 @@ describe("Supabase Preview replay guards", () => {
     expect(sql).toContain("v_document.metadata->>'content_mode' is distinct from 'indexed_content'");
     expect(sql).toContain("v_document.metadata->>'licence_policy' is distinct from 'public_index_permitted'");
     expect(sql).toContain("v_document.metadata->>'document_status' is distinct from 'current'");
-    expect(sql).toContain("v_document.metadata->>'change_state' = 'withdrawn'");
+    const approvalGuard = sqlFunctionBody(sql, "require_document_publication_approval_state_digest");
+    const transitionGuard = sqlFunctionBody(sql, "guard_document_publication_transition");
+    const activationBody = sqlFunctionBody(sql, "activate_approved_public_documents");
+    const activeStateConditions = [
+      [approvalGuard, "v_metadata"],
+      [transitionGuard, "new.metadata"],
+      [activationBody, "v_document.metadata"],
+    ] as const;
+    for (const [boundary, metadata] of activeStateConditions) {
+      expect(boundary).toContain(`coalesce(${metadata}->>'change_state', '') not in ('unchanged', 'changed')`);
+      expect(boundary).toContain(
+        `nullif(btrim(coalesce(${metadata}->>'superseded_by_document_id', '')), '') is not null`,
+      );
+    }
     expect(sql).toContain("v_document.index_generation_id is distinct from v_expected_index_generation_id");
     expect(sql).toContain("approval.reviewed_index_generation_id = v_expected_index_generation_id");
     expect(sql).toContain("approval.source_catalogue_key = v_source_catalogue_key");
     expect(sql).toContain("approval.source_policy_version = v_source_policy_version");
     expect(sql).toContain("v_current_state_digest := public.document_publication_state_digest(");
 
-    const activationBody = sqlFunctionBody(sql, "activate_approved_public_documents");
     expect(activationBody).toContain("Australian activation manifest contains duplicate generation ids");
     expect(activationBody).toContain(
       "array_agg((entry->>'expectedIndexGenerationId')::uuid order by (entry->>'documentId')::uuid)",
@@ -1504,7 +1516,8 @@ describe("Supabase Preview replay guards", () => {
       "new.metadata->>'content_mode' is distinct from 'indexed_content'",
       "new.metadata->>'licence_policy' is distinct from 'public_index_permitted'",
       "new.metadata->>'document_status' is distinct from 'current'",
-      "new.metadata->>'change_state' = 'withdrawn'",
+      "coalesce(new.metadata->>'change_state', '') not in ('unchanged', 'changed')",
+      "nullif(btrim(coalesce(new.metadata->>'superseded_by_document_id', '')), '') is not null",
     ]) {
       expect(guardBody).toContain(targetCheck);
     }

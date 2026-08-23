@@ -9,6 +9,7 @@ import {
   publicationManifestDigest,
   publicationManifestV2StateDigest,
 } from "@/lib/publication-manifest";
+import { hasActiveAustralianChangeState } from "@/lib/australian-source-state";
 import type { Database, Json } from "@/lib/supabase/database.types";
 
 async function loadAdminClient() {
@@ -85,8 +86,8 @@ export async function runPublicationPromotion({
       if (metadata.document_status !== "current") {
         validationErrors.push(`${entry.documentId}: source is not current`);
       }
-      if (metadata.change_state === "withdrawn") {
-        validationErrors.push(`${entry.documentId}: source is withdrawn`);
+      if (!hasActiveAustralianChangeState(metadata)) {
+        validationErrors.push(`${entry.documentId}: source does not have an active change state`);
       }
     }
   } else {

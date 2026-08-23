@@ -1,4 +1,5 @@
 import {
+  catalogueDocumentIdentityCompatible,
   classifySourceAuthority,
   sourceAuthorityForPublisher,
   sourceAuthorityForPublisherCode,
@@ -354,11 +355,11 @@ function catalogueEntryForDocument(document: SourceAuthorityDocument): Australia
   const publisher = metadataString(metadata.publisher);
   const jurisdiction = metadataString(metadata.jurisdiction);
   if (!publisherCode || !publisher || !jurisdiction) return null;
-  const entry = australianSourceCatalogue.find((candidate) => candidate.publisherCode === publisherCode);
-  if (!entry) return null;
-  const classification = classifySourceAuthority(metadata);
-  if (classification.conflict || classification.authorityKey !== entry.key) return null;
-  return entry;
+  return (
+    australianSourceCatalogue.find((candidate) =>
+      catalogueDocumentIdentityCompatible(candidate, { publisherCode, publisher, jurisdiction }),
+    ) ?? null
+  );
 }
 
 /**

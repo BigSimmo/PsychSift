@@ -79,6 +79,47 @@ describe("source authority metadata tooling", () => {
     expect(localityMetadataKeys).toEqual(["publisher_code", "publisher", "jurisdiction"]);
   });
 
+  it("audits compatible catalogue identities through registry aliases rather than policy-key equality", () => {
+    const report = auditProposedSourcePolicyMetadata([
+      document({
+        file_name: "national-guideline.pdf",
+        metadata: {
+          source_kind: "document",
+          publisher_code: "AUSDOH",
+          publisher: "Australian Department of Health and Aged Care",
+          jurisdiction: "Commonwealth of Australia",
+        },
+      }),
+      document({
+        file_name: "wa-policy.pdf",
+        metadata: {
+          source_kind: "document",
+          publisher_code: "DOHWA",
+          publisher: "WA Department of Health",
+          jurisdiction: "WA",
+        },
+      }),
+      document({
+        file_name: "hostile-policy.pdf",
+        metadata: {
+          source_kind: "document",
+          publisher_code: "WAHEALTH",
+          publisher: "NPS MedicineWise",
+          jurisdiction: "WA",
+        },
+      }),
+    ]);
+
+    expect(report).toMatchObject({
+      policy_review_candidate_count: 2,
+      review_reason_counts: {
+        exact_catalogue_identity: 2,
+        no_exact_catalogue_identity: 1,
+      },
+      lifecycle_counts: { active: 2, historical: 0, retired: 0 },
+    });
+  });
+
   it("infers WA and national authorities from exact registry code tokens", () => {
     expect(inferSourceAuthorityFromIdentity(document({ file_name: "WACHS-lithium-guideline.pdf" }))).toMatchObject({
       code: "WACHS",

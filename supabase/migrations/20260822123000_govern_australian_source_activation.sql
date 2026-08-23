@@ -66,8 +66,9 @@ begin
       raise exception 'Australian publication approval requires publicly indexable content';
     end if;
     if v_metadata->>'document_status' is distinct from 'current'
-      or v_metadata->>'change_state' = 'withdrawn' then
-      raise exception 'Australian publication approval requires a current non-withdrawn source';
+      or coalesce(v_metadata->>'change_state', '') not in ('unchanged', 'changed')
+      or nullif(btrim(coalesce(v_metadata->>'superseded_by_document_id', '')), '') is not null then
+      raise exception 'Australian publication approval requires an active current source';
     end if;
   end if;
 
@@ -205,7 +206,8 @@ begin
       if new.metadata->>'content_mode' is distinct from 'indexed_content'
         or new.metadata->>'licence_policy' is distinct from 'public_index_permitted'
         or new.metadata->>'document_status' is distinct from 'current'
-        or new.metadata->>'change_state' = 'withdrawn' then
+        or coalesce(new.metadata->>'change_state', '') not in ('unchanged', 'changed')
+        or nullif(btrim(coalesce(new.metadata->>'superseded_by_document_id', '')), '') is not null then
         raise exception 'Australian public document is not active, current, and publicly indexable';
       end if;
     end if;
@@ -402,8 +404,9 @@ begin
       raise exception 'Australian activation document % is not publicly indexable', v_document_id;
     end if;
     if v_document.metadata->>'document_status' is distinct from 'current'
-      or v_document.metadata->>'change_state' = 'withdrawn' then
-      raise exception 'Australian activation document % is not current and non-withdrawn', v_document_id;
+      or coalesce(v_document.metadata->>'change_state', '') not in ('unchanged', 'changed')
+      or nullif(btrim(coalesce(v_document.metadata->>'superseded_by_document_id', '')), '') is not null then
+      raise exception 'Australian activation document % is not active and current', v_document_id;
     end if;
     if v_document.index_generation_id is distinct from v_expected_index_generation_id then
       raise exception 'Australian activation document % committed generation changed', v_document_id;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
+import { hasActiveAustralianChangeState } from "../src/lib/australian-source-state";
 import { resolveLocalAndAustralianEvidence, sourceEligibilityForClaim } from "../src/lib/source-role-policy";
 import type { ClinicalSourceMetadata, SearchResult, SourceEvidenceRelevance } from "../src/lib/types";
 
@@ -96,7 +97,62 @@ function australianResult(overrides: Partial<SearchResult> & { id: string; docum
   });
 }
 
+function australianMetadata(overrides: Partial<ClinicalSourceMetadata> = {}): ClinicalSourceMetadata {
+  return metadata({
+    source_title: "National guideline",
+    publisher: "National Health and Medical Research Council",
+    publisher_code: "NHMRC",
+    jurisdiction: "Australia/National",
+    corpus_scope: "australian_public",
+    source_role: "clinical_guideline",
+    source_catalogue_key: "nhmrc",
+    canonical_url: "https://www.nhmrc.gov.au/guidelines/example",
+    content_hash: "national-hash",
+    ...overrides,
+  });
+}
+
 describe("sourceEligibilityForClaim", () => {
+  it("uses the exact active Australian change-state vocabulary", () => {
+    for (const change_state of ["unchanged", "changed"] as const) {
+      expect(hasActiveAustralianChangeState({ change_state, superseded_by_document_id: null })).toBe(true);
+      expect(hasActiveAustralianChangeState({ change_state, superseded_by_document_id: "" })).toBe(true);
+      expect(hasActiveAustralianChangeState({ change_state, superseded_by_document_id: "replacement" })).toBe(false);
+    }
+    for (const change_state of ["withdrawn", "superseded", "unknown", "active", undefined]) {
+      expect(hasActiveAustralianChangeState({ change_state, superseded_by_document_id: null })).toBe(false);
+    }
+  });
+
+  it("keeps governed Australian aliases role-eligible through the registry compatibility boundary", () => {
+    expect(
+      sourceEligibilityForClaim({
+        source: metadata({
+          corpus_scope: "australian_public",
+          source_role: "clinical_guideline",
+          source_catalogue_key: "australian-health-disability-ageing",
+          publisher: "Australian Department of Health and Aged Care",
+          publisher_code: "AUSDOH",
+          jurisdiction: "Commonwealth of Australia",
+        }),
+        claimRole: "treatment",
+      }),
+    ).toEqual({ eligible: true, reason: "eligible" });
+    expect(
+      sourceEligibilityForClaim({
+        source: metadata({
+          corpus_scope: "australian_public",
+          source_role: "service_policy",
+          source_catalogue_key: "wa-health",
+          publisher: "WA Department of Health",
+          publisher_code: "DOHWA",
+          jurisdiction: "WA",
+        }),
+        claimRole: "service_workflow",
+      }),
+    ).toEqual({ eligible: true, reason: "eligible" });
+  });
+
   it("does not let PBS or legislation answer treatment claims", () => {
     expect(
       sourceEligibilityForClaim({ source: metadata({ source_role: "subsidy" }), claimRole: "treatment" }),
@@ -118,6 +174,15 @@ describe("sourceEligibilityForClaim", () => {
   it("fails closed for inactive, non-current, danger-gated, and mismatched catalogue evidence", () => {
     expect(
       sourceEligibilityForClaim({ source: metadata({ change_state: "withdrawn" }), claimRole: "treatment" }),
+    ).toEqual({ eligible: false, reason: "inactive" });
+    expect(
+      sourceEligibilityForClaim({ source: australianMetadata({ change_state: "unknown" }), claimRole: "treatment" }),
+    ).toEqual({ eligible: false, reason: "inactive" });
+    expect(
+      sourceEligibilityForClaim({
+        source: { ...australianMetadata(), change_state: undefined } as unknown as ClinicalSourceMetadata,
+        claimRole: "treatment",
+      }),
     ).toEqual({ eligible: false, reason: "inactive" });
     expect(
       sourceEligibilityForClaim({ source: metadata({ document_status: "review_due" }), claimRole: "treatment" }),

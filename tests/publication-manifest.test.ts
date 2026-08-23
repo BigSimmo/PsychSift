@@ -356,7 +356,7 @@ describe("publication manifests", () => {
           content_mode: "indexed_content",
           licence_policy: "public_index_permitted",
           document_status: "current",
-          change_state: "active",
+          change_state: "unchanged",
         }),
       ],
     });
@@ -454,7 +454,7 @@ describe("publication manifests", () => {
           content_mode: "indexed_content",
           licence_policy: "public_index_permitted",
           document_status: "current",
-          change_state: "active",
+          change_state: "changed",
         }),
       ),
       stateDigests: Object.fromEntries(parsed.documents.map((entry) => [entry.documentId, entry.expectedStateDigest])),
@@ -525,6 +525,43 @@ describe("publication manifests", () => {
         log: () => undefined,
       }),
     ).rejects.toThrow(/version 2.*Australian/i);
+    expect(fixture.approvalInserts).toEqual([]);
+    expect(fixture.rpcCalls.map((call) => call.name)).toEqual(["document_publication_state_digest"]);
+  });
+
+  it.each([
+    { label: "superseded", changeState: "superseded", supersededBy: null },
+    { label: "replacement pointer", changeState: "unchanged", supersededBy: "replacement-document" },
+    { label: "unknown", changeState: "unknown", supersededBy: null },
+    { label: "absent", changeState: undefined, supersededBy: null },
+    { label: "unsupported", changeState: "active", supersededBy: null },
+  ])("refuses $label Australian change state before approval or activation", async ({ changeState, supersededBy }) => {
+    const entry = manifestV2.documents[0];
+    const metadata: Record<string, string> = {
+      corpus_scope: "australian_public",
+      source_catalogue_key: entry.sourceCatalogueKey,
+      source_policy_version: manifestV2.sourcePolicyVersion,
+      content_mode: "indexed_content",
+      licence_policy: "public_index_permitted",
+      document_status: "current",
+    };
+    if (changeState !== undefined) metadata.change_state = changeState;
+    if (supersededBy !== null) metadata.superseded_by_document_id = supersededBy;
+    const fixture = promotionClientFixture({ documents: [promotionDocument(entry, metadata)] });
+
+    await expect(
+      runPublicationPromotion({
+        raw: JSON.stringify(manifestV2),
+        args: {
+          manifestPath: "publication.json",
+          apply: true,
+          expectedCount: 1,
+          confirmSha256: publicationManifestDigest(JSON.stringify(manifestV2)),
+        },
+        supabase: fixture.client,
+        log: () => undefined,
+      }),
+    ).rejects.toThrow(/active change state/i);
     expect(fixture.approvalInserts).toEqual([]);
     expect(fixture.rpcCalls.map((call) => call.name)).toEqual(["document_publication_state_digest"]);
   });

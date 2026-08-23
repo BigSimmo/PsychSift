@@ -421,13 +421,44 @@ function jurisdictionCompatible(authorityEntry: SourceAuthorityDefinition, juris
   );
 }
 
+export type CatalogueDocumentIdentity = Readonly<{
+  publisherCode: string | null | undefined;
+  publisher: string | null | undefined;
+  jurisdiction: string | null | undefined;
+}>;
+
+/**
+ * Resolve catalogue policy through the registry-owned authority namespace.
+ * Catalogue keys deliberately do not participate in identity matching.
+ */
+export function catalogueDocumentIdentityCompatible(
+  entry: AustralianSourceDefinition,
+  documentIdentity: CatalogueDocumentIdentity,
+) {
+  const catalogueAuthority = sourceAuthorityForPublisherCode(entry.publisherCode);
+  const documentAuthority = sourceAuthorityForPublisherCode(documentIdentity.publisherCode);
+  const publisher = sourceMetadataString(documentIdentity.publisher);
+  const jurisdiction = sourceMetadataString(documentIdentity.jurisdiction);
+  return Boolean(
+    catalogueAuthority &&
+    documentAuthority === catalogueAuthority &&
+    publisher &&
+    jurisdiction &&
+    publisherCompatible(catalogueAuthority, publisher) &&
+    jurisdictionCompatible(catalogueAuthority, jurisdiction) &&
+    catalogueAuthority.lifecycle === entry.lifecycle,
+  );
+}
+
 export function authorityIdentityForCatalogueEntry(entry: AustralianSourceDefinition): SourceAuthorityIdentity | null {
   const identity = sourceAuthorityForPublisherCode(entry.publisherCode);
-  if (!identity || identity.key !== entry.key) return null;
-  if (!publisherCompatible(identity, entry.publisher)) return null;
-  if (!jurisdictionCompatible(identity, entry.jurisdiction)) return null;
-  if (identity.lifecycle !== entry.lifecycle) return null;
-  return identity;
+  return catalogueDocumentIdentityCompatible(entry, {
+    publisherCode: entry.publisherCode,
+    publisher: entry.publisher,
+    jurisdiction: entry.jurisdiction,
+  })
+    ? identity
+    : null;
 }
 
 function isCurrentUsableDocument(
