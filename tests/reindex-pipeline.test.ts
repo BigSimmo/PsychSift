@@ -200,6 +200,15 @@ describe("reindex pipeline queue state", () => {
 
     expect(assertDocumentGenerationReceiptPair(activation, rollback)).toEqual({ activation, rollback });
 
+    expect(() =>
+      assertDocumentGenerationReceiptPair(activation, {
+        operation: "document-generation",
+        activationReceiptId: activation.receiptId,
+        failedResource: activation.resource,
+        restoredResource: activation.previousResource,
+      }),
+    ).toThrow(/receipt|digest|invalid/i);
+
     const reconstructedPayload = {
       ...rollbackPayload,
       restoredResource: {

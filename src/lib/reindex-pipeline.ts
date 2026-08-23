@@ -1,4 +1,9 @@
-import type { ActivationReceipt, DocumentGenerationIdentity, RollbackReceipt } from "@/lib/recovery-readiness-evidence";
+import {
+  assertReceiptAppendOnlyPair,
+  type ActivationReceipt,
+  type DocumentGenerationIdentity,
+  type RollbackReceipt,
+} from "@/lib/recovery-readiness-evidence";
 
 export type ReindexQueueSnapshot = {
   openJobs: number;
@@ -105,12 +110,13 @@ export function hasAbandonedReindexGenerations(counts: AbandonedReindexGeneratio
  * It does not call or alter the legacy destructive commit RPC.
  */
 export function assertDocumentGenerationReceiptPair(
-  activation: ActivationReceipt,
-  rollback: RollbackReceipt | unknown,
+  activationInput: unknown,
+  rollbackInput: unknown,
 ): Readonly<{
   activation: DocumentGenerationActivationReceipt;
   rollback: DocumentGenerationRollbackReceipt;
 }> {
+  const { activation, rollback } = assertReceiptAppendOnlyPair(activationInput, rollbackInput);
   if (
     activation.operation !== "document-generation" ||
     activation.resource.kind !== "document-generation" ||
@@ -118,15 +124,7 @@ export function assertDocumentGenerationReceiptPair(
   ) {
     throw new Error("Document-generation activation receipt identity is required.");
   }
-  if (
-    !rollback ||
-    typeof rollback !== "object" ||
-    !("operation" in rollback) ||
-    rollback.operation !== "document-generation" ||
-    !("failedResource" in rollback) ||
-    !("restoredResource" in rollback) ||
-    !("activationReceiptId" in rollback)
-  ) {
+  if (rollback.operation !== "document-generation") {
     throw new Error("Document-generation rollback receipt identity is required.");
   }
   const typedRollback = rollback as DocumentGenerationRollbackReceipt;
