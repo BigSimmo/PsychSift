@@ -273,12 +273,18 @@ function sumKnown(values: Array<number | null>): number | null {
   return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
 }
 
-function populationFingerprint(cases: Array<{ id: string; caseFingerprint: string }>): string {
+function populationFingerprint(
+  cases: Array<{ id: string; caseFingerprint: string; rankApplicability: RagProgrammeRankApplicability }>,
+): string {
   return fingerprint(
     cases
-      .map(({ id, caseFingerprint }) => ({ id, caseFingerprint }))
+      .map(({ id, caseFingerprint, rankApplicability }) => ({ id, caseFingerprint, rankApplicability }))
       .sort((left, right) => left.id.localeCompare(right.id)),
   );
+}
+
+function isRankApplicability(value: unknown): value is RagProgrammeRankApplicability {
+  return value === "positive_retrieval" || value === "correct_negative";
 }
 
 function hasExactPopulation(run: RagProgrammeRun, canonical: RagProgrammePopulationContract): boolean {
@@ -308,7 +314,9 @@ function hasConsistentCaseResult(item: RagProgrammeCaseResult): boolean {
     item.falseInsufficiency || item.hardViolations.length > 0 || item.failedExpectations.length > 0;
   const rankIsConsistent =
     item.rankApplicability === "positive_retrieval" ||
-    (item.documentReciprocalRank === 0 && item.contentReciprocalRank === 0);
+    (item.rankApplicability === "correct_negative" &&
+      item.documentReciprocalRank === 0 &&
+      item.contentReciprocalRank === 0);
   return (
     item.passed === !hasFailureEvidence && !(item.falseInsufficiency && item.supportedPartRetained) && rankIsConsistent
   );
@@ -328,6 +336,7 @@ export function compareRagProgrammeRuns(
   const canonicalPopulationIsValid =
     canonicalPopulation.cases.length > 0 &&
     new Set(canonicalPopulation.cases.map((item) => item.id)).size === canonicalPopulation.cases.length &&
+    canonicalPopulation.cases.every((item) => isRankApplicability(item.rankApplicability)) &&
     populationFingerprint(canonicalPopulation.cases) === canonicalPopulation.populationFingerprint;
   if (!canonicalPopulationIsValid) reasons.add("canonical_population_contract_invalid");
   if (

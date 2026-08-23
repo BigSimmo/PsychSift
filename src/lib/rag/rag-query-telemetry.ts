@@ -41,10 +41,11 @@ export function finalRagQueryFields(
   routingReason = originalAnswer.routingReason,
 ) {
   const answer = finalRagQueryTelemetryAnswer(originalAnswer, finalizer);
+  const sourceChunkIds = (answer === originalAnswer ? originalSources : answer.sources).map((source) => source.id);
   return answer === originalAnswer && !observationContext
     ? {
         answer,
-        sourceChunkIds: originalSources.map((source) => source.id),
+        sourceChunkIds,
         outcomeMetadata: {
           grounded: originalAnswer.grounded,
           confidence: originalAnswer.confidence,
@@ -55,7 +56,7 @@ export function finalRagQueryFields(
       }
     : {
         answer,
-        sourceChunkIds: answer.sources.map((source) => source.id),
+        sourceChunkIds,
         outcomeMetadata: finalRagQueryOutcomeMetadata(answer),
       };
 }

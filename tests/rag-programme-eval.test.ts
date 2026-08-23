@@ -37,10 +37,12 @@ function fixtureFingerprint(raw: Record<string, unknown>): string {
   return sha256(payload);
 }
 
-function populationFingerprint(cases: Array<{ id: string; caseFingerprint: string }>): string {
+function populationFingerprint(
+  cases: Array<{ id: string; caseFingerprint: string; rankApplicability: string }>,
+): string {
   return sha256(
     cases
-      .map(({ id, caseFingerprint }) => ({ id, caseFingerprint }))
+      .map(({ id, caseFingerprint, rankApplicability }) => ({ id, caseFingerprint, rankApplicability }))
       .sort((left, right) => left.id.localeCompare(right.id)),
   );
 }
@@ -297,6 +299,52 @@ describe("RAG programme gate", () => {
     expect(compareRagProgrammeRuns(run, run, parsed.population)).toEqual({ decision: "GO", reasons: [] });
     expect(evaluated.map((result) => result.rankApplicability)).toEqual(
       parsed.cases.map((item) => item.rankApplicability),
+    );
+  });
+
+  it("binds rank applicability into population integrity and rejects invalid runtime values", () => {
+    const parsed = parseRagProgrammeFixture(
+      JSON.parse(readFileSync("scripts/fixtures/rag-programme-failures.v1.json", "utf8")),
+    );
+    const tamperedCases = parsed.population.cases.map((item) => ({
+      ...item,
+      rankApplicability: "correct_negative" as const,
+    }));
+    const tamperedRun: RagProgrammeRun = {
+      caseSetFingerprint: parsed.caseSetFingerprint,
+      populationFingerprint: parsed.population.populationFingerprint,
+      cases: tamperedCases.map((item) => ({
+        ...passingCase,
+        ...item,
+        documentReciprocalRank: 0,
+        contentReciprocalRank: 0,
+      })),
+    };
+    const tamperedPopulation = { ...parsed.population, cases: tamperedCases };
+
+    expect(compareRagProgrammeRuns(tamperedRun, tamperedRun, tamperedPopulation).reasons).toContain(
+      "canonical_population_contract_invalid",
+    );
+
+    const invalidCases = parsed.population.cases.map((item, index) =>
+      index === 0 ? { ...item, rankApplicability: "invalid-rank-applicability" } : item,
+    );
+    const invalidRun = {
+      ...tamperedRun,
+      cases: invalidCases.map((item) => ({
+        ...passingCase,
+        ...item,
+        documentReciprocalRank: item.rankApplicability === "positive_retrieval" ? 1 : 0,
+        contentReciprocalRank: item.rankApplicability === "positive_retrieval" ? 1 : 0,
+      })),
+    } as unknown as RagProgrammeRun;
+    const invalidPopulation = {
+      ...parsed.population,
+      cases: invalidCases,
+    } as unknown as typeof parsed.population;
+
+    expect(compareRagProgrammeRuns(invalidRun, invalidRun, invalidPopulation).reasons).toContain(
+      "canonical_population_contract_invalid",
     );
   });
 

@@ -5,6 +5,7 @@ import {
   buildRagQueryMetadata,
   buildRagRetrievalMetadata,
 } from "../src/lib/rag/rag-programme-telemetry";
+import { finalRagQueryFields } from "../src/lib/rag/rag-query-telemetry";
 import type { RagAnswer, SearchResult, SourceCorpusScope } from "../src/lib/types";
 
 const INTERACTION_ID = "33333333-3333-4333-8333-333333333333";
@@ -49,6 +50,30 @@ const contaminatedInput = {
 };
 
 describe("RAG programme telemetry", () => {
+  it("selects original source ids for identity finalization and transformed ids for governance changes", () => {
+    const originalSources = [{ id: "retrieved-a" }, { id: "retrieved-b" }] as SearchResult[];
+    const selectedSource = { id: "selected" } as SearchResult;
+    const transformedSource = { id: "governance-source" } as SearchResult;
+    const answer = {
+      answer: "Supported answer.",
+      grounded: true,
+      confidence: "high",
+      citations: [],
+      sources: [selectedSource],
+      routingMode: "strong",
+      routingReason: "provider-error-canary: raw upstream body",
+    } satisfies RagAnswer;
+    const observationContext = { interactionId: INTERACTION_ID, rolloutMode: "shadow" as const };
+
+    const identity = finalRagQueryFields(answer, (unchanged) => unchanged, originalSources, observationContext);
+    expect(identity.sourceChunkIds).toEqual(["retrieved-a", "retrieved-b"]);
+    expect(JSON.stringify(identity.outcomeMetadata)).not.toContain("provider-error-canary");
+
+    const transformedAnswer = { ...answer, answer: "Governance refusal.", sources: [transformedSource] };
+    const transformed = finalRagQueryFields(answer, () => transformedAnswer, originalSources, observationContext);
+    expect(transformed.sourceChunkIds).toEqual(["governance-source"]);
+  });
+
   it("uses real candidate and selected corpus outcomes instead of sources.length or an uploaded-local default", () => {
     const candidateScopes: SourceCorpusScope[] = [
       "uploaded_local",
