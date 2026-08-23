@@ -180,6 +180,34 @@ describe("source metadata helpers", () => {
     }
   });
 
+  it.each(["etg-complete", "australian-medicines-handbook"] as const)(
+    "does not preserve permissive indexing claims for protected link-only catalogue entry %s",
+    (key) => {
+      const source = australianSourceByKey(key)!;
+      const metadata = normalizeClinicalSourceMetadata({
+        source_kind: "document",
+        publisher_code: source.publisherCode,
+        publisher: source.publisher,
+        jurisdiction: source.jurisdiction,
+        source_catalogue_key: source.key,
+        source_policy_version: australianSourcePolicyVersion,
+        corpus_scope: "australian_public",
+        source_role: "reference_link",
+        content_mode: "indexed_content",
+        licence_policy: "public_index_permitted",
+      });
+
+      expect(metadata).toMatchObject({
+        source_catalogue_key: key,
+        source_policy_version: australianSourcePolicyVersion,
+        content_mode: "link_only",
+        licence_policy: "metadata_link_only",
+      });
+      expect(authorityIdentityForCatalogueEntry(source)).toBeNull();
+      expect(classifySourceAuthority(metadata)).toMatchObject({ tier: "supplementary", authorityKey: null });
+    },
+  );
+
   it("does not mint catalogue policy from document-controlled prose or a mismatched identity", () => {
     expect(
       normalizeClinicalSourceMetadata({

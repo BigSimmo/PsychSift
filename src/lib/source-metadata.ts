@@ -157,6 +157,9 @@ function normalizedClinicalSourceMetadata(input: unknown): ClinicalSourceMetadat
   const value = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
   const sourceKind = enumOrDefault(value.source_kind, knownSourceKinds, null, "source_kind");
   const catalogueBound = hasExactCatalogueIdentity(value, sourceKind);
+  const catalogueKey = stringOrNull(value.source_catalogue_key);
+  const catalogueEntry = catalogueBound && catalogueKey ? australianSourceByKey(catalogueKey) : null;
+  const protectedLinkOnlyPolicy = catalogueEntry?.contentMode === "link_only";
   const sourcePolicyVersion = catalogueBound
     ? enumOrDefault(value.source_policy_version, knownSourcePolicyVersions, null, "source_policy_version")
     : null;
@@ -192,7 +195,11 @@ function normalizedClinicalSourceMetadata(input: unknown): ClinicalSourceMetadat
     extraction_quality: enumOrDefault(value.extraction_quality, knownExtraction, "unknown", "extraction_quality"),
     corpus_scope: enumOrDefault(value.corpus_scope, knownCorpusScopes, null, "corpus_scope"),
     source_role: enumOrDefault(value.source_role, knownSourceRoles, null, "source_role"),
-    content_mode: catalogueBound ? enumOrDefault(value.content_mode, knownContentModes, null, "content_mode") : null,
+    content_mode: protectedLinkOnlyPolicy
+      ? "link_only"
+      : catalogueBound
+        ? enumOrDefault(value.content_mode, knownContentModes, null, "content_mode")
+        : null,
     source_catalogue_key: catalogueBound ? stringOrNull(value.source_catalogue_key) : null,
     source_policy_version: sourcePolicyVersion,
     canonical_url: validatedStringOrNull(value.canonical_url, "canonical_url", isHttpsUrl),
@@ -203,9 +210,11 @@ function normalizedClinicalSourceMetadata(input: unknown): ClinicalSourceMetadat
     retrieved_at: validatedStringOrNull(value.retrieved_at, "retrieved_at", isIsoTimestamp),
     content_hash: validatedStringOrNull(value.content_hash, "content_hash", isSha256),
     change_state: enumOrDefault(value.change_state, knownChangeStates, "unknown", "change_state"),
-    licence_policy: catalogueBound
-      ? enumOrDefault(value.licence_policy, knownLicencePolicies, null, "licence_policy")
-      : null,
+    licence_policy: protectedLinkOnlyPolicy
+      ? "metadata_link_only"
+      : catalogueBound
+        ? enumOrDefault(value.licence_policy, knownLicencePolicies, null, "licence_policy")
+        : null,
   };
 }
 
