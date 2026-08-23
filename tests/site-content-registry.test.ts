@@ -18,6 +18,7 @@ import {
 import type {
   ActiveSiteContentRelease,
   RagContextSnapshot,
+  SiteContentPartitionSnapshot,
   SiteContentRecord,
 } from "@/lib/site-content/site-content-contracts";
 import type { SiteContentDomain } from "@/lib/types";
@@ -48,6 +49,24 @@ function publication(overrides: Partial<SiteContentPublicationCandidate> = {}): 
     publicationState: "published",
     renderedByPublicSite: true,
     audit: { ownerId: "editor-1", actorId: "administrator-1" },
+    ...overrides,
+  };
+}
+
+function partitionSnapshot(overrides: Partial<SiteContentPartitionSnapshot> = {}): SiteContentPartitionSnapshot {
+  return {
+    registryVersion: "site-content-registry-v1",
+    releaseId: "release-7",
+    expectedStaticManifestDigest: "sha256:static",
+    activeStaticManifestDigest: "sha256:static",
+    staticManifestDigest: "sha256:static",
+    staticManifestMatch: true,
+    dynamicStateDigest: "sha256:dynamic",
+    releaseDigest: "sha256:release",
+    changeEpoch: "epoch-12",
+    pendingLogicalIds: [],
+    pendingLogicalIdsDigest: "fnv1a64:09612b07b5ecb5a5",
+    state: "current",
     ...overrides,
   };
 }
@@ -252,6 +271,26 @@ describe("site content public publication and authority policy", () => {
     expect(JSON.stringify(metadata)).not.toMatch(/owner|actor|administrator-1|editor-1/i);
   });
 
+  it("emits retrieval metadata only for explicitly reviewed current records", () => {
+    for (const validationStatus of ["locally_reviewed", "approved"] as const) {
+      expect(siteContentRetrievalMetadata(record({ validationStatus, sourceStatus: "current" }))).toMatchObject({
+        logical_id: "differential:mania",
+      });
+    }
+
+    for (const invalid of [
+      record({ validationStatus: "unverified", sourceStatus: "current" }),
+      record({ validationStatus: "approved", sourceStatus: "review_due" }),
+      record({ validationStatus: "approved", sourceStatus: "outdated" }),
+      record({ validationStatus: "approved", sourceStatus: "unknown" }),
+    ]) {
+      expect(() => siteContentRetrievalMetadata(invalid)).toThrow(/reviewed and current/i);
+      expect(() => selectCanonicalPublicSiteContentPublication([publication({ record: invalid })])).toThrow(
+        /reviewed and current/i,
+      );
+    }
+  });
+
   it("keeps derivative summaries in their source evidence family", () => {
     const derivative = record({
       sourceLineage: [
@@ -275,13 +314,39 @@ describe("site content public publication and authority policy", () => {
       ],
     });
 
-    expect(siteContentEvidenceFamilyKey(derivative)).toBe(
+    expect(siteContentEvidenceFamilyKey(derivative)).toEqual([
       "source:uploaded-guideline:lithium-monitoring:sha256:guideline",
-    );
-    expect(siteContentEvidenceFamilyKey(duplicateDerivative)).toBe(siteContentEvidenceFamilyKey(derivative));
-    expect(siteContentEvidenceFamilyKey(record())).toBe(
+    ]);
+    expect(siteContentEvidenceFamilyKey(duplicateDerivative)).toEqual(siteContentEvidenceFamilyKey(derivative));
+    expect(siteContentEvidenceFamilyKey(record())).toEqual([
       "site:differential:mania:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    ]);
+  });
+
+  it("represents partially overlapping derived sources as intersecting family memberships", () => {
+    const sourceA = {
+      sourceId: "uploaded-guideline:lithium-monitoring",
+      sourceHash: "sha256:guideline-a",
+      relationship: "derived_from" as const,
+    };
+    const familyA = siteContentEvidenceFamilyKey(record({ sourceLineage: [sourceA] }));
+    const familyAB = siteContentEvidenceFamilyKey(
+      record({
+        logicalId: "differential:mania-with-secondary-source",
+        sourceLineage: [
+          sourceA,
+          { sourceId: "australian-public:source-b", sourceHash: "sha256:source-b", relationship: "derived_from" },
+          { sourceId: "navigation-only", sourceHash: "sha256:reference", relationship: "references" },
+        ],
+      }),
     );
+
+    expect(familyA).toEqual(["source:uploaded-guideline:lithium-monitoring:sha256:guideline-a"]);
+    expect(familyAB).toEqual([
+      "source:australian-public:source-b:sha256:source-b",
+      "source:uploaded-guideline:lithium-monitoring:sha256:guideline-a",
+    ]);
+    expect(familyA.filter((membership) => familyAB.includes(membership))).toEqual(familyA);
   });
 
   it("pins the complete request-local corpus and site partition identity", () => {
@@ -298,20 +363,7 @@ describe("site content public publication and authority policy", () => {
         indexGeneration: "australian-generation-3",
         releaseDigest: "sha256:australian",
       },
-      publicSiteContent: {
-        registryVersion: "site-content-registry-v1",
-        releaseId: "release-7",
-        expectedStaticManifestDigest: "sha256:static",
-        activeStaticManifestDigest: "sha256:static",
-        staticManifestDigest: "sha256:static",
-        staticManifestMatch: true,
-        dynamicStateDigest: "sha256:dynamic",
-        releaseDigest: "sha256:release",
-        changeEpoch: "epoch-12",
-        pendingLogicalIds: [],
-        pendingLogicalIdsDigest: "sha256:empty-pending-set",
-        state: "current",
-      },
+      publicSiteContent: partitionSnapshot(),
     };
 
     expect(snapshot.publicSiteContent.expectedStaticManifestDigest).toBe(
@@ -329,6 +381,65 @@ describe("site content public publication and authority policy", () => {
         state: "current",
       }),
     ).toThrow(/mismatch.*cannot be current/i);
+  });
+
+  it("requires updating snapshots to carry exact canonical pending and active release identity", () => {
+    const updating = partitionSnapshot({
+      pendingLogicalIds: ["differential:mania"],
+      pendingLogicalIdsDigest: "fnv1a64:8ec9aa9527eeabc4",
+      state: "updating",
+    });
+
+    expect(() => assertSiteContentPartitionSnapshot(updating)).not.toThrow();
+
+    for (const invalid of [
+      { ...updating, pendingLogicalIds: [], pendingLogicalIdsDigest: "fnv1a64:09612b07b5ecb5a5" },
+      { ...updating, pendingLogicalIdsDigest: null },
+      { ...updating, pendingLogicalIdsDigest: "fnv1a64:0000000000000000" },
+      { ...updating, pendingLogicalIds: ["differential:mania", "differential:mania"] },
+      { ...updating, pendingLogicalIds: ["medication:lithium", "differential:mania"] },
+      { ...updating, releaseId: null },
+      { ...updating, dynamicStateDigest: null },
+      { ...updating, changeEpoch: null },
+      { ...updating, staticManifestMatch: false },
+    ] satisfies SiteContentPartitionSnapshot[]) {
+      expect(() => assertSiteContentPartitionSnapshot(invalid)).toThrow(/updating/i);
+    }
+  });
+
+  it("keeps unavailable snapshots identity-free and rejects contradictory stale identities", () => {
+    expect(() =>
+      assertSiteContentPartitionSnapshot(
+        partitionSnapshot({
+          registryVersion: null,
+          releaseId: null,
+          expectedStaticManifestDigest: null,
+          activeStaticManifestDigest: null,
+          staticManifestDigest: null,
+          staticManifestMatch: false,
+          dynamicStateDigest: null,
+          releaseDigest: null,
+          changeEpoch: null,
+          pendingLogicalIds: [],
+          pendingLogicalIdsDigest: null,
+          state: "unavailable",
+        }),
+      ),
+    ).not.toThrow();
+    expect(() => assertSiteContentPartitionSnapshot(partitionSnapshot({ state: "unavailable" }))).toThrow(
+      /unavailable/i,
+    );
+    expect(() => assertSiteContentPartitionSnapshot(partitionSnapshot({ state: "stale" }))).toThrow(/stale/i);
+    expect(() =>
+      assertSiteContentPartitionSnapshot(
+        partitionSnapshot({
+          activeStaticManifestDigest: "sha256:old-static",
+          staticManifestDigest: "sha256:old-static",
+          staticManifestMatch: false,
+          state: "stale",
+        }),
+      ),
+    ).not.toThrow();
   });
 
   it("separates product facts from patient decisions and preserves uploaded-guideline priority", () => {

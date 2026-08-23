@@ -127,6 +127,8 @@ const approvedSiteRoles = new Set<ClinicalSourceRole>([
   "tool_reference",
 ]);
 
+const retrievableValidationStatuses = new Set<SiteContentRecord["validationStatus"]>(["locally_reviewed", "approved"]);
+
 function route(base: string) {
   return (slug: string) => `${base}/${encodeURIComponent(slug.trim())}`;
 }
@@ -530,6 +532,9 @@ export function assertSiteContentRecordEligible(record: SiteContentRecord) {
   ) {
     throw new Error(`Site-content record ${record.logicalId} does not match its registered public producer.`);
   }
+  if (!retrievableValidationStatuses.has(record.validationStatus) || record.sourceStatus !== "current") {
+    throw new Error(`Site-content record ${record.logicalId} must be reviewed and current before retrieval.`);
+  }
   if (producer.recordAdoptions) {
     const recordId = record.logicalId.replace(new RegExp(`^${producer.key}:`), "");
     const adoption = producer.recordAdoptions.find((candidate) => candidate.recordId === recordId);
@@ -582,7 +587,7 @@ export function siteContentRetrievalMetadata(record: SiteContentRecord) {
   };
 }
 
-export function siteContentEvidenceFamilyKey(record: SiteContentRecord) {
+export function siteContentEvidenceFamilyKey(record: SiteContentRecord): readonly string[] {
   const derivedSources = [
     ...new Set(
       record.sourceLineage
@@ -590,32 +595,112 @@ export function siteContentEvidenceFamilyKey(record: SiteContentRecord) {
         .map((lineage) => `source:${normalizedIdentity(lineage.sourceId)}:${normalizedIdentity(lineage.sourceHash)}`),
     ),
   ].sort();
-  if (derivedSources.length === 1) return derivedSources[0]!;
-  if (derivedSources.length > 1) return `sources:${derivedSources.join("|")}`;
-  return `site:${record.logicalId}:${record.contentHash}`;
+  if (derivedSources.length > 0) return derivedSources;
+  return [`site:${normalizedIdentity(record.logicalId)}:${normalizedIdentity(record.contentHash)}`];
+}
+
+function nonEmptyIdentity(value: string | null) {
+  return value !== null && value.trim().length > 0;
+}
+
+function canonicalPendingLogicalIds(ids: readonly string[]) {
+  return ids.map((id) => id.trim()).sort();
+}
+
+export function siteContentPendingLogicalIdsDigest(ids: readonly string[]) {
+  const canonicalIdentity = JSON.stringify(canonicalPendingLogicalIds(ids));
+  let digest = 0xcbf29ce484222325n;
+  for (let index = 0; index < canonicalIdentity.length; index += 1) {
+    digest ^= BigInt(canonicalIdentity.charCodeAt(index));
+    digest = BigInt.asUintN(64, digest * 0x100000001b3n);
+  }
+  return `fnv1a64:${digest.toString(16).padStart(16, "0")}`;
 }
 
 export function assertSiteContentPartitionSnapshot(snapshot: SiteContentPartitionSnapshot) {
-  const staticManifestMatch =
+  const staticManifestDigestsMatch =
     snapshot.expectedStaticManifestDigest !== null &&
     snapshot.activeStaticManifestDigest !== null &&
     snapshot.expectedStaticManifestDigest === snapshot.activeStaticManifestDigest &&
-    snapshot.staticManifestDigest === snapshot.activeStaticManifestDigest &&
-    snapshot.staticManifestMatch;
-  if (snapshot.state === "current" && !staticManifestMatch) {
-    throw new Error("A static manifest mismatch cannot be current site content.");
+    snapshot.staticManifestDigest === snapshot.activeStaticManifestDigest;
+  const hasCompleteReleaseIdentity =
+    nonEmptyIdentity(snapshot.registryVersion) &&
+    nonEmptyIdentity(snapshot.releaseId) &&
+    nonEmptyIdentity(snapshot.expectedStaticManifestDigest) &&
+    nonEmptyIdentity(snapshot.activeStaticManifestDigest) &&
+    nonEmptyIdentity(snapshot.staticManifestDigest) &&
+    nonEmptyIdentity(snapshot.dynamicStateDigest) &&
+    nonEmptyIdentity(snapshot.releaseDigest) &&
+    nonEmptyIdentity(snapshot.changeEpoch);
+  const pendingIdsAreCanonical =
+    snapshot.pendingLogicalIds.every((id) => id.trim().length > 0 && id === id.trim()) &&
+    new Set(snapshot.pendingLogicalIds).size === snapshot.pendingLogicalIds.length &&
+    snapshot.pendingLogicalIds.every(
+      (id, index) => canonicalPendingLogicalIds(snapshot.pendingLogicalIds)[index] === id,
+    );
+  const pendingDigestMatches =
+    snapshot.pendingLogicalIdsDigest === siteContentPendingLogicalIdsDigest(snapshot.pendingLogicalIds);
+
+  if (snapshot.staticManifestMatch !== staticManifestDigestsMatch) {
+    throw new Error(`Site-content ${snapshot.state} static manifest identity is internally inconsistent.`);
   }
-  if (
-    snapshot.state === "current" &&
-    (!snapshot.registryVersion ||
-      !snapshot.releaseId ||
-      !snapshot.dynamicStateDigest ||
-      !snapshot.releaseDigest ||
-      !snapshot.changeEpoch ||
+
+  if (snapshot.state === "current") {
+    if (!staticManifestDigestsMatch) throw new Error("A static manifest mismatch cannot be current site content.");
+    if (
+      !hasCompleteReleaseIdentity ||
       snapshot.pendingLogicalIds.length > 0 ||
-      !snapshot.pendingLogicalIdsDigest)
+      !pendingIdsAreCanonical ||
+      !pendingDigestMatches
+    ) {
+      throw new Error("Current site content requires complete release, epoch, and exact empty pending-set identity.");
+    }
+    return;
+  }
+
+  if (snapshot.state === "updating") {
+    if (
+      !hasCompleteReleaseIdentity ||
+      !staticManifestDigestsMatch ||
+      snapshot.pendingLogicalIds.length === 0 ||
+      !pendingIdsAreCanonical ||
+      !pendingDigestMatches
+    ) {
+      throw new Error("Updating site content requires complete release identity and an exact non-empty pending set.");
+    }
+    return;
+  }
+
+  if (snapshot.state === "stale") {
+    if (
+      !hasCompleteReleaseIdentity ||
+      staticManifestDigestsMatch ||
+      snapshot.pendingLogicalIds.length > 0 ||
+      !pendingIdsAreCanonical ||
+      !pendingDigestMatches
+    ) {
+      throw new Error("Stale site content requires a complete mismatched release identity and no pending update.");
+    }
+    return;
+  }
+
+  const identityValues = [
+    snapshot.registryVersion,
+    snapshot.releaseId,
+    snapshot.expectedStaticManifestDigest,
+    snapshot.activeStaticManifestDigest,
+    snapshot.staticManifestDigest,
+    snapshot.dynamicStateDigest,
+    snapshot.releaseDigest,
+    snapshot.changeEpoch,
+    snapshot.pendingLogicalIdsDigest,
+  ];
+  if (
+    identityValues.some((value) => value !== null) ||
+    snapshot.staticManifestMatch ||
+    snapshot.pendingLogicalIds.length > 0
   ) {
-    throw new Error("Current site content requires complete release, epoch, and empty pending-set identity.");
+    throw new Error(`${snapshot.state} site content cannot carry a usable release or pending identity.`);
   }
 }
 
