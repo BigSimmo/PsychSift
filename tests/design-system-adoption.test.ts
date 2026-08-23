@@ -749,7 +749,7 @@ describe("design-system adoption manifest", () => {
     );
   });
 
-  it("requires exact hosted-Linux provenance for all six committed visual baselines", () => {
+  it("requires exact hosted-Linux provenance for all six committed visual baselines", { timeout: 120_000 }, () => {
     const validRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-system-baseline-valid-"));
     const missingRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-system-baseline-missing-"));
     const hashRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-system-baseline-hash-"));
@@ -811,7 +811,7 @@ describe("design-system adoption manifest", () => {
     }
   });
 
-  it("pins baseline provenance to the canonical six target ids and paths", () => {
+  it("pins baseline provenance to the canonical six target ids and paths", { timeout: 120_000 }, () => {
     const arbitraryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-system-baseline-arbitrary-"));
     const missingRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-system-baseline-target-missing-"));
     const extraRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-system-baseline-target-extra-"));

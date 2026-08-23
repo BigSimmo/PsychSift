@@ -954,7 +954,10 @@ describe("Codex Cloud environment contract", () => {
     expect(incomplete.status).not.toBe(0);
     expect(incomplete.stderr).toContain("Incomplete managed shell policy block");
     expect(readFileSync(incompletePath, "utf8")).toBe(incompleteConfig);
-  }, 120_000);
+    // This case drives several Git Bash subprocesses. The prior 120s budget
+    // expired under the full Windows suite even though every assertion passed
+    // when the file ran alone, so keep a bounded full-load allowance here.
+  }, 300_000);
 
   it("accepts a task-only HEAD only inside Codex Cloud", () => {
     const directory = temporaryGitRepository();

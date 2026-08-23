@@ -750,7 +750,7 @@ describe("Tooltip", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
 
     trigger.focus();
-    const tooltip = await screen.findByRole("tooltip");
+    const tooltip = await screen.findByRole("tooltip", undefined, { timeout: 10_000 });
     expect(trigger.getAttribute("aria-describedby")).toBe(tooltip.id);
     await waitFor(() => {
       expect(tooltip.style.visibility).toBe("visible");

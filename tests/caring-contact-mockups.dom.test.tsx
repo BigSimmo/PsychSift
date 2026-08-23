@@ -153,28 +153,34 @@ describe("Caring Contact governance contracts", () => {
     expect(canActivateGovernedVersions({ pathway: syntheticPathways[1], template: syntheticTemplates[0] })).toBe(false);
   });
 
-  it("renders a pending selected message as unavailable with a named approval remedy", async () => {
-    const user = userEvent.setup();
-    const pendingTemplate = syntheticTemplates.find(
-      ({ approvalState }) => approvalState === "Illustrative — approval pending",
-    )!;
-    render(
-      <ReviewActivationScreen
-        pathway={syntheticPathways[0]}
-        template={pendingTemplate}
-        onBack={() => undefined}
-        onOverview={() => undefined}
-      />,
-    );
+  // This interaction exceeded the default budget only under the full Windows
+  // suite; keep a bounded load allowance while preserving every assertion.
+  it(
+    "renders a pending selected message as unavailable with a named approval remedy",
+    { timeout: 120_000 },
+    async () => {
+      const user = userEvent.setup();
+      const pendingTemplate = syntheticTemplates.find(
+        ({ approvalState }) => approvalState === "Illustrative — approval pending",
+      )!;
+      render(
+        <ReviewActivationScreen
+          pathway={syntheticPathways[0]}
+          template={pendingTemplate}
+          onBack={() => undefined}
+          onOverview={() => undefined}
+        />,
+      );
 
-    expect(screen.getByText("Activation unavailable", { exact: true })).toBeInTheDocument();
-    expect(screen.getByText(/Message version is awaiting two-person approval/i)).toBeInTheDocument();
-    expect(screen.getByText(/select a current, locally approved message version/i)).toBeInTheDocument();
-    const activate = screen.getByRole("button", { name: "Activate 10-contact plan" });
-    expect(activate).toHaveAttribute("aria-disabled", "true");
-    await user.click(activate);
-    expect(screen.queryByText(/Prototype activation reviewed/i)).not.toBeInTheDocument();
-  });
+      expect(screen.getByText("Activation unavailable", { exact: true })).toBeInTheDocument();
+      expect(screen.getByText(/Message version is awaiting two-person approval/i)).toBeInTheDocument();
+      expect(screen.getByText(/select a current, locally approved message version/i)).toBeInTheDocument();
+      const activate = screen.getByRole("button", { name: "Activate 10-contact plan" });
+      expect(activate).toHaveAttribute("aria-disabled", "true");
+      await user.click(activate);
+      expect(screen.queryByText(/Prototype activation reviewed/i)).not.toBeInTheDocument();
+    },
+  );
 
   it("renders a retired selected pathway as unavailable with a named replacement remedy", () => {
     render(
