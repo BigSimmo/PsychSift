@@ -10,13 +10,14 @@ import {
   buildIngestionAuditReport,
   parseIngestionAuditInventory,
   type IngestionAuditInput,
+  type IngestionFailureCode,
 } from "@/lib/ingestion-audit";
 import { auditExpectedSourceCoverage } from "@/lib/source-coverage-registry";
 
 const reviewedProvenance = {
   review: {
     contractVersion: "ingestion-provenance-v1",
-    evidenceDigest: `sha256:${"2".repeat(64)}`,
+    evidenceDigest: "sha256:f9f6034458857f0ef1c75f245a854a138b06cb6c129b5c6803aa41cba029e925",
     reviewedAt: "2026-08-23",
     reviewerRole: "clinical_governance",
   },
@@ -184,6 +185,88 @@ describe("ingestion integrity audit", () => {
     ).toThrow(/retrieval measurement.*must-pass-current|must-pass-current.*retrieval measurement/i);
   });
 
+  it("validates bounded failure codes against measured presence and rank evidence", () => {
+    type CaseEvidence = IngestionAuditInput["mustPassCases"][number];
+    const buildCaseReport = (testCase: CaseEvidence, retrieved: boolean) =>
+      buildIngestionAuditReport({
+        inventory: {
+          schemaVersion: 1,
+          inventoryVersion: `failure-code-${testCase.failureCodes.join("-")}`,
+          documents: [fixture({ mustPassCases: [testCase] })],
+          retrievedDocumentIdsByCase: {
+            "must-pass-current": retrieved ? ["guideline-current"] : [],
+          },
+        },
+        expectedCoverage: {
+          schemaVersion: 1,
+          coverageVersion: "failure-code-coverage-v1",
+          records: [
+            {
+              key: "synthetic-current-guideline",
+              owner: "Clinical governance",
+              reviewStatus: "active",
+              expectedDocumentIds: ["guideline-current"],
+              mustPassCaseIds: ["must-pass-current"],
+            },
+          ],
+        },
+      });
+    const failedCase = (
+      failureCode: IngestionFailureCode,
+      actualDocumentRank: number | null,
+      expectedDocumentRank: number | null = 1,
+    ): CaseEvidence => ({
+      id: "must-pass-current",
+      passed: false,
+      expectedDocumentRank,
+      actualDocumentRank,
+      failureCodes: [failureCode],
+    });
+
+    const valid: Array<{ testCase: CaseEvidence; retrieved: boolean }> = [
+      { testCase: failedCase("document_not_retrieved", null), retrieved: false },
+      { testCase: failedCase("document_rank_exceeded", 3), retrieved: true },
+      { testCase: failedCase("source_role_mismatch", 2), retrieved: true },
+      { testCase: failedCase("source_role_mismatch", null), retrieved: false },
+      { testCase: failedCase("governance_block", 1), retrieved: true },
+      { testCase: failedCase("governance_block", null), retrieved: false },
+      { testCase: failedCase("case_timeout", null), retrieved: false },
+      { testCase: failedCase("provider_failure", null), retrieved: false },
+    ];
+    for (const row of valid) {
+      expect(() => buildCaseReport(row.testCase, row.retrieved)).not.toThrow();
+      expect(buildCaseReport(row.testCase, row.retrieved).documents[0]).toMatchObject({
+        action: "shadow_reindex",
+        reasons: ["must_pass_retrieval_failed"],
+      });
+    }
+
+    const invalid: Array<{ testCase: CaseEvidence; retrieved: boolean }> = [
+      { testCase: failedCase("document_not_retrieved", 1), retrieved: true },
+      { testCase: failedCase("document_rank_exceeded", null), retrieved: false },
+      { testCase: failedCase("document_rank_exceeded", 1), retrieved: true },
+      { testCase: failedCase("source_role_mismatch", null), retrieved: true },
+      { testCase: failedCase("governance_block", 1), retrieved: false },
+      { testCase: failedCase("case_timeout", 1), retrieved: true },
+      { testCase: failedCase("provider_failure", 1), retrieved: true },
+    ];
+    for (const row of invalid) {
+      expect(() => buildCaseReport(row.testCase, row.retrieved)).toThrow(/retrieval|rank|failure evidence/i);
+    }
+    expect(() =>
+      buildCaseReport(
+        {
+          id: "must-pass-current",
+          passed: true,
+          expectedDocumentRank: 1,
+          actualDocumentRank: 3,
+          failureCodes: [],
+        },
+        true,
+      ),
+    ).toThrow(/rank|failure evidence/i);
+  });
+
   it("imports canonical source policy and cannot be overridden by a governance boolean", () => {
     expect(() =>
       auditDocument(
@@ -211,7 +294,7 @@ describe("ingestion integrity audit", () => {
         }) as IngestionAuditInput,
       ),
     ).toMatchObject({
-      action: null,
+      action: "no_change",
       diagnosticAction: "metadata_only",
       eligibleForShadowPlan: false,
       blockingDisposition: "quarantine_review",
@@ -233,7 +316,7 @@ describe("ingestion integrity audit", () => {
         }) as IngestionAuditInput,
       ),
     ).toMatchObject({
-      action: null,
+      action: "no_change",
       diagnosticAction: "metadata_only",
       eligibleForShadowPlan: false,
       blockingDisposition: "quarantine_review",
@@ -242,6 +325,10 @@ describe("ingestion integrity audit", () => {
 
     const australianPolicyProvenance = {
       ...reviewedProvenance,
+      review: {
+        ...reviewedProvenance.review,
+        evidenceDigest: "sha256:a713fd9d21002147e9fae04f6e5479b1ffd41f7462f71a0b4072c089f62e591c",
+      },
       expected: { ...reviewedProvenance.expected, sourcePolicyVersion: "australian-source-policy-v1" },
       actual: { ...reviewedProvenance.actual, sourcePolicyVersion: "australian-source-policy-v1" },
     };
@@ -279,12 +366,29 @@ describe("ingestion integrity audit", () => {
           }),
         ),
       ).toMatchObject({
-        action: null,
+        action: "no_change",
         eligibleForShadowPlan: false,
         blockingDisposition: "quarantine_review",
         reasons: ["source_governance_invalid"],
       });
     }
+  });
+
+  it("blocks site-registry content from the document audit control plane", () => {
+    expect(
+      auditDocument(
+        fixture({
+          metadata: { ...fixture().metadata, corpusScope: "clinical_kb_site" },
+          sourceGovernanceValid: true,
+        }),
+      ),
+    ).toMatchObject({
+      action: "no_change",
+      diagnosticAction: "metadata_only",
+      eligibleForShadowPlan: false,
+      blockingDisposition: "quarantine_review",
+      reasons: ["source_governance_invalid"],
+    });
   });
 
   it("detects over-count drift and records complete reviewed provenance", () => {
@@ -307,6 +411,26 @@ describe("ingestion integrity audit", () => {
         } as Partial<IngestionAuditInput>),
       ),
     ).toMatchObject({ action: "targeted_reprocess", reasons: ["provenance_mismatch"] });
+  });
+
+  it("binds the reviewed evidence digest to the complete expected provenance payload", () => {
+    expect(
+      auditDocument(
+        fixture({
+          provenance: {
+            ...reviewedProvenance,
+            expected: { ...reviewedProvenance.expected, parserVersion: "parser-v2" },
+            actual: { ...reviewedProvenance.actual, parserVersion: "parser-v2" },
+          },
+        }),
+      ),
+    ).toMatchObject({
+      action: "no_change",
+      diagnosticAction: "targeted_reprocess",
+      eligibleForShadowPlan: false,
+      blockingDisposition: "quarantine_review",
+      reasons: ["provenance_mismatch"],
+    });
   });
 
   it("binds the complete reviewed coverage contract to report identity", () => {
@@ -406,7 +530,7 @@ describe("ingestion integrity audit", () => {
       fixture({ lifecycle: "withdrawn", counts: { ...fixture().counts, pages: { expected: 12, actual: 0 } } }),
     );
     expect(blocked).toMatchObject({
-      action: null,
+      action: "no_change",
       diagnosticAction: "targeted_reprocess",
       eligibleForShadowPlan: false,
       blockingDisposition: "tombstone",
@@ -418,29 +542,44 @@ describe("ingestion integrity audit", () => {
       reasons: ["source_governance_invalid"],
     });
 
+    const blockedLifecycleDocuments = (["withdrawn", "superseded", "quarantined", "review_due"] as const).map(
+      (lifecycle) =>
+        fixture({
+          documentId: `blocked-${lifecycle}`,
+          lifecycle,
+          mustPassCases: [],
+        }),
+    );
+    for (const document of blockedLifecycleDocuments) {
+      expect(auditDocument(document)).toMatchObject({
+        action: "no_change",
+        eligibleForShadowPlan: false,
+      });
+    }
+
     const report = buildIngestionAuditReport({
       inventory: {
         schemaVersion: 1,
         inventoryVersion: "blocked-actions",
-        documents: [blocked ? fixture({ lifecycle: "withdrawn", mustPassCases: [] }) : fixture()],
+        documents: blockedLifecycleDocuments,
         retrievedDocumentIdsByCase: {},
       },
       expectedCoverage: { schemaVersion: 1, coverageVersion: "blocked-actions-v1", records: [] },
     });
     expect(report.summary).toMatchObject({
-      documents: 1,
+      documents: 4,
       noChange: 0,
       metadataOnly: 0,
       targetedReprocess: 0,
       shadowReindex: 0,
-      blocked: 1,
+      blocked: 4,
     });
   });
 
   it("fails closed when integrity evidence is absent or state changes after audit", () => {
     const missingEvidence = auditDocument(fixture({ expectedStateDigest: null }));
     expect(missingEvidence).toMatchObject({
-      action: null,
+      action: "no_change",
       diagnosticAction: "metadata_only",
       eligibleForShadowPlan: false,
       blockingDisposition: "quarantine_review",

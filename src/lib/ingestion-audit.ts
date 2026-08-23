@@ -64,7 +64,7 @@ export type IngestionDocumentAudit = {
   documentId: string;
   expectedStateDigest: string;
   activeGenerationId: string | null;
-  action: IngestionAuditAction | null;
+  action: IngestionAuditAction;
   diagnosticAction: IngestionAuditAction;
   eligibleForShadowPlan: boolean;
   blockingDisposition: "quarantine_review" | "tombstone" | null;
@@ -322,10 +322,27 @@ const ingestionAuditInventorySchema = z
           continue;
         }
         const retrieved = inventory.retrievedDocumentIdsByCase[testCase.id]!.includes(document.documentId);
-        if (retrieved !== testCase.passed) {
+        const hasRank = testCase.actualDocumentRank !== null;
+        const codes = new Set(testCase.failureCodes);
+        const rankExceeded = codes.has("document_rank_exceeded");
+        const mustBeAbsent =
+          codes.has("document_not_retrieved") || codes.has("case_timeout") || codes.has("provider_failure");
+        const consistent = testCase.passed
+          ? retrieved &&
+            hasRank &&
+            (testCase.expectedDocumentRank === null ||
+              (testCase.actualDocumentRank !== null && testCase.actualDocumentRank <= testCase.expectedDocumentRank))
+          : retrieved === hasRank &&
+            (!mustBeAbsent || (!retrieved && !hasRank)) &&
+            (!rankExceeded ||
+              (retrieved &&
+                testCase.expectedDocumentRank !== null &&
+                testCase.actualDocumentRank !== null &&
+                testCase.actualDocumentRank > testCase.expectedDocumentRank));
+        if (!consistent || (rankExceeded && mustBeAbsent)) {
           context.addIssue({
             code: "custom",
-            message: "contradictory retrieval evidence",
+            message: "contradictory retrieval evidence: presence, rank, or failure code mismatch",
             path: ["documents", documentIndex, "mustPassCases", caseIndex, "passed"],
           });
         }
@@ -411,6 +428,12 @@ function hasMetadataGap(metadata: IngestionAuditInput["metadata"]) {
   return Object.entries(metadata).some(([key, value]) => key !== "sourceCatalogueKey" && value === null);
 }
 
+const documentOwnedCorpusScopes = new Set<SourceCorpusScope>([
+  "uploaded_local",
+  "australian_public",
+  "international_supplementary",
+]);
+
 function sourcePolicyIsValid(input: IngestionAuditInput) {
   const metadata = input.metadata;
   if (
@@ -421,6 +444,7 @@ function sourcePolicyIsValid(input: IngestionAuditInput) {
     !metadata.contentMode ||
     !metadata.licencePolicy ||
     !metadata.sourcePolicyVersion ||
+    !documentOwnedCorpusScopes.has(metadata.corpusScope) ||
     metadata.contentMode !== "indexed_content" ||
     metadata.sourceRole === "reference_link" ||
     metadata.licencePolicy !== "public_index_permitted"
@@ -438,8 +462,30 @@ function sourcePolicyIsValid(input: IngestionAuditInput) {
   );
 }
 
+export function reviewedProvenanceEvidenceDigest(args: {
+  contractVersion: string;
+  expected: IngestionAuditProvenance["expected"];
+}) {
+  return sha256({
+    schemaVersion: "ingestion-provenance-review-v1",
+    contractVersion: args.contractVersion,
+    expected: args.expected,
+  });
+}
+
+function hasValidReviewedProvenance(input: IngestionAuditInput) {
+  return (
+    input.provenance.review.evidenceDigest ===
+    reviewedProvenanceEvidenceDigest({
+      contractVersion: input.provenance.review.contractVersion,
+      expected: input.provenance.expected,
+    })
+  );
+}
+
 function provenanceMismatch(input: IngestionAuditInput) {
   return (
+    !hasValidReviewedProvenance(input) ||
     JSON.stringify(input.provenance.expected) !== JSON.stringify(input.provenance.actual) ||
     input.provenance.actual.sourcePolicyVersion !== input.metadata.sourcePolicyVersion
   );
@@ -520,6 +566,7 @@ export function auditDocument(rawInput: IngestionAuditInput): IngestionDocumentA
   const quarantine =
     !input.expectedStateDigest ||
     !validSourcePolicy ||
+    !hasValidReviewedProvenance(input) ||
     input.lifecycle === "quarantined" ||
     input.lifecycle === "review_due";
   const diagnosticAction = classifyAction(reasons);
@@ -529,7 +576,7 @@ export function auditDocument(rawInput: IngestionAuditInput): IngestionDocumentA
     documentId: input.documentId,
     expectedStateDigest: input.expectedStateDigest ?? "",
     activeGenerationId: input.activeGenerationId,
-    action: blocked ? null : diagnosticAction,
+    action: blocked ? "no_change" : diagnosticAction,
     diagnosticAction,
     eligibleForShadowPlan: !blocked,
     blockingDisposition: tombstone ? "tombstone" : quarantine ? "quarantine_review" : null,
@@ -596,12 +643,13 @@ export function buildIngestionAuditReport(args: {
     activeDocumentIds: eligibleDocumentIds,
     retrievedDocumentIdsByCase,
   });
+  const actionableDocuments = documents.filter((document) => document.eligibleForShadowPlan);
   const summary = Object.freeze({
     documents: documents.length,
-    noChange: documents.filter((document) => document.action === "no_change").length,
-    metadataOnly: documents.filter((document) => document.action === "metadata_only").length,
-    targetedReprocess: documents.filter((document) => document.action === "targeted_reprocess").length,
-    shadowReindex: documents.filter((document) => document.action === "shadow_reindex").length,
+    noChange: actionableDocuments.filter((document) => document.action === "no_change").length,
+    metadataOnly: actionableDocuments.filter((document) => document.action === "metadata_only").length,
+    targetedReprocess: actionableDocuments.filter((document) => document.action === "targeted_reprocess").length,
+    shadowReindex: actionableDocuments.filter((document) => document.action === "shadow_reindex").length,
     blocked: documents.filter((document) => !document.eligibleForShadowPlan).length,
   });
   const fingerprintInput = {

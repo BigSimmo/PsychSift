@@ -54,7 +54,7 @@
       "provenance": {
         "review": {
           "contractVersion": "ingestion-provenance-v1",
-          "evidenceDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "evidenceDigest": "sha256:f9f6034458857f0ef1c75f245a854a138b06cb6c129b5c6803aa41cba029e925",
           "reviewedAt": "2026-08-23",
           "reviewerRole": "clinical_governance"
         },
@@ -142,7 +142,7 @@
       "provenance": {
         "review": {
           "contractVersion": "ingestion-provenance-v1",
-          "evidenceDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+          "evidenceDigest": "sha256:5dca8168e0cd799fafa0cba102400bd0bdbf3e91d8955f5d1832f7204d7d3d00",
           "reviewedAt": "2026-08-23",
           "reviewerRole": "corpus_steward"
         },
@@ -222,7 +222,7 @@
       "provenance": {
         "review": {
           "contractVersion": "ingestion-provenance-v1",
-          "evidenceDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "evidenceDigest": "sha256:5ee536ec3b2c7af7eee3704cc4ae200d2daa20e5592b7f2674ab3471ebc19c13",
           "reviewedAt": "2026-08-23",
           "reviewerRole": "clinical_governance"
         },
