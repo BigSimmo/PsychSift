@@ -99,6 +99,7 @@ declare
   v_new_reviewed_document jsonb;
   v_old_reviewed_metadata jsonb;
   v_new_reviewed_metadata jsonb;
+  v_target_index_generation_id uuid;
 begin
   if tg_op = 'INSERT' then
     if new.owner_id is null then
@@ -109,30 +110,45 @@ begin
 
   v_old_australian_public := coalesce(old.metadata->>'corpus_scope' = 'australian_public', false);
   v_new_australian_public := coalesce(new.metadata->>'corpus_scope' = 'australian_public', false);
-  v_old_reviewed_document := to_jsonb(old) - array['owner_id', 'updated_at', 'metadata'];
-  v_new_reviewed_document := to_jsonb(new) - array['owner_id', 'updated_at', 'metadata'];
-  v_old_reviewed_metadata := coalesce(old.metadata, '{}'::jsonb) - array[
-    'public_corpus',
-    'publication_approval_id',
-    'publication_manifest_digest',
-    'publication_reviewed_state_digest',
-    'publication_source_catalogue_key',
-    'publication_source_policy_version',
-    'publication_reviewed_index_generation_id',
-    'published_at'
+  v_old_reviewed_document := to_jsonb(old) - array[
+    'owner_id',
+    'updated_at',
+    'metadata',
+    'search_tsv',
+    'title_search_tsv',
+    'index_generation_id'
   ];
-  v_new_reviewed_metadata := coalesce(new.metadata, '{}'::jsonb) - array[
-    'public_corpus',
-    'publication_approval_id',
-    'publication_manifest_digest',
-    'publication_reviewed_state_digest',
-    'publication_source_catalogue_key',
-    'publication_source_policy_version',
-    'publication_reviewed_index_generation_id',
-    'published_at'
+  v_new_reviewed_document := to_jsonb(new) - array[
+    'owner_id',
+    'updated_at',
+    'metadata',
+    'search_tsv',
+    'title_search_tsv',
+    'index_generation_id'
   ];
 
   if old.owner_id is not null and new.owner_id is null then
+    v_old_reviewed_metadata := coalesce(old.metadata, '{}'::jsonb) - array[
+      'public_corpus',
+      'publication_approval_id',
+      'publication_manifest_digest',
+      'publication_reviewed_state_digest',
+      'publication_source_catalogue_key',
+      'publication_source_policy_version',
+      'publication_reviewed_index_generation_id',
+      'published_at'
+    ];
+    v_new_reviewed_metadata := coalesce(new.metadata, '{}'::jsonb) - array[
+      'public_corpus',
+      'publication_approval_id',
+      'publication_manifest_digest',
+      'publication_reviewed_state_digest',
+      'publication_source_catalogue_key',
+      'publication_source_policy_version',
+      'publication_reviewed_index_generation_id',
+      'published_at'
+    ];
+
     if v_new_australian_public and not v_old_australian_public then
       raise exception 'version-1 or non-Australian reviewed state cannot activate an Australian public document';
     end if;
@@ -167,6 +183,11 @@ begin
     end if;
 
     if v_new_australian_public then
+      begin
+        v_target_index_generation_id := nullif(new.metadata->>'index_generation_id', '')::uuid;
+      exception when invalid_text_representation then
+        raise exception 'Australian public document has an invalid committed generation';
+      end;
       if v_approval.source_catalogue_key is null
         or v_approval.source_policy_version is null
         or v_approval.reviewed_index_generation_id is null
@@ -176,7 +197,7 @@ begin
           is distinct from v_approval.reviewed_index_generation_id::text then
         raise exception 'historical version-1 approval cannot activate an Australian public document';
       end if;
-      if new.index_generation_id is distinct from v_approval.reviewed_index_generation_id
+      if v_target_index_generation_id is distinct from v_approval.reviewed_index_generation_id
         or new.metadata->>'source_catalogue_key' is distinct from v_approval.source_catalogue_key
         or new.metadata->>'source_policy_version' is distinct from v_approval.source_policy_version then
         raise exception 'Australian public document policy or committed generation changed after approval';
@@ -229,7 +250,7 @@ begin
   elsif old.owner_id is null and new.owner_id is null and (v_old_australian_public or v_new_australian_public) then
     if not (v_old_australian_public and v_new_australian_public)
       or v_new_reviewed_document is distinct from v_old_reviewed_document
-      or v_new_reviewed_metadata is distinct from v_old_reviewed_metadata then
+      or new.metadata is distinct from old.metadata then
       raise exception 'Australian public reviewed state is immutable after activation';
     end if;
   end if;

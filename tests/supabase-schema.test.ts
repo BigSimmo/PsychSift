@@ -1498,7 +1498,7 @@ describe("Supabase Preview replay guards", () => {
     expect(targetStateGuard).toBeLessThan(approvalLookup);
 
     for (const targetCheck of [
-      "new.index_generation_id is distinct from v_approval.reviewed_index_generation_id",
+      "v_target_index_generation_id is distinct from v_approval.reviewed_index_generation_id",
       "new.metadata->>'source_catalogue_key' is distinct from v_approval.source_catalogue_key",
       "new.metadata->>'source_policy_version' is distinct from v_approval.source_policy_version",
       "new.metadata->>'content_mode' is distinct from 'indexed_content'",
@@ -1509,14 +1509,38 @@ describe("Supabase Preview replay guards", () => {
       expect(guardBody).toContain(targetCheck);
     }
     expect(guardBody).toContain(
+      "v_target_index_generation_id := nullif(new.metadata->>'index_generation_id', '')::uuid",
+    );
+    expect(guardBody).not.toContain("new.index_generation_id");
+    expect(guardBody).toContain(
       "elsif old.owner_id is null and new.owner_id is null and (v_old_australian_public or v_new_australian_public) then",
     );
     expect(guardBody).toContain(
       "elsif old.owner_id is null and new.owner_id is not null and v_old_australian_public then",
     );
     expect(guardBody).toContain("Australian public reviewed state is immutable after activation");
-    expect(guardBody).toContain("to_jsonb(old) - array['owner_id', 'updated_at', 'metadata']");
-    expect(guardBody).toContain("to_jsonb(new) - array['owner_id', 'updated_at', 'metadata']");
+    const generatedColumns = ["search_tsv", "title_search_tsv", "index_generation_id"];
+    const documentsTable = schema.slice(
+      schema.indexOf("create table if not exists public.documents ("),
+      schema.indexOf("create table if not exists public.document_pages ("),
+    );
+    for (const generatedColumn of generatedColumns) {
+      expect(documentsTable).toMatch(new RegExp(`${generatedColumn}\\s+(?:tsvector|uuid)\\s+generated always as \\(`));
+    }
+    const documentProjectionPattern = /v_(?:old|new)_reviewed_document := to_jsonb\((?:old|new)\) - array\[(.*?)\];/gs;
+    const documentProjections = [...guardBody.matchAll(documentProjectionPattern)];
+    expect(documentProjections).toHaveLength(2);
+    const excludedDocumentFields = [
+      "owner_id",
+      "updated_at",
+      "metadata",
+      "search_tsv",
+      "title_search_tsv",
+      "index_generation_id",
+    ];
+    for (const projection of documentProjections) {
+      expect([...projection[1].matchAll(/'([^']+)'/g)].map((match) => match[1])).toEqual(excludedDocumentFields);
+    }
     const allowedAuditFields = [
       "public_corpus",
       "publication_approval_id",
@@ -1534,9 +1558,18 @@ describe("Supabase Preview replay guards", () => {
       /v_(?:old|new)_reviewed_metadata := coalesce\((?:old|new)\.metadata, '\{\}'::jsonb\) - array\[(.*?)\];/gs;
     const metadataProjections = [...guardBody.matchAll(metadataProjectionPattern)];
     expect(metadataProjections).toHaveLength(2);
+    expect(guardBody.indexOf(metadataProjections[0][0])).toBeGreaterThan(ownerRelease);
+    expect(guardBody.indexOf(metadataProjections[1][0])).toBeGreaterThan(ownerRelease);
     for (const projection of metadataProjections) {
       expect([...projection[1].matchAll(/'([^']+)'/g)].map((match) => match[1])).toEqual(allowedAuditFields);
     }
+    const alreadyPublicBranch = guardBody.slice(
+      guardBody.indexOf(
+        "elsif old.owner_id is null and new.owner_id is null and (v_old_australian_public or v_new_australian_public) then",
+      ),
+    );
+    expect(alreadyPublicBranch).toContain("new.metadata is distinct from old.metadata");
+    expect(alreadyPublicBranch).not.toContain("v_new_reviewed_metadata is distinct from v_old_reviewed_metadata");
   });
 
   it("keeps Australian approval history append-only and activation service-role-only", () => {
