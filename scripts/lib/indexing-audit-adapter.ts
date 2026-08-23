@@ -95,24 +95,43 @@ export function adaptIndexingHealthDocumentToAuditInput(
   if (evidence.documentId !== args.documentId) {
     throw new Error("Indexing-health audit evidence document identity mismatch.");
   }
+  if (
+    args.expectedPageCount !== evidence.counts.pages.expected ||
+    indexingHealthDocument.chunk_count !== evidence.counts.chunks.expected
+  ) {
+    throw new Error("Indexing-health expected counts disagree with reviewed expected counts.");
+  }
+  const canonicalMetadata = {
+    publisher: stringOrNull(metadata.publisher),
+    jurisdiction: stringOrNull(metadata.jurisdiction),
+    corpusScope: stringOrNull(metadata.corpus_scope),
+    sourceRole: stringOrNull(metadata.source_role),
+    contentMode: stringOrNull(metadata.content_mode),
+    licencePolicy: stringOrNull(metadata.licence_policy),
+    sourcePolicyVersion: stringOrNull(metadata.source_policy_version),
+    sourceCatalogueKey: stringOrNull(metadata.source_catalogue_key),
+    sourceExcluded: metadata.source_excluded,
+  };
+  if (
+    canonicalMetadata.publisher !== evidence.metadata.publisher ||
+    canonicalMetadata.jurisdiction !== evidence.metadata.jurisdiction ||
+    canonicalMetadata.corpusScope !== evidence.metadata.corpusScope ||
+    canonicalMetadata.sourceRole !== evidence.metadata.sourceRole ||
+    canonicalMetadata.contentMode !== evidence.metadata.contentMode ||
+    canonicalMetadata.licencePolicy !== evidence.metadata.licencePolicy ||
+    canonicalMetadata.sourcePolicyVersion !== evidence.metadata.sourcePolicyVersion ||
+    canonicalMetadata.sourceCatalogueKey !== evidence.metadata.sourceCatalogueKey ||
+    canonicalMetadata.sourceExcluded !== evidence.metadata.sourceExcluded
+  ) {
+    throw new Error("Indexing-health governance metadata disagrees with reviewed governance metadata.");
+  }
   const input = parseIngestionAuditInput({
     ...evidence,
     documentId: args.documentId,
-    metadata: {
-      publisher: stringOrNull(metadata.publisher),
-      jurisdiction: stringOrNull(metadata.jurisdiction),
-      corpusScope: stringOrNull(metadata.corpus_scope),
-      sourceRole: stringOrNull(metadata.source_role),
-      contentMode: stringOrNull(metadata.content_mode),
-      licencePolicy: stringOrNull(metadata.licence_policy),
-      sourcePolicyVersion: stringOrNull(metadata.source_policy_version),
-      sourceCatalogueKey: stringOrNull(metadata.source_catalogue_key),
-      sourceExcluded: metadata.source_excluded,
-    },
     counts: {
       ...evidence.counts,
-      pages: { expected: args.expectedPageCount, actual: indexingHealthDocument.page_count },
-      chunks: { expected: indexingHealthDocument.chunk_count, actual: args.actualChunkCount },
+      pages: { ...evidence.counts.pages, actual: indexingHealthDocument.page_count },
+      chunks: { ...evidence.counts.chunks, actual: args.actualChunkCount },
     },
   });
   return { kind: "document", input };

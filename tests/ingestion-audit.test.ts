@@ -775,13 +775,13 @@ describe("ingestion integrity audit", () => {
       status: "indexed",
       file_name: "synthetic-guideline.pdf",
       page_count: 10,
-      chunk_count: 20,
+      chunk_count: 24,
       metadata: {
         source_kind: "document",
-        publisher: "Synthetic authority",
+        publisher: " Synthetic authority ",
         jurisdiction: "AU-WA",
         corpus_scope: "uploaded_local",
-        source_role: "local_guideline",
+        source_role: " local_guideline ",
         content_mode: "indexed_content",
         licence_policy: "public_index_permitted",
         source_policy_version: "synthetic-source-policy-v1",
@@ -802,7 +802,7 @@ describe("ingestion integrity audit", () => {
         documentId: "adapted-guideline",
         counts: {
           pages: { expected: 12, actual: 10 },
-          chunks: { expected: 20, actual: 18 },
+          chunks: { expected: 24, actual: 18 },
         },
         metadata: {
           corpusScope: "uploaded_local",
@@ -811,6 +811,44 @@ describe("ingestion integrity audit", () => {
         },
       },
     });
+    for (const [expectedPageCount, chunkCount] of [
+      [10, 24],
+      [12, 20],
+    ] as const) {
+      expect(() =>
+        adaptIndexingHealthDocumentToAuditInput({
+          documentId: "adapted-guideline",
+          indexingHealthDocument: { ...indexingHealthDocument, chunk_count: chunkCount },
+          expectedPageCount,
+          actualChunkCount: 18,
+          auditEvidence: fixture({ documentId: "adapted-guideline" }),
+        }),
+      ).toThrow(/reviewed.*expected|expected.*count/i);
+    }
+    for (const [key, value] of [
+      ["publisher", "Different synthetic authority"],
+      ["jurisdiction", "AU-NSW"],
+      ["corpus_scope", "australian_public"],
+      ["source_role", "clinical_reference"],
+      ["content_mode", "link_only"],
+      ["licence_policy", "link_only"],
+      ["source_policy_version", "synthetic-source-policy-v2"],
+      ["source_catalogue_key", "synthetic-catalogue-key"],
+      ["source_excluded", true],
+    ] as const) {
+      expect(() =>
+        adaptIndexingHealthDocumentToAuditInput({
+          documentId: "adapted-guideline",
+          indexingHealthDocument: {
+            ...indexingHealthDocument,
+            metadata: { ...indexingHealthDocument.metadata, [key]: value },
+          },
+          expectedPageCount: 12,
+          actualChunkCount: 18,
+          auditEvidence: fixture({ documentId: "adapted-guideline" }),
+        }),
+      ).toThrow(/reviewed.*governance|governance.*metadata/i);
+    }
     expect(() =>
       adaptIndexingHealthDocumentToAuditInput({
         documentId: "foreign-guideline",
