@@ -28,7 +28,7 @@ type AustralianSourceVerificationRow = AustralianSourceDefinition &
     evidenceReference: string;
   }>;
 
-type AustralianSourceVerificationManifest = Readonly<{
+export type AustralianSourceVerificationManifest = Readonly<{
   schemaVersion: "australian-source-verification-v1";
   policyVersion: typeof australianSourcePolicyVersion;
   connectedVerificationRequired: true;
@@ -102,7 +102,9 @@ function isVerificationRow(value: unknown): value is AustralianSourceVerificatio
   );
 }
 
-function assertVerificationManifest(input: unknown): asserts input is AustralianSourceVerificationManifest {
+export function assertAustralianSourceVerificationManifest(
+  input: unknown,
+): asserts input is AustralianSourceVerificationManifest {
   if (!isRecord(input)) throw new Error("Australian source verification manifest must be an object.");
   if (input.schemaVersion !== "australian-source-verification-v1") {
     throw new Error("Unsupported Australian source verification manifest version.");
@@ -118,9 +120,14 @@ function assertVerificationManifest(input: unknown): asserts input is Australian
   }
 
   const keys = new Set<string>();
+  const publisherCodes = new Set<string>();
   const canonicalUrls = new Set<string>();
   for (const source of input.sources) {
+    const publisherCode = source.publisherCode.trim().toUpperCase();
     if (keys.has(source.key)) throw new Error(`Duplicate Australian source key: ${source.key}`);
+    if (publisherCodes.has(publisherCode)) {
+      throw new Error(`Duplicate Australian source publisher code: ${source.publisherCode}`);
+    }
     if (canonicalUrls.has(source.canonicalUrl)) {
       throw new Error(`Duplicate Australian source canonical URL: ${source.canonicalUrl}`);
     }
@@ -134,12 +141,13 @@ function assertVerificationManifest(input: unknown): asserts input is Australian
       throw new Error(`Indexed Australian source ${source.key} cannot use metadata_link_only policy.`);
     }
     keys.add(source.key);
+    publisherCodes.add(publisherCode);
     canonicalUrls.add(source.canonicalUrl);
   }
 }
 
 const reviewedVerificationManifest: unknown = verificationManifest;
-assertVerificationManifest(reviewedVerificationManifest);
+assertAustralianSourceVerificationManifest(reviewedVerificationManifest);
 
 export const australianSourceCatalogue: readonly AustralianSourceDefinition[] = Object.freeze(
   reviewedVerificationManifest.sources.map(

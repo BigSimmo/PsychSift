@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { assertIndexableCatalogueEntry, australianSourceByKey } from "@/lib/australian-source-catalogue";
 import { diagnosisFullText, presentationFullText } from "@/lib/differentials";
 import type { DifferentialPresentationWorkflow, DifferentialRecord } from "@/lib/differential-snapshot";
 import {
@@ -37,6 +38,15 @@ export type RegistryCorpusEntry = {
   validationStatus: string;
   metadata: Record<string, Json>;
 };
+
+function assertRegistryCorpusEntryAdmission(entry: RegistryCorpusEntry) {
+  const catalogueKey = entry.metadata.source_catalogue_key;
+  if (catalogueKey === undefined || catalogueKey === null) return;
+  if (typeof catalogueKey !== "string" || !catalogueKey.trim()) {
+    throw new Error("Registry corpus source catalogue key must be a non-empty string.");
+  }
+  assertIndexableCatalogueEntry(australianSourceByKey(catalogueKey));
+}
 
 export type RegistryCorpusEmbedResult = {
   documentCount: number;
@@ -499,6 +509,8 @@ export function differentialRowsToCorpusEntries(rows: DifferentialRecordRow[]): 
 /** Embed registry corpus entries. */
 export async function embedRegistryCorpusEntries(supabase: AdminClient, entries: RegistryCorpusEntry[]) {
   if (entries.length === 0) return { documentCount: 0, chunkCount: 0 };
+
+  for (const entry of entries) assertRegistryCorpusEntryAdmission(entry);
 
   const { embedTexts } = await import("@/lib/openai");
   let documentCount = 0;

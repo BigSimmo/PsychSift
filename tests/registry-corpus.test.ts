@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { buildDefaultMedicationRows } from "../src/lib/medication-fixtures";
-import { assertIndexableCatalogueEntry, australianSourceByKey } from "../src/lib/australian-source-catalogue";
 import {
   clinicalRegistryRowsToCorpusEntries,
+  embedRegistryCorpusEntries,
   medicationRowsToCorpusEntries,
   registryDocumentIntent,
   type RegistryCorpusEntry,
@@ -105,28 +105,30 @@ function corpusHarness() {
 }
 
 describe("registry corpus", () => {
-  it("refuses link-only Australian references before constructing content-bearing corpus entries", () => {
-    function registryEntryForCatalogueKey(key: string): RegistryCorpusEntry {
-      const source = australianSourceByKey(key);
-      assertIndexableCatalogueEntry(source);
-      return {
+  it("rejects link-only Australian references before document/chunk construction or embedding", async () => {
+    embedTextsMock.mockReset().mockResolvedValue([[0.1]]);
+    for (const key of ["etg-complete", "australian-medicines-handbook"]) {
+      const { supabase, documents, chunks } = corpusHarness();
+      const entry: RegistryCorpusEntry = {
         kind: "service",
         subkind: null,
         ownerId: "22222222-2222-4222-8222-222222222222",
         recordId: key,
         slug: key,
-        title: source.publisher,
+        title: "Authenticated clinical reference",
         subtitle: null,
-        content: "Synthetic content that must never be constructed for link-only sources.",
-        searchText: source.publisher,
+        content: "Synthetic content that must never be indexed for a link-only source.",
+        searchText: "authenticated clinical reference",
         sourceStatus: "current",
         validationStatus: "approved",
-        metadata: { source_catalogue_key: source.key },
+        metadata: { source_catalogue_key: key },
       };
-    }
 
-    for (const key of ["etg-complete", "australian-medicines-handbook"]) {
-      expect(() => registryEntryForCatalogueKey(key)).toThrow(/link-only/i);
+      await expect(embedRegistryCorpusEntries(supabase as never, [entry])).rejects.toThrow(/link-only/i);
+      expect(embedTextsMock).not.toHaveBeenCalled();
+      expect(supabase.from).not.toHaveBeenCalled();
+      expect(documents.size).toBe(0);
+      expect(chunks.size).toBe(0);
     }
   });
 

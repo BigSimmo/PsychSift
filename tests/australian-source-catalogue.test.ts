@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import sourceVerificationManifest from "../data/australian-source-verification.v1.json";
 import {
+  assertAustralianSourceVerificationManifest,
   assertIndexableCatalogueEntry,
   australianSourceByKey,
   australianSourceCatalogue,
@@ -44,7 +46,27 @@ describe("Australian source catalogue", () => {
   it("contains unique stable keys, codes, URLs, and a versioned policy", () => {
     expect(australianSourcePolicyVersion).toBe("australian-source-policy-v1");
     expect(new Set(australianSourceCatalogue.map((source) => source.key)).size).toBe(australianSourceCatalogue.length);
+    expect(new Set(australianSourceCatalogue.map((source) => source.publisherCode)).size).toBe(
+      australianSourceCatalogue.length,
+    );
+    expect(new Set(australianSourceCatalogue.map((source) => source.canonicalUrl)).size).toBe(
+      australianSourceCatalogue.length,
+    );
     expect(australianSourceCatalogue.every((source) => new URL(source.canonicalUrl).protocol === "https:")).toBe(true);
+  });
+
+  it("rejects duplicate publisher codes at the verification-manifest boundary", () => {
+    const firstPublisherCode = sourceVerificationManifest.sources[0]?.publisherCode;
+    const duplicatePublisherCodeManifest = {
+      ...sourceVerificationManifest,
+      sources: sourceVerificationManifest.sources.map((source, index) =>
+        index === 1 ? { ...source, publisherCode: firstPublisherCode } : source,
+      ),
+    };
+
+    expect(() => assertAustralianSourceVerificationManifest(duplicatePublisherCodeManifest)).toThrow(
+      /duplicate Australian source publisher code/i,
+    );
   });
 
   it("reuses exactly one existing authority identity per indexed catalogue entry", () => {
