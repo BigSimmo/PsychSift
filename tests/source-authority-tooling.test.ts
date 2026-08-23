@@ -4,9 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   analyzeSourceLocality,
   assertLocalityMetadataPatch,
+  auditProposedSourcePolicyMetadata,
   auditSourceAuthorityDocuments,
   inferSourceAuthorityFromIdentity,
   isRegistryRecordSource,
+  localityMetadataKeys,
   type SourceAuthorityDocument,
 } from "@/lib/source-authority-metadata";
 import { classifySourceAuthority } from "@/lib/source-authority-registry";
@@ -25,6 +27,50 @@ function document(
 }
 
 describe("source authority metadata tooling", () => {
+  it("produces a read-only proposed policy audit without expanding locality mutation keys", () => {
+    const report = auditProposedSourcePolicyMetadata([
+      document({
+        id: "wacp-document",
+        file_name: "WACP-standard.pdf",
+        metadata: {
+          source_kind: "document",
+          publisher_code: "WACP",
+          publisher: "Office of the Chief Psychiatrist WA",
+          jurisdiction: "Australia/WA",
+        },
+      }),
+      document({
+        id: "registry-record",
+        file_name: "clinical-kb-service.json",
+        metadata: {
+          source_kind: "registry_record",
+          publisher_code: "WACP",
+          jurisdiction: "Australia/WA",
+          corpus_scope: "clinical_kb_site",
+        },
+      }),
+    ]);
+
+    expect(report).toMatchObject({
+      proposed_policy_metadata_count: 1,
+      excluded_registry_record_count: 1,
+      proposed_policy_metadata: [
+        {
+          id: "wacp-document",
+          source_catalogue_key: "wa-chief-psychiatrist",
+          source_policy_version: "australian-source-policy-v1",
+          corpus_scope: "australian_public",
+          content_mode: "indexed_content",
+          licence_policy: "review_required",
+        },
+      ],
+    });
+    expect(Object.keys((report?.proposed_policy_metadata as Record<string, unknown>[])[0] ?? {})).not.toContain(
+      "metadata_patch",
+    );
+    expect(localityMetadataKeys).toEqual(["publisher_code", "publisher", "jurisdiction"]);
+  });
+
   it("infers WA and national authorities from exact registry code tokens", () => {
     expect(inferSourceAuthorityFromIdentity(document({ file_name: "WACHS-lithium-guideline.pdf" }))).toMatchObject({
       code: "WACHS",

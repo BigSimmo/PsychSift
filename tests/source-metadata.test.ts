@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { australianSourceByKey, australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
 import {
   clipboardProvenanceLine,
   formatClinicalDate,
   hasRecordedGovernanceFields,
+  normalizeClinicalSourceMetadata,
   normalizeOptionalSourceMetadata,
   normalizeSourceMetadata,
   sourceMetadataDiagnostics,
@@ -10,9 +12,177 @@ import {
   sourceStatusLabel,
   validationStatusLabel,
 } from "../src/lib/source-metadata";
-import { classifySourceAuthority } from "../src/lib/source-authority-registry";
+import { authorityIdentityForCatalogueEntry, classifySourceAuthority } from "../src/lib/source-authority-registry";
 
 describe("source metadata helpers", () => {
+  it("exposes the governed clinical normalizer and exact catalogue identity resolver", () => {
+    expect(normalizeClinicalSourceMetadata).toBeTypeOf("function");
+    expect(authorityIdentityForCatalogueEntry).toBeTypeOf("function");
+  });
+
+  it("preserves recognized governed policy, date, URL, and hash metadata", () => {
+    const metadata = normalizeClinicalSourceMetadata({
+      source_kind: "document",
+      publisher_code: "WACP",
+      publisher: "Office of the Chief Psychiatrist WA",
+      jurisdiction: "Australia/WA",
+      corpus_scope: "australian_public",
+      source_role: "quality_standard",
+      content_mode: "indexed_content",
+      source_catalogue_key: "wa-chief-psychiatrist",
+      source_policy_version: australianSourcePolicyVersion,
+      canonical_url: "https://www.chiefpsychiatrist.wa.gov.au/standards/standard-1",
+      effective_date: "2026-08-20",
+      expiry_date: "2028-08-20",
+      supersedes_document_id: "doc-previous",
+      superseded_by_document_id: "doc-next",
+      retrieved_at: "2026-08-20T08:30:00.000Z",
+      content_hash: `sha256:${"a".repeat(64)}`,
+      change_state: "changed",
+      licence_policy: "public_index_permitted",
+    });
+
+    expect(metadata).toMatchObject({
+      corpus_scope: "australian_public",
+      source_role: "quality_standard",
+      content_mode: "indexed_content",
+      source_catalogue_key: "wa-chief-psychiatrist",
+      source_policy_version: australianSourcePolicyVersion,
+      canonical_url: "https://www.chiefpsychiatrist.wa.gov.au/standards/standard-1",
+      effective_date: "2026-08-20",
+      expiry_date: "2028-08-20",
+      supersedes_document_id: "doc-previous",
+      superseded_by_document_id: "doc-next",
+      retrieved_at: "2026-08-20T08:30:00.000Z",
+      content_hash: `sha256:${"a".repeat(64)}`,
+      change_state: "changed",
+      licence_policy: "public_index_permitted",
+    });
+  });
+
+  it("keeps absent governed metadata neutral", () => {
+    expect(normalizeClinicalSourceMetadata(null)).toMatchObject({
+      corpus_scope: null,
+      source_role: null,
+      content_mode: null,
+      source_catalogue_key: null,
+      source_policy_version: null,
+      canonical_url: null,
+      effective_date: null,
+      expiry_date: null,
+      supersedes_document_id: null,
+      superseded_by_document_id: null,
+      retrieved_at: null,
+      content_hash: null,
+      change_state: "unknown",
+      licence_policy: null,
+    });
+  });
+
+  it("fails malformed policy URLs, dates, and hashes closed with diagnostics", () => {
+    const warnSpy = vi.spyOn(sourceMetadataDiagnostics, "warn").mockImplementation(() => {});
+    try {
+      const metadata = normalizeClinicalSourceMetadata({
+        canonical_url: "http://example.test/guideline",
+        effective_date: "20 August 2026",
+        expiry_date: "2026-13-40",
+        retrieved_at: "yesterday",
+        content_hash: "sha256:not-a-digest",
+      });
+
+      expect(metadata).toMatchObject({
+        canonical_url: null,
+        effective_date: null,
+        expiry_date: null,
+        retrieved_at: null,
+        content_hash: null,
+      });
+      expect(warnSpy).toHaveBeenCalledWith("canonical_url", "http://example.test/guideline");
+      expect(warnSpy).toHaveBeenCalledWith("effective_date", "20 August 2026");
+      expect(warnSpy).toHaveBeenCalledWith("expiry_date", "2026-13-40");
+      expect(warnSpy).toHaveBeenCalledWith("retrieved_at", "yesterday");
+      expect(warnSpy).toHaveBeenCalledWith("content_hash", "sha256:not-a-digest");
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("does not mint catalogue policy from document-controlled prose or a mismatched identity", () => {
+    expect(
+      normalizeClinicalSourceMetadata({
+        source_kind: "document",
+        source_title: "WA Chief Psychiatrist standard wa-chief-psychiatrist",
+        description: "Published by WACP under the Australian source policy",
+        source_catalogue_key: "wa-chief-psychiatrist",
+        source_policy_version: australianSourcePolicyVersion,
+        content_mode: "indexed_content",
+        licence_policy: "public_index_permitted",
+      }),
+    ).toMatchObject({
+      source_catalogue_key: null,
+      source_policy_version: null,
+      content_mode: null,
+      licence_policy: null,
+    });
+
+    expect(
+      normalizeClinicalSourceMetadata({
+        source_kind: "document",
+        publisher_code: "TGA",
+        jurisdiction: "Australia/National",
+        source_catalogue_key: "wa-chief-psychiatrist",
+        source_policy_version: australianSourcePolicyVersion,
+        content_mode: "indexed_content",
+        licence_policy: "public_index_permitted",
+      }),
+    ).toMatchObject({
+      source_catalogue_key: null,
+      source_policy_version: null,
+      content_mode: null,
+      licence_policy: null,
+    });
+  });
+
+  it("allows partition-bound registry scope without Australian catalogue or activation authority", () => {
+    const metadata = normalizeClinicalSourceMetadata({
+      source_kind: "registry_record",
+      registry_record_kind: "service",
+      registry_record_id: "svc-123",
+      corpus_scope: "clinical_kb_site",
+      publisher_code: "WACP",
+      jurisdiction: "Australia/WA",
+      source_catalogue_key: "wa-chief-psychiatrist",
+      source_policy_version: australianSourcePolicyVersion,
+      content_mode: "indexed_content",
+      licence_policy: "public_index_permitted",
+    });
+
+    expect(metadata).toMatchObject({
+      corpus_scope: "clinical_kb_site",
+      source_catalogue_key: null,
+      source_policy_version: null,
+      content_mode: null,
+      licence_policy: null,
+    });
+    expect(classifySourceAuthority(metadata)).toMatchObject({
+      tier: "supplementary",
+      designation: "unclassified",
+      authorityKey: null,
+    });
+  });
+
+  it("resolves catalogue identity only for an exact key, code, and compatible jurisdiction", () => {
+    const source = australianSourceByKey("wa-chief-psychiatrist");
+
+    expect(source).not.toBeNull();
+    expect(authorityIdentityForCatalogueEntry(source!)).toMatchObject({
+      key: "wa-chief-psychiatrist",
+      lifecycle: "active",
+    });
+    expect(authorityIdentityForCatalogueEntry({ ...source!, publisherCode: "TGA" })).toBeNull();
+    expect(authorityIdentityForCatalogueEntry({ ...source!, jurisdiction: "Australia/National" })).toBeNull();
+  });
+
   it("normalizes missing legacy metadata to explicit unknown labels without suppressing content", () => {
     const metadata = normalizeSourceMetadata(null);
 
@@ -165,6 +335,23 @@ describe("source authority classification", () => {
     clinical_validation_status: "approved",
     extraction_quality: "good",
   } as const;
+
+  it("recognizes NPS as historical provenance without active Australian augmentation eligibility", () => {
+    expect(
+      classifySourceAuthority({
+        ...usable,
+        publisher_code: "NPS",
+        publisher: "NPS MedicineWise",
+        jurisdiction: "Australia/National",
+      }),
+    ).toMatchObject({
+      designation: "trusted",
+      authorityKey: "nps-medicinewise",
+      authority: { lifecycle: "historical" },
+      tier: "supplementary",
+      eligibilityReasons: expect.arrayContaining(["source_lifecycle_not_active"]),
+    });
+  });
 
   it.each([
     {

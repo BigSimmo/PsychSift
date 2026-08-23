@@ -5,6 +5,11 @@ import {
   sourceAuthorityRegistry,
   type SourceAuthorityDefinition,
 } from "@/lib/source-authority-registry";
+import {
+  australianSourceCatalogue,
+  australianSourcePolicyVersion,
+  type AustralianSourceDefinition,
+} from "@/lib/australian-source-catalogue";
 
 export const localityMetadataKeys = ["publisher_code", "publisher", "jurisdiction"] as const;
 
@@ -337,5 +342,48 @@ export function auditSourceAuthorityDocuments(documents: SourceAuthorityDocument
       changed_keys: analysis.changedKeys,
       changes: analysis.changes,
     })),
+  };
+}
+
+function catalogueEntryForDocument(document: SourceAuthorityDocument): AustralianSourceDefinition | null {
+  if (isRegistryRecordSource(document)) return null;
+  const metadata = metadataRecord(document.metadata);
+  const publisherCode = normalizedCode(metadata.publisher_code);
+  const publisher = metadataString(metadata.publisher);
+  const jurisdiction = metadataString(metadata.jurisdiction);
+  if (!publisherCode || !publisher || !jurisdiction) return null;
+  const entry = australianSourceCatalogue.find((candidate) => candidate.publisherCode === publisherCode);
+  if (!entry) return null;
+  const classification = classifySourceAuthority(metadata);
+  if (classification.conflict || classification.authorityKey !== entry.key) return null;
+  return entry;
+}
+
+/**
+ * Build a content-free, read-only proposal report. This intentionally returns
+ * no patch or mutation shape: Task 4's reviewed manifest is the only future
+ * route for writing Australian policy metadata.
+ */
+export function auditProposedSourcePolicyMetadata(documents: SourceAuthorityDocument[]) {
+  const excludedRegistryRecordCount = documents.filter(isRegistryRecordSource).length;
+  const proposals = documents.flatMap((document) => {
+    const source = catalogueEntryForDocument(document);
+    if (!source) return [];
+    return [
+      {
+        id: document.id ?? null,
+        source_catalogue_key: source.key,
+        source_policy_version: australianSourcePolicyVersion,
+        corpus_scope: source.corpusScope,
+        content_mode: source.contentMode,
+        licence_policy: source.licencePolicy,
+      },
+    ];
+  });
+
+  return {
+    proposed_policy_metadata_count: proposals.length,
+    excluded_registry_record_count: excludedRegistryRecordCount,
+    proposed_policy_metadata: proposals,
   };
 }

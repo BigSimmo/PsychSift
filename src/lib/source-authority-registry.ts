@@ -1,3 +1,4 @@
+import type { AustralianSourceDefinition, SourceLifecycle } from "@/lib/australian-source-catalogue";
 import type { ClinicalSourceMetadata } from "@/lib/types";
 
 export type AustralianSourceTier = "wa_validated" | "australian_national" | "australian_state" | "supplementary";
@@ -16,7 +17,10 @@ export type SourceAuthorityDefinition = {
   tier: Exclude<AustralianSourceTier, "supplementary"> | "supplementary";
   designation: SourceDesignation;
   officialBasis: SourceOfficialBasis;
+  lifecycle: SourceLifecycle;
 };
+
+export type SourceAuthorityIdentity = SourceAuthorityDefinition;
 
 export type SourceAuthorityConflict = "publisher_mismatch" | "jurisdiction_mismatch";
 export type SourceDesignationReasonCode =
@@ -65,15 +69,17 @@ const nationalJurisdictions = [
 ] as const;
 
 function authority(
-  definition: Omit<SourceAuthorityDefinition, "publisherAliases" | "designation" | "officialBasis"> & {
+  definition: Omit<SourceAuthorityDefinition, "publisherAliases" | "designation" | "officialBasis" | "lifecycle"> & {
     publisherAliases?: readonly string[];
     designation?: SourceDesignation;
     officialBasis?: SourceOfficialBasis;
+    lifecycle?: SourceLifecycle;
   },
 ): SourceAuthorityDefinition {
   return {
     designation: "trusted",
     officialBasis: null,
+    lifecycle: "active",
     ...definition,
     publisherAliases: [definition.publisher, ...(definition.publisherAliases ?? [])],
   };
@@ -282,6 +288,7 @@ export const sourceAuthorityRegistry = [
     jurisdictions: nationalJurisdictions,
     scope: "australian_national",
     tier: "australian_national",
+    lifecycle: "historical",
   }),
   authority({
     key: "pbs",
@@ -414,6 +421,15 @@ function jurisdictionCompatible(authorityEntry: SourceAuthorityDefinition, juris
   );
 }
 
+export function authorityIdentityForCatalogueEntry(entry: AustralianSourceDefinition): SourceAuthorityIdentity | null {
+  const identity = sourceAuthorityForPublisherCode(entry.publisherCode);
+  if (!identity || identity.key !== entry.key) return null;
+  if (!publisherCompatible(identity, entry.publisher)) return null;
+  if (!jurisdictionCompatible(identity, entry.jurisdiction)) return null;
+  if (identity.lifecycle !== entry.lifecycle) return null;
+  return identity;
+}
+
 function isCurrentUsableDocument(
   metadata: Pick<ClinicalSourceMetadata, "source_kind" | "document_status" | "extraction_quality">,
 ) {
@@ -471,6 +487,9 @@ export function classifySourceAuthority(input: unknown): SourceAuthorityClassifi
     eligibilityReasons.push("authority_metadata_conflict");
     reasonCodes.push("authority_metadata_conflict");
   }
+  if (authorityEntry && authorityEntry.lifecycle !== "active") {
+    eligibilityReasons.push("source_lifecycle_not_active");
+  }
   if (!isCurrentUsableDocument(metadata)) eligibilityReasons.push("source_not_current_usable_document");
   if (authorityEntry?.tier === "wa_validated" && !isLocallyValidated(metadata)) {
     eligibilityReasons.push("wa_source_not_locally_validated");
@@ -480,6 +499,7 @@ export function classifySourceAuthority(input: unknown): SourceAuthorityClassifi
     Boolean(authorityEntry) &&
     conflicts.length === 0 &&
     (Boolean(codeAuthority) || Boolean(metadata.jurisdiction)) &&
+    authorityEntry?.lifecycle === "active" &&
     isCurrentUsableDocument(metadata) &&
     (authorityEntry?.tier !== "wa_validated" || isLocallyValidated(metadata));
 
