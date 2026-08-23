@@ -1,6 +1,6 @@
 import { appModeIds, type AppModeId } from "@/lib/app-modes";
 import type { SiteContentPartitionSnapshot, SiteContentRecord } from "@/lib/site-content/site-content-contracts";
-import type { ClinicalSourceRole, SiteContentDomain, SourceCorpusScope } from "@/lib/types";
+import type { ClinicalSourceRole, RagInsufficiencyReason, SiteContentDomain, SourceCorpusScope } from "@/lib/types";
 
 export const siteContentRegistryVersion = "site-content-registry-v1" as const;
 
@@ -621,16 +621,24 @@ export function assertSiteContentPartitionSnapshot(snapshot: SiteContentPartitio
 
 export type SiteContentClaimPurpose = "product_catalogue" | "patient_specific_diagnosis" | "clinical_guidance";
 
+export type SiteContentClaimPolicyDecision = {
+  siteUse: "primary" | "supporting" | "navigation_only";
+  primaryCorpusScope: Extract<SourceCorpusScope, "clinical_kb_site" | "uploaded_local"> | null;
+  requiresEligibleClinicalEvidence: boolean;
+  insufficiencyReason: RagInsufficiencyReason | null;
+};
+
 export function evaluateSiteContentClaimPolicy(args: {
   purpose: SiteContentClaimPurpose;
   sourceRole: ClinicalSourceRole;
   eligibleUploadedGuideline?: boolean;
-}) {
+}): SiteContentClaimPolicyDecision {
   if (args.purpose === "product_catalogue" && approvedSiteRoles.has(args.sourceRole)) {
     return {
       siteUse: "primary" as const,
       primaryCorpusScope: "clinical_kb_site" as const,
       requiresEligibleClinicalEvidence: false,
+      insufficiencyReason: null,
     };
   }
   if (args.purpose === "clinical_guidance" && args.eligibleUploadedGuideline) {
@@ -638,11 +646,13 @@ export function evaluateSiteContentClaimPolicy(args: {
       siteUse: "supporting" as const,
       primaryCorpusScope: "uploaded_local" as const,
       requiresEligibleClinicalEvidence: false,
+      insufficiencyReason: null,
     };
   }
   return {
     siteUse: "navigation_only" as const,
     primaryCorpusScope: null,
     requiresEligibleClinicalEvidence: true,
+    insufficiencyReason: "insufficient_claim_support",
   };
 }

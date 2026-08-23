@@ -336,21 +336,33 @@ describe("site content public publication and authority policy", () => {
       siteUse: "primary",
       primaryCorpusScope: "clinical_kb_site",
       requiresEligibleClinicalEvidence: false,
+      insufficiencyReason: null,
     });
     expect(
       evaluateSiteContentClaimPolicy({ purpose: "patient_specific_diagnosis", sourceRole: "clinical_reference" }),
-    ).toEqual({ siteUse: "navigation_only", primaryCorpusScope: null, requiresEligibleClinicalEvidence: true });
+    ).toEqual({
+      siteUse: "navigation_only",
+      primaryCorpusScope: null,
+      requiresEligibleClinicalEvidence: true,
+      insufficiencyReason: "insufficient_claim_support",
+    });
     expect(
       evaluateSiteContentClaimPolicy({
         purpose: "clinical_guidance",
         sourceRole: "clinical_reference",
         eligibleUploadedGuideline: true,
       }),
-    ).toEqual({ siteUse: "supporting", primaryCorpusScope: "uploaded_local", requiresEligibleClinicalEvidence: false });
+    ).toEqual({
+      siteUse: "supporting",
+      primaryCorpusScope: "uploaded_local",
+      requiresEligibleClinicalEvidence: false,
+      insufficiencyReason: null,
+    });
     expect(evaluateSiteContentClaimPolicy({ purpose: "clinical_guidance", sourceRole: "clinical_reference" })).toEqual({
       siteUse: "navigation_only",
       primaryCorpusScope: null,
       requiresEligibleClinicalEvidence: true,
+      insufficiencyReason: "insufficient_claim_support",
     });
   });
 
