@@ -1678,6 +1678,16 @@ describe("Supabase Preview replay guards", () => {
     expect(stageBody).toContain(
       "v_document.metadata->>'licence_evidence_digest' is distinct from p_version->>'licenceevidencedigest'",
     );
+    expect(stageBody).toContain("returns jsonb");
+    expect(stageBody).toContain("p_version ? 'stagingdocumentid'");
+    expect(stageBody).toContain("outcome', 'resumed'");
+    expect(stageBody).toContain("outcome', 'missing'");
+    expect(stageBody).toContain("public source resumable shadow identity mismatch");
+    expect(stageBody).toContain("v_existing.lifecycle is distinct from 'shadow'");
+    expect(stageBody).toContain("v_existing.staged_content_hash is distinct from p_version->>'stagedcontenthash'");
+    expect(stageBody).toContain("v_existing.activation_event_id is distinct from v_activation_event_id");
+    expect(stageBody).toContain("v_existing.staging_owner_id is distinct from v_owner_id");
+    expect(stageBody).not.toContain("when unique_violation");
     const transitionBody = sqlFunctionBody(sql, "transition_public_source_version");
     expect(transitionBody).toContain("for update");
     expect(transitionBody).toContain("p_expected_catalogue_key");

@@ -13,6 +13,7 @@ import {
 } from "@/lib/public-source-activation-manifest";
 import {
   acquirePublicSourceVersion,
+  buildPublicSourceStagingCandidate,
   checkPublicSourceChange,
   evaluateTrustedPageContent,
   planAcquisition,
@@ -23,7 +24,10 @@ import {
   type PublicSourceStagingCandidate,
 } from "@/lib/public-source-acquisition";
 import { runCheckPublicSourceChangesCli } from "../scripts/check-public-source-changes";
-import { runFetchApprovedPublicSourceVersionsCli } from "../scripts/fetch-approved-public-source-versions";
+import {
+  createLivePublicSourceApplyDependencies,
+  runFetchApprovedPublicSourceVersionsCli,
+} from "../scripts/fetch-approved-public-source-versions";
 import {
   publicSourceAcquisitionManifestDigest,
   runPlanPublicSourceAcquisitionCli,
@@ -503,7 +507,52 @@ describe("public source acquisition", () => {
       content_hash: stagedHash,
       source_content_hash: upstreamHash,
     });
-    expect(candidate).toMatchObject({ sourceBytes: upstreamBytes, sourceContentHash: upstreamHash });
+    expect(candidate).toMatchObject({
+      sourceContentHash: upstreamHash,
+      sourceContentType: "text/html",
+      sourceByteLength: upstreamBytes.byteLength,
+    });
+  });
+
+  it("never exposes unsanitized upstream HTML bytes to the live storage boundary", async () => {
+    const fixture = readFileSync(
+      new URL("./fixtures/public-sources/trusted-page-with-healthdirect-chrome.html", import.meta.url),
+      "utf8",
+    );
+    const upstreamBytes = new TextEncoder().encode(fixture);
+    const upstreamHash = `sha256:${createHash("sha256").update(upstreamBytes).digest("hex")}`;
+    let candidate: PublicSourceStagingCandidate | undefined;
+
+    await acquirePublicSourceVersion(await validPlan({ allowedContentTypes: ["text/html"] }), {
+      fetch: async () => connectedResponse(response(upstreamBytes, { headers: { "content-type": "text/html" } })),
+      resolve: async () => publicAddress,
+      scan: trustedClearScan,
+      findDuplicateVersion: async () => null,
+      stageOwnedDocument: async (value) => {
+        candidate = value;
+        return { documentId: "33333333-3333-4333-8333-333333333333", ownerId };
+      },
+      enqueue: async () => undefined,
+    });
+
+    expect(candidate).toBeDefined();
+    expect("sourceBytes" in candidate!).toBe(false);
+    const byteValues = Object.values(candidate!).filter((value): value is Uint8Array => value instanceof Uint8Array);
+    expect(byteValues).toHaveLength(1);
+    expect(new TextDecoder().decode(byteValues[0])).not.toMatch(/healthdirect|therapeutic guidelines|\bamh\b/i);
+    expect(candidate!.metadata).toMatchObject({
+      source_content_hash: upstreamHash,
+      source_content_type: "text/html",
+      source_content_byte_length: String(upstreamBytes.byteLength),
+      source_content_provenance: "digest_only",
+    });
+
+    const liveAdapter = readFileSync(
+      new URL("../scripts/fetch-approved-public-source-versions.ts", import.meta.url),
+      "utf8",
+    );
+    expect(liveAdapter).not.toContain("candidate.sourceBytes");
+    expect([...liveAdapter.matchAll(/\.upload\(/g)]).toHaveLength(1);
   });
 
   it("stages only retained trusted-page text and quarantines a retained excluded-source marker", async () => {
@@ -824,6 +873,132 @@ describe("public source acquisition", () => {
     expect(calls).toEqual(["stage", "enqueue"]);
     expect(stageOwnedDocument).toHaveBeenCalledTimes(1);
     expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  it("resumes the exact shadow and enqueues once after a transient post-stage failure", async () => {
+    const plan = await validPlan({ sourceActivationEventId: "44444444-4444-4444-8444-444444444444" });
+    const bytes = syntheticPdf();
+    const contentHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+    const candidate = buildPublicSourceStagingCandidate(plan, {
+      bytes,
+      contentType: "application/pdf",
+      contentHash,
+      sourceContentType: "application/pdf",
+      sourceContentHash: contentHash,
+      sourceByteLength: bytes.byteLength,
+    });
+    const versionId = "66666666-6666-4666-8666-666666666666";
+    let staged:
+      | {
+          versionId: string;
+          documentId: string;
+          ownerId: string;
+          identity: Record<string, unknown>;
+        }
+      | undefined;
+    const uploadedPaths: string[] = [];
+    const insertedDocuments: string[] = [];
+    const openJobs = new Set<string>();
+    const enqueueDocumentReindexJob = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("SENTINEL transient queue failure"))
+      .mockImplementationOnce(async ({ document }: { document: { id: string } }) => {
+        openJobs.add(document.id);
+        return { outcome: "enqueued", job: { id: "job-1" } };
+      });
+    const sameIdentity = (value: Record<string, unknown>) =>
+      staged &&
+      [
+        "catalogueKey",
+        "exactCanonicalUrl",
+        "exactUrl",
+        "exactVersion",
+        "contentHash",
+        "stagedContentHash",
+        "licenceEvidenceDigest",
+        "stagingOwnerId",
+        "activationEventId",
+      ].every((key) => value[key] === staged!.identity[key]);
+    const rpc = vi.fn(async (name: string, args: { p_version?: Record<string, unknown> }) => {
+      if (name === "create_public_source_fetch_manifest") return { data: {}, error: null };
+      if (name !== "stage_public_source_version" || !args.p_version) {
+        return { data: null, error: { message: "unexpected rpc" } };
+      }
+      const identity = args.p_version;
+      if (!("stagingDocumentId" in identity)) {
+        if (!staged) return { data: { outcome: "missing" }, error: null };
+        if (!sameIdentity(identity)) return { data: null, error: { message: "exact identity mismatch" } };
+        return { data: { outcome: "resumed", ...staged }, error: null };
+      }
+      if (staged) return { data: null, error: { code: "23505", message: "duplicate version" } };
+      staged = {
+        versionId,
+        documentId: String(identity.stagingDocumentId),
+        ownerId,
+        identity: { ...identity },
+      };
+      return { data: { outcome: "created", ...staged }, error: null };
+    });
+    const deleteChain = { eq: vi.fn(() => deleteChain) };
+    const supabase = {
+      rpc,
+      storage: {
+        from: vi.fn(() => ({
+          upload: vi.fn(async (path: string) => {
+            uploadedPaths.push(path);
+            return { error: null };
+          }),
+          remove: vi.fn(async () => ({ error: null })),
+        })),
+      },
+      from: vi.fn((table: string) => {
+        if (table !== "documents") throw new Error(`unexpected table ${table}`);
+        return {
+          insert: vi.fn(async (value: { id: string }) => {
+            insertedDocuments.push(value.id);
+            return { error: null };
+          }),
+          delete: vi.fn(() => deleteChain),
+        };
+      }),
+    };
+    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => supabase }));
+    vi.doMock("@/lib/env", () => ({ env: { SUPABASE_DOCUMENT_BUCKET: "synthetic-bucket" } }));
+    vi.doMock("@/lib/ingestion-enqueue", () => ({ enqueueDocumentReindexJob }));
+
+    const dependencies = await createLivePublicSourceApplyDependencies(plan);
+    const first = await dependencies.stageOwnedDocument(candidate);
+    await expect(
+      dependencies.enqueue({
+        documentId: first.documentId,
+        ownerId: first.ownerId!,
+        catalogueKey: plan.catalogueKey,
+        contentMode: "indexed_content",
+        exactDocumentLicence: "public_index_permitted",
+        sourcePolicyVersion: plan.sourcePolicyVersion,
+        sourcePolicyDigest: plan.sourcePolicyDigest,
+        metadata: candidate.metadata,
+      }),
+    ).rejects.toThrow(/enqueue/i);
+
+    const resumed = await dependencies.stageOwnedDocument(candidate);
+    await dependencies.enqueue({
+      documentId: resumed.documentId,
+      ownerId: resumed.ownerId!,
+      catalogueKey: plan.catalogueKey,
+      contentMode: "indexed_content",
+      exactDocumentLicence: "public_index_permitted",
+      sourcePolicyVersion: plan.sourcePolicyVersion,
+      sourcePolicyDigest: plan.sourcePolicyDigest,
+      metadata: candidate.metadata,
+    });
+
+    expect(resumed).toMatchObject({ documentId: first.documentId, versionId, ownerId });
+    expect(uploadedPaths).toHaveLength(1);
+    expect(insertedDocuments).toEqual([first.documentId]);
+    expect(staged?.versionId).toBe(versionId);
+    expect(openJobs).toEqual(new Set([first.documentId]));
+    expect(enqueueDocumentReindexJob).toHaveBeenCalledTimes(2);
   });
 
   it("rejects non-active current evidence before dependency creation or mutation", async () => {

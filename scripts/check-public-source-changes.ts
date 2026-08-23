@@ -169,9 +169,9 @@ export async function runCheckPublicSourceChangesCli(
             bytes: observed.bytes,
             contentType: observed.contentType,
             contentHash: observed.stagedContentHash,
-            sourceBytes: observed.sourceBytes,
             sourceContentType: observed.sourceContentType,
             sourceContentHash: observed.contentHash,
+            sourceByteLength: observed.sourceByteLength,
           });
           const staged = await dependencies.acquisition.stageOwnedDocument(candidate);
           if (!staged.versionId) throw new Error("Changed public source staging did not return a version ID.");

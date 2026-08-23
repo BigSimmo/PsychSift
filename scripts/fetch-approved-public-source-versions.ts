@@ -59,6 +59,40 @@ function fileNameFor(url: string, contentType: string) {
   return `${base}${contentType === "application/pdf" ? ".pdf" : contentType === "text/plain" ? ".txt" : ".bin"}`;
 }
 
+type PublicSourceStageRpcResult =
+  | Readonly<{ outcome: "missing" }>
+  | Readonly<{
+      outcome: "created" | "resumed";
+      versionId: string;
+      documentId: string;
+      ownerId: string;
+    }>;
+
+function parseStageRpcResult(input: unknown): PublicSourceStageRpcResult {
+  if (!input || typeof input !== "object") throw new Error("Public source staging response was invalid.");
+  const value = input as Partial<{
+    outcome: PublicSourceStageRpcResult["outcome"];
+    versionId: string;
+    documentId: string;
+    ownerId: string;
+  }>;
+  if (value.outcome === "missing") return Object.freeze({ outcome: "missing" });
+  if (
+    !["created", "resumed"].includes(value.outcome ?? "") ||
+    !value.versionId ||
+    !value.documentId ||
+    !value.ownerId
+  ) {
+    throw new Error("Public source staging response was invalid.");
+  }
+  return Object.freeze({
+    outcome: value.outcome as "created" | "resumed",
+    versionId: value.versionId,
+    documentId: value.documentId,
+    ownerId: value.ownerId,
+  });
+}
+
 function fetchFromValidatedAddress(url: URL, addresses: readonly { address: string; family: 4 | 6 }[]) {
   return new Promise<Awaited<ReturnType<AcquisitionFetch>>>((resolveRequest, rejectRequest) => {
     const selected = addresses[0];
@@ -114,6 +148,7 @@ export async function createLivePublicSourceApplyDependencies(
   if (!plan.sourceActivationEventId) {
     throw new Error("Apply requires a persisted source activation event; planning cannot activate a source.");
   }
+  const activationEventId = plan.sourceActivationEventId;
   const [{ createAdminClient }, { env }, { enqueueDocumentReindexJob }] = await Promise.all([
     import("@/lib/supabase/admin"),
     import("@/lib/env"),
@@ -161,32 +196,43 @@ export async function createLivePublicSourceApplyDependencies(
     },
     stageOwnedDocument: async (candidate) => {
       await authorizePlan(plan);
+      const versionIdentity = {
+        activationEventId,
+        catalogueKey: plan.catalogueKey,
+        exactCanonicalUrl: definition.canonicalUrl,
+        exactUrl: candidate.exactUrl,
+        exactVersion: candidate.exactVersion,
+        contentHash: candidate.sourceContentHash,
+        stagedContentHash: candidate.contentHash,
+        stagedContentType: candidate.contentType,
+        stagedByteLength: candidate.bytes.byteLength,
+        sourceContentType: candidate.sourceContentType,
+        sourceByteLength: candidate.sourceByteLength,
+        licenceEvidenceDigest: plan.licenceEvidenceDigest,
+        stagingOwnerId: candidate.ownerId,
+        lifecycle: "shadow",
+      };
+      const { data: resumableData, error: resumableError } = await supabase.rpc("stage_public_source_version", {
+        p_version: versionIdentity,
+      });
+      if (resumableError) throw new Error("Public source resumable staging validation failed.");
+      const resumable = parseStageRpcResult(resumableData);
+      if (resumable.outcome === "resumed") {
+        return {
+          documentId: resumable.documentId,
+          ownerId: resumable.ownerId,
+          versionId: resumable.versionId,
+        };
+      }
+
       const documentId = randomUUID();
       const fileName = fileNameFor(candidate.exactUrl, candidate.contentType);
-      const sourceFileName = fileNameFor(candidate.exactUrl, candidate.sourceContentType);
-      const sourceStoragePath = `public-sources/${candidate.ownerId}/${documentId}/source/${sourceFileName}`;
-      const derived =
-        candidate.sourceContentHash !== candidate.contentHash || candidate.sourceContentType !== candidate.contentType;
-      const storagePath = derived
-        ? `public-sources/${candidate.ownerId}/${documentId}/staged/${fileName}`
-        : sourceStoragePath;
-      const sourceUpload = await supabase.storage
-        .from(env.SUPABASE_DOCUMENT_BUCKET)
-        .upload(sourceStoragePath, candidate.sourceBytes, {
-          contentType: candidate.sourceContentType,
-          upsert: false,
-        });
-      if (sourceUpload.error) throw new Error("Public source Storage upload failed.");
-      const upload = derived
-        ? await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).upload(storagePath, candidate.bytes, {
-            contentType: candidate.contentType,
-            upsert: false,
-          })
-        : { error: null };
-      if (upload.error) {
-        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([sourceStoragePath]);
-        throw new Error("Public source staged-derivative upload failed.");
-      }
+      const storagePath = `public-sources/${candidate.ownerId}/${documentId}/canonical/${fileName}`;
+      const upload = await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).upload(storagePath, candidate.bytes, {
+        contentType: candidate.contentType,
+        upsert: false,
+      });
+      if (upload.error) throw new Error("Public source canonical Storage upload failed.");
       const { error: documentError } = await supabase.from("documents").insert({
         id: documentId,
         owner_id: candidate.ownerId,
@@ -201,40 +247,36 @@ export async function createLivePublicSourceApplyDependencies(
         status: "uploaded",
         metadata: {
           ...candidate.metadata,
-          source_storage_path: sourceStoragePath,
-          staged_storage_path: storagePath,
+          canonical_storage_path: storagePath,
         },
       });
       if (documentError) {
-        await supabase.storage
-          .from(env.SUPABASE_DOCUMENT_BUCKET)
-          .remove([...new Set([storagePath, sourceStoragePath])]);
+        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([storagePath]);
         throw new Error("Public source staging document insert failed.");
       }
-      const { data: versionId, error: versionError } = await supabase.rpc("stage_public_source_version", {
+      const { data: stagedData, error: versionError } = await supabase.rpc("stage_public_source_version", {
         p_version: {
-          activationEventId: plan.sourceActivationEventId,
-          catalogueKey: plan.catalogueKey,
-          exactCanonicalUrl: definition.canonicalUrl,
-          exactUrl: candidate.exactUrl,
-          exactVersion: candidate.exactVersion,
-          contentHash: candidate.sourceContentHash,
-          stagedContentHash: candidate.contentHash,
+          ...versionIdentity,
           retrievedAt: new Date().toISOString(),
-          licenceEvidenceDigest: plan.licenceEvidenceDigest,
           stagingDocumentId: documentId,
-          stagingOwnerId: candidate.ownerId,
-          lifecycle: "shadow",
         },
       });
       if (versionError) {
         await supabase.from("documents").delete().eq("id", documentId).eq("owner_id", candidate.ownerId);
-        await supabase.storage
-          .from(env.SUPABASE_DOCUMENT_BUCKET)
-          .remove([...new Set([storagePath, sourceStoragePath])]);
+        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([storagePath]);
         throw new Error("Public source version staging failed.");
       }
-      return { documentId, ownerId: candidate.ownerId, versionId };
+      const staged = parseStageRpcResult(stagedData);
+      if (staged.outcome === "missing") {
+        await supabase.from("documents").delete().eq("id", documentId).eq("owner_id", candidate.ownerId);
+        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([storagePath]);
+        throw new Error("Public source version staging did not persist a shadow.");
+      }
+      if (staged.documentId !== documentId) {
+        await supabase.from("documents").delete().eq("id", documentId).eq("owner_id", candidate.ownerId);
+        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([storagePath]);
+      }
+      return { documentId: staged.documentId, ownerId: staged.ownerId, versionId: staged.versionId };
     },
     enqueue: async ({ documentId, ownerId, metadata }) => {
       await authorizePlan(plan);

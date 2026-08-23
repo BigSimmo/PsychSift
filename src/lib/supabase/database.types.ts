@@ -3060,7 +3060,7 @@ export type Database = {
         Returns: Json;
       };
       record_public_source_activation_event: { Args: { p_manifest: Json }; Returns: string };
-      stage_public_source_version: { Args: { p_version: Json }; Returns: string };
+      stage_public_source_version: { Args: { p_version: Json }; Returns: Json };
       tombstone_public_source_version_for_review: {
         Args: {
           p_expected_catalogue_key: string;

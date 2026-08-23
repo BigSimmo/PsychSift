@@ -77,9 +77,9 @@ export type PublicSourceStagingCandidate = Readonly<{
   contentType: string;
   bytes: Uint8Array;
   contentHash: string;
-  sourceBytes: Uint8Array;
   sourceContentType: string;
   sourceContentHash: string;
+  sourceByteLength: number;
   lifecycle: "shadow";
   metadata: Readonly<Record<string, string | boolean>>;
 }>;
@@ -421,7 +421,7 @@ export async function acquirePublicSourceVersion(
 ) {
   assertPublicSourceAcquisitionPlan(plan);
   deps.log?.({ event: "public_source_fetch_started", catalogueKey: plan.catalogueKey });
-  const { bytes, contentType, contentHash, sourceBytes, sourceContentType, sourceContentHash } =
+  const { bytes, contentType, contentHash, sourceContentType, sourceContentHash, sourceByteLength } =
     await observePublicSourceVersion(plan, deps);
   let duplicate: string | null;
   try {
@@ -441,9 +441,9 @@ export async function acquirePublicSourceVersion(
     bytes,
     contentType,
     contentHash,
-    sourceBytes,
     sourceContentType,
     sourceContentHash,
+    sourceByteLength,
   });
   let staged: { documentId: string; ownerId: string | null };
   try {
@@ -486,9 +486,9 @@ export function buildPublicSourceStagingCandidate(
     bytes: Uint8Array;
     contentType: string;
     contentHash: string;
-    sourceBytes: Uint8Array;
     sourceContentType: string;
     sourceContentHash: string;
+    sourceByteLength: number;
   }>,
 ): PublicSourceStagingCandidate {
   const definition = assertPublicSourceAcquisitionPlan(plan);
@@ -499,9 +499,9 @@ export function buildPublicSourceStagingCandidate(
     contentType: content.contentType,
     bytes: content.bytes,
     contentHash: content.contentHash,
-    sourceBytes: content.sourceBytes,
     sourceContentType: content.sourceContentType,
     sourceContentHash: content.sourceContentHash,
+    sourceByteLength: content.sourceByteLength,
     lifecycle: "shadow",
     metadata: Object.freeze({
       corpus_scope: definition.corpusScope,
@@ -517,6 +517,8 @@ export function buildPublicSourceStagingCandidate(
       content_hash: content.contentHash,
       source_content_hash: content.sourceContentHash,
       source_content_type: content.sourceContentType,
+      source_content_byte_length: String(content.sourceByteLength),
+      source_content_provenance: "digest_only",
       content_identity_verdict: "clear",
       content_identity_hash: content.contentHash,
       content_identity_verdict_version: publicSourceContentIdentityVerdictVersion,
@@ -615,9 +617,9 @@ async function validateFetchedContent(
     bytes,
     contentType,
     contentHash,
-    sourceBytes: upstreamBytes,
     sourceContentType: upstreamContentType,
     sourceContentHash,
+    sourceByteLength: upstreamBytes.byteLength,
   });
 }
 

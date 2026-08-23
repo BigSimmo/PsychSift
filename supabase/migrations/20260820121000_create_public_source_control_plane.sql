@@ -285,7 +285,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.stage_public_source_version(p_version jsonb)
-RETURNS uuid
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
@@ -296,17 +296,21 @@ DECLARE
   v_owner_id uuid;
   v_activation_event_id uuid;
   v_document public.documents%ROWTYPE;
+  v_existing public.public_source_versions%ROWTYPE;
+  v_existing_document public.documents%ROWTYPE;
   v_event public.public_source_activation_events%ROWTYPE;
 BEGIN
   BEGIN
-    v_document_id := (p_version->>'stagingDocumentId')::uuid;
+    v_document_id := nullif(p_version->>'stagingDocumentId', '')::uuid;
     v_owner_id := (p_version->>'stagingOwnerId')::uuid;
     v_activation_event_id := (p_version->>'activationEventId')::uuid;
   EXCEPTION WHEN invalid_text_representation THEN
     RAISE EXCEPTION 'Invalid public source staging identity';
   END;
 
-  PERFORM pg_advisory_xact_lock(hashtextextended(coalesce(p_version->>'catalogueKey', ''), 0));
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(coalesce(p_version->>'catalogueKey', ''), 0)
+  );
   SELECT * INTO v_event
   FROM public.public_source_activation_events
   WHERE source_catalogue_key = p_version->>'catalogueKey'
@@ -315,6 +319,76 @@ BEGIN
   FOR UPDATE;
   IF NOT FOUND OR v_event.id IS DISTINCT FROM v_activation_event_id OR v_event.decision <> 'activate' THEN
     RAISE EXCEPTION 'Public source staging requires an active source definition';
+  END IF;
+
+  SELECT * INTO v_existing
+  FROM public.public_source_versions
+  WHERE source_catalogue_key = p_version->>'catalogueKey'
+    AND exact_version_url = p_version->>'exactUrl'
+    AND content_hash = p_version->>'contentHash'
+  FOR UPDATE;
+  IF FOUND THEN
+    SELECT * INTO v_existing_document
+    FROM public.documents
+    WHERE id = v_existing.staging_document_id
+    FOR UPDATE;
+    IF NOT FOUND
+       OR coalesce(p_version->>'lifecycle', '') <> 'shadow'
+       OR v_existing.source_policy_version IS DISTINCT FROM v_event.source_policy_version
+       OR v_existing.source_policy_digest IS DISTINCT FROM v_event.source_policy_digest
+       OR v_existing.exact_canonical_url IS DISTINCT FROM p_version->>'exactCanonicalUrl'
+       OR v_existing.exact_version_url IS DISTINCT FROM p_version->>'exactUrl'
+       OR v_existing.exact_version IS DISTINCT FROM p_version->>'exactVersion'
+       OR v_existing.content_hash IS DISTINCT FROM p_version->>'contentHash'
+       OR v_existing.staged_content_hash IS DISTINCT FROM p_version->>'stagedContentHash'
+       OR v_existing.licence_evidence_digest IS DISTINCT FROM p_version->>'licenceEvidenceDigest'
+       OR v_existing.lifecycle IS DISTINCT FROM 'shadow'
+       OR v_existing.supersedes_version_id IS NOT NULL
+       OR v_existing.activation_event_id IS DISTINCT FROM v_activation_event_id
+       OR v_existing.staging_owner_id IS DISTINCT FROM v_owner_id
+       OR v_existing_document.owner_id IS NULL
+       OR v_existing_document.owner_id IS DISTINCT FROM v_owner_id
+       OR coalesce(v_existing_document.metadata->>'public_source_lifecycle', '') <> 'shadow'
+       OR v_existing_document.metadata->>'content_mode' IS DISTINCT FROM 'indexed_content'
+       OR v_existing_document.metadata->>'licence_policy' IS DISTINCT FROM 'public_index_permitted'
+       OR v_existing_document.metadata->>'source_policy_checked' IS DISTINCT FROM 'true'
+       OR v_existing_document.source_path IS DISTINCT FROM p_version->>'exactUrl'
+       OR v_existing_document.content_hash IS DISTINCT FROM p_version->>'stagedContentHash'
+       OR v_existing_document.file_type IS DISTINCT FROM p_version->>'stagedContentType'
+       OR v_existing_document.file_size::text IS DISTINCT FROM p_version->>'stagedByteLength'
+       OR v_existing_document.metadata->>'source_catalogue_key' IS DISTINCT FROM p_version->>'catalogueKey'
+       OR v_existing_document.metadata->>'source_policy_version' IS DISTINCT FROM v_event.source_policy_version
+       OR v_existing_document.metadata->>'source_policy_digest' IS DISTINCT FROM v_event.source_policy_digest
+       OR v_existing_document.metadata->>'source_canonical_url' IS DISTINCT FROM p_version->>'exactCanonicalUrl'
+       OR v_existing_document.metadata->>'source_exact_url' IS DISTINCT FROM p_version->>'exactUrl'
+       OR v_existing_document.metadata->>'source_exact_version' IS DISTINCT FROM p_version->>'exactVersion'
+       OR v_existing_document.metadata->>'content_hash' IS DISTINCT FROM p_version->>'stagedContentHash'
+       OR v_existing_document.metadata->>'source_content_hash' IS DISTINCT FROM p_version->>'contentHash'
+       OR v_existing_document.metadata->>'source_content_type' IS DISTINCT FROM p_version->>'sourceContentType'
+       OR v_existing_document.metadata->>'source_content_byte_length'
+         IS DISTINCT FROM p_version->>'sourceByteLength'
+       OR v_existing_document.metadata->>'source_content_provenance' IS DISTINCT FROM 'digest_only'
+       OR v_existing_document.metadata->>'content_identity_verdict' IS DISTINCT FROM 'clear'
+       OR v_existing_document.metadata->>'content_identity_hash' IS DISTINCT FROM p_version->>'stagedContentHash'
+       OR v_existing_document.metadata->>'content_identity_verdict_version'
+         IS DISTINCT FROM 'public-source-content-identity-v1'
+       OR v_existing_document.metadata->>'licence_evidence_digest'
+         IS DISTINCT FROM p_version->>'licenceEvidenceDigest'
+       OR v_existing_document.metadata->>'source_activation_event_id'
+         IS DISTINCT FROM v_activation_event_id::text
+    THEN
+      RAISE EXCEPTION 'Public source resumable shadow identity mismatch';
+    END IF;
+    RETURN jsonb_build_object(
+      'outcome', 'resumed',
+      'versionId', v_existing.id,
+      'documentId', v_existing.staging_document_id,
+      'ownerId', v_existing.staging_owner_id
+    );
+  END IF;
+
+  IF NOT (p_version ? 'stagingDocumentId') THEN
+    RETURN jsonb_build_object('outcome', 'missing');
   END IF;
 
   SELECT * INTO v_document
@@ -339,6 +413,11 @@ BEGIN
      OR v_document.metadata->>'source_exact_version' IS DISTINCT FROM p_version->>'exactVersion'
      OR v_document.metadata->>'content_hash' IS DISTINCT FROM p_version->>'stagedContentHash'
      OR v_document.metadata->>'source_content_hash' IS DISTINCT FROM p_version->>'contentHash'
+     OR v_document.metadata->>'source_content_type' IS DISTINCT FROM p_version->>'sourceContentType'
+     OR v_document.metadata->>'source_content_byte_length' IS DISTINCT FROM p_version->>'sourceByteLength'
+     OR v_document.metadata->>'source_content_provenance' IS DISTINCT FROM 'digest_only'
+     OR v_document.file_type IS DISTINCT FROM p_version->>'stagedContentType'
+     OR v_document.file_size::text IS DISTINCT FROM p_version->>'stagedByteLength'
      OR v_document.metadata->>'content_identity_verdict' IS DISTINCT FROM 'clear'
      OR v_document.metadata->>'content_identity_hash' IS DISTINCT FROM p_version->>'stagedContentHash'
      OR v_document.metadata->>'content_identity_verdict_version'
@@ -383,7 +462,12 @@ BEGIN
     v_owner_id
   )
   RETURNING id INTO v_version_id;
-  RETURN v_version_id;
+  RETURN jsonb_build_object(
+    'outcome', 'created',
+    'versionId', v_version_id,
+    'documentId', v_document_id,
+    'ownerId', v_owner_id
+  );
 END;
 $$;
 
