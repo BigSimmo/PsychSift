@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "15f4a9be-9c0b-4a6e-9afd-d5f6c22060d4",
+  "createdOn": "2026-08-23",
+  "action": "update",
+  "payload": {
+    "id": "#VTEW3W",
+    "detail": "Design system update: Call sites reduced from 30 to 13 across Therapy Compass. Do not convert remaining sites to Button variants; implement an InteractiveRow design token recipe first.",
+    "baseRowFingerprint": "ace0b53322933ae68a307c513236884a357b873fa93e5286b94b63ad3adf7fe9"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "f0d99f3f-bbd6-46cc-8a47-e369c3132656",
+  "createdOn": "2026-08-23",
+  "action": "done",
+  "payload": {
+    "id": "#2AB2NJ",
+    "outcome": "Closed by design: enabling RAG_TELEMETRY_EXTENDED verification_latency_ms is blocked on a dashboard consumer existing, and there is no consumer today. The ledger mandates not enabling speculatively.",
+    "baseRowFingerprint": "b7968eeadba34e8f3ed4134fbb8d776bb8b76441e6b8255a3dcf85dc8d64d689"
+  }
+}

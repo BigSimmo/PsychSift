@@ -10,7 +10,7 @@
     "p2": 40,
     "p3": 33,
     "queued": 10,
-    "pending": 19,
+    "pending": 38,
     "resolved": 376
   },
   "queue": [
@@ -786,10 +786,22 @@
   ],
   "pending": [
     {
+      "request_id": "00927a3a-55d4-46a5-a0e4-7735f60084e1",
+      "action": "done",
+      "summary": "#VKH7N1: Closed: single 20.2s run against 20s SLO was non-blocking advisory noise; subsequent canary runs remain healthy within normal variance.",
+      "created_at": "2026-08-23"
+    },
+    {
       "request_id": "049e0356-b6ad-4382-8f34-958d2681c60e",
       "action": "add",
       "summary": "Caring Contacts: grow the safety-incident responder note into a lightweight patient case-note capability, and settle its retention disposition then",
       "created_at": "2026-08-20"
+    },
+    {
+      "request_id": "0743350a-76a5-4cea-a656-cead390d4b72",
+      "action": "done",
+      "summary": "#1PN5BM: Legibility half resolved in PR #2053 (Option B). The governance question is formally archived with no action required unless a measured signal appears in production.",
+      "created_at": "2026-08-23"
     },
     {
       "request_id": "0807d756-ecd5-4988-b4e3-9c5ec5e41ee3",
@@ -798,15 +810,81 @@
       "created_at": "2026-08-22"
     },
     {
+      "request_id": "0dcc009f-eefe-4526-a843-1317e09e9735",
+      "action": "update",
+      "summary": "#102: detail → Re-measurement update: The unused_index lint reported trigram index as unused due to statistics reset. Re-measure with EXPLAIN in an operator window before applying the prepared runbook.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "0f4abbfd-7659-4eb0-89d6-5f396eee4977",
+      "action": "done",
+      "summary": "#2DQXD8: Closed: contract tests updated to assert against live rendering paths.",
+      "created_at": "2026-08-23"
+    },
+    {
       "request_id": "0f9238c1-8add-450c-92d1-917376761248",
       "action": "add",
       "summary": "Caring Contacts patient-visible reply wording is now factually wrong and must change before any demonstration",
       "created_at": "2026-08-18"
     },
     {
+      "request_id": "109e03df-8751-41b6-b373-45b99a4f06ae",
+      "action": "done",
+      "summary": "#TF6TPJ: Closed: in-flight CI push guard (Guard 2) active in scripts/guard-push.mjs prevents PR required cancellation on rapid syncs.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "13975815-a8e0-47b9-9107-e3b382d80b97",
+      "action": "update",
+      "summary": "#97VQK5: detail → Polish pass update: Resolve missing H1 in Documents mode and unify placeholder punctuation across mode home templates.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "15f4a9be-9c0b-4a6e-9afd-d5f6c22060d4",
+      "action": "update",
+      "summary": "#VTEW3W: detail → Design system update: Call sites reduced from 30 to 13 across Therapy Compass. Do not convert remaining sites to Button variants; implement an InteractiveRow design token recipe first.",
+      "created_at": "2026-08-23"
+    },
+    {
       "request_id": "1902cbe5-1188-4e3e-b96e-7578419ab071",
       "action": "queue",
       "summary": "#057: Run SHA-bound tenancy proof, authenticated staging soak, and rollback against one exact candidate image; retain strict evidence.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "2060c379-e6d1-458a-bb33-1a10ef2df562",
+      "action": "done",
+      "summary": "#4XBMMR: Closed: confirmed /mockups/* routes are 404 in production builds and are not indexed by search engines.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "236e613e-df05-49c2-82f4-026dcd368508",
+      "action": "done",
+      "summary": "#HVTYAT: Closed: OpenAI Zero Data Retention documentation reconciled with provider contracts.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "311dd3da-e697-4adf-a467-8db173b61566",
+      "action": "add",
+      "summary": "Pre-push ledger guard baseline calculation false-positives after main sync",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "45cee9fd-64e3-414c-8bcd-1d324ffeacca",
+      "action": "done",
+      "summary": "#61TZJA: Closed: Linux visual baseline for document viewer is re-adopted and passing in CI.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "611d225f-8811-4910-921f-8211d6728825",
+      "action": "update",
+      "summary": "#018: detail → Narrowed scope: The lithium mechanism was clinically verified and closed. Remaining work focuses strictly on ADHD CAMHS document ingestion debt and metabolic structured-evidence tables.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "61311b89-b98b-4c6c-ae86-7184dc05798b",
+      "action": "update",
+      "summary": "#099: detail → Refined scope: Focus on the 3 specific fixed per-request trips: (a) 8 setCachedSearch awaits, (b) anonymous limiter batching, and (c) route claims forwarding from proxy to avoid duplicate identity lookups.",
       "created_at": "2026-08-23"
     },
     {
@@ -858,10 +936,28 @@
       "created_at": "2026-08-22"
     },
     {
+      "request_id": "a8e2db9c-25d2-431e-b9b0-7d1ebaa5277c",
+      "action": "done",
+      "summary": "#V15EAS: Closed: therapy landing projection and index asset hash verified; duplicate projection is harmless build artifact.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "abfd3c27-cdee-4a94-9380-382900477e73",
+      "action": "add",
+      "summary": "React Server Component event handler boundary violations are not caught by static checks",
+      "created_at": "2026-08-23"
+    },
+    {
       "request_id": "b5d6b1be-d1c9-4739-898a-33aec4a656a5",
       "action": "add",
       "summary": "Document /ward-management/constellation as an intentional unlinked compatibility redirect",
       "created_at": "2026-08-22"
+    },
+    {
+      "request_id": "b83d99c9-aaf7-46f2-aa74-1cbc06bd36e3",
+      "action": "update",
+      "summary": "#8A00R7: detail → Coordinated test update: Moving ~6k tokens of Codex-only prompt sections to docs/ requires updating 3 gate test scripts that assert exact heading strings in AGENTS.md.",
+      "created_at": "2026-08-23"
     },
     {
       "request_id": "ba2bdfba-b1e1-4e13-83b4-8cb0f3ddc092",
@@ -873,6 +969,12 @@
       "request_id": "c5d6045b-6493-4c8b-a1c8-6e151629d561",
       "action": "update",
       "summary": "#057: detail → Staging migration parity is closed. Run SHA-bound tenancy evidence, transition the same candidate image from the offline tenancy profile to the authenticated auto-provider load profile, execute the staging soak, and rehearse rollback. Retain checkout/deployed SHA, latency, error, throttling, authentication, cleanup, and rollback evidence. Stop on unsafe data, identity mismatch, or an unowned rollback decision.",
+      "created_at": "2026-08-23"
+    },
+    {
+      "request_id": "cc7891e9-d8b4-4b96-8d93-287966f1c2a6",
+      "action": "done",
+      "summary": "#XPY409: Closed: offset overlap was a Playwright DOM measurement test artifact rather than a runtime layout defect.",
       "created_at": "2026-08-23"
     },
     {
@@ -894,10 +996,22 @@
       "created_at": "2026-08-22"
     },
     {
+      "request_id": "e142a1a8-834c-4a65-b3e4-2ceefaeeecbf",
+      "action": "update",
+      "summary": "#100: detail → Feature-gated scope: Phase 0 and Phase 1 server emissions are complete. Next phase is building client rendering strictly behind a feature flag; do not implement unverified token streaming.",
+      "created_at": "2026-08-23"
+    },
+    {
       "request_id": "ebf42f52-3e74-484f-81cd-ebcbd4954b10",
       "action": "add",
       "summary": "Caring Contacts synthetic production build: spec approved and committed, implementation plan not yet written",
       "created_at": "2026-08-18"
+    },
+    {
+      "request_id": "f0d99f3f-bbd6-46cc-8a47-e369c3132656",
+      "action": "done",
+      "summary": "#2AB2NJ: Closed by design: enabling RAG_TELEMETRY_EXTENDED verification_latency_ms is blocked on a dashboard consumer existing, and there is no consumer today. The ledger mandates not enabling speculatively.",
+      "created_at": "2026-08-23"
     }
   ]
 }

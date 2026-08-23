@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "a8e2db9c-25d2-431e-b9b0-7d1ebaa5277c",
+  "createdOn": "2026-08-23",
+  "action": "done",
+  "payload": {
+    "id": "#V15EAS",
+    "outcome": "Closed: therapy landing projection and index asset hash verified; duplicate projection is harmless build artifact.",
+    "baseRowFingerprint": "c2ac6af531956a82593a805886fe2e612fc8af938ef26b46a18d63556d680e8b"
+  }
+}

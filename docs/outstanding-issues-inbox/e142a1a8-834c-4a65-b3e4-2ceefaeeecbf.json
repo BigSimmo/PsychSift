@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "e142a1a8-834c-4a65-b3e4-2ceefaeeecbf",
+  "createdOn": "2026-08-23",
+  "action": "update",
+  "payload": {
+    "id": "#100",
+    "detail": "Feature-gated scope: Phase 0 and Phase 1 server emissions are complete. Next phase is building client rendering strictly behind a feature flag; do not implement unverified token streaming.",
+    "baseRowFingerprint": "ee2487840b41118fcb117e9799ac847a17319de6746af867806ff1f6556c96dd"
+  }
+}

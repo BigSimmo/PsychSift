@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "0dcc009f-eefe-4526-a843-1317e09e9735",
+  "createdOn": "2026-08-23",
+  "action": "update",
+  "payload": {
+    "id": "#102",
+    "detail": "Re-measurement update: The unused_index lint reported trigram index as unused due to statistics reset. Re-measure with EXPLAIN in an operator window before applying the prepared runbook.",
+    "baseRowFingerprint": "630d12e5a90fd5ab445439dadf17cde5a29145b6eedfe450c814084f8b171db5"
+  }
+}

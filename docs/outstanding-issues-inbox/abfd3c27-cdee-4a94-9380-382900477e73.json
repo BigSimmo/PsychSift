@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "abfd3c27-cdee-4a94-9380-382900477e73",
+  "createdOn": "2026-08-23",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "React Server Component event handler boundary violations are not caught by static checks",
+    "detail": "Components with interactive event handlers (onClick, onChange) missing 'use client' build successfully during SSR but throw fatal runtime errors upon client-side interaction. Add an AST/ESLint rule to catch un-flagged event handlers on server components.",
+    "source": "session 2026-08-23 ledger stress test",
+    "issueUlid": "01M0PS6KN3WJ61KJHC3ZSXJRXN"
+  }
+}

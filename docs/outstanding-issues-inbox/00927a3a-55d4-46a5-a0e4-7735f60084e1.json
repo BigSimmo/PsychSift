@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "00927a3a-55d4-46a5-a0e4-7735f60084e1",
+  "createdOn": "2026-08-23",
+  "action": "done",
+  "payload": {
+    "id": "#VKH7N1",
+    "outcome": "Closed: single 20.2s run against 20s SLO was non-blocking advisory noise; subsequent canary runs remain healthy within normal variance.",
+    "baseRowFingerprint": "24deddcf1dbbed0ef59552a10eded17b37cbdff9d6cee74de1cf0f8cb4171587"
+  }
+}

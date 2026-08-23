@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "61311b89-b98b-4c6c-ae86-7184dc05798b",
+  "createdOn": "2026-08-23",
+  "action": "update",
+  "payload": {
+    "id": "#099",
+    "detail": "Refined scope: Focus on the 3 specific fixed per-request trips: (a) 8 setCachedSearch awaits, (b) anonymous limiter batching, and (c) route claims forwarding from proxy to avoid duplicate identity lookups.",
+    "baseRowFingerprint": "0ed47aa6e178384407a1ff237637ba9aa213230bf3b6ac2d4f31a20d08fd62cd"
+  }
+}

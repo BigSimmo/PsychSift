@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "311dd3da-e697-4adf-a467-8db173b61566",
+  "createdOn": "2026-08-23",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Pre-push ledger guard baseline calculation false-positives after main sync",
+    "detail": "scripts/guard-push.mjs checks against HEAD~1 rather than git merge-base HEAD origin/main, generating false-positive ledger write violations immediately after merging main into a feature branch.",
+    "source": "session 2026-08-23 ledger stress test",
+    "issueUlid": "01M0PS6KR4135VC6X2WZ2JDRYB"
+  }
+}

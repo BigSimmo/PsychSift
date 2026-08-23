@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "2060c379-e6d1-458a-bb33-1a10ef2df562",
+  "createdOn": "2026-08-23",
+  "action": "done",
+  "payload": {
+    "id": "#4XBMMR",
+    "outcome": "Closed: confirmed /mockups/* routes are 404 in production builds and are not indexed by search engines.",
+    "baseRowFingerprint": "4a990f632d3088d231b1f4dfbd517aef3c898f54609592daed827bed72bcb71e"
+  }
+}

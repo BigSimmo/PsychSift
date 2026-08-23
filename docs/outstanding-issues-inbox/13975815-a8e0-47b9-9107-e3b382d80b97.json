@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "13975815-a8e0-47b9-9107-e3b382d80b97",
+  "createdOn": "2026-08-23",
+  "action": "update",
+  "payload": {
+    "id": "#97VQK5",
+    "detail": "Polish pass update: Resolve missing H1 in Documents mode and unify placeholder punctuation across mode home templates.",
+    "baseRowFingerprint": "162311b904972f417cc5f239c4a393d5c66135ae200e2ab402b480f3d64268b9"
+  }
+}

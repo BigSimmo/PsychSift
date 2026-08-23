@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "236e613e-df05-49c2-82f4-026dcd368508",
+  "createdOn": "2026-08-23",
+  "action": "done",
+  "payload": {
+    "id": "#HVTYAT",
+    "outcome": "Closed: OpenAI Zero Data Retention documentation reconciled with provider contracts.",
+    "baseRowFingerprint": "96e4a759e8bb3f665206911ccb8ba93ba5b32cba0bcb763aa3e2a1e0768d078c"
+  }
+}

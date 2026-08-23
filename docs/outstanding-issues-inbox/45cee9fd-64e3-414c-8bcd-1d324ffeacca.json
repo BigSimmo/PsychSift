@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "45cee9fd-64e3-414c-8bcd-1d324ffeacca",
+  "createdOn": "2026-08-23",
+  "action": "done",
+  "payload": {
+    "id": "#61TZJA",
+    "outcome": "Closed: Linux visual baseline for document viewer is re-adopted and passing in CI.",
+    "baseRowFingerprint": "90c8990529b6cb0e6b91ec40c20229dcd937e83faf57a0c84ca7ba7ce56b13a8"
+  }
+}

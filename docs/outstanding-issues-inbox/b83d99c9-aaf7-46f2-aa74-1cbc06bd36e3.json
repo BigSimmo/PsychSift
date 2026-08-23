@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "b83d99c9-aaf7-46f2-aa74-1cbc06bd36e3",
+  "createdOn": "2026-08-23",
+  "action": "update",
+  "payload": {
+    "id": "#8A00R7",
+    "detail": "Coordinated test update: Moving ~6k tokens of Codex-only prompt sections to docs/ requires updating 3 gate test scripts that assert exact heading strings in AGENTS.md.",
+    "baseRowFingerprint": "c722d2018e70b3525e5133035792dc17e9a10e3f1e5f7122122975bf0fd242a6"
+  }
+}

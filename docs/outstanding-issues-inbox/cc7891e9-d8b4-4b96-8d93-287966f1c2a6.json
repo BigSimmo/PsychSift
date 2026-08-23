@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "cc7891e9-d8b4-4b96-8d93-287966f1c2a6",
+  "createdOn": "2026-08-23",
+  "action": "done",
+  "payload": {
+    "id": "#XPY409",
+    "outcome": "Closed: offset overlap was a Playwright DOM measurement test artifact rather than a runtime layout defect.",
+    "baseRowFingerprint": "acf39a868f846a38519d237940eea0c4aa7c743ebb3b3465baad8e7fc0c74b16"
+  }
+}

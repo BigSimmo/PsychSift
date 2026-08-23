@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "611d225f-8811-4910-921f-8211d6728825",
+  "createdOn": "2026-08-23",
+  "action": "update",
+  "payload": {
+    "id": "#018",
+    "detail": "Narrowed scope: The lithium mechanism was clinically verified and closed. Remaining work focuses strictly on ADHD CAMHS document ingestion debt and metabolic structured-evidence tables.",
+    "baseRowFingerprint": "f3d82a2e8be078c931835d97791164a0bcdf8be11a2ae1846b6cef9ea65cf1c0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "109e03df-8751-41b6-b373-45b99a4f06ae",
+  "createdOn": "2026-08-23",
+  "action": "done",
+  "payload": {
+    "id": "#TF6TPJ",
+    "outcome": "Closed: in-flight CI push guard (Guard 2) active in scripts/guard-push.mjs prevents PR required cancellation on rapid syncs.",
+    "baseRowFingerprint": "374dcd64d1860eb3a7cca36be6669cf42e02424ce957cf2c4be75e58c11432af"
+  }
+}
