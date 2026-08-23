@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { appModeDefinition } from "@/lib/app-modes";
 import {
   buildAllSiteContentRecords,
   buildDynamicSiteContentSeedRecords,
@@ -216,6 +217,45 @@ describe("complete provider-free adapter coverage", () => {
       ).toBe(true);
     }
     expect(JSON.stringify(tools)).not.toMatch(/icon|glyph|neededInput|checkFirst|question|points|score|owner|actor/i);
+  });
+
+  it("resolves every static manifest record to a canonical rendered app destination", () => {
+    const manifest = buildStaticSiteContentManifest(buildStaticSiteContentRecords(), metadata);
+    const appRoot = resolve(import.meta.dirname, "../src/app/(search-app)");
+    const routeContracts = {
+      calculators: { route: /^\/calculators$/, page: "calculators/page.tsx" },
+      dictionary: { route: /^\/dictionary\/[^/]+$/, page: "dictionary/[slug]/page.tsx" },
+      dsm: { route: /^\/dsm\/diagnoses\/[^/]+$/, page: "dsm/diagnoses/[slug]/page.tsx" },
+      factsheets: { route: /^\/factsheets\/[^/]+$/, page: "factsheets/[slug]/page.tsx" },
+      formulation: { route: /^\/formulation\/[^/]+$/, page: "formulation/[slug]/page.tsx" },
+      specifiers: { route: /^\/specifiers\/[^/]+$/, page: "specifiers/[slug]/page.tsx" },
+      therapies: { route: /^\/therapy-compass\/[^/]+$/, page: "therapy-compass/[slug]/page.tsx" },
+      tools: { route: /^\/(?:differentials|forms|services)$/, page: null },
+    } as const;
+
+    expect(new Set(manifest.records.map((record) => record.domain))).toEqual(new Set(Object.keys(routeContracts)));
+    expect(
+      Object.values(routeContracts)
+        .filter((contract) => contract.page)
+        .every((contract) => existsSync(resolve(appRoot, contract.page!))),
+    ).toBe(true);
+    const invalidRoutes = manifest.records.filter((record) => {
+      const contract = routeContracts[record.domain as keyof typeof routeContracts];
+      const destinationExists =
+        contract.page !== null || existsSync(resolve(appRoot, record.route.slice(1), "page.tsx"));
+      return !contract.route.test(record.route) || !destinationExists;
+    });
+    expect({
+      count: invalidRoutes.length,
+      domains: [...new Set(invalidRoutes.map((record) => record.domain))].sort(),
+      sample: invalidRoutes.slice(0, 3).map((record) => ({ logicalId: record.logicalId, route: record.route })),
+    }).toEqual({ count: 0, domains: [], sample: [] });
+    const calculatorMode = appModeDefinition("calculators");
+    const calculatorDestination = "href" in calculatorMode ? calculatorMode.href : null;
+    expect(calculatorDestination).toBe("/calculators");
+    expect(
+      new Set(manifest.records.filter((record) => record.domain === "calculators").map((record) => record.route)),
+    ).toEqual(new Set([calculatorDestination]));
   });
 
   it("keeps the manifest CLI import-safe even when importer argv names an output", () => {
