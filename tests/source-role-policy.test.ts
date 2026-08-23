@@ -370,4 +370,47 @@ describe("resolveLocalAndAustralianEvidence", () => {
     expect(first.reviewDocumentIds).toEqual(["local-a", "local-b"]);
     expect(reversed.reviewDocumentIds).toEqual(["local-a", "local-b"]);
   });
+
+  it("merges disjoint verified-present chunk subsets for one canonical conflict independent of input order", () => {
+    const localOne = result({ id: "local-1", document_id: "local" });
+    const localTwo = result({ id: "local-2", document_id: "local", chunk_index: 1 });
+    const australianOne = australianResult({ id: "au-1", document_id: "national" });
+    const australianTwo = australianResult({ id: "au-2", document_id: "national", chunk_index: 1 });
+    const identity = {
+      claimRole: "treatment" as const,
+      topicKey: "same-topic",
+      overlapReason: "same_claim" as const,
+      materialDifferenceReason: "recommendation_differs" as const,
+    };
+    const firstSubset = {
+      ...identity,
+      localChunkIds: ["local-2", "not-present-local"],
+      australianChunkIds: ["au-2", "not-present-au"],
+    };
+    const secondSubset = {
+      ...identity,
+      localChunkIds: ["local-1"],
+      australianChunkIds: ["au-1"],
+    };
+
+    const resolve = (verifiedDifferences: (typeof firstSubset)[]) =>
+      resolveLocalAndAustralianEvidence({
+        local: [localTwo, localOne],
+        australian: [australianTwo, australianOne],
+        claimRole: "treatment",
+        verifiedDifferences,
+      });
+    const forward = resolve([firstSubset, secondSubset]);
+    const reversed = resolve([secondSubset, firstSubset]);
+
+    expect(forward.conflicts).toEqual(reversed.conflicts);
+    expect(forward.conflicts).toEqual([
+      expect.objectContaining({
+        local: expect.objectContaining({ supportingChunkIds: ["local-1", "local-2"] }),
+        australian: expect.objectContaining({ supportingChunkIds: ["au-1", "au-2"] }),
+      }),
+    ]);
+    expect(forward.reviewDocumentIds).toEqual(["local"]);
+    expect(reversed.reviewDocumentIds).toEqual(["local"]);
+  });
 });

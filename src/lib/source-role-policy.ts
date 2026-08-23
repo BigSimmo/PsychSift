@@ -244,7 +244,26 @@ function buildConflicts(args: {
 
   const conflictsById = new Map<string, SourcePolicyConflict>();
   for (const conflict of conflicts) {
-    if (!conflictsById.has(conflict.id)) conflictsById.set(conflict.id, conflict);
+    const existing = conflictsById.get(conflict.id);
+    if (!existing) {
+      conflictsById.set(conflict.id, conflict);
+      continue;
+    }
+    conflictsById.set(conflict.id, {
+      ...existing,
+      local: {
+        ...existing.local,
+        supportingChunkIds: [
+          ...new Set([...existing.local.supportingChunkIds, ...conflict.local.supportingChunkIds]),
+        ].sort((left, right) => left.localeCompare(right)),
+      },
+      australian: {
+        ...existing.australian,
+        supportingChunkIds: [
+          ...new Set([...existing.australian.supportingChunkIds, ...conflict.australian.supportingChunkIds]),
+        ].sort((left, right) => left.localeCompare(right)),
+      },
+    });
   }
   return [...conflictsById.values()].sort((left, right) => left.id.localeCompare(right.id));
 }
