@@ -1,5 +1,6 @@
+// prettier-ignore
 // @ts-expect-error Deno edge imports require explicit TypeScript extensions.
-import { publicSourcePolicyViolation } from "../_shared/public-source-policy.ts";
+import { containsForbiddenPublicSourceChunkContent, publicSourcePolicyViolation } from "../_shared/public-source-policy.ts";
 
 export type CompletionGate = {
   counts: {
@@ -72,6 +73,10 @@ export function publicSourceWorkerPolicyViolation(
   containsProtectedSourceContent: boolean,
 ) {
   return publicSourcePolicyViolation(metadata, containsProtectedSourceContent);
+}
+
+export function protectedPublicSourceChunkContents(rows: ReadonlyArray<{ content: string }>) {
+  return containsForbiddenPublicSourceChunkContent(rows);
 }
 
 export function agentFailureDecision(args: {

@@ -48,6 +48,58 @@ class DeleteQuery implements PromiseLike<{ data: null; error: null }> {
 }
 
 describe("RAG cache invalidation", () => {
+  it("rechecks the lifecycle epoch after deferred request work before a real local answer-cache read", async () => {
+    vi.resetModules();
+    let lifecycleEpoch = "1";
+    const rpc = vi.fn(async () => ({ data: lifecycleEpoch, error: null }));
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({
+        rpc,
+        from: vi.fn((table: string) => {
+          if (table === "documents") {
+            const builder = {
+              select: vi.fn(() => builder),
+              eq: vi.fn(() => builder),
+              is: vi.fn(() => builder),
+              or: vi.fn(() => builder),
+              in: vi.fn(() => builder),
+              order: vi.fn(() => builder),
+              limit: vi.fn(async () => ({
+                data: [{ id: "doc-1", updated_at: "2026-08-24T00:00:00.000Z", metadata: {} }],
+                error: null,
+              })),
+              abortSignal: vi.fn(() => builder),
+            };
+            return builder;
+          }
+          return {
+            delete: vi.fn(() => new DeleteQuery([])),
+            insert: vi.fn(async () => ({ data: null, error: null })),
+          };
+        }),
+      }),
+    }));
+
+    const { cacheIndexingVersion, getCachedAnswer, setCachedAnswer } = await import("../src/lib/rag/rag-cache");
+    const args = {
+      query: "synthetic deferred classification",
+      ownerId,
+      accessScope: { ownerId, includePublic: true as const },
+    };
+    const requestStartStamp = await cacheIndexingVersion(args, { forceRefresh: true });
+    await setCachedAnswer(args, sampleAnswer("epoch-one answer"), {
+      indexingVersionAtRetrievalStart: requestStartStamp,
+    });
+    const callsBeforeLookup = rpc.mock.calls.length;
+
+    // Models classification/alias work yielding while an activation commits epoch 2.
+    lifecycleEpoch = "2";
+    await expect(
+      getCachedAnswer(args, Date.now(), { indexingVersionAtRequestStart: requestStartStamp }),
+    ).resolves.toBeNull();
+    expect(rpc.mock.calls.length).toBeGreaterThan(callsBeforeLookup);
+  });
+
   it("bypasses every cache surface when the public-source lifecycle epoch cannot be read", async () => {
     vi.resetModules();
     const from = vi.fn(() => {

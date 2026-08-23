@@ -3093,7 +3093,6 @@ export type Database = {
       };
       transition_public_source_version: {
         Args: {
-          p_activation_event_id?: string | null;
           p_expected_catalogue_key: string;
           p_expected_content_hash: string;
           p_expected_exact_version_url: string;

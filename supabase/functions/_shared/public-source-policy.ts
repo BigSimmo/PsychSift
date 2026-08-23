@@ -15,6 +15,9 @@ function normalizedProtectedIdentity(value: string) {
     .replace(/&(?:nbsp|#160);/gi, " ")
     .replace(/&amp;|&#38;|&#x26;/gi, "&")
     .replace(/&(?:lt|gt|quot|apos);|&#(?:34|39|60|62);|&#x(?:22|27|3c|3e);/gi, " ")
+    // Decode unknown named references conservatively as a boundary. Keeping the
+    // entity name would let e.g. Health&Tab;direct evade the compact matcher.
+    .replace(/&[a-z][a-z0-9]+;/gi, " ")
     .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
     .toLocaleLowerCase("en-AU")
     .replace(/[^a-z0-9]+/g, " ")
@@ -31,6 +34,15 @@ export function forbiddenPublicSourceIdentity(value: string): ForbiddenPublicSou
     return "australian_medicines_handbook";
   }
   return null;
+}
+
+export function containsForbiddenPublicSourceChunkContent(rows: ReadonlyArray<{ content: string }>): boolean {
+  // Join with no separator as well as scanning individual rows so protected
+  // identities split at a deterministic chunk boundary remain visible.
+  return (
+    rows.some((row) => forbiddenPublicSourceIdentity(row.content) !== null) ||
+    forbiddenPublicSourceIdentity(rows.map((row) => row.content).join("")) !== null
+  );
 }
 
 function nonEmptyString(value: unknown): value is string {

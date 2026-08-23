@@ -135,7 +135,16 @@ describe("check:function-grants", () => {
       "supabase/migrations/20260824120000_consolidate_public_source_lifecycle_authority.sql",
       "utf8",
     );
-    const result = run(fixture("public-source-control-plane.sql", `${schema}\n${migration}\n${lifecycleAuthority}`));
+    const lifecycleHardening = readFileSync(
+      "supabase/migrations/20260824123000_harden_public_source_lifecycle_authority.sql",
+      "utf8",
+    );
+    const result = run(
+      fixture(
+        "public-source-control-plane.sql",
+        `${schema}\n${migration}\n${lifecycleAuthority}\n${lifecycleHardening}`,
+      ),
+    );
     expect(result.out).toContain("OK");
     expect(result.code).toBe(0);
   });

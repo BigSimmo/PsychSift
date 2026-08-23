@@ -190,6 +190,9 @@ export async function getCachedAnswer(
   if (!answerCacheAllowedForOwner(args.ownerId) || args.skipCache) return null;
   if (env.RAG_ANSWER_CACHE_TTL_MS <= 0 || env.RAG_ANSWER_CACHE_SIZE <= 0) return null;
 
+  const indexingVersion = await cacheIndexingVersion(args);
+  if (!indexingVersion || !cacheAuthorityAvailable(indexingVersion)) return null;
+  if (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion) return null;
   const key = scopedAnswerCacheKey(args);
   const cached = answerCache.get(key);
   if (!cached) return null;
@@ -197,14 +200,13 @@ export async function getCachedAnswer(
     answerCache.delete(key);
     return null;
   }
-  const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
-  if (!indexingVersion) return null;
-  if (!cacheAuthorityAvailable(indexingVersion)) return null;
   if (cached.indexingVersion !== indexingVersion) {
     answerCache.delete(key);
     return null;
   }
 
+  const finalIndexingVersion = await cacheIndexingVersion(args);
+  if (finalIndexingVersion !== indexingVersion) return null;
   const answer = cloneAnswer(cached.answer);
   answer.routingReason = answer.routingReason ? `${answer.routingReason}; answer_cache_hit` : "answer_cache_hit";
   answer.latencyTimings = {
@@ -361,6 +363,9 @@ export async function getCachedSearch(
   throwIfAborted(args.signal);
   if (!isSearchCacheEnabled(args)) return null;
 
+  const indexingVersion = await cacheIndexingVersion(args);
+  if (!indexingVersion || !cacheAuthorityAvailable(indexingVersion)) return null;
+  if (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion) return null;
   const key = scopedSearchCacheKey(args, queryClass, queryVariants);
   const cached = searchCache.get(key);
   if (!cached) return null;
@@ -368,15 +373,14 @@ export async function getCachedSearch(
     searchCache.delete(key);
     return null;
   }
-  const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
-  if (!indexingVersion) return null;
-  if (!cacheAuthorityAvailable(indexingVersion)) return null;
   throwIfAborted(args.signal);
   if (cached.indexingVersion !== indexingVersion) {
     searchCache.delete(key);
     return null;
   }
 
+  const finalIndexingVersion = await cacheIndexingVersion(args);
+  if (finalIndexingVersion !== indexingVersion) return null;
   return {
     results: cloneSearchResults(cached.results),
     telemetry: {
@@ -556,9 +560,9 @@ export async function getSharedCachedSearch(
   throwIfAborted(args.signal);
   if (args.skipCache || env.RAG_SEARCH_CACHE_TTL_MS <= 0) return null;
   const normalizedQuery = retrievalPlanCacheQuery(args, queryClass, queryVariants);
-  const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
-  if (!indexingVersion) return null;
-  if (!cacheAuthorityAvailable(indexingVersion)) return null;
+  const indexingVersion = await cacheIndexingVersion(args);
+  if (!indexingVersion || !cacheAuthorityAvailable(indexingVersion)) return null;
+  if (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion) return null;
   try {
     let query = sharedCacheSelector(createAdminClient(), "search", args, indexingVersion, normalizedQuery);
     if (args.signal) query = query.abortSignal(args.signal);
@@ -573,6 +577,8 @@ export async function getSharedCachedSearch(
     if (!Array.isArray(payload.results)) {
       return { kind: "miss", reason: "cache_payload_invalid" };
     }
+    const finalIndexingVersion = await cacheIndexingVersion(args);
+    if (finalIndexingVersion !== indexingVersion) return { kind: "miss", reason: "unknown_filter_miss" };
     return {
       kind: "hit",
       results: cloneSearchResults(payload.results),
@@ -643,9 +649,10 @@ export async function getSharedCachedAnswer(
 ) {
   if (!answerCacheAllowedForOwner(args.ownerId) || args.skipCache || env.RAG_ANSWER_CACHE_TTL_MS <= 0) return null;
   try {
-    const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
-    if (!indexingVersion) return null;
-    if (!cacheAuthorityAvailable(indexingVersion)) return null;
+    const indexingVersion = await cacheIndexingVersion(args);
+    if (!indexingVersion || !cacheAuthorityAvailable(indexingVersion)) return null;
+    if (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion)
+      return null;
     const { data, error } = await sharedCacheSelector(
       createAdminClient(),
       "answer",
@@ -654,6 +661,8 @@ export async function getSharedCachedAnswer(
       sharedAnswerNormalizedQuery(args),
     ).maybeSingle();
     if (error || !data?.payload) return null;
+    const finalIndexingVersion = await cacheIndexingVersion(args);
+    if (finalIndexingVersion !== indexingVersion) return null;
     const answer = cloneAnswer((data.payload as { answer: RagAnswer }).answer);
     if (isGenerationFallbackAnswer(answer)) {
       await deleteSharedCachedAnswerRow({ ...args, accessScope: retrievalAccessScopeForArgs(args) }, indexingVersion);

@@ -9,6 +9,7 @@ import {
   missingArtifactPlan,
   parseJobStatusRpcResult,
   publicSourceWorkerPolicyViolation,
+  protectedPublicSourceChunkContents,
   shouldRunVisualArtifacts,
   type CompletionGateRow,
 } from "../supabase/functions/indexing-v3-agent/behavior";
@@ -71,12 +72,44 @@ describe("indexing-v3-agent behavior", () => {
       "Health<em>direct</em>",
       "Health direct",
       "Health&amp;direct",
+      "Health&Tab;direct",
+      "Health&NewLine;direct",
       "Australian Medicines Hand-book",
       "Australian Medicines Hand book",
+      "Australian Medicines&Tab;Handbook",
       "Therapeutic\u200bGuidelines",
+      "Therapeutic&NewLine;Guidelines",
     ]) {
       expect(forbiddenPublicSourceIdentity(value)).not.toBeNull();
     }
+  });
+
+  it("scans actual worker chunk rows through the shared protected-identity normalizer", async () => {
+    for (const content of [
+      "Health&Tab;direct guidance",
+      "Australian Medicines&Tab;Handbook excerpt",
+      "Therapeutic&NewLine;Guidelines advice",
+    ]) {
+      expect(protectedPublicSourceChunkContents([{ content }])).toBe(true);
+    }
+
+    const edgeSource = String(
+      await import("node:fs/promises").then((fs) =>
+        fs.readFile(new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url), "utf8"),
+      ),
+    );
+    const scan = sourceSegment(
+      edgeSource,
+      "async function assertPublicSourceWorkerPolicy",
+      "async function processJob",
+      {
+        label: "indexing-v3-agent protected content scan",
+      },
+    );
+    expect(scan).toContain("select chunk.content");
+    expect(scan).toContain("protectedPublicSourceChunkContents(");
+    expect(scan).toContain("limit ${batchSize}");
+    expect(scan).not.toContain("chunk.content ~*");
   });
 
   it("schedules agent retries until the attempt budget is exhausted", () => {

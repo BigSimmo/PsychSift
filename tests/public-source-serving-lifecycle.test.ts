@@ -1,43 +1,69 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const migrationPath = new URL(
-  "../supabase/migrations/20260824120000_consolidate_public_source_lifecycle_authority.sql",
-  import.meta.url,
-);
+const migrationsPath = new URL("../supabase/migrations/", import.meta.url);
 
 function migrationSource() {
   try {
-    return readFileSync(migrationPath, "utf8").toLowerCase().replace(/\s+/g, " ");
+    return readdirSync(migrationsPath)
+      .filter((name) => name.endsWith(".sql"))
+      .sort()
+      .map((name) => readFileSync(new URL(name, migrationsPath), "utf8"))
+      .join("\n")
+      .toLowerCase()
+      .replace(/\s+/g, " ");
   } catch {
     return "";
   }
 }
 
 function functionBody(sql: string, name: string) {
-  const start = sql.indexOf(`create or replace function public.${name}(`);
+  const start = sql.lastIndexOf(`create or replace function public.${name}(`);
+  if (start < 0) return "";
+  const end = sql.indexOf("$$;", start);
+  return sql.slice(start, end < 0 ? undefined : end);
+}
+
+function functionBodyWithSignature(sql: string, signature: string) {
+  const start = sql.lastIndexOf(`create or replace function public.${signature}`);
   if (start < 0) return "";
   const end = sql.indexOf("$$;", start);
   return sql.slice(start, end < 0 ? undefined : end);
 }
 
 describe("public-source serving lifecycle authority", () => {
+  it("keeps the reviewed catalogue and bounded activation-evidence contract in the effective event owner", () => {
+    const record = functionBody(migrationSource(), "record_public_source_activation_event");
+
+    for (const accepted of ["wa-health", "tga", "ranzcp", "australian-prescriber", "act-health"]) {
+      expect(record).toContain(`'${accepted}'`);
+    }
+    expect(record).toContain("v_decision = 'activate'");
+    expect(record).toContain("public source is excluded, link-only, historical, or unknown");
+    expect(record).toContain("length(v_reason) > 1000");
+    expect(record).toContain("btrim(value) = ''");
+    expect(record).toContain("count(distinct value)");
+  });
+
   it("makes exact active-version identity the authority for public retrieval and cache eligibility", () => {
     const sql = migrationSource();
     const publicationGuard = functionBody(sql, "require_active_public_source_version_for_publication");
     const eligibility = functionBody(sql, "public_source_document_is_serving_eligible");
-    const ineligible = functionBody(sql, "make_public_source_version_ineligible");
+    const ineligible = functionBodyWithSignature(
+      sql,
+      "make_public_source_version_ineligible(p_version_id uuid, p_target_lifecycle text)",
+    );
     const activationEvent = functionBody(sql, "record_public_source_activation_event");
     const transition = functionBody(sql, "transition_public_source_version");
     const tombstone = functionBody(sql, "tombstone_public_source_version_for_review");
 
     expect(publicationGuard).toContain("new.owner_id is null");
-    expect(publicationGuard).toContain("version.lifecycle = 'active'");
-    expect(publicationGuard).toContain("version.staging_document_id = new.id");
+    expect(publicationGuard).toContain("public_source_document_is_serving_eligible(new.id)");
     expect(sql).toContain("public_source_documents_require_active_version");
     expect(eligibility).toContain("metadata->>'source_catalogue_key'");
     expect(eligibility).toContain("version.lifecycle = 'active'");
-    expect(eligibility).toContain("version.staging_document_id = p_document_id");
+    expect(eligibility).toContain("version.staging_document_id = document.id");
+    expect(eligibility).toContain("where document.id = p_document_id");
     for (const retrievalOwner of [
       "match_document_chunks_text_v2",
       "match_document_chunks_hybrid_v2",
@@ -69,6 +95,11 @@ describe("public-source serving lifecycle authority", () => {
     }
     expect(ineligible).toContain("update public.documents");
     expect(ineligible).toContain("set owner_id = v_version.staging_owner_id");
+    expect(ineligible).toContain("from public.document_chunks");
+    expect(ineligible).toContain("from public.ingestion_jobs");
+    expect(ineligible).toContain("from public.indexing_v3_agent_jobs");
+    expect(ineligible).toContain("for update nowait");
+    expect(ineligible).toContain("has active ingestion work");
     expect(ineligible).toContain("app.public_source_lifecycle_exit");
     expect(functionBody(sql, "guard_document_publication_transition")).toContain("app.public_source_lifecycle_exit");
     expect(ineligible).toContain("delete from public.rag_response_cache");
@@ -85,8 +116,7 @@ describe("public-source serving lifecycle authority", () => {
     expect(cacheOwner).toContain('.rpc("public_source_serving_authority_stamp")');
     expect(cacheOwner).toContain("publicSourceAuthorityStamp");
     expect(cacheOwner).toContain("if (!publicSourceAuthorityStamp) return publicSourceAuthorityUnavailable");
-    expect(cacheOwner).toContain("if (!cacheAuthorityAvailable(indexingVersion)) return null");
-    expect(cacheOwner).toContain("if (!indexingVersion) return");
+    expect(cacheOwner).toContain("if (!indexingVersion || !cacheAuthorityAvailable(indexingVersion)) return null");
     const stampOwner = cacheOwner.slice(
       cacheOwner.indexOf("export async function cacheIndexingVersion"),
       cacheOwner.indexOf("export async function getSharedCachedSearch"),
@@ -117,6 +147,86 @@ describe("public-source serving lifecycle authority", () => {
     expect(activation).toContain("owner_id = null");
     expect(activation).toContain("lifecycle = 'active'");
     expect(sql).not.toContain("drop index if exists public.public_source_versions_one_active_per_source_idx");
+    expect(activation).toContain("v_old_version_id is null");
+    expect(activation).toContain("v_new_version.supersedes_version_id is not null");
+    expect(activation).toContain("no active predecessor");
+  });
+
+  it("serializes every source owner and reproves the latest E1/E2 authority during activation", () => {
+    const sql = migrationSource();
+    const functions = [
+      "record_public_source_activation_event",
+      "create_public_source_fetch_manifest",
+      "stage_public_source_version",
+      "activate_public_source_version",
+      "transition_public_source_version",
+      "tombstone_public_source_version_for_review",
+      "record_unchanged_public_source_check",
+    ].map((name) => functionBody(sql, name));
+    for (const body of functions) {
+      expect(body).toContain("hashtextextended");
+      expect(body).toContain("'public_source:' ||");
+    }
+    const activation = functionBody(sql, "activate_public_source_version");
+    expect(activation).toContain("order by source_sequence desc");
+    expect(activation).toContain("v_latest_event.id is distinct from v_new_version.activation_event_id");
+    expect(activation).toContain("v_latest_event.decision is distinct from 'activate'");
+    expect(activation).toContain(
+      "v_latest_event.source_policy_version is distinct from v_new_version.source_policy_version",
+    );
+    expect(activation).toContain(
+      "v_latest_event.source_policy_digest is distinct from v_new_version.source_policy_digest",
+    );
+  });
+
+  it("retains the complete P02 publication locks, active-work checks, and exact artifact owner", () => {
+    const activation = functionBody(migrationSource(), "activate_public_source_version");
+    expect(activation).toContain("v_document.status is distinct from 'indexed'");
+    for (const table of [
+      "document_pages",
+      "document_images",
+      "document_labels",
+      "document_summaries",
+      "document_sections",
+      "document_memory_cards",
+      "document_chunks",
+      "document_table_facts",
+      "document_embedding_fields",
+      "document_index_quality",
+      "document_index_units",
+    ]) {
+      expect(activation).toContain(`from public.${table}`);
+      expect(activation).toContain("for update");
+    }
+    expect(activation).toContain("from public.ingestion_jobs");
+    expect(activation).toContain("from public.indexing_v3_agent_jobs");
+    expect(activation).toContain("for update nowait");
+    expect(activation).toContain("has active ingestion work");
+    expect(activation).toContain("owner_id is distinct from v_new_version.staging_owner_id");
+    expect(activation).toContain("has mismatched artifact ownership");
+  });
+
+  it("reconciles historical owner-null catalogue documents and enforces the invariant on future artifacts", () => {
+    const sql = migrationSource();
+    const guard = functionBody(sql, "require_active_public_source_artifact_for_publication");
+    expect(sql).toContain("public_source_orphaned_publications");
+    expect(sql).toContain("approval.expected_prior_owner_id");
+    expect(sql).toContain("document.owner_id is null");
+    expect(sql).toContain("not public.public_source_document_is_serving_eligible(document.id)");
+    expect(sql).toContain("delete from public.rag_response_cache");
+    expect(guard).toContain("public_source_document_is_serving_eligible(new.document_id)");
+    for (const artifact of [
+      "document_labels",
+      "document_summaries",
+      "document_sections",
+      "document_memory_cards",
+      "document_table_facts",
+      "document_embedding_fields",
+      "document_index_quality",
+      "document_index_units",
+    ]) {
+      expect(sql).toContain(`public_source_${artifact}_require_active_version`);
+    }
   });
 
   it("reproves the complete staged acquisition and P02 approval identity at activation", () => {
@@ -126,6 +236,7 @@ describe("public-source serving lifecycle authority", () => {
 
     for (const field of [
       "source_policy_digest",
+      "source_catalogue_key",
       "activation_event_id",
       "exact_canonical_url",
       "exact_version_url",
@@ -139,6 +250,21 @@ describe("public-source serving lifecycle authority", () => {
       "content_identity_hash",
       "content_identity_verdict_version",
       "canonical_storage_path",
+      "staging_owner_id",
+      "supersedes_version_id",
+      "document_id",
+      "document_owner_id",
+      "source_path",
+      "storage_path",
+      "document_content_hash",
+      "file_type",
+      "file_size",
+      "corpus_scope",
+      "content_mode",
+      "licence_policy",
+      "source_policy_checked",
+      "public_source_lifecycle",
+      "source_content_provenance",
     ]) {
       expect(identity).toContain(field);
     }
@@ -188,6 +314,50 @@ describe("public-source serving lifecycle authority", () => {
       expect(latestBody).not.toContain("order by created_at desc");
       expect(latestBody).not.toContain("order by id desc");
     }
+  });
+
+  it("retains the full resumable identity matrix and the explicit lifecycle edge machine", () => {
+    const sql = migrationSource();
+    const stage = functionBody(sql, "stage_public_source_version");
+    const transition = functionBody(sql, "transition_public_source_version");
+    for (const fact of [
+      "source_policy_version",
+      "source_policy_digest",
+      "exact_canonical_url",
+      "exact_version_url",
+      "exact_version",
+      "content_hash",
+      "staged_content_hash",
+      "licence_evidence_digest",
+      "staging_owner_id",
+      "activation_event_id",
+      "supersedes_version_id",
+      "source_path",
+      "storage_path",
+      "file_type",
+      "file_size",
+      "source_content_type",
+      "source_content_byte_length",
+      "source_content_provenance",
+      "content_mode",
+      "licence_policy",
+      "source_policy_checked",
+      "public_source_lifecycle",
+      "canonical_storage_path",
+      "content_identity_verdict",
+      "content_identity_hash",
+      "content_identity_verdict_version",
+      "acquisition_identity_digest",
+    ]) {
+      expect(stage).toContain(fact);
+    }
+    expect(stage).toContain("public_source_acquisition_identity_digest(v_existing.id)");
+    expect(transition).toContain("when 'discovered' then p_new_lifecycle in ('shadow', 'quarantined', 'tombstoned')");
+    expect(transition).toContain("when 'shadow' then p_new_lifecycle in ('approved', 'quarantined', 'tombstoned')");
+    expect(transition).toContain("when 'approved' then p_new_lifecycle in ('quarantined', 'tombstoned')");
+    expect(transition).toContain("when 'active' then p_new_lifecycle in ('superseded', 'quarantined', 'tombstoned')");
+    expect(transition).toContain("when 'quarantined' then p_new_lifecycle = 'tombstoned'");
+    expect(transition).not.toContain("p_activation_event_id uuid");
   });
 
   it("keeps every new definer fixed-search-path and service-role-only", () => {
