@@ -92,6 +92,14 @@ function parseMigrationStem(fileName: string) {
   const stem = fileName.match(/^\d+_(.+)\.sql$/)?.[1];
   return stem ?? null;
 }
+
+function sqlFunctionBody(sql: string, functionName: string) {
+  const start = sql.indexOf(`create or replace function public.${functionName}(`);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const end = sql.indexOf("$$;", start);
+  expect(end).toBeGreaterThan(start);
+  return sql.slice(start, end);
+}
 const preserveLegacyArtifactCommitMigration = readFileSync(
   new URL("../supabase/migrations/20260702000000_commit_generation_preserve_legacy_artifacts.sql", import.meta.url),
   "utf8",
@@ -1448,8 +1456,7 @@ describe("Supabase Preview replay guards", () => {
     expect(sql).toContain("approval.source_policy_version = v_source_policy_version");
     expect(sql).toContain("v_current_state_digest := public.document_publication_state_digest(");
 
-    const activationStart = sql.indexOf("create or replace function public.activate_approved_public_documents(");
-    const activationBody = sql.slice(activationStart, sql.indexOf("$$;", activationStart));
+    const activationBody = sqlFunctionBody(sql, "activate_approved_public_documents");
     expect(activationBody).toContain("Australian activation manifest contains duplicate generation ids");
     expect(activationBody).toContain(
       "array_agg((entry->>'expectedIndexGenerationId')::uuid order by (entry->>'documentId')::uuid)",
@@ -1457,6 +1464,16 @@ describe("Supabase Preview replay guards", () => {
     expect(activationBody).toContain("((entry->>'documentId')::uuid)::text || ':' || (entry->>'expectedStateDigest')");
     expect(activationBody).toContain("E'\\n' order by (entry->>'documentId')::uuid");
     expect(activationBody).toContain("'publication_manifest_digest', v_manifest_digest");
+    const uuidValidation = activationBody.indexOf(
+      "Australian activation manifest contains invalid approved document evidence",
+    );
+    const duplicateDocuments = activationBody.indexOf("group by (entry->>'documentId')::uuid");
+    const duplicateGenerations = activationBody.indexOf("group by (entry->>'expectedIndexGenerationId')::uuid");
+    const activationLoop = activationBody.indexOf("for v_entry in");
+    expect(uuidValidation).toBeGreaterThanOrEqual(0);
+    expect(uuidValidation).toBeLessThan(duplicateDocuments);
+    expect(duplicateDocuments).toBeLessThan(duplicateGenerations);
+    expect(duplicateGenerations).toBeLessThan(activationLoop);
     const rowLock = activationBody.indexOf("where id = v_document_id for update;");
     const generationCheck = activationBody.indexOf(
       "v_document.index_generation_id is distinct from v_expected_index_generation_id",
@@ -1467,6 +1484,59 @@ describe("Supabase Preview replay guards", () => {
     expect(rowLock).toBeLessThan(generationCheck);
     expect(generationCheck).toBeLessThan(digestCheck);
     expect(digestCheck).toBeLessThan(ownerRelease);
+  });
+
+  it("validates the target state and keeps governed Australian public state immutable", () => {
+    const guardBody = sqlFunctionBody(australianSourceActivationMigration, "guard_document_publication_transition");
+    const ownerRelease = guardBody.indexOf("if old.owner_id is not null and new.owner_id is null then");
+    const targetScopeGuard = guardBody.indexOf("if v_new_australian_public and not v_old_australian_public then");
+    const targetStateGuard = guardBody.indexOf("v_new_reviewed_document is distinct from v_old_reviewed_document");
+    const approvalLookup = guardBody.indexOf("from public.document_publication_approvals approval");
+    expect(ownerRelease).toBeGreaterThanOrEqual(0);
+    expect(targetScopeGuard).toBeGreaterThan(ownerRelease);
+    expect(targetStateGuard).toBeGreaterThan(targetScopeGuard);
+    expect(targetStateGuard).toBeLessThan(approvalLookup);
+
+    for (const targetCheck of [
+      "new.index_generation_id is distinct from v_approval.reviewed_index_generation_id",
+      "new.metadata->>'source_catalogue_key' is distinct from v_approval.source_catalogue_key",
+      "new.metadata->>'source_policy_version' is distinct from v_approval.source_policy_version",
+      "new.metadata->>'content_mode' is distinct from 'indexed_content'",
+      "new.metadata->>'licence_policy' is distinct from 'public_index_permitted'",
+      "new.metadata->>'document_status' is distinct from 'current'",
+      "new.metadata->>'change_state' = 'withdrawn'",
+    ]) {
+      expect(guardBody).toContain(targetCheck);
+    }
+    expect(guardBody).toContain(
+      "elsif old.owner_id is null and new.owner_id is null and (v_old_australian_public or v_new_australian_public) then",
+    );
+    expect(guardBody).toContain(
+      "elsif old.owner_id is null and new.owner_id is not null and v_old_australian_public then",
+    );
+    expect(guardBody).toContain("Australian public reviewed state is immutable after activation");
+    expect(guardBody).toContain("to_jsonb(old) - array['owner_id', 'updated_at', 'metadata']");
+    expect(guardBody).toContain("to_jsonb(new) - array['owner_id', 'updated_at', 'metadata']");
+    const allowedAuditFields = [
+      "public_corpus",
+      "publication_approval_id",
+      "publication_manifest_digest",
+      "publication_reviewed_state_digest",
+      "publication_source_catalogue_key",
+      "publication_source_policy_version",
+      "publication_reviewed_index_generation_id",
+      "published_at",
+    ];
+    for (const allowedAuditField of allowedAuditFields) {
+      expect(guardBody).toContain(`'${allowedAuditField}'`);
+    }
+    const metadataProjectionPattern =
+      /v_(?:old|new)_reviewed_metadata := coalesce\((?:old|new)\.metadata, '\{\}'::jsonb\) - array\[(.*?)\];/gs;
+    const metadataProjections = [...guardBody.matchAll(metadataProjectionPattern)];
+    expect(metadataProjections).toHaveLength(2);
+    for (const projection of metadataProjections) {
+      expect([...projection[1].matchAll(/'([^']+)'/g)].map((match) => match[1])).toEqual(allowedAuditFields);
+    }
   });
 
   it("keeps Australian approval history append-only and activation service-role-only", () => {

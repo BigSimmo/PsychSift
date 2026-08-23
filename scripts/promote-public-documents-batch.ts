@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
 import { loadEnvConfig } from "@next/env";
 import {
   approvedPublicationManifestV2Documents,
@@ -10,19 +11,26 @@ import {
 } from "@/lib/publication-manifest";
 import type { Database, Json } from "@/lib/supabase/database.types";
 
-loadEnvConfig(process.cwd());
-
 async function loadAdminClient() {
   const { createAdminClient } = await import("@/lib/supabase/admin");
   return createAdminClient();
 }
 
-async function main() {
-  const args = parsePublicationCommandArgs(process.argv.slice(2));
-  const raw = await readFile(args.manifestPath, "utf8");
+type PublicationAdminClient = Awaited<ReturnType<typeof loadAdminClient>>;
+
+export async function runPublicationPromotion({
+  raw,
+  args,
+  supabase,
+  log = console.log,
+}: {
+  raw: string;
+  args: ReturnType<typeof parsePublicationCommandArgs>;
+  supabase: PublicationAdminClient;
+  log?: (message: string) => void;
+}) {
   const manifest = parsePublicationManifest(raw);
   const digest = publicationManifestDigest(raw);
-  const supabase = await loadAdminClient();
   const ids = manifest.documents.map((document) => document.documentId);
 
   const { data: documents, error: documentError } = await supabase
@@ -81,6 +89,13 @@ async function main() {
         validationErrors.push(`${entry.documentId}: source is withdrawn`);
       }
     }
+  } else {
+    for (const entry of manifest.documents) {
+      const document = documentsById.get(entry.documentId);
+      if (document && metadataRecord(document.metadata).corpus_scope === "australian_public") {
+        validationErrors.push(`${entry.documentId}: manifest version 2 is required for Australian public documents`);
+      }
+    }
   }
   if (validationErrors.length > 0) {
     throw new Error(`Publication manifest validation failed:\n${validationErrors.join("\n")}`);
@@ -92,13 +107,13 @@ async function main() {
       manifest.documents.filter((document) => document.decision === decision).length,
     ]),
   );
-  console.log(`[public-documents:promote] manifest SHA-256: ${digest}`);
-  console.log(`[public-documents:promote] explicit document count: ${manifest.documents.length}`);
-  console.log(`[public-documents:promote] decisions: ${JSON.stringify(decisionCounts)}`);
+  log(`[public-documents:promote] manifest SHA-256: ${digest}`);
+  log(`[public-documents:promote] explicit document count: ${manifest.documents.length}`);
+  log(`[public-documents:promote] decisions: ${JSON.stringify(decisionCounts)}`);
 
   if (!args.apply) {
-    console.log("[public-documents:promote] dry run only; no approvals or document ownership were changed.");
-    console.log(
+    log("[public-documents:promote] dry run only; no approvals or document ownership were changed.");
+    log(
       `[public-documents:promote] apply with --expected-count ${manifest.documents.length} --confirm-sha256 ${digest} --apply`,
     );
     return;
@@ -185,7 +200,7 @@ async function main() {
       expected_state_digest: document.expectedStateDigest,
     }));
   if (approvedDocuments.length === 0) {
-    console.log("[public-documents:promote] decisions recorded; no documents were approved for publication.");
+    log("[public-documents:promote] decisions recorded; no documents were approved for publication.");
     return;
   }
 
@@ -205,10 +220,20 @@ async function main() {
         });
   const { data: result, error: publishError } = activation;
   if (publishError) throw new Error(publishError.message);
-  console.log(`[public-documents:promote] result: ${JSON.stringify(result)}`);
+  log(`[public-documents:promote] result: ${JSON.stringify(result)}`);
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+async function main() {
+  loadEnvConfig(process.cwd());
+  const args = parsePublicationCommandArgs(process.argv.slice(2));
+  const raw = await readFile(args.manifestPath, "utf8");
+  const supabase = await loadAdminClient();
+  await runPublicationPromotion({ raw, args, supabase });
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}

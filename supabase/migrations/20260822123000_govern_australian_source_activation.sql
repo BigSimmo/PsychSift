@@ -93,7 +93,12 @@ declare
   v_manifest_digest text;
   v_reviewed_state_digest text;
   v_current_state_digest text;
-  v_australian_public boolean;
+  v_old_australian_public boolean;
+  v_new_australian_public boolean;
+  v_old_reviewed_document jsonb;
+  v_new_reviewed_document jsonb;
+  v_old_reviewed_metadata jsonb;
+  v_new_reviewed_metadata jsonb;
 begin
   if tg_op = 'INSERT' then
     if new.owner_id is null then
@@ -102,7 +107,40 @@ begin
     return new;
   end if;
 
+  v_old_australian_public := coalesce(old.metadata->>'corpus_scope' = 'australian_public', false);
+  v_new_australian_public := coalesce(new.metadata->>'corpus_scope' = 'australian_public', false);
+  v_old_reviewed_document := to_jsonb(old) - array['owner_id', 'updated_at', 'metadata'];
+  v_new_reviewed_document := to_jsonb(new) - array['owner_id', 'updated_at', 'metadata'];
+  v_old_reviewed_metadata := coalesce(old.metadata, '{}'::jsonb) - array[
+    'public_corpus',
+    'publication_approval_id',
+    'publication_manifest_digest',
+    'publication_reviewed_state_digest',
+    'publication_source_catalogue_key',
+    'publication_source_policy_version',
+    'publication_reviewed_index_generation_id',
+    'published_at'
+  ];
+  v_new_reviewed_metadata := coalesce(new.metadata, '{}'::jsonb) - array[
+    'public_corpus',
+    'publication_approval_id',
+    'publication_manifest_digest',
+    'publication_reviewed_state_digest',
+    'publication_source_catalogue_key',
+    'publication_source_policy_version',
+    'publication_reviewed_index_generation_id',
+    'published_at'
+  ];
+
   if old.owner_id is not null and new.owner_id is null then
+    if v_new_australian_public and not v_old_australian_public then
+      raise exception 'version-1 or non-Australian reviewed state cannot activate an Australian public document';
+    end if;
+    if v_new_reviewed_document is distinct from v_old_reviewed_document
+      or v_new_reviewed_metadata is distinct from v_old_reviewed_metadata then
+      raise exception 'public document target reviewed state changed during publication';
+    end if;
+
     begin
       v_approval_id := nullif(new.metadata->>'publication_approval_id', '')::uuid;
     exception when invalid_text_representation then
@@ -110,8 +148,6 @@ begin
     end;
     v_manifest_digest := lower(coalesce(new.metadata->>'publication_manifest_digest', ''));
     v_reviewed_state_digest := lower(coalesce(new.metadata->>'publication_reviewed_state_digest', ''));
-    v_australian_public := old.metadata->>'corpus_scope' = 'australian_public';
-
     if v_approval_id is null
       or v_manifest_digest !~ '^[0-9a-f]{64}$'
       or v_reviewed_state_digest !~ '^[0-9a-f]{64}$' then
@@ -130,7 +166,7 @@ begin
       raise exception 'public document transition approval does not match the reviewed document state';
     end if;
 
-    if v_australian_public then
+    if v_new_australian_public then
       if v_approval.source_catalogue_key is null
         or v_approval.source_policy_version is null
         or v_approval.reviewed_index_generation_id is null
@@ -140,15 +176,15 @@ begin
           is distinct from v_approval.reviewed_index_generation_id::text then
         raise exception 'historical version-1 approval cannot activate an Australian public document';
       end if;
-      if old.index_generation_id is distinct from v_approval.reviewed_index_generation_id
-        or old.metadata->>'source_catalogue_key' is distinct from v_approval.source_catalogue_key
-        or old.metadata->>'source_policy_version' is distinct from v_approval.source_policy_version then
+      if new.index_generation_id is distinct from v_approval.reviewed_index_generation_id
+        or new.metadata->>'source_catalogue_key' is distinct from v_approval.source_catalogue_key
+        or new.metadata->>'source_policy_version' is distinct from v_approval.source_policy_version then
         raise exception 'Australian public document policy or committed generation changed after approval';
       end if;
-      if old.metadata->>'content_mode' is distinct from 'indexed_content'
-        or old.metadata->>'licence_policy' is distinct from 'public_index_permitted'
-        or old.metadata->>'document_status' is distinct from 'current'
-        or old.metadata->>'change_state' = 'withdrawn' then
+      if new.metadata->>'content_mode' is distinct from 'indexed_content'
+        or new.metadata->>'licence_policy' is distinct from 'public_index_permitted'
+        or new.metadata->>'document_status' is distinct from 'current'
+        or new.metadata->>'change_state' = 'withdrawn' then
         raise exception 'Australian public document is not active, current, and publicly indexable';
       end if;
     end if;
@@ -187,6 +223,14 @@ begin
     v_current_state_digest := public.document_publication_state_digest(old.id, old.owner_id);
     if v_current_state_digest is distinct from v_reviewed_state_digest then
       raise exception 'public document transition content changed after review';
+    end if;
+  elsif old.owner_id is null and new.owner_id is not null and v_old_australian_public then
+    raise exception 'Australian public reviewed state is immutable after activation';
+  elsif old.owner_id is null and new.owner_id is null and (v_old_australian_public or v_new_australian_public) then
+    if not (v_old_australian_public and v_new_australian_public)
+      or v_new_reviewed_document is distinct from v_old_reviewed_document
+      or v_new_reviewed_metadata is distinct from v_old_reviewed_metadata then
+      raise exception 'Australian public reviewed state is immutable after activation';
     end if;
   end if;
   return new;
@@ -236,7 +280,23 @@ begin
   if exists (
     select 1
     from jsonb_array_elements(p_manifest->'documents') entry
-    group by entry->>'documentId'
+    where coalesce(entry->>'documentId', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+      or (
+        entry->>'decision' = 'approved'
+        and (
+          coalesce(entry->>'expectedOwnerId', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          or coalesce(entry->>'expectedIndexGenerationId', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          or coalesce(entry->>'expectedStateDigest', '') !~ '^[0-9a-f]{64}$'
+          or nullif(trim(entry->>'sourceCatalogueKey'), '') is null
+        )
+      )
+  ) then
+    raise exception 'Australian activation manifest contains invalid approved document evidence';
+  end if;
+  if exists (
+    select 1
+    from jsonb_array_elements(p_manifest->'documents') entry
+    group by (entry->>'documentId')::uuid
     having count(*) > 1
   ) then
     raise exception 'Australian activation manifest contains duplicate document ids';
@@ -245,24 +305,10 @@ begin
     select 1
     from jsonb_array_elements(p_manifest->'documents') entry
     where entry->>'decision' = 'approved'
-    group by entry->>'expectedIndexGenerationId'
+    group by (entry->>'expectedIndexGenerationId')::uuid
     having count(*) > 1
   ) then
     raise exception 'Australian activation manifest contains duplicate generation ids';
-  end if;
-  if exists (
-    select 1
-    from jsonb_array_elements(p_manifest->'documents') entry
-    where entry->>'decision' = 'approved'
-      and (
-        coalesce(entry->>'documentId', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
-        or coalesce(entry->>'expectedOwnerId', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
-        or coalesce(entry->>'expectedIndexGenerationId', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
-        or coalesce(entry->>'expectedStateDigest', '') !~ '^[0-9a-f]{64}$'
-        or nullif(trim(entry->>'sourceCatalogueKey'), '') is null
-      )
-  ) then
-    raise exception 'Australian activation manifest contains invalid approved document evidence';
   end if;
 
   select count(*)::integer,
