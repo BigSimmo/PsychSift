@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { buildDefaultMedicationRows } from "../src/lib/medication-fixtures";
+import { assertIndexableCatalogueEntry, australianSourceByKey } from "../src/lib/australian-source-catalogue";
 import {
   clinicalRegistryRowsToCorpusEntries,
   medicationRowsToCorpusEntries,
   registryDocumentIntent,
+  type RegistryCorpusEntry,
 } from "../src/lib/registry-corpus";
 import { registryCorpusDetailHref } from "../src/lib/registry-corpus-links";
 import type { MedicationRecordRow } from "../src/lib/medication-records";
@@ -103,6 +105,31 @@ function corpusHarness() {
 }
 
 describe("registry corpus", () => {
+  it("refuses link-only Australian references before constructing content-bearing corpus entries", () => {
+    function registryEntryForCatalogueKey(key: string): RegistryCorpusEntry {
+      const source = australianSourceByKey(key);
+      assertIndexableCatalogueEntry(source);
+      return {
+        kind: "service",
+        subkind: null,
+        ownerId: "22222222-2222-4222-8222-222222222222",
+        recordId: key,
+        slug: key,
+        title: source.publisher,
+        subtitle: null,
+        content: "Synthetic content that must never be constructed for link-only sources.",
+        searchText: source.publisher,
+        sourceStatus: "current",
+        validationStatus: "approved",
+        metadata: { source_catalogue_key: source.key },
+      };
+    }
+
+    for (const key of ["etg-complete", "australian-medicines-handbook"]) {
+      expect(() => registryEntryForCatalogueKey(key)).toThrow(/link-only/i);
+    }
+  });
+
   it("retries a failed embed and stops calling OpenAI once corpus hashes are current", async () => {
     const { supabase, documents, chunks } = corpusHarness();
     embedTextsMock

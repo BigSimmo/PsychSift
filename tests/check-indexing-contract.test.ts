@@ -41,7 +41,7 @@ describe("indexing health scan", () => {
       file_name: "australian-medicine-handbook.registry.json",
       page_count: 0,
       chunk_count: 1,
-      metadata: { source_kind: "registry_record", registry_record_id: "amh" },
+      metadata: { source_kind: "registry_record", registry_record_id: "synthetic-service-record" },
     };
 
     expect(isEmptyIndexedDocument(registryProjection)).toBe(false);
