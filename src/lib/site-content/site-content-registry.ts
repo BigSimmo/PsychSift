@@ -7,7 +7,7 @@ export const siteContentRegistryVersion = "site-content-registry-v1" as const;
 type RegistryCorpusKind = "service" | "form" | "medication" | "differential";
 
 export type SiteContentRecordAdoption =
-  | { recordId: string; disposition: "eligible" }
+  | { recordId: string; disposition: "eligible"; canonicalRoute: string }
   | {
       recordId: string;
       disposition: "reviewed_exclusion";
@@ -350,15 +350,15 @@ export const siteContentProducerDefinitions: readonly SiteContentProducerDefinit
     routeBase: "/tools",
     recordAdoptions: [
       { recordId: "clinical-kb-search", disposition: "reviewed_exclusion", reason: "corpus_consumer" },
-      { recordId: "differentials", disposition: "eligible" },
+      { recordId: "differentials", disposition: "eligible", canonicalRoute: "/differentials" },
       { recordId: "documents", disposition: "reviewed_exclusion", reason: "trusted_ingestion_owned" },
       { recordId: "clinical-dictionary", disposition: "reviewed_exclusion", reason: "excluded_source_present" },
       { recordId: "guidelines", disposition: "reviewed_exclusion", reason: "trusted_ingestion_owned" },
       { recordId: "risk-safety", disposition: "reviewed_exclusion", reason: "review_due" },
       { recordId: "medication-prescribing", disposition: "reviewed_exclusion", reason: "review_due" },
-      { recordId: "services", disposition: "eligible" },
+      { recordId: "services", disposition: "eligible", canonicalRoute: "/services" },
       { recordId: "ward-management", disposition: "reviewed_exclusion", reason: "synthetic_or_private_state" },
-      { recordId: "forms", disposition: "eligible" },
+      { recordId: "forms", disposition: "eligible", canonicalRoute: "/forms" },
       { recordId: "care-plans", disposition: "reviewed_exclusion", reason: "non_knowledge_tool" },
       { recordId: "safety-plan", disposition: "reviewed_exclusion", reason: "not_source_backed" },
       { recordId: "calculators", disposition: "reviewed_exclusion", reason: "missing_source_governance" },
@@ -535,12 +535,14 @@ export function assertSiteContentRecordEligible(record: SiteContentRecord) {
   if (!retrievableValidationStatuses.has(record.validationStatus) || record.sourceStatus !== "current") {
     throw new Error(`Site-content record ${record.logicalId} must be reviewed and current before retrieval.`);
   }
+  let recordSpecificCanonicalRoute: string | null = null;
   if (producer.recordAdoptions) {
     const recordId = record.logicalId.replace(new RegExp(`^${producer.key}:`), "");
     const adoption = producer.recordAdoptions.find((candidate) => candidate.recordId === recordId);
     if (!adoption || adoption.disposition !== "eligible") {
       throw new Error(`Site-content record ${record.logicalId} is not an explicitly eligible producer record.`);
     }
+    recordSpecificCanonicalRoute = adoption.canonicalRoute;
   }
   const forbiddenIdentities = [
     record.logicalId,
@@ -552,7 +554,10 @@ export function assertSiteContentRecordEligible(record: SiteContentRecord) {
     throw new Error(`Site-content record ${record.logicalId} names an excluded or link-only source.`);
   }
   const expectedPrefix = producer.routeBuilder("").replace(/\/$/, "");
-  if (!record.route.startsWith(`${expectedPrefix}/`)) {
+  if (
+    (recordSpecificCanonicalRoute && record.route !== recordSpecificCanonicalRoute) ||
+    (!recordSpecificCanonicalRoute && !record.route.startsWith(`${expectedPrefix}/`))
+  ) {
     throw new Error(`Site-content record ${record.logicalId} does not use its canonical public route.`);
   }
 }

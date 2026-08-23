@@ -1,3 +1,9 @@
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -19,6 +25,7 @@ import type { StaticSiteContentManifest } from "@/lib/site-content/site-content-
 import { siteContentProducerDefinitions, siteContentRegistryVersion } from "@/lib/site-content/site-content-registry";
 import type { SiteContentRecord } from "@/lib/site-content/site-content-contracts";
 import type { RegistryCorpusEntry } from "@/lib/registry-corpus";
+import { toolCatalogRecords } from "@/lib/tools-catalog";
 
 import staticManifestBaselineJson from "./fixtures/site-content/static-manifest-baseline.json";
 
@@ -191,7 +198,59 @@ describe("complete provider-free adapter coverage", () => {
 
     const tools = records.filter((record) => record.domain === "tools");
     expect(tools.map((record) => record.logicalId)).toEqual(["tools:differentials", "tools:forms", "tools:services"]);
+    expect(
+      manifest.records
+        .filter((record) => record.domain === "tools" && record.eligible)
+        .map(({ logicalId, route }) => ({ logicalId, route })),
+    ).toEqual([
+      { logicalId: "tools:differentials", route: "/differentials" },
+      { logicalId: "tools:forms", route: "/forms" },
+      { logicalId: "tools:services", route: "/services" },
+    ]);
+    for (const record of tools) {
+      const canonicalOwner = toolCatalogRecords.find((tool) => `tools:${tool.id}` === record.logicalId);
+      expect(canonicalOwner).toBeDefined();
+      expect(record.route).toBe(canonicalOwner?.href);
+      expect(
+        existsSync(resolve(import.meta.dirname, "../src/app/(search-app)", record.route.slice(1), "page.tsx")),
+      ).toBe(true);
+    }
     expect(JSON.stringify(tools)).not.toMatch(/icon|glyph|neededInput|checkFirst|question|points|score|owner|actor/i);
+  });
+
+  it("keeps the manifest CLI import-safe even when importer argv names an output", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const temporaryRoot = mkdtempSync(join(tmpdir(), "site-content-manifest-import-"));
+    const unexpectedOutput = join(temporaryRoot, "unexpected.json");
+    const scriptUrl = pathToFileURL(resolve(root, "scripts/build-site-content-manifest.ts")).href;
+    const importExpression = `import(${JSON.stringify(scriptUrl)}).catch((error) => { console.error(error); process.exitCode = 70; });`;
+
+    try {
+      const quietImport = spawnSync(process.execPath, ["scripts/run-tsx.mjs", "--eval", importExpression], {
+        cwd: root,
+        encoding: "utf8",
+        timeout: 30_000,
+      });
+      const poisonedArgvImport = spawnSync(
+        process.execPath,
+        [
+          "scripts/run-tsx.mjs",
+          "--eval",
+          `process.argv.push("--out", ${JSON.stringify(unexpectedOutput)}); ${importExpression}`,
+        ],
+        { cwd: root, encoding: "utf8", timeout: 30_000 },
+      );
+
+      for (const result of [quietImport, poisonedArgvImport]) {
+        expect(result.error).toBeUndefined();
+        expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+        expect(result.stdout).toBe("");
+        expect(result.stderr).toBe("");
+      }
+      expect(existsSync(unexpectedOutput)).toBe(false);
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
   });
 
   it("matches the checked-in metadata-only static baseline", () => {

@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { buildAllSiteContentRecords } from "../src/lib/site-content/adapters";
 import {
@@ -10,9 +11,32 @@ import {
 } from "../src/lib/site-content/site-content-manifest";
 import { siteContentRegistryVersion } from "../src/lib/site-content/site-content-registry";
 
-function option(name: string) {
-  const index = process.argv.indexOf(name);
-  return index < 0 ? null : (process.argv[index + 1] ?? null);
+export type SiteContentManifestCliOptions = {
+  check: boolean;
+  out: string | null;
+  baselinePath: string | null;
+  diffPath: string | null;
+};
+
+function option(args: readonly string[], name: string) {
+  const index = args.indexOf(name);
+  return index < 0 ? null : (args[index + 1] ?? null);
+}
+
+export function parseSiteContentManifestCliArgs(args: readonly string[]): SiteContentManifestCliOptions {
+  const parsed = {
+    check: args.includes("--check"),
+    out: option(args, "--out"),
+    baselinePath: option(args, "--baseline"),
+    diffPath: option(args, "--diff"),
+  };
+  if (!parsed.check && !parsed.out && !parsed.baselinePath && !parsed.diffPath) {
+    throw new Error("Use --check, --out <path>, or --baseline <path> --out <path> --diff <path>.");
+  }
+  if ((parsed.baselinePath && !parsed.diffPath) || (parsed.diffPath && !parsed.baselinePath)) {
+    throw new Error("--baseline and --diff must be supplied together.");
+  }
+  return parsed;
 }
 
 function gitSha() {
@@ -25,17 +49,8 @@ async function writeJson(path: string, value: unknown) {
   await writeFile(absolute, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-async function main() {
-  const check = process.argv.includes("--check");
-  const out = option("--out");
-  const baselinePath = option("--baseline");
-  const diffPath = option("--diff");
-  if (!check && !out && !baselinePath && !diffPath) {
-    throw new Error("Use --check, --out <path>, or --baseline <path> --out <path> --diff <path>.");
-  }
-  if ((baselinePath && !diffPath) || (diffPath && !baselinePath)) {
-    throw new Error("--baseline and --diff must be supplied together.");
-  }
+export async function runSiteContentManifestCli(args: readonly string[]) {
+  const { check, out, baselinePath, diffPath } = parseSiteContentManifestCliArgs(args);
 
   const manifest = buildStaticSiteContentManifest(buildAllSiteContentRecords(), {
     gitSha: gitSha(),
@@ -54,7 +69,9 @@ async function main() {
   );
 }
 
-void main().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  void runSiteContentManifestCli(process.argv.slice(2)).catch((error: unknown) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  });
+}

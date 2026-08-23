@@ -1,7 +1,8 @@
 {
   "version": "clinical-kb-site-static-manifest-v1",
-  "gitSha": "03d5af81fdec526595df6dd6ba5a0250de859bdd",
+  "gitSha": "674cd465420a1322ba925611d91125971514320d",
   "registryVersion": "site-content-registry-v1",
+  "generatedAt": "2026-08-23T13:26:06.516Z",
   "records": [
     {
       "logicalId": "calculators:auditc",
@@ -11666,8 +11667,8 @@
     {
       "logicalId": "tools:differentials",
       "domain": "tools",
-      "route": "/tools/differentials",
-      "contentHash": "sha256:52cd67979eedb3582f2d58c83cb6de69bbba516ebbd9a71d61954e8088b2d1d3",
+      "route": "/differentials",
+      "contentHash": "sha256:2dd32d8ffda8f1c22197bead61bfc8ee183d145044f012d7cdc73cbff3541ed6",
       "lineageDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "validationStatus": "locally_reviewed",
       "sourceStatus": "current",
@@ -11677,8 +11678,8 @@
     {
       "logicalId": "tools:forms",
       "domain": "tools",
-      "route": "/tools/forms",
-      "contentHash": "sha256:8de5b68941173cd675bdbed88708036f7337251bd3c0392ca4ea9b4e1fdf43cb",
+      "route": "/forms",
+      "contentHash": "sha256:0ed15ca52b0002537fd6afb6bc83f7ceceaa62c53769109b61689572d3537945",
       "lineageDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "validationStatus": "locally_reviewed",
       "sourceStatus": "current",
@@ -11688,8 +11689,8 @@
     {
       "logicalId": "tools:services",
       "domain": "tools",
-      "route": "/tools/services",
-      "contentHash": "sha256:5e28839deb0be1b5ed6e770280aa65ab7ae3255705c01d0a68e2f56c58b4ab9c",
+      "route": "/services",
+      "contentHash": "sha256:62ca818c53f587fa145672c0da7374bb416306b3d736b41bd3be7350ab4de017",
       "lineageDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       "validationStatus": "locally_reviewed",
       "sourceStatus": "current",
@@ -11697,6 +11698,5 @@
       "exclusionReason": null
     }
   ],
-  "generatedAt": "2026-08-23T12:57:24.548Z",
-  "staticManifestDigest": "sha256:ec80bbd26c0d87ce7973b0e9f4501551d802d905c06d3033b925767792309182"
+  "staticManifestDigest": "sha256:e3775896b8e69aa8a1d2d1c6dec2a4d142a86545a4aa73d190746918176164cb"
 }

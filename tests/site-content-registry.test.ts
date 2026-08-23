@@ -159,9 +159,9 @@ describe("site content producer and adoption registry", () => {
   it("adopts Tools only through an explicit reviewed record allowlist", () => {
     expect(siteContentProducerForDomain("tools")?.recordAdoptions).toEqual(
       expect.arrayContaining([
-        { recordId: "differentials", disposition: "eligible" },
-        { recordId: "services", disposition: "eligible" },
-        { recordId: "forms", disposition: "eligible" },
+        { recordId: "differentials", disposition: "eligible", canonicalRoute: "/differentials" },
+        { recordId: "services", disposition: "eligible", canonicalRoute: "/services" },
+        { recordId: "forms", disposition: "eligible", canonicalRoute: "/forms" },
         { recordId: "documents", disposition: "reviewed_exclusion", reason: "trusted_ingestion_owned" },
         { recordId: "favourites", disposition: "reviewed_exclusion", reason: "private_state" },
         { recordId: "ward-management", disposition: "reviewed_exclusion", reason: "synthetic_or_private_state" },

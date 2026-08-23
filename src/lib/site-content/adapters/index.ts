@@ -151,7 +151,7 @@ function toolRecords() {
         logicalId: `tools:${tool.id}`,
         producerClass: "static_repository",
         domain: "tools",
-        route: `/tools/${tool.id}`,
+        route: tool.href,
         title: tool.title,
         body: `${tool.title}. ${tool.description} Best for: ${tool.bestFor}.`,
         sourceRole: "tool_reference",
