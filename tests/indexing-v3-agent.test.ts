@@ -190,11 +190,11 @@ describe("indexing-v3-agent behavior", () => {
     const firstPage = Array.from({ length: 500 }, (_, index) => ({
       content: index === 498 ? "Australian" : index === 499 ? "Medicines" : "x",
     }));
-    const first = protectedPublicSourceChunkPage(firstPage, "");
+    const first = protectedPublicSourceChunkPage(firstPage);
     expect(first.containsProtectedSourceContent).toBe(false);
     expect(first.trailingContent).toContain("AustralianMedicines");
 
-    const second = protectedPublicSourceChunkPage([{ content: "Handbook" }], first.trailingContent);
+    const second = protectedPublicSourceChunkPage([{ content: "Handbook" }], first.streamState);
     expect(second.containsProtectedSourceContent).toBe(true);
 
     const pageReads: Array<[number, number]> = [];
@@ -222,6 +222,64 @@ describe("indexing-v3-agent behavior", () => {
       },
     );
     expect(scan).toContain("scanProtectedPublicSourceChunkPages(");
+  });
+
+  it("retains bounded canonical state across arbitrarily long removable page separators", async () => {
+    const firstPage = Array.from({ length: 500 }, (_, index) => ({
+      content: index === 498 ? "Health" : index === 499 ? ".".repeat(300) : "x",
+    }));
+    const finalPage = [{ content: "direct" }];
+    const first = protectedPublicSourceChunkPage(firstPage);
+    const second = protectedPublicSourceChunkPage(finalPage, first.streamState);
+    const pageReads: Array<[number, number]> = [];
+    const paged = await scanProtectedPublicSourceChunkPages(async (offset, limit) => {
+      pageReads.push([offset, limit]);
+      return offset === 0 ? firstPage : finalPage;
+    });
+
+    expect(protectedPublicSourceChunkContents([...firstPage, ...finalPage])).toBe(true);
+    expect(first.trailingContent).not.toContain("Health");
+    expect(first.streamState.rawSuffix).toHaveLength(256);
+    expect(first.streamState.compactSuffix.length).toBeLessThanOrEqual(64);
+    expect(first.streamState.spacedSuffix.length).toBeLessThanOrEqual(64);
+    expect(first.streamState.compactSuffix).toMatch(/health$/);
+    expect(second.containsProtectedSourceContent).toBe(true);
+    expect(paged).toBe(true);
+    expect(pageReads).toEqual([
+      [0, 500],
+      [500, 500],
+    ]);
+  });
+
+  it("preserves spaced-token identity state across removable formatting characters", async () => {
+    const firstPage = Array.from({ length: 500 }, (_, index) => ({
+      content: index === 498 ? "e" : index === 499 ? "\u200b".repeat(300) : ".",
+    }));
+    const finalPage = [{ content: "TG" }];
+
+    expect(protectedPublicSourceChunkContents([...firstPage, ...finalPage])).toBe(true);
+    await expect(
+      scanProtectedPublicSourceChunkPages(async (offset) => (offset === 0 ? firstPage : finalPage)),
+    ).resolves.toBe(true);
+  });
+
+  it("preserves a split named character reference at the worker page boundary", async () => {
+    const firstPage = Array.from({ length: 500 }, (_, index) => ({
+      content: index === 499 ? "He&af" : "x",
+    }));
+    const finalPage = [{ content: "r;lthdirect" }];
+    const pageReads: Array<[number, number]> = [];
+
+    await expect(
+      scanProtectedPublicSourceChunkPages(async (offset, limit) => {
+        pageReads.push([offset, limit]);
+        return offset === 0 ? firstPage : finalPage;
+      }),
+    ).resolves.toBe(true);
+    expect(pageReads).toEqual([
+      [0, 500],
+      [500, 500],
+    ]);
   });
 
   it("schedules agent retries until the attempt budget is exhausted", () => {

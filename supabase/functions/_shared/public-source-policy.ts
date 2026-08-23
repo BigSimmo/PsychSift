@@ -2,6 +2,13 @@ import { decodeHTML } from "entities";
 
 export type ForbiddenPublicSourceIdentity = "healthdirect" | "etg_complete" | "australian_medicines_handbook";
 
+export type CanonicalProtectedSourceIdentity = Readonly<{
+  spaced: string;
+  compact: string;
+  startsWithBoundary: boolean;
+  endsWithBoundary: boolean;
+}>;
+
 export type PublicSourceWorkerPolicyViolation = "protected_source_identity" | "public_source_policy_invalid";
 
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
@@ -56,26 +63,37 @@ export function replaceHtmlCharacterReferencesWithBoundaries(input: string): str
   return decodeHTML(output);
 }
 
-function normalizedProtectedIdentity(value: string) {
-  const decoded = replaceHtmlCharacterReferencesWithBoundaries(value)
+export function canonicalProtectedSourceIdentity(value: string): CanonicalProtectedSourceIdentity {
+  const collapsed = replaceHtmlCharacterReferencesWithBoundaries(value)
     .normalize("NFKC")
     .replace(/<[^>]*>/g, " ")
     .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
     .toLocaleLowerCase("en-AU")
     .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return { spaced: decoded, compact: decoded.replace(/\s+/g, "") };
+    .replace(/\s+/g, " ");
+  const spaced = collapsed.trim();
+  return {
+    spaced,
+    compact: spaced.replace(/\s+/g, ""),
+    startsWithBoundary: collapsed.startsWith(" "),
+    endsWithBoundary: collapsed.endsWith(" "),
+  };
 }
 
-export function forbiddenPublicSourceIdentity(value: string): ForbiddenPublicSourceIdentity | null {
-  const { spaced, compact } = normalizedProtectedIdentity(value);
+export function forbiddenPublicSourceCanonicalIdentity({
+  spaced,
+  compact,
+}: Pick<CanonicalProtectedSourceIdentity, "spaced" | "compact">): ForbiddenPublicSourceIdentity | null {
   if (compact.includes("healthdirect")) return "healthdirect";
   if (/(?:^| )etg(?: |$)/.test(spaced) || compact.includes("therapeuticguideline")) return "etg_complete";
   if (/(?:^| )amh(?: |$)/.test(spaced) || compact.includes("australianmedicineshandbook")) {
     return "australian_medicines_handbook";
   }
   return null;
+}
+
+export function forbiddenPublicSourceIdentity(value: string): ForbiddenPublicSourceIdentity | null {
+  return forbiddenPublicSourceCanonicalIdentity(canonicalProtectedSourceIdentity(value));
 }
 
 export function containsForbiddenPublicSourceChunkContent(rows: ReadonlyArray<{ content: string }>): boolean {

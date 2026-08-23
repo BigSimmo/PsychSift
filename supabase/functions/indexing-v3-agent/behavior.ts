@@ -1,6 +1,6 @@
 // prettier-ignore
 // @ts-expect-error Deno edge imports require explicit TypeScript extensions.
-import { containsForbiddenPublicSourceChunkContent, publicSourcePolicyViolation } from "../_shared/public-source-policy.ts";
+import { canonicalProtectedSourceIdentity, containsForbiddenPublicSourceChunkContent, forbiddenPublicSourceCanonicalIdentity, publicSourcePolicyViolation } from "../_shared/public-source-policy.ts";
 
 export type CompletionGate = {
   counts: {
@@ -79,16 +79,54 @@ export function protectedPublicSourceChunkContents(rows: ReadonlyArray<{ content
   return containsForbiddenPublicSourceChunkContent(rows);
 }
 
+export type ProtectedPublicSourceStreamState = Readonly<{
+  rawSuffix: string;
+  compactSuffix: string;
+  spacedSuffix: string;
+  spacedEndsWithBoundary: boolean;
+}>;
+
+const protectedCanonicalCarryLength = 64;
+
+function appendCanonicalSpaced(left: string, right: string, hasBoundary: boolean) {
+  if (!left) return right;
+  if (!right) return left;
+  return `${left}${hasBoundary ? " " : ""}${right}`;
+}
+
+function initialProtectedPublicSourceStreamState(): ProtectedPublicSourceStreamState {
+  return { rawSuffix: "", compactSuffix: "", spacedSuffix: "", spacedEndsWithBoundary: false };
+}
+
 export function protectedPublicSourceChunkPage(
   rows: ReadonlyArray<{ content: string }>,
-  trailingContent: string,
-  carryLength = 256,
+  previousState: ProtectedPublicSourceStreamState = initialProtectedPublicSourceStreamState(),
+  rawCarryLength = 256,
 ) {
-  const scanRows = trailingContent ? [{ content: trailingContent }, ...rows] : rows;
-  const concatenatedStream = `${trailingContent}${rows.map((row) => row.content).join("")}`;
+  const rawPage = rows.map((row) => row.content).join("");
+  const rawStream = `${previousState.rawSuffix}${rawPage}`;
+  const lexicalCanonical = canonicalProtectedSourceIdentity(rawStream);
+  const pageCanonical = canonicalProtectedSourceIdentity(rawPage);
+  const spacedBoundary = previousState.spacedEndsWithBoundary || pageCanonical.startsWithBoundary;
+  const spacedEndsWithBoundary = pageCanonical.spaced
+    ? pageCanonical.endsWithBoundary
+    : previousState.spacedEndsWithBoundary || pageCanonical.startsWithBoundary || pageCanonical.endsWithBoundary;
+  const streamCanonical = {
+    compact: `${previousState.compactSuffix}${pageCanonical.compact}`,
+    spaced: appendCanonicalSpaced(previousState.spacedSuffix, pageCanonical.spaced, spacedBoundary),
+  };
+  const streamState = {
+    rawSuffix: rawStream.slice(-rawCarryLength),
+    compactSuffix: streamCanonical.compact.slice(-protectedCanonicalCarryLength),
+    spacedSuffix: streamCanonical.spaced.slice(-protectedCanonicalCarryLength),
+    spacedEndsWithBoundary,
+  };
   return {
-    containsProtectedSourceContent: containsForbiddenPublicSourceChunkContent(scanRows),
-    trailingContent: concatenatedStream.slice(-carryLength),
+    containsProtectedSourceContent:
+      forbiddenPublicSourceCanonicalIdentity(lexicalCanonical) !== null ||
+      forbiddenPublicSourceCanonicalIdentity(streamCanonical) !== null,
+    trailingContent: streamState.rawSuffix,
+    streamState,
   };
 }
 
@@ -97,13 +135,13 @@ export async function scanProtectedPublicSourceChunkPages(
   batchSize = 500,
 ) {
   let offset = 0;
-  let trailingContent = "";
+  let streamState = initialProtectedPublicSourceStreamState();
   while (true) {
     const rows = await loadPage(offset, batchSize);
-    const page = protectedPublicSourceChunkPage(rows, trailingContent);
+    const page = protectedPublicSourceChunkPage(rows, streamState);
     if (page.containsProtectedSourceContent) return true;
     if (rows.length < batchSize) return false;
-    trailingContent = page.trailingContent;
+    streamState = page.streamState;
     offset += rows.length;
   }
 }
