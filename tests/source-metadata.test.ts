@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { australianSourceByKey, australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
 import {
   clipboardProvenanceLine,
@@ -13,11 +13,38 @@ import {
   validationStatusLabel,
 } from "../src/lib/source-metadata";
 import { authorityIdentityForCatalogueEntry, classifySourceAuthority } from "../src/lib/source-authority-registry";
+import type { ClinicalSourceMetadata } from "../src/lib/types";
+
+type RequiredGovernedMetadata = Required<
+  Pick<
+    ClinicalSourceMetadata,
+    | "corpus_scope"
+    | "source_role"
+    | "content_mode"
+    | "source_catalogue_key"
+    | "source_policy_version"
+    | "canonical_url"
+    | "effective_date"
+    | "expiry_date"
+    | "supersedes_document_id"
+    | "superseded_by_document_id"
+    | "retrieved_at"
+    | "content_hash"
+    | "change_state"
+    | "licence_policy"
+  >
+>;
+
+type GovernedMetadataFieldsAreRequired = ClinicalSourceMetadata extends RequiredGovernedMetadata ? true : false;
 
 describe("source metadata helpers", () => {
   it("exposes the governed clinical normalizer and exact catalogue identity resolver", () => {
     expect(normalizeClinicalSourceMetadata).toBeTypeOf("function");
     expect(authorityIdentityForCatalogueEntry).toBeTypeOf("function");
+  });
+
+  it("makes every governed field required on normalized metadata", () => {
+    expectTypeOf<GovernedMetadataFieldsAreRequired>().toEqualTypeOf<true>();
   });
 
   it("preserves recognized governed policy, date, URL, and hash metadata", () => {
@@ -97,13 +124,59 @@ describe("source metadata helpers", () => {
         retrieved_at: null,
         content_hash: null,
       });
-      expect(warnSpy).toHaveBeenCalledWith("canonical_url", "http://example.test/guideline");
-      expect(warnSpy).toHaveBeenCalledWith("effective_date", "20 August 2026");
-      expect(warnSpy).toHaveBeenCalledWith("expiry_date", "2026-13-40");
-      expect(warnSpy).toHaveBeenCalledWith("retrieved_at", "yesterday");
-      expect(warnSpy).toHaveBeenCalledWith("content_hash", "sha256:not-a-digest");
+      expect(warnSpy).toHaveBeenCalledWith("canonical_url", "unsafe_or_invalid_format");
+      expect(warnSpy).toHaveBeenCalledWith("effective_date", "unsafe_or_invalid_format");
+      expect(warnSpy).toHaveBeenCalledWith("expiry_date", "unsafe_or_invalid_format");
+      expect(warnSpy).toHaveBeenCalledWith("retrieved_at", "unsafe_or_invalid_format");
+      expect(warnSpy).toHaveBeenCalledWith("content_hash", "unsafe_or_invalid_format");
     } finally {
       warnSpy.mockRestore();
+    }
+  });
+
+  it("never emits rejected governed values to diagnostics and rejects impossible timestamps", () => {
+    const marker = "REGISTERED_PRIVACY_CANARY_20260823";
+    const warnSpy = vi.spyOn(sourceMetadataDiagnostics, "warn").mockImplementation(() => {});
+    try {
+      const metadata = normalizeClinicalSourceMetadata({
+        canonical_url: `https://user:${marker}@example.test/guideline?token=${marker}`,
+        retrieved_at: "2026-02-29T00:00:00.000Z",
+        content_hash: `sha256:${marker}`,
+      });
+
+      expect(metadata).toMatchObject({ canonical_url: null, retrieved_at: null, content_hash: null });
+      expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(marker);
+      expect(warnSpy).toHaveBeenCalledWith("canonical_url", "unsafe_or_invalid_format");
+      expect(warnSpy).toHaveBeenCalledWith("retrieved_at", "unsafe_or_invalid_format");
+      expect(warnSpy).toHaveBeenCalledWith("content_hash", "unsafe_or_invalid_format");
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("preserves exact link-only catalogue policy without granting indexed authority", () => {
+    for (const key of ["etg-complete", "australian-medicines-handbook"] as const) {
+      const source = australianSourceByKey(key)!;
+      const metadata = normalizeClinicalSourceMetadata({
+        source_kind: "document",
+        publisher_code: source.publisherCode,
+        publisher: source.publisher,
+        jurisdiction: source.jurisdiction,
+        source_catalogue_key: source.key,
+        source_policy_version: australianSourcePolicyVersion,
+        corpus_scope: "australian_public",
+        source_role: "reference_link",
+        content_mode: "link_only",
+        licence_policy: "metadata_link_only",
+      });
+
+      expect(metadata).toMatchObject({
+        source_catalogue_key: key,
+        source_policy_version: australianSourcePolicyVersion,
+        content_mode: "link_only",
+        licence_policy: "metadata_link_only",
+      });
+      expect(classifySourceAuthority(metadata)).toMatchObject({ tier: "supplementary", authorityKey: null });
     }
   });
 
@@ -232,11 +305,11 @@ describe("source metadata helpers", () => {
       expect(metadata.clinical_validation_status).toBe("unverified");
       expect(metadata.extraction_quality).toBe("unknown");
 
-      // Each unrecognized non-empty value is traced once, with its field + value.
+      // Each unrecognized non-empty value is traced once with bounded field/reason metadata.
       expect(warnSpy).toHaveBeenCalledTimes(3);
-      expect(warnSpy).toHaveBeenCalledWith("document_status", "revieww_due");
-      expect(warnSpy).toHaveBeenCalledWith("clinical_validation_status", "aproved");
-      expect(warnSpy).toHaveBeenCalledWith("extraction_quality", "gud");
+      expect(warnSpy).toHaveBeenCalledWith("document_status", "unsupported_value");
+      expect(warnSpy).toHaveBeenCalledWith("clinical_validation_status", "unsupported_value");
+      expect(warnSpy).toHaveBeenCalledWith("extraction_quality", "unsupported_value");
 
       // Absent (null / undefined) and blank/whitespace values are the legitimate
       // default and never warn.

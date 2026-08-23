@@ -7,8 +7,10 @@ import {
 } from "@/lib/source-authority-registry";
 import {
   australianSourceCatalogue,
-  australianSourcePolicyVersion,
   type AustralianSourceDefinition,
+  type SourceContentMode,
+  type SourceLicencePolicy,
+  type SourceLifecycle,
 } from "@/lib/australian-source-catalogue";
 
 export const localityMetadataKeys = ["publisher_code", "publisher", "jurisdiction"] as const;
@@ -366,24 +368,35 @@ function catalogueEntryForDocument(document: SourceAuthorityDocument): Australia
  */
 export function auditProposedSourcePolicyMetadata(documents: SourceAuthorityDocument[]) {
   const excludedRegistryRecordCount = documents.filter(isRegistryRecordSource).length;
-  const proposals = documents.flatMap((document) => {
+  const documentCandidates = documents.filter((document) => !isRegistryRecordSource(document));
+  const candidates = documentCandidates.flatMap((document) => {
     const source = catalogueEntryForDocument(document);
-    if (!source) return [];
-    return [
-      {
-        id: document.id ?? null,
-        source_catalogue_key: source.key,
-        source_policy_version: australianSourcePolicyVersion,
-        corpus_scope: source.corpusScope,
-        content_mode: source.contentMode,
-        licence_policy: source.licencePolicy,
-      },
-    ];
+    return source ? [source] : [];
   });
+  const lifecycleCounts: Record<SourceLifecycle, number> = { active: 0, historical: 0, retired: 0 };
+  const contentModeCounts: Record<SourceContentMode, number> = { indexed_content: 0, link_only: 0 };
+  const licenceReviewCounts: Record<SourceLicencePolicy, number> = {
+    review_required: 0,
+    public_index_permitted: 0,
+    metadata_link_only: 0,
+    index_forbidden: 0,
+  };
+  for (const source of candidates) {
+    lifecycleCounts[source.lifecycle] += 1;
+    contentModeCounts[source.contentMode] += 1;
+    licenceReviewCounts[source.licencePolicy] += 1;
+  }
 
   return {
-    proposed_policy_metadata_count: proposals.length,
+    policy_review_candidate_count: candidates.length,
     excluded_registry_record_count: excludedRegistryRecordCount,
-    proposed_policy_metadata: proposals,
+    review_reason_counts: {
+      exact_catalogue_identity: candidates.length,
+      no_exact_catalogue_identity: documentCandidates.length - candidates.length,
+      registry_record_excluded: excludedRegistryRecordCount,
+    },
+    lifecycle_counts: lifecycleCounts,
+    content_mode_counts: contentModeCounts,
+    licence_review_counts: licenceReviewCounts,
   };
 }

@@ -113,23 +113,24 @@ export type ClinicalSourceMetadata = {
   clinical_validation_status: "unverified" | "locally_reviewed" | "approved" | "unknown";
   clinical_validation_evidence?: Record<string, unknown> | null;
   extraction_quality: "good" | "partial" | "poor" | "unknown";
-  corpus_scope?: SourceCorpusScope | null;
-  source_role?: ClinicalSourceRole | null;
-  content_mode?: import("@/lib/australian-source-catalogue").SourceContentMode | null;
-  source_catalogue_key?: string | null;
-  source_policy_version?: string | null;
-  canonical_url?: string | null;
-  effective_date?: string | null;
-  expiry_date?: string | null;
-  supersedes_document_id?: string | null;
-  superseded_by_document_id?: string | null;
-  retrieved_at?: string | null;
-  content_hash?: string | null;
-  change_state?: "unchanged" | "changed" | "withdrawn" | "superseded" | "unknown";
-  licence_policy?: import("@/lib/australian-source-catalogue").SourceLicencePolicy | null;
+  corpus_scope: SourceCorpusScope | null;
+  source_role: ClinicalSourceRole | null;
+  content_mode: import("@/lib/australian-source-catalogue").SourceContentMode | null;
+  source_catalogue_key: string | null;
+  source_policy_version: string | null;
+  canonical_url: string | null;
+  effective_date: string | null;
+  expiry_date: string | null;
+  supersedes_document_id: string | null;
+  superseded_by_document_id: string | null;
+  retrieved_at: string | null;
+  content_hash: string | null;
+  change_state: "unchanged" | "changed" | "withdrawn" | "superseded" | "unknown";
+  licence_policy: import("@/lib/australian-source-catalogue").SourceLicencePolicy | null;
 };
 
-export type ClinicalSourceMetadataInput = Partial<ClinicalSourceMetadata> | Record<string, unknown> | null | undefined;
+export type ClinicalSourceMetadataRecordInput = Partial<ClinicalSourceMetadata> & Record<string, unknown>;
+export type ClinicalSourceMetadataInput = ClinicalSourceMetadataRecordInput | null | undefined;
 
 export type SourceCorpusScope =
   "uploaded_local" | "clinical_kb_site" | "australian_public" | "international_supplementary";
@@ -428,7 +429,7 @@ export type ClinicalDocument = {
   chunk_count: number;
   image_count: number;
   error_message: string | null;
-  metadata?: Record<string, unknown> | ClinicalSourceMetadata | null;
+  metadata?: ClinicalSourceMetadataRecordInput | null;
   labels?: DocumentLabel[];
   summary?: DocumentSummary | null;
   created_at: string;
@@ -540,7 +541,7 @@ export type SearchResult = {
   rrf_score?: number;
   score_explanation?: SearchScoreExplanation;
   source_strength?: SourceStrength;
-  source_metadata?: ClinicalSourceMetadata | null;
+  source_metadata?: ClinicalSourceMetadataRecordInput | null;
   document_labels?: DocumentLabel[];
   document_summary?: string | null;
   adjacent_context?: string | null;
@@ -672,7 +673,7 @@ export type Citation = {
   page_number: number | null;
   chunk_index: number;
   similarity?: number;
-  source_metadata?: ClinicalSourceMetadata | null;
+  source_metadata?: ClinicalSourceMetadataRecordInput | null;
   provenance?: CitationProvenance;
 };
 

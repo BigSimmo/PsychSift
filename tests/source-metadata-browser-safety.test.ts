@@ -45,8 +45,9 @@ describe("source metadata diagnostics are browser-safe", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.stubGlobal("process", undefined);
 
-    expect(() => sourceMetadataDiagnostics.warn("document_status", "validated")).not.toThrow();
+    expect(() => sourceMetadataDiagnostics.warn("document_status", "unsupported_value")).not.toThrow();
     expect(warn).toHaveBeenCalledOnce();
+    expect(String(warn.mock.calls[0]?.[0])).not.toContain("validated");
   });
 
   it("keeps the logger itself safe when `process` is absent", () => {

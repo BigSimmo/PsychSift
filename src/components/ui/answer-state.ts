@@ -30,7 +30,7 @@ export type AnswerStateSource = {
   document_id?: string | null;
   title?: string | null;
   page_number?: number | null;
-  source_metadata?: Pick<ClinicalSourceMetadata, "document_status" | "review_date"> | null;
+  source_metadata?: Partial<Pick<ClinicalSourceMetadata, "document_status" | "review_date">> | null;
 };
 
 /**

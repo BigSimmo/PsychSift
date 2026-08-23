@@ -8,14 +8,11 @@ import {
 } from "@/components/clinical-dashboard/answer-copy-payload";
 import { primaryAnswerDisplayText } from "@/components/clinical-dashboard/answer-content";
 import { buildAnswerRenderModel } from "@/lib/answer-render-policy";
-import type { ClinicalSourceMetadata, RagAnswer, SearchResult } from "@/lib/types";
+import type { ClinicalSourceMetadataRecordInput, RagAnswer, SearchResult } from "@/lib/types";
 
-// ClinicalSourceMetadata's governance fields are required-and-nullable rather
-// than optional, so a fixture cannot quietly omit the provenance a real source
-// always carries. Annotated once here and varied by spread below: spreading
-// `overdueSource.source_metadata` instead would widen every field back to
-// optional, because `source_metadata` is optional on `SearchResult`.
-const overdueMetadata: ClinicalSourceMetadata = {
+// Retrieval rows are raw legacy input and may predate the governed fields;
+// normalization is the boundary that makes every output field required.
+const overdueMetadata: ClinicalSourceMetadataRecordInput = {
   source_title: "Superseded WA protocol",
   publisher: null,
   jurisdiction: null,

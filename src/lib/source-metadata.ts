@@ -53,6 +53,13 @@ const knownLicencePolicies = new Set<SourceLicencePolicy>([
 ]);
 const knownChangeStates = new Set(["unchanged", "changed", "withdrawn", "superseded", "unknown"]);
 const knownSourcePolicyVersions = new Set([australianSourcePolicyVersion]);
+const compatibleNationalJurisdictions = new Set(
+  ["Australia", "Australia/National", "Australia/Commonwealth", "Australian national", "Commonwealth of Australia"].map(
+    normalizeSourceAuthorityText,
+  ),
+);
+
+export type SourceMetadataDiagnosticReason = "unsupported_value" | "unsafe_or_invalid_format";
 
 function stringOrNull(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -61,15 +68,15 @@ function stringOrNull(value: unknown) {
 // This module renders in the browser (the source badges are client components and
 // ship in the standalone design-system bundle), so it must not pull in the
 // server-oriented structured logger: that module reads `process.env`, which is a
-// ReferenceError in a browser and unmounts the whole React tree. `field`/`value`
-// here are enum diagnostics, never secrets or patient text, so the logger's
-// redaction pass is not needed and a plain structured warn is equivalent.
+// ReferenceError in a browser and unmounts the whole React tree. `field`/`reason`
+// are fixed diagnostic vocabulary, never rejected values, secrets, or patient
+// text, so the logger's redaction pass is not needed.
 // Exported as an object so tests can spy on the seam the way they previously spied
 // on `logger.warn`; the default implementation stays quiet under NODE_ENV=test.
 export const sourceMetadataDiagnostics = {
-  warn(field: string, value: string) {
+  warn(field: string, reason: SourceMetadataDiagnosticReason) {
     if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "test") return;
-    console.warn(JSON.stringify({ level: "warn", message: `source-metadata: unrecognized ${field}`, field, value }));
+    console.warn(JSON.stringify({ level: "warn", message: `source-metadata: rejected ${field}`, field, reason }));
   },
 };
 
@@ -82,7 +89,7 @@ function enumOrDefault<T extends string | null>(value: unknown, allowed: Set<str
   // are the common case and would drown the signal. The returned value is unchanged,
   // so this is observability only: no ranking/retrieval behaviour changes.
   if (typeof value === "string" && value.trim()) {
-    sourceMetadataDiagnostics.warn(field, value);
+    sourceMetadataDiagnostics.warn(field, "unsupported_value");
   }
   return fallback;
 }
@@ -91,13 +98,14 @@ function validatedStringOrNull(value: unknown, field: string, isValid: (candidat
   const candidate = stringOrNull(value);
   if (!candidate) return null;
   if (isValid(candidate)) return candidate;
-  sourceMetadataDiagnostics.warn(field, candidate);
+  sourceMetadataDiagnostics.warn(field, "unsafe_or_invalid_format");
   return null;
 }
 
 function isHttpsUrl(value: string) {
   try {
-    return new URL(value).protocol === "https:";
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" && !parsed.username && !parsed.password;
   } catch {
     return false;
   }
@@ -111,7 +119,11 @@ function isIsoDate(value: string) {
 }
 
 function isIsoTimestamp(value: string) {
-  return /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(new Date(value).getTime());
+  const match =
+    /^(\d{4}-\d{2}-\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{3})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/.exec(
+      value,
+    );
+  return Boolean(match && isIsoDate(match[1]!) && !Number.isNaN(new Date(value).getTime()));
 }
 
 function isSha256(value: string) {
@@ -125,14 +137,19 @@ function hasExactCatalogueIdentity(value: Record<string, unknown>, sourceKind: s
   const jurisdiction = stringOrNull(value.jurisdiction);
   if (!key || !publisherCode || !jurisdiction) return false;
   const entry = australianSourceByKey(key);
-  const identity = entry ? authorityIdentityForCatalogueEntry(entry) : null;
+  if (!entry || publisherCode.toUpperCase() !== entry.publisherCode.toUpperCase()) return false;
+  const normalizedJurisdiction = normalizeSourceAuthorityText(jurisdiction);
+  const catalogueJurisdiction = normalizeSourceAuthorityText(entry.jurisdiction);
+  const jurisdictionMatches =
+    normalizedJurisdiction === catalogueJurisdiction ||
+    (catalogueJurisdiction === normalizeSourceAuthorityText("Australia/National") &&
+      compatibleNationalJurisdictions.has(normalizedJurisdiction));
+  if (!jurisdictionMatches) return false;
+  if (entry.contentMode === "link_only") return true;
+
+  const identity = authorityIdentityForCatalogueEntry(entry);
   return Boolean(
-    entry &&
-    identity &&
-    publisherCode.toUpperCase() === entry.publisherCode.toUpperCase() &&
-    identity.jurisdictions.some(
-      (candidate) => normalizeSourceAuthorityText(candidate) === normalizeSourceAuthorityText(jurisdiction),
-    ),
+    identity?.jurisdictions.some((candidate) => normalizeSourceAuthorityText(candidate) === normalizedJurisdiction),
   );
 }
 
@@ -294,8 +311,8 @@ export function sourceProvenanceSummary(metadata?: ClinicalSourceMetadata | null
     .join(" · ");
 }
 
-export function clipboardProvenanceLine(metadata?: ClinicalSourceMetadata | null) {
-  const source = metadata ?? normalizeSourceMetadata(null);
+export function clipboardProvenanceLine(metadata?: ClinicalSourceMetadataInput) {
+  const source = normalizeSourceMetadata(metadata);
   // Copied provenance stays fully explicit (including "Unknown" values): the
   // clipboard line is an audit artifact, unlike the visible summary above
   // which drops unknown filler segments for readability.

@@ -51,23 +51,31 @@ describe("source authority metadata tooling", () => {
       }),
     ]);
 
-    expect(report).toMatchObject({
-      proposed_policy_metadata_count: 1,
+    expect(report).toEqual({
+      policy_review_candidate_count: 1,
       excluded_registry_record_count: 1,
-      proposed_policy_metadata: [
-        {
-          id: "wacp-document",
-          source_catalogue_key: "wa-chief-psychiatrist",
-          source_policy_version: "australian-source-policy-v1",
-          corpus_scope: "australian_public",
-          content_mode: "indexed_content",
-          licence_policy: "review_required",
-        },
-      ],
+      review_reason_counts: {
+        exact_catalogue_identity: 1,
+        no_exact_catalogue_identity: 0,
+        registry_record_excluded: 1,
+      },
+      lifecycle_counts: { active: 1, historical: 0, retired: 0 },
+      content_mode_counts: { indexed_content: 1, link_only: 0 },
+      licence_review_counts: {
+        review_required: 1,
+        public_index_permitted: 0,
+        metadata_link_only: 0,
+        index_forbidden: 0,
+      },
     });
-    expect(Object.keys((report?.proposed_policy_metadata as Record<string, unknown>[])[0] ?? {})).not.toContain(
-      "metadata_patch",
-    );
+    const serialized = JSON.stringify(report);
+    expect(serialized).not.toContain("wacp-document");
+    expect(serialized).not.toContain("source_catalogue_key");
+    expect(serialized).not.toContain("source_policy_version");
+    expect(serialized).not.toContain("corpus_scope");
+    expect(serialized).not.toContain('"content_mode"');
+    expect(serialized).not.toContain("licence_policy");
+    expect(serialized).not.toContain("metadata_patch");
     expect(localityMetadataKeys).toEqual(["publisher_code", "publisher", "jurisdiction"]);
   });
 

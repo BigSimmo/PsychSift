@@ -1,3 +1,4 @@
+import { normalizeClinicalSourceMetadata } from "@/lib/source-metadata";
 import type { ClinicalSourceMetadata } from "@/lib/types";
 
 type TherapySourceInput = {
@@ -8,7 +9,7 @@ type TherapySourceInput = {
 
 /** Adapt imported Therapy provenance without inventing currency, quality or approval. */
 export function therapySourceMetadata(source: TherapySourceInput, recordReviewStatus: string): ClinicalSourceMetadata {
-  return {
+  return normalizeClinicalSourceMetadata({
     source_kind: "document",
     registry_record_kind: null,
     registry_record_subkind: null,
@@ -27,5 +28,5 @@ export function therapySourceMetadata(source: TherapySourceInput, recordReviewSt
     document_status: "unknown",
     clinical_validation_status: recordReviewStatus === "reviewed" ? "locally_reviewed" : "unverified",
     extraction_quality: "unknown",
-  };
+  });
 }
