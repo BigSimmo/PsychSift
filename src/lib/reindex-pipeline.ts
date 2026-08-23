@@ -1,3 +1,5 @@
+import type { ActivationReceipt, DocumentGenerationIdentity, RollbackReceipt } from "@/lib/recovery-readiness-evidence";
+
 export type ReindexQueueSnapshot = {
   openJobs: number;
   queuedDocuments: number;
@@ -14,6 +16,20 @@ export type AbandonedReindexGenerationCounts = {
   document_memory_cards?: number;
   document_sections?: number;
 };
+
+export type DocumentGenerationActivationReceipt = ActivationReceipt &
+  Readonly<{
+    operation: "document-generation";
+    resource: DocumentGenerationIdentity;
+    previousResource: DocumentGenerationIdentity;
+  }>;
+
+export type DocumentGenerationRollbackReceipt = RollbackReceipt &
+  Readonly<{
+    operation: "document-generation";
+    failedResource: DocumentGenerationIdentity;
+    restoredResource: DocumentGenerationIdentity;
+  }>;
 
 export function isReindexQueueClear(snapshot: ReindexQueueSnapshot) {
   return (
@@ -82,4 +98,53 @@ export function abandonedReindexGenerationTotal(counts: AbandonedReindexGenerati
 
 export function hasAbandonedReindexGenerations(counts: AbandonedReindexGenerationCounts) {
   return abandonedReindexGenerationTotal(counts) > 0;
+}
+
+/**
+ * Pure compatibility assertion for the future retained-generation lifecycle.
+ * It does not call or alter the legacy destructive commit RPC.
+ */
+export function assertDocumentGenerationReceiptPair(
+  activation: ActivationReceipt,
+  rollback: RollbackReceipt | unknown,
+): Readonly<{
+  activation: DocumentGenerationActivationReceipt;
+  rollback: DocumentGenerationRollbackReceipt;
+}> {
+  if (
+    activation.operation !== "document-generation" ||
+    activation.resource.kind !== "document-generation" ||
+    activation.previousResource.kind !== "document-generation"
+  ) {
+    throw new Error("Document-generation activation receipt identity is required.");
+  }
+  if (
+    !rollback ||
+    typeof rollback !== "object" ||
+    !("operation" in rollback) ||
+    rollback.operation !== "document-generation" ||
+    !("failedResource" in rollback) ||
+    !("restoredResource" in rollback) ||
+    !("activationReceiptId" in rollback)
+  ) {
+    throw new Error("Document-generation rollback receipt identity is required.");
+  }
+  const typedRollback = rollback as DocumentGenerationRollbackReceipt;
+  if (
+    typedRollback.failedResource.kind !== "document-generation" ||
+    typedRollback.restoredResource.kind !== "document-generation" ||
+    typedRollback.activationReceiptId !== activation.receiptId ||
+    typedRollback.failedResource.documentId !== activation.resource.documentId ||
+    typedRollback.failedResource.generationId !== activation.resource.generationId ||
+    typedRollback.failedResource.generationDigest !== activation.resource.generationDigest ||
+    typedRollback.restoredResource.documentId !== activation.previousResource.documentId ||
+    typedRollback.restoredResource.generationId !== activation.previousResource.generationId ||
+    typedRollback.restoredResource.generationDigest !== activation.previousResource.generationDigest
+  ) {
+    throw new Error("Document rollback must restore the exact retained previous generation.");
+  }
+  return Object.freeze({
+    activation: activation as DocumentGenerationActivationReceipt,
+    rollback: typedRollback,
+  });
 }
