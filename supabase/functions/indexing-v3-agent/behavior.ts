@@ -79,6 +79,35 @@ export function protectedPublicSourceChunkContents(rows: ReadonlyArray<{ content
   return containsForbiddenPublicSourceChunkContent(rows);
 }
 
+export function protectedPublicSourceChunkPage(
+  rows: ReadonlyArray<{ content: string }>,
+  trailingContent: string,
+  carryLength = 256,
+) {
+  const scanRows = trailingContent ? [{ content: trailingContent }, ...rows] : rows;
+  const concatenatedStream = `${trailingContent}${rows.map((row) => row.content).join("")}`;
+  return {
+    containsProtectedSourceContent: containsForbiddenPublicSourceChunkContent(scanRows),
+    trailingContent: concatenatedStream.slice(-carryLength),
+  };
+}
+
+export async function scanProtectedPublicSourceChunkPages(
+  loadPage: (offset: number, limit: number) => Promise<ReadonlyArray<{ content: string }>>,
+  batchSize = 500,
+) {
+  let offset = 0;
+  let trailingContent = "";
+  while (true) {
+    const rows = await loadPage(offset, batchSize);
+    const page = protectedPublicSourceChunkPage(rows, trailingContent);
+    if (page.containsProtectedSourceContent) return true;
+    if (rows.length < batchSize) return false;
+    trailingContent = page.trailingContent;
+    offset += rows.length;
+  }
+}
+
 export function agentFailureDecision(args: {
   attemptCount: number;
   maxAttempts: number;

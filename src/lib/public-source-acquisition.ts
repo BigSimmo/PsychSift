@@ -17,7 +17,10 @@ import {
 import { assertAllowedFile, assertFileContentSignature } from "@/lib/http";
 import { MAX_UPLOAD_MB_CEILING } from "@/lib/upload-limits";
 import { assertUploadStructure } from "@/lib/upload-structure";
-import { forbiddenPublicSourceIdentity } from "../../supabase/functions/_shared/public-source-policy";
+import {
+  forbiddenPublicSourceIdentity,
+  replaceHtmlCharacterReferencesWithBoundaries,
+} from "../../supabase/functions/_shared/public-source-policy";
 
 const sha256Pattern = /^sha256:[a-f0-9]{64}$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -649,7 +652,7 @@ async function validateFetchedContent(
 }
 
 function decodeHtmlText(input: string) {
-  return input
+  return replaceHtmlCharacterReferencesWithBoundaries(input)
     .replace(/<[^>]*>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")

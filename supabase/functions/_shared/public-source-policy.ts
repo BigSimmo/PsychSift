@@ -6,18 +6,133 @@ const digestPattern = /^sha256:[a-f0-9]{64}$/;
 const acceptedSourcePolicyDigest = "sha256:02dcc095258338d0c355af79dfa1889c024f25f385b553e5b6c802207546855d";
 const protectedCatalogueKeys = new Set(["healthdirect", "etg-complete", "australian-medicines-handbook"]);
 
+// HTML's legacy named references are the names browsers may decode without a
+// trailing semicolon in text. Match a valid prefix and preserve following text
+// so `&nbspdirect` becomes a boundary plus `direct`, never the spelling `nbsp`.
+const legacySemicolonlessHtmlReferences = [
+  "aelig",
+  "amp",
+  "aacute",
+  "acirc",
+  "acute",
+  "agrave",
+  "aring",
+  "atilde",
+  "auml",
+  "brvbar",
+  "ccedil",
+  "cedil",
+  "cent",
+  "copy",
+  "curren",
+  "deg",
+  "divide",
+  "eacute",
+  "ecirc",
+  "egrave",
+  "eth",
+  "euml",
+  "frac12",
+  "frac14",
+  "frac34",
+  "gt",
+  "iacute",
+  "icirc",
+  "iexcl",
+  "igrave",
+  "iquest",
+  "iuml",
+  "laquo",
+  "lt",
+  "macr",
+  "micro",
+  "middot",
+  "nbsp",
+  "not",
+  "ntilde",
+  "oacute",
+  "ocirc",
+  "ograve",
+  "ordf",
+  "ordm",
+  "oslash",
+  "otilde",
+  "ouml",
+  "para",
+  "plusmn",
+  "pound",
+  "quot",
+  "raquo",
+  "reg",
+  "sect",
+  "shy",
+  "sup1",
+  "sup2",
+  "sup3",
+  "szlig",
+  "thorn",
+  "times",
+  "uacute",
+  "ucirc",
+  "ugrave",
+  "uml",
+  "uuml",
+  "yacute",
+  "yen",
+  "yuml",
+].sort((left, right) => right.length - left.length);
+
+export function replaceHtmlCharacterReferencesWithBoundaries(input: string): string {
+  let output = "";
+  let index = 0;
+  while (index < input.length) {
+    if (input[index] !== "&") {
+      output += input[index];
+      index += 1;
+      continue;
+    }
+
+    if (input[index + 1] === "#") {
+      let cursor = index + 2;
+      const hexadecimal = input[cursor]?.toLowerCase() === "x";
+      if (hexadecimal) cursor += 1;
+      const digitsStart = cursor;
+      const digitPattern = hexadecimal ? /[0-9a-f]/i : /[0-9]/;
+      while (cursor < input.length && digitPattern.test(input[cursor] ?? "")) cursor += 1;
+      if (cursor > digitsStart) {
+        if (input[cursor] === ";") cursor += 1;
+        output += " ";
+        index = cursor;
+        continue;
+      }
+    } else {
+      let cursor = index + 1;
+      while (cursor < input.length && /[a-z0-9]/i.test(input[cursor] ?? "")) cursor += 1;
+      const candidate = input.slice(index + 1, cursor);
+      if (candidate && input[cursor] === ";") {
+        output += " ";
+        index = cursor + 1;
+        continue;
+      }
+      const candidateLower = candidate.toLowerCase();
+      const legacyName = legacySemicolonlessHtmlReferences.find((name) => candidateLower.startsWith(name));
+      if (legacyName) {
+        output += " ";
+        index += legacyName.length + 1;
+        continue;
+      }
+    }
+
+    output += "&";
+    index += 1;
+  }
+  return output;
+}
+
 function normalizedProtectedIdentity(value: string) {
-  const decoded = value
+  const decoded = replaceHtmlCharacterReferencesWithBoundaries(value)
     .normalize("NFKC")
     .replace(/<[^>]*>/g, " ")
-    .replace(/&#x([0-9a-f]+);/gi, (_entity, value: string) => String.fromCodePoint(Number.parseInt(value, 16)))
-    .replace(/&#([0-9]+);/g, (_entity, value: string) => String.fromCodePoint(Number.parseInt(value, 10)))
-    .replace(/&(?:nbsp|#160);/gi, " ")
-    .replace(/&amp;|&#38;|&#x26;/gi, "&")
-    .replace(/&(?:lt|gt|quot|apos);|&#(?:34|39|60|62);|&#x(?:22|27|3c|3e);/gi, " ")
-    // Decode unknown named references conservatively as a boundary. Keeping the
-    // entity name would let e.g. Health&Tab;direct evade the compact matcher.
-    .replace(/&[a-z][a-z0-9]+;/gi, " ")
     .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
     .toLocaleLowerCase("en-AU")
     .replace(/[^a-z0-9]+/g, " ")

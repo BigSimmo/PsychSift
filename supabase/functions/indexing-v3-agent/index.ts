@@ -25,7 +25,7 @@ import {
   missingArtifactPlan,
   parseJobStatusRpcResult,
   publicSourceWorkerPolicyViolation,
-  protectedPublicSourceChunkContents,
+  scanProtectedPublicSourceChunkPages,
   shouldRunVisualArtifacts,
   type CompletionGate,
   type CompletionGateRow,
@@ -1797,27 +1797,16 @@ async function assertPublicSourceWorkerPolicy(job: ClaimedJob): Promise<void> {
   if (initialViolation) throw new Error(initialViolation);
   if (job.documents.metadata?.corpus_scope !== "australian_public") return;
 
-  const batchSize = 500;
-  let offset = 0;
-  let trailingContent = "";
-  let containsProtectedSourceContent = false;
-  while (true) {
-    const rows = await sql<Array<{ content: string }>>`
+  const containsProtectedSourceContent = await scanProtectedPublicSourceChunkPages(
+    async (offset, limit) => sql<Array<{ content: string }>>`
       select chunk.content
       from public.document_chunks chunk
       where chunk.document_id = ${job.document_id}::uuid
       order by chunk.chunk_index, chunk.id
-      limit ${batchSize}
+      limit ${limit}
       offset ${offset}
-    `;
-    containsProtectedSourceContent = protectedPublicSourceChunkContents([
-      ...(trailingContent ? [{ content: trailingContent }] : []),
-      ...rows,
-    ]);
-    if (containsProtectedSourceContent || rows.length < batchSize) break;
-    trailingContent = rows.at(-1)?.content.slice(-256) ?? "";
-    offset += rows.length;
-  }
+    `,
+  );
   const violation = publicSourceWorkerPolicyViolation(job.documents.metadata, containsProtectedSourceContent);
   if (violation) throw new Error(violation);
 }

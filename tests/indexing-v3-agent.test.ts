@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { sourceSegment } from "./helpers/source-contract";
@@ -8,8 +9,10 @@ import {
   metadataNumber,
   missingArtifactPlan,
   parseJobStatusRpcResult,
+  protectedPublicSourceChunkPage,
   publicSourceWorkerPolicyViolation,
   protectedPublicSourceChunkContents,
+  scanProtectedPublicSourceChunkPages,
   shouldRunVisualArtifacts,
   type CompletionGateRow,
 } from "../supabase/functions/indexing-v3-agent/behavior";
@@ -74,11 +77,16 @@ describe("indexing-v3-agent behavior", () => {
       "Health&amp;direct",
       "Health&Tab;direct",
       "Health&NewLine;direct",
+      "Health&#9direct",
+      "Health&#9 direct",
+      "Health&nbsp direct",
       "Australian Medicines Hand-book",
       "Australian Medicines Hand book",
       "Australian Medicines&Tab;Handbook",
+      "Australian Medicines&#9Handbook",
       "Therapeutic\u200bGuidelines",
       "Therapeutic&NewLine;Guidelines",
+      "Therapeutic&#10Guidelines",
     ]) {
       expect(forbiddenPublicSourceIdentity(value)).not.toBeNull();
     }
@@ -87,8 +95,12 @@ describe("indexing-v3-agent behavior", () => {
   it("scans actual worker chunk rows through the shared protected-identity normalizer", async () => {
     for (const content of [
       "Health&Tab;direct guidance",
+      "Health&#9direct guidance",
+      "Health&nbsp direct guidance",
       "Australian Medicines&Tab;Handbook excerpt",
+      "Australian Medicines&#9Handbook excerpt",
       "Therapeutic&NewLine;Guidelines advice",
+      "Therapeutic&#10Guidelines advice",
     ]) {
       expect(protectedPublicSourceChunkContents([{ content }])).toBe(true);
     }
@@ -107,9 +119,47 @@ describe("indexing-v3-agent behavior", () => {
       },
     );
     expect(scan).toContain("select chunk.content");
-    expect(scan).toContain("protectedPublicSourceChunkContents(");
-    expect(scan).toContain("limit ${batchSize}");
+    expect(scan).toContain("scanProtectedPublicSourceChunkPages(");
+    expect(scan).toContain("limit ${limit}");
     expect(scan).not.toContain("chunk.content ~*");
+  });
+
+  it("retains the concatenated 256-character stream across the real 500-row worker page boundary", async () => {
+    const firstPage = Array.from({ length: 500 }, (_, index) => ({
+      content: index === 498 ? "Australian" : index === 499 ? "Medicines" : "x",
+    }));
+    const first = protectedPublicSourceChunkPage(firstPage, "");
+    expect(first.containsProtectedSourceContent).toBe(false);
+    expect(first.trailingContent).toContain("AustralianMedicines");
+
+    const second = protectedPublicSourceChunkPage([{ content: "Handbook" }], first.trailingContent);
+    expect(second.containsProtectedSourceContent).toBe(true);
+
+    const pageReads: Array<[number, number]> = [];
+    await expect(
+      scanProtectedPublicSourceChunkPages(async (offset, limit) => {
+        pageReads.push([offset, limit]);
+        return offset === 0 ? firstPage : [{ content: "Handbook" }];
+      }),
+    ).resolves.toBe(true);
+    expect(pageReads).toEqual([
+      [0, 500],
+      [500, 500],
+    ]);
+
+    const edgeSource = readFileSync(
+      new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
+      "utf8",
+    );
+    const scan = sourceSegment(
+      edgeSource,
+      "async function assertPublicSourceWorkerPolicy",
+      "async function processJob",
+      {
+        label: "indexing-v3-agent paged protected-content scan",
+      },
+    );
+    expect(scan).toContain("scanProtectedPublicSourceChunkPages(");
   });
 
   it("schedules agent retries until the attempt budget is exhausted", () => {
