@@ -1,13 +1,11 @@
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { australianSourceByKey } from "@/lib/australian-source-catalogue";
 import {
+  buildPublicSourceStagingCandidate,
   checkPublicSourceChange,
   observePublicSourceChangeSignal,
   type PublicSourceAcquisitionPlan,
-  type PublicSourceStagingCandidate,
 } from "@/lib/public-source-acquisition";
 import {
   createLivePublicSourceApplyDependencies,
@@ -16,6 +14,7 @@ import {
 import {
   parsePublicSourceAcquisitionManifest,
   publicSourceAcquisitionManifestDigest,
+  readPublicSourceJsonFile,
 } from "./plan-public-source-acquisition";
 
 type CurrentSourceVersion = Readonly<{
@@ -24,16 +23,12 @@ type CurrentSourceVersion = Readonly<{
   exactUrl: string;
   exactVersion: string;
   contentHash: string;
-  lifecycle: "shadow" | "approved" | "active" | "quarantined";
+  lifecycle: "active";
 }>;
 type ChangeDependencies = Readonly<{
   acquisition: PublicSourceApplyDependencies;
   recordCheck: (event: Readonly<Record<string, string>>) => Promise<void>;
-  stageChangedVersion: (
-    candidate: PublicSourceStagingCandidate,
-  ) => Promise<{ versionId: string; ownerId: string | null }>;
-  tombstoneCurrentVersion: (event: Readonly<Record<string, string>>) => Promise<void>;
-  queueHumanReview: (event: Readonly<Record<string, string>>) => Promise<void>;
+  tombstoneAndQueueReview: (event: Readonly<Record<string, string>>) => Promise<unknown>;
 }>;
 
 function option(argv: readonly string[], name: string) {
@@ -55,7 +50,7 @@ function parseCurrentVersions(input: unknown): CurrentSourceVersion[] {
       !value.exactUrl ||
       !value.exactVersion ||
       !/^sha256:[a-f0-9]{64}$/.test(value.contentHash ?? "") ||
-      !["shadow", "approved", "active", "quarantined"].includes(value.lifecycle ?? "")
+      value.lifecycle !== "active"
     ) {
       throw new Error("Current public source version evidence is invalid.");
     }
@@ -85,24 +80,18 @@ async function createLiveChangeDependencies(
   return {
     acquisition,
     recordCheck: (event) => audit("public_source_change_checked", event),
-    stageChangedVersion: async (candidate) => {
-      const staged = await acquisition.stageOwnedDocument(candidate);
-      if (!staged.versionId) throw new Error("Changed public source staging did not return a version ID.");
-      return { versionId: staged.versionId, ownerId: staged.ownerId };
-    },
-    tombstoneCurrentVersion: async (event) => {
-      const { error } = await supabase.rpc("transition_public_source_version", {
+    tombstoneAndQueueReview: async (event) => {
+      const { data, error } = await supabase.rpc("tombstone_public_source_version_for_review", {
         p_version_id: current.versionId,
         p_expected_catalogue_key: event.catalogueKey,
         p_expected_exact_version_url: event.exactUrl,
+        p_expected_exact_version: event.exactVersion,
         p_expected_content_hash: event.contentHash,
-        p_expected_lifecycle: current.lifecycle,
-        p_new_lifecycle: "tombstoned",
-        p_activation_event_id: null,
+        p_reason_code: event.reasonCode,
       });
       if (error) throw new Error("Public source tombstone transition failed.");
+      return data;
     },
-    queueHumanReview: (event) => audit("public_source_withdrawal_review_required", event),
   };
 }
 
@@ -123,10 +112,10 @@ export async function runCheckPublicSourceChangesCli(
     stdout(JSON.stringify({ mode: "dry-run", reason: "manifest and current-version paths are required", plans: [] }));
     return { applied: false, count: 0 } as const;
   }
-  const raw = readFileSync(resolve(manifestPath), "utf8");
-  const manifest = parsePublicSourceAcquisitionManifest(JSON.parse(raw) as unknown);
-  const rawCurrent = readFileSync(resolve(currentPath), "utf8");
-  const current = parseCurrentVersions(JSON.parse(rawCurrent) as unknown);
+  const { raw, value: manifestValue } = readPublicSourceJsonFile(manifestPath, "manifest");
+  const manifest = parsePublicSourceAcquisitionManifest(manifestValue);
+  const { raw: rawCurrent, value: currentValue } = readPublicSourceJsonFile(currentPath, "current");
+  const current = parseCurrentVersions(currentValue);
   const currentByKey = new Map(current.map((version) => [version.catalogueKey, version]));
   if (currentByKey.size !== current.length) throw new Error("Current public source keys must be unique.");
   for (const plan of manifest.plans) {
@@ -168,8 +157,6 @@ export async function runCheckPublicSourceChangesCli(
     const dependencies = await (options.dependenciesForPlan ?? createLiveChangeDependencies)(plan, currentVersion);
     await dependencies.acquisition.authorizePlan(plan);
     const observed = await observePublicSourceChangeSignal(plan, dependencies.acquisition);
-    const definition = australianSourceByKey(plan.catalogueKey);
-    if (!definition) throw new Error("Change-check source is no longer in the reviewed catalogue.");
     results.push(
       await checkPublicSourceChange({
         plan,
@@ -178,40 +165,32 @@ export async function runCheckPublicSourceChangesCli(
         recordCheck: dependencies.recordCheck,
         stageChangedVersion: async () => {
           if (observed.kind !== "content") throw new Error("Withdrawal signals cannot stage replacement content.");
-          return dependencies.stageChangedVersion(
-            Object.freeze({
-              ownerId: plan.stagingOwnerId,
-              exactUrl: plan.exactUrl,
-              exactVersion: plan.exactVersion,
-              contentType: observed.contentType,
-              bytes: observed.bytes,
-              contentHash: observed.stagedContentHash,
-              sourceBytes: observed.sourceBytes,
-              sourceContentType: observed.sourceContentType,
-              sourceContentHash: observed.contentHash,
-              lifecycle: "shadow" as const,
-              metadata: Object.freeze({
-                corpus_scope: definition.corpusScope,
-                source_catalogue_key: plan.catalogueKey,
-                source_policy_version: plan.sourcePolicyVersion,
-                source_policy_digest: plan.sourcePolicyDigest,
-                content_mode: definition.contentMode,
-                licence_policy: plan.exactDocumentLicence,
-                licence_evidence_digest: plan.licenceEvidenceDigest,
-                source_canonical_url: definition.canonicalUrl,
-                source_exact_url: plan.exactUrl,
-                source_exact_version: plan.exactVersion,
-                content_hash: observed.stagedContentHash,
-                source_content_hash: observed.contentHash,
-                source_content_type: observed.sourceContentType,
-                source_policy_checked: true,
-                public_source_lifecycle: "shadow",
-              }),
-            }),
-          );
+          const candidate = buildPublicSourceStagingCandidate(plan, {
+            bytes: observed.bytes,
+            contentType: observed.contentType,
+            contentHash: observed.stagedContentHash,
+            sourceBytes: observed.sourceBytes,
+            sourceContentType: observed.sourceContentType,
+            sourceContentHash: observed.contentHash,
+          });
+          const staged = await dependencies.acquisition.stageOwnedDocument(candidate);
+          if (!staged.versionId) throw new Error("Changed public source staging did not return a version ID.");
+          if (!staged.ownerId || staged.ownerId !== plan.stagingOwnerId) {
+            throw new Error("Changed public source staging did not preserve the exact owner.");
+          }
+          await dependencies.acquisition.enqueue({
+            documentId: staged.documentId,
+            ownerId: staged.ownerId,
+            catalogueKey: plan.catalogueKey,
+            contentMode: "indexed_content",
+            exactDocumentLicence: "public_index_permitted",
+            sourcePolicyVersion: plan.sourcePolicyVersion,
+            sourcePolicyDigest: plan.sourcePolicyDigest,
+            metadata: candidate.metadata,
+          });
+          return { versionId: staged.versionId, ownerId: staged.ownerId };
         },
-        tombstoneCurrentVersion: dependencies.tombstoneCurrentVersion,
-        queueHumanReview: dependencies.queueHumanReview,
+        tombstoneAndQueueReview: dependencies.tombstoneAndQueueReview,
       }),
     );
   }

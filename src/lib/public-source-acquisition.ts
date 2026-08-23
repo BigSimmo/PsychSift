@@ -37,6 +37,20 @@ export type AcquisitionFetch = (
 ) => Promise<Readonly<{ response: Response; remoteAddress: string }>>;
 export type PublicSourceScanReasonCode =
   "malware_detected" | "protected_source_identity" | "invalid_document" | "blocked";
+export const publicSourceContentIdentityVerdictVersion = "public-source-content-identity-v1" as const;
+export type PublicSourceContentIdentityVerdict = Readonly<{
+  accepted: boolean;
+  contentIdentity: "clear" | "protected" | "unknown";
+  inspectedContentHash: string;
+  verdictVersion: typeof publicSourceContentIdentityVerdictVersion;
+  reasonCode?: PublicSourceScanReasonCode;
+}>;
+export type PublicSourceContentIdentityScan = (input: {
+  bytes: Uint8Array;
+  contentType: string;
+  contentHash: string;
+  catalogueKey: string;
+}) => Promise<PublicSourceContentIdentityVerdict>;
 
 export type PublicSourceAcquisitionPlan = Readonly<{
   schemaVersion: "public-source-acquisition-v1";
@@ -69,6 +83,30 @@ export type PublicSourceStagingCandidate = Readonly<{
   lifecycle: "shadow";
   metadata: Readonly<Record<string, string | boolean>>;
 }>;
+
+export function localPublicSourceContentIdentityVerdict(input: {
+  bytes: Uint8Array;
+  contentType: string;
+  contentHash: string;
+}): PublicSourceContentIdentityVerdict {
+  if (input.contentType !== "text/plain") {
+    return Object.freeze({
+      accepted: false,
+      contentIdentity: "unknown",
+      inspectedContentHash: input.contentHash,
+      verdictVersion: publicSourceContentIdentityVerdictVersion,
+      reasonCode: "invalid_document",
+    });
+  }
+  const protectedIdentity = forbiddenPublicSourceIdentity(new TextDecoder().decode(input.bytes));
+  return Object.freeze({
+    accepted: !protectedIdentity,
+    contentIdentity: protectedIdentity ? "protected" : "clear",
+    inspectedContentHash: input.contentHash,
+    verdictVersion: publicSourceContentIdentityVerdictVersion,
+    ...(protectedIdentity ? { reasonCode: "protected_source_identity" as const } : {}),
+  });
+}
 
 function isNonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -358,11 +396,7 @@ export async function acquirePublicSourceVersion(
   deps: {
     fetch: AcquisitionFetch;
     resolve: ResolveHost;
-    scan: (input: {
-      bytes: Uint8Array;
-      contentType: string;
-      catalogueKey: string;
-    }) => Promise<{ accepted: boolean; reasonCode?: PublicSourceScanReasonCode }>;
+    scan: PublicSourceContentIdentityScan;
     findDuplicateVersion: (input: {
       catalogueKey: string;
       exactUrl: string;
@@ -385,7 +419,7 @@ export async function acquirePublicSourceVersion(
     log?: (event: Readonly<Record<string, string | number | boolean>>) => void;
   },
 ) {
-  const definition = assertPublicSourceAcquisitionPlan(plan);
+  assertPublicSourceAcquisitionPlan(plan);
   deps.log?.({ event: "public_source_fetch_started", catalogueKey: plan.catalogueKey });
   const { bytes, contentType, contentHash, sourceBytes, sourceContentType, sourceContentHash } =
     await observePublicSourceVersion(plan, deps);
@@ -403,35 +437,13 @@ export async function acquirePublicSourceVersion(
   if (duplicate) throw new Error("Duplicate public source version already exists.");
 
   assertPublicSourceAcquisitionPlan(plan);
-  const candidate: PublicSourceStagingCandidate = Object.freeze({
-    ownerId: plan.stagingOwnerId,
-    exactUrl: plan.exactUrl,
-    exactVersion: plan.exactVersion,
-    contentType,
+  const candidate = buildPublicSourceStagingCandidate(plan, {
     bytes,
+    contentType,
     contentHash,
     sourceBytes,
     sourceContentType,
     sourceContentHash,
-    lifecycle: "shadow",
-    metadata: Object.freeze({
-      corpus_scope: definition.corpusScope,
-      source_catalogue_key: plan.catalogueKey,
-      source_policy_version: plan.sourcePolicyVersion,
-      source_policy_digest: plan.sourcePolicyDigest,
-      content_mode: definition.contentMode,
-      licence_policy: plan.exactDocumentLicence,
-      licence_evidence_digest: plan.licenceEvidenceDigest,
-      source_canonical_url: definition.canonicalUrl,
-      source_exact_url: plan.exactUrl,
-      source_exact_version: plan.exactVersion,
-      content_hash: contentHash,
-      source_content_hash: sourceContentHash,
-      source_content_type: sourceContentType,
-      source_policy_checked: true,
-      public_source_lifecycle: "shadow",
-      ...(plan.sourceActivationEventId ? { source_activation_event_id: plan.sourceActivationEventId } : {}),
-    }),
   });
   let staged: { documentId: string; ownerId: string | null };
   try {
@@ -468,16 +480,59 @@ export async function acquirePublicSourceVersion(
   });
 }
 
+export function buildPublicSourceStagingCandidate(
+  plan: PublicSourceAcquisitionPlan,
+  content: Readonly<{
+    bytes: Uint8Array;
+    contentType: string;
+    contentHash: string;
+    sourceBytes: Uint8Array;
+    sourceContentType: string;
+    sourceContentHash: string;
+  }>,
+): PublicSourceStagingCandidate {
+  const definition = assertPublicSourceAcquisitionPlan(plan);
+  return Object.freeze({
+    ownerId: plan.stagingOwnerId,
+    exactUrl: plan.exactUrl,
+    exactVersion: plan.exactVersion,
+    contentType: content.contentType,
+    bytes: content.bytes,
+    contentHash: content.contentHash,
+    sourceBytes: content.sourceBytes,
+    sourceContentType: content.sourceContentType,
+    sourceContentHash: content.sourceContentHash,
+    lifecycle: "shadow",
+    metadata: Object.freeze({
+      corpus_scope: definition.corpusScope,
+      source_catalogue_key: plan.catalogueKey,
+      source_policy_version: plan.sourcePolicyVersion,
+      source_policy_digest: plan.sourcePolicyDigest,
+      content_mode: definition.contentMode,
+      licence_policy: plan.exactDocumentLicence,
+      licence_evidence_digest: plan.licenceEvidenceDigest,
+      source_canonical_url: definition.canonicalUrl,
+      source_exact_url: plan.exactUrl,
+      source_exact_version: plan.exactVersion,
+      content_hash: content.contentHash,
+      source_content_hash: content.sourceContentHash,
+      source_content_type: content.sourceContentType,
+      content_identity_verdict: "clear",
+      content_identity_hash: content.contentHash,
+      content_identity_verdict_version: publicSourceContentIdentityVerdictVersion,
+      source_policy_checked: true,
+      public_source_lifecycle: "shadow",
+      ...(plan.sourceActivationEventId ? { source_activation_event_id: plan.sourceActivationEventId } : {}),
+    }),
+  });
+}
+
 export async function observePublicSourceVersion(
   plan: PublicSourceAcquisitionPlan,
   deps: {
     fetch: AcquisitionFetch;
     resolve: ResolveHost;
-    scan: (input: {
-      bytes: Uint8Array;
-      contentType: string;
-      catalogueKey: string;
-    }) => Promise<{ accepted: boolean; reasonCode?: PublicSourceScanReasonCode }>;
+    scan: PublicSourceContentIdentityScan;
   },
 ) {
   assertPublicSourceAcquisitionPlan(plan);
@@ -490,11 +545,7 @@ export async function observePublicSourceChangeSignal(
   deps: {
     fetch: AcquisitionFetch;
     resolve: ResolveHost;
-    scan: (input: {
-      bytes: Uint8Array;
-      contentType: string;
-      catalogueKey: string;
-    }) => Promise<{ accepted: boolean; reasonCode?: PublicSourceScanReasonCode }>;
+    scan: PublicSourceContentIdentityScan;
   },
 ) {
   assertPublicSourceAcquisitionPlan(plan);
@@ -502,7 +553,7 @@ export async function observePublicSourceChangeSignal(
   if (response.status === 404 || response.status === 410) {
     return Object.freeze({
       kind: "withdrawn" as const,
-      reason: `Publisher returned bounded withdrawal status ${response.status}.`,
+      reasonCode: response.status === 404 ? ("publisher_http_404" as const) : ("publisher_http_410" as const),
     });
   }
   const content = await validateFetchedContent(plan, response, deps.scan);
@@ -517,11 +568,7 @@ export async function observePublicSourceChangeSignal(
 async function validateFetchedContent(
   plan: PublicSourceAcquisitionPlan,
   response: Response,
-  scanContent: (input: {
-    bytes: Uint8Array;
-    contentType: string;
-    catalogueKey: string;
-  }) => Promise<{ accepted: boolean; reasonCode?: PublicSourceScanReasonCode }>,
+  scanContent: PublicSourceContentIdentityScan,
 ) {
   const upstreamContentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   if (!plan.allowedContentTypes.includes(upstreamContentType)) {
@@ -537,7 +584,10 @@ async function validateFetchedContent(
     }
     bytes = new TextEncoder().encode(trustedPage.mainText);
     contentType = "text/plain";
-  } else if (forbiddenPublicSourceIdentity(new TextDecoder().decode(upstreamBytes))) {
+  } else if (
+    upstreamContentType === "text/plain" &&
+    forbiddenPublicSourceIdentity(new TextDecoder().decode(upstreamBytes))
+  ) {
     throw new Error("Public source content was blocked by protected-source policy.");
   }
   const contentHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -547,13 +597,20 @@ async function validateFetchedContent(
   assertAllowedFile(uploadFile, plan.maxBytes / (1024 * 1024));
   assertFileContentSignature(contentType, bytes);
   await assertUploadStructure(contentType, bytes);
-  let scan: { accepted: boolean; reasonCode?: PublicSourceScanReasonCode };
+  let scan: PublicSourceContentIdentityVerdict;
   try {
-    scan = await scanContent({ bytes, contentType, catalogueKey: plan.catalogueKey });
+    scan = await scanContent({ bytes, contentType, contentHash, catalogueKey: plan.catalogueKey });
   } catch {
     throw new Error("Public source upload validation failed.");
   }
-  if (!scan.accepted) throw new Error("Public source upload validation blocked content.");
+  if (
+    !scan.accepted ||
+    scan.contentIdentity !== "clear" ||
+    scan.inspectedContentHash !== contentHash ||
+    scan.verdictVersion !== publicSourceContentIdentityVerdictVersion
+  ) {
+    throw new Error("Public source trusted content-identity validation blocked content.");
+  }
   return Object.freeze({
     bytes,
     contentType,
@@ -614,21 +671,24 @@ export async function checkPublicSourceChange(input: {
     exactUrl: string;
     exactVersion: string;
     contentHash: string;
+    lifecycle: "active";
   }>;
-  observed: Readonly<{ kind: "content"; contentHash: string }> | Readonly<{ kind: "withdrawn"; reason: string }>;
+  observed:
+    | Readonly<{ kind: "content"; contentHash: string }>
+    | Readonly<{ kind: "withdrawn"; reasonCode: "publisher_http_404" | "publisher_http_410" }>;
   recordCheck: (event: Readonly<Record<string, string>>) => Promise<void>;
   stageChangedVersion: (candidate: Readonly<Record<string, string | boolean | null>>) => Promise<{
     versionId: string;
     ownerId: string | null;
   }>;
-  tombstoneCurrentVersion: (event: Readonly<Record<string, string>>) => Promise<void>;
-  queueHumanReview: (event: Readonly<Record<string, string>>) => Promise<void>;
+  tombstoneAndQueueReview: (event: Readonly<Record<string, string>>) => Promise<unknown>;
 }) {
   assertPublicSourceAcquisitionPlan(input.plan);
   if (
     input.currentVersion.catalogueKey !== input.plan.catalogueKey ||
     input.currentVersion.exactUrl !== input.plan.exactUrl ||
     input.currentVersion.exactVersion !== input.plan.exactVersion ||
+    input.currentVersion.lifecycle !== "active" ||
     !sha256Pattern.test(input.currentVersion.contentHash)
   ) {
     throw new Error("Current public source version identity does not match the acquisition plan.");
@@ -640,10 +700,9 @@ export async function checkPublicSourceChange(input: {
       exactUrl: input.currentVersion.exactUrl,
       exactVersion: input.currentVersion.exactVersion,
       contentHash: input.currentVersion.contentHash,
-      reason: input.observed.reason.slice(0, 500),
+      reasonCode: input.observed.reasonCode,
     };
-    await input.tombstoneCurrentVersion(event);
-    await input.queueHumanReview(event);
+    await input.tombstoneAndQueueReview(event);
     return Object.freeze({ outcome: "tombstoned" as const });
   }
   if (input.observed.contentHash === input.currentVersion.contentHash) {

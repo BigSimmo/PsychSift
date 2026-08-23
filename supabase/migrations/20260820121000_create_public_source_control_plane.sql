@@ -55,6 +55,9 @@ CREATE TABLE public.public_source_versions (
 
 CREATE INDEX public_source_versions_source_lifecycle_idx
   ON public.public_source_versions (source_catalogue_key, lifecycle, retrieved_at DESC, id DESC);
+CREATE UNIQUE INDEX public_source_versions_one_active_per_source_idx
+  ON public.public_source_versions (source_catalogue_key)
+  WHERE lifecycle = 'active';
 CREATE INDEX public_source_versions_staging_document_idx
   ON public.public_source_versions (staging_document_id);
 
@@ -336,6 +339,10 @@ BEGIN
      OR v_document.metadata->>'source_exact_version' IS DISTINCT FROM p_version->>'exactVersion'
      OR v_document.metadata->>'content_hash' IS DISTINCT FROM p_version->>'stagedContentHash'
      OR v_document.metadata->>'source_content_hash' IS DISTINCT FROM p_version->>'contentHash'
+     OR v_document.metadata->>'content_identity_verdict' IS DISTINCT FROM 'clear'
+     OR v_document.metadata->>'content_identity_hash' IS DISTINCT FROM p_version->>'stagedContentHash'
+     OR v_document.metadata->>'content_identity_verdict_version'
+       IS DISTINCT FROM 'public-source-content-identity-v1'
      OR v_document.metadata->>'licence_evidence_digest' IS DISTINCT FROM p_version->>'licenceEvidenceDigest'
      OR v_document.metadata->>'source_activation_event_id' IS DISTINCT FROM v_activation_event_id::text
   THEN
@@ -405,6 +412,9 @@ DECLARE
   v_publication_reviewed_index_generation_id uuid;
   v_allowed boolean := false;
 BEGIN
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('public_source_lifecycle:' || p_expected_catalogue_key, 0)
+  );
   SELECT * INTO v_version
   FROM public.public_source_versions
   WHERE id = p_version_id
@@ -440,7 +450,7 @@ BEGIN
     WHEN 'discovered' THEN p_new_lifecycle IN ('shadow', 'quarantined', 'tombstoned')
     WHEN 'shadow' THEN p_new_lifecycle IN ('approved', 'quarantined', 'tombstoned')
     WHEN 'approved' THEN p_new_lifecycle IN ('active', 'quarantined', 'tombstoned')
-    WHEN 'active' THEN p_new_lifecycle IN ('quarantined', 'tombstoned')
+    WHEN 'active' THEN p_new_lifecycle IN ('quarantined')
     WHEN 'quarantined' THEN p_new_lifecycle = 'tombstoned'
     ELSE false
   END;
@@ -521,6 +531,104 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.tombstone_public_source_version_for_review(
+  p_version_id uuid,
+  p_expected_catalogue_key text,
+  p_expected_exact_version_url text,
+  p_expected_exact_version text,
+  p_expected_content_hash text,
+  p_reason_code text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  v_version public.public_source_versions%ROWTYPE;
+  v_active_count integer;
+  v_review_created boolean := false;
+BEGIN
+  IF p_reason_code NOT IN ('publisher_http_404', 'publisher_http_410') THEN
+    RAISE EXCEPTION 'Public source withdrawal reason code is invalid';
+  END IF;
+
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('public_source_lifecycle:' || p_expected_catalogue_key, 0)
+  );
+  PERFORM id
+  FROM public.public_source_versions
+  WHERE source_catalogue_key = p_expected_catalogue_key
+  ORDER BY id
+  FOR UPDATE;
+
+  SELECT * INTO v_version
+  FROM public.public_source_versions
+  WHERE id = p_version_id;
+  IF NOT FOUND
+     OR v_version.source_catalogue_key IS DISTINCT FROM p_expected_catalogue_key
+     OR v_version.exact_version_url IS DISTINCT FROM p_expected_exact_version_url
+     OR v_version.exact_version IS DISTINCT FROM p_expected_exact_version
+     OR v_version.content_hash IS DISTINCT FROM p_expected_content_hash
+  THEN
+    RAISE EXCEPTION 'Public source current active identity mismatch';
+  END IF;
+
+  SELECT count(*) INTO v_active_count
+  FROM public.public_source_versions
+  WHERE source_catalogue_key = p_expected_catalogue_key
+    AND lifecycle = 'active';
+
+  IF v_version.lifecycle = 'active' THEN
+    IF v_active_count <> 1 THEN
+      RAISE EXCEPTION 'Public source current active identity mismatch';
+    END IF;
+    UPDATE public.public_source_versions
+    SET lifecycle = 'tombstoned', updated_at = now()
+    WHERE id = p_version_id;
+  ELSIF v_version.lifecycle = 'tombstoned' THEN
+    IF v_active_count <> 0 THEN
+      RAISE EXCEPTION 'Public source current active identity mismatch';
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'Public source current active identity mismatch';
+  END IF;
+
+  INSERT INTO public.audit_logs (
+    owner_id,
+    action,
+    resource_type,
+    resource_id,
+    metadata
+  )
+  SELECT
+    v_version.staging_owner_id,
+    'public_source_withdrawal_review_required',
+    'public_source_version',
+    p_version_id::text,
+    jsonb_build_object(
+      'catalogue_key', v_version.source_catalogue_key,
+      'exact_version', v_version.exact_version,
+      'reason_code', p_reason_code,
+      'review_status', 'pending_human_review'
+    )
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.audit_logs
+    WHERE action = 'public_source_withdrawal_review_required'
+      AND resource_type = 'public_source_version'
+      AND resource_id = p_version_id::text
+  )
+  RETURNING true INTO v_review_created;
+
+  RETURN jsonb_build_object(
+    'outcome', 'tombstoned',
+    'reviewQueued', true,
+    'reviewCreated', coalesce(v_review_created, false)
+  );
+END;
+$$;
+
 REVOKE ALL ON FUNCTION public.reject_public_source_activation_event_mutation() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.guard_public_source_version_identity() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.record_public_source_activation_event(jsonb) FROM PUBLIC, anon, authenticated;
@@ -529,10 +637,14 @@ REVOKE ALL ON FUNCTION public.create_public_source_fetch_manifest(text, text, te
 REVOKE ALL ON FUNCTION public.stage_public_source_version(jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.transition_public_source_version(uuid, text, text, text, text, text, uuid)
   FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.tombstone_public_source_version_for_review(uuid, text, text, text, text, text)
+  FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.record_public_source_activation_event(jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.create_public_source_fetch_manifest(text, text, text, uuid, text, text, text, uuid)
   TO service_role;
 GRANT EXECUTE ON FUNCTION public.stage_public_source_version(jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.transition_public_source_version(uuid, text, text, text, text, text, uuid)
+  TO service_role;
+GRANT EXECUTE ON FUNCTION public.tombstone_public_source_version_for_review(uuid, text, text, text, text, text)
   TO service_role;

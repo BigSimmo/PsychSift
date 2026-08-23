@@ -3061,6 +3061,17 @@ export type Database = {
       };
       record_public_source_activation_event: { Args: { p_manifest: Json }; Returns: string };
       stage_public_source_version: { Args: { p_version: Json }; Returns: string };
+      tombstone_public_source_version_for_review: {
+        Args: {
+          p_expected_catalogue_key: string;
+          p_expected_content_hash: string;
+          p_expected_exact_version: string;
+          p_expected_exact_version_url: string;
+          p_reason_code: string;
+          p_version_id: string;
+        };
+        Returns: Json;
+      };
       transition_public_source_version: {
         Args: {
           p_activation_event_id?: string | null;

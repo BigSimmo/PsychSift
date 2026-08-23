@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
-import { readFileSync } from "node:fs";
 import { request } from "node:https";
 import { basename, resolve } from "node:path";
 import { Readable } from "node:stream";
@@ -9,14 +8,16 @@ import { pathToFileURL } from "node:url";
 import { australianSourceByKey } from "@/lib/australian-source-catalogue";
 import {
   acquirePublicSourceVersion,
+  localPublicSourceContentIdentityVerdict,
   type AcquisitionFetch,
+  type PublicSourceContentIdentityScan,
   type PublicSourceAcquisitionPlan,
-  type PublicSourceScanReasonCode,
   type PublicSourceStagingCandidate,
 } from "@/lib/public-source-acquisition";
 import {
   parsePublicSourceAcquisitionManifest,
   publicSourceAcquisitionManifestDigest,
+  readPublicSourceJsonFile,
 } from "./plan-public-source-acquisition";
 
 function option(argv: readonly string[], name: string) {
@@ -30,10 +31,7 @@ export type PublicSourceApplyDependencies = Readonly<{
   authorizePlan: (plan: PublicSourceAcquisitionPlan) => Promise<void>;
   fetch: AcquisitionFetch;
   resolve: (hostname: string) => Promise<readonly { address: string; family: 4 | 6 }[]>;
-  scan: (input: { bytes: Uint8Array; contentType: string; catalogueKey: string }) => Promise<{
-    accepted: boolean;
-    reasonCode?: PublicSourceScanReasonCode;
-  }>;
+  scan: PublicSourceContentIdentityScan;
   findDuplicateVersion: (input: {
     catalogueKey: string;
     exactUrl: string;
@@ -148,8 +146,8 @@ export async function createLivePublicSourceApplyDependencies(
         address,
         family: family as 4 | 6,
       })),
-    // MIME, signature, and structural validation already ran in the core boundary.
-    scan: async () => ({ accepted: true }),
+    // Transparent retained text can be inspected locally; opaque containers require a trusted injected verdict.
+    scan: async (input) => localPublicSourceContentIdentityVerdict(input),
     findDuplicateVersion: async ({ catalogueKey, exactUrl, contentHash }) => {
       const { data, error } = await supabase
         .from("public_source_versions")
@@ -267,8 +265,8 @@ export async function runFetchApprovedPublicSourceVersionsCli(
     stdout(JSON.stringify({ mode: "dry-run", reason: "manifest path is required", plans: [] }));
     return { applied: false, count: 0 } as const;
   }
-  const raw = readFileSync(resolve(manifestPath), "utf8");
-  const manifest = parsePublicSourceAcquisitionManifest(JSON.parse(raw) as unknown);
+  const { raw, value } = readPublicSourceJsonFile(manifestPath, "manifest");
+  const manifest = parsePublicSourceAcquisitionManifest(value);
   const digest = publicSourceAcquisitionManifestDigest(raw);
   const expectedCount = Number(option(argv, "--expected-count"));
   const confirmed =

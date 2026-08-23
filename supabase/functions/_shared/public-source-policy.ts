@@ -45,6 +45,9 @@ export function publicSourcePolicyViolation(
     value.licence_policy !== "public_index_permitted" ||
     !["shadow", "approved"].includes(String(value.public_source_lifecycle ?? "")) ||
     value.source_policy_checked !== true ||
+    value.content_identity_verdict !== "clear" ||
+    value.content_identity_verdict_version !== "public-source-content-identity-v1" ||
+    value.content_identity_hash !== value.content_hash ||
     !digestPattern.test(String(value.source_content_hash ?? "")) ||
     !digestPattern.test(String(value.content_hash ?? "")) ||
     !nonEmptyString(value.source_exact_url) ||

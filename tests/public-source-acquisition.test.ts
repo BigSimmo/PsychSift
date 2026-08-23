@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { deflateSync } from "node:zlib";
+import JSZip from "jszip";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { australianSourceByKey } from "@/lib/australian-source-catalogue";
@@ -17,6 +19,7 @@ import {
   validateAcquisitionUrl,
   validateRedirect,
   type PublicSourceAcquisitionPlan,
+  type PublicSourceContentIdentityScan,
   type PublicSourceStagingCandidate,
 } from "@/lib/public-source-acquisition";
 import { runCheckPublicSourceChangesCli } from "../scripts/check-public-source-changes";
@@ -31,6 +34,8 @@ const operatorId = "22222222-2222-4222-8222-222222222222";
 const exactUrl = "https://www.health.wa.gov.au/guidelines/synthetic-guideline.pdf";
 const publicAddress = [{ address: "8.8.8.8", family: 4 as const }];
 const cliWorkdir = mkdtempSync(join(tmpdir(), "public-source-cli-"));
+const trustedVerdictVersion = "public-source-content-identity-v1";
+const docxMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 afterAll(() => rmSync(cliWorkdir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
@@ -67,8 +72,43 @@ function syntheticPdf() {
   return new TextEncoder().encode("%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\nstartxref\n9\n%%EOF\n");
 }
 
+function syntheticCompressedPdf(protectedText: string) {
+  return Buffer.concat([
+    Buffer.from("%PDF-1.7\n1 0 obj\n<< /Filter /FlateDecode /Length "),
+    Buffer.from(String(deflateSync(protectedText).byteLength)),
+    Buffer.from(" >>\nstream\n"),
+    deflateSync(protectedText),
+    Buffer.from("\nendstream\nendobj\ntrailer\n<<>>\nstartxref\n9\n%%EOF\n"),
+  ]);
+}
+
+async function syntheticCompressedDocx(protectedText: string) {
+  const zip = new JSZip();
+  zip.file(
+    "[Content_Types].xml",
+    `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`,
+  );
+  zip.file(
+    "_rels/.rels",
+    `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`,
+  );
+  zip.file(
+    "word/document.xml",
+    `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>${protectedText}</w:t></w:r></w:p></w:body></w:document>`,
+  );
+  return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+}
+
 function response(body: Uint8Array | string, init: ResponseInit = {}) {
-  return new Response(body instanceof Uint8Array ? (body.slice().buffer as ArrayBuffer) : body, {
+  return new Response(body instanceof Uint8Array ? Uint8Array.from(body).buffer : body, {
     status: 200,
     headers: { "content-type": "application/pdf", ...init.headers },
     ...init,
@@ -78,6 +118,15 @@ function response(body: Uint8Array | string, init: ResponseInit = {}) {
 function connectedResponse(value: Response, remoteAddress = publicAddress[0]!.address) {
   return { response: value, remoteAddress };
 }
+
+const trustedClearScan: PublicSourceContentIdentityScan = async (input) => {
+  return {
+    accepted: true as const,
+    contentIdentity: "clear" as const,
+    inspectedContentHash: input.contentHash,
+    verdictVersion: trustedVerdictVersion,
+  };
+};
 
 describe("public source acquisition", () => {
   it("rejects excluded and link-only sources before network access", async () => {
@@ -122,7 +171,7 @@ describe("public source acquisition", () => {
       acquirePublicSourceVersion(await validPlan(), {
         fetch: async () => connectedResponse(response(syntheticPdf()), "10.0.0.8"),
         resolve: async () => publicAddress,
-        scan: async () => ({ accepted: true as const }),
+        scan: trustedClearScan,
         findDuplicateVersion: async () => null,
         stageOwnedDocument,
         enqueue: vi.fn(),
@@ -162,7 +211,7 @@ describe("public source acquisition", () => {
       ownerId: candidate.ownerId,
     }));
     const enqueue = vi.fn(async () => undefined);
-    const scan = vi.fn(async () => ({ accepted: true as const }));
+    const scan = vi.fn(trustedClearScan);
     const fetch = vi.fn(async () => connectedResponse(response(bytes)));
     const resolve = vi.fn(async () => publicAddress);
 
@@ -209,7 +258,7 @@ describe("public source acquisition", () => {
   it("fails closed on content type, declared or streamed size, redirect count, and DNS rebinding", async () => {
     const base = {
       resolve: vi.fn(async () => publicAddress),
-      scan: vi.fn(async () => ({ accepted: true as const })),
+      scan: vi.fn(trustedClearScan),
       findDuplicateVersion: vi.fn(async () => null),
       stageOwnedDocument: vi.fn(),
       enqueue: vi.fn(),
@@ -260,7 +309,7 @@ describe("public source acquisition", () => {
     const deps = {
       fetch,
       resolve: async () => publicAddress,
-      scan: async () => ({ accepted: true as const }),
+      scan: trustedClearScan,
       findDuplicateVersion: async () => "existing-version-id",
       stageOwnedDocument,
       enqueue,
@@ -282,7 +331,7 @@ describe("public source acquisition", () => {
       acquirePublicSourceVersion(await validPlan(), {
         fetch: async () => connectedResponse(response(syntheticPdf())),
         resolve: async () => publicAddress,
-        scan: async () => ({ accepted: true as const }),
+        scan: trustedClearScan,
         findDuplicateVersion: async () => null,
         stageOwnedDocument: async () => ({
           documentId: "33333333-3333-4333-8333-333333333333",
@@ -302,7 +351,7 @@ describe("public source acquisition", () => {
       await acquirePublicSourceVersion(await validPlan(), {
         fetch: async () => connectedResponse(response(secretBody, { status: 500, statusText: "Upstream failure" })),
         resolve: async () => publicAddress,
-        scan: async () => ({ accepted: true as const }),
+        scan: trustedClearScan,
         findDuplicateVersion: async () => null,
         stageOwnedDocument: vi.fn(),
         enqueue: vi.fn(),
@@ -368,15 +417,63 @@ describe("public source acquisition", () => {
         acquirePublicSourceVersion(await validPlan({ allowedContentTypes: [contentType] }), {
           fetch: async () => connectedResponse(response(bytes, { headers: { "content-type": contentType } })),
           resolve: async () => publicAddress,
-          scan: async () => ({ accepted: true as const }),
+          scan: async (input) =>
+            contentType === "application/pdf"
+              ? {
+                  accepted: false as const,
+                  contentIdentity: "protected" as const,
+                  inspectedContentHash: input.contentHash,
+                  verdictVersion: trustedVerdictVersion,
+                  reasonCode: "protected_source_identity" as const,
+                }
+              : trustedClearScan(input),
           findDuplicateVersion: async () => null,
           stageOwnedDocument,
           enqueue,
         }),
-      ).rejects.toThrow(/protected|link-only|quarantine/i);
+      ).rejects.toThrow(/protected|link-only|quarantine|content-identity|blocked/i);
     }
     expect(stageOwnedDocument).not.toHaveBeenCalled();
     expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it("fails closed on opaque compressed PDF and OOXML without an exact trusted content-identity verdict", async () => {
+    const protectedText = "Australian Medicines Handbook protected excerpt";
+    const compressedPdf = syntheticCompressedPdf(protectedText);
+    const compressedDocx = await syntheticCompressedDocx(protectedText);
+    expect(new TextDecoder().decode(compressedPdf)).not.toContain(protectedText);
+    expect(new TextDecoder().decode(compressedDocx)).not.toContain(protectedText);
+
+    for (const [contentType, bytes] of [
+      ["application/pdf", compressedPdf],
+      [docxMime, compressedDocx],
+    ] as const) {
+      expect(new TextDecoder().decode(bytes)).not.toMatch(
+        /healthdirect|\b(?:etg|therapeutic\s+guidelines?)\b|\b(?:amh|australian\s+medicines\s+handbook)\b/i,
+      );
+      const stageOwnedDocument = vi.fn(async () => ({
+        documentId: "33333333-3333-4333-8333-333333333333",
+        ownerId,
+      }));
+      const enqueue = vi.fn();
+      await expect(
+        acquirePublicSourceVersion(await validPlan({ allowedContentTypes: [contentType] }), {
+          fetch: async () => connectedResponse(response(bytes, { headers: { "content-type": contentType } })),
+          resolve: async () => publicAddress,
+          scan: async ({ bytes: inspectedBytes }) => ({
+            accepted: true as const,
+            contentIdentity: "unknown" as const,
+            inspectedContentHash: `sha256:${createHash("sha256").update(inspectedBytes).digest("hex")}`,
+            verdictVersion: trustedVerdictVersion,
+          }),
+          findDuplicateVersion: async () => null,
+          stageOwnedDocument,
+          enqueue,
+        }),
+      ).rejects.toThrow(/trusted|identity|unknown|validation/i);
+      expect(stageOwnedDocument).not.toHaveBeenCalled();
+      expect(enqueue).not.toHaveBeenCalled();
+    }
   });
 
   it("hashes the exact canonical staged bytes and preserves separate upstream HTML provenance", async () => {
@@ -393,7 +490,7 @@ describe("public source acquisition", () => {
     await acquirePublicSourceVersion(await validPlan({ allowedContentTypes: ["text/html"] }), {
       fetch: async () => connectedResponse(response(upstreamBytes, { headers: { "content-type": "text/html" } })),
       resolve: async () => publicAddress,
-      scan: async () => ({ accepted: true as const }),
+      scan: trustedClearScan,
       findDuplicateVersion: async () => null,
       stageOwnedDocument,
       enqueue: async () => undefined,
@@ -414,9 +511,7 @@ describe("public source acquisition", () => {
       new URL("./fixtures/public-sources/trusted-page-with-healthdirect-chrome.html", import.meta.url),
       "utf8",
     );
-    const scan = vi.fn(async (_input: { bytes: Uint8Array; contentType: string; catalogueKey: string }) => ({
-      accepted: true as const,
-    }));
+    const scan = vi.fn(trustedClearScan);
     const stageOwnedDocument = vi.fn(async (_candidate: PublicSourceStagingCandidate) => ({
       documentId: "33333333-3333-4333-8333-333333333333",
       ownerId,
@@ -459,7 +554,7 @@ describe("public source acquisition", () => {
     const deps = {
       fetch,
       resolve: async () => publicAddress,
-      scan: async () => ({ accepted: true as const }),
+      scan: trustedClearScan,
       findDuplicateVersion: async () => null,
       stageOwnedDocument: vi.fn(),
       enqueue: vi.fn(),
@@ -481,8 +576,7 @@ describe("public source acquisition", () => {
   it("records unchanged checks, stages changed content as owned shadow, and tombstones withdrawals", async () => {
     const recordCheck = vi.fn(async () => undefined);
     const stageChangedVersion = vi.fn(async () => ({ versionId: "version-new", ownerId }));
-    const tombstoneCurrentVersion = vi.fn(async () => undefined);
-    const queueHumanReview = vi.fn(async () => undefined);
+    const tombstoneAndQueueReview = vi.fn(async () => undefined);
     const plan = await validPlan();
 
     await expect(
@@ -494,12 +588,12 @@ describe("public source acquisition", () => {
           exactUrl: plan.exactUrl,
           exactVersion: plan.exactVersion,
           contentHash: `sha256:${"b".repeat(64)}`,
+          lifecycle: "active",
         },
         observed: { kind: "content", contentHash: `sha256:${"b".repeat(64)}` },
         recordCheck,
         stageChangedVersion,
-        tombstoneCurrentVersion,
-        queueHumanReview,
+        tombstoneAndQueueReview,
       }),
     ).resolves.toEqual({ outcome: "unchanged" });
     expect(recordCheck).toHaveBeenCalledWith(expect.objectContaining({ outcome: "unchanged" }));
@@ -513,12 +607,12 @@ describe("public source acquisition", () => {
           exactUrl: plan.exactUrl,
           exactVersion: plan.exactVersion,
           contentHash: `sha256:${"b".repeat(64)}`,
+          lifecycle: "active",
         },
         observed: { kind: "content", contentHash: `sha256:${"c".repeat(64)}` },
         recordCheck,
         stageChangedVersion,
-        tombstoneCurrentVersion,
-        queueHumanReview,
+        tombstoneAndQueueReview,
       }),
     ).resolves.toMatchObject({ outcome: "changed", lifecycle: "shadow", ownerId });
     expect(stageChangedVersion).toHaveBeenCalledWith(
@@ -534,19 +628,43 @@ describe("public source acquisition", () => {
           exactUrl: plan.exactUrl,
           exactVersion: plan.exactVersion,
           contentHash: `sha256:${"b".repeat(64)}`,
+          lifecycle: "active",
         },
-        observed: { kind: "withdrawn", reason: "Publisher returned a bounded withdrawal signal." },
+        observed: { kind: "withdrawn", reasonCode: "publisher_http_410" },
         recordCheck,
         stageChangedVersion,
-        tombstoneCurrentVersion,
-        queueHumanReview,
+        tombstoneAndQueueReview,
       }),
     ).resolves.toEqual({ outcome: "tombstoned" });
-    expect(tombstoneCurrentVersion).toHaveBeenCalledBefore(queueHumanReview);
+    expect(tombstoneAndQueueReview).toHaveBeenCalledTimes(1);
+  });
+
+  it("commits withdrawal tombstone and durable review queueing through one atomic retry-safe boundary", async () => {
+    const plan = await validPlan();
+    const tombstoneAndQueueReview = vi.fn(async () => ({ outcome: "tombstoned" as const }));
+
+    await expect(
+      checkPublicSourceChange({
+        plan,
+        currentVersion: {
+          catalogueKey: plan.catalogueKey,
+          versionId: "55555555-5555-4555-8555-555555555555",
+          exactUrl: plan.exactUrl,
+          exactVersion: plan.exactVersion,
+          contentHash: `sha256:${"b".repeat(64)}`,
+          lifecycle: "active",
+        },
+        observed: { kind: "withdrawn", reasonCode: "publisher_http_410" },
+        recordCheck: vi.fn(),
+        stageChangedVersion: vi.fn(),
+        tombstoneAndQueueReview,
+      }),
+    ).resolves.toEqual({ outcome: "tombstoned" });
+    expect(tombstoneAndQueueReview).toHaveBeenCalledTimes(1);
   });
 
   it("rejects a cross-catalogue current-version identity before a withdrawal tombstone", async () => {
-    const tombstoneCurrentVersion = vi.fn();
+    const tombstoneAndQueueReview = vi.fn();
     const plan = await validPlan();
     await expect(
       checkPublicSourceChange({
@@ -557,15 +675,15 @@ describe("public source acquisition", () => {
           exactUrl: plan.exactUrl,
           exactVersion: plan.exactVersion,
           contentHash: `sha256:${"b".repeat(64)}`,
+          lifecycle: "active",
         },
-        observed: { kind: "withdrawn", reason: "Publisher returned bounded withdrawal status 410." },
+        observed: { kind: "withdrawn", reasonCode: "publisher_http_410" },
         recordCheck: vi.fn(),
         stageChangedVersion: vi.fn(),
-        tombstoneCurrentVersion,
-        queueHumanReview: vi.fn(),
+        tombstoneAndQueueReview,
       }),
     ).rejects.toThrow(/catalogue|identity/i);
-    expect(tombstoneCurrentVersion).not.toHaveBeenCalled();
+    expect(tombstoneAndQueueReview).not.toHaveBeenCalled();
   });
 
   it("maps arbitrary scanner and live-adapter diagnostics to fixed public-source error codes", async () => {
@@ -575,7 +693,13 @@ describe("public source acquisition", () => {
       await acquirePublicSourceVersion(await validPlan(), {
         fetch: async () => connectedResponse(response(syntheticPdf())),
         resolve: async () => publicAddress,
-        scan: async () => ({ accepted: false as const, reasonCode: sentinel as never }),
+        scan: async ({ contentHash }) => ({
+          accepted: false as const,
+          contentIdentity: "unknown" as const,
+          inspectedContentHash: contentHash,
+          verdictVersion: trustedVerdictVersion,
+          reasonCode: sentinel as never,
+        }),
         findDuplicateVersion: async () => null,
         stageOwnedDocument: vi.fn(),
         enqueue: vi.fn(),
@@ -591,6 +715,154 @@ describe("public source acquisition", () => {
       "utf8",
     );
     expect(liveAdapter).not.toMatch(/throw new Error\([^\n]*\.message/);
+  });
+
+  it("maps malformed plan, manifest, and current JSON to fixed content-free CLI errors", async () => {
+    const sentinel = "SENTINEL_SECRET_PAYLOAD_NOT_JSON";
+    const malformedInput = join(cliWorkdir, "malformed-input.json");
+    const malformedManifest = join(cliWorkdir, "malformed-manifest.json");
+    const malformedCurrent = join(cliWorkdir, "malformed-current.json");
+    writeFileSync(malformedInput, sentinel);
+    writeFileSync(malformedManifest, sentinel);
+    writeFileSync(malformedCurrent, sentinel);
+
+    const errors: unknown[] = [];
+    for (const operation of [
+      () => runPlanPublicSourceAcquisitionCli(["--input", malformedInput]),
+      () => runFetchApprovedPublicSourceVersionsCli(["--manifest", malformedManifest]),
+      async () => {
+        const plan = await validPlan({ sourceActivationEventId: "44444444-4444-4444-8444-444444444444" });
+        const validManifest = join(cliWorkdir, "valid-for-malformed-current.json");
+        writeFileSync(
+          validManifest,
+          JSON.stringify({ schemaVersion: "public-source-acquisition-manifest-v1", plans: [plan] }),
+        );
+        return runCheckPublicSourceChangesCli(["--manifest", validManifest, "--current", malformedCurrent]);
+      },
+    ]) {
+      try {
+        await operation();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    expect(errors).toHaveLength(3);
+    for (const error of errors) {
+      expect(String(error)).not.toContain(sentinel);
+      expect(String(error)).toMatch(/public source.*(?:input|manifest|current).*(?:read|parse|invalid)/i);
+    }
+  });
+
+  it("stages and enqueues a changed shadow exactly once with the exact activation identity", async () => {
+    const plan = await validPlan({ sourceActivationEventId: "44444444-4444-4444-8444-444444444444" });
+    const manifestPath = join(cliWorkdir, "changed-manifest.json");
+    const currentPath = join(cliWorkdir, "changed-current.json");
+    const rawManifest = JSON.stringify({ schemaVersion: "public-source-acquisition-manifest-v1", plans: [plan] });
+    const rawCurrent = JSON.stringify([
+      {
+        catalogueKey: plan.catalogueKey,
+        versionId: "55555555-5555-4555-8555-555555555555",
+        exactUrl: plan.exactUrl,
+        exactVersion: plan.exactVersion,
+        contentHash: `sha256:${"b".repeat(64)}`,
+        lifecycle: "active",
+      },
+    ]);
+    writeFileSync(manifestPath, rawManifest);
+    writeFileSync(currentPath, rawCurrent);
+    const calls: string[] = [];
+    const stageOwnedDocument = vi.fn(async (candidate: PublicSourceStagingCandidate) => {
+      calls.push("stage");
+      expect(candidate.metadata.source_activation_event_id).toBe(plan.sourceActivationEventId);
+      return {
+        documentId: "33333333-3333-4333-8333-333333333333",
+        versionId: "66666666-6666-4666-8666-666666666666",
+        ownerId,
+      };
+    });
+    const enqueue = vi.fn(async ({ metadata }: { metadata: Readonly<Record<string, string | boolean>> }) => {
+      calls.push("enqueue");
+      expect(metadata.source_activation_event_id).toBe(plan.sourceActivationEventId);
+    });
+    const dependenciesForPlan = vi.fn(async () => ({
+      acquisition: {
+        authorizePlan: vi.fn(async () => undefined),
+        fetch: async () => connectedResponse(response(syntheticPdf())),
+        resolve: async () => publicAddress,
+        scan: async ({ bytes }: { bytes: Uint8Array }) => ({
+          accepted: true as const,
+          contentIdentity: "clear" as const,
+          inspectedContentHash: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+          verdictVersion: trustedVerdictVersion,
+        }),
+        findDuplicateVersion: async () => null,
+        stageOwnedDocument,
+        enqueue,
+      },
+      recordCheck: vi.fn(),
+      tombstoneAndQueueReview: vi.fn(),
+    }));
+
+    await expect(
+      runCheckPublicSourceChangesCli(
+        [
+          "--manifest",
+          manifestPath,
+          "--current",
+          currentPath,
+          "--expected-count",
+          "1",
+          "--manifest-sha256",
+          publicSourceAcquisitionManifestDigest(rawManifest),
+          "--current-sha256",
+          publicSourceAcquisitionManifestDigest(rawCurrent),
+          "--apply",
+        ],
+        { dependenciesForPlan: dependenciesForPlan as never, stdout: vi.fn() },
+      ),
+    ).resolves.toMatchObject({ applied: true, count: 1 });
+    expect(calls).toEqual(["stage", "enqueue"]);
+    expect(stageOwnedDocument).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects non-active current evidence before dependency creation or mutation", async () => {
+    const plan = await validPlan({ sourceActivationEventId: "44444444-4444-4444-8444-444444444444" });
+    const manifestPath = join(cliWorkdir, "shadow-current-manifest.json");
+    const currentPath = join(cliWorkdir, "shadow-current.json");
+    const rawManifest = JSON.stringify({ schemaVersion: "public-source-acquisition-manifest-v1", plans: [plan] });
+    const rawCurrent = JSON.stringify([
+      {
+        catalogueKey: plan.catalogueKey,
+        versionId: "55555555-5555-4555-8555-555555555555",
+        exactUrl: plan.exactUrl,
+        exactVersion: plan.exactVersion,
+        contentHash: `sha256:${"b".repeat(64)}`,
+        lifecycle: "shadow",
+      },
+    ]);
+    writeFileSync(manifestPath, rawManifest);
+    writeFileSync(currentPath, rawCurrent);
+    const dependenciesForPlan = vi.fn();
+    await expect(
+      runCheckPublicSourceChangesCli(
+        [
+          "--manifest",
+          manifestPath,
+          "--current",
+          currentPath,
+          "--expected-count",
+          "1",
+          "--manifest-sha256",
+          publicSourceAcquisitionManifestDigest(rawManifest),
+          "--current-sha256",
+          publicSourceAcquisitionManifestDigest(rawCurrent),
+          "--apply",
+        ],
+        { dependenciesForPlan, stdout: vi.fn() },
+      ),
+    ).rejects.toThrow(/active|current.*invalid/i);
+    expect(dependenciesForPlan).not.toHaveBeenCalled();
   });
 
   it("keeps acquisition CLIs import-safe, dry-run by default, and apply-confirmation bound", async () => {
@@ -657,7 +929,7 @@ describe("public source acquisition", () => {
       authorizePlan,
       fetch,
       resolve: async () => publicAddress,
-      scan: async () => ({ accepted: true as const }),
+      scan: trustedClearScan,
       findDuplicateVersion: async () => null,
       stageOwnedDocument: async () => ({
         documentId: "33333333-3333-4333-8333-333333333333",

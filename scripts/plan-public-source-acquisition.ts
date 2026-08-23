@@ -25,6 +25,15 @@ export function publicSourceAcquisitionManifestDigest(raw: string | Uint8Array) 
   return `sha256:${createHash("sha256").update(raw).digest("hex")}`;
 }
 
+export function readPublicSourceJsonFile(path: string, label: "input" | "manifest" | "current") {
+  try {
+    const raw = readFileSync(resolve(path), "utf8");
+    return Object.freeze({ raw, value: JSON.parse(raw) as unknown });
+  } catch {
+    throw new Error(`Public source ${label} read or parse failed.`);
+  }
+}
+
 export function parsePublicSourceAcquisitionManifest(input: unknown): PublicSourceAcquisitionManifestV1 {
   if (!input || typeof input !== "object") throw new Error("Acquisition manifest must be an object.");
   const value = input as { schemaVersion?: unknown; plans?: unknown };
@@ -47,7 +56,7 @@ export async function runPlanPublicSourceAcquisitionCli(
   const inputPath = option(argv, "--input");
   const outputPath = option(argv, "--output");
   if (!inputPath) throw new Error("Acquisition planning requires --input with an exact URL/version list.");
-  const input = JSON.parse(readFileSync(resolve(inputPath), "utf8")) as unknown;
+  const { value: input } = readPublicSourceJsonFile(inputPath, "input");
   const entries = Array.isArray(input)
     ? input
     : input && typeof input === "object" && Array.isArray((input as { entries?: unknown }).entries)

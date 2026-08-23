@@ -1641,6 +1641,7 @@ describe("Supabase Preview replay guards", () => {
       "create_public_source_fetch_manifest",
       "stage_public_source_version",
       "transition_public_source_version",
+      "tombstone_public_source_version_for_review",
     ]) {
       const body = sqlFunctionBody(sql, functionName);
       expect(body).toContain("security definer");
@@ -1690,6 +1691,15 @@ describe("Supabase Preview replay guards", () => {
     expect(transitionBody).toContain("publication_reviewed_index_generation_id");
     expect(transitionBody).toContain("approval.id = v_publication_approval_id");
     expect(transitionBody).toContain("exact document publication approval is distinct from source activation");
+    const withdrawalBody = sqlFunctionBody(sql, "tombstone_public_source_version_for_review");
+    expect(withdrawalBody).toContain("for update");
+    expect(withdrawalBody).toContain("lifecycle = 'active'");
+    expect(withdrawalBody).toContain("lifecycle = 'tombstoned'");
+    expect(withdrawalBody).toContain("public source current active identity mismatch");
+    expect(withdrawalBody).toContain("insert into public.audit_logs");
+    expect(withdrawalBody).toContain("public_source_withdrawal_review_required");
+    expect(withdrawalBody).toContain("where not exists");
+    expect(sql).toContain("create unique index public_source_versions_one_active_per_source_idx");
   });
 
   it("serializes permanent deletion against ingestion job creation", () => {
