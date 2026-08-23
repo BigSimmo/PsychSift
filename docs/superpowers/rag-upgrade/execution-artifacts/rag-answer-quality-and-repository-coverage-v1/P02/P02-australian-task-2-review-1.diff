@@ -1,0 +1,817 @@
+# Review package: bb708016b6277279e9d38482ce4d90927be6468c..d4e42a5d710ecdaa82e567ed2ea2584dc12d832f
+
+## Commits
+d4e42a5d710ecdaa82e567ed2ea2584dc12d832f
+
+## Diff
+diff --git a/src/lib/source-authority-metadata.ts b/src/lib/source-authority-metadata.ts
+index 0b911519e91a401ee57eed176819d4f813616627..f3a33a0b22248bc46581ff784a9c750af96659b1 100644
+--- a/src/lib/source-authority-metadata.ts
++++ b/src/lib/source-authority-metadata.ts
+@@ -1,17 +1,22 @@
+ import {
+   classifySourceAuthority,
+   sourceAuthorityForPublisher,
+   sourceAuthorityForPublisherCode,
+   sourceAuthorityRegistry,
+   type SourceAuthorityDefinition,
+ } from "@/lib/source-authority-registry";
++import {
++  australianSourceCatalogue,
++  australianSourcePolicyVersion,
++  type AustralianSourceDefinition,
++} from "@/lib/australian-source-catalogue";
+ 
+ export const localityMetadataKeys = ["publisher_code", "publisher", "jurisdiction"] as const;
+ 
+ export type LocalityMetadataKey = (typeof localityMetadataKeys)[number];
+ 
+ export type SourceAuthorityDocumentIdentity = {
+   id?: string;
+   title: string;
+   file_name: string;
+   source_path?: string | null;
+@@ -332,10 +337,53 @@ export function auditSourceAuthorityDocuments(documents: SourceAuthorityDocument
+       ...compactAuthorityDocument(document, analysis),
+       missing_keys: analysis.missingLocalityKeys,
+     })),
+     proposed_locality_corrections: proposedCorrections.map(({ document, analysis }) => ({
+       ...compactAuthorityDocument(document, analysis),
+       changed_keys: analysis.changedKeys,
+       changes: analysis.changes,
+     })),
+   };
+ }
++
++function catalogueEntryForDocument(document: SourceAuthorityDocument): AustralianSourceDefinition | null {
++  if (isRegistryRecordSource(document)) return null;
++  const metadata = metadataRecord(document.metadata);
++  const publisherCode = normalizedCode(metadata.publisher_code);
++  const publisher = metadataString(metadata.publisher);
++  const jurisdiction = metadataString(metadata.jurisdiction);
++  if (!publisherCode || !publisher || !jurisdiction) return null;
++  const entry = australianSourceCatalogue.find((candidate) => candidate.publisherCode === publisherCode);
++  if (!entry) return null;
++  const classification = classifySourceAuthority(metadata);
++  if (classification.conflict || classification.authorityKey !== entry.key) return null;
++  return entry;
++}
++
++/**
++ * Build a content-free, read-only proposal report. This intentionally returns
++ * no patch or mutation shape: Task 4's reviewed manifest is the only future
++ * route for writing Australian policy metadata.
++ */
++export function auditProposedSourcePolicyMetadata(documents: SourceAuthorityDocument[]) {
++  const excludedRegistryRecordCount = documents.filter(isRegistryRecordSource).length;
++  const proposals = documents.flatMap((document) => {
++    const source = catalogueEntryForDocument(document);
++    if (!source) return [];
++    return [
++      {
++        id: document.id ?? null,
++        source_catalogue_key: source.key,
++        source_policy_version: australianSourcePolicyVersion,
++        corpus_scope: source.corpusScope,
++        content_mode: source.contentMode,
++        licence_policy: source.licencePolicy,
++      },
++    ];
++  });
++
++  return {
++    proposed_policy_metadata_count: proposals.length,
++    excluded_registry_record_count: excludedRegistryRecordCount,
++    proposed_policy_metadata: proposals,
++  };
++}
+diff --git a/src/lib/source-authority-registry.ts b/src/lib/source-authority-registry.ts
+index 06c7ec2ea69562333af3701b5987f6bc2cb2a062..45f741dd40c353d150f0409e289cb29273c68203 100644
+--- a/src/lib/source-authority-registry.ts
++++ b/src/lib/source-authority-registry.ts
+@@ -1,30 +1,34 @@
++import type { AustralianSourceDefinition, SourceLifecycle } from "@/lib/australian-source-catalogue";
+ import type { ClinicalSourceMetadata } from "@/lib/types";
+ 
+ export type AustralianSourceTier = "wa_validated" | "australian_national" | "australian_state" | "supplementary";
+ export type SourceDesignation = "official" | "trusted" | "unclassified";
+ export type SourceOfficialBasis = "wa_hospital" | "wa_health_service_network" | null;
+ 
+ export type SourceAuthorityScope = "wa" | "australian_national" | "australian_state" | "international";
+ 
+ export type SourceAuthorityDefinition = {
+   key: string;
+   codes: readonly string[];
+   publisher: string;
+   publisherAliases: readonly string[];
+   jurisdictions: readonly string[];
+   scope: SourceAuthorityScope;
+   tier: Exclude<AustralianSourceTier, "supplementary"> | "supplementary";
+   designation: SourceDesignation;
+   officialBasis: SourceOfficialBasis;
++  lifecycle: SourceLifecycle;
+ };
+ 
++export type SourceAuthorityIdentity = SourceAuthorityDefinition;
++
+ export type SourceAuthorityConflict = "publisher_mismatch" | "jurisdiction_mismatch";
+ export type SourceDesignationReasonCode =
+   | "recognized_official_wa_hospital"
+   | "recognized_official_wa_health_service_network"
+   | "recognized_trusted_authority"
+   | "registry_summary_identity"
+   | "unrecognized_authority"
+   | "publisher_alias_requires_jurisdiction"
+   | "authority_metadata_conflict";
+ 
+@@ -58,29 +62,31 @@ function sourceMetadataStatus<T extends string>(value: unknown, fallback: T): T
+ const waJurisdictions = ["Australia/WA", "Australia/Western Australia", "Western Australia", "WA"] as const;
+ const nationalJurisdictions = [
+   "Australia",
+   "Australia/National",
+   "Australia/Commonwealth",
+   "Australian national",
+   "Commonwealth of Australia",
+ ] as const;
+ 
+ function authority(
+-  definition: Omit<SourceAuthorityDefinition, "publisherAliases" | "designation" | "officialBasis"> & {
++  definition: Omit<SourceAuthorityDefinition, "publisherAliases" | "designation" | "officialBasis" | "lifecycle"> & {
+     publisherAliases?: readonly string[];
+     designation?: SourceDesignation;
+     officialBasis?: SourceOfficialBasis;
++    lifecycle?: SourceLifecycle;
+   },
+ ): SourceAuthorityDefinition {
+   return {
+     designation: "trusted",
+     officialBasis: null,
++    lifecycle: "active",
+     ...definition,
+     publisherAliases: [definition.publisher, ...(definition.publisherAliases ?? [])],
+   };
+ }
+ 
+ /**
+  * Canonical authority registry shared by runtime selection and metadata tooling.
+  *
+  * Runtime classification is deliberately metadata-only: titles, filenames and
+  * document prose are never accepted as authority evidence here.
+@@ -275,20 +281,21 @@ export const sourceAuthorityRegistry = [
+     tier: "australian_national",
+   }),
+   authority({
+     key: "nps-medicinewise",
+     codes: ["NPS"],
+     publisher: "NPS MedicineWise",
+     publisherAliases: ["National Prescribing Service"],
+     jurisdictions: nationalJurisdictions,
+     scope: "australian_national",
+     tier: "australian_national",
++    lifecycle: "historical",
+   }),
+   authority({
+     key: "pbs",
+     codes: ["PBS"],
+     publisher: "Pharmaceutical Benefits Scheme",
+     jurisdictions: nationalJurisdictions,
+     scope: "australian_national",
+     tier: "australian_national",
+   }),
+   authority({
+@@ -407,20 +414,29 @@ function publisherCompatible(authorityEntry: SourceAuthorityDefinition, publishe
+ }
+ 
+ function jurisdictionCompatible(authorityEntry: SourceAuthorityDefinition, jurisdiction: string) {
+   const normalizedJurisdiction = normalizeSourceAuthorityText(jurisdiction);
+   if (!normalizedJurisdiction) return true;
+   return authorityEntry.jurisdictions.some(
+     (candidate) => normalizeSourceAuthorityText(candidate) === normalizedJurisdiction,
+   );
+ }
+ 
++export function authorityIdentityForCatalogueEntry(entry: AustralianSourceDefinition): SourceAuthorityIdentity | null {
++  const identity = sourceAuthorityForPublisherCode(entry.publisherCode);
++  if (!identity || identity.key !== entry.key) return null;
++  if (!publisherCompatible(identity, entry.publisher)) return null;
++  if (!jurisdictionCompatible(identity, entry.jurisdiction)) return null;
++  if (identity.lifecycle !== entry.lifecycle) return null;
++  return identity;
++}
++
+ function isCurrentUsableDocument(
+   metadata: Pick<ClinicalSourceMetadata, "source_kind" | "document_status" | "extraction_quality">,
+ ) {
+   return (
+     metadata.source_kind !== "registry_record" &&
+     metadata.document_status === "current" &&
+     metadata.extraction_quality === "good"
+   );
+ }
+ 
+@@ -464,29 +480,33 @@ export function classifySourceAuthority(input: unknown): SourceAuthorityClassifi
+     reasonCodes.push("unrecognized_authority");
+   }
+   if (!codeAuthority && publisherAuthority && !metadata.jurisdiction) {
+     eligibilityReasons.push("publisher_alias_requires_jurisdiction");
+     reasonCodes.push("publisher_alias_requires_jurisdiction");
+   }
+   if (conflicts.length > 0) {
+     eligibilityReasons.push("authority_metadata_conflict");
+     reasonCodes.push("authority_metadata_conflict");
+   }
++  if (authorityEntry && authorityEntry.lifecycle !== "active") {
++    eligibilityReasons.push("source_lifecycle_not_active");
++  }
+   if (!isCurrentUsableDocument(metadata)) eligibilityReasons.push("source_not_current_usable_document");
+   if (authorityEntry?.tier === "wa_validated" && !isLocallyValidated(metadata)) {
+     eligibilityReasons.push("wa_source_not_locally_validated");
+   }
+ 
+   const eligible =
+     Boolean(authorityEntry) &&
+     conflicts.length === 0 &&
+     (Boolean(codeAuthority) || Boolean(metadata.jurisdiction)) &&
++    authorityEntry?.lifecycle === "active" &&
+     isCurrentUsableDocument(metadata) &&
+     (authorityEntry?.tier !== "wa_validated" || isLocallyValidated(metadata));
+ 
+   const designationRecognized =
+     Boolean(authorityEntry) &&
+     metadata.source_kind !== "registry_record" &&
+     conflicts.length === 0 &&
+     (Boolean(codeAuthority) || Boolean(metadata.jurisdiction));
+   const designation = designationRecognized ? (authorityEntry?.designation ?? "trusted") : "unclassified";
+   if (designation === "official" && authorityEntry?.officialBasis === "wa_hospital") {
+diff --git a/src/lib/source-metadata.ts b/src/lib/source-metadata.ts
+index 8d92ee40fbb4168c9ae19f897bee93387e6d50c5..fd2c8101a42eda5cc14e9386dca8d9151c66df6f 100644
+--- a/src/lib/source-metadata.ts
++++ b/src/lib/source-metadata.ts
+@@ -1,18 +1,65 @@
+-import { classifySourceAuthority, type SourceDesignation } from "@/lib/source-authority-registry";
+-import type { ClinicalSourceMetadata } from "@/lib/types";
++import {
++  australianSourceByKey,
++  australianSourcePolicyVersion,
++  type SourceContentMode,
++  type SourceLicencePolicy,
++} from "@/lib/australian-source-catalogue";
++import {
++  authorityIdentityForCatalogueEntry,
++  classifySourceAuthority,
++  normalizeSourceAuthorityText,
++  type SourceDesignation,
++} from "@/lib/source-authority-registry";
++import type {
++  ClinicalSourceMetadata,
++  ClinicalSourceMetadataInput,
++  ClinicalSourceRole,
++  SourceCorpusScope,
++} from "@/lib/types";
+ 
+ const knownStatuses = new Set(["current", "review_due", "outdated", "unknown"]);
+ const knownValidation = new Set(["unverified", "locally_reviewed", "approved", "unknown"]);
+ const knownExtraction = new Set(["good", "partial", "poor", "unknown"]);
+ const knownSourceKinds = new Set(["document", "registry_record"]);
+ const knownRegistryRecordKinds = new Set(["service", "form", "medication", "differential"]);
++const knownCorpusScopes = new Set<SourceCorpusScope>([
++  "uploaded_local",
++  "clinical_kb_site",
++  "australian_public",
++  "international_supplementary",
++]);
++const knownSourceRoles = new Set<ClinicalSourceRole>([
++  "local_guideline",
++  "clinical_guideline",
++  "clinical_reference",
++  "service_directory",
++  "form_reference",
++  "tool_reference",
++  "safety_alert",
++  "regulatory",
++  "quality_standard",
++  "legal",
++  "subsidy",
++  "professional_review",
++  "service_policy",
++  "reference_link",
++]);
++const knownContentModes = new Set<SourceContentMode>(["indexed_content", "link_only"]);
++const knownLicencePolicies = new Set<SourceLicencePolicy>([
++  "review_required",
++  "public_index_permitted",
++  "metadata_link_only",
++  "index_forbidden",
++]);
++const knownChangeStates = new Set(["unchanged", "changed", "withdrawn", "superseded", "unknown"]);
++const knownSourcePolicyVersions = new Set([australianSourcePolicyVersion]);
+ 
+ function stringOrNull(value: unknown) {
+   return typeof value === "string" && value.trim() ? value.trim() : null;
+ }
+ 
+ // This module renders in the browser (the source badges are client components and
+ // ship in the standalone design-system bundle), so it must not pull in the
+ // server-oriented structured logger: that module reads `process.env`, which is a
+ // ReferenceError in a browser and unmounts the whole React tree. `field`/`value`
+ // here are enum diagnostics, never secrets or patient text, so the logger's
+@@ -33,25 +80,79 @@ function enumOrDefault<T extends string | null>(value: unknown, allowed: Set<str
+   // indistinguishable from a genuinely-absent value. Trace it so it is fixable.
+   // Absent / null / empty values are the legitimate default and stay silent — they
+   // are the common case and would drown the signal. The returned value is unchanged,
+   // so this is observability only: no ranking/retrieval behaviour changes.
+   if (typeof value === "string" && value.trim()) {
+     sourceMetadataDiagnostics.warn(field, value);
+   }
+   return fallback;
+ }
+ 
+-export function normalizeSourceMetadata(input: unknown): ClinicalSourceMetadata {
++function validatedStringOrNull(value: unknown, field: string, isValid: (candidate: string) => boolean) {
++  const candidate = stringOrNull(value);
++  if (!candidate) return null;
++  if (isValid(candidate)) return candidate;
++  sourceMetadataDiagnostics.warn(field, candidate);
++  return null;
++}
++
++function isHttpsUrl(value: string) {
++  try {
++    return new URL(value).protocol === "https:";
++  } catch {
++    return false;
++  }
++}
++
++function isIsoDate(value: string) {
++  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
++  if (!match) return false;
++  const date = new Date(`${value}T00:00:00.000Z`);
++  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
++}
++
++function isIsoTimestamp(value: string) {
++  return /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(new Date(value).getTime());
++}
++
++function isSha256(value: string) {
++  return /^sha256:[a-f0-9]{64}$/i.test(value);
++}
++
++function hasExactCatalogueIdentity(value: Record<string, unknown>, sourceKind: string | null) {
++  if (sourceKind === "registry_record") return false;
++  const key = stringOrNull(value.source_catalogue_key);
++  const publisherCode = stringOrNull(value.publisher_code);
++  const jurisdiction = stringOrNull(value.jurisdiction);
++  if (!key || !publisherCode || !jurisdiction) return false;
++  const entry = australianSourceByKey(key);
++  const identity = entry ? authorityIdentityForCatalogueEntry(entry) : null;
++  return Boolean(
++    entry &&
++    identity &&
++    publisherCode.toUpperCase() === entry.publisherCode.toUpperCase() &&
++    identity.jurisdictions.some(
++      (candidate) => normalizeSourceAuthorityText(candidate) === normalizeSourceAuthorityText(jurisdiction),
++    ),
++  );
++}
++
++function normalizedClinicalSourceMetadata(input: unknown): ClinicalSourceMetadata {
+   const value = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
++  const sourceKind = enumOrDefault(value.source_kind, knownSourceKinds, null, "source_kind");
++  const catalogueBound = hasExactCatalogueIdentity(value, sourceKind);
++  const sourcePolicyVersion = catalogueBound
++    ? enumOrDefault(value.source_policy_version, knownSourcePolicyVersions, null, "source_policy_version")
++    : null;
+ 
+   return {
+-    source_kind: enumOrDefault(value.source_kind, knownSourceKinds, null, "source_kind"),
++    source_kind: sourceKind,
+     registry_record_kind: enumOrDefault(
+       value.registry_record_kind,
+       knownRegistryRecordKinds,
+       null,
+       "registry_record_kind",
+     ),
+     registry_record_subkind: stringOrNull(value.registry_record_subkind),
+     registry_record_id: stringOrNull(value.registry_record_id),
+     registry_record_slug: stringOrNull(value.registry_record_slug),
+     source_title: stringOrNull(value.source_title),
+@@ -65,23 +166,47 @@ export function normalizeSourceMetadata(input: unknown): ClinicalSourceMetadata
+     indexed_at: stringOrNull(value.indexed_at),
+     uploaded_by: stringOrNull(value.uploaded_by),
+     document_status: enumOrDefault(value.document_status, knownStatuses, "unknown", "document_status"),
+     clinical_validation_status: enumOrDefault(
+       value.clinical_validation_status,
+       knownValidation,
+       "unverified",
+       "clinical_validation_status",
+     ),
+     extraction_quality: enumOrDefault(value.extraction_quality, knownExtraction, "unknown", "extraction_quality"),
++    corpus_scope: enumOrDefault(value.corpus_scope, knownCorpusScopes, null, "corpus_scope"),
++    source_role: enumOrDefault(value.source_role, knownSourceRoles, null, "source_role"),
++    content_mode: catalogueBound ? enumOrDefault(value.content_mode, knownContentModes, null, "content_mode") : null,
++    source_catalogue_key: catalogueBound ? stringOrNull(value.source_catalogue_key) : null,
++    source_policy_version: sourcePolicyVersion,
++    canonical_url: validatedStringOrNull(value.canonical_url, "canonical_url", isHttpsUrl),
++    effective_date: validatedStringOrNull(value.effective_date, "effective_date", isIsoDate),
++    expiry_date: validatedStringOrNull(value.expiry_date, "expiry_date", isIsoDate),
++    supersedes_document_id: stringOrNull(value.supersedes_document_id),
++    superseded_by_document_id: stringOrNull(value.superseded_by_document_id),
++    retrieved_at: validatedStringOrNull(value.retrieved_at, "retrieved_at", isIsoTimestamp),
++    content_hash: validatedStringOrNull(value.content_hash, "content_hash", isSha256),
++    change_state: enumOrDefault(value.change_state, knownChangeStates, "unknown", "change_state"),
++    licence_policy: catalogueBound
++      ? enumOrDefault(value.licence_policy, knownLicencePolicies, null, "licence_policy")
++      : null,
+   };
+ }
+ 
++export function normalizeSourceMetadata(input: unknown): ClinicalSourceMetadata {
++  return normalizedClinicalSourceMetadata(input);
++}
++
++export function normalizeClinicalSourceMetadata(input: ClinicalSourceMetadataInput): ClinicalSourceMetadata {
++  return normalizedClinicalSourceMetadata(input);
++}
++
+ const GOVERNANCE_FIELDS = ["document_status", "clinical_validation_status", "extraction_quality"] as const;
+ 
+ /** True when the record carries at least one explicit governance field. */
+ export function hasRecordedGovernanceFields(input: unknown): boolean {
+   if (input == null || typeof input !== "object") return false;
+   const value = input as Record<string, unknown>;
+   return GOVERNANCE_FIELDS.some((field) => {
+     const fieldValue = value[field];
+     return typeof fieldValue === "string" && fieldValue.trim().length > 0;
+   });
+diff --git a/src/lib/types.ts b/src/lib/types.ts
+index e34533190067aa8b5369955dcb909e08e5bb4744..e0d62b97dedadf4b82d430f10915998cc35f237b 100644
+--- a/src/lib/types.ts
++++ b/src/lib/types.ts
+@@ -106,22 +106,38 @@ export type ClinicalSourceMetadata = {
+   version: string | null;
+   publication_date: string | null;
+   review_date: string | null;
+   uploaded_at: string | null;
+   indexed_at: string | null;
+   uploaded_by: string | null;
+   document_status: "current" | "review_due" | "outdated" | "unknown";
+   clinical_validation_status: "unverified" | "locally_reviewed" | "approved" | "unknown";
+   clinical_validation_evidence?: Record<string, unknown> | null;
+   extraction_quality: "good" | "partial" | "poor" | "unknown";
++  corpus_scope?: SourceCorpusScope | null;
++  source_role?: ClinicalSourceRole | null;
++  content_mode?: import("@/lib/australian-source-catalogue").SourceContentMode | null;
++  source_catalogue_key?: string | null;
++  source_policy_version?: string | null;
++  canonical_url?: string | null;
++  effective_date?: string | null;
++  expiry_date?: string | null;
++  supersedes_document_id?: string | null;
++  superseded_by_document_id?: string | null;
++  retrieved_at?: string | null;
++  content_hash?: string | null;
++  change_state?: "unchanged" | "changed" | "withdrawn" | "superseded" | "unknown";
++  licence_policy?: import("@/lib/australian-source-catalogue").SourceLicencePolicy | null;
+ };
+ 
++export type ClinicalSourceMetadataInput = Partial<ClinicalSourceMetadata> | Record<string, unknown> | null | undefined;
++
+ export type SourceCorpusScope =
+   "uploaded_local" | "clinical_kb_site" | "australian_public" | "international_supplementary";
+ 
+ export type ClinicalSourceRole =
+   | "local_guideline"
+   | "clinical_guideline"
+   | "clinical_reference"
+   | "service_directory"
+   | "form_reference"
+   | "tool_reference"
+diff --git a/tests/source-authority-tooling.test.ts b/tests/source-authority-tooling.test.ts
+index c6a75624504b7e55222e75e871e966a3ad7d7b1e..b2ffbd13f68c033873a619594ab6a3bba000cdcd 100644
+--- a/tests/source-authority-tooling.test.ts
++++ b/tests/source-authority-tooling.test.ts
+@@ -1,37 +1,83 @@
+ import { readFileSync } from "node:fs";
+ 
+ import { describe, expect, it, vi } from "vitest";
+ import {
+   analyzeSourceLocality,
+   assertLocalityMetadataPatch,
++  auditProposedSourcePolicyMetadata,
+   auditSourceAuthorityDocuments,
+   inferSourceAuthorityFromIdentity,
+   isRegistryRecordSource,
++  localityMetadataKeys,
+   type SourceAuthorityDocument,
+ } from "@/lib/source-authority-metadata";
+ import { classifySourceAuthority } from "@/lib/source-authority-registry";
+ import { parseBackfillSourceMetadataArgs, runLocalityOnlyBackfill } from "../scripts/backfill-source-metadata";
+ 
+ function document(
+   overrides: Partial<SourceAuthorityDocument> & Pick<SourceAuthorityDocument, "file_name">,
+ ): SourceAuthorityDocument {
+   return {
+     id: overrides.id ?? "document-id",
+     title: overrides.title ?? overrides.file_name,
+     file_name: overrides.file_name,
+     source_path: overrides.source_path ?? null,
+     metadata: overrides.metadata ?? {},
+   };
+ }
+ 
+ describe("source authority metadata tooling", () => {
++  it("produces a read-only proposed policy audit without expanding locality mutation keys", () => {
++    const report = auditProposedSourcePolicyMetadata([
++      document({
++        id: "wacp-document",
++        file_name: "WACP-standard.pdf",
++        metadata: {
++          source_kind: "document",
++          publisher_code: "WACP",
++          publisher: "Office of the Chief Psychiatrist WA",
++          jurisdiction: "Australia/WA",
++        },
++      }),
++      document({
++        id: "registry-record",
++        file_name: "clinical-kb-service.json",
++        metadata: {
++          source_kind: "registry_record",
++          publisher_code: "WACP",
++          jurisdiction: "Australia/WA",
++          corpus_scope: "clinical_kb_site",
++        },
++      }),
++    ]);
++
++    expect(report).toMatchObject({
++      proposed_policy_metadata_count: 1,
++      excluded_registry_record_count: 1,
++      proposed_policy_metadata: [
++        {
++          id: "wacp-document",
++          source_catalogue_key: "wa-chief-psychiatrist",
++          source_policy_version: "australian-source-policy-v1",
++          corpus_scope: "australian_public",
++          content_mode: "indexed_content",
++          licence_policy: "review_required",
++        },
++      ],
++    });
++    expect(Object.keys((report?.proposed_policy_metadata as Record<string, unknown>[])[0] ?? {})).not.toContain(
++      "metadata_patch",
++    );
++    expect(localityMetadataKeys).toEqual(["publisher_code", "publisher", "jurisdiction"]);
++  });
++
+   it("infers WA and national authorities from exact registry code tokens", () => {
+     expect(inferSourceAuthorityFromIdentity(document({ file_name: "WACHS-lithium-guideline.pdf" }))).toMatchObject({
+       code: "WACHS",
+       authority: { key: "wa-country-health-service", scope: "wa" },
+       conflict: false,
+     });
+     expect(
+       inferSourceAuthorityFromIdentity(document({ file_name: "TGA/lithium-product-information.pdf" })),
+     ).toMatchObject({
+       code: "TGA",
+diff --git a/tests/source-metadata.test.ts b/tests/source-metadata.test.ts
+index 2726ddb95f83958f6924ab1d80e3abcd470d55fa..60ab1c65ce43c52dcd0f7cc8ea8f11f6f993aa42 100644
+--- a/tests/source-metadata.test.ts
++++ b/tests/source-metadata.test.ts
+@@ -1,25 +1,195 @@
+ import { describe, expect, it, vi } from "vitest";
++import { australianSourceByKey, australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
+ import {
+   clipboardProvenanceLine,
+   formatClinicalDate,
+   hasRecordedGovernanceFields,
++  normalizeClinicalSourceMetadata,
+   normalizeOptionalSourceMetadata,
+   normalizeSourceMetadata,
+   sourceMetadataDiagnostics,
+   sourceProvenanceSummary,
+   sourceStatusLabel,
+   validationStatusLabel,
+ } from "../src/lib/source-metadata";
+-import { classifySourceAuthority } from "../src/lib/source-authority-registry";
++import { authorityIdentityForCatalogueEntry, classifySourceAuthority } from "../src/lib/source-authority-registry";
+ 
+ describe("source metadata helpers", () => {
++  it("exposes the governed clinical normalizer and exact catalogue identity resolver", () => {
++    expect(normalizeClinicalSourceMetadata).toBeTypeOf("function");
++    expect(authorityIdentityForCatalogueEntry).toBeTypeOf("function");
++  });
++
++  it("preserves recognized governed policy, date, URL, and hash metadata", () => {
++    const metadata = normalizeClinicalSourceMetadata({
++      source_kind: "document",
++      publisher_code: "WACP",
++      publisher: "Office of the Chief Psychiatrist WA",
++      jurisdiction: "Australia/WA",
++      corpus_scope: "australian_public",
++      source_role: "quality_standard",
++      content_mode: "indexed_content",
++      source_catalogue_key: "wa-chief-psychiatrist",
++      source_policy_version: australianSourcePolicyVersion,
++      canonical_url: "https://www.chiefpsychiatrist.wa.gov.au/standards/standard-1",
++      effective_date: "2026-08-20",
++      expiry_date: "2028-08-20",
++      supersedes_document_id: "doc-previous",
++      superseded_by_document_id: "doc-next",
++      retrieved_at: "2026-08-20T08:30:00.000Z",
++      content_hash: `sha256:${"a".repeat(64)}`,
++      change_state: "changed",
++      licence_policy: "public_index_permitted",
++    });
++
++    expect(metadata).toMatchObject({
++      corpus_scope: "australian_public",
++      source_role: "quality_standard",
++      content_mode: "indexed_content",
++      source_catalogue_key: "wa-chief-psychiatrist",
++      source_policy_version: australianSourcePolicyVersion,
++      canonical_url: "https://www.chiefpsychiatrist.wa.gov.au/standards/standard-1",
++      effective_date: "2026-08-20",
++      expiry_date: "2028-08-20",
++      supersedes_document_id: "doc-previous",
++      superseded_by_document_id: "doc-next",
++      retrieved_at: "2026-08-20T08:30:00.000Z",
++      content_hash: `sha256:${"a".repeat(64)}`,
++      change_state: "changed",
++      licence_policy: "public_index_permitted",
++    });
++  });
++
++  it("keeps absent governed metadata neutral", () => {
++    expect(normalizeClinicalSourceMetadata(null)).toMatchObject({
++      corpus_scope: null,
++      source_role: null,
++      content_mode: null,
++      source_catalogue_key: null,
++      source_policy_version: null,
++      canonical_url: null,
++      effective_date: null,
++      expiry_date: null,
++      supersedes_document_id: null,
++      superseded_by_document_id: null,
++      retrieved_at: null,
++      content_hash: null,
++      change_state: "unknown",
++      licence_policy: null,
++    });
++  });
++
++  it("fails malformed policy URLs, dates, and hashes closed with diagnostics", () => {
++    const warnSpy = vi.spyOn(sourceMetadataDiagnostics, "warn").mockImplementation(() => {});
++    try {
++      const metadata = normalizeClinicalSourceMetadata({
++        canonical_url: "http://example.test/guideline",
++        effective_date: "20 August 2026",
++        expiry_date: "2026-13-40",
++        retrieved_at: "yesterday",
++        content_hash: "sha256:not-a-digest",
++      });
++
++      expect(metadata).toMatchObject({
++        canonical_url: null,
++        effective_date: null,
++        expiry_date: null,
++        retrieved_at: null,
++        content_hash: null,
++      });
++      expect(warnSpy).toHaveBeenCalledWith("canonical_url", "http://example.test/guideline");
++      expect(warnSpy).toHaveBeenCalledWith("effective_date", "20 August 2026");
++      expect(warnSpy).toHaveBeenCalledWith("expiry_date", "2026-13-40");
++      expect(warnSpy).toHaveBeenCalledWith("retrieved_at", "yesterday");
++      expect(warnSpy).toHaveBeenCalledWith("content_hash", "sha256:not-a-digest");
++    } finally {
++      warnSpy.mockRestore();
++    }
++  });
++
++  it("does not mint catalogue policy from document-controlled prose or a mismatched identity", () => {
++    expect(
++      normalizeClinicalSourceMetadata({
++        source_kind: "document",
++        source_title: "WA Chief Psychiatrist standard wa-chief-psychiatrist",
++        description: "Published by WACP under the Australian source policy",
++        source_catalogue_key: "wa-chief-psychiatrist",
++        source_policy_version: australianSourcePolicyVersion,
++        content_mode: "indexed_content",
++        licence_policy: "public_index_permitted",
++      }),
++    ).toMatchObject({
++      source_catalogue_key: null,
++      source_policy_version: null,
++      content_mode: null,
++      licence_policy: null,
++    });
++
++    expect(
++      normalizeClinicalSourceMetadata({
++        source_kind: "document",
++        publisher_code: "TGA",
++        jurisdiction: "Australia/National",
++        source_catalogue_key: "wa-chief-psychiatrist",
++        source_policy_version: australianSourcePolicyVersion,
++        content_mode: "indexed_content",
++        licence_policy: "public_index_permitted",
++      }),
++    ).toMatchObject({
++      source_catalogue_key: null,
++      source_policy_version: null,
++      content_mode: null,
++      licence_policy: null,
++    });
++  });
++
++  it("allows partition-bound registry scope without Australian catalogue or activation authority", () => {
++    const metadata = normalizeClinicalSourceMetadata({
++      source_kind: "registry_record",
++      registry_record_kind: "service",
++      registry_record_id: "svc-123",
++      corpus_scope: "clinical_kb_site",
++      publisher_code: "WACP",
++      jurisdiction: "Australia/WA",
++      source_catalogue_key: "wa-chief-psychiatrist",
++      source_policy_version: australianSourcePolicyVersion,
++      content_mode: "indexed_content",
++      licence_policy: "public_index_permitted",
++    });
++
++    expect(metadata).toMatchObject({
++      corpus_scope: "clinical_kb_site",
++      source_catalogue_key: null,
++      source_policy_version: null,
++      content_mode: null,
++      licence_policy: null,
++    });
++    expect(classifySourceAuthority(metadata)).toMatchObject({
++      tier: "supplementary",
++      designation: "unclassified",
++      authorityKey: null,
++    });
++  });
++
++  it("resolves catalogue identity only for an exact key, code, and compatible jurisdiction", () => {
++    const source = australianSourceByKey("wa-chief-psychiatrist");
++
++    expect(source).not.toBeNull();
++    expect(authorityIdentityForCatalogueEntry(source!)).toMatchObject({
++      key: "wa-chief-psychiatrist",
++      lifecycle: "active",
++    });
++    expect(authorityIdentityForCatalogueEntry({ ...source!, publisherCode: "TGA" })).toBeNull();
++    expect(authorityIdentityForCatalogueEntry({ ...source!, jurisdiction: "Australia/National" })).toBeNull();
++  });
++
+   it("normalizes missing legacy metadata to explicit unknown labels without suppressing content", () => {
+     const metadata = normalizeSourceMetadata(null);
+ 
+     expect(metadata.document_status).toBe("unknown");
+     expect(metadata.clinical_validation_status).toBe("unverified");
+     expect(sourceStatusLabel(metadata)).toBe("Review status unknown");
+     expect(validationStatusLabel(metadata)).toBe("Not locally validated");
+     expect(sourceProvenanceSummary(metadata)).toContain("Review status unknown");
+   });
+ 
+@@ -159,20 +329,37 @@ describe("source metadata helpers", () => {
+   });
+ });
+ 
+ describe("source authority classification", () => {
+   const usable = {
+     document_status: "current",
+     clinical_validation_status: "approved",
+     extraction_quality: "good",
+   } as const;
+ 
++  it("recognizes NPS as historical provenance without active Australian augmentation eligibility", () => {
++    expect(
++      classifySourceAuthority({
++        ...usable,
++        publisher_code: "NPS",
++        publisher: "NPS MedicineWise",
++        jurisdiction: "Australia/National",
++      }),
++    ).toMatchObject({
++      designation: "trusted",
++      authorityKey: "nps-medicinewise",
++      authority: { lifecycle: "historical" },
++      tier: "supplementary",
++      eligibilityReasons: expect.arrayContaining(["source_lifecycle_not_active"]),
++    });
++  });
++
+   it.each([
+     {
+       label: "known WA code",
+       metadata: {
+         ...usable,
+         publisher_code: "FSH",
+         publisher: "Fiona Stanley Hospital",
+         jurisdiction: "Australia/WA",
+       },
+       tier: "wa_validated",

@@ -1,0 +1,539 @@
+{
+  "schemaVersion": 1,
+  "programmeId": "rag-answer-quality-and-repository-coverage-v1",
+  "phaseId": "P02",
+  "executionPredecessor": "P01",
+  "status": "accepted",
+  "packageVariant": "local",
+  "packageHash": "2ada405d103719fb8a921bac8b08ca6ca922850c27530185995d647a10dfa7d9",
+  "packageBaseSha": "dea32b8d26b32f03827bf71c0814315d92a7cb5c",
+  "packageHeadSha": "7252eb6312edf634e887578a322c53f23be7ab28",
+  "programmeImplementationBase": "7252eb6312edf634e887578a322c53f23be7ab28",
+  "branch": "codex/rag-local-build-20260822",
+  "modelRouting": {
+    "provider": "codex",
+    "plannedImplementationModel": "gpt-5.6-sol",
+    "actualImplementationModel": "gpt-5.6-sol",
+    "implementationCapabilityClass": "frontier-high",
+    "implementationReasoning": "high",
+    "plannedReviewModel": "gpt-5.6-sol",
+    "actualReviewModel": "gpt-5.6-sol",
+    "reviewCapabilityClass": "frontier-high",
+    "reviewReasoning": "xhigh",
+    "providerMappingUsed": false,
+    "fallbackUsed": false,
+    "escalationReason": null
+  },
+  "phaseStartSha": "b7da14fe6abaf1ff93b97b55303ed1b135c60a14",
+  "phaseEndSha": "ac634ab358c92e6d943258a532aa5c6a98959e88",
+  "startedAt": "2026-08-23T05:53:38.800Z",
+  "completedAt": "2026-08-23T11:10:02.927Z",
+  "tasks": [
+    {
+      "globalTaskKey": "P02/australian/task-1",
+      "strategy": "tdd",
+      "taskBaseSha": "b7da14fe6abaf1ff93b97b55303ed1b135c60a14",
+      "taskHeadSha": "bb708016b6277279e9d38482ce4d90927be6468c",
+      "commits": [
+        "924a6c63b250d45c550df2b907276c14144d924c",
+        "bb708016b6277279e9d38482ce4d90927be6468c"
+      ],
+      "briefPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-1-brief.md",
+      "briefSha256": "f94c5805690aebf52a0d0eb8fd0a3578fbabf6e6888a212e9763137970627970",
+      "implementerReportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-1-implementer-report.md",
+      "implementerReportSha256": "4cbc335f914a7f5af4ed517d7bba8b9365cc8608e54ddab514e3f0700057b0df",
+      "implementerAgentId": "/root/p02_aus_task1_impl",
+      "evidence": {
+        "red": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-catalogue.test.ts",
+            "expected": "FAIL because the catalogue module does not exist.",
+            "outcome": "failed-as-expected",
+            "result": "Vitest could not resolve @/lib/australian-source-catalogue before implementation."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/registry-corpus.test.ts",
+            "expected": "The production corpus boundary rejects governed link-only entries before provider or storage work.",
+            "outcome": "failed-as-expected",
+            "result": "The regression test failed because the real embedding path resolved with one document and one chunk before the production admission guard was added."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-catalogue.test.ts",
+            "expected": "The real verification-manifest boundary rejects duplicate publisher codes.",
+            "outcome": "failed-as-expected",
+            "result": "The regression test failed because a duplicate publisher code was accepted before normalized uniqueness enforcement was added."
+          }
+        ],
+        "green": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-catalogue.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "Final corrected catalogue suite passed 9 tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-catalogue.test.ts tests/check-indexing-contract.test.ts tests/registry-corpus.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "Final corrected focused suite passed 3 files and 27 tests."
+          },
+          {
+            "command": "npm run typecheck",
+            "expected": "The TypeScript contract compiles without errors.",
+            "outcome": "passed",
+            "result": "Typecheck passed on the final formatted task head."
+          },
+          {
+            "command": "node scripts/check-maintainability-budgets.mjs",
+            "expected": "Protected maintainability ceilings remain satisfied.",
+            "outcome": "passed",
+            "result": "Maintainability passed with src/lib/rag/rag.ts at 4,362/4,362 lines."
+          },
+          {
+            "command": "git diff --check b7da14fe6abaf1ff93b97b55303ed1b135c60a14 bb708016b6277279e9d38482ce4d90927be6468c",
+            "expected": "The complete task range has no whitespace errors.",
+            "outcome": "passed",
+            "result": "The complete immutable task range passed git diff --check."
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "baseSha": "b7da14fe6abaf1ff93b97b55303ed1b135c60a14",
+          "headSha": "924a6c63b250d45c550df2b907276c14144d924c",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-1-review-1.diff",
+          "diffPackageSha256": "c99d844683627ee5d75d19f43b8f2294091a9bdf2ed8b565a564fae2a3b34235",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-1-review-1.md",
+          "reportSha256": "42242c27ddd209ef39365b52677d07a51956bc9dd3d2687c032c7244a104d1b0",
+          "reviewerAgentId": "/root/p02_aus_task1_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "b7da14fe6abaf1ff93b97b55303ed1b135c60a14",
+          "headSha": "bb708016b6277279e9d38482ce4d90927be6468c",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-1-review-2.diff",
+          "diffPackageSha256": "b5be4c8877385c4ffa780a3ff956f63bce262d2a12fdf99b2059f2fb7d589c89",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-1-review-2.md",
+          "reportSha256": "a2b925317bb54613d0d4dc9b0bbf21653ad425eb6af85f920453c9a738f272f2",
+          "reviewerAgentId": "/root/p02_aus_task1_review1",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        }
+      ]
+    },
+    {
+      "globalTaskKey": "P02/australian/task-2",
+      "strategy": "tdd",
+      "taskBaseSha": "bb708016b6277279e9d38482ce4d90927be6468c",
+      "taskHeadSha": "c6d5ed52eca90ead9c1a088999d2adeb285959d1",
+      "commits": [
+        "d4e42a5d710ecdaa82e567ed2ea2584dc12d832f",
+        "cf7bc34186af5a72cb239cd25ce6004c2d7c72f9",
+        "c6d5ed52eca90ead9c1a088999d2adeb285959d1"
+      ],
+      "briefPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-2-brief.md",
+      "briefSha256": "b39e6fdc0e81e5ac3a4f22644ba703e1335463402e819f95dd93bee78135aaa0",
+      "implementerReportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-2-implementer-report.md",
+      "implementerReportSha256": "a516910509cc1b868fae595b26529ca6824c5d484d2f46db024e8b3e0e63d671",
+      "implementerAgentId": "/root/p02_aus_task2_impl",
+      "evidence": {
+        "red": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-metadata.test.ts tests/source-authority-tooling.test.ts",
+            "expected": "FAIL on absent fields and current NPS behaviour.",
+            "outcome": "failed-as-expected",
+            "result": "The exact two-file RED reported 9 planned failures while 45 existing tests passed."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-metadata.test.ts tests/source-authority-tooling.test.ts tests/australian-source-catalogue.test.ts",
+            "expected": "Reviewer regressions fail before the governed-boundary correction.",
+            "outcome": "failed-as-expected",
+            "result": "Five behavioural regressions failed while 61 tests passed, covering diagnostic disclosure, lost link-only policy, timestamp rollover, and writable audit structure."
+          },
+          {
+            "command": "npm run typecheck",
+            "expected": "The required normalized-output type assertion fails while fields remain optional.",
+            "outcome": "failed-as-expected",
+            "result": "Typecheck failed at the required-output assertion before raw-input and normalized-output contracts were separated."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-metadata.test.ts tests/source-authority-tooling.test.ts tests/australian-source-catalogue.test.ts",
+            "expected": "Contradictory protected-source policy claims fail before canonicalization is implemented.",
+            "outcome": "failed-as-expected",
+            "result": "The eTG and AMH hostile-policy regressions failed while 66 tests passed."
+          }
+        ],
+        "green": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-metadata.test.ts tests/source-authority-tooling.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "Final exact two-file task contract passed 59 tests on the accepted task head."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-metadata.test.ts tests/source-authority-tooling.test.ts tests/australian-source-catalogue.test.ts",
+            "expected": "The complete Step 5 command passes after all corrections.",
+            "outcome": "passed",
+            "result": "Final exact Step 5 suite passed 3 files and 68 tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-metadata.test.ts tests/source-authority-tooling.test.ts tests/australian-source-catalogue.test.ts tests/source-metadata-browser-safety.test.ts tests/therapy-source-governance.test.ts tests/answer-copy-payload.test.ts tests/answer-state-contract.test.ts tests/check-indexing-contract.test.ts tests/registry-corpus.test.ts",
+            "expected": "Metadata, authority, compatibility, privacy, indexing, and corpus boundaries remain compatible.",
+            "outcome": "passed",
+            "result": "Expanded corrected suite passed 9 files and 125 tests."
+          },
+          {
+            "command": "npm run typecheck",
+            "expected": "The TypeScript contract compiles without errors.",
+            "outcome": "passed",
+            "result": "Typecheck passed with required normalized output and explicit raw input boundaries."
+          },
+          {
+            "command": "node scripts/check-maintainability-budgets.mjs",
+            "expected": "Protected maintainability ceilings remain satisfied.",
+            "outcome": "passed",
+            "result": "Maintainability passed with src/lib/rag/rag.ts unchanged at 4,362/4,362 lines."
+          },
+          {
+            "command": "git diff --check bb708016b6277279e9d38482ce4d90927be6468c c6d5ed52eca90ead9c1a088999d2adeb285959d1",
+            "expected": "The complete task range has no whitespace errors.",
+            "outcome": "passed",
+            "result": "The complete immutable Task 2 range passed git diff --check."
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "baseSha": "bb708016b6277279e9d38482ce4d90927be6468c",
+          "headSha": "d4e42a5d710ecdaa82e567ed2ea2584dc12d832f",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-2-review-1.diff",
+          "diffPackageSha256": "2c09ab253e7265c44061572f92d70230fefbc8a62bf0c3afa3b4b4aef043ede5",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-2-review-1.md",
+          "reportSha256": "089a8199a2f14ed1b00afd58930071b785e0e96b5b7a19aa400dd4c2c9a297d3",
+          "reviewerAgentId": "/root/p02_aus_task2_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "bb708016b6277279e9d38482ce4d90927be6468c",
+          "headSha": "cf7bc34186af5a72cb239cd25ce6004c2d7c72f9",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-2-review-2.diff",
+          "diffPackageSha256": "8df6234406632b8623a6bee8e29d6b1531d3d3cb4305bf3ceea11b7dbc542046",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-2-review-2.md",
+          "reportSha256": "9677c9fd324b52c8e21e865c755398b64c7483ffbc0936a71e8d0acadab7e875",
+          "reviewerAgentId": "/root/p02_aus_task2_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "bb708016b6277279e9d38482ce4d90927be6468c",
+          "headSha": "c6d5ed52eca90ead9c1a088999d2adeb285959d1",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-2-review-3.diff",
+          "diffPackageSha256": "29a74a198c36facac445966031cc61a5475e817aa02efe9bfded5717bc56a9b5",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-2-review-3.md",
+          "reportSha256": "c4db9f9c04f34466d50ccdd1c15679c75dbcea75adaee82ba2241dc010e1172b",
+          "reviewerAgentId": "/root/p02_aus_task2_review1",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        }
+      ]
+    },
+    {
+      "globalTaskKey": "P02/australian/task-3",
+      "strategy": "tdd",
+      "taskBaseSha": "c6d5ed52eca90ead9c1a088999d2adeb285959d1",
+      "taskHeadSha": "90b90ea26a09dc6e59fa18d1198dd2a6f63161d6",
+      "commits": [
+        "36e0e1a6185f169f7e3820587da4aa94877fe396",
+        "e877cd7770f50d775663a3abf8690d13bc68eb49",
+        "90b90ea26a09dc6e59fa18d1198dd2a6f63161d6"
+      ],
+      "briefPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-3-brief.md",
+      "briefSha256": "aaa64a7445ecbe7de2b64f42780956753662928fa5184c9db4527a0e09304bef",
+      "implementerReportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-3-implementer-report.md",
+      "implementerReportSha256": "68b3a214c8b4e6c2a5327319e487d6cd1aa1fcfca8c6a95f0b03ccb2cbfb820f",
+      "implementerAgentId": "/root/p02_aus_task3_impl",
+      "evidence": {
+        "red": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-role-policy.test.ts",
+            "expected": "FAIL because the policy module does not exist.",
+            "outcome": "failed-as-expected",
+            "result": "The admitted literal RED failed module resolution before any product edit."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-priority.test.ts",
+            "expected": "Ineligible policy sources are removed before Australian ranking.",
+            "outcome": "failed-as-expected",
+            "result": "The integration RED failed because PBS and eTG remained in the ranked result."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-role-policy.test.ts",
+            "expected": "Primary decisions, positive extraction quality, and deterministic conflict handling are enforced.",
+            "outcome": "failed-as-expected",
+            "result": "Four review regressions failed while seven tests passed before the first correction."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-priority.test.ts tests/rag-context-budget.test.ts",
+            "expected": "Every production context path supplies a conservative verified claim role.",
+            "outcome": "failed-as-expected",
+            "result": "Eight production-path regressions failed while 24 tests passed before mandatory role wiring."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-role-policy.test.ts",
+            "expected": "Duplicate canonical conflicts preserve the full deterministic union of verified-present evidence.",
+            "outcome": "failed-as-expected",
+            "result": "The provenance regression failed because forward and reverse input retained different disjoint chunk subsets."
+          }
+        ],
+        "green": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-role-policy.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "Final focused policy suite passed 12 tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/source-role-policy.test.ts tests/source-metadata.test.ts tests/rag-score.test.ts",
+            "expected": "The complete Task 3 contract passes without relevance-score regression.",
+            "outcome": "passed",
+            "result": "Required Task 3 suite passed 3 files and 65 tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-priority.test.ts tests/source-governance.test.ts tests/rag-context-budget.test.ts",
+            "expected": "Priority, governance, and production model-context paths enforce claim roles before ranking.",
+            "outcome": "passed",
+            "result": "Production priority, governance, and context suite passed 3 files and 42 tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-catalogue.test.ts tests/check-indexing-contract.test.ts tests/registry-corpus.test.ts",
+            "expected": "Task 1 and Task 2 catalogue/link-only/indexing boundaries remain intact.",
+            "outcome": "passed",
+            "result": "Prior-phase guard suite passed 3 files and 27 tests."
+          },
+          {
+            "command": "npm run typecheck",
+            "expected": "The TypeScript contract compiles without errors.",
+            "outcome": "passed",
+            "result": "Typecheck passed on the final task head."
+          },
+          {
+            "command": "node scripts/check-maintainability-budgets.mjs",
+            "expected": "Protected maintainability ceilings remain satisfied.",
+            "outcome": "passed",
+            "result": "Maintainability passed with src/lib/rag/rag.ts unchanged at 4,362/4,362 lines."
+          },
+          {
+            "command": "git diff --check c6d5ed52eca90ead9c1a088999d2adeb285959d1 90b90ea26a09dc6e59fa18d1198dd2a6f63161d6",
+            "expected": "The complete task range has no whitespace errors.",
+            "outcome": "passed",
+            "result": "The complete immutable Task 3 range passed git diff --check."
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "baseSha": "c6d5ed52eca90ead9c1a088999d2adeb285959d1",
+          "headSha": "36e0e1a6185f169f7e3820587da4aa94877fe396",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-3-review-1.diff",
+          "diffPackageSha256": "0a1df8ae5e3e1ff795b3e9fb7e5400f71f4b69721f917803403ba1df5cfce21f",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-3-review-1.md",
+          "reportSha256": "8ab6ccb9aafe23c4d935584d76d64828e32549df74636f4f925368e68ebb6637",
+          "reviewerAgentId": "/root/p02_aus_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "c6d5ed52eca90ead9c1a088999d2adeb285959d1",
+          "headSha": "e877cd7770f50d775663a3abf8690d13bc68eb49",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-3-review-2.diff",
+          "diffPackageSha256": "f8824de144513de3be1e9b4b177fa9087c85d58720b5ab43edc0bd0aeac3a8a7",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-3-review-2.md",
+          "reportSha256": "e24740f5ae61c46b16384b628ed6006653307be5ae8f53528d18b063be7268aa",
+          "reviewerAgentId": "/root/p02_aus_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "c6d5ed52eca90ead9c1a088999d2adeb285959d1",
+          "headSha": "90b90ea26a09dc6e59fa18d1198dd2a6f63161d6",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-3-review-3.diff",
+          "diffPackageSha256": "a9666085051b88b87cd6a8e20272a5cfd07a45e4626c18f8f5cf4ffd0f4ccf44",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-3-review-3.md",
+          "reportSha256": "eb38e17e58e0c484b3a23c5f06bcae73ff1c5793eac0f990cf6714a4486f3ca6",
+          "reviewerAgentId": "/root/p02_aus_task3_review1",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        }
+      ]
+    },
+    {
+      "globalTaskKey": "P02/australian/task-4",
+      "strategy": "tdd",
+      "taskBaseSha": "90b90ea26a09dc6e59fa18d1198dd2a6f63161d6",
+      "taskHeadSha": "ac634ab358c92e6d943258a532aa5c6a98959e88",
+      "commits": [
+        "fe263fffa226940000d40cf0d743e507d3b06335",
+        "58ba7908afc61231ed898f23a39dd43158f173b1",
+        "db78a7c90d97a681b1f806fda1b12e4ce00ea616",
+        "ac634ab358c92e6d943258a532aa5c6a98959e88"
+      ],
+      "briefPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-brief.md",
+      "briefSha256": "4c7ebeabe94439c9fd147d85c36d9d417ed2e4c531428ec93f92d4d27252b62f",
+      "implementerReportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-implementer-report.md",
+      "implementerReportSha256": "91a963beb3507936954dc44181ed7ffd5905b3baadc8e36151bdbefb30362dc6",
+      "implementerAgentId": "/root/p02_phase_fix1",
+      "evidence": {
+        "red": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/publication-manifest.test.ts tests/supabase-schema.test.ts",
+            "expected": "FAIL on absent v2/migration constraints.",
+            "outcome": "failed-as-expected",
+            "result": "Initial RED failed with six absent-v2 parser assertions and the absent Australian activation migration."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/publication-manifest.test.ts tests/supabase-schema.test.ts",
+            "expected": "Reviewer regressions reject arbitrary NEW publication state, canonical UUID duplicates, and an untestable dispatcher.",
+            "outcome": "failed-as-expected",
+            "result": "Review-wave RED failed 3 tests while 90 passed before NEW-state, canonical SQL, and dispatcher corrections."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/publication-manifest.test.ts tests/supabase-schema.test.ts",
+            "expected": "A BEFORE trigger must avoid NEW generated columns and freeze durable public receipt evidence.",
+            "outcome": "failed-as-expected",
+            "result": "Second review-wave RED failed 1 structured schema contract while 96 tests passed before the generated-column and post-public metadata correction."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-catalogue.test.ts tests/source-metadata.test.ts tests/source-role-policy.test.ts tests/australian-source-priority.test.ts tests/publication-manifest.test.ts tests/supabase-schema.test.ts",
+            "expected": "Phase-review regressions expose authority-identity alias drift and reject superseded, replacement-linked, unknown, or absent source states at every activation boundary.",
+            "outcome": "failed-as-expected",
+            "result": "Correction-wave RED failed 15 tests while 174 passed before the shared identity registry and active-state invariant were implemented."
+          }
+        ],
+        "green": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/publication-manifest.test.ts tests/supabase-schema.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "Final exact focused suite passed 2 files and 102 tests on the corrected task head."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-catalogue.test.ts tests/source-metadata.test.ts tests/source-role-policy.test.ts tests/australian-source-priority.test.ts tests/publication-manifest.test.ts tests/supabase-schema.test.ts",
+            "expected": "The shared authority registry and active-state invariant close both phase-review findings across TypeScript and SQL boundaries.",
+            "outcome": "passed",
+            "result": "Final six-file correction suite passed 6 files and 189 tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/australian-source-catalogue.test.ts tests/check-indexing-contract.test.ts tests/registry-corpus.test.ts tests/source-metadata.test.ts tests/source-authority-tooling.test.ts tests/source-metadata-browser-safety.test.ts tests/therapy-source-governance.test.ts tests/answer-copy-payload.test.ts tests/answer-state-contract.test.ts tests/source-role-policy.test.ts tests/rag-score.test.ts tests/australian-source-priority.test.ts tests/source-governance.test.ts tests/rag-context-budget.test.ts tests/publication-manifest.test.ts tests/supabase-schema.test.ts",
+            "expected": "The complete corrected P02 contract remains compatible across catalogue, policy, ranking, context, publication, and schema boundaries.",
+            "outcome": "passed",
+            "result": "Final corrected P02 phase suite passed 15 files and 279 tests."
+          },
+          {
+            "command": "npm run typecheck",
+            "expected": "The TypeScript contract compiles without errors.",
+            "outcome": "passed",
+            "result": "Fresh final typecheck passed for the accepted task head."
+          },
+          {
+            "command": "npm run check:migration-role",
+            "expected": "Hosted migration role policy and immutable applied history remain valid.",
+            "outcome": "passed",
+            "result": "Migration-role guard passed without connecting to or applying a hosted migration."
+          },
+          {
+            "command": "npm run check:owner-scope",
+            "expected": "Owner-scoped table access remains valid.",
+            "outcome": "passed",
+            "result": "Owner-scope passed for 42 API files and 25 owner-scoped tables."
+          },
+          {
+            "command": "npm run check:maintainability-budgets",
+            "expected": "Protected maintainability ceilings remain satisfied.",
+            "outcome": "passed",
+            "result": "Maintainability passed with src/lib/rag/rag.ts unchanged at 4,362/4,362 lines."
+          },
+          {
+            "command": "git diff --check 90b90ea26a09dc6e59fa18d1198dd2a6f63161d6 ac634ab358c92e6d943258a532aa5c6a98959e88",
+            "expected": "The complete task range has no whitespace errors.",
+            "outcome": "passed",
+            "result": "The complete immutable four-commit Task 4 range passed git diff --check."
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "baseSha": "90b90ea26a09dc6e59fa18d1198dd2a6f63161d6",
+          "headSha": "fe263fffa226940000d40cf0d743e507d3b06335",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-review-1.diff",
+          "diffPackageSha256": "cae717f4a0a6b32e335a4199fe1119ff7161099f1bb6ca509ce467b1ae09164f",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-review-1.md",
+          "reportSha256": "1eed0ee2a199d2e5a05e17e4c25cfa21137c20da536ab3bd8dd25b46c3e6df1d",
+          "reviewerAgentId": "/root/p02_aus_task4_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "90b90ea26a09dc6e59fa18d1198dd2a6f63161d6",
+          "headSha": "58ba7908afc61231ed898f23a39dd43158f173b1",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-review-2.diff",
+          "diffPackageSha256": "432ce60477ac7054529774fcedf378f32055d82d5803fa824b5866846f89e99d",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-review-2.md",
+          "reportSha256": "97ff6a0288e55216f15bcff62936f83bbfa3129b9e60cfe206a7354f4872937e",
+          "reviewerAgentId": "/root/p02_aus_task4_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "90b90ea26a09dc6e59fa18d1198dd2a6f63161d6",
+          "headSha": "db78a7c90d97a681b1f806fda1b12e4ce00ea616",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-review-3.diff",
+          "diffPackageSha256": "f571577371a905d16d3cbaeec32bad969fb2e84ad640c4dc7843b8c3c70612a0",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-review-3.md",
+          "reportSha256": "a4f8071b2561741e83373093d517899fa01317ad160fcdf36d6f191eb0014ae7",
+          "reviewerAgentId": "/root/p02_aus_task4_review1",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        },
+        {
+          "baseSha": "90b90ea26a09dc6e59fa18d1198dd2a6f63161d6",
+          "headSha": "ac634ab358c92e6d943258a532aa5c6a98959e88",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-review-4.diff",
+          "diffPackageSha256": "8fa01387dbdafc7c0c3884ed8d0efff7f8704044493186d21d8282618003e6e4",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-australian-task-4-review-4.md",
+          "reportSha256": "e2549f6036f816f092328784980e04c3041e9c24d012cca48caa296a6b136b74",
+          "reviewerAgentId": "/root/p02_aus_task4_review1",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        }
+      ]
+    }
+  ],
+  "phaseReviews": [
+    {
+      "baseSha": "b7da14fe6abaf1ff93b97b55303ed1b135c60a14",
+      "headSha": "db78a7c90d97a681b1f806fda1b12e4ce00ea616",
+      "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-phase-review-1.diff",
+      "diffPackageSha256": "1e4621350aab4ba67061fec0741cb2cf0e3be462b0a586307dc4dbe692ac00c3",
+      "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-phase-review-1-report.md",
+      "reportSha256": "642eaaa553c0156148afbb00c847e5a3d22dd0b8ac1127f25139563181383869",
+      "reviewerAgentId": "/root/p02_phase_review1",
+      "specVerdict": "FAIL",
+      "qualityVerdict": "FAIL"
+    },
+    {
+      "baseSha": "b7da14fe6abaf1ff93b97b55303ed1b135c60a14",
+      "headSha": "ac634ab358c92e6d943258a532aa5c6a98959e88",
+      "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-phase-review-2.diff",
+      "diffPackageSha256": "05b6a8e85ae5dfd75a4320defc6ca4ce73645ff253db57e4ab73422e02f24d92",
+      "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P02/P02-phase-review-2-report.md",
+      "reportSha256": "8072a760455f7c08b60b00a6bb274e2cf15769c52321e4aa173db2584fbe135b",
+      "reviewerAgentId": "/root/p02_phase_review1",
+      "specVerdict": "PASS",
+      "qualityVerdict": "PASS"
+    }
+  ],
+  "residualGates": [],
+  "acceptedAt": "2026-08-23T11:10:02.927Z"
+}

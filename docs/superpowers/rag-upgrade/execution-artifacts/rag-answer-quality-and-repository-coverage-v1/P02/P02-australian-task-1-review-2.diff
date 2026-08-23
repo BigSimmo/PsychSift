@@ -1,0 +1,889 @@
+# Review package: b7da14fe6abaf1ff93b97b55303ed1b135c60a14..bb708016b6277279e9d38482ce4d90927be6468c
+
+## Commits
+924a6c63b250d45c550df2b907276c14144d924c
+bb708016b6277279e9d38482ce4d90927be6468c
+
+## Diff
+diff --git a/data/australian-source-verification.v1.json b/data/australian-source-verification.v1.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..be4be6339ae2add3376112b0c501023a5d039d78
+--- /dev/null
++++ b/data/australian-source-verification.v1.json
+@@ -0,0 +1,343 @@
++{
++  "schemaVersion": "australian-source-verification-v1",
++  "policyVersion": "australian-source-policy-v1",
++  "connectedVerificationRequired": true,
++  "sources": [
++    {
++      "key": "wa-health",
++      "publisherCode": "WAHEALTH",
++      "publisher": "WA Health",
++      "canonicalUrl": "https://www.health.wa.gov.au/About-us/Policy-frameworks",
++      "jurisdiction": "Australia/WA",
++      "corpusScope": "australian_public",
++      "roles": ["service_policy"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 10,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#wa-health"
++    },
++    {
++      "key": "wa-chief-psychiatrist",
++      "publisherCode": "WACP",
++      "publisher": "Office of the Chief Psychiatrist WA",
++      "canonicalUrl": "https://www.chiefpsychiatrist.wa.gov.au/laws-and-rights/standards-and-guidelines/",
++      "jurisdiction": "Australia/WA",
++      "corpusScope": "australian_public",
++      "roles": ["clinical_guideline", "quality_standard"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 20,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#wa-chief-psychiatrist"
++    },
++    {
++      "key": "wa-legislation",
++      "publisherCode": "WALEG",
++      "publisher": "Western Australian Legislation",
++      "canonicalUrl": "https://www.legislation.wa.gov.au/",
++      "jurisdiction": "Australia/WA",
++      "corpusScope": "australian_public",
++      "roles": ["legal"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 30,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#wa-legislation"
++    },
++    {
++      "key": "tga",
++      "publisherCode": "TGA",
++      "publisher": "Therapeutic Goods Administration",
++      "canonicalUrl": "https://www.tga.gov.au/",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["regulatory", "safety_alert"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 40,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#tga"
++    },
++    {
++      "key": "acsqhc",
++      "publisherCode": "ACSQHC",
++      "publisher": "Australian Commission on Safety and Quality in Health Care",
++      "canonicalUrl": "https://www.safetyandquality.gov.au/",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["quality_standard"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 50,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#acsqhc"
++    },
++    {
++      "key": "australian-health-disability-ageing",
++      "publisherCode": "AUSDOH",
++      "publisher": "Australian Government Department of Health and Aged Care",
++      "canonicalUrl": "https://www.health.gov.au/",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["service_policy", "clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 60,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#australian-health-disability-ageing"
++    },
++    {
++      "key": "nhmrc",
++      "publisherCode": "NHMRC",
++      "publisher": "National Health and Medical Research Council",
++      "canonicalUrl": "https://www.nhmrc.gov.au/guidelines",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 70,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#nhmrc"
++    },
++    {
++      "key": "ranzcp",
++      "publisherCode": "RANZCP",
++      "publisher": "Royal Australian and New Zealand College of Psychiatrists",
++      "canonicalUrl": "https://www.ranzcp.org/clinical-guidelines-publications",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 80,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#ranzcp"
++    },
++    {
++      "key": "racgp",
++      "publisherCode": "RACGP",
++      "publisher": "Royal Australian College of General Practitioners",
++      "canonicalUrl": "https://www.racgp.org.au/clinical-resources/clinical-guidelines",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 90,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#racgp"
++    },
++    {
++      "key": "pbs",
++      "publisherCode": "PBS",
++      "publisher": "Pharmaceutical Benefits Scheme",
++      "canonicalUrl": "https://www.pbs.gov.au/",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["subsidy"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 100,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#pbs"
++    },
++    {
++      "key": "australian-prescriber",
++      "publisherCode": "AUSPRES",
++      "publisher": "Australian Prescriber",
++      "canonicalUrl": "https://australianprescriber.tg.org.au/",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["professional_review"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 110,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#australian-prescriber"
++    },
++    {
++      "key": "etg-complete",
++      "publisherCode": "TG",
++      "publisher": "Therapeutic Guidelines",
++      "canonicalUrl": "https://www.tg.org.au/",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["reference_link"],
++      "contentMode": "link_only",
++      "licencePolicy": "metadata_link_only",
++      "lifecycle": "active",
++      "fallbackRank": 120,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#etg-complete"
++    },
++    {
++      "key": "australian-medicines-handbook",
++      "publisherCode": "AMH",
++      "publisher": "Australian Medicines Handbook",
++      "canonicalUrl": "https://shop.amh.net.au/",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["reference_link"],
++      "contentMode": "link_only",
++      "licencePolicy": "metadata_link_only",
++      "lifecycle": "active",
++      "fallbackRank": 130,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#australian-medicines-handbook"
++    },
++    {
++      "key": "nps-medicinewise",
++      "publisherCode": "NPS",
++      "publisher": "NPS MedicineWise",
++      "canonicalUrl": "https://www.medicinewise.org.au/",
++      "jurisdiction": "Australia/National",
++      "corpusScope": "australian_public",
++      "roles": ["professional_review"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "index_forbidden",
++      "lifecycle": "historical",
++      "fallbackRank": 900,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#nps-medicinewise"
++    },
++    {
++      "key": "nsw-health",
++      "publisherCode": "NSWHEALTH",
++      "publisher": "NSW Health",
++      "canonicalUrl": "https://www.health.nsw.gov.au/",
++      "jurisdiction": "Australia/NSW",
++      "corpusScope": "australian_public",
++      "roles": ["service_policy", "clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 300,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#nsw-health"
++    },
++    {
++      "key": "queensland-health",
++      "publisherCode": "QLDHEALTH",
++      "publisher": "Queensland Health",
++      "canonicalUrl": "https://www.health.qld.gov.au/",
++      "jurisdiction": "Australia/QLD",
++      "corpusScope": "australian_public",
++      "roles": ["service_policy", "clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 310,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#queensland-health"
++    },
++    {
++      "key": "sa-health",
++      "publisherCode": "SAHEALTH",
++      "publisher": "SA Health",
++      "canonicalUrl": "https://www.sahealth.sa.gov.au/",
++      "jurisdiction": "Australia/SA",
++      "corpusScope": "australian_public",
++      "roles": ["service_policy", "clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 320,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#sa-health"
++    },
++    {
++      "key": "victoria-health",
++      "publisherCode": "VICHEALTH",
++      "publisher": "Victorian Department of Health",
++      "canonicalUrl": "https://www.health.vic.gov.au/",
++      "jurisdiction": "Australia/VIC",
++      "corpusScope": "australian_public",
++      "roles": ["service_policy", "clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 330,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#victoria-health"
++    },
++    {
++      "key": "tasmania-health",
++      "publisherCode": "TASHEALTH",
++      "publisher": "Tasmanian Department of Health",
++      "canonicalUrl": "https://www.health.tas.gov.au/",
++      "jurisdiction": "Australia/TAS",
++      "corpusScope": "australian_public",
++      "roles": ["service_policy", "clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 340,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#tasmania-health"
++    },
++    {
++      "key": "nt-health",
++      "publisherCode": "NTHEALTH",
++      "publisher": "NT Health",
++      "canonicalUrl": "https://health.nt.gov.au/",
++      "jurisdiction": "Australia/NT",
++      "corpusScope": "australian_public",
++      "roles": ["service_policy", "clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 350,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#nt-health"
++    },
++    {
++      "key": "act-health",
++      "publisherCode": "ACTHEALTH",
++      "publisher": "ACT Health",
++      "canonicalUrl": "https://www.health.act.gov.au/",
++      "jurisdiction": "Australia/ACT",
++      "corpusScope": "australian_public",
++      "roles": ["service_policy", "clinical_guideline"],
++      "contentMode": "indexed_content",
++      "licencePolicy": "review_required",
++      "lifecycle": "active",
++      "fallbackRank": 360,
++      "checkedAt": "2026-08-20",
++      "reviewerRole": "programme-design-reviewer",
++      "evidenceReference": "approved-plan:2026-08-20-rag-australian-source-governance#act-health"
++    }
++  ]
++}
+diff --git a/src/lib/australian-source-catalogue.ts b/src/lib/australian-source-catalogue.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..ff5c103cdcc13c1c7829ec7c6fdc79ee89ed3c30
+--- /dev/null
++++ b/src/lib/australian-source-catalogue.ts
+@@ -0,0 +1,188 @@
++import verificationManifest from "../../data/australian-source-verification.v1.json";
++
++import type { ClinicalSourceRole, SourceCorpusScope } from "@/lib/types";
++
++export type SourceContentMode = "indexed_content" | "link_only";
++export type SourceLifecycle = "active" | "historical" | "retired";
++export type SourceLicencePolicy =
++  "review_required" | "public_index_permitted" | "metadata_link_only" | "index_forbidden";
++
++export type AustralianSourceDefinition = Readonly<{
++  key: string;
++  publisherCode: string;
++  publisher: string;
++  canonicalUrl: string;
++  jurisdiction: string;
++  corpusScope: Extract<SourceCorpusScope, "australian_public">;
++  roles: readonly ClinicalSourceRole[];
++  contentMode: SourceContentMode;
++  licencePolicy: SourceLicencePolicy;
++  lifecycle: SourceLifecycle;
++  fallbackRank: number;
++}>;
++
++type AustralianSourceVerificationRow = AustralianSourceDefinition &
++  Readonly<{
++    checkedAt: string;
++    reviewerRole: string;
++    evidenceReference: string;
++  }>;
++
++export type AustralianSourceVerificationManifest = Readonly<{
++  schemaVersion: "australian-source-verification-v1";
++  policyVersion: typeof australianSourcePolicyVersion;
++  connectedVerificationRequired: true;
++  sources: readonly AustralianSourceVerificationRow[];
++}>;
++
++export const australianSourcePolicyVersion = "australian-source-policy-v1" as const;
++
++const sourceRoles = new Set<ClinicalSourceRole>([
++  "local_guideline",
++  "clinical_guideline",
++  "clinical_reference",
++  "service_directory",
++  "form_reference",
++  "tool_reference",
++  "safety_alert",
++  "regulatory",
++  "quality_standard",
++  "legal",
++  "subsidy",
++  "professional_review",
++  "service_policy",
++  "reference_link",
++]);
++const contentModes = new Set<SourceContentMode>(["indexed_content", "link_only"]);
++const licencePolicies = new Set<SourceLicencePolicy>([
++  "review_required",
++  "public_index_permitted",
++  "metadata_link_only",
++  "index_forbidden",
++]);
++const lifecycles = new Set<SourceLifecycle>(["active", "historical", "retired"]);
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
++}
++
++function isNonEmptyString(value: unknown): value is string {
++  return typeof value === "string" && value.trim().length > 0;
++}
++
++function isHttpsUrl(value: unknown): value is string {
++  if (!isNonEmptyString(value)) return false;
++  try {
++    return new URL(value).protocol === "https:";
++  } catch {
++    return false;
++  }
++}
++
++function isVerificationRow(value: unknown): value is AustralianSourceVerificationRow {
++  if (!isRecord(value)) return false;
++  return (
++    isNonEmptyString(value.key) &&
++    isNonEmptyString(value.publisherCode) &&
++    isNonEmptyString(value.publisher) &&
++    isHttpsUrl(value.canonicalUrl) &&
++    isNonEmptyString(value.jurisdiction) &&
++    value.corpusScope === "australian_public" &&
++    Array.isArray(value.roles) &&
++    value.roles.length > 0 &&
++    value.roles.every((role) => sourceRoles.has(role as ClinicalSourceRole)) &&
++    contentModes.has(value.contentMode as SourceContentMode) &&
++    licencePolicies.has(value.licencePolicy as SourceLicencePolicy) &&
++    lifecycles.has(value.lifecycle as SourceLifecycle) &&
++    Number.isSafeInteger(value.fallbackRank) &&
++    Number(value.fallbackRank) >= 0 &&
++    /^\d{4}-\d{2}-\d{2}$/.test(String(value.checkedAt)) &&
++    isNonEmptyString(value.reviewerRole) &&
++    isNonEmptyString(value.evidenceReference)
++  );
++}
++
++export function assertAustralianSourceVerificationManifest(
++  input: unknown,
++): asserts input is AustralianSourceVerificationManifest {
++  if (!isRecord(input)) throw new Error("Australian source verification manifest must be an object.");
++  if (input.schemaVersion !== "australian-source-verification-v1") {
++    throw new Error("Unsupported Australian source verification manifest version.");
++  }
++  if (input.policyVersion !== australianSourcePolicyVersion) {
++    throw new Error("Australian source verification policy version does not match the catalogue.");
++  }
++  if (input.connectedVerificationRequired !== true) {
++    throw new Error("Australian source verification must retain its connected review checkpoint.");
++  }
++  if (!Array.isArray(input.sources) || input.sources.length === 0 || !input.sources.every(isVerificationRow)) {
++    throw new Error("Australian source verification contains an invalid source row.");
++  }
++
++  const keys = new Set<string>();
++  const publisherCodes = new Set<string>();
++  const canonicalUrls = new Set<string>();
++  for (const source of input.sources) {
++    const publisherCode = source.publisherCode.trim().toUpperCase();
++    if (keys.has(source.key)) throw new Error(`Duplicate Australian source key: ${source.key}`);
++    if (publisherCodes.has(publisherCode)) {
++      throw new Error(`Duplicate Australian source publisher code: ${source.publisherCode}`);
++    }
++    if (canonicalUrls.has(source.canonicalUrl)) {
++      throw new Error(`Duplicate Australian source canonical URL: ${source.canonicalUrl}`);
++    }
++    if (/healthdirect/i.test(`${source.key} ${source.publisher} ${source.canonicalUrl}`)) {
++      throw new Error("Healthdirect is excluded from the Australian source catalogue.");
++    }
++    if (source.contentMode === "link_only" && source.licencePolicy !== "metadata_link_only") {
++      throw new Error(`Link-only Australian source ${source.key} must use metadata_link_only policy.`);
++    }
++    if (source.contentMode === "indexed_content" && source.licencePolicy === "metadata_link_only") {
++      throw new Error(`Indexed Australian source ${source.key} cannot use metadata_link_only policy.`);
++    }
++    keys.add(source.key);
++    publisherCodes.add(publisherCode);
++    canonicalUrls.add(source.canonicalUrl);
++  }
++}
++
++const reviewedVerificationManifest: unknown = verificationManifest;
++assertAustralianSourceVerificationManifest(reviewedVerificationManifest);
++
++export const australianSourceCatalogue: readonly AustralianSourceDefinition[] = Object.freeze(
++  reviewedVerificationManifest.sources.map(
++    ({ checkedAt: _checkedAt, reviewerRole: _reviewerRole, evidenceReference: _evidenceReference, ...source }) =>
++      Object.freeze({ ...source, roles: Object.freeze([...source.roles]) }),
++  ),
++);
++
++const australianSourceCatalogueByKey = new Map(australianSourceCatalogue.map((source) => [source.key, source]));
++
++export function australianSourceByKey(key: string): AustralianSourceDefinition | null {
++  return australianSourceCatalogueByKey.get(key) ?? null;
++}
++
++export function isIndexableAustralianSource(key: string, exactDocumentLicence: SourceLicencePolicy): boolean {
++  const source = australianSourceByKey(key);
++  return (
++    source?.contentMode === "indexed_content" &&
++    source.lifecycle === "active" &&
++    source.licencePolicy !== "index_forbidden" &&
++    exactDocumentLicence === "public_index_permitted"
++  );
++}
++
++export function assertIndexableCatalogueEntry(
++  source: AustralianSourceDefinition | null,
++): asserts source is AustralianSourceDefinition {
++  if (!source) throw new Error("Unknown Australian source catalogue entry.");
++  if (source.contentMode === "link_only") {
++    throw new Error(`Australian source ${source.key} is link-only and cannot enter a content-bearing index.`);
++  }
++  if (source.lifecycle !== "active") {
++    throw new Error(`Australian source ${source.key} is ${source.lifecycle} and cannot enter a current index.`);
++  }
++  if (source.licencePolicy === "index_forbidden" || source.licencePolicy === "metadata_link_only") {
++    throw new Error(`Australian source ${source.key} has a non-indexable catalogue licence policy.`);
++  }
++}
+diff --git a/src/lib/registry-corpus.ts b/src/lib/registry-corpus.ts
+index e63abdd6f200773e4e875624633ff6d9c121a495..807360f45b459d106ec475a17792202bffc42bb1 100644
+--- a/src/lib/registry-corpus.ts
++++ b/src/lib/registry-corpus.ts
+@@ -1,12 +1,13 @@
+ import { createHash } from "node:crypto";
+ 
++import { assertIndexableCatalogueEntry, australianSourceByKey } from "@/lib/australian-source-catalogue";
+ import { diagnosisFullText, presentationFullText } from "@/lib/differentials";
+ import type { DifferentialPresentationWorkflow, DifferentialRecord } from "@/lib/differential-snapshot";
+ import {
+   rowToDifferentialRecord,
+   rowToPresentationWorkflow,
+   type DifferentialRecordRow,
+ } from "@/lib/differential-records";
+ import { env } from "@/lib/env";
+ import { formRecordSearchText } from "@/lib/forms";
+ import { rowToMedicationRecord, type MedicationRecordRow } from "@/lib/medication-records";
+@@ -31,20 +32,29 @@ export type RegistryCorpusEntry = {
+   slug: string;
+   title: string;
+   subtitle: string | null;
+   content: string;
+   searchText: string;
+   sourceStatus: string;
+   validationStatus: string;
+   metadata: Record<string, Json>;
+ };
+ 
++function assertRegistryCorpusEntryAdmission(entry: RegistryCorpusEntry) {
++  const catalogueKey = entry.metadata.source_catalogue_key;
++  if (catalogueKey === undefined || catalogueKey === null) return;
++  if (typeof catalogueKey !== "string" || !catalogueKey.trim()) {
++    throw new Error("Registry corpus source catalogue key must be a non-empty string.");
++  }
++  assertIndexableCatalogueEntry(australianSourceByKey(catalogueKey));
++}
++
+ export type RegistryCorpusEmbedResult = {
+   documentCount: number;
+   chunkCount: number;
+   skipped?: boolean;
+   reason?: "disabled" | "not_found" | "failed";
+   errorMessage?: string;
+ };
+ 
+ export type RegistryCorpusEditTarget =
+   | { corpusKind: "service" | "form"; ownerId: string; slug: string }
+@@ -493,20 +503,22 @@ export function differentialRowsToCorpusEntries(rows: DifferentialRecordRow[]):
+         tags: row.tags,
+       },
+     };
+   });
+ }
+ 
+ /** Embed registry corpus entries. */
+ export async function embedRegistryCorpusEntries(supabase: AdminClient, entries: RegistryCorpusEntry[]) {
+   if (entries.length === 0) return { documentCount: 0, chunkCount: 0 };
+ 
++  for (const entry of entries) assertRegistryCorpusEntryAdmission(entry);
++
+   const { embedTexts } = await import("@/lib/openai");
+   let documentCount = 0;
+   let chunkCount = 0;
+ 
+   for (let start = 0; start < entries.length; start += REGISTRY_EMBEDDING_WRITE_BATCH_SIZE) {
+     const batch = entries.slice(start, start + REGISTRY_EMBEDDING_WRITE_BATCH_SIZE);
+     const derivedDocuments = batch.map(registryDocumentRow);
+     const documentIds = derivedDocuments
+       .map((document) => document.id)
+       .filter((id): id is string => typeof id === "string");
+diff --git a/src/lib/source-authority-registry.ts b/src/lib/source-authority-registry.ts
+index b849a5dd850cf5a1d924509bd6ed66ceaa019001..06c7ec2ea69562333af3701b5987f6bc2cb2a062 100644
+--- a/src/lib/source-authority-registry.ts
++++ b/src/lib/source-authority-registry.ts
+@@ -93,20 +93,38 @@ export const sourceAuthorityRegistry = [
+     publisherAliases: [
+       "WA Department of Health",
+       "Western Australian Department of Health",
+       "Department of Health Western Australia",
+       "Government of Western Australia Department of Health",
+     ],
+     jurisdictions: waJurisdictions,
+     scope: "wa",
+     tier: "wa_validated",
+   }),
++  authority({
++    key: "wa-chief-psychiatrist",
++    codes: ["WACP"],
++    publisher: "Office of the Chief Psychiatrist WA",
++    publisherAliases: ["Chief Psychiatrist of Western Australia"],
++    jurisdictions: waJurisdictions,
++    scope: "wa",
++    tier: "wa_validated",
++  }),
++  authority({
++    key: "wa-legislation",
++    codes: ["WALEG"],
++    publisher: "Western Australian Legislation",
++    publisherAliases: ["Western Australia Legislation"],
++    jurisdictions: waJurisdictions,
++    scope: "wa",
++    tier: "wa_validated",
++  }),
+   authority({
+     key: "armadale-kalamunda-group",
+     codes: ["AKG"],
+     publisher: "Armadale Kalamunda Group",
+     jurisdictions: waJurisdictions,
+     scope: "wa",
+     tier: "wa_validated",
+     designation: "official",
+     officialBasis: "wa_hospital",
+   }),
+@@ -224,20 +242,28 @@ export const sourceAuthorityRegistry = [
+   }),
+   authority({
+     key: "acsqhc",
+     codes: ["ACSQHC"],
+     publisher: "Australian Commission on Safety and Quality in Health Care",
+     publisherAliases: ["Australian Commission on Safety and Quality in Healthcare"],
+     jurisdictions: nationalJurisdictions,
+     scope: "australian_national",
+     tier: "australian_national",
+   }),
++  authority({
++    key: "australian-prescriber",
++    codes: ["AUSPRES"],
++    publisher: "Australian Prescriber",
++    jurisdictions: nationalJurisdictions,
++    scope: "australian_national",
++    tier: "australian_national",
++  }),
+   authority({
+     key: "australian-department-of-health",
+     codes: ["AUSDOH", "DOHA"],
+     publisher: "Australian Government Department of Health and Aged Care",
+     publisherAliases: ["Australian Department of Health and Aged Care", "Australian Government Department of Health"],
+     jurisdictions: nationalJurisdictions,
+     scope: "australian_national",
+     tier: "australian_national",
+   }),
+   authority({
+diff --git a/tests/australian-source-catalogue.test.ts b/tests/australian-source-catalogue.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2ea197c0a4b14d7e795c7b9e4c314b58928b9fe2
+--- /dev/null
++++ b/tests/australian-source-catalogue.test.ts
+@@ -0,0 +1,91 @@
++import { describe, expect, it } from "vitest";
++
++import sourceVerificationManifest from "../data/australian-source-verification.v1.json";
++import {
++  assertAustralianSourceVerificationManifest,
++  assertIndexableCatalogueEntry,
++  australianSourceByKey,
++  australianSourceCatalogue,
++  australianSourcePolicyVersion,
++  isIndexableAustralianSource,
++} from "@/lib/australian-source-catalogue";
++import { sourceAuthorityForPublisherCode } from "@/lib/source-authority-registry";
++
++describe("Australian source catalogue", () => {
++  it("keeps Healthdirect completely outside the catalogue", () => {
++    expect(
++      australianSourceCatalogue.some((source) =>
++        /healthdirect/i.test(`${source.key} ${source.publisher} ${source.canonicalUrl}`),
++      ),
++    ).toBe(false);
++  });
++
++  it("makes eTG and AMH authenticated link-only references", () => {
++    for (const key of ["etg-complete", "australian-medicines-handbook"]) {
++      expect(australianSourceByKey(key)).toMatchObject({
++        roles: ["reference_link"],
++        contentMode: "link_only",
++        licencePolicy: "metadata_link_only",
++        lifecycle: "active",
++      });
++      expect(isIndexableAustralianSource(key, "public_index_permitted")).toBe(false);
++    }
++  });
++
++  it("forbids link-only references from every content-bearing index projection", () => {
++    for (const key of ["etg-complete", "australian-medicines-handbook"]) {
++      expect(() => assertIndexableCatalogueEntry(australianSourceByKey(key))).toThrow(/link-only/i);
++    }
++  });
++
++  it("marks NPS MedicineWise historical rather than current", () => {
++    expect(australianSourceByKey("nps-medicinewise")).toMatchObject({ lifecycle: "historical" });
++    expect(isIndexableAustralianSource("nps-medicinewise", "public_index_permitted")).toBe(false);
++  });
++
++  it("contains unique stable keys, codes, URLs, and a versioned policy", () => {
++    expect(australianSourcePolicyVersion).toBe("australian-source-policy-v1");
++    expect(new Set(australianSourceCatalogue.map((source) => source.key)).size).toBe(australianSourceCatalogue.length);
++    expect(new Set(australianSourceCatalogue.map((source) => source.publisherCode)).size).toBe(
++      australianSourceCatalogue.length,
++    );
++    expect(new Set(australianSourceCatalogue.map((source) => source.canonicalUrl)).size).toBe(
++      australianSourceCatalogue.length,
++    );
++    expect(australianSourceCatalogue.every((source) => new URL(source.canonicalUrl).protocol === "https:")).toBe(true);
++  });
++
++  it("rejects duplicate publisher codes at the verification-manifest boundary", () => {
++    const firstPublisherCode = sourceVerificationManifest.sources[0]?.publisherCode;
++    const duplicatePublisherCodeManifest = {
++      ...sourceVerificationManifest,
++      sources: sourceVerificationManifest.sources.map((source, index) =>
++        index === 1 ? { ...source, publisherCode: firstPublisherCode } : source,
++      ),
++    };
++
++    expect(() => assertAustralianSourceVerificationManifest(duplicatePublisherCodeManifest)).toThrow(
++      /duplicate Australian source publisher code/i,
++    );
++  });
++
++  it("reuses exactly one existing authority identity per indexed catalogue entry", () => {
++    for (const source of australianSourceCatalogue.filter((entry) => entry.contentMode === "indexed_content")) {
++      expect(sourceAuthorityForPublisherCode(source.publisherCode)?.key).toBeTruthy();
++    }
++  });
++
++  it("uses precise authority identities for independently governed publishers", () => {
++    for (const key of ["wa-chief-psychiatrist", "wa-legislation", "australian-prescriber"]) {
++      const source = australianSourceByKey(key);
++      expect(source).not.toBeNull();
++      expect(sourceAuthorityForPublisherCode(source?.publisherCode)?.key).toBe(key);
++    }
++  });
++
++  it("does not treat an official publisher root as document-level indexing permission", () => {
++    expect(australianSourceByKey("wa-health")?.licencePolicy).toBe("review_required");
++    expect(isIndexableAustralianSource("wa-health", "review_required")).toBe(false);
++    expect(isIndexableAustralianSource("wa-health", "public_index_permitted")).toBe(true);
++  });
++});
+diff --git a/tests/check-indexing-contract.test.ts b/tests/check-indexing-contract.test.ts
+index f00d45db148cda5479cf249ce8a5f753d8544f7d..34ce207cc5eee7eebfda8238e766cba3e17c1621 100644
+--- a/tests/check-indexing-contract.test.ts
++++ b/tests/check-indexing-contract.test.ts
+@@ -34,21 +34,21 @@ describe("indexing health scan", () => {
+     expect(source).toContain("indexedDocuments.filter(isEmptyIndexedDocument)");
+     expect(source).toContain('loadRowsForDocuments(supabaseForChecks, "document_chunks", "document_id"');
+     expect(source).toContain("for (const chunk of registryChunkRows)");
+     expect(source).toContain("const documentsWithChunkCountMismatch = indexedDocuments.filter");
+ 
+     const registryProjection: IndexingHealthDocument = {
+       status: "indexed",
+       file_name: "australian-medicine-handbook.registry.json",
+       page_count: 0,
+       chunk_count: 1,
+-      metadata: { source_kind: "registry_record", registry_record_id: "amh" },
++      metadata: { source_kind: "registry_record", registry_record_id: "synthetic-service-record" },
+     };
+ 
+     expect(isEmptyIndexedDocument(registryProjection)).toBe(false);
+     expect(isEmptyIndexedDocument({ ...registryProjection, chunk_count: 0 })).toBe(true);
+     expect(isEmptyIndexedDocument({ ...registryProjection, file_name: "guideline.pdf" })).toBe(true);
+     expect(hasChunkCountMismatch(registryProjection, 0)).toBe(true);
+     expect(hasChunkCountMismatch(registryProjection, 1)).toBe(false);
+   });
+ });
+ 
+diff --git a/tests/registry-corpus.test.ts b/tests/registry-corpus.test.ts
+index b988c8d898e532daac6913f041c3fdd1b27b1dfe..ab13e37ed16ffe1c074522ffb4c2280ff0237414 100644
+--- a/tests/registry-corpus.test.ts
++++ b/tests/registry-corpus.test.ts
+@@ -1,17 +1,19 @@
+ import { describe, expect, it, vi } from "vitest";
+ 
+ import { buildDefaultMedicationRows } from "../src/lib/medication-fixtures";
+ import {
+   clinicalRegistryRowsToCorpusEntries,
++  embedRegistryCorpusEntries,
+   medicationRowsToCorpusEntries,
+   registryDocumentIntent,
++  type RegistryCorpusEntry,
+ } from "../src/lib/registry-corpus";
+ import { registryCorpusDetailHref } from "../src/lib/registry-corpus-links";
+ import type { MedicationRecordRow } from "../src/lib/medication-records";
+ import type { RegistryRecordRow } from "../src/lib/registry-records";
+ 
+ const { embedTextsMock } = vi.hoisted(() => ({ embedTextsMock: vi.fn() }));
+ 
+ vi.mock("@/lib/openai", () => ({ embedTexts: embedTextsMock }));
+ 
+ function registryRow(overrides: Partial<RegistryRecordRow> = {}): RegistryRecordRow {
+@@ -96,20 +98,47 @@ function corpusHarness() {
+             error: null,
+           }).then(resolve, reject),
+       };
+       return query;
+     }),
+   };
+   return { supabase, documents, chunks, labels };
+ }
+ 
+ describe("registry corpus", () => {
++  it("rejects link-only Australian references before document/chunk construction or embedding", async () => {
++    embedTextsMock.mockReset().mockResolvedValue([[0.1]]);
++    for (const key of ["etg-complete", "australian-medicines-handbook"]) {
++      const { supabase, documents, chunks } = corpusHarness();
++      const entry: RegistryCorpusEntry = {
++        kind: "service",
++        subkind: null,
++        ownerId: "22222222-2222-4222-8222-222222222222",
++        recordId: key,
++        slug: key,
++        title: "Authenticated clinical reference",
++        subtitle: null,
++        content: "Synthetic content that must never be indexed for a link-only source.",
++        searchText: "authenticated clinical reference",
++        sourceStatus: "current",
++        validationStatus: "approved",
++        metadata: { source_catalogue_key: key },
++      };
++
++      await expect(embedRegistryCorpusEntries(supabase as never, [entry])).rejects.toThrow(/link-only/i);
++      expect(embedTextsMock).not.toHaveBeenCalled();
++      expect(supabase.from).not.toHaveBeenCalled();
++      expect(documents.size).toBe(0);
++      expect(chunks.size).toBe(0);
++    }
++  });
++
+   it("retries a failed embed and stops calling OpenAI once corpus hashes are current", async () => {
+     const { supabase, documents, chunks } = corpusHarness();
+     embedTextsMock
+       .mockReset()
+       .mockRejectedValueOnce(new Error("embedding unavailable"))
+       .mockResolvedValue([[0.1]]);
+ 
+     await expect(
+       (async () => {
+         const { embedClinicalRegistryRows } = await import("../src/lib/registry-corpus");

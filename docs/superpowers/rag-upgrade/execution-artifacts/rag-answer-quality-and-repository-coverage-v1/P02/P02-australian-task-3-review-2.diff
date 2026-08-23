@@ -1,0 +1,1276 @@
+# Review package: c6d5ed52eca90ead9c1a088999d2adeb285959d1..e877cd7770f50d775663a3abf8690d13bc68eb49
+
+## Commits
+36e0e1a6185f169f7e3820587da4aa94877fe396
+e877cd7770f50d775663a3abf8690d13bc68eb49
+
+## Diff
+diff --git a/src/lib/australian-source-priority.ts b/src/lib/australian-source-priority.ts
+index 9eba99f6d0ab00cde7fe8fdc500d76a330d2d9a6..ba5c19fb00fbec26c81bfc7fa0761177230008b5 100644
+--- a/src/lib/australian-source-priority.ts
++++ b/src/lib/australian-source-priority.ts
+@@ -1,12 +1,13 @@
+ import { classifySourceAuthority, type AustralianSourceTier } from "@/lib/source-authority-registry";
+-import type { SearchResult } from "@/lib/types";
++import { filterSourcesEligibleForClaim } from "@/lib/source-governance";
++import type { ClinicalClaimRole, SearchResult } from "@/lib/types";
+ 
+ export type { AustralianSourceTier, SourceAuthorityClassification } from "@/lib/source-authority-registry";
+ 
+ export type AustralianSourceSelectionSummary = {
+   candidateCount: number;
+   selectedCount: number;
+   australianCandidateCount: number;
+   australianSelectedCount: number;
+   waCandidateCount: number;
+   waSelectedCount: number;
+@@ -74,31 +75,34 @@ function isSupplementaryPadding(args: {
+ }
+ 
+ /**
+  * Select a bounded clinical context while preferring authoritative Australian
+  * evidence inside the same relevance band. Supplementary material remains
+  * available until Australian evidence is sufficient on its own.
+  */
+ export function selectAustralianClinicalContext(
+   results: SearchResult[],
+   options: {
++    claimRole: ClinicalClaimRole;
+     limit?: number;
+     maxPerDocument?: number;
+     sufficientAustralianChunks?: number;
+     omitSupplementaryPadding?: boolean;
+-  } = {},
++  },
+ ) {
++  if (!options?.claimRole) throw new Error("A verified claim role is required before source ranking.");
+   const limit = options.limit ?? 6;
+   const maxPerDocument = options.maxPerDocument ?? 2;
+   const sufficientAustralianChunks = options.sufficientAustralianChunks ?? 4;
+   const omitSupplementaryPadding = options.omitSupplementaryPadding ?? true;
+-  const ranked = results
++  const eligibleResults = filterSourcesEligibleForClaim(results, options.claimRole);
++  const ranked = eligibleResults
+     .map((result, index) => ({ result, index, tier: australianSourceTier(result) }))
+     .filter(({ result }) => result.relevance?.verdict !== "none")
+     .sort((left, right) => {
+       const leftRelevance = resultRelevanceRank(left.result);
+       const rightRelevance = resultRelevanceRank(right.result);
+       return leftRelevance - rightRelevance || tierRank[left.tier] - tierRank[right.tier] || left.index - right.index;
+     });
+   const withoutSupplementaryPadding = omitSupplementaryPadding
+     ? ranked.filter((candidate) => !isSupplementaryPadding({ candidate, ranked, sufficientAustralianChunks }))
+     : ranked;
+diff --git a/src/lib/rag/rag-context-selection.ts b/src/lib/rag/rag-context-selection.ts
+index 3c0309dc3c88fe564cc090b9bf69dce4662e0d78..df09b85d3ad623aece60a20b2a52f58606388313 100644
+--- a/src/lib/rag/rag-context-selection.ts
++++ b/src/lib/rag/rag-context-selection.ts
+@@ -1,19 +1,32 @@
+-import type { RagAnswer, RagQueryClass, SearchResult } from "@/lib/types";
++import type { ClinicalClaimRole, RagAnswer, RagQueryClass, SearchResult } from "@/lib/types";
+ import { selectAustralianClinicalContext } from "@/lib/australian-source-priority";
+ 
+ export { summarizeAustralianSourceSelection } from "@/lib/australian-source-priority";
+ 
+ const fastRoutineModelContextLimit = 4;
+ 
+ const maxContextChunksPerDocument = 3;
+ 
++// The current verified classifier distinguishes numeric/dose questions from broader clinical
++// questions, but does not yet prove legal, subsidy, quality, or service-workflow claim intent.
++// Fail those ambiguous classes closed to treatment eligibility rather than admitting a more
++// permissive role. A later intent-aware retrieval phase may replace this exhaustive mapping.
++const claimRoleByQueryClass = {
++  document_lookup: "treatment",
++  table_threshold: "dose_or_monitoring",
++  medication_dose_risk: "dose_or_monitoring",
++  comparison: "treatment",
++  broad_summary: "treatment",
++  unsupported_or_general: "treatment",
++} as const satisfies Record<RagQueryClass, ClinicalClaimRole>;
++
+ // P9: keep one verbose document from dominating the sources the model sees. Cap each document to at
+ // most `maxContextChunksPerDocument` chunks (order-preserving, no reranking/dedup), but only when the
+ // result set spans multiple documents — a genuinely single-document answer must not be starved.
+ export function capPerDocumentCrowding(results: SearchResult[], maxPerDocument = maxContextChunksPerDocument) {
+   if (results.length <= maxPerDocument) return results;
+   const distinctDocuments = new Set(results.map((result) => result.document_id)).size;
+   if (distinctDocuments < 2) return results;
+   const documentCounts = new Map<string, number>();
+   const capped: SearchResult[] = [];
+   for (const result of results) {
+@@ -26,21 +39,21 @@ export function capPerDocumentCrowding(results: SearchResult[], maxPerDocument =
+ }
+ 
+ export function selectModelContextResults(args: {
+   routeMode: RagAnswer["routingMode"];
+   queryClass: RagQueryClass;
+   crossDocument: boolean;
+   results: SearchResult[];
+ }) {
+   const highRiskNumericQuery = args.queryClass === "medication_dose_risk" || args.queryClass === "table_threshold";
+   if (highRiskNumericQuery) {
+-    return selectAustralianClinicalContext(args.results);
++    return selectAustralianClinicalContext(args.results, { claimRole: claimRoleByQueryClass[args.queryClass] });
+   }
+ 
+   const fastRoutineQuery =
+     args.routeMode === "fast" &&
+     !args.crossDocument &&
+     args.queryClass !== "comparison" &&
+     args.queryClass !== "broad_summary";
+   // Preserve the retrieval-ranked fast budget before applying the order-only
+   // Australian preference. This keeps a stronger/unique supplementary result
+   // inside the four-chunk budget while still moving equally relevant local
+@@ -52,16 +65,17 @@ export function selectModelContextResults(args: {
+         maxContextChunksPerDocument,
+       ).slice(0, fastRoutineModelContextLimit)
+     : args.results;
+ 
+   // All answer classes should prefer authoritative Australian guidance when it
+   // is equally relevant. For non-numeric questions this is an order-only
+   // preference: retain supplementary evidence so a local source cannot hide a
+   // stronger or uniquely relevant international passage. Numeric/high-risk
+   // queries keep the stricter bounded Australian-first policy above.
+   const results = selectAustralianClinicalContext(preferenceCandidates, {
++    claimRole: claimRoleByQueryClass[args.queryClass],
+     limit: preferenceCandidates.length,
+     maxPerDocument: maxContextChunksPerDocument,
+     omitSupplementaryPadding: false,
+   });
+   return results;
+ }
+diff --git a/src/lib/source-governance.ts b/src/lib/source-governance.ts
+index 4f83d6b6a7fbbf11210f5074d47df7d7df89f5da..36cc45815aeef3b93ac962e0aac51b10c1ca37d1 100644
+--- a/src/lib/source-governance.ts
++++ b/src/lib/source-governance.ts
+@@ -1,22 +1,35 @@
+ import type {
++  ClinicalClaimRole,
+   EvidenceRelevance,
+   SearchResult,
+   SourceGovernanceWarning,
+   SourceGovernanceCode,
+   SourceGovernanceUiToken,
+ } from "@/lib/types";
+ import { SOURCE_GOVERNANCE_CODES } from "@/lib/types";
+ import { normalizeSourceMetadata } from "@/lib/source-metadata";
++import { sourceEligibilityForClaim } from "@/lib/source-role-policy";
+ 
+ export type { SourceGovernanceWarning } from "@/lib/types";
+ 
++/**
++ * Apply source-governance eligibility before any relevance or authority ranking.
++ * Input order is retained so role policy cannot become an implicit score boost.
++ */
++export function filterSourcesEligibleForClaim(results: SearchResult[], claimRole: ClinicalClaimRole) {
++  return results.filter(
++    (result) =>
++      sourceEligibilityForClaim({ source: normalizeSourceMetadata(result.source_metadata), claimRole }).eligible,
++  );
++}
++
+ export type GroupedSourceGovernanceWarning = {
+   code: SourceGovernanceWarning["code"];
+   severity: SourceGovernanceWarning["severity"];
+   message: string;
+   count: number;
+   uiToken?: SourceGovernanceUiToken;
+   documentIds: string[];
+   titles: string[];
+ };
+ 
+diff --git a/src/lib/source-role-policy.ts b/src/lib/source-role-policy.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2c89c9d44f0aee589affdb8f64b377b9eb04801a
+--- /dev/null
++++ b/src/lib/source-role-policy.ts
+@@ -0,0 +1,298 @@
++import {
++  australianSourceByKey,
++  australianSourcePolicyVersion,
++  type AustralianSourceDefinition,
++} from "@/lib/australian-source-catalogue";
++import { normalizeSourceMetadata } from "@/lib/source-metadata";
++import type {
++  ClinicalClaimRole,
++  ClinicalSourceMetadata,
++  ClinicalSourceRole,
++  SearchResult,
++  SourceEligibilityDecision,
++  SourcePolicyConflict,
++  SourcePolicyConflictSide,
++  SourcePrimaryDecision,
++  VerifiedSourcePolicyDifference,
++} from "@/lib/types";
++
++const eligibleSourceRoles: Record<ClinicalClaimRole, ReadonlySet<ClinicalSourceRole>> = {
++  treatment: new Set(["local_guideline", "clinical_guideline", "clinical_reference", "professional_review"]),
++  dose_or_monitoring: new Set([
++    "local_guideline",
++    "clinical_guideline",
++    "clinical_reference",
++    "regulatory",
++    "professional_review",
++  ]),
++  safety: new Set([
++    "local_guideline",
++    "clinical_guideline",
++    "clinical_reference",
++    "safety_alert",
++    "regulatory",
++    "quality_standard",
++    "professional_review",
++  ]),
++  legal: new Set(["legal", "regulatory", "service_policy"]),
++  subsidy: new Set(["subsidy"]),
++  quality: new Set(["quality_standard", "service_policy", "clinical_guideline"]),
++  service_workflow: new Set([
++    "local_guideline",
++    "clinical_guideline",
++    "service_directory",
++    "form_reference",
++    "tool_reference",
++    "service_policy",
++  ]),
++};
++
++function nonEmpty(value: string | null | undefined): value is string {
++  return typeof value === "string" && value.trim().length > 0;
++}
++
++function isExpired(expiryDate: string | null) {
++  if (!expiryDate) return false;
++  const expiryTimestamp = Date.parse(expiryDate);
++  return Number.isFinite(expiryTimestamp) && expiryTimestamp < Date.now();
++}
++
++function matchesCatalogueIdentity(source: ClinicalSourceMetadata, catalogue: AustralianSourceDefinition | null) {
++  if (!catalogue) return false;
++  return (
++    source.source_policy_version === australianSourcePolicyVersion &&
++    source.content_mode === catalogue.contentMode &&
++    source.publisher_code?.trim().toUpperCase() === catalogue.publisherCode.toUpperCase() &&
++    source.publisher === catalogue.publisher &&
++    source.jurisdiction === catalogue.jurisdiction &&
++    Boolean(source.source_role && catalogue.roles.includes(source.source_role))
++  );
++}
++
++export function sourceEligibilityForClaim(args: {
++  source: ClinicalSourceMetadata;
++  claimRole: ClinicalClaimRole;
++}): SourceEligibilityDecision {
++  const { source } = args;
++
++  if (source.content_mode === "link_only" || source.source_role === "reference_link") {
++    return { eligible: false, reason: "link_only" };
++  }
++
++  const catalogue = source.source_catalogue_key ? australianSourceByKey(source.source_catalogue_key) : null;
++  if (source.corpus_scope === "australian_public" && !matchesCatalogueIdentity(source, catalogue)) {
++    return { eligible: false, reason: "catalogue_mismatch" };
++  }
++
++  if (
++    source.change_state === "withdrawn" ||
++    source.change_state === "superseded" ||
++    nonEmpty(source.superseded_by_document_id) ||
++    catalogue?.lifecycle === "historical" ||
++    catalogue?.lifecycle === "retired"
++  ) {
++    return { eligible: false, reason: "inactive" };
++  }
++
++  if (source.document_status !== "current" || isExpired(source.expiry_date)) {
++    return { eligible: false, reason: "not_current" };
++  }
++
++  if (source.extraction_quality !== "good") {
++    return { eligible: false, reason: "governance_block" };
++  }
++
++  if (source.corpus_scope === "australian_public" && source.licence_policy !== "public_index_permitted") {
++    return { eligible: false, reason: "governance_block" };
++  }
++
++  if (!source.source_role || !eligibleSourceRoles[args.claimRole].has(source.source_role)) {
++    return { eligible: false, reason: "role_mismatch" };
++  }
++
++  return { eligible: true, reason: "eligible" };
++}
++
++function directlySupportiveLocal(result: SearchResult) {
++  const source = normalizeSourceMetadata(result.source_metadata);
++  return (
++    source?.corpus_scope === "uploaded_local" &&
++    source.source_role === "local_guideline" &&
++    (source.clinical_validation_status === "approved" || source.clinical_validation_status === "locally_reviewed") &&
++    source.extraction_quality === "good" &&
++    result.relevance?.verdict === "direct"
++  );
++}
++
++function completeConflictSide(
++  result: SearchResult,
++  supportingChunkIds: string[],
++  expectedCorpusScope: "uploaded_local" | "australian_public",
++): SourcePolicyConflictSide | null {
++  const source = result.source_metadata;
++  if (
++    !source ||
++    source.corpus_scope !== expectedCorpusScope ||
++    !nonEmpty(result.document_id) ||
++    !nonEmpty(result.title) ||
++    !nonEmpty(source.source_catalogue_key) ||
++    !nonEmpty(source.publisher) ||
++    !nonEmpty(source.jurisdiction) ||
++    !source.source_role ||
++    (!nonEmpty(source.publication_date) && !nonEmpty(source.effective_date)) ||
++    supportingChunkIds.length === 0
++  ) {
++    return null;
++  }
++
++  return {
++    documentId: result.document_id,
++    catalogueKey: source.source_catalogue_key,
++    title: result.title,
++    publisher: source.publisher,
++    publicationDate: source.publication_date ?? null,
++    effectiveFrom: source.effective_date ?? null,
++    jurisdiction: source.jurisdiction,
++    sourceRole: source.source_role,
++    corpusScope: source.corpus_scope,
++    supportingChunkIds,
++  };
++}
++
++function groupVerifiedChunksByDocument(results: SearchResult[], verifiedChunkIds: string[]) {
++  const verified = new Set(verifiedChunkIds);
++  const byDocument = new Map<string, { result: SearchResult; chunkIds: string[] }>();
++
++  for (const result of [...results].sort(
++    (left, right) => left.document_id.localeCompare(right.document_id) || left.id.localeCompare(right.id),
++  )) {
++    if (!verified.has(result.id)) continue;
++    const existing = byDocument.get(result.document_id);
++    if (existing) {
++      if (!existing.chunkIds.includes(result.id)) existing.chunkIds.push(result.id);
++    } else {
++      byDocument.set(result.document_id, { result, chunkIds: [result.id] });
++    }
++  }
++
++  return [...byDocument.values()];
++}
++
++function conflictId(args: {
++  difference: VerifiedSourcePolicyDifference;
++  localDocumentId: string;
++  australianDocumentId: string;
++}) {
++  const segments = [
++    args.difference.claimRole,
++    args.difference.topicKey,
++    args.localDocumentId,
++    args.australianDocumentId,
++    args.difference.overlapReason,
++    args.difference.materialDifferenceReason,
++  ];
++  return `source-policy-conflict-v1:${segments.map((segment) => encodeURIComponent(segment)).join(":")}`;
++}
++
++function buildConflicts(args: {
++  local: SearchResult[];
++  australian: SearchResult[];
++  claimRole: ClinicalClaimRole;
++  verifiedDifferences: VerifiedSourcePolicyDifference[];
++}) {
++  const conflicts: SourcePolicyConflict[] = [];
++
++  for (const difference of args.verifiedDifferences) {
++    if (difference.claimRole !== args.claimRole || !nonEmpty(difference.topicKey)) continue;
++    const localDocuments = groupVerifiedChunksByDocument(args.local, difference.localChunkIds);
++    const australianDocuments = groupVerifiedChunksByDocument(args.australian, difference.australianChunkIds);
++
++    for (const localDocument of localDocuments) {
++      const localSide = completeConflictSide(localDocument.result, localDocument.chunkIds, "uploaded_local");
++      if (!localSide || localSide.corpusScope !== "uploaded_local") continue;
++
++      for (const australianDocument of australianDocuments) {
++        const australianSide = completeConflictSide(
++          australianDocument.result,
++          australianDocument.chunkIds,
++          "australian_public",
++        );
++        if (!australianSide || australianSide.corpusScope !== "australian_public") continue;
++
++        conflicts.push({
++          version: "source-policy-conflict-v1",
++          id: conflictId({
++            difference,
++            localDocumentId: localSide.documentId,
++            australianDocumentId: australianSide.documentId,
++          }),
++          claimRole: difference.claimRole,
++          topicKey: difference.topicKey,
++          local: localSide as SourcePolicyConflict["local"],
++          australian: australianSide as SourcePolicyConflict["australian"],
++          overlapReason: difference.overlapReason,
++          materialDifferenceReason: difference.materialDifferenceReason,
++          localPrimaryDecision: {
++            selected: "uploaded_local",
++            reason: "current_valid_accessible_directly_supportive",
++          },
++          reviewTargetDocumentId: localSide.documentId,
++        });
++      }
++    }
++  }
++
++  const conflictsById = new Map<string, SourcePolicyConflict>();
++  for (const conflict of conflicts) {
++    if (!conflictsById.has(conflict.id)) conflictsById.set(conflict.id, conflict);
++  }
++  return [...conflictsById.values()].sort((left, right) => left.id.localeCompare(right.id));
++}
++
++export function resolveLocalAndAustralianEvidence(args: {
++  local: SearchResult[];
++  australian: SearchResult[];
++  claimRole: ClinicalClaimRole;
++  verifiedDifferences: VerifiedSourcePolicyDifference[];
++}): {
++  primary: SearchResult[];
++  augmentation: SearchResult[];
++  conflicts: SourcePolicyConflict[];
++  reviewDocumentIds: string[];
++  primaryDecision: SourcePrimaryDecision;
++} {
++  const eligibleLocal = args.local.filter((result) => {
++    const source = normalizeSourceMetadata(result.source_metadata);
++    return sourceEligibilityForClaim({ source, claimRole: args.claimRole }).eligible;
++  });
++  const eligibleAustralian = args.australian.filter((result) => {
++    const source = normalizeSourceMetadata(result.source_metadata);
++    return sourceEligibilityForClaim({ source, claimRole: args.claimRole }).eligible;
++  });
++  const localPrimary = eligibleLocal.filter(directlySupportiveLocal);
++  const primary = localPrimary.length > 0 ? localPrimary : eligibleAustralian;
++  const augmentation = localPrimary.length > 0 ? eligibleAustralian : eligibleLocal;
++  const primaryDecision: SourcePrimaryDecision =
++    localPrimary.length > 0
++      ? { selected: "uploaded_local", reason: "current_valid_accessible_directly_supportive" }
++      : eligibleAustralian.length > 0
++        ? {
++            selected: "australian_public",
++            reason: eligibleLocal.length > 0 ? "uploaded_local_not_directly_supportive" : "no_eligible_uploaded_local",
++          }
++        : { selected: "none", reason: "no_eligible_primary_evidence" };
++  const conflicts =
++    localPrimary.length > 0
++      ? buildConflicts({
++          local: localPrimary,
++          australian: eligibleAustralian,
++          claimRole: args.claimRole,
++          verifiedDifferences: args.verifiedDifferences,
++        })
++      : [];
++  const reviewDocumentIds = [...new Set(conflicts.map((conflict) => conflict.reviewTargetDocumentId))].sort(
++    (left, right) => left.localeCompare(right),
++  );
++
++  return { primary, augmentation, conflicts, reviewDocumentIds, primaryDecision };
++}
+diff --git a/src/lib/types.ts b/src/lib/types.ts
+index eb270817f9a492a0bffec293859463bfe0342b4f..162336f9bd7b8bea34c2a6e3c6db1a699399bd6e 100644
+--- a/src/lib/types.ts
++++ b/src/lib/types.ts
+@@ -144,20 +144,83 @@ export type ClinicalSourceRole =
+   | "tool_reference"
+   | "safety_alert"
+   | "regulatory"
+   | "quality_standard"
+   | "legal"
+   | "subsidy"
+   | "professional_review"
+   | "service_policy"
+   | "reference_link";
+ 
++export type ClinicalClaimRole =
++  "treatment" | "dose_or_monitoring" | "safety" | "legal" | "subsidy" | "quality" | "service_workflow";
++
++export type SourceEligibilityDecision = {
++  eligible: boolean;
++  reason:
++    "eligible" | "link_only" | "inactive" | "role_mismatch" | "not_current" | "governance_block" | "catalogue_mismatch";
++};
++
++export type SourcePolicyConflictSide = {
++  documentId: string;
++  catalogueKey: string;
++  title: string;
++  publisher: string;
++  publicationDate: string | null;
++  effectiveFrom: string | null;
++  jurisdiction: string;
++  sourceRole: ClinicalSourceRole;
++  corpusScope: SourceCorpusScope;
++  supportingChunkIds: string[];
++};
++
++export type SourcePrimaryDecision =
++  | {
++      selected: "uploaded_local";
++      reason: "current_valid_accessible_directly_supportive";
++    }
++  | {
++      selected: "australian_public";
++      reason: "no_eligible_uploaded_local" | "uploaded_local_not_directly_supportive";
++    }
++  | {
++      selected: "none";
++      reason: "no_eligible_primary_evidence";
++    };
++
++export type SourcePolicyConflict = {
++  version: "source-policy-conflict-v1";
++  id: string;
++  claimRole: ClinicalClaimRole;
++  topicKey: string;
++  local: SourcePolicyConflictSide & { corpusScope: "uploaded_local" };
++  australian: SourcePolicyConflictSide & { corpusScope: "australian_public" };
++  overlapReason: "same_claim" | "same_topic_and_population";
++  materialDifferenceReason:
++    | "recommendation_differs"
++    | "dose_differs"
++    | "threshold_differs"
++    | "monitoring_differs"
++    | "legal_status_differs"
++    | "other_reviewed_material_difference";
++  localPrimaryDecision: Extract<SourcePrimaryDecision, { selected: "uploaded_local" }>;
++  reviewTargetDocumentId: string;
++};
++
++export type VerifiedSourcePolicyDifference = Pick<
++  SourcePolicyConflict,
++  "claimRole" | "topicKey" | "overlapReason" | "materialDifferenceReason"
++> & {
++  localChunkIds: string[];
++  australianChunkIds: string[];
++};
++
+ export type SiteContentDomain =
+   | "services"
+   | "forms"
+   | "medications"
+   | "differentials"
+   | "specifiers"
+   | "dsm"
+   | "formulation"
+   | "therapies"
+   | "dictionary"
+diff --git a/tests/australian-source-priority.test.ts b/tests/australian-source-priority.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..38387e60663633f0acab65bf724792972e9d871a
+--- /dev/null
++++ b/tests/australian-source-priority.test.ts
+@@ -0,0 +1,115 @@
++import { describe, expect, it } from "vitest";
++
++import { selectAustralianClinicalContext } from "../src/lib/australian-source-priority";
++import { australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
++import type { ClinicalSourceMetadata, SearchResult } from "../src/lib/types";
++
++function result(
++  id: string,
++  sourceMetadata: Partial<ClinicalSourceMetadata>,
++  overrides: Partial<SearchResult> = {},
++): SearchResult {
++  return {
++    id,
++    document_id: `${id}-document`,
++    title: `${id} source`,
++    file_name: `${id}.pdf`,
++    page_number: 1,
++    chunk_index: 0,
++    section_heading: null,
++    content: "Evidence",
++    image_ids: [],
++    similarity: 0.8,
++    images: [],
++    source_metadata: {
++      source_kind: "document",
++      source_title: `${id} source`,
++      publisher: "WA Health",
++      publisher_code: "WAHEALTH",
++      jurisdiction: "Australia/WA",
++      publication_date: "2025-01-01",
++      document_status: "current",
++      clinical_validation_status: "approved",
++      extraction_quality: "good",
++      corpus_scope: "uploaded_local",
++      source_role: "local_guideline",
++      content_mode: "indexed_content",
++      source_catalogue_key: `local-${id}`,
++      source_policy_version: australianSourcePolicyVersion,
++      change_state: "unchanged",
++      licence_policy: "public_index_permitted",
++      ...sourceMetadata,
++    },
++    ...overrides,
++  };
++}
++
++describe("selectAustralianClinicalContext role eligibility", () => {
++  it("filters role-ineligible and link-only candidates before applying the existing ranking", () => {
++    const local = result("local", {});
++    const national = result("national", {
++      publisher: "National Health and Medical Research Council",
++      publisher_code: "NHMRC",
++      jurisdiction: "Australia/National",
++      corpus_scope: "australian_public",
++      source_role: "clinical_guideline",
++      source_catalogue_key: "nhmrc",
++    });
++    const pbs = result("pbs", {
++      publisher: "Pharmaceutical Benefits Scheme",
++      publisher_code: "PBS",
++      jurisdiction: "Australia/National",
++      corpus_scope: "australian_public",
++      source_role: "subsidy",
++      source_catalogue_key: "pbs",
++    });
++    const etg = result("etg", {
++      publisher: "Therapeutic Guidelines",
++      publisher_code: "ETG",
++      jurisdiction: "Australia/National",
++      corpus_scope: "australian_public",
++      source_role: "reference_link",
++      source_catalogue_key: "etg-complete",
++      content_mode: "link_only",
++      licence_policy: "metadata_link_only",
++    });
++
++    expect(
++      selectAustralianClinicalContext([pbs, etg, national, local], {
++        claimRole: "treatment",
++        omitSupplementaryPadding: false,
++      }).map((source) => source.id),
++    ).toEqual([local.id, national.id]);
++  });
++
++  it("preserves the existing rank and relevance order when every candidate is eligible", () => {
++    const candidates = [
++      result("local", {}),
++      result("national", {
++        publisher: "National Health and Medical Research Council",
++        publisher_code: "NHMRC",
++        jurisdiction: "Australia/National",
++        corpus_scope: "australian_public",
++        source_role: "clinical_guideline",
++        source_catalogue_key: "nhmrc",
++      }),
++    ];
++    const options = { limit: 6, omitSupplementaryPadding: false } as const;
++
++    const governedOrder = selectAustralianClinicalContext(candidates, {
++      ...options,
++      claimRole: "treatment",
++    }).map((source) => source.id);
++
++    expect(governedOrder).toEqual(["local", "national"]);
++  });
++
++  it("fails closed when an untyped caller omits the verified claim role", () => {
++    const untypedSelect = selectAustralianClinicalContext as unknown as (
++      candidates: SearchResult[],
++      options: Record<string, unknown>,
++    ) => SearchResult[];
++
++    expect(() => untypedSelect([result("local", {})], {})).toThrowError("A verified claim role is required");
++  });
++});
+diff --git a/tests/rag-context-budget.test.ts b/tests/rag-context-budget.test.ts
+index 850229a239f9973fed98d845c604737012987cc6..db2ce2702903af85dd9dabd6d9b0366ad2631f4f 100644
+--- a/tests/rag-context-budget.test.ts
++++ b/tests/rag-context-budget.test.ts
+@@ -1,28 +1,44 @@
+ import { describe, expect, it } from "vitest";
+ import { capPerDocumentCrowding, packedContextCacheKey, selectModelContextResults } from "../src/lib/rag/rag";
++import { australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
+ import type { RagQueryClass, SearchResult } from "../src/lib/types";
+ 
+ function source(index: number, overrides: Partial<SearchResult> = {}): SearchResult {
+   return {
+     id: `chunk-${index}`,
+     document_id: `doc-${index}`,
+     title: `Guideline ${index}`,
+     file_name: `guideline-${index}.pdf`,
+     page_number: index,
+     chunk_index: index,
+     section_heading: "Overview",
+     content: `Clinical source text ${index}.`,
+     image_ids: [],
+     similarity: 0.9 - index * 0.01,
+     hybrid_score: 0.9 - index * 0.01,
+     images: [],
++    source_metadata: {
++      source_title: `Guideline ${index}`,
++      publisher: "Local health service",
++      publisher_code: "LOCAL",
++      jurisdiction: "local",
++      publication_date: "2025-01-01",
++      document_status: "current",
++      clinical_validation_status: "approved",
++      extraction_quality: "good",
++      corpus_scope: "uploaded_local",
++      source_role: "local_guideline",
++      content_mode: "indexed_content",
++      change_state: "unchanged",
++      licence_policy: "public_index_permitted",
++    },
+     ...overrides,
+   };
+ }
+ 
+ function governedSource(
+   index: number,
+   args: {
+     documentId: string;
+     publisherCode: string;
+     publisher: string;
+@@ -39,20 +55,58 @@ function governedSource(
+       jurisdiction: args.jurisdiction,
+       version: null,
+       publication_date: null,
+       review_date: null,
+       uploaded_at: null,
+       indexed_at: null,
+       uploaded_by: null,
+       document_status: "current",
+       clinical_validation_status: args.validation ?? "approved",
+       extraction_quality: "good",
++      corpus_scope: "uploaded_local",
++      source_role: "local_guideline",
++      content_mode: "indexed_content",
++      change_state: "unchanged",
++      licence_policy: "public_index_permitted",
++    },
++  });
++}
++
++function australianCatalogueSource(
++  index: number,
++  sourceMetadata: {
++    key: string;
++    publisherCode: string;
++    publisher: string;
++    jurisdiction: string;
++    sourceRole: "clinical_guideline" | "reference_link" | "regulatory" | "subsidy";
++    contentMode: "indexed_content" | "link_only";
++    licencePolicy: "public_index_permitted" | "metadata_link_only";
++  },
++) {
++  return source(index, {
++    source_metadata: {
++      source_title: `${sourceMetadata.publisher} source`,
++      publisher: sourceMetadata.publisher,
++      publisher_code: sourceMetadata.publisherCode,
++      jurisdiction: sourceMetadata.jurisdiction,
++      publication_date: "2025-01-01",
++      document_status: "current",
++      clinical_validation_status: "approved",
++      extraction_quality: "good",
++      corpus_scope: "australian_public",
++      source_role: sourceMetadata.sourceRole,
++      content_mode: sourceMetadata.contentMode,
++      source_catalogue_key: sourceMetadata.key,
++      source_policy_version: australianSourcePolicyVersion,
++      change_state: "unchanged",
++      licence_policy: sourceMetadata.licencePolicy,
+     },
+   });
+ }
+ 
+ function withRelevance(result: SearchResult, verdict: NonNullable<SearchResult["relevance"]>["verdict"]): SearchResult {
+   return {
+     ...result,
+     relevance: {
+       verdict,
+       label: verdict,
+@@ -102,20 +156,93 @@ function select(args: {
+ }) {
+   return selectModelContextResults({
+     routeMode: args.routeMode,
+     queryClass: args.queryClass,
+     crossDocument: args.crossDocument ?? false,
+     results,
+   });
+ }
+ 
+ describe("RAG model context budgeting", () => {
++  const allQueryClasses: readonly RagQueryClass[] = [
++    "document_lookup",
++    "table_threshold",
++    "medication_dose_risk",
++    "comparison",
++    "broad_summary",
++    "unsupported_or_general",
++  ];
++  const pbs = australianCatalogueSource(90, {
++    key: "pbs",
++    publisherCode: "PBS",
++    publisher: "Pharmaceutical Benefits Scheme",
++    jurisdiction: "Australia/National",
++    sourceRole: "subsidy",
++    contentMode: "indexed_content",
++    licencePolicy: "public_index_permitted",
++  });
++  const etg = australianCatalogueSource(91, {
++    key: "etg-complete",
++    publisherCode: "TG",
++    publisher: "Therapeutic Guidelines",
++    jurisdiction: "Australia/National",
++    sourceRole: "reference_link",
++    contentMode: "link_only",
++    licencePolicy: "metadata_link_only",
++  });
++  const amh = australianCatalogueSource(92, {
++    key: "australian-medicines-handbook",
++    publisherCode: "AMH",
++    publisher: "Australian Medicines Handbook",
++    jurisdiction: "Australia/National",
++    sourceRole: "reference_link",
++    contentMode: "link_only",
++    licencePolicy: "metadata_link_only",
++  });
++
++  it.each(allQueryClasses)("filters PBS and eTG/AMH out of production model context for %s", (queryClass) => {
++    const local = source(89);
++    const selected = selectModelContextResults({
++      routeMode: "strong",
++      queryClass,
++      crossDocument: queryClass === "comparison",
++      results: [pbs, etg, amh, local],
++    });
++
++    expect(selected.map((result) => result.id)).toEqual([local.id]);
++  });
++
++  it("uses dose-or-monitoring eligibility only for the two verified numeric query classes", () => {
++    const tga = australianCatalogueSource(93, {
++      key: "tga",
++      publisherCode: "TGA",
++      publisher: "Therapeutic Goods Administration",
++      jurisdiction: "Australia/National",
++      sourceRole: "regulatory",
++      contentMode: "indexed_content",
++      licencePolicy: "public_index_permitted",
++    });
++
++    for (const queryClass of ["table_threshold", "medication_dose_risk"] as const) {
++      expect(
++        selectModelContextResults({ routeMode: "strong", queryClass, crossDocument: false, results: [tga] }).map(
++          (result) => result.id,
++        ),
++      ).toEqual([tga.id]);
++    }
++    for (const queryClass of ["document_lookup", "comparison", "broad_summary", "unsupported_or_general"] as const) {
++      expect(
++        selectModelContextResults({ routeMode: "strong", queryClass, crossDocument: false, results: [tga] }),
++      ).toEqual([]);
++    }
++  });
++
+   it("limits routine fast generation to the top four sources", () => {
+     const selected = select({ routeMode: "fast", queryClass: "document_lookup" });
+ 
+     expect(selected.map((result) => result.id)).toEqual(["chunk-1", "chunk-2", "chunk-3", "chunk-4"]);
+   });
+ 
+   it("keeps broader context for synthesis-heavy fast routes", () => {
+     expect(select({ routeMode: "fast", queryClass: "comparison" })).toHaveLength(12);
+     expect(select({ routeMode: "fast", queryClass: "broad_summary" })).toHaveLength(12);
+     expect(select({ routeMode: "fast", queryClass: "document_lookup", crossDocument: true })).toHaveLength(12);
+diff --git a/tests/source-role-policy.test.ts b/tests/source-role-policy.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..cc622473a744a4d7d39cd0864367717f2ca30233
+--- /dev/null
++++ b/tests/source-role-policy.test.ts
+@@ -0,0 +1,373 @@
++import { describe, expect, it } from "vitest";
++
++import { australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
++import { resolveLocalAndAustralianEvidence, sourceEligibilityForClaim } from "../src/lib/source-role-policy";
++import type { ClinicalSourceMetadata, SearchResult, SourceEvidenceRelevance } from "../src/lib/types";
++
++const directRelevance: SourceEvidenceRelevance = {
++  verdict: "direct",
++  label: "Direct",
++  matchedTerms: [],
++  missingTerms: [],
++  directSourceCount: 1,
++  weakSourceCount: 0,
++  score: 1,
++  supportReason: "Direct support",
++  isSourceBacked: true,
++  coverageScore: 1,
++  rankScore: 1,
++  titleMatchedTerms: [],
++  contentMatchedTerms: [],
++  metadataMatchedTerms: [],
++  chips: [],
++};
++
++function metadata(overrides: Partial<ClinicalSourceMetadata> = {}): ClinicalSourceMetadata {
++  return {
++    source_kind: "document",
++    registry_record_kind: null,
++    registry_record_subkind: null,
++    registry_record_id: null,
++    registry_record_slug: null,
++    source_title: "Local guideline",
++    publisher: "WA Health",
++    publisher_code: "WAHEALTH",
++    jurisdiction: "local",
++    version: "1",
++    publication_date: "2025-01-01",
++    review_date: "2027-01-01",
++    uploaded_at: "2025-01-01T00:00:00.000Z",
++    indexed_at: "2025-01-02T00:00:00.000Z",
++    uploaded_by: null,
++    document_status: "current",
++    clinical_validation_status: "approved",
++    clinical_validation_evidence: null,
++    extraction_quality: "good",
++    corpus_scope: "uploaded_local",
++    source_role: "local_guideline",
++    content_mode: "indexed_content",
++    source_catalogue_key: "local-guideline",
++    source_policy_version: australianSourcePolicyVersion,
++    canonical_url: "https://example.test/local-guideline",
++    effective_date: "2025-01-01",
++    expiry_date: null,
++    supersedes_document_id: null,
++    superseded_by_document_id: null,
++    retrieved_at: null,
++    content_hash: "local-hash",
++    change_state: "unchanged",
++    licence_policy: "public_index_permitted",
++    ...overrides,
++  };
++}
++
++function result(
++  overrides: Partial<SearchResult> & { id: string; document_id: string },
++  sourceOverrides: Partial<ClinicalSourceMetadata> = {},
++): SearchResult {
++  return {
++    title: "Local guideline",
++    file_name: "guideline.pdf",
++    page_number: 1,
++    chunk_index: 0,
++    section_heading: "Treatment",
++    content: "Directly supportive evidence.",
++    image_ids: [],
++    similarity: 0.9,
++    images: [],
++    relevance: directRelevance,
++    source_metadata: metadata(sourceOverrides),
++    ...overrides,
++  };
++}
++
++function australianResult(overrides: Partial<SearchResult> & { id: string; document_id: string }): SearchResult {
++  return result(overrides, {
++    source_title: "National guideline",
++    publisher: "National Health and Medical Research Council",
++    publisher_code: "NHMRC",
++    jurisdiction: "Australia/National",
++    publication_date: "2026-06-01",
++    corpus_scope: "australian_public",
++    source_role: "clinical_guideline",
++    source_catalogue_key: "nhmrc",
++    canonical_url: "https://www.nhmrc.gov.au/guidelines/example",
++    content_hash: "national-hash",
++  });
++}
++
++describe("sourceEligibilityForClaim", () => {
++  it("does not let PBS or legislation answer treatment claims", () => {
++    expect(
++      sourceEligibilityForClaim({ source: metadata({ source_role: "subsidy" }), claimRole: "treatment" }),
++    ).toMatchObject({ eligible: false, reason: "role_mismatch" });
++    expect(
++      sourceEligibilityForClaim({ source: metadata({ source_role: "legal" }), claimRole: "treatment" }),
++    ).toMatchObject({ eligible: false, reason: "role_mismatch" });
++  });
++
++  it("never uses link-only references as claim evidence", () => {
++    expect(
++      sourceEligibilityForClaim({
++        source: metadata({ content_mode: "link_only", source_role: "reference_link" }),
++        claimRole: "dose_or_monitoring",
++      }),
++    ).toEqual({ eligible: false, reason: "link_only" });
++  });
++
++  it("fails closed for inactive, non-current, danger-gated, and mismatched catalogue evidence", () => {
++    expect(
++      sourceEligibilityForClaim({ source: metadata({ change_state: "withdrawn" }), claimRole: "treatment" }),
++    ).toEqual({ eligible: false, reason: "inactive" });
++    expect(
++      sourceEligibilityForClaim({ source: metadata({ document_status: "review_due" }), claimRole: "treatment" }),
++    ).toEqual({ eligible: false, reason: "not_current" });
++    expect(
++      sourceEligibilityForClaim({ source: metadata({ extraction_quality: "poor" }), claimRole: "treatment" }),
++    ).toEqual({ eligible: false, reason: "governance_block" });
++    expect(
++      sourceEligibilityForClaim({
++        source: metadata({
++          corpus_scope: "australian_public",
++          source_role: "clinical_guideline",
++          source_catalogue_key: "nhmrc",
++          publisher: "National Health and Medical Research Council",
++          publisher_code: "TGA",
++          jurisdiction: "Australia/National",
++        }),
++        claimRole: "treatment",
++      }),
++    ).toEqual({ eligible: false, reason: "catalogue_mismatch" });
++  });
++});
++
++describe("resolveLocalAndAustralianEvidence", () => {
++  it("keeps the current uploaded guideline primary and surfaces a newer verified conflict", () => {
++    const local = result({ id: "local-chunk", document_id: "local" });
++    const national = australianResult({ id: "national-chunk", document_id: "national" });
++
++    const resolved = resolveLocalAndAustralianEvidence({
++      local: [local],
++      australian: [national],
++      claimRole: "treatment",
++      verifiedDifferences: [
++        {
++          claimRole: "treatment",
++          topicKey: "treatment-sequence",
++          overlapReason: "same_claim",
++          materialDifferenceReason: "recommendation_differs",
++          localChunkIds: ["local-chunk"],
++          australianChunkIds: ["national-chunk"],
++        },
++      ],
++    });
++
++    expect(resolved.primary.map((source) => source.document_id)).toEqual(["local"]);
++    expect(resolved.primaryDecision).toEqual({
++      selected: "uploaded_local",
++      reason: "current_valid_accessible_directly_supportive",
++    });
++    expect(resolved.augmentation.map((source) => source.document_id)).toEqual(["national"]);
++    expect(resolved.conflicts).toEqual([
++      expect.objectContaining({
++        version: "source-policy-conflict-v1",
++        id: expect.stringMatching(/^source-policy-conflict-v1:/),
++        local: expect.objectContaining({
++          documentId: "local",
++          publicationDate: "2025-01-01",
++          jurisdiction: "local",
++          sourceRole: "local_guideline",
++          supportingChunkIds: ["local-chunk"],
++        }),
++        australian: expect.objectContaining({
++          documentId: "national",
++          publicationDate: "2026-06-01",
++          jurisdiction: "Australia/National",
++          sourceRole: "clinical_guideline",
++          supportingChunkIds: ["national-chunk"],
++        }),
++        materialDifferenceReason: "recommendation_differs",
++        localPrimaryDecision: {
++          selected: "uploaded_local",
++          reason: "current_valid_accessible_directly_supportive",
++        },
++        reviewTargetDocumentId: "local",
++      }),
++    ]);
++    expect(resolved.reviewDocumentIds).toEqual(["local"]);
++  });
++
++  it("does not infer a conflict from recency alone", () => {
++    const resolved = resolveLocalAndAustralianEvidence({
++      local: [result({ id: "local-chunk", document_id: "local" })],
++      australian: [australianResult({ id: "national-chunk", document_id: "national" })],
++      claimRole: "treatment",
++      verifiedDifferences: [],
++    });
++
++    expect(resolved.conflicts).toEqual([]);
++    expect(resolved.reviewDocumentIds).toEqual([]);
++  });
++
++  it("requires matching verified chunks and complete side metadata before creating a conflict", () => {
++    const difference = {
++      claimRole: "treatment" as const,
++      topicKey: "treatment-sequence",
++      overlapReason: "same_claim" as const,
++      materialDifferenceReason: "recommendation_differs" as const,
++      localChunkIds: ["local-chunk"],
++      australianChunkIds: ["national-chunk"],
++    };
++
++    expect(
++      resolveLocalAndAustralianEvidence({
++        local: [result({ id: "different-local-chunk", document_id: "local" })],
++        australian: [australianResult({ id: "national-chunk", document_id: "national" })],
++        claimRole: "treatment",
++        verifiedDifferences: [difference],
++      }).conflicts,
++    ).toEqual([]);
++
++    expect(
++      resolveLocalAndAustralianEvidence({
++        local: [result({ id: "local-chunk", document_id: "local" }, { publisher: null })],
++        australian: [australianResult({ id: "national-chunk", document_id: "national" })],
++        claimRole: "treatment",
++        verifiedDifferences: [difference],
++      }).conflicts,
++    ).toEqual([]);
++  });
++
++  it("uses eligible Australian evidence as primary when uploaded evidence is not eligible", () => {
++    const resolved = resolveLocalAndAustralianEvidence({
++      local: [result({ id: "stale-local-chunk", document_id: "stale-local" }, { document_status: "outdated" })],
++      australian: [australianResult({ id: "national-chunk", document_id: "national" })],
++      claimRole: "treatment",
++      verifiedDifferences: [],
++    });
++
++    expect(resolved.primary.map((source) => source.document_id)).toEqual(["national"]);
++    expect(resolved.primaryDecision).toEqual({
++      selected: "australian_public",
++      reason: "no_eligible_uploaded_local",
++    });
++    expect(resolved.augmentation).toEqual([]);
++  });
++
++  it("does not make unknown extraction quality eligible or local-primary", () => {
++    const unknown = result(
++      { id: "unknown-local-chunk", document_id: "unknown-local" },
++      { extraction_quality: "unknown" },
++    );
++
++    expect(
++      sourceEligibilityForClaim({ source: metadata({ extraction_quality: "unknown" }), claimRole: "treatment" }),
++    ).toEqual({ eligible: false, reason: "governance_block" });
++
++    const resolved = resolveLocalAndAustralianEvidence({
++      local: [unknown],
++      australian: [australianResult({ id: "national-chunk", document_id: "national" })],
++      claimRole: "treatment",
++      verifiedDifferences: [],
++    });
++    expect(resolved.primary.map((source) => source.document_id)).toEqual(["national"]);
++    expect(resolved.primaryDecision).toEqual({
++      selected: "australian_public",
++      reason: "no_eligible_uploaded_local",
++    });
++  });
++
++  it("does not promote an uploaded supporting review as the local guideline primary", () => {
++    const resolved = resolveLocalAndAustralianEvidence({
++      local: [result({ id: "review-chunk", document_id: "local-review" }, { source_role: "professional_review" })],
++      australian: [australianResult({ id: "national-chunk", document_id: "national" })],
++      claimRole: "treatment",
++      verifiedDifferences: [],
++    });
++
++    expect(resolved.primary.map((source) => source.document_id)).toEqual(["national"]);
++    expect(resolved.augmentation.map((source) => source.document_id)).toEqual(["local-review"]);
++  });
++
++  it("does not make nearby uploaded evidence primary and returns deterministic conflict IDs", () => {
++    const local = result({
++      id: "local-chunk",
++      document_id: "local",
++      relevance: { ...directRelevance, verdict: "nearby", label: "Nearby" },
++    });
++    const national = australianResult({ id: "national-chunk", document_id: "national" });
++    const verifiedDifference = {
++      claimRole: "treatment" as const,
++      topicKey: "treatment-sequence",
++      overlapReason: "same_claim" as const,
++      materialDifferenceReason: "recommendation_differs" as const,
++      localChunkIds: ["local-chunk"],
++      australianChunkIds: ["national-chunk"],
++    };
++
++    const nearby = resolveLocalAndAustralianEvidence({
++      local: [local],
++      australian: [national],
++      claimRole: "treatment",
++      verifiedDifferences: [verifiedDifference],
++    });
++    expect(nearby.primary.map((source) => source.document_id)).toEqual(["national"]);
++    expect(nearby.conflicts).toEqual([]);
++
++    const direct = { ...local, relevance: directRelevance };
++    const first = resolveLocalAndAustralianEvidence({
++      local: [direct],
++      australian: [national],
++      claimRole: "treatment",
++      verifiedDifferences: [verifiedDifference],
++    });
++    const second = resolveLocalAndAustralianEvidence({
++      local: [direct],
++      australian: [national],
++      claimRole: "treatment",
++      verifiedDifferences: [verifiedDifference],
++    });
++    expect(first.conflicts[0]?.id).toBe(second.conflicts[0]?.id);
++  });
++
++  it("sorts and deduplicates conflicts and review targets independently of verified-difference order", () => {
++    const localA = result({ id: "local-a-chunk", document_id: "local-a" });
++    const localB = result({ id: "local-b-chunk", document_id: "local-b" });
++    const national = australianResult({ id: "national-chunk", document_id: "national" });
++    const differenceA = {
++      claimRole: "treatment" as const,
++      topicKey: "a-topic",
++      overlapReason: "same_claim" as const,
++      materialDifferenceReason: "recommendation_differs" as const,
++      localChunkIds: ["local-a-chunk"],
++      australianChunkIds: ["national-chunk"],
++    };
++    const differenceB = {
++      claimRole: "treatment" as const,
++      topicKey: "b-topic",
++      overlapReason: "same_topic_and_population" as const,
++      materialDifferenceReason: "monitoring_differs" as const,
++      localChunkIds: ["local-b-chunk"],
++      australianChunkIds: ["national-chunk"],
++    };
++
++    const first = resolveLocalAndAustralianEvidence({
++      local: [localB, localA],
++      australian: [national],
++      claimRole: "treatment",
++      verifiedDifferences: [differenceB, differenceA, differenceA],
++    });
++    const reversed = resolveLocalAndAustralianEvidence({
++      local: [localA, localB],
++      australian: [national],
++      claimRole: "treatment",
++      verifiedDifferences: [differenceA, differenceB],
++    });
++
++    expect(first.conflicts.map((conflict) => conflict.id)).toEqual(reversed.conflicts.map((conflict) => conflict.id));
++    expect(new Set(first.conflicts.map((conflict) => conflict.id)).size).toBe(2);
++    expect(first.conflicts).toHaveLength(2);
++    expect(first.reviewDocumentIds).toEqual(["local-a", "local-b"]);
++    expect(reversed.reviewDocumentIds).toEqual(["local-a", "local-b"]);
++  });
++});
