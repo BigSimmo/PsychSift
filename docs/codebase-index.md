@@ -119,9 +119,9 @@ Smaller top-level directories that are easy to miss:
 
 ### RAG, retrieval, answers
 
-The `rag.ts` orchestrator and its `rag-*` cluster live in **`src/lib/rag/`** (the first
-domain-extracted directory; imported as `@/lib/rag/rag*`). Other modules below remain flat in
-`src/lib/`.
+The `rag.ts` orchestrator and its `rag-*` cluster live in **`src/lib/rag/`** (imported as
+`@/lib/rag/rag*`). First-party content contracts and producer governance live in
+**`src/lib/site-content/`**. Other modules below remain flat in `src/lib/`.
 
 | Module                                                                                                                  | Role                                                                                         |
 | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -131,6 +131,7 @@ domain-extracted directory; imported as `@/lib/rag/rag*`). Other modules below r
 | `rag-evidence-gates.ts`, `rag-coverage-gate.ts`, `rag-second-stage.ts`                                                  | Evidence predicates, fast-path coverage gating, and second-stage ranking                     |
 | `rag-hydration.ts`                                                                                                      | Per-request hydration: document ranking metadata, cached index quality, page visual evidence |
 | `rag-cache.ts`, `rag-retrieval-variants.ts`                                                                             | Bounded caches and retrieval variants                                                        |
+| `site-content/` (`site-content-contracts.ts`, `site-content-registry.ts`)                                               | First-party content contracts, producer/adoption registry, and snapshot policy               |
 | `clinical-search.ts`, `clinical-query-mode.ts`, `retrieval-selection.ts`                                                | Query modes and retrieval selection                                                          |
 | `answer-ranking.ts`, `answer-verification.ts`, `answer-formatting.ts`, `answer-follow-up.ts`, `answer-render-policy.ts` | Answer quality and rendering                                                                 |
 | `citations.ts`, `cross-document-synthesis.ts`, `evidence-relevance.ts`                                                  | Evidence and synthesis                                                                       |
