@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -126,5 +126,13 @@ describe("check:function-grants", () => {
     );
     expect(result.code).toBe(1);
     expect(result.out).toContain("no schema-wide");
+  });
+
+  it("keeps every public-source control-plane definer service-role-only", () => {
+    const schema = readFileSync("supabase/schema.sql", "utf8");
+    const migration = readFileSync("supabase/migrations/20260820121000_create_public_source_control_plane.sql", "utf8");
+    const result = run(fixture("public-source-control-plane.sql", `${schema}\n${migration}`));
+    expect(result.out).toContain("OK");
+    expect(result.code).toBe(0);
   });
 });

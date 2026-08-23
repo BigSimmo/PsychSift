@@ -937,6 +937,127 @@ export type Database = {
         };
         Relationships: [];
       };
+      public_source_activation_events: {
+        Row: {
+          created_at: string;
+          decision: string;
+          evidence_references: string[];
+          id: string;
+          operator_id: string;
+          reason: string;
+          source_catalogue_key: string;
+          source_policy_digest: string;
+          source_policy_version: string;
+        };
+        Insert: {
+          created_at?: string;
+          decision: string;
+          evidence_references: string[];
+          id?: string;
+          operator_id: string;
+          reason: string;
+          source_catalogue_key: string;
+          source_policy_digest: string;
+          source_policy_version: string;
+        };
+        Update: {
+          created_at?: string;
+          decision?: string;
+          evidence_references?: string[];
+          id?: string;
+          operator_id?: string;
+          reason?: string;
+          source_catalogue_key?: string;
+          source_policy_digest?: string;
+          source_policy_version?: string;
+        };
+        Relationships: [];
+      };
+      public_source_versions: {
+        Row: {
+          activation_event_id: string;
+          content_hash: string;
+          created_at: string;
+          exact_canonical_url: string;
+          exact_version: string;
+          exact_version_url: string;
+          extraction_generation_id: string | null;
+          id: string;
+          index_generation_id: string | null;
+          licence_evidence_digest: string;
+          lifecycle: string;
+          retrieved_at: string;
+          source_catalogue_key: string;
+          source_policy_digest: string;
+          source_policy_version: string;
+          staging_document_id: string;
+          supersedes_version_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          activation_event_id: string;
+          content_hash: string;
+          created_at?: string;
+          exact_canonical_url: string;
+          exact_version: string;
+          exact_version_url: string;
+          extraction_generation_id?: string | null;
+          id?: string;
+          index_generation_id?: string | null;
+          licence_evidence_digest: string;
+          lifecycle: string;
+          retrieved_at: string;
+          source_catalogue_key: string;
+          source_policy_digest: string;
+          source_policy_version: string;
+          staging_document_id: string;
+          supersedes_version_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          activation_event_id?: string;
+          content_hash?: string;
+          created_at?: string;
+          exact_canonical_url?: string;
+          exact_version?: string;
+          exact_version_url?: string;
+          extraction_generation_id?: string | null;
+          id?: string;
+          index_generation_id?: string | null;
+          licence_evidence_digest?: string;
+          lifecycle?: string;
+          retrieved_at?: string;
+          source_catalogue_key?: string;
+          source_policy_digest?: string;
+          source_policy_version?: string;
+          staging_document_id?: string;
+          supersedes_version_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "public_source_versions_activation_event_id_fkey";
+            columns: ["activation_event_id"];
+            isOneToOne: false;
+            referencedRelation: "public_source_activation_events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "public_source_versions_staging_document_id_fkey";
+            columns: ["staging_document_id"];
+            isOneToOne: false;
+            referencedRelation: "documents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "public_source_versions_supersedes_version_id_fkey";
+            columns: ["supersedes_version_id"];
+            isOneToOne: false;
+            referencedRelation: "public_source_versions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       document_sections: {
         Row: {
           artifact_generation_id: string | null;
@@ -2897,6 +3018,30 @@ export type Database = {
           p_expected_generation_ids: string[];
           p_expected_state_digest: string;
           p_manifest: Json;
+        };
+        Returns: Json;
+      };
+      create_public_source_fetch_manifest: {
+        Args: {
+          p_activation_event_id: string;
+          p_exact_url: string;
+          p_exact_version: string;
+          p_licence_evidence_digest: string;
+          p_source_catalogue_key: string;
+          p_source_policy_digest: string;
+          p_source_policy_version: string;
+          p_staging_owner_id: string;
+        };
+        Returns: Json;
+      };
+      record_public_source_activation_event: { Args: { p_manifest: Json }; Returns: string };
+      stage_public_source_version: { Args: { p_version: Json }; Returns: string };
+      transition_public_source_version: {
+        Args: {
+          p_activation_event_id?: string | null;
+          p_expected_lifecycle: string;
+          p_new_lifecycle: string;
+          p_version_id: string;
         };
         Returns: Json;
       };

@@ -144,6 +144,10 @@ const australianSourceActivationMigration = readFileSync(
   new URL("../supabase/migrations/20260822123000_govern_australian_source_activation.sql", import.meta.url),
   "utf8",
 ).replace(/\s+/g, " ");
+const publicSourceControlPlaneMigration = readFileSync(
+  new URL("../supabase/migrations/20260820121000_create_public_source_control_plane.sql", import.meta.url),
+  "utf8",
+).replace(/\s+/g, " ");
 const deleteDocumentIfIdleMigration = readFileSync(
   new URL("../supabase/migrations/20260717132000_delete_document_if_idle.sql", import.meta.url),
   "utf8",
@@ -1604,6 +1608,70 @@ describe("Supabase Preview replay guards", () => {
     expect(sql).toContain("source_catalogue_key is null");
     expect(sql).toContain("source_policy_version is null");
     expect(sql).toContain("reviewed_index_generation_id is null");
+  });
+
+  it("creates an append-only service-role public-source control plane", () => {
+    const sql = publicSourceControlPlaneMigration.toLowerCase();
+    expect(sql).toContain("create table public.public_source_activation_events");
+    expect(sql).toContain("create table public.public_source_versions");
+    expect(sql).toContain("check (decision in ('activate', 'quarantine', 'retire'))");
+    expect(sql).toContain(
+      "check (lifecycle in ('discovered', 'shadow', 'approved', 'active', 'quarantined', 'tombstoned'))",
+    );
+    expect(sql).toContain("before update or delete on public.public_source_activation_events");
+    expect(sql).toContain("public_source_activation_events are append-only");
+    expect(sql).toContain("alter table public.public_source_activation_events enable row level security");
+    expect(sql).toContain("alter table public.public_source_versions enable row level security");
+    for (const table of ["public_source_activation_events", "public_source_versions"]) {
+      expect(sql).toContain(`revoke all on table public.${table} from public, anon, authenticated`);
+    }
+  });
+
+  it("locks source rows and permits only explicit version lifecycle transitions", () => {
+    const sql = publicSourceControlPlaneMigration.toLowerCase();
+    for (const functionName of [
+      "record_public_source_activation_event",
+      "create_public_source_fetch_manifest",
+      "stage_public_source_version",
+      "transition_public_source_version",
+    ]) {
+      const body = sqlFunctionBody(sql, functionName);
+      expect(body).toContain("security definer");
+      expect(body).toContain("set search_path = ''");
+      expect(sql).toContain(`revoke all on function public.${functionName}`);
+      expect(sql).toContain(`grant execute on function public.${functionName}`);
+    }
+    expect(sqlFunctionBody(sql, "create_public_source_fetch_manifest")).toContain("for update");
+    expect(sqlFunctionBody(sql, "create_public_source_fetch_manifest")).toContain("decision <> 'activate'");
+    expect(sqlFunctionBody(sql, "create_public_source_fetch_manifest")).toContain(
+      "order by created_at desc, id desc limit 1 for update",
+    );
+    expect(sqlFunctionBody(sql, "create_public_source_fetch_manifest")).toContain(
+      "v_event.id is distinct from p_activation_event_id",
+    );
+    const activationBody = sqlFunctionBody(sql, "record_public_source_activation_event");
+    expect(activationBody).toContain("v_catalogue_key not in ( 'wa-health'");
+    expect(activationBody).toContain("v_policy_version <> 'australian-source-policy-v1'");
+    expect(activationBody).toContain(
+      "v_policy_digest <> 'sha256:02dcc095258338d0c355af79dfa1889c024f25f385b553e5b6c802207546855d'",
+    );
+    for (const excluded of ["healthdirect", "etg-complete", "australian-medicines-handbook", "nps-medicinewise"]) {
+      expect(activationBody).not.toContain(`'${excluded}'`);
+    }
+    expect(sqlFunctionBody(sql, "stage_public_source_version")).toContain("v_document.owner_id is null");
+    expect(sqlFunctionBody(sql, "stage_public_source_version")).toContain(
+      "order by created_at desc, id desc limit 1 for update",
+    );
+    expect(sqlFunctionBody(sql, "stage_public_source_version")).toContain(
+      "v_event.id is distinct from v_activation_event_id",
+    );
+    expect(sqlFunctionBody(sql, "transition_public_source_version")).toContain("for update");
+    expect(sqlFunctionBody(sql, "transition_public_source_version")).toContain(
+      "invalid public source lifecycle transition",
+    );
+    expect(sqlFunctionBody(sql, "transition_public_source_version")).toContain(
+      "exact document publication approval is distinct from source activation",
+    );
   });
 
   it("serializes permanent deletion against ingestion job creation", () => {
