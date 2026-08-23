@@ -37,10 +37,11 @@ export function finalRagQueryFields(
   originalAnswer: RagAnswer,
   finalizer: RagQueryTelemetryFinalizer | undefined,
   originalSources: readonly Pick<SearchResult, "id">[],
+  observationContext?: RagObservationContext,
   routingReason = originalAnswer.routingReason,
 ) {
   const answer = finalRagQueryTelemetryAnswer(originalAnswer, finalizer);
-  return answer === originalAnswer
+  return answer === originalAnswer && !observationContext
     ? {
         answer,
         sourceChunkIds: originalSources.map((source) => source.id),

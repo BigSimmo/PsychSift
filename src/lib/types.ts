@@ -227,6 +227,8 @@ export type RagProgrammeExpectation = {
   incrementalEligibility: "none" | "lead" | "independent_sections";
 };
 
+export type RagProgrammeRankApplicability = "positive_retrieval" | "correct_negative";
+
 export type RagProgrammeHardViolation =
   | "access_boundary"
   | "healthdirect_used"
@@ -247,6 +249,7 @@ export type RagProgrammeHardViolation =
 export type RagProgrammeCaseResult = {
   id: string;
   caseFingerprint: string;
+  rankApplicability: RagProgrammeRankApplicability;
   passed: boolean;
   falseInsufficiency: boolean;
   supportedPartRetained: boolean;

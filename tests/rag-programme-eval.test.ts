@@ -68,6 +68,7 @@ function evaluation(
   return {
     id: "synthetic-supported-case",
     caseFingerprint: "case-fingerprint-v1",
+    rankApplicability: "positive_retrieval",
     expectation,
     observed: {
       corpusScopes: ["uploaded_local"],
@@ -152,7 +153,13 @@ const candidate: RagProgrammeRun = {
 const oneCasePopulation = {
   caseSetFingerprint: baseline.caseSetFingerprint,
   populationFingerprint: oneCasePopulationFingerprint,
-  cases: [{ id: passingCase.id, caseFingerprint: passingCase.caseFingerprint }],
+  cases: [
+    {
+      id: passingCase.id,
+      caseFingerprint: passingCase.caseFingerprint,
+      rankApplicability: passingCase.rankApplicability,
+    },
+  ],
 };
 
 function candidateWith(violation: RagProgrammeHardViolation): RagProgrammeRun {
@@ -233,6 +240,63 @@ describe("RAG programme gate", () => {
 
     expect(compareRagProgrammeRuns(firstCaseOnly, firstCaseOnly, canonicalPopulation).reasons).toContain(
       "canonical_population_mismatch",
+    );
+  });
+
+  it("excludes canonical correct negatives from recall while preserving their zero ranks", () => {
+    const parsed = parseRagProgrammeFixture(
+      JSON.parse(readFileSync("scripts/fixtures/rag-programme-failures.v1.json", "utf8")),
+    );
+    const evaluated = parsed.cases.map((item) => {
+      const result = evaluateRagProgrammeCase({
+        id: item.id,
+        caseFingerprint: item.caseFingerprint,
+        rankApplicability: item.rankApplicability,
+        expectation: item.expectation,
+        observed: {
+          corpusScopes: item.expectation.expectedCorpusScopes,
+          sourceRoles: item.expectation.expectedSourceRoles,
+          siteDomains: item.expectation.expectedSiteDomains,
+          publicSiteContentState: item.expectation.expectedPublicSiteContentState,
+          subquestionPurposes: item.expectation.expectedSubquestionPurposes,
+          directSubquestionCount: item.expectation.minimumDirectSubquestions,
+          answerShape: item.expectation.allowedAnswerShapes[0],
+          supportedPartRetained: true,
+          exactGapNamed: true,
+          insufficiencyReason: null,
+          conflictDocumentIds: item.expectation.expectedConflict
+            ? {
+                localDocumentId: item.expectation.expectedConflict.localDocumentId,
+                australianDocumentId: item.expectation.expectedConflict.australianDocumentId,
+              }
+            : null,
+          visibleConflictFields: item.expectation.expectedConflict?.requireVisibleFields ?? [],
+          hardViolations: [],
+          satisfiedFacts: item.expectation.requiredFacts,
+          answerText: "Synthetic privacy-reviewed governed answer.",
+          documentReciprocalRank: item.rankApplicability === "positive_retrieval" ? 1 : 0,
+          contentReciprocalRank: item.rankApplicability === "positive_retrieval" ? 1 : 0,
+          totalLatencyMs: 100,
+          estimatedCostUsd: 0.01,
+          incrementalEligibility: item.expectation.incrementalEligibility,
+        },
+      });
+      return result;
+    });
+    const run: RagProgrammeRun = {
+      caseSetFingerprint: parsed.caseSetFingerprint,
+      populationFingerprint: parsed.population.populationFingerprint,
+      cases: evaluated,
+    };
+    const correctNegatives = run.cases.filter((item) => item.rankApplicability === "correct_negative");
+
+    expect(correctNegatives).toHaveLength(6);
+    expect(
+      correctNegatives.every((item) => item.documentReciprocalRank === 0 && item.contentReciprocalRank === 0),
+    ).toBe(true);
+    expect(compareRagProgrammeRuns(run, run, parsed.population)).toEqual({ decision: "GO", reasons: [] });
+    expect(evaluated.map((result) => result.rankApplicability)).toEqual(
+      parsed.cases.map((item) => item.rankApplicability),
     );
   });
 

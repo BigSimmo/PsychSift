@@ -8,6 +8,7 @@ import type {
   RagProgrammeExpectation,
   RagProgrammeGatePolicy,
   RagProgrammeHardViolation,
+  RagProgrammeRankApplicability,
   RagSubquestionPurpose,
   SiteContentDomain,
   SiteContentPartitionState,
@@ -19,6 +20,7 @@ export type {
   RagProgrammeExpectation,
   RagProgrammeGatePolicy,
   RagProgrammeHardViolation,
+  RagProgrammeRankApplicability,
 } from "@/lib/types";
 
 type ConflictVisibleField = NonNullable<RagProgrammeExpectation["expectedConflict"]>["requireVisibleFields"][number];
@@ -49,6 +51,7 @@ export type RagProgrammeObservedCase = {
 export type RagProgrammeCaseEvaluationInput = {
   id: string;
   caseFingerprint: string;
+  rankApplicability: RagProgrammeRankApplicability;
   expectation: RagProgrammeExpectation;
   observed: RagProgrammeObservedCase;
 };
@@ -62,7 +65,7 @@ export type RagProgrammeRun = {
 export type RagProgrammePopulationContract = {
   caseSetFingerprint: string;
   populationFingerprint: string;
-  cases: Array<{ id: string; caseFingerprint: string }>;
+  cases: Array<{ id: string; caseFingerprint: string; rankApplicability: RagProgrammeRankApplicability }>;
 };
 
 export type RagProgrammeGateDecision = {
@@ -107,6 +110,7 @@ export type RagProgrammeProtectedFailureClass = (typeof requiredRagProgrammeFail
 export type RagProgrammeFixtureCase = {
   id: string;
   caseFingerprint: string;
+  rankApplicability: RagProgrammeRankApplicability;
   question: string;
   privacyReview: {
     reviewed: true;
@@ -230,6 +234,12 @@ export function evaluateRagProgrammeCase(input: RagProgrammeCaseEvaluationInput)
   }
   if (!isUnitInterval(observed.documentReciprocalRank)) failedExpectations.push("document_rank_invalid");
   if (!isUnitInterval(observed.contentReciprocalRank)) failedExpectations.push("content_rank_invalid");
+  if (
+    input.rankApplicability === "correct_negative" &&
+    (observed.documentReciprocalRank !== 0 || observed.contentReciprocalRank !== 0)
+  ) {
+    failedExpectations.push("correct_negative_rank_nonzero");
+  }
 
   const falseInsufficiency =
     expectation.minimumDirectSubquestions > 0 &&
@@ -239,6 +249,7 @@ export function evaluateRagProgrammeCase(input: RagProgrammeCaseEvaluationInput)
   return {
     id: input.id,
     caseFingerprint: input.caseFingerprint,
+    rankApplicability: input.rankApplicability,
     passed: failedExpectations.length === 0 && hardViolations.size === 0,
     falseInsufficiency,
     supportedPartRetained: observed.supportedPartRetained,
@@ -279,17 +290,28 @@ function hasExactPopulation(run: RagProgrammeRun, canonical: RagProgrammePopulat
   ) {
     return false;
   }
-  const expected = new Map(canonical.cases.map((item) => [item.id, item.caseFingerprint]));
+  const expected = new Map(canonical.cases.map((item) => [item.id, item]));
   return (
     expected.size === canonical.cases.length &&
-    run.cases.every((item) => expected.get(item.id) === item.caseFingerprint)
+    run.cases.every((item) => {
+      const canonicalCase = expected.get(item.id);
+      return (
+        canonicalCase?.caseFingerprint === item.caseFingerprint &&
+        canonicalCase.rankApplicability === item.rankApplicability
+      );
+    })
   );
 }
 
 function hasConsistentCaseResult(item: RagProgrammeCaseResult): boolean {
   const hasFailureEvidence =
     item.falseInsufficiency || item.hardViolations.length > 0 || item.failedExpectations.length > 0;
-  return item.passed === !hasFailureEvidence && !(item.falseInsufficiency && item.supportedPartRetained);
+  const rankIsConsistent =
+    item.rankApplicability === "positive_retrieval" ||
+    (item.documentReciprocalRank === 0 && item.contentReciprocalRank === 0);
+  return (
+    item.passed === !hasFailureEvidence && !(item.falseInsufficiency && item.supportedPartRetained) && rankIsConsistent
+  );
 }
 
 function isFiniteNonNegative(value: number): boolean {
@@ -344,10 +366,12 @@ export function compareRagProgrammeRuns(
   const hardViolationCount = candidate.cases.reduce((sum, item) => sum + item.hardViolations.length, 0);
   if (hardViolationCount > policy.maximumHardViolations) reasons.add("hard_violation_ceiling_exceeded");
 
-  const population = candidate.cases.length;
-  if (population > 0) {
-    const documentRecall = candidate.cases.filter((item) => item.documentReciprocalRank > 0).length / population;
-    const contentRecall = candidate.cases.filter((item) => item.contentReciprocalRank > 0).length / population;
+  const rankApplicableCases = candidate.cases.filter((item) => item.rankApplicability === "positive_retrieval");
+  if (rankApplicableCases.length > 0) {
+    const documentRecall =
+      rankApplicableCases.filter((item) => item.documentReciprocalRank > 0).length / rankApplicableCases.length;
+    const contentRecall =
+      rankApplicableCases.filter((item) => item.contentReciprocalRank > 0).length / rankApplicableCases.length;
     if (documentRecall < policy.requireDocumentRecall) reasons.add("document_recall_below_gate");
     if (contentRecall < policy.requireContentRecall) reasons.add("content_recall_below_gate");
   }
@@ -679,8 +703,7 @@ export function parseRagProgrammeFixture(input: unknown): {
   }
 
   const casesWithoutFingerprints = input.cases.map((item) => {
-    if (!("caseFingerprint" in item)) return item;
-    const { caseFingerprint: _caseFingerprint, ...caseInput } = item;
+    const { caseFingerprint: _caseFingerprint, rankApplicability: _rankApplicability, ...caseInput } = item;
     return caseInput;
   });
   const { caseSetFingerprint: storedFingerprint, ...fingerprintInput } = input;
@@ -690,12 +713,16 @@ export function parseRagProgrammeFixture(input: unknown): {
     throw new Error(`RAG programme case-set fingerprint mismatch: expected ${computedFingerprint}.`);
   }
 
-  const cases = casesWithoutFingerprints.map((item) => ({ ...item, caseFingerprint: fingerprint(item) }));
+  const cases = casesWithoutFingerprints.map((item) => ({
+    ...item,
+    caseFingerprint: fingerprint(item),
+    rankApplicability: item.expectedDocumentIds.length > 0 ? "positive_retrieval" : "correct_negative",
+  })) satisfies RagProgrammeFixtureCase[];
   const raw = { ...input, cases } as RagProgrammeFixture;
   const population: RagProgrammePopulationContract = {
     caseSetFingerprint: computedFingerprint,
     populationFingerprint: populationFingerprint(cases),
-    cases: cases.map(({ id, caseFingerprint }) => ({ id, caseFingerprint })),
+    cases: cases.map(({ id, caseFingerprint, rankApplicability }) => ({ id, caseFingerprint, rankApplicability })),
   };
   return { raw, cases, caseSetFingerprint: computedFingerprint, population };
 }

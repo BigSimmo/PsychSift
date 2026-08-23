@@ -2479,6 +2479,11 @@ async function answerQuestionWithScopeUncoalesced(
   startedAt: number,
 ): Promise<RagAnswer> {
   throwIfAborted(args.signal);
+  const programmeQueryFields = (
+    answer: RagAnswer,
+    sources: readonly Pick<SearchResult, "id">[],
+    routingReason?: string,
+  ) => finalRagQueryFields(answer, args.finalizeTelemetryAnswer, sources, args.observationContext, routingReason);
   assertGlobalSearchAllowed({
     query: args.query,
     documentId: args.documentId,
@@ -2900,7 +2905,7 @@ async function answerQuestionWithScopeUncoalesced(
     );
 
     const finalizedAnswer = withRagProgrammeDiagnostics(finalizeAnswer(answer), results);
-    const telemetry = finalRagQueryFields(finalizedAnswer, args.finalizeTelemetryAnswer, answerInputResults);
+    const telemetry = programmeQueryFields(finalizedAnswer, answerInputResults);
     const telemetryAnswer = telemetry.answer;
 
     if (args.logQuery !== false)
@@ -3098,7 +3103,7 @@ async function answerQuestionWithScopeUncoalesced(
     }
 
     finalizedAnswer = withRagProgrammeDiagnostics(finalizedAnswer, results);
-    const telemetry = finalRagQueryFields(finalizedAnswer, args.finalizeTelemetryAnswer, answerInputResults);
+    const telemetry = programmeQueryFields(finalizedAnswer, answerInputResults);
     const telemetryAnswer = telemetry.answer;
     if (args.logQuery !== false)
       await logRagQuery({
@@ -3822,7 +3827,7 @@ ${qualityRetryInstruction}`
       );
     }
 
-    const telemetry = finalRagQueryFields(answer, args.finalizeTelemetryAnswer, answerInputResults, routingReason);
+    const telemetry = programmeQueryFields(answer, answerInputResults, routingReason);
     const telemetryAnswer = telemetry.answer;
     if (args.logQuery !== false)
       await logRagQuery({
@@ -4181,7 +4186,7 @@ ${qualityRetryInstruction}`
     }
     await args.onProgress?.({ stage: "verifying", message: "Checking citations and source metadata." });
     fallbackAnswer = withRagProgrammeDiagnostics(fallbackAnswer, results);
-    const telemetry = finalRagQueryFields(fallbackAnswer, args.finalizeTelemetryAnswer, generationFallbackResults);
+    const telemetry = programmeQueryFields(fallbackAnswer, generationFallbackResults);
     const telemetryAnswer = telemetry.answer;
     if (args.logQuery !== false)
       await logRagQuery({

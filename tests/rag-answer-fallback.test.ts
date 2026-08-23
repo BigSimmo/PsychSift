@@ -177,6 +177,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.doUnmock("@/lib/rag/rag-routing");
   vi.resetModules();
   vi.unstubAllEnvs();
 });
@@ -2753,6 +2754,117 @@ describe("RAG structured-output fallback", () => {
     expect(loggedRow.answer).toBeNull();
     expect(loggedMetadata.answer_retained).toBe(false);
     expect(JSON.stringify(loggedRow)).not.toContain("review intervals");
+  });
+
+  it("bounds every reason in an ordinary uncached programme query row", async () => {
+    vi.resetModules();
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    vi.stubEnv("RAG_PROVIDER_MODE", "auto");
+    vi.stubEnv("RAG_SEARCH_CACHE_TTL_MS", "0");
+    vi.stubEnv("RAG_ANSWER_CACHE_TTL_MS", "0");
+    vi.stubEnv("RAG_AWAIT_QUERY_LOGS", "true");
+    vi.stubEnv("RAG_TELEMETRY_EXTENDED", "true");
+
+    const topLevelReasonCanary = "provider-error-canary: fallback raw upstream body";
+    const nestedReasonCanary = "protected-reference-canary: restricted source text";
+    const monitoringSource = source({
+      id: "ordinary-programme-writer-source",
+      document_id: "ordinary-programme-writer-document",
+      title: "Synthetic monitoring guideline",
+      file_name: "synthetic-monitoring-guideline.pdf",
+      section_heading: "Monitoring",
+      content: "Review mental state and adverse effects at each scheduled clinical review.",
+      similarity: 0.96,
+      hybrid_score: 0.96,
+      text_rank: 1.1,
+    });
+    const rpc = vi.fn(async (name: string) => {
+      if (retrievalRpcBaseName(name) === "match_document_chunks_text") {
+        return { data: [monitoringSource], error: null };
+      }
+      if (retrievalRpcBaseName(name) === "get_related_document_metadata") return { data: [], error: null };
+      return { data: [], error: null };
+    });
+    const inserts: Array<{ table: string; row: Record<string, unknown> }> = [];
+    const from = vi.fn((table: string) => {
+      if (table === "rag_queries" || table === "rag_retrieval_logs") {
+        return {
+          insert: vi.fn(async (row: Record<string, unknown>) => {
+            inserts.push({ table, row });
+            return { data: null, error: null };
+          }),
+        };
+      }
+      return new EmptyQuery();
+    });
+    const generateStructuredTextResult = vi.fn(async () => ({
+      text: JSON.stringify({
+        answer: "Review mental state and adverse effects at each scheduled clinical review.",
+        grounded: true,
+        confidence: "high",
+        answerSections: [],
+        citations: [{ chunk_id: monitoringSource.id }],
+        quoteCards: [
+          {
+            chunk_id: monitoringSource.id,
+            quote: monitoringSource.content,
+            section_heading: monitoringSource.section_heading,
+          },
+        ],
+        conflictsOrGaps: [],
+      }),
+      model: "gpt-5.4-mini",
+      operation: "answer",
+      latencyMs: 12,
+      requestId: "req_ordinary_programme_writer",
+      usage: { input_tokens: 80, output_tokens: 50, total_tokens: 130 },
+    }));
+
+    vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc, from }) }));
+    vi.doMock("@/lib/openai", () => ({
+      embedTextWithTelemetry: vi.fn(async () => ({ embedding: [0.1, 0.2, 0.3], cacheHit: false })),
+      generateStructuredTextResult,
+    }));
+    vi.doMock("@/lib/rag/rag-routing", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("../src/lib/rag/rag-routing")>();
+      return {
+        ...actual,
+        chooseAnswerRoute: vi.fn((args: Parameters<typeof actual.chooseAnswerRoute>[0]) => ({
+          ...actual.chooseAnswerRoute(args),
+          reason: topLevelReasonCanary,
+        })),
+      };
+    });
+
+    const { answerQuestionWithScope } = await import("../src/lib/rag/rag");
+    const interactionId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    await answerQuestionWithScope({
+      query: "What monitoring action is supported by the synthetic guideline?",
+      ownerId: undefined,
+      skipCache: true,
+      observationContext: { interactionId, rolloutMode: "shadow" },
+      finalizeTelemetryAnswer: (telemetryAnswer) => {
+        telemetryAnswer.routingReason = topLevelReasonCanary;
+        telemetryAnswer.fallbackReason = topLevelReasonCanary;
+        telemetryAnswer.degradedMode = { active: true, reason: topLevelReasonCanary };
+        telemetryAnswer.programmeDiagnostics = {
+          ...telemetryAnswer.programmeDiagnostics!,
+          insufficiencyReason: nestedReasonCanary,
+        } as unknown as NonNullable<RagAnswer["programmeDiagnostics"]>;
+        return telemetryAnswer;
+      },
+    });
+
+    const queryRow = inserts.find((inserted) => inserted.table === "rag_queries")?.row;
+    expect(queryRow).toBeDefined();
+    expect(JSON.stringify(queryRow)).not.toContain(topLevelReasonCanary);
+    expect(JSON.stringify(queryRow)).not.toContain(nestedReasonCanary);
+    expect(queryRow?.metadata).toMatchObject({
+      interaction_id: interactionId,
+      routing_reason: "strong",
+      fallback_reason: "insufficient_claim_support",
+      insufficiency_reason: "insufficient_claim_support",
+    });
   });
 
   it("filters table-caption metadata from extractive answer points", async () => {
