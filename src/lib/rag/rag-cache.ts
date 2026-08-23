@@ -476,7 +476,6 @@ export async function cacheIndexingVersion(
   const cacheKey = cacheIndexingVersionCacheKey(args);
   if (options?.forceRefresh) cacheIndexingVersionCache.delete(cacheKey);
   const cached = readExpiringCacheEntry(cacheIndexingVersionCache, cacheKey);
-  if (cached) return cached.value;
 
   let value: string;
   try {
@@ -486,7 +485,8 @@ export async function cacheIndexingVersion(
       typeof authorityData === "string" || typeof authorityData === "number" ? String(authorityData) : null;
     if (authorityError) return publicSourceAuthorityUnavailable;
     if (!publicSourceAuthorityStamp) return publicSourceAuthorityUnavailable;
-    value = `${ragDeepMemoryVersion}:no-indexed-documents:public:${publicSourceAuthorityStamp}`;
+    if (cached) return `${cached.value}:public:${publicSourceAuthorityStamp}`;
+    value = `${ragDeepMemoryVersion}:no-indexed-documents`;
     const documentFilters = args.documentIds?.length ? args.documentIds : args.documentId ? [args.documentId] : null;
     let query = supabase
       .from("documents")
@@ -507,7 +507,7 @@ export async function cacheIndexingVersion(
     const { data, error } = await query;
     throwIfAborted(args.signal);
     if (error || !data?.length) {
-      value = `${ragDeepMemoryVersion}:no-indexed-documents:public:${publicSourceAuthorityStamp}`;
+      value = `${ragDeepMemoryVersion}:no-indexed-documents`;
     } else {
       const latest = data[0] as { id?: string; updated_at?: string | null; metadata?: unknown };
       const metadata = normalizeSourceMetadata(latest.metadata);
@@ -516,7 +516,7 @@ export async function cacheIndexingVersion(
         latest.metadata && typeof latest.metadata === "object" && "index_generation_id" in latest.metadata
           ? String((latest.metadata as { index_generation_id?: unknown }).index_generation_id ?? "")
           : "";
-      value = `${ragDeepMemoryVersion}:${latest.id ?? "all"}:${indexedAt}:${generationId}:public:${publicSourceAuthorityStamp}`;
+      value = `${ragDeepMemoryVersion}:${latest.id ?? "all"}:${indexedAt}:${generationId}`;
     }
   } catch {
     if (args.signal?.aborted) throw abortReason(args.signal);
@@ -529,7 +529,18 @@ export async function cacheIndexingVersion(
     { value, expiresAt: Date.now() + cacheIndexingVersionTtlMs },
     cacheIndexingVersionMaxEntries,
   );
-  return value;
+  let finalAuthority;
+  try {
+    finalAuthority = await createAdminClient().rpc("public_source_serving_authority_stamp");
+  } catch {
+    return publicSourceAuthorityUnavailable;
+  }
+  const finalPublicSourceAuthorityStamp =
+    typeof finalAuthority.data === "string" || typeof finalAuthority.data === "number"
+      ? String(finalAuthority.data)
+      : null;
+  if (finalAuthority.error || !finalPublicSourceAuthorityStamp) return publicSourceAuthorityUnavailable;
+  return `${value}:public:${finalPublicSourceAuthorityStamp}`;
 }
 
 export async function getSharedCachedSearch(

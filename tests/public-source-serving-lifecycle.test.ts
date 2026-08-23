@@ -87,6 +87,13 @@ describe("public-source serving lifecycle authority", () => {
     expect(cacheOwner).toContain("if (!publicSourceAuthorityStamp) return publicSourceAuthorityUnavailable");
     expect(cacheOwner).toContain("if (!cacheAuthorityAvailable(indexingVersion)) return null");
     expect(cacheOwner).toContain("if (!indexingVersion) return");
+    const stampOwner = cacheOwner.slice(
+      cacheOwner.indexOf("export async function cacheIndexingVersion"),
+      cacheOwner.indexOf("export async function getSharedCachedSearch"),
+    );
+    expect(stampOwner.indexOf('.rpc("public_source_serving_authority_stamp")')).toBeLessThan(
+      stampOwner.indexOf("if (cached) return"),
+    );
   });
 
   it("atomically swaps exact old and new versions with immutable lineage and no uniqueness dead end", () => {
