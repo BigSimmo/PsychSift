@@ -12,6 +12,7 @@ import {
   shouldRunVisualArtifacts,
   type CompletionGateRow,
 } from "../supabase/functions/indexing-v3-agent/behavior";
+import { forbiddenPublicSourceIdentity } from "../supabase/functions/_shared/public-source-policy";
 
 const completeGateRow: CompletionGateRow = {
   sections: 3,
@@ -63,6 +64,19 @@ describe("indexing-v3-agent behavior", () => {
       },
     );
     expect(processStart).toContain("assertPublicSourceWorkerPolicy(job)");
+  });
+
+  it("normalizes protected identities identically across acquisition and worker boundaries", () => {
+    for (const value of [
+      "Health<em>direct</em>",
+      "Health direct",
+      "Health&amp;direct",
+      "Australian Medicines Hand-book",
+      "Australian Medicines Hand book",
+      "Therapeutic\u200bGuidelines",
+    ]) {
+      expect(forbiddenPublicSourceIdentity(value)).not.toBeNull();
+    }
   });
 
   it("schedules agent retries until the attempt budget is exhausted", () => {

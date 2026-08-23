@@ -80,8 +80,16 @@ export type PublicSourceStagingCandidate = Readonly<{
   sourceContentType: string;
   sourceContentHash: string;
   sourceByteLength: number;
+  supersedesVersionId: string | null;
   lifecycle: "shadow";
   metadata: Readonly<Record<string, string | boolean>>;
+}>;
+
+type PublicSourceStageResult = Readonly<{
+  documentId: string;
+  ownerId: string | null;
+  versionId?: string | null;
+  outcome?: "created" | "resumed" | "conflict";
 }>;
 
 export function localPublicSourceContentIdentityVerdict(input: {
@@ -176,6 +184,17 @@ function parseAndValidateUrl(rawUrl: string, definition: AustralianSourceDefinit
   if (url.protocol !== "https:") throw new Error("Acquisition URL must use HTTPS and may not target a private host.");
   if (url.username || url.password) throw new Error("Acquisition URL may not contain credentials.");
   if (url.port && url.port !== "443") throw new Error("Acquisition URL must use the default HTTPS port.");
+  if (url.hash) throw new Error("Acquisition URL fragments are not permitted.");
+  const approvedPublicQueryKeys = new Set(["download", "format", "lang", "page", "version"]);
+  for (const key of url.searchParams.keys()) {
+    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (
+      !approvedPublicQueryKeys.has(key.toLowerCase()) ||
+      /(?:apikey|auth|bearer|credential|key|password|secret|signature|signed|token)/.test(normalizedKey)
+    ) {
+      throw new Error("Acquisition URL query parameters are not approved.");
+    }
+  }
   const allowedHost = new URL(definition.canonicalUrl).hostname.toLowerCase();
   if (url.hostname.toLowerCase() !== allowedHost) {
     throw new Error(`Acquisition URL host is not the exact allowlisted host for ${definition.key}.`);
@@ -403,9 +422,7 @@ export async function acquirePublicSourceVersion(
       exactVersion: string;
       contentHash: string;
     }) => Promise<string | null>;
-    stageOwnedDocument: (
-      candidate: PublicSourceStagingCandidate,
-    ) => Promise<{ documentId: string; ownerId: string | null }>;
+    stageOwnedDocument: (candidate: PublicSourceStagingCandidate) => Promise<PublicSourceStageResult>;
     enqueue: (input: {
       documentId: string;
       ownerId: string;
@@ -434,8 +451,6 @@ export async function acquirePublicSourceVersion(
   } catch {
     throw new Error("Public source duplicate-version validation failed.");
   }
-  if (duplicate) throw new Error("Duplicate public source version already exists.");
-
   assertPublicSourceAcquisitionPlan(plan);
   const candidate = buildPublicSourceStagingCandidate(plan, {
     bytes,
@@ -445,11 +460,14 @@ export async function acquirePublicSourceVersion(
     sourceContentHash,
     sourceByteLength,
   });
-  let staged: { documentId: string; ownerId: string | null };
+  let staged: PublicSourceStageResult;
   try {
     staged = await deps.stageOwnedDocument(candidate);
   } catch {
     throw new Error("Public source owned staging failed.");
+  }
+  if (duplicate && (staged.outcome !== "resumed" || staged.versionId !== duplicate)) {
+    throw new Error("Duplicate public source version already exists.");
   }
   if (!staged.ownerId || staged.ownerId !== plan.stagingOwnerId) {
     throw new Error("Public source staging adapter did not preserve the exact non-null owner.");
@@ -490,6 +508,7 @@ export function buildPublicSourceStagingCandidate(
     sourceContentHash: string;
     sourceByteLength: number;
   }>,
+  options: Readonly<{ supersedesVersionId?: string | null }> = {},
 ): PublicSourceStagingCandidate {
   const definition = assertPublicSourceAcquisitionPlan(plan);
   return Object.freeze({
@@ -502,6 +521,7 @@ export function buildPublicSourceStagingCandidate(
     sourceContentType: content.sourceContentType,
     sourceContentHash: content.sourceContentHash,
     sourceByteLength: content.sourceByteLength,
+    supersedesVersionId: options.supersedesVersionId ?? null,
     lifecycle: "shadow",
     metadata: Object.freeze({
       corpus_scope: definition.corpusScope,
@@ -524,6 +544,7 @@ export function buildPublicSourceStagingCandidate(
       content_identity_verdict_version: publicSourceContentIdentityVerdictVersion,
       source_policy_checked: true,
       public_source_lifecycle: "shadow",
+      ...(options.supersedesVersionId ? { supersedes_version_id: options.supersedesVersionId } : {}),
       ...(plan.sourceActivationEventId ? { source_activation_event_id: plan.sourceActivationEventId } : {}),
     }),
   });
@@ -572,6 +593,10 @@ async function validateFetchedContent(
   response: Response,
   scanContent: PublicSourceContentIdentityScan,
 ) {
+  const contentEncoding = response.headers.get("content-encoding")?.trim().toLowerCase();
+  if (contentEncoding && contentEncoding !== "identity") {
+    throw new Error("Public source response Content-Encoding must be identity.");
+  }
   const upstreamContentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   if (!plan.allowedContentTypes.includes(upstreamContentType)) {
     throw new Error("Public source response content type is not approved.");
@@ -722,7 +747,7 @@ export async function checkPublicSourceChange(input: {
     contentHash: input.observed.contentHash,
     lifecycle: "shadow",
     ownerId: input.plan.stagingOwnerId,
-    supersedesVersionId: null,
+    supersedesVersionId: input.currentVersion.versionId,
     activate: false,
   });
   if (staged.ownerId !== input.plan.stagingOwnerId) {

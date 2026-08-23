@@ -48,6 +48,25 @@ class DeleteQuery implements PromiseLike<{ data: null; error: null }> {
 }
 
 describe("RAG cache invalidation", () => {
+  it("bypasses every cache surface when the public-source lifecycle epoch cannot be read", async () => {
+    vi.resetModules();
+    const from = vi.fn(() => {
+      throw new Error("cache tables must not be touched without lifecycle authority");
+    });
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({
+        rpc: vi.fn(async () => ({ data: null, error: { message: "synthetic epoch unavailable" } })),
+        from,
+      }),
+    }));
+
+    const { cacheIndexingVersion } = await import("../src/lib/rag/rag-cache");
+    await expect(
+      cacheIndexingVersion({ ownerId, accessScope: { ownerId, includePublic: true } }, { forceRefresh: true }),
+    ).resolves.toMatch(/public-authority-unavailable/);
+    expect(from).not.toHaveBeenCalled();
+  });
+
   it("clears anonymous shared cache rows with owner_id is null instead of writing the anonymous sentinel to UUID filters", async () => {
     vi.resetModules();
     const calls: FilterCall[][] = [];
@@ -94,10 +113,11 @@ describe("RAG cache invalidation", () => {
     const indexingVersionGate = new Promise<void>((resolve) => {
       releaseIndexingVersion = resolve;
     });
-    const indexingStamp = "rag-deep-memory-v1:doc-1:2026-07-01T00:00:00.000Z:";
+    const indexingStamp = "rag-deep-memory-v1:doc-1:2026-07-01T00:00:00.000Z::public:1";
 
     vi.doMock("@/lib/supabase/admin", () => ({
       createAdminClient: () => ({
+        rpc: vi.fn(async () => ({ data: "1", error: null })),
         from: vi.fn((table: string) => {
           if (table === "documents") {
             const builder = {
@@ -163,10 +183,11 @@ describe("RAG cache invalidation", () => {
     const indexingVersionGate = new Promise<void>((resolve) => {
       releaseIndexingVersion = resolve;
     });
-    const indexingStamp = "rag-deep-memory-v1:doc-1:2026-07-01T00:00:00.000Z:";
+    const indexingStamp = "rag-deep-memory-v1:doc-1:2026-07-01T00:00:00.000Z::public:1";
 
     vi.doMock("@/lib/supabase/admin", () => ({
       createAdminClient: () => ({
+        rpc: vi.fn(async () => ({ data: "1", error: null })),
         from: vi.fn((table: string) => {
           if (table === "documents") {
             const builder = {

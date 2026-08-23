@@ -131,7 +131,11 @@ describe("check:function-grants", () => {
   it("keeps every public-source control-plane definer service-role-only", () => {
     const schema = readFileSync("supabase/schema.sql", "utf8");
     const migration = readFileSync("supabase/migrations/20260820121000_create_public_source_control_plane.sql", "utf8");
-    const result = run(fixture("public-source-control-plane.sql", `${schema}\n${migration}`));
+    const lifecycleAuthority = readFileSync(
+      "supabase/migrations/20260824120000_consolidate_public_source_lifecycle_authority.sql",
+      "utf8",
+    );
+    const result = run(fixture("public-source-control-plane.sql", `${schema}\n${migration}\n${lifecycleAuthority}`));
     expect(result.out).toContain("OK");
     expect(result.code).toBe(0);
   });

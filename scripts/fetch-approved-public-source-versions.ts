@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { request } from "node:https";
 import { basename, resolve } from "node:path";
@@ -38,9 +38,12 @@ export type PublicSourceApplyDependencies = Readonly<{
     exactVersion: string;
     contentHash: string;
   }) => Promise<string | null>;
-  stageOwnedDocument: (
-    candidate: PublicSourceStagingCandidate,
-  ) => Promise<{ documentId: string; ownerId: string | null; versionId?: string | null }>;
+  stageOwnedDocument: (candidate: PublicSourceStagingCandidate) => Promise<{
+    documentId: string;
+    ownerId: string | null;
+    versionId?: string | null;
+    outcome?: "created" | "resumed" | "conflict";
+  }>;
   enqueue: (input: {
     documentId: string;
     ownerId: string;
@@ -57,6 +60,13 @@ function fileNameFor(url: string, contentType: string) {
   const base = (basename(new URL(url).pathname) || "public-source").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 160);
   if (base.includes(".")) return base;
   return `${base}${contentType === "application/pdf" ? ".pdf" : contentType === "text/plain" ? ".txt" : ".bin"}`;
+}
+
+function deterministicStagingDocumentId(candidate: PublicSourceStagingCandidate) {
+  const hex = createHash("sha256")
+    .update(`${candidate.metadata.source_catalogue_key}\n${candidate.exactUrl}\n${candidate.sourceContentHash}`)
+    .digest("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 type PublicSourceStageRpcResult =
@@ -110,7 +120,7 @@ function fetchFromValidatedAddress(url: URL, addresses: readonly { address: stri
         path: `${url.pathname}${url.search}`,
         servername: url.hostname,
         rejectUnauthorized: true,
-        headers: { host: url.host },
+        headers: { host: url.host, "accept-encoding": "identity" },
         agent: false,
       },
       (incoming) => {
@@ -210,6 +220,7 @@ export async function createLivePublicSourceApplyDependencies(
         sourceByteLength: candidate.sourceByteLength,
         licenceEvidenceDigest: plan.licenceEvidenceDigest,
         stagingOwnerId: candidate.ownerId,
+        supersedesVersionId: candidate.supersedesVersionId,
         lifecycle: "shadow",
       };
       const { data: resumableData, error: resumableError } = await supabase.rpc("stage_public_source_version", {
@@ -219,13 +230,14 @@ export async function createLivePublicSourceApplyDependencies(
       const resumable = parseStageRpcResult(resumableData);
       if (resumable.outcome === "resumed") {
         return {
+          outcome: "resumed" as const,
           documentId: resumable.documentId,
           ownerId: resumable.ownerId,
           versionId: resumable.versionId,
         };
       }
 
-      const documentId = randomUUID();
+      const documentId = deterministicStagingDocumentId(candidate);
       const fileName = fileNameFor(candidate.exactUrl, candidate.contentType);
       const storagePath = `public-sources/${candidate.ownerId}/${documentId}/canonical/${fileName}`;
       const upload = await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).upload(storagePath, candidate.bytes, {
@@ -276,7 +288,12 @@ export async function createLivePublicSourceApplyDependencies(
         await supabase.from("documents").delete().eq("id", documentId).eq("owner_id", candidate.ownerId);
         await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([storagePath]);
       }
-      return { documentId: staged.documentId, ownerId: staged.ownerId, versionId: staged.versionId };
+      return {
+        outcome: staged.outcome,
+        documentId: staged.documentId,
+        ownerId: staged.ownerId,
+        versionId: staged.versionId,
+      };
     },
     enqueue: async ({ documentId, ownerId, metadata }) => {
       await authorizePlan(plan);

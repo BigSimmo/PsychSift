@@ -6,10 +6,28 @@ const digestPattern = /^sha256:[a-f0-9]{64}$/;
 const acceptedSourcePolicyDigest = "sha256:02dcc095258338d0c355af79dfa1889c024f25f385b553e5b6c802207546855d";
 const protectedCatalogueKeys = new Set(["healthdirect", "etg-complete", "australian-medicines-handbook"]);
 
+function normalizedProtectedIdentity(value: string) {
+  const decoded = value
+    .normalize("NFKC")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&#x([0-9a-f]+);/gi, (_entity, value: string) => String.fromCodePoint(Number.parseInt(value, 16)))
+    .replace(/&#([0-9]+);/g, (_entity, value: string) => String.fromCodePoint(Number.parseInt(value, 10)))
+    .replace(/&(?:nbsp|#160);/gi, " ")
+    .replace(/&amp;|&#38;|&#x26;/gi, "&")
+    .replace(/&(?:lt|gt|quot|apos);|&#(?:34|39|60|62);|&#x(?:22|27|3c|3e);/gi, " ")
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
+    .toLocaleLowerCase("en-AU")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return { spaced: decoded, compact: decoded.replace(/\s+/g, "") };
+}
+
 export function forbiddenPublicSourceIdentity(value: string): ForbiddenPublicSourceIdentity | null {
-  if (/healthdirect/i.test(value)) return "healthdirect";
-  if (/\b(?:etg|therapeutic\s+guidelines?)\b/i.test(value)) return "etg_complete";
-  if (/\b(?:amh|australian\s+medicines\s+handbook)\b/i.test(value)) {
+  const { spaced, compact } = normalizedProtectedIdentity(value);
+  if (compact.includes("healthdirect")) return "healthdirect";
+  if (/(?:^| )etg(?: |$)/.test(spaced) || compact.includes("therapeuticguideline")) return "etg_complete";
+  if (/(?:^| )amh(?: |$)/.test(spaced) || compact.includes("australianmedicineshandbook")) {
     return "australian_medicines_handbook";
   }
   return null;

@@ -948,6 +948,7 @@ export type Database = {
           source_catalogue_key: string;
           source_policy_digest: string;
           source_policy_version: string;
+          source_sequence: number;
         };
         Insert: {
           created_at?: string;
@@ -959,6 +960,7 @@ export type Database = {
           source_catalogue_key: string;
           source_policy_digest: string;
           source_policy_version: string;
+          source_sequence: number;
         };
         Update: {
           created_at?: string;
@@ -970,11 +972,13 @@ export type Database = {
           source_catalogue_key?: string;
           source_policy_digest?: string;
           source_policy_version?: string;
+          source_sequence?: number;
         };
         Relationships: [];
       };
       public_source_versions: {
         Row: {
+          acquisition_identity_digest: string | null;
           activation_event_id: string;
           content_hash: string;
           created_at: string;
@@ -1001,6 +1005,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          acquisition_identity_digest?: string | null;
           activation_event_id: string;
           content_hash: string;
           created_at?: string;
@@ -1027,6 +1032,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          acquisition_identity_digest?: string | null;
           activation_event_id?: string;
           content_hash?: string;
           created_at?: string;
@@ -1082,6 +1088,12 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      public_source_serving_authority: {
+        Row: { lifecycle_epoch: number; singleton: boolean; updated_at: string };
+        Insert: { lifecycle_epoch?: number; singleton?: boolean; updated_at?: string };
+        Update: { lifecycle_epoch?: number; singleton?: boolean; updated_at?: string };
+        Relationships: [];
       };
       document_sections: {
         Row: {
@@ -3046,6 +3058,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      activate_public_source_version: { Args: { p_activation: Json }; Returns: Json };
       create_public_source_fetch_manifest: {
         Args: {
           p_activation_event_id: string;
@@ -3060,6 +3073,12 @@ export type Database = {
         Returns: Json;
       };
       record_public_source_activation_event: { Args: { p_manifest: Json }; Returns: string };
+      record_unchanged_public_source_check: { Args: { p_check: Json }; Returns: Json };
+      public_source_serving_authority_stamp: { Args: Record<PropertyKey, never>; Returns: string };
+      public_source_document_is_serving_eligible: {
+        Args: { p_document_id: string };
+        Returns: boolean;
+      };
       stage_public_source_version: { Args: { p_version: Json }; Returns: Json };
       tombstone_public_source_version_for_review: {
         Args: {

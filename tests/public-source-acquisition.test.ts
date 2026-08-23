@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { deflateSync } from "node:zlib";
+import { deflateSync, gzipSync } from "node:zlib";
 import JSZip from "jszip";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
@@ -32,6 +32,7 @@ import {
   publicSourceAcquisitionManifestDigest,
   runPlanPublicSourceAcquisitionCli,
 } from "../scripts/plan-public-source-acquisition";
+import { forbiddenPublicSourceIdentity } from "../supabase/functions/_shared/public-source-policy";
 
 const ownerId = "11111111-1111-4111-8111-111111111111";
 const operatorId = "22222222-2222-4222-8222-222222222222";
@@ -163,6 +164,35 @@ describe("public source acquisition", () => {
       await expect(validateAcquisitionUrl(exactUrl, activeDefinition(), async () => [address])).rejects.toThrow(
         /private|non-global/i,
       );
+    }
+  });
+
+  it("rejects fragments and secret-bearing query keys without echoing the URL, but permits reviewed public params", async () => {
+    const secret = "secret-value";
+    const unsafeUrl = `${exactUrl}?token=${secret}#ignored`;
+    let thrown: unknown;
+    try {
+      await planAcquisition({
+        catalogueKey: "wa-health",
+        url: unsafeUrl,
+        exactVersion: "2026-08-20",
+        exactDocumentLicence: "public_index_permitted",
+        licenceEvidenceDigest: `sha256:${"a".repeat(64)}`,
+        stagingOwnerId: ownerId,
+        activationManifest: activationManifest(),
+      });
+    } catch (error) {
+      thrown = error;
+    }
+    expect(String(thrown)).toMatch(/fragment|query|url/i);
+    expect(String(thrown)).not.toContain(secret);
+    expect(String(thrown)).not.toContain(unsafeUrl);
+
+    await expect(validPlan({ url: `${exactUrl}?version=2026-08-20&page=1` })).resolves.toMatchObject({
+      exactUrl: `${exactUrl}?version=2026-08-20&page=1`,
+    });
+    for (const key of ["signature", "api_key", "credential", "password", "secret", "authorization"]) {
+      await expect(validPlan({ url: `${exactUrl}?${key}=private` })).rejects.toThrow(/query|url/i);
     }
   });
 
@@ -306,9 +336,14 @@ describe("public source acquisition", () => {
     expect(base.enqueue).not.toHaveBeenCalled();
   });
 
-  it("rejects duplicate versions and a changed policy digest before storage or enqueue", async () => {
+  it("resumes only the exact owned shadow while true duplicate conflicts remain blocked", async () => {
     const fetch = vi.fn(async () => connectedResponse(response(syntheticPdf())));
-    const stageOwnedDocument = vi.fn();
+    const stageOwnedDocument = vi.fn(async () => ({
+      outcome: "conflict" as const,
+      documentId: "33333333-3333-4333-8333-333333333333",
+      versionId: "66666666-6666-4666-8666-666666666666",
+      ownerId,
+    }));
     const enqueue = vi.fn();
     const deps = {
       fetch,
@@ -319,6 +354,8 @@ describe("public source acquisition", () => {
       enqueue,
     };
     await expect(acquirePublicSourceVersion(await validPlan(), deps)).rejects.toThrow(/duplicate/i);
+    expect(stageOwnedDocument).toHaveBeenCalledTimes(1);
+    stageOwnedDocument.mockClear();
     await expect(
       acquirePublicSourceVersion(
         { ...(await validPlan()), sourcePolicyDigest: `sha256:${"0".repeat(64)}` } as PublicSourceAcquisitionPlan,
@@ -400,6 +437,52 @@ describe("public source acquisition", () => {
         ),
       ).toMatchObject({ eligibleForIndex: false, disposition: "quarantine", mainText: "" });
     }
+  });
+
+  it("rejects protected identities split by markup, entities, punctuation, and whitespace", () => {
+    for (const protectedText of [
+      "Health<em>direct</em>",
+      "Health direct",
+      "Health&amp;direct",
+      "Australian Medicines Hand-book",
+      "Australian Medicines Hand book",
+      "Therapeutic\u200bGuidelines",
+    ]) {
+      expect(forbiddenPublicSourceIdentity(protectedText)).not.toBeNull();
+      expect(evaluateTrustedPageContent(`<main>${protectedText}</main>`)).toMatchObject({
+        eligibleForIndex: false,
+        disposition: "quarantine",
+      });
+    }
+  });
+
+  it("rejects non-identity transport encoding before scanning or staging", async () => {
+    const scan = vi.fn(trustedClearScan);
+    const stageOwnedDocument = vi.fn();
+    const compressed = gzipSync(syntheticPdf());
+    await expect(
+      acquirePublicSourceVersion(await validPlan(), {
+        fetch: async () =>
+          connectedResponse(
+            response(compressed, {
+              headers: { "content-type": "application/pdf", "content-encoding": "gzip" },
+            }),
+          ),
+        resolve: async () => publicAddress,
+        scan,
+        findDuplicateVersion: async () => null,
+        stageOwnedDocument,
+        enqueue: vi.fn(),
+      }),
+    ).rejects.toThrow(/content.encoding|identity|compressed/i);
+    expect(scan).not.toHaveBeenCalled();
+    expect(stageOwnedDocument).not.toHaveBeenCalled();
+
+    const liveSource = readFileSync(
+      new URL("../scripts/fetch-approved-public-source-versions.ts", import.meta.url),
+      "utf8",
+    );
+    expect(liveSource).toContain('"accept-encoding": "identity"');
   });
 
   it("rejects retained protected-source text and synthetic PDF text before staging or enqueue", async () => {
@@ -665,7 +748,12 @@ describe("public source acquisition", () => {
       }),
     ).resolves.toMatchObject({ outcome: "changed", lifecycle: "shadow", ownerId });
     expect(stageChangedVersion).toHaveBeenCalledWith(
-      expect.objectContaining({ lifecycle: "shadow", ownerId, supersedesVersionId: null, activate: false }),
+      expect.objectContaining({
+        lifecycle: "shadow",
+        ownerId,
+        supersedesVersionId: "version-current",
+        activate: false,
+      }),
     );
 
     await expect(
@@ -1001,6 +1089,83 @@ describe("public source acquisition", () => {
     expect(enqueueDocumentReindexJob).toHaveBeenCalledTimes(2);
   });
 
+  it("retries a complete multi-plan fetch manifest after post-stage enqueue failure without restaging", async () => {
+    const waPlan = await validPlan();
+    const tgaActivation = buildPublicSourceActivationManifest({
+      catalogueKey: "tga",
+      decision: "activate",
+      operatorId,
+      reason: "Approved source definition for bounded exact-version acquisition.",
+      evidenceReferences: ["source-review:tga:2026-08-20"],
+    });
+    const tgaPlan = await planAcquisition({
+      catalogueKey: "tga",
+      url: "https://www.tga.gov.au/resources/synthetic.pdf",
+      exactVersion: "2026-08-20",
+      exactDocumentLicence: "public_index_permitted",
+      licenceEvidenceDigest: `sha256:${"c".repeat(64)}`,
+      stagingOwnerId: ownerId,
+      activationManifest: tgaActivation,
+    });
+    const manifestPath = join(cliWorkdir, "resume-multi-manifest.json");
+    const rawManifest = JSON.stringify({
+      schemaVersion: "public-source-acquisition-manifest-v1",
+      plans: [waPlan, tgaPlan],
+    });
+    writeFileSync(manifestPath, rawManifest);
+
+    const staged = new Map<string, { documentId: string; versionId: string }>();
+    const created = new Map<string, number>();
+    const enqueueAttempts = new Map<string, number>();
+    const dependenciesForPlan = vi.fn(async (plan: PublicSourceAcquisitionPlan) => ({
+      authorizePlan: vi.fn(async () => undefined),
+      fetch: async () => connectedResponse(response(syntheticPdf())),
+      resolve: async () => publicAddress,
+      scan: trustedClearScan,
+      findDuplicateVersion: async () => staged.get(plan.catalogueKey)?.versionId ?? null,
+      stageOwnedDocument: async () => {
+        const existing = staged.get(plan.catalogueKey);
+        if (existing) return { outcome: "resumed" as const, ...existing, ownerId };
+        const createdRow = {
+          documentId:
+            plan.catalogueKey === "wa-health"
+              ? "33333333-3333-4333-8333-333333333333"
+              : "77777777-7777-4777-8777-777777777777",
+          versionId:
+            plan.catalogueKey === "wa-health"
+              ? "66666666-6666-4666-8666-666666666666"
+              : "88888888-8888-4888-8888-888888888888",
+        };
+        staged.set(plan.catalogueKey, createdRow);
+        created.set(plan.catalogueKey, (created.get(plan.catalogueKey) ?? 0) + 1);
+        return { outcome: "created" as const, ...createdRow, ownerId };
+      },
+      enqueue: async () => {
+        const attempt = (enqueueAttempts.get(plan.catalogueKey) ?? 0) + 1;
+        enqueueAttempts.set(plan.catalogueKey, attempt);
+        if (plan.catalogueKey === "tga" && attempt === 1) throw new Error("synthetic transient queue failure");
+      },
+    }));
+    const argv = [
+      "--manifest",
+      manifestPath,
+      "--expected-count",
+      "2",
+      "--manifest-sha256",
+      publicSourceAcquisitionManifestDigest(rawManifest),
+      "--apply",
+    ];
+
+    await expect(
+      runFetchApprovedPublicSourceVersionsCli(argv, { dependenciesForPlan, stdout: vi.fn() }),
+    ).rejects.toThrow(/enqueue/i);
+    await expect(
+      runFetchApprovedPublicSourceVersionsCli(argv, { dependenciesForPlan, stdout: vi.fn() }),
+    ).resolves.toMatchObject({ applied: true, count: 2 });
+    expect(created).toEqual(new Map(["wa-health", "tga"].map((key) => [key, 1])));
+    expect(enqueueAttempts.get("tga")).toBe(2);
+  });
+
   it("rejects non-active current evidence before dependency creation or mutation", async () => {
     const plan = await validPlan({ sourceActivationEventId: "44444444-4444-4444-8444-444444444444" });
     const manifestPath = join(cliWorkdir, "shadow-current-manifest.json");
@@ -1037,6 +1202,37 @@ describe("public source acquisition", () => {
         { dependenciesForPlan, stdout: vi.fn() },
       ),
     ).rejects.toThrow(/active|current.*invalid/i);
+    expect(dependenciesForPlan).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed current version UUIDs before unchanged audit dependency creation", async () => {
+    const plan = await validPlan();
+    const manifestPath = join(cliWorkdir, "malformed-current-manifest.json");
+    const currentPath = join(cliWorkdir, "malformed-current-uuid.json");
+    writeFileSync(
+      manifestPath,
+      JSON.stringify({ schemaVersion: "public-source-acquisition-manifest-v1", plans: [plan] }),
+    );
+    writeFileSync(
+      currentPath,
+      JSON.stringify([
+        {
+          catalogueKey: plan.catalogueKey,
+          versionId: "55555555----------------------------",
+          exactUrl: plan.exactUrl,
+          exactVersion: plan.exactVersion,
+          contentHash: `sha256:${"b".repeat(64)}`,
+          lifecycle: "active",
+        },
+      ]),
+    );
+    const dependenciesForPlan = vi.fn();
+    await expect(
+      runCheckPublicSourceChangesCli(["--manifest", manifestPath, "--current", currentPath], {
+        dependenciesForPlan,
+        stdout: vi.fn(),
+      }),
+    ).rejects.toThrow(/current.*invalid/i);
     expect(dependenciesForPlan).not.toHaveBeenCalled();
   });
 

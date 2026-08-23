@@ -30,6 +30,11 @@ const ragCacheDependencyVersion = "rag-cache-v20";
 const cacheIndexingVersionTtlMs = 5000;
 const cacheIndexingVersionMaxEntries = 512;
 const cacheIndexingVersionCache = new Map<string, { expiresAt: number; value: string }>();
+const publicSourceAuthorityUnavailable = `${ragDeepMemoryVersion}:public-authority-unavailable`;
+
+function cacheAuthorityAvailable(indexingVersion: string) {
+  return indexingVersion !== publicSourceAuthorityUnavailable;
+}
 /**
  * Invalidation generations for deferred `setCachedAnswer` promotions. Review /
  * table-fact mutations do not change the documents indexing stamp, so the
@@ -193,6 +198,8 @@ export async function getCachedAnswer(
     return null;
   }
   const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+  if (!indexingVersion) return null;
+  if (!cacheAuthorityAvailable(indexingVersion)) return null;
   if (cached.indexingVersion !== indexingVersion) {
     answerCache.delete(key);
     return null;
@@ -245,6 +252,8 @@ export async function setCachedAnswer(
 
   const invalidationEpochAtStart = captureInvalidationEpoch(args.ownerId);
   const indexingVersion = await cacheIndexingVersion(args, { forceRefresh: true });
+  if (!indexingVersion) return;
+  if (!cacheAuthorityAvailable(indexingVersion)) return;
   if (invalidationEpochChanged(args.ownerId, invalidationEpochAtStart)) return;
   if (options?.indexingVersionAtRetrievalStart && indexingVersion !== options.indexingVersionAtRetrievalStart) return;
   const key = scopedAnswerCacheKey(args);
@@ -360,6 +369,8 @@ export async function getCachedSearch(
     return null;
   }
   const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+  if (!indexingVersion) return null;
+  if (!cacheAuthorityAvailable(indexingVersion)) return null;
   throwIfAborted(args.signal);
   if (cached.indexingVersion !== indexingVersion) {
     searchCache.delete(key);
@@ -400,6 +411,8 @@ export async function setCachedSearch(
   const cacheTelemetry = normalizeCacheStorageTelemetry(telemetry);
 
   const indexingVersion = await cacheIndexingVersion(args, { forceRefresh: true });
+  if (!indexingVersion) return;
+  if (!cacheAuthorityAvailable(indexingVersion)) return;
   throwIfAborted(args.signal);
   if (options?.indexingVersionAtRetrievalStart && indexingVersion !== options.indexingVersionAtRetrievalStart) return;
   const key = scopedSearchCacheKey(args, telemetry.query_class, queryVariants);
@@ -465,9 +478,15 @@ export async function cacheIndexingVersion(
   const cached = readExpiringCacheEntry(cacheIndexingVersionCache, cacheKey);
   if (cached) return cached.value;
 
-  let value = `${ragDeepMemoryVersion}:index-stamp-unavailable`;
+  let value: string;
   try {
     const supabase = createAdminClient();
+    const { data: authorityData, error: authorityError } = await supabase.rpc("public_source_serving_authority_stamp");
+    const publicSourceAuthorityStamp =
+      typeof authorityData === "string" || typeof authorityData === "number" ? String(authorityData) : null;
+    if (authorityError) return publicSourceAuthorityUnavailable;
+    if (!publicSourceAuthorityStamp) return publicSourceAuthorityUnavailable;
+    value = `${ragDeepMemoryVersion}:no-indexed-documents:public:${publicSourceAuthorityStamp}`;
     const documentFilters = args.documentIds?.length ? args.documentIds : args.documentId ? [args.documentId] : null;
     let query = supabase
       .from("documents")
@@ -488,7 +507,7 @@ export async function cacheIndexingVersion(
     const { data, error } = await query;
     throwIfAborted(args.signal);
     if (error || !data?.length) {
-      value = `${ragDeepMemoryVersion}:no-indexed-documents`;
+      value = `${ragDeepMemoryVersion}:no-indexed-documents:public:${publicSourceAuthorityStamp}`;
     } else {
       const latest = data[0] as { id?: string; updated_at?: string | null; metadata?: unknown };
       const metadata = normalizeSourceMetadata(latest.metadata);
@@ -497,11 +516,11 @@ export async function cacheIndexingVersion(
         latest.metadata && typeof latest.metadata === "object" && "index_generation_id" in latest.metadata
           ? String((latest.metadata as { index_generation_id?: unknown }).index_generation_id ?? "")
           : "";
-      value = `${ragDeepMemoryVersion}:${latest.id ?? "all"}:${indexedAt}:${generationId}`;
+      value = `${ragDeepMemoryVersion}:${latest.id ?? "all"}:${indexedAt}:${generationId}:public:${publicSourceAuthorityStamp}`;
     }
   } catch {
     if (args.signal?.aborted) throw abortReason(args.signal);
-    value = `${ragDeepMemoryVersion}:index-stamp-unavailable`;
+    return publicSourceAuthorityUnavailable;
   }
   throwIfAborted(args.signal);
   writeBoundedExpiringCacheEntry(
@@ -527,6 +546,8 @@ export async function getSharedCachedSearch(
   if (args.skipCache || env.RAG_SEARCH_CACHE_TTL_MS <= 0) return null;
   const normalizedQuery = retrievalPlanCacheQuery(args, queryClass, queryVariants);
   const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+  if (!indexingVersion) return null;
+  if (!cacheAuthorityAvailable(indexingVersion)) return null;
   try {
     let query = sharedCacheSelector(createAdminClient(), "search", args, indexingVersion, normalizedQuery);
     if (args.signal) query = query.abortSignal(args.signal);
@@ -612,6 +633,8 @@ export async function getSharedCachedAnswer(
   if (!answerCacheAllowedForOwner(args.ownerId) || args.skipCache || env.RAG_ANSWER_CACHE_TTL_MS <= 0) return null;
   try {
     const indexingVersion = options?.indexingVersionAtRequestStart ?? (await cacheIndexingVersion(args));
+    if (!indexingVersion) return null;
+    if (!cacheAuthorityAvailable(indexingVersion)) return null;
     const { data, error } = await sharedCacheSelector(
       createAdminClient(),
       "answer",

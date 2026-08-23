@@ -16,7 +16,7 @@ const opaqueReferenceIdSchema = z
   .max(120)
   .regex(/^[a-z0-9][a-z0-9._-]*$/)
   .refine(
-    (id) => !/(?:^|[._-])(?:api[._-]?key|bearer|credential|password|secret|signature|signed|token)(?:$|[._-])/.test(id),
+    (id) => !/(?:apikey|bearer|credential|password|secret|signature|signed|token)/.test(id.replace(/[._-]/g, "")),
     { message: "Reference ID cannot contain a credential or secret label." },
   );
 

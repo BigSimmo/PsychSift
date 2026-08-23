@@ -25,6 +25,7 @@ type CurrentSourceVersion = Readonly<{
   contentHash: string;
   lifecycle: "active";
 }>;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type ChangeDependencies = Readonly<{
   acquisition: PublicSourceApplyDependencies;
   recordCheck: (event: Readonly<Record<string, string>>) => Promise<void>;
@@ -46,7 +47,7 @@ function parseCurrentVersions(input: unknown): CurrentSourceVersion[] {
     if (
       !value.catalogueKey ||
       !value.versionId ||
-      !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value.versionId) ||
+      !uuidPattern.test(value.versionId) ||
       !value.exactUrl ||
       !value.exactVersion ||
       !/^sha256:[a-f0-9]{64}$/.test(value.contentHash ?? "") ||
@@ -67,19 +68,22 @@ async function createLiveChangeDependencies(
     createLivePublicSourceApplyDependencies(plan),
   ]);
   const supabase = createAdminClient();
-  const audit = async (action: string, event: Readonly<Record<string, string>>) => {
-    const { error } = await supabase.from("audit_logs").insert({
-      action,
-      owner_id: plan.stagingOwnerId,
-      resource_type: "public_source_version",
-      resource_id: event.versionId ?? current.versionId,
-      metadata: event,
+  const recordCheck = async (event: Readonly<Record<string, string>>) => {
+    const { error } = await supabase.rpc("record_unchanged_public_source_check", {
+      p_check: {
+        expectedVersionId: current.versionId,
+        expectedCatalogueKey: event.catalogueKey,
+        expectedExactVersionUrl: event.exactUrl,
+        expectedExactVersion: event.exactVersion,
+        expectedContentHash: event.contentHash,
+        outcome: event.outcome,
+      },
     });
-    if (error) throw new Error("Public source audit write failed.");
+    if (error) throw new Error("Public source unchanged check failed.");
   };
   return {
     acquisition,
-    recordCheck: (event) => audit("public_source_change_checked", event),
+    recordCheck,
     tombstoneAndQueueReview: async (event) => {
       const { data, error } = await supabase.rpc("tombstone_public_source_version_for_review", {
         p_version_id: current.versionId,
@@ -165,14 +169,18 @@ export async function runCheckPublicSourceChangesCli(
         recordCheck: dependencies.recordCheck,
         stageChangedVersion: async () => {
           if (observed.kind !== "content") throw new Error("Withdrawal signals cannot stage replacement content.");
-          const candidate = buildPublicSourceStagingCandidate(plan, {
-            bytes: observed.bytes,
-            contentType: observed.contentType,
-            contentHash: observed.stagedContentHash,
-            sourceContentType: observed.sourceContentType,
-            sourceContentHash: observed.contentHash,
-            sourceByteLength: observed.sourceByteLength,
-          });
+          const candidate = buildPublicSourceStagingCandidate(
+            plan,
+            {
+              bytes: observed.bytes,
+              contentType: observed.contentType,
+              contentHash: observed.stagedContentHash,
+              sourceContentType: observed.sourceContentType,
+              sourceContentHash: observed.contentHash,
+              sourceByteLength: observed.sourceByteLength,
+            },
+            { supersedesVersionId: currentVersion.versionId },
+          );
           const staged = await dependencies.acquisition.stageOwnedDocument(candidate);
           if (!staged.versionId) throw new Error("Changed public source staging did not return a version ID.");
           if (!staged.ownerId || staged.ownerId !== plan.stagingOwnerId) {
