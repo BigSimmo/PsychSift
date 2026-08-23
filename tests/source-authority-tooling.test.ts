@@ -12,6 +12,7 @@ import {
   type SourceAuthorityDocument,
 } from "@/lib/source-authority-metadata";
 import { classifySourceAuthority } from "@/lib/source-authority-registry";
+import { siteContentProducerDefinitions } from "@/lib/site-content/site-content-registry";
 import { parseBackfillSourceMetadataArgs, runLocalityOnlyBackfill } from "../scripts/backfill-source-metadata";
 
 function document(
@@ -225,6 +226,32 @@ describe("source authority metadata tooling", () => {
       authority_conflict_count: 0,
       missing_australian_locality_count: 0,
       proposed_locality_correction_count: 0,
+      passed: true,
+    });
+  });
+
+  it("keeps canonical site scope on every current dynamic audit projection while excluding authority escalation", () => {
+    const projections = siteContentProducerDefinitions.flatMap((producer) =>
+      producer.currentAuditProjection
+        ? [
+            document({
+              id: producer.key,
+              file_name: `${producer.key}.registry.json`,
+              metadata: producer.currentAuditProjection,
+            }),
+          ]
+        : [],
+    );
+    const report = auditSourceAuthorityDocuments(projections);
+
+    expect(projections).toHaveLength(4);
+    expect(projections.every((projection) => projection.metadata?.corpus_scope === "clinical_kb_site")).toBe(true);
+    expect(projections.every((projection) => isRegistryRecordSource(projection))).toBe(true);
+    expect(report).toMatchObject({
+      recognized_documents: 0,
+      excluded_registry_record_count: 4,
+      authority_conflict_count: 0,
+      missing_australian_locality_count: 0,
       passed: true,
     });
   });

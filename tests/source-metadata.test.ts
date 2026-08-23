@@ -13,6 +13,7 @@ import {
   validationStatusLabel,
 } from "../src/lib/source-metadata";
 import { authorityIdentityForCatalogueEntry, classifySourceAuthority } from "../src/lib/source-authority-registry";
+import { siteContentProducerForDomain } from "../src/lib/site-content/site-content-registry";
 import type { ClinicalSourceMetadata } from "../src/lib/types";
 
 type RequiredGovernedMetadata = Required<
@@ -270,6 +271,30 @@ describe("source metadata helpers", () => {
       designation: "unclassified",
       authorityKey: null,
     });
+  });
+
+  it("normalizes current dynamic registry audit projections with canonical site scope and claim roles", () => {
+    for (const [domain, kind, role] of [
+      ["services", "service", "service_directory"],
+      ["forms", "form", "form_reference"],
+      ["medications", "medication", "clinical_reference"],
+      ["differentials", "differential", "clinical_reference"],
+    ] as const) {
+      const projection = siteContentProducerForDomain(domain)?.currentAuditProjection;
+      expect(projection).toMatchObject({
+        source_kind: "registry_record",
+        registry_record_kind: kind,
+        corpus_scope: "clinical_kb_site",
+        source_role: role,
+        site_content_domain: domain,
+      });
+      expect(normalizeClinicalSourceMetadata(projection)).toMatchObject({
+        source_kind: "registry_record",
+        registry_record_kind: kind,
+        corpus_scope: "clinical_kb_site",
+        source_role: role,
+      });
+    }
   });
 
   it("resolves catalogue identity only for an exact key, code, and compatible jurisdiction", () => {
