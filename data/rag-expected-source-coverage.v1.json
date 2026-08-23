@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "coverageVersion": "rag-expected-source-coverage-v1",
+  "records": [
+    {
+      "key": "synthetic-current-guideline",
+      "owner": "Clinical governance",
+      "reviewStatus": "active",
+      "expectedDocumentIds": ["synthetic-guideline-current"],
+      "mustPassCaseIds": ["synthetic-current-guideline-retrieval"]
+    },
+    {
+      "key": "synthetic-known-coverage-gap",
+      "owner": "Corpus stewardship",
+      "reviewStatus": "absent",
+      "expectedDocumentIds": [],
+      "mustPassCaseIds": ["synthetic-absent-source-case"]
+    },
+    {
+      "key": "synthetic-unapproved-source",
+      "owner": "Source governance",
+      "reviewStatus": "not_approved",
+      "expectedDocumentIds": [],
+      "mustPassCaseIds": []
+    },
+    {
+      "key": "synthetic-retired-source",
+      "owner": "Source governance",
+      "reviewStatus": "retired",
+      "expectedDocumentIds": ["synthetic-retired-document"],
+      "mustPassCaseIds": []
+    }
+  ]
+}

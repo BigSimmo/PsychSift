@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "inventoryVersion": "synthetic-active-corpus-v1",
+  "documents": [
+    {
+      "documentId": "synthetic-guideline-current",
+      "expectedStateDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "activeGenerationId": "synthetic-generation-current",
+      "lifecycle": "current",
+      "metadata": {
+        "publisher": "Synthetic authority",
+        "jurisdiction": "AU-WA",
+        "sourceRole": "local_guideline",
+        "contentMode": "indexed_content"
+      },
+      "sourceGovernanceValid": true,
+      "counts": {
+        "pages": { "expected": 12, "actual": 12 },
+        "chunks": { "expected": 24, "actual": 24 },
+        "tables": { "expected": 2, "actual": 2 },
+        "images": { "expected": 1, "actual": 1 },
+        "searchableUnits": { "expected": 27, "actual": 27 },
+        "embeddings": { "expected": 27, "actual": 27 },
+        "duplicateChunks": 0,
+        "orphanedArtifacts": 0
+      },
+      "unitQuality": {
+        "policyVersion": "rag-index-unit-quality-v1",
+        "empty": 0,
+        "oversized": 0,
+        "undersized": 0,
+        "lowInformation": 0
+      },
+      "structure": {
+        "chunkBoundsValid": true,
+        "headingContinuityPassed": true,
+        "tableContinuityPassed": true,
+        "extractionQualityPassed": true
+      },
+      "embeddingContract": {
+        "expectedModel": "text-embedding-3-small",
+        "actualModels": ["text-embedding-3-small"],
+        "expectedDimensions": 1536,
+        "actualDimensions": [1536],
+        "expectedStrategy": "chunk-and-structured-units-v1",
+        "actualStrategies": ["chunk-and-structured-units-v1"],
+        "completeness": 1
+      },
+      "chunkGenerations": ["synthetic-generation-current"],
+      "mustPassCases": [
+        {
+          "id": "synthetic-current-guideline-retrieval",
+          "passed": true,
+          "expectedDocumentRank": 1,
+          "actualDocumentRank": 1,
+          "failedExpectations": []
+        }
+      ]
+    },
+    {
+      "documentId": "synthetic-metadata-review",
+      "expectedStateDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "activeGenerationId": "synthetic-generation-metadata",
+      "lifecycle": "current",
+      "metadata": {
+        "publisher": null,
+        "jurisdiction": "AU",
+        "sourceRole": "national_guideline",
+        "contentMode": "indexed_content"
+      },
+      "sourceGovernanceValid": true,
+      "counts": {
+        "pages": { "expected": 4, "actual": 4 },
+        "chunks": { "expected": 8, "actual": 8 },
+        "tables": { "expected": 0, "actual": 0 },
+        "images": { "expected": 0, "actual": 0 },
+        "searchableUnits": { "expected": 8, "actual": 8 },
+        "embeddings": { "expected": 8, "actual": 8 },
+        "duplicateChunks": 0,
+        "orphanedArtifacts": 0
+      },
+      "unitQuality": {
+        "policyVersion": "rag-index-unit-quality-v1",
+        "empty": 0,
+        "oversized": 0,
+        "undersized": 0,
+        "lowInformation": 0
+      },
+      "structure": {
+        "chunkBoundsValid": true,
+        "headingContinuityPassed": true,
+        "tableContinuityPassed": true,
+        "extractionQualityPassed": true
+      },
+      "embeddingContract": {
+        "expectedModel": "text-embedding-3-small",
+        "actualModels": ["text-embedding-3-small"],
+        "expectedDimensions": 1536,
+        "actualDimensions": [1536],
+        "expectedStrategy": "chunk-and-structured-units-v1",
+        "actualStrategies": ["chunk-and-structured-units-v1"],
+        "completeness": 1
+      },
+      "chunkGenerations": ["synthetic-generation-metadata"],
+      "mustPassCases": []
+    },
+    {
+      "documentId": "synthetic-extraction-defect",
+      "expectedStateDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "activeGenerationId": "synthetic-generation-defect",
+      "lifecycle": "current",
+      "metadata": {
+        "publisher": "Synthetic authority",
+        "jurisdiction": "AU-WA",
+        "sourceRole": "local_guideline",
+        "contentMode": "indexed_content"
+      },
+      "sourceGovernanceValid": true,
+      "counts": {
+        "pages": { "expected": 10, "actual": 7 },
+        "chunks": { "expected": 20, "actual": 14 },
+        "tables": { "expected": 1, "actual": 1 },
+        "images": { "expected": 0, "actual": 0 },
+        "searchableUnits": { "expected": 21, "actual": 15 },
+        "embeddings": { "expected": 21, "actual": 15 },
+        "duplicateChunks": 0,
+        "orphanedArtifacts": 0
+      },
+      "unitQuality": {
+        "policyVersion": "rag-index-unit-quality-v1",
+        "empty": 0,
+        "oversized": 0,
+        "undersized": 0,
+        "lowInformation": 0
+      },
+      "structure": {
+        "chunkBoundsValid": true,
+        "headingContinuityPassed": true,
+        "tableContinuityPassed": true,
+        "extractionQualityPassed": false
+      },
+      "embeddingContract": {
+        "expectedModel": "text-embedding-3-small",
+        "actualModels": ["text-embedding-3-small"],
+        "expectedDimensions": 1536,
+        "actualDimensions": [1536],
+        "expectedStrategy": "chunk-and-structured-units-v1",
+        "actualStrategies": ["chunk-and-structured-units-v1"],
+        "completeness": 0.7142857143
+      },
+      "chunkGenerations": ["synthetic-generation-defect"],
+      "mustPassCases": []
+    }
+  ],
+  "retrievedDocumentIdsByCase": {
+    "synthetic-current-guideline-retrieval": ["synthetic-guideline-current"],
+    "synthetic-absent-source-case": []
+  }
+}
