@@ -151,6 +151,58 @@ export type ClinicalSourceRole =
   | "service_policy"
   | "reference_link";
 
+export type ClinicalClaimRole =
+  "treatment" | "dose_or_monitoring" | "safety" | "legal" | "subsidy" | "quality" | "service_workflow";
+
+export type SourceEligibilityDecision = {
+  eligible: boolean;
+  reason:
+    "eligible" | "link_only" | "inactive" | "role_mismatch" | "not_current" | "governance_block" | "catalogue_mismatch";
+};
+
+export type SourcePolicyConflictSide = {
+  documentId: string;
+  catalogueKey: string;
+  title: string;
+  publisher: string;
+  publicationDate: string | null;
+  effectiveFrom: string | null;
+  jurisdiction: string;
+  sourceRole: ClinicalSourceRole;
+  corpusScope: SourceCorpusScope;
+  supportingChunkIds: string[];
+};
+
+export type SourcePolicyConflict = {
+  version: "source-policy-conflict-v1";
+  id: string;
+  claimRole: ClinicalClaimRole;
+  topicKey: string;
+  local: SourcePolicyConflictSide & { corpusScope: "uploaded_local" };
+  australian: SourcePolicyConflictSide & { corpusScope: "australian_public" };
+  overlapReason: "same_claim" | "same_topic_and_population";
+  materialDifferenceReason:
+    | "recommendation_differs"
+    | "dose_differs"
+    | "threshold_differs"
+    | "monitoring_differs"
+    | "legal_status_differs"
+    | "other_reviewed_material_difference";
+  localPrimaryDecision: {
+    selected: "uploaded_local";
+    reason: "current_valid_accessible_directly_supportive";
+  };
+  reviewTargetDocumentId: string;
+};
+
+export type VerifiedSourcePolicyDifference = Pick<
+  SourcePolicyConflict,
+  "claimRole" | "topicKey" | "overlapReason" | "materialDifferenceReason"
+> & {
+  localChunkIds: string[];
+  australianChunkIds: string[];
+};
+
 export type SiteContentDomain =
   | "services"
   | "forms"

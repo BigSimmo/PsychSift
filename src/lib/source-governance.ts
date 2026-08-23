@@ -1,4 +1,5 @@
 import type {
+  ClinicalClaimRole,
   EvidenceRelevance,
   SearchResult,
   SourceGovernanceWarning,
@@ -7,8 +8,20 @@ import type {
 } from "@/lib/types";
 import { SOURCE_GOVERNANCE_CODES } from "@/lib/types";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
+import { sourceEligibilityForClaim } from "@/lib/source-role-policy";
 
 export type { SourceGovernanceWarning } from "@/lib/types";
+
+/**
+ * Apply source-governance eligibility before any relevance or authority ranking.
+ * Input order is retained so role policy cannot become an implicit score boost.
+ */
+export function filterSourcesEligibleForClaim(results: SearchResult[], claimRole: ClinicalClaimRole) {
+  return results.filter(
+    (result) =>
+      sourceEligibilityForClaim({ source: normalizeSourceMetadata(result.source_metadata), claimRole }).eligible,
+  );
+}
 
 export type GroupedSourceGovernanceWarning = {
   code: SourceGovernanceWarning["code"];
