@@ -3,10 +3,25 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import {
+  australianSourceByKey,
+  australianSourcePolicyVersion,
+  isIndexableAustralianSource,
+  type SourceContentMode,
+  type SourceLicencePolicy,
+} from "./australian-source-catalogue";
+import {
+  isKnownClinicalSourceRole,
+  isKnownSourceContentMode,
+  isKnownSourceCorpusScope,
+  isKnownSourceLicencePolicy,
+} from "./source-metadata";
+import {
   auditExpectedSourceCoverage,
-  type ExpectedSourceCoverageRecord,
+  parseExpectedSourceCoverageRegistry,
+  type ExpectedSourceCoverageRegistry,
   type SourceCoverageFinding,
 } from "./source-coverage-registry";
+import type { ClinicalSourceRole, SourceCorpusScope } from "./types";
 
 export type IngestionAuditAction = "no_change" | "metadata_only" | "targeted_reprocess" | "shadow_reindex";
 export type IngestionAuditReason =
@@ -28,7 +43,17 @@ export type IngestionAuditReason =
   | "extraction_quality_poor"
   | "embedding_missing_or_mismatched"
   | "generation_incomplete"
-  | "must_pass_retrieval_failed";
+  | "must_pass_retrieval_failed"
+  | "count_mismatch"
+  | "provenance_mismatch";
+
+export type IngestionFailureCode =
+  | "document_not_retrieved"
+  | "document_rank_exceeded"
+  | "source_role_mismatch"
+  | "governance_block"
+  | "case_timeout"
+  | "provider_failure";
 
 export type ExpectedActualCount = {
   expected: number | null;
@@ -39,7 +64,8 @@ export type IngestionDocumentAudit = {
   documentId: string;
   expectedStateDigest: string;
   activeGenerationId: string | null;
-  action: IngestionAuditAction;
+  action: IngestionAuditAction | null;
+  diagnosticAction: IngestionAuditAction;
   eligibleForShadowPlan: boolean;
   blockingDisposition: "quarantine_review" | "tombstone" | null;
   reasons: IngestionAuditReason[];
@@ -69,13 +95,36 @@ export type IngestionDocumentAudit = {
     actualStrategies: string[];
     completeness: number;
   };
+  provenance: IngestionAuditProvenance;
   mustPassCases: Array<{
     id: string;
     passed: boolean;
     expectedDocumentRank: number | null;
     actualDocumentRank: number | null;
-    failedExpectations: string[];
+    failureCodes: IngestionFailureCode[];
   }>;
+};
+
+type ProvenanceEvidence = {
+  contentHash: string;
+  extractionVersion: string;
+  parserVersion: string;
+  parserConfigVersion: string;
+  chunkerVersion: string;
+  indexUnitVersion: string;
+  validationVersion: string;
+  sourcePolicyVersion: string;
+};
+
+export type IngestionAuditProvenance = {
+  review: {
+    contractVersion: string;
+    evidenceDigest: string;
+    reviewedAt: string;
+    reviewerRole: "clinical_governance" | "corpus_steward" | "source_governance";
+  };
+  expected: ProvenanceEvidence;
+  actual: ProvenanceEvidence;
 };
 
 const countSchema = z
@@ -84,6 +133,55 @@ const countSchema = z
     actual: z.number().int().nonnegative(),
   })
   .strict();
+
+const canonicalSourceRoleSchema = z.custom<ClinicalSourceRole>(isKnownClinicalSourceRole, {
+  message: "sourceRole must use the canonical ClinicalSourceRole vocabulary",
+});
+const canonicalCorpusScopeSchema = z.custom<SourceCorpusScope>(isKnownSourceCorpusScope, {
+  message: "corpusScope must use the canonical SourceCorpusScope vocabulary",
+});
+const canonicalContentModeSchema = z.custom<SourceContentMode>(isKnownSourceContentMode, {
+  message: "contentMode must use the canonical source content-mode vocabulary",
+});
+const canonicalLicencePolicySchema = z.custom<SourceLicencePolicy>(isKnownSourceLicencePolicy, {
+  message: "licencePolicy must use the canonical source licence-policy vocabulary",
+});
+const sha256Schema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
+const versionSchema = z.string().trim().min(1).max(100);
+const provenanceEvidenceSchema = z
+  .object({
+    contentHash: sha256Schema,
+    extractionVersion: versionSchema,
+    parserVersion: versionSchema,
+    parserConfigVersion: versionSchema,
+    chunkerVersion: versionSchema,
+    indexUnitVersion: versionSchema,
+    validationVersion: versionSchema,
+    sourcePolicyVersion: versionSchema,
+  })
+  .strict();
+const provenanceSchema = z
+  .object({
+    review: z
+      .object({
+        contractVersion: versionSchema,
+        evidenceDigest: sha256Schema,
+        reviewedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        reviewerRole: z.enum(["clinical_governance", "corpus_steward", "source_governance"]),
+      })
+      .strict(),
+    expected: provenanceEvidenceSchema,
+    actual: provenanceEvidenceSchema,
+  })
+  .strict();
+const ingestionFailureCodeSchema = z.enum([
+  "document_not_retrieved",
+  "document_rank_exceeded",
+  "source_role_mismatch",
+  "governance_block",
+  "case_timeout",
+  "provider_failure",
+]);
 
 const auditInputSchema = z
   .object({
@@ -98,8 +196,13 @@ const auditInputSchema = z
       .object({
         publisher: z.string().trim().min(1).max(200).nullable(),
         jurisdiction: z.string().trim().min(1).max(100).nullable(),
-        sourceRole: z.string().trim().min(1).max(100).nullable(),
-        contentMode: z.string().trim().min(1).max(100).nullable(),
+        corpusScope: canonicalCorpusScopeSchema.nullable(),
+        sourceRole: canonicalSourceRoleSchema.nullable(),
+        contentMode: canonicalContentModeSchema.nullable(),
+        licencePolicy: canonicalLicencePolicySchema.nullable(),
+        sourcePolicyVersion: versionSchema.nullable(),
+        sourceCatalogueKey: z.string().trim().min(1).max(100).nullable(),
+        sourceExcluded: z.boolean(),
       })
       .strict(),
     sourceGovernanceValid: z.boolean(),
@@ -143,6 +246,7 @@ const auditInputSchema = z
         completeness: z.number().min(0).max(1),
       })
       .strict(),
+    provenance: provenanceSchema,
     chunkGenerations: z.array(z.string().trim().min(1)),
     mustPassCases: z.array(
       z
@@ -151,9 +255,20 @@ const auditInputSchema = z
           passed: z.boolean(),
           expectedDocumentRank: z.number().int().positive().nullable(),
           actualDocumentRank: z.number().int().positive().nullable(),
-          failedExpectations: z.array(z.string().trim().min(1).max(200)),
+          failureCodes: z.array(ingestionFailureCodeSchema),
         })
-        .strict(),
+        .strict()
+        .superRefine((testCase, context) => {
+          if (new Set(testCase.failureCodes).size !== testCase.failureCodes.length) {
+            context.addIssue({ code: "custom", message: "duplicate failure code", path: ["failureCodes"] });
+          }
+          if (testCase.passed && (testCase.actualDocumentRank === null || testCase.failureCodes.length > 0)) {
+            context.addIssue({ code: "custom", message: "passed retrieval case has failure evidence" });
+          }
+          if (!testCase.passed && testCase.failureCodes.length === 0) {
+            context.addIssue({ code: "custom", message: "failed retrieval case requires a failure code" });
+          }
+        }),
     ),
   })
   .strict();
@@ -187,6 +302,35 @@ const ingestionAuditInventorySchema = z
         });
       }
     }
+    for (const [documentIndex, document] of inventory.documents.entries()) {
+      const caseIds = new Set<string>();
+      for (const [caseIndex, testCase] of document.mustPassCases.entries()) {
+        if (caseIds.has(testCase.id)) {
+          context.addIssue({
+            code: "custom",
+            message: "duplicate document must-pass case ID",
+            path: ["documents", documentIndex, "mustPassCases", caseIndex, "id"],
+          });
+        }
+        caseIds.add(testCase.id);
+        if (!Object.hasOwn(inventory.retrievedDocumentIdsByCase, testCase.id)) {
+          context.addIssue({
+            code: "custom",
+            message: `retrieval measurement missing for ${testCase.id}`,
+            path: ["retrievedDocumentIdsByCase", testCase.id],
+          });
+          continue;
+        }
+        const retrieved = inventory.retrievedDocumentIdsByCase[testCase.id]!.includes(document.documentId);
+        if (retrieved !== testCase.passed) {
+          context.addIssue({
+            code: "custom",
+            message: "contradictory retrieval evidence",
+            path: ["documents", documentIndex, "mustPassCases", caseIndex, "passed"],
+          });
+        }
+      }
+    }
   });
 
 export type IngestionAuditInput = z.infer<typeof auditInputSchema>;
@@ -195,6 +339,7 @@ export type IngestionAuditInventory = z.infer<typeof ingestionAuditInventorySche
 export type IngestionAuditReport = Readonly<{
   schemaVersion: 1;
   inventoryVersion: string;
+  coverageVersion: string;
   populationFingerprint: string;
   documents: readonly IngestionDocumentAudit[];
   sourceCoverage: readonly SourceCoverageFinding[];
@@ -213,6 +358,7 @@ const reasonOrder: readonly IngestionAuditReason[] = [
   "metadata_incomplete",
   "source_governance_invalid",
   "withdrawn_or_superseded",
+  "count_mismatch",
   "missing_pages",
   "missing_chunks",
   "duplicate_chunks",
@@ -225,12 +371,14 @@ const reasonOrder: readonly IngestionAuditReason[] = [
   "heading_continuity_failed",
   "table_continuity_failed",
   "extraction_quality_poor",
+  "provenance_mismatch",
   "embedding_missing_or_mismatched",
   "generation_incomplete",
   "must_pass_retrieval_failed",
 ];
 
 const targetedReasons = new Set<IngestionAuditReason>([
+  "count_mismatch",
   "missing_pages",
   "missing_chunks",
   "duplicate_chunks",
@@ -243,6 +391,7 @@ const targetedReasons = new Set<IngestionAuditReason>([
   "heading_continuity_failed",
   "table_continuity_failed",
   "extraction_quality_poor",
+  "provenance_mismatch",
 ]);
 const shadowReasons = new Set<IngestionAuditReason>([
   "embedding_missing_or_mismatched",
@@ -254,8 +403,46 @@ function isMissing(count: ExpectedActualCount) {
   return count.expected !== null && count.actual < count.expected;
 }
 
+function isSurplus(count: ExpectedActualCount) {
+  return count.expected !== null && count.actual > count.expected;
+}
+
 function hasMetadataGap(metadata: IngestionAuditInput["metadata"]) {
-  return Object.values(metadata).some((value) => !value);
+  return Object.entries(metadata).some(([key, value]) => key !== "sourceCatalogueKey" && value === null);
+}
+
+function sourcePolicyIsValid(input: IngestionAuditInput) {
+  const metadata = input.metadata;
+  if (
+    !input.sourceGovernanceValid ||
+    metadata.sourceExcluded ||
+    !metadata.corpusScope ||
+    !metadata.sourceRole ||
+    !metadata.contentMode ||
+    !metadata.licencePolicy ||
+    !metadata.sourcePolicyVersion ||
+    metadata.contentMode !== "indexed_content" ||
+    metadata.sourceRole === "reference_link" ||
+    metadata.licencePolicy !== "public_index_permitted"
+  ) {
+    return false;
+  }
+
+  if (metadata.corpusScope !== "australian_public") return true;
+  if (!metadata.sourceCatalogueKey || metadata.sourcePolicyVersion !== australianSourcePolicyVersion) return false;
+  const catalogue = australianSourceByKey(metadata.sourceCatalogueKey);
+  return Boolean(
+    catalogue &&
+    catalogue.roles.includes(metadata.sourceRole) &&
+    isIndexableAustralianSource(metadata.sourceCatalogueKey, metadata.licencePolicy),
+  );
+}
+
+function provenanceMismatch(input: IngestionAuditInput) {
+  return (
+    JSON.stringify(input.provenance.expected) !== JSON.stringify(input.provenance.actual) ||
+    input.provenance.actual.sourcePolicyVersion !== input.metadata.sourcePolicyVersion
+  );
 }
 
 function embeddingContractMismatch(input: IngestionAuditInput) {
@@ -292,13 +479,24 @@ export function parseIngestionAuditInventory(input: unknown): IngestionAuditInve
 export function auditDocument(rawInput: IngestionAuditInput): IngestionDocumentAudit {
   const input = auditInputSchema.parse(rawInput);
   const measured = new Set<IngestionAuditReason>();
+  const validSourcePolicy = sourcePolicyIsValid(input);
 
   if (!input.expectedStateDigest) measured.add("integrity_expectation_missing");
   if (hasMetadataGap(input.metadata)) measured.add("metadata_incomplete");
-  if (!input.sourceGovernanceValid || input.lifecycle === "quarantined" || input.lifecycle === "review_due") {
+  if (!validSourcePolicy || input.lifecycle === "quarantined" || input.lifecycle === "review_due") {
     measured.add("source_governance_invalid");
   }
   if (input.lifecycle === "withdrawn" || input.lifecycle === "superseded") measured.add("withdrawn_or_superseded");
+  if (
+    isSurplus(input.counts.pages) ||
+    isSurplus(input.counts.chunks) ||
+    isSurplus(input.counts.tables) ||
+    isSurplus(input.counts.images) ||
+    isSurplus(input.counts.searchableUnits) ||
+    isSurplus(input.counts.embeddings)
+  ) {
+    measured.add("count_mismatch");
+  }
   if (isMissing(input.counts.pages)) measured.add("missing_pages");
   if (isMissing(input.counts.chunks) || isMissing(input.counts.searchableUnits)) measured.add("missing_chunks");
   if (input.counts.duplicateChunks > 0) measured.add("duplicate_chunks");
@@ -312,6 +510,7 @@ export function auditDocument(rawInput: IngestionAuditInput): IngestionDocumentA
   if (!input.structure.tableContinuityPassed || isMissing(input.counts.tables)) measured.add("table_continuity_failed");
   if (!input.structure.extractionQualityPassed || isMissing(input.counts.images))
     measured.add("extraction_quality_poor");
+  if (provenanceMismatch(input)) measured.add("provenance_mismatch");
   if (embeddingContractMismatch(input)) measured.add("embedding_missing_or_mismatched");
   if (generationIncomplete(input)) measured.add("generation_incomplete");
   if (input.mustPassCases.some((testCase) => !testCase.passed)) measured.add("must_pass_retrieval_failed");
@@ -320,16 +519,19 @@ export function auditDocument(rawInput: IngestionAuditInput): IngestionDocumentA
   const tombstone = input.lifecycle === "withdrawn" || input.lifecycle === "superseded";
   const quarantine =
     !input.expectedStateDigest ||
-    !input.sourceGovernanceValid ||
+    !validSourcePolicy ||
     input.lifecycle === "quarantined" ||
     input.lifecycle === "review_due";
+  const diagnosticAction = classifyAction(reasons);
+  const blocked = tombstone || quarantine;
 
   return {
     documentId: input.documentId,
     expectedStateDigest: input.expectedStateDigest ?? "",
     activeGenerationId: input.activeGenerationId,
-    action: classifyAction(reasons),
-    eligibleForShadowPlan: !tombstone && !quarantine,
+    action: blocked ? null : diagnosticAction,
+    diagnosticAction,
+    eligibleForShadowPlan: !blocked,
     blockingDisposition: tombstone ? "tombstone" : quarantine ? "quarantine_review" : null,
     reasons,
     counts: structuredClone(input.counts),
@@ -340,10 +542,11 @@ export function auditDocument(rawInput: IngestionAuditInput): IngestionDocumentA
       actualDimensions: [...input.embeddingContract.actualDimensions].sort((left, right) => left - right),
       actualStrategies: [...input.embeddingContract.actualStrategies].sort(),
     },
+    provenance: structuredClone(input.provenance),
     mustPassCases: input.mustPassCases
       .map((testCase) => ({
         ...structuredClone(testCase),
-        failedExpectations: [...testCase.failedExpectations].sort(),
+        failureCodes: [...testCase.failureCodes].sort(),
       }))
       .toSorted((left, right) => left.id.localeCompare(right.id)),
   };
@@ -364,20 +567,33 @@ function sha256(value: unknown) {
 
 export function buildIngestionAuditReport(args: {
   inventory: IngestionAuditInventory;
-  expectedCoverage: readonly ExpectedSourceCoverageRecord[];
+  expectedCoverage: ExpectedSourceCoverageRegistry;
 }): IngestionAuditReport {
   const inventory = ingestionAuditInventorySchema.parse(args.inventory);
+  const expectedCoverage = parseExpectedSourceCoverageRegistry(args.expectedCoverage);
   const documents = inventory.documents
     .map(auditDocument)
     .toSorted((left, right) => left.documentId.localeCompare(right.documentId));
   const retrievedDocumentIdsByCase = new Map(
     Object.entries(inventory.retrievedDocumentIdsByCase).map(([caseId, documentIds]) => [caseId, new Set(documentIds)]),
   );
+  const eligibleDocumentIds = new Set(
+    documents.filter((document) => document.eligibleForShadowPlan).map((document) => document.documentId),
+  );
+  for (const record of expectedCoverage.records) {
+    if (record.reviewStatus !== "active") continue;
+    for (const documentId of record.expectedDocumentIds.filter((id) => eligibleDocumentIds.has(id))) {
+      const document = inventory.documents.find((candidate) => candidate.documentId === documentId);
+      for (const caseId of record.mustPassCaseIds) {
+        if (!document?.mustPassCases.some((testCase) => testCase.id === caseId)) {
+          throw new Error(`Retrieval measurement ${caseId} lacks document evidence for ${documentId}.`);
+        }
+      }
+    }
+  }
   const sourceCoverage = auditExpectedSourceCoverage({
-    expected: args.expectedCoverage,
-    activeDocumentIds: new Set(
-      documents.filter((document) => document.eligibleForShadowPlan).map((document) => document.documentId),
-    ),
+    expected: expectedCoverage.records,
+    activeDocumentIds: eligibleDocumentIds,
     retrievedDocumentIdsByCase,
   });
   const summary = Object.freeze({
@@ -390,6 +606,7 @@ export function buildIngestionAuditReport(args: {
   });
   const fingerprintInput = {
     inventoryVersion: inventory.inventoryVersion,
+    coverageVersion: expectedCoverage.coverageVersion,
     documents,
     sourceCoverage: [...sourceCoverage],
   };
@@ -397,6 +614,7 @@ export function buildIngestionAuditReport(args: {
   return Object.freeze({
     schemaVersion: 1 as const,
     inventoryVersion: inventory.inventoryVersion,
+    coverageVersion: expectedCoverage.coverageVersion,
     populationFingerprint: sha256(fingerprintInput),
     documents: Object.freeze(documents),
     sourceCoverage,

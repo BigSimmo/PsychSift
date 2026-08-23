@@ -11,6 +11,36 @@ import {
   parseIngestionAuditInventory,
   type IngestionAuditInput,
 } from "@/lib/ingestion-audit";
+import { auditExpectedSourceCoverage } from "@/lib/source-coverage-registry";
+
+const reviewedProvenance = {
+  review: {
+    contractVersion: "ingestion-provenance-v1",
+    evidenceDigest: `sha256:${"2".repeat(64)}`,
+    reviewedAt: "2026-08-23",
+    reviewerRole: "clinical_governance",
+  },
+  expected: {
+    contentHash: `sha256:${"1".repeat(64)}`,
+    extractionVersion: "extractor-v1",
+    parserVersion: "parser-v1",
+    parserConfigVersion: "parser-config-v1",
+    chunkerVersion: "chunker-v1",
+    indexUnitVersion: "index-unit-v1",
+    validationVersion: "validation-v1",
+    sourcePolicyVersion: "synthetic-source-policy-v1",
+  },
+  actual: {
+    contentHash: `sha256:${"1".repeat(64)}`,
+    extractionVersion: "extractor-v1",
+    parserVersion: "parser-v1",
+    parserConfigVersion: "parser-config-v1",
+    chunkerVersion: "chunker-v1",
+    indexUnitVersion: "index-unit-v1",
+    validationVersion: "validation-v1",
+    sourcePolicyVersion: "synthetic-source-policy-v1",
+  },
+} as const;
 
 function fixture(overrides: Partial<IngestionAuditInput> = {}): IngestionAuditInput {
   return {
@@ -21,8 +51,13 @@ function fixture(overrides: Partial<IngestionAuditInput> = {}): IngestionAuditIn
     metadata: {
       publisher: "Synthetic authority",
       jurisdiction: "AU-WA",
+      corpusScope: "uploaded_local",
       sourceRole: "local_guideline",
       contentMode: "indexed_content",
+      licencePolicy: "public_index_permitted",
+      sourcePolicyVersion: "synthetic-source-policy-v1",
+      sourceCatalogueKey: null,
+      sourceExcluded: false,
     },
     sourceGovernanceValid: true,
     counts: {
@@ -57,6 +92,7 @@ function fixture(overrides: Partial<IngestionAuditInput> = {}): IngestionAuditIn
       actualStrategies: ["chunk-and-structured-units-v1"],
       completeness: 1,
     },
+    provenance: reviewedProvenance,
     chunkGenerations: ["generation-current"],
     mustPassCases: [
       {
@@ -64,7 +100,7 @@ function fixture(overrides: Partial<IngestionAuditInput> = {}): IngestionAuditIn
         passed: true,
         expectedDocumentRank: 1,
         actualDocumentRank: 1,
-        failedExpectations: [],
+        failureCodes: [],
       },
     ],
     ...overrides,
@@ -72,6 +108,237 @@ function fixture(overrides: Partial<IngestionAuditInput> = {}): IngestionAuditIn
 }
 
 describe("ingestion integrity audit", () => {
+  it("requires measured retrieval evidence and rejects document/map contradictions", () => {
+    const expectedCoverage = [
+      {
+        key: "synthetic-current-guideline",
+        owner: "Clinical governance",
+        reviewStatus: "active" as const,
+        expectedDocumentIds: ["guideline-current"],
+        mustPassCaseIds: ["must-pass-current"],
+      },
+    ];
+
+    expect(() =>
+      buildIngestionAuditReport({
+        inventory: {
+          schemaVersion: 1,
+          inventoryVersion: "missing-retrieval-measurement",
+          documents: [fixture()],
+          retrievedDocumentIdsByCase: {},
+        },
+        expectedCoverage: {
+          schemaVersion: 1,
+          coverageVersion: "missing-retrieval-coverage-v1",
+          records: expectedCoverage,
+        },
+      }),
+    ).toThrow(/retrieval measurement.*must-pass-current|must-pass-current.*retrieval measurement/i);
+
+    for (const [passed, retrievedDocumentIds] of [
+      [true, []],
+      [false, ["guideline-current"]],
+    ] as const) {
+      expect(() =>
+        buildIngestionAuditReport({
+          inventory: {
+            schemaVersion: 1,
+            inventoryVersion: "contradictory-retrieval-measurement",
+            documents: [
+              fixture({
+                mustPassCases: [
+                  {
+                    id: "must-pass-current",
+                    passed,
+                    expectedDocumentRank: 1,
+                    actualDocumentRank: passed ? 1 : null,
+                    failureCodes: passed ? [] : ["document_not_retrieved"],
+                  },
+                ],
+              }),
+            ],
+            retrievedDocumentIdsByCase: { "must-pass-current": [...retrievedDocumentIds] },
+          },
+          expectedCoverage: {
+            schemaVersion: 1,
+            coverageVersion: "contradictory-retrieval-coverage-v1",
+            records: expectedCoverage,
+          },
+        }),
+      ).toThrow(/contradictory retrieval evidence/i);
+    }
+
+    expect(
+      auditExpectedSourceCoverage({
+        expected: expectedCoverage,
+        activeDocumentIds: new Set(["guideline-current"]),
+        retrievedDocumentIdsByCase: new Map([["must-pass-current", new Set()]]),
+      }),
+    ).toMatchObject([{ outcome: "retrieval_miss" }]);
+    expect(() =>
+      auditExpectedSourceCoverage({
+        expected: expectedCoverage,
+        activeDocumentIds: new Set(["guideline-current"]),
+        retrievedDocumentIdsByCase: new Map(),
+      }),
+    ).toThrow(/retrieval measurement.*must-pass-current|must-pass-current.*retrieval measurement/i);
+  });
+
+  it("imports canonical source policy and cannot be overridden by a governance boolean", () => {
+    expect(() =>
+      auditDocument(
+        fixture({
+          metadata: {
+            ...fixture().metadata,
+            sourceRole: "invented_authority",
+          } as unknown as IngestionAuditInput["metadata"],
+        }),
+      ),
+    ).toThrow(/sourceRole|source role/i);
+
+    expect(
+      auditDocument(
+        fixture({
+          metadata: {
+            ...fixture().metadata,
+            corpusScope: "uploaded_local",
+            contentMode: "link_only",
+            licencePolicy: "metadata_link_only",
+            sourcePolicyVersion: "synthetic-source-policy-v1",
+            sourceExcluded: false,
+          },
+          sourceGovernanceValid: true,
+        }) as IngestionAuditInput,
+      ),
+    ).toMatchObject({
+      action: null,
+      diagnosticAction: "metadata_only",
+      eligibleForShadowPlan: false,
+      blockingDisposition: "quarantine_review",
+      reasons: ["source_governance_invalid"],
+    });
+
+    expect(
+      auditDocument(
+        fixture({
+          metadata: {
+            ...fixture().metadata,
+            corpusScope: "uploaded_local",
+            contentMode: "indexed_content",
+            licencePolicy: "public_index_permitted",
+            sourcePolicyVersion: "synthetic-source-policy-v1",
+            sourceExcluded: true,
+          },
+          sourceGovernanceValid: true,
+        }) as IngestionAuditInput,
+      ),
+    ).toMatchObject({
+      action: null,
+      diagnosticAction: "metadata_only",
+      eligibleForShadowPlan: false,
+      blockingDisposition: "quarantine_review",
+      reasons: ["source_governance_invalid"],
+    });
+
+    const australianPolicyProvenance = {
+      ...reviewedProvenance,
+      expected: { ...reviewedProvenance.expected, sourcePolicyVersion: "australian-source-policy-v1" },
+      actual: { ...reviewedProvenance.actual, sourcePolicyVersion: "australian-source-policy-v1" },
+    };
+    for (const protectedMetadata of [
+      {
+        sourceRole: "reference_link",
+        contentMode: "link_only",
+        licencePolicy: "metadata_link_only",
+        sourceCatalogueKey: "etg-complete",
+      },
+      {
+        sourceRole: "professional_review",
+        contentMode: "indexed_content",
+        licencePolicy: "index_forbidden",
+        sourceCatalogueKey: "nps-medicinewise",
+      },
+      {
+        sourceRole: "clinical_reference",
+        contentMode: "indexed_content",
+        licencePolicy: "public_index_permitted",
+        sourceCatalogueKey: "healthdirect",
+      },
+    ] as const) {
+      expect(
+        auditDocument(
+          fixture({
+            metadata: {
+              ...fixture().metadata,
+              corpusScope: "australian_public",
+              sourcePolicyVersion: "australian-source-policy-v1",
+              ...protectedMetadata,
+            },
+            provenance: australianPolicyProvenance,
+            sourceGovernanceValid: true,
+          }),
+        ),
+      ).toMatchObject({
+        action: null,
+        eligibleForShadowPlan: false,
+        blockingDisposition: "quarantine_review",
+        reasons: ["source_governance_invalid"],
+      });
+    }
+  });
+
+  it("detects over-count drift and records complete reviewed provenance", () => {
+    expect(
+      auditDocument(
+        fixture({
+          counts: { ...fixture().counts, pages: { expected: 12, actual: 13 } },
+          provenance: reviewedProvenance,
+        } as Partial<IngestionAuditInput>),
+      ),
+    ).toMatchObject({ action: "targeted_reprocess", reasons: ["count_mismatch"] });
+
+    expect(
+      auditDocument(
+        fixture({
+          provenance: {
+            ...reviewedProvenance,
+            actual: { ...reviewedProvenance.actual, parserVersion: "parser-v2" },
+          },
+        } as Partial<IngestionAuditInput>),
+      ),
+    ).toMatchObject({ action: "targeted_reprocess", reasons: ["provenance_mismatch"] });
+  });
+
+  it("binds the complete reviewed coverage contract to report identity", () => {
+    const inventory = {
+      schemaVersion: 1 as const,
+      inventoryVersion: "coverage-version-fingerprint",
+      documents: [fixture({ provenance: reviewedProvenance } as Partial<IngestionAuditInput>)],
+      retrievedDocumentIdsByCase: { "must-pass-current": ["guideline-current"] },
+    };
+    const registry = {
+      schemaVersion: 1 as const,
+      coverageVersion: "coverage-v1",
+      records: [
+        {
+          key: "synthetic-current-guideline",
+          owner: "Clinical governance",
+          reviewStatus: "active" as const,
+          expectedDocumentIds: ["guideline-current"],
+          mustPassCaseIds: ["must-pass-current"],
+        },
+      ],
+    };
+    const first = buildIngestionAuditReport({ inventory, expectedCoverage: registry });
+    const second = buildIngestionAuditReport({
+      inventory,
+      expectedCoverage: { ...registry, coverageVersion: "coverage-v2" },
+    });
+
+    expect(first.coverageVersion).toBe("coverage-v1");
+    expect(first.populationFingerprint).not.toBe(second.populationFingerprint);
+  });
+
   it("does not recommend re-index for a metadata-only defect", () => {
     expect(auditDocument(fixture({ metadata: { ...fixture().metadata, publisher: null } }))).toMatchObject({
       action: "metadata_only",
@@ -135,11 +402,12 @@ describe("ingestion integrity audit", () => {
   });
 
   it("blocks ineligible content from a shadow plan even when it also has repairable defects", () => {
-    expect(
-      auditDocument(
-        fixture({ lifecycle: "withdrawn", counts: { ...fixture().counts, pages: { expected: 12, actual: 0 } } }),
-      ),
-    ).toMatchObject({
+    const blocked = auditDocument(
+      fixture({ lifecycle: "withdrawn", counts: { ...fixture().counts, pages: { expected: 12, actual: 0 } } }),
+    );
+    expect(blocked).toMatchObject({
+      action: null,
+      diagnosticAction: "targeted_reprocess",
       eligibleForShadowPlan: false,
       blockingDisposition: "tombstone",
       reasons: ["withdrawn_or_superseded", "missing_pages"],
@@ -149,12 +417,31 @@ describe("ingestion integrity audit", () => {
       blockingDisposition: "quarantine_review",
       reasons: ["source_governance_invalid"],
     });
+
+    const report = buildIngestionAuditReport({
+      inventory: {
+        schemaVersion: 1,
+        inventoryVersion: "blocked-actions",
+        documents: [blocked ? fixture({ lifecycle: "withdrawn", mustPassCases: [] }) : fixture()],
+        retrievedDocumentIdsByCase: {},
+      },
+      expectedCoverage: { schemaVersion: 1, coverageVersion: "blocked-actions-v1", records: [] },
+    });
+    expect(report.summary).toMatchObject({
+      documents: 1,
+      noChange: 0,
+      metadataOnly: 0,
+      targetedReprocess: 0,
+      shadowReindex: 0,
+      blocked: 1,
+    });
   });
 
   it("fails closed when integrity evidence is absent or state changes after audit", () => {
     const missingEvidence = auditDocument(fixture({ expectedStateDigest: null }));
     expect(missingEvidence).toMatchObject({
-      action: "metadata_only",
+      action: null,
+      diagnosticAction: "metadata_only",
       eligibleForShadowPlan: false,
       blockingDisposition: "quarantine_review",
       reasons: ["integrity_expectation_missing"],
@@ -174,7 +461,7 @@ describe("ingestion integrity audit", () => {
             passed: false,
             expectedDocumentRank: 1,
             actualDocumentRank: null,
-            failedExpectations: ["expected document not retrieved"],
+            failureCodes: ["document_not_retrieved"],
           },
         ],
       }),
@@ -190,7 +477,7 @@ describe("ingestion integrity audit", () => {
       passed: false,
       expectedDocumentRank: 1,
       actualDocumentRank: null,
-      failedExpectations: ["expected document not retrieved"],
+      failureCodes: ["document_not_retrieved"],
     });
   });
 
@@ -211,10 +498,21 @@ describe("ingestion integrity audit", () => {
       },
     ];
 
-    const first = buildIngestionAuditReport({ inventory: input, expectedCoverage });
+    const first = buildIngestionAuditReport({
+      inventory: input,
+      expectedCoverage: {
+        schemaVersion: 1,
+        coverageVersion: "synthetic-source-coverage-v1",
+        records: expectedCoverage,
+      },
+    });
     const second = buildIngestionAuditReport({
       inventory: { ...input, documents: [...input.documents].reverse() },
-      expectedCoverage: [...expectedCoverage].reverse(),
+      expectedCoverage: {
+        schemaVersion: 1,
+        coverageVersion: "synthetic-source-coverage-v1",
+        records: [...expectedCoverage].reverse(),
+      },
     });
 
     expect(first).toEqual(second);
@@ -224,7 +522,20 @@ describe("ingestion integrity audit", () => {
       summary: { documents: 1, noChange: 1, blocked: 0 },
     });
     expect(first.populationFingerprint).toMatch(/^sha256:[0-9a-f]{64}$/);
-    expect(JSON.stringify(first)).not.toMatch(/body|content|excerpt|query|filename|object.?key/i);
+    const serialized = JSON.stringify(first);
+    expect(serialized).not.toContain("synthetic_private_excerpt");
+    const durableKeys = new Set<string>();
+    const visit = (value: unknown) => {
+      if (!value || typeof value !== "object") return;
+      for (const [key, nested] of Object.entries(value)) {
+        durableKeys.add(key);
+        visit(nested);
+      }
+    };
+    visit(first);
+    for (const forbiddenKey of ["body", "content", "excerpt", "query", "filename", "objectKey", "extractedText"]) {
+      expect(durableKeys).not.toContain(forbiddenKey);
+    }
   });
 
   it("rejects malformed or content-bearing inventory records", () => {
@@ -245,6 +556,44 @@ describe("ingestion integrity audit", () => {
     expect(() =>
       parseIngestionAuditInventory({ ...valid, documents: [{ ...fixture(), expectedStateDigest: "not-a-digest" }] }),
     ).toThrow(/digest|64/i);
+    expect(() =>
+      parseIngestionAuditInventory({
+        ...valid,
+        documents: [
+          {
+            ...fixture(),
+            mustPassCases: [
+              {
+                id: "must-pass-current",
+                passed: false,
+                expectedDocumentRank: 1,
+                actualDocumentRank: null,
+                failedExpectations: ["synthetic_private_excerpt"],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrow(/failure|expectation|unrecognized/i);
+    expect(() =>
+      parseIngestionAuditInventory({
+        ...valid,
+        documents: [
+          {
+            ...fixture(),
+            mustPassCases: [
+              {
+                id: "must-pass-current",
+                passed: false,
+                expectedDocumentRank: 1,
+                actualDocumentRank: null,
+                failureCodes: ["synthetic_private_excerpt"],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toThrow(/failureCodes|invalid option/i);
   });
 });
 

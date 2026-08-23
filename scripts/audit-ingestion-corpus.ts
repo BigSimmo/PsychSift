@@ -65,7 +65,7 @@ export async function runAuditIngestionCorpusCli(args: readonly string[]) {
   ]);
   const inventory = parseIngestionAuditInventory(inventoryInput);
   const coverageRegistry = parseExpectedSourceCoverageRegistry(coverageInput);
-  const report = buildIngestionAuditReport({ inventory, expectedCoverage: coverageRegistry.records });
+  const report = buildIngestionAuditReport({ inventory, expectedCoverage: coverageRegistry });
   await writeJson(options.outputPath, report);
 
   process.stdout.write(

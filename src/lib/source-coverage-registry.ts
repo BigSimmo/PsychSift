@@ -86,8 +86,14 @@ export function auditExpectedSourceCoverage(args: {
       ) {
         outcome = "not_in_corpus";
       } else {
+        const missingMeasurement = record.mustPassCaseIds.find(
+          (caseId) => !args.retrievedDocumentIdsByCase.has(caseId),
+        );
+        if (missingMeasurement) {
+          throw new Error(`Retrieval measurement missing for ${missingMeasurement}.`);
+        }
         const hasRetrievalMiss = record.mustPassCaseIds.some((caseId) => {
-          const retrieved = args.retrievedDocumentIdsByCase.get(caseId) ?? new Set<string>();
+          const retrieved = args.retrievedDocumentIdsByCase.get(caseId)!;
           return !intersects(record.expectedDocumentIds, retrieved);
         });
         outcome = hasRetrievalMiss ? "retrieval_miss" : "available";

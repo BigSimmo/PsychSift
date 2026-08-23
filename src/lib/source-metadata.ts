@@ -59,6 +59,22 @@ const compatibleNationalJurisdictions = new Set(
   ),
 );
 
+export function isKnownSourceCorpusScope(value: unknown): value is SourceCorpusScope {
+  return typeof value === "string" && knownCorpusScopes.has(value as SourceCorpusScope);
+}
+
+export function isKnownClinicalSourceRole(value: unknown): value is ClinicalSourceRole {
+  return typeof value === "string" && knownSourceRoles.has(value as ClinicalSourceRole);
+}
+
+export function isKnownSourceContentMode(value: unknown): value is SourceContentMode {
+  return typeof value === "string" && knownContentModes.has(value as SourceContentMode);
+}
+
+export function isKnownSourceLicencePolicy(value: unknown): value is SourceLicencePolicy {
+  return typeof value === "string" && knownLicencePolicies.has(value as SourceLicencePolicy);
+}
+
 export type SourceMetadataDiagnosticReason = "unsupported_value" | "unsafe_or_invalid_format";
 
 function stringOrNull(value: unknown) {

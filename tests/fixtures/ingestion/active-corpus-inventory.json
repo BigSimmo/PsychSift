@@ -10,8 +10,13 @@
       "metadata": {
         "publisher": "Synthetic authority",
         "jurisdiction": "AU-WA",
+        "corpusScope": "uploaded_local",
         "sourceRole": "local_guideline",
-        "contentMode": "indexed_content"
+        "contentMode": "indexed_content",
+        "licencePolicy": "public_index_permitted",
+        "sourcePolicyVersion": "synthetic-source-policy-v1",
+        "sourceCatalogueKey": null,
+        "sourceExcluded": false
       },
       "sourceGovernanceValid": true,
       "counts": {
@@ -46,6 +51,34 @@
         "actualStrategies": ["chunk-and-structured-units-v1"],
         "completeness": 1
       },
+      "provenance": {
+        "review": {
+          "contractVersion": "ingestion-provenance-v1",
+          "evidenceDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "reviewedAt": "2026-08-23",
+          "reviewerRole": "clinical_governance"
+        },
+        "expected": {
+          "contentHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "extractionVersion": "extractor-v1",
+          "parserVersion": "parser-v1",
+          "parserConfigVersion": "parser-config-v1",
+          "chunkerVersion": "chunker-v1",
+          "indexUnitVersion": "index-unit-v1",
+          "validationVersion": "validation-v1",
+          "sourcePolicyVersion": "synthetic-source-policy-v1"
+        },
+        "actual": {
+          "contentHash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "extractionVersion": "extractor-v1",
+          "parserVersion": "parser-v1",
+          "parserConfigVersion": "parser-config-v1",
+          "chunkerVersion": "chunker-v1",
+          "indexUnitVersion": "index-unit-v1",
+          "validationVersion": "validation-v1",
+          "sourcePolicyVersion": "synthetic-source-policy-v1"
+        }
+      },
       "chunkGenerations": ["synthetic-generation-current"],
       "mustPassCases": [
         {
@@ -53,7 +86,7 @@
           "passed": true,
           "expectedDocumentRank": 1,
           "actualDocumentRank": 1,
-          "failedExpectations": []
+          "failureCodes": []
         }
       ]
     },
@@ -65,8 +98,13 @@
       "metadata": {
         "publisher": null,
         "jurisdiction": "AU",
-        "sourceRole": "national_guideline",
-        "contentMode": "indexed_content"
+        "corpusScope": "uploaded_local",
+        "sourceRole": "clinical_guideline",
+        "contentMode": "indexed_content",
+        "licencePolicy": "public_index_permitted",
+        "sourcePolicyVersion": "synthetic-source-policy-v1",
+        "sourceCatalogueKey": null,
+        "sourceExcluded": false
       },
       "sourceGovernanceValid": true,
       "counts": {
@@ -101,6 +139,34 @@
         "actualStrategies": ["chunk-and-structured-units-v1"],
         "completeness": 1
       },
+      "provenance": {
+        "review": {
+          "contractVersion": "ingestion-provenance-v1",
+          "evidenceDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+          "reviewedAt": "2026-08-23",
+          "reviewerRole": "corpus_steward"
+        },
+        "expected": {
+          "contentHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "extractionVersion": "extractor-v1",
+          "parserVersion": "parser-v1",
+          "parserConfigVersion": "parser-config-v1",
+          "chunkerVersion": "chunker-v1",
+          "indexUnitVersion": "index-unit-v1",
+          "validationVersion": "validation-v1",
+          "sourcePolicyVersion": "synthetic-source-policy-v1"
+        },
+        "actual": {
+          "contentHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "extractionVersion": "extractor-v1",
+          "parserVersion": "parser-v1",
+          "parserConfigVersion": "parser-config-v1",
+          "chunkerVersion": "chunker-v1",
+          "indexUnitVersion": "index-unit-v1",
+          "validationVersion": "validation-v1",
+          "sourcePolicyVersion": "synthetic-source-policy-v1"
+        }
+      },
       "chunkGenerations": ["synthetic-generation-metadata"],
       "mustPassCases": []
     },
@@ -112,8 +178,13 @@
       "metadata": {
         "publisher": "Synthetic authority",
         "jurisdiction": "AU-WA",
+        "corpusScope": "uploaded_local",
         "sourceRole": "local_guideline",
-        "contentMode": "indexed_content"
+        "contentMode": "indexed_content",
+        "licencePolicy": "public_index_permitted",
+        "sourcePolicyVersion": "synthetic-source-policy-v1",
+        "sourceCatalogueKey": null,
+        "sourceExcluded": false
       },
       "sourceGovernanceValid": true,
       "counts": {
@@ -147,6 +218,34 @@
         "expectedStrategy": "chunk-and-structured-units-v1",
         "actualStrategies": ["chunk-and-structured-units-v1"],
         "completeness": 0.7142857143
+      },
+      "provenance": {
+        "review": {
+          "contractVersion": "ingestion-provenance-v1",
+          "evidenceDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+          "reviewedAt": "2026-08-23",
+          "reviewerRole": "clinical_governance"
+        },
+        "expected": {
+          "contentHash": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+          "extractionVersion": "extractor-v1",
+          "parserVersion": "parser-v1",
+          "parserConfigVersion": "parser-config-v1",
+          "chunkerVersion": "chunker-v1",
+          "indexUnitVersion": "index-unit-v1",
+          "validationVersion": "validation-v1",
+          "sourcePolicyVersion": "synthetic-source-policy-v1"
+        },
+        "actual": {
+          "contentHash": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+          "extractionVersion": "extractor-v1",
+          "parserVersion": "parser-v1",
+          "parserConfigVersion": "parser-config-v1",
+          "chunkerVersion": "chunker-v1",
+          "indexUnitVersion": "index-unit-v1",
+          "validationVersion": "validation-v1",
+          "sourcePolicyVersion": "synthetic-source-policy-v1"
+        }
       },
       "chunkGenerations": ["synthetic-generation-defect"],
       "mustPassCases": []
