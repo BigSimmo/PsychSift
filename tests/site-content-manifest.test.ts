@@ -23,7 +23,11 @@ import {
   diffStaticSiteContentManifests,
 } from "@/lib/site-content/site-content-manifest";
 import type { StaticSiteContentManifest } from "@/lib/site-content/site-content-manifest";
-import { siteContentProducerDefinitions, siteContentRegistryVersion } from "@/lib/site-content/site-content-registry";
+import {
+  siteContentProducerDefinitions,
+  siteContentRegistryVersion,
+  siteContentRetrievalMetadata,
+} from "@/lib/site-content/site-content-registry";
 import type { SiteContentRecord } from "@/lib/site-content/site-content-contracts";
 import type { RegistryCorpusEntry } from "@/lib/registry-corpus";
 import { toolCatalogRecords } from "@/lib/tools-catalog";
@@ -179,6 +183,53 @@ describe("complete provider-free adapter coverage", () => {
         (record) => !["services", "forms", "medications", "differentials"].includes(record.domain),
       ),
     ).toBe(true);
+  });
+
+  it("keeps every current Healthdirect-bearing medication seed outside retrieval eligibility", () => {
+    const healthdirectRecords = buildDynamicSiteContentSeedRecords()
+      .filter((record) => /healthdirect/i.test(record.body))
+      .sort((left, right) => left.logicalId.localeCompare(right.logicalId));
+    expect(healthdirectRecords.map((record) => record.logicalId)).toEqual([
+      "medication:glycerol-suppository",
+      "medication:levothyroxine",
+      "medication:nicotine-sublingual-tablet",
+      "medication:osmolax",
+      "medication:phenelzine",
+    ]);
+
+    const retrievalEligible = healthdirectRecords.filter((record) => {
+      try {
+        siteContentRetrievalMetadata(record);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    expect(retrievalEligible.map((record) => record.logicalId)).toEqual([]);
+  });
+
+  it("fails closed on forbidden source evidence in record bodies and lineage", () => {
+    const amhBody = staticRecord({
+      route: "/services",
+      body: "AMH protected treatment content",
+    });
+    expect(() => siteContentRetrievalMetadata(amhBody)).toThrow(/excluded|link-only/i);
+    expect(buildStaticSiteContentManifest([amhBody], metadata).records[0]).toMatchObject({
+      eligible: false,
+      exclusionReason: "record_not_eligible",
+    });
+
+    const etgLineage = staticRecord({
+      route: "/services",
+      sourceLineage: [
+        {
+          sourceId: "eTG complete",
+          sourceHash: "sha256:protected-reference",
+          relationship: "derived_from",
+        },
+      ],
+    });
+    expect(() => siteContentRetrievalMetadata(etgLineage)).toThrow(/excluded|link-only/i);
   });
 
   it("preserves reviewed ineligibility and only adopts safe primitive Tools descriptions", () => {

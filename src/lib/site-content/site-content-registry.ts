@@ -544,13 +544,15 @@ export function assertSiteContentRecordEligible(record: SiteContentRecord) {
     }
     recordSpecificCanonicalRoute = adoption.canonicalRoute;
   }
-  const forbiddenIdentities = [
+  const forbiddenEvidence = [
     record.logicalId,
     record.title,
+    record.body,
     record.route,
-    ...record.sourceLineage.map((item) => item.sourceId),
+    record.publicationVersion,
+    ...record.sourceLineage.flatMap((item) => [item.sourceId, item.sourceHash]),
   ];
-  if (forbiddenIdentities.some(forbiddenSourceIdentity)) {
+  if (forbiddenEvidence.some(forbiddenSourceIdentity)) {
     throw new Error(`Site-content record ${record.logicalId} names an excluded or link-only source.`);
   }
   const expectedPrefix = producer.routeBuilder("").replace(/\/$/, "");
