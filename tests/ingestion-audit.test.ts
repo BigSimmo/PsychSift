@@ -9,6 +9,7 @@ import {
   auditDocument,
   buildIngestionAuditReport,
   parseIngestionAuditInventory,
+  reviewedProvenanceEvidenceDigest,
   type IngestionAuditInput,
   type IngestionFailureCode,
 } from "@/lib/ingestion-audit";
@@ -223,22 +224,38 @@ describe("ingestion integrity audit", () => {
       failureCodes: [failureCode],
     });
 
-    const valid: Array<{ testCase: CaseEvidence; retrieved: boolean }> = [
+    const indexDefects: Array<{ testCase: CaseEvidence; retrieved: boolean }> = [
       { testCase: failedCase("document_not_retrieved", null), retrieved: false },
       { testCase: failedCase("document_rank_exceeded", 3), retrieved: true },
-      { testCase: failedCase("source_role_mismatch", 2), retrieved: true },
-      { testCase: failedCase("source_role_mismatch", null), retrieved: false },
-      { testCase: failedCase("governance_block", 1), retrieved: true },
-      { testCase: failedCase("governance_block", null), retrieved: false },
-      { testCase: failedCase("case_timeout", null), retrieved: false },
-      { testCase: failedCase("provider_failure", null), retrieved: false },
     ];
-    for (const row of valid) {
+    for (const row of indexDefects) {
       expect(() => buildCaseReport(row.testCase, row.retrieved)).not.toThrow();
       expect(buildCaseReport(row.testCase, row.retrieved).documents[0]).toMatchObject({
         action: "shadow_reindex",
         reasons: ["must_pass_retrieval_failed"],
       });
+    }
+
+    const nonIndexFailures: Array<{
+      testCase: CaseEvidence;
+      retrieved: boolean;
+      reason: "integrity_expectation_missing" | "source_governance_invalid";
+    }> = [
+      { testCase: failedCase("source_role_mismatch", 2), retrieved: true, reason: "source_governance_invalid" },
+      { testCase: failedCase("source_role_mismatch", null), retrieved: false, reason: "source_governance_invalid" },
+      { testCase: failedCase("governance_block", 1), retrieved: true, reason: "source_governance_invalid" },
+      { testCase: failedCase("governance_block", null), retrieved: false, reason: "source_governance_invalid" },
+      { testCase: failedCase("case_timeout", null), retrieved: false, reason: "integrity_expectation_missing" },
+      { testCase: failedCase("provider_failure", null), retrieved: false, reason: "integrity_expectation_missing" },
+    ];
+    for (const row of nonIndexFailures) {
+      expect(auditDocument(fixture({ mustPassCases: [row.testCase] }))).toMatchObject({
+        action: "no_change",
+        eligibleForShadowPlan: false,
+        blockingDisposition: "quarantine_review",
+        reasons: [row.reason],
+      });
+      expect(() => buildCaseReport(row.testCase, row.retrieved)).toThrow(/non-index|incomplete.*retrieval/i);
     }
 
     const invalid: Array<{ testCase: CaseEvidence; retrieved: boolean }> = [
@@ -414,6 +431,22 @@ describe("ingestion integrity audit", () => {
   });
 
   it("binds the reviewed evidence digest to the complete expected provenance payload", () => {
+    const reversedExpected = Object.fromEntries(
+      Object.entries(reviewedProvenance.expected).reverse(),
+    ) as typeof reviewedProvenance.expected;
+    expect(
+      reviewedProvenanceEvidenceDigest({
+        contractVersion: reviewedProvenance.review.contractVersion,
+        expected: reversedExpected,
+      }),
+    ).toBe(reviewedProvenance.review.evidenceDigest);
+    expect(
+      reviewedProvenanceEvidenceDigest({
+        contractVersion: reviewedProvenance.review.contractVersion,
+        expected: { ...reviewedProvenance.expected, parserVersion: "parser-v2" },
+      }),
+    ).not.toBe(reviewedProvenance.review.evidenceDigest);
+
     expect(
       auditDocument(
         fixture({
@@ -733,6 +766,112 @@ describe("ingestion integrity audit", () => {
         ],
       }),
     ).toThrow(/failureCodes|invalid option/i);
+  });
+
+  it("adapts the existing indexing-health contract without admitting missing or site evidence", async () => {
+    const { adaptIndexingHealthDocumentToAuditInput, parseProviderFreeIngestionAuditInventory } =
+      await import("../scripts/lib/indexing-audit-adapter");
+    const indexingHealthDocument = {
+      status: "indexed",
+      file_name: "synthetic-guideline.pdf",
+      page_count: 10,
+      chunk_count: 20,
+      metadata: {
+        source_kind: "document",
+        publisher: "Synthetic authority",
+        jurisdiction: "AU-WA",
+        corpus_scope: "uploaded_local",
+        source_role: "local_guideline",
+        content_mode: "indexed_content",
+        licence_policy: "public_index_permitted",
+        source_policy_version: "synthetic-source-policy-v1",
+        source_catalogue_key: null,
+        source_excluded: false,
+      },
+    };
+    const ordinary = adaptIndexingHealthDocumentToAuditInput({
+      documentId: "adapted-guideline",
+      indexingHealthDocument,
+      expectedPageCount: 12,
+      actualChunkCount: 18,
+      auditEvidence: fixture(),
+    });
+    expect(ordinary).toMatchObject({
+      kind: "document",
+      input: {
+        documentId: "adapted-guideline",
+        counts: {
+          pages: { expected: 12, actual: 10 },
+          chunks: { expected: 20, actual: 18 },
+        },
+        metadata: {
+          corpusScope: "uploaded_local",
+          sourceRole: "local_guideline",
+          contentMode: "indexed_content",
+        },
+      },
+    });
+    expect(() =>
+      adaptIndexingHealthDocumentToAuditInput({
+        documentId: "missing-evidence",
+        indexingHealthDocument,
+        expectedPageCount: null,
+        actualChunkCount: null,
+        auditEvidence: null,
+      }),
+    ).toThrow(/indexing-health audit evidence unavailable/i);
+
+    const registry = adaptIndexingHealthDocumentToAuditInput({
+      documentId: "synthetic-registry",
+      indexingHealthDocument: {
+        ...indexingHealthDocument,
+        file_name: "synthetic-service.registry.json",
+        metadata: { source_kind: "registry_record", registry_record_id: "synthetic-service" },
+      },
+      expectedPageCount: null,
+      actualChunkCount: null,
+      auditEvidence: null,
+    });
+    expect(registry).toEqual({
+      kind: "excluded",
+      documentId: "synthetic-registry",
+      reason: "registry_or_site_separate_control_plane",
+    });
+    const site = adaptIndexingHealthDocumentToAuditInput({
+      documentId: "synthetic-site-record",
+      indexingHealthDocument: {
+        ...indexingHealthDocument,
+        metadata: { ...indexingHealthDocument.metadata, corpus_scope: "clinical_kb_site" },
+      },
+      expectedPageCount: null,
+      actualChunkCount: null,
+      auditEvidence: null,
+    });
+    expect(site).toEqual({
+      kind: "excluded",
+      documentId: "synthetic-site-record",
+      reason: "registry_or_site_separate_control_plane",
+    });
+
+    expect(
+      parseProviderFreeIngestionAuditInventory({
+        schemaVersion: 1,
+        inventoryVersion: "synthetic-indexing-health-adapter-v1",
+        indexingHealthDocuments: [
+          {
+            documentId: "adapted-guideline",
+            indexingHealthDocument,
+            expectedPageCount: 12,
+            actualChunkCount: 18,
+            auditEvidence: fixture(),
+          },
+        ],
+        retrievedDocumentIdsByCase: { "must-pass-current": ["adapted-guideline"] },
+      }),
+    ).toMatchObject({
+      inventoryVersion: "synthetic-indexing-health-adapter-v1",
+      documents: [{ documentId: "adapted-guideline" }],
+    });
   });
 });
 

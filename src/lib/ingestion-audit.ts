@@ -469,7 +469,16 @@ export function reviewedProvenanceEvidenceDigest(args: {
   return sha256({
     schemaVersion: "ingestion-provenance-review-v1",
     contractVersion: args.contractVersion,
-    expected: args.expected,
+    expected: {
+      contentHash: args.expected.contentHash,
+      extractionVersion: args.expected.extractionVersion,
+      parserVersion: args.expected.parserVersion,
+      parserConfigVersion: args.expected.parserConfigVersion,
+      chunkerVersion: args.expected.chunkerVersion,
+      indexUnitVersion: args.expected.indexUnitVersion,
+      validationVersion: args.expected.validationVersion,
+      sourcePolicyVersion: args.expected.sourcePolicyVersion,
+    },
   });
 }
 
@@ -522,14 +531,36 @@ export function parseIngestionAuditInventory(input: unknown): IngestionAuditInve
   return ingestionAuditInventorySchema.parse(input);
 }
 
+export function parseIngestionAuditInput(input: unknown): IngestionAuditInput {
+  return auditInputSchema.parse(input);
+}
+
+const indexFailureCodes = new Set<IngestionFailureCode>(["document_not_retrieved", "document_rank_exceeded"]);
+const incompleteFailureCodes = new Set<IngestionFailureCode>(["case_timeout", "provider_failure"]);
+const governanceFailureCodes = new Set<IngestionFailureCode>(["source_role_mismatch", "governance_block"]);
+
+function hasCaseFailureCode(input: IngestionAuditInput, codes: ReadonlySet<IngestionFailureCode>) {
+  return input.mustPassCases.some(
+    (testCase) => !testCase.passed && testCase.failureCodes.some((failureCode) => codes.has(failureCode)),
+  );
+}
+
 export function auditDocument(rawInput: IngestionAuditInput): IngestionDocumentAudit {
   const input = auditInputSchema.parse(rawInput);
   const measured = new Set<IngestionAuditReason>();
   const validSourcePolicy = sourcePolicyIsValid(input);
+  const incompleteCaseEvidence = hasCaseFailureCode(input, incompleteFailureCodes);
+  const governanceCaseFailure = hasCaseFailureCode(input, governanceFailureCodes);
+  const measuredIndexFailure = hasCaseFailureCode(input, indexFailureCodes);
 
-  if (!input.expectedStateDigest) measured.add("integrity_expectation_missing");
+  if (!input.expectedStateDigest || incompleteCaseEvidence) measured.add("integrity_expectation_missing");
   if (hasMetadataGap(input.metadata)) measured.add("metadata_incomplete");
-  if (!validSourcePolicy || input.lifecycle === "quarantined" || input.lifecycle === "review_due") {
+  if (
+    !validSourcePolicy ||
+    governanceCaseFailure ||
+    input.lifecycle === "quarantined" ||
+    input.lifecycle === "review_due"
+  ) {
     measured.add("source_governance_invalid");
   }
   if (input.lifecycle === "withdrawn" || input.lifecycle === "superseded") measured.add("withdrawn_or_superseded");
@@ -559,12 +590,14 @@ export function auditDocument(rawInput: IngestionAuditInput): IngestionDocumentA
   if (provenanceMismatch(input)) measured.add("provenance_mismatch");
   if (embeddingContractMismatch(input)) measured.add("embedding_missing_or_mismatched");
   if (generationIncomplete(input)) measured.add("generation_incomplete");
-  if (input.mustPassCases.some((testCase) => !testCase.passed)) measured.add("must_pass_retrieval_failed");
+  if (measuredIndexFailure) measured.add("must_pass_retrieval_failed");
 
   const reasons = reasonOrder.filter((reason) => measured.has(reason));
   const tombstone = input.lifecycle === "withdrawn" || input.lifecycle === "superseded";
   const quarantine =
     !input.expectedStateDigest ||
+    incompleteCaseEvidence ||
+    governanceCaseFailure ||
     !validSourcePolicy ||
     !hasValidReviewedProvenance(input) ||
     input.lifecycle === "quarantined" ||
@@ -629,11 +662,20 @@ export function buildIngestionAuditReport(args: {
   );
   for (const record of expectedCoverage.records) {
     if (record.reviewStatus !== "active") continue;
-    for (const documentId of record.expectedDocumentIds.filter((id) => eligibleDocumentIds.has(id))) {
+    for (const documentId of record.expectedDocumentIds) {
       const document = inventory.documents.find((candidate) => candidate.documentId === documentId);
+      if (!document) continue;
       for (const caseId of record.mustPassCaseIds) {
-        if (!document?.mustPassCases.some((testCase) => testCase.id === caseId)) {
+        const testCase = document.mustPassCases.find((candidate) => candidate.id === caseId);
+        if (!testCase && eligibleDocumentIds.has(documentId)) {
           throw new Error(`Retrieval measurement ${caseId} lacks document evidence for ${documentId}.`);
+        }
+        if (
+          testCase?.failureCodes.some(
+            (failureCode) => incompleteFailureCodes.has(failureCode) || governanceFailureCodes.has(failureCode),
+          )
+        ) {
+          throw new Error(`Non-index or incomplete retrieval evidence cannot classify source coverage for ${caseId}.`);
         }
       }
     }

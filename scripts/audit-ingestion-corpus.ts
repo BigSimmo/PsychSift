@@ -2,8 +2,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { buildIngestionAuditReport, parseIngestionAuditInventory } from "../src/lib/ingestion-audit";
+import { buildIngestionAuditReport } from "../src/lib/ingestion-audit";
 import { parseExpectedSourceCoverageRegistry } from "../src/lib/source-coverage-registry";
+import { parseProviderFreeIngestionAuditInventory } from "./lib/indexing-audit-adapter";
 
 type AuditIngestionCorpusCliOptions = {
   inputPath: string;
@@ -63,7 +64,7 @@ export async function runAuditIngestionCorpusCli(args: readonly string[]) {
     readJson(options.inputPath),
     readJson(options.expectedPath),
   ]);
-  const inventory = parseIngestionAuditInventory(inventoryInput);
+  const inventory = parseProviderFreeIngestionAuditInventory(inventoryInput);
   const coverageRegistry = parseExpectedSourceCoverageRegistry(coverageInput);
   const report = buildIngestionAuditReport({ inventory, expectedCoverage: coverageRegistry });
   await writeJson(options.outputPath, report);
