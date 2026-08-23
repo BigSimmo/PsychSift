@@ -173,6 +173,20 @@ export type SourcePolicyConflictSide = {
   supportingChunkIds: string[];
 };
 
+export type SourcePrimaryDecision =
+  | {
+      selected: "uploaded_local";
+      reason: "current_valid_accessible_directly_supportive";
+    }
+  | {
+      selected: "australian_public";
+      reason: "no_eligible_uploaded_local" | "uploaded_local_not_directly_supportive";
+    }
+  | {
+      selected: "none";
+      reason: "no_eligible_primary_evidence";
+    };
+
 export type SourcePolicyConflict = {
   version: "source-policy-conflict-v1";
   id: string;
@@ -188,10 +202,7 @@ export type SourcePolicyConflict = {
     | "monitoring_differs"
     | "legal_status_differs"
     | "other_reviewed_material_difference";
-  localPrimaryDecision: {
-    selected: "uploaded_local";
-    reason: "current_valid_accessible_directly_supportive";
-  };
+  localPrimaryDecision: Extract<SourcePrimaryDecision, { selected: "uploaded_local" }>;
   reviewTargetDocumentId: string;
 };
 

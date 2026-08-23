@@ -163,6 +163,10 @@ describe("resolveLocalAndAustralianEvidence", () => {
     });
 
     expect(resolved.primary.map((source) => source.document_id)).toEqual(["local"]);
+    expect(resolved.primaryDecision).toEqual({
+      selected: "uploaded_local",
+      reason: "current_valid_accessible_directly_supportive",
+    });
     expect(resolved.augmentation.map((source) => source.document_id)).toEqual(["national"]);
     expect(resolved.conflicts).toEqual([
       expect.objectContaining({
@@ -243,7 +247,34 @@ describe("resolveLocalAndAustralianEvidence", () => {
     });
 
     expect(resolved.primary.map((source) => source.document_id)).toEqual(["national"]);
+    expect(resolved.primaryDecision).toEqual({
+      selected: "australian_public",
+      reason: "no_eligible_uploaded_local",
+    });
     expect(resolved.augmentation).toEqual([]);
+  });
+
+  it("does not make unknown extraction quality eligible or local-primary", () => {
+    const unknown = result(
+      { id: "unknown-local-chunk", document_id: "unknown-local" },
+      { extraction_quality: "unknown" },
+    );
+
+    expect(
+      sourceEligibilityForClaim({ source: metadata({ extraction_quality: "unknown" }), claimRole: "treatment" }),
+    ).toEqual({ eligible: false, reason: "governance_block" });
+
+    const resolved = resolveLocalAndAustralianEvidence({
+      local: [unknown],
+      australian: [australianResult({ id: "national-chunk", document_id: "national" })],
+      claimRole: "treatment",
+      verifiedDifferences: [],
+    });
+    expect(resolved.primary.map((source) => source.document_id)).toEqual(["national"]);
+    expect(resolved.primaryDecision).toEqual({
+      selected: "australian_public",
+      reason: "no_eligible_uploaded_local",
+    });
   });
 
   it("does not promote an uploaded supporting review as the local guideline primary", () => {
@@ -297,5 +328,46 @@ describe("resolveLocalAndAustralianEvidence", () => {
       verifiedDifferences: [verifiedDifference],
     });
     expect(first.conflicts[0]?.id).toBe(second.conflicts[0]?.id);
+  });
+
+  it("sorts and deduplicates conflicts and review targets independently of verified-difference order", () => {
+    const localA = result({ id: "local-a-chunk", document_id: "local-a" });
+    const localB = result({ id: "local-b-chunk", document_id: "local-b" });
+    const national = australianResult({ id: "national-chunk", document_id: "national" });
+    const differenceA = {
+      claimRole: "treatment" as const,
+      topicKey: "a-topic",
+      overlapReason: "same_claim" as const,
+      materialDifferenceReason: "recommendation_differs" as const,
+      localChunkIds: ["local-a-chunk"],
+      australianChunkIds: ["national-chunk"],
+    };
+    const differenceB = {
+      claimRole: "treatment" as const,
+      topicKey: "b-topic",
+      overlapReason: "same_topic_and_population" as const,
+      materialDifferenceReason: "monitoring_differs" as const,
+      localChunkIds: ["local-b-chunk"],
+      australianChunkIds: ["national-chunk"],
+    };
+
+    const first = resolveLocalAndAustralianEvidence({
+      local: [localB, localA],
+      australian: [national],
+      claimRole: "treatment",
+      verifiedDifferences: [differenceB, differenceA, differenceA],
+    });
+    const reversed = resolveLocalAndAustralianEvidence({
+      local: [localA, localB],
+      australian: [national],
+      claimRole: "treatment",
+      verifiedDifferences: [differenceA, differenceB],
+    });
+
+    expect(first.conflicts.map((conflict) => conflict.id)).toEqual(reversed.conflicts.map((conflict) => conflict.id));
+    expect(new Set(first.conflicts.map((conflict) => conflict.id)).size).toBe(2);
+    expect(first.conflicts).toHaveLength(2);
+    expect(first.reviewDocumentIds).toEqual(["local-a", "local-b"]);
+    expect(reversed.reviewDocumentIds).toEqual(["local-a", "local-b"]);
   });
 });

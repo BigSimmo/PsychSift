@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { capPerDocumentCrowding, packedContextCacheKey, selectModelContextResults } from "../src/lib/rag/rag";
+import { australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
 import type { RagQueryClass, SearchResult } from "../src/lib/types";
 
 function source(index: number, overrides: Partial<SearchResult> = {}): SearchResult {
@@ -16,6 +17,21 @@ function source(index: number, overrides: Partial<SearchResult> = {}): SearchRes
     similarity: 0.9 - index * 0.01,
     hybrid_score: 0.9 - index * 0.01,
     images: [],
+    source_metadata: {
+      source_title: `Guideline ${index}`,
+      publisher: "Local health service",
+      publisher_code: "LOCAL",
+      jurisdiction: "local",
+      publication_date: "2025-01-01",
+      document_status: "current",
+      clinical_validation_status: "approved",
+      extraction_quality: "good",
+      corpus_scope: "uploaded_local",
+      source_role: "local_guideline",
+      content_mode: "indexed_content",
+      change_state: "unchanged",
+      licence_policy: "public_index_permitted",
+    },
     ...overrides,
   };
 }
@@ -46,6 +62,44 @@ function governedSource(
       document_status: "current",
       clinical_validation_status: args.validation ?? "approved",
       extraction_quality: "good",
+      corpus_scope: "uploaded_local",
+      source_role: "local_guideline",
+      content_mode: "indexed_content",
+      change_state: "unchanged",
+      licence_policy: "public_index_permitted",
+    },
+  });
+}
+
+function australianCatalogueSource(
+  index: number,
+  sourceMetadata: {
+    key: string;
+    publisherCode: string;
+    publisher: string;
+    jurisdiction: string;
+    sourceRole: "clinical_guideline" | "reference_link" | "regulatory" | "subsidy";
+    contentMode: "indexed_content" | "link_only";
+    licencePolicy: "public_index_permitted" | "metadata_link_only";
+  },
+) {
+  return source(index, {
+    source_metadata: {
+      source_title: `${sourceMetadata.publisher} source`,
+      publisher: sourceMetadata.publisher,
+      publisher_code: sourceMetadata.publisherCode,
+      jurisdiction: sourceMetadata.jurisdiction,
+      publication_date: "2025-01-01",
+      document_status: "current",
+      clinical_validation_status: "approved",
+      extraction_quality: "good",
+      corpus_scope: "australian_public",
+      source_role: sourceMetadata.sourceRole,
+      content_mode: sourceMetadata.contentMode,
+      source_catalogue_key: sourceMetadata.key,
+      source_policy_version: australianSourcePolicyVersion,
+      change_state: "unchanged",
+      licence_policy: sourceMetadata.licencePolicy,
     },
   });
 }
@@ -109,6 +163,79 @@ function select(args: {
 }
 
 describe("RAG model context budgeting", () => {
+  const allQueryClasses: readonly RagQueryClass[] = [
+    "document_lookup",
+    "table_threshold",
+    "medication_dose_risk",
+    "comparison",
+    "broad_summary",
+    "unsupported_or_general",
+  ];
+  const pbs = australianCatalogueSource(90, {
+    key: "pbs",
+    publisherCode: "PBS",
+    publisher: "Pharmaceutical Benefits Scheme",
+    jurisdiction: "Australia/National",
+    sourceRole: "subsidy",
+    contentMode: "indexed_content",
+    licencePolicy: "public_index_permitted",
+  });
+  const etg = australianCatalogueSource(91, {
+    key: "etg-complete",
+    publisherCode: "TG",
+    publisher: "Therapeutic Guidelines",
+    jurisdiction: "Australia/National",
+    sourceRole: "reference_link",
+    contentMode: "link_only",
+    licencePolicy: "metadata_link_only",
+  });
+  const amh = australianCatalogueSource(92, {
+    key: "australian-medicines-handbook",
+    publisherCode: "AMH",
+    publisher: "Australian Medicines Handbook",
+    jurisdiction: "Australia/National",
+    sourceRole: "reference_link",
+    contentMode: "link_only",
+    licencePolicy: "metadata_link_only",
+  });
+
+  it.each(allQueryClasses)("filters PBS and eTG/AMH out of production model context for %s", (queryClass) => {
+    const local = source(89);
+    const selected = selectModelContextResults({
+      routeMode: "strong",
+      queryClass,
+      crossDocument: queryClass === "comparison",
+      results: [pbs, etg, amh, local],
+    });
+
+    expect(selected.map((result) => result.id)).toEqual([local.id]);
+  });
+
+  it("uses dose-or-monitoring eligibility only for the two verified numeric query classes", () => {
+    const tga = australianCatalogueSource(93, {
+      key: "tga",
+      publisherCode: "TGA",
+      publisher: "Therapeutic Goods Administration",
+      jurisdiction: "Australia/National",
+      sourceRole: "regulatory",
+      contentMode: "indexed_content",
+      licencePolicy: "public_index_permitted",
+    });
+
+    for (const queryClass of ["table_threshold", "medication_dose_risk"] as const) {
+      expect(
+        selectModelContextResults({ routeMode: "strong", queryClass, crossDocument: false, results: [tga] }).map(
+          (result) => result.id,
+        ),
+      ).toEqual([tga.id]);
+    }
+    for (const queryClass of ["document_lookup", "comparison", "broad_summary", "unsupported_or_general"] as const) {
+      expect(
+        selectModelContextResults({ routeMode: "strong", queryClass, crossDocument: false, results: [tga] }),
+      ).toEqual([]);
+    }
+  });
+
   it("limits routine fast generation to the top four sources", () => {
     const selected = select({ routeMode: "fast", queryClass: "document_lookup" });
 

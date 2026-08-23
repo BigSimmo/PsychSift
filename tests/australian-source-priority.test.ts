@@ -96,12 +96,20 @@ describe("selectAustralianClinicalContext role eligibility", () => {
     ];
     const options = { limit: 6, omitSupplementaryPadding: false } as const;
 
-    const existingOrder = selectAustralianClinicalContext(candidates, options).map((source) => source.id);
     const governedOrder = selectAustralianClinicalContext(candidates, {
       ...options,
       claimRole: "treatment",
     }).map((source) => source.id);
 
-    expect(governedOrder).toEqual(existingOrder);
+    expect(governedOrder).toEqual(["local", "national"]);
+  });
+
+  it("fails closed when an untyped caller omits the verified claim role", () => {
+    const untypedSelect = selectAustralianClinicalContext as unknown as (
+      candidates: SearchResult[],
+      options: Record<string, unknown>,
+    ) => SearchResult[];
+
+    expect(() => untypedSelect([result("local", {})], {})).toThrowError("A verified claim role is required");
   });
 });

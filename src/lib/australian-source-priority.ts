@@ -82,18 +82,19 @@ function isSupplementaryPadding(args: {
 export function selectAustralianClinicalContext(
   results: SearchResult[],
   options: {
+    claimRole: ClinicalClaimRole;
     limit?: number;
     maxPerDocument?: number;
     sufficientAustralianChunks?: number;
     omitSupplementaryPadding?: boolean;
-    claimRole?: ClinicalClaimRole;
-  } = {},
+  },
 ) {
+  if (!options?.claimRole) throw new Error("A verified claim role is required before source ranking.");
   const limit = options.limit ?? 6;
   const maxPerDocument = options.maxPerDocument ?? 2;
   const sufficientAustralianChunks = options.sufficientAustralianChunks ?? 4;
   const omitSupplementaryPadding = options.omitSupplementaryPadding ?? true;
-  const eligibleResults = options.claimRole ? filterSourcesEligibleForClaim(results, options.claimRole) : results;
+  const eligibleResults = filterSourcesEligibleForClaim(results, options.claimRole);
   const ranked = eligibleResults
     .map((result, index) => ({ result, index, tier: australianSourceTier(result) }))
     .filter(({ result }) => result.relevance?.verdict !== "none")

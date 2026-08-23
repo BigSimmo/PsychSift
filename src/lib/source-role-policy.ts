@@ -12,6 +12,7 @@ import type {
   SourceEligibilityDecision,
   SourcePolicyConflict,
   SourcePolicyConflictSide,
+  SourcePrimaryDecision,
   VerifiedSourcePolicyDifference,
 } from "@/lib/types";
 
@@ -97,7 +98,7 @@ export function sourceEligibilityForClaim(args: {
     return { eligible: false, reason: "not_current" };
   }
 
-  if (source.extraction_quality === "poor") {
+  if (source.extraction_quality !== "good") {
     return { eligible: false, reason: "governance_block" };
   }
 
@@ -118,7 +119,7 @@ function directlySupportiveLocal(result: SearchResult) {
     source?.corpus_scope === "uploaded_local" &&
     source.source_role === "local_guideline" &&
     (source.clinical_validation_status === "approved" || source.clinical_validation_status === "locally_reviewed") &&
-    source.extraction_quality !== "poor" &&
+    source.extraction_quality === "good" &&
     result.relevance?.verdict === "direct"
   );
 }
@@ -241,7 +242,11 @@ function buildConflicts(args: {
     }
   }
 
-  return conflicts;
+  const conflictsById = new Map<string, SourcePolicyConflict>();
+  for (const conflict of conflicts) {
+    if (!conflictsById.has(conflict.id)) conflictsById.set(conflict.id, conflict);
+  }
+  return [...conflictsById.values()].sort((left, right) => left.id.localeCompare(right.id));
 }
 
 export function resolveLocalAndAustralianEvidence(args: {
@@ -254,6 +259,7 @@ export function resolveLocalAndAustralianEvidence(args: {
   augmentation: SearchResult[];
   conflicts: SourcePolicyConflict[];
   reviewDocumentIds: string[];
+  primaryDecision: SourcePrimaryDecision;
 } {
   const eligibleLocal = args.local.filter((result) => {
     const source = normalizeSourceMetadata(result.source_metadata);
@@ -266,6 +272,15 @@ export function resolveLocalAndAustralianEvidence(args: {
   const localPrimary = eligibleLocal.filter(directlySupportiveLocal);
   const primary = localPrimary.length > 0 ? localPrimary : eligibleAustralian;
   const augmentation = localPrimary.length > 0 ? eligibleAustralian : eligibleLocal;
+  const primaryDecision: SourcePrimaryDecision =
+    localPrimary.length > 0
+      ? { selected: "uploaded_local", reason: "current_valid_accessible_directly_supportive" }
+      : eligibleAustralian.length > 0
+        ? {
+            selected: "australian_public",
+            reason: eligibleLocal.length > 0 ? "uploaded_local_not_directly_supportive" : "no_eligible_uploaded_local",
+          }
+        : { selected: "none", reason: "no_eligible_primary_evidence" };
   const conflicts =
     localPrimary.length > 0
       ? buildConflicts({
@@ -275,7 +290,9 @@ export function resolveLocalAndAustralianEvidence(args: {
           verifiedDifferences: args.verifiedDifferences,
         })
       : [];
-  const reviewDocumentIds = [...new Set(conflicts.map((conflict) => conflict.reviewTargetDocumentId))];
+  const reviewDocumentIds = [...new Set(conflicts.map((conflict) => conflict.reviewTargetDocumentId))].sort(
+    (left, right) => left.localeCompare(right),
+  );
 
-  return { primary, augmentation, conflicts, reviewDocumentIds };
+  return { primary, augmentation, conflicts, reviewDocumentIds, primaryDecision };
 }

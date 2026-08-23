@@ -1,4 +1,4 @@
-import type { RagAnswer, RagQueryClass, SearchResult } from "@/lib/types";
+import type { ClinicalClaimRole, RagAnswer, RagQueryClass, SearchResult } from "@/lib/types";
 import { selectAustralianClinicalContext } from "@/lib/australian-source-priority";
 
 export { summarizeAustralianSourceSelection } from "@/lib/australian-source-priority";
@@ -6,6 +6,19 @@ export { summarizeAustralianSourceSelection } from "@/lib/australian-source-prio
 const fastRoutineModelContextLimit = 4;
 
 const maxContextChunksPerDocument = 3;
+
+// The current verified classifier distinguishes numeric/dose questions from broader clinical
+// questions, but does not yet prove legal, subsidy, quality, or service-workflow claim intent.
+// Fail those ambiguous classes closed to treatment eligibility rather than admitting a more
+// permissive role. A later intent-aware retrieval phase may replace this exhaustive mapping.
+const claimRoleByQueryClass = {
+  document_lookup: "treatment",
+  table_threshold: "dose_or_monitoring",
+  medication_dose_risk: "dose_or_monitoring",
+  comparison: "treatment",
+  broad_summary: "treatment",
+  unsupported_or_general: "treatment",
+} as const satisfies Record<RagQueryClass, ClinicalClaimRole>;
 
 // P9: keep one verbose document from dominating the sources the model sees. Cap each document to at
 // most `maxContextChunksPerDocument` chunks (order-preserving, no reranking/dedup), but only when the
@@ -33,7 +46,7 @@ export function selectModelContextResults(args: {
 }) {
   const highRiskNumericQuery = args.queryClass === "medication_dose_risk" || args.queryClass === "table_threshold";
   if (highRiskNumericQuery) {
-    return selectAustralianClinicalContext(args.results);
+    return selectAustralianClinicalContext(args.results, { claimRole: claimRoleByQueryClass[args.queryClass] });
   }
 
   const fastRoutineQuery =
@@ -59,6 +72,7 @@ export function selectModelContextResults(args: {
   // stronger or uniquely relevant international passage. Numeric/high-risk
   // queries keep the stricter bounded Australian-first policy above.
   const results = selectAustralianClinicalContext(preferenceCandidates, {
+    claimRole: claimRoleByQueryClass[args.queryClass],
     limit: preferenceCandidates.length,
     maxPerDocument: maxContextChunksPerDocument,
     omitSupplementaryPadding: false,
