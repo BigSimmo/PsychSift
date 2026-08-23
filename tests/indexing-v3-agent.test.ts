@@ -88,15 +88,21 @@ describe("indexing-v3-agent behavior", () => {
       "Health&#1;direct",
       "Health&#55296;direct",
       "Health&#x110000;direct",
+      "He&afr;lthdirect",
+      "Healthd&ifr;rect",
+      "Health&dd;irect",
+      "Health&DifferentialD;irect",
       "Australian Medicines Hand-book",
       "Australian Medicines Hand book",
       "Australian Medicines&Tab;Handbook",
       "Australian Medicines&#9Handbook",
       "Australian Medicines Hand&#98;ook",
+      "Australian Medicines H&afr;ndbook",
       "Therapeutic\u200bGuidelines",
       "Therapeutic&NewLine;Guidelines",
       "Therapeutic&#10Guidelines",
       "Therapeutic Guide&#108;ines",
+      "Therapeu&tscr;ic Guidelines",
     ]) {
       expect(forbiddenPublicSourceIdentity(value)).not.toBeNull();
     }
@@ -115,12 +121,18 @@ describe("indexing-v3-agent behavior", () => {
       "Health&#1;direct guidance",
       "Health&#55296;direct guidance",
       "Health&#x110000;direct guidance",
+      "He&afr;lthdirect guidance",
+      "Healthd&ifr;rect guidance",
+      "Health&dd;irect guidance",
+      "Health&DifferentialD;irect guidance",
       "Australian Medicines&Tab;Handbook excerpt",
       "Australian Medicines&#9Handbook excerpt",
       "Australian Medicines Hand&#98;ook excerpt",
+      "Australian Medicines H&afr;ndbook excerpt",
       "Therapeutic&NewLine;Guidelines advice",
       "Therapeutic&#10Guidelines advice",
       "Therapeutic Guide&#108;ines advice",
+      "Therapeu&tscr;ic Guidelines advice",
     ]) {
       expect(protectedPublicSourceChunkContents([{ content }])).toBe(true);
     }
@@ -142,6 +154,36 @@ describe("indexing-v3-agent behavior", () => {
     expect(scan).toContain("scanProtectedPublicSourceChunkPages(");
     expect(scan).toContain("limit ${limit}");
     expect(scan).not.toContain("chunk.content ~*");
+  });
+
+  it("pins the shared WHATWG decoder as an Edge-compatible direct dependency", () => {
+    const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+      dependencies?: Record<string, string>;
+    };
+    const lock = JSON.parse(readFileSync(new URL("../package-lock.json", import.meta.url), "utf8")) as {
+      packages?: Record<
+        string,
+        { dependencies?: Record<string, string>; version?: string; dev?: boolean; license?: string }
+      >;
+    };
+    const denoLock = JSON.parse(readFileSync(new URL("../deno.lock", import.meta.url), "utf8")) as {
+      workspace?: { packageJson?: { dependencies?: string[] } };
+    };
+    expect(manifest.dependencies?.entities).toBe("^8.0.0");
+    expect(lock.packages?.[""]?.dependencies?.entities).toBe("^8.0.0");
+    expect(lock.packages?.["node_modules/entities"]).toMatchObject({
+      version: "8.0.0",
+      license: "BSD-2-Clause",
+    });
+    expect(lock.packages?.["node_modules/entities"]?.dev).not.toBe(true);
+    expect(denoLock.workspace?.packageJson?.dependencies).toContain("npm:entities@8");
+
+    const policySource = readFileSync(
+      new URL("../supabase/functions/_shared/public-source-policy.ts", import.meta.url),
+      "utf8",
+    );
+    expect(policySource).toContain('import { decodeHTML } from "entities";');
+    expect(policySource).not.toContain("jsdom");
   });
 
   it("retains the concatenated 256-character stream across the real 500-row worker page boundary", async () => {

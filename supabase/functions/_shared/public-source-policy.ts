@@ -1,3 +1,5 @@
+import { decodeHTML } from "entities";
+
 export type ForbiddenPublicSourceIdentity = "healthdirect" | "etg_complete" | "australian_medicines_handbook";
 
 export type PublicSourceWorkerPolicyViolation = "protected_source_identity" | "public_source_policy_invalid";
@@ -5,82 +7,6 @@ export type PublicSourceWorkerPolicyViolation = "protected_source_identity" | "p
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
 const acceptedSourcePolicyDigest = "sha256:02dcc095258338d0c355af79dfa1889c024f25f385b553e5b6c802207546855d";
 const protectedCatalogueKeys = new Set(["healthdirect", "etg-complete", "australian-medicines-handbook"]);
-
-// HTML's legacy named references are the names browsers may decode without a
-// trailing semicolon in text. Match a valid prefix and preserve following text
-// so `&nbspdirect` becomes a boundary plus `direct`, never the spelling `nbsp`.
-const legacySemicolonlessHtmlReferences = [
-  "aelig",
-  "amp",
-  "aacute",
-  "acirc",
-  "acute",
-  "agrave",
-  "aring",
-  "atilde",
-  "auml",
-  "brvbar",
-  "ccedil",
-  "cedil",
-  "cent",
-  "copy",
-  "curren",
-  "deg",
-  "divide",
-  "eacute",
-  "ecirc",
-  "egrave",
-  "eth",
-  "euml",
-  "frac12",
-  "frac14",
-  "frac34",
-  "gt",
-  "iacute",
-  "icirc",
-  "iexcl",
-  "igrave",
-  "iquest",
-  "iuml",
-  "laquo",
-  "lt",
-  "macr",
-  "micro",
-  "middot",
-  "nbsp",
-  "not",
-  "ntilde",
-  "oacute",
-  "ocirc",
-  "ograve",
-  "ordf",
-  "ordm",
-  "oslash",
-  "otilde",
-  "ouml",
-  "para",
-  "plusmn",
-  "pound",
-  "quot",
-  "raquo",
-  "reg",
-  "sect",
-  "shy",
-  "sup1",
-  "sup2",
-  "sup3",
-  "szlig",
-  "thorn",
-  "times",
-  "uacute",
-  "ucirc",
-  "ugrave",
-  "uml",
-  "uuml",
-  "yacute",
-  "yen",
-  "yuml",
-].sort((left, right) => right.length - left.length);
 
 function decodeNumericHtmlCharacterReference(value: string, hexadecimal: boolean): string {
   const codePoint = Number.parseInt(value, hexadecimal ? 16 : 10);
@@ -122,28 +48,12 @@ export function replaceHtmlCharacterReferencesWithBoundaries(input: string): str
         index = cursor;
         continue;
       }
-    } else {
-      let cursor = index + 1;
-      while (cursor < input.length && /[a-z0-9]/i.test(input[cursor] ?? "")) cursor += 1;
-      const candidate = input.slice(index + 1, cursor);
-      if (candidate && input[cursor] === ";") {
-        output += " ";
-        index = cursor + 1;
-        continue;
-      }
-      const candidateLower = candidate.toLowerCase();
-      const legacyName = legacySemicolonlessHtmlReferences.find((name) => candidateLower.startsWith(name));
-      if (legacyName) {
-        output += " ";
-        index += legacyName.length + 1;
-        continue;
-      }
     }
 
     output += "&";
     index += 1;
   }
-  return output;
+  return decodeHTML(output);
 }
 
 function normalizedProtectedIdentity(value: string) {
