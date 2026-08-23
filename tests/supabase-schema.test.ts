@@ -132,6 +132,10 @@ const publicationReviewedStateMigration = readFileSync(
   new URL("../supabase/migrations/20260722190000_bind_publication_approval_to_reviewed_state.sql", import.meta.url),
   "utf8",
 ).replace(/\s+/g, " ");
+const australianSourceActivationMigration = readFileSync(
+  new URL("../supabase/migrations/20260822123000_govern_australian_source_activation.sql", import.meta.url),
+  "utf8",
+).replace(/\s+/g, " ");
 const deleteDocumentIfIdleMigration = readFileSync(
   new URL("../supabase/migrations/20260717132000_delete_document_if_idle.sql", import.meta.url),
   "utf8",
@@ -1416,6 +1420,74 @@ describe("Supabase Preview replay guards", () => {
         guardBody.indexOf("v_current_state_digest := public.document_publication_state_digest("),
       );
     }
+  });
+
+  it("binds Australian activation to versioned source policy and committed generation", () => {
+    const sql = australianSourceActivationMigration;
+    for (const column of [
+      "source_catalogue_key text",
+      "source_policy_version text",
+      "reviewed_index_generation_id uuid",
+    ]) {
+      expect(sql).toContain(`add column if not exists ${column}`);
+    }
+    expect(sql).toContain("create or replace function public.activate_approved_public_documents(");
+    expect(sql).toContain("p_manifest jsonb");
+    expect(sql).toContain("p_expected_state_digest text");
+    expect(sql).toContain("p_expected_generation_ids uuid[]");
+    expect(sql).toContain("coalesce(p_manifest->>'version', '') <> '2'");
+    expect(sql).toContain("coalesce(p_manifest->>'sourcePolicyVersion', '') <> 'australian-source-policy-v1'");
+    expect(sql).toContain("metadata->>'corpus_scope' = 'australian_public'");
+    expect(sql).toContain("v_document.metadata->>'content_mode' is distinct from 'indexed_content'");
+    expect(sql).toContain("v_document.metadata->>'licence_policy' is distinct from 'public_index_permitted'");
+    expect(sql).toContain("v_document.metadata->>'document_status' is distinct from 'current'");
+    expect(sql).toContain("v_document.metadata->>'change_state' = 'withdrawn'");
+    expect(sql).toContain("v_document.index_generation_id is distinct from v_expected_index_generation_id");
+    expect(sql).toContain("approval.reviewed_index_generation_id = v_expected_index_generation_id");
+    expect(sql).toContain("approval.source_catalogue_key = v_source_catalogue_key");
+    expect(sql).toContain("approval.source_policy_version = v_source_policy_version");
+    expect(sql).toContain("v_current_state_digest := public.document_publication_state_digest(");
+
+    const activationStart = sql.indexOf("create or replace function public.activate_approved_public_documents(");
+    const activationBody = sql.slice(activationStart, sql.indexOf("$$;", activationStart));
+    expect(activationBody).toContain("Australian activation manifest contains duplicate generation ids");
+    expect(activationBody).toContain(
+      "array_agg((entry->>'expectedIndexGenerationId')::uuid order by (entry->>'documentId')::uuid)",
+    );
+    expect(activationBody).toContain("((entry->>'documentId')::uuid)::text || ':' || (entry->>'expectedStateDigest')");
+    expect(activationBody).toContain("E'\\n' order by (entry->>'documentId')::uuid");
+    expect(activationBody).toContain("'publication_manifest_digest', v_manifest_digest");
+    const rowLock = activationBody.indexOf("where id = v_document_id for update;");
+    const generationCheck = activationBody.indexOf(
+      "v_document.index_generation_id is distinct from v_expected_index_generation_id",
+    );
+    const digestCheck = activationBody.indexOf("v_current_state_digest := public.document_publication_state_digest(");
+    const ownerRelease = activationBody.indexOf("update public.documents set owner_id = null");
+    expect(rowLock).toBeGreaterThanOrEqual(0);
+    expect(rowLock).toBeLessThan(generationCheck);
+    expect(generationCheck).toBeLessThan(digestCheck);
+    expect(digestCheck).toBeLessThan(ownerRelease);
+  });
+
+  it("keeps Australian approval history append-only and activation service-role-only", () => {
+    const sql = australianSourceActivationMigration;
+    expect(sql).toContain("alter table public.document_publication_approvals enable row level security;");
+    expect(sql).toContain(
+      "revoke all on table public.document_publication_approvals from public, anon, authenticated;",
+    );
+    expect(sql).toContain("grant select, insert on table public.document_publication_approvals to service_role;");
+    expect(sql).toContain("document_publication_approvals_immutable");
+    expect(sql).toContain("before update or delete on public.document_publication_approvals");
+    expect(sql).toContain(
+      "revoke all on function public.activate_approved_public_documents(jsonb, text, uuid[]) from public, anon, authenticated;",
+    );
+    expect(sql).toContain(
+      "grant execute on function public.activate_approved_public_documents(jsonb, text, uuid[]) to service_role;",
+    );
+    expect(sql).toContain("historical version-1 approval cannot activate an Australian public document");
+    expect(sql).toContain("source_catalogue_key is null");
+    expect(sql).toContain("source_policy_version is null");
+    expect(sql).toContain("reviewed_index_generation_id is null");
   });
 
   it("serializes permanent deletion against ingestion job creation", () => {

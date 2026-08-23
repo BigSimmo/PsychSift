@@ -900,7 +900,10 @@ export type Database = {
           id: string;
           manifest_digest: string;
           reason: string;
+          reviewed_index_generation_id: string | null;
           reviewed_state_digest: string | null;
+          source_catalogue_key: string | null;
+          source_policy_version: string | null;
         };
         Insert: {
           approved_at?: string;
@@ -912,7 +915,10 @@ export type Database = {
           id?: string;
           manifest_digest: string;
           reason: string;
+          reviewed_index_generation_id?: string | null;
           reviewed_state_digest?: string | null;
+          source_catalogue_key?: string | null;
+          source_policy_version?: string | null;
         };
         Update: {
           approved_at?: string;
@@ -924,7 +930,10 @@ export type Database = {
           id?: string;
           manifest_digest?: string;
           reason?: string;
+          reviewed_index_generation_id?: string | null;
           reviewed_state_digest?: string | null;
+          source_catalogue_key?: string | null;
+          source_policy_version?: string | null;
         };
         Relationships: [];
       };
@@ -2882,6 +2891,14 @@ export type Database = {
       document_publication_state_digest: {
         Args: { p_document_id: string; p_expected_owner_id: string };
         Returns: string;
+      };
+      activate_approved_public_documents: {
+        Args: {
+          p_expected_generation_ids: string[];
+          p_expected_state_digest: string;
+          p_manifest: Json;
+        };
+        Returns: Json;
       };
       publish_approved_documents: {
         Args: {
