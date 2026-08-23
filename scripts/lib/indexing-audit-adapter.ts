@@ -92,6 +92,9 @@ export function adaptIndexingHealthDocumentToAuditInput(
   }
 
   const evidence = parseIngestionAuditInput(args.auditEvidence);
+  if (evidence.documentId !== args.documentId) {
+    throw new Error("Indexing-health audit evidence document identity mismatch.");
+  }
   const input = parseIngestionAuditInput({
     ...evidence,
     documentId: args.documentId,

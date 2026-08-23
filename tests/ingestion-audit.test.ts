@@ -794,7 +794,7 @@ describe("ingestion integrity audit", () => {
       indexingHealthDocument,
       expectedPageCount: 12,
       actualChunkCount: 18,
-      auditEvidence: fixture(),
+      auditEvidence: fixture({ documentId: "adapted-guideline" }),
     });
     expect(ordinary).toMatchObject({
       kind: "document",
@@ -811,6 +811,15 @@ describe("ingestion integrity audit", () => {
         },
       },
     });
+    expect(() =>
+      adaptIndexingHealthDocumentToAuditInput({
+        documentId: "foreign-guideline",
+        indexingHealthDocument,
+        expectedPageCount: 12,
+        actualChunkCount: 18,
+        auditEvidence: fixture({ documentId: "evidence-owner-guideline" }),
+      }),
+    ).toThrow(/document identity|evidence.*document/i);
     expect(() =>
       adaptIndexingHealthDocumentToAuditInput({
         documentId: "missing-evidence",
@@ -863,7 +872,7 @@ describe("ingestion integrity audit", () => {
             indexingHealthDocument,
             expectedPageCount: 12,
             actualChunkCount: 18,
-            auditEvidence: fixture(),
+            auditEvidence: fixture({ documentId: "adapted-guideline" }),
           },
         ],
         retrievedDocumentIdsByCase: { "must-pass-current": ["adapted-guideline"] },
