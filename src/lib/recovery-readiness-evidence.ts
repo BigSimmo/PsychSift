@@ -14,7 +14,11 @@ const opaqueReferenceIdSchema = z
   .string()
   .min(1)
   .max(120)
-  .regex(/^[a-z0-9][a-z0-9._:-]*$/);
+  .regex(/^[a-z0-9][a-z0-9._-]*$/)
+  .refine(
+    (id) => !/(?:^|[._-])(?:api[._-]?key|bearer|credential|password|secret|signature|signed|token)(?:$|[._-])/.test(id),
+    { message: "Reference ID cannot contain a credential or secret label." },
+  );
 
 function evidenceReferenceSchema<Kind extends string>(kind: Kind) {
   return z
@@ -439,28 +443,8 @@ export function assertRollbackReceiptBinding(
   assertFiniteClock(at);
   const { activation, rollback: receipt } = assertReceiptAppendOnlyPair(activationInput, receiptInput);
   const evidence = parseRecoveryReadinessEvidence(evidenceInput);
-  assertEvidenceClockOrder(evidence);
   assertEvidenceNotFuture(evidence, at);
-  if (
-    receipt.projectRef !== expectedProjectRef ||
-    activation.projectRef !== expectedProjectRef ||
-    evidence.projectRef !== expectedProjectRef
-  ) {
-    throw new Error("Rollback project identity mismatch.");
-  }
-  if (activation.operation !== evidence.operation) {
-    throw new Error("Rollback operation mismatch.");
-  }
-  if (receipt.recoveryEvidenceDigest !== evidence.digest || activation.recoveryEvidenceId !== evidence.evidenceId) {
-    throw new Error("Rollback digest binding mismatch.");
-  }
-  assertRecoveryBasisBinding(evidence, expectedProjectRef);
-  if (Date.parse(evidence.verifiedAt) > Date.parse(activation.recordedAt) + MAX_FUTURE_CLOCK_SKEW_MS) {
-    throw new Error("Promotion-bound recovery evidence is future-dated relative to activation.");
-  }
-  if (Date.parse(activation.recordedAt) > Date.parse(evidence.validUntil)) {
-    throw new Error("Activation occurred outside the promotion-bound recovery evidence validity window.");
-  }
+  assertActivationReceiptBinding(activation, evidence, expectedProjectRef, new Date(activation.recordedAt));
   assertNotFuture(at, activation.recordedAt, "Activation receipt time");
   assertNotFuture(at, receipt.recordedAt, "Rollback receipt time");
   return receipt;

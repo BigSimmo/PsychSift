@@ -271,6 +271,10 @@ describe("recovery readiness evidence", () => {
     ["provider output\nsecond line"],
     ["//backup.example/private"],
     ["s3://private-bucket/object"],
+    ["https:backup"],
+    ["mailto:user"],
+    ["token:secret-value"],
+    ["credential-private-value"],
     ["azure-backup?sig=signed-value"],
     ["opaque id with whitespace"],
   ])("rejects non-opaque evidence reference payload %s", (id) => {
@@ -323,6 +327,42 @@ describe("append-only activation and rollback receipts", () => {
       assertRollbackReceiptBinding(rollback, activation, evidence, projectRef, new Date("2026-12-01T00:00:00Z")),
     ).toStrictEqual(rollback);
     vi.useRealTimers();
+  });
+
+  it.each([
+    ["disabled PITR", { pitr: { ...recoveryInput().pitr, enabled: false } }, {}, /pitr|enabled/i],
+    [
+      "failed restore drill",
+      { restoreDrill: { ...recoveryInput().restoreDrill, outcome: "failed" } },
+      {},
+      /restore|drill|passed/i,
+    ],
+    [
+      "in-place restore drill",
+      { restoreDrill: { ...recoveryInput().restoreDrill, target: "in-place" } },
+      {},
+      /restore|isolated/i,
+    ],
+    [
+      "evidence stale at activation",
+      {
+        verifiedAt: "2026-08-22T06:00:00.000Z",
+        databaseBackup: { ...recoveryInput().databaseBackup, verifiedAt: "2026-08-22T05:30:00.000Z" },
+        pitr: { ...recoveryInput().pitr, verifiedAt: "2026-08-22T05:30:00.000Z" },
+        storageRecovery: { ...recoveryInput().storageRecovery, verifiedAt: "2026-08-21T12:00:00.000Z" },
+      },
+      {},
+      /fresh|24 hours/i,
+    ],
+    ["evidence recorded after activation", {}, { recordedAt: "2026-08-24T05:58:00.000Z" }, /activation|future|before/i],
+  ])("rejects rollback when promotion used %s", (_name, evidenceOverrides, activationOverrides, message) => {
+    const evidence = parseRecoveryReadinessEvidence(recoveryInput(evidenceOverrides));
+    const activation = parseActivationReceipt(activationInput(evidence, activationOverrides));
+    const rollback = parseRollbackReceipt(rollbackInput(activation));
+
+    expect(() =>
+      assertRollbackReceiptBinding(rollback, activation, evidence, projectRef, new Date("2026-08-26T08:00:00.000Z")),
+    ).toThrow(message);
   });
 
   it("rejects digest, project, operation, sequence, and retained-resource mismatches", () => {
@@ -409,6 +449,11 @@ describe("append-only activation and rollback receipts", () => {
 });
 
 describe("offline recovery evidence verifier", () => {
+  it("is named in the scripts index as a provider-free offline verifier", () => {
+    const index = readFileSync(new URL("../docs/scripts-index.md", import.meta.url), "utf8");
+    expect(index).toMatch(/verify-recovery-readiness-evidence\.ts[^\n]*(?:provider-free|offline)/i);
+  });
+
   it("is import-safe and emits only bounded identity and digest JSON", async () => {
     const source = readFileSync(new URL("../scripts/verify-recovery-readiness-evidence.ts", import.meta.url), "utf8");
     expect(source).toContain("import.meta.url === pathToFileURL(resolve(process.argv[1])).href");

@@ -54,6 +54,9 @@ migration has shipped (see `docs/maturity-backlog-workorders.md` L1).
 `verify-release-offline.mjs`, `check-codex-cloud-setup.mjs`. `check-gate-manifest.mjs` cross-checks that every gate in the
 `verify:cheap:internal` chain also runs in CI's `static-pr` job, so the two lists can't drift.
 
+`verify-recovery-readiness-evidence.ts` performs provider-free, offline validation of operator-supplied
+recovery-readiness JSON and emits only bounded identity and canonical-digest evidence.
+
 Also in the gate set: `check-assets.mjs`, `check-branch-review-ledger.mjs`,
 `check-hosted-migration-role.mjs` (`check:migration-role` — pins the immutable applied migration and
 the `postgres` role), `check-edge-functions.mjs`, `check-env-parity.mjs`, `check-ci-env.mjs`,
