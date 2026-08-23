@@ -75,6 +75,10 @@ function response(body: Uint8Array | string, init: ResponseInit = {}) {
   });
 }
 
+function connectedResponse(value: Response, remoteAddress = publicAddress[0]!.address) {
+  return { response: value, remoteAddress };
+}
+
 describe("public source acquisition", () => {
   it("rejects excluded and link-only sources before network access", async () => {
     const fetch = vi.fn();
@@ -98,6 +102,33 @@ describe("public source acquisition", () => {
     await expect(
       validateAcquisitionUrl(exactUrl, activeDefinition(), async () => [{ address: "::ffff:127.0.0.1", family: 6 }]),
     ).rejects.toThrow(/private/i);
+    for (const address of [
+      { address: "240.0.0.1", family: 4 as const },
+      { address: "192.0.2.1", family: 4 as const },
+      { address: "2001:db8::1", family: 6 as const },
+    ]) {
+      await expect(validateAcquisitionUrl(exactUrl, activeDefinition(), async () => [address])).rejects.toThrow(
+        /private|non-global/i,
+      );
+    }
+  });
+
+  it("rejects a response whose transport connected outside the validated address set", async () => {
+    const stageOwnedDocument = vi.fn(async () => ({
+      documentId: "33333333-3333-4333-8333-333333333333",
+      ownerId,
+    }));
+    await expect(
+      acquirePublicSourceVersion(await validPlan(), {
+        fetch: async () => connectedResponse(response(syntheticPdf()), "10.0.0.8"),
+        resolve: async () => publicAddress,
+        scan: async () => ({ accepted: true as const }),
+        findDuplicateVersion: async () => null,
+        stageOwnedDocument,
+        enqueue: vi.fn(),
+      }),
+    ).rejects.toThrow(/validated.*address|transport/i);
+    expect(stageOwnedDocument).not.toHaveBeenCalled();
   });
 
   it("creates only an immutable, exact-policy, owned-staging dry-run plan", async () => {
@@ -132,7 +163,7 @@ describe("public source acquisition", () => {
     }));
     const enqueue = vi.fn(async () => undefined);
     const scan = vi.fn(async () => ({ accepted: true as const }));
-    const fetch = vi.fn(async () => response(bytes));
+    const fetch = vi.fn(async () => connectedResponse(response(bytes)));
     const resolve = vi.fn(async () => publicAddress);
 
     const result = await acquirePublicSourceVersion(await validPlan(), {
@@ -188,45 +219,42 @@ describe("public source acquisition", () => {
     await expect(
       acquirePublicSourceVersion(plan, {
         ...base,
-        fetch: async () => response("not a document", { headers: { "content-type": "image/png" } }),
+        fetch: async () => connectedResponse(response("not a document", { headers: { "content-type": "image/png" } })),
       }),
     ).rejects.toThrow(/content type/i);
     await expect(
       acquirePublicSourceVersion(plan, {
         ...base,
-        fetch: async () => response("small", { headers: { "content-length": "65" } }),
+        fetch: async () => connectedResponse(response("small", { headers: { "content-length": "65" } })),
       }),
     ).rejects.toThrow(/size/i);
     await expect(
       acquirePublicSourceVersion(plan, {
         ...base,
-        fetch: async () => response("x".repeat(65)),
+        fetch: async () => connectedResponse(response("x".repeat(65))),
       }),
     ).rejects.toThrow(/size/i);
     await expect(
       acquirePublicSourceVersion(plan, {
         ...base,
-        fetch: async () => new Response(null, { status: 302, headers: { location: exactUrl } }),
+        fetch: async () => connectedResponse(new Response(null, { status: 302, headers: { location: exactUrl } })),
       }),
     ).rejects.toThrow(/redirect/i);
 
-    const resolve = vi
-      .fn()
-      .mockResolvedValueOnce(publicAddress)
-      .mockResolvedValueOnce([{ address: "1.1.1.1", family: 4 }]);
+    const resolve = vi.fn().mockResolvedValue(publicAddress);
     await expect(
       acquirePublicSourceVersion(await validPlan(), {
         ...base,
         resolve,
-        fetch: async () => response(syntheticPdf()),
+        fetch: async () => connectedResponse(response(syntheticPdf()), "1.1.1.1"),
       }),
-    ).rejects.toThrow(/dns|rebind/i);
+    ).rejects.toThrow(/validated.*address|transport/i);
     expect(base.stageOwnedDocument).not.toHaveBeenCalled();
     expect(base.enqueue).not.toHaveBeenCalled();
   });
 
   it("rejects duplicate versions and a changed policy digest before storage or enqueue", async () => {
-    const fetch = vi.fn(async () => response(syntheticPdf()));
+    const fetch = vi.fn(async () => connectedResponse(response(syntheticPdf())));
     const stageOwnedDocument = vi.fn();
     const enqueue = vi.fn();
     const deps = {
@@ -252,7 +280,7 @@ describe("public source acquisition", () => {
     const enqueue = vi.fn();
     await expect(
       acquirePublicSourceVersion(await validPlan(), {
-        fetch: async () => response(syntheticPdf()),
+        fetch: async () => connectedResponse(response(syntheticPdf())),
         resolve: async () => publicAddress,
         scan: async () => ({ accepted: true as const }),
         findDuplicateVersion: async () => null,
@@ -272,7 +300,7 @@ describe("public source acquisition", () => {
     let caught: unknown;
     try {
       await acquirePublicSourceVersion(await validPlan(), {
-        fetch: async () => response(secretBody, { status: 500, statusText: "Upstream failure" }),
+        fetch: async () => connectedResponse(response(secretBody, { status: 500, statusText: "Upstream failure" })),
         resolve: async () => publicAddress,
         scan: async () => ({ accepted: true as const }),
         findDuplicateVersion: async () => null,
@@ -306,6 +334,79 @@ describe("public source acquisition", () => {
         ),
       ),
     ).toMatchObject({ eligibleForIndex: false, disposition: "quarantine", mainText: "" });
+
+    for (const protectedText of [
+      "eTG protected excerpt retained in main content.",
+      "Therapeutic Guidelines protected excerpt retained in main content.",
+      "AMH protected excerpt retained in main content.",
+      "Australian Medicines Handbook protected excerpt retained in main content.",
+    ]) {
+      expect(
+        evaluateTrustedPageContent(
+          fixture.replace("This synthetic main-content fixture contains no clinical recommendation.", protectedText),
+        ),
+      ).toMatchObject({ eligibleForIndex: false, disposition: "quarantine", mainText: "" });
+    }
+  });
+
+  it("rejects retained protected-source text and synthetic PDF text before staging or enqueue", async () => {
+    const stageOwnedDocument = vi.fn(async () => ({
+      documentId: "33333333-3333-4333-8333-333333333333",
+      ownerId,
+    }));
+    const enqueue = vi.fn();
+    for (const [contentType, bytes] of [
+      ["text/plain", new TextEncoder().encode("Australian Medicines Handbook protected excerpt")],
+      [
+        "application/pdf",
+        new TextEncoder().encode(
+          "%PDF-1.7\n1 0 obj\n<<>>\nstream\nTherapeutic Guidelines protected excerpt\nendstream\nendobj\ntrailer\n<<>>\nstartxref\n9\n%%EOF\n",
+        ),
+      ],
+    ] as const) {
+      await expect(
+        acquirePublicSourceVersion(await validPlan({ allowedContentTypes: [contentType] }), {
+          fetch: async () => connectedResponse(response(bytes, { headers: { "content-type": contentType } })),
+          resolve: async () => publicAddress,
+          scan: async () => ({ accepted: true as const }),
+          findDuplicateVersion: async () => null,
+          stageOwnedDocument,
+          enqueue,
+        }),
+      ).rejects.toThrow(/protected|link-only|quarantine/i);
+    }
+    expect(stageOwnedDocument).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it("hashes the exact canonical staged bytes and preserves separate upstream HTML provenance", async () => {
+    const fixture = readFileSync(
+      new URL("./fixtures/public-sources/trusted-page-with-healthdirect-chrome.html", import.meta.url),
+      "utf8",
+    );
+    const upstreamBytes = new TextEncoder().encode(fixture);
+    const upstreamHash = `sha256:${createHash("sha256").update(upstreamBytes).digest("hex")}`;
+    const stageOwnedDocument = vi.fn(async (candidate: PublicSourceStagingCandidate) => ({
+      documentId: "33333333-3333-4333-8333-333333333333",
+      ownerId: candidate.ownerId,
+    }));
+    await acquirePublicSourceVersion(await validPlan({ allowedContentTypes: ["text/html"] }), {
+      fetch: async () => connectedResponse(response(upstreamBytes, { headers: { "content-type": "text/html" } })),
+      resolve: async () => publicAddress,
+      scan: async () => ({ accepted: true as const }),
+      findDuplicateVersion: async () => null,
+      stageOwnedDocument,
+      enqueue: async () => undefined,
+    });
+
+    const candidate = stageOwnedDocument.mock.calls[0]![0];
+    const stagedHash = `sha256:${createHash("sha256").update(candidate.bytes).digest("hex")}`;
+    expect(candidate.contentHash).toBe(stagedHash);
+    expect(candidate.metadata).toMatchObject({
+      content_hash: stagedHash,
+      source_content_hash: upstreamHash,
+    });
+    expect(candidate).toMatchObject({ sourceBytes: upstreamBytes, sourceContentHash: upstreamHash });
   });
 
   it("stages only retained trusted-page text and quarantines a retained excluded-source marker", async () => {
@@ -322,7 +423,7 @@ describe("public source acquisition", () => {
     }));
     const plan = await validPlan({ allowedContentTypes: ["text/html"] });
     await acquirePublicSourceVersion(plan, {
-      fetch: async () => response(fixture, { headers: { "content-type": "text/html" } }),
+      fetch: async () => connectedResponse(response(fixture, { headers: { "content-type": "text/html" } })),
       resolve: async () => publicAddress,
       scan,
       findDuplicateVersion: async () => null,
@@ -341,7 +442,7 @@ describe("public source acquisition", () => {
     );
     await expect(
       acquirePublicSourceVersion(plan, {
-        fetch: async () => response(quarantined, { headers: { "content-type": "text/html" } }),
+        fetch: async () => connectedResponse(response(quarantined, { headers: { "content-type": "text/html" } })),
         resolve: async () => publicAddress,
         scan,
         findDuplicateVersion: async () => null,
@@ -387,7 +488,13 @@ describe("public source acquisition", () => {
     await expect(
       checkPublicSourceChange({
         plan,
-        currentVersion: { versionId: "version-current", contentHash: `sha256:${"b".repeat(64)}` },
+        currentVersion: {
+          catalogueKey: plan.catalogueKey,
+          versionId: "version-current",
+          exactUrl: plan.exactUrl,
+          exactVersion: plan.exactVersion,
+          contentHash: `sha256:${"b".repeat(64)}`,
+        },
         observed: { kind: "content", contentHash: `sha256:${"b".repeat(64)}` },
         recordCheck,
         stageChangedVersion,
@@ -400,7 +507,13 @@ describe("public source acquisition", () => {
     await expect(
       checkPublicSourceChange({
         plan,
-        currentVersion: { versionId: "version-current", contentHash: `sha256:${"b".repeat(64)}` },
+        currentVersion: {
+          catalogueKey: plan.catalogueKey,
+          versionId: "version-current",
+          exactUrl: plan.exactUrl,
+          exactVersion: plan.exactVersion,
+          contentHash: `sha256:${"b".repeat(64)}`,
+        },
         observed: { kind: "content", contentHash: `sha256:${"c".repeat(64)}` },
         recordCheck,
         stageChangedVersion,
@@ -415,7 +528,13 @@ describe("public source acquisition", () => {
     await expect(
       checkPublicSourceChange({
         plan,
-        currentVersion: { versionId: "version-current", contentHash: `sha256:${"b".repeat(64)}` },
+        currentVersion: {
+          catalogueKey: plan.catalogueKey,
+          versionId: "version-current",
+          exactUrl: plan.exactUrl,
+          exactVersion: plan.exactVersion,
+          contentHash: `sha256:${"b".repeat(64)}`,
+        },
         observed: { kind: "withdrawn", reason: "Publisher returned a bounded withdrawal signal." },
         recordCheck,
         stageChangedVersion,
@@ -424,6 +543,54 @@ describe("public source acquisition", () => {
       }),
     ).resolves.toEqual({ outcome: "tombstoned" });
     expect(tombstoneCurrentVersion).toHaveBeenCalledBefore(queueHumanReview);
+  });
+
+  it("rejects a cross-catalogue current-version identity before a withdrawal tombstone", async () => {
+    const tombstoneCurrentVersion = vi.fn();
+    const plan = await validPlan();
+    await expect(
+      checkPublicSourceChange({
+        plan,
+        currentVersion: {
+          catalogueKey: "tga",
+          versionId: "55555555-5555-4555-8555-555555555555",
+          exactUrl: plan.exactUrl,
+          exactVersion: plan.exactVersion,
+          contentHash: `sha256:${"b".repeat(64)}`,
+        },
+        observed: { kind: "withdrawn", reason: "Publisher returned bounded withdrawal status 410." },
+        recordCheck: vi.fn(),
+        stageChangedVersion: vi.fn(),
+        tombstoneCurrentVersion,
+        queueHumanReview: vi.fn(),
+      }),
+    ).rejects.toThrow(/catalogue|identity/i);
+    expect(tombstoneCurrentVersion).not.toHaveBeenCalled();
+  });
+
+  it("maps arbitrary scanner and live-adapter diagnostics to fixed public-source error codes", async () => {
+    const sentinel = "SENTINEL-PROTECTED-CONTENT-AND-SECRET";
+    let caught: unknown;
+    try {
+      await acquirePublicSourceVersion(await validPlan(), {
+        fetch: async () => connectedResponse(response(syntheticPdf())),
+        resolve: async () => publicAddress,
+        scan: async () => ({ accepted: false as const, reasonCode: sentinel as never }),
+        findDuplicateVersion: async () => null,
+        stageOwnedDocument: vi.fn(),
+        enqueue: vi.fn(),
+      });
+    } catch (error) {
+      caught = error;
+    }
+    expect(String(caught)).not.toContain(sentinel);
+    expect(String(caught)).toMatch(/blocked|validation/i);
+
+    const liveAdapter = readFileSync(
+      new URL("../scripts/fetch-approved-public-source-versions.ts", import.meta.url),
+      "utf8",
+    );
+    expect(liveAdapter).not.toMatch(/throw new Error\([^\n]*\.message/);
   });
 
   it("keeps acquisition CLIs import-safe, dry-run by default, and apply-confirmation bound", async () => {
@@ -485,7 +652,7 @@ describe("public source acquisition", () => {
     expect(tamperedDependencyFactory).not.toHaveBeenCalled();
 
     const authorizePlan = vi.fn(async () => undefined);
-    const fetch = vi.fn(async () => response(syntheticPdf()));
+    const fetch = vi.fn(async () => connectedResponse(response(syntheticPdf())));
     dependencyFactory.mockResolvedValue({
       authorizePlan,
       fetch,
@@ -521,6 +688,8 @@ describe("public source acquisition", () => {
         {
           catalogueKey: "wa-health",
           versionId: "55555555-5555-4555-8555-555555555555",
+          exactUrl,
+          exactVersion: "2026-08-20",
           contentHash: `sha256:${"b".repeat(64)}`,
           lifecycle: "active",
         },
@@ -534,6 +703,26 @@ describe("public source acquisition", () => {
       }),
     ).resolves.toEqual({ applied: false, count: 1 });
     expect(changeFactory).not.toHaveBeenCalled();
+
+    const rawCurrent = readFileSync(currentPath, "utf8");
+    await expect(
+      runCheckPublicSourceChangesCli(
+        [
+          "--manifest",
+          manifestPath,
+          "--current",
+          currentPath,
+          "--expected-count",
+          "1",
+          "--manifest-sha256",
+          publicSourceAcquisitionManifestDigest(rawManifest),
+          "--apply",
+        ],
+        { dependenciesForPlan: changeFactory, stdout: vi.fn() },
+      ),
+    ).resolves.toEqual({ applied: false, count: 1 });
+    expect(rawCurrent).not.toHaveLength(0);
+    expect(changeFactory).not.toHaveBeenCalled();
   });
 
   it("rechecks the persisted activation immediately before live upload and enqueue", () => {
@@ -544,6 +733,6 @@ describe("public source acquisition", () => {
     const authorizationCalls = [...source.matchAll(/await authorizePlan\(plan\);/g)].map((match) => match.index);
     expect(authorizationCalls).toHaveLength(2);
     expect(authorizationCalls[0]).toBeLessThan(source.indexOf(".upload(storagePath"));
-    expect(authorizationCalls[1]).toBeLessThan(source.indexOf("const result = await enqueueDocumentReindexJob"));
+    expect(authorizationCalls[1]).toBeLessThan(source.indexOf("result = await enqueueDocumentReindexJob"));
   });
 });

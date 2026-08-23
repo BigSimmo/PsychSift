@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { isIP } from "node:net";
+import { BlockList, isIP } from "node:net";
 
 import {
   assertIndexableCatalogueEntry,
@@ -17,6 +17,7 @@ import {
 import { assertAllowedFile, assertFileContentSignature } from "@/lib/http";
 import { MAX_UPLOAD_MB_CEILING } from "@/lib/upload-limits";
 import { assertUploadStructure } from "@/lib/upload-structure";
+import { forbiddenPublicSourceIdentity } from "../../supabase/functions/_shared/public-source-policy";
 
 const sha256Pattern = /^sha256:[a-f0-9]{64}$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -30,7 +31,12 @@ const defaultAllowedContentTypes = Object.freeze([
 
 export type ResolvedAddress = Readonly<{ address: string; family: 4 | 6 }>;
 export type ResolveHost = (hostname: string) => Promise<readonly ResolvedAddress[]>;
-export type AcquisitionFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
+export type AcquisitionFetch = (
+  url: URL,
+  addresses: readonly ResolvedAddress[],
+) => Promise<Readonly<{ response: Response; remoteAddress: string }>>;
+export type PublicSourceScanReasonCode =
+  "malware_detected" | "protected_source_identity" | "invalid_document" | "blocked";
 
 export type PublicSourceAcquisitionPlan = Readonly<{
   schemaVersion: "public-source-acquisition-v1";
@@ -57,53 +63,58 @@ export type PublicSourceStagingCandidate = Readonly<{
   contentType: string;
   bytes: Uint8Array;
   contentHash: string;
+  sourceBytes: Uint8Array;
+  sourceContentType: string;
+  sourceContentHash: string;
   lifecycle: "shadow";
-  metadata: Readonly<Record<string, string>>;
+  metadata: Readonly<Record<string, string | boolean>>;
 }>;
 
 function isNonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function ipv4Number(address: string) {
-  return address.split(".").reduce((value, part) => (value << 8) + Number(part), 0) >>> 0;
+const nonGlobalIpv4 = new BlockList();
+for (const [network, prefix] of [
+  ["0.0.0.0", 8],
+  ["10.0.0.0", 8],
+  ["100.64.0.0", 10],
+  ["127.0.0.0", 8],
+  ["169.254.0.0", 16],
+  ["172.16.0.0", 12],
+  ["192.0.0.0", 24],
+  ["192.0.2.0", 24],
+  ["192.88.99.0", 24],
+  ["192.168.0.0", 16],
+  ["198.18.0.0", 15],
+  ["198.51.100.0", 24],
+  ["203.0.113.0", 24],
+  ["224.0.0.0", 4],
+  ["240.0.0.0", 4],
+] as const) {
+  nonGlobalIpv4.addSubnet(network, prefix, "ipv4");
 }
 
-function inIpv4Cidr(address: string, network: string, prefix: number) {
-  const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
-  return (ipv4Number(address) & mask) === (ipv4Number(network) & mask);
+const specialUseIpv6 = new BlockList();
+for (const [network, prefix] of [
+  ["2001::", 23],
+  ["2001:db8::", 32],
+  ["2002::", 16],
+  ["2620:4f:8000::", 48],
+  ["3fff::", 20],
+] as const) {
+  specialUseIpv6.addSubnet(network, prefix, "ipv6");
 }
 
 function isPrivateOrNonGlobalIp(address: string) {
   const family = isIP(address);
   if (family === 4) {
-    return [
-      ["0.0.0.0", 8],
-      ["10.0.0.0", 8],
-      ["100.64.0.0", 10],
-      ["127.0.0.0", 8],
-      ["169.254.0.0", 16],
-      ["172.16.0.0", 12],
-      ["192.0.0.0", 24],
-      ["192.0.2.0", 24],
-      ["192.168.0.0", 16],
-      ["198.18.0.0", 15],
-      ["198.51.100.0", 24],
-      ["203.0.113.0", 24],
-      ["224.0.0.0", 4],
-    ].some(([network, prefix]) => inIpv4Cidr(address, String(network), Number(prefix)));
+    return nonGlobalIpv4.check(address, "ipv4");
   }
   if (family === 6) {
     const normalized = address.toLowerCase();
-    return (
-      normalized === "::" ||
-      normalized === "::1" ||
-      normalized.startsWith("::ffff:") ||
-      normalized.startsWith("fc") ||
-      normalized.startsWith("fd") ||
-      /^fe[89ab]/.test(normalized) ||
-      normalized.startsWith("ff")
-    );
+    const firstHextet = Number.parseInt(normalized.split(":", 1)[0] || "0", 16);
+    return firstHextet < 0x2000 || firstHextet > 0x3fff || specialUseIpv6.check(address, "ipv6");
   }
   return true;
 }
@@ -114,18 +125,6 @@ function assertSafeAddressSet(addresses: readonly ResolvedAddress[]) {
     if (isPrivateOrNonGlobalIp(resolved.address)) {
       throw new Error("Acquisition DNS lookup resolved to a private or non-global network target.");
     }
-  }
-}
-
-function normalizedAddressSet(addresses: readonly ResolvedAddress[]) {
-  return [...new Set(addresses.map(({ address, family }) => `${family}:${address.toLowerCase()}`))].sort();
-}
-
-function assertStableDns(before: readonly ResolvedAddress[], after: readonly ResolvedAddress[]) {
-  assertSafeAddressSet(before);
-  assertSafeAddressSet(after);
-  if (JSON.stringify(normalizedAddressSet(before)) !== JSON.stringify(normalizedAddressSet(after))) {
-    throw new Error("Acquisition DNS rebinding check failed because the resolved address set changed.");
   }
 }
 
@@ -323,11 +322,23 @@ async function fetchBounded(
   let currentUrl = plan.exactUrl;
   for (let redirectCount = 0; ; redirectCount += 1) {
     const url = await validateAcquisitionUrl(currentUrl, definition);
-    const before = await deps.resolve(url.hostname);
-    assertSafeAddressSet(before);
-    const response = await deps.fetch(url, { redirect: "manual" });
-    const after = await deps.resolve(url.hostname);
-    assertStableDns(before, after);
+    let addresses: readonly ResolvedAddress[];
+    try {
+      addresses = await deps.resolve(url.hostname);
+    } catch {
+      throw new Error("Public source DNS validation failed.");
+    }
+    assertSafeAddressSet(addresses);
+    let connected: Awaited<ReturnType<AcquisitionFetch>>;
+    try {
+      connected = await deps.fetch(url, Object.freeze([...addresses]));
+    } catch {
+      throw new Error("Public source validated transport failed.");
+    }
+    const { response, remoteAddress } = connected;
+    if (!addresses.some(({ address }) => address.toLowerCase() === remoteAddress.toLowerCase())) {
+      throw new Error("Public source transport did not connect to a validated address.");
+    }
     if (response.status >= 300 && response.status < 400) {
       if (redirectCount >= plan.maxRedirects) throw new Error("Public source redirect limit exceeded.");
       const location = response.headers.get("location");
@@ -351,7 +362,7 @@ export async function acquirePublicSourceVersion(
       bytes: Uint8Array;
       contentType: string;
       catalogueKey: string;
-    }) => Promise<{ accepted: boolean; reasonCode?: string }>;
+    }) => Promise<{ accepted: boolean; reasonCode?: PublicSourceScanReasonCode }>;
     findDuplicateVersion: (input: {
       catalogueKey: string;
       exactUrl: string;
@@ -369,19 +380,26 @@ export async function acquirePublicSourceVersion(
       exactDocumentLicence: "public_index_permitted";
       sourcePolicyVersion: string;
       sourcePolicyDigest: string;
+      metadata: Readonly<Record<string, string | boolean>>;
     }) => Promise<void>;
     log?: (event: Readonly<Record<string, string | number | boolean>>) => void;
   },
 ) {
   const definition = assertPublicSourceAcquisitionPlan(plan);
   deps.log?.({ event: "public_source_fetch_started", catalogueKey: plan.catalogueKey });
-  const { bytes, contentType, contentHash } = await observePublicSourceVersion(plan, deps);
-  const duplicate = await deps.findDuplicateVersion({
-    catalogueKey: plan.catalogueKey,
-    exactUrl: plan.exactUrl,
-    exactVersion: plan.exactVersion,
-    contentHash,
-  });
+  const { bytes, contentType, contentHash, sourceBytes, sourceContentType, sourceContentHash } =
+    await observePublicSourceVersion(plan, deps);
+  let duplicate: string | null;
+  try {
+    duplicate = await deps.findDuplicateVersion({
+      catalogueKey: plan.catalogueKey,
+      exactUrl: plan.exactUrl,
+      exactVersion: plan.exactVersion,
+      contentHash: sourceContentHash,
+    });
+  } catch {
+    throw new Error("Public source duplicate-version validation failed.");
+  }
   if (duplicate) throw new Error("Duplicate public source version already exists.");
 
   assertPublicSourceAcquisitionPlan(plan);
@@ -392,6 +410,9 @@ export async function acquirePublicSourceVersion(
     contentType,
     bytes,
     contentHash,
+    sourceBytes,
+    sourceContentType,
+    sourceContentHash,
     lifecycle: "shadow",
     metadata: Object.freeze({
       corpus_scope: definition.corpusScope,
@@ -401,33 +422,48 @@ export async function acquirePublicSourceVersion(
       content_mode: definition.contentMode,
       licence_policy: plan.exactDocumentLicence,
       licence_evidence_digest: plan.licenceEvidenceDigest,
+      source_canonical_url: definition.canonicalUrl,
       source_exact_url: plan.exactUrl,
       source_exact_version: plan.exactVersion,
       content_hash: contentHash,
+      source_content_hash: sourceContentHash,
+      source_content_type: sourceContentType,
+      source_policy_checked: true,
       public_source_lifecycle: "shadow",
       ...(plan.sourceActivationEventId ? { source_activation_event_id: plan.sourceActivationEventId } : {}),
     }),
   });
-  const staged = await deps.stageOwnedDocument(candidate);
+  let staged: { documentId: string; ownerId: string | null };
+  try {
+    staged = await deps.stageOwnedDocument(candidate);
+  } catch {
+    throw new Error("Public source owned staging failed.");
+  }
   if (!staged.ownerId || staged.ownerId !== plan.stagingOwnerId) {
     throw new Error("Public source staging adapter did not preserve the exact non-null owner.");
   }
 
   assertPublicSourceAcquisitionPlan(plan);
-  await deps.enqueue({
-    documentId: staged.documentId,
-    ownerId: staged.ownerId,
-    catalogueKey: plan.catalogueKey,
-    contentMode: "indexed_content",
-    exactDocumentLicence: "public_index_permitted",
-    sourcePolicyVersion: plan.sourcePolicyVersion,
-    sourcePolicyDigest: plan.sourcePolicyDigest,
-  });
+  try {
+    await deps.enqueue({
+      documentId: staged.documentId,
+      ownerId: staged.ownerId,
+      catalogueKey: plan.catalogueKey,
+      contentMode: "indexed_content",
+      exactDocumentLicence: "public_index_permitted",
+      sourcePolicyVersion: plan.sourcePolicyVersion,
+      sourcePolicyDigest: plan.sourcePolicyDigest,
+      metadata: candidate.metadata,
+    });
+  } catch {
+    throw new Error("Public source enqueue failed.");
+  }
   deps.log?.({ event: "public_source_staged", catalogueKey: plan.catalogueKey, contentBytes: bytes.byteLength });
   return Object.freeze({
     documentId: staged.documentId,
     ownerId: staged.ownerId,
-    contentHash,
+    contentHash: sourceContentHash,
+    stagedContentHash: contentHash,
     lifecycle: "shadow" as const,
   });
 }
@@ -441,7 +477,7 @@ export async function observePublicSourceVersion(
       bytes: Uint8Array;
       contentType: string;
       catalogueKey: string;
-    }) => Promise<{ accepted: boolean; reasonCode?: string }>;
+    }) => Promise<{ accepted: boolean; reasonCode?: PublicSourceScanReasonCode }>;
   },
 ) {
   assertPublicSourceAcquisitionPlan(plan);
@@ -458,7 +494,7 @@ export async function observePublicSourceChangeSignal(
       bytes: Uint8Array;
       contentType: string;
       catalogueKey: string;
-    }) => Promise<{ accepted: boolean; reasonCode?: string }>;
+    }) => Promise<{ accepted: boolean; reasonCode?: PublicSourceScanReasonCode }>;
   },
 ) {
   assertPublicSourceAcquisitionPlan(plan);
@@ -470,7 +506,12 @@ export async function observePublicSourceChangeSignal(
     });
   }
   const content = await validateFetchedContent(plan, response, deps.scan);
-  return Object.freeze({ kind: "content" as const, ...content });
+  return Object.freeze({
+    kind: "content" as const,
+    ...content,
+    stagedContentHash: content.contentHash,
+    contentHash: content.sourceContentHash,
+  });
 }
 
 async function validateFetchedContent(
@@ -480,13 +521,13 @@ async function validateFetchedContent(
     bytes: Uint8Array;
     contentType: string;
     catalogueKey: string;
-  }) => Promise<{ accepted: boolean; reasonCode?: string }>,
+  }) => Promise<{ accepted: boolean; reasonCode?: PublicSourceScanReasonCode }>,
 ) {
   const upstreamContentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   if (!plan.allowedContentTypes.includes(upstreamContentType)) {
     throw new Error("Public source response content type is not approved.");
   }
-  const { bytes: upstreamBytes, contentHash } = await readBoundedBody(response, plan.maxBytes);
+  const { bytes: upstreamBytes, contentHash: sourceContentHash } = await readBoundedBody(response, plan.maxBytes);
   let bytes = upstreamBytes;
   let contentType = upstreamContentType;
   if (upstreamContentType === "text/html") {
@@ -496,17 +537,31 @@ async function validateFetchedContent(
     }
     bytes = new TextEncoder().encode(trustedPage.mainText);
     contentType = "text/plain";
+  } else if (forbiddenPublicSourceIdentity(new TextDecoder().decode(upstreamBytes))) {
+    throw new Error("Public source content was blocked by protected-source policy.");
   }
+  const contentHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
   const uploadFile = new File([bytes], new URL(plan.exactUrl).pathname.split("/").pop() || "source", {
     type: contentType,
   });
   assertAllowedFile(uploadFile, plan.maxBytes / (1024 * 1024));
   assertFileContentSignature(contentType, bytes);
   await assertUploadStructure(contentType, bytes);
-  const scan = await scanContent({ bytes, contentType, catalogueKey: plan.catalogueKey });
-  if (!scan.accepted)
-    throw new Error(`Public source upload validation rejected content (${scan.reasonCode ?? "blocked"}).`);
-  return Object.freeze({ bytes, contentType, contentHash });
+  let scan: { accepted: boolean; reasonCode?: PublicSourceScanReasonCode };
+  try {
+    scan = await scanContent({ bytes, contentType, catalogueKey: plan.catalogueKey });
+  } catch {
+    throw new Error("Public source upload validation failed.");
+  }
+  if (!scan.accepted) throw new Error("Public source upload validation blocked content.");
+  return Object.freeze({
+    bytes,
+    contentType,
+    contentHash,
+    sourceBytes: upstreamBytes,
+    sourceContentType: upstreamContentType,
+    sourceContentHash,
+  });
 }
 
 function decodeHtmlText(input: string) {
@@ -532,7 +587,7 @@ export function evaluateTrustedPageContent(html: string) {
     );
   const mainMatch = withoutChrome.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
   const retainedHtml = mainMatch?.[1] ?? withoutChrome;
-  if (/healthdirect/i.test(retainedHtml)) {
+  if (forbiddenPublicSourceIdentity(retainedHtml)) {
     return Object.freeze({
       disposition: "quarantine" as const,
       eligibleForIndex: false,
@@ -542,7 +597,7 @@ export function evaluateTrustedPageContent(html: string) {
   }
   const retainedLinks = [...retainedHtml.matchAll(/<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi)]
     .map((match) => match[1])
-    .filter((href) => !/healthdirect/i.test(href));
+    .filter((href) => !forbiddenPublicSourceIdentity(href));
   return Object.freeze({
     disposition: "accepted" as const,
     eligibleForIndex: true,
@@ -553,7 +608,13 @@ export function evaluateTrustedPageContent(html: string) {
 
 export async function checkPublicSourceChange(input: {
   plan: PublicSourceAcquisitionPlan;
-  currentVersion: Readonly<{ versionId: string; contentHash: string }>;
+  currentVersion: Readonly<{
+    catalogueKey: string;
+    versionId: string;
+    exactUrl: string;
+    exactVersion: string;
+    contentHash: string;
+  }>;
   observed: Readonly<{ kind: "content"; contentHash: string }> | Readonly<{ kind: "withdrawn"; reason: string }>;
   recordCheck: (event: Readonly<Record<string, string>>) => Promise<void>;
   stageChangedVersion: (candidate: Readonly<Record<string, string | boolean | null>>) => Promise<{
@@ -564,10 +625,21 @@ export async function checkPublicSourceChange(input: {
   queueHumanReview: (event: Readonly<Record<string, string>>) => Promise<void>;
 }) {
   assertPublicSourceAcquisitionPlan(input.plan);
+  if (
+    input.currentVersion.catalogueKey !== input.plan.catalogueKey ||
+    input.currentVersion.exactUrl !== input.plan.exactUrl ||
+    input.currentVersion.exactVersion !== input.plan.exactVersion ||
+    !sha256Pattern.test(input.currentVersion.contentHash)
+  ) {
+    throw new Error("Current public source version identity does not match the acquisition plan.");
+  }
   if (input.observed.kind === "withdrawn") {
     const event = {
       catalogueKey: input.plan.catalogueKey,
       versionId: input.currentVersion.versionId,
+      exactUrl: input.currentVersion.exactUrl,
+      exactVersion: input.currentVersion.exactVersion,
+      contentHash: input.currentVersion.contentHash,
       reason: input.observed.reason.slice(0, 500),
     };
     await input.tombstoneCurrentVersion(event);

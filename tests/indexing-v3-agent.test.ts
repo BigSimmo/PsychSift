@@ -8,6 +8,7 @@ import {
   metadataNumber,
   missingArtifactPlan,
   parseJobStatusRpcResult,
+  publicSourceWorkerPolicyViolation,
   shouldRunVisualArtifacts,
   type CompletionGateRow,
 } from "../supabase/functions/indexing-v3-agent/behavior";
@@ -29,6 +30,41 @@ function gateRow(overrides: Partial<CompletionGateRow> = {}): CompletionGateRow 
 }
 
 describe("indexing-v3-agent behavior", () => {
+  it("blocks protected or incomplete public-source policy before provider or artifact work", async () => {
+    expect(
+      publicSourceWorkerPolicyViolation(
+        {
+          corpus_scope: "australian_public",
+          source_catalogue_key: "wa-health",
+          source_policy_version: "australian-source-policy-v1",
+          content_mode: "indexed_content",
+          licence_policy: "public_index_permitted",
+          public_source_lifecycle: "shadow",
+          source_policy_checked: true,
+        },
+        true,
+      ),
+    ).toBe("protected_source_identity");
+    expect(publicSourceWorkerPolicyViolation({ corpus_scope: "australian_public" }, false)).toBe(
+      "public_source_policy_invalid",
+    );
+
+    const edgeSource = String(
+      await import("node:fs/promises").then((fs) =>
+        fs.readFile(new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url), "utf8"),
+      ),
+    );
+    const processStart = sourceSegment(
+      edgeSource,
+      "async function processJob",
+      "let gate = await completionGate(job)",
+      {
+        label: "indexing-v3-agent public-source preflight",
+      },
+    );
+    expect(processStart).toContain("assertPublicSourceWorkerPolicy(job)");
+  });
+
   it("schedules agent retries until the attempt budget is exhausted", () => {
     const retry = agentFailureDecision({ attemptCount: 2, maxAttempts: 3, nowMs: 1_000, retryDelayMs: 30_000 });
     expect(retry).toEqual({

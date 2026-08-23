@@ -21,6 +21,8 @@ import {
 type CurrentSourceVersion = Readonly<{
   catalogueKey: string;
   versionId: string;
+  exactUrl: string;
+  exactVersion: string;
   contentHash: string;
   lifecycle: "shadow" | "approved" | "active" | "quarantined";
 }>;
@@ -49,6 +51,9 @@ function parseCurrentVersions(input: unknown): CurrentSourceVersion[] {
     if (
       !value.catalogueKey ||
       !value.versionId ||
+      !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value.versionId) ||
+      !value.exactUrl ||
+      !value.exactVersion ||
       !/^sha256:[a-f0-9]{64}$/.test(value.contentHash ?? "") ||
       !["shadow", "approved", "active", "quarantined"].includes(value.lifecycle ?? "")
     ) {
@@ -75,7 +80,7 @@ async function createLiveChangeDependencies(
       resource_id: event.versionId ?? current.versionId,
       metadata: event,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error("Public source audit write failed.");
   };
   return {
     acquisition,
@@ -85,14 +90,17 @@ async function createLiveChangeDependencies(
       if (!staged.versionId) throw new Error("Changed public source staging did not return a version ID.");
       return { versionId: staged.versionId, ownerId: staged.ownerId };
     },
-    tombstoneCurrentVersion: async () => {
+    tombstoneCurrentVersion: async (event) => {
       const { error } = await supabase.rpc("transition_public_source_version", {
         p_version_id: current.versionId,
+        p_expected_catalogue_key: event.catalogueKey,
+        p_expected_exact_version_url: event.exactUrl,
+        p_expected_content_hash: event.contentHash,
         p_expected_lifecycle: current.lifecycle,
         p_new_lifecycle: "tombstoned",
         p_activation_event_id: null,
       });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error("Public source tombstone transition failed.");
     },
     queueHumanReview: (event) => audit("public_source_withdrawal_review_required", event),
   };
@@ -117,11 +125,15 @@ export async function runCheckPublicSourceChangesCli(
   }
   const raw = readFileSync(resolve(manifestPath), "utf8");
   const manifest = parsePublicSourceAcquisitionManifest(JSON.parse(raw) as unknown);
-  const current = parseCurrentVersions(JSON.parse(readFileSync(resolve(currentPath), "utf8")) as unknown);
+  const rawCurrent = readFileSync(resolve(currentPath), "utf8");
+  const current = parseCurrentVersions(JSON.parse(rawCurrent) as unknown);
   const currentByKey = new Map(current.map((version) => [version.catalogueKey, version]));
   if (currentByKey.size !== current.length) throw new Error("Current public source keys must be unique.");
   for (const plan of manifest.plans) {
-    if (!currentByKey.has(plan.catalogueKey)) throw new Error(`Current version is missing for ${plan.catalogueKey}.`);
+    const version = currentByKey.get(plan.catalogueKey);
+    if (!version || version.exactUrl !== plan.exactUrl || version.exactVersion !== plan.exactVersion) {
+      throw new Error(`Current version identity does not match the plan for ${plan.catalogueKey}.`);
+    }
   }
   const digest = publicSourceAcquisitionManifestDigest(raw);
   const expectedCount = Number(option(argv, "--expected-count"));
@@ -129,7 +141,8 @@ export async function runCheckPublicSourceChangesCli(
     argv.includes("--apply") &&
     Number.isSafeInteger(expectedCount) &&
     expectedCount === manifest.plans.length &&
-    option(argv, "--manifest-sha256") === digest;
+    option(argv, "--manifest-sha256") === digest &&
+    option(argv, "--current-sha256") === publicSourceAcquisitionManifestDigest(rawCurrent);
   if (!confirmed) {
     stdout(
       JSON.stringify({
@@ -142,7 +155,8 @@ export async function runCheckPublicSourceChangesCli(
           exactVersion,
           currentVersionId: currentByKey.get(catalogueKey)?.versionId,
         })),
-        required: ["--manifest", "--current", "--expected-count", "--manifest-sha256", "--apply"],
+        currentSha256: publicSourceAcquisitionManifestDigest(rawCurrent),
+        required: ["--manifest", "--current", "--expected-count", "--manifest-sha256", "--current-sha256", "--apply"],
       }),
     );
     return { applied: false, count: manifest.plans.length } as const;
@@ -171,7 +185,10 @@ export async function runCheckPublicSourceChangesCli(
               exactVersion: plan.exactVersion,
               contentType: observed.contentType,
               bytes: observed.bytes,
-              contentHash: observed.contentHash,
+              contentHash: observed.stagedContentHash,
+              sourceBytes: observed.sourceBytes,
+              sourceContentType: observed.sourceContentType,
+              sourceContentHash: observed.contentHash,
               lifecycle: "shadow" as const,
               metadata: Object.freeze({
                 corpus_scope: definition.corpusScope,
@@ -181,9 +198,13 @@ export async function runCheckPublicSourceChangesCli(
                 content_mode: definition.contentMode,
                 licence_policy: plan.exactDocumentLicence,
                 licence_evidence_digest: plan.licenceEvidenceDigest,
+                source_canonical_url: definition.canonicalUrl,
                 source_exact_url: plan.exactUrl,
                 source_exact_version: plan.exactVersion,
-                content_hash: observed.contentHash,
+                content_hash: observed.stagedContentHash,
+                source_content_hash: observed.contentHash,
+                source_content_type: observed.sourceContentType,
+                source_policy_checked: true,
                 public_source_lifecycle: "shadow",
               }),
             }),

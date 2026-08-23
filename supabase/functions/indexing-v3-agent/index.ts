@@ -24,6 +24,7 @@ import {
   deferralDecision,
   missingArtifactPlan,
   parseJobStatusRpcResult,
+  publicSourceWorkerPolicyViolation,
   shouldRunVisualArtifacts,
   type CompletionGate,
   type CompletionGateRow,
@@ -1790,7 +1791,28 @@ async function markJobFailure(job: ClaimedJob, message: string): Promise<boolean
   return decision.shouldRetry;
 }
 
+async function assertPublicSourceWorkerPolicy(job: ClaimedJob): Promise<void> {
+  const initialViolation = publicSourceWorkerPolicyViolation(job.documents.metadata, false);
+  if (initialViolation) throw new Error(initialViolation);
+  if (job.documents.metadata?.corpus_scope !== "australian_public") return;
+
+  const rows = await sql<Array<{ contains_protected_source_content: boolean }>>`
+    select exists (
+      select 1
+      from public.document_chunks chunk
+      where chunk.document_id = ${job.document_id}::uuid
+        and chunk.content ~* 'healthdirect|therapeutic[[:space:]]+guidelines?|australian[[:space:]]+medicines[[:space:]]+handbook|(^|[^[:alnum:]_])(etg|amh)([^[:alnum:]_]|$)'
+    ) as contains_protected_source_content
+  `;
+  const violation = publicSourceWorkerPolicyViolation(
+    job.documents.metadata,
+    rows[0]?.contains_protected_source_content === true,
+  );
+  if (violation) throw new Error(violation);
+}
+
 async function processJob(job: ClaimedJob): Promise<{ status: "completed" | "deferred"; missing: string[] }> {
+  await assertPublicSourceWorkerPolicy(job);
   let gate = await completionGate(job);
   let plan = missingArtifactPlan(gate);
   logArtifactPlan(job, gate, plan);

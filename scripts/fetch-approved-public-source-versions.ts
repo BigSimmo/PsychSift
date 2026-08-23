@@ -1,13 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { lookup } from "node:dns/promises";
 import { readFileSync } from "node:fs";
+import { request } from "node:https";
 import { basename, resolve } from "node:path";
+import { Readable } from "node:stream";
 import { pathToFileURL } from "node:url";
 
 import { australianSourceByKey } from "@/lib/australian-source-catalogue";
 import {
   acquirePublicSourceVersion,
+  type AcquisitionFetch,
   type PublicSourceAcquisitionPlan,
+  type PublicSourceScanReasonCode,
   type PublicSourceStagingCandidate,
 } from "@/lib/public-source-acquisition";
 import {
@@ -24,11 +28,11 @@ function option(argv: readonly string[], name: string) {
 
 export type PublicSourceApplyDependencies = Readonly<{
   authorizePlan: (plan: PublicSourceAcquisitionPlan) => Promise<void>;
-  fetch: typeof fetch;
+  fetch: AcquisitionFetch;
   resolve: (hostname: string) => Promise<readonly { address: string; family: 4 | 6 }[]>;
   scan: (input: { bytes: Uint8Array; contentType: string; catalogueKey: string }) => Promise<{
     accepted: boolean;
-    reasonCode?: string;
+    reasonCode?: PublicSourceScanReasonCode;
   }>;
   findDuplicateVersion: (input: {
     catalogueKey: string;
@@ -47,6 +51,7 @@ export type PublicSourceApplyDependencies = Readonly<{
     exactDocumentLicence: "public_index_permitted";
     sourcePolicyVersion: string;
     sourcePolicyDigest: string;
+    metadata: Readonly<Record<string, string | boolean>>;
   }) => Promise<void>;
 }>;
 
@@ -54,6 +59,55 @@ function fileNameFor(url: string, contentType: string) {
   const base = (basename(new URL(url).pathname) || "public-source").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 160);
   if (base.includes(".")) return base;
   return `${base}${contentType === "application/pdf" ? ".pdf" : contentType === "text/plain" ? ".txt" : ".bin"}`;
+}
+
+function fetchFromValidatedAddress(url: URL, addresses: readonly { address: string; family: 4 | 6 }[]) {
+  return new Promise<Awaited<ReturnType<AcquisitionFetch>>>((resolveRequest, rejectRequest) => {
+    const selected = addresses[0];
+    if (!selected) {
+      rejectRequest(new Error("Public source transport has no validated address."));
+      return;
+    }
+    const outbound = request(
+      {
+        protocol: "https:",
+        hostname: selected.address,
+        family: selected.family,
+        port: 443,
+        method: "GET",
+        path: `${url.pathname}${url.search}`,
+        servername: url.hostname,
+        rejectUnauthorized: true,
+        headers: { host: url.host },
+        agent: false,
+      },
+      (incoming) => {
+        const remoteAddress = incoming.socket.remoteAddress?.replace(/^::ffff:/i, "");
+        if (!remoteAddress) {
+          incoming.destroy();
+          rejectRequest(new Error("Public source transport did not report its remote address."));
+          return;
+        }
+        const headers = new Headers();
+        for (let index = 0; index < incoming.rawHeaders.length; index += 2) {
+          const name = incoming.rawHeaders[index];
+          const value = incoming.rawHeaders[index + 1];
+          if (name && value) headers.append(name, value);
+        }
+        resolveRequest({
+          response: new Response(Readable.toWeb(incoming) as unknown as BodyInit, {
+            status: incoming.statusCode ?? 502,
+            statusText: incoming.statusMessage,
+            headers,
+          }),
+          remoteAddress,
+        });
+      },
+    );
+    outbound.setTimeout(30_000, () => outbound.destroy(new Error("Public source transport timed out.")));
+    outbound.once("error", rejectRequest);
+    outbound.end();
+  });
 }
 
 export async function createLivePublicSourceApplyDependencies(
@@ -83,12 +137,12 @@ export async function createLivePublicSourceApplyDependencies(
       p_licence_evidence_digest: candidate.licenceEvidenceDigest,
       p_staging_owner_id: candidate.stagingOwnerId,
     });
-    if (error) throw new Error(`Public source fetch authorization failed: ${error.message}`);
+    if (error) throw new Error("Public source fetch authorization failed.");
   };
 
   return {
     authorizePlan,
-    fetch: globalThis.fetch,
+    fetch: fetchFromValidatedAddress,
     resolve: async (hostname) =>
       (await lookup(hostname, { all: true, verbatim: true })).map(({ address, family }) => ({
         address,
@@ -104,19 +158,37 @@ export async function createLivePublicSourceApplyDependencies(
         .eq("exact_version_url", exactUrl)
         .eq("content_hash", contentHash)
         .maybeSingle();
-      if (error) throw new Error(error.message);
+      if (error) throw new Error("Public source duplicate-version check failed.");
       return data?.id ?? null;
     },
     stageOwnedDocument: async (candidate) => {
       await authorizePlan(plan);
       const documentId = randomUUID();
       const fileName = fileNameFor(candidate.exactUrl, candidate.contentType);
-      const storagePath = `public-sources/${candidate.ownerId}/${documentId}/${fileName}`;
-      const upload = await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).upload(storagePath, candidate.bytes, {
-        contentType: candidate.contentType,
-        upsert: false,
-      });
-      if (upload.error) throw new Error(upload.error.message);
+      const sourceFileName = fileNameFor(candidate.exactUrl, candidate.sourceContentType);
+      const sourceStoragePath = `public-sources/${candidate.ownerId}/${documentId}/source/${sourceFileName}`;
+      const derived =
+        candidate.sourceContentHash !== candidate.contentHash || candidate.sourceContentType !== candidate.contentType;
+      const storagePath = derived
+        ? `public-sources/${candidate.ownerId}/${documentId}/staged/${fileName}`
+        : sourceStoragePath;
+      const sourceUpload = await supabase.storage
+        .from(env.SUPABASE_DOCUMENT_BUCKET)
+        .upload(sourceStoragePath, candidate.sourceBytes, {
+          contentType: candidate.sourceContentType,
+          upsert: false,
+        });
+      if (sourceUpload.error) throw new Error("Public source Storage upload failed.");
+      const upload = derived
+        ? await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).upload(storagePath, candidate.bytes, {
+            contentType: candidate.contentType,
+            upsert: false,
+          })
+        : { error: null };
+      if (upload.error) {
+        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([sourceStoragePath]);
+        throw new Error("Public source staged-derivative upload failed.");
+      }
       const { error: documentError } = await supabase.from("documents").insert({
         id: documentId,
         owner_id: candidate.ownerId,
@@ -129,11 +201,17 @@ export async function createLivePublicSourceApplyDependencies(
         source_path: candidate.exactUrl,
         content_hash: candidate.contentHash,
         status: "uploaded",
-        metadata: candidate.metadata,
+        metadata: {
+          ...candidate.metadata,
+          source_storage_path: sourceStoragePath,
+          staged_storage_path: storagePath,
+        },
       });
       if (documentError) {
-        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([storagePath]);
-        throw new Error(documentError.message);
+        await supabase.storage
+          .from(env.SUPABASE_DOCUMENT_BUCKET)
+          .remove([...new Set([storagePath, sourceStoragePath])]);
+        throw new Error("Public source staging document insert failed.");
       }
       const { data: versionId, error: versionError } = await supabase.rpc("stage_public_source_version", {
         p_version: {
@@ -142,7 +220,8 @@ export async function createLivePublicSourceApplyDependencies(
           exactCanonicalUrl: definition.canonicalUrl,
           exactUrl: candidate.exactUrl,
           exactVersion: candidate.exactVersion,
-          contentHash: candidate.contentHash,
+          contentHash: candidate.sourceContentHash,
+          stagedContentHash: candidate.contentHash,
           retrievedAt: new Date().toISOString(),
           licenceEvidenceDigest: plan.licenceEvidenceDigest,
           stagingDocumentId: documentId,
@@ -152,17 +231,24 @@ export async function createLivePublicSourceApplyDependencies(
       });
       if (versionError) {
         await supabase.from("documents").delete().eq("id", documentId).eq("owner_id", candidate.ownerId);
-        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([storagePath]);
-        throw new Error(versionError.message);
+        await supabase.storage
+          .from(env.SUPABASE_DOCUMENT_BUCKET)
+          .remove([...new Set([storagePath, sourceStoragePath])]);
+        throw new Error("Public source version staging failed.");
       }
       return { documentId, ownerId: candidate.ownerId, versionId };
     },
-    enqueue: async ({ documentId, ownerId }) => {
+    enqueue: async ({ documentId, ownerId, metadata }) => {
       await authorizePlan(plan);
-      const result = await enqueueDocumentReindexJob({
-        supabase,
-        document: { id: documentId, owner_id: ownerId, status: "uploaded" },
-      });
+      let result;
+      try {
+        result = await enqueueDocumentReindexJob({
+          supabase,
+          document: { id: documentId, owner_id: ownerId, status: "uploaded", metadata },
+        });
+      } catch {
+        throw new Error("Public source enqueue failed.");
+      }
       if (result.outcome === "document_deleted") throw new Error("Public source staging disappeared before enqueue.");
     },
   };

@@ -1620,6 +1620,13 @@ describe("Supabase Preview replay guards", () => {
     );
     expect(sql).toContain("before update or delete on public.public_source_activation_events");
     expect(sql).toContain("public_source_activation_events are append-only");
+    expect(sql).toContain("unique (staging_document_id)");
+    expect(sql).toContain("publication_approval_id uuid");
+    expect(sql).toContain("publication_manifest_digest text");
+    expect(sql).toContain("publication_reviewed_state_digest text");
+    expect(sql).toContain("publication_reviewed_index_generation_id uuid");
+    expect(sql).toContain("before update on public.public_source_versions");
+    expect(sql).toContain("public source version identity is immutable");
     expect(sql).toContain("alter table public.public_source_activation_events enable row level security");
     expect(sql).toContain("alter table public.public_source_versions enable row level security");
     for (const table of ["public_source_activation_events", "public_source_versions"]) {
@@ -1658,20 +1665,31 @@ describe("Supabase Preview replay guards", () => {
     for (const excluded of ["healthdirect", "etg-complete", "australian-medicines-handbook", "nps-medicinewise"]) {
       expect(activationBody).not.toContain(`'${excluded}'`);
     }
-    expect(sqlFunctionBody(sql, "stage_public_source_version")).toContain("v_document.owner_id is null");
-    expect(sqlFunctionBody(sql, "stage_public_source_version")).toContain(
-      "order by created_at desc, id desc limit 1 for update",
+    const stageBody = sqlFunctionBody(sql, "stage_public_source_version");
+    expect(stageBody).toContain("v_document.owner_id is null");
+    expect(stageBody).toContain("order by created_at desc, id desc limit 1 for update");
+    expect(stageBody).toContain("v_event.id is distinct from v_activation_event_id");
+    expect(stageBody).toContain("v_document.content_hash is distinct from p_version->>'stagedcontenthash'");
+    expect(stageBody).toContain("v_document.source_path is distinct from p_version->>'exacturl'");
+    expect(stageBody).toContain(
+      "v_document.metadata->>'source_content_hash' is distinct from p_version->>'contenthash'",
     );
-    expect(sqlFunctionBody(sql, "stage_public_source_version")).toContain(
-      "v_event.id is distinct from v_activation_event_id",
+    expect(stageBody).toContain(
+      "v_document.metadata->>'licence_evidence_digest' is distinct from p_version->>'licenceevidencedigest'",
     );
-    expect(sqlFunctionBody(sql, "transition_public_source_version")).toContain("for update");
-    expect(sqlFunctionBody(sql, "transition_public_source_version")).toContain(
-      "invalid public source lifecycle transition",
-    );
-    expect(sqlFunctionBody(sql, "transition_public_source_version")).toContain(
-      "exact document publication approval is distinct from source activation",
-    );
+    const transitionBody = sqlFunctionBody(sql, "transition_public_source_version");
+    expect(transitionBody).toContain("for update");
+    expect(transitionBody).toContain("p_expected_catalogue_key");
+    expect(transitionBody).toContain("p_expected_exact_version_url");
+    expect(transitionBody).toContain("p_expected_content_hash");
+    expect(transitionBody).toContain("public source version identity changed after review");
+    expect(transitionBody).toContain("invalid public source lifecycle transition");
+    expect(transitionBody).toContain("publication_approval_id");
+    expect(transitionBody).toContain("publication_manifest_digest");
+    expect(transitionBody).toContain("publication_reviewed_state_digest");
+    expect(transitionBody).toContain("publication_reviewed_index_generation_id");
+    expect(transitionBody).toContain("approval.id = v_publication_approval_id");
+    expect(transitionBody).toContain("exact document publication approval is distinct from source activation");
   });
 
   it("serializes permanent deletion against ingestion job creation", () => {

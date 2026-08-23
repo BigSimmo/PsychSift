@@ -28,6 +28,7 @@ CREATE TABLE public.public_source_versions (
   exact_version_url text NOT NULL CHECK (exact_version_url ~ '^https://'),
   exact_version text NOT NULL CHECK (btrim(exact_version) <> ''),
   content_hash text NOT NULL CHECK (content_hash ~ '^sha256:[0-9a-f]{64}$'),
+  staged_content_hash text NOT NULL CHECK (staged_content_hash ~ '^sha256:[0-9a-f]{64}$'),
   retrieved_at timestamptz NOT NULL,
   licence_evidence_digest text NOT NULL CHECK (licence_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
   staging_document_id uuid NOT NULL REFERENCES public.documents(id) ON DELETE RESTRICT,
@@ -36,9 +37,19 @@ CREATE TABLE public.public_source_versions (
   lifecycle text NOT NULL CHECK (lifecycle IN ('discovered', 'shadow', 'approved', 'active', 'quarantined', 'tombstoned')),
   supersedes_version_id uuid REFERENCES public.public_source_versions(id) ON DELETE RESTRICT,
   activation_event_id uuid NOT NULL REFERENCES public.public_source_activation_events(id) ON DELETE RESTRICT,
+  staging_owner_id uuid NOT NULL,
+  publication_approval_id uuid REFERENCES public.document_publication_approvals(id) ON DELETE RESTRICT,
+  publication_manifest_digest text CHECK (
+    publication_manifest_digest IS NULL OR publication_manifest_digest ~ '^[0-9a-f]{64}$'
+  ),
+  publication_reviewed_state_digest text CHECK (
+    publication_reviewed_state_digest IS NULL OR publication_reviewed_state_digest ~ '^[0-9a-f]{64}$'
+  ),
+  publication_reviewed_index_generation_id uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (source_catalogue_key, exact_version_url, content_hash),
+  UNIQUE (staging_document_id),
   CHECK (supersedes_version_id IS NULL OR supersedes_version_id <> id)
 );
 
@@ -70,6 +81,45 @@ DROP TRIGGER IF EXISTS public_source_activation_events_immutable
 CREATE TRIGGER public_source_activation_events_immutable
 BEFORE UPDATE OR DELETE ON public.public_source_activation_events
 FOR EACH ROW EXECUTE FUNCTION public.reject_public_source_activation_event_mutation();
+
+CREATE OR REPLACE FUNCTION public.guard_public_source_version_identity()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+  IF (to_jsonb(NEW) - ARRAY[
+        'lifecycle',
+        'extraction_generation_id',
+        'index_generation_id',
+        'publication_approval_id',
+        'publication_manifest_digest',
+        'publication_reviewed_state_digest',
+        'publication_reviewed_index_generation_id',
+        'updated_at'
+      ])
+     IS DISTINCT FROM
+     (to_jsonb(OLD) - ARRAY[
+        'lifecycle',
+        'extraction_generation_id',
+        'index_generation_id',
+        'publication_approval_id',
+        'publication_manifest_digest',
+        'publication_reviewed_state_digest',
+        'publication_reviewed_index_generation_id',
+        'updated_at'
+      ])
+  THEN
+    RAISE EXCEPTION 'public source version identity is immutable';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS public_source_versions_identity_immutable ON public.public_source_versions;
+CREATE TRIGGER public_source_versions_identity_immutable
+BEFORE UPDATE ON public.public_source_versions
+FOR EACH ROW EXECUTE FUNCTION public.guard_public_source_version_identity();
 
 CREATE OR REPLACE FUNCTION public.record_public_source_activation_event(p_manifest jsonb)
 RETURNS uuid
@@ -278,6 +328,16 @@ BEGIN
      OR v_document.metadata->>'source_policy_digest' IS DISTINCT FROM v_event.source_policy_digest
      OR v_document.metadata->>'content_mode' IS DISTINCT FROM 'indexed_content'
      OR v_document.metadata->>'licence_policy' IS DISTINCT FROM 'public_index_permitted'
+     OR v_document.metadata->>'source_policy_checked' IS DISTINCT FROM 'true'
+     OR v_document.source_path IS DISTINCT FROM p_version->>'exactUrl'
+     OR v_document.content_hash IS DISTINCT FROM p_version->>'stagedContentHash'
+     OR v_document.metadata->>'source_canonical_url' IS DISTINCT FROM p_version->>'exactCanonicalUrl'
+     OR v_document.metadata->>'source_exact_url' IS DISTINCT FROM p_version->>'exactUrl'
+     OR v_document.metadata->>'source_exact_version' IS DISTINCT FROM p_version->>'exactVersion'
+     OR v_document.metadata->>'content_hash' IS DISTINCT FROM p_version->>'stagedContentHash'
+     OR v_document.metadata->>'source_content_hash' IS DISTINCT FROM p_version->>'contentHash'
+     OR v_document.metadata->>'licence_evidence_digest' IS DISTINCT FROM p_version->>'licenceEvidenceDigest'
+     OR v_document.metadata->>'source_activation_event_id' IS DISTINCT FROM v_activation_event_id::text
   THEN
     RAISE EXCEPTION 'Public source staging policy or lifecycle mismatch';
   END IF;
@@ -290,12 +350,14 @@ BEGIN
     exact_version_url,
     exact_version,
     content_hash,
+    staged_content_hash,
     retrieved_at,
     licence_evidence_digest,
     staging_document_id,
     lifecycle,
     supersedes_version_id,
-    activation_event_id
+    activation_event_id,
+    staging_owner_id
   ) VALUES (
     p_version->>'catalogueKey',
     v_event.source_policy_version,
@@ -304,12 +366,14 @@ BEGIN
     p_version->>'exactUrl',
     p_version->>'exactVersion',
     p_version->>'contentHash',
+    p_version->>'stagedContentHash',
     coalesce((p_version->>'retrievedAt')::timestamptz, now()),
     p_version->>'licenceEvidenceDigest',
     v_document_id,
     'shadow',
     NULL,
-    v_activation_event_id
+    v_activation_event_id,
+    v_owner_id
   )
   RETURNING id INTO v_version_id;
   RETURN v_version_id;
@@ -318,6 +382,9 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.transition_public_source_version(
   p_version_id uuid,
+  p_expected_catalogue_key text,
+  p_expected_exact_version_url text,
+  p_expected_content_hash text,
   p_expected_lifecycle text,
   p_new_lifecycle text,
   p_activation_event_id uuid DEFAULT NULL
@@ -331,13 +398,26 @@ DECLARE
   v_version public.public_source_versions%ROWTYPE;
   v_document public.documents%ROWTYPE;
   v_event public.public_source_activation_events%ROWTYPE;
+  v_approval public.document_publication_approvals%ROWTYPE;
+  v_publication_approval_id uuid;
+  v_publication_manifest_digest text;
+  v_publication_reviewed_state_digest text;
+  v_publication_reviewed_index_generation_id uuid;
   v_allowed boolean := false;
 BEGIN
   SELECT * INTO v_version
   FROM public.public_source_versions
   WHERE id = p_version_id
   FOR UPDATE;
-  IF NOT FOUND OR v_version.lifecycle IS DISTINCT FROM p_expected_lifecycle THEN
+  IF NOT FOUND
+     OR v_version.source_catalogue_key IS DISTINCT FROM p_expected_catalogue_key
+     OR v_version.exact_version_url IS DISTINCT FROM p_expected_exact_version_url
+     OR v_version.content_hash IS DISTINCT FROM p_expected_content_hash
+     OR v_version.lifecycle IS DISTINCT FROM p_expected_lifecycle
+  THEN
+    RAISE EXCEPTION 'Public source version identity changed after review';
+  END IF;
+  IF v_version.lifecycle IS DISTINCT FROM p_expected_lifecycle THEN
     RAISE EXCEPTION 'Public source version changed after review';
   END IF;
 
@@ -345,7 +425,16 @@ BEGIN
   FROM public.documents
   WHERE id = v_version.staging_document_id
   FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Public source staging document is missing'; END IF;
+  IF NOT FOUND
+     OR v_document.source_path IS DISTINCT FROM v_version.exact_version_url
+     OR v_document.content_hash IS DISTINCT FROM v_version.staged_content_hash
+     OR v_document.metadata->>'source_content_hash' IS DISTINCT FROM v_version.content_hash
+     OR v_document.metadata->>'content_hash' IS DISTINCT FROM v_version.staged_content_hash
+     OR v_document.metadata->>'source_exact_version' IS DISTINCT FROM v_version.exact_version
+     OR v_document.metadata->>'licence_evidence_digest' IS DISTINCT FROM v_version.licence_evidence_digest
+  THEN
+    RAISE EXCEPTION 'Public source staging document no longer matches exact version identity';
+  END IF;
 
   v_allowed := CASE v_version.lifecycle
     WHEN 'discovered' THEN p_new_lifecycle IN ('shadow', 'quarantined', 'tombstoned')
@@ -365,21 +454,43 @@ BEGIN
     ORDER BY created_at DESC, id DESC
     LIMIT 1
     FOR UPDATE;
-    IF NOT FOUND OR v_event.id IS DISTINCT FROM p_activation_event_id OR v_event.decision <> 'activate'
+    IF NOT FOUND
+       OR v_event.id IS DISTINCT FROM p_activation_event_id
+       OR v_event.id IS DISTINCT FROM v_version.activation_event_id
+       OR v_event.decision <> 'activate'
        OR v_event.source_policy_version IS DISTINCT FROM v_version.source_policy_version
        OR v_event.source_policy_digest IS DISTINCT FROM v_version.source_policy_digest
     THEN
       RAISE EXCEPTION 'Exact document publication approval is distinct from source activation; both are required';
     END IF;
-    IF v_document.owner_id IS NOT NULL
-       OR NOT EXISTS (
-         SELECT 1
-         FROM public.document_publication_approvals approval
-         WHERE approval.document_id = v_document.id
-           AND approval.decision = 'approved'
-           AND approval.source_catalogue_key = v_version.source_catalogue_key
-           AND approval.source_policy_version = v_version.source_policy_version
-       )
+    BEGIN
+      v_publication_approval_id := nullif(v_document.metadata->>'publication_approval_id', '')::uuid;
+      v_publication_reviewed_index_generation_id :=
+        nullif(v_document.metadata->>'publication_reviewed_index_generation_id', '')::uuid;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'Exact document publication receipt is invalid';
+    END;
+    v_publication_manifest_digest := lower(coalesce(v_document.metadata->>'publication_manifest_digest', ''));
+    v_publication_reviewed_state_digest :=
+      lower(coalesce(v_document.metadata->>'publication_reviewed_state_digest', ''));
+
+    SELECT approval.* INTO v_approval
+    FROM public.document_publication_approvals approval
+    WHERE approval.id = v_publication_approval_id
+      AND approval.document_id = v_document.id
+      AND approval.expected_prior_owner_id = v_version.staging_owner_id
+      AND approval.decision = 'approved'
+      AND approval.manifest_digest = v_publication_manifest_digest
+      AND approval.reviewed_state_digest = v_publication_reviewed_state_digest
+      AND approval.reviewed_index_generation_id = v_publication_reviewed_index_generation_id
+      AND approval.source_catalogue_key = v_version.source_catalogue_key
+      AND approval.source_policy_version = v_version.source_policy_version
+    FOR SHARE;
+    IF NOT FOUND
+       OR v_document.owner_id IS NOT NULL
+       OR v_document.index_generation_id IS DISTINCT FROM v_publication_reviewed_index_generation_id
+       OR v_document.metadata->>'publication_source_catalogue_key' IS DISTINCT FROM v_version.source_catalogue_key
+       OR v_document.metadata->>'publication_source_policy_version' IS DISTINCT FROM v_version.source_policy_version
     THEN
       RAISE EXCEPTION 'Exact document publication approval is distinct from source activation; both are required';
     END IF;
@@ -387,7 +498,22 @@ BEGIN
 
   UPDATE public.public_source_versions
   SET lifecycle = p_new_lifecycle,
-      activation_event_id = coalesce(p_activation_event_id, activation_event_id),
+      publication_approval_id = CASE
+        WHEN p_new_lifecycle = 'active' THEN v_publication_approval_id
+        ELSE publication_approval_id
+      END,
+      publication_manifest_digest = CASE
+        WHEN p_new_lifecycle = 'active' THEN v_publication_manifest_digest
+        ELSE publication_manifest_digest
+      END,
+      publication_reviewed_state_digest = CASE
+        WHEN p_new_lifecycle = 'active' THEN v_publication_reviewed_state_digest
+        ELSE publication_reviewed_state_digest
+      END,
+      publication_reviewed_index_generation_id = CASE
+        WHEN p_new_lifecycle = 'active' THEN v_publication_reviewed_index_generation_id
+        ELSE publication_reviewed_index_generation_id
+      END,
       updated_at = now()
   WHERE id = p_version_id;
 
@@ -396,15 +522,17 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.reject_public_source_activation_event_mutation() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.guard_public_source_version_identity() FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.record_public_source_activation_event(jsonb) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.create_public_source_fetch_manifest(text, text, text, uuid, text, text, text, uuid)
   FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.stage_public_source_version(jsonb) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.transition_public_source_version(uuid, text, text, uuid)
+REVOKE ALL ON FUNCTION public.transition_public_source_version(uuid, text, text, text, text, text, uuid)
   FROM PUBLIC, anon, authenticated;
 
 GRANT EXECUTE ON FUNCTION public.record_public_source_activation_event(jsonb) TO service_role;
 GRANT EXECUTE ON FUNCTION public.create_public_source_fetch_manifest(text, text, text, uuid, text, text, text, uuid)
   TO service_role;
 GRANT EXECUTE ON FUNCTION public.stage_public_source_version(jsonb) TO service_role;
-GRANT EXECUTE ON FUNCTION public.transition_public_source_version(uuid, text, text, uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION public.transition_public_source_version(uuid, text, text, text, text, text, uuid)
+  TO service_role;

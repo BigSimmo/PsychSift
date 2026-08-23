@@ -1,3 +1,6 @@
+// @ts-expect-error Deno edge imports require explicit TypeScript extensions.
+import { publicSourcePolicyViolation } from "../_shared/public-source-policy.ts";
+
 export type CompletionGate = {
   counts: {
     sections: number;
@@ -63,6 +66,13 @@ export type JobStatusRpcResult = {
   missing: string[] | null;
   status: string;
 };
+
+export function publicSourceWorkerPolicyViolation(
+  metadata: Record<string, unknown> | null | undefined,
+  containsProtectedSourceContent: boolean,
+) {
+  return publicSourcePolicyViolation(metadata, containsProtectedSourceContent);
+}
 
 export function agentFailureDecision(args: {
   attemptCount: number;

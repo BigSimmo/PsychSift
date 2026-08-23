@@ -112,4 +112,27 @@ describe("enqueueDocumentReindexJob", () => {
     });
     await expect(enqueueDocumentReindexJob({ supabase: client as never, document: doc })).rejects.toThrow("boom");
   });
+
+  it("fails closed before queue mutation when public-source metadata is protected or incomplete", async () => {
+    const { enqueueDocumentReindexJob, client, calls } = await load();
+    await expect(
+      enqueueDocumentReindexJob({
+        supabase: client as never,
+        document: {
+          ...doc,
+          metadata: {
+            corpus_scope: "australian_public",
+            source_catalogue_key: "wa-health",
+            source_policy_version: "australian-source-policy-v1",
+            content_mode: "indexed_content",
+            licence_policy: "public_index_permitted",
+            public_source_lifecycle: "shadow",
+            source_policy_checked: true,
+            forbidden_source_identity: "australian_medicines_handbook",
+          },
+        },
+      }),
+    ).rejects.toThrow(/public.source.*policy|protected/i);
+    expect(calls.documentUpdates).toBe(0);
+  });
 });

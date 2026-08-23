@@ -4,6 +4,7 @@ import { ingestionRollbackFenceStamp } from "@/lib/ingestion-mutation-safety";
 import { isAtomicReindexCandidate } from "@/lib/reindex-pipeline";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
+import { publicSourcePolicyViolation } from "../../supabase/functions/_shared/public-source-policy";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -18,6 +19,7 @@ export type EnqueueableDocument = {
   chunk_count?: number | null;
   image_count?: number | null;
   import_batch_id?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type EnqueueReindexResult =
@@ -38,6 +40,8 @@ export async function enqueueDocumentReindexJob(args: {
   document: EnqueueableDocument;
 }): Promise<EnqueueReindexResult> {
   const { supabase, document } = args;
+  const publicSourceViolation = publicSourcePolicyViolation(document.metadata);
+  if (publicSourceViolation) throw new Error(`Public source policy blocked enqueue (${publicSourceViolation}).`);
   const ownerId = document.owner_id;
   const atomicReindex = isAtomicReindexCandidate(document);
 

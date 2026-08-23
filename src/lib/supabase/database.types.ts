@@ -986,11 +986,17 @@ export type Database = {
           index_generation_id: string | null;
           licence_evidence_digest: string;
           lifecycle: string;
+          publication_approval_id: string | null;
+          publication_manifest_digest: string | null;
+          publication_reviewed_index_generation_id: string | null;
+          publication_reviewed_state_digest: string | null;
           retrieved_at: string;
           source_catalogue_key: string;
           source_policy_digest: string;
           source_policy_version: string;
           staging_document_id: string;
+          staged_content_hash: string;
+          staging_owner_id: string;
           supersedes_version_id: string | null;
           updated_at: string;
         };
@@ -1006,11 +1012,17 @@ export type Database = {
           index_generation_id?: string | null;
           licence_evidence_digest: string;
           lifecycle: string;
+          publication_approval_id?: string | null;
+          publication_manifest_digest?: string | null;
+          publication_reviewed_index_generation_id?: string | null;
+          publication_reviewed_state_digest?: string | null;
           retrieved_at: string;
           source_catalogue_key: string;
           source_policy_digest: string;
           source_policy_version: string;
           staging_document_id: string;
+          staged_content_hash: string;
+          staging_owner_id: string;
           supersedes_version_id?: string | null;
           updated_at?: string;
         };
@@ -1026,11 +1038,17 @@ export type Database = {
           index_generation_id?: string | null;
           licence_evidence_digest?: string;
           lifecycle?: string;
+          publication_approval_id?: string | null;
+          publication_manifest_digest?: string | null;
+          publication_reviewed_index_generation_id?: string | null;
+          publication_reviewed_state_digest?: string | null;
           retrieved_at?: string;
           source_catalogue_key?: string;
           source_policy_digest?: string;
           source_policy_version?: string;
           staging_document_id?: string;
+          staged_content_hash?: string;
+          staging_owner_id?: string;
           supersedes_version_id?: string | null;
           updated_at?: string;
         };
@@ -1043,9 +1061,16 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "public_source_versions_publication_approval_id_fkey";
+            columns: ["publication_approval_id"];
+            isOneToOne: false;
+            referencedRelation: "document_publication_approvals";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "public_source_versions_staging_document_id_fkey";
             columns: ["staging_document_id"];
-            isOneToOne: false;
+            isOneToOne: true;
             referencedRelation: "documents";
             referencedColumns: ["id"];
           },
@@ -3039,6 +3064,9 @@ export type Database = {
       transition_public_source_version: {
         Args: {
           p_activation_event_id?: string | null;
+          p_expected_catalogue_key: string;
+          p_expected_content_hash: string;
+          p_expected_exact_version_url: string;
           p_expected_lifecycle: string;
           p_new_lifecycle: string;
           p_version_id: string;
