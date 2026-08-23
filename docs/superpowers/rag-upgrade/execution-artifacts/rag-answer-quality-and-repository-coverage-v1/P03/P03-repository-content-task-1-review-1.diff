@@ -1,0 +1,1325 @@
+# Review package: d0c43e89d830ee071eac68f72f614d5e8d7a5214..cfd7dc98ed28ef5aa051b382e64c3f7f1c0061da
+
+## Commits
+7cde5306dbf053bcdc150d78b0bac8373a324b74
+5474be33a16bf9893426af719579392e47b4fe3a
+cfd7dc98ed28ef5aa051b382e64c3f7f1c0061da
+
+## Diff
+diff --git a/docs/codebase-index.md b/docs/codebase-index.md
+index a7d87ec46622405d10e981bba1a86c0aa821b10e..4047212615d75670c86a3503ae0c68c8d9c5946f 100644
+--- a/docs/codebase-index.md
++++ b/docs/codebase-index.md
+@@ -112,32 +112,33 @@ Smaller top-level directories that are easy to miss:
+ | Ops           | `/api/health`, `/api/health/ready`, `/api/setup-status`, `/api/local-project-id`                                       | `health/`, `setup-status/`, `local-project-id/`                 |
+ | Eval / jobs   | `/api/eval-cases`; `/api/jobs` (admin/ops listing — see `docs/api-jobs-ops-surface.md`; UI uses `/api/ingestion/jobs`) | `eval-cases/`, `jobs/`                                          |
+ | Webhooks      | `/api/webhooks/railway`, `/api/webhooks/supabase/document-change` (inbound; secret-gated — see docs/webhooks.md)       | `webhooks/`                                                     |
+ 
+ ---
+ 
+ ## `src/lib/` module map
+ 
+ ### RAG, retrieval, answers
+ 
+-The `rag.ts` orchestrator and its `rag-*` cluster live in **`src/lib/rag/`** (the first
+-domain-extracted directory; imported as `@/lib/rag/rag*`). Other modules below remain flat in
+-`src/lib/`.
++The `rag.ts` orchestrator and its `rag-*` cluster live in **`src/lib/rag/`** (imported as
++`@/lib/rag/rag*`). First-party content contracts and producer governance live in
++**`src/lib/site-content/`**. Other modules below remain flat in `src/lib/`.
+ 
+ | Module                                                                                                                  | Role                                                                                         |
+ | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+ | `rag.ts`                                                                                                                | Main answer pipeline orchestrator                                                            |
+ | `rag-routing.ts`, `rag-provider.ts`, `rag-answer-text.ts`, `smart-rag-api.ts`                                           | Model routing, provider modes, API surface                                                   |
+ | `rag-contracts.ts`, `rag-answer-support.ts`, `rag-query-guard.ts`                                                       | Shared RAG contracts and pure answer/query policy                                            |
+ | `rag-evidence-gates.ts`, `rag-coverage-gate.ts`, `rag-second-stage.ts`                                                  | Evidence predicates, fast-path coverage gating, and second-stage ranking                     |
+ | `rag-hydration.ts`                                                                                                      | Per-request hydration: document ranking metadata, cached index quality, page visual evidence |
+ | `rag-cache.ts`, `rag-retrieval-variants.ts`                                                                             | Bounded caches and retrieval variants                                                        |
++| `site-content/` (`site-content-contracts.ts`, `site-content-registry.ts`)                                               | First-party content contracts, producer/adoption registry, and snapshot policy               |
+ | `clinical-search.ts`, `clinical-query-mode.ts`, `retrieval-selection.ts`                                                | Query modes and retrieval selection                                                          |
+ | `answer-ranking.ts`, `answer-verification.ts`, `answer-formatting.ts`, `answer-follow-up.ts`, `answer-render-policy.ts` | Answer quality and rendering                                                                 |
+ | `citations.ts`, `cross-document-synthesis.ts`, `evidence-relevance.ts`                                                  | Evidence and synthesis                                                                       |
+ | `ranking-config.ts`, `search-scope.ts`, `rag-eval-cases.ts`                                                             | Ranking tuning and eval fixtures                                                             |
+ 
+ ### Ingestion and indexing
+ 
+ | Module                                                                   | Role                                                |
+ | ------------------------------------------------------------------------ | --------------------------------------------------- |
+ | `ingestion.ts`, `ingestion-recovery.ts`, `ingestion-mutation-safety.ts`  | Job queue semantics and recovery                    |
+diff --git a/src/lib/site-content/site-content-contracts.ts b/src/lib/site-content/site-content-contracts.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..15586eb40d2ea701622011c073212e732bb92384
+--- /dev/null
++++ b/src/lib/site-content/site-content-contracts.ts
+@@ -0,0 +1,68 @@
++import type { ClinicalSourceRole, SiteContentDomain, SiteContentPartitionState } from "@/lib/types";
++
++export type SiteContentRecord = {
++  version: "site-content-record-v1";
++  logicalId: string;
++  producerClass: "static_repository" | "dynamic_registry";
++  domain: SiteContentDomain;
++  route: string;
++  title: string;
++  body: string;
++  sourceRole: ClinicalSourceRole;
++  access: "public";
++  validationStatus: "unverified" | "locally_reviewed" | "approved";
++  sourceStatus: "current" | "review_due" | "outdated" | "unknown";
++  publicationVersion: string;
++  sourceLineage: Array<{
++    sourceId: string;
++    sourceHash: string;
++    relationship: "derived_from" | "references";
++  }>;
++  contentHash: string;
++};
++
++export type ActiveSiteContentRelease = {
++  version: "clinical-kb-site-release-v1";
++  releaseId: string;
++  registryVersion: string;
++  staticManifestDigest: string;
++  dynamicStateDigest: string;
++  releaseDigest: string;
++  state: "active";
++  activatedAt: string;
++};
++
++export type SiteContentPartitionSnapshot = {
++  registryVersion: string | null;
++  releaseId: string | null;
++  expectedStaticManifestDigest: string | null;
++  activeStaticManifestDigest: string | null;
++  staticManifestDigest: string | null;
++  staticManifestMatch: boolean;
++  dynamicStateDigest: string | null;
++  releaseDigest: string | null;
++  changeEpoch: string | null;
++  pendingLogicalIds: string[];
++  pendingLogicalIdsDigest: string | null;
++  state: SiteContentPartitionState;
++};
++
++export type UploadedLocalSnapshotIdentity = {
++  indexGeneration: string;
++  activationDigest: string;
++};
++
++export type AustralianPublicSnapshotIdentity = {
++  indexGeneration: string | null;
++  releaseDigest: string | null;
++};
++
++export type RagContextSnapshot = {
++  version: "rag-context-snapshot-v1";
++  resolvedAt: string;
++  documentIndexGeneration: string;
++  sourcePolicyVersion: string;
++  uploadedLocal: UploadedLocalSnapshotIdentity;
++  australianPublic: AustralianPublicSnapshotIdentity;
++  publicSiteContent: SiteContentPartitionSnapshot;
++};
+diff --git a/src/lib/site-content/site-content-registry.ts b/src/lib/site-content/site-content-registry.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..8b247bf5a78b14e2d335892408a98100b9f31826
+--- /dev/null
++++ b/src/lib/site-content/site-content-registry.ts
+@@ -0,0 +1,658 @@
++import { appModeIds, type AppModeId } from "@/lib/app-modes";
++import type { SiteContentPartitionSnapshot, SiteContentRecord } from "@/lib/site-content/site-content-contracts";
++import type { ClinicalSourceRole, RagInsufficiencyReason, SiteContentDomain, SourceCorpusScope } from "@/lib/types";
++
++export const siteContentRegistryVersion = "site-content-registry-v1" as const;
++
++type RegistryCorpusKind = "service" | "form" | "medication" | "differential";
++
++export type SiteContentRecordAdoption =
++  | { recordId: string; disposition: "eligible" }
++  | {
++      recordId: string;
++      disposition: "reviewed_exclusion";
++      reason:
++        | "corpus_consumer"
++        | "trusted_ingestion_owned"
++        | "private_state"
++        | "synthetic_or_private_state"
++        | "excluded_source_present"
++        | "missing_source_governance"
++        | "not_source_backed"
++        | "review_due"
++        | "non_knowledge_tool";
++    };
++
++export type CurrentRegistryAuditProjection = {
++  source_kind: "registry_record";
++  registry_record_kind: RegistryCorpusKind;
++  corpus_scope: Extract<SourceCorpusScope, "clinical_kb_site">;
++  source_role: ClinicalSourceRole;
++  site_content_domain: SiteContentDomain;
++};
++
++type SiteContentProducerBase = {
++  version: "site-content-producer-v1";
++  key: string;
++  domain: SiteContentDomain;
++  corpusScope: Extract<SourceCorpusScope, "clinical_kb_site">;
++  canonicalSource: string;
++  producerModule: string;
++  publicationVersionField: string;
++  adapter: string;
++  allowedRoles: readonly ClinicalSourceRole[];
++  readPolicy: "public";
++  readerPopulation: "anonymous_authenticated_administrator";
++  readPartitionKey: "active_public_release";
++  routeBuilder: (slug: string) => string;
++  reviewOwner: "clinical-content-governance";
++  activationState: "eligible" | "reviewed_ineligible" | "pending_review";
++  ineligibilityReason: string | null;
++  recordAdoptions: readonly SiteContentRecordAdoption[] | null;
++};
++
++export type StaticSiteContentProducerDefinition = SiteContentProducerBase & {
++  producerClass: "static_repository";
++  mutationPolicy: "repository_release_only";
++  mutationActor: null;
++  mutationBoundary: "repository_release";
++  currentAuditProjection: null;
++};
++
++export type DynamicSiteContentProducerDefinition = SiteContentProducerBase & {
++  producerClass: "dynamic_registry";
++  mutationPolicy: "administrator_server_only";
++  mutationActor: "administrator";
++  mutationBoundary: "server";
++  currentAuditProjection: CurrentRegistryAuditProjection;
++};
++
++export type SiteContentProducerDefinition = StaticSiteContentProducerDefinition | DynamicSiteContentProducerDefinition;
++
++export type SiteContentModeExclusionReason =
++  | "corpus_consumer"
++  | "trusted_ingestion_owned"
++  | "private_state"
++  | "excluded_source_and_not_clinician_approved"
++  | "excluded_source_present"
++  | "missing_source_governance"
++  | "missing_canonical_lineage_and_review";
++
++export type SiteContentModeAdoption =
++  | {
++      mode: AppModeId;
++      disposition: "registered";
++      domain: SiteContentDomain;
++      producerKey: string;
++    }
++  | {
++      mode: AppModeId;
++      disposition: "reviewed_exclusion";
++      reason: SiteContentModeExclusionReason;
++      reviewOwner: "clinical-content-governance";
++    }
++  | {
++      mode: AppModeId;
++      disposition: "reviewed_ineligible";
++      domain: SiteContentDomain;
++      producerKey: string;
++      reason: SiteContentModeExclusionReason;
++      reviewOwner: "clinical-content-governance";
++    }
++  | {
++      mode: AppModeId;
++      disposition: "pending_review";
++      reason: string;
++    };
++
++const approvedCanonicalSources = new Set([
++  "database:clinical_registry_records:service",
++  "database:clinical_registry_records:form",
++  "database:medication_records",
++  "database:differential_records",
++  "src/lib/specifiers-content.ts",
++  "src/data/dsm-clinical-content.json",
++  "src/data/formulation-content.json",
++  "src/data/therapies-source.json",
++  "src/lib/dictionary-data.ts",
++  "src/components/factsheets/factsheets-data.ts",
++  "src/components/calculators/calculator-fixtures.ts",
++  "src/lib/tools-catalog.ts",
++]);
++
++const approvedSiteRoles = new Set<ClinicalSourceRole>([
++  "clinical_reference",
++  "service_directory",
++  "form_reference",
++  "tool_reference",
++]);
++
++function route(base: string) {
++  return (slug: string) => `${base}/${encodeURIComponent(slug.trim())}`;
++}
++
++function dynamicProducer(args: {
++  key: string;
++  domain: SiteContentDomain;
++  canonicalSource: string;
++  producerModule: string;
++  publicationVersionField: string;
++  adapter: string;
++  role: ClinicalSourceRole;
++  registryKind: RegistryCorpusKind;
++  routeBase: string;
++  recordAdoptions?: readonly SiteContentRecordAdoption[];
++}): DynamicSiteContentProducerDefinition {
++  return {
++    version: "site-content-producer-v1",
++    key: args.key,
++    producerClass: "dynamic_registry",
++    domain: args.domain,
++    corpusScope: "clinical_kb_site",
++    canonicalSource: args.canonicalSource,
++    producerModule: args.producerModule,
++    publicationVersionField: args.publicationVersionField,
++    adapter: args.adapter,
++    allowedRoles: [args.role],
++    readPolicy: "public",
++    readerPopulation: "anonymous_authenticated_administrator",
++    readPartitionKey: "active_public_release",
++    mutationPolicy: "administrator_server_only",
++    mutationActor: "administrator",
++    mutationBoundary: "server",
++    routeBuilder: route(args.routeBase),
++    reviewOwner: "clinical-content-governance",
++    activationState: "eligible",
++    ineligibilityReason: null,
++    recordAdoptions: args.recordAdoptions ?? null,
++    currentAuditProjection: {
++      source_kind: "registry_record",
++      registry_record_kind: args.registryKind,
++      corpus_scope: "clinical_kb_site",
++      source_role: args.role,
++      site_content_domain: args.domain,
++    },
++  };
++}
++
++function staticProducer(args: {
++  key: string;
++  domain: SiteContentDomain;
++  canonicalSource: string;
++  producerModule: string;
++  publicationVersionField: string;
++  adapter: string;
++  role: ClinicalSourceRole;
++  routeBase: string;
++  activationState?: "eligible" | "reviewed_ineligible";
++  ineligibilityReason?: string;
++  recordAdoptions?: readonly SiteContentRecordAdoption[];
++}): StaticSiteContentProducerDefinition {
++  return {
++    version: "site-content-producer-v1",
++    key: args.key,
++    producerClass: "static_repository",
++    domain: args.domain,
++    corpusScope: "clinical_kb_site",
++    canonicalSource: args.canonicalSource,
++    producerModule: args.producerModule,
++    publicationVersionField: args.publicationVersionField,
++    adapter: args.adapter,
++    allowedRoles: [args.role],
++    readPolicy: "public",
++    readerPopulation: "anonymous_authenticated_administrator",
++    readPartitionKey: "active_public_release",
++    mutationPolicy: "repository_release_only",
++    mutationActor: null,
++    mutationBoundary: "repository_release",
++    routeBuilder: route(args.routeBase),
++    reviewOwner: "clinical-content-governance",
++    activationState: args.activationState ?? "eligible",
++    ineligibilityReason: args.ineligibilityReason ?? null,
++    recordAdoptions: args.recordAdoptions ?? null,
++    currentAuditProjection: null,
++  };
++}
++
++export const siteContentProducerDefinitions: readonly SiteContentProducerDefinition[] = [
++  dynamicProducer({
++    key: "services",
++    domain: "services",
++    canonicalSource: "database:clinical_registry_records:service",
++    producerModule: "src/lib/registry-corpus.ts#clinicalRegistryRowsToCorpusEntries",
++    publicationVersionField: "updated_at",
++    adapter: "registry/service",
++    role: "service_directory",
++    registryKind: "service",
++    routeBase: "/services",
++  }),
++  dynamicProducer({
++    key: "forms",
++    domain: "forms",
++    canonicalSource: "database:clinical_registry_records:form",
++    producerModule: "src/lib/registry-corpus.ts#clinicalRegistryRowsToCorpusEntries",
++    publicationVersionField: "updated_at",
++    adapter: "registry/form",
++    role: "form_reference",
++    registryKind: "form",
++    routeBase: "/forms",
++  }),
++  dynamicProducer({
++    key: "medications",
++    domain: "medications",
++    canonicalSource: "database:medication_records",
++    producerModule: "src/lib/registry-corpus.ts#medicationRowsToCorpusEntries",
++    publicationVersionField: "updated_at",
++    adapter: "registry/medication",
++    role: "clinical_reference",
++    registryKind: "medication",
++    routeBase: "/medications",
++  }),
++  dynamicProducer({
++    key: "differentials",
++    domain: "differentials",
++    canonicalSource: "database:differential_records",
++    producerModule: "src/lib/registry-corpus.ts#differentialRowsToCorpusEntries",
++    publicationVersionField: "updated_at",
++    adapter: "registry/differential",
++    role: "clinical_reference",
++    registryKind: "differential",
++    routeBase: "/differentials",
++  }),
++  staticProducer({
++    key: "specifiers",
++    domain: "specifiers",
++    canonicalSource: "src/lib/specifiers-content.ts",
++    producerModule: "src/lib/specifiers-content.ts",
++    publicationVersionField: "contentVersion",
++    adapter: "static/specifiers",
++    role: "clinical_reference",
++    routeBase: "/specifiers",
++    activationState: "reviewed_ineligible",
++    ineligibilityReason: "missing_canonical_lineage_and_review",
++  }),
++  staticProducer({
++    key: "dsm",
++    domain: "dsm",
++    canonicalSource: "src/data/dsm-clinical-content.json",
++    producerModule: "src/lib/dsm.ts",
++    publicationVersionField: "contentVersion",
++    adapter: "static/dsm",
++    role: "clinical_reference",
++    routeBase: "/dsm",
++  }),
++  staticProducer({
++    key: "formulation",
++    domain: "formulation",
++    canonicalSource: "src/data/formulation-content.json",
++    producerModule: "src/lib/formulation.ts",
++    publicationVersionField: "contentVersion",
++    adapter: "static/formulation",
++    role: "clinical_reference",
++    routeBase: "/formulation",
++  }),
++  staticProducer({
++    key: "therapies",
++    domain: "therapies",
++    canonicalSource: "src/data/therapies-source.json",
++    producerModule: "src/lib/therapies.ts",
++    publicationVersionField: "reviewed",
++    adapter: "static/therapies",
++    role: "clinical_reference",
++    routeBase: "/therapy-compass",
++  }),
++  staticProducer({
++    key: "dictionary",
++    domain: "dictionary",
++    canonicalSource: "src/lib/dictionary-data.ts",
++    producerModule: "src/lib/dictionary-data.ts",
++    publicationVersionField: "reviewedAt",
++    adapter: "static/dictionary",
++    role: "clinical_reference",
++    routeBase: "/dictionary",
++    activationState: "reviewed_ineligible",
++    ineligibilityReason: "excluded_source_present",
++  }),
++  staticProducer({
++    key: "factsheets",
++    domain: "factsheets",
++    canonicalSource: "src/components/factsheets/factsheets-data.ts",
++    producerModule: "src/components/factsheets/factsheets-data.ts",
++    publicationVersionField: "reviewedAt",
++    adapter: "static/factsheets",
++    role: "clinical_reference",
++    routeBase: "/factsheets",
++    activationState: "reviewed_ineligible",
++    ineligibilityReason: "excluded_source_and_not_clinician_approved",
++  }),
++  staticProducer({
++    key: "calculators",
++    domain: "calculators",
++    canonicalSource: "src/components/calculators/calculator-fixtures.ts",
++    producerModule: "src/components/calculators/calculator-fixtures.ts",
++    publicationVersionField: "sourceReviewedAt",
++    adapter: "static/calculators",
++    role: "tool_reference",
++    routeBase: "/calculators",
++    activationState: "reviewed_ineligible",
++    ineligibilityReason: "missing_source_governance",
++  }),
++  staticProducer({
++    key: "tools",
++    domain: "tools",
++    canonicalSource: "src/lib/tools-catalog.ts",
++    producerModule: "src/lib/tools-catalog.ts",
++    publicationVersionField: "reviewedAt",
++    adapter: "static/tools",
++    role: "tool_reference",
++    routeBase: "/tools",
++    recordAdoptions: [
++      { recordId: "clinical-kb-search", disposition: "reviewed_exclusion", reason: "corpus_consumer" },
++      { recordId: "differentials", disposition: "eligible" },
++      { recordId: "documents", disposition: "reviewed_exclusion", reason: "trusted_ingestion_owned" },
++      { recordId: "clinical-dictionary", disposition: "reviewed_exclusion", reason: "excluded_source_present" },
++      { recordId: "guidelines", disposition: "reviewed_exclusion", reason: "trusted_ingestion_owned" },
++      { recordId: "risk-safety", disposition: "reviewed_exclusion", reason: "review_due" },
++      { recordId: "medication-prescribing", disposition: "reviewed_exclusion", reason: "review_due" },
++      { recordId: "services", disposition: "eligible" },
++      { recordId: "ward-management", disposition: "reviewed_exclusion", reason: "synthetic_or_private_state" },
++      { recordId: "forms", disposition: "eligible" },
++      { recordId: "care-plans", disposition: "reviewed_exclusion", reason: "non_knowledge_tool" },
++      { recordId: "safety-plan", disposition: "reviewed_exclusion", reason: "not_source_backed" },
++      { recordId: "calculators", disposition: "reviewed_exclusion", reason: "missing_source_governance" },
++      { recordId: "monitoring", disposition: "reviewed_exclusion", reason: "review_due" },
++      { recordId: "favourites", disposition: "reviewed_exclusion", reason: "private_state" },
++    ],
++  }),
++];
++
++export const siteContentModeAdoptionRegistry: readonly SiteContentModeAdoption[] = [
++  {
++    mode: "answer",
++    disposition: "reviewed_exclusion",
++    reason: "corpus_consumer",
++    reviewOwner: "clinical-content-governance",
++  },
++  {
++    mode: "documents",
++    disposition: "reviewed_exclusion",
++    reason: "trusted_ingestion_owned",
++    reviewOwner: "clinical-content-governance",
++  },
++  { mode: "services", disposition: "registered", domain: "services", producerKey: "services" },
++  { mode: "forms", disposition: "registered", domain: "forms", producerKey: "forms" },
++  {
++    mode: "favourites",
++    disposition: "reviewed_exclusion",
++    reason: "private_state",
++    reviewOwner: "clinical-content-governance",
++  },
++  { mode: "differentials", disposition: "registered", domain: "differentials", producerKey: "differentials" },
++  { mode: "dsm", disposition: "registered", domain: "dsm", producerKey: "dsm" },
++  {
++    mode: "specifiers",
++    disposition: "reviewed_ineligible",
++    domain: "specifiers",
++    producerKey: "specifiers",
++    reason: "missing_canonical_lineage_and_review",
++    reviewOwner: "clinical-content-governance",
++  },
++  { mode: "formulation", disposition: "registered", domain: "formulation", producerKey: "formulation" },
++  { mode: "prescribing", disposition: "registered", domain: "medications", producerKey: "medications" },
++  { mode: "tools", disposition: "registered", domain: "tools", producerKey: "tools" },
++  {
++    mode: "calculators",
++    disposition: "reviewed_ineligible",
++    domain: "calculators",
++    producerKey: "calculators",
++    reason: "missing_source_governance",
++    reviewOwner: "clinical-content-governance",
++  },
++  { mode: "therapy-compass", disposition: "registered", domain: "therapies", producerKey: "therapies" },
++  {
++    mode: "factsheets",
++    disposition: "reviewed_ineligible",
++    domain: "factsheets",
++    producerKey: "factsheets",
++    reason: "excluded_source_and_not_clinician_approved",
++    reviewOwner: "clinical-content-governance",
++  },
++  {
++    mode: "dictionary",
++    disposition: "reviewed_ineligible",
++    domain: "dictionary",
++    producerKey: "dictionary",
++    reason: "excluded_source_present",
++    reviewOwner: "clinical-content-governance",
++  },
++];
++
++function normalizedIdentity(value: string) {
++  return value.trim().toLowerCase();
++}
++
++function forbiddenSourceIdentity(value: string) {
++  const normalized = normalizedIdentity(value);
++  return (
++    normalized.includes("healthdirect") ||
++    /(^|[^a-z])etg(?: complete)?([^a-z]|$)/.test(normalized) ||
++    normalized.includes("australian medicines handbook") ||
++    /(^|[^a-z])amh([^a-z]|$)/.test(normalized)
++  );
++}
++
++export function assertSiteContentProducerDefinition(
++  producer: SiteContentProducerDefinition,
++): asserts producer is SiteContentProducerDefinition {
++  if (!approvedCanonicalSources.has(producer.canonicalSource) || forbiddenSourceIdentity(producer.canonicalSource)) {
++    throw new Error(`${producer.canonicalSource} is not an approved site-content producer source.`);
++  }
++  if (producer.corpusScope !== "clinical_kb_site" || producer.readPolicy !== "public") {
++    throw new Error(`Site-content producer ${producer.key} must use the single public clinical_kb_site partition.`);
++  }
++  if (producer.allowedRoles.length === 0 || producer.allowedRoles.some((role) => !approvedSiteRoles.has(role))) {
++    throw new Error(`Site-content producer ${producer.key} has a role that cannot support first-party site claims.`);
++  }
++  if (producer.activationState === "pending_review") {
++    throw new Error(`Site-content producer ${producer.key} is pending review and cannot satisfy adoption.`);
++  }
++  if (producer.activationState === "reviewed_ineligible" && !producer.ineligibilityReason) {
++    throw new Error(`Site-content producer ${producer.key} is ineligible without a reviewed reason.`);
++  }
++  if (producer.activationState === "eligible" && producer.ineligibilityReason) {
++    throw new Error(`Eligible site-content producer ${producer.key} cannot retain an ineligibility reason.`);
++  }
++  if (producer.producerClass === "dynamic_registry") {
++    if (
++      producer.mutationPolicy !== "administrator_server_only" ||
++      producer.currentAuditProjection.corpus_scope !== "clinical_kb_site" ||
++      producer.currentAuditProjection.site_content_domain !== producer.domain ||
++      !producer.allowedRoles.includes(producer.currentAuditProjection.source_role)
++    ) {
++      throw new Error(`Dynamic site-content producer ${producer.key} has an invalid public audit projection.`);
++    }
++  }
++}
++
++export function assertCompleteSiteContentModeCoverage(
++  modes: readonly string[],
++  adoptions: readonly SiteContentModeAdoption[],
++) {
++  const producerByKey = new Map(siteContentProducerDefinitions.map((producer) => [producer.key, producer]));
++  const adoptionCounts = new Map<string, number>();
++  for (const adoption of adoptions) adoptionCounts.set(adoption.mode, (adoptionCounts.get(adoption.mode) ?? 0) + 1);
++
++  for (const mode of modes) {
++    const adoption = adoptions.find((candidate) => candidate.mode === mode);
++    if (!adoption || adoptionCounts.get(mode) !== 1) {
++      throw new Error(`App mode ${mode} must be registered or have one reviewed exclusion.`);
++    }
++    if (adoption.disposition === "pending_review") {
++      throw new Error(`App mode ${mode} is pending review; it must be registered or have a reviewed exclusion.`);
++    }
++    if (adoption.disposition === "registered" || adoption.disposition === "reviewed_ineligible") {
++      const producer = producerByKey.get(adoption.producerKey);
++      if (!producer || producer.domain !== adoption.domain) {
++        throw new Error(`App mode ${mode} does not resolve to its registered canonical producer.`);
++      }
++      if (adoption.disposition === "registered" && producer.activationState !== "eligible") {
++        throw new Error(`App mode ${mode} cannot register an ineligible producer.`);
++      }
++      if (adoption.disposition === "reviewed_ineligible" && producer.activationState !== "reviewed_ineligible") {
++        throw new Error(`App mode ${mode} must bind its reviewed ineligibility to the producer contract.`);
++      }
++    }
++  }
++}
++
++for (const producer of siteContentProducerDefinitions) assertSiteContentProducerDefinition(producer);
++assertCompleteSiteContentModeCoverage(appModeIds, siteContentModeAdoptionRegistry);
++
++export function siteContentProducerForDomain(domain: SiteContentDomain) {
++  return siteContentProducerDefinitions.find((producer) => producer.domain === domain) ?? null;
++}
++
++export type SiteContentPublicationCandidate = {
++  record: SiteContentRecord;
++  publicationState: "draft" | "preview" | "published" | "retired";
++  renderedByPublicSite: boolean;
++  audit: { ownerId: string | null; actorId: string | null };
++};
++
++export function assertSiteContentRecordEligible(record: SiteContentRecord) {
++  const producer = siteContentProducerForDomain(record.domain);
++  if (
++    !producer ||
++    producer.activationState !== "eligible" ||
++    record.producerClass !== producer.producerClass ||
++    !producer.allowedRoles.includes(record.sourceRole) ||
++    record.access !== "public"
++  ) {
++    throw new Error(`Site-content record ${record.logicalId} does not match its registered public producer.`);
++  }
++  if (producer.recordAdoptions) {
++    const recordId = record.logicalId.replace(new RegExp(`^${producer.key}:`), "");
++    const adoption = producer.recordAdoptions.find((candidate) => candidate.recordId === recordId);
++    if (!adoption || adoption.disposition !== "eligible") {
++      throw new Error(`Site-content record ${record.logicalId} is not an explicitly eligible producer record.`);
++    }
++  }
++  const forbiddenIdentities = [
++    record.logicalId,
++    record.title,
++    record.route,
++    ...record.sourceLineage.map((item) => item.sourceId),
++  ];
++  if (forbiddenIdentities.some(forbiddenSourceIdentity)) {
++    throw new Error(`Site-content record ${record.logicalId} names an excluded or link-only source.`);
++  }
++  const expectedPrefix = producer.routeBuilder("").replace(/\/$/, "");
++  if (!record.route.startsWith(`${expectedPrefix}/`)) {
++    throw new Error(`Site-content record ${record.logicalId} does not use its canonical public route.`);
++  }
++}
++
++export function selectCanonicalPublicSiteContentPublication(candidates: readonly SiteContentPublicationCandidate[]) {
++  const eligible = candidates.filter(
++    (candidate) => candidate.publicationState === "published" && candidate.renderedByPublicSite,
++  );
++  if (eligible.length !== 1) {
++    throw new Error("Expected exactly one canonical public publication for the logical site-content record.");
++  }
++  const selected = eligible[0]!;
++  assertSiteContentRecordEligible(selected.record);
++  return selected.record;
++}
++
++export function siteContentRetrievalMetadata(record: SiteContentRecord) {
++  assertSiteContentRecordEligible(record);
++  return {
++    source_kind: "site_content_record" as const,
++    corpus_scope: "clinical_kb_site" as const,
++    source_role: record.sourceRole,
++    site_content_domain: record.domain,
++    logical_id: record.logicalId,
++    publication_version: record.publicationVersion,
++    content_hash: record.contentHash,
++    source_lineage: record.sourceLineage.map(({ sourceId, sourceHash, relationship }) => ({
++      source_id: sourceId,
++      source_hash: sourceHash,
++      relationship,
++    })),
++  };
++}
++
++export function siteContentEvidenceFamilyKey(record: SiteContentRecord) {
++  const derivedSources = [
++    ...new Set(
++      record.sourceLineage
++        .filter((lineage) => lineage.relationship === "derived_from")
++        .map((lineage) => `source:${normalizedIdentity(lineage.sourceId)}:${normalizedIdentity(lineage.sourceHash)}`),
++    ),
++  ].sort();
++  if (derivedSources.length === 1) return derivedSources[0]!;
++  if (derivedSources.length > 1) return `sources:${derivedSources.join("|")}`;
++  return `site:${record.logicalId}:${record.contentHash}`;
++}
++
++export function assertSiteContentPartitionSnapshot(snapshot: SiteContentPartitionSnapshot) {
++  const staticManifestMatch =
++    snapshot.expectedStaticManifestDigest !== null &&
++    snapshot.activeStaticManifestDigest !== null &&
++    snapshot.expectedStaticManifestDigest === snapshot.activeStaticManifestDigest &&
++    snapshot.staticManifestDigest === snapshot.activeStaticManifestDigest &&
++    snapshot.staticManifestMatch;
++  if (snapshot.state === "current" && !staticManifestMatch) {
++    throw new Error("A static manifest mismatch cannot be current site content.");
++  }
++  if (
++    snapshot.state === "current" &&
++    (!snapshot.registryVersion ||
++      !snapshot.releaseId ||
++      !snapshot.dynamicStateDigest ||
++      !snapshot.releaseDigest ||
++      !snapshot.changeEpoch ||
++      snapshot.pendingLogicalIds.length > 0 ||
++      !snapshot.pendingLogicalIdsDigest)
++  ) {
++    throw new Error("Current site content requires complete release, epoch, and empty pending-set identity.");
++  }
++}
++
++export type SiteContentClaimPurpose = "product_catalogue" | "patient_specific_diagnosis" | "clinical_guidance";
++
++export type SiteContentClaimPolicyDecision = {
++  siteUse: "primary" | "supporting" | "navigation_only";
++  primaryCorpusScope: Extract<SourceCorpusScope, "clinical_kb_site" | "uploaded_local"> | null;
++  requiresEligibleClinicalEvidence: boolean;
++  insufficiencyReason: RagInsufficiencyReason | null;
++};
++
++export function evaluateSiteContentClaimPolicy(args: {
++  purpose: SiteContentClaimPurpose;
++  sourceRole: ClinicalSourceRole;
++  eligibleUploadedGuideline?: boolean;
++}): SiteContentClaimPolicyDecision {
++  if (args.purpose === "product_catalogue" && approvedSiteRoles.has(args.sourceRole)) {
++    return {
++      siteUse: "primary" as const,
++      primaryCorpusScope: "clinical_kb_site" as const,
++      requiresEligibleClinicalEvidence: false,
++      insufficiencyReason: null,
++    };
++  }
++  if (args.purpose === "clinical_guidance" && args.eligibleUploadedGuideline) {
++    return {
++      siteUse: "supporting" as const,
++      primaryCorpusScope: "uploaded_local" as const,
++      requiresEligibleClinicalEvidence: false,
++      insufficiencyReason: null,
++    };
++  }
++  return {
++    siteUse: "navigation_only" as const,
++    primaryCorpusScope: null,
++    requiresEligibleClinicalEvidence: true,
++    insufficiencyReason: "insufficient_claim_support",
++  };
++}
+diff --git a/tests/site-content-registry.test.ts b/tests/site-content-registry.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..818d17ae6e32e5686707de231936dd7eae776c28
+--- /dev/null
++++ b/tests/site-content-registry.test.ts
+@@ -0,0 +1,388 @@
++import { describe, expect, it } from "vitest";
++
++import { appModeIds } from "@/lib/app-modes";
++import {
++  assertCompleteSiteContentModeCoverage,
++  assertSiteContentPartitionSnapshot,
++  assertSiteContentProducerDefinition,
++  evaluateSiteContentClaimPolicy,
++  selectCanonicalPublicSiteContentPublication,
++  siteContentEvidenceFamilyKey,
++  siteContentModeAdoptionRegistry,
++  siteContentProducerDefinitions,
++  siteContentProducerForDomain,
++  siteContentRetrievalMetadata,
++  type SiteContentPublicationCandidate,
++  type SiteContentProducerDefinition,
++} from "@/lib/site-content/site-content-registry";
++import type {
++  ActiveSiteContentRelease,
++  RagContextSnapshot,
++  SiteContentRecord,
++} from "@/lib/site-content/site-content-contracts";
++import type { SiteContentDomain } from "@/lib/types";
++
++function record(overrides: Partial<SiteContentRecord> = {}): SiteContentRecord {
++  return {
++    version: "site-content-record-v1",
++    logicalId: "differential:mania",
++    producerClass: "dynamic_registry",
++    domain: "differentials",
++    route: "/differentials/mania",
++    title: "Mania",
++    body: "Canonical public product catalogue content.",
++    sourceRole: "clinical_reference",
++    access: "public",
++    validationStatus: "approved",
++    sourceStatus: "current",
++    publicationVersion: "differential-publication-v1",
++    sourceLineage: [],
++    contentHash: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++    ...overrides,
++  };
++}
++
++function publication(overrides: Partial<SiteContentPublicationCandidate> = {}): SiteContentPublicationCandidate {
++  return {
++    record: record(),
++    publicationState: "published",
++    renderedByPublicSite: true,
++    audit: { ownerId: "editor-1", actorId: "administrator-1" },
++    ...overrides,
++  };
++}
++
++describe("site content producer and adoption registry", () => {
++  it("maps the required domains to the canonical public site scope and claim roles", () => {
++    expect(siteContentProducerForDomain("specifiers")).toMatchObject({
++      producerClass: "static_repository",
++      corpusScope: "clinical_kb_site",
++      allowedRoles: ["clinical_reference"],
++      readPolicy: "public",
++      activationState: "reviewed_ineligible",
++      ineligibilityReason: "missing_canonical_lineage_and_review",
++    });
++    expect(siteContentProducerForDomain("differentials")).toMatchObject({
++      producerClass: "dynamic_registry",
++      corpusScope: "clinical_kb_site",
++      allowedRoles: ["clinical_reference"],
++      readPolicy: "public",
++    });
++    expect(siteContentProducerForDomain("medications")).toMatchObject({
++      producerClass: "dynamic_registry",
++      corpusScope: "clinical_kb_site",
++      allowedRoles: ["clinical_reference"],
++      readPolicy: "public",
++    });
++    expect(siteContentProducerForDomain("services")?.allowedRoles).toEqual(["service_directory"]);
++    expect(siteContentProducerForDomain("forms")?.allowedRoles).toEqual(["form_reference"]);
++  });
++
++  it("keeps static and database-edited producers explicit and non-interchangeable", () => {
++    const staticProducer = siteContentProducerForDomain("specifiers");
++    const dynamicProducer = siteContentProducerForDomain("medications");
++
++    expect(staticProducer).toMatchObject({
++      producerClass: "static_repository",
++      mutationPolicy: "repository_release_only",
++      currentAuditProjection: null,
++    });
++    expect(dynamicProducer).toMatchObject({
++      producerClass: "dynamic_registry",
++      mutationPolicy: "administrator_server_only",
++      currentAuditProjection: {
++        source_kind: "registry_record",
++        registry_record_kind: "medication",
++        corpus_scope: "clinical_kb_site",
++        source_role: "clinical_reference",
++        site_content_domain: "medications",
++      },
++    });
++  });
++
++  it("covers every app mode with a registered producer or reviewed exclusion", () => {
++    expect(() => assertCompleteSiteContentModeCoverage(appModeIds, siteContentModeAdoptionRegistry)).not.toThrow();
++    expect(siteContentModeAdoptionRegistry).toEqual(
++      expect.arrayContaining([
++        expect.objectContaining({ mode: "prescribing", disposition: "registered", domain: "medications" }),
++        expect.objectContaining({ mode: "therapy-compass", disposition: "registered", domain: "therapies" }),
++        expect.objectContaining({
++          mode: "factsheets",
++          disposition: "reviewed_ineligible",
++          reason: "excluded_source_and_not_clinician_approved",
++        }),
++        expect.objectContaining({
++          mode: "dictionary",
++          disposition: "reviewed_ineligible",
++          reason: "excluded_source_present",
++        }),
++        expect.objectContaining({
++          mode: "calculators",
++          disposition: "reviewed_ineligible",
++          reason: "missing_source_governance",
++        }),
++        expect.objectContaining({
++          mode: "documents",
++          disposition: "reviewed_exclusion",
++          reason: "trusted_ingestion_owned",
++        }),
++        expect.objectContaining({ mode: "favourites", disposition: "reviewed_exclusion", reason: "private_state" }),
++        expect.objectContaining({ mode: "answer", disposition: "reviewed_exclusion", reason: "corpus_consumer" }),
++      ]),
++    );
++    expect(siteContentModeAdoptionRegistry.some((entry) => entry.disposition === "pending_review")).toBe(false);
++
++    expect(() =>
++      assertCompleteSiteContentModeCoverage([...appModeIds, "future-knowledge-mode"], siteContentModeAdoptionRegistry),
++    ).toThrow(/future-knowledge-mode.*registered.*reviewed exclusion/i);
++  });
++
++  it("adopts Tools only through an explicit reviewed record allowlist", () => {
++    expect(siteContentProducerForDomain("tools")?.recordAdoptions).toEqual(
++      expect.arrayContaining([
++        { recordId: "differentials", disposition: "eligible" },
++        { recordId: "services", disposition: "eligible" },
++        { recordId: "forms", disposition: "eligible" },
++        { recordId: "documents", disposition: "reviewed_exclusion", reason: "trusted_ingestion_owned" },
++        { recordId: "favourites", disposition: "reviewed_exclusion", reason: "private_state" },
++        { recordId: "ward-management", disposition: "reviewed_exclusion", reason: "synthetic_or_private_state" },
++      ]),
++    );
++    expect(siteContentProducerForDomain("tools")?.recordAdoptions).toHaveLength(15);
++  });
++
++  it("rejects arbitrary repository, private, synthetic, and forbidden source registrations", () => {
++    const base = siteContentProducerForDomain("specifiers")!;
++    const forbiddenSources = [
++      "src/app/api/answer/route.ts",
++      "tests/rag-provider.test.ts",
++      "docs/clinical-prompt.md",
++      "public/mockups/specifier.html",
++      "src/data/ward-management-synthetic.json",
++      "src/lib/favourites.ts",
++      "private/user-state.json",
++      "https://www.healthdirect.gov.au/mental-health",
++      "eTG complete",
++      "Australian Medicines Handbook (AMH)",
++    ];
++
++    for (const canonicalSource of forbiddenSources) {
++      expect(() =>
++        assertSiteContentProducerDefinition({
++          ...base,
++          key: `hostile-${forbiddenSources.indexOf(canonicalSource)}`,
++          canonicalSource,
++        } as SiteContentProducerDefinition),
++      ).toThrow(/not an approved site-content producer source/i);
++    }
++  });
++});
++
++describe("site content public publication and authority policy", () => {
++  it("declares one reader-independent public release policy without claiming route adoption", () => {
++    const release: ActiveSiteContentRelease = {
++      version: "clinical-kb-site-release-v1",
++      releaseId: "release-2026-08-23",
++      registryVersion: "site-content-registry-v1",
++      staticManifestDigest: "sha256:static",
++      dynamicStateDigest: "sha256:dynamic",
++      releaseDigest: "sha256:release",
++      state: "active",
++      activatedAt: "2026-08-23T00:00:00.000Z",
++    };
++
++    expect(release.state).toBe("active");
++    expect(siteContentProducerDefinitions.every((producer) => producer.readPolicy === "public")).toBe(true);
++    expect(
++      siteContentProducerDefinitions.every(
++        (producer) =>
++          producer.readerPopulation === "anonymous_authenticated_administrator" &&
++          producer.readPartitionKey === "active_public_release",
++      ),
++    ).toBe(true);
++  });
++
++  it("declares only administrator-authorized server mutations for dynamic producers", () => {
++    const dynamicProducer = siteContentProducerForDomain("medications")!;
++    expect(dynamicProducer).toMatchObject({
++      mutationPolicy: "administrator_server_only",
++      mutationActor: "administrator",
++      mutationBoundary: "server",
++    });
++    expect(siteContentProducerForDomain("specifiers")).toMatchObject({
++      mutationPolicy: "repository_release_only",
++      mutationActor: null,
++      mutationBoundary: "repository_release",
++    });
++  });
++
++  it("selects exactly one canonical published version rendered by the public site", () => {
++    const canonical = publication();
++    expect(
++      selectCanonicalPublicSiteContentPublication([
++        publication({ publicationState: "draft", renderedByPublicSite: false }),
++        publication({ publicationState: "preview", renderedByPublicSite: false }),
++        canonical,
++      ]),
++    ).toEqual(canonical.record);
++
++    expect(() =>
++      selectCanonicalPublicSiteContentPublication([
++        canonical,
++        publication({ record: record({ publicationVersion: "duplicate-editor-copy" }) }),
++      ]),
++    ).toThrow(/exactly one canonical public publication/i);
++    expect(() =>
++      selectCanonicalPublicSiteContentPublication([
++        publication({ publicationState: "draft", renderedByPublicSite: false }),
++      ]),
++    ).toThrow(/exactly one canonical public publication/i);
++  });
++
++  it("keeps actor identifiers out of retrieval metadata", () => {
++    const candidate = publication();
++    const metadata = siteContentRetrievalMetadata(candidate.record);
++
++    expect(metadata).toMatchObject({
++      corpus_scope: "clinical_kb_site",
++      source_role: "clinical_reference",
++      site_content_domain: "differentials",
++      logical_id: "differential:mania",
++    });
++    expect(JSON.stringify(metadata)).not.toMatch(/owner|actor|administrator-1|editor-1/i);
++  });
++
++  it("keeps derivative summaries in their source evidence family", () => {
++    const derivative = record({
++      sourceLineage: [
++        {
++          sourceId: "uploaded-guideline:lithium-monitoring",
++          sourceHash: "sha256:guideline",
++          relationship: "derived_from",
++        },
++      ],
++    });
++    const duplicateDerivative = record({
++      logicalId: "specifier:duplicate",
++      sourceLineage: [
++        ...derivative.sourceLineage,
++        {
++          sourceId: " Uploaded-Guideline:Lithium-Monitoring ",
++          sourceHash: " SHA256:GUIDELINE ",
++          relationship: "derived_from",
++        },
++        { sourceId: "navigation-reference", sourceHash: "sha256:reference", relationship: "references" },
++      ],
++    });
++
++    expect(siteContentEvidenceFamilyKey(derivative)).toBe(
++      "source:uploaded-guideline:lithium-monitoring:sha256:guideline",
++    );
++    expect(siteContentEvidenceFamilyKey(duplicateDerivative)).toBe(siteContentEvidenceFamilyKey(derivative));
++    expect(siteContentEvidenceFamilyKey(record())).toBe(
++      "site:differential:mania:sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++    );
++  });
++
++  it("pins the complete request-local corpus and site partition identity", () => {
++    const snapshot: RagContextSnapshot = {
++      version: "rag-context-snapshot-v1",
++      resolvedAt: "2026-08-23T00:00:01.000Z",
++      documentIndexGeneration: "documents-generation-7",
++      sourcePolicyVersion: "source-policy-v2",
++      uploadedLocal: {
++        indexGeneration: "documents-generation-7",
++        activationDigest: "sha256:uploaded",
++      },
++      australianPublic: {
++        indexGeneration: "australian-generation-3",
++        releaseDigest: "sha256:australian",
++      },
++      publicSiteContent: {
++        registryVersion: "site-content-registry-v1",
++        releaseId: "release-7",
++        expectedStaticManifestDigest: "sha256:static",
++        activeStaticManifestDigest: "sha256:static",
++        staticManifestDigest: "sha256:static",
++        staticManifestMatch: true,
++        dynamicStateDigest: "sha256:dynamic",
++        releaseDigest: "sha256:release",
++        changeEpoch: "epoch-12",
++        pendingLogicalIds: [],
++        pendingLogicalIdsDigest: "sha256:empty-pending-set",
++        state: "current",
++      },
++    };
++
++    expect(snapshot.publicSiteContent.expectedStaticManifestDigest).toBe(
++      snapshot.publicSiteContent.activeStaticManifestDigest,
++    );
++    expect(snapshot.publicSiteContent.staticManifestMatch).toBe(true);
++    expect(snapshot.publicSiteContent.pendingLogicalIds).toEqual([]);
++    expect(snapshot.uploadedLocal.indexGeneration).toBe(snapshot.documentIndexGeneration);
++    expect(() => assertSiteContentPartitionSnapshot(snapshot.publicSiteContent)).not.toThrow();
++    expect(() =>
++      assertSiteContentPartitionSnapshot({
++        ...snapshot.publicSiteContent,
++        activeStaticManifestDigest: "sha256:other-static",
++        staticManifestMatch: false,
++        state: "current",
++      }),
++    ).toThrow(/mismatch.*cannot be current/i);
++  });
++
++  it("separates product facts from patient decisions and preserves uploaded-guideline priority", () => {
++    expect(evaluateSiteContentClaimPolicy({ purpose: "product_catalogue", sourceRole: "clinical_reference" })).toEqual({
++      siteUse: "primary",
++      primaryCorpusScope: "clinical_kb_site",
++      requiresEligibleClinicalEvidence: false,
++      insufficiencyReason: null,
++    });
++    expect(
++      evaluateSiteContentClaimPolicy({ purpose: "patient_specific_diagnosis", sourceRole: "clinical_reference" }),
++    ).toEqual({
++      siteUse: "navigation_only",
++      primaryCorpusScope: null,
++      requiresEligibleClinicalEvidence: true,
++      insufficiencyReason: "insufficient_claim_support",
++    });
++    expect(
++      evaluateSiteContentClaimPolicy({
++        purpose: "clinical_guidance",
++        sourceRole: "clinical_reference",
++        eligibleUploadedGuideline: true,
++      }),
++    ).toEqual({
++      siteUse: "supporting",
++      primaryCorpusScope: "uploaded_local",
++      requiresEligibleClinicalEvidence: false,
++      insufficiencyReason: null,
++    });
++    expect(evaluateSiteContentClaimPolicy({ purpose: "clinical_guidance", sourceRole: "clinical_reference" })).toEqual({
++      siteUse: "navigation_only",
++      primaryCorpusScope: null,
++      requiresEligibleClinicalEvidence: true,
++      insufficiencyReason: "insufficient_claim_support",
++    });
++  });
++
++  it("has one producer for every canonical site domain", () => {
++    const domains = siteContentProducerDefinitions.map((producer) => producer.domain);
++    const expected: SiteContentDomain[] = [
++      "services",
++      "forms",
++      "medications",
++      "differentials",
++      "specifiers",
++      "dsm",
++      "formulation",
++      "therapies",
++      "dictionary",
++      "factsheets",
++      "calculators",
++      "tools",
++    ];
++    expect(domains).toEqual(expected);
++    expect(new Set(domains).size).toBe(expected.length);
++  });
++});
+diff --git a/tests/source-authority-tooling.test.ts b/tests/source-authority-tooling.test.ts
+index a1091ed4798958412f0d1b2124e46d9d7937808a..a090aadfaf0ffb9cf85f700d6284092cc20c3e99 100644
+--- a/tests/source-authority-tooling.test.ts
++++ b/tests/source-authority-tooling.test.ts
+@@ -5,20 +5,21 @@ import {
+   analyzeSourceLocality,
+   assertLocalityMetadataPatch,
+   auditProposedSourcePolicyMetadata,
+   auditSourceAuthorityDocuments,
+   inferSourceAuthorityFromIdentity,
+   isRegistryRecordSource,
+   localityMetadataKeys,
+   type SourceAuthorityDocument,
+ } from "@/lib/source-authority-metadata";
+ import { classifySourceAuthority } from "@/lib/source-authority-registry";
++import { siteContentProducerDefinitions } from "@/lib/site-content/site-content-registry";
+ import { parseBackfillSourceMetadataArgs, runLocalityOnlyBackfill } from "../scripts/backfill-source-metadata";
+ 
+ function document(
+   overrides: Partial<SourceAuthorityDocument> & Pick<SourceAuthorityDocument, "file_name">,
+ ): SourceAuthorityDocument {
+   return {
+     id: overrides.id ?? "document-id",
+     title: overrides.title ?? overrides.file_name,
+     file_name: overrides.file_name,
+     source_path: overrides.source_path ?? null,
+@@ -222,20 +223,46 @@ describe("source authority metadata tooling", () => {
+     });
+     expect(report).toMatchObject({
+       excluded_registry_record_count: 1,
+       authority_conflict_count: 0,
+       missing_australian_locality_count: 0,
+       proposed_locality_correction_count: 0,
+       passed: true,
+     });
+   });
+ 
++  it("keeps canonical site scope on every current dynamic audit projection while excluding authority escalation", () => {
++    const projections = siteContentProducerDefinitions.flatMap((producer) =>
++      producer.currentAuditProjection
++        ? [
++            document({
++              id: producer.key,
++              file_name: `${producer.key}.registry.json`,
++              metadata: producer.currentAuditProjection,
++            }),
++          ]
++        : [],
++    );
++    const report = auditSourceAuthorityDocuments(projections);
++
++    expect(projections).toHaveLength(4);
++    expect(projections.every((projection) => projection.metadata?.corpus_scope === "clinical_kb_site")).toBe(true);
++    expect(projections.every((projection) => isRegistryRecordSource(projection))).toBe(true);
++    expect(report).toMatchObject({
++      recognized_documents: 0,
++      excluded_registry_record_count: 4,
++      authority_conflict_count: 0,
++      missing_australian_locality_count: 0,
++      passed: true,
++    });
++  });
++
+   it("gates inferable Australian sources with missing locality and proposes only safe fields", () => {
+     const candidate = document({ file_name: "WACHS-lithium-guideline.pdf" });
+     const analysis = analyzeSourceLocality(candidate);
+     const report = auditSourceAuthorityDocuments([candidate]);
+ 
+     expect(analysis.missingLocalityKeys).toEqual(["publisher_code", "publisher", "jurisdiction"]);
+     expect(analysis.changes).toEqual({
+       publisher_code: "WACHS",
+       publisher: "WA Country Health Service",
+       jurisdiction: "Australia/WA",
+diff --git a/tests/source-metadata.test.ts b/tests/source-metadata.test.ts
+index 9db0a9305a94ea3462752bc11dc52f15bab7a65f..ab46de4777deffefb408fd260f042bb806afa062 100644
+--- a/tests/source-metadata.test.ts
++++ b/tests/source-metadata.test.ts
+@@ -6,20 +6,21 @@ import {
+   hasRecordedGovernanceFields,
+   normalizeClinicalSourceMetadata,
+   normalizeOptionalSourceMetadata,
+   normalizeSourceMetadata,
+   sourceMetadataDiagnostics,
+   sourceProvenanceSummary,
+   sourceStatusLabel,
+   validationStatusLabel,
+ } from "../src/lib/source-metadata";
+ import { authorityIdentityForCatalogueEntry, classifySourceAuthority } from "../src/lib/source-authority-registry";
++import { siteContentProducerForDomain } from "../src/lib/site-content/site-content-registry";
+ import type { ClinicalSourceMetadata } from "../src/lib/types";
+ 
+ type RequiredGovernedMetadata = Required<
+   Pick<
+     ClinicalSourceMetadata,
+     | "corpus_scope"
+     | "source_role"
+     | "content_mode"
+     | "source_catalogue_key"
+     | "source_policy_version"
+@@ -265,20 +266,44 @@ describe("source metadata helpers", () => {
+       content_mode: null,
+       licence_policy: null,
+     });
+     expect(classifySourceAuthority(metadata)).toMatchObject({
+       tier: "supplementary",
+       designation: "unclassified",
+       authorityKey: null,
+     });
+   });
+ 
++  it("normalizes current dynamic registry audit projections with canonical site scope and claim roles", () => {
++    for (const [domain, kind, role] of [
++      ["services", "service", "service_directory"],
++      ["forms", "form", "form_reference"],
++      ["medications", "medication", "clinical_reference"],
++      ["differentials", "differential", "clinical_reference"],
++    ] as const) {
++      const projection = siteContentProducerForDomain(domain)?.currentAuditProjection;
++      expect(projection).toMatchObject({
++        source_kind: "registry_record",
++        registry_record_kind: kind,
++        corpus_scope: "clinical_kb_site",
++        source_role: role,
++        site_content_domain: domain,
++      });
++      expect(normalizeClinicalSourceMetadata(projection)).toMatchObject({
++        source_kind: "registry_record",
++        registry_record_kind: kind,
++        corpus_scope: "clinical_kb_site",
++        source_role: role,
++      });
++    }
++  });
++
+   it("resolves catalogue identity only for an exact key, code, and compatible jurisdiction", () => {
+     const source = australianSourceByKey("wa-chief-psychiatrist");
+ 
+     expect(source).not.toBeNull();
+     expect(authorityIdentityForCatalogueEntry(source!)).toMatchObject({
+       key: "wa-chief-psychiatrist",
+       lifecycle: "active",
+     });
+     expect(authorityIdentityForCatalogueEntry({ ...source!, publisherCode: "TGA" })).toBeNull();
+     expect(authorityIdentityForCatalogueEntry({ ...source!, jurisdiction: "Australia/National" })).toBeNull();
