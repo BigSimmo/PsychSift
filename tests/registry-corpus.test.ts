@@ -5,6 +5,7 @@ import {
   clinicalRegistryRowsToCorpusEntries,
   embedRegistryCorpusEntries,
   medicationRowsToCorpusEntries,
+  registryGovernanceProjection,
   registryDocumentIntent,
   type RegistryCorpusEntry,
 } from "../src/lib/registry-corpus";
@@ -354,6 +355,18 @@ describe("registry corpus", () => {
     expect(entry?.content).toContain("Service: Crisis service");
     expect(entry?.content).toContain("Route: Call the crisis line before transfer");
     expect(entry?.searchText).toContain("crisis");
+    expect(registryGovernanceProjection(entry!)).toMatchObject({
+      documentId: expect.any(String),
+      requiredMetadata: {
+        corpus_scope: "clinical_kb_site",
+        source_role: "service_directory",
+        site_content_domain: "services",
+        logical_id: "service:crisis-service",
+        publication_version: "2026-07-01T00:00:00.000Z",
+        site_content_release_id: null,
+      },
+    });
+    expect(JSON.stringify(registryGovernanceProjection(entry!).requiredMetadata)).not.toContain(entry?.ownerId);
   });
 
   it("preserves form kind separately from service kind", () => {

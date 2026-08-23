@@ -15,6 +15,7 @@ import { safeErrorLogDetails } from "@/lib/privacy";
 import { registryCorpusDetailHref } from "@/lib/registry-corpus-links";
 import { rowToServiceRecord, type RegistryRecordKind, type RegistryRecordRow } from "@/lib/registry-records";
 import { serviceRecordSearchText } from "@/lib/services";
+import { siteContentRegistryVersion } from "@/lib/site-content/site-content-registry";
 import type { Json, TablesInsert, Vector } from "@/lib/supabase/database.types";
 
 export type RegistryCorpusKind = "service" | "form" | "medication" | "differential";
@@ -124,6 +125,14 @@ function compactText(parts: unknown[], limit = 8000) {
 
 /** Registry base metadata. */
 function registryBaseMetadata(entry: RegistryCorpusEntry): Record<string, Json> {
+  const siteContentIdentity = {
+    service: { domain: "services", role: "service_directory", prefix: "service" },
+    form: { domain: "forms", role: "form_reference", prefix: "form" },
+    medication: { domain: "medications", role: "clinical_reference", prefix: "medication" },
+    differential: { domain: "differentials", role: "clinical_reference", prefix: "differential" },
+  } as const;
+  const identity = siteContentIdentity[entry.kind];
+  const publicationVersion = entry.metadata.publication_version;
   return {
     source_kind: "registry_record",
     registry_record_kind: entry.kind,
@@ -137,6 +146,26 @@ function registryBaseMetadata(entry: RegistryCorpusEntry): Record<string, Json> 
     extraction_quality: "good",
     publisher: "Clinical KB registry",
     jurisdiction: "WA/local clinical workspace",
+    corpus_scope: "clinical_kb_site",
+    source_role: identity.role,
+    site_content_domain: identity.domain,
+    logical_id:
+      entry.kind === "differential"
+        ? `${identity.prefix}:${entry.subkind ?? "diagnosis"}:${entry.slug}`
+        : `${identity.prefix}:${entry.slug}`,
+    publication_version:
+      typeof publicationVersion === "string" && publicationVersion.trim()
+        ? publicationVersion
+        : "registry-publication-version-unknown",
+    source_lineage: [
+      {
+        source_id: `registry:${entry.kind}:${entry.recordId}`,
+        source_hash: `sha256:${sha256(entry.content)}`,
+        relationship: "derived_from",
+      },
+    ],
+    site_content_registry_version: siteContentRegistryVersion,
+    site_content_release_id: null,
   };
 }
 
@@ -414,6 +443,7 @@ export function clinicalRegistryRowsToCorpusEntries(rows: RegistryRecordRow[]): 
       sourceStatus: row.source_status,
       validationStatus: row.validation_status,
       metadata: {
+        publication_version: row.updated_at,
         catalogue_label: row.catalogue_label,
         tags: row.tags,
         catchments: row.catchments,
@@ -463,6 +493,7 @@ export function medicationRowsToCorpusEntries(rows: MedicationRecordRow[]): Regi
       sourceStatus: row.source_status,
       validationStatus: row.validation_status,
       metadata: {
+        publication_version: row.updated_at,
         medication_class: row.class,
         medication_subclass: row.subclass,
         tags: row.tag ? [row.tag] : [],
@@ -498,6 +529,7 @@ export function differentialRowsToCorpusEntries(rows: DifferentialRecordRow[]): 
       sourceStatus: row.source_status,
       validationStatus: row.validation_status,
       metadata: {
+        publication_version: row.updated_at,
         differential_kind: row.kind,
         status: row.status,
         tags: row.tags,

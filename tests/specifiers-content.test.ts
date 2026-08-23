@@ -9,6 +9,7 @@ import {
   specifiersStats,
 } from "@/lib/specifiers-content";
 import { searchSpecifierCatalog, specifierIndexItems, specifierVerifiedCount } from "@/lib/specifiers-search-index";
+import { specifierSiteContentRecords } from "@/lib/site-content/adapters/specifiers";
 
 describe("specifiers content catalog", () => {
   it("flattens to the stats-reported item count", () => {
@@ -100,6 +101,14 @@ describe("specifiers content catalog", () => {
     // among the "source-verified" subset), so the compact search index carries no
     // meaning text: nothing generated is displayed or ranked on.
     expect(specifierIndexItems.some((item) => item.meaning)).toBe(false);
+  });
+
+  it("keeps every specifier manifest record reviewed-ineligible without generated definition prose", () => {
+    const records = specifierSiteContentRecords();
+    expect(records).toHaveLength(specifierCatalogItems().length);
+    expect(records.every((record) => record.validationStatus === "unverified")).toBe(true);
+    expect(records.every((record) => record.sourceStatus === "review_due")).toBe(true);
+    expect(records.some((record) => /pending clinician verification/i.test(record.body))).toBe(false);
   });
 
   it("does not mislabel timing/onset specifiers as symptom-count thresholds", () => {
