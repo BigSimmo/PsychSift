@@ -143,6 +143,12 @@ function enumValue<T extends string>(value: unknown, allowed: readonly T[], fall
   return typeof value === "string" && allowed.includes(value as T) ? (value as T) : fallback;
 }
 
+function boundedInsufficiencyReason(value: unknown): RagInsufficiencyReason | null {
+  return value === null || value === undefined
+    ? null
+    : enumValue(value, insufficiencyReasons, "insufficient_claim_support");
+}
+
 function corpusCounts(value: unknown): CorpusCounts {
   const source = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   return Object.fromEntries(corpusScopes.map((scope) => [scope, boundedCount(source[scope])])) as CorpusCounts;
@@ -199,10 +205,7 @@ export function buildRagProgrammeTelemetry(input: RagProgrammeTelemetryInput): R
     site_pending_count_bucket: pendingCountBucket(source.sitePendingCount),
     augmentation_outcome: enumValue(source.augmentationOutcome, augmentationOutcomes, "disabled"),
     role_exclusion_count: boundedCount(source.roleExclusionCount),
-    insufficiency_reason:
-      insufficiencyReason === null
-        ? null
-        : enumValue(insufficiencyReason, insufficiencyReasons, "insufficient_claim_support"),
+    insufficiency_reason: boundedInsufficiencyReason(insufficiencyReason),
     generation_outcome: enumValue(source.generationOutcome, generationOutcomes, "failed"),
     verified_units_emitted: boundedCount(source.verifiedUnitsEmitted),
     verified_units_discarded: boundedCount(source.verifiedUnitsDiscarded),
@@ -375,5 +378,5 @@ export function boundedAnswerTelemetryReasons(answer: RagProgrammeAnswer) {
     ? (answer.responseMode as AnswerResponseMode)
     : null;
   const diagnostics = answer.programmeDiagnostics ?? buildRagProgrammeDiagnostics(answer, []);
-  return { route, responseMode, insufficiencyReason: diagnostics.insufficiencyReason };
+  return { route, responseMode, insufficiencyReason: boundedInsufficiencyReason(diagnostics.insufficiencyReason) };
 }

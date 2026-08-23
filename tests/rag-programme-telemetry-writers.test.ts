@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RagAnswer } from "../src/lib/types";
 
 const OWNER_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const NESTED_REASON_CANARY = "provider-error-canary: raw upstream body";
 
 type Insert = { table: string; row: Record<string, unknown> };
 
@@ -15,6 +16,36 @@ function answer(): RagAnswer {
     routingMode: "fast",
     routingReason: "strong_routine_retrieval",
     modelUsed: "test-model",
+  };
+}
+
+function contaminatedNestedReasonAnswer(): RagAnswer {
+  const diagnostics = governanceRefusalAnswer().programmeDiagnostics;
+  return {
+    ...answer(),
+    grounded: false,
+    confidence: "unsupported",
+    routingReason: "routing-reason-canary: protected route text",
+    fallbackReason: "fallback-reason-canary: protected source text",
+    degradedMode: { active: true, reason: "degraded-reason-canary: raw provider text" },
+    programmeDiagnostics: {
+      ...diagnostics,
+      coverageCounts: { direct: 0, partial: 0, conflicting: 0, absent: 1 },
+      candidateCounts: {
+        uploaded_local: 0,
+        clinical_kb_site: 0,
+        australian_public: 0,
+        international_supplementary: 0,
+      },
+      selectedCounts: {
+        uploaded_local: 0,
+        clinical_kb_site: 0,
+        australian_public: 0,
+        international_supplementary: 0,
+      },
+      insufficiencyReason: NESTED_REASON_CANARY,
+      generationOutcome: "failed",
+    } as unknown as NonNullable<RagAnswer["programmeDiagnostics"]>,
   };
 }
 
@@ -219,6 +250,20 @@ function expectJoinedWrites(inserts: Insert[], interactionId: string | undefined
   ).toBe(interactionId);
 }
 
+function reasonFields(value: unknown) {
+  const entries: Array<[string, unknown]> = [];
+  function visit(current: unknown, path: string) {
+    if (!current || typeof current !== "object") return;
+    for (const [key, nested] of Object.entries(current)) {
+      const nestedPath = `${path}.${key}`;
+      if (/(?:^|_)reason$/i.test(key)) entries.push([nestedPath, nested]);
+      visit(nested, nestedPath);
+    }
+  }
+  visit(value, "$" as const);
+  return Object.fromEntries(entries);
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
@@ -229,20 +274,59 @@ describe("RAG programme telemetry writers", () => {
   it.each([
     ["local cache", { cache: answer() }],
     ["in-flight coalescing", { coalesced: answer() }],
-  ])("writes the same route UUID for %s outcomes", async (_label, options) => {
-    const { inserts } = await installHarness(options);
-    const { POST } = await import("../src/app/api/answer/route");
-    const response = await POST(
-      new Request("http://localhost/api/answer", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ query: "cached clinical question" }),
-      }),
-    );
-    const interactionId = await responseInteractionId(response);
-    await vi.waitFor(() => expect(inserts).toHaveLength(2));
-    expectJoinedWrites(inserts, interactionId);
-  });
+  ])(
+    "writes the same route UUID for %s outcomes",
+    async (_label, options) => {
+      const { inserts } = await installHarness(options);
+      const { POST } = await import("../src/app/api/answer/route");
+      const response = await POST(
+        new Request("http://localhost/api/answer", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ query: "cached clinical question" }),
+        }),
+      );
+      const interactionId = await responseInteractionId(response);
+      await vi.waitFor(() => expect(inserts).toHaveLength(2));
+      expectJoinedWrites(inserts, interactionId);
+    },
+    60_000,
+  );
+
+  it.each([
+    ["local cache", { cache: contaminatedNestedReasonAnswer() }],
+    ["in-flight coalescing", { coalesced: contaminatedNestedReasonAnswer() }],
+  ])(
+    "bounds nested reason canaries in both complete rows for %s outcomes",
+    async (_label, options) => {
+      const { inserts } = await installHarness(options);
+      const { POST } = await import("../src/app/api/answer/route");
+      await POST(
+        new Request("http://localhost/api/answer", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ query: "cached clinical question" }),
+        }),
+      );
+      await vi.waitFor(() => expect(inserts).toHaveLength(2));
+      const query = inserts.find((insert) => insert.table === "rag_queries")?.row;
+      const retrieval = inserts.find((insert) => insert.table === "rag_retrieval_logs")?.row;
+
+      expect(JSON.stringify(inserts)).not.toContain("-reason-canary");
+      expect(JSON.stringify(inserts)).not.toContain(NESTED_REASON_CANARY);
+      expect(reasonFields(query)).toEqual({
+        "$.metadata.insufficiency_reason": "insufficient_claim_support",
+        "$.metadata.routing_reason": "fast",
+        "$.metadata.fallback_reason": "insufficient_claim_support",
+      });
+      expect(reasonFields(retrieval)).toEqual({
+        "$.miss_reason": "insufficient_claim_support",
+        "$.metadata.answer.routing_reason": "fast",
+        "$.metadata.answer.fallback_reason": "insufficient_claim_support",
+      });
+    },
+    60_000,
+  );
 
   it("writes the same route UUID for a streaming summary with no committed chunks", async () => {
     const { inserts } = await installHarness({ emptySummary: true });

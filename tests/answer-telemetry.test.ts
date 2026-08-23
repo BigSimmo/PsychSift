@@ -5,6 +5,55 @@ import type { SearchResult } from "../src/lib/types";
 const UUID_A = "11111111-1111-1111-1111-111111111111";
 const UUID_B = "22222222-2222-2222-2222-222222222222";
 const INTERACTION_ID = "33333333-3333-4333-8333-333333333333";
+const NESTED_REASON_CANARY = "provider-error-canary: raw upstream body";
+
+function reasonFields(value: unknown) {
+  const entries: Array<[string, unknown]> = [];
+  function visit(current: unknown, path: string) {
+    if (!current || typeof current !== "object") return;
+    for (const [key, nested] of Object.entries(current)) {
+      const nestedPath = `${path}.${key}`;
+      if (/(?:^|_)reason$/i.test(key)) entries.push([nestedPath, nested]);
+      visit(nested, nestedPath);
+    }
+  }
+  visit(value, "$" as const);
+  return Object.fromEntries(entries);
+}
+
+function contaminatedProgrammeDiagnostics(): NonNullable<AnswerTelemetrySource["programmeDiagnostics"]> {
+  return {
+    queryPlanKind: "single",
+    subquestionCount: 1,
+    materialAmbiguity: false,
+    coverageCounts: { direct: 0, partial: 0, conflicting: 0, absent: 1 },
+    candidateCounts: {
+      uploaded_local: 0,
+      clinical_kb_site: 0,
+      australian_public: 0,
+      international_supplementary: 0,
+    },
+    selectedCounts: {
+      uploaded_local: 0,
+      clinical_kb_site: 0,
+      australian_public: 0,
+      international_supplementary: 0,
+    },
+    selectedSiteDomains: [],
+    siteCandidateCount: 0,
+    siteSelectedCount: 0,
+    publicSiteContentState: "disabled",
+    siteStaticManifestMatch: null,
+    sitePendingCount: null,
+    augmentationOutcome: "disabled",
+    roleExclusionCount: 0,
+    insufficiencyReason: NESTED_REASON_CANARY,
+    generationOutcome: "failed",
+    verifiedUnitsEmitted: 0,
+    verifiedUnitsDiscarded: 0,
+    reconciliationOutcome: "not_applicable",
+  } as unknown as NonNullable<AnswerTelemetrySource["programmeDiagnostics"]>;
+}
 
 function sourceRow(overrides: Partial<SearchResult>): SearchResult {
   return {
@@ -126,6 +175,29 @@ describe("buildAnswerLogRow (per-answer observability)", () => {
     expect(JSON.stringify(row)).not.toContain("protected-source-text-canary");
     expect(row.miss_reason).toBe("retrieval_miss");
     expect(row.metadata).toEqual(expect.objectContaining({ answer: expect.objectContaining({ response_mode: null }) }));
+  });
+
+  it("bounds every reason field in a complete insert when nested diagnostics are contaminated", () => {
+    const row = buildAnswerLogRow({
+      query: "safe query",
+      answer: answer({
+        grounded: false,
+        confidence: "unsupported",
+        routingReason: "routing-reason-canary: protected route text",
+        fallbackReason: "fallback-reason-canary: protected source text",
+        degradedMode: { active: true, reason: "degraded-reason-canary: raw provider text" },
+        programmeDiagnostics: contaminatedProgrammeDiagnostics(),
+      }),
+      observationContext: { interactionId: INTERACTION_ID, rolloutMode: "legacy" },
+    });
+
+    expect(JSON.stringify(row)).not.toContain("-reason-canary");
+    expect(JSON.stringify(row)).not.toContain(NESTED_REASON_CANARY);
+    expect(reasonFields(row)).toEqual({
+      "$.miss_reason": "insufficient_claim_support",
+      "$.metadata.answer.routing_reason": "strong",
+      "$.metadata.answer.fallback_reason": "insufficient_claim_support",
+    });
   });
 
   it("marks unsupported/ungrounded answers as a miss with a reason", () => {
