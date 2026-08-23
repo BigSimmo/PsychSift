@@ -82,6 +82,22 @@ const legacySemicolonlessHtmlReferences = [
   "yuml",
 ].sort((left, right) => right.length - left.length);
 
+function decodeNumericHtmlCharacterReference(value: string, hexadecimal: boolean): string {
+  const codePoint = Number.parseInt(value, hexadecimal ? 16 : 10);
+  const invalidScalar =
+    !Number.isSafeInteger(codePoint) ||
+    codePoint <= 0 ||
+    codePoint > 0x10ffff ||
+    (codePoint >= 0xd800 && codePoint <= 0xdfff);
+  const unsafeControl =
+    (codePoint >= 0x0001 && codePoint <= 0x0008) ||
+    codePoint === 0x000b ||
+    codePoint === 0x000c ||
+    (codePoint >= 0x000e && codePoint <= 0x001f) ||
+    (codePoint >= 0x007f && codePoint <= 0x009f);
+  return invalidScalar || unsafeControl ? " " : String.fromCodePoint(codePoint);
+}
+
 export function replaceHtmlCharacterReferencesWithBoundaries(input: string): string {
   let output = "";
   let index = 0;
@@ -100,8 +116,9 @@ export function replaceHtmlCharacterReferencesWithBoundaries(input: string): str
       const digitPattern = hexadecimal ? /[0-9a-f]/i : /[0-9]/;
       while (cursor < input.length && digitPattern.test(input[cursor] ?? "")) cursor += 1;
       if (cursor > digitsStart) {
+        const numericValue = input.slice(digitsStart, cursor);
         if (input[cursor] === ";") cursor += 1;
-        output += " ";
+        output += decodeNumericHtmlCharacterReference(numericValue, hexadecimal);
         index = cursor;
         continue;
       }

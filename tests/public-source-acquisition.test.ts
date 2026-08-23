@@ -449,13 +449,23 @@ describe("public source acquisition", () => {
       "Health&#9direct",
       "Health&#9 direct",
       "Health&nbsp direct",
+      "Health&#100;irect",
+      "Health&#x64;irect",
+      "Health&#100irect",
+      "Health&#x64irect",
+      "Health&#0;direct",
+      "Health&#1;direct",
+      "Health&#55296;direct",
+      "Health&#x110000;direct",
       "Australian Medicines Hand-book",
       "Australian Medicines Hand book",
       "Australian Medicines&Tab;Handbook",
       "Australian Medicines&#9Handbook",
+      "Australian Medicines Hand&#98;ook",
       "Therapeutic\u200bGuidelines",
       "Therapeutic&NewLine;Guidelines",
       "Therapeutic&#10Guidelines",
+      "Therapeutic Guide&#108;ines",
     ]) {
       expect(forbiddenPublicSourceIdentity(protectedText)).not.toBeNull();
       expect(evaluateTrustedPageContent(`<main>${protectedText}</main>`)).toMatchObject({
