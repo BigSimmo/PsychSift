@@ -100,6 +100,7 @@ Smaller top-level directories that are easy to miss:
 | Area          | Routes                                                                                                                 | Entry files                                                     |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | Account       | `/api/account/favourites`, `/api/account/preferences`                                                                  | `account/`                                                      |
+| Admin         | `/api/admin/site-content/publish`                                                                                       | `admin/site-content/publish/route.ts`                           |
 | Answers       | `/api/answer`, `/api/answer/stream`, `/api/answer-feedback`                                                            | `answer/route.ts`, `answer/stream/route.ts`, `answer-feedback/` |
 | Search        | `/api/search`, `/api/search/interaction`, `/api/search/universal`                                                      | `search/`                                                       |
 | Upload        | `/api/upload`                                                                                                          | `upload/route.ts`                                               |

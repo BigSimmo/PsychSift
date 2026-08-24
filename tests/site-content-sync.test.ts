@@ -6,6 +6,10 @@ import {
   runSiteContentSync,
 } from "../src/lib/site-content/site-content-sync";
 import { activationReceiptDigest, rollbackReceiptDigest } from "../src/lib/recovery-readiness-evidence";
+import {
+  createCandidateProjectionStore,
+  embeddingBytesDigest,
+} from "../src/lib/site-content/site-content-candidate-store";
 
 const sha = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as const;
 const releaseId = "11111111-1111-4111-8111-111111111111";
@@ -185,5 +189,101 @@ describe("durable site-content synchronization", () => {
       activation: { operation: "site-release" },
       rollback: { restorationMethod: "retained-pointer" },
     });
+    const foreignRollback = { ...rollback, projectRef: "foreign-project" };
+    expect(() =>
+      assertSiteReleaseReceiptPair(activationWithDigest, {
+        ...foreignRollback,
+        digest: rollbackReceiptDigest(foreignRollback),
+      }),
+    ).toThrow(/project/i);
+    const staleRollback = { ...rollback, sequence: activation.sequence };
+    expect(() =>
+      assertSiteReleaseReceiptPair(activationWithDigest, {
+        ...staleRollback,
+        digest: rollbackReceiptDigest(staleRollback),
+      }),
+    ).toThrow(/sequence|order/i);
+    const nonPredecessorRollback = {
+      ...rollback,
+      restoredResource: {
+        kind: "site-release" as const,
+        releaseId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        releaseDigest: sha("8"),
+      },
+    };
+    expect(() =>
+      assertSiteReleaseReceiptPair(activationWithDigest, {
+        ...nonPredecessorRollback,
+        digest: rollbackReceiptDigest(nonPredecessorRollback),
+      }),
+    ).toThrow(/restored|previous|identity/i);
+  });
+
+  it("durably resumes a digest-bound mixed candidate and verifies embedding bytes before reuse", async () => {
+    const reusedBytes = new Float32Array([9, 9, 9]);
+    const syncPlan = plan({
+      activeProjections: [
+        {
+          logicalId: "medication:alpha",
+          contentHash: sha("c"),
+          embedding: {
+            model: "synthetic-embedding-v1",
+            dimensions: 3,
+            contentHash: sha("c"),
+            digest: embeddingBytesDigest(reusedBytes),
+          },
+        },
+        {
+          logicalId: "medication:removed",
+          contentHash: sha("f"),
+          embedding: {
+            model: "synthetic-embedding-v1",
+            dimensions: 3,
+            contentHash: sha("f"),
+            digest: sha("0"),
+          },
+        },
+      ],
+    });
+    const store = createCandidateProjectionStore();
+    const lease = {
+      workerId: "44444444-4444-4444-8444-444444444444",
+      leaseId: "55555555-5555-4555-8555-555555555555",
+      generationId,
+      attempt: 1,
+      expiresAt: "2026-08-24T01:05:00.000Z",
+    };
+    const embed = vi.fn(async () => new Float32Array([1, 2, 3]));
+    await expect(
+      store.resume(syncPlan, lease, {
+        projectRef: "synthetic-project",
+        now: () => new Date("2026-08-24T01:00:00.000Z"),
+        embed,
+        reusedEmbeddingBytes: () => reusedBytes,
+        interruptAfter: 1,
+      }),
+    ).rejects.toThrow(/interrupted/i);
+    const resumedStore = createCandidateProjectionStore(store.exportState());
+    await resumedStore.resume(syncPlan, lease, {
+      projectRef: "synthetic-project",
+      now: () => new Date("2026-08-24T01:00:01.000Z"),
+      embed,
+      reusedEmbeddingBytes: () => reusedBytes,
+    });
+    expect(embed).toHaveBeenCalledTimes(1);
+    expect(resumedStore.snapshot(syncPlan.candidateReleaseId)).toMatchObject({
+      planDigest: syncPlan.planDigest,
+      releaseDigest: syncPlan.releaseDigest,
+      expectedCounts: syncPlan.expectedCounts,
+      completed: true,
+    });
+    await expect(
+      resumedStore.resume({ ...syncPlan, releaseDigest: sha("9") }, lease, {
+        projectRef: "synthetic-project",
+        now: () => new Date("2026-08-24T01:00:02.000Z"),
+        embed,
+        reusedEmbeddingBytes: () => reusedBytes,
+      }),
+    ).rejects.toThrow(/digest|binding/i);
   });
 });

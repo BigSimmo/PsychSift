@@ -39,6 +39,139 @@ export type Database = {
   };
   public: {
     Tables: {
+      site_content_public_authority: {
+        Row: { active_release_id: string | null; change_epoch: number; singleton: boolean; updated_at: string };
+        Insert: { active_release_id?: string | null; change_epoch?: number; singleton?: boolean; updated_at?: string };
+        Update: { active_release_id?: string | null; change_epoch?: number; singleton?: boolean; updated_at?: string };
+        Relationships: [
+          {
+            foreignKeyName: "site_content_public_authority_active_release_id_fkey";
+            columns: ["active_release_id"];
+            isOneToOne: false;
+            referencedRelation: "site_content_releases";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      site_content_releases: {
+        Row: {
+          activated_at: string | null; activation_receipt: Json | null; created_at: string;
+          dynamic_state_digest: string; expected_changed_count: number; expected_record_count: number;
+          expected_tombstone_count: number; expected_unchanged_count: number; generation_id: string;
+          governance_verified: boolean; id: string; integrity_verified: boolean; must_pass_verified: boolean;
+          plan_digest: string; previous_release_id: string | null; project_ref: string; projected_record_count: number;
+          public_visibility_verified: boolean; recovery_evidence: Json; recovery_evidence_digest: string;
+          registry_version: string; release_digest: string; rollback_receipt: Json | null;
+          state: string; static_manifest_digest: string;
+        };
+        Insert: {
+          activated_at?: string | null; activation_receipt?: Json | null; created_at?: string;
+          dynamic_state_digest: string; expected_changed_count: number; expected_record_count: number;
+          expected_tombstone_count: number; expected_unchanged_count: number; generation_id: string;
+          governance_verified?: boolean; id?: string; integrity_verified?: boolean; must_pass_verified?: boolean;
+          plan_digest: string; previous_release_id?: string | null; project_ref: string; projected_record_count?: number;
+          public_visibility_verified?: boolean; recovery_evidence: Json; recovery_evidence_digest: string;
+          registry_version: string; release_digest: string; rollback_receipt?: Json | null;
+          state: string; static_manifest_digest: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_content_releases"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "site_content_releases_previous_release_id_fkey";
+            columns: ["previous_release_id"];
+            isOneToOne: false;
+            referencedRelation: "site_content_releases";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      site_content_publications: {
+        Row: {
+          actor_id: string; content_hash: string; created_at: string; domain: string; governance: Json; id: string;
+          logical_id: string; payload: Json; publication_version: string; record_kind: string; slug: string;
+          source_lineage_digest: string; updated_at: string;
+        };
+        Insert: {
+          actor_id: string; content_hash: string; created_at?: string; domain: string; governance: Json; id?: string;
+          logical_id: string; payload: Json; publication_version: string; record_kind: string; slug: string;
+          source_lineage_digest: string; updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_content_publications"]["Insert"]>;
+        Relationships: [];
+      };
+      site_content_release_projections: {
+        Row: {
+          content_hash: string; domain: string; embedding_bytes_digest: string | null; embedding_digest: string | null;
+          embedding: Json | null; embedding_dimensions: number | null; embedding_model: string | null; governance: Json; logical_id: string;
+          payload: Json; publication_id: string | null; publication_version: string; record_kind: string;
+          release_id: string; slug: string; source_lineage_digest: string; tombstoned: boolean;
+        };
+        Insert: {
+          content_hash: string; domain: string; embedding_bytes_digest?: string | null; embedding_digest?: string | null;
+          embedding?: Json | null; embedding_dimensions?: number | null; embedding_model?: string | null; governance: Json; logical_id: string;
+          payload: Json; publication_id?: string | null; publication_version: string; record_kind: string;
+          release_id: string; slug: string; source_lineage_digest: string; tombstoned?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_content_release_projections"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "site_content_release_projections_publication_id_fkey";
+            columns: ["publication_id"];
+            isOneToOne: false;
+            referencedRelation: "site_content_publications";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "site_content_release_projections_release_id_fkey";
+            columns: ["release_id"];
+            isOneToOne: false;
+            referencedRelation: "site_content_releases";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      site_content_sync_outbox: {
+        Row: {
+          attempt_count: number; available_at: string; candidate_release_id: string; completed_at: string | null;
+          completed_release_id: string | null; content_hash: string; created_at: string; dynamic_state_digest: string;
+          error_code: string | null; event_id: string; generation_id: string; lease_expires_at: string | null;
+          lease_id: string | null; logical_id: string; plan_digest: string; project_ref: string; publication_id: string;
+          operation: string; recovery_evidence_digest: string; release_digest: string; static_manifest_digest: string; status: string;
+          worker_id: string | null;
+        };
+        Insert: {
+          attempt_count?: number; available_at?: string; candidate_release_id: string; completed_at?: string | null;
+          completed_release_id?: string | null; content_hash: string; created_at?: string; dynamic_state_digest: string;
+          error_code?: string | null; event_id?: string; generation_id: string; lease_expires_at?: string | null;
+          lease_id?: string | null; logical_id: string; plan_digest: string; project_ref: string; publication_id: string;
+          operation?: string; recovery_evidence_digest: string; release_digest: string; static_manifest_digest: string; status?: string;
+          worker_id?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_content_sync_outbox"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "site_content_sync_outbox_candidate_release_id_fkey";
+            columns: ["candidate_release_id"];
+            isOneToOne: false;
+            referencedRelation: "site_content_releases";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "site_content_sync_outbox_completed_release_id_fkey";
+            columns: ["completed_release_id"];
+            isOneToOne: false;
+            referencedRelation: "site_content_releases";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "site_content_sync_outbox_publication_id_fkey";
+            columns: ["publication_id"];
+            isOneToOne: false;
+            referencedRelation: "site_content_publications";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       api_rate_limits: {
         Row: {
           bucket: string;
@@ -2353,21 +2486,28 @@ export type Database = {
       };
     };
     Functions: {
+      begin_site_content_candidate_release: { Args: { p_plan: Json }; Returns: Json };
       activate_site_content_release: {
-        Args: { p_expected_release_digest: string; p_recovery_digest: string; p_release_id: string };
+        Args: {
+          p_activation_receipt: Json;
+          p_expected_release_digest: string;
+          p_recovery_evidence: Json;
+          p_release_id: string;
+        };
         Returns: Json;
       };
       claim_site_content_sync_events: {
         Args: { p_lease_seconds: number; p_limit: number; p_worker_id: string };
-        Returns: Json[];
+        Returns: Database["public"]["Tables"]["site_content_sync_outbox"]["Row"][];
       };
       complete_site_content_sync_event: {
         Args: {
           p_event_id: string;
           p_expected_content_hash: string;
           p_generation_id: string;
+          p_attempt_count: number;
           p_lease_id: string;
-          p_release_id: string | null;
+          p_release_id: string;
           p_worker_id: string;
         };
         Returns: Json;
@@ -2377,9 +2517,10 @@ export type Database = {
           p_error_code: string;
           p_event_id: string;
           p_generation_id: string;
+          p_attempt_count: number;
           p_lease_id: string;
           p_quarantine: boolean;
-          p_retry_after_seconds: number | null;
+          p_retry_after_seconds: number;
           p_worker_id: string;
         };
         Returns: Json;
@@ -2388,6 +2529,7 @@ export type Database = {
         Args: {
           p_event_id: string;
           p_generation_id: string;
+          p_attempt_count: number;
           p_lease_id: string;
           p_lease_seconds: number;
           p_worker_id: string;
@@ -2395,7 +2537,7 @@ export type Database = {
         Returns: Json;
       };
       publish_site_content_record: {
-        Args: { p_actor_id: string; p_administrator_authorized: boolean; p_record: Json };
+        Args: { p_record: Json };
         Returns: Json;
       };
       read_public_site_content_records: {
@@ -2403,7 +2545,47 @@ export type Database = {
         Returns: Json;
       };
       rollback_site_content_release: {
-        Args: { p_failed_release_id: string; p_recovery_digest: string; p_retained_release_id: string };
+        Args: { p_activation_receipt: Json; p_failed_release_id: string; p_rollback_receipt: Json };
+        Returns: Json;
+      };
+      site_content_admin_authorized: { Args: never; Returns: boolean };
+      site_content_canonical_json: { Args: { p_value: Json }; Returns: string };
+      site_content_p05_digest: { Args: { p_value: Json }; Returns: string };
+      read_site_content_sync_event_payload: {
+        Args: {
+          p_attempt_count: number;
+          p_event_id: string;
+          p_generation_id: string;
+          p_lease_id: string;
+          p_worker_id: string;
+        };
+        Returns: Json;
+      };
+      stage_site_content_candidate_projection: {
+        Args: {
+          p_attempt_count: number;
+          p_candidate_release_id: string;
+          p_embedding: Json;
+          p_embedding_bytes_digest: string;
+          p_embedding_digest: string;
+          p_embedding_dimensions: number;
+          p_embedding_model: string;
+          p_event_id: string;
+          p_generation_id: string;
+          p_lease_id: string;
+          p_worker_id: string;
+        };
+        Returns: Json;
+      };
+      stage_site_content_candidate_operation: {
+        Args: {
+          p_attempt_count: number;
+          p_candidate_release_id: string;
+          p_event_id: string;
+          p_generation_id: string;
+          p_lease_id: string;
+          p_worker_id: string;
+        };
         Returns: Json;
       };
       analyze_rag_tables: { Args: never; Returns: undefined };

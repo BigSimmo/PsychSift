@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const token = "valid-token";
+const adminToken = "admin-token";
 const publicFixtureCacheControl = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
 
 function expectPublicFixtureCache(response: Response) {
@@ -14,7 +15,7 @@ function expectPrivateCache(response: Response) {
 }
 const recordId = "11111111-1111-4111-8111-111111111111";
 
-type QueryError = { message: string };
+type QueryError = { message: string; code?: string };
 type QueryResult = { data: unknown; error: QueryError | null; count?: number | null };
 type QueryFilter = { column: string; value: unknown };
 type QueryCall = {
@@ -108,8 +109,8 @@ class QueryBuilder implements PromiseLike<QueryResult> {
 function createSupabaseMock(resolve: QueryResolver = () => ok([]), options: { limited?: boolean } = {}) {
   const calls: QueryCall[] = [];
   const getUser = vi.fn(async (receivedToken?: string) =>
-    receivedToken === token
-      ? { data: { user: { id: userId } }, error: null }
+    receivedToken === token || receivedToken === adminToken
+      ? { data: { user: { id: userId, app_metadata: { administrator: receivedToken === adminToken } } }, error: null }
       : { data: { user: null }, error: { message: "Invalid token" } },
   );
   const rpc = vi.fn(async (name: string) =>
@@ -126,7 +127,7 @@ function createSupabaseMock(resolve: QueryResolver = () => ok([]), options: { li
           ],
           error: null,
         }
-      : ok([]),
+      : { data: null, error: { code: "42883", message: "function is not applied" } },
   );
   return {
     calls,
@@ -180,12 +181,38 @@ function authedRequest(path: string) {
   return request(path, { headers: { Authorization: `Bearer ${token}` } });
 }
 
+function adminRequest(path: string) {
+  return request(path, { headers: { Authorization: `Bearer ${adminToken}` } });
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
 });
 
 describe("medications API", () => {
+  it("returns byte-equivalent collection and detail bodies for anonymous, authenticated, and administrator readers", async () => {
+    const client = createSupabaseMock();
+    mockRuntime(client);
+    const collection = await import("../src/app/api/medications/route");
+    const bodies = await Promise.all([
+      collection.GET(request("/api/medications?q=acamprosate")).then((response) => response.text()),
+      collection.GET(authedRequest("/api/medications?q=acamprosate")).then((response) => response.text()),
+      collection.GET(adminRequest("/api/medications?q=acamprosate")).then((response) => response.text()),
+    ]);
+    expect(new Set(bodies).size).toBe(1);
+    const detail = await import("../src/app/api/medications/[slug]/route");
+    const call = (requestValue: Request) =>
+      detail
+        .GET(requestValue, { params: Promise.resolve({ slug: "acamprosate" }) })
+        .then((response) => response.text());
+    const detailBodies = await Promise.all([
+      call(request("/api/medications/acamprosate")),
+      call(authedRequest("/api/medications/acamprosate")),
+      call(adminRequest("/api/medications/acamprosate")),
+    ]);
+    expect(new Set(detailBodies).size).toBe(1);
+  });
   it("serves mock records in demo mode without touching Supabase", async () => {
     const client = createSupabaseMock();
     mockRuntime(client, { demoMode: true });

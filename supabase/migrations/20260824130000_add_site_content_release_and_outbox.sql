@@ -1,345 +1,437 @@
--- Durable publication, synchronization, and release authority for public site content.
--- Source-only migration: applying it and running the worker are separate operator actions.
-
-create table public.site_content_public_authority (
-  singleton boolean primary key default true check (singleton),
-  active_release_id uuid,
-  change_epoch bigint not null default 0 check (change_epoch >= 0),
-  updated_at timestamptz not null default now()
-);
-
+-- Durable active-release-isolated public site content. Source-only: no live action.
 create table public.site_content_releases (
-  id uuid primary key default gen_random_uuid(),
-  state text not null check (state in ('candidate', 'active', 'retained', 'failed')),
-  generation_id uuid not null,
-  previous_release_id uuid references public.site_content_releases(id),
-  registry_version text not null,
+  id uuid primary key default gen_random_uuid(), project_ref text not null,
+  state text not null check (state in ('candidate','active','retained','failed')),
+  generation_id uuid not null, previous_release_id uuid references public.site_content_releases(id),
+  registry_version text not null, plan_digest text not null check (plan_digest ~ '^sha256:[0-9a-f]{64}$'),
   static_manifest_digest text not null check (static_manifest_digest ~ '^sha256:[0-9a-f]{64}$'),
   dynamic_state_digest text not null check (dynamic_state_digest ~ '^sha256:[0-9a-f]{64}$'),
   release_digest text not null check (release_digest ~ '^sha256:[0-9a-f]{64}$'),
+  recovery_evidence jsonb not null,
   recovery_evidence_digest text not null check (recovery_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
   expected_record_count integer not null check (expected_record_count >= 0),
+  expected_changed_count integer not null check (expected_changed_count >= 0),
+  expected_unchanged_count integer not null check (expected_unchanged_count >= 0),
+  expected_tombstone_count integer not null check (expected_tombstone_count >= 0),
   projected_record_count integer not null default 0 check (projected_record_count >= 0),
-  integrity_verified boolean not null default false,
-  public_visibility_verified boolean not null default false,
-  governance_verified boolean not null default false,
-  must_pass_verified boolean not null default false,
-  created_at timestamptz not null default now(),
-  activated_at timestamptz
+  integrity_verified boolean not null default false, public_visibility_verified boolean not null default false,
+  governance_verified boolean not null default false, must_pass_verified boolean not null default false,
+  activation_receipt jsonb, rollback_receipt jsonb,
+  created_at timestamptz not null default now(), activated_at timestamptz
 );
-
-alter table public.site_content_public_authority
-  add constraint site_content_public_authority_active_release_fkey
-  foreign key (active_release_id) references public.site_content_releases(id);
-
+create table public.site_content_public_authority (
+  singleton boolean primary key default true check (singleton),
+  active_release_id uuid references public.site_content_releases(id),
+  change_epoch bigint not null default 0 check (change_epoch >= 0), updated_at timestamptz not null default now()
+);
 insert into public.site_content_public_authority(singleton) values (true);
-
 create table public.site_content_publications (
-  id uuid primary key default gen_random_uuid(),
-  logical_id text not null,
-  domain text not null check (domain in ('registry', 'medications', 'differentials')),
-  record_kind text not null,
-  slug text not null,
-  payload jsonb not null,
-  governance jsonb not null default '{}'::jsonb,
-  publication_version text not null,
-  content_hash text not null check (content_hash ~ '^sha256:[0-9a-f]{64}$'),
+  id uuid primary key default gen_random_uuid(), logical_id text not null,
+  domain text not null check (domain in ('services', 'forms', 'medications', 'differentials')),
+  record_kind text not null, slug text not null, payload jsonb not null, governance jsonb not null,
+  publication_version text not null, content_hash text not null check (content_hash ~ '^sha256:[0-9a-f]{64}$'),
   source_lineage_digest text not null check (source_lineage_digest ~ '^sha256:[0-9a-f]{64}$'),
-  actor_id uuid not null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  actor_id uuid not null, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
-
-create unique index site_content_publications_logical_id_key
-  on public.site_content_publications(logical_id);
-create unique index site_content_publications_domain_kind_slug_key
-  on public.site_content_publications(domain, record_kind, slug);
-
+create unique index site_content_publications_logical_id_key on public.site_content_publications(logical_id);
+create unique index site_content_publications_domain_kind_slug_key on public.site_content_publications(domain,record_kind,slug);
 create table public.site_content_release_projections (
   release_id uuid not null references public.site_content_releases(id) on delete cascade,
-  publication_id uuid not null references public.site_content_publications(id),
-  logical_id text not null,
-  content_hash text not null check (content_hash ~ '^sha256:[0-9a-f]{64}$'),
-  embedding_model text not null,
-  embedding_dimensions integer not null check (embedding_dimensions > 0),
-  embedding_digest text not null check (embedding_digest ~ '^sha256:[0-9a-f]{64}$'),
-  tombstoned boolean not null default false,
-  primary key (release_id, logical_id)
+  publication_id uuid references public.site_content_publications(id), logical_id text not null,
+  domain text not null check (domain in ('services', 'forms', 'medications', 'differentials')),
+  record_kind text not null, slug text not null, payload jsonb not null, governance jsonb not null,
+  publication_version text not null, content_hash text not null check (content_hash ~ '^sha256:[0-9a-f]{64}$'),
+  source_lineage_digest text not null check (source_lineage_digest ~ '^sha256:[0-9a-f]{64}$'),
+  embedding jsonb,
+  embedding_model text, embedding_dimensions integer check (embedding_dimensions is null or embedding_dimensions > 0),
+  embedding_digest text check (embedding_digest is null or embedding_digest ~ '^sha256:[0-9a-f]{64}$'),
+  embedding_bytes_digest text check (embedding_bytes_digest is null or embedding_bytes_digest ~ '^sha256:[0-9a-f]{64}$'),
+  tombstoned boolean not null default false, primary key (release_id,logical_id)
 );
-
 create table public.site_content_sync_outbox (
-  event_id uuid primary key default gen_random_uuid(),
-  publication_id uuid not null references public.site_content_publications(id),
-  logical_id text not null,
-  content_hash text not null check (content_hash ~ '^sha256:[0-9a-f]{64}$'),
-  generation_id uuid not null,
-  status text not null default 'pending' check (status in ('pending', 'leased', 'complete', 'quarantined')),
-  attempt_count integer not null default 0 check (attempt_count >= 0),
-  available_at timestamptz not null default now(),
-  worker_id uuid,
-  lease_id uuid,
-  lease_expires_at timestamptz,
-  completed_release_id uuid references public.site_content_releases(id),
-  error_code text,
-  created_at timestamptz not null default now(),
-  completed_at timestamptz
-);
-
-create unique index site_content_sync_outbox_pending_identity_key
-  on public.site_content_sync_outbox(logical_id, content_hash)
-  where status in ('pending', 'leased');
-create index site_content_sync_outbox_claim_idx
-  on public.site_content_sync_outbox(status, available_at, created_at);
-
-create table public.site_content_release_receipts (
-  id uuid primary key default gen_random_uuid(),
-  receipt_kind text not null check (receipt_kind in ('activation', 'rollback')),
-  release_id uuid not null references public.site_content_releases(id),
-  previous_release_id uuid references public.site_content_releases(id),
+  event_id uuid primary key default gen_random_uuid(), publication_id uuid not null references public.site_content_publications(id),
+  candidate_release_id uuid not null references public.site_content_releases(id), project_ref text not null,
+  logical_id text not null, content_hash text not null check (content_hash ~ '^sha256:[0-9a-f]{64}$'),
+  plan_digest text not null check (plan_digest ~ '^sha256:[0-9a-f]{64}$'),
   release_digest text not null check (release_digest ~ '^sha256:[0-9a-f]{64}$'),
+  static_manifest_digest text not null check (static_manifest_digest ~ '^sha256:[0-9a-f]{64}$'),
+  dynamic_state_digest text not null check (dynamic_state_digest ~ '^sha256:[0-9a-f]{64}$'),
   recovery_evidence_digest text not null check (recovery_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
-  restoration_method text check (restoration_method is null or restoration_method = 'retained-pointer'),
-  created_at timestamptz not null default now()
+  generation_id uuid not null, operation text not null default 'changed' check (operation in ('changed','unchanged','tombstone')),
+  status text not null default 'pending' check (status in ('pending','leased','complete','quarantined')),
+  attempt_count integer not null default 0 check (attempt_count >= 0), available_at timestamptz not null default now(),
+  worker_id uuid, lease_id uuid, lease_expires_at timestamptz,
+  completed_release_id uuid references public.site_content_releases(id), error_code text,
+  created_at timestamptz not null default now(), completed_at timestamptz
 );
+create unique index site_content_sync_outbox_pending_identity_key on public.site_content_sync_outbox(candidate_release_id,logical_id)
+  where status in ('pending','leased','quarantined');
+create index site_content_sync_outbox_claim_idx on public.site_content_sync_outbox(status,available_at,created_at);
 
-create or replace function public.prevent_site_content_receipt_mutation()
-returns trigger language plpgsql security definer set search_path = '' as $$
-begin
-  raise exception 'Site-content release receipts are append-only';
-end;
+-- Same key-sorted, whitespace-free JSON serialization used by the accepted P05
+-- activation/rollback receipt authority in recovery-readiness-evidence.ts.
+create or replace function public.site_content_canonical_json(p_value jsonb) returns text
+language sql immutable strict set search_path = '' as $$
+  select case pg_catalog.jsonb_typeof(p_value)
+    when 'object' then (select '{'||coalesce(pg_catalog.string_agg(pg_catalog.to_json(key)::text||':'||
+      public.site_content_canonical_json(value),',' order by key),'')||'}' from pg_catalog.jsonb_each(p_value))
+    when 'array' then (select '['||coalesce(pg_catalog.string_agg(public.site_content_canonical_json(value),','
+      order by ordinal),'')||']' from pg_catalog.jsonb_array_elements(p_value) with ordinality as element(value,ordinal))
+    else p_value::text end
+$$;
+create or replace function public.site_content_p05_digest(p_value jsonb) returns text
+language sql immutable strict set search_path = '' as $$
+  select 'sha256:'||pg_catalog.encode(extensions.digest(pg_catalog.convert_to(
+    public.site_content_canonical_json(p_value-'digest'),'UTF8'),'sha256'),'hex')
 $$;
 
-create trigger site_content_release_receipts_append_only
-before update or delete on public.site_content_release_receipts
-for each row execute function public.prevent_site_content_receipt_mutation();
-
-create or replace function public.publish_site_content_record(
-  p_record jsonb,
-  p_actor_id uuid,
-  p_administrator_authorized boolean
-) returns jsonb
-language plpgsql security definer set search_path = '' as $$
-declare
-  v_publication_id uuid;
-  v_generation_id uuid := gen_random_uuid();
-  v_logical_id text := btrim(coalesce(p_record->>'logicalId', ''));
-begin
-  if p_administrator_authorized is distinct from true then
-    raise exception 'Site-content publication requires administrator authority';
-  end if;
-  if p_actor_id is null or v_logical_id = ''
-     or coalesce(p_record->>'domain', '') not in ('registry', 'medications', 'differentials')
-     or btrim(coalesce(p_record->>'kind', '')) = ''
-     or btrim(coalesce(p_record->>'slug', '')) = ''
-     or coalesce(p_record->>'contentHash', '') !~ '^sha256:[0-9a-f]{64}$'
-     or coalesce(p_record->>'sourceLineageDigest', '') !~ '^sha256:[0-9a-f]{64}$'
-     or jsonb_typeof(p_record->'payload') is distinct from 'object'
-  then raise exception 'Invalid public site-content record'; end if;
-
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content:' || v_logical_id, 0));
-  insert into public.site_content_publications(
-    logical_id, domain, record_kind, slug, payload, governance, publication_version,
-    content_hash, source_lineage_digest, actor_id
-  ) values (
-    v_logical_id, p_record->>'domain', p_record->>'kind', p_record->>'slug', p_record->'payload',
-    coalesce(p_record->'governance', '{}'::jsonb), p_record->>'publicationVersion',
-    p_record->>'contentHash', p_record->>'sourceLineageDigest', p_actor_id
-  ) on conflict (logical_id) do update set
-    domain = excluded.domain, record_kind = excluded.record_kind, slug = excluded.slug,
-    payload = excluded.payload, governance = excluded.governance,
-    publication_version = excluded.publication_version, content_hash = excluded.content_hash,
-    source_lineage_digest = excluded.source_lineage_digest, actor_id = excluded.actor_id,
-    updated_at = now()
-  returning id into v_publication_id;
-
-  update public.site_content_public_authority
-     set change_epoch = change_epoch + 1, updated_at = now()
-   where singleton;
-  insert into public.site_content_sync_outbox(publication_id, logical_id, content_hash, generation_id)
-    values (v_publication_id, v_logical_id, p_record->>'contentHash', v_generation_id)
-    on conflict do nothing;
-  delete from public.rag_response_cache where owner_id is null;
-  return jsonb_build_object('publicationId', v_publication_id, 'generationId', v_generation_id);
-end;
-$$;
-
-create or replace function public.read_public_site_content_records(
-  p_domain text,
-  p_record_kind text default null,
-  p_slug text default null
-) returns jsonb
+create or replace function public.site_content_admin_authorized() returns boolean
 language sql stable security definer set search_path = '' as $$
-  select jsonb_build_object(
-    'changeEpoch', authority.change_epoch,
-    'activeReleaseId', authority.active_release_id,
-    'state', case when exists (
-      select 1 from public.site_content_sync_outbox pending where pending.status in ('pending', 'leased')
-    ) then 'updating' else 'current' end,
-    'records', coalesce(jsonb_agg(to_jsonb(publication) - 'actor_id' order by publication.logical_id)
-      filter (where publication.id is not null), '[]'::jsonb)
-  )
-  from public.site_content_public_authority authority
-  left join public.site_content_publications publication
-    on publication.domain = p_domain
-   and (p_record_kind is null or publication.record_kind = p_record_kind)
-   and (p_slug is null or publication.slug = p_slug)
-   and not exists (
-     select 1 from public.site_content_sync_outbox pending
-      where pending.logical_id = publication.logical_id
-        and pending.status in ('pending', 'leased')
-   )
-  where authority.singleton
-  group by authority.change_epoch, authority.active_release_id;
+  select coalesce((auth.jwt()->'app_metadata'->>'administrator')::boolean,false)
+      or coalesce((auth.jwt()->'app_metadata'->>'is_administrator')::boolean,false)
 $$;
-
-create or replace function public.claim_site_content_sync_events(
-  p_worker_id uuid, p_limit integer, p_lease_seconds integer
-) returns setof public.site_content_sync_outbox
+create or replace function public.begin_site_content_candidate_release(p_plan jsonb) returns jsonb
 language plpgsql security definer set search_path = '' as $$
+declare v_candidate uuid; v_previous uuid; v_generation uuid; v_release public.site_content_releases%rowtype;
 begin
-  if p_worker_id is null or p_limit not between 1 and 100 or p_lease_seconds not between 5 and 900
-  then raise exception 'Invalid site-content worker claim'; end if;
-  return query
-  with claimable as (
-    select event_id from public.site_content_sync_outbox
-     where status in ('pending', 'leased')
-       and available_at <= now()
-       and (status = 'pending' or lease_expires_at <= now())
-     order by created_at
-     for update skip locked limit p_limit
-  )
-  update public.site_content_sync_outbox event set
-    status = 'leased', worker_id = p_worker_id, lease_id = gen_random_uuid(),
-    lease_expires_at = now() + make_interval(secs => p_lease_seconds),
-    attempt_count = event.attempt_count + 1
-  from claimable where event.event_id = claimable.event_id returning event.*;
-end;
+  if not public.site_content_admin_authorized() or auth.uid() is null then raise exception 'administrator required'; end if;
+  begin
+    v_candidate := (p_plan->>'candidateReleaseId')::uuid;
+    v_previous := (p_plan->>'previousReleaseId')::uuid;
+    v_generation := (p_plan->>'generationId')::uuid;
+  exception when invalid_text_representation then raise exception 'invalid candidate identity'; end;
+  if p_plan->>'projectRef' is null
+    or p_plan->>'planDigest' !~ '^sha256:[0-9a-f]{64}$'
+    or p_plan->>'releaseDigest' !~ '^sha256:[0-9a-f]{64}$'
+    or p_plan->>'staticManifestDigest' !~ '^sha256:[0-9a-f]{64}$'
+    or p_plan->>'dynamicStateDigest' !~ '^sha256:[0-9a-f]{64}$'
+    or p_plan->>'recoveryEvidenceDigest' !~ '^sha256:[0-9a-f]{64}$'
+    or p_plan->>'recoveryEvidenceDigest' is distinct from p_plan#>>'{recoveryEvidence,digest}'
+    or p_plan->>'recoveryEvidenceDigest' is distinct from public.site_content_p05_digest(p_plan->'recoveryEvidence')
+    or pg_catalog.jsonb_typeof(p_plan->'operations') is distinct from 'array'
+  then raise exception 'candidate plan binding invalid'; end if;
+  select * into strict v_release from public.site_content_releases where id=v_previous and state in ('active','retained') for update;
+  if v_release.project_ref is distinct from p_plan->>'projectRef' then raise exception 'candidate predecessor project mismatch'; end if;
+  insert into public.site_content_releases(id,project_ref,state,generation_id,previous_release_id,registry_version,
+    plan_digest,static_manifest_digest,dynamic_state_digest,release_digest,recovery_evidence,recovery_evidence_digest,
+    expected_record_count,expected_changed_count,expected_unchanged_count,expected_tombstone_count)
+  values(v_candidate,p_plan->>'projectRef','candidate',v_generation,v_previous,p_plan->>'registryVersion',
+    p_plan->>'planDigest',p_plan->>'staticManifestDigest',p_plan->>'dynamicStateDigest',p_plan->>'releaseDigest',
+    p_plan->'recoveryEvidence',p_plan->>'recoveryEvidenceDigest',(p_plan#>>'{expectedCounts,desired}')::integer,
+    (p_plan#>>'{expectedCounts,changed}')::integer,(p_plan#>>'{expectedCounts,unchanged}')::integer,
+    (p_plan#>>'{expectedCounts,tombstoned}')::integer)
+  on conflict(id) do nothing;
+  select * into strict v_release from public.site_content_releases where id=v_candidate and project_ref=p_plan->>'projectRef'
+    and generation_id=v_generation and plan_digest=p_plan->>'planDigest' and release_digest=p_plan->>'releaseDigest'
+    and static_manifest_digest=p_plan->>'staticManifestDigest' and dynamic_state_digest=p_plan->>'dynamicStateDigest'
+    and recovery_evidence_digest=p_plan->>'recoveryEvidenceDigest' and state='candidate' for update;
+  insert into public.site_content_sync_outbox(publication_id,candidate_release_id,project_ref,logical_id,content_hash,
+    plan_digest,release_digest,static_manifest_digest,dynamic_state_digest,recovery_evidence_digest,generation_id,operation)
+  select publication.id,v_candidate,v_release.project_ref,operation->>'logicalId',publication.content_hash,v_release.plan_digest,
+    v_release.release_digest,v_release.static_manifest_digest,v_release.dynamic_state_digest,v_release.recovery_evidence_digest,
+    v_release.generation_id,operation->>'operation'
+  from pg_catalog.jsonb_array_elements(p_plan->'operations') as operations(operation)
+  join public.site_content_publications publication on publication.logical_id=operation->>'logicalId'
+  where operation->>'operation' in ('unchanged','tombstone')
+  on conflict do nothing;
+  if (select count(*) from pg_catalog.jsonb_array_elements(p_plan->'operations') as operations(operation)
+      where operation->>'operation'='changed')<>v_release.expected_changed_count
+    or (select count(*) from pg_catalog.jsonb_array_elements(p_plan->'operations') as operations(operation)
+      where operation->>'operation'='unchanged')<>v_release.expected_unchanged_count
+    or (select count(*) from pg_catalog.jsonb_array_elements(p_plan->'operations') as operations(operation)
+      where operation->>'operation'='tombstone')<>v_release.expected_tombstone_count
+  then raise exception 'candidate operation counts invalid'; end if;
+  return pg_catalog.jsonb_build_object('candidateReleaseId',v_candidate,'generationId',v_generation);
+end $$;
+create or replace function public.publish_site_content_record(p_record jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_actor uuid := auth.uid(); v_release public.site_content_releases%rowtype; v_publication uuid; v_candidate uuid;
+begin
+  if not public.site_content_admin_authorized() or v_actor is null then raise exception 'administrator required'; end if;
+  begin v_candidate := (p_record->>'candidateReleaseId')::uuid;
+  exception when invalid_text_representation then raise exception 'invalid candidate release'; end;
+  select * into strict v_release from public.site_content_releases where id=v_candidate and state='candidate' for update;
+  if p_record->>'projectRef' is distinct from v_release.project_ref
+    or p_record->>'generationId' is distinct from v_release.generation_id::text
+    or p_record->>'planDigest' is distinct from v_release.plan_digest
+    or p_record->>'releaseDigest' is distinct from v_release.release_digest
+    or p_record->>'staticManifestDigest' is distinct from v_release.static_manifest_digest
+    or p_record->>'dynamicStateDigest' is distinct from v_release.dynamic_state_digest
+    or p_record->>'recoveryEvidenceDigest' is distinct from v_release.recovery_evidence_digest
+    or coalesce(p_record->>'domain','') not in ('services','forms','medications','differentials')
+    or coalesce(p_record->>'contentHash','') !~ '^sha256:[0-9a-f]{64}$'
+    or coalesce(p_record->>'sourceLineageDigest','') !~ '^sha256:[0-9a-f]{64}$'
+    or jsonb_typeof(p_record->'payload') is distinct from 'object'
+  then raise exception 'record/candidate binding mismatch'; end if;
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content:'||p_record->>'logicalId',0));
+  insert into public.site_content_publications(logical_id,domain,record_kind,slug,payload,governance,publication_version,
+    content_hash,source_lineage_digest,actor_id)
+  values(p_record->>'logicalId',p_record->>'domain',p_record->>'kind',p_record->>'slug',p_record->'payload',
+    coalesce(p_record->'governance','{}'::jsonb),p_record->>'publicationVersion',p_record->>'contentHash',
+    p_record->>'sourceLineageDigest',v_actor)
+  on conflict(logical_id) do update set domain=excluded.domain,record_kind=excluded.record_kind,slug=excluded.slug,
+    payload=excluded.payload,governance=excluded.governance,publication_version=excluded.publication_version,
+    content_hash=excluded.content_hash,source_lineage_digest=excluded.source_lineage_digest,actor_id=excluded.actor_id,updated_at=now()
+  returning id into v_publication;
+  update public.site_content_public_authority set change_epoch=change_epoch+1,updated_at=now() where singleton;
+  insert into public.site_content_sync_outbox(publication_id,candidate_release_id,project_ref,logical_id,content_hash,
+    plan_digest,release_digest,static_manifest_digest,dynamic_state_digest,recovery_evidence_digest,generation_id,operation)
+  values(v_publication,v_release.id,v_release.project_ref,p_record->>'logicalId',p_record->>'contentHash',v_release.plan_digest,
+    v_release.release_digest,v_release.static_manifest_digest,v_release.dynamic_state_digest,v_release.recovery_evidence_digest,v_release.generation_id,'changed')
+  on conflict do nothing;
+  delete from public.rag_response_cache where owner_id is null;
+  return jsonb_build_object('publicationId',v_publication,'candidateReleaseId',v_release.id);
+end $$;
+
+create or replace function public.read_public_site_content_records(p_domain text,p_record_kind text default null,p_slug text default null)
+returns jsonb language sql stable security definer set search_path = '' as $$
+  select jsonb_build_object('changeEpoch',authority.change_epoch,'activeReleaseId',authority.active_release_id,
+    'state',case when authority.active_release_id is null then 'unavailable'
+      when exists(select 1 from public.site_content_sync_outbox pending where pending.status in ('pending','leased','quarantined'))
+      then 'updating' else 'current' end,
+    'records',coalesce(jsonb_agg(jsonb_build_object('logical_id',projection.logical_id,'domain',projection.domain,
+      'record_kind',projection.record_kind,'slug',projection.slug,'payload',projection.payload,'governance',projection.governance,
+      'publication_version',projection.publication_version,'content_hash',projection.content_hash,
+      'source_lineage_digest',projection.source_lineage_digest) order by projection.logical_id)
+      filter(where projection.logical_id is not null),'[]'::jsonb))
+  from public.site_content_public_authority authority
+  left join public.site_content_release_projections projection on projection.release_id=authority.active_release_id
+    and not projection.tombstoned and projection.domain=p_domain
+    and (p_record_kind is null or projection.record_kind=p_record_kind) and (p_slug is null or projection.slug=p_slug)
+  where authority.singleton group by authority.change_epoch,authority.active_release_id
 $$;
 
-create or replace function public.heartbeat_site_content_sync_event(
-  p_event_id uuid, p_worker_id uuid, p_lease_id uuid, p_generation_id uuid, p_lease_seconds integer
-) returns jsonb language plpgsql security definer set search_path = '' as $$
-declare v_updated integer;
+create or replace function public.claim_site_content_sync_events(p_worker_id uuid,p_limit integer,p_lease_seconds integer)
+returns setof public.site_content_sync_outbox language plpgsql security definer set search_path = '' as $$
 begin
-  update public.site_content_sync_outbox set lease_expires_at = now() + make_interval(secs => p_lease_seconds)
-   where event_id = p_event_id and worker_id = p_worker_id and lease_id = p_lease_id
-     and generation_id = p_generation_id and status = 'leased' and lease_expires_at > now();
-  get diagnostics v_updated = row_count;
-  return jsonb_build_object('ok', v_updated = 1);
-end;
-$$;
+ if p_worker_id is null or p_limit not between 1 and 100 or p_lease_seconds not between 5 and 900 then raise exception 'invalid claim'; end if;
+ return query with claimable as (select event_id from public.site_content_sync_outbox
+   where status in ('pending','leased') and available_at<=now() and (status='pending' or lease_expires_at<=now())
+   order by created_at limit p_limit for update skip locked)
+ update public.site_content_sync_outbox event set status='leased',worker_id=p_worker_id,lease_id=gen_random_uuid(),
+   lease_expires_at=now()+make_interval(secs=>p_lease_seconds),attempt_count=event.attempt_count+1
+ from claimable where event.event_id=claimable.event_id returning event.*;
+end $$;
+create or replace function public.heartbeat_site_content_sync_event(p_event_id uuid,p_worker_id uuid,p_lease_id uuid,
+ p_generation_id uuid,p_attempt_count integer,p_lease_seconds integer) returns jsonb
+language plpgsql security definer set search_path = '' as $$ declare v_count integer; begin
+ update public.site_content_sync_outbox set lease_expires_at=now()+make_interval(secs=>p_lease_seconds)
+ where event_id=p_event_id and worker_id=p_worker_id and lease_id=p_lease_id and generation_id=p_generation_id
+   and attempt_count=p_attempt_count and status='leased' and lease_expires_at>now();
+ get diagnostics v_count=row_count; return jsonb_build_object('ok',v_count=1); end $$;
+create or replace function public.read_site_content_sync_event_payload(p_event_id uuid,p_worker_id uuid,p_lease_id uuid,
+ p_generation_id uuid,p_attempt_count integer) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_event public.site_content_sync_outbox%rowtype; v_publication public.site_content_publications%rowtype;
+begin
+ select * into strict v_event from public.site_content_sync_outbox where event_id=p_event_id and worker_id=p_worker_id
+  and lease_id=p_lease_id and generation_id=p_generation_id and attempt_count=p_attempt_count
+  and status='leased' and lease_expires_at>now() for update;
+ select * into strict v_publication from public.site_content_publications where id=v_event.publication_id;
+ return jsonb_build_object('logicalId',v_publication.logical_id,'embeddingInput',v_publication.payload::text,
+  'candidateReleaseId',v_event.candidate_release_id,'contentHash',v_event.content_hash,'operation',v_event.operation);
+end $$;
+create or replace function public.stage_site_content_candidate_projection(p_event_id uuid,p_worker_id uuid,p_lease_id uuid,
+ p_generation_id uuid,p_attempt_count integer,p_candidate_release_id uuid,p_embedding jsonb,p_embedding_model text,
+ p_embedding_dimensions integer,p_embedding_digest text,p_embedding_bytes_digest text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_event public.site_content_sync_outbox%rowtype; v_publication public.site_content_publications%rowtype;
+begin
+ select * into strict v_event from public.site_content_sync_outbox where event_id=p_event_id and worker_id=p_worker_id
+  and lease_id=p_lease_id and generation_id=p_generation_id and attempt_count=p_attempt_count
+  and candidate_release_id=p_candidate_release_id and status='leased' and lease_expires_at>now() for update;
+ if jsonb_typeof(p_embedding) is distinct from 'array' or jsonb_array_length(p_embedding)<>p_embedding_dimensions
+  or p_embedding_model='' or p_embedding_digest !~ '^sha256:[0-9a-f]{64}$'
+  or p_embedding_bytes_digest !~ '^sha256:[0-9a-f]{64}$'
+  or p_embedding_bytes_digest is distinct from (select 'sha256:'||pg_catalog.encode(extensions.digest(
+    pg_catalog.decode(pg_catalog.string_agg(pg_catalog.encode(pg_catalog.float4send((value#>>'{}')::real),'hex'),''
+      order by ordinal),'hex'),'sha256'),'hex')
+    from pg_catalog.jsonb_array_elements(p_embedding) with ordinality as embedding_value(value,ordinal))
+ then raise exception 'embedding byte/model/dimension identity invalid'; end if;
+ select * into strict v_publication from public.site_content_publications where id=v_event.publication_id;
+ insert into public.site_content_release_projections(release_id,publication_id,logical_id,domain,record_kind,slug,payload,
+  governance,publication_version,content_hash,source_lineage_digest,embedding,embedding_model,embedding_dimensions,
+  embedding_digest,embedding_bytes_digest,tombstoned)
+ values(v_event.candidate_release_id,v_publication.id,v_publication.logical_id,v_publication.domain,v_publication.record_kind,
+  v_publication.slug,v_publication.payload,v_publication.governance,v_publication.publication_version,
+  v_publication.content_hash,v_publication.source_lineage_digest,p_embedding,p_embedding_model,p_embedding_dimensions,
+  p_embedding_digest,p_embedding_bytes_digest,false)
+ on conflict(release_id,logical_id) do update set publication_id=excluded.publication_id,payload=excluded.payload,
+  governance=excluded.governance,content_hash=excluded.content_hash,source_lineage_digest=excluded.source_lineage_digest,
+  embedding=excluded.embedding,embedding_model=excluded.embedding_model,embedding_dimensions=excluded.embedding_dimensions,
+  embedding_digest=excluded.embedding_digest,embedding_bytes_digest=excluded.embedding_bytes_digest,tombstoned=false;
+ update public.site_content_releases release set projected_record_count=(select count(*) from public.site_content_release_projections
+  projection where projection.release_id=release.id and not projection.tombstoned)
+ where release.id=v_event.candidate_release_id and release.state='candidate' and release.generation_id=v_event.generation_id;
+ return jsonb_build_object('releaseId',v_event.candidate_release_id);
+end $$;
+create or replace function public.stage_site_content_candidate_operation(p_event_id uuid,p_worker_id uuid,p_lease_id uuid,
+ p_generation_id uuid,p_attempt_count integer,p_candidate_release_id uuid) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_event public.site_content_sync_outbox%rowtype; v_release public.site_content_releases%rowtype;
+begin
+ select * into strict v_event from public.site_content_sync_outbox where event_id=p_event_id and worker_id=p_worker_id
+  and lease_id=p_lease_id and generation_id=p_generation_id and attempt_count=p_attempt_count
+  and candidate_release_id=p_candidate_release_id and operation in ('unchanged','tombstone')
+  and status='leased' and lease_expires_at>now() for update;
+ select * into strict v_release from public.site_content_releases where id=v_event.candidate_release_id
+  and state='candidate' and generation_id=v_event.generation_id for update;
+ insert into public.site_content_release_projections(release_id,publication_id,logical_id,domain,record_kind,slug,payload,
+  governance,publication_version,content_hash,source_lineage_digest,embedding,embedding_model,embedding_dimensions,
+  embedding_digest,embedding_bytes_digest,tombstoned)
+ select v_release.id,prior.publication_id,prior.logical_id,prior.domain,prior.record_kind,prior.slug,prior.payload,
+  prior.governance,prior.publication_version,prior.content_hash,prior.source_lineage_digest,
+  case when v_event.operation='unchanged' then prior.embedding end,
+  case when v_event.operation='unchanged' then prior.embedding_model end,
+  case when v_event.operation='unchanged' then prior.embedding_dimensions end,
+  case when v_event.operation='unchanged' then prior.embedding_digest end,
+  case when v_event.operation='unchanged' then prior.embedding_bytes_digest end,v_event.operation='tombstone'
+ from public.site_content_release_projections prior where prior.release_id=v_release.previous_release_id
+  and prior.logical_id=v_event.logical_id and not prior.tombstoned and prior.content_hash=v_event.content_hash
+  and (v_event.operation='tombstone' or (prior.embedding is not null and prior.embedding_model is not null
+    and prior.embedding_dimensions is not null and prior.embedding_digest is not null and prior.embedding_bytes_digest is not null))
+ on conflict(release_id,logical_id) do update set publication_id=excluded.publication_id,payload=excluded.payload,
+  governance=excluded.governance,content_hash=excluded.content_hash,source_lineage_digest=excluded.source_lineage_digest,
+  embedding=excluded.embedding,embedding_model=excluded.embedding_model,embedding_dimensions=excluded.embedding_dimensions,
+  embedding_digest=excluded.embedding_digest,embedding_bytes_digest=excluded.embedding_bytes_digest,
+  tombstoned=excluded.tombstoned;
+ if not found then raise exception 'verified predecessor projection unavailable'; end if;
+ update public.site_content_releases release set projected_record_count=(select count(*) from public.site_content_release_projections
+  projection where projection.release_id=release.id and not projection.tombstoned) where release.id=v_release.id;
+ return pg_catalog.jsonb_build_object('releaseId',v_release.id,'operation',v_event.operation);
+end $$;
+create or replace function public.complete_site_content_sync_event(p_event_id uuid,p_worker_id uuid,p_lease_id uuid,
+ p_generation_id uuid,p_attempt_count integer,p_release_id uuid,p_expected_content_hash text) returns jsonb
+language plpgsql security definer set search_path = '' as $$ declare v_count integer; begin
+ if p_release_id is null then raise exception 'candidate release required'; end if;
+ update public.site_content_sync_outbox set status='complete',completed_release_id=p_release_id,completed_at=now(),
+  worker_id=null,lease_id=null,lease_expires_at=null
+ where event_id=p_event_id and worker_id=p_worker_id and lease_id=p_lease_id and generation_id=p_generation_id
+  and attempt_count=p_attempt_count and candidate_release_id=p_release_id and content_hash=p_expected_content_hash
+  and status='leased' and lease_expires_at>now()
+  and exists(select 1 from public.site_content_releases candidate where candidate.id=p_release_id and candidate.state='candidate')
+  and exists(select 1 from public.site_content_release_projections projection where projection.release_id=p_release_id
+    and projection.logical_id=site_content_sync_outbox.logical_id and projection.content_hash=p_expected_content_hash);
+ get diagnostics v_count=row_count; return jsonb_build_object('ok',v_count=1); end $$;
+create or replace function public.fail_site_content_sync_event(p_event_id uuid,p_worker_id uuid,p_lease_id uuid,
+ p_generation_id uuid,p_attempt_count integer,p_error_code text,p_quarantine boolean,p_retry_after_seconds integer) returns jsonb
+language plpgsql security definer set search_path = '' as $$ declare v_count integer; begin
+ update public.site_content_sync_outbox set status=case when p_quarantine then 'quarantined' else 'pending' end,
+  error_code=left(coalesce(p_error_code,'sync_failed'),80),
+  available_at=case when p_quarantine then available_at else now()+make_interval(secs=>p_retry_after_seconds) end,
+  worker_id=null,lease_id=null,lease_expires_at=null
+ where event_id=p_event_id and worker_id=p_worker_id and lease_id=p_lease_id and generation_id=p_generation_id
+  and attempt_count=p_attempt_count and status='leased' and lease_expires_at>now();
+ get diagnostics v_count=row_count; return jsonb_build_object('ok',v_count=1); end $$;
 
-create or replace function public.complete_site_content_sync_event(
-  p_event_id uuid, p_worker_id uuid, p_lease_id uuid, p_generation_id uuid,
-  p_release_id uuid, p_expected_content_hash text
-) returns jsonb language plpgsql security definer set search_path = '' as $$
-declare v_updated integer;
+create or replace function public.activate_site_content_release(p_release_id uuid,p_expected_release_digest text,
+ p_recovery_evidence jsonb,p_activation_receipt jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_release public.site_content_releases%rowtype; v_previous public.site_content_releases%rowtype;
 begin
-  update public.site_content_sync_outbox set status = 'complete', completed_release_id = p_release_id,
-    completed_at = now(), worker_id = null, lease_id = null, lease_expires_at = null
-   where event_id = p_event_id and worker_id = p_worker_id and lease_id = p_lease_id
-     and generation_id = p_generation_id and content_hash = p_expected_content_hash
-     and status = 'leased' and lease_expires_at > now();
-  get diagnostics v_updated = row_count;
-  return jsonb_build_object('ok', v_updated = 1);
-end;
-$$;
-
-create or replace function public.fail_site_content_sync_event(
-  p_event_id uuid, p_worker_id uuid, p_lease_id uuid, p_generation_id uuid,
-  p_error_code text, p_quarantine boolean, p_retry_after_seconds integer
-) returns jsonb language plpgsql security definer set search_path = '' as $$
-declare v_updated integer;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release',0));
+ select * into strict v_release from public.site_content_releases where id=p_release_id for update;
+ select release.* into strict v_previous from public.site_content_public_authority authority
+  join public.site_content_releases release on release.id=authority.active_release_id where authority.singleton for update;
+ if v_release.state<>'candidate' or v_release.release_digest<>p_expected_release_digest
+  or p_recovery_evidence is distinct from v_release.recovery_evidence
+  or p_recovery_evidence->>'digest' is distinct from public.site_content_p05_digest(p_recovery_evidence)
+  or (p_recovery_evidence->>'validUntil')::timestamptz<=now()
+  or (p_activation_receipt->>'version')::integer<>1
+  or (p_activation_receipt->>'receiptId')::uuid is null
+  or p_activation_receipt->>'digest' is distinct from public.site_content_p05_digest(p_activation_receipt)
+  or p_activation_receipt->>'projectRef' is distinct from v_release.project_ref
+  or p_activation_receipt->>'operation' is distinct from 'site-release'
+  or p_activation_receipt->>'recoveryEvidenceId' is distinct from p_recovery_evidence->>'evidenceId'
+  or p_activation_receipt->>'recoveryEvidenceDigest' is distinct from v_release.recovery_evidence_digest
+  or p_activation_receipt->>'stateDigest' is distinct from v_release.dynamic_state_digest
+  or p_activation_receipt#>>'{resource,releaseId}' is distinct from v_release.id::text
+  or p_activation_receipt#>>'{resource,releaseDigest}' is distinct from v_release.release_digest
+  or p_activation_receipt#>>'{previousResource,releaseId}' is distinct from v_previous.id::text
+  or p_activation_receipt#>>'{previousResource,releaseDigest}' is distinct from v_previous.release_digest
+  or (p_activation_receipt->>'sequence')::bigint<=0
+  or (p_activation_receipt->>'recordedAt')::timestamptz<=(p_recovery_evidence->>'verifiedAt')::timestamptz
+  or v_release.projected_record_count<>v_release.expected_record_count
+  or (select count(*) from public.site_content_release_projections where release_id=v_release.id and not tombstoned)<>v_release.expected_record_count
+  or not v_release.integrity_verified or not v_release.public_visibility_verified or not v_release.governance_verified
+  or not v_release.must_pass_verified
+  or exists(select 1 from public.site_content_sync_outbox where candidate_release_id=v_release.id
+    and status in ('pending', 'leased', 'quarantined'))
+ then raise exception 'candidate or P05 activation authority invalid'; end if;
+ update public.site_content_releases set state='retained' where id=v_previous.id;
+ update public.site_content_releases set state='active',previous_release_id=v_previous.id,
+  activation_receipt=p_activation_receipt,activated_at=now() where id=v_release.id;
+ update public.site_content_public_authority set active_release_id=v_release.id,change_epoch=change_epoch+1,updated_at=now()
+  where singleton and active_release_id=v_previous.id;
+ return jsonb_build_object('activeReleaseId',v_release.id,'previousReleaseId',v_previous.id,
+  'activationReceiptId',p_activation_receipt->>'receiptId');
+end $$;
+create or replace function public.rollback_site_content_release(p_failed_release_id uuid,p_activation_receipt jsonb,
+ p_rollback_receipt jsonb) returns jsonb language plpgsql security definer set search_path = '' as $$
+declare v_failed public.site_content_releases%rowtype; v_retained public.site_content_releases%rowtype;
 begin
-  update public.site_content_sync_outbox set status = case when p_quarantine then 'quarantined' else 'pending' end,
-    error_code = left(coalesce(p_error_code, 'sync_failed'), 80),
-    available_at = case when p_quarantine then available_at else now() + make_interval(secs => p_retry_after_seconds) end,
-    worker_id = null, lease_id = null, lease_expires_at = null
-   where event_id = p_event_id and worker_id = p_worker_id and lease_id = p_lease_id
-     and generation_id = p_generation_id and status = 'leased';
-  get diagnostics v_updated = row_count;
-  return jsonb_build_object('ok', v_updated = 1);
-end;
-$$;
-
-create or replace function public.activate_site_content_release(
-  p_release_id uuid, p_expected_release_digest text, p_recovery_digest text
-) returns jsonb language plpgsql security definer set search_path = '' as $$
-declare v_release public.site_content_releases%rowtype; v_previous uuid;
-begin
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release', 0));
-  select * into strict v_release from public.site_content_releases where id = p_release_id for update;
-  if v_release.state <> 'candidate' or v_release.release_digest <> p_expected_release_digest
-     or v_release.recovery_evidence_digest <> p_recovery_digest
-     or v_release.projected_record_count <> v_release.expected_record_count
-     or not v_release.integrity_verified or not v_release.public_visibility_verified
-     or not v_release.governance_verified or not v_release.must_pass_verified
-     or exists (select 1 from public.site_content_sync_outbox where status in ('pending', 'leased'))
-  then raise exception 'Site-content candidate is not eligible for activation'; end if;
-  select active_release_id into v_previous from public.site_content_public_authority where singleton for update;
-  update public.site_content_releases set state = 'retained' where id = v_previous;
-  update public.site_content_releases set state = 'active', previous_release_id = v_previous, activated_at = now()
-   where id = p_release_id;
-  update public.site_content_public_authority set active_release_id = p_release_id,
-    change_epoch = change_epoch + 1, updated_at = now() where singleton;
-  insert into public.site_content_release_receipts(receipt_kind, release_id, previous_release_id, release_digest, recovery_evidence_digest)
-    values ('activation', p_release_id, v_previous, v_release.release_digest, v_release.recovery_evidence_digest);
-  return jsonb_build_object('activeReleaseId', p_release_id, 'previousReleaseId', v_previous);
-end;
-$$;
-
-create or replace function public.rollback_site_content_release(
-  p_failed_release_id uuid, p_retained_release_id uuid, p_recovery_digest text
-) returns jsonb language plpgsql security definer set search_path = '' as $$
-declare v_retained public.site_content_releases%rowtype;
-begin
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release', 0));
-  select * into strict v_retained from public.site_content_releases
-   where id = p_retained_release_id and state = 'retained' for update;
-  if p_recovery_digest !~ '^sha256:[0-9a-f]{64}$' then raise exception 'Invalid rollback evidence'; end if;
-  update public.site_content_releases set state = 'failed' where id = p_failed_release_id and state = 'active';
-  update public.site_content_releases set state = 'active' where id = p_retained_release_id;
-  update public.site_content_public_authority set active_release_id = p_retained_release_id,
-    change_epoch = change_epoch + 1, updated_at = now()
-   where singleton and active_release_id = p_failed_release_id;
-  if not found then raise exception 'Rollback authority changed'; end if;
-  insert into public.site_content_release_receipts(
-    receipt_kind, release_id, previous_release_id, release_digest, recovery_evidence_digest, restoration_method
-  ) values ('rollback', p_retained_release_id, p_failed_release_id,
-    v_retained.release_digest, p_recovery_digest, 'retained-pointer');
-  return jsonb_build_object('activeReleaseId', p_retained_release_id, 'restorationMethod', 'retained-pointer');
-end;
-$$;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release',0));
+ select * into strict v_failed from public.site_content_releases where id=p_failed_release_id and state='active' for update;
+ if p_activation_receipt is distinct from v_failed.activation_receipt
+  or p_activation_receipt->>'digest' is distinct from public.site_content_p05_digest(p_activation_receipt)
+  or (p_rollback_receipt->>'version')::integer<>1
+  or (p_rollback_receipt->>'receiptId')::uuid is null
+  or p_rollback_receipt->>'receiptId' is not distinct from p_activation_receipt->>'receiptId'
+  or p_rollback_receipt->>'digest' is distinct from public.site_content_p05_digest(p_rollback_receipt)
+  or p_rollback_receipt->>'projectRef' is distinct from v_failed.project_ref
+  or p_rollback_receipt->>'operation' is distinct from 'site-release'
+  or p_rollback_receipt->>'activationReceiptId' is distinct from p_activation_receipt->>'receiptId'
+  or p_rollback_receipt->>'activationReceiptDigest' is distinct from p_activation_receipt->>'digest'
+  or p_rollback_receipt->>'recoveryEvidenceDigest' is distinct from v_failed.recovery_evidence_digest
+  or p_rollback_receipt#>>'{failedResource,releaseId}' is distinct from v_failed.id::text
+  or p_rollback_receipt#>>'{failedResource,releaseDigest}' is distinct from v_failed.release_digest
+  or p_rollback_receipt#>>'{restoredResource,releaseId}' is distinct from v_failed.previous_release_id::text
+  or p_rollback_receipt->>'restorationMethod' is distinct from 'retained-pointer'
+  or (p_rollback_receipt->>'sequence')::bigint<=(p_activation_receipt->>'sequence')::bigint
+  or (p_rollback_receipt->>'recordedAt')::timestamptz<=(p_activation_receipt->>'recordedAt')::timestamptz
+ then raise exception 'P05 rollback receipt binding invalid'; end if;
+ select * into strict v_retained from public.site_content_releases where id=v_failed.previous_release_id and state='retained'
+  and release_digest=p_rollback_receipt#>>'{restoredResource,releaseDigest}' for update;
+ update public.site_content_releases set state='failed',rollback_receipt=p_rollback_receipt where id=v_failed.id;
+ update public.site_content_releases set state='active' where id=v_retained.id;
+ update public.site_content_public_authority set active_release_id=v_retained.id,change_epoch=change_epoch+1,updated_at=now()
+  where singleton and active_release_id=v_failed.id;
+ if not found then raise exception 'rollback authority changed'; end if;
+ return jsonb_build_object('activeReleaseId',v_retained.id,'restorationMethod','retained-pointer');
+end $$;
 
 alter table public.site_content_public_authority enable row level security;
 alter table public.site_content_releases enable row level security;
 alter table public.site_content_publications enable row level security;
 alter table public.site_content_release_projections enable row level security;
 alter table public.site_content_sync_outbox enable row level security;
-alter table public.site_content_release_receipts enable row level security;
-
-revoke all on public.site_content_public_authority, public.site_content_releases,
-  public.site_content_publications, public.site_content_release_projections,
-  public.site_content_sync_outbox, public.site_content_release_receipts from public, anon, authenticated;
-grant all on public.site_content_public_authority, public.site_content_releases,
-  public.site_content_publications, public.site_content_release_projections,
-  public.site_content_sync_outbox, public.site_content_release_receipts to service_role;
-
-revoke all on function public.publish_site_content_record(jsonb, uuid, boolean) from public, anon, authenticated;
-revoke all on function public.read_public_site_content_records(text, text, text) from public, anon, authenticated;
-revoke all on function public.claim_site_content_sync_events(uuid, integer, integer) from public, anon, authenticated;
-revoke all on function public.heartbeat_site_content_sync_event(uuid, uuid, uuid, uuid, integer) from public, anon, authenticated;
-revoke all on function public.complete_site_content_sync_event(uuid, uuid, uuid, uuid, uuid, text) from public, anon, authenticated;
-revoke all on function public.fail_site_content_sync_event(uuid, uuid, uuid, uuid, text, boolean, integer) from public, anon, authenticated;
-revoke all on function public.activate_site_content_release(uuid, text, text) from public, anon, authenticated;
-revoke all on function public.rollback_site_content_release(uuid, uuid, text) from public, anon, authenticated;
-revoke all on function public.prevent_site_content_receipt_mutation() from public, anon, authenticated;
-
-grant execute on function public.publish_site_content_record(jsonb, uuid, boolean) to service_role;
-grant execute on function public.read_public_site_content_records(text, text, text) to service_role;
-grant execute on function public.claim_site_content_sync_events(uuid, integer, integer) to service_role;
-grant execute on function public.heartbeat_site_content_sync_event(uuid, uuid, uuid, uuid, integer) to service_role;
-grant execute on function public.complete_site_content_sync_event(uuid, uuid, uuid, uuid, uuid, text) to service_role;
-grant execute on function public.fail_site_content_sync_event(uuid, uuid, uuid, uuid, text, boolean, integer) to service_role;
-grant execute on function public.activate_site_content_release(uuid, text, text) to service_role;
-grant execute on function public.rollback_site_content_release(uuid, uuid, text) to service_role;
+revoke all on public.site_content_public_authority,public.site_content_releases,public.site_content_publications,
+ public.site_content_release_projections,public.site_content_sync_outbox from public,anon,authenticated,service_role;
+revoke all on function public.site_content_canonical_json(jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.site_content_p05_digest(jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.site_content_admin_authorized() from public,anon,authenticated;
+revoke all on function public.begin_site_content_candidate_release(jsonb) from public,anon,authenticated;
+revoke all on function public.publish_site_content_record(jsonb) from public,anon,authenticated;
+revoke all on function public.read_public_site_content_records(text,text,text) from public,anon,authenticated;
+revoke all on function public.claim_site_content_sync_events(uuid,integer,integer) from public,anon,authenticated;
+revoke all on function public.heartbeat_site_content_sync_event(uuid,uuid,uuid,uuid,integer,integer) from public,anon,authenticated;
+revoke all on function public.read_site_content_sync_event_payload(uuid,uuid,uuid,uuid,integer) from public,anon,authenticated;
+revoke all on function public.stage_site_content_candidate_projection(uuid,uuid,uuid,uuid,integer,uuid,jsonb,text,integer,text,text) from public,anon,authenticated;
+revoke all on function public.stage_site_content_candidate_operation(uuid,uuid,uuid,uuid,integer,uuid) from public,anon,authenticated;
+revoke all on function public.complete_site_content_sync_event(uuid,uuid,uuid,uuid,integer,uuid,text) from public,anon,authenticated;
+revoke all on function public.fail_site_content_sync_event(uuid,uuid,uuid,uuid,integer,text,boolean,integer) from public,anon,authenticated;
+revoke all on function public.activate_site_content_release(uuid,text,jsonb,jsonb) from public,anon,authenticated;
+revoke all on function public.rollback_site_content_release(uuid,jsonb,jsonb) from public,anon,authenticated;
+grant execute on function public.site_content_admin_authorized() to authenticated;
+grant execute on function public.begin_site_content_candidate_release(jsonb) to authenticated;
+grant execute on function public.publish_site_content_record(jsonb) to authenticated;
+grant execute on function public.read_public_site_content_records(text,text,text) to service_role;
+grant execute on function public.claim_site_content_sync_events(uuid,integer,integer) to service_role;
+grant execute on function public.heartbeat_site_content_sync_event(uuid,uuid,uuid,uuid,integer,integer) to service_role;
+grant execute on function public.read_site_content_sync_event_payload(uuid,uuid,uuid,uuid,integer) to service_role;
+grant execute on function public.stage_site_content_candidate_projection(uuid,uuid,uuid,uuid,integer,uuid,jsonb,text,integer,text,text) to service_role;
+grant execute on function public.stage_site_content_candidate_operation(uuid,uuid,uuid,uuid,integer,uuid) to service_role;
+grant execute on function public.complete_site_content_sync_event(uuid,uuid,uuid,uuid,integer,uuid,text) to service_role;
+grant execute on function public.fail_site_content_sync_event(uuid,uuid,uuid,uuid,integer,text,boolean,integer) to service_role;
+grant execute on function public.activate_site_content_release(uuid,text,jsonb,jsonb) to service_role;
+grant execute on function public.rollback_site_content_release(uuid,jsonb,jsonb) to service_role;

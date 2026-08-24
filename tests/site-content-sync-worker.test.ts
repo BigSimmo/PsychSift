@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { drainSiteContentSyncBatch } from "../supabase/functions/site-content-sync/index";
+import { createSiteContentSyncHandler, drainSiteContentSyncBatch } from "../supabase/functions/site-content-sync/index";
 
 describe("site-content sync worker", () => {
   it("claims a bounded batch and completes only with the live lease and generation identity", async () => {
@@ -17,6 +17,7 @@ describe("site-content sync worker", () => {
               lease_id: "33333333-3333-4333-8333-333333333333",
               generation_id: "44444444-4444-4444-8444-444444444444",
               lease_expires_at: "2026-08-24T01:05:00.000Z",
+              candidate_release_id: "55555555-5555-4555-8555-555555555555",
             },
           ],
           error: null,
@@ -78,6 +79,7 @@ describe("site-content sync worker", () => {
               lease_id: "33333333-3333-4333-8333-333333333333",
               generation_id: "44444444-4444-4444-8444-444444444444",
               lease_expires_at: "2026-08-24T01:05:00.000Z",
+              candidate_release_id: "55555555-5555-4555-8555-555555555555",
             },
           ],
           error: null,
@@ -106,5 +108,84 @@ describe("site-content sync worker", () => {
     expect(result.quarantined).toBe(1);
     expect(JSON.stringify(log.mock.calls)).not.toContain("private body text");
     expect(JSON.stringify(log.mock.calls)).not.toMatch(/actor|user/i);
+  });
+
+  it("authenticates the concrete handler and heartbeats periodically during slow work", async () => {
+    vi.useFakeTimers();
+    const rpc = vi.fn(async (name: string) =>
+      name === "claim_site_content_sync_events"
+        ? {
+            data: [
+              {
+                event_id: "11111111-1111-4111-8111-111111111111",
+                publication_id: "22222222-2222-4222-8222-222222222222",
+                logical_id: "medication:alpha",
+                content_hash: `sha256:${"a".repeat(64)}`,
+                attempt_count: 1,
+                lease_id: "33333333-3333-4333-8333-333333333333",
+                generation_id: "44444444-4444-4444-8444-444444444444",
+                lease_expires_at: "2099-08-24T01:05:00.000Z",
+                candidate_release_id: "55555555-5555-4555-8555-555555555555",
+              },
+            ],
+            error: null,
+          }
+        : { data: { ok: true }, error: null },
+    );
+    const handler = createSiteContentSyncHandler({
+      authorization: "Bearer synthetic-secret",
+      workerId: "66666666-6666-4666-8666-666666666666",
+      rpc,
+      processEvent: async (event) => {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        return { releaseId: event.candidate_release_id };
+      },
+      heartbeatIntervalMs: 50,
+    });
+    expect((await handler(new Request("http://local", { method: "POST" }))).status).toBe(401);
+    const responsePromise = handler(
+      new Request("http://local", { method: "POST", headers: { authorization: "Bearer synthetic-secret" } }),
+    );
+    await vi.advanceTimersByTimeAsync(260);
+    expect((await responsePromise).status).toBe(200);
+    expect(rpc.mock.calls.filter(([name]) => name === "heartbeat_site_content_sync_event").length).toBeGreaterThan(1);
+    vi.useRealTimers();
+  });
+
+  it("requires an exact non-null candidate release before completion", async () => {
+    const rpc = vi.fn(async (name: string) =>
+      name === "claim_site_content_sync_events"
+        ? {
+            data: [
+              {
+                event_id: "11111111-1111-4111-8111-111111111111",
+                publication_id: "22222222-2222-4222-8222-222222222222",
+                logical_id: "medication:alpha",
+                content_hash: `sha256:${"a".repeat(64)}`,
+                attempt_count: 1,
+                lease_id: "33333333-3333-4333-8333-333333333333",
+                generation_id: "44444444-4444-4444-8444-444444444444",
+                lease_expires_at: "2099-08-24T01:05:00.000Z",
+                candidate_release_id: "55555555-5555-4555-8555-555555555555",
+              },
+            ],
+            error: null,
+          }
+        : { data: { ok: true }, error: null },
+    );
+    await drainSiteContentSyncBatch({
+      workerId: "66666666-6666-4666-8666-666666666666",
+      limit: 1,
+      leaseSeconds: 90,
+      maxBatchSize: 25,
+      maxAttempts: 4,
+      rpc,
+      processEvent: async () => ({}),
+    });
+    expect(rpc).not.toHaveBeenCalledWith("complete_site_content_sync_event", expect.anything());
+    expect(rpc).toHaveBeenCalledWith(
+      "fail_site_content_sync_event",
+      expect.objectContaining({ p_error_code: "sync_failed" }),
+    );
   });
 });

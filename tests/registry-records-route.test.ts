@@ -3,6 +3,7 @@ import { gunzipSync } from "node:zlib";
 
 const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const token = "valid-token";
+const adminToken = "admin-token";
 const publicFixtureCacheControl = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
 
 function expectPublicFixtureCache(response: Response, options: { variesByEncoding?: boolean } = {}) {
@@ -17,7 +18,7 @@ function expectPrivateCache(response: Response) {
 }
 const recordId = "11111111-1111-4111-8111-111111111111";
 
-type QueryError = { message: string };
+type QueryError = { message: string; code?: string };
 type QueryResult = { data: unknown; error: QueryError | null };
 type QueryFilter = { column: string; value: unknown };
 type QueryCall = {
@@ -120,8 +121,8 @@ class QueryBuilder implements PromiseLike<QueryResult> {
 function createSupabaseMock(resolve: QueryResolver = () => ok([]), options: { limited?: boolean } = {}) {
   const calls: QueryCall[] = [];
   const getUser = vi.fn(async (receivedToken?: string) =>
-    receivedToken === token
-      ? { data: { user: { id: userId } }, error: null }
+    receivedToken === token || receivedToken === adminToken
+      ? { data: { user: { id: userId, app_metadata: { administrator: receivedToken === adminToken } } }, error: null }
       : { data: { user: null }, error: { message: "Invalid token" } },
   );
   const rpc = vi.fn(async (name: string) =>
@@ -138,7 +139,7 @@ function createSupabaseMock(resolve: QueryResolver = () => ok([]), options: { li
           ],
           error: null,
         }
-      : ok([]),
+      : { data: null, error: { code: "42883", message: "function is not applied" } },
   );
   return {
     calls,
@@ -190,6 +191,10 @@ function authedRequest(path: string) {
   return request(path, { headers: { Authorization: `Bearer ${token}` } });
 }
 
+function adminRequest(path: string) {
+  return request(path, { headers: { Authorization: `Bearer ${adminToken}` } });
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
@@ -203,9 +208,28 @@ describe("registry records API", () => {
 
     const anonymous = await GET(request("/api/registry/records?kind=service&q=yarn"));
     const authenticated = await GET(authedRequest("/api/registry/records?kind=service&q=yarn"));
+    const administrator = await GET(adminRequest("/api/registry/records?kind=service&q=yarn"));
 
     expect(await authenticated.text()).toBe(await anonymous.text());
+    expect(await administrator.text()).toBe(
+      await (await GET(request("/api/registry/records?kind=service&q=yarn"))).text(),
+    );
     expect(client.from).not.toHaveBeenCalled();
+  });
+
+  it("returns byte-equivalent registry detail bodies for anonymous, authenticated, and administrator readers", async () => {
+    const client = createSupabaseMock();
+    mockRuntime(client);
+    const { GET } = await import("../src/app/api/registry/records/[slug]/route");
+    const call = (requestValue: Request) =>
+      GET(requestValue, { params: Promise.resolve({ slug: "13yarn" }) }).then((response) => response.text());
+    const [anonymous, authenticated, administrator] = await Promise.all([
+      call(request("/api/registry/records/13yarn?kind=service")),
+      call(authedRequest("/api/registry/records/13yarn?kind=service")),
+      call(adminRequest("/api/registry/records/13yarn?kind=service")),
+    ]);
+    expect(authenticated).toBe(anonymous);
+    expect(administrator).toBe(anonymous);
   });
   it("serves a counts-only summary projection for mode homes", async () => {
     const client = createSupabaseMock();

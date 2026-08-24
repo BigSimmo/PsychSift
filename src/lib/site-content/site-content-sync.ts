@@ -61,6 +61,7 @@ export type SiteContentSyncPlan = Readonly<{
   generationId: string;
   registryVersion: string;
   staticManifestDigest: Digest;
+  embeddingContract: Readonly<{ model: string; dimensions: number }>;
   batchSize: number;
   changed: Array<SiteContentSyncRecord & { changeKind: "added" | "changed" }>;
   unchanged: Array<SiteContentSyncRecord & { reusedEmbedding: SiteContentEmbeddingIdentity }>;
@@ -201,6 +202,7 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
   const releaseDigest = digest({
     registryVersion: input.registryVersion,
     staticManifestDigest: input.staticManifestDigest,
+    embeddingContract: Object.freeze({ ...input.expectedEmbedding }),
     dynamicStateDigest,
     generationId: input.generationId,
   });
@@ -218,6 +220,7 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
     generationId: input.generationId,
     registryVersion: input.registryVersion,
     staticManifestDigest: input.staticManifestDigest,
+    embeddingContract: Object.freeze({ ...input.expectedEmbedding }),
     batchSize: input.batchSize,
     changed,
     unchanged,

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const token = "valid-token";
+const adminToken = "admin-token";
 const publicFixtureCacheControl = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
 
 function expectPublicFixtureCache(response: Response) {
@@ -13,7 +14,7 @@ function expectPrivateCache(response: Response) {
   expect(response.headers.get("cache-control")).toBe("private, no-store");
 }
 
-type QueryError = { message: string };
+type QueryError = { message: string; code?: string };
 type QueryResult = { data: unknown; error: QueryError | null };
 type QueryFilter = { column: string; value: unknown };
 type QueryCall = {
@@ -91,12 +92,19 @@ function createSupabaseMock(resolve: QueryResolver = () => ok([])) {
     from,
     auth: {
       getUser: vi.fn(async (receivedToken?: string) =>
-        receivedToken === token
-          ? { data: { user: { id: userId } }, error: null }
+        receivedToken === token || receivedToken === adminToken
+          ? {
+              data: { user: { id: userId, app_metadata: { administrator: receivedToken === adminToken } } },
+              error: null,
+            }
           : { data: { user: null }, error: { message: "Invalid token" } },
       ),
     },
-    rpc: vi.fn(async () => ok([{ limited: false, limit_value: 120, remaining: 119, retry_after_seconds: 60 }])),
+    rpc: vi.fn(async (name: string) =>
+      name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit"
+        ? ok([{ limited: false, limit_value: 120, remaining: 119, retry_after_seconds: 60 }])
+        : { data: null, error: { code: "42883", message: "function is not applied" } },
+    ),
   };
 }
 
@@ -125,6 +133,26 @@ function mockRuntime(
   vi.doMock("@/lib/supabase/admin", () => ({
     createAdminClient: () => client,
   }));
+  vi.doMock("@/lib/public-api-access", async (importOriginal) => {
+    const original = await importOriginal<typeof import("../src/lib/public-api-access")>();
+    return {
+      ...original,
+      publicAccessContext: vi.fn(async (requestValue: Request) => {
+        const bearer = requestValue.headers.get("authorization");
+        return bearer
+          ? {
+              authenticated: true,
+              ownerId: userId,
+              rateLimitSubject: { kind: "owner" as const, ownerId: userId },
+            }
+          : {
+              authenticated: false,
+              ownerId: undefined,
+              rateLimitSubject: { kind: "anonymous" as const, subjectKey: "anon:synthetic" },
+            };
+      }),
+    };
+  });
 }
 
 function request(path: string) {
@@ -135,12 +163,57 @@ function authenticatedRequest(path: string) {
   return new Request(`http://localhost${path}`, { headers: { Authorization: `Bearer ${token}` } });
 }
 
+function administratorRequest(path: string) {
+  return new Request(`http://localhost${path}`, { headers: { Authorization: `Bearer ${adminToken}` } });
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
 });
 
 describe("differentials API routes", () => {
+  it("returns byte-equivalent collection and both detail bodies for all public reader identities", async () => {
+    const client = createSupabaseMock();
+    mockRuntime(client);
+    const requests = [request, authenticatedRequest, administratorRequest];
+    const collection = await import("../src/app/api/differentials/route");
+    const collectionBodies: string[] = [];
+    for (const build of requests) {
+      const response = await collection.GET(build("/api/differentials?kind=diagnosis&q=delirium"));
+      expect(response.status, JSON.stringify(client.rpc.mock.calls)).toBe(200);
+      collectionBodies.push(await response.text());
+    }
+    expect(collectionBodies).toEqual([collectionBodies[0], collectionBodies[0], collectionBodies[0]]);
+    const detail = await import("../src/app/api/differentials/[slug]/route");
+    expect(
+      new Set(
+        await Promise.all(
+          requests.map((build) =>
+            detail
+              .GET(build("/api/differentials/delirium?kind=diagnosis"), {
+                params: Promise.resolve({ slug: "delirium" }),
+              })
+              .then((response) => response.text()),
+          ),
+        ),
+      ).size,
+    ).toBe(1);
+    const presentation = await import("../src/app/api/differentials/presentations/[slug]/route");
+    expect(
+      new Set(
+        await Promise.all(
+          requests.map((build) =>
+            presentation
+              .GET(build("/api/differentials/presentations/acute-confusion-encephalopathy"), {
+                params: Promise.resolve({ slug: "acute-confusion-encephalopathy" }),
+              })
+              .then((response) => response.text()),
+          ),
+        ),
+      ).size,
+    ).toBe(1);
+  });
   it("excludes owner diagnosis rows from canonical public detail context", async () => {
     const diagnosis = {
       slug: "owner-diagnosis",
