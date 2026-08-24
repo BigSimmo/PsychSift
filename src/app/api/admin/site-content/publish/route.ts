@@ -9,7 +9,10 @@ import {
   type SiteContentAuthoritySecretPurpose,
 } from "@/lib/site-content/site-content-authority-secrets";
 import { assertSiteContentSyncPlan } from "@/lib/site-content/site-content-sync";
-import { verifySiteContentReleaseGateArtifacts } from "@/lib/site-content/site-content-release-evidence";
+import {
+  parseSiteContentGateDerivationClock,
+  verifySiteContentReleaseGateArtifacts,
+} from "@/lib/site-content/site-content-release-evidence";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { createSupabaseBearerServerClient, createSupabaseServerClient } from "@/lib/supabase/server";
@@ -110,18 +113,21 @@ export async function POST(request: Request) {
     } else if (action === "verify") {
       const plan = assertSiteContentSyncPlan((body as { plan?: unknown }).plan);
       if (plan.projectRef !== projectRef) throw new Error("Verification target mismatch.");
-      const { error: deriveError } = await userSupabase.rpc("derive_site_content_release_gate_artifacts", {
-        p_release_id: plan.candidateReleaseId,
-        p_governance_receipt: (body as { governanceReceipt?: unknown }).governanceReceipt,
-        p_must_pass_receipt: (body as { mustPassReceipt?: unknown }).mustPassReceipt,
-      });
+      const { data: derivation, error: deriveError } = await userSupabase.rpc(
+        "derive_site_content_release_gate_artifacts",
+        {
+          p_release_id: plan.candidateReleaseId,
+          p_governance_receipt: (body as { governanceReceipt?: unknown }).governanceReceipt,
+          p_must_pass_receipt: (body as { mustPassReceipt?: unknown }).mustPassReceipt,
+        },
+      );
       if (deriveError) throw new Error("Site-content release gate derivation failed.");
+      const verificationNow = parseSiteContentGateDerivationClock(derivation);
       const { data: gateArtifacts, error: gateError } = await userSupabase.rpc(
         "read_site_content_release_gate_artifacts",
         { p_release_id: plan.candidateReleaseId },
       );
       if (gateError) throw new Error("Site-content release gate artifacts are unavailable.");
-      const verificationNow = new Date();
       const verification = {
         plan,
         verificationEvidence: verifySiteContentReleaseGateArtifacts(plan, gateArtifacts, { now: verificationNow }),

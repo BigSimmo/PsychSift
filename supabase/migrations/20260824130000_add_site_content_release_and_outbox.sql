@@ -163,7 +163,7 @@ exception when others then return false;
 end $$;
 
 create or replace function public.site_content_gate_owner_receipt_valid(p_receipt jsonb,p_owner text,
- p_secret_name text,p_subject jsonb) returns boolean
+ p_secret_name text,p_subject jsonb,p_verification_now timestamptz) returns boolean
 language plpgsql stable security definer set search_path = '' as $$
 declare v_secret text; v_observed_at timestamptz; v_without_mac jsonb;
 begin
@@ -174,8 +174,11 @@ begin
  if coalesce(v_secret,'')='' or p_receipt->>'owner' is distinct from p_owner
   or p_receipt->'subject' is distinct from p_subject
   or p_receipt->>'subjectDigest' is distinct from public.site_content_json_digest(p_subject)
-  or v_observed_at<now()-interval '5 minutes' or v_observed_at>now()+interval '5 minutes'
-  or p_receipt->>'mac' !~ '^[0-9a-f]{64}$'
+  or coalesce(p_receipt->>'observedAt','') !~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$'
+  or p_receipt->>'observedAt' is distinct from pg_catalog.to_char(v_observed_at at time zone 'UTC',
+    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+  or v_observed_at<p_verification_now-interval '5 minutes' or v_observed_at>p_verification_now
+  or coalesce(p_receipt->>'mac','') !~ '^[0-9a-f]{64}$'
  then return false; end if;
  v_without_mac:=p_receipt-'mac';
  return p_receipt->>'mac'=pg_catalog.encode(extensions.hmac(pg_catalog.convert_to(
@@ -188,16 +191,35 @@ create or replace function public.derive_site_content_release_gate_artifacts(p_r
 language plpgsql security definer set search_path = '' as $$
 declare v_release public.site_content_releases%rowtype; v_subject jsonb; v_subject_digest text;
  v_population jsonb; v_expected_population jsonb; v_public jsonb; v_governance jsonb; v_must_pass jsonb;
- v_now text:=pg_catalog.to_char(pg_catalog.clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
+ v_existing_count integer; v_stored_public jsonb; v_stored_governance jsonb; v_stored_must_pass jsonb;
+ v_verification_now timestamptz; v_verification_now_text text; v_public_observed_at timestamptz;
+ v_public_observed_at_text text; v_governance_observed_at timestamptz;
+ v_must_pass_observed_at timestamptz; v_recovery_verified_at timestamptz;
 begin
  if not public.site_content_admin_authorized() or auth.uid() is null then raise exception 'administrator required'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release_gate',0));
  select * into strict v_release from public.site_content_releases where id=p_release_id for update;
- if exists(select 1 from public.site_content_release_gate_artifacts where release_id=p_release_id) then
-  if (select count(*) from public.site_content_release_gate_artifacts where release_id=p_release_id)<>3
-  then raise exception 'partial immutable gate artifact set'; end if;
-  return pg_catalog.jsonb_build_object('releaseId',p_release_id,'derived',false);
- end if;
+ select count(*),max(artifact) filter(where owner='public-site-content-reader-v1'),
+   max(artifact) filter(where owner='site-content-governance-registry-v1'),
+   max(artifact) filter(where owner='rag-programme-eval-v1')
+ into v_existing_count,v_stored_public,v_stored_governance,v_stored_must_pass
+ from public.site_content_release_gate_artifacts where release_id=p_release_id;
+ if v_existing_count not in (0,3) then raise exception 'partial immutable gate artifact set'; end if;
+ v_verification_now:=pg_catalog.clock_timestamp();
+ v_verification_now_text:=pg_catalog.to_char(v_verification_now at time zone 'UTC',
+   'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
+ if v_existing_count=3 then
+  begin v_public_observed_at:=(v_stored_public->>'observedAt')::timestamptz;
+  exception when others then raise exception 'existing immutable gate derivation clock invalid'; end;
+  if coalesce(v_stored_public->>'observedAt','') !~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$'
+   or v_stored_public->>'observedAt' is distinct from pg_catalog.to_char(v_public_observed_at at time zone 'UTC',
+     'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+   or v_public_observed_at<v_verification_now-interval '5 minutes'
+   or v_public_observed_at>v_verification_now
+  then raise exception 'existing immutable gate derivation clock invalid'; end if;
+ else v_public_observed_at:=v_verification_now; end if;
+ v_public_observed_at_text:=pg_catalog.to_char(v_public_observed_at at time zone 'UTC',
+   'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
  v_subject:=pg_catalog.jsonb_build_object('projectRef',v_release.project_ref,'releaseId',v_release.id,
   'planDigest',v_release.plan_digest,'releaseDigest',v_release.release_digest);
  v_subject_digest:=public.site_content_json_digest(v_subject);
@@ -212,9 +234,9 @@ begin
  if v_population is distinct from v_expected_population
   or exists(select 1 from public.site_content_release_operations where release_id=p_release_id and status<>'complete')
   or not public.site_content_gate_owner_receipt_valid(p_governance_receipt,'site-content-governance-registry-v1',
-    'site_content_governance_gate_owner_secret',v_subject)
+    'site_content_governance_gate_owner_secret',v_subject,v_verification_now)
   or not public.site_content_gate_owner_receipt_valid(p_must_pass_receipt,'rag-programme-eval-v1',
-    'rag_programme_gate_owner_secret',v_subject)
+    'rag_programme_gate_owner_secret',v_subject,v_verification_now)
   or p_governance_receipt->>'version' is distinct from 'site-content-governance-owner-receipt-v1'
   or p_governance_receipt->'population' is distinct from v_population
   or p_governance_receipt->>'registryVersion' is distinct from v_release.registry_version
@@ -237,8 +259,19 @@ begin
   or p_must_pass_receipt->>'gateDecisionDigest' is distinct from
     'sha256:1c28e0d9ff79e413f9a10ba071a81c53ce3ba369ec9cf1be0e69ff41023ce506'
  then raise exception 'fixed gate-owner output invalid'; end if;
+ begin
+  v_governance_observed_at:=(p_governance_receipt->>'observedAt')::timestamptz;
+  v_must_pass_observed_at:=(p_must_pass_receipt->>'observedAt')::timestamptz;
+  v_recovery_verified_at:=(v_release.recovery_evidence->>'verifiedAt')::timestamptz;
+ exception when others then raise exception 'gate-owner chronology invalid'; end;
+ if v_governance_observed_at is null or v_must_pass_observed_at is null or v_recovery_verified_at is null
+  or v_governance_observed_at<v_recovery_verified_at
+  or v_must_pass_observed_at<v_governance_observed_at
+  or v_must_pass_observed_at>v_public_observed_at
+ then raise exception 'gate-owner chronology invalid'; end if;
  v_public:=pg_catalog.jsonb_build_object('owner','public-site-content-reader-v1','subjectDigest',v_subject_digest,
-  'observedAt',v_now,'population',v_population,'populationDigest',public.site_content_json_digest(v_population));
+  'observedAt',v_public_observed_at_text,'population',v_population,
+  'populationDigest',public.site_content_json_digest(v_population));
  v_public:=v_public||pg_catalog.jsonb_build_object('digest',public.site_content_json_digest(v_public));
  v_governance:=(p_governance_receipt-'mac'-'version'-'subject')||
   pg_catalog.jsonb_build_object('digest',public.site_content_json_digest(p_governance_receipt-'mac'-'version'-'subject'));
@@ -248,14 +281,27 @@ begin
   'runDigest',p_must_pass_receipt->>'candidateRunDigest','populationFingerprint',
   p_must_pass_receipt->>'populationFingerprint','baselineRunDigest',p_must_pass_receipt->>'baselineRunDigest',
   'gatePolicyDigest',p_must_pass_receipt->>'gatePolicyDigest','gateDecisionDigest',
-  p_must_pass_receipt->>'gateDecisionDigest');
+ p_must_pass_receipt->>'gateDecisionDigest');
  v_must_pass:=v_must_pass||pg_catalog.jsonb_build_object('digest',public.site_content_json_digest(v_must_pass));
+ if v_existing_count=3 then
+  if v_stored_public is distinct from v_public or v_stored_governance is distinct from v_governance
+   or v_stored_must_pass is distinct from v_must_pass
+   or exists(select 1 from public.site_content_release_gate_artifacts artifact
+     where artifact.release_id=p_release_id and (artifact.subject is distinct from v_subject
+       or artifact.subject_digest is distinct from v_subject_digest
+       or artifact.artifact_digest is distinct from artifact.artifact->>'digest'
+       or artifact.observed_at is distinct from (artifact.artifact->>'observedAt')::timestamptz))
+  then raise exception 'existing immutable gate artifact set invalid'; end if;
+  return pg_catalog.jsonb_build_object('releaseId',p_release_id,'verificationNow',v_verification_now_text,
+    'derived',false);
+ end if;
  insert into public.site_content_release_gate_artifacts(release_id,owner,subject,subject_digest,artifact,
   artifact_digest,observed_at) values
   (p_release_id,'public-site-content-reader-v1',v_subject,v_subject_digest,v_public,v_public->>'digest',(v_public->>'observedAt')::timestamptz),
   (p_release_id,'site-content-governance-registry-v1',v_subject,v_subject_digest,v_governance,v_governance->>'digest',(v_governance->>'observedAt')::timestamptz),
   (p_release_id,'rag-programme-eval-v1',v_subject,v_subject_digest,v_must_pass,v_must_pass->>'digest',(v_must_pass->>'observedAt')::timestamptz);
- return pg_catalog.jsonb_build_object('releaseId',p_release_id,'derived',true);
+ return pg_catalog.jsonb_build_object('releaseId',p_release_id,'verificationNow',v_verification_now_text,
+   'derived',true);
 end $$;
 
 create or replace function public.read_site_content_release_gate_artifacts(p_release_id uuid) returns jsonb
@@ -945,7 +991,7 @@ revoke all on function public.site_content_p05_digest(jsonb) from public,anon,au
 revoke all on function public.site_content_json_digest(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_validation_binding_valid(jsonb,text,text,text,jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_consume_validation_binding(jsonb,text,text,text,jsonb) from public,anon,authenticated,service_role;
-revoke all on function public.site_content_gate_owner_receipt_valid(jsonb,text,text,jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.site_content_gate_owner_receipt_valid(jsonb,text,text,jsonb,timestamptz) from public,anon,authenticated,service_role;
 revoke all on function public.derive_site_content_release_gate_artifacts(uuid,jsonb,jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.read_site_content_release_gate_artifacts(uuid) from public,anon,authenticated,service_role;
 revoke all on function public.provision_site_content_validation_secret(jsonb) from public,anon,authenticated,service_role;

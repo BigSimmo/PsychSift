@@ -2679,7 +2679,13 @@ export type Database = {
         Returns: boolean;
       };
       site_content_gate_owner_receipt_valid: {
-        Args: { p_owner: string; p_receipt: Json; p_secret_name: string; p_subject: Json };
+        Args: {
+          p_owner: string;
+          p_receipt: Json;
+          p_secret_name: string;
+          p_subject: Json;
+          p_verification_now: string;
+        };
         Returns: boolean;
       };
       verify_site_content_candidate_release: {

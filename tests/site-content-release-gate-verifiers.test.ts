@@ -7,6 +7,7 @@ import {
 import {
   SITE_CONTENT_MUST_PASS_CASE_IDS,
   SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT,
+  SITE_CONTENT_GATE_RECEIPT_MAX_AGE_MS,
   verifySiteContentReleaseGateArtifacts,
 } from "../src/lib/site-content/site-content-release-evidence";
 import { planSiteContentSync, siteContentSyncDigest } from "../src/lib/site-content/site-content-sync";
@@ -156,5 +157,35 @@ describe("production site-content release gate verifiers", () => {
     for (const mutation of mutations) {
       expect(() => verifySiteContentReleaseGateArtifacts(syncPlan, mutation, { now: siteReleaseNow })).toThrow();
     }
+  });
+
+  it("accepts the exact inclusive stale edge and rejects one millisecond beyond either boundary", () => {
+    const syncPlan = plan();
+    const boundary = siteReleaseNow.getTime() - SITE_CONTENT_GATE_RECEIPT_MAX_AGE_MS;
+    const withOwnerTime = (observedAt: string) => {
+      const valid = artifacts(syncPlan);
+      return {
+        ...valid,
+        governance: receipt({ ...valid.governance, digest: undefined, observedAt }),
+        mustPass: receipt({ ...valid.mustPass, digest: undefined, observedAt }),
+      };
+    };
+    expect(() =>
+      verifySiteContentReleaseGateArtifacts(syncPlan, withOwnerTime(new Date(boundary).toISOString()), {
+        now: siteReleaseNow,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      verifySiteContentReleaseGateArtifacts(syncPlan, withOwnerTime(new Date(boundary - 1).toISOString()), {
+        now: siteReleaseNow,
+      }),
+    ).toThrow(/stale/i);
+    expect(() =>
+      verifySiteContentReleaseGateArtifacts(
+        syncPlan,
+        withOwnerTime(new Date(siteReleaseNow.getTime() + 1).toISOString()),
+        { now: siteReleaseNow },
+      ),
+    ).toThrow(/future/i);
   });
 });

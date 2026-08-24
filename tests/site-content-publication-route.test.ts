@@ -29,7 +29,12 @@ afterEach(() => {
   vi.resetModules();
 });
 
-function releaseGateArtifacts(plan: SiteContentSyncPlan, observedAt = "2026-08-24T11:59:00.000Z") {
+function releaseGateArtifacts(
+  plan: SiteContentSyncPlan,
+  timing: string | { ownerObservedAt: string; publicObservedAt: string } = "2026-08-24T11:59:00.000Z",
+) {
+  const ownerObservedAt = typeof timing === "string" ? timing : timing.ownerObservedAt;
+  const publicObservedAt = typeof timing === "string" ? timing : timing.publicObservedAt;
   const subject = {
     projectRef: plan.projectRef,
     releaseId: plan.candidateReleaseId,
@@ -48,14 +53,14 @@ function releaseGateArtifacts(plan: SiteContentSyncPlan, observedAt = "2026-08-2
     publicVisibility: receipt({
       owner: "public-site-content-reader-v1",
       subjectDigest,
-      observedAt,
+      observedAt: publicObservedAt,
       population,
       populationDigest: siteContentSyncDigest(population),
     }),
     governance: receipt({
       owner: "site-content-governance-registry-v1",
       subjectDigest,
-      observedAt,
+      observedAt: ownerObservedAt,
       population,
       registryVersion: plan.registryVersion,
       staticManifestDigest: plan.staticManifestDigest,
@@ -65,7 +70,7 @@ function releaseGateArtifacts(plan: SiteContentSyncPlan, observedAt = "2026-08-2
     mustPass: receipt({
       owner: "rag-programme-eval-v1",
       subjectDigest,
-      observedAt,
+      observedAt: ownerObservedAt,
       caseSetFingerprint: SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT,
       evaluatedCaseIds: [...SITE_CONTENT_MUST_PASS_CASE_IDS],
       failedCaseIds: [],
@@ -82,11 +87,16 @@ async function loadRoute(
 ) {
   let storedGateArtifacts: unknown = null;
   let deriveEffect: () => void = () => undefined;
+  let derivationClock = "2026-08-24T12:00:00.000Z";
   const rpc = vi.fn(async (name: string) => {
     if (name === "derive_site_content_release_gate_artifacts") deriveEffect();
     return {
       data:
-        name === "read_site_content_release_gate_artifacts" ? storedGateArtifacts : { candidateReleaseId: "release-1" },
+        name === "read_site_content_release_gate_artifacts"
+          ? storedGateArtifacts
+          : name === "derive_site_content_release_gate_artifacts"
+            ? { verificationNow: derivationClock, derived: true }
+            : { candidateReleaseId: "release-1" },
       error: null,
     };
   });
@@ -131,6 +141,9 @@ async function loadRoute(
     },
     setDeriveEffect(value: () => void) {
       deriveEffect = value;
+    },
+    setDerivationClock(value: string) {
+      derivationClock = value;
     },
   };
 }
@@ -347,10 +360,10 @@ describe("administrator site-content publication route", () => {
     expect(JSON.stringify(rpc.mock.calls)).not.toContain("flags");
   });
 
-  it("validates SQL-derived public evidence against a post-derivation clock on the first attempt", async () => {
+  it("validates first-attempt SQL evidence against the returned database clock despite response delay", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-24T12:00:00.000Z"));
-    const { route, rpc, setGateArtifacts, setDeriveEffect } = await loadRoute("administrator");
+    const { route, rpc, setGateArtifacts, setDeriveEffect, setDerivationClock } = await loadRoute("administrator");
     const recovery = validSiteReleaseRecoveryFixture();
     const plan = planSiteContentSync({
       projectRef: siteReleaseProjectRef,
@@ -370,8 +383,14 @@ describe("administrator site-content publication route", () => {
       recoveryEvidence: recovery.evidence,
       now: siteReleaseNow,
     });
-    setGateArtifacts(releaseGateArtifacts(plan, "2026-08-24T12:00:01.000Z"));
-    setDeriveEffect(() => vi.setSystemTime(new Date("2026-08-24T12:00:02.000Z")));
+    setDerivationClock("2026-08-24T12:00:01.000Z");
+    setGateArtifacts(
+      releaseGateArtifacts(plan, {
+        ownerObservedAt: "2026-08-24T11:59:00.000Z",
+        publicObservedAt: "2026-08-24T12:00:01.000Z",
+      }),
+    );
+    setDeriveEffect(() => vi.setSystemTime(new Date("2026-08-24T12:10:00.000Z")));
     const response = await route.POST(
       new Request("http://local/api/admin/site-content/publish", {
         method: "POST",

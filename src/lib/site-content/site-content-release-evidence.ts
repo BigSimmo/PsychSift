@@ -10,6 +10,8 @@ import {
 
 type Digest = `sha256:${string}`;
 
+export const SITE_CONTENT_GATE_RECEIPT_MAX_AGE_MS = 5 * 60 * 1000;
+
 export const SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT =
   "sha256:4bf13e036a49ee077a9227c6b61d6f597efff15e8a5f2e3ea36f0cd4e4ea5107" as const;
 
@@ -123,11 +125,27 @@ function timestamp(value: string, now: Date, label: string) {
     !Number.isFinite(observed) ||
     new Date(observed).toISOString() !== value ||
     observed > now.getTime() ||
-    observed < now.getTime() - 5 * 60 * 1000
+    observed < now.getTime() - SITE_CONTENT_GATE_RECEIPT_MAX_AGE_MS
   ) {
     throw new Error(`${label} gate artifact is stale or future-dated.`);
   }
   return observed;
+}
+
+export function parseSiteContentGateDerivationClock(input: unknown) {
+  const value =
+    input && typeof input === "object" && !Array.isArray(input)
+      ? (input as { verificationNow?: unknown }).verificationNow
+      : undefined;
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ||
+    !Number.isFinite(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  ) {
+    throw new Error("Canonical database derivation clock is required.");
+  }
+  return new Date(value);
 }
 
 export function verifySiteContentReleaseGateArtifacts(
