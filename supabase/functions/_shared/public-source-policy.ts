@@ -18,6 +18,7 @@ const enum ProtectedIdentityMatch {
 const enum HtmlLexicalMode {
   Text,
   TagOpen,
+  EndTagOpen,
   Tag,
   SingleQuotedTag,
   DoubleQuotedTag,
@@ -60,6 +61,20 @@ export type ProtectedPublicSourceScannerSnapshot = Readonly<{
   etgTokenPrefix: number;
   amhTokenPrefix: number;
   matches: number;
+  entitySpeculativeHealthdirectPrefix: number;
+  entitySpeculativeTherapeuticGuidelinePrefix: number;
+  entitySpeculativeAustralianMedicinesHandbookPrefix: number;
+  entitySpeculativeTokenLength: number;
+  entitySpeculativeEtgTokenPrefix: number;
+  entitySpeculativeAmhTokenPrefix: number;
+  entitySpeculativeMatches: number;
+  markupSpeculativeHealthdirectPrefix: number;
+  markupSpeculativeTherapeuticGuidelinePrefix: number;
+  markupSpeculativeAustralianMedicinesHandbookPrefix: number;
+  markupSpeculativeTokenLength: number;
+  markupSpeculativeEtgTokenPrefix: number;
+  markupSpeculativeAmhTokenPrefix: number;
+  markupSpeculativeMatches: number;
   finished: boolean;
 }>;
 
@@ -85,18 +100,133 @@ function isIgnoredFormattingCodePoint(codePoint: number): boolean {
   );
 }
 
+type ProtectedMatcherState = {
+  healthdirectPrefix: number;
+  therapeuticGuidelinePrefix: number;
+  australianMedicinesHandbookPrefix: number;
+  tokenLength: number;
+  etgTokenPrefix: number;
+  amhTokenPrefix: number;
+  matches: number;
+};
+
+function createMatcherState(): ProtectedMatcherState {
+  return {
+    healthdirectPrefix: 0,
+    therapeuticGuidelinePrefix: 0,
+    australianMedicinesHandbookPrefix: 0,
+    tokenLength: 0,
+    etgTokenPrefix: 0,
+    amhTokenPrefix: 0,
+    matches: 0,
+  };
+}
+
+function copyMatcherState(target: ProtectedMatcherState, source: ProtectedMatcherState): void {
+  target.healthdirectPrefix = source.healthdirectPrefix;
+  target.therapeuticGuidelinePrefix = source.therapeuticGuidelinePrefix;
+  target.australianMedicinesHandbookPrefix = source.australianMedicinesHandbookPrefix;
+  target.tokenLength = source.tokenLength;
+  target.etgTokenPrefix = source.etgTokenPrefix;
+  target.amhTokenPrefix = source.amhTokenPrefix;
+  target.matches = source.matches;
+}
+
+function matcherIdentity(state: ProtectedMatcherState): ForbiddenPublicSourceIdentity | null {
+  if ((state.matches & ProtectedIdentityMatch.Healthdirect) !== 0) return "healthdirect";
+  if ((state.matches & ProtectedIdentityMatch.EtgComplete) !== 0) return "etg_complete";
+  if ((state.matches & ProtectedIdentityMatch.AustralianMedicinesHandbook) !== 0) {
+    return "australian_medicines_handbook";
+  }
+  return null;
+}
+
+function finishMatcherToken(state: ProtectedMatcherState): void {
+  if (state.tokenLength === etgPattern.length && state.etgTokenPrefix === etgPattern.length) {
+    state.matches |= ProtectedIdentityMatch.EtgComplete;
+  }
+  if (state.tokenLength === amhPattern.length && state.amhTokenPrefix === amhPattern.length) {
+    state.matches |= ProtectedIdentityMatch.AustralianMedicinesHandbook;
+  }
+}
+
+function emitMatcherBoundary(state: ProtectedMatcherState): void {
+  finishMatcherToken(state);
+  state.tokenLength = 0;
+  state.etgTokenPrefix = 0;
+  state.amhTokenPrefix = 0;
+}
+
+function emitMatcherAlphanumeric(state: ProtectedMatcherState, character: string): void {
+  state.healthdirectPrefix = advancePattern(
+    healthdirectPattern,
+    healthdirectPrefixTable,
+    state.healthdirectPrefix,
+    character,
+  );
+  if (state.healthdirectPrefix === healthdirectPattern.length) {
+    state.matches |= ProtectedIdentityMatch.Healthdirect;
+    state.healthdirectPrefix = healthdirectPrefixTable[state.healthdirectPrefix - 1] ?? 0;
+  }
+
+  state.therapeuticGuidelinePrefix = advancePattern(
+    therapeuticGuidelinePattern,
+    therapeuticGuidelinePrefixTable,
+    state.therapeuticGuidelinePrefix,
+    character,
+  );
+  if (state.therapeuticGuidelinePrefix === therapeuticGuidelinePattern.length) {
+    state.matches |= ProtectedIdentityMatch.EtgComplete;
+    state.therapeuticGuidelinePrefix = therapeuticGuidelinePrefixTable[state.therapeuticGuidelinePrefix - 1] ?? 0;
+  }
+
+  state.australianMedicinesHandbookPrefix = advancePattern(
+    australianMedicinesHandbookPattern,
+    australianMedicinesHandbookPrefixTable,
+    state.australianMedicinesHandbookPrefix,
+    character,
+  );
+  if (state.australianMedicinesHandbookPrefix === australianMedicinesHandbookPattern.length) {
+    state.matches |= ProtectedIdentityMatch.AustralianMedicinesHandbook;
+    state.australianMedicinesHandbookPrefix =
+      australianMedicinesHandbookPrefixTable[state.australianMedicinesHandbookPrefix - 1] ?? 0;
+  }
+
+  state.tokenLength = Math.min(state.tokenLength + 1, etgPattern.length + 1);
+  state.etgTokenPrefix =
+    state.etgTokenPrefix >= 0 && etgPattern[state.etgTokenPrefix] === character ? state.etgTokenPrefix + 1 : -1;
+  state.amhTokenPrefix =
+    state.amhTokenPrefix >= 0 && amhPattern[state.amhTokenPrefix] === character ? state.amhTokenPrefix + 1 : -1;
+}
+
+function emitMatcherCodePoint(state: ProtectedMatcherState, codePoint: number): void {
+  if (isIgnoredFormattingCodePoint(codePoint)) return;
+  const normalized = String.fromCodePoint(codePoint).normalize("NFKC").toLocaleLowerCase("en-AU");
+  for (const character of normalized) {
+    const normalizedCodePoint = character.codePointAt(0) ?? 0;
+    if (
+      (normalizedCodePoint >= 0x61 && normalizedCodePoint <= 0x7a) ||
+      (normalizedCodePoint >= 0x30 && normalizedCodePoint <= 0x39)
+    ) {
+      emitMatcherAlphanumeric(state, character);
+    } else if (!isIgnoredFormattingCodePoint(normalizedCodePoint)) {
+      emitMatcherBoundary(state);
+    }
+  }
+}
+
+function isAsciiLetter(codePoint: number): boolean {
+  return (codePoint >= 0x41 && codePoint <= 0x5a) || (codePoint >= 0x61 && codePoint <= 0x7a);
+}
+
 class IncrementalProtectedPublicSourceScanner {
   private lexicalMode = HtmlLexicalMode.Text;
   private entityActive = false;
   private entityConsumed = 0;
   private pendingEntityHighSurrogate = 0;
-  private healthdirectPrefix = 0;
-  private therapeuticGuidelinePrefix = 0;
-  private australianMedicinesHandbookPrefix = 0;
-  private tokenLength = 0;
-  private etgTokenPrefix = 0;
-  private amhTokenPrefix = 0;
-  private matches = 0;
+  private readonly matcherState = createMatcherState();
+  private readonly entitySpeculativeState = createMatcherState();
+  private readonly markupSpeculativeState = createMatcherState();
   private finished = false;
   private readonly entityDecoder = new EntityDecoder(htmlDecodeTree, (codePoint) => {
     this.emitDecodedEntityCodeUnit(codePoint);
@@ -110,6 +240,7 @@ class IncrementalProtectedPublicSourceScanner {
       if (codePoint === undefined) break;
       const character = String.fromCodePoint(codePoint);
       if (this.entityActive) {
+        emitMatcherCodePoint(this.entitySpeculativeState, codePoint);
         const consumedBefore = this.entityConsumed;
         const consumed = this.entityDecoder.write(character, 0);
         if (consumed < 0) {
@@ -119,8 +250,12 @@ class IncrementalProtectedPublicSourceScanner {
         }
         this.entityActive = false;
         this.entityConsumed = 0;
-        if (consumed === 0) this.emitBoundary();
-        if (consumed > consumedBefore) index += character.length;
+        if (consumed === 0) {
+          copyMatcherState(this.matcherState, this.entitySpeculativeState);
+          index += character.length;
+        } else if (consumed > consumedBefore) {
+          index += character.length;
+        }
         continue;
       }
       index += character.length;
@@ -129,27 +264,26 @@ class IncrementalProtectedPublicSourceScanner {
   }
 
   identity(): ForbiddenPublicSourceIdentity | null {
-    if ((this.matches & ProtectedIdentityMatch.Healthdirect) !== 0) return "healthdirect";
-    if ((this.matches & ProtectedIdentityMatch.EtgComplete) !== 0) return "etg_complete";
-    if ((this.matches & ProtectedIdentityMatch.AustralianMedicinesHandbook) !== 0) {
-      return "australian_medicines_handbook";
-    }
-    return null;
+    return matcherIdentity(this.matcherState);
   }
 
   finish(): ForbiddenPublicSourceIdentity | null {
     if (!this.finished) {
       if (this.entityActive) {
         const consumed = this.entityDecoder.end();
-        if (consumed === 0) this.emitBoundary();
+        if (consumed === 0) copyMatcherState(this.matcherState, this.entitySpeculativeState);
         this.entityActive = false;
         this.entityConsumed = 0;
       }
       if (this.pendingEntityHighSurrogate !== 0) {
         this.pendingEntityHighSurrogate = 0;
-        this.emitBoundary();
+        emitMatcherBoundary(this.matcherState);
       }
-      this.finishToken();
+      if (this.lexicalMode !== HtmlLexicalMode.Text) {
+        copyMatcherState(this.matcherState, this.markupSpeculativeState);
+        this.lexicalMode = HtmlLexicalMode.Text;
+      }
+      finishMatcherToken(this.matcherState);
       this.finished = true;
     }
     return this.identity();
@@ -161,18 +295,35 @@ class IncrementalProtectedPublicSourceScanner {
       entityActive: this.entityActive,
       entityConsumed: this.entityConsumed,
       pendingEntityHighSurrogate: this.pendingEntityHighSurrogate,
-      healthdirectPrefix: this.healthdirectPrefix,
-      therapeuticGuidelinePrefix: this.therapeuticGuidelinePrefix,
-      australianMedicinesHandbookPrefix: this.australianMedicinesHandbookPrefix,
-      tokenLength: this.tokenLength,
-      etgTokenPrefix: this.etgTokenPrefix,
-      amhTokenPrefix: this.amhTokenPrefix,
-      matches: this.matches,
+      healthdirectPrefix: this.matcherState.healthdirectPrefix,
+      therapeuticGuidelinePrefix: this.matcherState.therapeuticGuidelinePrefix,
+      australianMedicinesHandbookPrefix: this.matcherState.australianMedicinesHandbookPrefix,
+      tokenLength: this.matcherState.tokenLength,
+      etgTokenPrefix: this.matcherState.etgTokenPrefix,
+      amhTokenPrefix: this.matcherState.amhTokenPrefix,
+      matches: this.matcherState.matches,
+      entitySpeculativeHealthdirectPrefix: this.entitySpeculativeState.healthdirectPrefix,
+      entitySpeculativeTherapeuticGuidelinePrefix: this.entitySpeculativeState.therapeuticGuidelinePrefix,
+      entitySpeculativeAustralianMedicinesHandbookPrefix: this.entitySpeculativeState.australianMedicinesHandbookPrefix,
+      entitySpeculativeTokenLength: this.entitySpeculativeState.tokenLength,
+      entitySpeculativeEtgTokenPrefix: this.entitySpeculativeState.etgTokenPrefix,
+      entitySpeculativeAmhTokenPrefix: this.entitySpeculativeState.amhTokenPrefix,
+      entitySpeculativeMatches: this.entitySpeculativeState.matches,
+      markupSpeculativeHealthdirectPrefix: this.markupSpeculativeState.healthdirectPrefix,
+      markupSpeculativeTherapeuticGuidelinePrefix: this.markupSpeculativeState.therapeuticGuidelinePrefix,
+      markupSpeculativeAustralianMedicinesHandbookPrefix: this.markupSpeculativeState.australianMedicinesHandbookPrefix,
+      markupSpeculativeTokenLength: this.markupSpeculativeState.tokenLength,
+      markupSpeculativeEtgTokenPrefix: this.markupSpeculativeState.etgTokenPrefix,
+      markupSpeculativeAmhTokenPrefix: this.markupSpeculativeState.amhTokenPrefix,
+      markupSpeculativeMatches: this.markupSpeculativeState.matches,
       finished: this.finished,
     };
   }
 
   private consumeRawCodePoint(codePoint: number): void {
+    if (this.lexicalMode !== HtmlLexicalMode.Text) {
+      emitMatcherCodePoint(this.markupSpeculativeState, codePoint);
+    }
     if (this.lexicalMode === HtmlLexicalMode.Comment) {
       if (codePoint === 0x2d) this.lexicalMode = HtmlLexicalMode.CommentDash;
       return;
@@ -184,28 +335,33 @@ class IncrementalProtectedPublicSourceScanner {
     if (this.lexicalMode === HtmlLexicalMode.CommentDoubleDash) {
       if (codePoint === 0x3e) {
         this.lexicalMode = HtmlLexicalMode.Text;
-        this.emitBoundary();
+        emitMatcherBoundary(this.matcherState);
       } else if (codePoint !== 0x2d) {
         this.lexicalMode = HtmlLexicalMode.Comment;
       }
       return;
     }
     if (this.lexicalMode === HtmlLexicalMode.CommentStartDash) {
-      this.lexicalMode = codePoint === 0x2d ? HtmlLexicalMode.Comment : HtmlLexicalMode.Tag;
+      if (codePoint === 0x2d) this.lexicalMode = HtmlLexicalMode.Comment;
+      else this.commitInvalidMarkup();
       return;
     }
     if (this.lexicalMode === HtmlLexicalMode.MarkupDeclaration) {
       if (codePoint === 0x2d) this.lexicalMode = HtmlLexicalMode.CommentStartDash;
-      else if (codePoint === 0x3e) this.lexicalMode = HtmlLexicalMode.Text;
-      else this.lexicalMode = HtmlLexicalMode.Tag;
+      else if (isAsciiLetter(codePoint) || codePoint === 0x5b) this.lexicalMode = HtmlLexicalMode.Tag;
+      else this.commitInvalidMarkup();
+      return;
+    }
+    if (this.lexicalMode === HtmlLexicalMode.EndTagOpen) {
+      if (isAsciiLetter(codePoint)) this.lexicalMode = HtmlLexicalMode.Tag;
+      else this.commitInvalidMarkup();
       return;
     }
     if (this.lexicalMode === HtmlLexicalMode.TagOpen) {
       if (codePoint === 0x21) this.lexicalMode = HtmlLexicalMode.MarkupDeclaration;
-      else if (codePoint === 0x27) this.lexicalMode = HtmlLexicalMode.SingleQuotedTag;
-      else if (codePoint === 0x22) this.lexicalMode = HtmlLexicalMode.DoubleQuotedTag;
-      else if (codePoint === 0x3e) this.lexicalMode = HtmlLexicalMode.Text;
-      else this.lexicalMode = HtmlLexicalMode.Tag;
+      else if (codePoint === 0x2f) this.lexicalMode = HtmlLexicalMode.EndTagOpen;
+      else if (codePoint === 0x3f || isAsciiLetter(codePoint)) this.lexicalMode = HtmlLexicalMode.Tag;
+      else this.commitInvalidMarkup();
       return;
     }
     if (this.lexicalMode === HtmlLexicalMode.SingleQuotedTag) {
@@ -221,22 +377,30 @@ class IncrementalProtectedPublicSourceScanner {
       else if (codePoint === 0x22) this.lexicalMode = HtmlLexicalMode.DoubleQuotedTag;
       else if (codePoint === 0x3e) {
         this.lexicalMode = HtmlLexicalMode.Text;
-        this.emitBoundary();
+        emitMatcherBoundary(this.matcherState);
       }
       return;
     }
     if (codePoint === 0x3c) {
+      copyMatcherState(this.markupSpeculativeState, this.matcherState);
+      emitMatcherBoundary(this.markupSpeculativeState);
       this.lexicalMode = HtmlLexicalMode.TagOpen;
-      this.emitBoundary();
       return;
     }
     if (codePoint === 0x26) {
+      copyMatcherState(this.entitySpeculativeState, this.matcherState);
+      emitMatcherBoundary(this.entitySpeculativeState);
       this.entityDecoder.startEntity(DecodingMode.Legacy);
       this.entityActive = true;
       this.entityConsumed = 1;
       return;
     }
-    this.emitCanonicalCodePoint(codePoint);
+    emitMatcherCodePoint(this.matcherState, codePoint);
+  }
+
+  private commitInvalidMarkup(): void {
+    copyMatcherState(this.matcherState, this.markupSpeculativeState);
+    this.lexicalMode = HtmlLexicalMode.Text;
   }
 
   private emitDecodedEntityCodeUnit(codeUnit: number): void {
@@ -244,91 +408,17 @@ class IncrementalProtectedPublicSourceScanner {
       if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
         const codePoint = 0x10000 + ((this.pendingEntityHighSurrogate - 0xd800) << 10) + (codeUnit - 0xdc00);
         this.pendingEntityHighSurrogate = 0;
-        this.emitCanonicalCodePoint(codePoint);
+        emitMatcherCodePoint(this.matcherState, codePoint);
         return;
       }
       this.pendingEntityHighSurrogate = 0;
-      this.emitBoundary();
+      emitMatcherBoundary(this.matcherState);
     }
     if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
       this.pendingEntityHighSurrogate = codeUnit;
       return;
     }
-    this.emitCanonicalCodePoint(codeUnit);
-  }
-
-  private emitCanonicalCodePoint(codePoint: number): void {
-    if (isIgnoredFormattingCodePoint(codePoint)) return;
-    const normalized = String.fromCodePoint(codePoint).normalize("NFKC").toLocaleLowerCase("en-AU");
-    for (const character of normalized) {
-      const normalizedCodePoint = character.codePointAt(0) ?? 0;
-      if (
-        (normalizedCodePoint >= 0x61 && normalizedCodePoint <= 0x7a) ||
-        (normalizedCodePoint >= 0x30 && normalizedCodePoint <= 0x39)
-      ) {
-        this.emitAlphanumeric(character);
-      } else if (!isIgnoredFormattingCodePoint(normalizedCodePoint)) {
-        this.emitBoundary();
-      }
-    }
-  }
-
-  private emitAlphanumeric(character: string): void {
-    this.healthdirectPrefix = advancePattern(
-      healthdirectPattern,
-      healthdirectPrefixTable,
-      this.healthdirectPrefix,
-      character,
-    );
-    if (this.healthdirectPrefix === healthdirectPattern.length) {
-      this.matches |= ProtectedIdentityMatch.Healthdirect;
-      this.healthdirectPrefix = healthdirectPrefixTable[this.healthdirectPrefix - 1] ?? 0;
-    }
-
-    this.therapeuticGuidelinePrefix = advancePattern(
-      therapeuticGuidelinePattern,
-      therapeuticGuidelinePrefixTable,
-      this.therapeuticGuidelinePrefix,
-      character,
-    );
-    if (this.therapeuticGuidelinePrefix === therapeuticGuidelinePattern.length) {
-      this.matches |= ProtectedIdentityMatch.EtgComplete;
-      this.therapeuticGuidelinePrefix = therapeuticGuidelinePrefixTable[this.therapeuticGuidelinePrefix - 1] ?? 0;
-    }
-
-    this.australianMedicinesHandbookPrefix = advancePattern(
-      australianMedicinesHandbookPattern,
-      australianMedicinesHandbookPrefixTable,
-      this.australianMedicinesHandbookPrefix,
-      character,
-    );
-    if (this.australianMedicinesHandbookPrefix === australianMedicinesHandbookPattern.length) {
-      this.matches |= ProtectedIdentityMatch.AustralianMedicinesHandbook;
-      this.australianMedicinesHandbookPrefix =
-        australianMedicinesHandbookPrefixTable[this.australianMedicinesHandbookPrefix - 1] ?? 0;
-    }
-
-    this.tokenLength = Math.min(this.tokenLength + 1, etgPattern.length + 1);
-    this.etgTokenPrefix =
-      this.etgTokenPrefix >= 0 && etgPattern[this.etgTokenPrefix] === character ? this.etgTokenPrefix + 1 : -1;
-    this.amhTokenPrefix =
-      this.amhTokenPrefix >= 0 && amhPattern[this.amhTokenPrefix] === character ? this.amhTokenPrefix + 1 : -1;
-  }
-
-  private emitBoundary(): void {
-    this.finishToken();
-    this.tokenLength = 0;
-    this.etgTokenPrefix = 0;
-    this.amhTokenPrefix = 0;
-  }
-
-  private finishToken(): void {
-    if (this.tokenLength === etgPattern.length && this.etgTokenPrefix === etgPattern.length) {
-      this.matches |= ProtectedIdentityMatch.EtgComplete;
-    }
-    if (this.tokenLength === amhPattern.length && this.amhTokenPrefix === amhPattern.length) {
-      this.matches |= ProtectedIdentityMatch.AustralianMedicinesHandbook;
-    }
+    emitMatcherCodePoint(this.matcherState, codeUnit);
   }
 }
 

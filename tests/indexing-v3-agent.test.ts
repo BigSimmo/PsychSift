@@ -103,6 +103,13 @@ describe("indexing-v3-agent behavior", () => {
       "Therapeutic&#10Guidelines",
       "Therapeutic Guide&#108;ines",
       "Therapeu&tscr;ic Guidelines",
+      "Health&direct",
+      "Health&di!rect",
+      "Therapeutic&Guidelines",
+      "Australian&Medicines&Handbook",
+      "Health<direct",
+      "Health<!--direct",
+      "Health< direct",
     ]) {
       expect(forbiddenPublicSourceIdentity(value)).not.toBeNull();
     }
@@ -244,8 +251,6 @@ describe("indexing-v3-agent behavior", () => {
     expect(
       Object.values(veryLongSnapshot).every((value) => typeof value === "number" || typeof value === "boolean"),
     ).toBe(true);
-    expect(JSON.stringify(veryLongSnapshot)).not.toContain("Health");
-    expect(JSON.stringify(veryLongSnapshot)).not.toContain(".");
     expect(second.containsProtectedSourceContent).toBe(true);
     expect(paged).toBe(true);
     expect(pageReads).toEqual([
@@ -354,6 +359,47 @@ describe("indexing-v3-agent behavior", () => {
         [1000, 500],
       ]);
     }
+  });
+
+  it("preserves malformed entity and markup text across real worker pages", async () => {
+    for (const value of [
+      "Health&direct",
+      "Health&di!rect",
+      "Therapeutic&Guidelines",
+      "Australian&Medicines&Handbook",
+      "Health<direct",
+      "Health<!--direct",
+      "Health< direct",
+    ]) {
+      const reads: Array<[number, number]> = [];
+      await expect(
+        scanProtectedPublicSourceChunkPages(async (offset, limit) => {
+          reads.push([offset, limit]);
+          return offset < value.length ? [{ content: value[offset] ?? "" }] : [];
+        }, 1),
+      ).resolves.toBe(true);
+      expect(reads.length).toBeGreaterThan(1);
+    }
+  });
+
+  it("keeps malformed lexical speculation fixed-size and content-free", () => {
+    const entityState = protectedPublicSourceChunkPage([{ content: `Health&di${"x".repeat(100_000)}` }]).streamState;
+    const markupState = protectedPublicSourceChunkPage([
+      { content: `Health<direct${"x".repeat(100_000)}` },
+    ]).streamState;
+    const entitySnapshot = entityState.snapshot();
+    const markupSnapshot = markupState.snapshot();
+
+    expect(Object.keys(entitySnapshot)).toEqual(Object.keys(markupSnapshot));
+    for (const snapshot of [entitySnapshot, markupSnapshot]) {
+      expect(Object.values(snapshot).every((value) => typeof value === "number" || typeof value === "boolean")).toBe(
+        true,
+      );
+      expect(JSON.stringify(snapshot).length).toBeLessThan(1_024);
+    }
+    expect(Object.values(entityState).every((value) => typeof value === "function")).toBe(true);
+    expect(Object.values(markupState).every((value) => typeof value === "function")).toBe(true);
+    expect(markupState.finish()).toBe("healthdirect");
   });
 
   it("schedules agent retries until the attempt budget is exhausted", () => {

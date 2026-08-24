@@ -472,6 +472,12 @@ describe("public source acquisition", () => {
       "Therapeutic&#10Guidelines",
       "Therapeutic Guide&#108;ines",
       "Therapeu&tscr;ic Guidelines",
+      "Health&direct",
+      "Health&di!rect",
+      "Therapeutic&Guidelines",
+      "Australian&Medicines&Handbook",
+      "Health<direct",
+      "Health<!--direct",
     ]) {
       expect(forbiddenPublicSourceIdentity(protectedText)).not.toBeNull();
       expect(evaluateTrustedPageContent(`<main>${protectedText}</main>`)).toMatchObject({
@@ -479,6 +485,13 @@ describe("public source acquisition", () => {
         disposition: "quarantine",
       });
     }
+
+    expect(forbiddenPublicSourceIdentity("Health< direct")).toBe("healthdirect");
+    expect(evaluateTrustedPageContent("<main>Health< direct</main>")).toMatchObject({
+      eligibleForIndex: false,
+      disposition: "quarantine",
+      mainText: "",
+    });
   });
 
   it("rejects non-identity transport encoding before scanning or staging", async () => {
