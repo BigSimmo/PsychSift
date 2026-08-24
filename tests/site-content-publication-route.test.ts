@@ -4,6 +4,7 @@ import {
   SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST,
   SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST,
 } from "../src/lib/site-content/site-content-gate-owners";
+import { verifySiteContentRecoveryValidationBinding } from "../src/lib/site-content/site-content-recovery-authority";
 import {
   SITE_CONTENT_MUST_PASS_CASE_IDS,
   SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT,
@@ -88,7 +89,7 @@ async function loadRoute(
   let storedGateArtifacts: unknown = null;
   let deriveEffect: () => void = () => undefined;
   let derivationClock = "2026-08-24T12:00:00.000Z";
-  const rpc = vi.fn(async (name: string) => {
+  const rpc = vi.fn(async (name: string, _args?: unknown) => {
     if (name === "derive_site_content_release_gate_artifacts") deriveEffect();
     return {
       data:
@@ -398,6 +399,48 @@ describe("administrator site-content publication route", () => {
       }),
     );
     expect(response.status).toBe(202);
-    expect(rpc).toHaveBeenCalledWith("verify_site_content_candidate_release", expect.any(Object));
+    const verifyCall = rpc.mock.calls.find(([name]) => name === "verify_site_content_candidate_release");
+    expect(verifyCall).toBeDefined();
+    if (!verifyCall) throw new Error("Expected verification transition RPC.");
+    const verifyArgs = verifyCall[1] as {
+      p_verification: unknown;
+      p_validation_binding: Parameters<typeof verifySiteContentRecoveryValidationBinding>[0];
+    };
+    expect(verifyArgs.p_validation_binding.validatedAt).toBe("2026-08-24T12:10:00.000Z");
+    expect(
+      verifySiteContentRecoveryValidationBinding(verifyArgs.p_validation_binding, {
+        secret: "synthetic-validation-secret-with-32-bytes",
+        expectedPurpose: "verify",
+        expectedProjectRef: siteReleaseProjectRef,
+        expectedRecoveryEvidenceDigest: recovery.evidence.digest,
+        payload: verifyArgs.p_verification,
+        now: new Date("2026-08-24T12:10:00.000Z"),
+      }),
+    ).toBe(true);
+
+    setDeriveEffect(() => undefined);
+    vi.setSystemTime(new Date("2026-08-24T12:20:00.000Z"));
+    const retry = await route.POST(
+      new Request("http://local/api/admin/site-content/publish", {
+        method: "POST",
+        body: JSON.stringify({ action: "verify", plan }),
+      }),
+    );
+    expect(retry.status).toBe(202);
+    const retryCall = rpc.mock.calls.filter(([name]) => name === "verify_site_content_candidate_release").at(-1);
+    if (!retryCall) throw new Error("Expected retry verification transition RPC.");
+    const retryArgs = retryCall[1] as typeof verifyArgs;
+    expect(retryArgs.p_validation_binding.validatedAt).toBe("2026-08-24T12:20:00.000Z");
+    expect(retryArgs.p_validation_binding.bindingId).not.toBe(verifyArgs.p_validation_binding.bindingId);
+    expect(
+      verifySiteContentRecoveryValidationBinding(retryArgs.p_validation_binding, {
+        secret: "synthetic-validation-secret-with-32-bytes",
+        expectedPurpose: "verify",
+        expectedProjectRef: siteReleaseProjectRef,
+        expectedRecoveryEvidenceDigest: recovery.evidence.digest,
+        payload: retryArgs.p_verification,
+        now: new Date("2026-08-24T12:20:00.000Z"),
+      }),
+    ).toBe(true);
   });
 });

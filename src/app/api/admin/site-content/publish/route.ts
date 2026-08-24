@@ -122,20 +122,24 @@ export async function POST(request: Request) {
         },
       );
       if (deriveError) throw new Error("Site-content release gate derivation failed.");
-      const verificationNow = parseSiteContentGateDerivationClock(derivation);
+      const artifactVerificationNow = parseSiteContentGateDerivationClock(derivation);
       const { data: gateArtifacts, error: gateError } = await userSupabase.rpc(
         "read_site_content_release_gate_artifacts",
         { p_release_id: plan.candidateReleaseId },
       );
       if (gateError) throw new Error("Site-content release gate artifacts are unavailable.");
+      const bindingIssuedAt = new Date();
       const verification = {
         plan,
-        verificationEvidence: verifySiteContentReleaseGateArtifacts(plan, gateArtifacts, { now: verificationNow }),
+        verificationEvidence: verifySiteContentReleaseGateArtifacts(plan, gateArtifacts, {
+          now: artifactVerificationNow,
+        }),
       };
       const binding = createSiteContentEvidenceValidationBinding("verify", plan.recoveryEvidence, verification, {
         expectedProjectRef: projectRef!,
-        now: verificationNow,
+        now: bindingIssuedAt,
         secret: secret!,
+        artifactVerificationNow,
       });
       mutation = {
         rpc: "verify_site_content_candidate_release",

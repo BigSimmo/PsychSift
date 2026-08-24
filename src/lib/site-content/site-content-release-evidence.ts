@@ -11,6 +11,7 @@ import {
 type Digest = `sha256:${string}`;
 
 export const SITE_CONTENT_GATE_RECEIPT_MAX_AGE_MS = 5 * 60 * 1000;
+export const SITE_CONTENT_GATE_CLOCK_PRECISION = "milliseconds" as const;
 
 export const SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT =
   "sha256:4bf13e036a49ee077a9227c6b61d6f597efff15e8a5f2e3ea36f0cd4e4ea5107" as const;

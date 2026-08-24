@@ -205,19 +205,18 @@ begin
  into v_existing_count,v_stored_public,v_stored_governance,v_stored_must_pass
  from public.site_content_release_gate_artifacts where release_id=p_release_id;
  if v_existing_count not in (0,3) then raise exception 'partial immutable gate artifact set'; end if;
- v_verification_now:=pg_catalog.clock_timestamp();
- v_verification_now_text:=pg_catalog.to_char(v_verification_now at time zone 'UTC',
-   'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
+ v_verification_now:=pg_catalog.date_trunc('milliseconds',pg_catalog.clock_timestamp());
  if v_existing_count=3 then
   begin v_public_observed_at:=(v_stored_public->>'observedAt')::timestamptz;
   exception when others then raise exception 'existing immutable gate derivation clock invalid'; end;
   if coalesce(v_stored_public->>'observedAt','') !~ '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$'
    or v_stored_public->>'observedAt' is distinct from pg_catalog.to_char(v_public_observed_at at time zone 'UTC',
      'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
-   or v_public_observed_at<v_verification_now-interval '5 minutes'
-   or v_public_observed_at>v_verification_now
   then raise exception 'existing immutable gate derivation clock invalid'; end if;
+  v_verification_now:=v_public_observed_at;
  else v_public_observed_at:=v_verification_now; end if;
+ v_verification_now_text:=pg_catalog.to_char(v_verification_now at time zone 'UTC',
+   'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
  v_public_observed_at_text:=pg_catalog.to_char(v_public_observed_at at time zone 'UTC',
    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
  v_subject:=pg_catalog.jsonb_build_object('projectRef',v_release.project_ref,'releaseId',v_release.id,

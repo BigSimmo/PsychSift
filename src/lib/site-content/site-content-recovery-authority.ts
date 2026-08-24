@@ -111,11 +111,15 @@ export function createSiteContentEvidenceValidationBinding(
   purpose: Exclude<SiteContentRecoveryValidationPurpose, "activate" | "rollback">,
   evidenceInput: unknown,
   payload: unknown,
-  options: { expectedProjectRef: string; now: Date; secret: string },
+  options: { expectedProjectRef: string; now: Date; secret: string; artifactVerificationNow?: Date },
 ): SiteContentRecoveryValidationBinding {
   const evidence = parseRecoveryReadinessEvidence(evidenceInput);
   assertRecoveryReadinessForOperation(evidence, "site-release", options.expectedProjectRef, options.now);
-  const plan = assertEvidenceTransitionPayload(purpose, payload, options.now);
+  const plan = assertEvidenceTransitionPayload(
+    purpose,
+    payload,
+    purpose === "verify" ? (options.artifactVerificationNow ?? options.now) : options.now,
+  );
   if (plan.projectRef !== options.expectedProjectRef || plan.recoveryEvidenceDigest !== evidence.digest) {
     throw new Error("Evidence transition plan/recovery identity mismatch.");
   }
