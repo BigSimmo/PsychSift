@@ -498,13 +498,20 @@ describe("public source acquisition", () => {
   });
 
   it("reconsumes adjacent entity and markup starters after malformed lexical fallback", () => {
-    for (const protectedText of [
-      "Health&&#100;irect",
-      "Health&&amp;direct",
-      "Health<<em>direct",
-      "Health<&#100;irect",
-    ]) {
-      expect(forbiddenPublicSourceIdentity(protectedText)).toBe("healthdirect");
+    for (const [protectedText, identity] of [
+      ["Health&&#100;irect", "healthdirect"],
+      ["Health&&amp;direct", "healthdirect"],
+      ["Health<<em>direct", "healthdirect"],
+      ["Health<&#100;irect", "healthdirect"],
+      ["Healthd&not&#105;rect", "healthdirect"],
+      ["Health&lt&#100;irect", "healthdirect"],
+      ["Health&lt<em>direct", "healthdirect"],
+      ["TherapeuticGu&not&#105;deline", "etg_complete"],
+      ["AustralianMed&not&#105;cinesHandbook", "australian_medicines_handbook"],
+      ["Healthd&not&&#105;rect", "healthdirect"],
+      ["Health&lt<<em>direct", "healthdirect"],
+    ] as const) {
+      expect(forbiddenPublicSourceIdentity(protectedText)).toBe(identity);
       expect(evaluateTrustedPageContent(`<main>${protectedText}</main>`)).toMatchObject({
         eligibleForIndex: false,
         disposition: "quarantine",

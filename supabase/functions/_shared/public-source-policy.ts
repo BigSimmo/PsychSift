@@ -283,11 +283,12 @@ class IncrementalProtectedPublicSourceScanner {
               throw new Error("protected_identity_entity_checkpoint_incomplete");
             }
             copyMatcherState(this.matcherState, this.entityCheckpointStates[checkpointIndex]);
-            if (this.entityCallbackCheckpointWasExisting || consumed > consumedBefore) {
-              index += character.length;
-            } else {
-              reconsume = true;
-            }
+            const currentCodePointWasConsumed = consumed > consumedBefore;
+            const currentCodePointStartsNextToken = codePoint === 0x26 || codePoint === 0x3c;
+            reconsume =
+              !currentCodePointWasConsumed &&
+              (!this.entityCallbackCheckpointWasExisting || currentCodePointStartsNextToken);
+            if (!reconsume) index += character.length;
           }
         } else {
           reconsume = this.consumeRawCodePoint(codePoint);

@@ -394,6 +394,13 @@ describe("indexing-v3-agent behavior", () => {
       "Health<&#100;irect",
       "Health&&&&#100;irect",
       "Health<<<<em>direct",
+      "Healthd&not&#105;rect",
+      "Health&lt&#100;irect",
+      "Health&lt<em>direct",
+      "TherapeuticGu&not&#105;deline",
+      "AustralianMed&not&#105;cinesHandbook",
+      "Healthd&not&&#105;rect",
+      "Health&lt<<em>direct",
     ]) {
       const reads: Array<[number, number]> = [];
       await expect(
