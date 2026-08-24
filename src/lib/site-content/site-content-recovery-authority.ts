@@ -69,11 +69,24 @@ function assertEvidenceTransitionPayload(
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     throw new Error("Canonical site-content evidence transition payload is required.");
   }
-  const transition = payload as { plan?: unknown; verificationEvidence?: unknown; records?: unknown };
+  const transition = payload as {
+    plan?: unknown;
+    verificationEvidence?: unknown;
+    records?: unknown;
+    governanceReceipt?: unknown;
+    mustPassReceipt?: unknown;
+  };
   const plan = assertSiteContentSyncPlan(transition.plan);
-  assertSiteContentReleaseVerificationEvidence(transition.verificationEvidence, plan, { now });
   if (purpose === "adopt") {
     if (!Array.isArray(transition.records)) throw new Error("Adoption records are required.");
+    if (
+      !transition.governanceReceipt ||
+      typeof transition.governanceReceipt !== "object" ||
+      !transition.mustPassReceipt ||
+      typeof transition.mustPassReceipt !== "object"
+    ) {
+      throw new Error("Independent adoption gate-owner receipts are required.");
+    }
     const expected = plan.operations
       .filter((operation) => operation.operation !== "tombstone")
       .map(({ logicalId, contentHash }) => ({ logicalId, contentHash }))
@@ -88,6 +101,8 @@ function assertEvidenceTransitionPayload(
     if (JSON.stringify(actual) !== JSON.stringify(expected)) {
       throw new Error("Adoption records do not match the canonical plan population.");
     }
+  } else {
+    assertSiteContentReleaseVerificationEvidence(transition.verificationEvidence, plan, { now });
   }
   return plan;
 }

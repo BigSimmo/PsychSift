@@ -15,7 +15,8 @@ describe("site-content production authority contract", () => {
       "utf8",
     );
     expect(sql).toMatch(/create table public\.site_content_release_gate_artifacts/i);
-    expect(sql).toMatch(/record_site_content_release_gate_artifact[\s\S]*to service_role/i);
+    expect(sql).not.toMatch(/record_site_content_release_gate_artifact/i);
+    expect(sql).toMatch(/derive_site_content_release_gate_artifacts[\s\S]*to authenticated/i);
     expect(sql).toMatch(/read_site_content_release_gate_artifacts[\s\S]*administrator required/i);
     expect(sql).toMatch(/from vault\.decrypted_secrets/i);
   });

@@ -17,7 +17,8 @@ type BuildInputs = Omit<SiteContentSyncInput, "registryVersion" | "staticManifes
 
 type OfflineState = Omit<BuildInputs, "manifest"> & {
   publications?: Record<string, unknown>;
-  verificationEvidence?: unknown;
+  governanceReceipt?: unknown;
+  mustPassReceipt?: unknown;
   activation?: unknown;
   evidence?: unknown;
   records?: unknown[];
@@ -111,7 +112,8 @@ export function createSiteContentSyncWriteDriver(dependencies: {
         expectedProjectRef: string;
         action?: OperatorAction;
         records?: unknown[];
-        verificationEvidence?: unknown;
+        governanceReceipt?: unknown;
+        mustPassReceipt?: unknown;
         activation?: unknown;
         evidence?: unknown;
         expectedCurrentDigest?: string;
@@ -137,14 +139,25 @@ export function createSiteContentSyncWriteDriver(dependencies: {
       if (action === "adopt") {
         await dependencies.send({
           path: "/api/admin/site-content/publish",
-          body: { action, plan, records: options.records ?? [], verificationEvidence: options.verificationEvidence },
+          body: {
+            action,
+            plan,
+            records: options.records ?? [],
+            governanceReceipt: options.governanceReceipt,
+            mustPassReceipt: options.mustPassReceipt,
+          },
         });
         return plan;
       }
       if (action === "verify") {
         await dependencies.send({
           path: "/api/admin/site-content/publish",
-          body: { action, plan, verificationEvidence: options.verificationEvidence },
+          body: {
+            action,
+            plan,
+            governanceReceipt: options.governanceReceipt,
+            mustPassReceipt: options.mustPassReceipt,
+          },
         });
         return plan;
       }
@@ -230,7 +243,8 @@ export async function runSiteContentSyncCli(
       expectedProjectRef: state.expectedProjectRef,
       action,
       records: state.records ?? Object.values(state.publications ?? {}),
-      verificationEvidence: state.verificationEvidence,
+      governanceReceipt: state.governanceReceipt,
+      mustPassReceipt: state.mustPassReceipt,
       activation: state.activation,
       evidence: state.evidence,
       expectedCurrentDigest: option(args, "--expected-current-secret-digest") ?? undefined,

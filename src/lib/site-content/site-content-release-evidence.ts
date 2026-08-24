@@ -181,9 +181,9 @@ export function verifySiteContentReleaseGateArtifacts(
   const recoveryVerifiedAt = Date.parse(plan.recoveryEvidence?.verifiedAt ?? "");
   if (
     !Number.isFinite(recoveryVerifiedAt) ||
-    publicAt < recoveryVerifiedAt ||
-    governanceAt < publicAt ||
-    mustPassAt < governanceAt
+    governanceAt < recoveryVerifiedAt ||
+    mustPassAt < governanceAt ||
+    publicAt < mustPassAt
   ) {
     throw new Error("Release gate artifact chronology is invalid.");
   }

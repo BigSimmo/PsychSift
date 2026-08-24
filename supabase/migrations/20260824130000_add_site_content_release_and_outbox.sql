@@ -162,36 +162,95 @@ begin
 exception when others then return false;
 end $$;
 
-create or replace function public.record_site_content_release_gate_artifact(p_gate_artifact jsonb) returns jsonb
-language plpgsql security definer set search_path = '' as $$
-declare v_release_id uuid; v_owner text; v_count integer; v_existing text;
+create or replace function public.site_content_gate_owner_receipt_valid(p_receipt jsonb,p_owner text,
+ p_secret_name text,p_subject jsonb) returns boolean
+language plpgsql stable security definer set search_path = '' as $$
+declare v_secret text; v_observed_at timestamptz; v_without_mac jsonb;
 begin
- if auth.role() is distinct from 'service_role' then raise exception 'service role required'; end if;
- begin v_release_id:=(p_gate_artifact->>'releaseId')::uuid;
- exception when invalid_text_representation then raise exception 'invalid gate artifact release identity'; end;
- v_owner:=p_gate_artifact->>'owner';
- if v_owner not in ('public-site-content-reader-v1','site-content-governance-registry-v1','rag-programme-eval-v1')
-  or p_gate_artifact->>'subjectDigest' is distinct from public.site_content_json_digest(p_gate_artifact->'subject')
-  or p_gate_artifact#>>'{artifact,owner}' is distinct from v_owner
-  or p_gate_artifact#>>'{artifact,subjectDigest}' is distinct from p_gate_artifact->>'subjectDigest'
-  or p_gate_artifact#>>'{artifact,digest}' is distinct from
-    public.site_content_json_digest((p_gate_artifact->'artifact')-'digest')
-  or p_gate_artifact#>>'{subject,releaseId}' is distinct from v_release_id::text
- then raise exception 'gate artifact owner/subject/digest invalid'; end if;
- insert into public.site_content_release_gate_artifacts(release_id,owner,subject,subject_digest,artifact,
-  artifact_digest,observed_at)
- values(v_release_id,v_owner,p_gate_artifact->'subject',p_gate_artifact->>'subjectDigest',p_gate_artifact->'artifact',
-  p_gate_artifact#>>'{artifact,digest}',(p_gate_artifact#>>'{artifact,observedAt}')::timestamptz)
- on conflict(release_id,owner) do nothing;
- get diagnostics v_count=row_count;
- if v_count=0 then
-  select artifact_digest into v_existing from public.site_content_release_gate_artifacts
-   where release_id=v_release_id and owner=v_owner;
-  if v_existing is distinct from p_gate_artifact#>>'{artifact,digest}'
-  then raise exception 'gate artifact is immutable'; end if;
+ select secret.decrypted_secret into v_secret from vault.decrypted_secrets secret
+  where secret.name=p_secret_name limit 1;
+ begin v_observed_at:=(p_receipt->>'observedAt')::timestamptz;
+ exception when others then return false; end;
+ if coalesce(v_secret,'')='' or p_receipt->>'owner' is distinct from p_owner
+  or p_receipt->'subject' is distinct from p_subject
+  or p_receipt->>'subjectDigest' is distinct from public.site_content_json_digest(p_subject)
+  or v_observed_at<now()-interval '5 minutes' or v_observed_at>now()+interval '5 minutes'
+  or p_receipt->>'mac' !~ '^[0-9a-f]{64}$'
+ then return false; end if;
+ v_without_mac:=p_receipt-'mac';
+ return p_receipt->>'mac'=pg_catalog.encode(extensions.hmac(pg_catalog.convert_to(
+  public.site_content_canonical_json(v_without_mac),'UTF8'),pg_catalog.convert_to(v_secret,'UTF8'),'sha256'),'hex');
+exception when others then return false;
+end $$;
+
+create or replace function public.derive_site_content_release_gate_artifacts(p_release_id uuid,
+ p_governance_receipt jsonb,p_must_pass_receipt jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_release public.site_content_releases%rowtype; v_subject jsonb; v_subject_digest text;
+ v_population jsonb; v_expected_population jsonb; v_public jsonb; v_governance jsonb; v_must_pass jsonb;
+ v_now text:=pg_catalog.to_char(pg_catalog.clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
+begin
+ if not public.site_content_admin_authorized() or auth.uid() is null then raise exception 'administrator required'; end if;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release_gate',0));
+ select * into strict v_release from public.site_content_releases where id=p_release_id for update;
+ if exists(select 1 from public.site_content_release_gate_artifacts where release_id=p_release_id) then
+  if (select count(*) from public.site_content_release_gate_artifacts where release_id=p_release_id)<>3
+  then raise exception 'partial immutable gate artifact set'; end if;
+  return pg_catalog.jsonb_build_object('releaseId',p_release_id,'derived',false);
  end if;
- return pg_catalog.jsonb_build_object('releaseId',v_release_id,'owner',v_owner,
-  'artifactDigest',p_gate_artifact#>>'{artifact,digest}','recorded',v_count=1);
+ v_subject:=pg_catalog.jsonb_build_object('projectRef',v_release.project_ref,'releaseId',v_release.id,
+  'planDigest',v_release.plan_digest,'releaseDigest',v_release.release_digest);
+ v_subject_digest:=public.site_content_json_digest(v_subject);
+ select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('logicalId',projection.logical_id,
+   'contentHash',projection.content_hash) order by projection.logical_id),'[]'::jsonb) into v_population
+ from public.site_content_release_projections projection where projection.release_id=p_release_id
+  and not projection.tombstoned;
+ select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('logicalId',operation->>'logicalId',
+   'contentHash',operation->>'contentHash') order by operation->>'logicalId'),'[]'::jsonb) into v_expected_population
+ from pg_catalog.jsonb_array_elements(v_release.plan_json->'operations') operation
+ where operation->>'operation'<>'tombstone';
+ if v_population is distinct from v_expected_population
+  or exists(select 1 from public.site_content_release_operations where release_id=p_release_id and status<>'complete')
+  or not public.site_content_gate_owner_receipt_valid(p_governance_receipt,'site-content-governance-registry-v1',
+    'site_content_governance_gate_owner_secret',v_subject)
+  or not public.site_content_gate_owner_receipt_valid(p_must_pass_receipt,'rag-programme-eval-v1',
+    'rag_programme_gate_owner_secret',v_subject)
+  or p_governance_receipt->>'version' is distinct from 'site-content-governance-owner-receipt-v1'
+  or p_governance_receipt->'population' is distinct from v_population
+  or p_governance_receipt->>'registryVersion' is distinct from v_release.registry_version
+  or p_governance_receipt->>'staticManifestDigest' is distinct from v_release.static_manifest_digest
+  or p_governance_receipt->>'legacyReconciliationDigest' is distinct from v_release.legacy_reconciliation_digest
+  or p_governance_receipt->>'legacyDispositionsDigest' is distinct from
+    public.site_content_json_digest(v_release.legacy_dispositions)
+  or p_governance_receipt->>'sourceStatus' is distinct from 'current'
+  or p_governance_receipt->>'validationStatus' is distinct from 'locally_reviewed'
+  or p_must_pass_receipt->>'version' is distinct from 'site-content-must-pass-owner-receipt-v1'
+  or p_must_pass_receipt->>'caseSetFingerprint' is distinct from
+    'sha256:4bf13e036a49ee077a9227c6b61d6f597efff15e8a5f2e3ea36f0cd4e4ea5107'
+  or p_must_pass_receipt->'evaluatedCaseIds' is distinct from
+    '["direct-evidence-generic-refusal","trusted-admin-activation","ordinary-upload-denied","private-staging-excluded","broad-partial-exact-gap","uploaded-australian-augmentation","site-specifier-current","site-differential-current","site-medication-current","cross-domain-site-coverage","uploaded-primary-over-site-summary","site-product-primary","changed-deleted-site-record","stale-manifest-cache-mismatch","uploaded-public-visible-conflict","public-release-auth-parity","site-admin-only-mutation","source-role-mismatch","site-sync-unavailable","australian-augmentation-unavailable","healthdirect-excluded","etg-amh-link-only","prohibited-upload-pre-provider","narrow-answer-concise","broad-answer-complete","broad-management-route","structured-output-truncation","anaphoric-follow-up","incremental-reconciliation"]'::jsonb
+  or p_must_pass_receipt->'failedCaseIds' is distinct from '[]'::jsonb
+  or p_must_pass_receipt->>'candidateRunDigest' !~ '^sha256:[0-9a-f]{64}$'
+  or p_must_pass_receipt->>'baselineRunDigest' !~ '^sha256:[0-9a-f]{64}$'
+ then raise exception 'fixed gate-owner output invalid'; end if;
+ v_public:=pg_catalog.jsonb_build_object('owner','public-site-content-reader-v1','subjectDigest',v_subject_digest,
+  'observedAt',v_now,'population',v_population,'populationDigest',public.site_content_json_digest(v_population));
+ v_public:=v_public||pg_catalog.jsonb_build_object('digest',public.site_content_json_digest(v_public));
+ v_governance:=(p_governance_receipt-'mac'-'version'-'subject')||
+  pg_catalog.jsonb_build_object('digest',public.site_content_json_digest(p_governance_receipt-'mac'-'version'-'subject'));
+ v_must_pass:=pg_catalog.jsonb_build_object('owner','rag-programme-eval-v1','subjectDigest',v_subject_digest,
+  'observedAt',p_must_pass_receipt->>'observedAt','caseSetFingerprint',p_must_pass_receipt->>'caseSetFingerprint',
+  'evaluatedCaseIds',p_must_pass_receipt->'evaluatedCaseIds','failedCaseIds','[]'::jsonb,
+  'runDigest',p_must_pass_receipt->>'candidateRunDigest','populationFingerprint',
+  p_must_pass_receipt->>'populationFingerprint','baselineRunDigest',p_must_pass_receipt->>'baselineRunDigest',
+  'gatePolicyDigest',p_must_pass_receipt->>'gatePolicyDigest');
+ v_must_pass:=v_must_pass||pg_catalog.jsonb_build_object('digest',public.site_content_json_digest(v_must_pass));
+ insert into public.site_content_release_gate_artifacts(release_id,owner,subject,subject_digest,artifact,
+  artifact_digest,observed_at) values
+  (p_release_id,'public-site-content-reader-v1',v_subject,v_subject_digest,v_public,v_public->>'digest',(v_public->>'observedAt')::timestamptz),
+  (p_release_id,'site-content-governance-registry-v1',v_subject,v_subject_digest,v_governance,v_governance->>'digest',(v_governance->>'observedAt')::timestamptz),
+  (p_release_id,'rag-programme-eval-v1',v_subject,v_subject_digest,v_must_pass,v_must_pass->>'digest',(v_must_pass->>'observedAt')::timestamptz);
+ return pg_catalog.jsonb_build_object('releaseId',p_release_id,'derived',true);
 end $$;
 
 create or replace function public.read_site_content_release_gate_artifacts(p_release_id uuid) returns jsonb
@@ -250,7 +309,8 @@ $$;
 create or replace function public.adopt_site_content_baseline(p_adoption jsonb,p_validation_binding jsonb) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare v_actor uuid:=auth.uid(); v_release_id uuid; v_count integer; v_plan jsonb:=p_adoption->'plan';
- v_verification jsonb:=p_adoption->'verificationEvidence';
+ v_verification jsonb; v_governance_receipt jsonb:=p_adoption->'governanceReceipt';
+ v_must_pass_receipt jsonb:=p_adoption->'mustPassReceipt';
 begin
  if not public.site_content_admin_authorized() or v_actor is null then raise exception 'administrator required'; end if;
  begin v_release_id:=(v_plan->>'candidateReleaseId')::uuid;
@@ -273,34 +333,8 @@ begin
     (v_plan#>>'{expectedCounts,changed}')::integer+(v_plan#>>'{expectedCounts,unchanged}')::integer
   or (v_plan#>>'{expectedCounts,unchanged}')::integer<>0 or (v_plan#>>'{expectedCounts,tombstoned}')::integer<>0
   or pg_catalog.jsonb_typeof(p_adoption->'records') is distinct from 'array'
-  or v_verification->>'version' is distinct from 'site-content-release-verification-v2'
-  or v_verification->>'subjectDigest' is distinct from public.site_content_json_digest(v_verification->'subject')
-  or v_verification#>>'{subject,projectRef}' is distinct from v_plan->>'projectRef'
-  or v_verification#>>'{subject,releaseId}' is distinct from v_plan->>'candidateReleaseId'
-  or v_verification#>>'{subject,planDigest}' is distinct from v_plan->>'planDigest'
-  or v_verification#>>'{subject,releaseDigest}' is distinct from v_plan->>'releaseDigest'
-  or v_verification->>'digest' is distinct from public.site_content_json_digest(v_verification-'digest')
-  or v_verification#>>'{publicVisibility,owner}' is distinct from 'public-site-content-reader-v1'
-  or v_verification#>>'{publicVisibility,subjectDigest}' is distinct from v_verification->>'subjectDigest'
-  or v_verification#>>'{publicVisibility,digest}' is distinct from
-    public.site_content_json_digest((v_verification->'publicVisibility')-'digest')
-  or v_verification#>>'{governance,subjectDigest}' is distinct from v_verification->>'subjectDigest'
-  or v_verification#>>'{governance,owner}' is distinct from 'site-content-governance-registry-v1'
-  or v_verification#>>'{governance,digest}' is distinct from
-    public.site_content_json_digest((v_verification->'governance')-'digest')
-  or v_verification#>>'{mustPass,subjectDigest}' is distinct from v_verification->>'subjectDigest'
-  or v_verification#>>'{mustPass,owner}' is distinct from 'rag-programme-eval-v1'
-  or v_verification#>>'{mustPass,caseSetFingerprint}' is distinct from
-    'sha256:4bf13e036a49ee077a9227c6b61d6f597efff15e8a5f2e3ea36f0cd4e4ea5107'
-  or pg_catalog.jsonb_array_length(v_verification#>'{mustPass,failedCaseIds}')<>0
-  or v_verification#>>'{mustPass,digest}' is distinct from
-    public.site_content_json_digest((v_verification->'mustPass')-'digest')
-  or not exists(select 1 from public.site_content_release_gate_artifacts artifact where artifact.release_id=v_release_id
-    and artifact.owner='public-site-content-reader-v1' and artifact.artifact=v_verification->'publicVisibility')
-  or not exists(select 1 from public.site_content_release_gate_artifacts artifact where artifact.release_id=v_release_id
-    and artifact.owner='site-content-governance-registry-v1' and artifact.artifact=v_verification->'governance')
-  or not exists(select 1 from public.site_content_release_gate_artifacts artifact where artifact.release_id=v_release_id
-    and artifact.owner='rag-programme-eval-v1' and artifact.artifact=v_verification->'mustPass')
+  or pg_catalog.jsonb_typeof(v_governance_receipt) is distinct from 'object'
+  or pg_catalog.jsonb_typeof(v_must_pass_receipt) is distinct from 'object'
  then raise exception 'evidence/digest-bound adoption authority invalid'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release',0));
  if exists(select 1 from public.site_content_releases)
@@ -319,11 +353,11 @@ begin
   legacy_reconciliation_digest,legacy_dispositions,expected_record_count,expected_changed_count,
   expected_unchanged_count,expected_tombstone_count,projected_record_count,integrity_verified,
   public_visibility_verified,governance_verified,must_pass_verified,activated_at)
- values(v_release_id,v_plan->>'projectRef','active',(v_plan->>'generationId')::uuid,
+  values(v_release_id,v_plan->>'projectRef','candidate',(v_plan->>'generationId')::uuid,
   v_plan->>'registryVersion',v_plan->>'planDigest',v_plan,v_plan->>'staticManifestDigest',
   v_plan->>'dynamicStateDigest',v_plan->>'releaseDigest',v_plan->'recoveryEvidence',
-  v_plan->>'recoveryEvidenceDigest',v_verification,v_plan->>'legacyReconciliationDigest',
-  coalesce(v_plan->'legacyDispositions','[]'::jsonb),v_count,v_count,0,0,v_count,true,true,true,true,now());
+   v_plan->>'recoveryEvidenceDigest',null,v_plan->>'legacyReconciliationDigest',
+   coalesce(v_plan->'legacyDispositions','[]'::jsonb),v_count,v_count,0,0,v_count,false,false,false,false,null);
  insert into public.site_content_publications(logical_id,domain,record_kind,slug,payload,governance,publication_version,
   content_hash,source_lineage_digest,actor_id)
  select record->>'logicalId',record->>'domain',record->>'recordKind',record->>'slug',record->'payload',
@@ -331,9 +365,22 @@ begin
   record->>'sourceLineageDigest',v_actor from pg_catalog.jsonb_array_elements(p_adoption->'records') record;
  insert into public.site_content_release_projections(release_id,publication_id,logical_id,domain,record_kind,slug,payload,
   governance,publication_version,content_hash,source_lineage_digest,tombstoned)
- select v_release_id,publication.id,publication.logical_id,publication.domain,publication.record_kind,publication.slug,
+  select v_release_id,publication.id,publication.logical_id,publication.domain,publication.record_kind,publication.slug,
   publication.payload,publication.governance,publication.publication_version,publication.content_hash,
-  publication.source_lineage_digest,false from public.site_content_publications publication;
+   publication.source_lineage_digest,false from public.site_content_publications publication;
+  insert into public.site_content_release_operations(release_id,logical_id,operation,content_hash,status,completed_at)
+  select v_release_id,operation->>'logicalId',operation->>'operation',operation->>'contentHash','complete',now()
+  from pg_catalog.jsonb_array_elements(v_plan->'operations') operation;
+  perform public.derive_site_content_release_gate_artifacts(v_release_id,v_governance_receipt,v_must_pass_receipt);
+  select pg_catalog.jsonb_build_object('version','site-content-release-verification-v2','subject',min(subject::text)::jsonb,
+    'subjectDigest',min(subject_digest),'publicVisibility',max(artifact) filter(where owner='public-site-content-reader-v1'),
+    'governance',max(artifact) filter(where owner='site-content-governance-registry-v1'),
+    'mustPass',max(artifact) filter(where owner='rag-programme-eval-v1')) into v_verification
+  from public.site_content_release_gate_artifacts where release_id=v_release_id;
+  v_verification:=v_verification||pg_catalog.jsonb_build_object('digest',public.site_content_json_digest(v_verification));
+  update public.site_content_releases set state='active',verification_evidence=v_verification,integrity_verified=true,
+    public_visibility_verified=true,governance_verified=true,must_pass_verified=true,activated_at=now()
+  where id=v_release_id and state='candidate';
  update public.site_content_public_authority set active_release_id=v_release_id,change_epoch=change_epoch+1,updated_at=now()
   where singleton and active_release_id is null;
  if not found then raise exception 'adoption authority changed'; end if;
@@ -815,7 +862,8 @@ revoke all on function public.site_content_p05_digest(jsonb) from public,anon,au
 revoke all on function public.site_content_json_digest(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_validation_binding_valid(jsonb,text,text,text,jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_consume_validation_binding(jsonb,text,text,text,jsonb) from public,anon,authenticated,service_role;
-revoke all on function public.record_site_content_release_gate_artifact(jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.site_content_gate_owner_receipt_valid(jsonb,text,text,jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.derive_site_content_release_gate_artifacts(uuid,jsonb,jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.read_site_content_release_gate_artifacts(uuid) from public,anon,authenticated,service_role;
 revoke all on function public.provision_site_content_validation_secret(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_admin_authorized() from public,anon,authenticated;
@@ -843,8 +891,8 @@ grant execute on function public.read_site_content_release_activation_context(uu
 grant execute on function public.activate_site_content_release(uuid,text,jsonb,jsonb,jsonb) to authenticated;
 grant execute on function public.rollback_site_content_release(uuid,jsonb,jsonb,jsonb,jsonb) to authenticated;
 grant execute on function public.read_site_content_release_gate_artifacts(uuid) to authenticated;
+grant execute on function public.derive_site_content_release_gate_artifacts(uuid,jsonb,jsonb) to authenticated;
 grant execute on function public.provision_site_content_validation_secret(jsonb) to service_role;
-grant execute on function public.record_site_content_release_gate_artifact(jsonb) to service_role;
 grant execute on function public.read_public_site_content_records(text,text,text) to service_role;
 grant execute on function public.claim_site_content_sync_events(uuid,integer,integer) to service_role;
 grant execute on function public.heartbeat_site_content_sync_event(uuid,uuid,uuid,uuid,integer,integer) to service_role;

@@ -142,7 +142,8 @@ describe("site-content synchronization CLI contract", () => {
         expectedProjectRef: siteReleaseProjectRef,
         action,
         records: [publication],
-        verificationEvidence: { digest: fixtureSha("7") },
+        governanceReceipt: { mac: "governance" },
+        mustPassReceipt: { mac: "must-pass" },
         activation: recovery.activation,
         evidence: recovery.evidence,
       });

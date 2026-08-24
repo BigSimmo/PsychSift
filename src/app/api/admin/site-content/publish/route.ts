@@ -63,15 +63,11 @@ export async function POST(request: Request) {
     if (action === "adopt") {
       const plan = assertSiteContentSyncPlan((body as { plan?: unknown }).plan);
       if (plan.projectRef !== projectRef) throw new Error("Adoption target project mismatch.");
-      const { data: gateArtifacts, error: gateError } = await userSupabase.rpc(
-        "read_site_content_release_gate_artifacts",
-        { p_release_id: plan.candidateReleaseId },
-      );
-      if (gateError) throw new Error("Site-content release gate artifacts are unavailable.");
       const adoption = {
         plan,
         records: (body as { records?: unknown }).records,
-        verificationEvidence: verifySiteContentReleaseGateArtifacts(plan, gateArtifacts, { now }),
+        governanceReceipt: (body as { governanceReceipt?: unknown }).governanceReceipt,
+        mustPassReceipt: (body as { mustPassReceipt?: unknown }).mustPassReceipt,
       };
       const binding = createSiteContentEvidenceValidationBinding("adopt", plan.recoveryEvidence, adoption, {
         expectedProjectRef: projectRef!,
@@ -92,6 +88,12 @@ export async function POST(request: Request) {
     } else if (action === "verify") {
       const plan = assertSiteContentSyncPlan((body as { plan?: unknown }).plan);
       if (plan.projectRef !== projectRef) throw new Error("Verification target mismatch.");
+      const { error: deriveError } = await userSupabase.rpc("derive_site_content_release_gate_artifacts", {
+        p_release_id: plan.candidateReleaseId,
+        p_governance_receipt: (body as { governanceReceipt?: unknown }).governanceReceipt,
+        p_must_pass_receipt: (body as { mustPassReceipt?: unknown }).mustPassReceipt,
+      });
+      if (deriveError) throw new Error("Site-content release gate derivation failed.");
       const { data: gateArtifacts, error: gateError } = await userSupabase.rpc(
         "read_site_content_release_gate_artifacts",
         { p_release_id: plan.candidateReleaseId },

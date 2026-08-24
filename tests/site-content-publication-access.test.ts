@@ -173,9 +173,7 @@ describe("public site-content publication access", () => {
       /grant execute on function public\.provision_site_content_validation_secret[\s\S]*to authenticated/i,
     );
     expect(sql).toMatch(/expectedCurrentDigest[\s\S]*current_digest[\s\S]*rotationReason/i);
-    expect(sql).toMatch(
-      /verificationEvidence[\s\S]*subjectDigest[\s\S]*publicVisibility[\s\S]*governance[\s\S]*mustPass/i,
-    );
+    expect(sql).toMatch(/governanceReceipt[\s\S]*mustPassReceipt[\s\S]*subjectDigest[\s\S]*publicVisibility/i);
     expect(sql).not.toMatch(/p_verification#>>'\{flags,/i);
     expect(sql).toMatch(/site_content_validation_binding_consumptions/i);
     expect(sql).toMatch(/site_content_release_gate_artifacts/i);
