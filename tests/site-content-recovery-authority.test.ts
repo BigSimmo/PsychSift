@@ -25,13 +25,71 @@ describe("site-content P05 server validation authority", () => {
       { action: "activate", ...fixture, rollback: undefined, expected },
       { expectedProjectRef: siteReleaseProjectRef, now: siteReleaseNow, secret },
     );
-    expect(verifySiteContentRecoveryValidationBinding(activation, secret)).toBe(true);
+    const verification = {
+      secret,
+      expectedPurpose: "activate" as const,
+      expectedProjectRef: siteReleaseProjectRef,
+      expectedRecoveryEvidenceDigest: fixture.evidence.digest,
+      payload: { action: "activate", evidence: fixture.evidence, activation: fixture.activation },
+      now: siteReleaseNow,
+    };
+    expect(verifySiteContentRecoveryValidationBinding(activation, verification)).toBe(true);
     const rollback = createSiteContentRecoveryValidationBinding(
       { action: "rollback", ...fixture, expected },
       { expectedProjectRef: siteReleaseProjectRef, now: siteReleaseNow, secret },
     );
-    expect(verifySiteContentRecoveryValidationBinding(rollback, secret)).toBe(true);
+    expect(
+      verifySiteContentRecoveryValidationBinding(rollback, {
+        ...verification,
+        expectedPurpose: "rollback",
+        payload: {
+          action: "rollback",
+          evidence: fixture.evidence,
+          activation: fixture.activation,
+          rollback: fixture.rollback,
+        },
+      }),
+    ).toBe(true);
     expect(rollback.payloadDigest).not.toBe(activation.payloadDigest);
+  });
+
+  it("fails closed across the SQL-compatible secret, purpose, project, payload, time, and MAC boundary", () => {
+    const fixture = validSiteReleaseRecoveryFixture();
+    const secret = "synthetic-validation-secret-with-32-bytes";
+    const payload = { action: "activate", evidence: fixture.evidence, activation: fixture.activation };
+    const binding = createSiteContentRecoveryValidationBinding(
+      {
+        action: "activate",
+        ...fixture,
+        rollback: undefined,
+        expected: {
+          resource: fixture.activation.resource,
+          previousResource: fixture.activation.previousResource,
+          stateDigest: fixture.activation.stateDigest,
+        },
+      },
+      { expectedProjectRef: siteReleaseProjectRef, now: siteReleaseNow, secret },
+    );
+    const valid = {
+      secret,
+      expectedPurpose: "activate" as const,
+      expectedProjectRef: siteReleaseProjectRef,
+      expectedRecoveryEvidenceDigest: fixture.evidence.digest,
+      payload,
+      now: siteReleaseNow,
+    };
+    for (const mutation of [
+      { ...valid, secret: "wrong-synthetic-validation-secret-32-bytes" },
+      { ...valid, secret: "" },
+      { ...valid, expectedPurpose: "rollback" as const },
+      { ...valid, expectedProjectRef: "foreignproject000000" },
+      { ...valid, payload: { ...payload, action: "rollback" } },
+      { ...valid, now: new Date("2026-08-24T12:06:00.000Z") },
+    ]) {
+      expect(() => verifySiteContentRecoveryValidationBinding(binding, mutation)).not.toThrow();
+      expect(verifySiteContentRecoveryValidationBinding(binding, mutation)).toBe(false);
+    }
+    expect(verifySiteContentRecoveryValidationBinding({ ...binding, mac: "0".repeat(64) }, valid)).toBe(false);
   });
 
   it.each([

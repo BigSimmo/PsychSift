@@ -9,7 +9,12 @@ import {
   type RecoveryReadinessEvidence,
   type RollbackReceipt,
 } from "@/lib/recovery-readiness-evidence";
-import { siteContentSyncCanonicalJson, siteContentSyncDigest } from "@/lib/site-content/site-content-sync";
+import {
+  assertSiteContentSyncPlan,
+  siteContentSyncCanonicalJson,
+  siteContentSyncDigest,
+} from "@/lib/site-content/site-content-sync";
+import { assertSiteContentReleaseVerificationEvidence } from "@/lib/site-content/site-content-release-evidence";
 
 export type SiteContentRecoveryValidationPurpose = "adopt" | "begin" | "verify" | "activate" | "rollback";
 
@@ -54,6 +59,37 @@ function assertSiteReleaseReceipt(receipt: ActivationReceipt) {
   }
 }
 
+function assertEvidenceTransitionPayload(
+  purpose: Exclude<SiteContentRecoveryValidationPurpose, "activate" | "rollback">,
+  payload: unknown,
+) {
+  if (purpose === "begin") return assertSiteContentSyncPlan(payload);
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("Canonical site-content evidence transition payload is required.");
+  }
+  const transition = payload as { plan?: unknown; verificationEvidence?: unknown; records?: unknown };
+  const plan = assertSiteContentSyncPlan(transition.plan);
+  assertSiteContentReleaseVerificationEvidence(transition.verificationEvidence, plan);
+  if (purpose === "adopt") {
+    if (!Array.isArray(transition.records)) throw new Error("Adoption records are required.");
+    const expected = plan.operations
+      .filter((operation) => operation.operation !== "tombstone")
+      .map(({ logicalId, contentHash }) => ({ logicalId, contentHash }))
+      .sort((left, right) => left.logicalId.localeCompare(right.logicalId));
+    const actual = transition.records
+      .map((record) => {
+        if (!record || typeof record !== "object") throw new Error("Adoption record is invalid.");
+        const value = record as { logicalId?: unknown; contentHash?: unknown };
+        return { logicalId: value.logicalId, contentHash: value.contentHash };
+      })
+      .sort((left, right) => String(left.logicalId).localeCompare(String(right.logicalId)));
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error("Adoption records do not match the canonical plan population.");
+    }
+  }
+  return plan;
+}
+
 export function createSiteContentEvidenceValidationBinding(
   purpose: Exclude<SiteContentRecoveryValidationPurpose, "activate" | "rollback">,
   evidenceInput: unknown,
@@ -62,6 +98,10 @@ export function createSiteContentEvidenceValidationBinding(
 ): SiteContentRecoveryValidationBinding {
   const evidence = parseRecoveryReadinessEvidence(evidenceInput);
   assertRecoveryReadinessForOperation(evidence, "site-release", options.expectedProjectRef, options.now);
+  const plan = assertEvidenceTransitionPayload(purpose, payload);
+  if (plan.projectRef !== options.expectedProjectRef || plan.recoveryEvidenceDigest !== evidence.digest) {
+    throw new Error("Evidence transition plan/recovery identity mismatch.");
+  }
   const withoutMac = {
     version: "site-content-recovery-validation-v1" as const,
     purpose,
@@ -123,12 +163,35 @@ export function createSiteContentRecoveryValidationBinding(
 
 export function verifySiteContentRecoveryValidationBinding(
   input: SiteContentRecoveryValidationBinding,
-  secret: string,
+  options: {
+    secret: string;
+    expectedPurpose: SiteContentRecoveryValidationPurpose;
+    expectedProjectRef: string;
+    expectedRecoveryEvidenceDigest: string;
+    payload: unknown;
+    now: Date;
+  },
 ) {
-  const { mac, ...withoutMac } = input;
-  if (!/^[a-f0-9]{64}$/.test(mac)) return false;
-  const expected = bindingMac(withoutMac, secret);
-  return timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex"));
+  try {
+    const { mac, ...withoutMac } = input;
+    const validatedAt = Date.parse(input.validatedAt);
+    if (
+      !/^[a-f0-9]{64}$/.test(mac) ||
+      input.version !== "site-content-recovery-validation-v1" ||
+      input.purpose !== options.expectedPurpose ||
+      input.projectRef !== options.expectedProjectRef ||
+      input.recoveryEvidenceDigest !== options.expectedRecoveryEvidenceDigest ||
+      input.payloadDigest !== siteContentSyncDigest(options.payload) ||
+      !Number.isFinite(validatedAt) ||
+      Math.abs(options.now.getTime() - validatedAt) > 5 * 60 * 1000
+    ) {
+      return false;
+    }
+    const expected = bindingMac(withoutMac, options.secret);
+    return timingSafeEqual(Buffer.from(mac, "hex"), Buffer.from(expected, "hex"));
+  } catch {
+    return false;
+  }
 }
 
 export function siteContentRecoveryBindingPayload(purpose: SiteContentRecoveryValidationPurpose, payload: unknown) {

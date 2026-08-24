@@ -164,6 +164,19 @@ describe("public site-content publication access", () => {
     expect(sql).toMatch(/stateDigest[\s\S]*dynamic_state_digest/i);
     expect(sql).toMatch(/validUntil[\s\S]*now\(\)/i);
     expect(sql).toMatch(/site_content_validation_binding_valid[\s\S]*extensions\.hmac/i);
+    expect(sql).toMatch(/from vault\.decrypted_secrets[\s\S]*site_content_recovery_validation_secret/i);
+    expect(sql).toMatch(/provision_site_content_validation_secret[\s\S]*vault\.(?:create|update)_secret/i);
+    expect(sql).toMatch(
+      /grant execute on function public\.provision_site_content_validation_secret[\s\S]*to service_role/i,
+    );
+    expect(sql).not.toMatch(
+      /grant execute on function public\.provision_site_content_validation_secret[\s\S]*to authenticated/i,
+    );
+    expect(sql).toMatch(/expectedCurrentDigest[\s\S]*current_digest[\s\S]*rotationReason/i);
+    expect(sql).toMatch(
+      /verificationEvidence[\s\S]*subjectDigest[\s\S]*publicVisibility[\s\S]*governance[\s\S]*mustPass/i,
+    );
+    expect(sql).not.toMatch(/p_verification#>>'\{flags,/i);
     expect(sql).toMatch(/site_content_json_digest\(p_plan-'planDigest'\)/i);
     expect(sql).toMatch(/legacy_reconciliation_digest[\s\S]*legacy_dispositions/i);
   });

@@ -131,5 +131,22 @@ describe("site-content synchronization CLI contract", () => {
         }),
       }),
     );
+
+    for (const action of ["adopt", "resume", "verify", "activate"] as const) {
+      const actionSend = vi.fn(async (_request: { path: string; body: unknown }) => ({ ok: true }));
+      await createSiteContentSyncWriteDriver({
+        send: actionSend,
+        resolvePublication: () => publication,
+      }).execute(writePlan, {
+        allowWrite: true,
+        expectedProjectRef: siteReleaseProjectRef,
+        action,
+        records: [publication],
+        verificationEvidence: { digest: fixtureSha("7") },
+        activation: recovery.activation,
+        evidence: recovery.evidence,
+      });
+      expect(actionSend.mock.calls[0]?.[0]).toMatchObject({ body: { action: action === "resume" ? "begin" : action } });
+    }
   });
 });

@@ -63,7 +63,7 @@ export type Database = {
           previous_release_id: string | null; project_ref: string; projected_record_count: number;
           public_visibility_verified: boolean; recovery_evidence: Json; recovery_evidence_digest: string;
           registry_version: string; release_digest: string; rollback_receipt: Json | null;
-          state: string; static_manifest_digest: string;
+          state: string; static_manifest_digest: string; verification_evidence: Json | null;
         };
         Insert: {
           activated_at?: string | null; activation_receipt?: Json | null; created_at?: string;
@@ -74,7 +74,7 @@ export type Database = {
           previous_release_id?: string | null; project_ref: string; projected_record_count?: number;
           public_visibility_verified?: boolean; recovery_evidence: Json; recovery_evidence_digest: string;
           registry_version: string; release_digest: string; rollback_receipt?: Json | null;
-          state: string; static_manifest_digest: string;
+          state: string; static_manifest_digest: string; verification_evidence?: Json | null;
         };
         Update: Partial<Database["public"]["Tables"]["site_content_releases"]["Insert"]>;
         Relationships: [
@@ -2576,6 +2576,10 @@ export type Database = {
       };
       publish_site_content_record: {
         Args: { p_record: Json };
+        Returns: Json;
+      };
+      provision_site_content_validation_secret: {
+        Args: { p_configuration: Json };
         Returns: Json;
       };
       read_public_site_content_records: {

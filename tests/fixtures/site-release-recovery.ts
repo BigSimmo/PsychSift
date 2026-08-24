@@ -20,7 +20,11 @@ const reference = (
 ) => ({ kind, id });
 
 export function validSiteReleaseRecoveryFixture(
-  options: { candidateReleaseDigest?: `sha256:${string}`; stateDigest?: `sha256:${string}` } = {},
+  options: {
+    candidateReleaseDigest?: `sha256:${string}`;
+    previousReleaseDigest?: `sha256:${string}`;
+    stateDigest?: `sha256:${string}`;
+  } = {},
 ) {
   const evidencePayload = {
     version: 1 as const,
@@ -92,7 +96,7 @@ export function validSiteReleaseRecoveryFixture(
     previousResource: {
       kind: "site-release" as const,
       releaseId: siteReleasePreviousId,
-      releaseDigest: fixtureSha("2"),
+      releaseDigest: options.previousReleaseDigest ?? fixtureSha("2"),
     },
   };
   const activation = parseActivationReceipt({

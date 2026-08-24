@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -14,12 +15,66 @@ type BuildInputs = Omit<SiteContentSyncInput, "registryVersion" | "staticManifes
   manifest: StaticSiteContentManifest;
 };
 
-type OfflineState = Omit<BuildInputs, "manifest"> & { publications?: Record<string, unknown> };
+type OfflineState = Omit<BuildInputs, "manifest"> & {
+  publications?: Record<string, unknown>;
+  verificationEvidence?: unknown;
+  activation?: unknown;
+  evidence?: unknown;
+  records?: unknown[];
+};
+type OperatorAction = "adopt" | "begin" | "resume" | "publish" | "verify" | "activate" | "provision-secret";
 const executableDomains = new Set(["services", "forms", "medications", "differentials"]);
 
 function option(args: readonly string[], name: string) {
   const index = args.indexOf(name);
   return index < 0 ? null : (args[index + 1] ?? null);
+}
+
+function deterministicUuid(value: string, discriminator: string) {
+  const hex = createHash("sha256").update(`${value}:${discriminator}`).digest("hex").slice(0, 32).split("");
+  hex[12] = "4";
+  hex[16] = "8";
+  const joined = hex.join("");
+  return `${joined.slice(0, 8)}-${joined.slice(8, 12)}-${joined.slice(12, 16)}-${joined.slice(16, 20)}-${joined.slice(20)}`;
+}
+
+function defaultOfflineState(manifest: StaticSiteContentManifest): OfflineState {
+  const projectRef = process.env.SUPABASE_PROJECT_REF?.trim() || "offline-site-content";
+  return {
+    projectRef,
+    expectedProjectRef: projectRef,
+    candidateReleaseId: deterministicUuid(manifest.staticManifestDigest, "candidate"),
+    previousReleaseId: deterministicUuid(manifest.staticManifestDigest, "empty-authority"),
+    generationId: deterministicUuid(manifest.staticManifestDigest, "generation"),
+    expectedEmbedding: {
+      model: process.env.RAG_EMBEDDING_MODEL?.trim() || "text-embedding-3-small",
+      dimensions: Number(process.env.RAG_EMBEDDING_DIMENSIONS || 1536),
+    },
+    activeProjections: [],
+    legacyRows: [],
+    legacyDispositions: [],
+    batchSize: 25,
+  };
+}
+
+export function createSiteContentSyncHttpTransport(options: {
+  endpoint: string;
+  accessToken: string;
+  fetch?: typeof globalThis.fetch;
+}) {
+  if (!/^https?:\/\//.test(options.endpoint) || !options.accessToken.trim()) {
+    throw new Error("Site-content operator endpoint and administrator access token are required.");
+  }
+  const request = options.fetch ?? globalThis.fetch;
+  return async ({ body }: { path: string; body: unknown }) => {
+    const response = await request(options.endpoint, {
+      method: "POST",
+      headers: { authorization: `Bearer ${options.accessToken}`, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`Site-content operator request failed with status ${response.status}.`);
+    return response.json();
+  };
 }
 
 export function buildSiteContentSyncPlanFromInputs(input: BuildInputs) {
@@ -49,12 +104,66 @@ export function createSiteContentSyncWriteDriver(dependencies: {
   resolvePublication?: (logicalId: string) => unknown;
 }) {
   return Object.freeze({
-    async execute(planInput: unknown, options: { allowWrite: boolean; expectedProjectRef: string }) {
+    async execute(
+      planInput: unknown,
+      options: {
+        allowWrite: boolean;
+        expectedProjectRef: string;
+        action?: OperatorAction;
+        records?: unknown[];
+        verificationEvidence?: unknown;
+        activation?: unknown;
+        evidence?: unknown;
+        expectedCurrentDigest?: string;
+        rotationReason?: string;
+      },
+    ) {
       if (!options.allowWrite) throw new Error("Site-content write execution is not enabled.");
       const plan = assertSiteContentSyncPlan(planInput);
-      if (plan.mode !== "write") throw new Error("A canonical write plan with recovery evidence is required.");
       if (plan.projectRef !== options.expectedProjectRef) throw new Error("Write target project mismatch.");
-      await dependencies.send({ path: "/api/admin/site-content/publish", body: { action: "begin", plan } });
+      const action = options.action ?? "begin";
+      if (action === "provision-secret") {
+        await dependencies.send({
+          path: "/api/admin/site-content/publish",
+          body: {
+            action,
+            expectedCurrentDigest: options.expectedCurrentDigest ?? null,
+            rotationReason: options.rotationReason ?? null,
+          },
+        });
+        return plan;
+      }
+      if (plan.mode !== "write") throw new Error("A canonical write plan with recovery evidence is required.");
+      if (action === "adopt") {
+        await dependencies.send({
+          path: "/api/admin/site-content/publish",
+          body: { action, plan, records: options.records ?? [], verificationEvidence: options.verificationEvidence },
+        });
+        return plan;
+      }
+      if (action === "verify") {
+        await dependencies.send({
+          path: "/api/admin/site-content/publish",
+          body: { action, plan, verificationEvidence: options.verificationEvidence },
+        });
+        return plan;
+      }
+      if (action === "activate") {
+        await dependencies.send({
+          path: "/api/admin/site-content/publish",
+          body: {
+            action,
+            releaseId: plan.candidateReleaseId,
+            evidence: options.evidence,
+            activation: options.activation,
+          },
+        });
+        return plan;
+      }
+      if (action === "begin" || action === "resume") {
+        await dependencies.send({ path: "/api/admin/site-content/publish", body: { action: "begin", plan } });
+      }
+      if (action !== "publish" && action !== "begin" && action !== "resume") return plan;
       for (const operation of plan.operations.filter((entry) => entry.operation === "changed")) {
         const record = dependencies.resolvePublication?.(operation.logicalId);
         if (!record) throw new Error(`Canonical changed publication ${operation.logicalId} is unavailable.`);
@@ -88,19 +197,45 @@ export async function runSiteContentSyncCli(
   const manifestPath = option(args, "--manifest");
   const statePath = option(args, "--state");
   const write = args.includes("--write");
-  if (!manifestPath || !statePath) throw new Error("--manifest <path> and --state <path> are required.");
+  if (!manifestPath) throw new Error("--manifest <path> is required.");
   const manifest = JSON.parse(await readFile(resolve(manifestPath), "utf8")) as StaticSiteContentManifest;
-  const state = JSON.parse(await readFile(resolve(statePath), "utf8")) as OfflineState;
-  const plan = buildSiteContentSyncPlanFromInputs({ ...state, manifest, write });
+  const state = statePath
+    ? (JSON.parse(await readFile(resolve(statePath), "utf8")) as OfflineState)
+    : defaultOfflineState(manifest);
+  const action = (option(args, "--action") ?? "begin") as OperatorAction;
+  const plan = buildSiteContentSyncPlanFromInputs({
+    ...state,
+    manifest,
+    write: write && action !== "provision-secret",
+  });
   if (write) {
     const confirmedProject = option(args, "--confirm-project");
-    if (!dependencies.send || confirmedProject !== state.expectedProjectRef) {
-      throw new Error("Guarded write requires an injected server transport and exact --confirm-project target.");
+    if (confirmedProject !== state.expectedProjectRef) {
+      throw new Error("Guarded write requires exact --confirm-project target confirmation.");
+    }
+    const send =
+      dependencies.send ??
+      createSiteContentSyncHttpTransport({
+        endpoint: process.env.SITE_CONTENT_SYNC_ADMIN_URL ?? "",
+        accessToken: process.env.SITE_CONTENT_SYNC_ADMIN_ACCESS_TOKEN ?? "",
+      });
+    if (!["adopt", "begin", "resume", "publish", "verify", "activate", "provision-secret"].includes(action)) {
+      throw new Error("Unsupported site-content operator action.");
     }
     await createSiteContentSyncWriteDriver({
-      send: dependencies.send,
+      send,
       resolvePublication: (logicalId) => state.publications?.[logicalId],
-    }).execute(plan, { allowWrite: true, expectedProjectRef: state.expectedProjectRef });
+    }).execute(plan, {
+      allowWrite: true,
+      expectedProjectRef: state.expectedProjectRef,
+      action,
+      records: state.records ?? Object.values(state.publications ?? {}),
+      verificationEvidence: state.verificationEvidence,
+      activation: state.activation,
+      evidence: state.evidence,
+      expectedCurrentDigest: option(args, "--expected-current-secret-digest") ?? undefined,
+      rotationReason: option(args, "--rotation-reason") ?? undefined,
+    });
   }
   process.stdout.write(`${JSON.stringify(plan)}\n`);
   return plan;

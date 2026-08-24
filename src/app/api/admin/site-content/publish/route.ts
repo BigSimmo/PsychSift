@@ -13,7 +13,8 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    await requireAuthenticatedUser(request, createAdminClient(), { administrator: true });
+    const adminSupabase = createAdminClient();
+    await requireAuthenticatedUser(request, adminSupabase, { administrator: true });
     const userSupabase = await createSupabaseServerClient();
     if (!userSupabase) throw new AuthenticationError("Authenticated administrator session is required.");
     const body = await request.json();
@@ -21,6 +22,19 @@ export async function POST(request: Request) {
     const projectRef = env.SUPABASE_PROJECT_REF;
     const secret = env.SITE_CONTENT_RECOVERY_VALIDATION_SECRET;
     const now = new Date();
+    if (action === "provision-secret") {
+      if (!secret) throw new Error("Site-content recovery authority is not configured.");
+      const configuration = {
+        secret,
+        expectedCurrentDigest: (body as { expectedCurrentDigest?: unknown }).expectedCurrentDigest ?? null,
+        rotationReason: (body as { rotationReason?: unknown }).rotationReason ?? null,
+      };
+      const { data, error } = await adminSupabase.rpc("provision_site_content_validation_secret", {
+        p_configuration: configuration,
+      });
+      if (error) throw new Error("Site-content validation-secret provisioning failed.");
+      return Response.json(data, { status: 202, headers: { "Cache-Control": "private, no-store" } });
+    }
     let mutation:
       | { rpc: "adopt_site_content_baseline"; args: { p_adoption: unknown; p_validation_binding: unknown } }
       | { rpc: "begin_site_content_candidate_release"; args: { p_plan: unknown; p_validation_binding: unknown } }
@@ -41,9 +55,14 @@ export async function POST(request: Request) {
       if (!projectRef || !secret) throw new Error("Site-content recovery authority is not configured.");
     }
     if (action === "adopt") {
-      const adoption = (body as { adoption?: Record<string, unknown> }).adoption;
-      if (!adoption || adoption.projectRef !== projectRef) throw new Error("Adoption target project mismatch.");
-      const binding = createSiteContentEvidenceValidationBinding("adopt", adoption.recoveryEvidence, adoption, {
+      const adoption = {
+        plan: (body as { plan?: unknown }).plan,
+        records: (body as { records?: unknown }).records,
+        verificationEvidence: (body as { verificationEvidence?: unknown }).verificationEvidence,
+      };
+      const plan = assertSiteContentSyncPlan(adoption.plan);
+      if (plan.projectRef !== projectRef) throw new Error("Adoption target project mismatch.");
+      const binding = createSiteContentEvidenceValidationBinding("adopt", plan.recoveryEvidence, adoption, {
         expectedProjectRef: projectRef!,
         now,
         secret: secret!,
@@ -60,14 +79,17 @@ export async function POST(request: Request) {
       });
       mutation = { rpc: "begin_site_content_candidate_release", args: { p_plan: plan, p_validation_binding: binding } };
     } else if (action === "verify") {
-      const verification = (body as { verification?: Record<string, unknown> }).verification;
-      if (!verification || verification.projectRef !== projectRef) throw new Error("Verification target mismatch.");
-      const binding = createSiteContentEvidenceValidationBinding(
-        "verify",
-        verification.recoveryEvidence,
-        verification,
-        { expectedProjectRef: projectRef!, now, secret: secret! },
-      );
+      const verification = {
+        plan: (body as { plan?: unknown }).plan,
+        verificationEvidence: (body as { verificationEvidence?: unknown }).verificationEvidence,
+      };
+      const plan = assertSiteContentSyncPlan(verification.plan);
+      if (plan.projectRef !== projectRef) throw new Error("Verification target mismatch.");
+      const binding = createSiteContentEvidenceValidationBinding("verify", plan.recoveryEvidence, verification, {
+        expectedProjectRef: projectRef!,
+        now,
+        secret: secret!,
+      });
       mutation = {
         rpc: "verify_site_content_candidate_release",
         args: { p_verification: verification, p_validation_binding: binding },

@@ -10,6 +10,7 @@ create table public.site_content_releases (
   release_digest text not null check (release_digest ~ '^sha256:[0-9a-f]{64}$'),
   recovery_evidence jsonb not null,
   recovery_evidence_digest text not null check (recovery_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
+  verification_evidence jsonb,
   legacy_reconciliation_digest text not null check (legacy_reconciliation_digest ~ '^sha256:[0-9a-f]{64}$'),
   legacy_dispositions jsonb not null default '[]'::jsonb,
   expected_record_count integer not null check (expected_record_count >= 0),
@@ -105,8 +106,10 @@ $$;
 create or replace function public.site_content_validation_binding_valid(p_binding jsonb,p_purpose text,p_project_ref text,
  p_recovery_evidence_digest text,p_payload jsonb) returns boolean
 language plpgsql stable security definer set search_path = '' as $$
-declare v_secret text:=pg_catalog.current_setting('app.site_content_validation_secret',true); v_without_mac jsonb;
+declare v_secret text; v_without_mac jsonb;
 begin
+ select secret.decrypted_secret into v_secret from vault.decrypted_secrets secret
+  where secret.name='site_content_recovery_validation_secret' limit 1;
  if coalesce(v_secret,'')='' or p_binding->>'version'<>'site-content-recovery-validation-v1'
   or p_binding->>'purpose' is distinct from p_purpose or p_binding->>'projectRef' is distinct from p_project_ref
   or p_binding->>'recoveryEvidenceDigest' is distinct from p_recovery_evidence_digest
@@ -120,6 +123,35 @@ begin
 exception when others then return false;
 end $$;
 
+create or replace function public.provision_site_content_validation_secret(p_configuration jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_secret_id uuid; v_current text; v_current_digest text; v_new_digest text;
+begin
+ if auth.role() is distinct from 'service_role' then raise exception 'service role required'; end if;
+ if coalesce(p_configuration->>'secret','')='' or pg_catalog.length(p_configuration->>'secret')<32
+ then raise exception 'site-content validation secret is invalid'; end if;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_recovery_validation_secret',0));
+ select secret.id,secret.decrypted_secret into v_secret_id,v_current from vault.decrypted_secrets secret
+  where secret.name='site_content_recovery_validation_secret' limit 1;
+ v_new_digest:='sha256:'||pg_catalog.encode(extensions.digest(
+  pg_catalog.convert_to(p_configuration->>'secret','UTF8'),'sha256'),'hex');
+ if v_secret_id is null then
+  if nullif(p_configuration->>'expectedCurrentDigest','') is not null
+  then raise exception 'initial secret provisioning cannot claim a predecessor'; end if;
+  perform vault.create_secret(p_configuration->>'secret','site_content_recovery_validation_secret',
+    'Site-content recovery validation HMAC; provisioned by guarded operator route');
+  return pg_catalog.jsonb_build_object('configured',true,'rotated',false,'digest',v_new_digest);
+ end if;
+ v_current_digest:='sha256:'||pg_catalog.encode(extensions.digest(pg_catalog.convert_to(v_current,'UTF8'),'sha256'),'hex');
+ if p_configuration->>'expectedCurrentDigest' is distinct from v_current_digest
+  or coalesce(pg_catalog.btrim(p_configuration->>'rotationReason'),'')=''
+ then raise exception 'secret rotation requires exact predecessor digest and reason'; end if;
+ perform vault.update_secret(v_secret_id,p_configuration->>'secret','site_content_recovery_validation_secret',
+  'Rotated site-content validation HMAC: '||pg_catalog.left(p_configuration->>'rotationReason',200));
+ return pg_catalog.jsonb_build_object('configured',true,'rotated',true,'digest',v_new_digest,
+  'previousDigest',v_current_digest);
+end $$;
+
 create or replace function public.site_content_admin_authorized() returns boolean
 language sql stable security definer set search_path = '' as $$
   select coalesce((auth.jwt()->'app_metadata'->>'administrator')::boolean,false)
@@ -127,19 +159,49 @@ language sql stable security definer set search_path = '' as $$
 $$;
 create or replace function public.adopt_site_content_baseline(p_adoption jsonb,p_validation_binding jsonb) returns jsonb
 language plpgsql security definer set search_path = '' as $$
-declare v_actor uuid:=auth.uid(); v_release_id uuid; v_count integer;
+declare v_actor uuid:=auth.uid(); v_release_id uuid; v_count integer; v_plan jsonb:=p_adoption->'plan';
+ v_verification jsonb:=p_adoption->'verificationEvidence';
 begin
  if not public.site_content_admin_authorized() or v_actor is null then raise exception 'administrator required'; end if;
- begin v_release_id:=(p_adoption->>'releaseId')::uuid;
+ begin v_release_id:=(v_plan->>'candidateReleaseId')::uuid;
  exception when invalid_text_representation then raise exception 'invalid adoption release identity'; end;
- if not public.site_content_validation_binding_valid(p_validation_binding,'adopt',p_adoption->>'projectRef',
-    p_adoption->>'recoveryEvidenceDigest',p_adoption)
-  or p_adoption->>'recoveryEvidenceDigest' is distinct from p_adoption#>>'{recoveryEvidence,digest}'
-  or p_adoption->>'releaseDigest' !~ '^sha256:[0-9a-f]{64}$'
-  or p_adoption->>'staticManifestDigest' !~ '^sha256:[0-9a-f]{64}$'
-  or p_adoption->>'dynamicStateDigest' !~ '^sha256:[0-9a-f]{64}$'
-  or p_adoption->>'legacyReconciliationDigest' !~ '^sha256:[0-9a-f]{64}$'
+ if not public.site_content_validation_binding_valid(p_validation_binding,'adopt',v_plan->>'projectRef',
+    v_plan->>'recoveryEvidenceDigest',p_adoption)
+  or v_plan->>'mode' is distinct from 'write'
+  or v_plan->>'planDigest' is distinct from public.site_content_json_digest(v_plan-'planDigest')
+  or v_plan->>'releaseDigest' is distinct from public.site_content_json_digest(pg_catalog.jsonb_build_object(
+      'projectRef',v_plan->'projectRef','candidateReleaseId',v_plan->'candidateReleaseId',
+      'previousReleaseId',v_plan->'previousReleaseId','generationId',v_plan->'generationId',
+      'registryVersion',v_plan->'registryVersion','staticManifestDigest',v_plan->'staticManifestDigest',
+      'embeddingContract',v_plan->'embeddingContract','dynamicStateDigest',v_plan->'dynamicStateDigest',
+      'operations',v_plan->'operations','legacyReconciliationDigest',v_plan->'legacyReconciliationDigest',
+      'legacyDispositions',v_plan->'legacyDispositions','expectedCounts',v_plan->'expectedCounts',
+      'recoveryEvidenceDigest',v_plan->'recoveryEvidenceDigest'))
+  or v_plan->>'recoveryEvidenceDigest' is distinct from v_plan#>>'{recoveryEvidence,digest}'
+  or v_plan->>'legacyReconciliationDigest' is distinct from public.site_content_json_digest(v_plan->'legacyReconciliation')
+  or (v_plan#>>'{expectedCounts,desired}')::integer is distinct from
+    (v_plan#>>'{expectedCounts,changed}')::integer+(v_plan#>>'{expectedCounts,unchanged}')::integer
+  or (v_plan#>>'{expectedCounts,unchanged}')::integer<>0 or (v_plan#>>'{expectedCounts,tombstoned}')::integer<>0
   or pg_catalog.jsonb_typeof(p_adoption->'records') is distinct from 'array'
+  or v_verification->>'version' is distinct from 'site-content-release-verification-v1'
+  or v_verification->>'subjectDigest' is distinct from public.site_content_json_digest(v_verification->'subject')
+  or v_verification#>>'{subject,projectRef}' is distinct from v_plan->>'projectRef'
+  or v_verification#>>'{subject,releaseId}' is distinct from v_plan->>'candidateReleaseId'
+  or v_verification#>>'{subject,planDigest}' is distinct from v_plan->>'planDigest'
+  or v_verification#>>'{subject,releaseDigest}' is distinct from v_plan->>'releaseDigest'
+  or v_verification#>>'{subject,staticManifestDigest}' is distinct from v_plan->>'staticManifestDigest'
+  or v_verification#>>'{subject,dynamicStateDigest}' is distinct from v_plan->>'dynamicStateDigest'
+  or v_verification#>>'{subject,legacyReconciliationDigest}' is distinct from v_plan->>'legacyReconciliationDigest'
+  or v_verification->>'digest' is distinct from public.site_content_json_digest(v_verification-'digest')
+  or v_verification#>>'{publicVisibility,subjectDigest}' is distinct from v_verification->>'subjectDigest'
+  or v_verification#>>'{publicVisibility,digest}' is distinct from
+    public.site_content_json_digest((v_verification->'publicVisibility')-'digest')
+  or v_verification#>>'{governance,subjectDigest}' is distinct from v_verification->>'subjectDigest'
+  or v_verification#>>'{governance,digest}' is distinct from
+    public.site_content_json_digest((v_verification->'governance')-'digest')
+  or v_verification#>>'{mustPass,subjectDigest}' is distinct from v_verification->>'subjectDigest'
+  or v_verification#>>'{mustPass,digest}' is distinct from
+    public.site_content_json_digest((v_verification->'mustPass')-'digest')
  then raise exception 'evidence/digest-bound adoption authority invalid'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release',0));
  if exists(select 1 from public.site_content_releases)
@@ -147,17 +209,22 @@ begin
  then raise exception 'baseline adoption requires empty authority'; end if;
  select count(*) into v_count from pg_catalog.jsonb_array_elements(p_adoption->'records');
  if v_count<>(select count(distinct record->>'logicalId') from pg_catalog.jsonb_array_elements(p_adoption->'records') record)
+  or v_count<>(v_plan#>>'{expectedCounts,desired}')::integer
+  or exists(select 1 from pg_catalog.jsonb_array_elements(p_adoption->'records') record where not exists(
+    select 1 from pg_catalog.jsonb_array_elements(v_plan->'operations') operation
+    where operation->>'operation'='changed' and operation->>'logicalId'=record->>'logicalId'
+      and operation->>'contentHash'=record->>'contentHash'))
  then raise exception 'adoption logical identities must be unique'; end if;
  insert into public.site_content_releases(id,project_ref,state,generation_id,registry_version,plan_digest,plan_json,
-  static_manifest_digest,dynamic_state_digest,release_digest,recovery_evidence,recovery_evidence_digest,
+  static_manifest_digest,dynamic_state_digest,release_digest,recovery_evidence,recovery_evidence_digest,verification_evidence,
   legacy_reconciliation_digest,legacy_dispositions,expected_record_count,expected_changed_count,
   expected_unchanged_count,expected_tombstone_count,projected_record_count,integrity_verified,
   public_visibility_verified,governance_verified,must_pass_verified,activated_at)
- values(v_release_id,p_adoption->>'projectRef','active',(p_adoption->>'generationId')::uuid,
-  p_adoption->>'registryVersion',p_adoption->>'planDigest',p_adoption,p_adoption->>'staticManifestDigest',
-  p_adoption->>'dynamicStateDigest',p_adoption->>'releaseDigest',p_adoption->'recoveryEvidence',
-  p_adoption->>'recoveryEvidenceDigest',p_adoption->>'legacyReconciliationDigest',
-  coalesce(p_adoption->'legacyDispositions','[]'::jsonb),v_count,v_count,0,0,v_count,true,true,true,true,now());
+ values(v_release_id,v_plan->>'projectRef','active',(v_plan->>'generationId')::uuid,
+  v_plan->>'registryVersion',v_plan->>'planDigest',v_plan,v_plan->>'staticManifestDigest',
+  v_plan->>'dynamicStateDigest',v_plan->>'releaseDigest',v_plan->'recoveryEvidence',
+  v_plan->>'recoveryEvidenceDigest',v_verification,v_plan->>'legacyReconciliationDigest',
+  coalesce(v_plan->'legacyDispositions','[]'::jsonb),v_count,v_count,0,0,v_count,true,true,true,true,now());
  insert into public.site_content_publications(logical_id,domain,record_kind,slug,payload,governance,publication_version,
   content_hash,source_lineage_digest,actor_id)
  select record->>'logicalId',record->>'domain',record->>'recordKind',record->>'slug',record->'payload',
@@ -482,24 +549,35 @@ language plpgsql security definer set search_path = '' as $$ declare v_count int
 
 create or replace function public.verify_site_content_candidate_release(p_verification jsonb,p_validation_binding jsonb)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare v_release public.site_content_releases%rowtype;
+declare v_release public.site_content_releases%rowtype; v_plan jsonb:=p_verification->'plan';
+ v_evidence jsonb:=p_verification->'verificationEvidence';
 begin
  if not public.site_content_admin_authorized() or auth.uid() is null then raise exception 'administrator required'; end if;
- select * into strict v_release from public.site_content_releases where id=(p_verification->>'releaseId')::uuid
+ select * into strict v_release from public.site_content_releases where id=(v_plan->>'candidateReleaseId')::uuid
   and state='candidate' for update;
  if not public.site_content_validation_binding_valid(p_validation_binding,'verify',v_release.project_ref,
     v_release.recovery_evidence_digest,p_verification)
-  or p_verification->>'projectRef' is distinct from v_release.project_ref
-  or p_verification->>'planDigest' is distinct from v_release.plan_digest
-  or p_verification->>'recoveryEvidenceDigest' is distinct from v_release.recovery_evidence_digest
-  or p_verification->'recoveryEvidence' is distinct from v_release.recovery_evidence
-  or p_verification#>>'{flags,integrity}' is distinct from 'true'
-  or p_verification#>>'{flags,publicVisibility}' is distinct from 'true'
-  or p_verification#>>'{flags,governance}' is distinct from 'true'
-  or p_verification#>>'{flags,mustPass}' is distinct from 'true'
+  or v_plan is distinct from v_release.plan_json
+  or v_evidence->>'version' is distinct from 'site-content-release-verification-v1'
+  or v_evidence->>'subjectDigest' is distinct from public.site_content_json_digest(v_evidence->'subject')
+  or v_evidence#>>'{subject,projectRef}' is distinct from v_release.project_ref
+  or v_evidence#>>'{subject,releaseId}' is distinct from v_release.id::text
+  or v_evidence#>>'{subject,planDigest}' is distinct from v_release.plan_digest
+  or v_evidence#>>'{subject,releaseDigest}' is distinct from v_release.release_digest
+  or v_evidence#>>'{subject,staticManifestDigest}' is distinct from v_release.static_manifest_digest
+  or v_evidence#>>'{subject,dynamicStateDigest}' is distinct from v_release.dynamic_state_digest
+  or v_evidence#>>'{subject,legacyReconciliationDigest}' is distinct from v_release.legacy_reconciliation_digest
+  or v_evidence->>'digest' is distinct from public.site_content_json_digest(v_evidence-'digest')
+  or v_evidence#>>'{publicVisibility,subjectDigest}' is distinct from v_evidence->>'subjectDigest'
+  or v_evidence#>>'{publicVisibility,digest}' is distinct from
+    public.site_content_json_digest((v_evidence->'publicVisibility')-'digest')
+  or v_evidence#>>'{governance,subjectDigest}' is distinct from v_evidence->>'subjectDigest'
+  or v_evidence#>>'{governance,digest}' is distinct from public.site_content_json_digest((v_evidence->'governance')-'digest')
+  or v_evidence#>>'{mustPass,subjectDigest}' is distinct from v_evidence->>'subjectDigest'
+  or v_evidence#>>'{mustPass,digest}' is distinct from public.site_content_json_digest((v_evidence->'mustPass')-'digest')
  then raise exception 'candidate verification authority invalid'; end if;
  update public.site_content_releases set integrity_verified=true,public_visibility_verified=true,
-  governance_verified=true,must_pass_verified=true where id=v_release.id;
+  governance_verified=true,must_pass_verified=true,verification_evidence=v_evidence where id=v_release.id;
  return pg_catalog.jsonb_build_object('releaseId',v_release.id,'verified',true);
 end $$;
 
@@ -625,6 +703,7 @@ revoke all on function public.site_content_canonical_json(jsonb) from public,ano
 revoke all on function public.site_content_p05_digest(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_json_digest(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_validation_binding_valid(jsonb,text,text,text,jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.provision_site_content_validation_secret(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_admin_authorized() from public,anon,authenticated;
 revoke all on function public.adopt_site_content_baseline(jsonb,jsonb) from public,anon,authenticated;
 revoke all on function public.begin_site_content_candidate_release(jsonb,jsonb) from public,anon,authenticated;
@@ -649,6 +728,7 @@ grant execute on function public.verify_site_content_candidate_release(jsonb,jso
 grant execute on function public.read_site_content_release_activation_context(uuid) to authenticated;
 grant execute on function public.activate_site_content_release(uuid,text,jsonb,jsonb,jsonb) to authenticated;
 grant execute on function public.rollback_site_content_release(uuid,jsonb,jsonb,jsonb,jsonb) to authenticated;
+grant execute on function public.provision_site_content_validation_secret(jsonb) to service_role;
 grant execute on function public.read_public_site_content_records(text,text,text) to service_role;
 grant execute on function public.claim_site_content_sync_events(uuid,integer,integer) to service_role;
 grant execute on function public.heartbeat_site_content_sync_event(uuid,uuid,uuid,uuid,integer,integer) to service_role;

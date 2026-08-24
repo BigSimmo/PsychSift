@@ -1,4 +1,6 @@
 import { assertSiteContentSyncPlan, type SiteContentSyncPlan } from "@/lib/site-content/site-content-sync";
+import { assertSiteContentReleaseVerificationEvidence } from "@/lib/site-content/site-content-release-evidence";
+import type { SiteContentRecoveryValidationBinding } from "@/lib/site-content/site-content-recovery-authority";
 
 type Digest = `sha256:${string}`;
 type Operation = SiteContentSyncPlan["operations"][number];
@@ -27,7 +29,7 @@ type Release = {
   verification: Set<"integrity" | "public-visibility" | "governance" | "must-pass">;
 };
 
-type BindingVerifier = (purpose: string, payload: unknown, binding: string) => boolean;
+type BindingVerifier = (purpose: string, payload: unknown, binding: SiteContentRecoveryValidationBinding) => boolean;
 
 function sortedRecords(records: Iterable<SiteContentAuthorityRecord>) {
   return [...records].sort((left, right) => left.logicalId.localeCompare(right.logicalId));
@@ -38,42 +40,38 @@ export function createSiteContentTransactionAuthority(options: { bindingVerifier
   const publications = new Map<string, SiteContentAuthorityRecord>();
   let activeReleaseId: string | null = null;
 
-  const requireBinding = (purpose: string, payload: unknown, binding: string) => {
+  const requireBinding = (purpose: string, payload: unknown, binding: SiteContentRecoveryValidationBinding) => {
     if (!options.bindingVerifier(purpose, payload, binding)) throw new Error("Server validation binding rejected.");
   };
 
   function adoptBaseline(
-    input: {
-      projectRef: string;
-      releaseId: string;
-      releaseDigest: Digest;
-      recoveryEvidenceDigest: Digest;
-      records: SiteContentAuthorityRecord[];
-    },
-    binding: string,
+    input: { plan: unknown; records: SiteContentAuthorityRecord[]; verificationEvidence: unknown },
+    binding: SiteContentRecoveryValidationBinding,
   ) {
     requireBinding("adopt", input, binding);
+    const plan = assertSiteContentSyncPlan(input.plan);
+    assertSiteContentReleaseVerificationEvidence(input.verificationEvidence, plan);
     if (activeReleaseId || releases.size) throw new Error("Baseline adoption requires empty authority.");
     if (new Set(input.records.map((record) => record.logicalId)).size !== input.records.length) {
       throw new Error("Baseline adoption logical identities must be unique.");
     }
     const records = new Map(input.records.map((record) => [record.logicalId, record]));
     for (const record of input.records) publications.set(record.logicalId, record);
-    releases.set(input.releaseId, {
-      id: input.releaseId,
-      projectRef: input.projectRef,
-      releaseDigest: input.releaseDigest,
+    releases.set(plan.candidateReleaseId, {
+      id: plan.candidateReleaseId,
+      projectRef: plan.projectRef,
+      releaseDigest: plan.releaseDigest,
       previousReleaseId: null,
       state: "active",
-      plan: null,
+      plan,
       records,
       operations: new Map(),
       verification: new Set(["integrity", "public-visibility", "governance", "must-pass"]),
     });
-    activeReleaseId = input.releaseId;
+    activeReleaseId = plan.candidateReleaseId;
   }
 
-  function beginCandidate(input: unknown, binding: string) {
+  function beginCandidate(input: unknown, binding: SiteContentRecoveryValidationBinding) {
     const plan = assertSiteContentSyncPlan(input);
     requireBinding("begin", plan, binding);
     const active = activeReleaseId ? releases.get(activeReleaseId) : null;
@@ -122,14 +120,9 @@ export function createSiteContentTransactionAuthority(options: { bindingVerifier
     publications.set(record.logicalId, record);
   }
 
-  function completeOperation(operationInput: Operation, binding: string) {
+  function completeOperation(operationInput: Operation) {
     const candidate = [...releases.values()].find((release) => release.state === "candidate");
     if (!candidate || !candidate.plan) throw new Error("Candidate is unavailable.");
-    requireBinding(
-      "complete",
-      { releaseId: candidate.id, generationId: candidate.plan.generationId, operation: operationInput },
-      binding,
-    );
     const operation = candidate.operations.get(operationInput.logicalId);
     if (!operation) throw new Error("Operation is undeclared.");
     if (
@@ -148,16 +141,17 @@ export function createSiteContentTransactionAuthority(options: { bindingVerifier
     operation.status = "complete";
   }
 
-  function verifyCandidate(releaseId: string, recoveryEvidenceDigest: string, binding: string) {
-    const candidate = releases.get(releaseId);
-    if (
-      !candidate?.plan ||
-      candidate.state !== "candidate" ||
-      candidate.plan.recoveryEvidenceDigest !== recoveryEvidenceDigest
-    ) {
+  function verifyCandidate(
+    input: { plan: unknown; verificationEvidence: unknown },
+    binding: SiteContentRecoveryValidationBinding,
+  ) {
+    const plan = assertSiteContentSyncPlan(input.plan);
+    const candidate = releases.get(plan.candidateReleaseId);
+    if (!candidate?.plan || candidate.state !== "candidate" || candidate.plan.planDigest !== plan.planDigest) {
       throw new Error("Candidate verification evidence binding mismatch.");
     }
-    requireBinding("verify", { releaseId, recoveryEvidenceDigest, planDigest: candidate.plan.planDigest }, binding);
+    assertSiteContentReleaseVerificationEvidence(input.verificationEvidence, plan);
+    requireBinding("verify", input, binding);
     candidate.verification = new Set(["integrity", "public-visibility", "governance", "must-pass"]);
   }
 
@@ -178,24 +172,41 @@ export function createSiteContentTransactionAuthority(options: { bindingVerifier
     );
   }
 
+  function partition(domain: string) {
+    if (!activeReleaseId) return { activeReleaseId: null, changeEpoch: 0, state: "unavailable" as const, records: [] };
+    const updating = [...releases.values()].some(
+      (release) => release.state === "candidate" && release.previousReleaseId === activeReleaseId,
+    );
+    return {
+      activeReleaseId,
+      changeEpoch: [...releases.values()].filter(
+        (release) => release.state === "active" || release.state === "retained",
+      ).length,
+      state: updating ? ("updating" as const) : ("current" as const),
+      records: read(domain),
+    };
+  }
+
   function activate(
     releaseId: string,
-    receipt: {
-      resource: { releaseId: string; releaseDigest: string };
-      previousResource: { releaseId: string };
-      stateDigest: string;
-    },
-    binding: string,
+    input: { action: "activate"; evidence: unknown; activation: unknown },
+    binding: SiteContentRecoveryValidationBinding,
   ) {
     const candidate = releases.get(releaseId);
     const previous = activeReleaseId ? releases.get(activeReleaseId) : null;
     if (!candidate?.plan || candidate.state !== "candidate" || !previous)
       throw new Error("Candidate activation state mismatch.");
-    requireBinding("activate", { releaseId, receipt }, binding);
+    requireBinding("activate", input, binding);
+    const receipt = input.activation as {
+      resource: { releaseId: string; releaseDigest: string };
+      previousResource: { releaseId: string; releaseDigest: string };
+      stateDigest: string;
+    };
     if (
       receipt.resource.releaseId !== candidate.id ||
       receipt.resource.releaseDigest !== candidate.releaseDigest ||
       receipt.previousResource.releaseId !== previous.id ||
+      receipt.previousResource.releaseDigest !== previous.releaseDigest ||
       receipt.stateDigest !== candidate.plan.dynamicStateDigest ||
       [...candidate.operations.values()].some((operation) => operation.status !== "complete") ||
       candidate.verification.size !== 4 ||
@@ -208,5 +219,14 @@ export function createSiteContentTransactionAuthority(options: { bindingVerifier
     activeReleaseId = candidate.id;
   }
 
-  return Object.freeze({ adoptBaseline, beginCandidate, publish, completeOperation, verifyCandidate, read, activate });
+  return Object.freeze({
+    adoptBaseline,
+    beginCandidate,
+    publish,
+    completeOperation,
+    verifyCandidate,
+    read,
+    partition,
+    activate,
+  });
 }
