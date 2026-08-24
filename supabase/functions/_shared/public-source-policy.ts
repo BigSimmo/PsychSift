@@ -251,37 +251,49 @@ class IncrementalProtectedPublicSourceScanner {
       const codePoint = value.codePointAt(index);
       if (codePoint === undefined) break;
       const character = String.fromCodePoint(codePoint);
-      if (this.entityActive) {
-        emitMatcherCodePoint(this.entitySpeculativeState, codePoint);
-        this.advanceEntityCheckpoints(codePoint);
-        const consumedBefore = this.entityConsumed;
-        if (consumedBefore === 1 && codePoint === 0x23) this.entityNumeric = true;
-        this.prepareEntityCallback();
-        const consumed = this.entityDecoder.write(character, 0);
-        if (consumed < 0) {
-          this.entityConsumed += character.length;
-          if (!this.entityNumeric) this.probeEntityCheckpoint();
-          index += character.length;
-          continue;
-        }
-        this.entityActive = false;
-        this.entityConsumed = 0;
-        if (consumed === 0) {
-          copyMatcherState(this.matcherState, this.entitySpeculativeState);
-          index += character.length;
-        } else {
-          const checkpointIndex = this.findEntityCheckpoint(consumed);
-          if (checkpointIndex < 0) throw new Error("protected_identity_entity_checkpoint_missing");
-          if (!this.entityCallbackCheckpointWasExisting && consumed < consumedBefore) {
-            throw new Error("protected_identity_entity_checkpoint_incomplete");
+      let reconsume = true;
+      let reconsumeCount = 0;
+      while (reconsume) {
+        reconsume = false;
+        reconsumeCount += 1;
+        if (reconsumeCount > 2) throw new Error("protected_identity_lexical_reconsume_limit");
+        if (this.entityActive) {
+          emitMatcherCodePoint(this.entitySpeculativeState, codePoint);
+          this.advanceEntityCheckpoints(codePoint);
+          const consumedBefore = this.entityConsumed;
+          if (consumedBefore === 1 && codePoint === 0x23) this.entityNumeric = true;
+          this.prepareEntityCallback();
+          const consumed = this.entityDecoder.write(character, 0);
+          if (consumed < 0) {
+            this.entityConsumed += character.length;
+            if (!this.entityNumeric) this.probeEntityCheckpoint();
+            index += character.length;
+            continue;
           }
-          copyMatcherState(this.matcherState, this.entityCheckpointStates[checkpointIndex]);
-          if (this.entityCallbackCheckpointWasExisting || consumed > consumedBefore) index += character.length;
+          this.entityActive = false;
+          this.entityConsumed = 0;
+          if (consumed === 0) {
+            copyMatcherState(this.matcherState, this.entitySpeculativeState);
+            reconsume = codePoint === 0x26 || codePoint === 0x3c;
+            if (!reconsume) index += character.length;
+          } else {
+            const checkpointIndex = this.findEntityCheckpoint(consumed);
+            if (checkpointIndex < 0) throw new Error("protected_identity_entity_checkpoint_missing");
+            if (!this.entityCallbackCheckpointWasExisting && consumed < consumedBefore) {
+              throw new Error("protected_identity_entity_checkpoint_incomplete");
+            }
+            copyMatcherState(this.matcherState, this.entityCheckpointStates[checkpointIndex]);
+            if (this.entityCallbackCheckpointWasExisting || consumed > consumedBefore) {
+              index += character.length;
+            } else {
+              reconsume = true;
+            }
+          }
+        } else {
+          reconsume = this.consumeRawCodePoint(codePoint);
+          if (!reconsume) index += character.length;
         }
-        continue;
       }
-      index += character.length;
-      this.consumeRawCodePoint(codePoint);
     }
   }
 
@@ -354,17 +366,17 @@ class IncrementalProtectedPublicSourceScanner {
     };
   }
 
-  private consumeRawCodePoint(codePoint: number): void {
+  private consumeRawCodePoint(codePoint: number): boolean {
     if (this.lexicalMode !== HtmlLexicalMode.Text) {
       emitMatcherCodePoint(this.markupSpeculativeState, codePoint);
     }
     if (this.lexicalMode === HtmlLexicalMode.Comment) {
       if (codePoint === 0x2d) this.lexicalMode = HtmlLexicalMode.CommentDash;
-      return;
+      return false;
     }
     if (this.lexicalMode === HtmlLexicalMode.CommentDash) {
       this.lexicalMode = codePoint === 0x2d ? HtmlLexicalMode.CommentDoubleDash : HtmlLexicalMode.Comment;
-      return;
+      return false;
     }
     if (this.lexicalMode === HtmlLexicalMode.CommentDoubleDash) {
       if (codePoint === 0x3e) {
@@ -373,38 +385,38 @@ class IncrementalProtectedPublicSourceScanner {
       } else if (codePoint !== 0x2d) {
         this.lexicalMode = HtmlLexicalMode.Comment;
       }
-      return;
+      return false;
     }
     if (this.lexicalMode === HtmlLexicalMode.CommentStartDash) {
       if (codePoint === 0x2d) this.lexicalMode = HtmlLexicalMode.Comment;
-      else this.commitInvalidMarkup();
-      return;
+      else return this.commitInvalidMarkup(codePoint);
+      return false;
     }
     if (this.lexicalMode === HtmlLexicalMode.MarkupDeclaration) {
       if (codePoint === 0x2d) this.lexicalMode = HtmlLexicalMode.CommentStartDash;
       else if (isAsciiLetter(codePoint) || codePoint === 0x5b) this.lexicalMode = HtmlLexicalMode.Tag;
-      else this.commitInvalidMarkup();
-      return;
+      else return this.commitInvalidMarkup(codePoint);
+      return false;
     }
     if (this.lexicalMode === HtmlLexicalMode.EndTagOpen) {
       if (isAsciiLetter(codePoint)) this.lexicalMode = HtmlLexicalMode.Tag;
-      else this.commitInvalidMarkup();
-      return;
+      else return this.commitInvalidMarkup(codePoint);
+      return false;
     }
     if (this.lexicalMode === HtmlLexicalMode.TagOpen) {
       if (codePoint === 0x21) this.lexicalMode = HtmlLexicalMode.MarkupDeclaration;
       else if (codePoint === 0x2f) this.lexicalMode = HtmlLexicalMode.EndTagOpen;
       else if (codePoint === 0x3f || isAsciiLetter(codePoint)) this.lexicalMode = HtmlLexicalMode.Tag;
-      else this.commitInvalidMarkup();
-      return;
+      else return this.commitInvalidMarkup(codePoint);
+      return false;
     }
     if (this.lexicalMode === HtmlLexicalMode.SingleQuotedTag) {
       if (codePoint === 0x27) this.lexicalMode = HtmlLexicalMode.Tag;
-      return;
+      return false;
     }
     if (this.lexicalMode === HtmlLexicalMode.DoubleQuotedTag) {
       if (codePoint === 0x22) this.lexicalMode = HtmlLexicalMode.Tag;
-      return;
+      return false;
     }
     if (this.lexicalMode === HtmlLexicalMode.Tag) {
       if (codePoint === 0x27) this.lexicalMode = HtmlLexicalMode.SingleQuotedTag;
@@ -413,13 +425,13 @@ class IncrementalProtectedPublicSourceScanner {
         this.lexicalMode = HtmlLexicalMode.Text;
         emitMatcherBoundary(this.matcherState);
       }
-      return;
+      return false;
     }
     if (codePoint === 0x3c) {
       copyMatcherState(this.markupSpeculativeState, this.matcherState);
       emitMatcherBoundary(this.markupSpeculativeState);
       this.lexicalMode = HtmlLexicalMode.TagOpen;
-      return;
+      return false;
     }
     if (codePoint === 0x26) {
       copyMatcherState(this.entityBaseState, this.matcherState);
@@ -430,14 +442,16 @@ class IncrementalProtectedPublicSourceScanner {
       this.entityDecoder.startEntity(DecodingMode.Legacy);
       this.entityActive = true;
       this.entityConsumed = 1;
-      return;
+      return false;
     }
     emitMatcherCodePoint(this.matcherState, codePoint);
+    return false;
   }
 
-  private commitInvalidMarkup(): void {
+  private commitInvalidMarkup(codePoint: number): boolean {
     copyMatcherState(this.matcherState, this.markupSpeculativeState);
     this.lexicalMode = HtmlLexicalMode.Text;
+    return codePoint === 0x26 || codePoint === 0x3c;
   }
 
   private prepareEntityCallback(): void {

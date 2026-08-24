@@ -16,6 +16,7 @@ import {
   buildPublicSourceStagingCandidate,
   checkPublicSourceChange,
   evaluateTrustedPageContent,
+  localPublicSourceContentIdentityVerdict,
   planAcquisition,
   validateAcquisitionUrl,
   validateRedirect,
@@ -494,6 +495,33 @@ describe("public source acquisition", () => {
       disposition: "quarantine",
       mainText: "",
     });
+  });
+
+  it("reconsumes adjacent entity and markup starters after malformed lexical fallback", () => {
+    for (const protectedText of [
+      "Health&&#100;irect",
+      "Health&&amp;direct",
+      "Health<<em>direct",
+      "Health<&#100;irect",
+    ]) {
+      expect(forbiddenPublicSourceIdentity(protectedText)).toBe("healthdirect");
+      expect(evaluateTrustedPageContent(`<main>${protectedText}</main>`)).toMatchObject({
+        eligibleForIndex: false,
+        disposition: "quarantine",
+        mainText: "",
+      });
+      expect(
+        localPublicSourceContentIdentityVerdict({
+          bytes: new TextEncoder().encode(protectedText),
+          contentType: "text/plain",
+          contentHash: `sha256:${"a".repeat(64)}`,
+        }),
+      ).toMatchObject({
+        accepted: false,
+        contentIdentity: "protected",
+        reasonCode: "protected_source_identity",
+      });
+    }
   });
 
   it("rejects non-identity transport encoding before scanning or staging", async () => {

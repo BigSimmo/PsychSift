@@ -386,6 +386,26 @@ describe("indexing-v3-agent behavior", () => {
     }
   });
 
+  it("reconsumes adjacent malformed starters across one-code-point worker pages", async () => {
+    for (const value of [
+      "Health&&#100;irect",
+      "Health&&amp;direct",
+      "Health<<em>direct",
+      "Health<&#100;irect",
+      "Health&&&&#100;irect",
+      "Health<<<<em>direct",
+    ]) {
+      const reads: Array<[number, number]> = [];
+      await expect(
+        scanProtectedPublicSourceChunkPages(async (offset, limit) => {
+          reads.push([offset, limit]);
+          return offset < value.length ? [{ content: value[offset] ?? "" }] : [];
+        }, 1),
+      ).resolves.toBe(true);
+      expect(reads).toEqual(Array.from({ length: value.length }, (_, index) => [index, 1]));
+    }
+  });
+
   it("keeps malformed lexical speculation fixed-size and content-free", () => {
     const entityState = protectedPublicSourceChunkPage([{ content: `Health&di${"x".repeat(100_000)}` }]).streamState;
     const markupState = protectedPublicSourceChunkPage([
@@ -397,16 +417,26 @@ describe("indexing-v3-agent behavior", () => {
       [{ content: "d".repeat(100_000) }],
       legacyCheckpointState,
     ).streamState.snapshot();
+    const repeatedStarterSnapshot = protectedPublicSourceChunkPage([
+      { content: `Health${"&".repeat(100_000)}` },
+    ]).streamState.snapshot();
     const entitySnapshot = entityState.snapshot();
     const markupSnapshot = markupState.snapshot();
 
     expect(Object.keys(entitySnapshot)).toEqual(Object.keys(markupSnapshot));
+    expect(Object.keys(entitySnapshot)).toEqual(Object.keys(repeatedStarterSnapshot));
     expect(Object.keys(checkpointBeforeExcess)).toEqual(Object.keys(checkpointAfterExcess));
     expect(checkpointBeforeExcess.entityCheckpointCount).toBeGreaterThan(0);
     expect(checkpointAfterExcess.entityCheckpointCount).toBeLessThanOrEqual(
       checkpointAfterExcess.entityCheckpointLimit,
     );
-    for (const snapshot of [entitySnapshot, markupSnapshot, checkpointBeforeExcess, checkpointAfterExcess]) {
+    for (const snapshot of [
+      entitySnapshot,
+      markupSnapshot,
+      repeatedStarterSnapshot,
+      checkpointBeforeExcess,
+      checkpointAfterExcess,
+    ]) {
       expect(Object.values(snapshot).every((value) => typeof value === "number" || typeof value === "boolean")).toBe(
         true,
       );
