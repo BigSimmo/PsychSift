@@ -186,13 +186,12 @@ describe("indexing-v3-agent behavior", () => {
     expect(policySource).not.toContain("jsdom");
   });
 
-  it("retains the concatenated 256-character stream across the real 500-row worker page boundary", async () => {
+  it("retains protected identity state across the real 500-row worker page boundary", async () => {
     const firstPage = Array.from({ length: 500 }, (_, index) => ({
       content: index === 498 ? "Australian" : index === 499 ? "Medicines" : "x",
     }));
     const first = protectedPublicSourceChunkPage(firstPage);
     expect(first.containsProtectedSourceContent).toBe(false);
-    expect(first.trailingContent).toContain("AustralianMedicines");
 
     const second = protectedPublicSourceChunkPage([{ content: "Handbook" }], first.streamState);
     expect(second.containsProtectedSourceContent).toBe(true);
@@ -224,7 +223,7 @@ describe("indexing-v3-agent behavior", () => {
     expect(scan).toContain("scanProtectedPublicSourceChunkPages(");
   });
 
-  it("retains bounded canonical state across arbitrarily long removable page separators", async () => {
+  it("retains bounded content-free scanner state across arbitrarily long removable separators", async () => {
     const firstPage = Array.from({ length: 500 }, (_, index) => ({
       content: index === 498 ? "Health" : index === 499 ? ".".repeat(300) : "x",
     }));
@@ -238,11 +237,15 @@ describe("indexing-v3-agent behavior", () => {
     });
 
     expect(protectedPublicSourceChunkContents([...firstPage, ...finalPage])).toBe(true);
-    expect(first.trailingContent).not.toContain("Health");
-    expect(first.streamState.rawSuffix).toHaveLength(256);
-    expect(first.streamState.compactSuffix.length).toBeLessThanOrEqual(64);
-    expect(first.streamState.spacedSuffix.length).toBeLessThanOrEqual(64);
-    expect(first.streamState.compactSuffix).toMatch(/health$/);
+    const snapshot = (first.streamState as unknown as { snapshot(): Record<string, unknown> }).snapshot();
+    const veryLong = protectedPublicSourceChunkPage([{ content: ".".repeat(100_000) }], first.streamState).streamState;
+    const veryLongSnapshot = (veryLong as unknown as { snapshot(): Record<string, unknown> }).snapshot();
+    expect(Object.keys(veryLongSnapshot)).toEqual(Object.keys(snapshot));
+    expect(
+      Object.values(veryLongSnapshot).every((value) => typeof value === "number" || typeof value === "boolean"),
+    ).toBe(true);
+    expect(JSON.stringify(veryLongSnapshot)).not.toContain("Health");
+    expect(JSON.stringify(veryLongSnapshot)).not.toContain(".");
     expect(second.containsProtectedSourceContent).toBe(true);
     expect(paged).toBe(true);
     expect(pageReads).toEqual([
@@ -280,6 +283,77 @@ describe("indexing-v3-agent behavior", () => {
       [0, 500],
       [500, 500],
     ]);
+  });
+
+  it("streams unlimited references, tags, and comments across worker pages", async () => {
+    const fixtures = [
+      [
+        Array.from({ length: 500 }, (_, index) => ({
+          content: index === 498 ? "Health&#" : index === 499 ? "0".repeat(300) : ".",
+        })),
+        [{ content: "100;irect" }],
+      ],
+      [
+        Array.from({ length: 500 }, (_, index) => ({
+          content:
+            index === 498 ? "Health<" : index === 499 ? `section data-safe="${"a".repeat(300)}>still-quoted"` : ".",
+        })),
+        [{ content: ">direct" }],
+      ],
+      [
+        Array.from({ length: 500 }, (_, index) => ({
+          content: index === 499 ? "Health<!--" : ".",
+        })),
+        Array.from({ length: 500 }, (_, index) => ({
+          content: index === 0 ? `${"a".repeat(300)}>still-comment` : ".",
+        })),
+        [{ content: "-->direct" }],
+      ],
+    ] as const;
+
+    for (const pages of fixtures) {
+      const reads: Array<[number, number]> = [];
+      expect(protectedPublicSourceChunkContents(pages.flat())).toBe(true);
+      await expect(
+        scanProtectedPublicSourceChunkPages(async (offset, limit) => {
+          reads.push([offset, limit]);
+          return pages[Math.floor(offset / 500)] ?? [];
+        }),
+      ).resolves.toBe(true);
+      expect(reads).toEqual(pages.map((_, index) => [index * 500, 500]));
+    }
+  });
+
+  it("continues named, numeric, and spaced-acronym identity state across three worker pages", async () => {
+    const fixtures = [
+      ["He&af", "r;", ".", "lthdirect"],
+      ["Health&#x6", "4", ".", "irect"],
+      ["e&ts", "cr;", "\u200b", "G"],
+    ] as const;
+
+    for (const [pageOneTail, pageTwoStart, pageTwoSeparator, pageThreeStart] of fixtures) {
+      const pages = [
+        Array.from({ length: 500 }, (_, index) => ({ content: index === 499 ? pageOneTail : "." })),
+        Array.from({ length: 500 }, (_, index) => ({
+          content: index === 0 ? pageTwoStart : pageTwoSeparator,
+        })),
+        [{ content: pageThreeStart }],
+      ];
+      const reads: Array<[number, number]> = [];
+
+      expect(protectedPublicSourceChunkContents(pages.flat())).toBe(true);
+      await expect(
+        scanProtectedPublicSourceChunkPages(async (offset, limit) => {
+          reads.push([offset, limit]);
+          return pages[Math.floor(offset / 500)] ?? [];
+        }),
+      ).resolves.toBe(true);
+      expect(reads).toEqual([
+        [0, 500],
+        [500, 500],
+        [1000, 500],
+      ]);
+    }
   });
 
   it("schedules agent retries until the attempt budget is exhausted", () => {
