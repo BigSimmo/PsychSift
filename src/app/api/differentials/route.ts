@@ -6,14 +6,8 @@ import {
   consumeSubjectApiRateLimit,
   rateLimitJsonResponse,
 } from "@/lib/api-rate-limit";
-import {
-  deriveGovernanceFromSnapshot,
-  rowGovernance,
-  rowToDifferentialRecord,
-  rowToPresentationWorkflow,
-  type DifferentialRecordKind,
-} from "@/lib/differential-records";
-import { fetchOwnerDifferentialRowsWithSeed, loadDifferentialSnapshot } from "@/lib/differential-seed";
+import { deriveGovernanceFromSnapshot, type DifferentialRecordKind } from "@/lib/differential-records";
+import { loadDifferentialSnapshot } from "@/lib/differential-seed";
 import {
   differentialRecords,
   rankDifferentialRecords,
@@ -25,13 +19,12 @@ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
 import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
 import { jsonError } from "@/lib/http";
 import { publicAccessContext } from "@/lib/public-api-access";
+import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
 import { parseRequestQuery, queryInteger } from "@/lib/validation/query";
 
 export const runtime = "nodejs";
-
-const DIFFERENTIAL_MAX_RECORDS = 500;
 
 const differentialListQuerySchema = z.object({
   kind: z.enum(["presentation", "diagnosis"]).optional().default("diagnosis"),
@@ -111,37 +104,31 @@ export async function GET(request: Request) {
       return rateLimitJsonResponse("Differential requests are rate limited. Try again shortly.", rateLimit);
     }
 
-    if (!access.ownerId) {
+    // Authentication affects only rate-limit identity. Every reader receives
+    // the same canonical public differential payload.
+    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
+      domain: "differentials",
+      recordKind: kind,
+    });
+    if (publicSiteContent) {
+      const values = publicSiteContent.records.map((entry) => entry.payload);
       return differentialResponse(
         {
-          ...publicDifferentialPayload(kind, q, limit),
-          publicAccess: true,
+          [kind === "presentation" ? "presentations" : "records"]: values,
+          total: values.length,
+          governance: Object.fromEntries(
+            publicSiteContent.records.map((entry) => [entry.logical_id, entry.governance]),
+          ),
+          release: {
+            id: publicSiteContent.activeReleaseId,
+            epoch: publicSiteContent.changeEpoch,
+            state: publicSiteContent.state,
+          },
         },
-        { request, fixture: true },
+        { request },
       );
     }
-
-    const rows = await fetchOwnerDifferentialRowsWithSeed(supabase, access.ownerId, kind, DIFFERENTIAL_MAX_RECORDS);
-
-    if (kind === "presentation") {
-      const presentations = rows.map(rowToPresentationWorkflow);
-      const ranked = q ? rankPresentationWorkflows(presentations, q, limit) : null;
-      return differentialResponse({
-        presentations: ranked ? ranked.map((match) => match.workflow) : presentations,
-        matches: ranked ? presentationMatchesPayload(ranked) : undefined,
-        total: rows.length,
-        governance: Object.fromEntries(rows.map((row) => [row.slug, rowGovernance(row)])),
-      });
-    }
-
-    const records = rows.map(rowToDifferentialRecord);
-    const ranked = q ? rankDifferentialRecords(records, q, limit) : null;
-    return differentialResponse({
-      records: ranked ? ranked.map((match) => match.record) : records,
-      matches: ranked ? recordMatchesPayload(ranked) : undefined,
-      total: rows.length,
-      governance: Object.fromEntries(rows.map((row) => [row.slug, rowGovernance(row)])),
-    });
+    return differentialResponse(publicDifferentialPayload(kind, q, limit), { request, fixture: true });
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return unauthorizedResponse();

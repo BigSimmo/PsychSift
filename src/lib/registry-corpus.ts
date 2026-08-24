@@ -406,7 +406,11 @@ async function reconcileRegistryGeneratedLabels(
   if (upsertError) throw new Error(`Registry intent label upsert failed: ${upsertError.message}`);
 }
 
-/** Registry corpus embedding enabled. */
+/**
+ * Temporary compatibility flag for explicit legacy maintenance only.
+ * Public request/save paths use the durable site-content publication outbox
+ * and must never invoke these best-effort embedding helpers.
+ */
 export function registryCorpusEmbeddingEnabled() {
   return env.RAG_REGISTRY_CORPUS_EMBEDDING === true;
 }

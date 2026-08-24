@@ -11,14 +11,9 @@ import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
 import { jsonError } from "@/lib/http";
 import { publicAccessContext } from "@/lib/public-api-access";
 import { getFormRecord } from "@/lib/forms";
-import {
-  deriveGovernanceColumns,
-  normalizeRegistrySlug,
-  rowGovernance,
-  type RegistryRecordRow,
-} from "@/lib/registry-records";
-import { mergeRegistryRecordWithDefault } from "@/lib/registry-seed";
+import { deriveGovernanceColumns, normalizeRegistrySlug } from "@/lib/registry-records";
 import { getServiceRecord } from "@/lib/services";
+import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
 import { parseRequestQuery } from "@/lib/validation/query";
@@ -88,63 +83,34 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       return rateLimitJsonResponse("Registry requests are rate limited. Try again shortly.", rateLimit);
     }
 
-    if (!access.ownerId) {
-      const payload = publicRegistryDetailPayload(kind, normalizedSlug);
-      if (!payload) return notFoundResponse(normalizedSlug);
+    // Authentication affects only rate-limit identity. The canonical public
+    // record and governance metadata are identical for every reader.
+    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
+      domain: kind === "form" ? "forms" : "services",
+      recordKind: kind,
+      slug: normalizedSlug,
+    });
+    if (publicSiteContent) {
+      const publication = publicSiteContent.records[0];
+      if (!publication) return notFoundResponse(normalizedSlug);
       return registryResponse(
         {
-          ...payload,
+          record: publication.payload,
+          governance: publication.governance,
+          linkedDocuments: [],
+          release: {
+            id: publicSiteContent.activeReleaseId,
+            epoch: publicSiteContent.changeEpoch,
+            state: publicSiteContent.state,
+          },
           publicAccess: true,
         },
-        { request, fixture: true },
+        { request },
       );
     }
-
-    const fetchRecord = async () => {
-      const { data, error } = await supabase
-        .from("clinical_registry_records")
-        .select("*")
-        .eq("owner_id", access.ownerId)
-        .eq("kind", kind)
-        .eq("slug", normalizedSlug)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return (data as RegistryRecordRow | null) ?? null;
-    };
-
-    const row = await fetchRecord();
-    if (!row) {
-      const payload = publicRegistryDetailPayload(kind, normalizedSlug);
-      if (!payload) return notFoundResponse(normalizedSlug);
-      return registryResponse({ ...payload, sharedCatalog: true });
-    }
-
-    const { data: links, error: linksError } = await supabase
-      .from("clinical_registry_record_sources")
-      .select("document_id, note")
-      .eq("owner_id", access.ownerId)
-      .eq("record_id", row.id);
-    if (linksError) throw new Error(linksError.message);
-
-    let linkedDocuments: Array<{ id: string; title: string; file_name: string; status: string }> = [];
-    const documentIds = (links ?? []).map((link) => link.document_id);
-    if (documentIds.length > 0) {
-      const { data: documents, error: documentsError } = await supabase
-        .from("documents")
-        .select("id, title, file_name, status")
-        .eq("owner_id", access.ownerId)
-        .in("id", documentIds);
-      if (documentsError) throw new Error(documentsError.message);
-      linkedDocuments = (documents ?? []) as typeof linkedDocuments;
-    }
-
-    const record = mergeRegistryRecordWithDefault(kind, row);
-
-    return registryResponse({
-      record,
-      governance: rowGovernance(row),
-      linkedDocuments,
-    });
+    const publicSiteContentPayload = publicRegistryDetailPayload(kind, normalizedSlug);
+    if (!publicSiteContentPayload) return notFoundResponse(normalizedSlug);
+    return registryResponse({ ...publicSiteContentPayload, publicAccess: true }, { request, fixture: true });
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return unauthorizedResponse();

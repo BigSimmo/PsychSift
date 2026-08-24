@@ -326,7 +326,7 @@ describe("medications API", () => {
     expect(client.auth.getUser).not.toHaveBeenCalled();
   });
 
-  it("scopes medication queries to the authenticated owner", async () => {
+  it("excludes authenticated owner rows from the canonical public medication result", async () => {
     const client = createSupabaseMock((call) => (call.table === "medication_records" ? ok([medicationRow()]) : ok([])));
     mockRuntime(client);
     const { GET } = await import("../src/app/api/medications/route");
@@ -341,8 +341,7 @@ describe("medications API", () => {
     expectPrivateCache(response);
     expect(payload.records[0]?.slug).toBe("acamprosate");
     expect(payload.matches?.[0]?.medication.slug).toBe("acamprosate");
-    expect(client.calls.some((call) => call.table === "medication_records")).toBe(true);
-    expect(client.calls.some((call) => call.filters.some((filter) => filter.column === "owner_id"))).toBe(true);
+    expect(client.calls.some((call) => call.table === "medication_records")).toBe(false);
   });
 
   it("serves curated public detail for unauthenticated slug requests", async () => {
@@ -382,7 +381,7 @@ describe("medications API", () => {
     expect(client.from).not.toHaveBeenCalled();
   });
 
-  it("serves a seeded medication detail when registry corpus embedding fails after the row upsert", async () => {
+  it("serves canonical medication detail without invoking the legacy embedding hook", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     let stored: Array<Record<string, unknown>> = [];
     const client = createSupabaseMock((call) => {
@@ -408,13 +407,10 @@ describe("medications API", () => {
     expect(response.status).toBe(200);
     expect(payload.record.slug).toBe("acamprosate");
     expect(payload.record.name).toBe("Acamprosate");
-    expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining("[medications] registry corpus sync failed"),
-      expect.objectContaining({ name: "Error", message: "embedding unavailable" }),
-    );
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
-  it("returns 404 for an unknown medication slug during a corpus embedding outage", async () => {
+  it("returns 404 for an unknown medication slug without invoking the legacy embedding hook", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     let stored: Array<Record<string, unknown>> = [];
     const client = createSupabaseMock((call) => {
@@ -435,9 +431,6 @@ describe("medications API", () => {
     });
 
     expect(response.status).toBe(404);
-    expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining("[medications] registry corpus sync failed"),
-      expect.objectContaining({ name: "Error", message: "embedding unavailable" }),
-    );
+    expect(consoleError).not.toHaveBeenCalled();
   });
 });

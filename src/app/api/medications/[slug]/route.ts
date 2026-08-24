@@ -9,16 +9,9 @@ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
 import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
 import { jsonError } from "@/lib/http";
 import { getMedicationRecord } from "@/lib/medication-snapshot";
-import { ensureMedicationsSeeded } from "@/lib/medication-seed";
-import { safeErrorLogDetails } from "@/lib/privacy";
-import {
-  deriveGovernanceFromSections,
-  normalizeMedicationSlug,
-  rowGovernance,
-  rowToMedicationRecord,
-  type MedicationRecordRow,
-} from "@/lib/medication-records";
+import { deriveGovernanceFromSections, normalizeMedicationSlug } from "@/lib/medication-records";
 import { publicAccessContext } from "@/lib/public-api-access";
+import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
 
@@ -84,54 +77,30 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       return rateLimitJsonResponse("Medication requests are rate limited. Try again shortly.", rateLimit);
     }
 
-    if (!access.ownerId) {
-      const payload = publicMedicationDetailPayload(normalizedSlug);
-      if (!payload) return notFoundResponse(normalizedSlug);
+    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
+      domain: "medications",
+      slug: normalizedSlug,
+    });
+    if (publicSiteContent) {
+      const publication = publicSiteContent.records[0];
+      if (!publication) return notFoundResponse(normalizedSlug);
       return medicationResponse(
         {
-          ...payload,
+          record: publication.payload,
+          governance: publication.governance,
+          release: {
+            id: publicSiteContent.activeReleaseId,
+            epoch: publicSiteContent.changeEpoch,
+            state: publicSiteContent.state,
+          },
           publicAccess: true,
         },
-        { request, fixture: true },
+        { request },
       );
     }
-
-    const fetchRecord = async () => {
-      const { data, error } = await supabase
-        .from("medication_records")
-        .select("*")
-        .eq("owner_id", access.ownerId)
-        .eq("slug", normalizedSlug)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return (data as MedicationRecordRow | null) ?? null;
-    };
-
-    let row = await fetchRecord();
-    if (!row) {
-      const { count, error: countError } = await supabase
-        .from("medication_records")
-        .select("id", { count: "exact", head: true })
-        .eq("owner_id", access.ownerId);
-      if (countError) throw new Error(countError.message);
-      if ((count ?? 0) === 0) {
-        let seedError: unknown = null;
-        try {
-          await ensureMedicationsSeeded(supabase, access.ownerId);
-        } catch (error) {
-          seedError = error;
-          console.error("[medications] auto-seed failed", safeErrorLogDetails(error));
-        }
-        row = await fetchRecord();
-        if (!row && seedError) throw seedError;
-      }
-    }
-    if (!row) return notFoundResponse(normalizedSlug);
-
-    return medicationResponse({
-      record: rowToMedicationRecord(row),
-      governance: rowGovernance(row),
-    });
+    const publicSiteContentPayload = publicMedicationDetailPayload(normalizedSlug);
+    if (!publicSiteContentPayload) return notFoundResponse(normalizedSlug);
+    return medicationResponse({ ...publicSiteContentPayload, publicAccess: true }, { request, fixture: true });
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return unauthorizedResponse();

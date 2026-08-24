@@ -5,10 +5,6 @@ import { safeErrorLogDetails } from "@/lib/privacy";
 
 type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>;
 
-function loadRegistryCorpus() {
-  return import("@/lib/registry-corpus");
-}
-
 type OwnerMedicationFetchOptions = {
   signal?: AbortSignal;
   select?: string;
@@ -35,11 +31,7 @@ export async function ensureMedicationsSeeded(
   if (error) throw new Error(`Medication seed failed: ${error.message}`);
   invalidateOwnerCatalogueCache({ ownerId, kind: "medication", preserveSignal: options.signal });
   throwIfAborted(options.signal);
-  const seededRows = (data ?? []) as MedicationRecordRow[];
-  const { bestEffortSyncMedicationRows } = await loadRegistryCorpus();
-  await bestEffortSyncMedicationRows(supabase, seededRows);
-  throwIfAborted(options.signal);
-  return seededRows;
+  return (data ?? []) as MedicationRecordRow[];
 }
 
 export { defaultMedicationRecords };

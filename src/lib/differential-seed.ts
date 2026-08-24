@@ -4,10 +4,6 @@ import { safeErrorLogDetails } from "@/lib/privacy";
 
 type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>;
 
-function loadRegistryCorpus() {
-  return import("@/lib/registry-corpus");
-}
-
 export { loadDifferentialSnapshot } from "@/lib/differential-fixtures";
 
 export async function ensureDifferentialsSeeded(
@@ -20,10 +16,7 @@ export async function ensureDifferentialsSeeded(
     .upsert(rows, { onConflict: "owner_id,kind,slug" })
     .select("*");
   if (error) throw new Error(`Differential seed failed: ${error.message}`);
-  const seededRows = (data ?? []) as DifferentialRecordRow[];
-  const { bestEffortSyncDifferentialRows } = await loadRegistryCorpus();
-  await bestEffortSyncDifferentialRows(supabase, seededRows);
-  return seededRows;
+  return (data ?? []) as DifferentialRecordRow[];
 }
 
 export async function fetchOwnerDifferentialRowsWithSeed(

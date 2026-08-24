@@ -18,10 +18,6 @@ import type { ServiceRecord } from "@/lib/services";
 // client into `ensureRegistrySeeded`.
 type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>;
 
-function loadRegistryCorpus() {
-  return import("@/lib/registry-corpus");
-}
-
 type OwnerRegistryFetchOptions = {
   signal?: AbortSignal;
   select?: string;
@@ -178,11 +174,7 @@ export async function ensureRegistrySeeded(
   if (error) throw new Error(`Registry seed failed: ${error.message}`);
   invalidateOwnerCatalogueCache({ ownerId, kind, preserveSignal: options.signal });
   throwIfAborted(options.signal);
-  const seededRows = (data ?? []) as RegistryRecordRow[];
-  const { bestEffortSyncClinicalRegistryRows } = await loadRegistryCorpus();
-  await bestEffortSyncClinicalRegistryRows(supabase, seededRows);
-  throwIfAborted(options.signal);
-  return seededRows;
+  return (data ?? []) as RegistryRecordRow[];
 }
 
 /**

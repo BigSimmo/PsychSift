@@ -5,21 +5,14 @@ import {
   consumeSubjectApiRateLimit,
   rateLimitJsonResponse,
 } from "@/lib/api-rate-limit";
-import {
-  deriveGovernanceFromSnapshot,
-  normalizeDifferentialSlug,
-  rowGovernance,
-  rowToDifferentialRecord,
-  rowToPresentationWorkflow,
-  type DifferentialRecordRow,
-} from "@/lib/differential-records";
-import { ensureDifferentialsSeeded, loadDifferentialSnapshot } from "@/lib/differential-seed";
+import { deriveGovernanceFromSnapshot, normalizeDifferentialSlug } from "@/lib/differential-records";
+import { loadDifferentialSnapshot } from "@/lib/differential-seed";
 import { getDifferentialRecord, getPresentationWorkflow } from "@/lib/differentials";
 import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
 import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
 import { jsonError } from "@/lib/http";
-import { safeErrorLogDetails } from "@/lib/privacy";
 import { publicAccessContext } from "@/lib/public-api-access";
+import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
 
@@ -81,87 +74,46 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       return rateLimitJsonResponse("Differential requests are rate limited. Try again shortly.", rateLimit);
     }
 
-    if (!access.ownerId) {
-      const snapshot = loadDifferentialSnapshot();
-      const workflow = getPresentationWorkflow(normalizedSlug);
-      if (!workflow) return notFoundResponse(normalizedSlug);
-      const governance = deriveGovernanceFromSnapshot(snapshot);
-      const candidates = workflow.candidates.flatMap((candidate) => {
-        const record = getDifferentialRecord(candidate.slug);
-        if (!record) return [];
-        return [{ ...candidate, record }];
-      });
+    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
+      domain: "differentials",
+      recordKind: "presentation",
+      slug: normalizedSlug,
+    });
+    if (publicSiteContent) {
+      const publication = publicSiteContent.records[0];
+      if (!publication) return notFoundResponse(normalizedSlug);
       return differentialResponse(
         {
-          workflow,
-          candidates,
-          governance: { sourceStatus: governance.source_status, validationStatus: governance.validation_status },
-          publicAccess: true,
+          workflow: publication.payload,
+          candidates: [],
+          governance: publication.governance,
+          release: {
+            id: publicSiteContent.activeReleaseId,
+            epoch: publicSiteContent.changeEpoch,
+            state: publicSiteContent.state,
+          },
         },
-        { request, fixture: true },
+        { request },
       );
     }
-
-    const fetchPresentation = async () => {
-      const { data, error } = await supabase
-        .from("differential_records")
-        .select("*")
-        .eq("owner_id", access.ownerId)
-        .eq("kind", "presentation")
-        .eq("slug", normalizedSlug)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return (data as DifferentialRecordRow | null) ?? null;
-    };
-
-    let row = await fetchPresentation();
-    if (!row) {
-      const { count, error: countError } = await supabase
-        .from("differential_records")
-        .select("id", { count: "exact", head: true })
-        .eq("owner_id", access.ownerId);
-      if (countError) throw new Error(countError.message);
-      if ((count ?? 0) === 0) {
-        let seedError: unknown = null;
-        try {
-          await ensureDifferentialsSeeded(supabase, access.ownerId);
-        } catch (error) {
-          seedError = error;
-          console.error("[differentials] auto-seed failed", safeErrorLogDetails(error));
-        }
-        row = await fetchPresentation();
-        if (!row && seedError) throw seedError;
-      }
-    }
-    if (!row) return notFoundResponse(normalizedSlug);
-
-    const workflow = rowToPresentationWorkflow(row);
-    const candidateSlugs = workflow.candidates.map((candidate) => candidate.slug);
-    const { data: diagnosisRows, error: diagnosisError } = await supabase
-      .from("differential_records")
-      .select("*")
-      .eq("owner_id", access.ownerId)
-      .eq("kind", "diagnosis")
-      .in("slug", candidateSlugs);
-    if (diagnosisError) throw new Error(diagnosisError.message);
-
-    const diagnosisBySlug = new Map(
-      ((diagnosisRows ?? []) as DifferentialRecordRow[]).map((diagnosisRow) => [
-        diagnosisRow.slug,
-        rowToDifferentialRecord(diagnosisRow),
-      ]),
-    );
+    // Resolve the canonical public presentation regardless of reader identity.
+    const snapshot = loadDifferentialSnapshot();
+    const workflow = getPresentationWorkflow(normalizedSlug);
+    if (!workflow) return notFoundResponse(normalizedSlug);
+    const governance = deriveGovernanceFromSnapshot(snapshot);
     const candidates = workflow.candidates.flatMap((candidate) => {
-      const record = diagnosisBySlug.get(candidate.slug) ?? getDifferentialRecord(candidate.slug);
+      const record = getDifferentialRecord(candidate.slug);
       if (!record) return [];
       return [{ ...candidate, record }];
     });
-
-    return differentialResponse({
-      workflow,
-      candidates,
-      governance: rowGovernance(row),
-    });
+    return differentialResponse(
+      {
+        workflow,
+        candidates,
+        governance: { sourceStatus: governance.source_status, validationStatus: governance.validation_status },
+      },
+      { request, fixture: true },
+    );
   } catch (error) {
     if (error instanceof AuthenticationError) {
       return unauthorizedResponse();

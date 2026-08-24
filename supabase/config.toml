@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.ingestion-worker]
 verify_jwt = true
+
+[functions.site-content-sync]
+verify_jwt = true

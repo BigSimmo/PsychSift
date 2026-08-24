@@ -141,7 +141,7 @@ afterEach(() => {
 });
 
 describe("differentials API routes", () => {
-  it("builds owner diagnosis detail context from the owner's current catalog rows", async () => {
+  it("excludes owner diagnosis rows from canonical public detail context", async () => {
     const diagnosis = {
       slug: "owner-diagnosis",
       title: "Owner diagnosis",
@@ -183,8 +183,8 @@ describe("differentials API routes", () => {
     mockRuntime(client);
     const { GET } = await import("../src/app/api/differentials/[slug]/route");
 
-    const response = await GET(authenticatedRequest("/api/differentials/owner-diagnosis?kind=diagnosis"), {
-      params: Promise.resolve({ slug: "owner-diagnosis" }),
+    const response = await GET(authenticatedRequest("/api/differentials/delirium?kind=diagnosis"), {
+      params: Promise.resolve({ slug: "delirium" }),
     });
     const payload = (await response.json()) as {
       detailContext?: {
@@ -198,11 +198,8 @@ describe("differentials API routes", () => {
 
     expect(response.status).toBe(200);
     expectPrivateCache(response);
-    expect(payload.detailContext?.knownRelatedSlugs).toEqual([]);
-    expect(payload.detailContext?.relatedMapDetails).toEqual({});
-    expect(payload.detailContext?.termLinks).toEqual({});
-    expect(payload.detailContext?.overlapLinks).toEqual({});
-    expect(payload.detailContext?.comparePresentation).toBeNull();
+    expect(payload.detailContext?.knownRelatedSlugs).toContain("akathisia");
+    expect(client.from).not.toHaveBeenCalled();
   });
 
   it("serves delirium from snapshot in demo mode", async () => {
@@ -309,7 +306,7 @@ describe("differentials API routes", () => {
     expect(payload.presentations?.length).toBeLessThanOrEqual(5);
   });
 
-  it("serves seeded differential records when registry corpus embedding fails after the row upsert", async () => {
+  it("serves canonical differential records without invoking the legacy embedding hook", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     let stored: Array<Record<string, unknown>> = [];
     const client = createSupabaseMock((call) => {
@@ -329,10 +326,7 @@ describe("differentials API routes", () => {
     expect(response.status).toBe(200);
     expect(payload.total ?? 0).toBeGreaterThan(0);
     expect(payload.records?.length).toBeGreaterThan(0);
-    expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining("[differentials] registry corpus sync failed"),
-      expect.objectContaining({ name: "Error", message: "embedding unavailable" }),
-    );
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -342,29 +336,29 @@ describe("differentials API routes", () => {
       "/api/differentials/presentations/unknown-presentation",
       "../src/app/api/differentials/presentations/[slug]/route",
     ],
-  ])("returns 404 for an unknown %s slug during a corpus embedding outage", async (kind, path, modulePath) => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    let stored: Array<Record<string, unknown>> = [];
-    const slug = kind === "diagnosis" ? "unknown-diagnosis" : "unknown-presentation";
-    const client = createSupabaseMock((call) => {
-      if (call.table !== "differential_records") return ok([]);
-      if (call.head) return { data: null, error: null, count: stored.length };
-      if (call.upsert) {
-        stored = (call.upsertRows ?? []) as Array<Record<string, unknown>>;
-        return ok(stored);
-      }
-      if (call.maybeSingle) return ok(stored.find((row) => row.kind === kind && row.slug === slug) ?? null);
-      return ok(stored.filter((row) => row.kind === kind));
-    });
-    mockRuntime(client, { registryEmbeddingError: new Error("embedding unavailable") });
-    const { GET } = await import(modulePath);
+  ])(
+    "returns 404 for an unknown %s slug without invoking the legacy embedding hook",
+    async (kind, path, modulePath) => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      let stored: Array<Record<string, unknown>> = [];
+      const slug = kind === "diagnosis" ? "unknown-diagnosis" : "unknown-presentation";
+      const client = createSupabaseMock((call) => {
+        if (call.table !== "differential_records") return ok([]);
+        if (call.head) return { data: null, error: null, count: stored.length };
+        if (call.upsert) {
+          stored = (call.upsertRows ?? []) as Array<Record<string, unknown>>;
+          return ok(stored);
+        }
+        if (call.maybeSingle) return ok(stored.find((row) => row.kind === kind && row.slug === slug) ?? null);
+        return ok(stored.filter((row) => row.kind === kind));
+      });
+      mockRuntime(client, { registryEmbeddingError: new Error("embedding unavailable") });
+      const { GET } = await import(modulePath);
 
-    const response = await GET(authenticatedRequest(path), { params: Promise.resolve({ slug }) });
+      const response = await GET(authenticatedRequest(path), { params: Promise.resolve({ slug }) });
 
-    expect(response.status).toBe(404);
-    expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining("[differentials] registry corpus sync failed"),
-      expect.objectContaining({ name: "Error", message: "embedding unavailable" }),
-    );
-  });
+      expect(response.status).toBe(404);
+      expect(consoleError).not.toHaveBeenCalled();
+    },
+  );
 });

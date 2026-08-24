@@ -2353,6 +2353,59 @@ export type Database = {
       };
     };
     Functions: {
+      activate_site_content_release: {
+        Args: { p_expected_release_digest: string; p_recovery_digest: string; p_release_id: string };
+        Returns: Json;
+      };
+      claim_site_content_sync_events: {
+        Args: { p_lease_seconds: number; p_limit: number; p_worker_id: string };
+        Returns: Json[];
+      };
+      complete_site_content_sync_event: {
+        Args: {
+          p_event_id: string;
+          p_expected_content_hash: string;
+          p_generation_id: string;
+          p_lease_id: string;
+          p_release_id: string | null;
+          p_worker_id: string;
+        };
+        Returns: Json;
+      };
+      fail_site_content_sync_event: {
+        Args: {
+          p_error_code: string;
+          p_event_id: string;
+          p_generation_id: string;
+          p_lease_id: string;
+          p_quarantine: boolean;
+          p_retry_after_seconds: number | null;
+          p_worker_id: string;
+        };
+        Returns: Json;
+      };
+      heartbeat_site_content_sync_event: {
+        Args: {
+          p_event_id: string;
+          p_generation_id: string;
+          p_lease_id: string;
+          p_lease_seconds: number;
+          p_worker_id: string;
+        };
+        Returns: Json;
+      };
+      publish_site_content_record: {
+        Args: { p_actor_id: string; p_administrator_authorized: boolean; p_record: Json };
+        Returns: Json;
+      };
+      read_public_site_content_records: {
+        Args: { p_domain: string; p_record_kind?: string | null; p_slug?: string | null };
+        Returns: Json;
+      };
+      rollback_site_content_release: {
+        Args: { p_failed_release_id: string; p_recovery_digest: string; p_retained_release_id: string };
+        Returns: Json;
+      };
       analyze_rag_tables: { Args: never; Returns: undefined };
       apply_document_metadata_patch: {
         Args: {

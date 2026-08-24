@@ -1415,7 +1415,11 @@
         "preview": ".design-sync/previews/SafeBoldText.tsx",
         "previewValid": true
       },
-      "testFiles": ["tests/design-sync-visual-exports.test.ts", "tests/display-text.test.ts"],
+      "testFiles": [
+        "tests/answer-content.test.ts",
+        "tests/design-sync-visual-exports.test.ts",
+        "tests/display-text.test.ts"
+      ],
       "baseline": {
         "targetLayer": "v2",
         "liveLayer": "v2",
