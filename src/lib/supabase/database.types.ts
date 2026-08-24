@@ -59,7 +59,8 @@ export type Database = {
           dynamic_state_digest: string; expected_changed_count: number; expected_record_count: number;
           expected_tombstone_count: number; expected_unchanged_count: number; generation_id: string;
           governance_verified: boolean; id: string; integrity_verified: boolean; must_pass_verified: boolean;
-          plan_digest: string; previous_release_id: string | null; project_ref: string; projected_record_count: number;
+          legacy_dispositions: Json; legacy_reconciliation_digest: string; plan_digest: string; plan_json: Json | null;
+          previous_release_id: string | null; project_ref: string; projected_record_count: number;
           public_visibility_verified: boolean; recovery_evidence: Json; recovery_evidence_digest: string;
           registry_version: string; release_digest: string; rollback_receipt: Json | null;
           state: string; static_manifest_digest: string;
@@ -69,7 +70,8 @@ export type Database = {
           dynamic_state_digest: string; expected_changed_count: number; expected_record_count: number;
           expected_tombstone_count: number; expected_unchanged_count: number; generation_id: string;
           governance_verified?: boolean; id?: string; integrity_verified?: boolean; must_pass_verified?: boolean;
-          plan_digest: string; previous_release_id?: string | null; project_ref: string; projected_record_count?: number;
+          legacy_dispositions?: Json; legacy_reconciliation_digest: string; plan_digest: string; plan_json?: Json | null;
+          previous_release_id?: string | null; project_ref: string; projected_record_count?: number;
           public_visibility_verified?: boolean; recovery_evidence: Json; recovery_evidence_digest: string;
           registry_version: string; release_digest: string; rollback_receipt?: Json | null;
           state: string; static_manifest_digest: string;
@@ -168,6 +170,34 @@ export type Database = {
             columns: ["publication_id"];
             isOneToOne: false;
             referencedRelation: "site_content_publications";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      site_content_release_operations: {
+        Row: {
+          completed_at: string | null;
+          content_hash: string;
+          logical_id: string;
+          operation: string;
+          release_id: string;
+          status: string;
+        };
+        Insert: {
+          completed_at?: string | null;
+          content_hash: string;
+          logical_id: string;
+          operation: string;
+          release_id: string;
+          status?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_content_release_operations"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "site_content_release_operations_release_id_fkey";
+            columns: ["release_id"];
+            isOneToOne: false;
+            referencedRelation: "site_content_releases";
             referencedColumns: ["id"];
           },
         ];
@@ -2486,13 +2516,21 @@ export type Database = {
       };
     };
     Functions: {
-      begin_site_content_candidate_release: { Args: { p_plan: Json }; Returns: Json };
+      adopt_site_content_baseline: {
+        Args: { p_adoption: Json; p_validation_binding: Json };
+        Returns: Json;
+      };
+      begin_site_content_candidate_release: {
+        Args: { p_plan: Json; p_validation_binding: Json };
+        Returns: Json;
+      };
       activate_site_content_release: {
         Args: {
           p_activation_receipt: Json;
           p_expected_release_digest: string;
           p_recovery_evidence: Json;
           p_release_id: string;
+          p_validation_binding: Json;
         };
         Returns: Json;
       };
@@ -2545,12 +2583,34 @@ export type Database = {
         Returns: Json;
       };
       rollback_site_content_release: {
-        Args: { p_activation_receipt: Json; p_failed_release_id: string; p_rollback_receipt: Json };
+        Args: {
+          p_activation_receipt: Json;
+          p_failed_release_id: string;
+          p_recovery_evidence: Json;
+          p_rollback_receipt: Json;
+          p_validation_binding: Json;
+        };
         Returns: Json;
       };
+      read_site_content_release_activation_context: { Args: { p_release_id: string }; Returns: Json };
       site_content_admin_authorized: { Args: never; Returns: boolean };
       site_content_canonical_json: { Args: { p_value: Json }; Returns: string };
       site_content_p05_digest: { Args: { p_value: Json }; Returns: string };
+      site_content_json_digest: { Args: { p_value: Json }; Returns: string };
+      site_content_validation_binding_valid: {
+        Args: {
+          p_binding: Json;
+          p_payload: Json;
+          p_project_ref: string;
+          p_purpose: string;
+          p_recovery_evidence_digest: string;
+        };
+        Returns: boolean;
+      };
+      verify_site_content_candidate_release: {
+        Args: { p_validation_binding: Json; p_verification: Json };
+        Returns: Json;
+      };
       read_site_content_sync_event_payload: {
         Args: {
           p_attempt_count: number;

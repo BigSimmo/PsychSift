@@ -85,8 +85,14 @@ function rankCatalogMatches(records: MedicationRecord[], q: string, limit: numbe
   };
 }
 
-function medicationResponse(payload: Record<string, unknown>, options: { request?: Request; fixture?: boolean } = {}) {
-  return NextResponse.json(payload, { headers: fixtureResponseHeaders(options.request, options) });
+function medicationResponse(
+  payload: Record<string, unknown>,
+  options: { request?: Request; fixture?: boolean; status?: number } = {},
+) {
+  return NextResponse.json(payload, {
+    status: options.status,
+    headers: fixtureResponseHeaders(options.request, options),
+  });
 }
 
 function matchesPayload(matches: MedicationSearchMatch[]) {
@@ -182,6 +188,15 @@ export async function GET(request: Request) {
       domain: "medications",
     });
     if (publicSiteContent) {
+      if (publicSiteContent.state === "unavailable") {
+        return medicationResponse(
+          {
+            error: "Public site content is unavailable.",
+            release: { id: null, epoch: publicSiteContent.changeEpoch, state: "unavailable" },
+          },
+          { request, status: 503 },
+        );
+      }
       const fullRecords = publicSiteContent.records.map((entry) => entry.payload);
       const records = fields === "index" ? toIndexRecords(fullRecords) : fullRecords;
       const ranked = q ? rankCatalogMatches(fullRecords, q, limit, fields === "index") : undefined;

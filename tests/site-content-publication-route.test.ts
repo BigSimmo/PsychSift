@@ -1,6 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { planSiteContentSync } from "../src/lib/site-content/site-content-sync";
+import {
+  fixtureSha,
+  siteReleaseCandidateId,
+  siteReleaseGenerationId,
+  siteReleaseNow,
+  siteReleasePreviousId,
+  siteReleaseProjectRef,
+  validSiteReleaseRecoveryFixture,
+} from "./fixtures/site-release-recovery";
+
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.resetModules();
 });
@@ -8,6 +20,12 @@ afterEach(() => {
 async function loadRoute(role: "anonymous" | "authenticated" | "administrator") {
   const rpc = vi.fn(async () => ({ data: { candidateReleaseId: "release-1" }, error: null }));
   vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));
+  vi.doMock("@/lib/env", () => ({
+    env: {
+      SUPABASE_PROJECT_REF: siteReleaseProjectRef,
+      SITE_CONTENT_RECOVERY_VALIDATION_SECRET: "synthetic-validation-secret-with-32-bytes",
+    },
+  }));
   vi.doMock("@/lib/supabase/server", () => ({ createSupabaseServerClient: async () => ({ rpc }) }));
   vi.doMock("@/lib/supabase/auth", async (importOriginal) => {
     const actual = await importOriginal<typeof import("../src/lib/supabase/auth")>();
@@ -51,8 +69,28 @@ describe("administrator site-content publication route", () => {
   });
 
   it("begins a digest-bound candidate through the same administrator mutation authority", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(siteReleaseNow);
     const { route, rpc } = await loadRoute("administrator");
-    const plan = { candidateReleaseId: "release-1", planDigest: "sha256:synthetic" };
+    const recovery = validSiteReleaseRecoveryFixture();
+    const plan = planSiteContentSync({
+      projectRef: siteReleaseProjectRef,
+      expectedProjectRef: siteReleaseProjectRef,
+      candidateReleaseId: siteReleaseCandidateId,
+      previousReleaseId: siteReleasePreviousId,
+      generationId: siteReleaseGenerationId,
+      registryVersion: "site-content-registry-v1",
+      staticManifestDigest: fixtureSha("8"),
+      expectedEmbedding: { model: "synthetic", dimensions: 3 },
+      desiredRecords: [],
+      activeProjections: [],
+      legacyRows: [],
+      legacyDispositions: [],
+      batchSize: 25,
+      write: true,
+      recoveryEvidence: recovery.evidence,
+      now: siteReleaseNow,
+    });
     const response = await route.POST(
       new Request("http://local/api/admin/site-content/publish", {
         method: "POST",
@@ -60,6 +98,9 @@ describe("administrator site-content publication route", () => {
       }),
     );
     expect(response.status).toBe(202);
-    expect(rpc).toHaveBeenCalledWith("begin_site_content_candidate_release", { p_plan: plan });
+    expect(rpc).toHaveBeenCalledWith("begin_site_content_candidate_release", {
+      p_plan: plan,
+      p_validation_binding: expect.objectContaining({ purpose: "begin", projectRef: siteReleaseProjectRef }),
+    });
   });
 });

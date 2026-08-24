@@ -91,6 +91,15 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       slug: normalizedSlug,
     });
     if (publicSiteContent) {
+      if (publicSiteContent.state === "unavailable") {
+        return registryResponse(
+          {
+            error: "Public site content is unavailable.",
+            release: { id: null, epoch: publicSiteContent.changeEpoch, state: "unavailable" },
+          },
+          { request, status: 503 },
+        );
+      }
       const publication = publicSiteContent.records[0];
       if (!publication) return notFoundResponse(normalizedSlug);
       return registryResponse(

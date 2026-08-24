@@ -68,7 +68,7 @@ function acceptsGzip(request: Request | undefined) {
 
 async function registryResponse(
   payload: Record<string, unknown>,
-  options: { request?: Request; fixture?: boolean } = {},
+  options: { request?: Request; fixture?: boolean; status?: number } = {},
 ) {
   const json = JSON.stringify(payload);
   const jsonBytes = Buffer.from(json);
@@ -78,7 +78,7 @@ async function registryResponse(
     headers: shouldVaryByEncoding ? { Vary: "Accept-Encoding" } : undefined,
   });
   if (!shouldVaryByEncoding || !acceptsGzip(options.request)) {
-    return NextResponse.json(payload, { headers });
+    return NextResponse.json(payload, { headers, status: options.status });
   }
 
   // Next's documented `compress` default did not produce Content-Encoding on
@@ -89,7 +89,7 @@ async function registryResponse(
   headers.set("Content-Encoding", "gzip");
   headers.set("Content-Length", String(compressed.byteLength));
   headers.set("Content-Type", "application/json; charset=utf-8");
-  return new NextResponse(new Uint8Array(compressed), { headers });
+  return new NextResponse(new Uint8Array(compressed), { headers, status: options.status });
 }
 
 function compactRegistryRecord(record: ServiceRecord): ServiceRecord {
@@ -186,6 +186,15 @@ export async function GET(request: Request) {
       recordKind: kind,
     });
     if (publicSiteContent) {
+      if (publicSiteContent.state === "unavailable") {
+        return registryResponse(
+          {
+            error: "Public site content is unavailable.",
+            release: { id: null, epoch: publicSiteContent.changeEpoch, state: "unavailable" },
+          },
+          { request, status: 503 },
+        );
+      }
       const records = publicSiteContent.records.map((entry) => entry.payload);
       const governance = Object.fromEntries(
         publicSiteContent.records.map((entry) => [entry.payload.slug, entry.governance]),

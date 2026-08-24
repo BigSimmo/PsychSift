@@ -76,6 +76,8 @@ describe("public site-content publication access", () => {
     const { sql } = taskMigration();
     expect(sql).toMatch(/site_content_release_projections[\s\S]*active_release_id/i);
     expect(sql).toMatch(/join public\.site_content_release_projections[\s\S]*active_release_id/i);
+    expect(sql).toMatch(/site_content_release_operations[\s\S]*operation\.logical_id\s*=\s*projection\.logical_id/i);
+    expect(sql).toMatch(/operation\.operation\s*<>\s*'unchanged'[\s\S]*operation\.status\s*<>\s*'complete'/i);
     expect(sql).toMatch(/p_release_id is null[\s\S]*raise exception/i);
     expect(sql).toMatch(/completed_release_id[\s\S]*candidate/i);
     expect(sql).toMatch(/status in \('pending', 'leased', 'quarantined'\)/i);
@@ -99,6 +101,7 @@ describe("public site-content publication access", () => {
       "site_content_publications",
       "site_content_release_projections",
       "site_content_sync_outbox",
+      "site_content_release_operations",
     ]) {
       expect(types).toContain(`${table}: {`);
     }
@@ -141,6 +144,9 @@ describe("public site-content publication access", () => {
       "fail_site_content_sync_event",
       "activate_site_content_release",
       "rollback_site_content_release",
+      "adopt_site_content_baseline",
+      "verify_site_content_candidate_release",
+      "read_site_content_release_activation_context",
     ]) {
       expect(sql).toContain(`function public.${name}`);
     }
@@ -157,6 +163,9 @@ describe("public site-content publication access", () => {
     expect(sql).toMatch(/recoveryEvidenceId[\s\S]*evidenceId/i);
     expect(sql).toMatch(/stateDigest[\s\S]*dynamic_state_digest/i);
     expect(sql).toMatch(/validUntil[\s\S]*now\(\)/i);
+    expect(sql).toMatch(/site_content_validation_binding_valid[\s\S]*extensions\.hmac/i);
+    expect(sql).toMatch(/site_content_json_digest\(p_plan-'planDigest'\)/i);
+    expect(sql).toMatch(/legacy_reconciliation_digest[\s\S]*legacy_dispositions/i);
   });
 
   it("keeps reader selection independent of actor and legacy owner identity", () => {

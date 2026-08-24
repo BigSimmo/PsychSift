@@ -39,9 +39,12 @@ const differentialListQuerySchema = z.object({
 
 function differentialResponse(
   payload: Record<string, unknown>,
-  options: { request?: Request; fixture?: boolean } = {},
+  options: { request?: Request; fixture?: boolean; status?: number } = {},
 ) {
-  return NextResponse.json(payload, { headers: fixtureResponseHeaders(options.request, options) });
+  return NextResponse.json(payload, {
+    status: options.status,
+    headers: fixtureResponseHeaders(options.request, options),
+  });
 }
 
 function recordMatchesPayload(matches: DifferentialRecordMatch[]) {
@@ -111,6 +114,15 @@ export async function GET(request: Request) {
       recordKind: kind,
     });
     if (publicSiteContent) {
+      if (publicSiteContent.state === "unavailable") {
+        return differentialResponse(
+          {
+            error: "Public site content is unavailable.",
+            release: { id: null, epoch: publicSiteContent.changeEpoch, state: "unavailable" },
+          },
+          { request, status: 503 },
+        );
+      }
       const values = publicSiteContent.records.map((entry) => entry.payload);
       return differentialResponse(
         {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   assertSiteReleaseReceiptPair,
+  assertSiteContentSyncPlan,
   planSiteContentSync,
   runSiteContentSync,
 } from "../src/lib/site-content/site-content-sync";
@@ -79,6 +80,14 @@ describe("durable site-content synchronization", () => {
     expect(result.dynamicStateDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(result.releaseDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
     expect(result.planDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(result.recoveryEvidenceDigest).toBeNull();
+    expect(result.operations).toEqual([
+      { logicalId: "medication:alpha", operation: "unchanged", contentHash: sha("c") },
+      { logicalId: "medication:beta", operation: "changed", contentHash: sha("d") },
+      { logicalId: "medication:removed", operation: "tombstone", contentHash: sha("f") },
+    ]);
+    expect(result.legacyDispositions).toEqual([]);
+    expect(assertSiteContentSyncPlan(result)).toEqual(result);
     expect(plan().planDigest).toBe(result.planDigest);
   });
 
@@ -110,6 +119,38 @@ describe("durable site-content synchronization", () => {
         ],
       }),
     ).toThrow(/disposition|divergent/i);
+    expect(() =>
+      plan({
+        legacyRows: [{ rowId: "row-a", logicalId: "medication:alpha", contentHash: sha("c") }],
+        legacyDispositions: [
+          { logicalId: "medication:alpha", selectedRowId: "row-a", retiredRowIds: [] },
+          { logicalId: "medication:alpha", selectedRowId: "row-a", retiredRowIds: [] },
+        ],
+      }),
+    ).toThrow(/duplicate/i);
+  });
+
+  it("rejects every undeclared, swapped, duplicate, missing, hash, generation, and target plan mutation", () => {
+    const canonical = plan();
+    const mutations = [
+      { ...canonical, projectRef: "foreign-project" },
+      { ...canonical, generationId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" },
+      { ...canonical, operations: canonical.operations.slice(1) },
+      { ...canonical, operations: [...canonical.operations, canonical.operations[0]!] },
+      {
+        ...canonical,
+        operations: canonical.operations.map((operation, index) =>
+          index === 0 ? { ...operation, logicalId: "medication:swapped" } : operation,
+        ),
+      },
+      {
+        ...canonical,
+        operations: canonical.operations.map((operation, index) =>
+          index === 0 ? { ...operation, contentHash: sha("9") } : operation,
+        ),
+      },
+    ];
+    for (const mutation of mutations) expect(() => assertSiteContentSyncPlan(mutation)).toThrow();
   });
 
   it("never sends verified unchanged records to the embedding stage and rejects a stale lease or generation", async () => {

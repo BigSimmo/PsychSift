@@ -167,6 +167,9 @@ if (typeof Deno !== "undefined") {
   const workerId = Deno.env.get("SITE_CONTENT_SYNC_WORKER_ID") ?? "";
   const openAiKey = Deno.env.get("OPENAI_API_KEY") ?? "";
   const embeddingModel = Deno.env.get("RAG_EMBEDDING_MODEL") ?? "text-embedding-3-small";
+  const missingConfiguration = [url, serviceKey, invocationSecret, workerId, openAiKey].some(
+    (value) => value.trim().length === 0,
+  );
   const rpc = async (name: string, args: Record<string, unknown>): Promise<RpcResult> => {
     const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
       method: "POST",
@@ -178,76 +181,80 @@ if (typeof Deno !== "undefined") {
       : { data: null, error: { message: "site-content RPC failed" } };
   };
   Deno.serve(
-    createSiteContentSyncHandler({
-      authorization: `Bearer ${invocationSecret}`,
-      workerId,
-      rpc,
-      processEvent: async (event) => {
-        const payload = requireRpc(
-          await rpc("read_site_content_sync_event_payload", {
-            p_event_id: event.event_id,
-            p_worker_id: workerId,
-            p_lease_id: event.lease_id,
-            p_generation_id: event.generation_id,
-            p_attempt_count: event.attempt_count,
-          }),
-          "Site-content payload read",
-        ) as {
-          embeddingInput: string;
-          candidateReleaseId: string;
-          operation: "changed" | "unchanged" | "tombstone";
-        };
-        if (payload.operation !== "changed") {
-          const carried = requireRpc(
-            await rpc("stage_site_content_candidate_operation", {
-              p_event_id: event.event_id,
-              p_worker_id: workerId,
-              p_lease_id: event.lease_id,
-              p_generation_id: event.generation_id,
-              p_attempt_count: event.attempt_count,
-              p_candidate_release_id: event.candidate_release_id,
-            }),
-            "Site-content candidate carry-forward/tombstone staging",
-          ) as { releaseId?: string };
-          return { releaseId: carried.releaseId };
-        }
-        const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
-          method: "POST",
-          headers: { authorization: `Bearer ${openAiKey}`, "content-type": "application/json" },
-          body: JSON.stringify({ model: embeddingModel, input: payload.embeddingInput }),
-        });
-        if (!embeddingResponse.ok) throw new Error("Embedding request failed.");
-        const embeddingBody = (await embeddingResponse.json()) as { data?: Array<{ embedding?: number[] }> };
-        const embedding = embeddingBody.data?.[0]?.embedding;
-        if (!embedding?.length) throw new Error("Embedding response is invalid.");
-        const floatBuffer = new ArrayBuffer(embedding.length * Float32Array.BYTES_PER_ELEMENT);
-        const floatView = new DataView(floatBuffer);
-        embedding.forEach((value, index) => floatView.setFloat32(index * Float32Array.BYTES_PER_ELEMENT, value, false));
-        const floatBytes = new Uint8Array(floatBuffer);
-        const byteHash = new Uint8Array(await crypto.subtle.digest("SHA-256", floatBytes));
-        const jsonHash = new Uint8Array(
-          await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(embedding))),
-        );
-        const hexadecimal = (bytes: Uint8Array) =>
-          [...bytes].map((value) => value.toString(16).padStart(2, "0")).join("");
-        const staged = requireRpc(
-          await rpc("stage_site_content_candidate_projection", {
-            p_event_id: event.event_id,
-            p_worker_id: workerId,
-            p_lease_id: event.lease_id,
-            p_generation_id: event.generation_id,
-            p_attempt_count: event.attempt_count,
-            p_candidate_release_id: event.candidate_release_id,
-            p_embedding: embedding,
-            p_embedding_model: embeddingModel,
-            p_embedding_dimensions: embedding.length,
-            p_embedding_digest: `sha256:${hexadecimal(jsonHash)}`,
-            p_embedding_bytes_digest: `sha256:${hexadecimal(byteHash)}`,
-          }),
-          "Site-content candidate staging",
-        ) as { releaseId?: string };
-        return { releaseId: staged.releaseId };
-      },
-    }),
+    missingConfiguration
+      ? async () => Response.json({ error: "site_content_sync_not_configured" }, { status: 503 })
+      : createSiteContentSyncHandler({
+          authorization: `Bearer ${invocationSecret}`,
+          workerId,
+          rpc,
+          processEvent: async (event) => {
+            const payload = requireRpc(
+              await rpc("read_site_content_sync_event_payload", {
+                p_event_id: event.event_id,
+                p_worker_id: workerId,
+                p_lease_id: event.lease_id,
+                p_generation_id: event.generation_id,
+                p_attempt_count: event.attempt_count,
+              }),
+              "Site-content payload read",
+            ) as {
+              embeddingInput: string;
+              candidateReleaseId: string;
+              operation: "changed" | "unchanged" | "tombstone";
+            };
+            if (payload.operation !== "changed") {
+              const carried = requireRpc(
+                await rpc("stage_site_content_candidate_operation", {
+                  p_event_id: event.event_id,
+                  p_worker_id: workerId,
+                  p_lease_id: event.lease_id,
+                  p_generation_id: event.generation_id,
+                  p_attempt_count: event.attempt_count,
+                  p_candidate_release_id: event.candidate_release_id,
+                }),
+                "Site-content candidate carry-forward/tombstone staging",
+              ) as { releaseId?: string };
+              return { releaseId: carried.releaseId };
+            }
+            const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
+              method: "POST",
+              headers: { authorization: `Bearer ${openAiKey}`, "content-type": "application/json" },
+              body: JSON.stringify({ model: embeddingModel, input: payload.embeddingInput }),
+            });
+            if (!embeddingResponse.ok) throw new Error("Embedding request failed.");
+            const embeddingBody = (await embeddingResponse.json()) as { data?: Array<{ embedding?: number[] }> };
+            const embedding = embeddingBody.data?.[0]?.embedding;
+            if (!embedding?.length) throw new Error("Embedding response is invalid.");
+            const floatBuffer = new ArrayBuffer(embedding.length * Float32Array.BYTES_PER_ELEMENT);
+            const floatView = new DataView(floatBuffer);
+            embedding.forEach((value, index) =>
+              floatView.setFloat32(index * Float32Array.BYTES_PER_ELEMENT, value, false),
+            );
+            const floatBytes = new Uint8Array(floatBuffer);
+            const byteHash = new Uint8Array(await crypto.subtle.digest("SHA-256", floatBytes));
+            const jsonHash = new Uint8Array(
+              await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(embedding))),
+            );
+            const hexadecimal = (bytes: Uint8Array) =>
+              [...bytes].map((value) => value.toString(16).padStart(2, "0")).join("");
+            const staged = requireRpc(
+              await rpc("stage_site_content_candidate_projection", {
+                p_event_id: event.event_id,
+                p_worker_id: workerId,
+                p_lease_id: event.lease_id,
+                p_generation_id: event.generation_id,
+                p_attempt_count: event.attempt_count,
+                p_candidate_release_id: event.candidate_release_id,
+                p_embedding: embedding,
+                p_embedding_model: embeddingModel,
+                p_embedding_dimensions: embedding.length,
+                p_embedding_digest: `sha256:${hexadecimal(jsonHash)}`,
+                p_embedding_bytes_digest: `sha256:${hexadecimal(byteHash)}`,
+              }),
+              "Site-content candidate staging",
+            ) as { releaseId?: string };
+            return { releaseId: staged.releaseId };
+          },
+        }),
   );
 }

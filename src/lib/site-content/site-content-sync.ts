@@ -66,11 +66,23 @@ export type SiteContentSyncPlan = Readonly<{
   changed: Array<SiteContentSyncRecord & { changeKind: "added" | "changed" }>;
   unchanged: Array<SiteContentSyncRecord & { reusedEmbedding: SiteContentEmbeddingIdentity }>;
   tombstoned: Array<{ logicalId: string; priorContentHash: Digest }>;
+  operations: Array<{
+    logicalId: string;
+    operation: "changed" | "unchanged" | "tombstone";
+    contentHash: Digest;
+  }>;
+  legacyReconciliation: Array<{
+    logicalId: string;
+    rows: Array<{ rowId: string; contentHash: Digest }>;
+    disposition: { logicalId: string; selectedRowId: string; retiredRowIds: string[] } | null;
+  }>;
+  legacyDispositions: Array<{ logicalId: string; selectedRowId: string; retiredRowIds: string[] }>;
   legacyReconciliationDigest: Digest;
   expectedCounts: { desired: number; changed: number; unchanged: number; tombstoned: number };
   dynamicStateDigest: Digest;
   releaseDigest: Digest;
   planDigest: Digest;
+  recoveryEvidenceDigest: Digest | null;
   recoveryEvidence?: RecoveryReadinessEvidence;
 }>;
 
@@ -100,10 +112,12 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
-function digest(value: unknown): Digest {
-  return `sha256:${createHash("sha256")
-    .update(JSON.stringify(canonicalize(value)))
-    .digest("hex")}`;
+export function siteContentSyncCanonicalJson(value: unknown) {
+  return JSON.stringify(canonicalize(value));
+}
+
+export function siteContentSyncDigest(value: unknown): Digest {
+  return `sha256:${createHash("sha256").update(siteContentSyncCanonicalJson(value)).digest("hex")}`;
 }
 
 function assertDigest(value: string, label: string): asserts value is Digest {
@@ -115,16 +129,18 @@ function sortedByLogicalId<T extends { logicalId: string }>(records: T[]) {
 }
 
 function reconcileLegacyRows(input: SiteContentSyncInput) {
+  if (new Set(input.legacyDispositions.map((entry) => entry.logicalId)).size !== input.legacyDispositions.length) {
+    throw new Error("Duplicate legacy dispositions are not permitted.");
+  }
   const dispositions = new Map(input.legacyDispositions.map((entry) => [entry.logicalId, entry]));
   const grouped = new Map<string, typeof input.legacyRows>();
   for (const row of input.legacyRows) grouped.set(row.logicalId, [...(grouped.get(row.logicalId) ?? []), row]);
   const normalized = [...grouped.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([logicalId, rows]) => {
-      const hashes = new Set(rows.map((row) => row.contentHash));
       const disposition = dispositions.get(logicalId);
-      if (hashes.size > 1 && !disposition) {
-        throw new Error(`Divergent legacy rows for ${logicalId} require an explicit administrator disposition.`);
+      if (rows.length > 1 && !disposition) {
+        throw new Error(`Duplicate legacy rows for ${logicalId} require an explicit administrator disposition.`);
       }
       if (disposition) {
         const rowIds = new Set(rows.map((row) => row.rowId));
@@ -142,10 +158,106 @@ function reconcileLegacyRows(input: SiteContentSyncInput) {
         rows: rows
           .map(({ rowId, contentHash }) => ({ rowId, contentHash }))
           .sort((a, b) => a.rowId.localeCompare(b.rowId)),
-        disposition: disposition ?? null,
+        disposition: disposition
+          ? {
+              logicalId,
+              selectedRowId: disposition.selectedRowId,
+              retiredRowIds: [...disposition.retiredRowIds].sort(),
+            }
+          : null,
       };
     });
-  return digest(normalized);
+  const unmatched = input.legacyDispositions.filter((entry) => !grouped.has(entry.logicalId));
+  if (unmatched.length) throw new Error("Legacy dispositions must identify an exact legacy logical identity.");
+  return {
+    normalized,
+    dispositions: normalized.flatMap((entry) => (entry.disposition ? [entry.disposition] : [])),
+    digest: siteContentSyncDigest(normalized),
+  };
+}
+
+function releaseDigestBasis(plan: Omit<SiteContentSyncPlan, "planDigest" | "releaseDigest">) {
+  return {
+    projectRef: plan.projectRef,
+    candidateReleaseId: plan.candidateReleaseId,
+    previousReleaseId: plan.previousReleaseId,
+    generationId: plan.generationId,
+    registryVersion: plan.registryVersion,
+    staticManifestDigest: plan.staticManifestDigest,
+    embeddingContract: plan.embeddingContract,
+    dynamicStateDigest: plan.dynamicStateDigest,
+    operations: plan.operations,
+    legacyReconciliationDigest: plan.legacyReconciliationDigest,
+    legacyDispositions: plan.legacyDispositions,
+    expectedCounts: plan.expectedCounts,
+    recoveryEvidenceDigest: plan.recoveryEvidenceDigest,
+  };
+}
+
+export function assertSiteContentSyncPlan(input: unknown): SiteContentSyncPlan {
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    throw new Error("Canonical site-content plan is required.");
+  const plan = input as SiteContentSyncPlan;
+  if (plan.version !== "site-content-sync-plan-v1" || !["dry-run", "write"].includes(plan.mode)) {
+    throw new Error("Canonical site-content plan version/mode is invalid.");
+  }
+  const operations = [...plan.operations].sort((left, right) => left.logicalId.localeCompare(right.logicalId));
+  if (new Set(operations.map((entry) => entry.logicalId)).size !== operations.length) {
+    throw new Error("Canonical operation logical identities must be unique.");
+  }
+  const expectedOperations = [
+    ...plan.changed.map((entry) => ({
+      logicalId: entry.logicalId,
+      operation: "changed" as const,
+      contentHash: entry.contentHash,
+    })),
+    ...plan.unchanged.map((entry) => ({
+      logicalId: entry.logicalId,
+      operation: "unchanged" as const,
+      contentHash: entry.contentHash,
+    })),
+    ...plan.tombstoned.map((entry) => ({
+      logicalId: entry.logicalId,
+      operation: "tombstone" as const,
+      contentHash: entry.priorContentHash,
+    })),
+  ].sort((left, right) => left.logicalId.localeCompare(right.logicalId));
+  if (JSON.stringify(operations) !== JSON.stringify(expectedOperations))
+    throw new Error("Canonical operation manifest mismatch.");
+  if (
+    plan.expectedCounts.desired !== plan.changed.length + plan.unchanged.length ||
+    plan.expectedCounts.changed !== plan.changed.length ||
+    plan.expectedCounts.unchanged !== plan.unchanged.length ||
+    plan.expectedCounts.tombstoned !== plan.tombstoned.length
+  ) {
+    throw new Error("Canonical plan counts mismatch.");
+  }
+  if (siteContentSyncDigest(plan.legacyReconciliation) !== plan.legacyReconciliationDigest) {
+    throw new Error("Legacy reconciliation digest mismatch.");
+  }
+  if (
+    JSON.stringify(plan.legacyReconciliation.flatMap((entry) => (entry.disposition ? [entry.disposition] : []))) !==
+    JSON.stringify(plan.legacyDispositions)
+  ) {
+    throw new Error("Legacy dispositions do not match the normalized reconciliation.");
+  }
+  if (plan.mode === "write") {
+    const evidence = parseRecoveryReadinessEvidence(plan.recoveryEvidence);
+    if (plan.recoveryEvidenceDigest !== evidence.digest) throw new Error("Recovery evidence digest mismatch.");
+  } else if (plan.recoveryEvidenceDigest !== null || plan.recoveryEvidence !== undefined) {
+    throw new Error("Dry-run plans cannot claim recovery authority.");
+  }
+  const { planDigest, releaseDigest, ...withoutDigests } = plan;
+  if (
+    siteContentSyncDigest(releaseDigestBasis(plan as Omit<SiteContentSyncPlan, "planDigest" | "releaseDigest">)) !==
+    releaseDigest
+  ) {
+    throw new Error("Canonical release digest mismatch.");
+  }
+  if (siteContentSyncDigest({ ...withoutDigests, releaseDigest }) !== planDigest) {
+    throw new Error("Canonical plan digest mismatch.");
+  }
+  return plan;
 }
 
 export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyncPlan {
@@ -158,7 +270,7 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
     throw new Error("Expected embedding model and dimensions are required.");
   }
   assertDigest(input.staticManifestDigest, "Static manifest digest");
-  const legacyReconciliationDigest = reconcileLegacyRows(input);
+  const legacy = reconcileLegacyRows(input);
   const desired = sortedByLogicalId(input.desiredRecords);
   if (new Set(desired.map((record) => record.logicalId)).size !== desired.length) {
     throw new Error("Desired site-content logical identities must be globally unique.");
@@ -191,7 +303,7 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
       .filter((projection) => !desiredIds.has(projection.logicalId))
       .map((projection) => ({ logicalId: projection.logicalId, priorContentHash: projection.contentHash })),
   );
-  const dynamicStateDigest = digest(
+  const dynamicStateDigest = siteContentSyncDigest(
     desired.map(({ logicalId, contentHash, publicationVersion, sourceLineageDigest }) => ({
       logicalId,
       contentHash,
@@ -199,19 +311,29 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
       sourceLineageDigest,
     })),
   );
-  const releaseDigest = digest({
-    registryVersion: input.registryVersion,
-    staticManifestDigest: input.staticManifestDigest,
-    embeddingContract: Object.freeze({ ...input.expectedEmbedding }),
-    dynamicStateDigest,
-    generationId: input.generationId,
-  });
   let recoveryEvidence: RecoveryReadinessEvidence | undefined;
   if (input.write) {
     recoveryEvidence = parseRecoveryReadinessEvidence(input.recoveryEvidence);
     assertRecoveryReadinessForOperation(recoveryEvidence, "site-release", input.projectRef, input.now ?? new Date());
   }
-  const planWithoutDigest = {
+  const operations = [
+    ...changed.map((entry) => ({
+      logicalId: entry.logicalId,
+      operation: "changed" as const,
+      contentHash: entry.contentHash,
+    })),
+    ...unchanged.map((entry) => ({
+      logicalId: entry.logicalId,
+      operation: "unchanged" as const,
+      contentHash: entry.contentHash,
+    })),
+    ...tombstoned.map((entry) => ({
+      logicalId: entry.logicalId,
+      operation: "tombstone" as const,
+      contentHash: entry.priorContentHash,
+    })),
+  ].sort((left, right) => left.logicalId.localeCompare(right.logicalId));
+  const planCore = {
     version: "site-content-sync-plan-v1" as const,
     mode: input.write ? ("write" as const) : ("dry-run" as const),
     projectRef: input.projectRef,
@@ -225,7 +347,10 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
     changed,
     unchanged,
     tombstoned,
-    legacyReconciliationDigest,
+    operations,
+    legacyReconciliation: legacy.normalized,
+    legacyDispositions: legacy.dispositions,
+    legacyReconciliationDigest: legacy.digest,
     expectedCounts: {
       desired: desired.length,
       changed: changed.length,
@@ -233,10 +358,14 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
       tombstoned: tombstoned.length,
     },
     dynamicStateDigest,
-    releaseDigest,
+    recoveryEvidenceDigest: (recoveryEvidence?.digest as Digest | undefined) ?? null,
     ...(recoveryEvidence ? { recoveryEvidence } : {}),
   };
-  return Object.freeze({ ...planWithoutDigest, planDigest: digest(planWithoutDigest) });
+  const releaseDigest = siteContentSyncDigest(
+    releaseDigestBasis(planCore as Omit<SiteContentSyncPlan, "planDigest" | "releaseDigest">),
+  );
+  const planWithoutDigest = { ...planCore, releaseDigest };
+  return Object.freeze({ ...planWithoutDigest, planDigest: siteContentSyncDigest(planWithoutDigest) });
 }
 
 export async function runSiteContentSync(
