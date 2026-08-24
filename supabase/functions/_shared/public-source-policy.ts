@@ -34,6 +34,7 @@ const therapeuticGuidelinePattern = "therapeuticguideline";
 const australianMedicinesHandbookPattern = "australianmedicineshandbook";
 const etgPattern = "etg";
 const amhPattern = "amh";
+const entityCheckpointLimit = 64;
 
 function patternPrefixTable(pattern: string): readonly number[] {
   const table = new Array<number>(pattern.length).fill(0);
@@ -68,6 +69,8 @@ export type ProtectedPublicSourceScannerSnapshot = Readonly<{
   entitySpeculativeEtgTokenPrefix: number;
   entitySpeculativeAmhTokenPrefix: number;
   entitySpeculativeMatches: number;
+  entityCheckpointCount: number;
+  entityCheckpointLimit: number;
   markupSpeculativeHealthdirectPrefix: number;
   markupSpeculativeTherapeuticGuidelinePrefix: number;
   markupSpeculativeAustralianMedicinesHandbookPrefix: number;
@@ -225,11 +228,20 @@ class IncrementalProtectedPublicSourceScanner {
   private entityConsumed = 0;
   private pendingEntityHighSurrogate = 0;
   private readonly matcherState = createMatcherState();
+  private readonly entityBaseState = createMatcherState();
   private readonly entitySpeculativeState = createMatcherState();
+  private readonly entityCheckpointStates = Array.from({ length: entityCheckpointLimit }, createMatcherState);
+  private readonly entityCheckpointLengths = new Array<number>(entityCheckpointLimit).fill(0);
+  private entityCheckpointCount = 0;
+  private entityNumeric = false;
+  private entityCallbackConsumed = -1;
+  private entityCallbackCheckpointIndex = -1;
+  private entityCallbackCheckpointWasExisting = false;
+  private entityCallbackWritesDecoded = false;
   private readonly markupSpeculativeState = createMatcherState();
   private finished = false;
-  private readonly entityDecoder = new EntityDecoder(htmlDecodeTree, (codePoint) => {
-    this.emitDecodedEntityCodeUnit(codePoint);
+  private readonly entityDecoder = new EntityDecoder(htmlDecodeTree, (codePoint, consumed) => {
+    this.captureDecodedEntityCodeUnit(codePoint, consumed);
   });
 
   write(value: string): void {
@@ -241,10 +253,14 @@ class IncrementalProtectedPublicSourceScanner {
       const character = String.fromCodePoint(codePoint);
       if (this.entityActive) {
         emitMatcherCodePoint(this.entitySpeculativeState, codePoint);
+        this.advanceEntityCheckpoints(codePoint);
         const consumedBefore = this.entityConsumed;
+        if (consumedBefore === 1 && codePoint === 0x23) this.entityNumeric = true;
+        this.prepareEntityCallback();
         const consumed = this.entityDecoder.write(character, 0);
         if (consumed < 0) {
           this.entityConsumed += character.length;
+          if (!this.entityNumeric) this.probeEntityCheckpoint();
           index += character.length;
           continue;
         }
@@ -253,8 +269,14 @@ class IncrementalProtectedPublicSourceScanner {
         if (consumed === 0) {
           copyMatcherState(this.matcherState, this.entitySpeculativeState);
           index += character.length;
-        } else if (consumed > consumedBefore) {
-          index += character.length;
+        } else {
+          const checkpointIndex = this.findEntityCheckpoint(consumed);
+          if (checkpointIndex < 0) throw new Error("protected_identity_entity_checkpoint_missing");
+          if (!this.entityCallbackCheckpointWasExisting && consumed < consumedBefore) {
+            throw new Error("protected_identity_entity_checkpoint_incomplete");
+          }
+          copyMatcherState(this.matcherState, this.entityCheckpointStates[checkpointIndex]);
+          if (this.entityCallbackCheckpointWasExisting || consumed > consumedBefore) index += character.length;
         }
         continue;
       }
@@ -270,8 +292,18 @@ class IncrementalProtectedPublicSourceScanner {
   finish(): ForbiddenPublicSourceIdentity | null {
     if (!this.finished) {
       if (this.entityActive) {
+        this.prepareEntityCallback();
         const consumed = this.entityDecoder.end();
-        if (consumed === 0) copyMatcherState(this.matcherState, this.entitySpeculativeState);
+        if (consumed === 0) {
+          copyMatcherState(this.matcherState, this.entitySpeculativeState);
+        } else {
+          const checkpointIndex = this.findEntityCheckpoint(consumed);
+          if (checkpointIndex < 0) throw new Error("protected_identity_entity_checkpoint_missing");
+          if (!this.entityCallbackCheckpointWasExisting && consumed < this.entityConsumed) {
+            throw new Error("protected_identity_entity_checkpoint_incomplete");
+          }
+          copyMatcherState(this.matcherState, this.entityCheckpointStates[checkpointIndex]);
+        }
         this.entityActive = false;
         this.entityConsumed = 0;
       }
@@ -309,6 +341,8 @@ class IncrementalProtectedPublicSourceScanner {
       entitySpeculativeEtgTokenPrefix: this.entitySpeculativeState.etgTokenPrefix,
       entitySpeculativeAmhTokenPrefix: this.entitySpeculativeState.amhTokenPrefix,
       entitySpeculativeMatches: this.entitySpeculativeState.matches,
+      entityCheckpointCount: this.entityCheckpointCount,
+      entityCheckpointLimit,
       markupSpeculativeHealthdirectPrefix: this.markupSpeculativeState.healthdirectPrefix,
       markupSpeculativeTherapeuticGuidelinePrefix: this.markupSpeculativeState.therapeuticGuidelinePrefix,
       markupSpeculativeAustralianMedicinesHandbookPrefix: this.markupSpeculativeState.australianMedicinesHandbookPrefix,
@@ -388,8 +422,11 @@ class IncrementalProtectedPublicSourceScanner {
       return;
     }
     if (codePoint === 0x26) {
+      copyMatcherState(this.entityBaseState, this.matcherState);
       copyMatcherState(this.entitySpeculativeState, this.matcherState);
       emitMatcherBoundary(this.entitySpeculativeState);
+      this.entityCheckpointCount = 0;
+      this.entityNumeric = false;
       this.entityDecoder.startEntity(DecodingMode.Legacy);
       this.entityActive = true;
       this.entityConsumed = 1;
@@ -403,22 +440,78 @@ class IncrementalProtectedPublicSourceScanner {
     this.lexicalMode = HtmlLexicalMode.Text;
   }
 
-  private emitDecodedEntityCodeUnit(codeUnit: number): void {
+  private prepareEntityCallback(): void {
+    this.entityCallbackConsumed = -1;
+    this.entityCallbackCheckpointIndex = -1;
+    this.entityCallbackCheckpointWasExisting = false;
+    this.entityCallbackWritesDecoded = false;
+  }
+
+  private findEntityCheckpoint(consumed: number): number {
+    for (let index = 0; index < this.entityCheckpointCount; index += 1) {
+      if (this.entityCheckpointLengths[index] === consumed) return index;
+    }
+    return -1;
+  }
+
+  private createEntityCheckpoint(consumed: number): number {
+    if (this.entityCheckpointCount >= entityCheckpointLimit) {
+      throw new Error("protected_identity_entity_checkpoint_limit");
+    }
+    const index = this.entityCheckpointCount;
+    this.entityCheckpointCount += 1;
+    this.entityCheckpointLengths[index] = consumed;
+    copyMatcherState(this.entityCheckpointStates[index], this.entityBaseState);
+    return index;
+  }
+
+  private advanceEntityCheckpoints(codePoint: number): void {
+    for (let index = 0; index < this.entityCheckpointCount; index += 1) {
+      emitMatcherCodePoint(this.entityCheckpointStates[index], codePoint);
+    }
+  }
+
+  private probeEntityCheckpoint(): void {
+    this.prepareEntityCallback();
+    const consumed = this.entityDecoder.end();
+    if (consumed <= 0) return;
+    const checkpointIndex = this.findEntityCheckpoint(consumed);
+    if (checkpointIndex < 0) throw new Error("protected_identity_entity_checkpoint_missing");
+    if (!this.entityCallbackCheckpointWasExisting && consumed < this.entityConsumed) {
+      throw new Error("protected_identity_entity_checkpoint_incomplete");
+    }
+  }
+
+  private captureDecodedEntityCodeUnit(codeUnit: number, consumed: number): void {
+    if (this.entityCallbackConsumed !== consumed) {
+      this.entityCallbackConsumed = consumed;
+      const existingCheckpoint = this.findEntityCheckpoint(consumed);
+      this.entityCallbackCheckpointWasExisting = existingCheckpoint >= 0;
+      this.entityCallbackCheckpointIndex =
+        existingCheckpoint >= 0 ? existingCheckpoint : this.createEntityCheckpoint(consumed);
+      this.entityCallbackWritesDecoded = existingCheckpoint < 0;
+      if (this.entityCallbackWritesDecoded) this.pendingEntityHighSurrogate = 0;
+    }
+    if (!this.entityCallbackWritesDecoded) return;
+    this.emitDecodedEntityCodeUnit(this.entityCheckpointStates[this.entityCallbackCheckpointIndex], codeUnit);
+  }
+
+  private emitDecodedEntityCodeUnit(state: ProtectedMatcherState, codeUnit: number): void {
     if (this.pendingEntityHighSurrogate !== 0) {
       if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
         const codePoint = 0x10000 + ((this.pendingEntityHighSurrogate - 0xd800) << 10) + (codeUnit - 0xdc00);
         this.pendingEntityHighSurrogate = 0;
-        emitMatcherCodePoint(this.matcherState, codePoint);
+        emitMatcherCodePoint(state, codePoint);
         return;
       }
       this.pendingEntityHighSurrogate = 0;
-      emitMatcherBoundary(this.matcherState);
+      emitMatcherBoundary(state);
     }
     if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
       this.pendingEntityHighSurrogate = codeUnit;
       return;
     }
-    emitMatcherCodePoint(this.matcherState, codeUnit);
+    emitMatcherCodePoint(state, codeUnit);
   }
 }
 

@@ -105,6 +105,8 @@ describe("indexing-v3-agent behavior", () => {
       "Therapeu&tscr;ic Guidelines",
       "Health&direct",
       "Health&di!rect",
+      "Health&ltdirect",
+      "Health&gtdirect",
       "Therapeutic&Guidelines",
       "Australian&Medicines&Handbook",
       "Health<direct",
@@ -365,6 +367,8 @@ describe("indexing-v3-agent behavior", () => {
     for (const value of [
       "Health&direct",
       "Health&di!rect",
+      "Health&ltdirect",
+      "Health&gtdirect",
       "Therapeutic&Guidelines",
       "Australian&Medicines&Handbook",
       "Health<direct",
@@ -387,11 +391,22 @@ describe("indexing-v3-agent behavior", () => {
     const markupState = protectedPublicSourceChunkPage([
       { content: `Health<direct${"x".repeat(100_000)}` },
     ]).streamState;
+    const legacyCheckpointState = protectedPublicSourceChunkPage([{ content: "Health&lt" }]).streamState;
+    const checkpointBeforeExcess = legacyCheckpointState.snapshot();
+    const checkpointAfterExcess = protectedPublicSourceChunkPage(
+      [{ content: "d".repeat(100_000) }],
+      legacyCheckpointState,
+    ).streamState.snapshot();
     const entitySnapshot = entityState.snapshot();
     const markupSnapshot = markupState.snapshot();
 
     expect(Object.keys(entitySnapshot)).toEqual(Object.keys(markupSnapshot));
-    for (const snapshot of [entitySnapshot, markupSnapshot]) {
+    expect(Object.keys(checkpointBeforeExcess)).toEqual(Object.keys(checkpointAfterExcess));
+    expect(checkpointBeforeExcess.entityCheckpointCount).toBeGreaterThan(0);
+    expect(checkpointAfterExcess.entityCheckpointCount).toBeLessThanOrEqual(
+      checkpointAfterExcess.entityCheckpointLimit,
+    );
+    for (const snapshot of [entitySnapshot, markupSnapshot, checkpointBeforeExcess, checkpointAfterExcess]) {
       expect(Object.values(snapshot).every((value) => typeof value === "number" || typeof value === "boolean")).toBe(
         true,
       );

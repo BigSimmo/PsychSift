@@ -474,6 +474,8 @@ describe("public source acquisition", () => {
       "Therapeu&tscr;ic Guidelines",
       "Health&direct",
       "Health&di!rect",
+      "Health&ltdirect",
+      "Health&gtdirect",
       "Therapeutic&Guidelines",
       "Australian&Medicines&Handbook",
       "Health<direct",
