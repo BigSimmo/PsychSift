@@ -82,6 +82,27 @@ create table public.site_content_release_operations (
   primary key(release_id,logical_id)
 );
 
+create table public.site_content_validation_binding_consumptions (
+  binding_id uuid primary key,
+  purpose text not null check (purpose in ('adopt','begin','verify','activate','rollback')),
+  project_ref text not null,
+  payload_digest text not null check (payload_digest ~ '^sha256:[0-9a-f]{64}$'),
+  expires_at timestamptz not null,
+  consumed_at timestamptz not null default now()
+);
+
+create table public.site_content_release_gate_artifacts (
+  release_id uuid not null,
+  owner text not null check (owner in ('public-site-content-reader-v1','site-content-governance-registry-v1','rag-programme-eval-v1')),
+  subject jsonb not null,
+  subject_digest text not null check (subject_digest ~ '^sha256:[0-9a-f]{64}$'),
+  artifact jsonb not null,
+  artifact_digest text not null check (artifact_digest ~ '^sha256:[0-9a-f]{64}$'),
+  observed_at timestamptz not null,
+  recorded_at timestamptz not null default now(),
+  primary key(release_id,owner)
+);
+
 -- Same key-sorted, whitespace-free JSON serialization used by the accepted P05
 -- activation/rollback receipt authority in recovery-readiness-evidence.ts.
 create or replace function public.site_content_canonical_json(p_value jsonb) returns text
@@ -121,6 +142,75 @@ begin
  return p_binding->>'mac'=pg_catalog.encode(extensions.hmac(pg_catalog.convert_to(
   public.site_content_canonical_json(v_without_mac),'UTF8'),pg_catalog.convert_to(v_secret,'UTF8'),'sha256'),'hex');
 exception when others then return false;
+end $$;
+
+create or replace function public.site_content_consume_validation_binding(p_binding jsonb,p_purpose text,
+ p_project_ref text,p_recovery_evidence_digest text,p_payload jsonb) returns boolean
+language plpgsql volatile security definer set search_path = '' as $$
+declare v_count integer; v_binding_id uuid;
+begin
+ if not public.site_content_validation_binding_valid(p_binding,p_purpose,p_project_ref,
+   p_recovery_evidence_digest,p_payload) then return false; end if;
+ begin v_binding_id:=(p_binding->>'bindingId')::uuid;
+ exception when invalid_text_representation then return false; end;
+ insert into public.site_content_validation_binding_consumptions(binding_id,purpose,project_ref,payload_digest,expires_at)
+ values(v_binding_id,p_purpose,p_project_ref,p_binding->>'payloadDigest',
+   (p_binding->>'validatedAt')::timestamptz+interval '5 minutes')
+ on conflict(binding_id) do nothing;
+ get diagnostics v_count=row_count;
+ return v_count=1;
+exception when others then return false;
+end $$;
+
+create or replace function public.record_site_content_release_gate_artifact(p_gate_artifact jsonb) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare v_release_id uuid; v_owner text; v_count integer; v_existing text;
+begin
+ if auth.role() is distinct from 'service_role' then raise exception 'service role required'; end if;
+ begin v_release_id:=(p_gate_artifact->>'releaseId')::uuid;
+ exception when invalid_text_representation then raise exception 'invalid gate artifact release identity'; end;
+ v_owner:=p_gate_artifact->>'owner';
+ if v_owner not in ('public-site-content-reader-v1','site-content-governance-registry-v1','rag-programme-eval-v1')
+  or p_gate_artifact->>'subjectDigest' is distinct from public.site_content_json_digest(p_gate_artifact->'subject')
+  or p_gate_artifact#>>'{artifact,owner}' is distinct from v_owner
+  or p_gate_artifact#>>'{artifact,subjectDigest}' is distinct from p_gate_artifact->>'subjectDigest'
+  or p_gate_artifact#>>'{artifact,digest}' is distinct from
+    public.site_content_json_digest((p_gate_artifact->'artifact')-'digest')
+  or p_gate_artifact#>>'{subject,releaseId}' is distinct from v_release_id::text
+ then raise exception 'gate artifact owner/subject/digest invalid'; end if;
+ insert into public.site_content_release_gate_artifacts(release_id,owner,subject,subject_digest,artifact,
+  artifact_digest,observed_at)
+ values(v_release_id,v_owner,p_gate_artifact->'subject',p_gate_artifact->>'subjectDigest',p_gate_artifact->'artifact',
+  p_gate_artifact#>>'{artifact,digest}',(p_gate_artifact#>>'{artifact,observedAt}')::timestamptz)
+ on conflict(release_id,owner) do nothing;
+ get diagnostics v_count=row_count;
+ if v_count=0 then
+  select artifact_digest into v_existing from public.site_content_release_gate_artifacts
+   where release_id=v_release_id and owner=v_owner;
+  if v_existing is distinct from p_gate_artifact#>>'{artifact,digest}'
+  then raise exception 'gate artifact is immutable'; end if;
+ end if;
+ return pg_catalog.jsonb_build_object('releaseId',v_release_id,'owner',v_owner,
+  'artifactDigest',p_gate_artifact#>>'{artifact,digest}','recorded',v_count=1);
+end $$;
+
+create or replace function public.read_site_content_release_gate_artifacts(p_release_id uuid) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare v_subject jsonb; v_subject_digest text; v_count integer; v_result jsonb;
+begin
+ if not public.site_content_admin_authorized() or auth.uid() is null then raise exception 'administrator required'; end if;
+ select count(*),min(subject::text)::jsonb,min(subject_digest) into v_count,v_subject,v_subject_digest
+  from public.site_content_release_gate_artifacts where release_id=p_release_id;
+ if v_count<>3 or exists(select 1 from public.site_content_release_gate_artifacts
+   where release_id=p_release_id and (subject is distinct from v_subject or subject_digest is distinct from v_subject_digest))
+ then raise exception 'complete immutable release gate artifacts are unavailable'; end if;
+ select pg_catalog.jsonb_build_object('version','site-content-release-gate-artifacts-v1','subject',v_subject,
+   'subjectDigest',v_subject_digest,
+   'publicVisibility',max(artifact) filter(where owner='public-site-content-reader-v1'),
+   'governance',max(artifact) filter(where owner='site-content-governance-registry-v1'),
+   'mustPass',max(artifact) filter(where owner='rag-programme-eval-v1')) into v_result
+ from public.site_content_release_gate_artifacts where release_id=p_release_id;
+ return v_result;
 end $$;
 
 create or replace function public.provision_site_content_validation_secret(p_configuration jsonb) returns jsonb
@@ -165,7 +255,7 @@ begin
  if not public.site_content_admin_authorized() or v_actor is null then raise exception 'administrator required'; end if;
  begin v_release_id:=(v_plan->>'candidateReleaseId')::uuid;
  exception when invalid_text_representation then raise exception 'invalid adoption release identity'; end;
- if not public.site_content_validation_binding_valid(p_validation_binding,'adopt',v_plan->>'projectRef',
+ if not public.site_content_consume_validation_binding(p_validation_binding,'adopt',v_plan->>'projectRef',
     v_plan->>'recoveryEvidenceDigest',p_adoption)
   or v_plan->>'mode' is distinct from 'write'
   or v_plan->>'planDigest' is distinct from public.site_content_json_digest(v_plan-'planDigest')
@@ -183,25 +273,34 @@ begin
     (v_plan#>>'{expectedCounts,changed}')::integer+(v_plan#>>'{expectedCounts,unchanged}')::integer
   or (v_plan#>>'{expectedCounts,unchanged}')::integer<>0 or (v_plan#>>'{expectedCounts,tombstoned}')::integer<>0
   or pg_catalog.jsonb_typeof(p_adoption->'records') is distinct from 'array'
-  or v_verification->>'version' is distinct from 'site-content-release-verification-v1'
+  or v_verification->>'version' is distinct from 'site-content-release-verification-v2'
   or v_verification->>'subjectDigest' is distinct from public.site_content_json_digest(v_verification->'subject')
   or v_verification#>>'{subject,projectRef}' is distinct from v_plan->>'projectRef'
   or v_verification#>>'{subject,releaseId}' is distinct from v_plan->>'candidateReleaseId'
   or v_verification#>>'{subject,planDigest}' is distinct from v_plan->>'planDigest'
   or v_verification#>>'{subject,releaseDigest}' is distinct from v_plan->>'releaseDigest'
-  or v_verification#>>'{subject,staticManifestDigest}' is distinct from v_plan->>'staticManifestDigest'
-  or v_verification#>>'{subject,dynamicStateDigest}' is distinct from v_plan->>'dynamicStateDigest'
-  or v_verification#>>'{subject,legacyReconciliationDigest}' is distinct from v_plan->>'legacyReconciliationDigest'
   or v_verification->>'digest' is distinct from public.site_content_json_digest(v_verification-'digest')
+  or v_verification#>>'{publicVisibility,owner}' is distinct from 'public-site-content-reader-v1'
   or v_verification#>>'{publicVisibility,subjectDigest}' is distinct from v_verification->>'subjectDigest'
   or v_verification#>>'{publicVisibility,digest}' is distinct from
     public.site_content_json_digest((v_verification->'publicVisibility')-'digest')
   or v_verification#>>'{governance,subjectDigest}' is distinct from v_verification->>'subjectDigest'
+  or v_verification#>>'{governance,owner}' is distinct from 'site-content-governance-registry-v1'
   or v_verification#>>'{governance,digest}' is distinct from
     public.site_content_json_digest((v_verification->'governance')-'digest')
   or v_verification#>>'{mustPass,subjectDigest}' is distinct from v_verification->>'subjectDigest'
+  or v_verification#>>'{mustPass,owner}' is distinct from 'rag-programme-eval-v1'
+  or v_verification#>>'{mustPass,caseSetFingerprint}' is distinct from
+    'sha256:4bf13e036a49ee077a9227c6b61d6f597efff15e8a5f2e3ea36f0cd4e4ea5107'
+  or pg_catalog.jsonb_array_length(v_verification#>'{mustPass,failedCaseIds}')<>0
   or v_verification#>>'{mustPass,digest}' is distinct from
     public.site_content_json_digest((v_verification->'mustPass')-'digest')
+  or not exists(select 1 from public.site_content_release_gate_artifacts artifact where artifact.release_id=v_release_id
+    and artifact.owner='public-site-content-reader-v1' and artifact.artifact=v_verification->'publicVisibility')
+  or not exists(select 1 from public.site_content_release_gate_artifacts artifact where artifact.release_id=v_release_id
+    and artifact.owner='site-content-governance-registry-v1' and artifact.artifact=v_verification->'governance')
+  or not exists(select 1 from public.site_content_release_gate_artifacts artifact where artifact.release_id=v_release_id
+    and artifact.owner='rag-programme-eval-v1' and artifact.artifact=v_verification->'mustPass')
  then raise exception 'evidence/digest-bound adoption authority invalid'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release',0));
  if exists(select 1 from public.site_content_releases)
@@ -250,7 +349,7 @@ begin
     v_previous := (p_plan->>'previousReleaseId')::uuid;
     v_generation := (p_plan->>'generationId')::uuid;
   exception when invalid_text_representation then raise exception 'invalid candidate identity'; end;
-  if not public.site_content_validation_binding_valid(p_validation_binding,'begin',p_plan->>'projectRef',
+  if not public.site_content_consume_validation_binding(p_validation_binding,'begin',p_plan->>'projectRef',
       p_plan->>'recoveryEvidenceDigest',p_plan)
     or p_plan->>'mode' is distinct from 'write'
     or p_plan->>'planDigest' is distinct from public.site_content_json_digest(p_plan-'planDigest')
@@ -555,26 +654,35 @@ begin
  if not public.site_content_admin_authorized() or auth.uid() is null then raise exception 'administrator required'; end if;
  select * into strict v_release from public.site_content_releases where id=(v_plan->>'candidateReleaseId')::uuid
   and state='candidate' for update;
- if not public.site_content_validation_binding_valid(p_validation_binding,'verify',v_release.project_ref,
+ if not public.site_content_consume_validation_binding(p_validation_binding,'verify',v_release.project_ref,
     v_release.recovery_evidence_digest,p_verification)
   or v_plan is distinct from v_release.plan_json
-  or v_evidence->>'version' is distinct from 'site-content-release-verification-v1'
+  or v_evidence->>'version' is distinct from 'site-content-release-verification-v2'
   or v_evidence->>'subjectDigest' is distinct from public.site_content_json_digest(v_evidence->'subject')
   or v_evidence#>>'{subject,projectRef}' is distinct from v_release.project_ref
   or v_evidence#>>'{subject,releaseId}' is distinct from v_release.id::text
   or v_evidence#>>'{subject,planDigest}' is distinct from v_release.plan_digest
   or v_evidence#>>'{subject,releaseDigest}' is distinct from v_release.release_digest
-  or v_evidence#>>'{subject,staticManifestDigest}' is distinct from v_release.static_manifest_digest
-  or v_evidence#>>'{subject,dynamicStateDigest}' is distinct from v_release.dynamic_state_digest
-  or v_evidence#>>'{subject,legacyReconciliationDigest}' is distinct from v_release.legacy_reconciliation_digest
   or v_evidence->>'digest' is distinct from public.site_content_json_digest(v_evidence-'digest')
+  or v_evidence#>>'{publicVisibility,owner}' is distinct from 'public-site-content-reader-v1'
   or v_evidence#>>'{publicVisibility,subjectDigest}' is distinct from v_evidence->>'subjectDigest'
   or v_evidence#>>'{publicVisibility,digest}' is distinct from
     public.site_content_json_digest((v_evidence->'publicVisibility')-'digest')
   or v_evidence#>>'{governance,subjectDigest}' is distinct from v_evidence->>'subjectDigest'
+  or v_evidence#>>'{governance,owner}' is distinct from 'site-content-governance-registry-v1'
   or v_evidence#>>'{governance,digest}' is distinct from public.site_content_json_digest((v_evidence->'governance')-'digest')
   or v_evidence#>>'{mustPass,subjectDigest}' is distinct from v_evidence->>'subjectDigest'
+  or v_evidence#>>'{mustPass,owner}' is distinct from 'rag-programme-eval-v1'
+  or v_evidence#>>'{mustPass,caseSetFingerprint}' is distinct from
+    'sha256:4bf13e036a49ee077a9227c6b61d6f597efff15e8a5f2e3ea36f0cd4e4ea5107'
+  or pg_catalog.jsonb_array_length(v_evidence#>'{mustPass,failedCaseIds}')<>0
   or v_evidence#>>'{mustPass,digest}' is distinct from public.site_content_json_digest((v_evidence->'mustPass')-'digest')
+  or not exists(select 1 from public.site_content_release_gate_artifacts artifact where artifact.release_id=v_release.id
+    and artifact.owner='public-site-content-reader-v1' and artifact.artifact=v_evidence->'publicVisibility')
+  or not exists(select 1 from public.site_content_release_gate_artifacts artifact where artifact.release_id=v_release.id
+    and artifact.owner='site-content-governance-registry-v1' and artifact.artifact=v_evidence->'governance')
+  or not exists(select 1 from public.site_content_release_gate_artifacts artifact where artifact.release_id=v_release.id
+    and artifact.owner='rag-programme-eval-v1' and artifact.artifact=v_evidence->'mustPass')
  then raise exception 'candidate verification authority invalid'; end if;
  update public.site_content_releases set integrity_verified=true,public_visibility_verified=true,
   governance_verified=true,must_pass_verified=true,verification_evidence=v_evidence where id=v_release.id;
@@ -604,7 +712,7 @@ begin
  select * into strict v_release from public.site_content_releases where id=p_release_id for update;
  select release.* into strict v_previous from public.site_content_public_authority authority
   join public.site_content_releases release on release.id=authority.active_release_id where authority.singleton for update;
- if not public.site_content_validation_binding_valid(p_validation_binding,'activate',v_release.project_ref,
+ if not public.site_content_consume_validation_binding(p_validation_binding,'activate',v_release.project_ref,
       v_release.recovery_evidence_digest,pg_catalog.jsonb_build_object('action','activate','evidence',p_recovery_evidence,
         'activation',p_activation_receipt))
   or v_release.state<>'candidate' or v_release.release_digest<>p_expected_release_digest
@@ -658,7 +766,7 @@ begin
  if not public.site_content_admin_authorized() or auth.uid() is null then raise exception 'administrator required'; end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release',0));
  select * into strict v_failed from public.site_content_releases where id=p_failed_release_id and state='active' for update;
- if not public.site_content_validation_binding_valid(p_validation_binding,'rollback',v_failed.project_ref,
+ if not public.site_content_consume_validation_binding(p_validation_binding,'rollback',v_failed.project_ref,
       v_failed.recovery_evidence_digest,pg_catalog.jsonb_build_object('action','rollback','evidence',p_recovery_evidence,
         'activation',p_activation_receipt,'rollback',p_rollback_receipt))
   or p_recovery_evidence is distinct from v_failed.recovery_evidence
@@ -696,13 +804,19 @@ alter table public.site_content_publications enable row level security;
 alter table public.site_content_release_projections enable row level security;
 alter table public.site_content_sync_outbox enable row level security;
 alter table public.site_content_release_operations enable row level security;
+alter table public.site_content_validation_binding_consumptions enable row level security;
+alter table public.site_content_release_gate_artifacts enable row level security;
 revoke all on public.site_content_public_authority,public.site_content_releases,public.site_content_publications,
- public.site_content_release_projections,public.site_content_sync_outbox,public.site_content_release_operations
+ public.site_content_release_projections,public.site_content_sync_outbox,public.site_content_release_operations,
+ public.site_content_validation_binding_consumptions,public.site_content_release_gate_artifacts
  from public,anon,authenticated,service_role;
 revoke all on function public.site_content_canonical_json(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_p05_digest(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_json_digest(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_validation_binding_valid(jsonb,text,text,text,jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.site_content_consume_validation_binding(jsonb,text,text,text,jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.record_site_content_release_gate_artifact(jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.read_site_content_release_gate_artifacts(uuid) from public,anon,authenticated,service_role;
 revoke all on function public.provision_site_content_validation_secret(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_admin_authorized() from public,anon,authenticated;
 revoke all on function public.adopt_site_content_baseline(jsonb,jsonb) from public,anon,authenticated;
@@ -728,7 +842,9 @@ grant execute on function public.verify_site_content_candidate_release(jsonb,jso
 grant execute on function public.read_site_content_release_activation_context(uuid) to authenticated;
 grant execute on function public.activate_site_content_release(uuid,text,jsonb,jsonb,jsonb) to authenticated;
 grant execute on function public.rollback_site_content_release(uuid,jsonb,jsonb,jsonb,jsonb) to authenticated;
+grant execute on function public.read_site_content_release_gate_artifacts(uuid) to authenticated;
 grant execute on function public.provision_site_content_validation_secret(jsonb) to service_role;
+grant execute on function public.record_site_content_release_gate_artifact(jsonb) to service_role;
 grant execute on function public.read_public_site_content_records(text,text,text) to service_role;
 grant execute on function public.claim_site_content_sync_events(uuid,integer,integer) to service_role;
 grant execute on function public.heartbeat_site_content_sync_event(uuid,uuid,uuid,uuid,integer,integer) to service_role;

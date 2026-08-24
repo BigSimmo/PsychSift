@@ -34,6 +34,12 @@ describe("site-content P05 server validation authority", () => {
       now: siteReleaseNow,
     };
     expect(verifySiteContentRecoveryValidationBinding(activation, verification)).toBe(true);
+    expect(activation.bindingId).toMatch(/^[0-9a-f-]{36}$/);
+    const retry = createSiteContentRecoveryValidationBinding(
+      { action: "activate", ...fixture, rollback: undefined, expected },
+      { expectedProjectRef: siteReleaseProjectRef, now: siteReleaseNow, secret },
+    );
+    expect(retry.bindingId).not.toBe(activation.bindingId);
     const rollback = createSiteContentRecoveryValidationBinding(
       { action: "rollback", ...fixture, expected },
       { expectedProjectRef: siteReleaseProjectRef, now: siteReleaseNow, secret },

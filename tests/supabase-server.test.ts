@@ -6,6 +6,32 @@ afterEach(() => {
 });
 
 describe("Supabase server client", () => {
+  it("binds a validated bearer to every request made by the user-context client", async () => {
+    const createdClient = { kind: "bearer-server-client" };
+    const createClient = vi.fn(() => createdClient);
+    vi.doMock("server-only", () => ({}));
+    vi.doMock("@supabase/ssr", () => ({ createServerClient: vi.fn() }));
+    vi.doMock("@supabase/supabase-js", () => ({ createClient }));
+    vi.doMock("next/headers", () => ({ cookies: vi.fn() }));
+    vi.doMock("@/lib/env", () => ({
+      env: {
+        NEXT_PUBLIC_SUPABASE_URL: "https://project.supabase.co",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+      },
+    }));
+    const { createSupabaseBearerServerClient } = await import("../src/lib/supabase/server");
+
+    expect(createSupabaseBearerServerClient("validated-administrator-jwt")).toBe(createdClient);
+    expect(createClient).toHaveBeenCalledWith(
+      "https://project.supabase.co",
+      "sb_publishable_test",
+      expect.objectContaining({
+        global: { headers: { Authorization: "Bearer validated-administrator-jwt" } },
+        auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+      }),
+    );
+  });
+
   it("stays disabled when public Supabase configuration is incomplete", async () => {
     const createServerClient = vi.fn();
     const cookies = vi.fn();

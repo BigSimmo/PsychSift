@@ -177,6 +177,8 @@ describe("public site-content publication access", () => {
       /verificationEvidence[\s\S]*subjectDigest[\s\S]*publicVisibility[\s\S]*governance[\s\S]*mustPass/i,
     );
     expect(sql).not.toMatch(/p_verification#>>'\{flags,/i);
+    expect(sql).toMatch(/site_content_validation_binding_consumptions/i);
+    expect(sql).toMatch(/site_content_release_gate_artifacts/i);
     expect(sql).toMatch(/site_content_json_digest\(p_plan-'planDigest'\)/i);
     expect(sql).toMatch(/legacy_reconciliation_digest[\s\S]*legacy_dispositions/i);
   });

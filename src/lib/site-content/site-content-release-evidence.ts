@@ -6,122 +6,190 @@ import {
 
 type Digest = `sha256:${string}`;
 
-type Receipt<T extends object> = Readonly<T & { digest: Digest }>;
+export const SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT =
+  "sha256:4bf13e036a49ee077a9227c6b61d6f597efff15e8a5f2e3ea36f0cd4e4ea5107" as const;
 
-export type SiteContentReleaseVerificationEvidence = Readonly<{
-  version: "site-content-release-verification-v1";
-  subject: Readonly<{
-    projectRef: string;
-    releaseId: string;
-    planDigest: Digest;
-    releaseDigest: Digest;
-    staticManifestDigest: Digest;
-    dynamicStateDigest: Digest;
-    legacyReconciliationDigest: Digest;
-    expectedCounts: SiteContentSyncPlan["expectedCounts"];
-    logicalIds: string[];
-  }>;
+export const SITE_CONTENT_MUST_PASS_CASE_IDS = Object.freeze([
+  "direct-evidence-generic-refusal",
+  "trusted-admin-activation",
+  "ordinary-upload-denied",
+  "private-staging-excluded",
+  "broad-partial-exact-gap",
+  "uploaded-australian-augmentation",
+  "site-specifier-current",
+  "site-differential-current",
+  "site-medication-current",
+  "cross-domain-site-coverage",
+  "uploaded-primary-over-site-summary",
+  "site-product-primary",
+  "changed-deleted-site-record",
+  "stale-manifest-cache-mismatch",
+  "uploaded-public-visible-conflict",
+  "public-release-auth-parity",
+  "site-admin-only-mutation",
+  "source-role-mismatch",
+  "site-sync-unavailable",
+  "australian-augmentation-unavailable",
+  "healthdirect-excluded",
+  "etg-amh-link-only",
+  "prohibited-upload-pre-provider",
+  "narrow-answer-concise",
+  "broad-answer-complete",
+  "broad-management-route",
+  "structured-output-truncation",
+  "anaphoric-follow-up",
+  "incremental-reconciliation",
+] as const);
+
+type PopulationEntry = Readonly<{ logicalId: string; contentHash: Digest }>;
+type GateReceipt<T extends object> = Readonly<T & { digest: Digest }>;
+
+export type SiteContentReleaseGateArtifacts = Readonly<{
+  version: "site-content-release-gate-artifacts-v1";
+  subject: Readonly<{ projectRef: string; releaseId: string; planDigest: Digest; releaseDigest: Digest }>;
   subjectDigest: Digest;
-  publicVisibility: Receipt<{
-    version: "site-content-public-visibility-v1";
+  publicVisibility: GateReceipt<{
+    owner: "public-site-content-reader-v1";
     subjectDigest: Digest;
-    observedLogicalIds: string[];
-    checkedAt: string;
+    observedAt: string;
+    population: PopulationEntry[];
+    populationDigest: Digest;
   }>;
-  governance: Receipt<{
-    version: "site-content-governance-verification-v1";
+  governance: GateReceipt<{
+    owner: "site-content-governance-registry-v1";
     subjectDigest: Digest;
-    reviewedLogicalIds: string[];
-    reviewEvidenceDigest: Digest;
-    checkedAt: string;
+    observedAt: string;
+    population: PopulationEntry[];
+    registryVersion: string;
+    staticManifestDigest: Digest;
+    sourceStatus: "current";
+    validationStatus: "locally_reviewed";
   }>;
-  mustPass: Receipt<{
-    version: "site-content-must-pass-verification-v1";
+  mustPass: GateReceipt<{
+    owner: "rag-programme-eval-v1";
     subjectDigest: Digest;
-    caseSetDigest: Digest;
-    caseResults: Array<{ caseId: string; outcome: "passed" }>;
-    checkedAt: string;
+    observedAt: string;
+    caseSetFingerprint: typeof SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT;
+    evaluatedCaseIds: string[];
+    failedCaseIds: string[];
+    runDigest: Digest;
   }>;
-  digest: Digest;
 }>;
 
-type EvidenceInputs = {
-  publicVisibility: { observedLogicalIds: string[]; checkedAt: string };
-  governance: { reviewedLogicalIds: string[]; reviewEvidenceDigest: Digest; checkedAt: string };
-  mustPass: {
-    caseSetDigest: Digest;
-    caseResults: Array<{ caseId: string; outcome: "passed" }>;
-    checkedAt: string;
-  };
-};
-
-function sortedUnique(values: string[], label: string) {
-  if (values.some((value) => !value.trim()) || new Set(values).size !== values.length) {
-    throw new Error(`${label} identities must be non-empty and unique.`);
+export type SiteContentReleaseVerificationEvidence = Readonly<
+  Omit<SiteContentReleaseGateArtifacts, "version"> & {
+    version: "site-content-release-verification-v2";
+    digest: Digest;
   }
-  return [...values].sort();
+>;
+
+function digestPattern(value: unknown): value is Digest {
+  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
 }
 
-function assertTimestamp(value: string, label: string) {
-  if (!Number.isFinite(Date.parse(value))) throw new Error(`${label} timestamp is invalid.`);
-}
-
-function subjectFor(planInput: unknown) {
-  const plan = assertSiteContentSyncPlan(planInput);
-  const logicalIds = plan.operations
+function expectedPopulation(plan: SiteContentSyncPlan): PopulationEntry[] {
+  return plan.operations
     .filter((operation) => operation.operation !== "tombstone")
-    .map((operation) => operation.logicalId)
-    .sort();
+    .map(({ logicalId, contentHash }) => ({ logicalId, contentHash }))
+    .sort((left, right) => left.logicalId.localeCompare(right.logicalId));
+}
+
+function subjectFor(plan: SiteContentSyncPlan) {
   return {
     projectRef: plan.projectRef,
     releaseId: plan.candidateReleaseId,
     planDigest: plan.planDigest,
     releaseDigest: plan.releaseDigest,
-    staticManifestDigest: plan.staticManifestDigest,
-    dynamicStateDigest: plan.dynamicStateDigest,
-    legacyReconciliationDigest: plan.legacyReconciliationDigest,
-    expectedCounts: plan.expectedCounts,
-    logicalIds,
   } as const;
 }
 
-function receipt<T extends object>(value: T): Receipt<T> {
-  return Object.freeze({ ...value, digest: siteContentSyncDigest(value) });
+function assertReceipt(value: { digest?: unknown }, label: string) {
+  const { digest, ...withoutDigest } = value;
+  if (!digestPattern(digest) || siteContentSyncDigest(withoutDigest) !== digest) {
+    throw new Error(`${label} gate artifact digest mismatch.`);
+  }
 }
 
-export function createSiteContentReleaseVerificationEvidence(
+function timestamp(value: string, now: Date, label: string) {
+  const observed = Date.parse(value);
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ||
+    !Number.isFinite(observed) ||
+    new Date(observed).toISOString() !== value ||
+    observed > now.getTime() ||
+    observed < now.getTime() - 5 * 60 * 1000
+  ) {
+    throw new Error(`${label} gate artifact is stale or future-dated.`);
+  }
+  return observed;
+}
+
+export function verifySiteContentReleaseGateArtifacts(
   planInput: unknown,
-  inputs: EvidenceInputs,
+  input: unknown,
+  options: { now: Date },
 ): SiteContentReleaseVerificationEvidence {
-  const subject = subjectFor(planInput);
-  const subjectDigest = siteContentSyncDigest(subject);
-  const publicVisibility = receipt({
-    version: "site-content-public-visibility-v1" as const,
-    subjectDigest,
-    observedLogicalIds: sortedUnique(inputs.publicVisibility.observedLogicalIds, "Public visibility"),
-    checkedAt: inputs.publicVisibility.checkedAt,
-  });
-  const governance = receipt({
-    version: "site-content-governance-verification-v1" as const,
-    subjectDigest,
-    reviewedLogicalIds: sortedUnique(inputs.governance.reviewedLogicalIds, "Governance"),
-    reviewEvidenceDigest: inputs.governance.reviewEvidenceDigest,
-    checkedAt: inputs.governance.checkedAt,
-  });
-  const mustPass = receipt({
-    version: "site-content-must-pass-verification-v1" as const,
-    subjectDigest,
-    caseSetDigest: inputs.mustPass.caseSetDigest,
-    caseResults: [...inputs.mustPass.caseResults].sort((left, right) => left.caseId.localeCompare(right.caseId)),
-    checkedAt: inputs.mustPass.checkedAt,
-  });
+  const plan = assertSiteContentSyncPlan(planInput);
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Stored site-content release gate artifacts are required.");
+  }
+  const artifacts = input as SiteContentReleaseGateArtifacts;
+  const subject = subjectFor(plan);
+  const population = expectedPopulation(plan);
+  if (
+    artifacts.version !== "site-content-release-gate-artifacts-v1" ||
+    JSON.stringify(artifacts.subject) !== JSON.stringify(subject) ||
+    artifacts.subjectDigest !== siteContentSyncDigest(subject)
+  ) {
+    throw new Error("Release gate artifact subject mismatch.");
+  }
+  assertReceipt(artifacts.publicVisibility, "Public visibility");
+  assertReceipt(artifacts.governance, "Governance");
+  assertReceipt(artifacts.mustPass, "Must-pass");
+  if (
+    artifacts.publicVisibility.owner !== "public-site-content-reader-v1" ||
+    artifacts.publicVisibility.subjectDigest !== artifacts.subjectDigest ||
+    JSON.stringify(artifacts.publicVisibility.population) !== JSON.stringify(population) ||
+    artifacts.publicVisibility.populationDigest !== siteContentSyncDigest(population)
+  ) {
+    throw new Error("Public-visibility gate output does not match the exact release population.");
+  }
+  if (
+    artifacts.governance.owner !== "site-content-governance-registry-v1" ||
+    artifacts.governance.subjectDigest !== artifacts.subjectDigest ||
+    JSON.stringify(artifacts.governance.population) !== JSON.stringify(population) ||
+    artifacts.governance.registryVersion !== plan.registryVersion ||
+    artifacts.governance.staticManifestDigest !== plan.staticManifestDigest ||
+    artifacts.governance.sourceStatus !== "current" ||
+    artifacts.governance.validationStatus !== "locally_reviewed"
+  ) {
+    throw new Error("Governance gate output does not match the canonical registry population.");
+  }
+  if (
+    artifacts.mustPass.owner !== "rag-programme-eval-v1" ||
+    artifacts.mustPass.subjectDigest !== artifacts.subjectDigest ||
+    artifacts.mustPass.caseSetFingerprint !== SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT ||
+    JSON.stringify(artifacts.mustPass.evaluatedCaseIds) !== JSON.stringify(SITE_CONTENT_MUST_PASS_CASE_IDS) ||
+    artifacts.mustPass.failedCaseIds.length !== 0 ||
+    !digestPattern(artifacts.mustPass.runDigest)
+  ) {
+    throw new Error("Must-pass gate output does not match the canonical evaluated case population.");
+  }
+  const publicAt = timestamp(artifacts.publicVisibility.observedAt, options.now, "Public visibility");
+  const governanceAt = timestamp(artifacts.governance.observedAt, options.now, "Governance");
+  const mustPassAt = timestamp(artifacts.mustPass.observedAt, options.now, "Must-pass");
+  const recoveryVerifiedAt = Date.parse(plan.recoveryEvidence?.verifiedAt ?? "");
+  if (
+    !Number.isFinite(recoveryVerifiedAt) ||
+    publicAt < recoveryVerifiedAt ||
+    governanceAt < publicAt ||
+    mustPassAt < governanceAt
+  ) {
+    throw new Error("Release gate artifact chronology is invalid.");
+  }
   const withoutDigest = {
-    version: "site-content-release-verification-v1" as const,
-    subject,
-    subjectDigest,
-    publicVisibility,
-    governance,
-    mustPass,
+    ...artifacts,
+    version: "site-content-release-verification-v2" as const,
   };
   return Object.freeze({ ...withoutDigest, digest: siteContentSyncDigest(withoutDigest) });
 }
@@ -129,56 +197,21 @@ export function createSiteContentReleaseVerificationEvidence(
 export function assertSiteContentReleaseVerificationEvidence(
   input: unknown,
   planInput: unknown,
+  options: { now: Date },
 ): SiteContentReleaseVerificationEvidence {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new Error("Canonical site-content release verification evidence is required.");
   }
   const evidence = input as SiteContentReleaseVerificationEvidence;
-  const subject = subjectFor(planInput);
-  const expectedIds = JSON.stringify(subject.logicalIds);
-  if (
-    evidence.version !== "site-content-release-verification-v1" ||
-    siteContentSyncDigest(subject) !== evidence.subjectDigest ||
-    JSON.stringify(evidence.subject) !== JSON.stringify(subject)
-  ) {
-    throw new Error("Release verification subject identity mismatch.");
-  }
-  for (const value of [evidence.publicVisibility, evidence.governance, evidence.mustPass]) {
-    const { digest, ...withoutDigest } = value ?? ({} as never);
-    if (!digest || siteContentSyncDigest(withoutDigest) !== digest) {
-      throw new Error("Release verification artifact digest mismatch.");
-    }
-  }
-  if (
-    evidence.publicVisibility.version !== "site-content-public-visibility-v1" ||
-    evidence.publicVisibility.subjectDigest !== evidence.subjectDigest ||
-    JSON.stringify(sortedUnique(evidence.publicVisibility.observedLogicalIds, "Public visibility")) !== expectedIds
-  ) {
-    throw new Error("Public-visibility evidence does not cover the exact release population.");
-  }
-  if (
-    evidence.governance.version !== "site-content-governance-verification-v1" ||
-    evidence.governance.subjectDigest !== evidence.subjectDigest ||
-    JSON.stringify(sortedUnique(evidence.governance.reviewedLogicalIds, "Governance")) !== expectedIds ||
-    !/^sha256:[a-f0-9]{64}$/.test(evidence.governance.reviewEvidenceDigest)
-  ) {
-    throw new Error("Governance evidence does not cover the exact release population.");
-  }
-  if (
-    evidence.mustPass.version !== "site-content-must-pass-verification-v1" ||
-    evidence.mustPass.subjectDigest !== evidence.subjectDigest ||
-    !/^sha256:[a-f0-9]{64}$/.test(evidence.mustPass.caseSetDigest) ||
-    !evidence.mustPass.caseResults.length ||
-    new Set(evidence.mustPass.caseResults.map((entry) => entry.caseId)).size !== evidence.mustPass.caseResults.length ||
-    evidence.mustPass.caseResults.some((entry) => !entry.caseId.trim() || entry.outcome !== "passed")
-  ) {
-    throw new Error("Must-pass evidence is incomplete or contains a failure.");
-  }
-  assertTimestamp(evidence.publicVisibility.checkedAt, "Public visibility");
-  assertTimestamp(evidence.governance.checkedAt, "Governance");
-  assertTimestamp(evidence.mustPass.checkedAt, "Must-pass");
-  const { digest, ...withoutDigest } = evidence;
-  if (siteContentSyncDigest(withoutDigest) !== digest)
+  const { digest, ...artifacts } = evidence;
+  if (!digestPattern(digest) || siteContentSyncDigest(artifacts) !== digest) {
     throw new Error("Release verification evidence digest mismatch.");
+  }
+  const verified = verifySiteContentReleaseGateArtifacts(
+    planInput,
+    { ...artifacts, version: "site-content-release-gate-artifacts-v1" },
+    options,
+  );
+  if (verified.digest !== digest) throw new Error("Release verification evidence canonicalization mismatch.");
   return evidence;
 }

@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
 import {
   assertActivationReceiptBinding,
@@ -20,6 +20,7 @@ export type SiteContentRecoveryValidationPurpose = "adopt" | "begin" | "verify" 
 
 export type SiteContentRecoveryValidationBinding = Readonly<{
   version: "site-content-recovery-validation-v1";
+  bindingId: string;
   purpose: SiteContentRecoveryValidationPurpose;
   projectRef: string;
   recoveryEvidenceDigest: `sha256:${string}`;
@@ -62,6 +63,7 @@ function assertSiteReleaseReceipt(receipt: ActivationReceipt) {
 function assertEvidenceTransitionPayload(
   purpose: Exclude<SiteContentRecoveryValidationPurpose, "activate" | "rollback">,
   payload: unknown,
+  now: Date,
 ) {
   if (purpose === "begin") return assertSiteContentSyncPlan(payload);
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -69,7 +71,7 @@ function assertEvidenceTransitionPayload(
   }
   const transition = payload as { plan?: unknown; verificationEvidence?: unknown; records?: unknown };
   const plan = assertSiteContentSyncPlan(transition.plan);
-  assertSiteContentReleaseVerificationEvidence(transition.verificationEvidence, plan);
+  assertSiteContentReleaseVerificationEvidence(transition.verificationEvidence, plan, { now });
   if (purpose === "adopt") {
     if (!Array.isArray(transition.records)) throw new Error("Adoption records are required.");
     const expected = plan.operations
@@ -98,12 +100,13 @@ export function createSiteContentEvidenceValidationBinding(
 ): SiteContentRecoveryValidationBinding {
   const evidence = parseRecoveryReadinessEvidence(evidenceInput);
   assertRecoveryReadinessForOperation(evidence, "site-release", options.expectedProjectRef, options.now);
-  const plan = assertEvidenceTransitionPayload(purpose, payload);
+  const plan = assertEvidenceTransitionPayload(purpose, payload, options.now);
   if (plan.projectRef !== options.expectedProjectRef || plan.recoveryEvidenceDigest !== evidence.digest) {
     throw new Error("Evidence transition plan/recovery identity mismatch.");
   }
   const withoutMac = {
     version: "site-content-recovery-validation-v1" as const,
+    bindingId: randomUUID(),
     purpose,
     projectRef: options.expectedProjectRef,
     recoveryEvidenceDigest: evidence.digest as `sha256:${string}`,
@@ -152,6 +155,7 @@ export function createSiteContentRecoveryValidationBinding(
   };
   const withoutMac = {
     version: "site-content-recovery-validation-v1" as const,
+    bindingId: randomUUID(),
     purpose: input.action,
     projectRef: options.expectedProjectRef,
     recoveryEvidenceDigest: evidence.digest as `sha256:${string}`,
@@ -178,6 +182,7 @@ export function verifySiteContentRecoveryValidationBinding(
     if (
       !/^[a-f0-9]{64}$/.test(mac) ||
       input.version !== "site-content-recovery-validation-v1" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(input.bindingId) ||
       input.purpose !== options.expectedPurpose ||
       input.projectRef !== options.expectedProjectRef ||
       input.recoveryEvidenceDigest !== options.expectedRecoveryEvidenceDigest ||

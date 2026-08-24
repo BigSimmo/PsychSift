@@ -202,6 +202,56 @@ export type Database = {
           },
         ];
       };
+      site_content_release_gate_artifacts: {
+        Row: {
+          artifact: Json;
+          artifact_digest: string;
+          owner: string;
+          recorded_at: string;
+          release_id: string;
+          subject: Json;
+          subject_digest: string;
+        };
+        Insert: {
+          artifact: Json;
+          artifact_digest: string;
+          owner: string;
+          recorded_at?: string;
+          release_id: string;
+          subject: Json;
+          subject_digest: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_content_release_gate_artifacts"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "site_content_release_gate_artifacts_release_id_fkey";
+            columns: ["release_id"];
+            isOneToOne: false;
+            referencedRelation: "site_content_releases";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      site_content_validation_binding_consumptions: {
+        Row: {
+          binding_id: string;
+          consumed_at: string;
+          expires_at: string;
+          payload_digest: string;
+          project_ref: string;
+          purpose: string;
+        };
+        Insert: {
+          binding_id: string;
+          consumed_at?: string;
+          expires_at: string;
+          payload_digest: string;
+          project_ref: string;
+          purpose: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_content_validation_binding_consumptions"]["Insert"]>;
+        Relationships: [];
+      };
       api_rate_limits: {
         Row: {
           bucket: string;
@@ -2597,11 +2647,23 @@ export type Database = {
         Returns: Json;
       };
       read_site_content_release_activation_context: { Args: { p_release_id: string }; Returns: Json };
+      read_site_content_release_gate_artifacts: { Args: { p_release_id: string }; Returns: Json };
+      record_site_content_release_gate_artifact: { Args: { p_gate_artifact: Json }; Returns: Json };
       site_content_admin_authorized: { Args: never; Returns: boolean };
       site_content_canonical_json: { Args: { p_value: Json }; Returns: string };
       site_content_p05_digest: { Args: { p_value: Json }; Returns: string };
       site_content_json_digest: { Args: { p_value: Json }; Returns: string };
       site_content_validation_binding_valid: {
+        Args: {
+          p_binding: Json;
+          p_payload: Json;
+          p_project_ref: string;
+          p_purpose: string;
+          p_recovery_evidence_digest: string;
+        };
+        Returns: boolean;
+      };
+      site_content_consume_validation_binding: {
         Args: {
           p_binding: Json;
           p_payload: Json;

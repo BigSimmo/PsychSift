@@ -5,17 +5,23 @@ import {
   createSiteContentRecoveryValidationBinding,
 } from "@/lib/site-content/site-content-recovery-authority";
 import { assertSiteContentSyncPlan } from "@/lib/site-content/site-content-sync";
+import { verifySiteContentReleaseGateArtifacts } from "@/lib/site-content/site-content-release-evidence";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseBearerServerClient, createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+
+function bearerAccessToken(request: Request) {
+  return request.headers.get("authorization")?.match(/^Bearer\s+([^\s]+)$/i)?.[1] ?? null;
+}
 
 export async function POST(request: Request) {
   try {
     const adminSupabase = createAdminClient();
     await requireAuthenticatedUser(request, adminSupabase, { administrator: true });
-    const userSupabase = await createSupabaseServerClient();
+    const bearer = bearerAccessToken(request);
+    const userSupabase = bearer ? createSupabaseBearerServerClient(bearer) : await createSupabaseServerClient();
     if (!userSupabase) throw new AuthenticationError("Authenticated administrator session is required.");
     const body = await request.json();
     const action = body && typeof body === "object" ? (body as { action?: unknown }).action : undefined;
@@ -55,13 +61,18 @@ export async function POST(request: Request) {
       if (!projectRef || !secret) throw new Error("Site-content recovery authority is not configured.");
     }
     if (action === "adopt") {
-      const adoption = {
-        plan: (body as { plan?: unknown }).plan,
-        records: (body as { records?: unknown }).records,
-        verificationEvidence: (body as { verificationEvidence?: unknown }).verificationEvidence,
-      };
-      const plan = assertSiteContentSyncPlan(adoption.plan);
+      const plan = assertSiteContentSyncPlan((body as { plan?: unknown }).plan);
       if (plan.projectRef !== projectRef) throw new Error("Adoption target project mismatch.");
+      const { data: gateArtifacts, error: gateError } = await userSupabase.rpc(
+        "read_site_content_release_gate_artifacts",
+        { p_release_id: plan.candidateReleaseId },
+      );
+      if (gateError) throw new Error("Site-content release gate artifacts are unavailable.");
+      const adoption = {
+        plan,
+        records: (body as { records?: unknown }).records,
+        verificationEvidence: verifySiteContentReleaseGateArtifacts(plan, gateArtifacts, { now }),
+      };
       const binding = createSiteContentEvidenceValidationBinding("adopt", plan.recoveryEvidence, adoption, {
         expectedProjectRef: projectRef!,
         now,
@@ -79,12 +90,17 @@ export async function POST(request: Request) {
       });
       mutation = { rpc: "begin_site_content_candidate_release", args: { p_plan: plan, p_validation_binding: binding } };
     } else if (action === "verify") {
-      const verification = {
-        plan: (body as { plan?: unknown }).plan,
-        verificationEvidence: (body as { verificationEvidence?: unknown }).verificationEvidence,
-      };
-      const plan = assertSiteContentSyncPlan(verification.plan);
+      const plan = assertSiteContentSyncPlan((body as { plan?: unknown }).plan);
       if (plan.projectRef !== projectRef) throw new Error("Verification target mismatch.");
+      const { data: gateArtifacts, error: gateError } = await userSupabase.rpc(
+        "read_site_content_release_gate_artifacts",
+        { p_release_id: plan.candidateReleaseId },
+      );
+      if (gateError) throw new Error("Site-content release gate artifacts are unavailable.");
+      const verification = {
+        plan,
+        verificationEvidence: verifySiteContentReleaseGateArtifacts(plan, gateArtifacts, { now }),
+      };
       const binding = createSiteContentEvidenceValidationBinding("verify", plan.recoveryEvidence, verification, {
         expectedProjectRef: projectRef!,
         now,
