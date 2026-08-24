@@ -1,0 +1,107 @@
+# P05 phase review 10
+
+## Findings
+
+No findings.
+
+## Verdicts
+
+SPEC_VERDICT: PASS
+
+QUALITY_VERDICT: PASS
+
+The immutable Tasks 2 and 3 phase range satisfies the controlled-acquisition, protected-source, lifecycle, cache, recovery-readiness, receipt, privacy, and authority-boundary requirements reviewed for P05. The Task-review-11 adjacent malformed-token defect is closed: a local two-pass bound reconsumes a terminating `&` or `<` after committing the malformed token, progresses the same code point into the next lexical token, retains no content, and fails closed on an impossible third interpretation.
+
+## Task-review-11 finding disposition
+
+| Task-review-11 finding                                                             | Attempt-10 disposition | Evidence                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Malformed lexical fallback consumed the starter of the immediately following token | **CLOSED**             | `Health&&#100;irect`, `Health&&amp;direct`, `Health<<em>direct`, and `Health<&#100;irect` are rejected by one-shot, trusted-page, local text/plain, every tested split, and one-code-point worker gates. Repeated and mixed starter chains also pass with bounded progress. |
+
+## Earlier entity/overlap finding disposition
+
+| Earlier finding                                                                 | Attempt-10 disposition | Evidence                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Attempt 9: shorter semicolonless entity prefix lost literal excess              | **CLOSED**             | Fixed decoded checkpoints preserve `Health&ltdirect`, `Health&gtdirect`, and broader shorter-prefix cases through acquisition and real worker paging. Reconsume preserves the existing checkpoint semantics and the full focused suite remains green.                       |
+| Attempt 7: invalid entity prefixes and unfinished markup made both gates open   | **CLOSED**             | Literal entity/markup speculative states preserve malformed entity/markup/comment text across arbitrary splits and end-of-input. Adjacent-token reconsume now closes the remaining malformed/valid boundary.                                                                |
+| Attempt 6: fixed raw suffix lost arbitrarily split lexical syntax/state content | **CLOSED**             | Primitive-only canonical, entity-speculative, markup-speculative, and entity-checkpoint states retain no raw/canonical input and operate across arbitrary page boundaries.                                                                                                  |
+| Attempt 5: removable normalized content evicted the protected prefix            | **CLOSED**             | Finite pattern state advances across arbitrary punctuation and zero-width input without carrying raw content.                                                                                                                                                               |
+| Attempt 4: named references encoding letters bypassed both gates                | **CLOSED**             | A 1,512-name/6,048-case installed-entity matrix covering complete, semicolonless, adjacent entity, and malformed-markup prefixes produced zero one-shot/chunked mismatches, checkpoint errors, or progress errors. Complete and legacy protected-identity regressions pass. |
+| Attempt 3: numeric references encoding letters bypassed both gates              | **CLOSED**             | Decimal/hex references, with/without semicolons and across arbitrary pages, feed decoded scalars to the finite matcher; long leading-zero, adjacent malformed starter, and three-page cases pass.                                                                           |
+| Attempt 2: three ordinary chunks spanning a 500-row page boundary were missed   | **CLOSED**             | The actual worker owns one scanner across ordered 500-row pages and finalizes only at end of input (`supabase/functions/indexing-v3-agent/behavior.ts:99-113`; `indexing-v3-agent/index.ts:1800`).                                                                          |
+
+## Phase-review-1 finding disposition
+
+| Phase-review-1 finding                                                        | Attempt-10 disposition | Evidence                                                                                                                                                                                                                                   |
+| ----------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1. Effective event RPC dropped active-indexable allowlist/evidence strictness | **CLOSED**             | Final event authority pins policy version/digest, the 18 active/indexable keys, bounded reason, and 1-50 unique nonblank evidence references (`supabase/migrations/20260824123000_harden_public_source_lifecycle_authority.sql:54-93`).    |
+| 2. No first-version activation path                                           | **CLOSED**             | Null-predecessor first activation and exact replacement activation remain distinct and complete (`:357-412`).                                                                                                                              |
+| 3. Historical P02 publications without a P05 row remained public              | **CLOSED**             | Exact active eligibility, fail-closed owner recovery, retroactive re-ownership, cache/epoch invalidation, and future constraints remain effective (`:603-724`).                                                                            |
+| 4. Source decisions and lifecycle used different locks/current authority      | **CLOSED**             | Canonical per-source locks and latest sequenced activation-event reproving remain effective (`:96-101,137-145,183-192,381-395,515-518,548-552,579-583`).                                                                                   |
+| 5. P05 activation bypassed P02 status/artifact/job locks                      | **CLOSED**             | Document/artifact/job locks, active-work rejection, indexed/current/ownership checks, and exact approval/generation/state/acquisition proof remain effective (`:413-469`).                                                                 |
+| 6. Cache used a stale request-start lifecycle epoch                           | **CLOSED**             | Local/shared answer/search owners re-read authority before every lookup and after a candidate hit independently of the memoized document stamp; epoch failure bypasses cache (`src/lib/rag/rag-cache.ts:185-210,358-383,475-581,644-665`). |
+| 7. Actual worker did not use complete shared protected-content semantics      | **CLOSED**             | Acquisition and the real worker use the same complete bounded streaming owner. Named/numeric/legacy/malformed/adjacent/tag/comment cases pass arbitrary splits, and the actual Deno entrypoint checks offline.                             |
+| 8. Effective stage/resume dropped full exact identity                         | **CLOSED**             | Complete event/version/document/metadata/owner/URL/version/byte/type/hash/provenance/licence/lifecycle/lineage/digest checks remain effective (`20260824123000_harden_public_source_lifecycle_authority.sql:160-297`).                     |
+| 9. Effective transition removed the lifecycle state machine                   | **CLOSED**             | The obsolete overload remains dropped and the explicit allowed-edge/active-exit machine remains effective (`:503-539`).                                                                                                                    |
+
+## Original preflight finding disposition
+
+| Original preflight finding                                       | Attempt-10 disposition | Evidence                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Lifecycle, serving, and cache authority disconnected          | **CLOSED**             | Eligibility, retroactive/future constraints, atomic exits, cache deletion, epochs, and pre/post-hit checks remain connected.                                                                                                                                |
+| 2. Replacement activation/lineage non-atomic                     | **CLOSED**             | Canonical lock, one-active index, exact old/new/lineage binding, and old-before-new transaction remain intact.                                                                                                                                              |
+| 3. Exact P02 receipt/version binding incomplete                  | **CLOSED**             | Exact approval/source/policy/generation/state/manifest/acquisition binding and P02 safety locks remain enforced. P02 is accepted at `ac634ab358c92e6d943258a532aa5c6a98959e88`, package `2ada405d103719fb8a921bac8b08ca6ca922850c27530185995d647a10dfa7d9`. |
+| 4. Unchanged checks trusted stale current input                  | **CLOSED**             | Locked exact active identity/outcome reproving remains effective (`20260824123000_harden_public_source_lifecycle_authority.sql:542-566`).                                                                                                                   |
+| 5. Acquisition not exactly resumable                             | **CLOSED**             | Deterministic identities, pre-upload resume, full SQL validation, complete stage/resume identity, and immutable acquisition digest remain intact.                                                                                                           |
+| 6. Protected normalization/encoding/worker parity                | **CLOSED**             | Shared one-shot/streaming semantics cover standards-valid named/numeric/legacy references, shorter-prefix excess, malformed and adjacent syntax, tags/comments, arbitrary row/page splits, and fixed content-free state.                                    |
+| 7. Event append order time/UUID based                            | **CLOSED**             | Unique monotonic per-catalogue sequence and current-authority ordering remain under the canonical lock.                                                                                                                                                     |
+| 8. URL privacy accepted fragments/sensitive query keys           | **CLOSED**             | HTTPS/exact-host validation, fragment rejection, the five-key query allowlist, and value-free diagnostics remain unchanged (`src/lib/public-source-acquisition.ts:177-205`).                                                                                |
+| 9. Recovery opaque IDs accepted adjacent/plural sensitive labels | **CLOSED**             | Separator-stripped secret/credential/password/bearer/API-key/signature/signed/token rejection remains unchanged (`src/lib/recovery-readiness-evidence.ts:13-29`).                                                                                           |
+
+## Other requirement assessment
+
+- **Reconsume correctness and progress - PASS.** Entity and markup fallback first commit their fixed speculative state and reset lexical ownership, then reprocess only the same terminating starter. Each source code point is interpreted at most twice; the second pass starts a token or consumes the code point, and an impossible third pass throws the constant `protected_identity_lexical_reconsume_limit`. There is no recursion or unbounded retry.
+- **Malformed and valid streaming - PASS.** A 57-positive direct matrix covered repeated `&`, repeated `<`, alternating starters, adjacent numeric/named references, valid tags, and all three protected identities through one-shot, trusted-page, text/plain, eight chunk widths, and one-code-point worker paging: 456 split runs and zero failures. Deterministic 500,000-character lexical fuzz had zero errors or chunking mismatches.
+- **Content-free/bounded state - PASS.** Canonical, entity-speculative, markup-speculative, and 64 preallocated checkpoint matcher states contain fixed numeric/boolean data only. A 500,000-starter stress snapshot remained 870 serialized bytes. Finish remained idempotent and a post-finish write failed closed.
+- **Dependency/npm/Deno compatibility - PASS.** `entities@8.0.0` remains a direct production npm dependency and Deno workspace-lock entry. Installed-lock parity and direct dependency resolution pass. Deno 2.9.4 checks the shared policy, worker behavior module, and actual indexing entrypoint from installed/cache-resident dependencies with all network proxy routes refused.
+- **Controlled acquisition - PASS.** Catalogue/exact URL, source policy and active-indexable enforcement, protected/link-only exclusions, SSRF/DNS/IP/TLS/redirect controls, identity encoding, byte/type/signature/structure bounds, exact byte/digest/provenance, sanitization, deterministic idempotent staging/resume/enqueue, withdrawal/review, and value-free diagnostics remain intact.
+- **Activation, withdrawal, replacement, cache, and lifecycle - PASS.** One canonical lock/current authority, exact first/replacement activation, atomic old-before-new publication, P02 locks, active-indexable enforcement, historical reconciliation, lifecycle state machine, cache deletion/epoch advancement, and an epoch re-read before each access and after each candidate hit remain effective; epoch failure bypasses cache.
+- **Recovery readiness/receipts - PASS.** Exact project/resource/operation/recovery-basis/restore-input/retained-pointer/evidence/digest binding, readiness freshness, deterministic canonical digests, receipt identity, uniqueness, chronology/append order, historical activation replay, and exact rollback restoration remain provider-free and fail closed.
+- **P02/P04 interaction - PASS.** P02 publication locks/state/approval compose into P05 activation. P04 remains accepted at `8dee5cc34294adfe1eb5b0e8ee267d72aa5fbc11`, shares accepted package hash `2ada405d103719fb8a921bac8b08ca6ca922850c27530185995d647a10dfa7d9`, and its read-only audit/reindex owners are not widened. The legacy destructive commit path remains unchanged and unwired.
+- **Security/ACL/privacy - PASS.** Effective mutators retain fixed search paths, service-role-only grants, PUBLIC revocation, owner checks, bounded event evidence, opaque diagnostics, privacy-minimized URLs, and recovery-reference minimization.
+- **No authority widening - PASS.** The correction changes only the shared pure scanner and synthetic tests. No provider/live/destructive/document-processing or document-generation authority was added or exercised.
+
+## Immutable review identity
+
+- Phase: `P05` - Tasks 2 and 3 of `docs/superpowers/rag-upgrade/local/plans/2026-08-20-rag-ingestion-reindex.md`
+- Base: `0d5bb6a5012bd762bb53790ac24de16c7e3078c8`
+- Head: `a3f197741d701caf25d0519b22a190578545a6cb`
+- Merge base: `0d5bb6a5012bd762bb53790ac24de16c7e3078c8`
+- Canonical package: `docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P05/P05-phase-review-10.diff`
+- Canonical package SHA-256: `3e0487378b9b440f6fcf29ac8be0d3281e63183584631ecaf3f3026f995a6593`
+- Package header range: `0d5bb6a5012bd762bb53790ac24de16c7e3078c8..a3f197741d701caf25d0519b22a190578545a6cb`; eighteen listed commits; 9,574 lines
+- Full immutable range: 32 files, 8,590 insertions, 13 deletions
+- Final implementer report SHA-256: `29cbdebb98230db0a17ad72c52eefb9aa1a8e89fa994a8a097965d98669d6524`
+- Prior phase-review-9 report SHA-256: `6d6b2eee643e38421c09124bf5c85aa9494dbb8dd9c8806bae620c4fe5c7d7ee`
+- Task-review-11 report SHA-256: `fd80784537fe9671c84e7bc53d9a5785ee1d18dc3146fbc8596683e2a5c73173`
+- Accepted predecessor package SHA-256: `2ada405d103719fb8a921bac8b08ca6ca922850c27530185995d647a10dfa7d9`
+
+## Commands and evidence
+
+- Immutable Git/hash/header checks - exact identities above; `git diff --check` passed. The final correction is one commit and three files, 119 insertions and 47 deletions.
+- `npm run ledger:lookup -- a3f197741d701caf25d0519b22a190578545a6cb --scope "P05 phase review-10"` - `NOT REVIEWED at this HEAD and scope`; no ledger write.
+- Direct Node/tsx reconsume matrix over 57 protected variants through one-shot, trusted HTML, local text/plain, eight scanner widths, and one-code-point worker pages - PASS, 456 split runs and zero failures.
+- Deterministic Node/tsx lexical differential fuzz - PASS, 250 seeds and 500,000 characters, zero one-shot/chunked mismatches and zero exceptions.
+- Installed entity corpus differential - PASS, 1,512 names and 6,048 complete/semicolonless/adjacent/malformed-prefix cases; zero mismatches, checkpoint errors, or progress errors; maximum observed live checkpoint count two.
+- Fixed-state/progress stress - PASS after 500,000 alternating starter characters; snapshot primitive-only at 870 bytes, finish idempotent, and writes after finish rejected.
+- An initial ad hoc Australian Medicines Handbook case encoded `H` followed by numeric `b`, which correctly formed `Hbook` rather than `Handbook`. This was a probe-expectation error, not a product failure; the corrected numeric `a` case is included in the zero-failure 57-positive matrix.
+- Deno 2.9.4 `check --no-lock --node-modules-dir=none` over `public-source-policy.ts`, `behavior.ts`, and `index.ts`, with HTTP/HTTPS/ALL proxy routes forced to refused loopback - PASS from installed/cache-resident dependencies, exit 0.
+- `GATE_RECEIPTS=refresh node scripts/run-vitest.mjs run tests/public-source-activation-manifest.test.ts tests/public-source-acquisition.test.ts tests/public-source-serving-lifecycle.test.ts tests/indexing-v3-agent.test.ts tests/ingestion-enqueue.test.ts tests/rag-cache-invalidation.test.ts tests/rag-cache-utils.test.ts tests/retrieval-owner-filter-guard.test.ts tests/retrieval-rpc-rollout.test.ts tests/function-grants.test.ts tests/supabase-schema.test.ts` - fresh PASS, 11 files and 192 tests; expected synthetic bad-schema diagnostics were emitted by the passing grant tests.
+- `GATE_RECEIPTS=refresh node scripts/run-vitest.mjs run tests/recovery-readiness-evidence.test.ts tests/reindex-pipeline.test.ts` - fresh PASS, 2 files and 62 tests.
+- `GATE_RECEIPTS=refresh npm run typecheck` - fresh PASS.
+- `npm run check:migration-role`, `npm run check:function-grants`, `npm run check:maintainability-budgets`, and `npm run check:installed-lock-parity` - PASS; immutable migration history remained valid, all 34 definers were closed to PUBLIC, the worker remained 1,993/2,191 lines, and 755 installed package locations/51,732 files matched the npm lock.
+- `npm ls entities --depth=0` - PASS, direct `entities@8.0.0`.
+
+## No-live / no-document statement
+
+This review used repository source, migration text, accepted receipts/reports, installed/cache-resident dependencies, static searches, and synthetic local strings/rows. Network routes were explicitly forced to a refused loopback endpoint for the Deno entrypoint check. No provider, registry, or external network call, Supabase/database/Storage access, migration application/replay or live status read, recovery/PITR/restore operation, source fetch, document/PDF/corpus read, parsing, OCR, upload, embedding, enqueue, worker execution, reindex, activation, rollback, cleanup, deployment, hosted CI, GitHub, push, or PR was run. No documents were processed. No product, test, plan, receipt, or accepted predecessor artifact was edited. This report is the only write and remains untracked and unstaged.

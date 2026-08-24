@@ -1,0 +1,58 @@
+# P05 ingestion Task 3 review 5 report
+
+## Findings
+
+### P1 Critical — valid semicolonless HTML character references still bypass both protected-source gates
+
+- **Evidence:** `normalizedProtectedIdentity` decodes numeric references only when they end in `;` and removes residual named references only when they also end in `;` (`supabase/functions/_shared/public-source-policy.ts:9-24`). HTML numeric character references may omit the semicolon, and legacy named references such as `&nbsp` may do so in text contexts. The acquisition decoder has the same hand-written semicolon-only limitation (`src/lib/public-source-acquisition.ts:651-660`). The production page gate passes retained HTML to this predicate (`src/lib/public-source-acquisition.ts:665-688`), while the actual indexing worker passes every real chunk batch through the same predicate (`supabase/functions/indexing-v3-agent/index.ts:1795-1822`). Therefore the correction catches `&Tab;` and `&NewLine;`, but not the complete entity syntax it claims to normalize.
+- **Trigger / smallest proof:** an exact-head, provider-free synthetic probe evaluated `Health&#9direct`, `Health&#9 direct`, `Health&nbsp direct`, `Therapeutic&#10Guidelines`, and `Australian Medicines&#9Handbook`. For every value, `forbiddenPublicSourceIdentity` returned `null`, `containsForbiddenPublicSourceChunkContent([{ content }])` returned `false`, and `evaluateTrustedPageContent(<main>...</main>)` returned `accepted`. A conforming HTML tokenizer interprets the decimal references as tab/newline boundaries and the legacy named reference as a non-breaking-space boundary, revealing the forbidden identities.
+- **Expected:** complete entity normalization must make protected identity detection independent of whether a valid character reference carries its optional semicolon, at both acquisition and the actual worker chunk boundary.
+- **Actual risk:** forbidden Healthdirect, Therapeutic Guidelines, or AMH material can still be accepted, stored, chunked, embedded, and made available to downstream indexing despite the advertised acquisition and worker stop conditions.
+- **Smallest fix:** use one standards-complete HTML character-reference decoder before protected-identity normalization, or conservatively handle every valid numeric and legacy named semicolonless form without retaining entity spelling. Add the exact probes above to both the trusted-page and actual worker-boundary regressions.
+
+No other P0-P2 finding was identified across the complete immutable range.
+
+## Review-4 correction disposition and prior contract recheck
+
+- **Review-4 finding 1 (artifact ownership/P02 locks): closed.** The last effective `activate_public_source_version` locks the document, pages, images, all reviewed artifact tables, chunks, ingestion jobs, and agent jobs; rejects active work; requires `status = 'indexed'`; and fails on any owner-bearing artifact whose owner differs from the exact staging owner before publication (`supabase/migrations/20260824123000_harden_public_source_lifecycle_authority.sql:412-467`). Publication then clears only rows still owned by that staging owner (`:478-494`).
+- **Review-4 finding 2 (protected-source normalization): not closed.** Named references with semicolons now fail at the real chunk-reading worker boundary, including cross-row and cross-batch joins, but the P1 finding above proves valid semicolonless character references still pass both owners.
+- **Review-4 finding 3 (cache epoch): closed.** All four real cache readers call `cacheIndexingVersion` before touching a local/shared hit and again after locating/validating it (`src/lib/rag/rag-cache.ts:182-216,357-403,550-640,642-685`). `cacheIndexingVersion` performs a fresh lifecycle-authority RPC even when the document stamp is memoized and returns the unavailable marker on RPC failure (`:475-547`), so failed authority reads bypass cache.
+- **Review-4 finding 4 (canonical source authority): closed.** The last effective event, fetch, stage, activation, transition, tombstone, and unchanged-check owners use the same `public_source:` advisory-lock key. Activation reselects the latest monotonic event and binds its ID, decision, policy version, and policy digest before changing lifecycle (`supabase/migrations/20260824123000_harden_public_source_lifecycle_authority.sql:381-410`).
+- **Review-4 finding 5 (stage/resume acquisition identity): closed.** The last effective stage owner locks the existing version and document; rechecks policy, URLs, version, hashes, licence, owner, event, lineage, document path/storage/hash/type/size, all admission metadata, and the recomputed stored acquisition digest before returning `resumed` (`supabase/migrations/20260824123000_harden_public_source_lifecycle_authority.sql:194-247`). The canonical digest binds the complete persisted authorization/acquisition identity used by activation (`:4-52,461-467`).
+- **Effective lifecycle contracts:** first activation requires no active predecessor and no supersedes pointer; replacement requires exact active-old lineage and exits old before entering new (`:397-410,469-477`). Historical owner-null catalogue documents that cannot prove the exact active-version/P02 approval join are re-owned to the real prior approval owner or abort when that identity is absent (`:603-697`). The last transition definition has an explicit edge matrix and removes the obsolete activation-event argument (`:503-541`). The unchanged-check RPC remains source-locked, exact-active, bounded, and idempotent (`:543-567`).
+- **Earlier Task 3 findings remain closed.** Evidence and both receipt inputs are strict and canonical-digest verified; clocks are finite, ordered, freshness-bound, and future-skew bounded; every recovery layer is bound to exact project/operation/shared recovery basis/isolated target/input digests; activation and rollback identities are globally distinct and monotonic; references are strict opaque structures rejecting unknown fields, schemes, URLs, credentials, token/secret labels, and raw provider content. Rollback replays full readiness at immutable activation time while allowing evidence to age only later, and authenticates the promotion-bound recovery basis without requiring reconstruction. Site-release and document-generation identities remain typed and distinct, a retained previous generation remains mandatory, and no existing destructive generation commit was rewired or described as reversible.
+- The offline verifier remains import-safe, content-free at its success/error boundary, indexed in `docs/scripts-index.md`, and does not import the prohibited recovery-status script. The final migration owners retain fixed search paths and explicit execution revokes/grants. Retrieval owners remain exact-active fail-closed. The P1 finding keeps the complete protected-source stop-condition claim open.
+
+## Reviewed range and artifact identity
+
+- Task: `P05/ingestion/task-3`, correction review attempt 5 by the same independent reviewer.
+- TASK_BASE: `62adef3b97906f6164f3d568712141dd9cd4117d`.
+- TASK_HEAD: `6680b4f9a0bc40847d56b3d06246babe30ec15aa`.
+- HEAD and merge base resolved exactly. The immutable range contains `c0f09a27e`, `48ca64361`, `866944e12`, `ad2c90c0a`, `8a6184130`, and `6680b4f9a`; 21 files, 3,682 insertions, and 63 deletions.
+- Canonical full-range package `P05-ingestion-task-3-review-5.diff`: supplied and verified SHA-256 `d5a37c8a7ee39666cca83d5f2795fe4c7e69e940b828556729fe4b15a103dc30`; the complete 5,178-line package/range was reviewed.
+- Final implementer report: supplied and verified SHA-256 `555857f7aa2eeb2e60224799f072ad1c70c80aed2ac99902f1c201cfacafe664`.
+- Prior review-4 report: supplied and verified SHA-256 `b8246b2248c757d1fc483b74925a6f28ecc3ee404412331840bc6fd5b27aa4ad`.
+- Immutable Task 3 brief: supplied and verified SHA-256 `fd3774d84e4e259f820ea35619c5dfb17b314cbf02cad16b09eb1e963ca17614`.
+- The complete canonical range, governing plan/spec, final report, prior findings, accepted P02/P05 owners, last effective SQL definitions, real CLI/worker/cache callers, migration security/grants, retrieval fail-closed behavior, and correction tests were reviewed. Working-tree content outside the canonical package was ignored as review authority.
+- `npm run ledger:lookup -- 6680b4f9a0bc40847d56b3d06246babe30ec15aa --scope "P05/ingestion/task-3 SDD review-5"` returned `NOT REVIEWED at this HEAD and scope`. No ledger record was appended because this controller-owned untracked SDD report is the requested review record.
+
+## Commands and evidence
+
+- Read-only Git resolution, status, merge-base, ordered log, range name/status/numstat, package line count, and SHA-256 verification — exact base/head/range resolved and every supplied artifact hash matched.
+- `node scripts/run-vitest.mjs run tests/public-source-serving-lifecycle.test.ts tests/public-source-acquisition.test.ts tests/indexing-v3-agent.test.ts tests/rag-cache-invalidation.test.ts tests/function-grants.test.ts` — PASS; 5 files and 73 tests passed. Expected negative-fixture diagnostics from `tests/function-grants.test.ts` were printed while the suite passed.
+- Mandatory literal `node scripts/run-vitest.mjs run tests/recovery-readiness-evidence.test.ts tests/reindex-pipeline.test.ts` — PASS by an exact-content reused gate receipt from `2026-08-23T22:28:22.410Z`; this was explicitly a reused receipt, not a fresh execution. The final implementer run reported 2 files and 62 tests passed.
+- `npm run typecheck` — PASS by an exact-content reused gate receipt from `2026-08-23T22:28:44.238Z`; this was explicitly a reused receipt, not a fresh execution.
+- `npm run check:migration-role` — PASS; active hosted tooling uses the expected role and immutable applied history is unchanged. No migration was applied or replayed.
+- `npm run check:function-grants` — PASS; all 34 public security-definer functions are revoked from PUBLIC and none is reopened to PUBLIC/anon.
+- `git diff --check 62adef3b97906f6164f3d568712141dd9cd4117d..6680b4f9a0bc40847d56b3d06246babe30ec15aa` — PASS.
+- Pure exact-head TypeScript probe through the repository `tsx` binary with only synthetic protected-identity strings — every semicolonless probe quoted in the finding was accepted by the shared predicate, actual worker helper, and trusted-page admission owner.
+- Static last-definition/caller inspection proved exact artifact locks/owner predicates, canonical source locks/latest event, complete resume identity, historical reconciliation, first/replacement activation, lifecycle edges, and fresh pre/post-hit cache authority. Helper-only assertions were not treated as proof of real-caller wiring.
+- Broad repository suites, browser checks, provider/hosted gates, schema replay, and live recovery/source/document operations were not run. The focused selectors, distinct static gates, full source review, and synthetic negative probe were proportionate offline evidence.
+
+## No-live and no-document statement
+
+No provider, network, Supabase, database, Storage, migration application/replay, recovery, PITR, restore-drill, cleanup, queue, worker, ingestion, reindex, actual-document or real-source parsing/processing, corpus, activation, rollback, deployment, hosted CI, GitHub, push, PR, or external operation was run. No actual document, source payload, provider output, backup, Storage object, or database record was read or processed. Verification used only the immutable repository package/range and explicitly synthetic local values. `scripts/supabase-recovery-status.ts` was not read or executed. No product file was edited; this report is intentionally uncommitted and unstaged.
+
+SPEC_VERDICT: FAIL
+
+QUALITY_VERDICT: FAIL

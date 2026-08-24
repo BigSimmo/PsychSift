@@ -1,0 +1,1043 @@
+# Review package: 62adef3b97906f6164f3d568712141dd9cd4117d..c0f09a27ebbac0f6cdef1b080a585782e925eb92
+
+## Commits
+c0f09a27ebbac0f6cdef1b080a585782e925eb92
+
+## Diff
+diff --git a/docs/scripts-index.md b/docs/scripts-index.md
+index f1011c77198cd9864772c9bf2a6023dceef83cc7..404f6d8cb06824681a41d096b9864d8e1a6bdfac 100644
+--- a/docs/scripts-index.md
++++ b/docs/scripts-index.md
+@@ -1,13 +1,13 @@
+ # Scripts index
+ 
+-Curated map of `scripts/` (266 files) and the `package.json` script surface (262 entries),
++Curated map of `scripts/` (267 files) and the `package.json` script surface (262 entries),
+ grouped by purpose. This is orientation, not an exhaustive per-file listing — the authoritative
+ command list is `package.json`, and `npm run docs:check-scripts` verifies every `npm run <x>`
+ referenced in docs resolves to a real script. `npm run docs:update` refreshes the exact counts above.
+ Every top-level `.mjs`/`.ts`/`.cjs` script is named below; the remaining files are fixtures, SQL,
+ subfolder helpers, and small shared helpers grouped rather than itemised.
+ 
+ > The two counts in the sentence above are generated facts, not prose. Keep them in the exact
+ > `(N files)` / `(N entries)` shape — tooling rewrites that sentence by regex.
+ 
+ Legend: **[live]** routine tooling · **[infra]** runner/guard plumbing · **[one-shot]** completed
+diff --git a/scripts/verify-recovery-readiness-evidence.ts b/scripts/verify-recovery-readiness-evidence.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..3f8d92933afec41e8248e58655ee8e915bd01e6d
+--- /dev/null
++++ b/scripts/verify-recovery-readiness-evidence.ts
+@@ -0,0 +1,74 @@
++import { readFile } from "node:fs/promises";
++import { resolve } from "node:path";
++import { pathToFileURL } from "node:url";
++
++import {
++  assertRecoveryReadinessForOperation,
++  parseRecoveryReadinessEvidence,
++  type RecoveryOperation,
++} from "../src/lib/recovery-readiness-evidence";
++
++type VerifyRecoveryReadinessDependencies = {
++  readText?: (path: string) => Promise<string>;
++  stdout?: (line: string) => void;
++  now?: Date;
++};
++
++function parseArguments(argv: readonly string[]) {
++  const values = new Map<string, string>();
++  for (let index = 0; index < argv.length; index += 2) {
++    const flag = argv[index];
++    const value = argv[index + 1];
++    if (!flag?.startsWith("--") || !value || value.startsWith("--") || values.has(flag)) {
++      throw new Error("Recovery readiness verifier arguments are invalid.");
++    }
++    values.set(flag, value);
++  }
++  const allowed = new Set(["--input", "--operation", "--project-ref", "--digest"]);
++  if ([...values.keys()].some((flag) => !allowed.has(flag))) {
++    throw new Error("Recovery readiness verifier arguments are invalid.");
++  }
++  const input = values.get("--input");
++  const operation = values.get("--operation");
++  const projectRef = values.get("--project-ref");
++  const digest = values.get("--digest");
++  if (!input || !projectRef || !digest || (operation !== "site-release" && operation !== "document-generation")) {
++    throw new Error("Recovery readiness verifier requires input, operation, project identity, and digest.");
++  }
++  if (!/^sha256:[a-f0-9]{64}$/.test(digest)) throw new Error("Recovery readiness digest is invalid.");
++  return { input, operation: operation as RecoveryOperation, projectRef, digest };
++}
++
++export async function runVerifyRecoveryReadinessEvidenceCli(
++  argv: readonly string[],
++  dependencies: VerifyRecoveryReadinessDependencies = {},
++) {
++  const args = parseArguments(argv);
++  const readText = dependencies.readText ?? ((path: string) => readFile(path, "utf8"));
++  const stdout = dependencies.stdout ?? ((line: string) => process.stdout.write(`${line}\n`));
++  let evidence;
++  try {
++    evidence = parseRecoveryReadinessEvidence(JSON.parse(await readText(resolve(args.input))));
++  } catch {
++    throw new Error("Recovery readiness evidence is invalid and contains no usable provider output.");
++  }
++  if (evidence.digest !== args.digest) throw new Error("Recovery readiness evidence digest mismatch.");
++  assertRecoveryReadinessForOperation(evidence, args.operation, args.projectRef, dependencies.now);
++  const result = {
++    status: "valid" as const,
++    version: evidence.version,
++    evidenceId: evidence.evidenceId,
++    projectRef: evidence.projectRef,
++    operation: evidence.operation,
++    digest: evidence.digest,
++  };
++  stdout(JSON.stringify(result));
++  return result;
++}
++
++if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
++  runVerifyRecoveryReadinessEvidenceCli(process.argv.slice(2)).catch(() => {
++    process.stderr.write('{"status":"invalid","code":"RECOVERY_READINESS_INVALID"}\n');
++    process.exitCode = 1;
++  });
++}
+diff --git a/src/lib/recovery-readiness-evidence.ts b/src/lib/recovery-readiness-evidence.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..620d7abeb8a17116473ee1b18a35bde4621cc40c
+--- /dev/null
++++ b/src/lib/recovery-readiness-evidence.ts
+@@ -0,0 +1,380 @@
++import { createHash } from "node:crypto";
++import { z } from "zod";
++
++const sha256Schema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
++const uuidSchema = z.string().uuid();
++const projectRefSchema = z
++  .string()
++  .trim()
++  .regex(/^[a-z0-9_-]{3,100}$/);
++const timestampSchema = z.string().datetime({ offset: true });
++const operationSchema = z.enum(["site-release", "document-generation"]);
++const evidenceReferenceSchema = z.string().trim().min(1).max(500);
++
++const databaseBackupSchema = z
++  .object({
++    reference: evidenceReferenceSchema,
++    digest: sha256Schema,
++    verifiedAt: timestampSchema,
++  })
++  .strict();
++
++const pitrSchema = z
++  .object({
++    enabled: z.boolean(),
++    rpoMinutes: z
++      .number()
++      .int()
++      .positive()
++      .max(24 * 60),
++    reference: evidenceReferenceSchema,
++    digest: sha256Schema,
++    verifiedAt: timestampSchema,
++  })
++  .strict();
++
++const storageRecoverySchema = z
++  .object({
++    inventoryReference: evidenceReferenceSchema,
++    inventoryDigest: sha256Schema,
++    recoveryReference: evidenceReferenceSchema,
++    recoveryDigest: sha256Schema,
++    verifiedAt: timestampSchema,
++  })
++  .strict();
++
++const restoreDrillSchema = z
++  .object({
++    reportReference: evidenceReferenceSchema,
++    reportDigest: sha256Schema,
++    completedAt: timestampSchema,
++    outcome: z.enum(["passed", "failed"]),
++    target: z.enum(["isolated-project", "in-place"]),
++  })
++  .strict();
++
++const recoveryReadinessSchema = z
++  .object({
++    version: z.literal(1),
++    evidenceId: uuidSchema,
++    projectRef: projectRefSchema,
++    operation: operationSchema,
++    verifiedAt: timestampSchema,
++    validUntil: timestampSchema,
++    requiredRpoMinutes: z
++      .number()
++      .int()
++      .positive()
++      .max(24 * 60),
++    databaseBackup: databaseBackupSchema,
++    pitr: pitrSchema,
++    storageRecovery: storageRecoverySchema,
++    restoreDrill: restoreDrillSchema,
++    digest: sha256Schema,
++  })
++  .strict();
++
++const documentGenerationIdentitySchema = z
++  .object({
++    kind: z.literal("document-generation"),
++    documentId: uuidSchema,
++    generationId: uuidSchema,
++    generationDigest: sha256Schema,
++  })
++  .strict();
++
++const siteReleaseIdentitySchema = z
++  .object({
++    kind: z.literal("site-release"),
++    releaseId: uuidSchema,
++    releaseDigest: sha256Schema,
++  })
++  .strict();
++
++const resourceIdentitySchema = z.discriminatedUnion("kind", [
++  documentGenerationIdentitySchema,
++  siteReleaseIdentitySchema,
++]);
++
++const activationReceiptSchema = z
++  .object({
++    version: z.literal(1),
++    receiptId: uuidSchema,
++    sequence: z.number().int().positive(),
++    recordedAt: timestampSchema,
++    projectRef: projectRefSchema,
++    operation: operationSchema,
++    recoveryEvidenceId: uuidSchema,
++    recoveryEvidenceDigest: sha256Schema,
++    stateDigest: sha256Schema,
++    resource: resourceIdentitySchema,
++    previousResource: resourceIdentitySchema,
++    digest: sha256Schema,
++  })
++  .strict()
++  .superRefine((receipt, context) => {
++    const expectedKind = receipt.operation;
++    if (receipt.resource.kind !== expectedKind || receipt.previousResource.kind !== expectedKind) {
++      context.addIssue({ code: "custom", message: "Receipt resource identity does not match its operation." });
++      return;
++    }
++    if (receipt.resource.kind === "document-generation" && receipt.previousResource.kind === "document-generation") {
++      if (receipt.resource.documentId !== receipt.previousResource.documentId) {
++        context.addIssue({ code: "custom", message: "Previous generation belongs to a different document." });
++      }
++      if (receipt.resource.generationId === receipt.previousResource.generationId) {
++        context.addIssue({ code: "custom", message: "Previous generation must name a distinct retained generation." });
++      }
++    }
++    if (receipt.resource.kind === "site-release" && receipt.previousResource.kind === "site-release") {
++      if (receipt.resource.releaseId === receipt.previousResource.releaseId) {
++        context.addIssue({ code: "custom", message: "Previous release must name a distinct retained release." });
++      }
++    }
++  });
++
++const rollbackReceiptSchema = z
++  .object({
++    version: z.literal(1),
++    receiptId: uuidSchema,
++    sequence: z.number().int().positive(),
++    recordedAt: timestampSchema,
++    projectRef: projectRefSchema,
++    operation: operationSchema,
++    activationReceiptId: uuidSchema,
++    activationReceiptDigest: sha256Schema,
++    recoveryEvidenceDigest: sha256Schema,
++    failedResource: resourceIdentitySchema,
++    restoredResource: resourceIdentitySchema,
++    restorationMethod: z.literal("retained-pointer"),
++    digest: sha256Schema,
++  })
++  .strict()
++  .superRefine((receipt, context) => {
++    if (receipt.failedResource.kind !== receipt.operation || receipt.restoredResource.kind !== receipt.operation) {
++      context.addIssue({ code: "custom", message: "Rollback resource identity does not match its operation." });
++      return;
++    }
++    if (
++      receipt.failedResource.kind === "document-generation" &&
++      receipt.restoredResource.kind === "document-generation"
++    ) {
++      if (receipt.failedResource.documentId !== receipt.restoredResource.documentId) {
++        context.addIssue({ code: "custom", message: "Rollback generations belong to different documents." });
++      }
++      if (receipt.failedResource.generationId === receipt.restoredResource.generationId) {
++        context.addIssue({ code: "custom", message: "Rollback must restore a distinct retained generation." });
++      }
++    }
++    if (receipt.failedResource.kind === "site-release" && receipt.restoredResource.kind === "site-release") {
++      if (receipt.failedResource.releaseId === receipt.restoredResource.releaseId) {
++        context.addIssue({ code: "custom", message: "Rollback must restore a distinct retained release." });
++      }
++    }
++  });
++
++export type RecoveryOperation = z.infer<typeof operationSchema>;
++export type RecoveryReadinessDigest = `sha256:${string}`;
++export type RecoveryReadinessEvidence = Readonly<z.infer<typeof recoveryReadinessSchema>>;
++export type DocumentGenerationIdentity = Readonly<z.infer<typeof documentGenerationIdentitySchema>>;
++export type SiteReleaseIdentity = Readonly<z.infer<typeof siteReleaseIdentitySchema>>;
++export type ActivatableResourceIdentity = DocumentGenerationIdentity | SiteReleaseIdentity;
++export type ActivationReceipt = Readonly<z.infer<typeof activationReceiptSchema>>;
++export type RollbackReceipt = Readonly<z.infer<typeof rollbackReceiptSchema>>;
++
++function canonicalize(value: unknown): unknown {
++  if (Array.isArray(value)) return value.map(canonicalize);
++  if (value && typeof value === "object") {
++    return Object.fromEntries(
++      Object.entries(value as Record<string, unknown>)
++        .sort(([left], [right]) => left.localeCompare(right))
++        .map(([key, nested]) => [key, canonicalize(nested)]),
++    );
++  }
++  return value;
++}
++
++function canonicalDigest(value: unknown): RecoveryReadinessDigest {
++  const payload =
++    value && typeof value === "object" && !Array.isArray(value)
++      ? Object.fromEntries(Object.entries(value as Record<string, unknown>).filter(([key]) => key !== "digest"))
++      : value;
++  return `sha256:${createHash("sha256")
++    .update(JSON.stringify(canonicalize(payload)), "utf8")
++    .digest("hex")}`;
++}
++
++function deepFreeze<T>(value: T): Readonly<T> {
++  if (value && typeof value === "object" && !Object.isFrozen(value)) {
++    for (const nested of Object.values(value as Record<string, unknown>)) deepFreeze(nested);
++    Object.freeze(value);
++  }
++  return value;
++}
++
++function assertSafeReference(reference: string) {
++  if (
++    /^https?:\/\//i.test(reference) ||
++    /(?:token|secret|password|signature|x-amz-|credential|bearer|signed[-_ ]?url)/i.test(reference) ||
++    /eyJ[a-zA-Z0-9_-]{20,}\./.test(reference)
++  ) {
++    throw new Error("Recovery evidence references must be opaque, content-free identifiers without secrets or URLs.");
++  }
++}
++
++function assertEvidenceReferencesSafe(evidence: z.infer<typeof recoveryReadinessSchema>) {
++  for (const reference of [
++    evidence.databaseBackup.reference,
++    evidence.pitr.reference,
++    evidence.storageRecovery.inventoryReference,
++    evidence.storageRecovery.recoveryReference,
++    evidence.restoreDrill.reportReference,
++  ]) {
++    assertSafeReference(reference);
++  }
++}
++
++function elapsedMilliseconds(now: Date, timestamp: string) {
++  return now.getTime() - Date.parse(timestamp);
++}
++
++function assertNotFuture(now: Date, timestamp: string, label: string) {
++  if (elapsedMilliseconds(now, timestamp) < 0) throw new Error(`${label} cannot be in the future.`);
++}
++
++function sameIdentity(left: ActivatableResourceIdentity, right: ActivatableResourceIdentity) {
++  return JSON.stringify(canonicalize(left)) === JSON.stringify(canonicalize(right));
++}
++
++export function recoveryReadinessDigest(input: unknown): RecoveryReadinessDigest {
++  return canonicalDigest(input);
++}
++
++export function activationReceiptDigest(input: unknown): RecoveryReadinessDigest {
++  return canonicalDigest(input);
++}
++
++export function rollbackReceiptDigest(input: unknown): RecoveryReadinessDigest {
++  return canonicalDigest(input);
++}
++
++export function parseRecoveryReadinessEvidence(input: unknown): RecoveryReadinessEvidence {
++  const parsed = recoveryReadinessSchema.parse(input);
++  assertEvidenceReferencesSafe(parsed);
++  if (recoveryReadinessDigest(parsed) !== parsed.digest) {
++    throw new Error("Recovery readiness evidence digest does not match its canonical content.");
++  }
++  return deepFreeze(parsed);
++}
++
++export function assertRecoveryReadinessForOperation(
++  evidence: RecoveryReadinessEvidence,
++  operation: RecoveryOperation,
++  expectedProjectRef: string,
++  at: Date = new Date(),
++): RecoveryReadinessEvidence {
++  if (evidence.projectRef !== expectedProjectRef) throw new Error("Recovery evidence project identity mismatch.");
++  if (evidence.operation !== operation) throw new Error("Recovery evidence operation mismatch.");
++  if (recoveryReadinessDigest(evidence) !== evidence.digest) throw new Error("Recovery evidence digest mismatch.");
++
++  assertNotFuture(at, evidence.verifiedAt, "Recovery evidence verification time");
++  if (elapsedMilliseconds(at, evidence.verifiedAt) > 24 * 60 * 60 * 1_000) {
++    throw new Error("Recovery evidence is not fresh within 24 hours.");
++  }
++  if (Date.parse(evidence.validUntil) <= at.getTime()) throw new Error("Recovery evidence validity has expired.");
++  if (!evidence.pitr.enabled) throw new Error("Recovery evidence requires PITR to be enabled.");
++  if (evidence.pitr.rpoMinutes > evidence.requiredRpoMinutes) {
++    throw new Error("PITR RPO is weaker than the operation requirement.");
++  }
++  for (const [timestamp, label] of [
++    [evidence.databaseBackup.verifiedAt, "Database backup verification time"],
++    [evidence.pitr.verifiedAt, "PITR verification time"],
++    [evidence.storageRecovery.verifiedAt, "Storage recovery verification time"],
++    [evidence.restoreDrill.completedAt, "Restore drill completion time"],
++  ] as const) {
++    assertNotFuture(at, timestamp, label);
++  }
++  if (elapsedMilliseconds(at, evidence.storageRecovery.verifiedAt) > 7 * 24 * 60 * 60 * 1_000) {
++    throw new Error("Storage recovery inventory is older than seven days.");
++  }
++  if (
++    evidence.restoreDrill.outcome !== "passed" ||
++    evidence.restoreDrill.target !== "isolated-project" ||
++    elapsedMilliseconds(at, evidence.restoreDrill.completedAt) > 90 * 24 * 60 * 60 * 1_000
++  ) {
++    throw new Error("A successful isolated restore drill within 90 days is required.");
++  }
++  return evidence;
++}
++
++export function parseActivationReceipt(input: unknown): ActivationReceipt {
++  const parsed = activationReceiptSchema.parse(input);
++  if (activationReceiptDigest(parsed) !== parsed.digest) {
++    throw new Error("Activation receipt digest does not match its canonical content.");
++  }
++  return deepFreeze(parsed);
++}
++
++export function parseRollbackReceipt(input: unknown): RollbackReceipt {
++  const parsed = rollbackReceiptSchema.parse(input);
++  if (rollbackReceiptDigest(parsed) !== parsed.digest) {
++    throw new Error("Rollback receipt digest does not match its canonical content.");
++  }
++  return deepFreeze(parsed);
++}
++
++export function assertActivationReceiptBinding(
++  receipt: ActivationReceipt,
++  evidence: RecoveryReadinessEvidence,
++  expectedProjectRef: string,
++  at: Date = new Date(),
++): ActivationReceipt {
++  assertRecoveryReadinessForOperation(evidence, receipt.operation, expectedProjectRef, at);
++  if (receipt.projectRef !== expectedProjectRef || receipt.projectRef !== evidence.projectRef) {
++    throw new Error("Activation receipt project identity mismatch.");
++  }
++  if (receipt.recoveryEvidenceId !== evidence.evidenceId || receipt.recoveryEvidenceDigest !== evidence.digest) {
++    throw new Error("Activation receipt recovery evidence binding mismatch.");
++  }
++  if (Date.parse(receipt.recordedAt) < Date.parse(evidence.verifiedAt)) {
++    throw new Error("Activation receipt predates its recovery evidence.");
++  }
++  return receipt;
++}
++
++export function assertRollbackReceiptBinding(
++  receipt: RollbackReceipt,
++  activation: ActivationReceipt,
++  evidence: RecoveryReadinessEvidence,
++  expectedProjectRef: string,
++): RollbackReceipt {
++  if (
++    receipt.projectRef !== expectedProjectRef ||
++    activation.projectRef !== expectedProjectRef ||
++    evidence.projectRef !== expectedProjectRef
++  ) {
++    throw new Error("Rollback project identity mismatch.");
++  }
++  if (receipt.operation !== activation.operation || activation.operation !== evidence.operation) {
++    throw new Error("Rollback operation mismatch.");
++  }
++  if (
++    receipt.activationReceiptId !== activation.receiptId ||
++    receipt.activationReceiptDigest !== activation.digest ||
++    receipt.recoveryEvidenceDigest !== activation.recoveryEvidenceDigest ||
++    receipt.recoveryEvidenceDigest !== evidence.digest ||
++    activation.recoveryEvidenceId !== evidence.evidenceId
++  ) {
++    throw new Error("Rollback digest binding mismatch.");
++  }
++  if (receipt.sequence <= activation.sequence || Date.parse(receipt.recordedAt) < Date.parse(activation.recordedAt)) {
++    throw new Error("Rollback receipt is not append-only after its activation receipt.");
++  }
++  if (!sameIdentity(receipt.failedResource, activation.resource)) {
++    throw new Error("Rollback failed-resource identity does not match activation.");
++  }
++  if (!sameIdentity(receipt.restoredResource, activation.previousResource)) {
++    throw new Error("Rollback must restore the exact retained previous resource without reconstruction.");
++  }
++  return receipt;
++}
+diff --git a/src/lib/reindex-pipeline.ts b/src/lib/reindex-pipeline.ts
+index d5c69388bc26459b361e181ddeba2f037daf0599..a4b07dd8f7c6d19d45d77889c40e592a7780b771 100644
+--- a/src/lib/reindex-pipeline.ts
++++ b/src/lib/reindex-pipeline.ts
+@@ -1,27 +1,43 @@
++import type { ActivationReceipt, DocumentGenerationIdentity, RollbackReceipt } from "@/lib/recovery-readiness-evidence";
++
+ export type ReindexQueueSnapshot = {
+   openJobs: number;
+   queuedDocuments: number;
+   processingDocuments: number;
+   failedDocuments: number;
+ };
+ 
+ export type AbandonedReindexGenerationCounts = {
+   document_chunks?: number;
+   document_images?: number;
+   document_table_facts?: number;
+   document_embedding_fields?: number;
+   document_index_units?: number;
+   document_memory_cards?: number;
+   document_sections?: number;
+ };
+ 
++export type DocumentGenerationActivationReceipt = ActivationReceipt &
++  Readonly<{
++    operation: "document-generation";
++    resource: DocumentGenerationIdentity;
++    previousResource: DocumentGenerationIdentity;
++  }>;
++
++export type DocumentGenerationRollbackReceipt = RollbackReceipt &
++  Readonly<{
++    operation: "document-generation";
++    failedResource: DocumentGenerationIdentity;
++    restoredResource: DocumentGenerationIdentity;
++  }>;
++
+ export function isReindexQueueClear(snapshot: ReindexQueueSnapshot) {
+   return (
+     snapshot.openJobs === 0 &&
+     snapshot.queuedDocuments === 0 &&
+     snapshot.processingDocuments === 0 &&
+     snapshot.failedDocuments === 0
+   );
+ }
+ 
+ export function hasIncompleteDocumentsWithoutOpenJobs(snapshot: ReindexQueueSnapshot) {
+@@ -76,10 +92,59 @@ export function isAbandonedStagedGeneration(args: {
+   return rowGeneration !== (args.committedGeneration ?? null);
+ }
+ 
+ export function abandonedReindexGenerationTotal(counts: AbandonedReindexGenerationCounts) {
+   return Object.values(counts).reduce((total, value) => total + (Number.isFinite(value) ? Number(value) : 0), 0);
+ }
+ 
+ export function hasAbandonedReindexGenerations(counts: AbandonedReindexGenerationCounts) {
+   return abandonedReindexGenerationTotal(counts) > 0;
+ }
++
++/**
++ * Pure compatibility assertion for the future retained-generation lifecycle.
++ * It does not call or alter the legacy destructive commit RPC.
++ */
++export function assertDocumentGenerationReceiptPair(
++  activation: ActivationReceipt,
++  rollback: RollbackReceipt | unknown,
++): Readonly<{
++  activation: DocumentGenerationActivationReceipt;
++  rollback: DocumentGenerationRollbackReceipt;
++}> {
++  if (
++    activation.operation !== "document-generation" ||
++    activation.resource.kind !== "document-generation" ||
++    activation.previousResource.kind !== "document-generation"
++  ) {
++    throw new Error("Document-generation activation receipt identity is required.");
++  }
++  if (
++    !rollback ||
++    typeof rollback !== "object" ||
++    !("operation" in rollback) ||
++    rollback.operation !== "document-generation" ||
++    !("failedResource" in rollback) ||
++    !("restoredResource" in rollback) ||
++    !("activationReceiptId" in rollback)
++  ) {
++    throw new Error("Document-generation rollback receipt identity is required.");
++  }
++  const typedRollback = rollback as DocumentGenerationRollbackReceipt;
++  if (
++    typedRollback.failedResource.kind !== "document-generation" ||
++    typedRollback.restoredResource.kind !== "document-generation" ||
++    typedRollback.activationReceiptId !== activation.receiptId ||
++    typedRollback.failedResource.documentId !== activation.resource.documentId ||
++    typedRollback.failedResource.generationId !== activation.resource.generationId ||
++    typedRollback.failedResource.generationDigest !== activation.resource.generationDigest ||
++    typedRollback.restoredResource.documentId !== activation.previousResource.documentId ||
++    typedRollback.restoredResource.generationId !== activation.previousResource.generationId ||
++    typedRollback.restoredResource.generationDigest !== activation.previousResource.generationDigest
++  ) {
++    throw new Error("Document rollback must restore the exact retained previous generation.");
++  }
++  return Object.freeze({
++    activation: activation as DocumentGenerationActivationReceipt,
++    rollback: typedRollback,
++  });
++}
+diff --git a/tests/recovery-readiness-evidence.test.ts b/tests/recovery-readiness-evidence.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..bdb1a5da973844e2dc6143c3aa99c5125fcc0540
+--- /dev/null
++++ b/tests/recovery-readiness-evidence.test.ts
+@@ -0,0 +1,297 @@
++import { readFileSync } from "node:fs";
++import { describe, expect, it, vi } from "vitest";
++
++import {
++  activationReceiptDigest,
++  assertActivationReceiptBinding,
++  assertRecoveryReadinessForOperation,
++  assertRollbackReceiptBinding,
++  parseActivationReceipt,
++  parseRecoveryReadinessEvidence,
++  parseRollbackReceipt,
++  recoveryReadinessDigest,
++  rollbackReceiptDigest,
++  type ActivationReceipt,
++  type RecoveryReadinessEvidence,
++  type RollbackReceipt,
++} from "../src/lib/recovery-readiness-evidence";
++import { runVerifyRecoveryReadinessEvidenceCli } from "../scripts/verify-recovery-readiness-evidence";
++
++const now = "2026-08-24T12:00:00.000Z";
++const projectRef = "sjrfecxgysukkwxsowpy";
++const sha = (character: string) => `sha256:${character.repeat(64)}`;
++
++function recoveryInput(overrides: Record<string, unknown> = {}) {
++  const payload = {
++    version: 1 as const,
++    evidenceId: "11111111-1111-4111-8111-111111111111",
++    projectRef,
++    operation: "document-generation" as const,
++    verifiedAt: "2026-08-24T06:00:00.000Z",
++    validUntil: "2026-08-25T06:00:00.000Z",
++    requiredRpoMinutes: 5,
++    databaseBackup: {
++      reference: "operator-evidence:database-backup:2026-08-24",
++      digest: sha("a"),
++      verifiedAt: "2026-08-24T05:30:00.000Z",
++    },
++    pitr: {
++      enabled: true as const,
++      rpoMinutes: 2,
++      reference: "operator-evidence:pitr:2026-08-24",
++      digest: sha("b"),
++      verifiedAt: "2026-08-24T05:30:00.000Z",
++    },
++    storageRecovery: {
++      inventoryReference: "operator-evidence:storage-inventory:2026-08-23",
++      inventoryDigest: sha("c"),
++      recoveryReference: "runbook:storage-recovery:v1",
++      recoveryDigest: sha("d"),
++      verifiedAt: "2026-08-23T12:00:00.000Z",
++    },
++    restoreDrill: {
++      reportReference: "operator-evidence:isolated-restore:2026-08-01",
++      reportDigest: sha("e"),
++      completedAt: "2026-08-01T00:00:00.000Z",
++      outcome: "passed" as const,
++      target: "isolated-project" as const,
++    },
++    ...overrides,
++  };
++  return { ...payload, digest: recoveryReadinessDigest(payload) };
++}
++
++function activationInput(evidence: RecoveryReadinessEvidence, overrides: Record<string, unknown> = {}) {
++  const payload = {
++    version: 1 as const,
++    receiptId: "22222222-2222-4222-8222-222222222222",
++    sequence: 7,
++    recordedAt: "2026-08-24T07:00:00.000Z",
++    projectRef,
++    operation: "document-generation" as const,
++    recoveryEvidenceId: evidence.evidenceId,
++    recoveryEvidenceDigest: evidence.digest,
++    stateDigest: sha("f"),
++    resource: {
++      kind: "document-generation" as const,
++      documentId: "33333333-3333-4333-8333-333333333333",
++      generationId: "44444444-4444-4444-8444-444444444444",
++      generationDigest: sha("1"),
++    },
++    previousResource: {
++      kind: "document-generation" as const,
++      documentId: "33333333-3333-4333-8333-333333333333",
++      generationId: "55555555-5555-4555-8555-555555555555",
++      generationDigest: sha("2"),
++    },
++    ...overrides,
++  };
++  return { ...payload, digest: activationReceiptDigest(payload) };
++}
++
++function rollbackInput(activation: ActivationReceipt, overrides: Record<string, unknown> = {}) {
++  const payload = {
++    version: 1 as const,
++    receiptId: "66666666-6666-4666-8666-666666666666",
++    sequence: activation.sequence + 1,
++    recordedAt: "2026-08-26T07:00:00.000Z",
++    projectRef,
++    operation: activation.operation,
++    activationReceiptId: activation.receiptId,
++    activationReceiptDigest: activation.digest,
++    recoveryEvidenceDigest: activation.recoveryEvidenceDigest,
++    failedResource: activation.resource,
++    restoredResource: activation.previousResource,
++    restorationMethod: "retained-pointer" as const,
++    ...overrides,
++  };
++  return { ...payload, digest: rollbackReceiptDigest(payload) };
++}
++
++describe("recovery readiness evidence", () => {
++  it("parses and freezes project-bound provider-free evidence with a canonical digest", () => {
++    const input = recoveryInput();
++    const reordered = Object.fromEntries(Object.entries(input).reverse());
++    const evidence = parseRecoveryReadinessEvidence(reordered);
++
++    expect(evidence.digest).toBe(input.digest);
++    expect(Object.isFrozen(evidence)).toBe(true);
++    expect(Object.isFrozen(evidence.storageRecovery)).toBe(true);
++    expect(recoveryReadinessDigest(evidence)).toBe(input.digest);
++  });
++
++  it("accepts fresh PITR, database, Storage, and isolated restore evidence for the exact operation", () => {
++    vi.useFakeTimers();
++    vi.setSystemTime(now);
++    const evidence = parseRecoveryReadinessEvidence(recoveryInput());
++
++    expect(assertRecoveryReadinessForOperation(evidence, "document-generation", projectRef)).toBe(evidence);
++    vi.useRealTimers();
++  });
++
++  it.each([
++    ["wrong project", { projectRef: "differentprojectref000" }, /project/i],
++    ["wrong operation", { operation: "site-release" }, /operation/i],
++    ["PITR disabled", { pitr: { ...recoveryInput().pitr, enabled: false } }, /pitr/i],
++    ["RPO weaker than required", { pitr: { ...recoveryInput().pitr, rpoMinutes: 30 } }, /rpo/i],
++    ["expired envelope", { validUntil: "2026-08-24T11:59:59.000Z" }, /expired|valid/i],
++    ["stale verification", { verifiedAt: "2026-08-23T11:59:59.000Z" }, /24 hours|fresh/i],
++    [
++      "stale Storage inventory",
++      { storageRecovery: { ...recoveryInput().storageRecovery, verifiedAt: "2026-08-17T11:59:59.000Z" } },
++      /storage/i,
++    ],
++    ["failed restore drill", { restoreDrill: { ...recoveryInput().restoreDrill, outcome: "failed" } }, /restore/i],
++    [
++      "stale restore drill",
++      { restoreDrill: { ...recoveryInput().restoreDrill, completedAt: "2026-05-26T11:59:59.000Z" } },
++      /restore/i,
++    ],
++  ])("rejects %s", (_name, overrides, message) => {
++    vi.useFakeTimers();
++    vi.setSystemTime(now);
++    const evidence = parseRecoveryReadinessEvidence(recoveryInput(overrides));
++    const expectedOperation = "operation" in overrides ? "document-generation" : evidence.operation;
++    const expectedProject = "projectRef" in overrides ? projectRef : evidence.projectRef;
++    expect(() => assertRecoveryReadinessForOperation(evidence, expectedOperation, expectedProject)).toThrow(message);
++    vi.useRealTimers();
++  });
++
++  it("rejects a digest mismatch and missing recovery layers", () => {
++    expect(() => parseRecoveryReadinessEvidence({ ...recoveryInput(), digest: sha("0") })).toThrow(/digest/i);
++    const { storageRecovery: _storageRecovery, ...missingStorage } = recoveryInput();
++    expect(() => parseRecoveryReadinessEvidence(missingStorage)).toThrow();
++    const { restoreDrill: _restoreDrill, ...missingRestore } = recoveryInput();
++    expect(() => parseRecoveryReadinessEvidence(missingRestore)).toThrow();
++  });
++
++  it.each([
++    [
++      "signed URL",
++      { databaseBackup: { ...recoveryInput().databaseBackup, reference: "https://backup.example/x?token=secret" } },
++    ],
++    ["provider token", { providerToken: "secret-value" }],
++    ["raw provider output", { rawProviderOutput: { backups: ["private"] } }],
++  ])("rejects %s instead of retaining provider output", (_name, mutation) => {
++    expect(() => parseRecoveryReadinessEvidence(recoveryInput(mutation))).toThrow();
++  });
++});
++
++describe("append-only activation and rollback receipts", () => {
++  it("binds an immutable activation identity to exact evidence, state, and prior retained resource", () => {
++    vi.useFakeTimers();
++    vi.setSystemTime(now);
++    const evidence = parseRecoveryReadinessEvidence(recoveryInput());
++    const receipt = parseActivationReceipt(activationInput(evidence));
++
++    expect(assertActivationReceiptBinding(receipt, evidence, projectRef)).toBe(receipt);
++    expect(Object.isFrozen(receipt.resource)).toBe(true);
++    expect(receipt.resource).not.toEqual(receipt.previousResource);
++    vi.useRealTimers();
++  });
++
++  it("rejects absent previous-generation identity, operation drift, and replaceable receipt content", () => {
++    const evidence = parseRecoveryReadinessEvidence(recoveryInput());
++    const input = activationInput(evidence);
++    const { previousResource: _previousResource, ...withoutPrevious } = input;
++    expect(() => parseActivationReceipt(withoutPrevious)).toThrow(/previous|resource/i);
++
++    const operationDrift = activationInput(evidence, { operation: "site-release" });
++    expect(() => parseActivationReceipt(operationDrift)).toThrow(/resource|operation/i);
++
++    expect(() => parseActivationReceipt({ ...input, stateDigest: sha("9") })).toThrow(/digest/i);
++  });
++
++  it("allows rollback after evidence expires only by restoring the exact retained prior resource", () => {
++    const evidence = parseRecoveryReadinessEvidence(recoveryInput());
++    const activation = parseActivationReceipt(activationInput(evidence));
++    const rollback = parseRollbackReceipt(rollbackInput(activation));
++    vi.useFakeTimers();
++    vi.setSystemTime("2026-12-01T00:00:00.000Z");
++
++    expect(assertRollbackReceiptBinding(rollback, activation, evidence, projectRef)).toBe(rollback);
++    vi.useRealTimers();
++  });
++
++  it("rejects digest, project, operation, sequence, and retained-resource mismatches", () => {
++    const evidence = parseRecoveryReadinessEvidence(recoveryInput());
++    const activation = parseActivationReceipt(activationInput(evidence));
++    const valid = rollbackInput(activation);
++
++    for (const mutation of [
++      { activationReceiptDigest: sha("8") },
++      { recoveryEvidenceDigest: sha("8") },
++      { projectRef: "differentprojectref000" },
++      { operation: "site-release" },
++      { sequence: activation.sequence },
++      {
++        restoredResource: {
++          ...activation.previousResource,
++          generationId: "77777777-7777-4777-8777-777777777777",
++        },
++      },
++    ]) {
++      expect(() => {
++        const candidate = parseRollbackReceipt(rollbackInput(activation, mutation));
++        assertRollbackReceiptBinding(candidate, activation, evidence, projectRef);
++      }).toThrow();
++    }
++    expect(() => parseRollbackReceipt({ ...valid, restorationMethod: "reconstructed" })).toThrow(/retained/i);
++  });
++});
++
++describe("offline recovery evidence verifier", () => {
++  it("is import-safe and emits only bounded identity and digest JSON", async () => {
++    const source = readFileSync(new URL("../scripts/verify-recovery-readiness-evidence.ts", import.meta.url), "utf8");
++    expect(source).toContain("import.meta.url === pathToFileURL(resolve(process.argv[1])).href");
++    expect(source).not.toContain("supabase-recovery-status");
++
++    const evidence = recoveryInput();
++    const stdout = vi.fn();
++    await runVerifyRecoveryReadinessEvidenceCli(
++      [
++        "--input",
++        "synthetic.json",
++        "--operation",
++        "document-generation",
++        "--project-ref",
++        projectRef,
++        "--digest",
++        evidence.digest,
++      ],
++      { readText: async () => JSON.stringify(evidence), stdout, now: new Date(now) },
++    );
++
++    const output = stdout.mock.calls[0]?.[0] as string;
++    expect(JSON.parse(output)).toEqual({
++      status: "valid",
++      version: 1,
++      evidenceId: evidence.evidenceId,
++      projectRef,
++      operation: "document-generation",
++      digest: evidence.digest,
++    });
++    expect(output).not.toContain("operator-evidence");
++  });
++
++  it("rejects a CLI digest mismatch without echoing artifact content", async () => {
++    const evidence = recoveryInput();
++    const stdout = vi.fn();
++    await expect(
++      runVerifyRecoveryReadinessEvidenceCli(
++        [
++          "--input",
++          "synthetic.json",
++          "--operation",
++          "document-generation",
++          "--project-ref",
++          projectRef,
++          "--digest",
++          sha("0"),
++        ],
++        { readText: async () => JSON.stringify(evidence), stdout },
++      ),
++    ).rejects.toThrow(/digest/i);
++    expect(stdout).not.toHaveBeenCalled();
++  });
++});
+diff --git a/tests/reindex-pipeline.test.ts b/tests/reindex-pipeline.test.ts
+index 1bb76c686d596cabae756a2946b9d0506526017d..6c5ca7ef52c41762aa7f28205e367e077559a9b9 100644
+--- a/tests/reindex-pipeline.test.ts
++++ b/tests/reindex-pipeline.test.ts
+@@ -1,22 +1,31 @@
+ import { describe, expect, it } from "vitest";
+ import {
+   abandonedReindexGenerationTotal,
++  assertDocumentGenerationReceiptPair,
+   committedIndexGeneration,
+   hasAbandonedReindexGenerations,
+   imageRowNeedsGenerationRestamp,
+   isAbandonedStagedGeneration,
+   hasIncompleteDocumentsWithoutOpenJobs,
+   isAtomicReindexCandidate,
+   isCommittedGenerationMetadata,
+   isReindexQueueClear,
++  type DocumentGenerationActivationReceipt,
++  type DocumentGenerationRollbackReceipt,
+ } from "../src/lib/reindex-pipeline";
++import {
++  activationReceiptDigest,
++  parseActivationReceipt,
++  parseRollbackReceipt,
++  rollbackReceiptDigest,
++} from "../src/lib/recovery-readiness-evidence";
+ 
+ describe("reindex pipeline queue state", () => {
+   it("does not declare the queue clear while documents are still processing", () => {
+     expect(
+       isReindexQueueClear({
+         openJobs: 0,
+         queuedDocuments: 0,
+         processingDocuments: 1,
+         failedDocuments: 0,
+       }),
+@@ -134,11 +143,104 @@ describe("reindex pipeline queue state", () => {
+     expect(
+       abandonedReindexGenerationTotal({
+         document_chunks: 2,
+         document_images: 1,
+         document_table_facts: 0,
+       }),
+     ).toBe(3);
+     expect(hasAbandonedReindexGenerations({ document_chunks: 0, document_images: 0 })).toBe(false);
+     expect(hasAbandonedReindexGenerations({ document_chunks: 0, document_images: 1 })).toBe(true);
+   });
++
++  it("requires document rollback to restore the retained real prior generation", () => {
++    const activationPayload = {
++      version: 1 as const,
++      receiptId: "11111111-1111-4111-8111-111111111111",
++      sequence: 10,
++      recordedAt: "2026-08-24T07:00:00.000Z",
++      projectRef: "sjrfecxgysukkwxsowpy",
++      operation: "document-generation" as const,
++      recoveryEvidenceId: "22222222-2222-4222-8222-222222222222",
++      recoveryEvidenceDigest: `sha256:${"a".repeat(64)}`,
++      stateDigest: `sha256:${"b".repeat(64)}`,
++      resource: {
++        kind: "document-generation" as const,
++        documentId: "33333333-3333-4333-8333-333333333333",
++        generationId: "44444444-4444-4444-8444-444444444444",
++        generationDigest: `sha256:${"c".repeat(64)}`,
++      },
++      previousResource: {
++        kind: "document-generation" as const,
++        documentId: "33333333-3333-4333-8333-333333333333",
++        generationId: "55555555-5555-4555-8555-555555555555",
++        generationDigest: `sha256:${"d".repeat(64)}`,
++      },
++    };
++    const activation = parseActivationReceipt({
++      ...activationPayload,
++      digest: activationReceiptDigest(activationPayload),
++    }) as DocumentGenerationActivationReceipt;
++    const rollbackPayload = {
++      version: 1 as const,
++      receiptId: "66666666-6666-4666-8666-666666666666",
++      sequence: 11,
++      recordedAt: "2026-08-25T07:00:00.000Z",
++      projectRef: activation.projectRef,
++      operation: activation.operation,
++      activationReceiptId: activation.receiptId,
++      activationReceiptDigest: activation.digest,
++      recoveryEvidenceDigest: activation.recoveryEvidenceDigest,
++      failedResource: activation.resource,
++      restoredResource: activation.previousResource,
++      restorationMethod: "retained-pointer" as const,
++    };
++    const rollback = parseRollbackReceipt({
++      ...rollbackPayload,
++      digest: rollbackReceiptDigest(rollbackPayload),
++    }) as DocumentGenerationRollbackReceipt;
++
++    expect(assertDocumentGenerationReceiptPair(activation, rollback)).toEqual({ activation, rollback });
++
++    const reconstructedPayload = {
++      ...rollbackPayload,
++      restoredResource: {
++        ...rollbackPayload.restoredResource,
++        generationId: "77777777-7777-4777-8777-777777777777",
++      },
++    };
++    const reconstructed = parseRollbackReceipt({
++      ...reconstructedPayload,
++      digest: rollbackReceiptDigest(reconstructedPayload),
++    }) as DocumentGenerationRollbackReceipt;
++    expect(() => assertDocumentGenerationReceiptPair(activation, reconstructed)).toThrow(/retained|previous/i);
++  });
++
++  it("keeps site-release identity distinct from document-generation receipts", () => {
++    const activationPayload = {
++      version: 1 as const,
++      receiptId: "88888888-8888-4888-8888-888888888888",
++      sequence: 1,
++      recordedAt: "2026-08-24T07:00:00.000Z",
++      projectRef: "sjrfecxgysukkwxsowpy",
++      operation: "site-release" as const,
++      recoveryEvidenceId: "99999999-9999-4999-8999-999999999999",
++      recoveryEvidenceDigest: `sha256:${"a".repeat(64)}`,
++      stateDigest: `sha256:${"b".repeat(64)}`,
++      resource: {
++        kind: "site-release" as const,
++        releaseId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
++        releaseDigest: `sha256:${"c".repeat(64)}`,
++      },
++      previousResource: {
++        kind: "site-release" as const,
++        releaseId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
++        releaseDigest: `sha256:${"d".repeat(64)}`,
++      },
++    };
++    const siteActivation = parseActivationReceipt({
++      ...activationPayload,
++      digest: activationReceiptDigest(activationPayload),
++    });
++
++    expect(() => assertDocumentGenerationReceiptPair(siteActivation, {})).toThrow(/document-generation/i);
++  });
+ });

@@ -1,0 +1,2719 @@
+# Review package: 0d5bb6a5012bd762bb53790ac24de16c7e3078c8..38bef52bf7c0c41466f2a0a9cd9a6f8635e2c0a9
+
+## Commits
+38bef52bf7c0c41466f2a0a9cd9a6f8635e2c0a9
+
+## Diff
+diff --git a/docs/scripts-index.md b/docs/scripts-index.md
+index d286d95fb8b8020e28970b6eef679b1f1fd9ad42..f1011c77198cd9864772c9bf2a6023dceef83cc7 100644
+--- a/docs/scripts-index.md
++++ b/docs/scripts-index.md
+@@ -1,13 +1,13 @@
+ # Scripts index
+ 
+-Curated map of `scripts/` (259 files) and the `package.json` script surface (262 entries),
++Curated map of `scripts/` (266 files) and the `package.json` script surface (262 entries),
+ grouped by purpose. This is orientation, not an exhaustive per-file listing — the authoritative
+ command list is `package.json`, and `npm run docs:check-scripts` verifies every `npm run <x>`
+ referenced in docs resolves to a real script. `npm run docs:update` refreshes the exact counts above.
+ Every top-level `.mjs`/`.ts`/`.cjs` script is named below; the remaining files are fixtures, SQL,
+ subfolder helpers, and small shared helpers grouped rather than itemised.
+ 
+ > The two counts in the sentence above are generated facts, not prose. Keep them in the exact
+ > `(N files)` / `(N entries)` shape — tooling rewrites that sentence by regex.
+ 
+ Legend: **[live]** routine tooling · **[infra]** runner/guard plumbing · **[one-shot]** completed
+diff --git a/scripts/check-public-source-changes.ts b/scripts/check-public-source-changes.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..db0ac86372adb630af49016bd6ff76855d9997f5
+--- /dev/null
++++ b/scripts/check-public-source-changes.ts
+@@ -0,0 +1,206 @@
++import { readFileSync } from "node:fs";
++import { resolve } from "node:path";
++import { pathToFileURL } from "node:url";
++
++import { australianSourceByKey } from "@/lib/australian-source-catalogue";
++import {
++  checkPublicSourceChange,
++  observePublicSourceChangeSignal,
++  type PublicSourceAcquisitionPlan,
++  type PublicSourceStagingCandidate,
++} from "@/lib/public-source-acquisition";
++import {
++  createLivePublicSourceApplyDependencies,
++  type PublicSourceApplyDependencies,
++} from "./fetch-approved-public-source-versions";
++import {
++  parsePublicSourceAcquisitionManifest,
++  publicSourceAcquisitionManifestDigest,
++} from "./plan-public-source-acquisition";
++
++type CurrentSourceVersion = Readonly<{
++  catalogueKey: string;
++  versionId: string;
++  contentHash: string;
++  lifecycle: "shadow" | "approved" | "active" | "quarantined";
++}>;
++type ChangeDependencies = Readonly<{
++  acquisition: PublicSourceApplyDependencies;
++  recordCheck: (event: Readonly<Record<string, string>>) => Promise<void>;
++  stageChangedVersion: (
++    candidate: PublicSourceStagingCandidate,
++  ) => Promise<{ versionId: string; ownerId: string | null }>;
++  tombstoneCurrentVersion: (event: Readonly<Record<string, string>>) => Promise<void>;
++  queueHumanReview: (event: Readonly<Record<string, string>>) => Promise<void>;
++}>;
++
++function option(argv: readonly string[], name: string) {
++  const inline = argv.find((value) => value.startsWith(`${name}=`));
++  if (inline) return inline.slice(name.length + 1);
++  const index = argv.indexOf(name);
++  return index < 0 ? undefined : argv[index + 1];
++}
++
++function parseCurrentVersions(input: unknown): CurrentSourceVersion[] {
++  if (!Array.isArray(input) || input.length === 0) throw new Error("Current public source versions must be non-empty.");
++  return input.map((entry) => {
++    if (!entry || typeof entry !== "object") throw new Error("Current public source version must be an object.");
++    const value = entry as Partial<CurrentSourceVersion>;
++    if (
++      !value.catalogueKey ||
++      !value.versionId ||
++      !/^sha256:[a-f0-9]{64}$/.test(value.contentHash ?? "") ||
++      !["shadow", "approved", "active", "quarantined"].includes(value.lifecycle ?? "")
++    ) {
++      throw new Error("Current public source version evidence is invalid.");
++    }
++    return value as CurrentSourceVersion;
++  });
++}
++
++async function createLiveChangeDependencies(
++  plan: PublicSourceAcquisitionPlan,
++  current: CurrentSourceVersion,
++): Promise<ChangeDependencies> {
++  const [{ createAdminClient }, acquisition] = await Promise.all([
++    import("@/lib/supabase/admin"),
++    createLivePublicSourceApplyDependencies(plan),
++  ]);
++  const supabase = createAdminClient();
++  const audit = async (action: string, event: Readonly<Record<string, string>>) => {
++    const { error } = await supabase.from("audit_logs").insert({
++      action,
++      owner_id: plan.stagingOwnerId,
++      resource_type: "public_source_version",
++      resource_id: event.versionId ?? current.versionId,
++      metadata: event,
++    });
++    if (error) throw new Error(error.message);
++  };
++  return {
++    acquisition,
++    recordCheck: (event) => audit("public_source_change_checked", event),
++    stageChangedVersion: async (candidate) => {
++      const staged = await acquisition.stageOwnedDocument(candidate);
++      if (!staged.versionId) throw new Error("Changed public source staging did not return a version ID.");
++      return { versionId: staged.versionId, ownerId: staged.ownerId };
++    },
++    tombstoneCurrentVersion: async () => {
++      const { error } = await supabase.rpc("transition_public_source_version", {
++        p_version_id: current.versionId,
++        p_expected_lifecycle: current.lifecycle,
++        p_new_lifecycle: "tombstoned",
++        p_activation_event_id: null,
++      });
++      if (error) throw new Error(error.message);
++    },
++    queueHumanReview: (event) => audit("public_source_withdrawal_review_required", event),
++  };
++}
++
++export async function runCheckPublicSourceChangesCli(
++  argv: readonly string[],
++  options: {
++    dependenciesForPlan?: (
++      plan: PublicSourceAcquisitionPlan,
++      current: CurrentSourceVersion,
++    ) => Promise<ChangeDependencies>;
++    stdout?: (message: string) => void;
++  } = {},
++) {
++  const manifestPath = option(argv, "--manifest");
++  const currentPath = option(argv, "--current");
++  const stdout = options.stdout ?? console.log;
++  if (!manifestPath || !currentPath) {
++    stdout(JSON.stringify({ mode: "dry-run", reason: "manifest and current-version paths are required", plans: [] }));
++    return { applied: false, count: 0 } as const;
++  }
++  const raw = readFileSync(resolve(manifestPath), "utf8");
++  const manifest = parsePublicSourceAcquisitionManifest(JSON.parse(raw) as unknown);
++  const current = parseCurrentVersions(JSON.parse(readFileSync(resolve(currentPath), "utf8")) as unknown);
++  const currentByKey = new Map(current.map((version) => [version.catalogueKey, version]));
++  if (currentByKey.size !== current.length) throw new Error("Current public source keys must be unique.");
++  for (const plan of manifest.plans) {
++    if (!currentByKey.has(plan.catalogueKey)) throw new Error(`Current version is missing for ${plan.catalogueKey}.`);
++  }
++  const digest = publicSourceAcquisitionManifestDigest(raw);
++  const expectedCount = Number(option(argv, "--expected-count"));
++  const confirmed =
++    argv.includes("--apply") &&
++    Number.isSafeInteger(expectedCount) &&
++    expectedCount === manifest.plans.length &&
++    option(argv, "--manifest-sha256") === digest;
++  if (!confirmed) {
++    stdout(
++      JSON.stringify({
++        mode: "dry-run",
++        count: manifest.plans.length,
++        manifestSha256: digest,
++        plans: manifest.plans.map(({ catalogueKey, exactUrl, exactVersion }) => ({
++          catalogueKey,
++          exactUrl,
++          exactVersion,
++          currentVersionId: currentByKey.get(catalogueKey)?.versionId,
++        })),
++        required: ["--manifest", "--current", "--expected-count", "--manifest-sha256", "--apply"],
++      }),
++    );
++    return { applied: false, count: manifest.plans.length } as const;
++  }
++
++  const results = [];
++  for (const plan of manifest.plans) {
++    const currentVersion = currentByKey.get(plan.catalogueKey)!;
++    const dependencies = await (options.dependenciesForPlan ?? createLiveChangeDependencies)(plan, currentVersion);
++    await dependencies.acquisition.authorizePlan(plan);
++    const observed = await observePublicSourceChangeSignal(plan, dependencies.acquisition);
++    const definition = australianSourceByKey(plan.catalogueKey);
++    if (!definition) throw new Error("Change-check source is no longer in the reviewed catalogue.");
++    results.push(
++      await checkPublicSourceChange({
++        plan,
++        currentVersion,
++        observed,
++        recordCheck: dependencies.recordCheck,
++        stageChangedVersion: async () => {
++          if (observed.kind !== "content") throw new Error("Withdrawal signals cannot stage replacement content.");
++          return dependencies.stageChangedVersion(
++            Object.freeze({
++              ownerId: plan.stagingOwnerId,
++              exactUrl: plan.exactUrl,
++              exactVersion: plan.exactVersion,
++              contentType: observed.contentType,
++              bytes: observed.bytes,
++              contentHash: observed.contentHash,
++              lifecycle: "shadow" as const,
++              metadata: Object.freeze({
++                corpus_scope: definition.corpusScope,
++                source_catalogue_key: plan.catalogueKey,
++                source_policy_version: plan.sourcePolicyVersion,
++                source_policy_digest: plan.sourcePolicyDigest,
++                content_mode: definition.contentMode,
++                licence_policy: plan.exactDocumentLicence,
++                licence_evidence_digest: plan.licenceEvidenceDigest,
++                source_exact_url: plan.exactUrl,
++                source_exact_version: plan.exactVersion,
++                content_hash: observed.contentHash,
++                public_source_lifecycle: "shadow",
++              }),
++            }),
++          );
++        },
++        tombstoneCurrentVersion: dependencies.tombstoneCurrentVersion,
++        queueHumanReview: dependencies.queueHumanReview,
++      }),
++    );
++  }
++  stdout(JSON.stringify({ mode: "apply", count: results.length, results }));
++  return { applied: true, count: results.length, results } as const;
++}
++
++if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
++  void runCheckPublicSourceChangesCli(process.argv.slice(2)).catch((error: unknown) => {
++    console.error(error instanceof Error ? error.message : "Public source change check failed.");
++    process.exitCode = 1;
++  });
++}
+diff --git a/scripts/fetch-approved-public-source-versions.ts b/scripts/fetch-approved-public-source-versions.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4d16c8fa89ece63ebc02c5edd06d1b37c472e138
+--- /dev/null
++++ b/scripts/fetch-approved-public-source-versions.ts
+@@ -0,0 +1,226 @@
++import { randomUUID } from "node:crypto";
++import { lookup } from "node:dns/promises";
++import { readFileSync } from "node:fs";
++import { basename, resolve } from "node:path";
++import { pathToFileURL } from "node:url";
++
++import { australianSourceByKey } from "@/lib/australian-source-catalogue";
++import {
++  acquirePublicSourceVersion,
++  type PublicSourceAcquisitionPlan,
++  type PublicSourceStagingCandidate,
++} from "@/lib/public-source-acquisition";
++import {
++  parsePublicSourceAcquisitionManifest,
++  publicSourceAcquisitionManifestDigest,
++} from "./plan-public-source-acquisition";
++
++function option(argv: readonly string[], name: string) {
++  const inline = argv.find((value) => value.startsWith(`${name}=`));
++  if (inline) return inline.slice(name.length + 1);
++  const index = argv.indexOf(name);
++  return index < 0 ? undefined : argv[index + 1];
++}
++
++export type PublicSourceApplyDependencies = Readonly<{
++  authorizePlan: (plan: PublicSourceAcquisitionPlan) => Promise<void>;
++  fetch: typeof fetch;
++  resolve: (hostname: string) => Promise<readonly { address: string; family: 4 | 6 }[]>;
++  scan: (input: { bytes: Uint8Array; contentType: string; catalogueKey: string }) => Promise<{
++    accepted: boolean;
++    reasonCode?: string;
++  }>;
++  findDuplicateVersion: (input: {
++    catalogueKey: string;
++    exactUrl: string;
++    exactVersion: string;
++    contentHash: string;
++  }) => Promise<string | null>;
++  stageOwnedDocument: (
++    candidate: PublicSourceStagingCandidate,
++  ) => Promise<{ documentId: string; ownerId: string | null; versionId?: string | null }>;
++  enqueue: (input: {
++    documentId: string;
++    ownerId: string;
++    catalogueKey: string;
++    contentMode: "indexed_content";
++    exactDocumentLicence: "public_index_permitted";
++    sourcePolicyVersion: string;
++    sourcePolicyDigest: string;
++  }) => Promise<void>;
++}>;
++
++function fileNameFor(url: string, contentType: string) {
++  const base = (basename(new URL(url).pathname) || "public-source").replace(/[^a-zA-Z0-9._-]+/g, "-").slice(0, 160);
++  if (base.includes(".")) return base;
++  return `${base}${contentType === "application/pdf" ? ".pdf" : contentType === "text/plain" ? ".txt" : ".bin"}`;
++}
++
++export async function createLivePublicSourceApplyDependencies(
++  plan: PublicSourceAcquisitionPlan,
++): Promise<PublicSourceApplyDependencies> {
++  if (!plan.sourceActivationEventId) {
++    throw new Error("Apply requires a persisted source activation event; planning cannot activate a source.");
++  }
++  const [{ createAdminClient }, { env }, { enqueueDocumentReindexJob }] = await Promise.all([
++    import("@/lib/supabase/admin"),
++    import("@/lib/env"),
++    import("@/lib/ingestion-enqueue"),
++  ]);
++  const supabase = createAdminClient();
++  const definition = australianSourceByKey(plan.catalogueKey);
++  if (!definition) throw new Error("Apply source definition is no longer in the reviewed catalogue.");
++
++  const authorizePlan = async (candidate: PublicSourceAcquisitionPlan) => {
++    if (!candidate.sourceActivationEventId) throw new Error("Apply source activation event is missing.");
++    const { error } = await supabase.rpc("create_public_source_fetch_manifest", {
++      p_source_catalogue_key: candidate.catalogueKey,
++      p_source_policy_version: candidate.sourcePolicyVersion,
++      p_source_policy_digest: candidate.sourcePolicyDigest,
++      p_activation_event_id: candidate.sourceActivationEventId,
++      p_exact_url: candidate.exactUrl,
++      p_exact_version: candidate.exactVersion,
++      p_licence_evidence_digest: candidate.licenceEvidenceDigest,
++      p_staging_owner_id: candidate.stagingOwnerId,
++    });
++    if (error) throw new Error(`Public source fetch authorization failed: ${error.message}`);
++  };
++
++  return {
++    authorizePlan,
++    fetch: globalThis.fetch,
++    resolve: async (hostname) =>
++      (await lookup(hostname, { all: true, verbatim: true })).map(({ address, family }) => ({
++        address,
++        family: family as 4 | 6,
++      })),
++    // MIME, signature, and structural validation already ran in the core boundary.
++    scan: async () => ({ accepted: true }),
++    findDuplicateVersion: async ({ catalogueKey, exactUrl, contentHash }) => {
++      const { data, error } = await supabase
++        .from("public_source_versions")
++        .select("id")
++        .eq("source_catalogue_key", catalogueKey)
++        .eq("exact_version_url", exactUrl)
++        .eq("content_hash", contentHash)
++        .maybeSingle();
++      if (error) throw new Error(error.message);
++      return data?.id ?? null;
++    },
++    stageOwnedDocument: async (candidate) => {
++      await authorizePlan(plan);
++      const documentId = randomUUID();
++      const fileName = fileNameFor(candidate.exactUrl, candidate.contentType);
++      const storagePath = `public-sources/${candidate.ownerId}/${documentId}/${fileName}`;
++      const upload = await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).upload(storagePath, candidate.bytes, {
++        contentType: candidate.contentType,
++        upsert: false,
++      });
++      if (upload.error) throw new Error(upload.error.message);
++      const { error: documentError } = await supabase.from("documents").insert({
++        id: documentId,
++        owner_id: candidate.ownerId,
++        title: `${definition.publisher} — ${candidate.exactVersion}`,
++        description: "Owned staging candidate for governed public-source review.",
++        file_name: fileName,
++        file_type: candidate.contentType,
++        file_size: candidate.bytes.byteLength,
++        storage_path: storagePath,
++        source_path: candidate.exactUrl,
++        content_hash: candidate.contentHash,
++        status: "uploaded",
++        metadata: candidate.metadata,
++      });
++      if (documentError) {
++        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([storagePath]);
++        throw new Error(documentError.message);
++      }
++      const { data: versionId, error: versionError } = await supabase.rpc("stage_public_source_version", {
++        p_version: {
++          activationEventId: plan.sourceActivationEventId,
++          catalogueKey: plan.catalogueKey,
++          exactCanonicalUrl: definition.canonicalUrl,
++          exactUrl: candidate.exactUrl,
++          exactVersion: candidate.exactVersion,
++          contentHash: candidate.contentHash,
++          retrievedAt: new Date().toISOString(),
++          licenceEvidenceDigest: plan.licenceEvidenceDigest,
++          stagingDocumentId: documentId,
++          stagingOwnerId: candidate.ownerId,
++          lifecycle: "shadow",
++        },
++      });
++      if (versionError) {
++        await supabase.from("documents").delete().eq("id", documentId).eq("owner_id", candidate.ownerId);
++        await supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove([storagePath]);
++        throw new Error(versionError.message);
++      }
++      return { documentId, ownerId: candidate.ownerId, versionId };
++    },
++    enqueue: async ({ documentId, ownerId }) => {
++      await authorizePlan(plan);
++      const result = await enqueueDocumentReindexJob({
++        supabase,
++        document: { id: documentId, owner_id: ownerId, status: "uploaded" },
++      });
++      if (result.outcome === "document_deleted") throw new Error("Public source staging disappeared before enqueue.");
++    },
++  };
++}
++
++export async function runFetchApprovedPublicSourceVersionsCli(
++  argv: readonly string[],
++  options: {
++    dependenciesForPlan?: (plan: PublicSourceAcquisitionPlan) => Promise<PublicSourceApplyDependencies>;
++    stdout?: (message: string) => void;
++  } = {},
++) {
++  const manifestPath = option(argv, "--manifest");
++  const stdout = options.stdout ?? console.log;
++  if (!manifestPath) {
++    stdout(JSON.stringify({ mode: "dry-run", reason: "manifest path is required", plans: [] }));
++    return { applied: false, count: 0 } as const;
++  }
++  const raw = readFileSync(resolve(manifestPath), "utf8");
++  const manifest = parsePublicSourceAcquisitionManifest(JSON.parse(raw) as unknown);
++  const digest = publicSourceAcquisitionManifestDigest(raw);
++  const expectedCount = Number(option(argv, "--expected-count"));
++  const confirmed =
++    argv.includes("--apply") &&
++    Number.isSafeInteger(expectedCount) &&
++    expectedCount === manifest.plans.length &&
++    option(argv, "--manifest-sha256") === digest;
++  if (!confirmed) {
++    stdout(
++      JSON.stringify({
++        mode: "dry-run",
++        count: manifest.plans.length,
++        manifestSha256: digest,
++        plans: manifest.plans.map(({ catalogueKey, exactUrl, exactVersion, targetLifecycle }) => ({
++          catalogueKey,
++          exactUrl,
++          exactVersion,
++          targetLifecycle,
++        })),
++        required: ["--manifest", "--expected-count", "--manifest-sha256", "--apply"],
++      }),
++    );
++    return { applied: false, count: manifest.plans.length } as const;
++  }
++
++  const results = [];
++  for (const plan of manifest.plans) {
++    const dependencies = await (options.dependenciesForPlan ?? createLivePublicSourceApplyDependencies)(plan);
++    await dependencies.authorizePlan(plan);
++    results.push(await acquirePublicSourceVersion(plan, dependencies));
++  }
++  stdout(JSON.stringify({ mode: "apply", count: results.length, results }));
++  return { applied: true, count: results.length, results } as const;
++}
++
++if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
++  void runFetchApprovedPublicSourceVersionsCli(process.argv.slice(2)).catch((error: unknown) => {
++    console.error(error instanceof Error ? error.message : "Public source fetch failed.");
++    process.exitCode = 1;
++  });
++}
+diff --git a/scripts/plan-public-source-acquisition.ts b/scripts/plan-public-source-acquisition.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5f07332cad664bec6dbf17208d30e49ba99d48e4
+--- /dev/null
++++ b/scripts/plan-public-source-acquisition.ts
+@@ -0,0 +1,93 @@
++import { createHash } from "node:crypto";
++import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
++import { dirname, resolve } from "node:path";
++import { pathToFileURL } from "node:url";
++
++import {
++  assertPublicSourceAcquisitionPlan,
++  planAcquisition,
++  type PublicSourceAcquisitionPlan,
++} from "@/lib/public-source-acquisition";
++
++export type PublicSourceAcquisitionManifestV1 = Readonly<{
++  schemaVersion: "public-source-acquisition-manifest-v1";
++  plans: readonly PublicSourceAcquisitionPlan[];
++}>;
++
++function option(argv: readonly string[], name: string) {
++  const inline = argv.find((value) => value.startsWith(`${name}=`));
++  if (inline) return inline.slice(name.length + 1);
++  const index = argv.indexOf(name);
++  return index < 0 ? undefined : argv[index + 1];
++}
++
++export function publicSourceAcquisitionManifestDigest(raw: string | Uint8Array) {
++  return `sha256:${createHash("sha256").update(raw).digest("hex")}`;
++}
++
++export function parsePublicSourceAcquisitionManifest(input: unknown): PublicSourceAcquisitionManifestV1 {
++  if (!input || typeof input !== "object") throw new Error("Acquisition manifest must be an object.");
++  const value = input as { schemaVersion?: unknown; plans?: unknown };
++  if (value.schemaVersion !== "public-source-acquisition-manifest-v1" || !Array.isArray(value.plans)) {
++    throw new Error("Unsupported public source acquisition manifest.");
++  }
++  const plans = value.plans.map((plan) => {
++    if (!plan || typeof plan !== "object") throw new Error("Public source acquisition plan must be an object.");
++    const candidate = plan as PublicSourceAcquisitionPlan;
++    assertPublicSourceAcquisitionPlan(candidate);
++    return candidate;
++  });
++  return Object.freeze({ schemaVersion: value.schemaVersion, plans: Object.freeze(plans) });
++}
++
++export async function runPlanPublicSourceAcquisitionCli(
++  argv: readonly string[],
++  io: { stdout?: (message: string) => void } = {},
++) {
++  const inputPath = option(argv, "--input");
++  const outputPath = option(argv, "--output");
++  if (!inputPath) throw new Error("Acquisition planning requires --input with an exact URL/version list.");
++  const input = JSON.parse(readFileSync(resolve(inputPath), "utf8")) as unknown;
++  const entries = Array.isArray(input)
++    ? input
++    : input && typeof input === "object" && Array.isArray((input as { entries?: unknown }).entries)
++      ? (input as { entries: unknown[] }).entries
++      : null;
++  if (!entries?.length) throw new Error("Acquisition planning requires a non-empty exact URL/version list.");
++  const plans = [];
++  for (const entry of entries) {
++    if (!entry || typeof entry !== "object") throw new Error("Acquisition plan entry must be an object.");
++    plans.push(await planAcquisition(entry as Parameters<typeof planAcquisition>[0]));
++  }
++  const manifest: PublicSourceAcquisitionManifestV1 = Object.freeze({
++    schemaVersion: "public-source-acquisition-manifest-v1",
++    plans: Object.freeze(plans),
++  });
++  const serialized = `${JSON.stringify(manifest, null, 2)}\n`;
++  if (outputPath) {
++    const absolute = resolve(outputPath);
++    mkdirSync(dirname(absolute), { recursive: true });
++    writeFileSync(absolute, serialized, { encoding: "utf8", flag: "wx" });
++  }
++  (io.stdout ?? console.log)(
++    JSON.stringify({
++      mode: "dry-run",
++      count: plans.length,
++      manifestSha256: publicSourceAcquisitionManifestDigest(serialized),
++      plans: plans.map(({ catalogueKey, exactUrl, exactVersion, targetLifecycle }) => ({
++        catalogueKey,
++        exactUrl,
++        exactVersion,
++        targetLifecycle,
++      })),
++    }),
++  );
++  return manifest;
++}
++
++if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
++  void runPlanPublicSourceAcquisitionCli(process.argv.slice(2)).catch((error: unknown) => {
++    console.error(error instanceof Error ? error.message : "Public source acquisition planning failed.");
++    process.exitCode = 1;
++  });
++}
+diff --git a/src/lib/public-source-acquisition.ts b/src/lib/public-source-acquisition.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..1bf3cfd70bcb470f9a5db1f5ecfd407b29e6ccac
+--- /dev/null
++++ b/src/lib/public-source-acquisition.ts
+@@ -0,0 +1,604 @@
++import { createHash } from "node:crypto";
++import { isIP } from "node:net";
++
++import {
++  assertIndexableCatalogueEntry,
++  australianSourceByKey,
++  australianSourcePolicyVersion,
++  isIndexableAustralianSource,
++  type AustralianSourceDefinition,
++  type SourceLicencePolicy,
++} from "@/lib/australian-source-catalogue";
++import {
++  assertActivationAllowsAcquisition,
++  australianSourcePolicyDigest,
++  type PublicSourceActivationManifestV1,
++} from "@/lib/public-source-activation-manifest";
++import { assertAllowedFile, assertFileContentSignature } from "@/lib/http";
++import { MAX_UPLOAD_MB_CEILING } from "@/lib/upload-limits";
++import { assertUploadStructure } from "@/lib/upload-structure";
++
++const sha256Pattern = /^sha256:[a-f0-9]{64}$/;
++const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
++const defaultAllowedContentTypes = Object.freeze([
++  "application/pdf",
++  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
++  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
++  "text/plain",
++  "text/html",
++]);
++
++export type ResolvedAddress = Readonly<{ address: string; family: 4 | 6 }>;
++export type ResolveHost = (hostname: string) => Promise<readonly ResolvedAddress[]>;
++export type AcquisitionFetch = (input: string | URL, init?: RequestInit) => Promise<Response>;
++
++export type PublicSourceAcquisitionPlan = Readonly<{
++  schemaVersion: "public-source-acquisition-v1";
++  sourcePolicyVersion: typeof australianSourcePolicyVersion;
++  sourcePolicyDigest: string;
++  sourceActivationManifest: PublicSourceActivationManifestV1;
++  sourceActivationEventId: string | null;
++  catalogueKey: string;
++  exactUrl: string;
++  exactVersion: string;
++  exactDocumentLicence: Extract<SourceLicencePolicy, "public_index_permitted">;
++  licenceEvidenceDigest: string;
++  stagingOwnerId: string;
++  maxBytes: number;
++  maxRedirects: number;
++  allowedContentTypes: readonly string[];
++  targetLifecycle: "shadow";
++}>;
++
++export type PublicSourceStagingCandidate = Readonly<{
++  ownerId: string;
++  exactUrl: string;
++  exactVersion: string;
++  contentType: string;
++  bytes: Uint8Array;
++  contentHash: string;
++  lifecycle: "shadow";
++  metadata: Readonly<Record<string, string>>;
++}>;
++
++function isNonEmpty(value: unknown): value is string {
++  return typeof value === "string" && value.trim().length > 0;
++}
++
++function ipv4Number(address: string) {
++  return address.split(".").reduce((value, part) => (value << 8) + Number(part), 0) >>> 0;
++}
++
++function inIpv4Cidr(address: string, network: string, prefix: number) {
++  const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0;
++  return (ipv4Number(address) & mask) === (ipv4Number(network) & mask);
++}
++
++function isPrivateOrNonGlobalIp(address: string) {
++  const family = isIP(address);
++  if (family === 4) {
++    return [
++      ["0.0.0.0", 8],
++      ["10.0.0.0", 8],
++      ["100.64.0.0", 10],
++      ["127.0.0.0", 8],
++      ["169.254.0.0", 16],
++      ["172.16.0.0", 12],
++      ["192.0.0.0", 24],
++      ["192.0.2.0", 24],
++      ["192.168.0.0", 16],
++      ["198.18.0.0", 15],
++      ["198.51.100.0", 24],
++      ["203.0.113.0", 24],
++      ["224.0.0.0", 4],
++    ].some(([network, prefix]) => inIpv4Cidr(address, String(network), Number(prefix)));
++  }
++  if (family === 6) {
++    const normalized = address.toLowerCase();
++    return (
++      normalized === "::" ||
++      normalized === "::1" ||
++      normalized.startsWith("::ffff:") ||
++      normalized.startsWith("fc") ||
++      normalized.startsWith("fd") ||
++      /^fe[89ab]/.test(normalized) ||
++      normalized.startsWith("ff")
++    );
++  }
++  return true;
++}
++
++function assertSafeAddressSet(addresses: readonly ResolvedAddress[]) {
++  if (addresses.length === 0) throw new Error("Acquisition DNS lookup returned no addresses.");
++  for (const resolved of addresses) {
++    if (isPrivateOrNonGlobalIp(resolved.address)) {
++      throw new Error("Acquisition DNS lookup resolved to a private or non-global network target.");
++    }
++  }
++}
++
++function normalizedAddressSet(addresses: readonly ResolvedAddress[]) {
++  return [...new Set(addresses.map(({ address, family }) => `${family}:${address.toLowerCase()}`))].sort();
++}
++
++function assertStableDns(before: readonly ResolvedAddress[], after: readonly ResolvedAddress[]) {
++  assertSafeAddressSet(before);
++  assertSafeAddressSet(after);
++  if (JSON.stringify(normalizedAddressSet(before)) !== JSON.stringify(normalizedAddressSet(after))) {
++    throw new Error("Acquisition DNS rebinding check failed because the resolved address set changed.");
++  }
++}
++
++function parseAndValidateUrl(rawUrl: string, definition: AustralianSourceDefinition) {
++  let url: URL;
++  try {
++    url = new URL(rawUrl);
++  } catch {
++    throw new Error("Acquisition URL is invalid.");
++  }
++  if (url.protocol !== "https:") throw new Error("Acquisition URL must use HTTPS and may not target a private host.");
++  if (url.username || url.password) throw new Error("Acquisition URL may not contain credentials.");
++  if (url.port && url.port !== "443") throw new Error("Acquisition URL must use the default HTTPS port.");
++  const allowedHost = new URL(definition.canonicalUrl).hostname.toLowerCase();
++  if (url.hostname.toLowerCase() !== allowedHost) {
++    throw new Error(`Acquisition URL host is not the exact allowlisted host for ${definition.key}.`);
++  }
++  if (isIP(url.hostname) && isPrivateOrNonGlobalIp(url.hostname)) {
++    throw new Error("Acquisition URL may not target a private network address.");
++  }
++  return url;
++}
++
++export async function validateAcquisitionUrl(
++  rawUrl: string,
++  definition: AustralianSourceDefinition,
++  resolve?: ResolveHost,
++) {
++  const url = parseAndValidateUrl(rawUrl, definition);
++  if (resolve) assertSafeAddressSet(await resolve(url.hostname));
++  return url;
++}
++
++export async function validateRedirect(rawUrl: string, definition: AustralianSourceDefinition, resolve?: ResolveHost) {
++  return validateAcquisitionUrl(rawUrl, definition, resolve);
++}
++
++function activeIndexableDefinition(catalogueKey: string, exactLicence: SourceLicencePolicy) {
++  const source = australianSourceByKey(catalogueKey);
++  if (!source) throw new Error(`Public source ${catalogueKey} is not in the active catalogue.`);
++  assertIndexableCatalogueEntry(source);
++  if (!isIndexableAustralianSource(catalogueKey, exactLicence)) {
++    throw new Error(`Public source ${catalogueKey} lacks exact-document licence permission.`);
++  }
++  return source;
++}
++
++export async function planAcquisition(input: {
++  catalogueKey: string;
++  url: string;
++  exactVersion?: string;
++  exactDocumentLicence?: SourceLicencePolicy;
++  licenceEvidenceDigest?: string;
++  stagingOwnerId?: string;
++  activationManifest?: unknown;
++  sourceActivationEventId?: string;
++  maxBytes?: number;
++  maxRedirects?: number;
++  allowedContentTypes?: readonly string[];
++  /** Accepted for dependency-injection symmetry; planning never calls it. */
++  fetch?: AcquisitionFetch;
++}): Promise<PublicSourceAcquisitionPlan> {
++  const source = australianSourceByKey(input.catalogueKey);
++  if (!source) throw new Error(`Public source ${input.catalogueKey} is not in the active catalogue.`);
++  if (source.contentMode === "link_only") {
++    throw new Error(`Public source ${source.key} is link-only and cannot be acquired.`);
++  }
++  if (source.lifecycle !== "active") {
++    throw new Error(`Public source ${source.key} is ${source.lifecycle} and cannot be acquired.`);
++  }
++  const exactLicence = input.exactDocumentLicence ?? "review_required";
++  activeIndexableDefinition(input.catalogueKey, exactLicence);
++  const activation = assertActivationAllowsAcquisition(input.activationManifest, input.catalogueKey);
++  if (input.sourceActivationEventId !== undefined && !uuidPattern.test(input.sourceActivationEventId)) {
++    throw new Error("Acquisition source activation event ID is invalid.");
++  }
++  const url = await validateAcquisitionUrl(input.url, source);
++  if (!isNonEmpty(input.exactVersion)) throw new Error("Acquisition requires an operator-supplied exact version.");
++  if (!sha256Pattern.test(input.licenceEvidenceDigest ?? "")) {
++    throw new Error("Acquisition requires an exact licence evidence digest.");
++  }
++  if (!isNonEmpty(input.stagingOwnerId) || !uuidPattern.test(input.stagingOwnerId)) {
++    throw new Error("Acquisition requires a valid staging owner ID.");
++  }
++  const maxBytes = input.maxBytes ?? 50 * 1024 * 1024;
++  const maxRedirects = input.maxRedirects ?? 3;
++  if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0 || maxBytes > MAX_UPLOAD_MB_CEILING * 1024 * 1024) {
++    throw new Error(`Acquisition maxBytes must be between 1 byte and ${MAX_UPLOAD_MB_CEILING} MB.`);
++  }
++  if (!Number.isSafeInteger(maxRedirects) || maxRedirects < 0 || maxRedirects > 10) {
++    throw new Error("Acquisition redirect limit must be between 0 and 10.");
++  }
++  const allowedContentTypes = input.allowedContentTypes ?? defaultAllowedContentTypes;
++  if (
++    allowedContentTypes.length === 0 ||
++    allowedContentTypes.some((value) => !isNonEmpty(value) || !defaultAllowedContentTypes.includes(value))
++  ) {
++    throw new Error("Acquisition requires at least one allowed content type.");
++  }
++
++  return Object.freeze({
++    schemaVersion: "public-source-acquisition-v1" as const,
++    sourcePolicyVersion: australianSourcePolicyVersion,
++    sourcePolicyDigest: australianSourcePolicyDigest,
++    sourceActivationManifest: activation,
++    sourceActivationEventId: input.sourceActivationEventId ?? null,
++    catalogueKey: source.key,
++    exactUrl: url.href,
++    exactVersion: input.exactVersion.trim(),
++    exactDocumentLicence: "public_index_permitted" as const,
++    licenceEvidenceDigest: input.licenceEvidenceDigest!,
++    stagingOwnerId: input.stagingOwnerId,
++    maxBytes,
++    maxRedirects,
++    allowedContentTypes: Object.freeze([...new Set(allowedContentTypes)]),
++    targetLifecycle: "shadow" as const,
++  });
++}
++
++export function assertPublicSourceAcquisitionPlan(plan: PublicSourceAcquisitionPlan) {
++  if (plan.schemaVersion !== "public-source-acquisition-v1" || plan.targetLifecycle !== "shadow") {
++    throw new Error("Acquisition plan schema or staging lifecycle is invalid.");
++  }
++  if (plan.sourcePolicyVersion !== australianSourcePolicyVersion) {
++    throw new Error("Acquisition source policy version changed after planning.");
++  }
++  if (plan.sourcePolicyDigest !== australianSourcePolicyDigest) {
++    throw new Error("Acquisition source policy digest changed after planning.");
++  }
++  if (!uuidPattern.test(plan.stagingOwnerId)) throw new Error("Acquisition staging owner is invalid.");
++  if (plan.sourceActivationEventId !== null && !uuidPattern.test(plan.sourceActivationEventId)) {
++    throw new Error("Acquisition source activation event is invalid.");
++  }
++  if (!isNonEmpty(plan.exactVersion) || !sha256Pattern.test(plan.licenceEvidenceDigest)) {
++    throw new Error("Acquisition exact-version or licence evidence is invalid.");
++  }
++  if (
++    !Number.isSafeInteger(plan.maxBytes) ||
++    plan.maxBytes <= 0 ||
++    plan.maxBytes > MAX_UPLOAD_MB_CEILING * 1024 * 1024 ||
++    !Number.isSafeInteger(plan.maxRedirects) ||
++    plan.maxRedirects < 0 ||
++    plan.maxRedirects > 10 ||
++    plan.allowedContentTypes.length === 0 ||
++    plan.allowedContentTypes.some((value) => !defaultAllowedContentTypes.includes(value))
++  ) {
++    throw new Error("Acquisition limits or content types changed after planning.");
++  }
++  assertActivationAllowsAcquisition(plan.sourceActivationManifest, plan.catalogueKey);
++  const definition = activeIndexableDefinition(plan.catalogueKey, plan.exactDocumentLicence);
++  parseAndValidateUrl(plan.exactUrl, definition);
++  return definition;
++}
++
++async function readBoundedBody(response: Response, maxBytes: number) {
++  const declaredLength = Number(response.headers.get("content-length"));
++  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
++    throw new Error("Public source response exceeds the approved size limit.");
++  }
++  if (!response.body) throw new Error("Public source response has no readable body.");
++  const reader = response.body.getReader();
++  const chunks: Uint8Array[] = [];
++  const hash = createHash("sha256");
++  let total = 0;
++  try {
++    while (true) {
++      const { done, value } = await reader.read();
++      if (done) break;
++      total += value.byteLength;
++      if (total > maxBytes) {
++        await reader.cancel();
++        throw new Error("Public source response exceeds the approved streamed size limit.");
++      }
++      hash.update(value);
++      chunks.push(value);
++    }
++  } finally {
++    reader.releaseLock();
++  }
++  const bytes = new Uint8Array(total);
++  let offset = 0;
++  for (const chunk of chunks) {
++    bytes.set(chunk, offset);
++    offset += chunk.byteLength;
++  }
++  return Object.freeze({ bytes, contentHash: `sha256:${hash.digest("hex")}` });
++}
++
++async function fetchBounded(
++  plan: PublicSourceAcquisitionPlan,
++  deps: { fetch: AcquisitionFetch; resolve: ResolveHost },
++  allowWithdrawalSignal = false,
++) {
++  const definition = assertPublicSourceAcquisitionPlan(plan);
++  let currentUrl = plan.exactUrl;
++  for (let redirectCount = 0; ; redirectCount += 1) {
++    const url = await validateAcquisitionUrl(currentUrl, definition);
++    const before = await deps.resolve(url.hostname);
++    assertSafeAddressSet(before);
++    const response = await deps.fetch(url, { redirect: "manual" });
++    const after = await deps.resolve(url.hostname);
++    assertStableDns(before, after);
++    if (response.status >= 300 && response.status < 400) {
++      if (redirectCount >= plan.maxRedirects) throw new Error("Public source redirect limit exceeded.");
++      const location = response.headers.get("location");
++      if (!location) throw new Error("Public source redirect omitted a location.");
++      currentUrl = (await validateRedirect(new URL(location, url).href, definition)).href;
++      continue;
++    }
++    if (!response.ok && !(allowWithdrawalSignal && (response.status === 404 || response.status === 410))) {
++      throw new Error(`Public source request failed with bounded status ${response.status}.`);
++    }
++    return response;
++  }
++}
++
++export async function acquirePublicSourceVersion(
++  plan: PublicSourceAcquisitionPlan,
++  deps: {
++    fetch: AcquisitionFetch;
++    resolve: ResolveHost;
++    scan: (input: {
++      bytes: Uint8Array;
++      contentType: string;
++      catalogueKey: string;
++    }) => Promise<{ accepted: boolean; reasonCode?: string }>;
++    findDuplicateVersion: (input: {
++      catalogueKey: string;
++      exactUrl: string;
++      exactVersion: string;
++      contentHash: string;
++    }) => Promise<string | null>;
++    stageOwnedDocument: (
++      candidate: PublicSourceStagingCandidate,
++    ) => Promise<{ documentId: string; ownerId: string | null }>;
++    enqueue: (input: {
++      documentId: string;
++      ownerId: string;
++      catalogueKey: string;
++      contentMode: "indexed_content";
++      exactDocumentLicence: "public_index_permitted";
++      sourcePolicyVersion: string;
++      sourcePolicyDigest: string;
++    }) => Promise<void>;
++    log?: (event: Readonly<Record<string, string | number | boolean>>) => void;
++  },
++) {
++  const definition = assertPublicSourceAcquisitionPlan(plan);
++  deps.log?.({ event: "public_source_fetch_started", catalogueKey: plan.catalogueKey });
++  const { bytes, contentType, contentHash } = await observePublicSourceVersion(plan, deps);
++  const duplicate = await deps.findDuplicateVersion({
++    catalogueKey: plan.catalogueKey,
++    exactUrl: plan.exactUrl,
++    exactVersion: plan.exactVersion,
++    contentHash,
++  });
++  if (duplicate) throw new Error("Duplicate public source version already exists.");
++
++  assertPublicSourceAcquisitionPlan(plan);
++  const candidate: PublicSourceStagingCandidate = Object.freeze({
++    ownerId: plan.stagingOwnerId,
++    exactUrl: plan.exactUrl,
++    exactVersion: plan.exactVersion,
++    contentType,
++    bytes,
++    contentHash,
++    lifecycle: "shadow",
++    metadata: Object.freeze({
++      corpus_scope: definition.corpusScope,
++      source_catalogue_key: plan.catalogueKey,
++      source_policy_version: plan.sourcePolicyVersion,
++      source_policy_digest: plan.sourcePolicyDigest,
++      content_mode: definition.contentMode,
++      licence_policy: plan.exactDocumentLicence,
++      licence_evidence_digest: plan.licenceEvidenceDigest,
++      source_exact_url: plan.exactUrl,
++      source_exact_version: plan.exactVersion,
++      content_hash: contentHash,
++      public_source_lifecycle: "shadow",
++      ...(plan.sourceActivationEventId ? { source_activation_event_id: plan.sourceActivationEventId } : {}),
++    }),
++  });
++  const staged = await deps.stageOwnedDocument(candidate);
++  if (!staged.ownerId || staged.ownerId !== plan.stagingOwnerId) {
++    throw new Error("Public source staging adapter did not preserve the exact non-null owner.");
++  }
++
++  assertPublicSourceAcquisitionPlan(plan);
++  await deps.enqueue({
++    documentId: staged.documentId,
++    ownerId: staged.ownerId,
++    catalogueKey: plan.catalogueKey,
++    contentMode: "indexed_content",
++    exactDocumentLicence: "public_index_permitted",
++    sourcePolicyVersion: plan.sourcePolicyVersion,
++    sourcePolicyDigest: plan.sourcePolicyDigest,
++  });
++  deps.log?.({ event: "public_source_staged", catalogueKey: plan.catalogueKey, contentBytes: bytes.byteLength });
++  return Object.freeze({
++    documentId: staged.documentId,
++    ownerId: staged.ownerId,
++    contentHash,
++    lifecycle: "shadow" as const,
++  });
++}
++
++export async function observePublicSourceVersion(
++  plan: PublicSourceAcquisitionPlan,
++  deps: {
++    fetch: AcquisitionFetch;
++    resolve: ResolveHost;
++    scan: (input: {
++      bytes: Uint8Array;
++      contentType: string;
++      catalogueKey: string;
++    }) => Promise<{ accepted: boolean; reasonCode?: string }>;
++  },
++) {
++  assertPublicSourceAcquisitionPlan(plan);
++  const response = await fetchBounded(plan, deps);
++  return validateFetchedContent(plan, response, deps.scan);
++}
++
++export async function observePublicSourceChangeSignal(
++  plan: PublicSourceAcquisitionPlan,
++  deps: {
++    fetch: AcquisitionFetch;
++    resolve: ResolveHost;
++    scan: (input: {
++      bytes: Uint8Array;
++      contentType: string;
++      catalogueKey: string;
++    }) => Promise<{ accepted: boolean; reasonCode?: string }>;
++  },
++) {
++  assertPublicSourceAcquisitionPlan(plan);
++  const response = await fetchBounded(plan, deps, true);
++  if (response.status === 404 || response.status === 410) {
++    return Object.freeze({
++      kind: "withdrawn" as const,
++      reason: `Publisher returned bounded withdrawal status ${response.status}.`,
++    });
++  }
++  const content = await validateFetchedContent(plan, response, deps.scan);
++  return Object.freeze({ kind: "content" as const, ...content });
++}
++
++async function validateFetchedContent(
++  plan: PublicSourceAcquisitionPlan,
++  response: Response,
++  scanContent: (input: {
++    bytes: Uint8Array;
++    contentType: string;
++    catalogueKey: string;
++  }) => Promise<{ accepted: boolean; reasonCode?: string }>,
++) {
++  const upstreamContentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
++  if (!plan.allowedContentTypes.includes(upstreamContentType)) {
++    throw new Error("Public source response content type is not approved.");
++  }
++  const { bytes: upstreamBytes, contentHash } = await readBoundedBody(response, plan.maxBytes);
++  let bytes = upstreamBytes;
++  let contentType = upstreamContentType;
++  if (upstreamContentType === "text/html") {
++    const trustedPage = evaluateTrustedPageContent(new TextDecoder().decode(upstreamBytes));
++    if (!trustedPage.eligibleForIndex) {
++      throw new Error("Public source page was quarantined because excluded-source evidence remained in main content.");
++    }
++    bytes = new TextEncoder().encode(trustedPage.mainText);
++    contentType = "text/plain";
++  }
++  const uploadFile = new File([bytes], new URL(plan.exactUrl).pathname.split("/").pop() || "source", {
++    type: contentType,
++  });
++  assertAllowedFile(uploadFile, plan.maxBytes / (1024 * 1024));
++  assertFileContentSignature(contentType, bytes);
++  await assertUploadStructure(contentType, bytes);
++  const scan = await scanContent({ bytes, contentType, catalogueKey: plan.catalogueKey });
++  if (!scan.accepted)
++    throw new Error(`Public source upload validation rejected content (${scan.reasonCode ?? "blocked"}).`);
++  return Object.freeze({ bytes, contentType, contentHash });
++}
++
++function decodeHtmlText(input: string) {
++  return input
++    .replace(/<[^>]*>/g, " ")
++    .replace(/&nbsp;/gi, " ")
++    .replace(/&amp;/gi, "&")
++    .replace(/&lt;/gi, "<")
++    .replace(/&gt;/gi, ">")
++    .replace(/&#39;|&apos;/gi, "'")
++    .replace(/&quot;/gi, '"')
++    .replace(/\s+/g, " ")
++    .trim();
++}
++
++/** Conservative synthetic-HTML boundary: only retained main content can proceed to indexing. */
++export function evaluateTrustedPageContent(html: string) {
++  const withoutChrome = html
++    .replace(/<!--[\s\S]*?-->/g, "")
++    .replace(
++      /<(?:script|style|template|header|nav|footer|aside)\b[^>]*>[\s\S]*?<\/(?:script|style|template|header|nav|footer|aside)>/gi,
++      " ",
++    );
++  const mainMatch = withoutChrome.match(/<main\b[^>]*>([\s\S]*?)<\/main>/i);
++  const retainedHtml = mainMatch?.[1] ?? withoutChrome;
++  if (/healthdirect/i.test(retainedHtml)) {
++    return Object.freeze({
++      disposition: "quarantine" as const,
++      eligibleForIndex: false,
++      mainText: "",
++      retainedLinks: Object.freeze([] as string[]),
++    });
++  }
++  const retainedLinks = [...retainedHtml.matchAll(/<a\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi)]
++    .map((match) => match[1])
++    .filter((href) => !/healthdirect/i.test(href));
++  return Object.freeze({
++    disposition: "accepted" as const,
++    eligibleForIndex: true,
++    mainText: decodeHtmlText(retainedHtml),
++    retainedLinks: Object.freeze(retainedLinks),
++  });
++}
++
++export async function checkPublicSourceChange(input: {
++  plan: PublicSourceAcquisitionPlan;
++  currentVersion: Readonly<{ versionId: string; contentHash: string }>;
++  observed: Readonly<{ kind: "content"; contentHash: string }> | Readonly<{ kind: "withdrawn"; reason: string }>;
++  recordCheck: (event: Readonly<Record<string, string>>) => Promise<void>;
++  stageChangedVersion: (candidate: Readonly<Record<string, string | boolean | null>>) => Promise<{
++    versionId: string;
++    ownerId: string | null;
++  }>;
++  tombstoneCurrentVersion: (event: Readonly<Record<string, string>>) => Promise<void>;
++  queueHumanReview: (event: Readonly<Record<string, string>>) => Promise<void>;
++}) {
++  assertPublicSourceAcquisitionPlan(input.plan);
++  if (input.observed.kind === "withdrawn") {
++    const event = {
++      catalogueKey: input.plan.catalogueKey,
++      versionId: input.currentVersion.versionId,
++      reason: input.observed.reason.slice(0, 500),
++    };
++    await input.tombstoneCurrentVersion(event);
++    await input.queueHumanReview(event);
++    return Object.freeze({ outcome: "tombstoned" as const });
++  }
++  if (input.observed.contentHash === input.currentVersion.contentHash) {
++    await input.recordCheck({
++      catalogueKey: input.plan.catalogueKey,
++      versionId: input.currentVersion.versionId,
++      outcome: "unchanged",
++      contentHash: input.observed.contentHash,
++    });
++    return Object.freeze({ outcome: "unchanged" as const });
++  }
++  const staged = await input.stageChangedVersion({
++    catalogueKey: input.plan.catalogueKey,
++    currentVersionId: input.currentVersion.versionId,
++    contentHash: input.observed.contentHash,
++    lifecycle: "shadow",
++    ownerId: input.plan.stagingOwnerId,
++    supersedesVersionId: null,
++    activate: false,
++  });
++  if (staged.ownerId !== input.plan.stagingOwnerId) {
++    throw new Error("Changed public source version must remain owned staging content.");
++  }
++  return Object.freeze({
++    outcome: "changed" as const,
++    lifecycle: "shadow" as const,
++    versionId: staged.versionId,
++    ownerId: staged.ownerId,
++  });
++}
+diff --git a/src/lib/public-source-activation-manifest.ts b/src/lib/public-source-activation-manifest.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..eea7ef916dcb1a9e316c8c9c0937ed239fe9be28
+--- /dev/null
++++ b/src/lib/public-source-activation-manifest.ts
+@@ -0,0 +1,115 @@
++import { createHash } from "node:crypto";
++import { z } from "zod";
++
++import {
++  australianSourceByKey,
++  australianSourceCatalogue,
++  australianSourcePolicyVersion,
++} from "@/lib/australian-source-catalogue";
++
++const sha256Schema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
++const evidenceReferenceSchema = z.string().trim().min(1).max(500);
++
++const activationManifestSchema = z
++  .object({
++    version: z.literal(1),
++    sourcePolicyVersion: z.literal(australianSourcePolicyVersion),
++    sourcePolicyDigest: sha256Schema,
++    catalogueKey: z.string().trim().min(1),
++    decision: z.enum(["activate", "quarantine", "retire"]),
++    operatorId: z.string().uuid(),
++    reason: z.string().trim().min(1).max(1_000),
++    evidenceReferences: z.array(evidenceReferenceSchema).min(1).max(50),
++  })
++  .strict();
++
++export type PublicSourceActivationManifestV1 = Readonly<{
++  version: 1;
++  sourcePolicyVersion: typeof australianSourcePolicyVersion;
++  sourcePolicyDigest: string;
++  catalogueKey: string;
++  decision: "activate" | "quarantine" | "retire";
++  operatorId: string;
++  reason: string;
++  evidenceReferences: readonly string[];
++}>;
++
++function sha256(value: unknown) {
++  return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
++}
++
++/** Digest of the exact reviewed catalogue projection used by activation and acquisition. */
++export const australianSourcePolicyDigest = sha256({
++  policyVersion: australianSourcePolicyVersion,
++  sources: australianSourceCatalogue.map((source) => ({
++    key: source.key,
++    publisherCode: source.publisherCode,
++    canonicalUrl: source.canonicalUrl,
++    jurisdiction: source.jurisdiction,
++    corpusScope: source.corpusScope,
++    roles: source.roles,
++    contentMode: source.contentMode,
++    licencePolicy: source.licencePolicy,
++    lifecycle: source.lifecycle,
++    fallbackRank: source.fallbackRank,
++  })),
++});
++
++function assertDecisionEligible(manifest: z.infer<typeof activationManifestSchema>) {
++  const source = australianSourceByKey(manifest.catalogueKey);
++  if (!source) {
++    throw new Error(`Public source ${manifest.catalogueKey} is not in the active catalogue.`);
++  }
++  if (manifest.decision !== "activate") return;
++  if (source.lifecycle !== "active") {
++    throw new Error(`Public source ${source.key} is ${source.lifecycle} and cannot be activated.`);
++  }
++  if (source.contentMode === "link_only") {
++    throw new Error(`Public source ${source.key} is link-only and cannot be activated for acquisition.`);
++  }
++  if (source.licencePolicy === "index_forbidden" || source.licencePolicy === "metadata_link_only") {
++    throw new Error(`Public source ${source.key} has a non-indexable catalogue licence policy.`);
++  }
++}
++
++export function parsePublicSourceActivationManifestV1(input: unknown): PublicSourceActivationManifestV1 {
++  const parsed = activationManifestSchema.parse(input);
++  if (parsed.sourcePolicyDigest !== australianSourcePolicyDigest) {
++    throw new Error("Public source activation policy digest does not match the reviewed catalogue.");
++  }
++  if (new Set(parsed.evidenceReferences).size !== parsed.evidenceReferences.length) {
++    throw new Error("Public source activation evidence references must be unique.");
++  }
++  assertDecisionEligible(parsed);
++  return Object.freeze({
++    ...parsed,
++    evidenceReferences: Object.freeze([...parsed.evidenceReferences]),
++  });
++}
++
++export function buildPublicSourceActivationManifest(input: {
++  catalogueKey: string;
++  decision: PublicSourceActivationManifestV1["decision"];
++  operatorId: string;
++  reason: string;
++  evidenceReferences: readonly string[];
++}): PublicSourceActivationManifestV1 {
++  return parsePublicSourceActivationManifestV1({
++    version: 1,
++    sourcePolicyVersion: australianSourcePolicyVersion,
++    sourcePolicyDigest: australianSourcePolicyDigest,
++    ...input,
++    evidenceReferences: [...input.evidenceReferences],
++  });
++}
++
++export function assertActivationAllowsAcquisition(
++  input: unknown,
++  expectedCatalogueKey: string,
++): PublicSourceActivationManifestV1 {
++  const manifest = parsePublicSourceActivationManifestV1(input);
++  if (manifest.catalogueKey !== expectedCatalogueKey || manifest.decision !== "activate") {
++    throw new Error(`Acquisition requires an active source definition for ${expectedCatalogueKey}.`);
++  }
++  return manifest;
++}
+diff --git a/src/lib/supabase/database.types.ts b/src/lib/supabase/database.types.ts
+index 2ff5b7a81b3a3211a047ec6c36c8e879c3653160..94802933968c4b77d12fc93fa6b35529c7b16093 100644
+--- a/src/lib/supabase/database.types.ts
++++ b/src/lib/supabase/database.types.ts
+@@ -930,20 +930,141 @@ export type Database = {
+           id?: string;
+           manifest_digest?: string;
+           reason?: string;
+           reviewed_index_generation_id?: string | null;
+           reviewed_state_digest?: string | null;
+           source_catalogue_key?: string | null;
+           source_policy_version?: string | null;
+         };
+         Relationships: [];
+       };
++      public_source_activation_events: {
++        Row: {
++          created_at: string;
++          decision: string;
++          evidence_references: string[];
++          id: string;
++          operator_id: string;
++          reason: string;
++          source_catalogue_key: string;
++          source_policy_digest: string;
++          source_policy_version: string;
++        };
++        Insert: {
++          created_at?: string;
++          decision: string;
++          evidence_references: string[];
++          id?: string;
++          operator_id: string;
++          reason: string;
++          source_catalogue_key: string;
++          source_policy_digest: string;
++          source_policy_version: string;
++        };
++        Update: {
++          created_at?: string;
++          decision?: string;
++          evidence_references?: string[];
++          id?: string;
++          operator_id?: string;
++          reason?: string;
++          source_catalogue_key?: string;
++          source_policy_digest?: string;
++          source_policy_version?: string;
++        };
++        Relationships: [];
++      };
++      public_source_versions: {
++        Row: {
++          activation_event_id: string;
++          content_hash: string;
++          created_at: string;
++          exact_canonical_url: string;
++          exact_version: string;
++          exact_version_url: string;
++          extraction_generation_id: string | null;
++          id: string;
++          index_generation_id: string | null;
++          licence_evidence_digest: string;
++          lifecycle: string;
++          retrieved_at: string;
++          source_catalogue_key: string;
++          source_policy_digest: string;
++          source_policy_version: string;
++          staging_document_id: string;
++          supersedes_version_id: string | null;
++          updated_at: string;
++        };
++        Insert: {
++          activation_event_id: string;
++          content_hash: string;
++          created_at?: string;
++          exact_canonical_url: string;
++          exact_version: string;
++          exact_version_url: string;
++          extraction_generation_id?: string | null;
++          id?: string;
++          index_generation_id?: string | null;
++          licence_evidence_digest: string;
++          lifecycle: string;
++          retrieved_at: string;
++          source_catalogue_key: string;
++          source_policy_digest: string;
++          source_policy_version: string;
++          staging_document_id: string;
++          supersedes_version_id?: string | null;
++          updated_at?: string;
++        };
++        Update: {
++          activation_event_id?: string;
++          content_hash?: string;
++          created_at?: string;
++          exact_canonical_url?: string;
++          exact_version?: string;
++          exact_version_url?: string;
++          extraction_generation_id?: string | null;
++          id?: string;
++          index_generation_id?: string | null;
++          licence_evidence_digest?: string;
++          lifecycle?: string;
++          retrieved_at?: string;
++          source_catalogue_key?: string;
++          source_policy_digest?: string;
++          source_policy_version?: string;
++          staging_document_id?: string;
++          supersedes_version_id?: string | null;
++          updated_at?: string;
++        };
++        Relationships: [
++          {
++            foreignKeyName: "public_source_versions_activation_event_id_fkey";
++            columns: ["activation_event_id"];
++            isOneToOne: false;
++            referencedRelation: "public_source_activation_events";
++            referencedColumns: ["id"];
++          },
++          {
++            foreignKeyName: "public_source_versions_staging_document_id_fkey";
++            columns: ["staging_document_id"];
++            isOneToOne: false;
++            referencedRelation: "documents";
++            referencedColumns: ["id"];
++          },
++          {
++            foreignKeyName: "public_source_versions_supersedes_version_id_fkey";
++            columns: ["supersedes_version_id"];
++            isOneToOne: false;
++            referencedRelation: "public_source_versions";
++            referencedColumns: ["id"];
++          },
++        ];
++      };
+       document_sections: {
+         Row: {
+           artifact_generation_id: string | null;
+           chunk_ids: string[];
+           created_at: string;
+           document_id: string;
+           extraction_quality: string;
+           heading: string;
+           heading_path: string[];
+           id: string;
+@@ -2893,20 +3014,44 @@ export type Database = {
+         Returns: string;
+       };
+       activate_approved_public_documents: {
+         Args: {
+           p_expected_generation_ids: string[];
+           p_expected_state_digest: string;
+           p_manifest: Json;
+         };
+         Returns: Json;
+       };
++      create_public_source_fetch_manifest: {
++        Args: {
++          p_activation_event_id: string;
++          p_exact_url: string;
++          p_exact_version: string;
++          p_licence_evidence_digest: string;
++          p_source_catalogue_key: string;
++          p_source_policy_digest: string;
++          p_source_policy_version: string;
++          p_staging_owner_id: string;
++        };
++        Returns: Json;
++      };
++      record_public_source_activation_event: { Args: { p_manifest: Json }; Returns: string };
++      stage_public_source_version: { Args: { p_version: Json }; Returns: string };
++      transition_public_source_version: {
++        Args: {
++          p_activation_event_id?: string | null;
++          p_expected_lifecycle: string;
++          p_new_lifecycle: string;
++          p_version_id: string;
++        };
++        Returns: Json;
++      };
+       publish_approved_documents: {
+         Args: {
+           p_documents: Json;
+           p_expected_count: number;
+           p_manifest_digest: string;
+         };
+         Returns: Json;
+       };
+       purge_expired_rag_queries: {
+         Args: { p_retention_days?: number };
+diff --git a/supabase/migrations/20260820121000_create_public_source_control_plane.sql b/supabase/migrations/20260820121000_create_public_source_control_plane.sql
+new file mode 100644
+index 0000000000000000000000000000000000000000..c6ab74e2f84be716d548dae3047097b9c1fe5883
+--- /dev/null
++++ b/supabase/migrations/20260820121000_create_public_source_control_plane.sql
+@@ -0,0 +1,410 @@
++-- Source-only control plane for governed Australian public-source acquisition.
++-- Applying this migration and operating the provider workflows are separate approvals.
++
++CREATE TABLE public.public_source_activation_events (
++  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
++  source_catalogue_key text NOT NULL CHECK (btrim(source_catalogue_key) <> ''),
++  source_policy_version text NOT NULL CHECK (btrim(source_policy_version) <> ''),
++  source_policy_digest text NOT NULL CHECK (source_policy_digest ~ '^sha256:[0-9a-f]{64}$'),
++  decision text NOT NULL CHECK (decision IN ('activate', 'quarantine', 'retire')),
++  operator_id uuid NOT NULL,
++  reason text NOT NULL CHECK (btrim(reason) <> '' AND length(reason) <= 1000),
++  evidence_references text[] NOT NULL CHECK (
++    cardinality(evidence_references) BETWEEN 1 AND 50
++    AND array_position(evidence_references, '') IS NULL
++  ),
++  created_at timestamptz NOT NULL DEFAULT now()
++);
++
++CREATE INDEX public_source_activation_events_source_created_idx
++  ON public.public_source_activation_events (source_catalogue_key, created_at DESC, id DESC);
++
++CREATE TABLE public.public_source_versions (
++  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
++  source_catalogue_key text NOT NULL CHECK (btrim(source_catalogue_key) <> ''),
++  source_policy_version text NOT NULL CHECK (btrim(source_policy_version) <> ''),
++  source_policy_digest text NOT NULL CHECK (source_policy_digest ~ '^sha256:[0-9a-f]{64}$'),
++  exact_canonical_url text NOT NULL CHECK (exact_canonical_url ~ '^https://'),
++  exact_version_url text NOT NULL CHECK (exact_version_url ~ '^https://'),
++  exact_version text NOT NULL CHECK (btrim(exact_version) <> ''),
++  content_hash text NOT NULL CHECK (content_hash ~ '^sha256:[0-9a-f]{64}$'),
++  retrieved_at timestamptz NOT NULL,
++  licence_evidence_digest text NOT NULL CHECK (licence_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
++  staging_document_id uuid NOT NULL REFERENCES public.documents(id) ON DELETE RESTRICT,
++  extraction_generation_id uuid,
++  index_generation_id uuid,
++  lifecycle text NOT NULL CHECK (lifecycle IN ('discovered', 'shadow', 'approved', 'active', 'quarantined', 'tombstoned')),
++  supersedes_version_id uuid REFERENCES public.public_source_versions(id) ON DELETE RESTRICT,
++  activation_event_id uuid NOT NULL REFERENCES public.public_source_activation_events(id) ON DELETE RESTRICT,
++  created_at timestamptz NOT NULL DEFAULT now(),
++  updated_at timestamptz NOT NULL DEFAULT now(),
++  UNIQUE (source_catalogue_key, exact_version_url, content_hash),
++  CHECK (supersedes_version_id IS NULL OR supersedes_version_id <> id)
++);
++
++CREATE INDEX public_source_versions_source_lifecycle_idx
++  ON public.public_source_versions (source_catalogue_key, lifecycle, retrieved_at DESC, id DESC);
++CREATE INDEX public_source_versions_staging_document_idx
++  ON public.public_source_versions (staging_document_id);
++
++ALTER TABLE public.public_source_activation_events ENABLE ROW LEVEL SECURITY;
++ALTER TABLE public.public_source_versions ENABLE ROW LEVEL SECURITY;
++
++REVOKE ALL ON TABLE public.public_source_activation_events FROM PUBLIC, anon, authenticated;
++REVOKE ALL ON TABLE public.public_source_versions FROM PUBLIC, anon, authenticated;
++GRANT SELECT ON TABLE public.public_source_activation_events TO service_role;
++GRANT SELECT ON TABLE public.public_source_versions TO service_role;
++
++CREATE OR REPLACE FUNCTION public.reject_public_source_activation_event_mutation()
++RETURNS trigger
++LANGUAGE plpgsql
++SET search_path = ''
++AS $$
++BEGIN
++  RAISE EXCEPTION 'public_source_activation_events are append-only';
++END;
++$$;
++
++DROP TRIGGER IF EXISTS public_source_activation_events_immutable
++  ON public.public_source_activation_events;
++CREATE TRIGGER public_source_activation_events_immutable
++BEFORE UPDATE OR DELETE ON public.public_source_activation_events
++FOR EACH ROW EXECUTE FUNCTION public.reject_public_source_activation_event_mutation();
++
++CREATE OR REPLACE FUNCTION public.record_public_source_activation_event(p_manifest jsonb)
++RETURNS uuid
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = ''
++AS $$
++DECLARE
++  v_event_id uuid;
++  v_catalogue_key text := btrim(coalesce(p_manifest->>'catalogueKey', ''));
++  v_policy_version text := btrim(coalesce(p_manifest->>'sourcePolicyVersion', ''));
++  v_policy_digest text := btrim(coalesce(p_manifest->>'sourcePolicyDigest', ''));
++  v_decision text := btrim(coalesce(p_manifest->>'decision', ''));
++  v_operator_id uuid;
++  v_reason text := btrim(coalesce(p_manifest->>'reason', ''));
++  v_evidence text[];
++BEGIN
++  IF coalesce(p_manifest->>'version', '') <> '1'
++     OR v_catalogue_key = ''
++     OR v_policy_version = ''
++     OR v_policy_digest !~ '^sha256:[0-9a-f]{64}$'
++     OR v_decision NOT IN ('activate', 'quarantine', 'retire')
++     OR v_reason = ''
++     OR length(v_reason) > 1000
++  THEN
++    RAISE EXCEPTION 'Invalid public source activation manifest';
++  END IF;
++  IF v_policy_version <> 'australian-source-policy-v1'
++     OR v_policy_digest <> 'sha256:02dcc095258338d0c355af79dfa1889c024f25f385b553e5b6c802207546855d'
++  THEN
++    RAISE EXCEPTION 'Public source activation policy is not the reviewed catalogue';
++  END IF;
++  IF v_decision = 'activate'
++     AND v_catalogue_key NOT IN (
++       'wa-health',
++       'wa-chief-psychiatrist',
++       'wa-legislation',
++       'tga',
++       'acsqhc',
++       'australian-health-disability-ageing',
++       'nhmrc',
++       'ranzcp',
++       'racgp',
++       'pbs',
++       'australian-prescriber',
++       'nsw-health',
++       'queensland-health',
++       'sa-health',
++       'victoria-health',
++       'tasmania-health',
++       'nt-health',
++       'act-health'
++     )
++  THEN
++    RAISE EXCEPTION 'Public source is excluded, link-only, historical, or unknown';
++  END IF;
++
++  BEGIN
++    v_operator_id := (p_manifest->>'operatorId')::uuid;
++  EXCEPTION WHEN invalid_text_representation THEN
++    RAISE EXCEPTION 'Invalid public source activation operator';
++  END;
++
++  SELECT array_agg(value ORDER BY ordinal)
++  INTO v_evidence
++  FROM jsonb_array_elements_text(coalesce(p_manifest->'evidenceReferences', '[]'::jsonb))
++    WITH ORDINALITY evidence(value, ordinal);
++  IF cardinality(v_evidence) NOT BETWEEN 1 AND 50
++     OR EXISTS (SELECT 1 FROM unnest(v_evidence) value WHERE btrim(value) = '')
++     OR cardinality(v_evidence) <> (SELECT count(DISTINCT value) FROM unnest(v_evidence) value)
++  THEN
++    RAISE EXCEPTION 'Invalid public source activation evidence';
++  END IF;
++
++  PERFORM pg_advisory_xact_lock(hashtextextended(v_catalogue_key, 0));
++  PERFORM 1
++  FROM public.public_source_activation_events
++  WHERE source_catalogue_key = v_catalogue_key
++  ORDER BY created_at DESC, id DESC
++  LIMIT 1
++  FOR UPDATE;
++
++  INSERT INTO public.public_source_activation_events (
++    source_catalogue_key,
++    source_policy_version,
++    source_policy_digest,
++    decision,
++    operator_id,
++    reason,
++    evidence_references
++  ) VALUES (
++    v_catalogue_key,
++    v_policy_version,
++    v_policy_digest,
++    v_decision,
++    v_operator_id,
++    v_reason,
++    v_evidence
++  )
++  RETURNING id INTO v_event_id;
++  RETURN v_event_id;
++END;
++$$;
++
++CREATE OR REPLACE FUNCTION public.create_public_source_fetch_manifest(
++  p_source_catalogue_key text,
++  p_source_policy_version text,
++  p_source_policy_digest text,
++  p_activation_event_id uuid,
++  p_exact_url text,
++  p_exact_version text,
++  p_licence_evidence_digest text,
++  p_staging_owner_id uuid
++)
++RETURNS jsonb
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = ''
++AS $$
++DECLARE
++  v_event public.public_source_activation_events%ROWTYPE;
++BEGIN
++  PERFORM pg_advisory_xact_lock(hashtextextended(p_source_catalogue_key, 0));
++  SELECT * INTO v_event
++  FROM public.public_source_activation_events
++  WHERE source_catalogue_key = p_source_catalogue_key
++  ORDER BY created_at DESC, id DESC
++  LIMIT 1
++  FOR UPDATE;
++
++  IF NOT FOUND OR v_event.id IS DISTINCT FROM p_activation_event_id OR v_event.decision <> 'activate' THEN
++    RAISE EXCEPTION 'Only an active source definition may create a fetch manifest';
++  END IF;
++  IF v_event.source_policy_version IS DISTINCT FROM p_source_policy_version
++     OR v_event.source_policy_digest IS DISTINCT FROM p_source_policy_digest
++  THEN
++    RAISE EXCEPTION 'Public source fetch manifest policy does not match activation evidence';
++  END IF;
++  IF p_exact_url !~ '^https://'
++     OR btrim(coalesce(p_exact_version, '')) = ''
++     OR p_licence_evidence_digest !~ '^sha256:[0-9a-f]{64}$'
++     OR p_staging_owner_id IS NULL
++  THEN
++    RAISE EXCEPTION 'Public source fetch manifest requires exact version, licence, and owner evidence';
++  END IF;
++
++  RETURN jsonb_build_object(
++    'schemaVersion', 'public-source-acquisition-v1',
++    'sourcePolicyVersion', p_source_policy_version,
++    'sourcePolicyDigest', p_source_policy_digest,
++    'sourceActivationEventId', p_activation_event_id,
++    'catalogueKey', p_source_catalogue_key,
++    'exactUrl', p_exact_url,
++    'exactVersion', p_exact_version,
++    'licenceEvidenceDigest', p_licence_evidence_digest,
++    'stagingOwnerId', p_staging_owner_id,
++    'targetLifecycle', 'shadow'
++  );
++END;
++$$;
++
++CREATE OR REPLACE FUNCTION public.stage_public_source_version(p_version jsonb)
++RETURNS uuid
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = ''
++AS $$
++DECLARE
++  v_version_id uuid;
++  v_document_id uuid;
++  v_owner_id uuid;
++  v_activation_event_id uuid;
++  v_document public.documents%ROWTYPE;
++  v_event public.public_source_activation_events%ROWTYPE;
++BEGIN
++  BEGIN
++    v_document_id := (p_version->>'stagingDocumentId')::uuid;
++    v_owner_id := (p_version->>'stagingOwnerId')::uuid;
++    v_activation_event_id := (p_version->>'activationEventId')::uuid;
++  EXCEPTION WHEN invalid_text_representation THEN
++    RAISE EXCEPTION 'Invalid public source staging identity';
++  END;
++
++  PERFORM pg_advisory_xact_lock(hashtextextended(coalesce(p_version->>'catalogueKey', ''), 0));
++  SELECT * INTO v_event
++  FROM public.public_source_activation_events
++  WHERE source_catalogue_key = p_version->>'catalogueKey'
++  ORDER BY created_at DESC, id DESC
++  LIMIT 1
++  FOR UPDATE;
++  IF NOT FOUND OR v_event.id IS DISTINCT FROM v_activation_event_id OR v_event.decision <> 'activate' THEN
++    RAISE EXCEPTION 'Public source staging requires an active source definition';
++  END IF;
++
++  SELECT * INTO v_document
++  FROM public.documents
++  WHERE id = v_document_id
++  FOR UPDATE;
++  IF NOT FOUND OR v_document.owner_id IS NULL OR v_document.owner_id IS DISTINCT FROM v_owner_id THEN
++    RAISE EXCEPTION 'Public source staging document must retain its exact owner';
++  END IF;
++  IF coalesce(p_version->>'lifecycle', '') <> 'shadow'
++     OR coalesce(v_document.metadata->>'public_source_lifecycle', '') <> 'shadow'
++     OR v_document.metadata->>'source_catalogue_key' IS DISTINCT FROM p_version->>'catalogueKey'
++     OR v_document.metadata->>'source_policy_version' IS DISTINCT FROM v_event.source_policy_version
++     OR v_document.metadata->>'source_policy_digest' IS DISTINCT FROM v_event.source_policy_digest
++     OR v_document.metadata->>'content_mode' IS DISTINCT FROM 'indexed_content'
++     OR v_document.metadata->>'licence_policy' IS DISTINCT FROM 'public_index_permitted'
++  THEN
++    RAISE EXCEPTION 'Public source staging policy or lifecycle mismatch';
++  END IF;
++
++  INSERT INTO public.public_source_versions (
++    source_catalogue_key,
++    source_policy_version,
++    source_policy_digest,
++    exact_canonical_url,
++    exact_version_url,
++    exact_version,
++    content_hash,
++    retrieved_at,
++    licence_evidence_digest,
++    staging_document_id,
++    lifecycle,
++    supersedes_version_id,
++    activation_event_id
++  ) VALUES (
++    p_version->>'catalogueKey',
++    v_event.source_policy_version,
++    v_event.source_policy_digest,
++    p_version->>'exactCanonicalUrl',
++    p_version->>'exactUrl',
++    p_version->>'exactVersion',
++    p_version->>'contentHash',
++    coalesce((p_version->>'retrievedAt')::timestamptz, now()),
++    p_version->>'licenceEvidenceDigest',
++    v_document_id,
++    'shadow',
++    NULL,
++    v_activation_event_id
++  )
++  RETURNING id INTO v_version_id;
++  RETURN v_version_id;
++END;
++$$;
++
++CREATE OR REPLACE FUNCTION public.transition_public_source_version(
++  p_version_id uuid,
++  p_expected_lifecycle text,
++  p_new_lifecycle text,
++  p_activation_event_id uuid DEFAULT NULL
++)
++RETURNS jsonb
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = ''
++AS $$
++DECLARE
++  v_version public.public_source_versions%ROWTYPE;
++  v_document public.documents%ROWTYPE;
++  v_event public.public_source_activation_events%ROWTYPE;
++  v_allowed boolean := false;
++BEGIN
++  SELECT * INTO v_version
++  FROM public.public_source_versions
++  WHERE id = p_version_id
++  FOR UPDATE;
++  IF NOT FOUND OR v_version.lifecycle IS DISTINCT FROM p_expected_lifecycle THEN
++    RAISE EXCEPTION 'Public source version changed after review';
++  END IF;
++
++  SELECT * INTO v_document
++  FROM public.documents
++  WHERE id = v_version.staging_document_id
++  FOR UPDATE;
++  IF NOT FOUND THEN RAISE EXCEPTION 'Public source staging document is missing'; END IF;
++
++  v_allowed := CASE v_version.lifecycle
++    WHEN 'discovered' THEN p_new_lifecycle IN ('shadow', 'quarantined', 'tombstoned')
++    WHEN 'shadow' THEN p_new_lifecycle IN ('approved', 'quarantined', 'tombstoned')
++    WHEN 'approved' THEN p_new_lifecycle IN ('active', 'quarantined', 'tombstoned')
++    WHEN 'active' THEN p_new_lifecycle IN ('quarantined', 'tombstoned')
++    WHEN 'quarantined' THEN p_new_lifecycle = 'tombstoned'
++    ELSE false
++  END;
++  IF NOT v_allowed THEN RAISE EXCEPTION 'Invalid public source lifecycle transition'; END IF;
++
++  IF p_new_lifecycle = 'active' THEN
++    PERFORM pg_advisory_xact_lock(hashtextextended(v_version.source_catalogue_key, 0));
++    SELECT * INTO v_event
++    FROM public.public_source_activation_events
++    WHERE source_catalogue_key = v_version.source_catalogue_key
++    ORDER BY created_at DESC, id DESC
++    LIMIT 1
++    FOR UPDATE;
++    IF NOT FOUND OR v_event.id IS DISTINCT FROM p_activation_event_id OR v_event.decision <> 'activate'
++       OR v_event.source_policy_version IS DISTINCT FROM v_version.source_policy_version
++       OR v_event.source_policy_digest IS DISTINCT FROM v_version.source_policy_digest
++    THEN
++      RAISE EXCEPTION 'Exact document publication approval is distinct from source activation; both are required';
++    END IF;
++    IF v_document.owner_id IS NOT NULL
++       OR NOT EXISTS (
++         SELECT 1
++         FROM public.document_publication_approvals approval
++         WHERE approval.document_id = v_document.id
++           AND approval.decision = 'approved'
++           AND approval.source_catalogue_key = v_version.source_catalogue_key
++           AND approval.source_policy_version = v_version.source_policy_version
++       )
++    THEN
++      RAISE EXCEPTION 'Exact document publication approval is distinct from source activation; both are required';
++    END IF;
++  END IF;
++
++  UPDATE public.public_source_versions
++  SET lifecycle = p_new_lifecycle,
++      activation_event_id = coalesce(p_activation_event_id, activation_event_id),
++      updated_at = now()
++  WHERE id = p_version_id;
++
++  RETURN jsonb_build_object('versionId', p_version_id, 'lifecycle', p_new_lifecycle);
++END;
++$$;
++
++REVOKE ALL ON FUNCTION public.reject_public_source_activation_event_mutation() FROM PUBLIC, anon, authenticated;
++REVOKE ALL ON FUNCTION public.record_public_source_activation_event(jsonb) FROM PUBLIC, anon, authenticated;
++REVOKE ALL ON FUNCTION public.create_public_source_fetch_manifest(text, text, text, uuid, text, text, text, uuid)
++  FROM PUBLIC, anon, authenticated;
++REVOKE ALL ON FUNCTION public.stage_public_source_version(jsonb) FROM PUBLIC, anon, authenticated;
++REVOKE ALL ON FUNCTION public.transition_public_source_version(uuid, text, text, uuid)
++  FROM PUBLIC, anon, authenticated;
++
++GRANT EXECUTE ON FUNCTION public.record_public_source_activation_event(jsonb) TO service_role;
++GRANT EXECUTE ON FUNCTION public.create_public_source_fetch_manifest(text, text, text, uuid, text, text, text, uuid)
++  TO service_role;
++GRANT EXECUTE ON FUNCTION public.stage_public_source_version(jsonb) TO service_role;
++GRANT EXECUTE ON FUNCTION public.transition_public_source_version(uuid, text, text, uuid) TO service_role;
+diff --git a/tests/fixtures/public-sources/trusted-page-with-healthdirect-chrome.html b/tests/fixtures/public-sources/trusted-page-with-healthdirect-chrome.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..3d4560d8708e6bb0d149c8e7b74a16a3763403de
+--- /dev/null
++++ b/tests/fixtures/public-sources/trusted-page-with-healthdirect-chrome.html
+@@ -0,0 +1,18 @@
++<!doctype html>
++<html lang="en">
++  <head>
++    <title>Synthetic trusted guideline</title>
++  </head>
++  <body>
++    <header>
++      <nav><a href="https://www.healthdirect.gov.au/">Consumer health information</a></nav>
++    </header>
++    <main>
++      <h1>Synthetic clinical guideline</h1>
++      <p>This synthetic main-content fixture contains no clinical recommendation.</p>
++    </main>
++    <footer>
++      <a href="https://www.healthdirect.gov.au/about-us">External footer link</a>
++    </footer>
++  </body>
++</html>
+diff --git a/tests/function-grants.test.ts b/tests/function-grants.test.ts
+index 8e034378bfeebcc25d756f37f3a5fbde140c4973..cfa46cff8ac8e815b007b915d575b97f52eb2576 100644
+--- a/tests/function-grants.test.ts
++++ b/tests/function-grants.test.ts
+@@ -1,12 +1,12 @@
+ import { execFileSync } from "node:child_process";
+-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
++import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+ import { tmpdir } from "node:os";
+ import { join } from "node:path";
+ import { afterAll, describe, expect, it } from "vitest";
+ 
+ const SCRIPT = "scripts/check-function-grants.mjs";
+ const workdir = mkdtempSync(join(tmpdir(), "fn-grants-"));
+ 
+ afterAll(() => rmSync(workdir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
+ 
+ function run(schemaPath: string): { code: number; out: string } {
+@@ -120,11 +120,19 @@ describe("check:function-grants", () => {
+     expect(result.code).toBe(0);
+   });
+ 
+   it("fails when the baseline blanket revoke is missing entirely", () => {
+     const result = run(
+       fixture("no-blanket.sql", "create function public.f() returns void language sql as $$ select 1 $$;\n"),
+     );
+     expect(result.code).toBe(1);
+     expect(result.out).toContain("no schema-wide");
+   });
++
++  it("keeps every public-source control-plane definer service-role-only", () => {
++    const schema = readFileSync("supabase/schema.sql", "utf8");
++    const migration = readFileSync("supabase/migrations/20260820121000_create_public_source_control_plane.sql", "utf8");
++    const result = run(fixture("public-source-control-plane.sql", `${schema}\n${migration}`));
++    expect(result.out).toContain("OK");
++    expect(result.code).toBe(0);
++  });
+ });
+diff --git a/tests/public-source-acquisition.test.ts b/tests/public-source-acquisition.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f7bebed1d9326490c603e2159ba4795ae43b7def
+--- /dev/null
++++ b/tests/public-source-acquisition.test.ts
+@@ -0,0 +1,549 @@
++import { createHash } from "node:crypto";
++import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { afterAll, describe, expect, it, vi } from "vitest";
++
++import { australianSourceByKey } from "@/lib/australian-source-catalogue";
++import {
++  australianSourcePolicyDigest,
++  buildPublicSourceActivationManifest,
++} from "@/lib/public-source-activation-manifest";
++import {
++  acquirePublicSourceVersion,
++  checkPublicSourceChange,
++  evaluateTrustedPageContent,
++  planAcquisition,
++  validateAcquisitionUrl,
++  validateRedirect,
++  type PublicSourceAcquisitionPlan,
++  type PublicSourceStagingCandidate,
++} from "@/lib/public-source-acquisition";
++import { runCheckPublicSourceChangesCli } from "../scripts/check-public-source-changes";
++import { runFetchApprovedPublicSourceVersionsCli } from "../scripts/fetch-approved-public-source-versions";
++import {
++  publicSourceAcquisitionManifestDigest,
++  runPlanPublicSourceAcquisitionCli,
++} from "../scripts/plan-public-source-acquisition";
++
++const ownerId = "11111111-1111-4111-8111-111111111111";
++const operatorId = "22222222-2222-4222-8222-222222222222";
++const exactUrl = "https://www.health.wa.gov.au/guidelines/synthetic-guideline.pdf";
++const publicAddress = [{ address: "8.8.8.8", family: 4 as const }];
++const cliWorkdir = mkdtempSync(join(tmpdir(), "public-source-cli-"));
++
++afterAll(() => rmSync(cliWorkdir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
++
++function activationManifest() {
++  return buildPublicSourceActivationManifest({
++    catalogueKey: "wa-health",
++    decision: "activate",
++    operatorId,
++    reason: "Approved source definition for bounded exact-version acquisition.",
++    evidenceReferences: ["source-review:wa-health:2026-08-20"],
++  });
++}
++
++function activeDefinition() {
++  const definition = australianSourceByKey("wa-health");
++  if (!definition) throw new Error("wa-health fixture is missing");
++  return definition;
++}
++
++async function validPlan(overrides: Record<string, unknown> = {}) {
++  return planAcquisition({
++    catalogueKey: "wa-health",
++    url: exactUrl,
++    exactVersion: "2026-08-20",
++    exactDocumentLicence: "public_index_permitted",
++    licenceEvidenceDigest: `sha256:${"a".repeat(64)}`,
++    stagingOwnerId: ownerId,
++    activationManifest: activationManifest(),
++    ...overrides,
++  });
++}
++
++function syntheticPdf() {
++  return new TextEncoder().encode("%PDF-1.7\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\nstartxref\n9\n%%EOF\n");
++}
++
++function response(body: Uint8Array | string, init: ResponseInit = {}) {
++  return new Response(body instanceof Uint8Array ? (body.slice().buffer as ArrayBuffer) : body, {
++    status: 200,
++    headers: { "content-type": "application/pdf", ...init.headers },
++    ...init,
++  });
++}
++
++describe("public source acquisition", () => {
++  it("rejects excluded and link-only sources before network access", async () => {
++    const fetch = vi.fn();
++    await expect(
++      planAcquisition({ catalogueKey: "etg-complete", url: "https://www.tg.org.au/", fetch }),
++    ).rejects.toThrow(/link-only/i);
++    await expect(
++      planAcquisition({ catalogueKey: "healthdirect", url: "https://www.healthdirect.gov.au/", fetch }),
++    ).rejects.toThrow(/not in the active catalogue/i);
++    expect(fetch).not.toHaveBeenCalled();
++  });
++
++  it("rejects redirects off the exact allowlisted host and private network targets", async () => {
++    await expect(validateAcquisitionUrl("http://127.0.0.1/internal", activeDefinition())).rejects.toThrow(
++      /https|private/i,
++    );
++    await expect(validateRedirect("https://evil.example/file.pdf", activeDefinition())).rejects.toThrow(/allowlisted/i);
++    await expect(
++      validateAcquisitionUrl(exactUrl, activeDefinition(), async () => [{ address: "10.0.0.8", family: 4 }] as const),
++    ).rejects.toThrow(/private/i);
++    await expect(
++      validateAcquisitionUrl(exactUrl, activeDefinition(), async () => [{ address: "::ffff:127.0.0.1", family: 6 }]),
++    ).rejects.toThrow(/private/i);
++  });
++
++  it("creates only an immutable, exact-policy, owned-staging dry-run plan", async () => {
++    const fetch = vi.fn();
++    const plan = await validPlan({ fetch });
++
++    expect(fetch).not.toHaveBeenCalled();
++    expect(plan).toMatchObject({
++      schemaVersion: "public-source-acquisition-v1",
++      sourcePolicyVersion: "australian-source-policy-v1",
++      sourcePolicyDigest: australianSourcePolicyDigest,
++      catalogueKey: "wa-health",
++      exactUrl,
++      exactVersion: "2026-08-20",
++      exactDocumentLicence: "public_index_permitted",
++      stagingOwnerId: ownerId,
++      targetLifecycle: "shadow",
++    });
++    expect(Object.isFrozen(plan)).toBe(true);
++    await expect(validPlan({ stagingOwnerId: "" })).rejects.toThrow(/staging owner/i);
++    await expect(validPlan({ exactDocumentLicence: "review_required" })).rejects.toThrow(/licence/i);
++    await expect(
++      validPlan({ activationManifest: { ...activationManifest(), decision: "quarantine" } }),
++    ).rejects.toThrow(/active source definition/i);
++  });
++
++  it("hashes a bounded validated stream and stages it with provenance before enqueue", async () => {
++    const bytes = syntheticPdf();
++    const stageOwnedDocument = vi.fn(async (candidate) => ({
++      documentId: "33333333-3333-4333-8333-333333333333",
++      ownerId: candidate.ownerId,
++    }));
++    const enqueue = vi.fn(async () => undefined);
++    const scan = vi.fn(async () => ({ accepted: true as const }));
++    const fetch = vi.fn(async () => response(bytes));
++    const resolve = vi.fn(async () => publicAddress);
++
++    const result = await acquirePublicSourceVersion(await validPlan(), {
++      fetch,
++      resolve,
++      scan,
++      findDuplicateVersion: async () => null,
++      stageOwnedDocument,
++      enqueue,
++    });
++
++    const expectedHash = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
++    expect(result).toMatchObject({
++      lifecycle: "shadow",
++      contentHash: expectedHash,
++      ownerId,
++      documentId: "33333333-3333-4333-8333-333333333333",
++    });
++    expect(scan).toHaveBeenCalledWith(expect.objectContaining({ bytes, contentType: "application/pdf" }));
++    expect(stageOwnedDocument).toHaveBeenCalledWith(
++      expect.objectContaining({
++        ownerId,
++        lifecycle: "shadow",
++        metadata: expect.objectContaining({
++          source_policy_version: "australian-source-policy-v1",
++          source_policy_digest: australianSourcePolicyDigest,
++          source_catalogue_key: "wa-health",
++          content_hash: expectedHash,
++          licence_evidence_digest: `sha256:${"a".repeat(64)}`,
++        }),
++      }),
++    );
++    expect(enqueue).toHaveBeenCalledWith(
++      expect.objectContaining({
++        documentId: "33333333-3333-4333-8333-333333333333",
++        ownerId,
++        contentMode: "indexed_content",
++        exactDocumentLicence: "public_index_permitted",
++      }),
++    );
++  });
++
++  it("fails closed on content type, declared or streamed size, redirect count, and DNS rebinding", async () => {
++    const base = {
++      resolve: vi.fn(async () => publicAddress),
++      scan: vi.fn(async () => ({ accepted: true as const })),
++      findDuplicateVersion: vi.fn(async () => null),
++      stageOwnedDocument: vi.fn(),
++      enqueue: vi.fn(),
++    };
++    const plan = await validPlan({ maxBytes: 64 });
++
++    await expect(
++      acquirePublicSourceVersion(plan, {
++        ...base,
++        fetch: async () => response("not a document", { headers: { "content-type": "image/png" } }),
++      }),
++    ).rejects.toThrow(/content type/i);
++    await expect(
++      acquirePublicSourceVersion(plan, {
++        ...base,
++        fetch: async () => response("small", { headers: { "content-length": "65" } }),
++      }),
++    ).rejects.toThrow(/size/i);
++    await expect(
++      acquirePublicSourceVersion(plan, {
++        ...base,
++        fetch: async () => response("x".repeat(65)),
++      }),
++    ).rejects.toThrow(/size/i);
++    await expect(
++      acquirePublicSourceVersion(plan, {
++        ...base,
++        fetch: async () => new Response(null, { status: 302, headers: { location: exactUrl } }),
++      }),
++    ).rejects.toThrow(/redirect/i);
++
++    const resolve = vi
++      .fn()
++      .mockResolvedValueOnce(publicAddress)
++      .mockResolvedValueOnce([{ address: "1.1.1.1", family: 4 }]);
++    await expect(
++      acquirePublicSourceVersion(await validPlan(), {
++        ...base,
++        resolve,
++        fetch: async () => response(syntheticPdf()),
++      }),
++    ).rejects.toThrow(/dns|rebind/i);
++    expect(base.stageOwnedDocument).not.toHaveBeenCalled();
++    expect(base.enqueue).not.toHaveBeenCalled();
++  });
++
++  it("rejects duplicate versions and a changed policy digest before storage or enqueue", async () => {
++    const fetch = vi.fn(async () => response(syntheticPdf()));
++    const stageOwnedDocument = vi.fn();
++    const enqueue = vi.fn();
++    const deps = {
++      fetch,
++      resolve: async () => publicAddress,
++      scan: async () => ({ accepted: true as const }),
++      findDuplicateVersion: async () => "existing-version-id",
++      stageOwnedDocument,
++      enqueue,
++    };
++    await expect(acquirePublicSourceVersion(await validPlan(), deps)).rejects.toThrow(/duplicate/i);
++    await expect(
++      acquirePublicSourceVersion(
++        { ...(await validPlan()), sourcePolicyDigest: `sha256:${"0".repeat(64)}` } as PublicSourceAcquisitionPlan,
++        deps,
++      ),
++    ).rejects.toThrow(/policy digest/i);
++    expect(stageOwnedDocument).not.toHaveBeenCalled();
++    expect(enqueue).not.toHaveBeenCalled();
++  });
++
++  it("requires the staging adapter to preserve a non-null exact owner", async () => {
++    const enqueue = vi.fn();
++    await expect(
++      acquirePublicSourceVersion(await validPlan(), {
++        fetch: async () => response(syntheticPdf()),
++        resolve: async () => publicAddress,
++        scan: async () => ({ accepted: true as const }),
++        findDuplicateVersion: async () => null,
++        stageOwnedDocument: async () => ({
++          documentId: "33333333-3333-4333-8333-333333333333",
++          ownerId: null,
++        }),
++        enqueue,
++      }),
++    ).rejects.toThrow(/owner/i);
++    expect(enqueue).not.toHaveBeenCalled();
++  });
++
++  it("never copies an upstream response body into logs or errors", async () => {
++    const secretBody = "SENTINEL-UPSTREAM-BODY-MUST-NOT-LEAK";
++    const log = vi.fn();
++    let caught: unknown;
++    try {
++      await acquirePublicSourceVersion(await validPlan(), {
++        fetch: async () => response(secretBody, { status: 500, statusText: "Upstream failure" }),
++        resolve: async () => publicAddress,
++        scan: async () => ({ accepted: true as const }),
++        findDuplicateVersion: async () => null,
++        stageOwnedDocument: vi.fn(),
++        enqueue: vi.fn(),
++        log,
++      });
++    } catch (error) {
++      caught = error;
++    }
++    expect(String(caught)).not.toContain(secretBody);
++    expect(JSON.stringify(log.mock.calls)).not.toContain(secretBody);
++  });
++
++  it("drops trusted-page chrome links and quarantines a marker retained in main content", () => {
++    const fixture = readFileSync(
++      new URL("./fixtures/public-sources/trusted-page-with-healthdirect-chrome.html", import.meta.url),
++      "utf8",
++    );
++    const accepted = evaluateTrustedPageContent(fixture);
++    expect(accepted).toMatchObject({ eligibleForIndex: true, disposition: "accepted" });
++    expect(accepted.mainText).toContain("Synthetic clinical guideline");
++    expect(accepted.mainText).not.toMatch(/healthdirect/i);
++    expect(accepted.retainedLinks).toEqual([]);
++
++    expect(
++      evaluateTrustedPageContent(
++        fixture.replace(
++          "This synthetic main-content fixture contains no clinical recommendation.",
++          "Healthdirect is named in retained main content.",
++        ),
++      ),
++    ).toMatchObject({ eligibleForIndex: false, disposition: "quarantine", mainText: "" });
++  });
++
++  it("stages only retained trusted-page text and quarantines a retained excluded-source marker", async () => {
++    const fixture = readFileSync(
++      new URL("./fixtures/public-sources/trusted-page-with-healthdirect-chrome.html", import.meta.url),
++      "utf8",
++    );
++    const scan = vi.fn(async (_input: { bytes: Uint8Array; contentType: string; catalogueKey: string }) => ({
++      accepted: true as const,
++    }));
++    const stageOwnedDocument = vi.fn(async (_candidate: PublicSourceStagingCandidate) => ({
++      documentId: "33333333-3333-4333-8333-333333333333",
++      ownerId,
++    }));
++    const plan = await validPlan({ allowedContentTypes: ["text/html"] });
++    await acquirePublicSourceVersion(plan, {
++      fetch: async () => response(fixture, { headers: { "content-type": "text/html" } }),
++      resolve: async () => publicAddress,
++      scan,
++      findDuplicateVersion: async () => null,
++      stageOwnedDocument,
++      enqueue: async () => undefined,
++    });
++    const scanned = scan.mock.calls[0]![0];
++    expect(scanned.contentType).toBe("text/plain");
++    expect(new TextDecoder().decode(scanned.bytes)).toContain("Synthetic clinical guideline");
++    expect(new TextDecoder().decode(scanned.bytes)).not.toMatch(/healthdirect/i);
++    expect(stageOwnedDocument.mock.calls[0]![0]).toMatchObject({ contentType: "text/plain" });
++
++    const quarantined = fixture.replace(
++      "This synthetic main-content fixture contains no clinical recommendation.",
++      "Healthdirect is named in retained main content.",
++    );
++    await expect(
++      acquirePublicSourceVersion(plan, {
++        fetch: async () => response(quarantined, { headers: { "content-type": "text/html" } }),
++        resolve: async () => publicAddress,
++        scan,
++        findDuplicateVersion: async () => null,
++        stageOwnedDocument,
++        enqueue: async () => undefined,
++      }),
++    ).rejects.toThrow(/quarantine/i);
++    expect(stageOwnedDocument).toHaveBeenCalledTimes(1);
++  });
++
++  it("rejects tampered manifest limits, owners, lifecycle, and types before fetch", async () => {
++    const fetch = vi.fn();
++    const base = await validPlan();
++    const deps = {
++      fetch,
++      resolve: async () => publicAddress,
++      scan: async () => ({ accepted: true as const }),
++      findDuplicateVersion: async () => null,
++      stageOwnedDocument: vi.fn(),
++      enqueue: vi.fn(),
++    };
++    for (const mutation of [
++      { maxBytes: 151 * 1024 * 1024 },
++      { stagingOwnerId: "" },
++      { targetLifecycle: "active" },
++      { allowedContentTypes: ["image/png"] },
++      { exactUrl: "https://evil.example/source.pdf" },
++    ]) {
++      await expect(
++        acquirePublicSourceVersion({ ...base, ...mutation } as PublicSourceAcquisitionPlan, deps),
++      ).rejects.toThrow();
++    }
++    expect(fetch).not.toHaveBeenCalled();
++  });
++
++  it("records unchanged checks, stages changed content as owned shadow, and tombstones withdrawals", async () => {
++    const recordCheck = vi.fn(async () => undefined);
++    const stageChangedVersion = vi.fn(async () => ({ versionId: "version-new", ownerId }));
++    const tombstoneCurrentVersion = vi.fn(async () => undefined);
++    const queueHumanReview = vi.fn(async () => undefined);
++    const plan = await validPlan();
++
++    await expect(
++      checkPublicSourceChange({
++        plan,
++        currentVersion: { versionId: "version-current", contentHash: `sha256:${"b".repeat(64)}` },
++        observed: { kind: "content", contentHash: `sha256:${"b".repeat(64)}` },
++        recordCheck,
++        stageChangedVersion,
++        tombstoneCurrentVersion,
++        queueHumanReview,
++      }),
++    ).resolves.toEqual({ outcome: "unchanged" });
++    expect(recordCheck).toHaveBeenCalledWith(expect.objectContaining({ outcome: "unchanged" }));
++
++    await expect(
++      checkPublicSourceChange({
++        plan,
++        currentVersion: { versionId: "version-current", contentHash: `sha256:${"b".repeat(64)}` },
++        observed: { kind: "content", contentHash: `sha256:${"c".repeat(64)}` },
++        recordCheck,
++        stageChangedVersion,
++        tombstoneCurrentVersion,
++        queueHumanReview,
++      }),
++    ).resolves.toMatchObject({ outcome: "changed", lifecycle: "shadow", ownerId });
++    expect(stageChangedVersion).toHaveBeenCalledWith(
++      expect.objectContaining({ lifecycle: "shadow", ownerId, supersedesVersionId: null, activate: false }),
++    );
++
++    await expect(
++      checkPublicSourceChange({
++        plan,
++        currentVersion: { versionId: "version-current", contentHash: `sha256:${"b".repeat(64)}` },
++        observed: { kind: "withdrawn", reason: "Publisher returned a bounded withdrawal signal." },
++        recordCheck,
++        stageChangedVersion,
++        tombstoneCurrentVersion,
++        queueHumanReview,
++      }),
++    ).resolves.toEqual({ outcome: "tombstoned" });
++    expect(tombstoneCurrentVersion).toHaveBeenCalledBefore(queueHumanReview);
++  });
++
++  it("keeps acquisition CLIs import-safe, dry-run by default, and apply-confirmation bound", async () => {
++    const inputPath = join(cliWorkdir, "exact-versions.json");
++    const manifestPath = join(cliWorkdir, "manifest.json");
++    writeFileSync(
++      inputPath,
++      JSON.stringify([
++        {
++          catalogueKey: "wa-health",
++          url: exactUrl,
++          exactVersion: "2026-08-20",
++          exactDocumentLicence: "public_index_permitted",
++          licenceEvidenceDigest: `sha256:${"a".repeat(64)}`,
++          stagingOwnerId: ownerId,
++          sourceActivationEventId: "44444444-4444-4444-8444-444444444444",
++          activationManifest: activationManifest(),
++        },
++      ]),
++    );
++    const planOutput = vi.fn();
++    await runPlanPublicSourceAcquisitionCli(["--input", inputPath, "--output", manifestPath], {
++      stdout: planOutput,
++    });
++    expect(planOutput).toHaveBeenCalledWith(expect.stringContaining('"mode":"dry-run"'));
++
++    const dependencyFactory = vi.fn();
++    await expect(
++      runFetchApprovedPublicSourceVersionsCli(["--manifest", manifestPath], {
++        dependenciesForPlan: dependencyFactory,
++        stdout: vi.fn(),
++      }),
++    ).resolves.toEqual({ applied: false, count: 1 });
++    expect(dependencyFactory).not.toHaveBeenCalled();
++
++    const rawManifest = readFileSync(manifestPath, "utf8");
++    const tamperedManifestPath = join(cliWorkdir, "tampered-manifest.json");
++    const tamperedManifest = JSON.parse(rawManifest) as {
++      plans: Array<PublicSourceAcquisitionPlan & { maxBytes: number }>;
++    };
++    tamperedManifest.plans[0]!.maxBytes = 151 * 1024 * 1024;
++    const rawTamperedManifest = JSON.stringify(tamperedManifest);
++    writeFileSync(tamperedManifestPath, rawTamperedManifest);
++    const tamperedDependencyFactory = vi.fn();
++    await expect(
++      runFetchApprovedPublicSourceVersionsCli(
++        [
++          "--manifest",
++          tamperedManifestPath,
++          "--expected-count",
++          "1",
++          "--manifest-sha256",
++          publicSourceAcquisitionManifestDigest(rawTamperedManifest),
++          "--apply",
++        ],
++        { dependenciesForPlan: tamperedDependencyFactory, stdout: vi.fn() },
++      ),
++    ).rejects.toThrow(/limits|content types/i);
++    expect(tamperedDependencyFactory).not.toHaveBeenCalled();
++
++    const authorizePlan = vi.fn(async () => undefined);
++    const fetch = vi.fn(async () => response(syntheticPdf()));
++    dependencyFactory.mockResolvedValue({
++      authorizePlan,
++      fetch,
++      resolve: async () => publicAddress,
++      scan: async () => ({ accepted: true as const }),
++      findDuplicateVersion: async () => null,
++      stageOwnedDocument: async () => ({
++        documentId: "33333333-3333-4333-8333-333333333333",
++        ownerId,
++      }),
++      enqueue: async () => undefined,
++    });
++    await expect(
++      runFetchApprovedPublicSourceVersionsCli(
++        [
++          "--manifest",
++          manifestPath,
++          "--expected-count",
++          "1",
++          "--manifest-sha256",
++          publicSourceAcquisitionManifestDigest(rawManifest),
++          "--apply",
++        ],
++        { dependenciesForPlan: dependencyFactory, stdout: vi.fn() },
++      ),
++    ).resolves.toMatchObject({ applied: true, count: 1 });
++    expect(authorizePlan).toHaveBeenCalledBefore(fetch);
++
++    const currentPath = join(cliWorkdir, "current.json");
++    writeFileSync(
++      currentPath,
++      JSON.stringify([
++        {
++          catalogueKey: "wa-health",
++          versionId: "55555555-5555-4555-8555-555555555555",
++          contentHash: `sha256:${"b".repeat(64)}`,
++          lifecycle: "active",
++        },
++      ]),
++    );
++    const changeFactory = vi.fn();
++    await expect(
++      runCheckPublicSourceChangesCli(["--manifest", manifestPath, "--current", currentPath], {
++        dependenciesForPlan: changeFactory,
++        stdout: vi.fn(),
++      }),
++    ).resolves.toEqual({ applied: false, count: 1 });
++    expect(changeFactory).not.toHaveBeenCalled();
++  });
++
++  it("rechecks the persisted activation immediately before live upload and enqueue", () => {
++    const source = readFileSync(
++      new URL("../scripts/fetch-approved-public-source-versions.ts", import.meta.url),
++      "utf8",
++    );
++    const authorizationCalls = [...source.matchAll(/await authorizePlan\(plan\);/g)].map((match) => match.index);
++    expect(authorizationCalls).toHaveLength(2);
++    expect(authorizationCalls[0]).toBeLessThan(source.indexOf(".upload(storagePath"));
++    expect(authorizationCalls[1]).toBeLessThan(source.indexOf("const result = await enqueueDocumentReindexJob"));
++  });
++});
+diff --git a/tests/public-source-activation-manifest.test.ts b/tests/public-source-activation-manifest.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5fe8b1b7c79204c3cbce57cad2e86a44a1f448a7
+--- /dev/null
++++ b/tests/public-source-activation-manifest.test.ts
+@@ -0,0 +1,76 @@
++import { describe, expect, it } from "vitest";
++
++import {
++  australianSourcePolicyDigest,
++  buildPublicSourceActivationManifest,
++  parsePublicSourceActivationManifestV1,
++} from "@/lib/public-source-activation-manifest";
++
++const operatorId = "11111111-1111-4111-8111-111111111111";
++
++function manifestInput(overrides: Partial<Parameters<typeof buildPublicSourceActivationManifest>[0]> = {}) {
++  const input: Parameters<typeof buildPublicSourceActivationManifest>[0] = {
++    catalogueKey: "wa-health",
++    decision: "activate",
++    operatorId,
++    reason: "Approved source definition for bounded exact-version acquisition.",
++    evidenceReferences: ["source-review:wa-health:2026-08-20"],
++  };
++  return { ...input, ...overrides };
++}
++
++describe("public source activation manifests", () => {
++  it("binds an immutable activation decision to the exact catalogue policy", () => {
++    const manifest = buildPublicSourceActivationManifest(manifestInput());
++
++    expect(manifest).toEqual({
++      version: 1,
++      sourcePolicyVersion: "australian-source-policy-v1",
++      sourcePolicyDigest: australianSourcePolicyDigest,
++      catalogueKey: "wa-health",
++      decision: "activate",
++      operatorId,
++      reason: "Approved source definition for bounded exact-version acquisition.",
++      evidenceReferences: ["source-review:wa-health:2026-08-20"],
++    });
++    expect(Object.isFrozen(manifest)).toBe(true);
++    expect(Object.isFrozen(manifest.evidenceReferences)).toBe(true);
++    expect(australianSourcePolicyDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
++  });
++
++  it("rejects unknown, historical, excluded, and link-only activation targets", () => {
++    for (const [catalogueKey, message] of [
++      ["unknown-source", /not in the active catalogue/i],
++      ["healthdirect", /not in the active catalogue/i],
++      ["nps-medicinewise", /historical/i],
++      ["etg-complete", /link-only/i],
++      ["australian-medicines-handbook", /link-only/i],
++    ] as const) {
++      expect(() => buildPublicSourceActivationManifest(manifestInput({ catalogueKey }))).toThrow(message);
++    }
++  });
++
++  it("permits bounded quarantine and retirement evidence without making content fetchable", () => {
++    expect(buildPublicSourceActivationManifest(manifestInput({ decision: "quarantine" }))).toMatchObject({
++      catalogueKey: "wa-health",
++      decision: "quarantine",
++    });
++    expect(buildPublicSourceActivationManifest(manifestInput({ decision: "retire" }))).toMatchObject({
++      catalogueKey: "wa-health",
++      decision: "retire",
++    });
++  });
++
++  it("fails closed on policy drift or incomplete operator evidence", () => {
++    const valid = buildPublicSourceActivationManifest(manifestInput());
++    for (const mutation of [
++      { sourcePolicyVersion: "old-policy" },
++      { sourcePolicyDigest: `sha256:${"0".repeat(64)}` },
++      { operatorId: "not-a-uuid" },
++      { reason: " " },
++      { evidenceReferences: [] },
++    ]) {
++      expect(() => parsePublicSourceActivationManifestV1({ ...valid, ...mutation })).toThrow();
++    }
++  });
++});
+diff --git a/tests/supabase-schema.test.ts b/tests/supabase-schema.test.ts
+index e32cd66c364bd4d514a53883ae69297d36cb3ce0..38ef41776a4e3c639976722beeb33a76b51b5c40 100644
+--- a/tests/supabase-schema.test.ts
++++ b/tests/supabase-schema.test.ts
+@@ -137,20 +137,24 @@ const publicationApprovalMigration = readFileSync(
+   "utf8",
+ ).replace(/\s+/g, " ");
+ const publicationReviewedStateMigration = readFileSync(
+   new URL("../supabase/migrations/20260722190000_bind_publication_approval_to_reviewed_state.sql", import.meta.url),
+   "utf8",
+ ).replace(/\s+/g, " ");
+ const australianSourceActivationMigration = readFileSync(
+   new URL("../supabase/migrations/20260822123000_govern_australian_source_activation.sql", import.meta.url),
+   "utf8",
+ ).replace(/\s+/g, " ");
++const publicSourceControlPlaneMigration = readFileSync(
++  new URL("../supabase/migrations/20260820121000_create_public_source_control_plane.sql", import.meta.url),
++  "utf8",
++).replace(/\s+/g, " ");
+ const deleteDocumentIfIdleMigration = readFileSync(
+   new URL("../supabase/migrations/20260717132000_delete_document_if_idle.sql", import.meta.url),
+   "utf8",
+ ).replace(/\s+/g, " ");
+ const defaultAclAssertionMigration = readFileSync(
+   new URL("../supabase/migrations/20260717161000_assert_postgres_default_privileges.sql", import.meta.url),
+   "utf8",
+ ).replace(/\s+/g, " ");
+ const defaultAclRepairMigration = readFileSync(
+   new URL("../supabase/migrations/20260719053532_repair_postgres_default_privileges.sql", import.meta.url),
+@@ -1599,20 +1603,84 @@ describe("Supabase Preview replay guards", () => {
+     );
+     expect(sql).toContain(
+       "grant execute on function public.activate_approved_public_documents(jsonb, text, uuid[]) to service_role;",
+     );
+     expect(sql).toContain("historical version-1 approval cannot activate an Australian public document");
+     expect(sql).toContain("source_catalogue_key is null");
+     expect(sql).toContain("source_policy_version is null");
+     expect(sql).toContain("reviewed_index_generation_id is null");
+   });
+ 
++  it("creates an append-only service-role public-source control plane", () => {
++    const sql = publicSourceControlPlaneMigration.toLowerCase();
++    expect(sql).toContain("create table public.public_source_activation_events");
++    expect(sql).toContain("create table public.public_source_versions");
++    expect(sql).toContain("check (decision in ('activate', 'quarantine', 'retire'))");
++    expect(sql).toContain(
++      "check (lifecycle in ('discovered', 'shadow', 'approved', 'active', 'quarantined', 'tombstoned'))",
++    );
++    expect(sql).toContain("before update or delete on public.public_source_activation_events");
++    expect(sql).toContain("public_source_activation_events are append-only");
++    expect(sql).toContain("alter table public.public_source_activation_events enable row level security");
++    expect(sql).toContain("alter table public.public_source_versions enable row level security");
++    for (const table of ["public_source_activation_events", "public_source_versions"]) {
++      expect(sql).toContain(`revoke all on table public.${table} from public, anon, authenticated`);
++    }
++  });
++
++  it("locks source rows and permits only explicit version lifecycle transitions", () => {
++    const sql = publicSourceControlPlaneMigration.toLowerCase();
++    for (const functionName of [
++      "record_public_source_activation_event",
++      "create_public_source_fetch_manifest",
++      "stage_public_source_version",
++      "transition_public_source_version",
++    ]) {
++      const body = sqlFunctionBody(sql, functionName);
++      expect(body).toContain("security definer");
++      expect(body).toContain("set search_path = ''");
++      expect(sql).toContain(`revoke all on function public.${functionName}`);
++      expect(sql).toContain(`grant execute on function public.${functionName}`);
++    }
++    expect(sqlFunctionBody(sql, "create_public_source_fetch_manifest")).toContain("for update");
++    expect(sqlFunctionBody(sql, "create_public_source_fetch_manifest")).toContain("decision <> 'activate'");
++    expect(sqlFunctionBody(sql, "create_public_source_fetch_manifest")).toContain(
++      "order by created_at desc, id desc limit 1 for update",
++    );
++    expect(sqlFunctionBody(sql, "create_public_source_fetch_manifest")).toContain(
++      "v_event.id is distinct from p_activation_event_id",
++    );
++    const activationBody = sqlFunctionBody(sql, "record_public_source_activation_event");
++    expect(activationBody).toContain("v_catalogue_key not in ( 'wa-health'");
++    expect(activationBody).toContain("v_policy_version <> 'australian-source-policy-v1'");
++    expect(activationBody).toContain(
++      "v_policy_digest <> 'sha256:02dcc095258338d0c355af79dfa1889c024f25f385b553e5b6c802207546855d'",
++    );
++    for (const excluded of ["healthdirect", "etg-complete", "australian-medicines-handbook", "nps-medicinewise"]) {
++      expect(activationBody).not.toContain(`'${excluded}'`);
++    }
++    expect(sqlFunctionBody(sql, "stage_public_source_version")).toContain("v_document.owner_id is null");
++    expect(sqlFunctionBody(sql, "stage_public_source_version")).toContain(
++      "order by created_at desc, id desc limit 1 for update",
++    );
++    expect(sqlFunctionBody(sql, "stage_public_source_version")).toContain(
++      "v_event.id is distinct from v_activation_event_id",
++    );
++    expect(sqlFunctionBody(sql, "transition_public_source_version")).toContain("for update");
++    expect(sqlFunctionBody(sql, "transition_public_source_version")).toContain(
++      "invalid public source lifecycle transition",
++    );
++    expect(sqlFunctionBody(sql, "transition_public_source_version")).toContain(
++      "exact document publication approval is distinct from source activation",
++    );
++  });
++
+   it("serializes permanent deletion against ingestion job creation", () => {
+     for (const sql of [schema, deleteDocumentIfIdleMigration]) {
+       const functionStart = sql.indexOf("create or replace function public.delete_document_if_idle(");
+       const functionBody = sql.slice(functionStart, sql.indexOf("$$;", functionStart));
+       const rowLock = functionBody.indexOf("for update;");
+       const activeJobCheck = functionBody.indexOf("from public.ingestion_jobs j");
+       const ledgerInsert = functionBody.indexOf("insert into public.storage_cleanup_jobs");
+       const parentDelete = functionBody.indexOf("delete from public.documents");
+       expect(rowLock).toBeGreaterThanOrEqual(0);
+       expect(rowLock).toBeLessThan(activeJobCheck);
