@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST,
+  SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST,
+} from "../src/lib/site-content/site-content-gate-owners";
+import {
   SITE_CONTENT_MUST_PASS_CASE_IDS,
   SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT,
 } from "../src/lib/site-content/site-content-release-evidence";
@@ -25,8 +29,7 @@ afterEach(() => {
   vi.resetModules();
 });
 
-function releaseGateArtifacts(plan: SiteContentSyncPlan) {
-  const observedAt = "2026-08-24T11:59:00.000Z";
+function releaseGateArtifacts(plan: SiteContentSyncPlan, observedAt = "2026-08-24T11:59:00.000Z") {
   const subject = {
     projectRef: plan.projectRef,
     releaseId: plan.candidateReleaseId,
@@ -67,17 +70,26 @@ function releaseGateArtifacts(plan: SiteContentSyncPlan) {
       evaluatedCaseIds: [...SITE_CONTENT_MUST_PASS_CASE_IDS],
       failedCaseIds: [],
       runDigest: fixtureSha("4"),
+      gatePolicyDigest: SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST,
+      gateDecisionDigest: SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST,
     }),
   };
 }
 
-async function loadRoute(role: "anonymous" | "authenticated" | "administrator") {
+async function loadRoute(
+  role: "anonymous" | "authenticated" | "administrator",
+  envOverrides: Record<string, string | undefined> = {},
+) {
   let storedGateArtifacts: unknown = null;
-  const rpc = vi.fn(async (name: string) => ({
-    data:
-      name === "read_site_content_release_gate_artifacts" ? storedGateArtifacts : { candidateReleaseId: "release-1" },
-    error: null,
-  }));
+  let deriveEffect: () => void = () => undefined;
+  const rpc = vi.fn(async (name: string) => {
+    if (name === "derive_site_content_release_gate_artifacts") deriveEffect();
+    return {
+      data:
+        name === "read_site_content_release_gate_artifacts" ? storedGateArtifacts : { candidateReleaseId: "release-1" },
+      error: null,
+    };
+  });
   const createBearerClient = vi.fn((_accessToken: string) => ({ rpc }));
   const adminRpc = vi.fn(async () => ({ data: { configured: true }, error: null }));
   vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: adminRpc }) }));
@@ -85,6 +97,9 @@ async function loadRoute(role: "anonymous" | "authenticated" | "administrator") 
     env: {
       SUPABASE_PROJECT_REF: siteReleaseProjectRef,
       SITE_CONTENT_RECOVERY_VALIDATION_SECRET: "synthetic-validation-secret-with-32-bytes",
+      SITE_CONTENT_GOVERNANCE_GATE_OWNER_SECRET: "synthetic-governance-secret-with-32-bytes",
+      RAG_PROGRAMME_GATE_OWNER_SECRET: "synthetic-programme-secret-with-32-bytes",
+      ...envOverrides,
     },
   }));
   vi.doMock("@/lib/supabase/server", () => ({
@@ -114,12 +129,15 @@ async function loadRoute(role: "anonymous" | "authenticated" | "administrator") 
     setGateArtifacts(value: unknown) {
       storedGateArtifacts = value;
     },
+    setDeriveEffect(value: () => void) {
+      deriveEffect = value;
+    },
   };
 }
 
 describe("administrator site-content publication route", () => {
   it.each(["anonymous", "authenticated"] as const)("rejects the %s role before mutation", async (role) => {
-    const { route, rpc } = await loadRoute(role);
+    const { route, rpc, adminRpc } = await loadRoute(role);
     const response = await route.POST(
       new Request("http://local/api/admin/site-content/publish", {
         method: "POST",
@@ -128,6 +146,7 @@ describe("administrator site-content publication route", () => {
     );
     expect(response.status).toBe(401);
     expect(rpc).not.toHaveBeenCalled();
+    expect(adminRpc).not.toHaveBeenCalled();
   });
 
   it("uses the single administrator-authenticated RPC without a spoofable authority flag", async () => {
@@ -248,6 +267,42 @@ describe("administrator site-content publication route", () => {
     });
   });
 
+  it.each([
+    ["provision-governance-secret", "provision_site_content_governance_gate_owner_secret"],
+    ["provision-must-pass-secret", "provision_rag_programme_gate_owner_secret"],
+  ] as const)("guards and provisions the fixed %s Vault counterpart", async (action, rpcName) => {
+    const { route, rpc, adminRpc } = await loadRoute("administrator");
+    const response = await route.POST(
+      new Request("http://local/api/admin/site-content/publish", {
+        method: "POST",
+        body: JSON.stringify({ action, expectedCurrentDigest: null, rotationReason: null }),
+      }),
+    );
+    expect(response.status).toBe(202);
+    expect(rpc).not.toHaveBeenCalled();
+    expect(adminRpc).toHaveBeenCalledWith(rpcName, {
+      p_configuration: expect.objectContaining({ expectedCurrentDigest: null, rotationReason: null }),
+    });
+    expect(JSON.stringify(await response.json())).not.toContain("secret");
+  });
+
+  it("rejects missing or cross-purpose duplicate owner secret configuration", async () => {
+    for (const envOverrides of [
+      { SITE_CONTENT_GOVERNANCE_GATE_OWNER_SECRET: undefined },
+      { RAG_PROGRAMME_GATE_OWNER_SECRET: "synthetic-validation-secret-with-32-bytes" },
+    ]) {
+      const { route, adminRpc } = await loadRoute("administrator", envOverrides);
+      const response = await route.POST(
+        new Request("http://local/api/admin/site-content/publish", {
+          method: "POST",
+          body: JSON.stringify({ action: "provision-governance-secret" }),
+        }),
+      );
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(adminRpc).not.toHaveBeenCalled();
+    }
+  });
+
   it("signs canonical independent verification evidence instead of caller flags", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(siteReleaseNow);
@@ -290,5 +345,40 @@ describe("administrator site-content publication route", () => {
       p_release_id: plan.candidateReleaseId,
     });
     expect(JSON.stringify(rpc.mock.calls)).not.toContain("flags");
+  });
+
+  it("validates SQL-derived public evidence against a post-derivation clock on the first attempt", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-24T12:00:00.000Z"));
+    const { route, rpc, setGateArtifacts, setDeriveEffect } = await loadRoute("administrator");
+    const recovery = validSiteReleaseRecoveryFixture();
+    const plan = planSiteContentSync({
+      projectRef: siteReleaseProjectRef,
+      expectedProjectRef: siteReleaseProjectRef,
+      candidateReleaseId: siteReleaseCandidateId,
+      previousReleaseId: siteReleasePreviousId,
+      generationId: siteReleaseGenerationId,
+      registryVersion: "site-content-registry-v1",
+      staticManifestDigest: fixtureSha("8"),
+      expectedEmbedding: { model: "synthetic", dimensions: 3 },
+      desiredRecords: [],
+      activeProjections: [],
+      legacyRows: [],
+      legacyDispositions: [],
+      batchSize: 25,
+      write: true,
+      recoveryEvidence: recovery.evidence,
+      now: siteReleaseNow,
+    });
+    setGateArtifacts(releaseGateArtifacts(plan, "2026-08-24T12:00:01.000Z"));
+    setDeriveEffect(() => vi.setSystemTime(new Date("2026-08-24T12:00:02.000Z")));
+    const response = await route.POST(
+      new Request("http://local/api/admin/site-content/publish", {
+        method: "POST",
+        body: JSON.stringify({ action: "verify", plan }),
+      }),
+    );
+    expect(response.status).toBe(202);
+    expect(rpc).toHaveBeenCalledWith("verify_site_content_candidate_release", expect.any(Object));
   });
 });

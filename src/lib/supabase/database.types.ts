@@ -2626,6 +2626,14 @@ export type Database = {
         Args: { p_configuration: Json };
         Returns: Json;
       };
+      provision_site_content_governance_gate_owner_secret: {
+        Args: { p_configuration: Json };
+        Returns: Json;
+      };
+      provision_rag_programme_gate_owner_secret: {
+        Args: { p_configuration: Json };
+        Returns: Json;
+      };
       read_public_site_content_records: {
         Args: { p_domain: string; p_record_kind?: string | null; p_slug?: string | null };
         Returns: Json;

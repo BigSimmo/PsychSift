@@ -1,6 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { compareRagProgrammeRuns, parseRagProgrammeFixture, type RagProgrammeRun } from "@/lib/rag/rag-programme-eval";
+import {
+  compareRagProgrammeRuns,
+  parseRagProgrammeFixture,
+  ragProgrammeGatePolicy,
+  type RagProgrammeRun,
+} from "@/lib/rag/rag-programme-eval";
 import { siteContentSha256, type StaticSiteContentManifest } from "@/lib/site-content/site-content-manifest";
 import {
   assertSiteContentSyncPlan,
@@ -12,6 +17,12 @@ import {
 type Digest = `sha256:${string}`;
 type PopulationEntry = Readonly<{ logicalId: string; contentHash: Digest }>;
 type GateSubject = Readonly<{ projectRef: string; releaseId: string; planDigest: Digest; releaseDigest: Digest }>;
+
+export const SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST = siteContentSyncDigest(ragProgrammeGatePolicy);
+export const SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST = siteContentSyncDigest({
+  decision: "GO",
+  reasons: [],
+});
 
 type ReceiptAuthority = Readonly<{
   subject: GateSubject;
@@ -45,6 +56,7 @@ export type SiteContentMustPassOwnerReceipt = ReceiptAuthority &
     baselineRunDigest: Digest;
     candidateRunDigest: Digest;
     gatePolicyDigest: Digest;
+    gateDecisionDigest: Digest;
   }>;
 
 export type SiteContentGateOwnerReceipt = SiteContentGovernanceOwnerReceipt | SiteContentMustPassOwnerReceipt;
@@ -156,7 +168,8 @@ export function createSiteContentMustPassOwnerReceipt(
     failedCaseIds: [] as [],
     baselineRunDigest: siteContentSyncDigest(baseline),
     candidateRunDigest: siteContentSyncDigest(candidate),
-    gatePolicyDigest: siteContentSyncDigest({ decision: decision.decision, reasons: decision.reasons }),
+    gatePolicyDigest: SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST,
+    gateDecisionDigest: siteContentSyncDigest(decision),
   };
   return Object.freeze({ ...withoutMac, mac: sign(withoutMac, options.secret) });
 }
@@ -178,6 +191,14 @@ export function verifySiteContentGateOwnerReceipt(
       observedAt > options.now.getTime() + 5 * 60 * 1000 ||
       observedAt < options.now.getTime() - 5 * 60 * 1000 ||
       receipt.subjectDigest !== siteContentSyncDigest(receipt.subject)
+    ) {
+      return false;
+    }
+    if (
+      receipt.owner === "rag-programme-eval-v1" &&
+      (receipt.version !== "site-content-must-pass-owner-receipt-v1" ||
+        receipt.gatePolicyDigest !== SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST ||
+        receipt.gateDecisionDigest !== SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST)
     ) {
       return false;
     }

@@ -232,6 +232,10 @@ begin
   or p_must_pass_receipt->'failedCaseIds' is distinct from '[]'::jsonb
   or p_must_pass_receipt->>'candidateRunDigest' !~ '^sha256:[0-9a-f]{64}$'
   or p_must_pass_receipt->>'baselineRunDigest' !~ '^sha256:[0-9a-f]{64}$'
+  or p_must_pass_receipt->>'gatePolicyDigest' is distinct from
+    'sha256:a5c852d6569aefb8188935c64df4f1a2d5a3aea01536498468505f2fe7df04da'
+  or p_must_pass_receipt->>'gateDecisionDigest' is distinct from
+    'sha256:1c28e0d9ff79e413f9a10ba071a81c53ce3ba369ec9cf1be0e69ff41023ce506'
  then raise exception 'fixed gate-owner output invalid'; end if;
  v_public:=pg_catalog.jsonb_build_object('owner','public-site-content-reader-v1','subjectDigest',v_subject_digest,
   'observedAt',v_now,'population',v_population,'populationDigest',public.site_content_json_digest(v_population));
@@ -243,7 +247,8 @@ begin
   'evaluatedCaseIds',p_must_pass_receipt->'evaluatedCaseIds','failedCaseIds','[]'::jsonb,
   'runDigest',p_must_pass_receipt->>'candidateRunDigest','populationFingerprint',
   p_must_pass_receipt->>'populationFingerprint','baselineRunDigest',p_must_pass_receipt->>'baselineRunDigest',
-  'gatePolicyDigest',p_must_pass_receipt->>'gatePolicyDigest');
+  'gatePolicyDigest',p_must_pass_receipt->>'gatePolicyDigest','gateDecisionDigest',
+  p_must_pass_receipt->>'gateDecisionDigest');
  v_must_pass:=v_must_pass||pg_catalog.jsonb_build_object('digest',public.site_content_json_digest(v_must_pass));
  insert into public.site_content_release_gate_artifacts(release_id,owner,subject,subject_digest,artifact,
   artifact_digest,observed_at) values
@@ -279,11 +284,16 @@ begin
  if auth.role() is distinct from 'service_role' then raise exception 'service role required'; end if;
  if coalesce(p_configuration->>'secret','')='' or pg_catalog.length(p_configuration->>'secret')<32
  then raise exception 'site-content validation secret is invalid'; end if;
- perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_recovery_validation_secret',0));
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_authority_secrets',0));
  select secret.id,secret.decrypted_secret into v_secret_id,v_current from vault.decrypted_secrets secret
   where secret.name='site_content_recovery_validation_secret' limit 1;
  v_new_digest:='sha256:'||pg_catalog.encode(extensions.digest(
   pg_catalog.convert_to(p_configuration->>'secret','UTF8'),'sha256'),'hex');
+ if exists(select 1 from vault.decrypted_secrets secret where secret.name in
+   ('site_content_governance_gate_owner_secret','rag_programme_gate_owner_secret')
+   and 'sha256:'||pg_catalog.encode(extensions.digest(pg_catalog.convert_to(
+     secret.decrypted_secret,'UTF8'),'sha256'),'hex')=v_new_digest)
+ then raise exception 'cross-purpose site-content authority secrets must be distinct'; end if;
  if v_secret_id is null then
   if nullif(p_configuration->>'expectedCurrentDigest','') is not null
   then raise exception 'initial secret provisioning cannot claim a predecessor'; end if;
@@ -295,8 +305,81 @@ begin
  if p_configuration->>'expectedCurrentDigest' is distinct from v_current_digest
   or coalesce(pg_catalog.btrim(p_configuration->>'rotationReason'),'')=''
  then raise exception 'secret rotation requires exact predecessor digest and reason'; end if;
+ if v_new_digest=v_current_digest then raise exception 'secret rotation must change the secret digest'; end if;
  perform vault.update_secret(v_secret_id,p_configuration->>'secret','site_content_recovery_validation_secret',
   'Rotated site-content validation HMAC: '||pg_catalog.left(p_configuration->>'rotationReason',200));
+ return pg_catalog.jsonb_build_object('configured',true,'rotated',true,'digest',v_new_digest,
+  'previousDigest',v_current_digest);
+end $$;
+
+create or replace function public.provision_site_content_governance_gate_owner_secret(p_configuration jsonb)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare v_secret_id uuid; v_current text; v_current_digest text; v_new_digest text;
+begin
+ if auth.role() is distinct from 'service_role' then raise exception 'service role required'; end if;
+ if coalesce(p_configuration->>'secret','')='' or pg_catalog.length(p_configuration->>'secret')<32
+ then raise exception 'site-content governance owner secret is invalid'; end if;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_authority_secrets',0));
+ select secret.id,secret.decrypted_secret into v_secret_id,v_current from vault.decrypted_secrets secret
+  where secret.name='site_content_governance_gate_owner_secret' limit 1;
+ v_new_digest:='sha256:'||pg_catalog.encode(extensions.digest(
+  pg_catalog.convert_to(p_configuration->>'secret','UTF8'),'sha256'),'hex');
+ if exists(select 1 from vault.decrypted_secrets secret where secret.name in
+   ('site_content_recovery_validation_secret','rag_programme_gate_owner_secret')
+   and 'sha256:'||pg_catalog.encode(extensions.digest(pg_catalog.convert_to(
+     secret.decrypted_secret,'UTF8'),'sha256'),'hex')=v_new_digest)
+ then raise exception 'cross-purpose site-content authority secrets must be distinct'; end if;
+ if v_secret_id is null then
+  if nullif(p_configuration->>'expectedCurrentDigest','') is not null
+  then raise exception 'initial secret provisioning cannot claim a predecessor'; end if;
+  perform vault.create_secret(p_configuration->>'secret','site_content_governance_gate_owner_secret',
+    'Fixed site-content governance gate-owner HMAC; provisioned by guarded operator route');
+  return pg_catalog.jsonb_build_object('configured',true,'rotated',false,'digest',v_new_digest);
+ end if;
+ v_current_digest:='sha256:'||pg_catalog.encode(extensions.digest(
+  pg_catalog.convert_to(v_current,'UTF8'),'sha256'),'hex');
+ if p_configuration->>'expectedCurrentDigest' is distinct from v_current_digest
+  or coalesce(pg_catalog.btrim(p_configuration->>'rotationReason'),'')=''
+ then raise exception 'secret rotation requires exact predecessor digest and reason'; end if;
+ if v_new_digest=v_current_digest then raise exception 'secret rotation must change the secret digest'; end if;
+ perform vault.update_secret(v_secret_id,p_configuration->>'secret','site_content_governance_gate_owner_secret',
+  'Rotated fixed governance gate-owner HMAC: '||pg_catalog.left(p_configuration->>'rotationReason',200));
+ return pg_catalog.jsonb_build_object('configured',true,'rotated',true,'digest',v_new_digest,
+  'previousDigest',v_current_digest);
+end $$;
+
+create or replace function public.provision_rag_programme_gate_owner_secret(p_configuration jsonb)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare v_secret_id uuid; v_current text; v_current_digest text; v_new_digest text;
+begin
+ if auth.role() is distinct from 'service_role' then raise exception 'service role required'; end if;
+ if coalesce(p_configuration->>'secret','')='' or pg_catalog.length(p_configuration->>'secret')<32
+ then raise exception 'RAG programme gate owner secret is invalid'; end if;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_authority_secrets',0));
+ select secret.id,secret.decrypted_secret into v_secret_id,v_current from vault.decrypted_secrets secret
+  where secret.name='rag_programme_gate_owner_secret' limit 1;
+ v_new_digest:='sha256:'||pg_catalog.encode(extensions.digest(
+  pg_catalog.convert_to(p_configuration->>'secret','UTF8'),'sha256'),'hex');
+ if exists(select 1 from vault.decrypted_secrets secret where secret.name in
+   ('site_content_recovery_validation_secret','site_content_governance_gate_owner_secret')
+   and 'sha256:'||pg_catalog.encode(extensions.digest(pg_catalog.convert_to(
+     secret.decrypted_secret,'UTF8'),'sha256'),'hex')=v_new_digest)
+ then raise exception 'cross-purpose site-content authority secrets must be distinct'; end if;
+ if v_secret_id is null then
+  if nullif(p_configuration->>'expectedCurrentDigest','') is not null
+  then raise exception 'initial secret provisioning cannot claim a predecessor'; end if;
+  perform vault.create_secret(p_configuration->>'secret','rag_programme_gate_owner_secret',
+    'Fixed RAG programme gate-owner HMAC; provisioned by guarded operator route');
+  return pg_catalog.jsonb_build_object('configured',true,'rotated',false,'digest',v_new_digest);
+ end if;
+ v_current_digest:='sha256:'||pg_catalog.encode(extensions.digest(
+  pg_catalog.convert_to(v_current,'UTF8'),'sha256'),'hex');
+ if p_configuration->>'expectedCurrentDigest' is distinct from v_current_digest
+  or coalesce(pg_catalog.btrim(p_configuration->>'rotationReason'),'')=''
+ then raise exception 'secret rotation requires exact predecessor digest and reason'; end if;
+ if v_new_digest=v_current_digest then raise exception 'secret rotation must change the secret digest'; end if;
+ perform vault.update_secret(v_secret_id,p_configuration->>'secret','rag_programme_gate_owner_secret',
+  'Rotated fixed RAG programme gate-owner HMAC: '||pg_catalog.left(p_configuration->>'rotationReason',200));
  return pg_catalog.jsonb_build_object('configured',true,'rotated',true,'digest',v_new_digest,
   'previousDigest',v_current_digest);
 end $$;
@@ -866,6 +949,8 @@ revoke all on function public.site_content_gate_owner_receipt_valid(jsonb,text,t
 revoke all on function public.derive_site_content_release_gate_artifacts(uuid,jsonb,jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.read_site_content_release_gate_artifacts(uuid) from public,anon,authenticated,service_role;
 revoke all on function public.provision_site_content_validation_secret(jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.provision_site_content_governance_gate_owner_secret(jsonb) from public,anon,authenticated,service_role;
+revoke all on function public.provision_rag_programme_gate_owner_secret(jsonb) from public,anon,authenticated,service_role;
 revoke all on function public.site_content_admin_authorized() from public,anon,authenticated;
 revoke all on function public.adopt_site_content_baseline(jsonb,jsonb) from public,anon,authenticated;
 revoke all on function public.begin_site_content_candidate_release(jsonb,jsonb) from public,anon,authenticated;
@@ -893,6 +978,8 @@ grant execute on function public.rollback_site_content_release(uuid,jsonb,jsonb,
 grant execute on function public.read_site_content_release_gate_artifacts(uuid) to authenticated;
 grant execute on function public.derive_site_content_release_gate_artifacts(uuid,jsonb,jsonb) to authenticated;
 grant execute on function public.provision_site_content_validation_secret(jsonb) to service_role;
+grant execute on function public.provision_site_content_governance_gate_owner_secret(jsonb) to service_role;
+grant execute on function public.provision_rag_programme_gate_owner_secret(jsonb) to service_role;
 grant execute on function public.read_public_site_content_records(text,text,text) to service_role;
 grant execute on function public.claim_site_content_sync_events(uuid,integer,integer) to service_role;
 grant execute on function public.heartbeat_site_content_sync_event(uuid,uuid,uuid,uuid,integer,integer) to service_role;

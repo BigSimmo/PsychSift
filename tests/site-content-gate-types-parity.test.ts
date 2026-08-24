@@ -35,5 +35,13 @@ describe("site-content gate generated type parity", () => {
       migration.match(/create table public\.site_content_release_gate_artifacts\s*\(([\s\S]*?)\n\);/)?.[1] ?? "";
     expect(migrationBlock).toMatch(/observed_at\s+timestamptz\s+not null/i);
     expect(migrationBlock).not.toMatch(/release_id[^,\n]*references/i);
+    for (const functionName of [
+      "provision_site_content_validation_secret",
+      "provision_site_content_governance_gate_owner_secret",
+      "provision_rag_programme_gate_owner_secret",
+    ]) {
+      expect(types).toMatch(new RegExp(`${functionName}: \\{[\\s\\S]*?p_configuration: Json`, "i"));
+      expect(migration).toMatch(new RegExp(`function public\\.${functionName}\\(p_configuration jsonb\\)`, "i"));
+    }
   });
 });

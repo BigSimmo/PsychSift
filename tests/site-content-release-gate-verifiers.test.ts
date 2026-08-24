@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST,
+  SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST,
+} from "../src/lib/site-content/site-content-gate-owners";
+import {
   SITE_CONTENT_MUST_PASS_CASE_IDS,
   SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT,
   verifySiteContentReleaseGateArtifacts,
@@ -91,6 +95,8 @@ function artifacts(syncPlan = plan()) {
       evaluatedCaseIds: [...SITE_CONTENT_MUST_PASS_CASE_IDS],
       failedCaseIds: [],
       runDigest: fixtureSha("4"),
+      gatePolicyDigest: SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST,
+      gateDecisionDigest: SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST,
     }),
   };
 }
@@ -120,6 +126,8 @@ describe("production site-content release gate verifiers", () => {
         }),
       },
       { ...valid, mustPass: receipt({ ...valid.mustPass, digest: undefined, caseSetFingerprint: fixtureSha("8") }) },
+      { ...valid, mustPass: receipt({ ...valid.mustPass, digest: undefined, gatePolicyDigest: fixtureSha("8") }) },
+      { ...valid, mustPass: receipt({ ...valid.mustPass, digest: undefined, gateDecisionDigest: fixtureSha("8") }) },
       {
         ...valid,
         publicVisibility: receipt({

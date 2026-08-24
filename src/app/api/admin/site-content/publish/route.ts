@@ -4,6 +4,10 @@ import {
   createSiteContentEvidenceValidationBinding,
   createSiteContentRecoveryValidationBinding,
 } from "@/lib/site-content/site-content-recovery-authority";
+import {
+  prepareSiteContentAuthoritySecretProvisioning,
+  type SiteContentAuthoritySecretPurpose,
+} from "@/lib/site-content/site-content-authority-secrets";
 import { assertSiteContentSyncPlan } from "@/lib/site-content/site-content-sync";
 import { verifySiteContentReleaseGateArtifacts } from "@/lib/site-content/site-content-release-evidence";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -28,15 +32,33 @@ export async function POST(request: Request) {
     const projectRef = env.SUPABASE_PROJECT_REF;
     const secret = env.SITE_CONTENT_RECOVERY_VALIDATION_SECRET;
     const now = new Date();
-    if (action === "provision-secret") {
-      if (!secret) throw new Error("Site-content recovery authority is not configured.");
-      const configuration = {
-        secret,
-        expectedCurrentDigest: (body as { expectedCurrentDigest?: unknown }).expectedCurrentDigest ?? null,
-        rotationReason: (body as { rotationReason?: unknown }).rotationReason ?? null,
-      };
-      const { data, error } = await adminSupabase.rpc("provision_site_content_validation_secret", {
-        p_configuration: configuration,
+    const provisionPurpose = new Map<unknown, SiteContentAuthoritySecretPurpose>([
+      ["provision-secret", "recovery"],
+      ["provision-recovery-secret", "recovery"],
+      ["provision-governance-secret", "governance"],
+      ["provision-must-pass-secret", "must-pass"],
+    ]).get(action);
+    if (provisionPurpose) {
+      const provisioning = prepareSiteContentAuthoritySecretProvisioning(
+        provisionPurpose,
+        {
+          recoveryValidationSecret: secret,
+          governanceOwnerSecret: env.SITE_CONTENT_GOVERNANCE_GATE_OWNER_SECRET,
+          ragProgrammeOwnerSecret: env.RAG_PROGRAMME_GATE_OWNER_SECRET,
+        },
+        {
+          expectedCurrentDigest:
+            typeof (body as { expectedCurrentDigest?: unknown }).expectedCurrentDigest === "string"
+              ? (body as { expectedCurrentDigest: string }).expectedCurrentDigest
+              : null,
+          rotationReason:
+            typeof (body as { rotationReason?: unknown }).rotationReason === "string"
+              ? (body as { rotationReason: string }).rotationReason
+              : null,
+        },
+      );
+      const { data, error } = await adminSupabase.rpc(provisioning.rpc, {
+        p_configuration: provisioning.configuration,
       });
       if (error) throw new Error("Site-content validation-secret provisioning failed.");
       return Response.json(data, { status: 202, headers: { "Cache-Control": "private, no-store" } });
@@ -99,13 +121,14 @@ export async function POST(request: Request) {
         { p_release_id: plan.candidateReleaseId },
       );
       if (gateError) throw new Error("Site-content release gate artifacts are unavailable.");
+      const verificationNow = new Date();
       const verification = {
         plan,
-        verificationEvidence: verifySiteContentReleaseGateArtifacts(plan, gateArtifacts, { now }),
+        verificationEvidence: verifySiteContentReleaseGateArtifacts(plan, gateArtifacts, { now: verificationNow }),
       };
       const binding = createSiteContentEvidenceValidationBinding("verify", plan.recoveryEvidence, verification, {
         expectedProjectRef: projectRef!,
-        now,
+        now: verificationNow,
         secret: secret!,
       });
       mutation = {

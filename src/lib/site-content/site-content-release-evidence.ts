@@ -3,6 +3,10 @@ import {
   siteContentSyncDigest,
   type SiteContentSyncPlan,
 } from "@/lib/site-content/site-content-sync";
+import {
+  SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST,
+  SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST,
+} from "@/lib/site-content/site-content-gate-owners";
 
 type Digest = `sha256:${string}`;
 
@@ -73,6 +77,8 @@ export type SiteContentReleaseGateArtifacts = Readonly<{
     evaluatedCaseIds: string[];
     failedCaseIds: string[];
     runDigest: Digest;
+    gatePolicyDigest: typeof SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST;
+    gateDecisionDigest: typeof SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST;
   }>;
 }>;
 
@@ -171,7 +177,9 @@ export function verifySiteContentReleaseGateArtifacts(
     artifacts.mustPass.caseSetFingerprint !== SITE_CONTENT_MUST_PASS_CASE_SET_FINGERPRINT ||
     JSON.stringify(artifacts.mustPass.evaluatedCaseIds) !== JSON.stringify(SITE_CONTENT_MUST_PASS_CASE_IDS) ||
     artifacts.mustPass.failedCaseIds.length !== 0 ||
-    !digestPattern(artifacts.mustPass.runDigest)
+    !digestPattern(artifacts.mustPass.runDigest) ||
+    artifacts.mustPass.gatePolicyDigest !== SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST ||
+    artifacts.mustPass.gateDecisionDigest !== SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST
   ) {
     throw new Error("Must-pass gate output does not match the canonical evaluated case population.");
   }

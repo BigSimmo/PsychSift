@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import {
   assertSiteContentSyncPlan,
   planSiteContentSync,
+  siteContentSyncCanonicalJson,
   type SiteContentActiveProjection,
   type SiteContentSyncInput,
 } from "../src/lib/site-content/site-content-sync";
@@ -23,7 +24,17 @@ type OfflineState = Omit<BuildInputs, "manifest"> & {
   evidence?: unknown;
   records?: unknown[];
 };
-type OperatorAction = "adopt" | "begin" | "resume" | "publish" | "verify" | "activate" | "provision-secret";
+type OperatorAction =
+  | "adopt"
+  | "begin"
+  | "resume"
+  | "publish"
+  | "verify"
+  | "activate"
+  | "provision-secret"
+  | "provision-recovery-secret"
+  | "provision-governance-secret"
+  | "provision-must-pass-secret";
 const executableDomains = new Set(["services", "forms", "medications", "differentials"]);
 
 function option(args: readonly string[], name: string) {
@@ -124,7 +135,7 @@ export function createSiteContentSyncWriteDriver(dependencies: {
       const plan = assertSiteContentSyncPlan(planInput);
       if (plan.projectRef !== options.expectedProjectRef) throw new Error("Write target project mismatch.");
       const action = options.action ?? "begin";
-      if (action === "provision-secret") {
+      if (action.startsWith("provision-")) {
         await dependencies.send({
           path: "/api/admin/site-content/publish",
           body: {
@@ -210,17 +221,27 @@ export async function runSiteContentSyncCli(
   const manifestPath = option(args, "--manifest");
   const statePath = option(args, "--state");
   const write = args.includes("--write");
+  const planWrite = args.includes("--plan-write");
+  if (write && planWrite) throw new Error("--plan-write is non-mutating and cannot be combined with --write.");
   if (!manifestPath) throw new Error("--manifest <path> is required.");
   const manifest = JSON.parse(await readFile(resolve(manifestPath), "utf8")) as StaticSiteContentManifest;
   const state = statePath
     ? (JSON.parse(await readFile(resolve(statePath), "utf8")) as OfflineState)
     : defaultOfflineState(manifest);
   const action = (option(args, "--action") ?? "begin") as OperatorAction;
-  const plan = buildSiteContentSyncPlanFromInputs({
+  const provisioningAction = action.startsWith("provision-");
+  const recomputedPlan = buildSiteContentSyncPlanFromInputs({
     ...state,
     manifest,
-    write: write && action !== "provision-secret",
+    write: (write || planWrite) && !provisioningAction,
   });
+  const canonicalPlanPath = option(args, "--canonical-plan");
+  const plan = canonicalPlanPath
+    ? assertSiteContentSyncPlan(JSON.parse(await readFile(resolve(canonicalPlanPath), "utf8")))
+    : recomputedPlan;
+  if (canonicalPlanPath && siteContentSyncCanonicalJson(plan) !== siteContentSyncCanonicalJson(recomputedPlan)) {
+    throw new Error("Supplied canonical write plan does not match the deterministic manifest/state plan.");
+  }
   if (write) {
     const confirmedProject = option(args, "--confirm-project");
     if (confirmedProject !== state.expectedProjectRef) {
@@ -232,9 +253,30 @@ export async function runSiteContentSyncCli(
         endpoint: process.env.SITE_CONTENT_SYNC_ADMIN_URL ?? "",
         accessToken: process.env.SITE_CONTENT_SYNC_ADMIN_ACCESS_TOKEN ?? "",
       });
-    if (!["adopt", "begin", "resume", "publish", "verify", "activate", "provision-secret"].includes(action)) {
+    if (
+      ![
+        "adopt",
+        "begin",
+        "resume",
+        "publish",
+        "verify",
+        "activate",
+        "provision-secret",
+        "provision-recovery-secret",
+        "provision-governance-secret",
+        "provision-must-pass-secret",
+      ].includes(action)
+    ) {
       throw new Error("Unsupported site-content operator action.");
     }
+    const governanceReceiptPath = option(args, "--governance-receipt");
+    const mustPassReceiptPath = option(args, "--must-pass-receipt");
+    const governanceReceipt = governanceReceiptPath
+      ? JSON.parse(await readFile(resolve(governanceReceiptPath), "utf8"))
+      : state.governanceReceipt;
+    const mustPassReceipt = mustPassReceiptPath
+      ? JSON.parse(await readFile(resolve(mustPassReceiptPath), "utf8"))
+      : state.mustPassReceipt;
     await createSiteContentSyncWriteDriver({
       send,
       resolvePublication: (logicalId) => state.publications?.[logicalId],
@@ -243,8 +285,8 @@ export async function runSiteContentSyncCli(
       expectedProjectRef: state.expectedProjectRef,
       action,
       records: state.records ?? Object.values(state.publications ?? {}),
-      governanceReceipt: state.governanceReceipt,
-      mustPassReceipt: state.mustPassReceipt,
+      governanceReceipt,
+      mustPassReceipt,
       activation: state.activation,
       evidence: state.evidence,
       expectedCurrentDigest: option(args, "--expected-current-secret-digest") ?? undefined,

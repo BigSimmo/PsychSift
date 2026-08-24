@@ -22,6 +22,8 @@ const envSchema = z.object({
   SUPABASE_STAGING_PROJECT_NAME: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   SITE_CONTENT_RECOVERY_VALIDATION_SECRET: z.string().min(32).optional(),
+  SITE_CONTENT_GOVERNANCE_GATE_OWNER_SECRET: z.string().min(32).optional(),
+  RAG_PROGRAMME_GATE_OWNER_SECRET: z.string().min(32).optional(),
   SUPABASE_DB_URL: z.string().url().optional(),
   HEALTH_DEEP_PROBE_SECRET: z.string().min(16).optional(),
   // Inbound webhook receivers. Each shared secret gates a machine-to-machine

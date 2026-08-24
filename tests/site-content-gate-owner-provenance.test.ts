@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -5,11 +6,17 @@ import { describe, expect, it } from "vitest";
 import {
   createSiteContentGovernanceOwnerReceipt,
   createSiteContentMustPassOwnerReceipt,
+  SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST,
+  SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST,
   verifySiteContentGateOwnerReceipt,
 } from "../src/lib/site-content/site-content-gate-owners";
-import { parseRagProgrammeFixture } from "../src/lib/rag/rag-programme-eval";
+import { parseRagProgrammeFixture, ragProgrammeGatePolicy } from "../src/lib/rag/rag-programme-eval";
 import { siteContentSha256 } from "../src/lib/site-content/site-content-manifest";
-import { planSiteContentSync } from "../src/lib/site-content/site-content-sync";
+import {
+  planSiteContentSync,
+  siteContentSyncCanonicalJson,
+  siteContentSyncDigest,
+} from "../src/lib/site-content/site-content-sync";
 import {
   fixtureSha,
   siteReleaseCandidateId,
@@ -108,6 +115,9 @@ describe("fixed site-content release gate owners", () => {
     expect(verifySiteContentGateOwnerReceipt(mustPass, { secret, now: siteReleaseNow })).toBe(true);
     expect(governance.population).toEqual([{ logicalId: "medication:a", contentHash: fixtureSha("2") }]);
     expect(mustPass.evaluatedCaseIds).toHaveLength(29);
+    expect(mustPass.gatePolicyDigest).toBe(SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST);
+    expect(mustPass.gatePolicyDigest).toBe(siteContentSyncDigest(ragProgrammeGatePolicy));
+    expect(mustPass.gateDecisionDigest).toBe(SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST);
     expect(JSON.stringify({ governance, mustPass })).not.toContain('"passed"');
     expect(
       verifySiteContentGateOwnerReceipt(
@@ -143,6 +153,17 @@ describe("fixed site-content release gate owners", () => {
         { now: siteReleaseNow, secret },
       ),
     ).toThrow();
+
+    const changedPolicyDigest = siteContentSyncDigest({
+      ...ragProgrammeGatePolicy,
+      maximumP95LatencyMultiplier: ragProgrammeGatePolicy.maximumP95LatencyMultiplier + 0.01,
+    });
+    const { mac: _mac, ...changedPolicyReceipt } = { ...mustPass, gatePolicyDigest: changedPolicyDigest };
+    const resigned = {
+      ...changedPolicyReceipt,
+      mac: createHmac("sha256", secret).update(siteContentSyncCanonicalJson(changedPolicyReceipt)).digest("hex"),
+    };
+    expect(verifySiteContentGateOwnerReceipt(resigned, { secret, now: siteReleaseNow })).toBe(false);
   });
 
   it("has no generic recorder and binds the real route to narrow derived SQL owners", () => {
@@ -155,6 +176,8 @@ describe("fixed site-content release gate owners", () => {
     expect(migration).toMatch(
       /site_content_gate_owner_receipt_valid[\s\S]*extensions\.hmac[\s\S]*rag_programme_gate_owner_secret/i,
     );
+    expect(migration).toContain(SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST);
+    expect(migration).toContain(SITE_CONTENT_RAG_PROGRAMME_GATE_DECISION_DIGEST);
     expect(migration).not.toMatch(
       /grant execute on function public\.derive_site_content_release_gate_artifacts[^;]*service_role/i,
     );
