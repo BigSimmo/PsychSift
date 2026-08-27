@@ -63,6 +63,9 @@ Declared in the `.ckb-v2` structural block **[verified: full read at `ef13a072a`
 | Stacking         | `--z-{base,raised,chrome,overlay,popover,modal,toast}`                                                                                    | Each rung names its `--eN` partner; toast above modal deliberately.                                                                                                                                                                                                                          |
 | Motion           | `--duration-{fast,base,slow}` · `--ease-standard` · `--ease-physical`                                                                     | Durations zero under `prefers-reduced-motion` (gated).                                                                                                                                                                                                                                       |
 
+
+`--spacing-compact-meta` (`min-h-compact-meta`, 40px) is metadata/disclosure only — never a primary CTA or tap-floor substitute; Agent 2 will expand this policy.
+
 ## 3 · v2 shell inventory — light and dark blocks
 
 Light block roles **[verified]**: `--background` · `--surface` · `--surface-chrome` ·

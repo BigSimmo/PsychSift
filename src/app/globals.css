@@ -117,6 +117,9 @@
      the edge-to-edge dock keeps its height (see the max-width: 430px block,
      which covers the composer input as well as the icon/send buttons). */
   --spacing-tap: 3rem;
+  /* Metadata/disclosure only, never primary CTAs, not a tap-floor substitute.
+     --row-compact is 36px row height and must not be reused as tap. */
+  --spacing-compact-meta: 2.5rem;
   --spacing-phone-frame: 52.75rem;
   /* Ward Flow's fixed phone navigation bar and the matching content reserve. */
   --spacing-ward-phone-bar: 3.5rem;
