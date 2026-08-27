@@ -33,7 +33,7 @@ const secret = "synthetic-independent-gate-owner-secret";
 function planAndManifest() {
   const manifest = {
     version: "clinical-kb-site-static-manifest-v1" as const,
-    gitSha: "synthetic",
+    gitSha: "4".repeat(40),
     registryVersion: "site-content-registry-v1",
     generatedAt: "2026-08-24T11:50:00.000Z",
     records: [
@@ -65,6 +65,7 @@ function planAndManifest() {
     previousReleaseId: siteReleasePreviousId,
     generationId: siteReleaseGenerationId,
     registryVersion: manifest.registryVersion,
+    deploymentSha: manifest.gitSha,
     staticManifestDigest: manifest.staticManifestDigest as `sha256:${string}`,
     expectedEmbedding: { model: "synthetic", dimensions: 3 },
     desiredRecords: manifest.records.map((record) => ({

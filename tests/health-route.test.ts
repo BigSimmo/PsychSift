@@ -16,6 +16,7 @@ function mockEnv(options: {
   providerMode?: "auto" | "openai" | "offline";
 }) {
   vi.resetModules();
+  vi.useFakeTimers({ toFake: ["Date"] });
   const openAIConfigured = options.openAIConfigured ?? options.configured;
   vi.doMock("@/lib/env", () => ({
     env: {
@@ -27,7 +28,10 @@ function mockEnv(options: {
     },
     isDemoMode: () => Boolean(options.demoMode),
   }));
-  vi.stubEnv("SITE_CONTENT_HEALTH_EVIDENCE_JSON", JSON.stringify(CURRENT_SITE_CONTENT_EVIDENCE));
+  vi.doMock("@/lib/site-content/site-content-health-authority", () => ({
+    collectSiteContentHealthInput: vi.fn(async () => CURRENT_SITE_CONTENT_EVIDENCE),
+  }));
+  vi.setSystemTime(new Date("2026-08-28T00:05:00.000Z"));
 }
 
 function healthRequest(query = "", headers?: HeadersInit) {
@@ -39,6 +43,7 @@ async function payload(response: Response) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
   vi.resetModules();
@@ -46,7 +51,7 @@ afterEach(() => {
 
 describe("GET /api/health", () => {
   it("reports ok when fully configured", async () => {
-    vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "2ae5a0aa5d339a7dc9089db134c2d9d0220444ae");
+    vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "4444444444444444444444444444444444444444");
     mockEnv({ configured: true });
     const { GET } = await import("../src/app/api/health/route");
 
@@ -58,7 +63,7 @@ describe("GET /api/health", () => {
     expect(body.checks).toMatchObject({ supabaseConfig: "ok", openaiConfig: "ok" });
     expect(body.demoMode).toBe(false);
     expect(typeof body.uptimeSeconds).toBe("number");
-    expect(body.deploymentCommitSha).toBe("2ae5a0aa5d339a7dc9089db134c2d9d0220444ae");
+    expect(body.deploymentCommitSha).toBe("4444444444444444444444444444444444444444");
   });
 
   it("reports degraded with 503 when required config is missing", async () => {

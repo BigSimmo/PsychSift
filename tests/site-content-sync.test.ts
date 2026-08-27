@@ -35,6 +35,7 @@ function plan(overrides: Record<string, unknown> = {}) {
     previousReleaseId: priorReleaseId,
     generationId,
     registryVersion: "site-content-registry-v1",
+    deploymentSha: "4".repeat(40),
     staticManifestDigest: sha("b"),
     expectedEmbedding: { model: "synthetic-embedding-v1", dimensions: 3 },
     desiredRecords: [desired("medication:alpha", sha("c")), desired("medication:beta", sha("d"))],

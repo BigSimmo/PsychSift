@@ -40,6 +40,7 @@ export type SiteContentSyncInput = Readonly<{
   previousReleaseId: string;
   generationId: string;
   registryVersion: string;
+  deploymentSha: string;
   staticManifestDigest: Digest;
   expectedEmbedding: { model: string; dimensions: number };
   desiredRecords: SiteContentSyncRecord[];
@@ -60,6 +61,7 @@ export type SiteContentSyncPlan = Readonly<{
   previousReleaseId: string;
   generationId: string;
   registryVersion: string;
+  deploymentSha: string;
   staticManifestDigest: Digest;
   embeddingContract: Readonly<{ model: string; dimensions: number }>;
   batchSize: number;
@@ -201,6 +203,9 @@ export function assertSiteContentSyncPlan(input: unknown): SiteContentSyncPlan {
   if (plan.version !== "site-content-sync-plan-v1" || !["dry-run", "write"].includes(plan.mode)) {
     throw new Error("Canonical site-content plan version/mode is invalid.");
   }
+  if (!/^[a-f0-9]{40}$/.test(plan.deploymentSha)) {
+    throw new Error("Canonical site-content plan deployment SHA is invalid.");
+  }
   const operations = [...plan.operations].sort((left, right) => left.logicalId.localeCompare(right.logicalId));
   if (new Set(operations.map((entry) => entry.logicalId)).size !== operations.length) {
     throw new Error("Canonical operation logical identities must be unique.");
@@ -270,6 +275,9 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
     throw new Error("Expected embedding model and dimensions are required.");
   }
   assertDigest(input.staticManifestDigest, "Static manifest digest");
+  if (!/^[a-f0-9]{40}$/.test(input.deploymentSha)) {
+    throw new Error("Deployment SHA must be a full lowercase commit SHA.");
+  }
   const legacy = reconcileLegacyRows(input);
   const desired = sortedByLogicalId(input.desiredRecords);
   if (new Set(desired.map((record) => record.logicalId)).size !== desired.length) {
@@ -341,6 +349,7 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
     previousReleaseId: input.previousReleaseId,
     generationId: input.generationId,
     registryVersion: input.registryVersion,
+    deploymentSha: input.deploymentSha,
     staticManifestDigest: input.staticManifestDigest,
     embeddingContract: Object.freeze({ ...input.expectedEmbedding }),
     batchSize: input.batchSize,

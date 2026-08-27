@@ -13,6 +13,12 @@ function taskMigration() {
   return { file: file!, sql: readFileSync(join(migrations, file!), "utf8") };
 }
 
+function runtimeAuthorityMigration() {
+  const file = readdirSync(migrations).find((entry) => entry.endsWith("_add_site_content_runtime_authority.sql"));
+  expect(file).toBeDefined();
+  return { file: file!, sql: readFileSync(join(migrations, file!), "utf8") };
+}
+
 describe("public site-content publication access", () => {
   it("uses bundled fallback only when the reader RPC is not yet applied and preserves authoritative empty partitions", async () => {
     const missing = {
@@ -107,13 +113,22 @@ describe("public site-content publication access", () => {
     }
     expect(types).not.toMatch(/p_administrator_authorized/);
   });
-  it("allocates a forward-only migration after every existing migration", () => {
-    const { file } = taskMigration();
-    const timestamps = readdirSync(migrations)
-      .filter((entry) => entry !== file)
-      .map((entry) => Number(entry.slice(0, 14)))
-      .filter(Number.isFinite);
-    expect(Number(file.slice(0, 14))).toBeGreaterThan(Math.max(...timestamps));
+  it("keeps the runtime-authority correction forward of the accepted Task 3 migration", () => {
+    const task = taskMigration();
+    const runtime = runtimeAuthorityMigration();
+    expect(Number(runtime.file.slice(0, 14))).toBeGreaterThan(Number(task.file.slice(0, 14)));
+  });
+
+  it("adds one service-role-only request-time authority and fenced synchronizer owner", () => {
+    const { sql } = runtimeAuthorityMigration();
+    expect(sql).toMatch(/generated always as[\s\S]*plan_json->>'deploymentSha'/i);
+    expect(sql).toMatch(/create table public\.site_content_synchronizer_state/i);
+    expect(sql).toMatch(/enable row level security/i);
+    expect(sql).toMatch(/record_site_content_synchronizer_heartbeat[\s\S]*last_invocation_id = p_invocation_id/i);
+    expect(sql).toMatch(/read_site_content_runtime_authority[\s\S]*limit 101/i);
+    expect(sql).toMatch(/set search_path = ''/i);
+    expect(sql).toMatch(/revoke all[\s\S]*from public, anon, authenticated, service_role/i);
+    expect(sql).toMatch(/grant execute[\s\S]*read_site_content_runtime_authority\(\)[\s\S]*to service_role/i);
   });
 
   it("publishes the public row, epoch, pending exclusion, and outbox atomically behind administrator authority", () => {

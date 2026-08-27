@@ -56,7 +56,7 @@ export type Database = {
       site_content_releases: {
         Row: {
           activated_at: string | null; activation_receipt: Json | null; created_at: string;
-          dynamic_state_digest: string; expected_changed_count: number; expected_record_count: number;
+          deployment_sha: string; dynamic_state_digest: string; expected_changed_count: number; expected_record_count: number;
           expected_tombstone_count: number; expected_unchanged_count: number; generation_id: string;
           governance_verified: boolean; id: string; integrity_verified: boolean; must_pass_verified: boolean;
           legacy_dispositions: Json; legacy_reconciliation_digest: string; plan_digest: string; plan_json: Json | null;
@@ -86,6 +86,30 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      site_content_synchronizer_state: {
+        Row: {
+          last_completed_at: string | null;
+          last_heartbeat_at: string | null;
+          last_invocation_id: string | null;
+          last_invoked_at: string | null;
+          last_outcome: string | null;
+          last_worker_id: string | null;
+          singleton: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          last_completed_at?: string | null;
+          last_heartbeat_at?: string | null;
+          last_invocation_id?: string | null;
+          last_invoked_at?: string | null;
+          last_outcome?: string | null;
+          last_worker_id?: string | null;
+          singleton?: boolean;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["site_content_synchronizer_state"]["Insert"]>;
+        Relationships: [];
       };
       site_content_publications: {
         Row: {
@@ -2650,6 +2674,11 @@ export type Database = {
       };
       read_site_content_release_activation_context: { Args: { p_release_id: string }; Returns: Json };
       read_site_content_release_gate_artifacts: { Args: { p_release_id: string }; Returns: Json };
+      read_site_content_runtime_authority: { Args: never; Returns: Json };
+      record_site_content_synchronizer_heartbeat: {
+        Args: { p_invocation_id: string; p_phase: string; p_worker_id: string };
+        Returns: Json;
+      };
       derive_site_content_release_gate_artifacts: {
         Args: { p_governance_receipt: Json; p_must_pass_receipt: Json; p_release_id: string };
         Returns: Json;

@@ -3,6 +3,73 @@ import { describe, expect, it, vi } from "vitest";
 import { createSiteContentSyncHandler, drainSiteContentSyncBatch } from "../supabase/functions/site-content-sync/index";
 
 describe("site-content sync worker", () => {
+  it("records started before claiming and succeeded for an idle invocation", async () => {
+    const rpc = vi.fn(async (name: string, _args?: Record<string, unknown>) =>
+      name === "claim_site_content_sync_events" ? { data: [], error: null } : { data: { ok: true }, error: null },
+    );
+    const handler = createSiteContentSyncHandler({
+      authorization: "Bearer synthetic-secret",
+      workerId: "66666666-6666-4666-8666-666666666666",
+      invocationId: () => "77777777-7777-4777-8777-777777777777",
+      rpc,
+      processEvent: vi.fn(),
+    });
+
+    const response = await handler(
+      new Request("http://local", { method: "POST", headers: { authorization: "Bearer synthetic-secret" } }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual([
+      "record_site_content_synchronizer_heartbeat",
+      "claim_site_content_sync_events",
+      "record_site_content_synchronizer_heartbeat",
+    ]);
+    expect(rpc.mock.calls[0]?.[1]).toMatchObject({ p_phase: "started" });
+    expect(rpc.mock.calls[2]?.[1]).toMatchObject({ p_phase: "succeeded" });
+  });
+
+  it("stops before claim when synchronizer telemetry cannot be established", async () => {
+    const rpc = vi.fn(async () => ({ data: { ok: false }, error: null }));
+    const handler = createSiteContentSyncHandler({
+      authorization: "Bearer synthetic-secret",
+      workerId: "66666666-6666-4666-8666-666666666666",
+      rpc,
+      processEvent: vi.fn(),
+    });
+
+    const response = await handler(
+      new Request("http://local", { method: "POST", headers: { authorization: "Bearer synthetic-secret" } }),
+    );
+    expect(response.status).toBe(503);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).not.toHaveBeenCalledWith("claim_site_content_sync_events", expect.anything());
+  });
+
+  it("records failed when an established invocation cannot claim work", async () => {
+    const rpc = vi.fn(async (name: string, _args?: Record<string, unknown>) =>
+      name === "claim_site_content_sync_events"
+        ? { data: null, error: { message: "synthetic unavailable" } }
+        : { data: { ok: true }, error: null },
+    );
+    const handler = createSiteContentSyncHandler({
+      authorization: "Bearer synthetic-secret",
+      workerId: "66666666-6666-4666-8666-666666666666",
+      rpc,
+      processEvent: vi.fn(),
+    });
+
+    const response = await handler(
+      new Request("http://local", { method: "POST", headers: { authorization: "Bearer synthetic-secret" } }),
+    );
+    expect(response.status).toBe(503);
+    expect(
+      rpc.mock.calls
+        .filter(([name]) => name === "record_site_content_synchronizer_heartbeat")
+        .map(([, args]) => (args as { p_phase: string }).p_phase),
+    ).toEqual(["started", "failed"]);
+  });
+
   it("claims a bounded batch and completes only with the live lease and generation identity", async () => {
     const rpc = vi.fn(async (name: string) => {
       if (name === "claim_site_content_sync_events") {

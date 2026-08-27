@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-20T15:53:04.540Z",
+  "generated_at": "2026-08-27T21:57:33.097Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "6fe4883e03fa662dc90e09f3cfd8d35ab9fcf965bfe87bad64db73f1fab5986e",
-  "replay_seconds": 58,
+  "schema_sha256": "aefafddcc1338472c1f0f760147260125970eec1130bb751cfcac2337baf3a0a",
+  "replay_seconds": 16,
   "snapshot": {
     "views": [
       {
@@ -4322,6 +4322,1025 @@
       },
       {
         "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "site_content_public_authority",
+        "columns": [
+          {
+            "name": "active_release_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "change_epoch",
+            "type": "bigint",
+            "default": "0",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "singleton",
+            "type": "boolean",
+            "default": "true",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "site_content_publications",
+        "columns": [
+          {
+            "name": "actor_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "content_hash",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "domain",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "governance",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "logical_id",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "payload",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "publication_version",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "record_kind",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "slug",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_lineage_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "site_content_release_gate_artifacts",
+        "columns": [
+          {
+            "name": "artifact",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "artifact_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "observed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "owner",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "recorded_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "release_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "subject",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "subject_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "site_content_release_operations",
+        "columns": [
+          {
+            "name": "completed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "content_hash",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "logical_id",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "operation",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "release_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": "'pending'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "site_content_release_projections",
+        "columns": [
+          {
+            "name": "content_hash",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "domain",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "embedding",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "embedding_bytes_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "embedding_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "embedding_dimensions",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "embedding_model",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "governance",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "logical_id",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "payload",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "publication_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "publication_version",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "record_kind",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "release_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "slug",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_lineage_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "tombstoned",
+            "type": "boolean",
+            "default": "false",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "site_content_releases",
+        "columns": [
+          {
+            "name": "activated_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "activation_receipt",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "deployment_sha",
+            "type": "text",
+            "default": "lower((plan_json ->> 'deploymentSha'::text))",
+            "identity": "",
+            "not_null": true,
+            "generated": "s"
+          },
+          {
+            "name": "dynamic_state_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expected_changed_count",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expected_record_count",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expected_tombstone_count",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expected_unchanged_count",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "governance_verified",
+            "type": "boolean",
+            "default": "false",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "integrity_verified",
+            "type": "boolean",
+            "default": "false",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "legacy_dispositions",
+            "type": "jsonb",
+            "default": "'[]'::jsonb",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "legacy_reconciliation_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "must_pass_verified",
+            "type": "boolean",
+            "default": "false",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "plan_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "plan_json",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "previous_release_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "project_ref",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "projected_record_count",
+            "type": "integer",
+            "default": "0",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "public_visibility_verified",
+            "type": "boolean",
+            "default": "false",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "recovery_evidence",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "recovery_evidence_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "registry_version",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "release_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "rollback_receipt",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "state",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "static_manifest_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "verification_evidence",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "site_content_sync_outbox",
+        "columns": [
+          {
+            "name": "attempt_count",
+            "type": "integer",
+            "default": "0",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "available_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "candidate_release_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "completed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "completed_release_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "content_hash",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "dynamic_state_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "error_code",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "event_id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "lease_expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "logical_id",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "operation",
+            "type": "text",
+            "default": "'changed'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "plan_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "project_ref",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "publication_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "recovery_evidence_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "release_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "static_manifest_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": "'pending'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "worker_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "site_content_synchronizer_state",
+        "columns": [
+          {
+            "name": "last_completed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "last_heartbeat_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "last_invocation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "last_invoked_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "last_outcome",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "last_worker_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "singleton",
+            "type": "boolean",
+            "default": "true",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "statement_timestamp()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "site_content_validation_binding_consumptions",
+        "columns": [
+          {
+            "name": "binding_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "consumed_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "payload_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "project_ref",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "purpose",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
           "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
@@ -5893,6 +6912,84 @@
         "def_hash": "6d913e54f17c817a9863443d02b8935c"
       },
       {
+        "def": "CREATE UNIQUE INDEX site_content_public_authority_pkey ON public.site_content_public_authority USING btree (singleton)",
+        "name": "site_content_public_authority_pkey",
+        "table": "site_content_public_authority",
+        "def_hash": "f1825af06e38677a45448165bc1e6865"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_publications_domain_kind_slug_key ON public.site_content_publications USING btree (domain, record_kind, slug)",
+        "name": "site_content_publications_domain_kind_slug_key",
+        "table": "site_content_publications",
+        "def_hash": "f66dddd5804e853172008c76ae05a99a"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_publications_logical_id_key ON public.site_content_publications USING btree (logical_id)",
+        "name": "site_content_publications_logical_id_key",
+        "table": "site_content_publications",
+        "def_hash": "6ffd05b82ee5ffdb66014afbb8723f17"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_publications_pkey ON public.site_content_publications USING btree (id)",
+        "name": "site_content_publications_pkey",
+        "table": "site_content_publications",
+        "def_hash": "87f6f78135b65b6cc892440f6f1d4af8"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_release_gate_artifacts_pkey ON public.site_content_release_gate_artifacts USING btree (release_id, owner)",
+        "name": "site_content_release_gate_artifacts_pkey",
+        "table": "site_content_release_gate_artifacts",
+        "def_hash": "6a7540319f4b4a2bc2242914d5d4c4be"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_release_operations_pkey ON public.site_content_release_operations USING btree (release_id, logical_id)",
+        "name": "site_content_release_operations_pkey",
+        "table": "site_content_release_operations",
+        "def_hash": "1e8d677547772451ac3f37272c017494"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_release_projections_pkey ON public.site_content_release_projections USING btree (release_id, logical_id)",
+        "name": "site_content_release_projections_pkey",
+        "table": "site_content_release_projections",
+        "def_hash": "2364126ba0fb934606e521e91a5ef71b"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_releases_pkey ON public.site_content_releases USING btree (id)",
+        "name": "site_content_releases_pkey",
+        "table": "site_content_releases",
+        "def_hash": "5a7b8eb7811d1de9a6356a44eaaae626"
+      },
+      {
+        "def": "CREATE INDEX site_content_sync_outbox_claim_idx ON public.site_content_sync_outbox USING btree (status, available_at, created_at)",
+        "name": "site_content_sync_outbox_claim_idx",
+        "table": "site_content_sync_outbox",
+        "def_hash": "93b402926f69ac4631ed12ac0464d002"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_sync_outbox_pending_identity_key ON public.site_content_sync_outbox USING btree (candidate_release_id, logical_id) WHERE (status = ANY (ARRAY['pending'::text, 'leased'::text, 'quarantined'::text]))",
+        "name": "site_content_sync_outbox_pending_identity_key",
+        "table": "site_content_sync_outbox",
+        "def_hash": "31a0f16bf2c45967f23c37d5fcd35224"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_sync_outbox_pkey ON public.site_content_sync_outbox USING btree (event_id)",
+        "name": "site_content_sync_outbox_pkey",
+        "table": "site_content_sync_outbox",
+        "def_hash": "7e9d98b421dc97d05ea2ebab761cd9e8"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_synchronizer_state_pkey ON public.site_content_synchronizer_state USING btree (singleton)",
+        "name": "site_content_synchronizer_state_pkey",
+        "table": "site_content_synchronizer_state",
+        "def_hash": "a7fbe9bd81fade60e95eef3d755aac86"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX site_content_validation_binding_consumptions_pkey ON public.site_content_validation_binding_consumptions USING btree (binding_id)",
+        "name": "site_content_validation_binding_consumptions_pkey",
+        "table": "site_content_validation_binding_consumptions",
+        "def_hash": "ada41b96f25f9055923464949f6a1442"
+      },
+      {
         "def": "CREATE UNIQUE INDEX source_review_events_pkey ON public.source_review_events USING btree (id)",
         "name": "source_review_events_pkey",
         "table": "source_review_events",
@@ -6648,6 +7745,24 @@
     "functions": [
       {
         "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "64da7dc038bd24fd6e8a3c11cc24e508",
+        "signature": "public.activate_site_content_release(uuid,text,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "16db052ab7d31a59d9394ac8e6c5e8b6",
+        "signature": "public.adopt_site_content_baseline(jsonb,jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -6672,6 +7787,15 @@
       },
       {
         "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "386381d6f6f93cd8d0f4d68384241331",
+        "signature": "public.begin_site_content_candidate_release(jsonb,jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -6693,6 +7817,14 @@
         ],
         "def_hash": "d15147f6f3763c5642b6c4af63d50c67",
         "signature": "public.claim_ingestion_jobs(text,integer,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "4c2599377f070dea1a6e935535b8c9ea",
+        "signature": "public.claim_site_content_sync_events(uuid,integer,integer)"
       },
       {
         "acl": [
@@ -6739,6 +7871,14 @@
         ],
         "def_hash": "6406ade971963fa9b6d952765a697bd9",
         "signature": "public.complete_ingestion_job(uuid,uuid,uuid,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "6a11af402119582cbe7ff681ad7d8df1",
+        "signature": "public.complete_site_content_sync_event(uuid,uuid,uuid,uuid,integer,uuid,text)"
       },
       {
         "acl": [
@@ -6822,6 +7962,14 @@
       },
       {
         "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres"
+        ],
+        "def_hash": "094dea59468d09778e064fc7674b2b2e",
+        "signature": "public.derive_site_content_release_gate_artifacts(uuid,jsonb,jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -6880,6 +8028,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "17e136ef594004b6a56b9ba99c77023f",
+        "signature": "public.fail_site_content_sync_event(uuid,uuid,uuid,uuid,integer,text,boolean,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "8bc8a230f147790d5ffb77345627d4da",
         "signature": "public.get_related_document_metadata_v2(uuid[],uuid,boolean)"
       },
@@ -6906,6 +8062,14 @@
         ],
         "def_hash": "248e7a470031632101db7d22b1dbd006",
         "signature": "public.guard_document_publication_transition()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "d3dda0916b90ac27d5e48ea1cab65f14",
+        "signature": "public.heartbeat_site_content_sync_event(uuid,uuid,uuid,uuid,integer,integer)"
       },
       {
         "acl": [
@@ -7176,8 +8340,41 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "7facc1bcc2e2fc99d58fcccd76a2f0d1",
+        "signature": "public.provision_rag_programme_gate_owner_secret(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "9fd978c0454dd34b3b0fe796935eaf57",
+        "signature": "public.provision_site_content_governance_gate_owner_secret(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "3ea9f07627d13a80c6fe5448f60abfc1",
+        "signature": "public.provision_site_content_validation_secret(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "072da246344dd56a204b715a35c5a015",
         "signature": "public.publish_approved_documents(jsonb,text,integer)"
+      },
+      {
+        "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "b927eed9bcbbddcc1dcd75fce6fb4f4d",
+        "signature": "public.publish_site_content_record(jsonb)"
       },
       {
         "acl": [
@@ -7210,6 +8407,55 @@
         ],
         "def_hash": "5009d9294403fdab9280c4bb0952e782",
         "signature": "public.purge_expired_rag_response_cache(integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "04ba095c1bc35b17a4a86e0c2e781c3a",
+        "signature": "public.read_public_site_content_records(text,text,text)"
+      },
+      {
+        "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "047e90540771ae9c4d48c045c62af114",
+        "signature": "public.read_site_content_release_activation_context(uuid)"
+      },
+      {
+        "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres"
+        ],
+        "def_hash": "24af2924a7afa9661ab485fb304aeed9",
+        "signature": "public.read_site_content_release_gate_artifacts(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "c7c22251a96f978efb625956ed719f15",
+        "signature": "public.read_site_content_runtime_authority()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "c67fd545cc6a5212bee32ddc8ca16e2d",
+        "signature": "public.read_site_content_sync_event_payload(uuid,uuid,uuid,uuid,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8e4a449e69b8b70f723b11723f0ee07a",
+        "signature": "public.record_site_content_synchronizer_heartbeat(uuid,uuid,text)"
       },
       {
         "acl": [
@@ -7309,6 +8555,15 @@
       },
       {
         "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8b40f06c7efaa13a63f586fe9a6f711c",
+        "signature": "public.rollback_site_content_release(uuid,jsonb,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -7373,6 +8628,73 @@
       },
       {
         "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "b1b6a99aade744b564cffb0332a602a8",
+        "signature": "public.site_content_admin_authorized()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "3ba31b0688959f727d7df9d633166525",
+        "signature": "public.site_content_canonical_json(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "fc1e537e50bf44b896a8c26ac21efa27",
+        "signature": "public.site_content_consume_validation_binding(jsonb,text,text,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "d007a4e55806b689332706fc7294b270",
+        "signature": "public.site_content_gate_owner_receipt_valid(jsonb,text,text,jsonb,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "e9f1104fb31bbb1de0dc23456b6f0d50",
+        "signature": "public.site_content_json_digest(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "31766c3dabb1c7bace12bdc456cbd11d",
+        "signature": "public.site_content_p05_digest(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "7cf46bb843bb9276983c7500b9076741",
+        "signature": "public.site_content_validation_binding_valid(jsonb,text,text,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f9b1465e72361faa9763b9b19afad73c",
+        "signature": "public.stage_site_content_candidate_operation(uuid,uuid,uuid,uuid,integer,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "93a25678d972b2d5d26c6861cc389e30",
+        "signature": "public.stage_site_content_candidate_projection(uuid,uuid,uuid,uuid,integer,uuid,jsonb,text,integer,text,text)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -7393,6 +8715,15 @@
         ],
         "def_hash": "c5fafb6bc7cc303cb1199895b777d6a6",
         "signature": "public.update_indexing_v3_agent_job_status(uuid,text,text,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "174576116ac483b22d161aeb0c56d5c2",
+        "signature": "public.verify_site_content_candidate_release(jsonb,jsonb)"
       }
     ],
     "extensions": [
@@ -8196,6 +9527,311 @@
         "def": "PRIMARY KEY (id)",
         "name": "rag_visual_eval_runs_pkey",
         "table": "rag_visual_eval_runs"
+      },
+      {
+        "def": "FOREIGN KEY (active_release_id) REFERENCES public.site_content_releases(id)",
+        "name": "site_content_public_authority_active_release_id_fkey",
+        "table": "site_content_public_authority"
+      },
+      {
+        "def": "CHECK ((change_epoch >= 0))",
+        "name": "site_content_public_authority_change_epoch_check",
+        "table": "site_content_public_authority"
+      },
+      {
+        "def": "PRIMARY KEY (singleton)",
+        "name": "site_content_public_authority_pkey",
+        "table": "site_content_public_authority"
+      },
+      {
+        "def": "CHECK (singleton)",
+        "name": "site_content_public_authority_singleton_check",
+        "table": "site_content_public_authority"
+      },
+      {
+        "def": "CHECK ((content_hash ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_publications_content_hash_check",
+        "table": "site_content_publications"
+      },
+      {
+        "def": "CHECK ((domain = ANY (ARRAY['services'::text, 'forms'::text, 'medications'::text, 'differentials'::text])))",
+        "name": "site_content_publications_domain_check",
+        "table": "site_content_publications"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "site_content_publications_pkey",
+        "table": "site_content_publications"
+      },
+      {
+        "def": "CHECK ((source_lineage_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_publications_source_lineage_digest_check",
+        "table": "site_content_publications"
+      },
+      {
+        "def": "CHECK ((artifact_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_release_gate_artifacts_artifact_digest_check",
+        "table": "site_content_release_gate_artifacts"
+      },
+      {
+        "def": "CHECK ((owner = ANY (ARRAY['public-site-content-reader-v1'::text, 'site-content-governance-registry-v1'::text, 'rag-programme-eval-v1'::text])))",
+        "name": "site_content_release_gate_artifacts_owner_check",
+        "table": "site_content_release_gate_artifacts"
+      },
+      {
+        "def": "PRIMARY KEY (release_id, owner)",
+        "name": "site_content_release_gate_artifacts_pkey",
+        "table": "site_content_release_gate_artifacts"
+      },
+      {
+        "def": "CHECK ((subject_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_release_gate_artifacts_subject_digest_check",
+        "table": "site_content_release_gate_artifacts"
+      },
+      {
+        "def": "CHECK ((content_hash ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_release_operations_content_hash_check",
+        "table": "site_content_release_operations"
+      },
+      {
+        "def": "CHECK ((operation = ANY (ARRAY['changed'::text, 'unchanged'::text, 'tombstone'::text])))",
+        "name": "site_content_release_operations_operation_check",
+        "table": "site_content_release_operations"
+      },
+      {
+        "def": "PRIMARY KEY (release_id, logical_id)",
+        "name": "site_content_release_operations_pkey",
+        "table": "site_content_release_operations"
+      },
+      {
+        "def": "FOREIGN KEY (release_id) REFERENCES public.site_content_releases(id) ON DELETE CASCADE",
+        "name": "site_content_release_operations_release_id_fkey",
+        "table": "site_content_release_operations"
+      },
+      {
+        "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'complete'::text, 'quarantined'::text])))",
+        "name": "site_content_release_operations_status_check",
+        "table": "site_content_release_operations"
+      },
+      {
+        "def": "CHECK ((content_hash ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_release_projections_content_hash_check",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "CHECK ((domain = ANY (ARRAY['services'::text, 'forms'::text, 'medications'::text, 'differentials'::text])))",
+        "name": "site_content_release_projections_domain_check",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "CHECK (((embedding_bytes_digest IS NULL) OR (embedding_bytes_digest ~ '^sha256:[0-9a-f]{64}$'::text)))",
+        "name": "site_content_release_projections_embedding_bytes_digest_check",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "CHECK (((embedding_digest IS NULL) OR (embedding_digest ~ '^sha256:[0-9a-f]{64}$'::text)))",
+        "name": "site_content_release_projections_embedding_digest_check",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "CHECK (((embedding_dimensions IS NULL) OR (embedding_dimensions > 0)))",
+        "name": "site_content_release_projections_embedding_dimensions_check",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "PRIMARY KEY (release_id, logical_id)",
+        "name": "site_content_release_projections_pkey",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "FOREIGN KEY (publication_id) REFERENCES public.site_content_publications(id)",
+        "name": "site_content_release_projections_publication_id_fkey",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "FOREIGN KEY (release_id) REFERENCES public.site_content_releases(id) ON DELETE CASCADE",
+        "name": "site_content_release_projections_release_id_fkey",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "CHECK ((source_lineage_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_release_projections_source_lineage_digest_check",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "CHECK ((deployment_sha ~ '^[0-9a-f]{40}$'::text))",
+        "name": "site_content_releases_deployment_sha_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((dynamic_state_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_releases_dynamic_state_digest_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((expected_changed_count >= 0))",
+        "name": "site_content_releases_expected_changed_count_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((expected_record_count >= 0))",
+        "name": "site_content_releases_expected_record_count_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((expected_tombstone_count >= 0))",
+        "name": "site_content_releases_expected_tombstone_count_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((expected_unchanged_count >= 0))",
+        "name": "site_content_releases_expected_unchanged_count_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((legacy_reconciliation_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_releases_legacy_reconciliation_digest_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "site_content_releases_pkey",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((plan_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_releases_plan_digest_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "FOREIGN KEY (previous_release_id) REFERENCES public.site_content_releases(id)",
+        "name": "site_content_releases_previous_release_id_fkey",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((projected_record_count >= 0))",
+        "name": "site_content_releases_projected_record_count_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((recovery_evidence_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_releases_recovery_evidence_digest_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((release_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_releases_release_digest_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((state = ANY (ARRAY['candidate'::text, 'active'::text, 'retained'::text, 'failed'::text])))",
+        "name": "site_content_releases_state_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((static_manifest_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_releases_static_manifest_digest_check",
+        "table": "site_content_releases"
+      },
+      {
+        "def": "CHECK ((attempt_count >= 0))",
+        "name": "site_content_sync_outbox_attempt_count_check",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "FOREIGN KEY (candidate_release_id) REFERENCES public.site_content_releases(id)",
+        "name": "site_content_sync_outbox_candidate_release_id_fkey",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "FOREIGN KEY (completed_release_id) REFERENCES public.site_content_releases(id)",
+        "name": "site_content_sync_outbox_completed_release_id_fkey",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "CHECK ((content_hash ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_sync_outbox_content_hash_check",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "CHECK ((dynamic_state_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_sync_outbox_dynamic_state_digest_check",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "CHECK ((operation = ANY (ARRAY['changed'::text, 'unchanged'::text, 'tombstone'::text])))",
+        "name": "site_content_sync_outbox_operation_check",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "PRIMARY KEY (event_id)",
+        "name": "site_content_sync_outbox_pkey",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "CHECK ((plan_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_sync_outbox_plan_digest_check",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "FOREIGN KEY (publication_id) REFERENCES public.site_content_publications(id)",
+        "name": "site_content_sync_outbox_publication_id_fkey",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "CHECK ((recovery_evidence_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_sync_outbox_recovery_evidence_digest_check",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "CHECK ((release_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_sync_outbox_release_digest_check",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "CHECK ((static_manifest_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_sync_outbox_static_manifest_digest_check",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'leased'::text, 'complete'::text, 'quarantined'::text])))",
+        "name": "site_content_sync_outbox_status_check",
+        "table": "site_content_sync_outbox"
+      },
+      {
+        "def": "CHECK ((((last_invocation_id IS NULL) AND (last_worker_id IS NULL) AND (last_invoked_at IS NULL) AND (last_heartbeat_at IS NULL) AND (last_completed_at IS NULL) AND (last_outcome IS NULL)) OR ((last_invocation_id IS NOT NULL) AND (last_worker_id IS NOT NULL) AND (last_invoked_at IS NOT NULL) AND (last_heartbeat_at IS NOT NULL) AND (last_outcome IS NOT NULL))))",
+        "name": "site_content_synchronizer_state_check",
+        "table": "site_content_synchronizer_state"
+      },
+      {
+        "def": "CHECK ((last_outcome = ANY (ARRAY['running'::text, 'succeeded'::text, 'failed'::text])))",
+        "name": "site_content_synchronizer_state_last_outcome_check",
+        "table": "site_content_synchronizer_state"
+      },
+      {
+        "def": "PRIMARY KEY (singleton)",
+        "name": "site_content_synchronizer_state_pkey",
+        "table": "site_content_synchronizer_state"
+      },
+      {
+        "def": "CHECK (singleton)",
+        "name": "site_content_synchronizer_state_singleton_check",
+        "table": "site_content_synchronizer_state"
+      },
+      {
+        "def": "CHECK ((payload_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_validation_binding_consumptio_payload_digest_check",
+        "table": "site_content_validation_binding_consumptions"
+      },
+      {
+        "def": "PRIMARY KEY (binding_id)",
+        "name": "site_content_validation_binding_consumptions_pkey",
+        "table": "site_content_validation_binding_consumptions"
+      },
+      {
+        "def": "CHECK ((purpose = ANY (ARRAY['adopt'::text, 'begin'::text, 'verify'::text, 'activate'::text, 'rollback'::text])))",
+        "name": "site_content_validation_binding_consumptions_purpose_check",
+        "table": "site_content_validation_binding_consumptions"
       },
       {
         "def": "CHECK ((decision = ANY (ARRAY['locally_reviewed'::text, 'approved'::text, 'third_party_reference_attested'::text, 'rejected'::text, 'decommissioned'::text, 'superseded'::text])))",

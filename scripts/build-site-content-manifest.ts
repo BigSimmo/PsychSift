@@ -10,6 +10,10 @@ import {
   type StaticSiteContentManifest,
 } from "../src/lib/site-content/site-content-manifest";
 import { siteContentRegistryVersion } from "../src/lib/site-content/site-content-registry";
+import {
+  expectedSiteContentRegistryVersion,
+  expectedSiteContentStaticManifestDigest,
+} from "../src/lib/site-content/site-content-static-build.generated";
 
 export type SiteContentManifestCliOptions = {
   check: boolean;
@@ -56,6 +60,14 @@ export async function runSiteContentManifestCli(args: readonly string[]) {
     gitSha: gitSha(),
     registryVersion: siteContentRegistryVersion,
   });
+
+  if (
+    check &&
+    (manifest.registryVersion !== expectedSiteContentRegistryVersion ||
+      manifest.staticManifestDigest !== expectedSiteContentStaticManifestDigest)
+  ) {
+    throw new Error("Generated site-content static-build identity is stale; regenerate the checked-in identity owner.");
+  }
 
   if (out) await writeJson(out, manifest);
   if (baselinePath && diffPath) {

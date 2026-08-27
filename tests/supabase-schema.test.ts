@@ -198,6 +198,10 @@ const driftManifest = JSON.parse(readFileSync(new URL("../supabase/drift-manifes
   };
 };
 const driftIndexDefinitions = new Map(driftManifest.snapshot.indexes.map((index) => [index.name, index.def] as const));
+const siteContentRuntimeAuthorityMigration = readFileSync(
+  new URL("../supabase/migrations/20260827213539_add_site_content_runtime_authority.sql", import.meta.url),
+  "utf8",
+).replace(/\s+/g, " ");
 
 // Keep in lockstep with the PL/pgSQL chain in
 // supabase/migrations/20260804110240_restore_rag_search_health_indexes.sql.
@@ -1229,6 +1233,19 @@ describe("Supabase schema Data API grants", () => {
       expect(sql).toContain("commit_fn_def := pg_get_functiondef(");
       expect(sql).toContain("commit_document_index_generation.preserve_legacy_artifacts_migration");
       expect(sql).toContain("from public.document_chunks replacement");
+    }
+  });
+});
+
+describe("site-content runtime authority schema parity", () => {
+  it("keeps the forward migration and canonical schema aligned on the bounded authority", () => {
+    for (const sql of [schema, siteContentRuntimeAuthorityMigration]) {
+      expect(sql).toContain("deployment_sha text generated always as");
+      expect(sql).toContain("create table public.site_content_synchronizer_state");
+      expect(sql).toContain("function public.record_site_content_synchronizer_heartbeat");
+      expect(sql).toContain("function public.read_site_content_runtime_authority()");
+      expect(sql).toContain("limit 101");
+      expect(sql).toContain("grant execute on function public.read_site_content_runtime_authority() to service_role");
     }
   });
 });

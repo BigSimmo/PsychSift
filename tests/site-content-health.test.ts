@@ -23,6 +23,7 @@ function updatingEvidence(): SiteContentHealthInput {
       changeEpoch: "43",
       pendingLogicalIds,
       pendingLogicalIdsDigest,
+      integrity: { ...input.activeRelease!.integrity, directSuccessorCandidateCount: 1 },
     },
     queueHealth: {
       ...input.queueHealth,
@@ -37,7 +38,11 @@ function updatingEvidence(): SiteContentHealthInput {
 
 async function routeResponse(path: "/api/health" | "/api/health/ready", evidence: unknown) {
   vi.resetModules();
-  vi.stubEnv("SITE_CONTENT_HEALTH_EVIDENCE_JSON", evidence === undefined ? "" : JSON.stringify(evidence));
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-08-28T00:05:00.000Z"));
+  vi.doMock("@/lib/site-content/site-content-health-authority", () => ({
+    collectSiteContentHealthInput: vi.fn(async () => evidence),
+  }));
   vi.doMock("@/lib/env", () => ({
     env: {
       NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
@@ -56,6 +61,7 @@ async function routeResponse(path: "/api/health" | "/api/health/ready", evidence
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
   vi.resetModules();
@@ -428,6 +434,37 @@ describe("site-content activation health", () => {
         state: "current",
       });
       expect(fetchSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["/api/health", "/api/health/ready"] as const)(
+    "fails %s when the actual runtime SHA differs from the active release",
+    async (path) => {
+      const input = currentEvidence();
+      const response = await routeResponse(path, { ...input, deploymentSha: "5".repeat(40) });
+      expect(response.status).toBe(503);
+      expect((await response.json()) as Record<string, unknown>).toMatchObject({
+        status: "degraded",
+        siteContent: { state: "failure" },
+      });
+    },
+  );
+
+  it.each(["/api/health", "/api/health/ready"] as const)(
+    "fails %s when an internally fresh authority observation is wall-clock old",
+    async (path) => {
+      const input = currentEvidence();
+      const staleResponse = await routeResponse(path, {
+        ...input,
+        activeRelease: { ...input.activeRelease!, activatedAt: "2026-08-27T23:50:00.000Z" },
+        queueHealth: {
+          ...input.queueHealth,
+          observedAt: "2026-08-27T23:55:00.000Z",
+          lastHeartbeatAt: "2026-08-27T23:54:30.000Z",
+          lastInvocationAt: "2026-08-27T23:54:00.000Z",
+        },
+      });
+      expect(staleResponse.status).toBe(503);
     },
   );
 

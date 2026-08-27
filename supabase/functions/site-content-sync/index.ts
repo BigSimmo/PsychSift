@@ -130,6 +130,7 @@ export async function drainSiteContentSyncBatch(options: DrainOptions) {
 
 type HandlerDependencies = Pick<DrainOptions, "workerId" | "rpc" | "processEvent" | "log" | "heartbeatIntervalMs"> & {
   authorization: string;
+  invocationId?: () => string;
 };
 
 export function createSiteContentSyncHandler(dependencies: HandlerDependencies) {
@@ -138,16 +139,61 @@ export function createSiteContentSyncHandler(dependencies: HandlerDependencies) 
     if (request.headers.get("authorization") !== dependencies.authorization) {
       return new Response("Unauthorized", { status: 401 });
     }
-    try {
-      const counts = await drainSiteContentSyncBatch({
-        ...dependencies,
-        limit: 25,
-        leaseSeconds: 90,
-        maxBatchSize: 25,
-        maxAttempts: 4,
+    const invocationId = dependencies.invocationId?.() ?? crypto.randomUUID();
+    let telemetryEstablished = false;
+    let telemetryLost = false;
+    let heartbeatChain = Promise.resolve();
+    const record = async (phase: "started" | "heartbeat" | "succeeded" | "failed") => {
+      const result = await dependencies.rpc("record_site_content_synchronizer_heartbeat", {
+        p_invocation_id: invocationId,
+        p_worker_id: dependencies.workerId,
+        p_phase: phase,
       });
+      return !result.error && (result.data as { ok?: boolean } | null)?.ok === true;
+    };
+    try {
+      telemetryEstablished = await record("started");
+      if (!telemetryEstablished) throw new Error("Site-content synchronizer telemetry could not be established.");
+      const invocationHeartbeat = setInterval(
+        () => {
+          heartbeatChain = heartbeatChain
+            .then(async () => {
+              if (!(await record("heartbeat"))) telemetryLost = true;
+            })
+            .catch(() => {
+              telemetryLost = true;
+            });
+        },
+        Math.max(25, dependencies.heartbeatIntervalMs ?? 30_000),
+      );
+      let counts;
+      try {
+        counts = await drainSiteContentSyncBatch({
+          ...dependencies,
+          limit: 25,
+          leaseSeconds: 90,
+          maxBatchSize: 25,
+          maxAttempts: 4,
+        });
+      } finally {
+        clearInterval(invocationHeartbeat);
+        await heartbeatChain;
+      }
+      if (counts.retried > 0 || counts.quarantined > 0 || counts.leaseLost > 0) {
+        throw new Error("Site-content synchronizer invocation did not complete cleanly.");
+      }
+      if (telemetryLost || !(await record("succeeded"))) {
+        throw new Error("Site-content synchronizer telemetry was lost.");
+      }
       return Response.json(counts);
     } catch {
+      if (telemetryEstablished) {
+        try {
+          await record("failed");
+        } catch {
+          // The response remains fail-closed when final telemetry is unavailable.
+        }
+      }
       return Response.json({ error: "site_content_sync_failed" }, { status: 503 });
     }
   };

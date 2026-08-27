@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { appModeDefinition } from "@/lib/app-modes";
+import { buildSiteContentSyncPlanFromInputs } from "../scripts/sync-site-content-corpus";
 import {
   buildAllSiteContentRecords,
   buildDynamicSiteContentSeedRecords,
@@ -29,6 +30,10 @@ import {
   siteContentRetrievalMetadata,
 } from "@/lib/site-content/site-content-registry";
 import type { SiteContentRecord } from "@/lib/site-content/site-content-contracts";
+import {
+  expectedSiteContentRegistryVersion,
+  expectedSiteContentStaticManifestDigest,
+} from "@/lib/site-content/site-content-static-build.generated";
 import type { RegistryCorpusEntry } from "@/lib/registry-corpus";
 import { toolCatalogRecords } from "@/lib/tools-catalog";
 
@@ -55,6 +60,41 @@ function staticRecord(overrides: Partial<SiteContentRecord> = {}) {
 const metadata = { gitSha: "03d5af81fdec526595df6dd6ba5a0250de859bdd", registryVersion: siteContentRegistryVersion };
 
 describe("static site-content manifest", () => {
+  it("keeps the compiled static-build identity equal to the provider-free manifest", () => {
+    const manifest = buildStaticSiteContentManifest(buildAllSiteContentRecords(), {
+      gitSha: "4".repeat(40),
+      registryVersion: siteContentRegistryVersion,
+    });
+    expect(expectedSiteContentRegistryVersion).toBe(siteContentRegistryVersion);
+    expect(expectedSiteContentStaticManifestDigest).toBe(manifest.staticManifestDigest);
+  });
+
+  it("binds the static manifest commit SHA into the canonical sync plan digest", () => {
+    const manifest = buildStaticSiteContentManifest(buildAllSiteContentRecords(), metadata, {
+      generatedAt: "2026-08-28T00:00:00.000Z",
+    });
+    const input = {
+      manifest,
+      projectRef: "offline-site-content",
+      expectedProjectRef: "offline-site-content",
+      candidateReleaseId: "11111111-1111-4111-8111-111111111111",
+      previousReleaseId: "22222222-2222-4222-8222-222222222222",
+      generationId: "33333333-3333-4333-8333-333333333333",
+      expectedEmbedding: { model: "synthetic", dimensions: 3 },
+      activeProjections: [],
+      legacyRows: [],
+      legacyDispositions: [],
+      batchSize: 25,
+    };
+    const plan = buildSiteContentSyncPlanFromInputs(input);
+    const changed = buildSiteContentSyncPlanFromInputs({
+      ...input,
+      manifest: { ...manifest, gitSha: "a".repeat(40) },
+    });
+    expect(plan.deploymentSha).toBe(metadata.gitSha);
+    expect(changed.planDigest).not.toBe(plan.planDigest);
+  });
+
   it("canonicalizes whitespace and produces stable sorted identities and digests", () => {
     const first = staticRecord();
     const second = staticRecord({

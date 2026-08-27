@@ -12,7 +12,10 @@ import {
 } from "../src/lib/site-content/site-content-sync";
 import type { StaticSiteContentManifest } from "../src/lib/site-content/site-content-manifest";
 
-type BuildInputs = Omit<SiteContentSyncInput, "registryVersion" | "staticManifestDigest" | "desiredRecords"> & {
+type BuildInputs = Omit<
+  SiteContentSyncInput,
+  "registryVersion" | "deploymentSha" | "staticManifestDigest" | "desiredRecords"
+> & {
   manifest: StaticSiteContentManifest;
 };
 
@@ -100,6 +103,7 @@ export function buildSiteContentSyncPlanFromInputs(input: BuildInputs) {
   return planSiteContentSync({
     ...input,
     registryVersion: input.manifest.registryVersion,
+    deploymentSha: input.manifest.gitSha,
     staticManifestDigest: input.manifest.staticManifestDigest as `sha256:${string}`,
     desiredRecords: eligible.map((record) => ({
       logicalId: record.logicalId,

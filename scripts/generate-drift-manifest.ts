@@ -108,6 +108,7 @@ async function main() {
   const schemaSql = readFileSync(repoUrl("supabase/schema.sql"), "utf8");
   const rolesSql = readFileSync(repoUrl("supabase/roles.sql"), "utf8");
   const scaffoldSql = readFileSync(repoUrl("scripts/sql/drift-replay-scaffold.sql"), "utf8");
+  const authScaffoldSql = readFileSync(repoUrl("scripts/sql/drift-replay-auth-scaffold.sql"), "utf8");
   const { normalizedSchemaSha256 } = await import("./check-drift");
 
   const publishedPort = requestedPort ? `127.0.0.1:${requestedPort}:5432` : "127.0.0.1::5432";
@@ -164,6 +165,26 @@ async function main() {
 
     console.log("Applying role bootstrap (postgres)…");
     psql("postgres", rolesSql);
+    const authSchemaOwner = docker([
+      "exec",
+      "-i",
+      container,
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-tA",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "select pg_catalog.pg_get_userbyid(nspowner) from pg_catalog.pg_namespace where nspname = 'auth';",
+    ]).trim();
+    if (!authSchemaOwner) {
+      throw new Error("bare Supabase image does not expose an owner for the auth schema");
+    }
+    console.log("Applying local auth helper scaffold as the discovered bare-image auth owner…");
+    psql(authSchemaOwner, authScaffoldSql);
     const storageSchemaOwner = docker([
       "exec",
       "-i",

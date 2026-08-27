@@ -3,6 +3,23 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("site-content gate generated type parity", () => {
+  it("keeps generated deployment identity, synchronizer state, and runtime RPCs in type parity", () => {
+    const root = resolve(import.meta.dirname, "..");
+    const types = readFileSync(resolve(root, "src/lib/supabase/database.types.ts"), "utf8");
+    const migration = readFileSync(
+      resolve(root, "supabase/migrations/20260827213539_add_site_content_runtime_authority.sql"),
+      "utf8",
+    );
+    const releaseBlock =
+      types.match(/site_content_releases:\s*\{([\s\S]*?)\n\s*\};\n\s*site_content_synchronizer_state/)?.[1] ?? "";
+    expect(releaseBlock).toMatch(/Row:[\s\S]*deployment_sha:\s*string/);
+    expect(releaseBlock.match(/Insert:\s*\{([\s\S]*?)\n\s*\};\n\s*Update/)?.[1] ?? "").not.toContain("deployment_sha");
+    expect(types).toContain("site_content_synchronizer_state: {");
+    expect(types).toMatch(/read_site_content_runtime_authority:\s*\{ Args: never; Returns: Json \}/);
+    expect(types).toMatch(/record_site_content_synchronizer_heartbeat:[\s\S]*p_invocation_id: string/);
+    expect(migration).toMatch(/deployment_sha text[\s\S]*generated always/i);
+  });
+
   it("matches the exact migration columns and relationships", () => {
     const root = resolve(import.meta.dirname, "..");
     const types = readFileSync(resolve(root, "src/lib/supabase/database.types.ts"), "utf8");

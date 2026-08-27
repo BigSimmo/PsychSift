@@ -30,6 +30,7 @@ function plan() {
     previousReleaseId: siteReleasePreviousId,
     generationId: siteReleaseGenerationId,
     registryVersion: "site-content-registry-v1",
+    deploymentSha: "4".repeat(40),
     staticManifestDigest: fixtureSha("1"),
     expectedEmbedding: { model: "synthetic", dimensions: 3 },
     desiredRecords: [

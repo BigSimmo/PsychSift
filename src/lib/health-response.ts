@@ -25,24 +25,7 @@ const SITE_CONTENT_SYNCHRONIZER_FRESH_MS = 5 * 60 * 1000;
 const SITE_CONTENT_PENDING_STOP_SECONDS = 10 * 60;
 const SITE_CONTENT_HEALTH_COUNT_MAX = 999_999;
 const SITE_CONTENT_HEALTH_AGE_MAX_SECONDS = 86_400;
-const SITE_CONTENT_HEALTH_EVIDENCE_MAX_BYTES = 128 * 1024;
-
-/**
- * Read the deployment-owned, provider-free release/queue snapshot. Invalid or
- * absent evidence is deliberately represented as undefined so the health
- * classifier can fail readiness closed without exposing parse details.
- */
-export function loadSiteContentHealthEvidence(): unknown {
-  const serialized = process.env.SITE_CONTENT_HEALTH_EVIDENCE_JSON;
-  if (!serialized || Buffer.byteLength(serialized, "utf8") > SITE_CONTENT_HEALTH_EVIDENCE_MAX_BYTES) {
-    return undefined;
-  }
-  try {
-    return JSON.parse(serialized) as unknown;
-  } catch {
-    return undefined;
-  }
-}
+const SITE_CONTENT_AUTHORITY_FUTURE_SKEW_MS = 30 * 1000;
 
 type SiteContentDomainHealthEvidence = Readonly<{
   domain: string;
@@ -98,6 +81,14 @@ export type SiteContentActiveReleaseHealthEvidence = ActiveSiteContentRelease &
       untrackedDeletionCount: number;
       duplicatePublishedLogicalIdCount: number;
       nonAdminPublicationCount: number;
+      gateArtifactCount: number;
+      gateArtifactSubjectMismatchCount: number;
+      directSuccessorCandidateCount: number;
+      orphanedNonterminalOutboxCount: number;
+      integrityVerified: boolean;
+      publicVisibilityVerified: boolean;
+      governanceVerified: boolean;
+      mustPassVerified: boolean;
       domainDispositions: SiteContentDomainDispositionEvidence[];
       domainDispositionDigest: string;
       domains: SiteContentDomainHealthEvidence[];
@@ -109,6 +100,7 @@ export type SiteContentQueueHealth = Readonly<{
   synchronizerDeployed: boolean;
   lastHeartbeatAt: string | null;
   lastInvocationAt: string | null;
+  lastOutcome: "running" | "succeeded" | "failed" | null;
   changeEpoch: string;
   pendingLogicalIds: string[];
   pendingLogicalIdsDigest: string;
@@ -147,7 +139,10 @@ export type SiteContentHealthStopReason =
   | "stale_source_status"
   | "stale_validation_status"
   | "invalid_queue_health"
+  | "stale_authority_observation"
+  | "authority_clock_skew"
   | "synchronizer_not_deployed"
+  | "synchronizer_failed"
   | "stale_worker_heartbeat"
   | "stale_worker_invocation"
   | "failed_queue_item"
@@ -234,7 +229,10 @@ function timestampFresh(value: unknown, observedAt: number) {
   return timestamp <= observedAt && observedAt - timestamp <= SITE_CONTENT_SYNCHRONIZER_FRESH_MS;
 }
 
-export function classifySiteContentHealth(input: unknown): SiteContentHealthClassification {
+export function classifySiteContentHealth(
+  input: unknown,
+  options: { now?: Date } = {},
+): SiteContentHealthClassification {
   const root = isRecord(input) ? input : {};
   const active = isRecord(root.activeRelease) ? root.activeRelease : null;
   const queue = isRecord(root.queueHealth) ? root.queueHealth : {};
@@ -322,6 +320,19 @@ export function classifySiteContentHealth(input: unknown): SiteContentHealthClas
       if (!nonNegativeInteger(value)) add("invalid_release_integrity");
       else if (value > 0) add(reason);
     }
+    if (
+      integrity.gateArtifactCount !== 3 ||
+      integrity.gateArtifactSubjectMismatchCount !== 0 ||
+      integrity.orphanedNonterminalOutboxCount !== 0 ||
+      !nonNegativeInteger(integrity.directSuccessorCandidateCount) ||
+      integrity.directSuccessorCandidateCount > 1 ||
+      integrity.integrityVerified !== true ||
+      integrity.publicVisibilityVerified !== true ||
+      integrity.governanceVerified !== true ||
+      integrity.mustPassVerified !== true
+    ) {
+      add("invalid_release_integrity");
+    }
     const observedDomains: string[] = [];
     for (const domain of integrity.domains) {
       if (!isRecord(domain) || !nonEmpty(domain.domain)) {
@@ -367,10 +378,19 @@ export function classifySiteContentHealth(input: unknown): SiteContentHealthClas
     add("invalid_queue_health");
   }
 
+  if (observedAtValid && options.now) {
+    const requestTime = options.now.getTime();
+    if (!Number.isFinite(requestTime)) add("invalid_queue_health");
+    else if (observedAt > requestTime + SITE_CONTENT_AUTHORITY_FUTURE_SKEW_MS) add("authority_clock_skew");
+    else if (requestTime - observedAt > SITE_CONTENT_SYNCHRONIZER_FRESH_MS) add("stale_authority_observation");
+  }
+
   const synchronizerDeployed = queue.synchronizerDeployed === true;
   const heartbeatFresh = observedAtValid && timestampFresh(queue.lastHeartbeatAt, observedAt);
   const invocationFresh = observedAtValid && timestampFresh(queue.lastInvocationAt, observedAt);
   if (!synchronizerDeployed) add("synchronizer_not_deployed");
+  if (queue.lastOutcome === "failed") add("synchronizer_failed");
+  else if (queue.lastOutcome !== "running" && queue.lastOutcome !== "succeeded") add("invalid_queue_health");
   if (!heartbeatFresh) add("stale_worker_heartbeat");
   if (!invocationFresh) add("stale_worker_invocation");
   if (nonNegativeInteger(queue.failedCount) && queue.failedCount > 0) add("failed_queue_item");
@@ -403,7 +423,12 @@ export function classifySiteContentHealth(input: unknown): SiteContentHealthClas
   }
 
   const pendingCount = boundedCount(queue.pendingCount);
-  const hasPending = Boolean(activePendingIds?.length || queuePendingIds?.length || pendingCount > 0);
+  const hasPending = Boolean(
+    activePendingIds?.length ||
+    queuePendingIds?.length ||
+    pendingCount > 0 ||
+    (integrity && integrity.directSuccessorCandidateCount === 1),
+  );
   if (active) {
     const partitionState = staticManifestMatch ? (hasPending ? "updating" : "current") : "stale";
     const partitionSnapshot: SiteContentPartitionSnapshot = {
@@ -455,6 +480,7 @@ type HealthResponseOptions = {
   includeCoalescing?: boolean;
   includeSpend?: boolean;
   siteContentHealthInput?: unknown;
+  siteContentNow?: Date;
 };
 
 export async function healthResponse(request: Request, options: HealthResponseOptions = {}) {
@@ -470,7 +496,7 @@ export async function healthResponse(request: Request, options: HealthResponseOp
   let coalescing: AnswerCoalescingMetricsSnapshot | null = null;
   let spend: SpendSnapshot | null = null;
   const siteContent = Object.prototype.hasOwnProperty.call(options, "siteContentHealthInput")
-    ? classifySiteContentHealth(options.siteContentHealthInput)
+    ? classifySiteContentHealth(options.siteContentHealthInput, { now: options.siteContentNow })
     : null;
 
   if (deep) {

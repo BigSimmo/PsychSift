@@ -1,8 +1,14 @@
-import { healthResponse, loadSiteContentHealthEvidence } from "@/lib/health-response";
+import { healthResponse } from "@/lib/health-response";
+import { collectSiteContentHealthInput } from "@/lib/site-content/site-content-health-authority";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  return healthResponse(request, { siteContentHealthInput: loadSiteContentHealthEvidence() });
+  const siteContentHealthInput = await collectSiteContentHealthInput();
+  const now = new Date();
+  return healthResponse(request, {
+    siteContentHealthInput,
+    siteContentNow: now,
+  });
 }
