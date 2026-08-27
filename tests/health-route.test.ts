@@ -1,6 +1,12 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const DEEP_TOKEN = "deep-probe-secret";
+const CURRENT_SITE_CONTENT_EVIDENCE = JSON.parse(
+  readFileSync(resolve("tests/fixtures/site-content/release-evidence-current.json"), "utf8"),
+) as unknown;
 
 function mockEnv(options: {
   configured: boolean;
@@ -21,6 +27,7 @@ function mockEnv(options: {
     },
     isDemoMode: () => Boolean(options.demoMode),
   }));
+  vi.stubEnv("SITE_CONTENT_HEALTH_EVIDENCE_JSON", JSON.stringify(CURRENT_SITE_CONTENT_EVIDENCE));
 }
 
 function healthRequest(query = "", headers?: HeadersInit) {

@@ -15,12 +15,62 @@
     "pendingLogicalIdsDigest": "fnv1a64:09612b07b5ecb5a5",
     "rollbackAvailable": true,
     "integrity": {
-      "expectedRecordCount": 3,
-      "publishedRecordCount": 3,
+      "expectedRecordCount": 8,
+      "publishedRecordCount": 8,
       "untrackedDeletionCount": 0,
       "duplicatePublishedLogicalIdCount": 0,
       "nonAdminPublicationCount": 0,
+      "domainDispositionDigest": "sha256:1461cea1162f67275200fd6fe278d2681f417370c2b26ec41fa78299d90618e5",
+      "domainDispositions": [
+        { "domain": "calculators", "disposition": "reviewed_ineligible" },
+        { "domain": "dictionary", "disposition": "reviewed_ineligible" },
+        { "domain": "differentials", "disposition": "eligible" },
+        { "domain": "dsm", "disposition": "eligible" },
+        { "domain": "factsheets", "disposition": "reviewed_ineligible" },
+        { "domain": "forms", "disposition": "eligible" },
+        { "domain": "formulation", "disposition": "eligible" },
+        { "domain": "medications", "disposition": "eligible" },
+        { "domain": "services", "disposition": "eligible" },
+        { "domain": "specifiers", "disposition": "reviewed_ineligible" },
+        { "domain": "therapies", "disposition": "eligible" },
+        { "domain": "tools", "disposition": "eligible" }
+      ],
       "domains": [
+        {
+          "domain": "differentials",
+          "reviewState": "reviewed",
+          "eligibility": "eligible",
+          "sourceStatus": "current",
+          "validationStatus": "locally_reviewed"
+        },
+        {
+          "domain": "dsm",
+          "reviewState": "reviewed",
+          "eligibility": "eligible",
+          "sourceStatus": "current",
+          "validationStatus": "approved"
+        },
+        {
+          "domain": "forms",
+          "reviewState": "reviewed",
+          "eligibility": "eligible",
+          "sourceStatus": "current",
+          "validationStatus": "locally_reviewed"
+        },
+        {
+          "domain": "formulation",
+          "reviewState": "reviewed",
+          "eligibility": "eligible",
+          "sourceStatus": "current",
+          "validationStatus": "approved"
+        },
+        {
+          "domain": "medications",
+          "reviewState": "reviewed",
+          "eligibility": "eligible",
+          "sourceStatus": "current",
+          "validationStatus": "approved"
+        },
         {
           "domain": "services",
           "reviewState": "reviewed",

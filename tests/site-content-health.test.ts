@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { classifySiteContentHealth, healthResponse, type SiteContentHealthInput } from "@/lib/health-response";
 import { siteContentPendingLogicalIdsDigest } from "@/lib/site-content/site-content-registry";
@@ -34,6 +34,32 @@ function updatingEvidence(): SiteContentHealthInput {
     },
   };
 }
+
+async function routeResponse(path: "/api/health" | "/api/health/ready", evidence: unknown) {
+  vi.resetModules();
+  vi.stubEnv("SITE_CONTENT_HEALTH_EVIDENCE_JSON", evidence === undefined ? "" : JSON.stringify(evidence));
+  vi.doMock("@/lib/env", () => ({
+    env: {
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "test-service-role",
+      OPENAI_API_KEY: "test-openai-key",
+      RAG_PROVIDER_MODE: "offline",
+      HEALTH_DEEP_PROBE_SECRET: undefined,
+    },
+    isDemoMode: () => true,
+  }));
+  const route =
+    path === "/api/health"
+      ? await import("../src/app/api/health/route")
+      : await import("../src/app/api/health/ready/route");
+  return route.GET(new Request(`http://health.test${path}`));
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+  vi.resetModules();
+});
 
 describe("site-content activation health", () => {
   it("classifies one complete digest-bound static and dynamic release as current", () => {
@@ -207,6 +233,98 @@ describe("site-content activation health", () => {
     expect(reviewedIneligible.stopReasons).not.toContain("unreviewed_domain");
   });
 
+  it("binds the active release to the canonical registry version and complete unique domain evidence", () => {
+    const input = currentEvidence();
+    const integrity = input.activeRelease!.integrity;
+    const invalid = [
+      classifySiteContentHealth({
+        ...input,
+        activeRelease: { ...input.activeRelease!, registryVersion: "site-content-registry-v999" },
+      }),
+      classifySiteContentHealth({
+        ...input,
+        activeRelease: { ...input.activeRelease!, integrity: { ...integrity, domains: integrity.domains.slice(1) } },
+      }),
+      classifySiteContentHealth({
+        ...input,
+        activeRelease: {
+          ...input.activeRelease!,
+          integrity: { ...integrity, domains: [...integrity.domains, integrity.domains[0]!] },
+        },
+      }),
+      classifySiteContentHealth({
+        ...input,
+        activeRelease: {
+          ...input.activeRelease!,
+          integrity: {
+            ...integrity,
+            domains: [{ ...integrity.domains[0]!, domain: "unknown-domain" }, ...integrity.domains.slice(1)],
+          },
+        },
+      }),
+    ];
+
+    expect(invalid[0]!.stopReasons).toContain("registry_version_mismatch");
+    for (const result of invalid.slice(1)) {
+      expect(result.stopReasons).toContain("domain_evidence_mismatch");
+      expect(result.health.state).toBe("failure");
+    }
+  });
+
+  it("requires the complete canonical domain-disposition set and its digest", () => {
+    const input = currentEvidence();
+    const integrity = input.activeRelease!.integrity;
+    const dispositions = integrity.domainDispositions;
+    const omittedReviewedIneligible = classifySiteContentHealth({
+      ...input,
+      activeRelease: {
+        ...input.activeRelease!,
+        integrity: { ...integrity, domainDispositions: dispositions.slice(0, -1) },
+      },
+    });
+    const duplicate = classifySiteContentHealth({
+      ...input,
+      activeRelease: {
+        ...input.activeRelease!,
+        integrity: { ...integrity, domainDispositions: [...dispositions, dispositions[0]!] },
+      },
+    });
+    const unknown = classifySiteContentHealth({
+      ...input,
+      activeRelease: {
+        ...input.activeRelease!,
+        integrity: {
+          ...integrity,
+          domainDispositions: [{ domain: "unknown-domain", disposition: "eligible" }, ...dispositions.slice(1)],
+        },
+      },
+    });
+    const wrongDigest = classifySiteContentHealth({
+      ...input,
+      activeRelease: {
+        ...input.activeRelease!,
+        integrity: { ...integrity, domainDispositionDigest: `sha256:${"9".repeat(64)}` },
+      },
+    });
+
+    for (const result of [omittedReviewedIneligible, duplicate, unknown, wrongDigest]) {
+      expect(result.stopReasons).toContain("domain_disposition_mismatch");
+      expect(result.health.state).toBe("failure");
+    }
+  });
+
+  it("never projects a malformed public release identity", () => {
+    const input = currentEvidence();
+    const result = classifySiteContentHealth({
+      ...input,
+      activeRelease: { ...input.activeRelease!, releaseId: "internal-release-row-42" },
+    });
+
+    expect(result.stopReasons).toContain("invalid_release_identity");
+    expect(result.health.publicReleaseId).toBeNull();
+    expect(result.health.state).toBe("failure");
+  });
+
   it("requires the exact pending exclusion set, epoch, fresh worker, and ten-minute ceiling", () => {
     const valid = updatingEvidence();
     const wrongDigest = classifySiteContentHealth({
@@ -295,4 +413,79 @@ describe("site-content activation health", () => {
     expect(serialized).not.toContain("provider-secret-message");
     expect(serialized).not.toContain("/private/record/42");
   });
+
+  it.each(["/api/health", "/api/health/ready"] as const)(
+    "wires current server-only evidence into %s without provider calls",
+    async (path) => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const response = await routeResponse(path, currentEvidence());
+      const body = (await response.json()) as Record<string, unknown>;
+
+      expect(response.status).toBe(200);
+      expect(body.status).toBe("ok");
+      expect(body.siteContent).toMatchObject({
+        publicReleaseId: "00000000-0000-4000-8000-000000000004",
+        state: "current",
+      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["/api/health", "/api/health/ready"] as const)(
+    "projects an updating server-only release through %s",
+    async (path) => {
+      const response = await routeResponse(path, updatingEvidence());
+      const body = (await response.json()) as Record<string, unknown>;
+
+      expect(response.status).toBe(200);
+      expect(body.status).toBe("ok");
+      expect(body.siteContent).toMatchObject({
+        state: "updating",
+        queue: { pendingCount: 1, oldestPendingAgeSeconds: 120, failedCount: 0 },
+      });
+    },
+  );
+
+  it.each(["/api/health", "/api/health/ready"] as const)(
+    "fails %s readiness closed when server-only evidence is missing",
+    async (path) => {
+      const response = await routeResponse(path, undefined);
+      const body = (await response.json()) as Record<string, unknown>;
+
+      expect(response.status).toBe(503);
+      expect(body.status).toBe("degraded");
+      expect(body.siteContent).toMatchObject({ publicReleaseId: null, state: "failure" });
+    },
+  );
+
+  it.each(["/api/health", "/api/health/ready"] as const)(
+    "fails %s readiness closed when server-only evidence is invalid",
+    async (path) => {
+      const response = await routeResponse(path, {});
+      const body = (await response.json()) as Record<string, unknown>;
+
+      expect(response.status).toBe(503);
+      expect(body.status).toBe("degraded");
+      expect(body.siteContent).toMatchObject({ publicReleaseId: null, state: "failure" });
+    },
+  );
+
+  it.each(["/api/health", "/api/health/ready"] as const)(
+    "fails %s readiness closed when server-only evidence is stale",
+    async (path) => {
+      const input = currentEvidence();
+      const staleEvidence: SiteContentHealthInput = {
+        ...input,
+        queueHealth: {
+          ...input.queueHealth,
+          lastHeartbeatAt: "2026-08-27T23:50:00.000Z",
+        },
+      };
+      const response = await routeResponse(path, staleEvidence);
+      const body = (await response.json()) as Record<string, unknown>;
+
+      expect(response.status).toBe(503);
+      expect(body.siteContent).toMatchObject({ state: "failure" });
+    },
+  );
 });

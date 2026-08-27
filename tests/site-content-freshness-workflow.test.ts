@@ -58,6 +58,7 @@ describe("site-content freshness workflow", () => {
     expect(step).toContain("needs.changes.outputs.site_content_changed == 'true'");
     expect(step).toContain("scripts/build-site-content-manifest.ts --check");
     expect(step).toContain("tests/site-content-manifest.test.ts");
+    expect(step).toContain("tests/site-content-registry.test.ts");
     expect(step).not.toMatch(/sync-site-content-corpus|--write|supabase|provider/i);
   });
 

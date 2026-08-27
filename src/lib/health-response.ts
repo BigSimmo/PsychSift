@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+
+import "server-only";
+
 import { NextResponse } from "next/server";
 import { allowDeepHealthProbe } from "@/lib/deep-probe-auth";
 import { env, isDemoMode } from "@/lib/env";
@@ -9,19 +13,36 @@ import {
 } from "@/lib/observability/answer-coalescing-metrics";
 import type { SpendProbeClient, SpendSnapshot } from "@/lib/observability/spend-metrics";
 import { resolveDeploymentCommitSha } from "@/lib/observability/sentry-release";
-import type {
-  ActiveSiteContentRelease,
-  SiteContentPartitionSnapshot,
-} from "@/lib/site-content/site-content-contracts";
+import type { ActiveSiteContentRelease, SiteContentPartitionSnapshot } from "@/lib/site-content/site-content-contracts";
 import {
   assertSiteContentPartitionSnapshot,
+  siteContentProducerDefinitions,
   siteContentPendingLogicalIdsDigest,
+  siteContentRegistryVersion,
 } from "@/lib/site-content/site-content-registry";
 
 const SITE_CONTENT_SYNCHRONIZER_FRESH_MS = 5 * 60 * 1000;
 const SITE_CONTENT_PENDING_STOP_SECONDS = 10 * 60;
 const SITE_CONTENT_HEALTH_COUNT_MAX = 999_999;
 const SITE_CONTENT_HEALTH_AGE_MAX_SECONDS = 86_400;
+const SITE_CONTENT_HEALTH_EVIDENCE_MAX_BYTES = 128 * 1024;
+
+/**
+ * Read the deployment-owned, provider-free release/queue snapshot. Invalid or
+ * absent evidence is deliberately represented as undefined so the health
+ * classifier can fail readiness closed without exposing parse details.
+ */
+export function loadSiteContentHealthEvidence(): unknown {
+  const serialized = process.env.SITE_CONTENT_HEALTH_EVIDENCE_JSON;
+  if (!serialized || Buffer.byteLength(serialized, "utf8") > SITE_CONTENT_HEALTH_EVIDENCE_MAX_BYTES) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(serialized) as unknown;
+  } catch {
+    return undefined;
+  }
+}
 
 type SiteContentDomainHealthEvidence = Readonly<{
   domain: string;
@@ -30,6 +51,39 @@ type SiteContentDomainHealthEvidence = Readonly<{
   sourceStatus: "current" | "review_due" | "outdated" | "unknown";
   validationStatus: "unverified" | "locally_reviewed" | "approved";
 }>;
+
+type SiteContentDomainDispositionEvidence = Readonly<{
+  domain: string;
+  disposition: "eligible" | "reviewed_ineligible";
+}>;
+
+const canonicalSiteContentDomainDispositions = Object.freeze(
+  siteContentProducerDefinitions
+    .map((producer) => {
+      if (producer.activationState === "pending_review") {
+        throw new Error(`Site-content producer ${producer.key} is pending review and cannot satisfy health.`);
+      }
+      return { domain: producer.domain, disposition: producer.activationState };
+    })
+    .sort((left, right) => left.domain.localeCompare(right.domain)),
+);
+const canonicalEligibleSiteContentDomains = Object.freeze(
+  canonicalSiteContentDomainDispositions
+    .filter((entry) => entry.disposition === "eligible")
+    .map((entry) => entry.domain)
+    .sort(),
+);
+
+export function siteContentDomainDispositionDigest(dispositions: readonly SiteContentDomainDispositionEvidence[]) {
+  const canonical = [...dispositions].sort((left, right) => left.domain.localeCompare(right.domain));
+  return `sha256:${createHash("sha256")
+    .update(JSON.stringify({ registryVersion: siteContentRegistryVersion, domainDispositions: canonical }))
+    .digest("hex")}` as const;
+}
+
+const canonicalSiteContentDomainDispositionDigest = siteContentDomainDispositionDigest(
+  canonicalSiteContentDomainDispositions,
+);
 
 export type SiteContentActiveReleaseHealthEvidence = ActiveSiteContentRelease &
   Readonly<{
@@ -44,6 +98,8 @@ export type SiteContentActiveReleaseHealthEvidence = ActiveSiteContentRelease &
       untrackedDeletionCount: number;
       duplicatePublishedLogicalIdCount: number;
       nonAdminPublicationCount: number;
+      domainDispositions: SiteContentDomainDispositionEvidence[];
+      domainDispositionDigest: string;
       domains: SiteContentDomainHealthEvidence[];
     }>;
   }>;
@@ -71,6 +127,7 @@ export type SiteContentHealthInput = Readonly<{
 export type SiteContentHealthStopReason =
   | "missing_active_release"
   | "invalid_release_identity"
+  | "registry_version_mismatch"
   | "invalid_expected_static_digest"
   | "invalid_active_static_digest"
   | "invalid_dynamic_state_digest"
@@ -79,6 +136,8 @@ export type SiteContentHealthStopReason =
   | "invalid_deployment_sha"
   | "deployment_sha_mismatch"
   | "invalid_release_integrity"
+  | "domain_disposition_mismatch"
+  | "domain_evidence_mismatch"
   | "partial_population"
   | "untracked_deletion"
   | "duplicate_published_logical_id"
@@ -130,6 +189,12 @@ function deploymentCommit(value: unknown): value is string {
   return typeof value === "string" && /^[a-f0-9]{40}$/.test(value);
 }
 
+function publicReleaseId(value: unknown): value is string {
+  return (
+    typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)
+  );
+}
+
 function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim() === value && value.length > 0;
 }
@@ -179,16 +244,16 @@ export function classifySiteContentHealth(input: unknown): SiteContentHealthClas
   };
 
   if (!active) add("missing_active_release");
-  if (
+  const releaseIdentityValid = Boolean(
     active &&
-    (active.version !== "clinical-kb-site-release-v1" ||
-      active.state !== "active" ||
-      !nonEmpty(active.releaseId) ||
-      !nonEmpty(active.registryVersion) ||
-      !exactIsoTimestamp(active.activatedAt))
-  ) {
-    add("invalid_release_identity");
-  }
+    active.version === "clinical-kb-site-release-v1" &&
+    active.state === "active" &&
+    publicReleaseId(active.releaseId) &&
+    active.registryVersion === siteContentRegistryVersion &&
+    exactIsoTimestamp(active.activatedAt),
+  );
+  if (active && !releaseIdentityValid) add("invalid_release_identity");
+  if (active && active.registryVersion !== siteContentRegistryVersion) add("registry_version_mismatch");
 
   const expectedStaticDigest = root.expectedStaticManifestDigest;
   const activeStaticDigest = active?.staticManifestDigest;
@@ -216,6 +281,32 @@ export function classifySiteContentHealth(input: unknown): SiteContentHealthClas
   if (!integrity || !Array.isArray(integrity.domains) || integrity.domains.length === 0) {
     add("invalid_release_integrity");
   } else {
+    const dispositions = Array.isArray(integrity.domainDispositions) ? integrity.domainDispositions : [];
+    const normalizedDispositions: SiteContentDomainDispositionEvidence[] = [];
+    let dispositionShapeValid = dispositions.length > 0;
+    for (const disposition of dispositions) {
+      if (
+        !isRecord(disposition) ||
+        !nonEmpty(disposition.domain) ||
+        (disposition.disposition !== "eligible" && disposition.disposition !== "reviewed_ineligible")
+      ) {
+        dispositionShapeValid = false;
+        continue;
+      }
+      normalizedDispositions.push({
+        domain: disposition.domain,
+        disposition: disposition.disposition,
+      });
+    }
+    normalizedDispositions.sort((left, right) => left.domain.localeCompare(right.domain));
+    const dispositionSetMatches =
+      dispositionShapeValid &&
+      new Set(normalizedDispositions.map((entry) => entry.domain)).size === normalizedDispositions.length &&
+      JSON.stringify(normalizedDispositions) === JSON.stringify(canonicalSiteContentDomainDispositions) &&
+      integrity.domainDispositionDigest === canonicalSiteContentDomainDispositionDigest &&
+      siteContentDomainDispositionDigest(normalizedDispositions) === canonicalSiteContentDomainDispositionDigest;
+    if (!dispositionSetMatches) add("domain_disposition_mismatch");
+
     const expectedCount = integrity.expectedRecordCount;
     const publishedCount = integrity.publishedRecordCount;
     if (!nonNegativeInteger(expectedCount) || expectedCount === 0 || !nonNegativeInteger(publishedCount)) {
@@ -231,11 +322,13 @@ export function classifySiteContentHealth(input: unknown): SiteContentHealthClas
       if (!nonNegativeInteger(value)) add("invalid_release_integrity");
       else if (value > 0) add(reason);
     }
+    const observedDomains: string[] = [];
     for (const domain of integrity.domains) {
       if (!isRecord(domain) || !nonEmpty(domain.domain)) {
         add("invalid_release_integrity");
         continue;
       }
+      observedDomains.push(domain.domain);
       if (domain.reviewState === "unreviewed") add("unreviewed_domain");
       else if (domain.reviewState !== "reviewed") add("invalid_release_integrity");
       if (domain.eligibility === "reviewed_ineligible") add("reviewed_ineligible_domain");
@@ -244,6 +337,13 @@ export function classifySiteContentHealth(input: unknown): SiteContentHealthClas
       if (domain.validationStatus !== "locally_reviewed" && domain.validationStatus !== "approved") {
         add("stale_validation_status");
       }
+    }
+    const canonicalObservedDomains = [...observedDomains].sort();
+    if (
+      new Set(observedDomains).size !== observedDomains.length ||
+      JSON.stringify(canonicalObservedDomains) !== JSON.stringify(canonicalEligibleSiteContentDomains)
+    ) {
+      add("domain_evidence_mismatch");
     }
   }
 
@@ -327,7 +427,7 @@ export function classifySiteContentHealth(input: unknown): SiteContentHealthClas
     }
   }
   const health: SiteContentHealthProjection = {
-    publicReleaseId: active && nonEmpty(active.releaseId) ? active.releaseId : null,
+    publicReleaseId: active && releaseIdentityValid ? (active.releaseId as string) : null,
     staticManifestMatch,
     releaseDigestPrefix: sha256Digest(releaseDigest) ? releaseDigest.slice(0, 19) : null,
     state: reasons.length > 0 ? "failure" : hasPending ? "updating" : "current",
@@ -354,7 +454,7 @@ type HealthResponseOptions = {
   includeCache?: boolean;
   includeCoalescing?: boolean;
   includeSpend?: boolean;
-  siteContentHealthInput?: SiteContentHealthInput;
+  siteContentHealthInput?: unknown;
 };
 
 export async function healthResponse(request: Request, options: HealthResponseOptions = {}) {
@@ -369,7 +469,9 @@ export async function healthResponse(request: Request, options: HealthResponseOp
   let cache: CacheMetricsSnapshot | null = null;
   let coalescing: AnswerCoalescingMetricsSnapshot | null = null;
   let spend: SpendSnapshot | null = null;
-  const siteContent = options.siteContentHealthInput ? classifySiteContentHealth(options.siteContentHealthInput) : null;
+  const siteContent = Object.prototype.hasOwnProperty.call(options, "siteContentHealthInput")
+    ? classifySiteContentHealth(options.siteContentHealthInput)
+    : null;
 
   if (deep) {
     const tokenAuthorized = allowDeepHealthProbe(request);

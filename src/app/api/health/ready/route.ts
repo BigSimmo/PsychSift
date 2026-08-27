@@ -1,4 +1,4 @@
-import { healthResponse } from "@/lib/health-response";
+import { healthResponse, loadSiteContentHealthEvidence } from "@/lib/health-response";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,5 +12,6 @@ export async function GET(request: Request) {
     includeSlo: false,
     includeCache: false,
     includeCoalescing: false,
+    siteContentHealthInput: loadSiteContentHealthEvidence(),
   });
 }

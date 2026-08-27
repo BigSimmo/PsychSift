@@ -239,7 +239,7 @@ jobs:
         if: needs.changes.outputs.site_content_changed == 'true'
         run: |
           node scripts/run-tsx.mjs scripts/build-site-content-manifest.ts --check
-          node scripts/run-vitest.mjs run tests/site-content-manifest.test.ts
+          node scripts/run-vitest.mjs run tests/site-content-manifest.test.ts tests/site-content-registry.test.ts
 
       - name: Verification-plan self-test
         run: npm run check:verification-plan
