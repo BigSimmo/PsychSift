@@ -13,11 +13,10 @@ afterEach(() => {
 });
 
 function runFreshness(args: string[]) {
-  return spawnSync(
-    process.execPath,
-    ["scripts/run-tsx.mjs", "scripts/check-site-content-freshness.ts", ...args],
-    { cwd: process.cwd(), encoding: "utf8" },
-  );
+  return spawnSync(process.execPath, ["scripts/run-tsx.mjs", "scripts/check-site-content-freshness.ts", ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
 }
 
 describe("site-content freshness workflow", () => {

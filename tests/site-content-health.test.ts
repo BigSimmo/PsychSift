@@ -3,11 +3,7 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  classifySiteContentHealth,
-  healthResponse,
-  type SiteContentHealthInput,
-} from "@/lib/health-response";
+import { classifySiteContentHealth, healthResponse, type SiteContentHealthInput } from "@/lib/health-response";
 import { siteContentPendingLogicalIdsDigest } from "@/lib/site-content/site-content-registry";
 
 const fixturePath = resolve("tests/fixtures/site-content/release-evidence-current.json");
@@ -72,7 +68,11 @@ describe("site-content activation health", () => {
   });
 
   it.each([
-    ["missing static digest", (input: SiteContentHealthInput) => ({ ...input, expectedStaticManifestDigest: "" }), "invalid_expected_static_digest"],
+    [
+      "missing static digest",
+      (input: SiteContentHealthInput) => ({ ...input, expectedStaticManifestDigest: "" }),
+      "invalid_expected_static_digest",
+    ],
     [
       "static digest mismatch",
       (input: SiteContentHealthInput) => ({

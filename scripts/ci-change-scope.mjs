@@ -31,6 +31,7 @@ const outputs = [
   "db_changed",
   "container_changed",
   "rag_eval_changed",
+  "site_content_changed",
   "workflow_changed",
   "workflow_only",
   "codex_autofix_changed",
@@ -313,6 +314,34 @@ const ragEvalPatterns = [
   /^tests\/helpers\/rag-adversarial-assertions\.ts$/,
 ];
 
+// Registered site-content producer inputs and the contracts that govern their
+// projection select one provider-free manifest/domain-fixture path. This is a
+// validation signal only: it never authorizes synchronization, staging, or a
+// full site re-index, and ordinary unrelated source changes remain outside it.
+const siteContentPatterns = [
+  ".github/workflows/ci.yml",
+  "scripts/ci-change-scope.mjs",
+  "scripts/build-site-content-manifest.ts",
+  "scripts/embed-registry-records.ts",
+  "src/app/api/admin/site-content",
+  "src/lib/site-content",
+  "src/lib/specifiers-content.ts",
+  "src/lib/dsm.ts",
+  "src/data/dsm-clinical-content.json",
+  "src/lib/formulation.ts",
+  "src/data/formulation-content.json",
+  "src/lib/therapies.ts",
+  "src/data/therapies-source.json",
+  "src/lib/dictionary-data.ts",
+  "src/components/factsheets/factsheets-data.ts",
+  "src/components/calculators/calculator-fixtures.ts",
+  "src/lib/tools-catalog.ts",
+  "src/lib/registry-corpus.ts",
+  "src/lib/registry-corpus-links.ts",
+  /^src\/lib\/(?:clinical-search|retrieval(?:-[^/]+)?|source-governance|source-policy|corpus-grounding|indexed-source-formatting)\.ts$/,
+  /^src\/lib\/rag\/[^/]*(?:retriev|rank|source|ground|citation|chunk)[^/]*\.ts$/i,
+];
+
 // Untrusted-document parsing and ingestion surfaces are guarded by a narrow,
 // blocking Semgrep job in required CI. Keep scan targets aligned with that job,
 // and keep the gate's executable workflow/selector self-selecting.
@@ -416,6 +445,7 @@ function classify(files, { readLedger = readFlakeLedger } = {}) {
   const dbChanged = normalized.some((file) => pathMatches(file, dbPatterns));
   const containerChanged = normalized.some((file) => pathMatches(file, containerPatterns));
   const ragEvalChanged = normalized.some((file) => pathMatches(file, ragEvalPatterns));
+  const siteContentChanged = normalized.some((file) => pathMatches(file, siteContentPatterns));
   const ingestionSastChanged = normalized.some((file) => pathMatches(file, ingestionSastPatterns));
   const workflowChanged = normalized.some((file) => pathMatches(file, workflowPatterns));
   const codexAutofixChanged = normalized.some((file) => pathMatches(file, codexAutofixPatterns));
@@ -457,6 +487,7 @@ function classify(files, { readLedger = readFlakeLedger } = {}) {
     db_changed: dbChanged,
     container_changed: containerChanged,
     rag_eval_changed: ragEvalChanged,
+    site_content_changed: siteContentChanged,
     workflow_changed: workflowChanged,
     workflow_only: workflowOnly,
     codex_autofix_changed: codexAutofixChanged,
@@ -705,6 +736,15 @@ function assertBudgetRoutesAreQueryFree() {
 }
 
 function selfTest() {
+  assertScope("site-content-static-producer", ["src/lib/specifiers-content.ts"], {
+    site_content_changed: true,
+  });
+  assertScope("site-content-retrieval-contract", ["src/lib/retrieval-selection.ts"], {
+    site_content_changed: true,
+  });
+  assertScope("site-content-unrelated-source", ["src/lib/app-modes.ts"], {
+    site_content_changed: false,
+  });
   // #137: the advisory lane runs only when it has something to cover. All four
   // directions matter — a lane that silently never runs is the failure mode.
   assertScope("advisory-off-when-nothing-to-cover", ["src/components/clinical-dashboard/dashboard-nav.tsx"], {

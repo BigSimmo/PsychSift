@@ -83,6 +83,7 @@ jobs:
       db_changed: ${{ steps.scope.outputs.db_changed }}
       container_changed: ${{ steps.scope.outputs.container_changed }}
       rag_eval_changed: ${{ steps.scope.outputs.rag_eval_changed }}
+      site_content_changed: ${{ steps.scope.outputs.site_content_changed }}
       workflow_changed: ${{ steps.scope.outputs.workflow_changed }}
       codex_autofix_changed: ${{ steps.scope.outputs.codex_autofix_changed }}
       build_changed: ${{ steps.scope.outputs.build_changed }}
@@ -231,6 +232,14 @@ jobs:
 
       - name: CI scope self-test
         run: npm run check:ci-scope
+
+      # Provider-free evidence only. Candidate staging, synchronization, and
+      # deployment remain separate approval-gated operations on the default branch.
+      - name: Site-content manifest and domain fixture validation
+        if: needs.changes.outputs.site_content_changed == 'true'
+        run: |
+          node scripts/run-tsx.mjs scripts/build-site-content-manifest.ts --check
+          node scripts/run-vitest.mjs run tests/site-content-manifest.test.ts
 
       - name: Verification-plan self-test
         run: npm run check:verification-plan
