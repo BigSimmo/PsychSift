@@ -1,0 +1,61 @@
+{
+  "expectedStaticManifestDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "activeRelease": {
+    "version": "clinical-kb-site-release-v1",
+    "releaseId": "00000000-0000-4000-8000-000000000004",
+    "registryVersion": "site-content-registry-v1",
+    "staticManifestDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "dynamicStateDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "releaseDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "state": "active",
+    "activatedAt": "2026-08-28T00:00:00.000Z",
+    "deploymentSha": "4444444444444444444444444444444444444444",
+    "changeEpoch": "42",
+    "pendingLogicalIds": [],
+    "pendingLogicalIdsDigest": "fnv1a64:09612b07b5ecb5a5",
+    "rollbackAvailable": true,
+    "integrity": {
+      "expectedRecordCount": 3,
+      "publishedRecordCount": 3,
+      "untrackedDeletionCount": 0,
+      "duplicatePublishedLogicalIdCount": 0,
+      "nonAdminPublicationCount": 0,
+      "domains": [
+        {
+          "domain": "services",
+          "reviewState": "reviewed",
+          "eligibility": "eligible",
+          "sourceStatus": "current",
+          "validationStatus": "locally_reviewed"
+        },
+        {
+          "domain": "therapies",
+          "reviewState": "reviewed",
+          "eligibility": "eligible",
+          "sourceStatus": "current",
+          "validationStatus": "approved"
+        },
+        {
+          "domain": "tools",
+          "reviewState": "reviewed",
+          "eligibility": "eligible",
+          "sourceStatus": "current",
+          "validationStatus": "locally_reviewed"
+        }
+      ]
+    }
+  },
+  "queueHealth": {
+    "observedAt": "2026-08-28T00:05:00.000Z",
+    "synchronizerDeployed": true,
+    "lastHeartbeatAt": "2026-08-28T00:04:30.000Z",
+    "lastInvocationAt": "2026-08-28T00:04:00.000Z",
+    "changeEpoch": "42",
+    "pendingLogicalIds": [],
+    "pendingLogicalIdsDigest": "fnv1a64:09612b07b5ecb5a5",
+    "pendingCount": 0,
+    "oldestPendingAgeSeconds": null,
+    "failedCount": 0
+  },
+  "deploymentSha": "4444444444444444444444444444444444444444"
+}
