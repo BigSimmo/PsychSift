@@ -12,7 +12,11 @@ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
 import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
 import { jsonError } from "@/lib/http";
 import { publicAccessContext } from "@/lib/public-api-access";
-import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
+import { buildDifferentialPresentationAggregate } from "@/lib/site-content/differential-aggregate";
+import {
+  readPublicSiteContentPartition,
+  type PublicSiteContentPartition,
+} from "@/lib/site-content/public-site-content";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
 
@@ -30,6 +34,23 @@ function differentialResponse(
 
 function notFoundResponse(slug: string) {
   return differentialResponse({ error: `No differential presentation found for "${slug}".` }, { status: 404 });
+}
+
+function unavailableReleaseResponse(
+  request: Request,
+  release: Pick<PublicSiteContentPartition<unknown>, "activeReleaseId" | "changeEpoch" | "state"> = {
+    activeReleaseId: null,
+    changeEpoch: 0,
+    state: "unavailable",
+  },
+) {
+  return differentialResponse(
+    {
+      error: "Public site content is unavailable.",
+      release: { id: release.activeReleaseId, epoch: release.changeEpoch, state: release.state },
+    },
+    { request, status: 503 },
+  );
 }
 
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
@@ -74,28 +95,23 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       return rateLimitJsonResponse("Differential requests are rate limited. Try again shortly.", rateLimit);
     }
 
-    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
-      domain: "differentials",
-      recordKind: "presentation",
-      slug: normalizedSlug,
-    });
+    let publicSiteContent;
+    try {
+      publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
+        domain: "differentials",
+      });
+    } catch {
+      return unavailableReleaseResponse(request);
+    }
     if (publicSiteContent) {
       if (publicSiteContent.state === "unavailable") {
-        return differentialResponse(
-          {
-            error: "Public site content is unavailable.",
-            release: { id: null, epoch: publicSiteContent.changeEpoch, state: "unavailable" },
-          },
-          { request, status: 503 },
-        );
+        return unavailableReleaseResponse(request, publicSiteContent);
       }
-      const publication = publicSiteContent.records[0];
-      if (!publication) return notFoundResponse(normalizedSlug);
+      const aggregate = buildDifferentialPresentationAggregate(publicSiteContent, normalizedSlug);
+      if (!aggregate) return unavailableReleaseResponse(request, publicSiteContent);
       return differentialResponse(
         {
-          workflow: publication.payload,
-          candidates: [],
-          governance: publication.governance,
+          ...aggregate,
           release: {
             id: publicSiteContent.activeReleaseId,
             epoch: publicSiteContent.changeEpoch,

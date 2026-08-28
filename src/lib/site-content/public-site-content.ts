@@ -4,6 +4,9 @@ type RpcClient = Pick<ReturnType<typeof import("@/lib/supabase/admin").createAdm
 
 export type PublicSiteContentRecord<T> = Readonly<{
   logical_id: string;
+  domain: SiteContentDomain;
+  record_kind: string;
+  slug: string;
   payload: T;
   governance: Record<string, unknown>;
   publication_version: string;
@@ -45,19 +48,36 @@ export async function readPublicSiteContentPartition<T>(
       record &&
       typeof record.logical_id === "string" &&
       record.logical_id.length > 0 &&
+      record.domain === input.domain &&
+      typeof record.record_kind === "string" &&
+      record.record_kind.length > 0 &&
+      (input.recordKind === undefined || record.record_kind === input.recordKind) &&
+      typeof record.slug === "string" &&
+      record.slug.length > 0 &&
+      (input.slug === undefined || record.slug === input.slug) &&
       record.payload !== null &&
       typeof record.payload === "object" &&
+      !Array.isArray(record.payload) &&
       record.governance !== null &&
       typeof record.governance === "object" &&
+      !Array.isArray(record.governance) &&
+      typeof record.publication_version === "string" &&
+      record.publication_version.length > 0 &&
       /^sha256:[a-f0-9]{64}$/.test(record.content_hash) &&
       /^sha256:[a-f0-9]{64}$/.test(record.source_lineage_digest),
   );
+  const recordIdentitiesUnique =
+    recordsValid &&
+    new Set(partition.records.map((record) => record.logical_id)).size === partition.records.length &&
+    new Set(partition.records.map((record) => `${record.domain}:${record.record_kind}:${record.slug}`)).size ===
+      partition.records.length;
   if (
     !Number.isSafeInteger(partition.changeEpoch) ||
     partition.changeEpoch < 0 ||
     !["current", "updating", "unavailable"].includes(partition.state) ||
     !activeReleaseValid ||
     !recordsValid ||
+    !recordIdentitiesUnique ||
     (partition.state === "unavailable" && (partition.activeReleaseId !== null || partition.records.length > 0)) ||
     (partition.state !== "unavailable" && partition.activeReleaseId === null)
   ) {
