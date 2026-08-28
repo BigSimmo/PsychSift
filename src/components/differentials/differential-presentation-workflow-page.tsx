@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Fragment } from "react";
 import {
@@ -16,16 +18,17 @@ import {
 } from "lucide-react";
 
 import { DiagnosisTermChip, DiagnosisTermInlineList } from "@/components/differentials/diagnosis-term-link";
+import { DifferentialContentState } from "@/components/differentials/differential-content-state";
 import { CopyAfterReviewButton } from "@/components/differentials/differential-presentation-actions";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
+import {
+  type DifferentialPresentationCandidate,
+  useDifferentialPresentation,
+} from "@/components/clinical-dashboard/use-differential-catalog";
 import { RegistryModeNav } from "@/components/mode-nav/registry-mode-nav";
 import { cn } from "@/components/ui-primitives";
 import { isClinicalHingeLabel, resolveDiagnosisTermSegments } from "@/lib/differential-diagnosis-links";
 import {
-  AD_HOC_DIFFERENTIAL_COMPARE_ID,
-  acuteConfusionPresentationWorkflow,
-  getDifferentialRecord,
-  getPresentationWorkflow,
   type DifferentialComparisonCriterion,
   type DifferentialPresentationWorkflow,
   type DifferentialRecord,
@@ -119,13 +122,17 @@ function comparisonCopy(workflow: DifferentialPresentationWorkflow, candidates: 
   ].join("\n");
 }
 
-function getCandidates(workflow: DifferentialPresentationWorkflow): CandidateView[] {
+function getCandidates(
+  workflow: DifferentialPresentationWorkflow,
+  releaseCandidates: DifferentialPresentationCandidate[],
+): CandidateView[] {
+  const releaseCandidateBySlug = new Map(releaseCandidates.map((candidate) => [candidate.slug, candidate]));
   return workflow.candidates.flatMap((candidate) => {
-    const record = getDifferentialRecord(candidate.slug);
-    if (!record) return [];
+    const releaseCandidate = releaseCandidateBySlug.get(candidate.slug);
+    if (!releaseCandidate) return [];
     return [
       {
-        record,
+        record: releaseCandidate.record,
         selected: candidate.selected,
         comparison: candidate.comparison,
       },
@@ -621,35 +628,30 @@ function MobileComparison({
 
 export function DifferentialPresentationWorkflowPage({
   query = "",
-  presentationSlug = "acute-confusion-encephalopathy",
   selectedIds = [],
-  workflow: workflowOverride,
+  workflow: baseWorkflow,
+  candidates: releaseCandidates,
 }: {
   query?: string;
-  presentationSlug?: string;
   selectedIds?: string[];
-  /** Prebuilt workflow (ad-hoc or already resolved). When set, skips catalogue slug lookup. */
-  workflow?: DifferentialPresentationWorkflow;
+  workflow: DifferentialPresentationWorkflow;
+  /** Candidate records already bound to the same release/workflow by the canonical API. */
+  candidates: DifferentialPresentationCandidate[];
 }) {
-  const baseWorkflow =
-    workflowOverride ?? getPresentationWorkflow(presentationSlug) ?? acuteConfusionPresentationWorkflow;
   const requestedIds = new Set(selectedIds.map((id) => id.trim().toLowerCase()).filter(Boolean));
-  // Ad-hoc workflows already encode selection; overlay only applies to catalogue presentations.
   const workflow =
-    workflowOverride?.id === AD_HOC_DIFFERENTIAL_COMPARE_ID
-      ? workflowOverride
-      : requestedIds.size
-        ? (() => {
-            let selectedCount = 0;
-            const candidates = baseWorkflow.candidates.map((candidate) => {
-              const selected = requestedIds.has(candidate.slug);
-              if (selected) selectedCount += 1;
-              return { ...candidate, selected };
-            });
-            return { ...baseWorkflow, candidates, selectedCount };
-          })()
-        : baseWorkflow;
-  const candidates = getCandidates(workflow);
+    requestedIds.size > 0
+      ? (() => {
+          let selectedCount = 0;
+          const candidates = baseWorkflow.candidates.map((candidate) => {
+            const selected = requestedIds.has(candidate.slug);
+            if (selected) selectedCount += 1;
+            return { ...candidate, selected };
+          });
+          return { ...baseWorkflow, candidates, selectedCount };
+        })()
+      : baseWorkflow;
+  const candidates = getCandidates(workflow, releaseCandidates);
   const selectedCandidateIds = candidates
     .filter((candidate) => candidate.selected)
     .map((candidate) => candidate.record.slug);
@@ -723,5 +725,28 @@ export function DifferentialPresentationWorkflowPage({
         </div>
       </main>
     </>
+  );
+}
+
+export function DifferentialPresentationReleasePage({
+  query = "",
+  presentationSlug,
+  selectedIds = [],
+}: {
+  query?: string;
+  presentationSlug: string;
+  selectedIds?: string[];
+}) {
+  const { status, workflow, candidates } = useDifferentialPresentation(presentationSlug);
+  if (status !== "ready" || !workflow) {
+    return <DifferentialContentState status={status === "ready" ? "error" : status} kind="presentation" />;
+  }
+  return (
+    <DifferentialPresentationWorkflowPage
+      query={query}
+      selectedIds={selectedIds}
+      workflow={workflow}
+      candidates={candidates}
+    />
   );
 }

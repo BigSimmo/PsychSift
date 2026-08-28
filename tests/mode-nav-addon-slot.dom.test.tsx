@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { isHeaderAddonSlotOwnedRoute } from "@/components/mode-nav/header-addon-slot";
 import { DifferentialPresentationWorkflowPage } from "@/components/differentials/differential-presentation-workflow-page";
 import { hasLocalInformationPageNavigation, PageSecondaryNavigation } from "@/components/page-secondary-navigation";
-import { resolveDifferentialCompareHandoff } from "@/lib/differentials";
+import { getDifferentialRecord, getPresentationWorkflow, resolveDifferentialCompareHandoff } from "@/lib/differentials";
 import { phoneHeaderCollapseAddonSlotId } from "@/lib/mode-home-composer";
 import {
   MODE_NAV_ADOPTED_MODES,
@@ -151,6 +151,10 @@ describe("header addon slot ownership", () => {
     );
     expect(handoff.kind).toBe("ad-hoc");
     if (handoff.kind !== "ad-hoc") throw new Error("Expected an ad-hoc differential comparison");
+    const candidates = handoff.selection.workflow.candidates.flatMap((candidate) => {
+      const record = getDifferentialRecord(candidate.slug);
+      return record ? [{ ...candidate, record }] : [];
+    });
 
     const searchParamString = new URL(handoff.href, "http://differentials.test").searchParams.toString();
     const view = renderIntoHeaderWithAddonSlot(
@@ -165,6 +169,7 @@ describe("header addon slot ownership", () => {
           query="Pain"
           selectedIds={handoff.selection.diagnosisIds}
           workflow={handoff.selection.workflow}
+          candidates={candidates}
         />
       </>,
     );
@@ -177,8 +182,13 @@ describe("header addon slot ownership", () => {
   });
 
   it("keeps a default presentation comparison selection in its shared Compare link", async () => {
+    const workflow = getPresentationWorkflow("acute-confusion-encephalopathy")!;
+    const candidates = workflow.candidates.flatMap((candidate) => {
+      const record = getDifferentialRecord(candidate.slug);
+      return record ? [{ ...candidate, record }] : [];
+    });
     const view = renderIntoHeaderWithAddonSlot(
-      <DifferentialPresentationWorkflowPage presentationSlug="acute-confusion-encephalopathy" />,
+      <DifferentialPresentationWorkflowPage workflow={workflow} candidates={candidates} />,
     );
 
     await waitFor(() => expect(view.occupants()).toHaveLength(1));

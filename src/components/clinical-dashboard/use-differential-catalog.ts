@@ -26,13 +26,12 @@ export type DifferentialRecordGovernance = {
   validationStatus: DifferentialValidationStatus;
 };
 
-export type DifferentialRequestStatus = "loading" | "ready" | "unauthorized" | "not_found" | "error";
+export type DifferentialRequestStatus = "loading" | "ready" | "unauthorized" | "not_found" | "unavailable" | "error";
 
 export type DifferentialRecordState = {
   status: DifferentialRequestStatus;
   record: DifferentialRecord | null;
-  /** Catalog context computed server-side for the returned record (may lag
-   *  older API deployments, so consumers keep an SSR fallback). */
+  /** Catalog context computed atomically with the returned record. */
   detailContext: DifferentialDetailContext | null;
   demoMode: boolean;
   governance: DifferentialRecordGovernance | null;
@@ -41,8 +40,21 @@ export type DifferentialRecordState = {
 export type DifferentialPresentationState = {
   status: DifferentialRequestStatus;
   workflow: DifferentialPresentationWorkflow | null;
+  candidates: DifferentialPresentationCandidate[];
   demoMode: boolean;
   governance: DifferentialRecordGovernance | null;
+};
+
+export type DifferentialPresentationCandidate = DifferentialPresentationWorkflow["candidates"][number] & {
+  record: DifferentialRecord;
+};
+
+const emptyDifferentialPresentationState: DifferentialPresentationState = {
+  status: "loading",
+  workflow: null,
+  candidates: [],
+  demoMode: false,
+  governance: null,
 };
 
 /** Match universal / medication catalogue debounce so live composer follow coalesces. */
@@ -279,8 +291,13 @@ export function useDifferentialSearch(query: string): DifferentialSearchResult {
 }
 
 export function useDifferentialRecord(slug: string): DifferentialRecordState {
-  const { authorizationHeader, markSessionExpired, status: authStatus } = useAuthSession();
+  const { authorizationHeader, markSessionExpired, session, status: authStatus } = useAuthSession();
   const requestKey = slug.trim().toLowerCase();
+  const requestIdentity = JSON.stringify([
+    requestKey,
+    authSessionFingerprint(authStatus, session?.user.id),
+    authorizationHeader.Authorization ?? "",
+  ]);
   const [state, setState] = useState<DifferentialRecordState>({
     status: "loading",
     record: null,
@@ -288,6 +305,11 @@ export function useDifferentialRecord(slug: string): DifferentialRecordState {
     demoMode: false,
     governance: null,
   });
+  const [lastRequestIdentity, setLastRequestIdentity] = useState(requestIdentity);
+  if (lastRequestIdentity !== requestIdentity) {
+    setLastRequestIdentity(requestIdentity);
+    setState({ status: "loading", record: null, detailContext: null, demoMode: false, governance: null });
+  }
 
   useEffect(() => {
     let active = true;
@@ -304,6 +326,10 @@ export function useDifferentialRecord(slug: string): DifferentialRecordState {
           setState({ status: "not_found", record: null, detailContext: null, demoMode: false, governance: null });
           return;
         }
+        if (response.status === 503) {
+          setState({ status: "unavailable", record: null, detailContext: null, demoMode: false, governance: null });
+          return;
+        }
         if (!response.ok) {
           setState({ status: "error", record: null, detailContext: null, demoMode: false, governance: null });
           return;
@@ -314,10 +340,14 @@ export function useDifferentialRecord(slug: string): DifferentialRecordState {
           demoMode?: boolean;
           governance?: DifferentialRecordGovernance;
         };
+        if (!payload.record || !payload.detailContext) {
+          setState({ status: "error", record: null, detailContext: null, demoMode: false, governance: null });
+          return;
+        }
         setState({
-          status: payload.record ? "ready" : "not_found",
-          record: payload.record ?? null,
-          detailContext: payload.detailContext ?? null,
+          status: "ready",
+          record: payload.record,
+          detailContext: payload.detailContext,
           demoMode: Boolean(payload.demoMode),
           governance: payload.governance ?? null,
         });
@@ -331,6 +361,74 @@ export function useDifferentialRecord(slug: string): DifferentialRecordState {
       active = false;
     };
   }, [requestKey, authStatus, authorizationHeader, markSessionExpired]);
+
+  return state;
+}
+
+export function useDifferentialPresentation(slug: string): DifferentialPresentationState {
+  const { authorizationHeader, markSessionExpired, session, status: authStatus } = useAuthSession();
+  const requestKey = slug.trim().toLowerCase();
+  const requestIdentity = JSON.stringify([
+    requestKey,
+    authSessionFingerprint(authStatus, session?.user.id),
+    authorizationHeader.Authorization ?? "",
+  ]);
+  const [state, setState] = useState<DifferentialPresentationState>(emptyDifferentialPresentationState);
+  const [lastRequestIdentity, setLastRequestIdentity] = useState(requestIdentity);
+  if (lastRequestIdentity !== requestIdentity) {
+    setLastRequestIdentity(requestIdentity);
+    setState(emptyDifferentialPresentationState);
+  }
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/differentials/presentations/${encodeURIComponent(requestKey)}`, { headers: authorizationHeader })
+      .then(async (response) => {
+        if (!active) return;
+        if (response.status === 401) {
+          if (authStatus === "loading") return;
+          if (authStatus === "authenticated") markSessionExpired();
+          setState({ ...emptyDifferentialPresentationState, status: "unauthorized" });
+          return;
+        }
+        if (response.status === 404) {
+          setState({ ...emptyDifferentialPresentationState, status: "not_found" });
+          return;
+        }
+        if (response.status === 503) {
+          setState({ ...emptyDifferentialPresentationState, status: "unavailable" });
+          return;
+        }
+        if (!response.ok) {
+          setState({ ...emptyDifferentialPresentationState, status: "error" });
+          return;
+        }
+        const payload = (await response.json()) as {
+          workflow?: DifferentialPresentationWorkflow;
+          candidates?: DifferentialPresentationCandidate[];
+          demoMode?: boolean;
+          governance?: DifferentialRecordGovernance;
+        };
+        if (!active) return;
+        if (!payload.workflow || !Array.isArray(payload.candidates)) {
+          setState({ ...emptyDifferentialPresentationState, status: "error" });
+          return;
+        }
+        setState({
+          status: "ready",
+          workflow: payload.workflow,
+          candidates: payload.candidates,
+          demoMode: Boolean(payload.demoMode),
+          governance: payload.governance ?? null,
+        });
+      })
+      .catch(() => {
+        if (active) setState({ ...emptyDifferentialPresentationState, status: "error" });
+      });
+    return () => {
+      active = false;
+    };
+  }, [requestKey, requestIdentity, authStatus, authorizationHeader, markSessionExpired]);
 
   return state;
 }

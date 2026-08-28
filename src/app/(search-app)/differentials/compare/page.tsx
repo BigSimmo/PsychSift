@@ -5,6 +5,7 @@ import { DifferentialCompareQueuePage } from "@/components/differentials/differe
 import { DifferentialPresentationWorkflowPage } from "@/components/differentials/differential-presentation-workflow-page";
 import {
   differentialCompareQueueItems,
+  getDifferentialRecord,
   resolveDifferentialCompareHandoff,
   resolveDifferentialCompareLaunchHref,
 } from "@/lib/differentials";
@@ -56,12 +57,20 @@ export default async function DifferentialCompareRoute({ searchParams }: Differe
     redirect(handoff.href);
   }
 
+  // This cross-presentation workspace is a synthetic local comparison, not a
+  // public-release presentation route. Bind its generated workflow to the same
+  // bundled records that produced the ad-hoc selection.
+  const candidates = handoff.selection.workflow.candidates.flatMap((candidate) => {
+    const record = getDifferentialRecord(candidate.slug);
+    return record ? [{ ...candidate, record }] : [];
+  });
+
   return (
     <DifferentialPresentationWorkflowPage
       query={query}
-      presentationSlug={handoff.selection.workflow.id}
       selectedIds={handoff.selection.diagnosisIds}
       workflow={handoff.selection.workflow}
+      candidates={candidates}
     />
   );
 }
