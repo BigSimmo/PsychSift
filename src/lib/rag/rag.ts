@@ -58,7 +58,7 @@ import {
   applyNumericVerification,
   textReferencesAdjacentBandConflict,
 } from "@/lib/answer-verification";
-import { buildEvidencePreviewProgress, type VerifiedUnit } from "@/lib/answer-preview";
+import { buildEvidencePreviewProgress } from "@/lib/answer-preview";
 export { applyNumericVerification, unboldUnverifiedNumbers } from "@/lib/answer-verification";
 import { selectModelContextResults, summarizeAustralianSourceSelection } from "@/lib/rag/rag-context-selection";
 import { relatedInformationMenuLine } from "@/lib/rag/answer-composition";
@@ -130,6 +130,7 @@ import {
   isSearchCacheLookupEnabled,
   packAdjacentSourceContext,
   packedContextCacheKey,
+  resolveRequestRagCacheContext,
   scopedAnswerCacheKey,
   setCachedAnswer,
   setCachedSearch,
@@ -147,6 +148,10 @@ import {
   recordCoalescedAnswerWaiter,
 } from "@/lib/observability/answer-coalescing-metrics";
 import { buildRagSourceBlock, neutralizeIdentityField } from "@/lib/rag/rag-source-block";
+import {
+  ragContextSnapshotTelemetry,
+  selectRequestRagContextSnapshot as selectRagSnapshot,
+} from "@/lib/rag/rag-context-snapshot";
 export { buildRagSourceBlock, truncateForModel } from "@/lib/rag/rag-source-block";
 import {
   buildClinicalTextSearchQuery,
@@ -214,8 +219,19 @@ export {
   rankMemoryCardsForAnswer,
   scoreValue,
 } from "@/lib/rag/rag-answer-support";
-import { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
-export { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
+import {
+  retrievalPlanForQueryClass,
+  type AnswerProgressEvent,
+  type AnswerQuestionWithScopeArgs,
+  type SearchChunksArgs,
+  type SearchTelemetry,
+} from "@/lib/rag/rag-contracts";
+export {
+  retrievalPlanForQueryClass,
+  type AnswerProgressEvent,
+  type SearchChunksArgs,
+  type SearchTelemetry,
+} from "@/lib/rag/rag-contracts";
 import {
   clearlyOutsideCorpusMedicalPattern,
   isUnsupportedSoftTailAnalysis,
@@ -283,7 +299,6 @@ import type {
   AnswerSectionSupportLevel,
   Citation,
   ClinicalQueryAnalysis,
-  EvidenceRelevance,
   RelatedDocument,
   OpenAITokenUsage,
   RetrievalConfidenceGateStatus,
@@ -490,41 +505,6 @@ function awaitWithCallerSignal<T>(pending: Promise<T>, signal?: AbortSignal): Pr
   });
 }
 
-export type AnswerProgressEvent = {
-  stage:
-    | "retrieved"
-    | "ranking"
-    | "routing"
-    | "generating"
-    | "retrying"
-    | "fallback"
-    | "verifying"
-    | "finalizing"
-    | "cached"
-    | "complete";
-  message: string;
-  resultCount?: number;
-  selectedContextCount?: number;
-  australianSourceCount?: number;
-  waSourceCount?: number;
-  usedSupplementaryFallback?: boolean;
-  visibleSourceCount?: number;
-  directSourceCount?: number;
-  weakSourceCount?: number;
-  timingMs?: number;
-  relevance?: EvidenceRelevance;
-  mode?: RagAnswer["routingMode"];
-  model?: string | null;
-  reason?: string;
-  smartApiPlan?: SmartRagApiPlan;
-  verifiedUnit?: VerifiedUnit;
-};
-type AnswerQuestionWithScopeArgs = SearchChunksArgs & {
-  finalizeTelemetryAnswer?: RagQueryTelemetryFinalizer;
-  logQuery?: boolean;
-  onProgress?: (event: AnswerProgressEvent) => void | Promise<void>;
-  observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext;
-};
 /** Provenance layer keys. */
 function provenanceLayerKeys(result: SearchResult) {
   const layers = new Set<string>(["chunk"]);
@@ -1608,6 +1588,11 @@ export async function searchChunksWithTelemetry(
     }
   })();
   const cacheContext = args.cacheContext ?? {};
+  const ragContextSnapshot = selectRagSnapshot(args.ragContextSnapshot, cacheContext.ragContextSnapshot);
+  if (ragContextSnapshot) {
+    cacheContext.ragContextSnapshot ??= ragContextSnapshot;
+    args = { ...args, cacheContext, ragContextSnapshot };
+  }
   const indexingVersionPromise = isSearchCacheLookupEnabled(args)
     ? (cacheContext.indexingVersionAtRequestStart ??= cacheIndexingVersion(args, { forceRefresh: true }))
     : undefined;
@@ -1637,6 +1622,7 @@ export async function searchChunksWithTelemetry(
     reasons: queryAnalysis.reasons,
   };
   const telemetry = createSearchTelemetry(retrievalQuery, queryClassification.queryClass);
+  if (ragContextSnapshot) Object.assign(telemetry, ragContextSnapshotTelemetry(ragContextSnapshot));
   if (queryAnalysis.corpusGrounding) telemetry.corpus_grounding = queryAnalysis.corpusGrounding;
 
   let semanticRerankAttempted = false;
@@ -2418,7 +2404,16 @@ export async function answerQuestion(query: string, documentId?: string) {
 /** Answer question with scope. */
 export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs): Promise<RagAnswer> {
   const startedAt = Date.now();
+  throwIfAborted(args.signal);
+  const adversarialQuery = hasAdversarialManipulationIntent(queryForClinicalMode(args.query, args.queryMode ?? "auto"));
+  if (!adversarialQuery) {
+    const requestContext = await resolveRequestRagCacheContext(args, args.observationContext?.rolloutMode ?? "legacy", {
+      readDocumentIndexGeneration: cacheIndexingVersion,
+    });
+    args = { ...args, ...requestContext };
+  }
   const coalescingEnabled =
+    !adversarialQuery &&
     answerCacheAllowedForOwner(args.ownerId) &&
     !args.skipCache &&
     env.RAG_ANSWER_CACHE_TTL_MS > 0 &&
@@ -2498,6 +2493,7 @@ async function answerQuestionWithScopeUncoalesced(
   // cache lets the query flow to routing, which fails it closed to "unsupported".
   const adversarialQuery = hasAdversarialManipulationIntent(answerFocusQuery);
   const cacheContext = args.cacheContext ?? {};
+  if (args.ragContextSnapshot) cacheContext.ragContextSnapshot ??= args.ragContextSnapshot;
   const answerCacheLookupEnabled =
     !adversarialQuery && answerCacheAllowedForOwner(args.ownerId) && !args.skipCache && env.RAG_ANSWER_CACHE_TTL_MS > 0;
   const indexingVersionPromise = answerCacheLookupEnabled
@@ -2580,6 +2576,7 @@ async function answerQuestionWithScopeUncoalesced(
         documentId: args.documentId,
         documentIds: args.documentIds,
         ownerId: args.ownerId,
+        accessScope: args.accessScope,
         allowGlobalSearch: args.allowGlobalSearch,
         topK: 12,
         minSimilarity: 0.12,
@@ -2587,6 +2584,7 @@ async function answerQuestionWithScopeUncoalesced(
         queryMode: args.queryMode,
         signal: retrievalDeadline.signal,
         cacheContext,
+        ragContextSnapshot: args.ragContextSnapshot,
       }),
     );
   } finally {

@@ -6,13 +6,21 @@ import { ragDeepMemoryVersion } from "@/lib/deep-memory";
 import { env } from "@/lib/env";
 import { queryCacheKeyForStorage } from "@/lib/query-privacy";
 import { ragCacheKeyMatchesOwner } from "@/lib/rag/rag-cache-utils";
+import {
+  ragContextSnapshotCacheKey,
+  resolveRagContextSnapshot,
+  selectRequestRagContextSnapshot,
+} from "@/lib/rag/rag-context-snapshot";
 import { retrievalAccessScopeForArgs, retrievalAccessScopeKey } from "@/lib/owner-scope";
 import { compactContextText } from "@/lib/rag/rag-source-block";
 import { committedIndexGeneration } from "@/lib/reindex-pipeline";
+import { australianSourcePolicyVersion } from "@/lib/australian-source-catalogue";
+import { collectSiteContentHealthInput } from "@/lib/site-content/site-content-health-authority";
+import { expectedSiteContentStaticManifestDigest } from "@/lib/site-content/site-content-static-build.generated";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
 import type { Json } from "@/lib/supabase/database.types";
-import type { RagAnswer, RagQueryClass, SearchResult } from "@/lib/types";
+import type { RagAnswer, RagProgrammeMode, RagQueryClass, SearchResult } from "@/lib/types";
 import {
   ragAnswerPromptVersion,
   ragAnswerSchemaVersion,
@@ -103,6 +111,12 @@ function modeKey(args: Pick<SearchChunksArgs, "queryMode">) {
   return args.queryMode ?? "auto";
 }
 
+function contextSnapshotKey(args: Pick<SearchChunksArgs, "ragContextSnapshot">) {
+  const snapshot = args.ragContextSnapshot;
+  if (!snapshot || snapshot.publicSiteContent.state === "disabled") return null;
+  return ragContextSnapshotCacheKey(snapshot);
+}
+
 export type AnswerGenerationFingerprintInput = {
   answerModel: string;
   fastModel: string;
@@ -153,19 +167,27 @@ export function answerGenerationFingerprint() {
   });
 }
 
-function sharedAnswerNormalizedQuery(args: Pick<SearchChunksArgs, "query" | "queryMode">) {
+function sharedAnswerNormalizedQuery(args: Pick<SearchChunksArgs, "query" | "queryMode" | "ragContextSnapshot">) {
   const query = normalizedCacheQuery(`${modeKey(args)} ${args.query}`);
-  return queryCacheKeyForStorage(`${query}|generation:${answerGenerationFingerprint()}`);
+  const snapshotKey = contextSnapshotKey(args);
+  return queryCacheKeyForStorage(
+    `${query}|generation:${answerGenerationFingerprint()}${snapshotKey ? `|context:${snapshotKey}` : ""}`,
+  );
 }
 
 export function scopedAnswerCacheKey(
-  args: Pick<SearchChunksArgs, "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode">,
+  args: Pick<
+    SearchChunksArgs,
+    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode" | "ragContextSnapshot"
+  >,
 ) {
+  const snapshotKey = contextSnapshotKey(args);
   return [
     ragCacheDependencyVersion,
     scopeKey(args),
     modeKey(args),
     `generation:${answerGenerationFingerprint()}`,
+    ...(snapshotKey ? [`context:${snapshotKey}`] : []),
     args.query.trim().toLowerCase().replace(/\s+/g, " "),
   ].join("|");
 }
@@ -182,7 +204,14 @@ export function answerCacheAllowedForOwner(ownerId?: string | null) {
 export async function getCachedAnswer(
   args: Pick<
     SearchChunksArgs,
-    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "skipCache" | "queryMode"
+    | "query"
+    | "documentId"
+    | "documentIds"
+    | "ownerId"
+    | "accessScope"
+    | "skipCache"
+    | "queryMode"
+    | "ragContextSnapshot"
   >,
   startedAt: number,
   options?: { indexingVersionAtRequestStart?: string | null },
@@ -244,7 +273,14 @@ export async function getCachedAnswer(
 export async function setCachedAnswer(
   args: Pick<
     SearchChunksArgs,
-    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "skipCache" | "queryMode"
+    | "query"
+    | "documentId"
+    | "documentIds"
+    | "ownerId"
+    | "accessScope"
+    | "skipCache"
+    | "queryMode"
+    | "ragContextSnapshot"
   >,
   answer: RagAnswer,
   options?: { indexingVersionAtRetrievalStart?: string | null },
@@ -298,12 +334,14 @@ export function retrievalPlanCacheQuery(
     | "minSimilarity"
     | "forceEmbedding"
     | "lexicalOnly"
+    | "ragContextSnapshot"
   >,
   queryClass?: RagQueryClass,
   queryVariants: string[] = [],
 ) {
   const normalizedQuery = normalizedCacheQuery(args.query);
   const variantHash = stableHash(queryVariants.join("\n"));
+  const snapshotKey = contextSnapshotKey(args);
   const cacheKey = [
     `plan:${retrievalPlanForQueryClass(queryClass)}`,
     `class:${queryClass ?? "unknown"}`,
@@ -316,6 +354,7 @@ export function retrievalPlanCacheQuery(
     `lexicalOnly:${args.lexicalOnly ? "1" : "0"}`,
     `rag:${ragDeepMemoryVersion}`,
     `force:${args.forceEmbedding ? 1 : 0}`,
+    ...(snapshotKey ? [`context:${snapshotKey}`] : []),
     ...(env.RAG_SEMANTIC_RERANK_ENABLED ? [`semanticRerank:${env.OPENAI_RERANK_MODEL}`] : []),
   ].join("|");
   return queryCacheKeyForStorage(cacheKey);
@@ -444,7 +483,15 @@ function sharedCacheSelector(
   kind: SharedCacheKind,
   args: Pick<
     SearchChunksArgs,
-    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode" | "forceEmbedding" | "signal"
+    | "query"
+    | "documentId"
+    | "documentIds"
+    | "ownerId"
+    | "accessScope"
+    | "queryMode"
+    | "forceEmbedding"
+    | "signal"
+    | "ragContextSnapshot"
   >,
   indexingVersion: string,
   normalizedQuery: string = queryCacheKeyForStorage(normalizedCacheQuery(`${modeKey(args)} ${args.query}`)),
@@ -472,11 +519,88 @@ function isGenerationFallbackAnswer(answer: Pick<RagAnswer, "routingReason" | "d
   );
 }
 
-export async function cacheIndexingVersion(
-  args: Pick<SearchChunksArgs, "documentId" | "documentIds" | "ownerId" | "accessScope" | "signal">,
-  options?: { forceRefresh?: boolean },
+export async function resolveRequestRagContextSnapshot(
+  args: Pick<SearchChunksArgs, "signal">,
+  rolloutVersion: RagProgrammeMode,
+  dependencies: Readonly<{
+    readDocumentIndexGeneration: typeof cacheIndexingVersion;
+    readSiteContentAuthority?: typeof collectSiteContentHealthInput;
+    now?: () => Date;
+  }>,
 ) {
+  const [documentIndexGeneration, siteAuthority] = await Promise.all([
+    dependencies.readDocumentIndexGeneration(
+      { accessScope: { includePublic: true }, signal: args.signal },
+      { forceRefresh: true },
+    ),
+    (dependencies.readSiteContentAuthority ?? collectSiteContentHealthInput)(),
+  ]);
   throwIfAborted(args.signal);
+  return resolveRagContextSnapshot({
+    expectedSiteStaticManifestDigest: expectedSiteContentStaticManifestDigest,
+    activePublicSiteRelease: siteAuthority?.activeRelease ?? null,
+    publicSiteChangeEpoch: siteAuthority?.queueHealth.changeEpoch ?? null,
+    pendingPublicSiteChangeCount: siteAuthority?.queueHealth.pendingCount ?? 0,
+    pendingPublicSiteLogicalIds: siteAuthority?.queueHealth.pendingLogicalIds ?? [],
+    documentIndexGeneration,
+    sourcePolicyVersion: australianSourcePolicyVersion,
+    rolloutVersion,
+    resolvedAt: (dependencies.now?.() ?? new Date()).toISOString(),
+  });
+}
+
+export async function resolveRequestRagCacheContext(
+  args: Pick<
+    SearchChunksArgs,
+    "documentId" | "documentIds" | "ownerId" | "accessScope" | "signal" | "ragContextSnapshot" | "cacheContext"
+  >,
+  rolloutVersion: RagProgrammeMode,
+  dependencies: Readonly<{ readDocumentIndexGeneration: typeof cacheIndexingVersion }>,
+) {
+  const cacheContext = args.cacheContext ?? {};
+  const suppliedSnapshot = selectRequestRagContextSnapshot(args.ragContextSnapshot, cacheContext.ragContextSnapshot);
+  const ragContextSnapshot =
+    suppliedSnapshot ??
+    (await resolveRequestRagContextSnapshot(args, rolloutVersion, {
+      readDocumentIndexGeneration: dependencies.readDocumentIndexGeneration,
+    }));
+  cacheContext.ragContextSnapshot = ragContextSnapshot;
+  cacheContext.indexingVersionAtRequestStart ??= dependencies.readDocumentIndexGeneration(
+    {
+      documentId: args.documentId,
+      documentIds: args.documentIds,
+      ownerId: args.ownerId,
+      accessScope: args.accessScope,
+      signal: args.signal,
+      ragContextSnapshot,
+    },
+    { forceRefresh: true },
+  );
+  return { cacheContext, ragContextSnapshot };
+}
+
+function cacheIndexingVersionForSnapshot(
+  snapshot: NonNullable<SearchChunksArgs["ragContextSnapshot"]>,
+  legacyIndexingVersion: string,
+) {
+  if (!cacheAuthorityAvailable(legacyIndexingVersion)) return legacyIndexingVersion;
+  const snapshotKey = contextSnapshotKey({ ragContextSnapshot: snapshot });
+  return snapshotKey ? `${legacyIndexingVersion}:context:${snapshotKey}` : legacyIndexingVersion;
+}
+
+export async function cacheIndexingVersion(
+  args: Pick<
+    SearchChunksArgs,
+    "documentId" | "documentIds" | "ownerId" | "accessScope" | "signal" | "ragContextSnapshot"
+  >,
+  options?: { forceRefresh?: boolean },
+): Promise<string> {
+  throwIfAborted(args.signal);
+  if (args.ragContextSnapshot) {
+    const { ragContextSnapshot, ...legacyArgs } = args;
+    const legacyIndexingVersion = await cacheIndexingVersion(legacyArgs, options);
+    return cacheIndexingVersionForSnapshot(ragContextSnapshot, legacyIndexingVersion);
+  }
   const cacheKey = cacheIndexingVersionCacheKey(args);
   if (options?.forceRefresh) cacheIndexingVersionCache.delete(cacheKey);
   const cached = readExpiringCacheEntry(cacheIndexingVersionCache, cacheKey);
@@ -589,6 +713,9 @@ export async function getSharedCachedSearch(
         shared_cache_miss_reason: null,
         query_class: payload.telemetry?.query_class,
         corpus_grounding: payload.telemetry?.corpus_grounding,
+        site_content_state: payload.telemetry?.site_content_state,
+        site_content_static_manifest_match: payload.telemetry?.site_content_static_manifest_match,
+        site_content_pending_bucket: payload.telemetry?.site_content_pending_bucket,
         vector_candidate_count: payload.telemetry?.vector_candidate_count,
         text_candidate_count: payload.telemetry?.text_candidate_count,
         embedding_field_count: payload.telemetry?.embedding_field_count,
@@ -642,7 +769,15 @@ export async function getSharedCachedSearch(
 export async function getSharedCachedAnswer(
   args: Pick<
     SearchChunksArgs,
-    "query" | "documentId" | "documentIds" | "ownerId" | "skipCache" | "queryMode" | "forceEmbedding"
+    | "query"
+    | "documentId"
+    | "documentIds"
+    | "ownerId"
+    | "accessScope"
+    | "skipCache"
+    | "queryMode"
+    | "forceEmbedding"
+    | "ragContextSnapshot"
   >,
   startedAt: number,
   options?: { indexingVersionAtRequestStart?: string | null },
@@ -689,7 +824,15 @@ async function replaceSharedCacheRow(
   kind: SharedCacheKind,
   args: Pick<
     SearchChunksArgs,
-    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode" | "forceEmbedding" | "signal"
+    | "query"
+    | "documentId"
+    | "documentIds"
+    | "ownerId"
+    | "accessScope"
+    | "queryMode"
+    | "forceEmbedding"
+    | "signal"
+    | "ragContextSnapshot"
   >,
   payload: unknown,
   ttlMs: number,
@@ -751,7 +894,15 @@ function setSharedCachedSearch(
 async function setSharedCachedAnswer(
   args: Pick<
     SearchChunksArgs,
-    "query" | "documentId" | "documentIds" | "ownerId" | "skipCache" | "queryMode" | "forceEmbedding"
+    | "query"
+    | "documentId"
+    | "documentIds"
+    | "ownerId"
+    | "accessScope"
+    | "skipCache"
+    | "queryMode"
+    | "forceEmbedding"
+    | "ragContextSnapshot"
   >,
   answer: RagAnswer,
   indexingVersion: string,
@@ -768,7 +919,10 @@ async function setSharedCachedAnswer(
 }
 
 async function deleteSharedCachedAnswerRow(
-  args: Pick<SearchChunksArgs, "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode">,
+  args: Pick<
+    SearchChunksArgs,
+    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode" | "ragContextSnapshot"
+  >,
   indexingVersion: string,
 ) {
   try {

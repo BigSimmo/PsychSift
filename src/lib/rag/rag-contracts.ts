@@ -1,12 +1,17 @@
 import type {
   ClinicalQueryMode,
   CorpusGroundingVerdict,
+  EvidenceRelevance,
+  RagAnswer,
   RagProgrammeMode,
   RagQueryClass,
   RetrievalIntent,
   RetrievalSelectionSummary,
+  SmartRagApiPlan,
 } from "@/lib/types";
 import type { RetrievalAccessScope } from "@/lib/owner-scope";
+import type { VerifiedUnit } from "@/lib/answer-preview";
+import type { ResolvedRagContextSnapshot } from "@/lib/rag/rag-context-snapshot";
 
 export type SearchChunksArgs = {
   query: string;
@@ -28,9 +33,12 @@ export type SearchChunksArgs = {
   forceEmbedding?: boolean;
   // Lightweight-preview only: return lexical/trigram candidates without an embedding call.
   lexicalOnly?: boolean;
+  /** Internal immutable authority resolved once before request cache/coalescing lookup. */
+  ragContextSnapshot?: ResolvedRagContextSnapshot;
   /** Internal: shares one request-start indexing-version resolution across nested cache reads. */
   cacheContext?: {
     indexingVersionAtRequestStart?: Promise<string>;
+    ragContextSnapshot?: ResolvedRagContextSnapshot;
   };
 };
 
@@ -39,8 +47,48 @@ export type RagObservationContext = {
   rolloutMode: RagProgrammeMode;
 };
 
+export type AnswerProgressEvent = {
+  stage:
+    | "retrieved"
+    | "ranking"
+    | "routing"
+    | "generating"
+    | "retrying"
+    | "fallback"
+    | "verifying"
+    | "finalizing"
+    | "cached"
+    | "complete";
+  message: string;
+  resultCount?: number;
+  selectedContextCount?: number;
+  australianSourceCount?: number;
+  waSourceCount?: number;
+  usedSupplementaryFallback?: boolean;
+  visibleSourceCount?: number;
+  directSourceCount?: number;
+  weakSourceCount?: number;
+  timingMs?: number;
+  relevance?: EvidenceRelevance;
+  mode?: RagAnswer["routingMode"];
+  model?: string | null;
+  reason?: string;
+  smartApiPlan?: SmartRagApiPlan;
+  verifiedUnit?: VerifiedUnit;
+};
+
+export type AnswerQuestionWithScopeArgs = SearchChunksArgs & {
+  finalizeTelemetryAnswer?: (answer: RagAnswer) => RagAnswer;
+  logQuery?: boolean;
+  onProgress?: (event: AnswerProgressEvent) => void | Promise<void>;
+  observationContext?: RagObservationContext;
+};
+
 export type SearchTelemetry = {
   search_cache_hit: boolean;
+  site_content_state?: "current" | "updating" | "stale" | "unavailable" | "disabled";
+  site_content_static_manifest_match?: boolean;
+  site_content_pending_bucket?: "none" | "one" | "few" | "many";
   search_total_latency_ms?: number;
   retrieval_phase_latencies_ms?: Record<string, number>;
   shared_cache_hit?: boolean;

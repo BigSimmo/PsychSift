@@ -1,4 +1,4 @@
-import type { ClinicalSourceRole, SiteContentDomain, SiteContentPartitionState } from "@/lib/types";
+import type { ClinicalSourceRole, RagProgrammeMode, SiteContentDomain, SiteContentPartitionState } from "@/lib/types";
 
 export type SiteContentRecord = {
   version: "site-content-record-v1";
@@ -62,6 +62,7 @@ export type RagContextSnapshot = {
   resolvedAt: string;
   documentIndexGeneration: string;
   sourcePolicyVersion: string;
+  rolloutVersion: RagProgrammeMode;
   uploadedLocal: UploadedLocalSnapshotIdentity;
   australianPublic: AustralianPublicSnapshotIdentity;
   publicSiteContent: SiteContentPartitionSnapshot;

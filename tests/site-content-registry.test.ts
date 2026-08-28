@@ -355,6 +355,7 @@ describe("site content public publication and authority policy", () => {
       resolvedAt: "2026-08-23T00:00:01.000Z",
       documentIndexGeneration: "documents-generation-7",
       sourcePolicyVersion: "source-policy-v2",
+      rolloutVersion: "legacy",
       uploadedLocal: {
         indexGeneration: "documents-generation-7",
         activationDigest: "sha256:uploaded",
