@@ -16,7 +16,7 @@ import { compactContextText } from "@/lib/rag/rag-source-block";
 import { committedIndexGeneration } from "@/lib/reindex-pipeline";
 import { australianSourcePolicyVersion } from "@/lib/australian-source-catalogue";
 import { collectSiteContentHealthInput } from "@/lib/site-content/site-content-health-authority";
-import { expectedSiteContentStaticManifestDigest } from "@/lib/site-content/site-content-static-build.generated";
+import { classifySiteContentHealth } from "@/lib/health-response";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
 import { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
 import type { Json } from "@/lib/supabase/database.types";
@@ -528,6 +528,7 @@ export async function resolveRequestRagContextSnapshot(
     now?: () => Date;
   }>,
 ) {
+  const resolvedAt = dependencies.now?.() ?? new Date();
   const [documentIndexGeneration, siteAuthority] = await Promise.all([
     dependencies.readDocumentIndexGeneration(
       { accessScope: { includePublic: true }, signal: args.signal },
@@ -536,16 +537,24 @@ export async function resolveRequestRagContextSnapshot(
     (dependencies.readSiteContentAuthority ?? collectSiteContentHealthInput)(),
   ]);
   throwIfAborted(args.signal);
+  const siteClassification = classifySiteContentHealth(siteAuthority, { now: resolvedAt });
+  const staticMismatchOnly =
+    siteClassification.stopReasons.length === 1 && siteClassification.stopReasons[0] === "static_manifest_mismatch";
+  const acceptedAuthority =
+    siteClassification.stopReasons.length === 0 || staticMismatchOnly ? siteAuthority : undefined;
+  const activeRelease = acceptedAuthority?.activeRelease ?? null;
+  const pendingLogicalIds = !staticMismatchOnly && activeRelease ? activeRelease.pendingLogicalIds : [];
   return resolveRagContextSnapshot({
-    expectedSiteStaticManifestDigest: expectedSiteContentStaticManifestDigest,
-    activePublicSiteRelease: siteAuthority?.activeRelease ?? null,
-    publicSiteChangeEpoch: siteAuthority?.queueHealth.changeEpoch ?? null,
-    pendingPublicSiteChangeCount: siteAuthority?.queueHealth.pendingCount ?? 0,
-    pendingPublicSiteLogicalIds: siteAuthority?.queueHealth.pendingLogicalIds ?? [],
+    expectedSiteStaticManifestDigest:
+      acceptedAuthority?.expectedStaticManifestDigest ?? "site-content-authority-unavailable",
+    activePublicSiteRelease: activeRelease,
+    publicSiteChangeEpoch: activeRelease?.changeEpoch ?? null,
+    pendingPublicSiteChangeCount: pendingLogicalIds.length,
+    pendingPublicSiteLogicalIds: pendingLogicalIds,
     documentIndexGeneration,
     sourcePolicyVersion: australianSourcePolicyVersion,
     rolloutVersion,
-    resolvedAt: (dependencies.now?.() ?? new Date()).toISOString(),
+    resolvedAt: resolvedAt.toISOString(),
   });
 }
 

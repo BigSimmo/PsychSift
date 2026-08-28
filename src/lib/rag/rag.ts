@@ -148,10 +148,7 @@ import {
   recordCoalescedAnswerWaiter,
 } from "@/lib/observability/answer-coalescing-metrics";
 import { buildRagSourceBlock, neutralizeIdentityField } from "@/lib/rag/rag-source-block";
-import {
-  ragContextSnapshotTelemetry,
-  selectRequestRagContextSnapshot as selectRagSnapshot,
-} from "@/lib/rag/rag-context-snapshot";
+import { ragContextSnapshotTelemetry } from "@/lib/rag/rag-context-snapshot";
 export { buildRagSourceBlock, truncateForModel } from "@/lib/rag/rag-source-block";
 import {
   buildClinicalTextSearchQuery,
@@ -1553,6 +1550,11 @@ export async function searchChunksWithTelemetry(
     recordSearchScoreTelemetry(telemetry, []);
     return finishSearch(searchTiming, { results: [] as SearchResult[], telemetry });
   }
+  const requestContext = await resolveRequestRagCacheContext(args, "legacy", {
+    readDocumentIndexGeneration: cacheIndexingVersion,
+  });
+  args = { ...args, ...requestContext };
+  const { cacheContext, ragContextSnapshot } = requestContext;
   const supabase = createAdminClient();
   // When the provider is source-only (offline mode, or auto mode without a usable key) we must
   // never call OpenAI for embeddings; retrieval falls back to the lexical text-fast-path only.
@@ -1587,12 +1589,6 @@ export async function searchChunksWithTelemetry(
       return undefined;
     }
   })();
-  const cacheContext = args.cacheContext ?? {};
-  const ragContextSnapshot = selectRagSnapshot(args.ragContextSnapshot, cacheContext.ragContextSnapshot);
-  if (ragContextSnapshot) {
-    cacheContext.ragContextSnapshot ??= ragContextSnapshot;
-    args = { ...args, cacheContext, ragContextSnapshot };
-  }
   const indexingVersionPromise = isSearchCacheLookupEnabled(args)
     ? (cacheContext.indexingVersionAtRequestStart ??= cacheIndexingVersion(args, { forceRefresh: true }))
     : undefined;

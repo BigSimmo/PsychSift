@@ -1,4 +1,7 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { SiteContentHealthInput } from "../src/lib/health-response";
 import type { ActiveSiteContentRelease } from "../src/lib/site-content/site-content-contracts";
 import { siteContentPendingLogicalIdsDigest } from "../src/lib/site-content/site-content-registry";
 import {
@@ -16,6 +19,45 @@ const DYNAMIC_A = `sha256:${"c".repeat(64)}`;
 const DYNAMIC_B = `sha256:${"d".repeat(64)}`;
 const RELEASE_A = `sha256:${"e".repeat(64)}`;
 const RELEASE_B = `sha256:${"f".repeat(64)}`;
+const HEALTH_NOW = new Date("2026-08-28T00:05:00.000Z");
+const healthFixturePath = resolve("tests/fixtures/site-content/release-evidence-current.json");
+
+function fullHealthAuthority(): SiteContentHealthInput {
+  return JSON.parse(readFileSync(healthFixturePath, "utf8")) as SiteContentHealthInput;
+}
+
+function updatingFullHealthAuthority(): SiteContentHealthInput {
+  const input = fullHealthAuthority();
+  const pendingLogicalIds = ["medications:lithium"];
+  const pendingLogicalIdsDigest = siteContentPendingLogicalIdsDigest(pendingLogicalIds);
+  return {
+    ...input,
+    activeRelease: {
+      ...input.activeRelease!,
+      changeEpoch: "43",
+      pendingLogicalIds,
+      pendingLogicalIdsDigest,
+      integrity: { ...input.activeRelease!.integrity, directSuccessorCandidateCount: 1 },
+    },
+    queueHealth: {
+      ...input.queueHealth,
+      changeEpoch: "43",
+      pendingLogicalIds,
+      pendingLogicalIdsDigest,
+      pendingCount: 1,
+      oldestPendingAgeSeconds: 120,
+    },
+  };
+}
+
+async function resolveFullHealthAuthority(siteAuthority: SiteContentHealthInput) {
+  const { resolveRequestRagContextSnapshot } = await import("../src/lib/rag/rag-cache");
+  return resolveRequestRagContextSnapshot({}, "legacy", {
+    readDocumentIndexGeneration: async () => "documents-generation-health-test",
+    readSiteContentAuthority: async () => siteAuthority,
+    now: () => HEALTH_NOW,
+  });
+}
 
 function activeRelease(overrides: Partial<ActiveSiteContentRelease> = {}): ActiveSiteContentRelease {
   return {
@@ -306,5 +348,124 @@ describe("request-local RAG site-content snapshot", () => {
     expect(ragContextSnapshotCacheKey(observationalOnly)).toBe(ragContextSnapshotCacheKey(baseline));
     expect(ragContextSnapshotCacheKey(uploadedChanged)).not.toBe(ragContextSnapshotCacheKey(baseline));
     expect(ragContextSnapshotCacheKey(australianChanged)).not.toBe(ragContextSnapshotCacheKey(baseline));
+  });
+
+  it.each([
+    [
+      "registry mismatch",
+      (input: SiteContentHealthInput) => ({
+        ...input,
+        activeRelease: { ...input.activeRelease!, registryVersion: "site-content-registry-v999" },
+      }),
+    ],
+    ["deployment mismatch", (input: SiteContentHealthInput) => ({ ...input, deploymentSha: "5".repeat(40) })],
+    [
+      "integrity failure",
+      (input: SiteContentHealthInput) => ({
+        ...input,
+        activeRelease: {
+          ...input.activeRelease!,
+          integrity: { ...input.activeRelease!.integrity, integrityVerified: false },
+        },
+      }),
+    ],
+    [
+      "governance failure",
+      (input: SiteContentHealthInput) => ({
+        ...input,
+        activeRelease: {
+          ...input.activeRelease!,
+          integrity: { ...input.activeRelease!.integrity, governanceVerified: false },
+        },
+      }),
+    ],
+    [
+      "synchronizer unavailable",
+      (input: SiteContentHealthInput) => ({
+        ...input,
+        queueHealth: { ...input.queueHealth, synchronizerDeployed: false },
+      }),
+    ],
+    [
+      "failed queue item",
+      (input: SiteContentHealthInput) => ({
+        ...input,
+        queueHealth: { ...input.queueHealth, failedCount: 1 },
+      }),
+    ],
+    [
+      "over-age pending item",
+      (_input: SiteContentHealthInput) => {
+        const updating = updatingFullHealthAuthority();
+        return { ...updating, queueHealth: { ...updating.queueHealth, oldestPendingAgeSeconds: 601 } };
+      },
+    ],
+    [
+      "pending set mismatch",
+      (_input: SiteContentHealthInput) => {
+        const updating = updatingFullHealthAuthority();
+        const pendingLogicalIds = ["medications:valproate"];
+        return {
+          ...updating,
+          queueHealth: {
+            ...updating.queueHealth,
+            pendingLogicalIds,
+            pendingLogicalIdsDigest: siteContentPendingLogicalIdsDigest(pendingLogicalIds),
+          },
+        };
+      },
+    ],
+    [
+      "pending digest mismatch",
+      (_input: SiteContentHealthInput) => {
+        const updating = updatingFullHealthAuthority();
+        return {
+          ...updating,
+          queueHealth: { ...updating.queueHealth, pendingLogicalIdsDigest: "fnv1a64:0000000000000000" },
+        };
+      },
+    ],
+  ] as const)("fails full Task 4 %s authority closed to identity-free unavailable", async (_label, mutate) => {
+    const snapshot = await resolveFullHealthAuthority(mutate(fullHealthAuthority()) as SiteContentHealthInput);
+
+    expect(snapshot.publicSiteContent).toMatchObject({
+      state: "unavailable",
+      registryVersion: null,
+      releaseId: null,
+      expectedStaticManifestDigest: null,
+      activeStaticManifestDigest: null,
+      dynamicStateDigest: null,
+      releaseDigest: null,
+      changeEpoch: null,
+      pendingLogicalIds: [],
+      pendingLogicalIdsDigest: null,
+    });
+  });
+
+  it("accepts exact pending exclusions only after full health authority classifies updating", async () => {
+    const authority = updatingFullHealthAuthority();
+    const snapshot = await resolveFullHealthAuthority(authority);
+
+    expect(snapshot.publicSiteContent).toMatchObject({
+      state: "updating",
+      changeEpoch: "43",
+      pendingLogicalIds: ["medications:lithium"],
+      pendingLogicalIdsDigest: authority.activeRelease!.pendingLogicalIdsDigest,
+    });
+  });
+
+  it("permits stale only when static manifest mismatch is the sole full-health stop reason", async () => {
+    const authority = fullHealthAuthority();
+    const snapshot = await resolveFullHealthAuthority({
+      ...authority,
+      expectedStaticManifestDigest: `sha256:${"9".repeat(64)}`,
+    });
+
+    expect(snapshot.publicSiteContent).toMatchObject({
+      state: "stale",
+      staticManifestMatch: false,
+      expectedStaticManifestDigest: `sha256:${"9".repeat(64)}`,
+      activeStaticManifestDigest: authority.activeRelease!.staticManifestDigest,
+    });
   });
 });
