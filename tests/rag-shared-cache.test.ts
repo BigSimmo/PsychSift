@@ -8,6 +8,7 @@ import {
 } from "../src/lib/rag/rag-context-snapshot";
 
 const ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const futureAustralianSourcePolicyVersion = "australian-source-policy-v2";
 
 function publicContextSnapshot() {
   const staticManifestDigest = `sha256:${"1".repeat(64)}`;
@@ -51,6 +52,10 @@ function disabledContextSnapshot(overrides: Partial<RagContextSnapshotInput> = {
 function changedDisabledSnapshots() {
   return [
     ["source policy", disabledContextSnapshot({ sourcePolicyVersion: "australian-source-policy-previous" })],
+    [
+      "future current source policy",
+      disabledContextSnapshot({ sourcePolicyVersion: futureAustralianSourcePolicyVersion }),
+    ],
     ["shadow mode", disabledContextSnapshot({ rolloutVersion: "shadow" })],
     ["canary mode", disabledContextSnapshot({ rolloutVersion: "canary" })],
     [
@@ -79,6 +84,7 @@ afterEach(() => {
   vi.doUnmock("@/lib/env");
   vi.doUnmock("@/lib/deep-memory");
   vi.doUnmock("@/lib/clinical-search");
+  vi.doUnmock("@/lib/australian-source-catalogue");
   vi.doUnmock("@/lib/rag/rag-versioning");
   vi.doUnmock("@/lib/supabase/admin");
   vi.resetModules();
@@ -141,6 +147,9 @@ describe("shared RAG search cache", () => {
     type SelectorCall = { method: "eq" | "is"; column: string; value: unknown };
     const selectorCalls: SelectorCall[][] = [];
 
+    vi.doMock("@/lib/australian-source-catalogue", () => ({
+      australianSourcePolicyVersion: futureAustralianSourcePolicyVersion,
+    }));
     vi.doMock("@/lib/env", () => ({
       env: {
         RAG_SEARCH_CACHE_TTL_MS: 60_000,

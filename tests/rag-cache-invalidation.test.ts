@@ -10,6 +10,7 @@ import { resolveRagContextSnapshot, type RagContextSnapshotInput } from "../src/
 
 const ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const STATIC_DIGEST = `sha256:${"1".repeat(64)}`;
+const futureAustralianSourcePolicyVersion = "australian-source-policy-v2";
 const healthFixturePath = resolve("tests/fixtures/site-content/release-evidence-current.json");
 
 function currentHealthAuthority(): SiteContentHealthInput {
@@ -35,6 +36,7 @@ afterEach(() => {
   vi.doUnmock("@/lib/env");
   vi.doUnmock("@/lib/deep-memory");
   vi.doUnmock("@/lib/clinical-search");
+  vi.doUnmock("@/lib/australian-source-catalogue");
   vi.doUnmock("@/lib/rag/rag-versioning");
   vi.doUnmock("@/lib/rag/rag-cache");
   vi.doUnmock("@/lib/site-content/site-content-health-authority");
@@ -88,6 +90,10 @@ function siteComponentOffSnapshot(overrides: Partial<RagContextSnapshotInput> = 
 function changedDisabledSnapshots() {
   return [
     ["source policy", siteComponentOffSnapshot({ sourcePolicyVersion: "australian-source-policy-previous" })],
+    [
+      "future current source policy",
+      siteComponentOffSnapshot({ sourcePolicyVersion: futureAustralianSourcePolicyVersion }),
+    ],
     ["shadow mode", siteComponentOffSnapshot({ rolloutVersion: "shadow" })],
     ["canary mode", siteComponentOffSnapshot({ rolloutVersion: "canary" })],
     [
@@ -158,6 +164,9 @@ class DeleteQuery implements PromiseLike<{ data: null; error: null }> {
 describe("RAG cache invalidation", () => {
   it("keeps exact legacy answer/search cache bytes when the site component is off", async () => {
     vi.resetModules();
+    vi.doMock("@/lib/australian-source-catalogue", () => ({
+      australianSourcePolicyVersion: futureAustralianSourcePolicyVersion,
+    }));
     vi.doMock("@/lib/env", () => ({
       env: {
         OPENAI_ANSWER_MODEL: "answer",
@@ -227,6 +236,9 @@ describe("RAG cache invalidation", () => {
 
   it("misses real local answer/search entries and changes indexing authority beyond the exact disabled baseline", async () => {
     vi.resetModules();
+    vi.doMock("@/lib/australian-source-catalogue", () => ({
+      australianSourcePolicyVersion: futureAustralianSourcePolicyVersion,
+    }));
     vi.doMock("@/lib/env", () => ({
       env: {
         RAG_ANSWER_CACHE_TTL_MS: 60_000,

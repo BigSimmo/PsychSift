@@ -114,7 +114,7 @@ function modeKey(args: Pick<SearchChunksArgs, "queryMode">) {
 
 function contextSnapshotKey(args: Pick<SearchChunksArgs, "ragContextSnapshot">) {
   const snapshot = args.ragContextSnapshot;
-  if (!snapshot || ragContextSnapshotUsesLegacyCacheIdentity(snapshot, australianSourcePolicyVersion)) return null;
+  if (!snapshot || ragContextSnapshotUsesLegacyCacheIdentity(snapshot)) return null;
   return ragContextSnapshotCacheKey(snapshot);
 }
 

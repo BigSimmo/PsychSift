@@ -180,15 +180,14 @@ function defaultUploadedLocalSnapshotIdentity(documentIndexGeneration: string): 
   };
 }
 
-export function ragContextSnapshotUsesLegacyCacheIdentity(
-  snapshot: ResolvedRagContextSnapshot,
-  currentSourcePolicyVersion: string,
-) {
+const legacyRagCacheIdentitySourcePolicyVersion = "australian-source-policy-v1" as const;
+
+export function ragContextSnapshotUsesLegacyCacheIdentity(snapshot: ResolvedRagContextSnapshot) {
   const baselineUploadedLocal = defaultUploadedLocalSnapshotIdentity(snapshot.documentIndexGeneration);
   return (
     snapshot.publicSiteContent.state === "disabled" &&
     snapshot.rolloutVersion === "legacy" &&
-    snapshot.sourcePolicyVersion === currentSourcePolicyVersion &&
+    snapshot.sourcePolicyVersion === legacyRagCacheIdentitySourcePolicyVersion &&
     snapshot.uploadedLocal.indexGeneration === baselineUploadedLocal.indexGeneration &&
     snapshot.uploadedLocal.activationDigest === baselineUploadedLocal.activationDigest &&
     snapshot.australianPublic.indexGeneration === null &&
