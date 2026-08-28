@@ -131,7 +131,7 @@ import {
   packAdjacentSourceContext,
   packedContextCacheKey,
   resolveRequestRagCacheContext,
-  scopedAnswerCacheKey,
+  scopedAnswerInflightKey,
   setCachedAnswer,
   setCachedSearch,
 } from "@/lib/rag/rag-cache";
@@ -2414,7 +2414,10 @@ export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs)
     !args.skipCache &&
     env.RAG_ANSWER_CACHE_TTL_MS > 0 &&
     env.RAG_ANSWER_CACHE_SIZE > 0;
-  const inflightKey = coalescingEnabled ? scopedAnswerCacheKey(args) : null;
+  const inflightIndexingVersion = coalescingEnabled
+    ? await args.cacheContext?.indexingVersionAtRequestStart
+    : undefined;
+  const inflightKey = inflightIndexingVersion ? scopedAnswerInflightKey(args, inflightIndexingVersion) : null;
   let existing = inflightKey ? answerInflight.get(inflightKey) : undefined;
 
   while (existing) {

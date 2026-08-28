@@ -192,6 +192,14 @@ export function scopedAnswerCacheKey(
   ].join("|");
 }
 
+export function scopedAnswerInflightKey(
+  args: Parameters<typeof scopedAnswerCacheKey>[0],
+  indexingVersionAtRequestStart: string,
+) {
+  const indexingIdentity = createHash("sha256").update(indexingVersionAtRequestStart).digest("hex");
+  return `${scopedAnswerCacheKey(args)}|indexing:${indexingIdentity}`;
+}
+
 export function cloneAnswer(answer: RagAnswer) {
   return structuredClone(answer);
 }
@@ -540,8 +548,13 @@ export async function resolveRequestRagContextSnapshot(
   const siteClassification = classifySiteContentHealth(siteAuthority, { now: resolvedAt });
   const staticMismatchOnly =
     siteClassification.stopReasons.length === 1 && siteClassification.stopReasons[0] === "static_manifest_mismatch";
-  const acceptedAuthority =
-    siteClassification.stopReasons.length === 0 || staticMismatchOnly ? siteAuthority : undefined;
+  const classifiedPublicSiteContentState = staticMismatchOnly
+    ? "stale"
+    : siteClassification.stopReasons.length === 0 &&
+        (siteClassification.health.state === "current" || siteClassification.health.state === "updating")
+      ? siteClassification.health.state
+      : undefined;
+  const acceptedAuthority = classifiedPublicSiteContentState ? siteAuthority : undefined;
   const activeRelease = acceptedAuthority?.activeRelease ?? null;
   const pendingLogicalIds = !staticMismatchOnly && activeRelease ? activeRelease.pendingLogicalIds : [];
   return resolveRagContextSnapshot({
@@ -551,6 +564,7 @@ export async function resolveRequestRagContextSnapshot(
     publicSiteChangeEpoch: activeRelease?.changeEpoch ?? null,
     pendingPublicSiteChangeCount: pendingLogicalIds.length,
     pendingPublicSiteLogicalIds: pendingLogicalIds,
+    classifiedPublicSiteContentState,
     documentIndexGeneration,
     sourcePolicyVersion: australianSourcePolicyVersion,
     rolloutVersion,

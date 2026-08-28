@@ -23,6 +23,7 @@ export type RagContextSnapshotInput = Readonly<{
   publicSiteChangeEpoch: string | null;
   pendingPublicSiteChangeCount: number;
   pendingPublicSiteLogicalIds: readonly string[];
+  classifiedPublicSiteContentState?: "current" | "updating" | "stale";
   documentIndexGeneration: string;
   sourcePolicyVersion: string;
   rolloutVersion: RagProgrammeMode;
@@ -139,6 +140,13 @@ function resolveSitePartition(input: RagContextSnapshotInput, resolvedAt: string
 
   const staticManifestMatch = input.expectedSiteStaticManifestDigest === release.staticManifestDigest;
   if (!staticManifestMatch && pendingLogicalIds.length > 0) return identityFreeSitePartition("unavailable");
+  const inferredState = staticManifestMatch ? (pendingLogicalIds.length > 0 ? "updating" : "current") : "stale";
+  if (
+    input.classifiedPublicSiteContentState !== undefined &&
+    input.classifiedPublicSiteContentState !== inferredState
+  ) {
+    return identityFreeSitePartition("unavailable");
+  }
   const partition: SiteContentPartitionSnapshot = {
     registryVersion: release.registryVersion,
     releaseId: release.releaseId,
@@ -151,7 +159,7 @@ function resolveSitePartition(input: RagContextSnapshotInput, resolvedAt: string
     changeEpoch: input.publicSiteChangeEpoch,
     pendingLogicalIds,
     pendingLogicalIdsDigest: siteContentPendingLogicalIdsDigest(pendingLogicalIds),
-    state: staticManifestMatch ? (pendingLogicalIds.length > 0 ? "updating" : "current") : "stale",
+    state: inferredState,
   };
   assertSiteContentPartitionSnapshot(partition);
   return partition;

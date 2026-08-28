@@ -1,10 +1,32 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { SiteContentHealthInput } from "../src/lib/health-response";
 import type { RagAnswer } from "../src/lib/types";
 import type { ActiveSiteContentRelease } from "../src/lib/site-content/site-content-contracts";
 import { resolveRagContextSnapshot, type RagContextSnapshotInput } from "../src/lib/rag/rag-context-snapshot";
 
 const ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const STATIC_DIGEST = `sha256:${"1".repeat(64)}`;
+const healthFixturePath = resolve("tests/fixtures/site-content/release-evidence-current.json");
+
+function currentHealthAuthority(): SiteContentHealthInput {
+  const input = JSON.parse(readFileSync(healthFixturePath, "utf8")) as SiteContentHealthInput;
+  const now = Date.now();
+  return {
+    ...input,
+    activeRelease: {
+      ...input.activeRelease!,
+      activatedAt: new Date(now - 300_000).toISOString(),
+    },
+    queueHealth: {
+      ...input.queueHealth,
+      observedAt: new Date(now).toISOString(),
+      lastHeartbeatAt: new Date(now - 30_000).toISOString(),
+      lastInvocationAt: new Date(now - 60_000).toISOString(),
+    },
+  };
+}
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -12,6 +34,8 @@ afterEach(() => {
   vi.doUnmock("@/lib/deep-memory");
   vi.doUnmock("@/lib/clinical-search");
   vi.doUnmock("@/lib/rag/rag-versioning");
+  vi.doUnmock("@/lib/rag/rag-cache");
+  vi.doUnmock("@/lib/site-content/site-content-health-authority");
   vi.doUnmock("@/lib/supabase/admin");
   vi.resetModules();
 });
@@ -216,6 +240,99 @@ describe("RAG cache invalidation", () => {
     expect(retrievalPlanCacheQuery({ ...baseArgs, ragContextSnapshot: releaseOne })).not.toBe(
       retrievalPlanCacheQuery({ ...baseArgs, ragContextSnapshot: releaseTwo }),
     );
+  });
+
+  it("does not coalesce an O2 answer request onto an overlapping O1 owner-index flight", async () => {
+    vi.resetModules();
+    const o1Answer = Promise.withResolvers<RagAnswer>();
+    const o2Answer = Promise.withResolvers<RagAnswer>();
+    let ownerIndexGeneration = "owner-index-O1";
+    const siteAuthority = currentHealthAuthority();
+    const cacheIndexingVersion = vi.fn(async (args: { ownerId?: string; ragContextSnapshot?: unknown }) => {
+      if (!args.ownerId && !args.ragContextSnapshot) return "public-index-P";
+      return ownerIndexGeneration;
+    });
+    const getCachedAnswer = vi.fn(
+      async (_args: unknown, _startedAt: number, options?: { indexingVersionAtRequestStart?: string | null }) => {
+        if (options?.indexingVersionAtRequestStart === "owner-index-O1") return o1Answer.promise;
+        if (options?.indexingVersionAtRequestStart === "owner-index-O2") return o2Answer.promise;
+        throw new Error(`Unexpected request-start indexing authority: ${options?.indexingVersionAtRequestStart}`);
+      },
+    );
+
+    vi.doMock("@/lib/env", () => ({
+      env: {
+        RAG_ANSWER_CACHE_TTL_MS: 60_000,
+        RAG_ANSWER_CACHE_SIZE: 20,
+        OPENAI_ANSWER_MODEL: "answer",
+        OPENAI_FAST_ANSWER_MODEL: "fast",
+        OPENAI_STRONG_ANSWER_MODEL: "strong",
+        OPENAI_QUERY_CLASSIFIER_MODEL: "classifier",
+        OPENAI_INDEXING_MODEL: "indexing",
+        OPENAI_EMBEDDING_MODEL: "embed",
+        EMBEDDING_DIMENSIONS: 1536,
+        OPENAI_FAST_REASONING_EFFORT: "low",
+        OPENAI_STRONG_REASONING_EFFORT: "high",
+        OPENAI_TEXT_VERBOSITY: "medium",
+        OPENAI_MAX_OUTPUT_TOKENS: 4096,
+        RAG_PROVIDER_MODE: "offline",
+        RAG_SEMANTIC_RERANK_ENABLED: false,
+        OPENAI_RERANK_MODEL: "rerank",
+        RAG_PERSIST_RAW_QUERY_TEXT: false,
+        RAG_QUERY_HASH_SECRET: "test-query-hash-secret",
+      },
+      isDemoMode: () => false,
+      isLocalNoAuthMode: () => false,
+    }));
+    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
+    vi.doMock("@/lib/clinical-search", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("../src/lib/clinical-search")>()),
+      buildClinicalTextSearchQuery: (query: string) => query.trim(),
+    }));
+    vi.doMock("@/lib/rag/rag-versioning", () => ({
+      ragAnswerPromptVersion: "answer-prompt",
+      ragAnswerSchemaVersion: "answer-schema",
+      ragIndexingPromptVersion: "indexing-prompt",
+      ragQueryClassifierPromptVersion: "classifier-prompt",
+    }));
+    vi.doMock("@/lib/site-content/site-content-health-authority", () => ({
+      collectSiteContentHealthInput: vi.fn(async () => siteAuthority),
+    }));
+    vi.doMock("@/lib/rag/rag-cache", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("../src/lib/rag/rag-cache")>()),
+      cacheIndexingVersion,
+      getCachedAnswer,
+      getSharedCachedAnswer: vi.fn(async () => {
+        throw new Error("local synthetic answer should finish before shared-cache lookup");
+      }),
+    }));
+
+    const { answerQuestionWithScope } = await import("../src/lib/rag/rag");
+    const request = { query: "synthetic owner generation question", ownerId, logQuery: false };
+    const o1 = answerQuestionWithScope(request);
+    await vi.waitFor(() => expect(getCachedAnswer).toHaveBeenCalledTimes(1));
+
+    ownerIndexGeneration = "owner-index-O2";
+    const o2Origin = answerQuestionWithScope(request);
+    const o2Waiter = answerQuestionWithScope(request);
+    await vi.waitFor(() =>
+      expect(cacheIndexingVersion.mock.calls.filter(([args]) => args.ownerId === ownerId)).toHaveLength(3),
+    );
+    const answerReadsBeforeRelease = getCachedAnswer.mock.calls.length;
+
+    o2Answer.resolve(sampleAnswer("owner-index-O2 answer"));
+    o1Answer.resolve(sampleAnswer("owner-index-O1 answer"));
+    const [o1Result, o2OriginResult, o2WaiterResult] = await Promise.all([o1, o2Origin, o2Waiter]);
+
+    expect(answerReadsBeforeRelease).toBe(2);
+    expect(getCachedAnswer.mock.calls.map((call) => call[2]?.indexingVersionAtRequestStart)).toEqual([
+      "owner-index-O1",
+      "owner-index-O2",
+    ]);
+    expect(o1Result.answer).toBe("owner-index-O1 answer");
+    expect(o2OriginResult.answer).toBe("owner-index-O2 answer");
+    expect(o2WaiterResult.answer).toBe("owner-index-O2 answer");
+    expect(o2WaiterResult.routingReason).toContain("answer_inflight_coalesced");
   });
 
   it("does not reuse a locally cached site-backed answer after the active snapshot changes", async () => {

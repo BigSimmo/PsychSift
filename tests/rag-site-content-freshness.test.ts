@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { SiteContentHealthInput } from "../src/lib/health-response";
+import { classifySiteContentHealth, type SiteContentHealthInput } from "../src/lib/health-response";
 import type { ActiveSiteContentRelease } from "../src/lib/site-content/site-content-contracts";
 import { siteContentPendingLogicalIdsDigest } from "../src/lib/site-content/site-content-registry";
 import {
@@ -45,6 +45,21 @@ function updatingFullHealthAuthority(): SiteContentHealthInput {
       pendingLogicalIds,
       pendingLogicalIdsDigest,
       pendingCount: 1,
+      oldestPendingAgeSeconds: 120,
+    },
+  };
+}
+
+function unchangedCandidateFullHealthAuthority(): SiteContentHealthInput {
+  const input = fullHealthAuthority();
+  return {
+    ...input,
+    activeRelease: {
+      ...input.activeRelease!,
+      integrity: { ...input.activeRelease!.integrity, directSuccessorCandidateCount: 1 },
+    },
+    queueHealth: {
+      ...input.queueHealth,
       oldestPendingAgeSeconds: 120,
     },
   };
@@ -451,6 +466,32 @@ describe("request-local RAG site-content snapshot", () => {
       changeEpoch: "43",
       pendingLogicalIds: ["medications:lithium"],
       pendingLogicalIdsDigest: authority.activeRelease!.pendingLogicalIdsDigest,
+    });
+  });
+
+  it("does not relabel a classifier-accepted zero-pending direct successor as current", async () => {
+    const authority = unchangedCandidateFullHealthAuthority();
+    const classification = classifySiteContentHealth(authority, { now: HEALTH_NOW });
+    const snapshot = await resolveFullHealthAuthority(authority);
+
+    expect(classification.stopReasons).toEqual([]);
+    expect(classification.health).toMatchObject({
+      state: "updating",
+      queue: { pendingCount: 0, oldestPendingAgeSeconds: 120, failedCount: 0 },
+    });
+    expect(snapshot.publicSiteContent).toEqual({
+      registryVersion: null,
+      releaseId: null,
+      expectedStaticManifestDigest: null,
+      activeStaticManifestDigest: null,
+      staticManifestDigest: null,
+      staticManifestMatch: false,
+      dynamicStateDigest: null,
+      releaseDigest: null,
+      changeEpoch: null,
+      pendingLogicalIds: [],
+      pendingLogicalIdsDigest: null,
+      state: "unavailable",
     });
   });
 
