@@ -361,14 +361,16 @@ export function classifySiteContentHealth(
   const observedAtValid = exactIsoTimestamp(queue.observedAt);
   const observedAt = observedAtValid ? Date.parse(queue.observedAt as string) : Number.NaN;
   const activeTimestampValid = active ? exactIsoTimestamp(active.activatedAt) : false;
+  const queueShouldHaveAge =
+    (nonNegativeInteger(queue.pendingCount) && queue.pendingCount > 0) ||
+    integrity?.directSuccessorCandidateCount === 1;
+  const queueAgeValid = queueShouldHaveAge
+    ? typeof queue.oldestPendingAgeSeconds === "number" &&
+      Number.isFinite(queue.oldestPendingAgeSeconds) &&
+      queue.oldestPendingAgeSeconds >= 0
+    : queue.oldestPendingAgeSeconds === null;
   const queueCountsValid =
-    nonNegativeInteger(queue.pendingCount) &&
-    nonNegativeInteger(queue.failedCount) &&
-    ((queue.pendingCount === 0 && queue.oldestPendingAgeSeconds === null) ||
-      (queue.pendingCount > 0 &&
-        typeof queue.oldestPendingAgeSeconds === "number" &&
-        Number.isFinite(queue.oldestPendingAgeSeconds) &&
-        queue.oldestPendingAgeSeconds >= 0));
+    nonNegativeInteger(queue.pendingCount) && nonNegativeInteger(queue.failedCount) && queueAgeValid;
   if (
     !observedAtValid ||
     !queueCountsValid ||
@@ -423,14 +425,10 @@ export function classifySiteContentHealth(
   }
 
   const pendingCount = boundedCount(queue.pendingCount);
-  const hasPending = Boolean(
-    activePendingIds?.length ||
-    queuePendingIds?.length ||
-    pendingCount > 0 ||
-    (integrity && integrity.directSuccessorCandidateCount === 1),
-  );
+  const partitionHasPending = Boolean(activePendingIds?.length || queuePendingIds?.length || pendingCount > 0);
+  const hasPending = partitionHasPending || integrity?.directSuccessorCandidateCount === 1;
   if (active) {
-    const partitionState = staticManifestMatch ? (hasPending ? "updating" : "current") : "stale";
+    const partitionState = staticManifestMatch ? (partitionHasPending ? "updating" : "current") : "stale";
     const partitionSnapshot: SiteContentPartitionSnapshot = {
       registryVersion: nonEmpty(active.registryVersion) ? active.registryVersion : null,
       releaseId: nonEmpty(active.releaseId) ? active.releaseId : null,

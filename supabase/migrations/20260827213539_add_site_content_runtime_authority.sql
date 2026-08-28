@@ -539,7 +539,7 @@ as $$
       pg_catalog.count(*) filter (where event.status = 'pending')::integer as pending_count,
       pg_catalog.count(*) filter (where event.status = 'leased')::integer as leased_count,
       pg_catalog.count(*) filter (where event.status = 'quarantined')::integer as quarantined_count,
-      case when pending_summary.logical_id_count = 0 then null
+      case when pg_catalog.count(candidate.id) = 0 then null
         else greatest(0::numeric, pg_catalog.floor(extract(epoch from
           (pg_catalog.statement_timestamp() - pg_catalog.min(candidate.created_at)))))::integer
       end as oldest_pending_age_seconds

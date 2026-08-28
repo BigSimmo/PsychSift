@@ -153,10 +153,15 @@ export function createSiteContentSyncWriteDriver(dependencies: {
       }
       if (plan.mode !== "write") throw new Error("A canonical write plan with recovery evidence is required.");
       if (action === "adopt") {
-        const records = (options.records ?? []).map((record) => ({
-          ...(record as Record<string, unknown>),
-          projectionDigest: bindSiteContentProjection(record).projectionDigest,
-        }));
+        const records = (options.records ?? []).map((record) => {
+          const projectionBinding = bindSiteContentProjection(record);
+          return {
+            ...(record as Record<string, unknown>),
+            kind: projectionBinding.recordKind,
+            recordKind: projectionBinding.recordKind,
+            projectionDigest: projectionBinding.projectionDigest,
+          };
+        });
         await dependencies.send({
           path: "/api/admin/site-content/publish",
           body: {
@@ -207,6 +212,8 @@ export function createSiteContentSyncWriteDriver(dependencies: {
             action: "publish",
             record: {
               ...(record as Record<string, unknown>),
+              kind: projectionBinding.recordKind,
+              recordKind: projectionBinding.recordKind,
               projectionDigest: projectionBinding.projectionDigest,
               candidateReleaseId: plan.candidateReleaseId,
               projectRef: plan.projectRef,

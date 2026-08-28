@@ -19,6 +19,7 @@ import {
   registryEntriesToSiteContentRecords,
 } from "@/lib/site-content/adapters/registry";
 import {
+  buildStaticSiteContentDomainEvidence,
   buildStaticSiteContentManifest,
   createSiteContentRecord,
   diffStaticSiteContentManifests,
@@ -32,6 +33,7 @@ import {
 import type { SiteContentRecord } from "@/lib/site-content/site-content-contracts";
 import {
   expectedSiteContentRegistryVersion,
+  expectedSiteContentStaticDomainEvidence,
   expectedSiteContentStaticManifestDigest,
 } from "@/lib/site-content/site-content-static-build.generated";
 import type { RegistryCorpusEntry } from "@/lib/registry-corpus";
@@ -67,6 +69,7 @@ describe("static site-content manifest", () => {
     });
     expect(expectedSiteContentRegistryVersion).toBe(siteContentRegistryVersion);
     expect(expectedSiteContentStaticManifestDigest).toBe(manifest.staticManifestDigest);
+    expect(expectedSiteContentStaticDomainEvidence).toEqual(buildStaticSiteContentDomainEvidence(manifest));
   });
 
   it("binds the static manifest commit SHA into the canonical sync plan digest", () => {

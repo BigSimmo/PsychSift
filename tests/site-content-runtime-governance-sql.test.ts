@@ -72,7 +72,10 @@ describe("site-content persisted governance authority SQL", () => {
     (sql) => {
       const runtime = functionBody(sql, "read_site_content_runtime_authority");
       expect(runtime).toMatch(/domain_evidence[\s\S]*projection\.governance->>'sourceStatus'/);
-      expect(runtime).toMatch(/pending_summary\.logical_id_count = 0[\s\S]*min\(candidate\.created_at\)/);
+      expect(runtime).toMatch(
+        /case when pg_catalog\.count\(candidate\.id\) = 0 then null[\s\S]*min\(candidate\.created_at\)/,
+      );
+      expect(runtime).not.toContain("case when pending_summary.logical_id_count = 0 then null");
       expect(runtime).toContain("'domainEvidence', domain_evidence.domains");
       expect(runtime).not.toMatch(/'payload'|'logicalId'|'actorId'|'route'|'error'/);
     },

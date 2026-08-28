@@ -133,6 +133,31 @@ type HandlerDependencies = Pick<DrainOptions, "workerId" | "rpc" | "processEvent
   invocationId?: () => string;
 };
 
+const minimumInvocationSecretLength = 32;
+
+export function isValidSiteContentSyncInvocationSecret(invocationSecret: string, serviceRoleKey?: string) {
+  const trimmedSecret = invocationSecret.trim();
+  return (
+    invocationSecret === trimmedSecret &&
+    trimmedSecret.length >= minimumInvocationSecretLength &&
+    (serviceRoleKey === undefined || trimmedSecret !== serviceRoleKey.trim())
+  );
+}
+
+export function isSiteContentSyncRuntimeConfigurationMissing(configuration: {
+  url: string;
+  serviceKey: string;
+  invocationSecret: string;
+  workerId: string;
+  openAiKey: string;
+}) {
+  return (
+    [configuration.url, configuration.serviceKey, configuration.workerId, configuration.openAiKey].some(
+      (value) => value.trim().length === 0,
+    ) || !isValidSiteContentSyncInvocationSecret(configuration.invocationSecret, configuration.serviceKey)
+  );
+}
+
 async function timingSafeSecretMatches(presented: string, expected: string) {
   const encoder = new TextEncoder();
   const [presentedDigest, expectedDigest] = await Promise.all([
@@ -154,6 +179,9 @@ function bearerSecret(request: Request) {
 }
 
 export function createSiteContentSyncHandler(dependencies: HandlerDependencies) {
+  if (!isValidSiteContentSyncInvocationSecret(dependencies.invocationSecret)) {
+    throw new Error("Site-content invocation secret must be trimmed and at least 32 characters.");
+  }
   return async (request: Request) => {
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
     if (!(await timingSafeSecretMatches(bearerSecret(request), dependencies.invocationSecret))) {
@@ -233,9 +261,13 @@ if (typeof Deno !== "undefined") {
   const workerId = Deno.env.get("SITE_CONTENT_SYNC_WORKER_ID") ?? "";
   const openAiKey = Deno.env.get("OPENAI_API_KEY") ?? "";
   const embeddingModel = Deno.env.get("RAG_EMBEDDING_MODEL") ?? "text-embedding-3-small";
-  const missingConfiguration = [url, serviceKey, invocationSecret, workerId, openAiKey].some(
-    (value) => value.trim().length === 0,
-  );
+  const missingConfiguration = isSiteContentSyncRuntimeConfigurationMissing({
+    url,
+    serviceKey,
+    invocationSecret,
+    workerId,
+    openAiKey,
+  });
   const rpc = async (name: string, args: Record<string, unknown>): Promise<RpcResult> => {
     const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
       method: "POST",

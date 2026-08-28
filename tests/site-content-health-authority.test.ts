@@ -3,10 +3,19 @@ import { describe, expect, it } from "vitest";
 import { classifySiteContentHealth } from "@/lib/health-response";
 import { collectSiteContentHealthInput } from "@/lib/site-content/site-content-health-authority";
 import { siteContentProducerDefinitions } from "@/lib/site-content/site-content-registry";
-import { expectedSiteContentStaticManifestDigest } from "@/lib/site-content/site-content-static-build.generated";
+import {
+  expectedSiteContentStaticDomainEvidence,
+  expectedSiteContentStaticManifestDigest,
+} from "@/lib/site-content/site-content-static-build.generated";
 import type { SiteContentRuntimeAuthoritySnapshot } from "@/lib/supabase/health";
 
 const RELEASE_SHA = "4".repeat(40);
+const reviewedStaticDomainEvidence = expectedSiteContentStaticDomainEvidence.map((entry) => ({
+  ...entry,
+  reviewState: "reviewed" as const,
+  sourceStatus: "current" as const,
+  validationStatus: "locally_reviewed" as const,
+}));
 
 function authority(overrides: Partial<SiteContentRuntimeAuthoritySnapshot> = {}): SiteContentRuntimeAuthoritySnapshot {
   return {
@@ -32,7 +41,7 @@ function authority(overrides: Partial<SiteContentRuntimeAuthoritySnapshot> = {})
     pendingLogicalIds: [],
     pendingLogicalIdCount: 0,
     domainEvidence: siteContentProducerDefinitions
-      .filter((producer) => producer.activationState === "eligible")
+      .filter((producer) => producer.activationState === "eligible" && producer.producerClass === "dynamic_registry")
       .map((producer) => ({
         domain: producer.domain,
         recordCount: 2,
@@ -59,7 +68,7 @@ function authority(overrides: Partial<SiteContentRuntimeAuthoritySnapshot> = {})
 }
 
 describe("site-content request-time runtime authority", () => {
-  it("binds the compiled static identity and actual runtime SHA to the current RPC snapshot", async () => {
+  it("binds the compiled static identity and fails honestly on its current static review evidence", async () => {
     const input = await collectSiteContentHealthInput({
       readAuthority: async () => authority(),
       deploymentSha: () => RELEASE_SHA,
@@ -69,12 +78,26 @@ describe("site-content request-time runtime authority", () => {
       deploymentSha: RELEASE_SHA,
       activeRelease: { deploymentSha: RELEASE_SHA },
     });
-    expect(classifySiteContentHealth(input, { now: new Date("2026-08-28T00:05:00.000Z") }).stopReasons).toEqual([]);
+    expect(input?.activeRelease?.integrity.domains.map((entry) => entry.domain)).toEqual(
+      siteContentProducerDefinitions
+        .filter((producer) => producer.activationState === "eligible")
+        .map((producer) => producer.domain)
+        .sort(),
+    );
+    const classified = classifySiteContentHealth(input, { now: new Date("2026-08-28T00:05:00.000Z") });
+    expect(classified.health.state).toBe("failure");
+    expect(classified.stopReasons).toEqual(
+      expect.arrayContaining(["unreviewed_domain", "stale_source_status", "stale_validation_status"]),
+    );
   });
 
-  it("observes a later dynamic publication without environment mutation", async () => {
+  it("uses dependency-injected reviewed static evidence to observe current and later updating states", async () => {
     let snapshot = authority();
-    const dependencies = { readAuthority: async () => snapshot, deploymentSha: () => RELEASE_SHA };
+    const dependencies = {
+      readAuthority: async () => snapshot,
+      deploymentSha: () => RELEASE_SHA,
+      staticDomainEvidence: reviewedStaticDomainEvidence,
+    };
     expect(classifySiteContentHealth(await collectSiteContentHealthInput(dependencies)).health.state).toBe("current");
     snapshot = authority({
       changeEpoch: "43",
@@ -96,6 +119,7 @@ describe("site-content request-time runtime authority", () => {
           outbox: { pendingCount: 0, leasedCount: 0, quarantinedCount: 0, oldestPendingAgeSeconds: 540 },
         }),
       deploymentSha: () => RELEASE_SHA,
+      staticDomainEvidence: reviewedStaticDomainEvidence,
     });
     expect(classifySiteContentHealth(input, { now: new Date("2026-08-28T00:05:00.000Z") }).health.state).toBe(
       "updating",
@@ -116,6 +140,7 @@ describe("site-content request-time runtime authority", () => {
     const input = await collectSiteContentHealthInput({
       readAuthority: async () => authority({ domainEvidence: staleEvidence }),
       deploymentSha: () => RELEASE_SHA,
+      staticDomainEvidence: reviewedStaticDomainEvidence,
     });
     const classified = classifySiteContentHealth(input, { now: new Date("2026-08-28T00:05:00.000Z") });
     expect(classified.health.state).toBe("failure");
@@ -139,6 +164,32 @@ describe("site-content request-time runtime authority", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("rejects runtime evidence that is not exactly the eligible dynamic producer set", async () => {
+    const dynamicEvidence = authority().domainEvidence;
+    await expect(
+      collectSiteContentHealthInput({
+        readAuthority: async () => authority({ domainEvidence: dynamicEvidence.slice(1) }),
+        deploymentSha: () => RELEASE_SHA,
+        staticDomainEvidence: reviewedStaticDomainEvidence,
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      collectSiteContentHealthInput({
+        readAuthority: async () =>
+          authority({ domainEvidence: [...dynamicEvidence, expectedSiteContentStaticDomainEvidence[0]] }),
+        deploymentSha: () => RELEASE_SHA,
+        staticDomainEvidence: reviewedStaticDomainEvidence,
+      }),
+    ).resolves.toBeUndefined();
+    await expect(
+      collectSiteContentHealthInput({
+        readAuthority: async () => authority(),
+        deploymentSha: () => RELEASE_SHA,
+        staticDomainEvidence: reviewedStaticDomainEvidence.slice(1),
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it("fails a later stale or failed synchronizer against request wall clock", async () => {
     const failed = await collectSiteContentHealthInput({
       readAuthority: async () =>
@@ -151,6 +202,7 @@ describe("site-content request-time runtime authority", () => {
           },
         }),
       deploymentSha: () => RELEASE_SHA,
+      staticDomainEvidence: reviewedStaticDomainEvidence,
     });
     const result = classifySiteContentHealth(failed, { now: new Date("2026-08-28T00:12:00.000Z") });
     expect(result.health.state).toBe("failure");

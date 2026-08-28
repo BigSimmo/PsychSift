@@ -2,13 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createSiteContentSyncHandler, drainSiteContentSyncBatch } from "../supabase/functions/site-content-sync/index";
 
+const invocationSecret = "synthetic-site-content-invocation-secret-0001";
+
 describe("site-content sync worker", () => {
   it("records started before claiming and succeeded for an idle invocation", async () => {
     const rpc = vi.fn(async (name: string, _args?: Record<string, unknown>) =>
       name === "claim_site_content_sync_events" ? { data: [], error: null } : { data: { ok: true }, error: null },
     );
     const handler = createSiteContentSyncHandler({
-      invocationSecret: "synthetic-secret",
+      invocationSecret,
       workerId: "66666666-6666-4666-8666-666666666666",
       invocationId: () => "77777777-7777-4777-8777-777777777777",
       rpc,
@@ -16,7 +18,7 @@ describe("site-content sync worker", () => {
     });
 
     const response = await handler(
-      new Request("http://local", { method: "POST", headers: { authorization: "Bearer synthetic-secret" } }),
+      new Request("http://local", { method: "POST", headers: { authorization: `Bearer ${invocationSecret}` } }),
     );
 
     expect(response.status).toBe(200);
@@ -32,14 +34,14 @@ describe("site-content sync worker", () => {
   it("stops before claim when synchronizer telemetry cannot be established", async () => {
     const rpc = vi.fn(async () => ({ data: { ok: false }, error: null }));
     const handler = createSiteContentSyncHandler({
-      invocationSecret: "synthetic-secret",
+      invocationSecret,
       workerId: "66666666-6666-4666-8666-666666666666",
       rpc,
       processEvent: vi.fn(),
     });
 
     const response = await handler(
-      new Request("http://local", { method: "POST", headers: { authorization: "Bearer synthetic-secret" } }),
+      new Request("http://local", { method: "POST", headers: { authorization: `Bearer ${invocationSecret}` } }),
     );
     expect(response.status).toBe(503);
     expect(rpc).toHaveBeenCalledTimes(1);
@@ -53,14 +55,14 @@ describe("site-content sync worker", () => {
         : { data: { ok: true }, error: null },
     );
     const handler = createSiteContentSyncHandler({
-      invocationSecret: "synthetic-secret",
+      invocationSecret,
       workerId: "66666666-6666-4666-8666-666666666666",
       rpc,
       processEvent: vi.fn(),
     });
 
     const response = await handler(
-      new Request("http://local", { method: "POST", headers: { authorization: "Bearer synthetic-secret" } }),
+      new Request("http://local", { method: "POST", headers: { authorization: `Bearer ${invocationSecret}` } }),
     );
     expect(response.status).toBe(503);
     expect(
@@ -200,7 +202,7 @@ describe("site-content sync worker", () => {
         : { data: { ok: true }, error: null },
     );
     const handler = createSiteContentSyncHandler({
-      invocationSecret: "synthetic-secret",
+      invocationSecret,
       workerId: "66666666-6666-4666-8666-666666666666",
       rpc,
       processEvent: async (event) => {
@@ -211,7 +213,7 @@ describe("site-content sync worker", () => {
     });
     expect((await handler(new Request("http://local", { method: "POST" }))).status).toBe(401);
     const responsePromise = handler(
-      new Request("http://local", { method: "POST", headers: { authorization: "Bearer synthetic-secret" } }),
+      new Request("http://local", { method: "POST", headers: { authorization: `Bearer ${invocationSecret}` } }),
     );
     await vi.waitFor(() => expect(rpc).toHaveBeenCalledWith("claim_site_content_sync_events", expect.anything()));
     await vi.advanceTimersByTimeAsync(260);

@@ -124,6 +124,7 @@ export function siteContentSyncDigest(value: unknown): Digest {
 
 export type SiteContentProjectionBinding = Readonly<{
   logicalId: string;
+  recordKind: string;
   contentHash: Digest;
   projectionDigest: Digest;
 }>;
@@ -134,6 +135,9 @@ export function bindSiteContentProjection(input: unknown): SiteContentProjection
   }
   const record = input as Record<string, unknown>;
   const governance = record.governance;
+  if (record.kind !== undefined && record.recordKind !== undefined && record.kind !== record.recordKind) {
+    throw new Error("Site-content publication kind and recordKind must not conflict.");
+  }
   const recordKind = record.recordKind ?? record.kind;
   if (
     typeof record.logicalId !== "string" ||
@@ -176,6 +180,7 @@ export function bindSiteContentProjection(input: unknown): SiteContentProjection
   };
   return Object.freeze({
     logicalId: record.logicalId,
+    recordKind,
     contentHash: record.contentHash as Digest,
     projectionDigest: siteContentSyncDigest(identity),
   });

@@ -36,6 +36,21 @@ function updatingEvidence(): SiteContentHealthInput {
   };
 }
 
+function unchangedCandidateEvidence(oldestPendingAgeSeconds: number | null = 120): SiteContentHealthInput {
+  const input = currentEvidence();
+  return {
+    ...input,
+    activeRelease: {
+      ...input.activeRelease!,
+      integrity: { ...input.activeRelease!.integrity, directSuccessorCandidateCount: 1 },
+    },
+    queueHealth: {
+      ...input.queueHealth,
+      oldestPendingAgeSeconds,
+    },
+  };
+}
+
 async function routeResponse(path: "/api/health" | "/api/health/ready", evidence: unknown) {
   vi.resetModules();
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -97,6 +112,27 @@ describe("site-content activation health", () => {
       synchronizerInvocationFresh: true,
       queue: { pendingCount: 1, oldestPendingAgeSeconds: 120, failedCount: 0 },
     });
+  });
+
+  it("keeps a young all-unchanged direct candidate updating with a numeric candidate age", () => {
+    const result = classifySiteContentHealth(unchangedCandidateEvidence());
+
+    expect(result.stopReasons).toEqual([]);
+    expect(result.health).toMatchObject({
+      state: "updating",
+      queue: { pendingCount: 0, oldestPendingAgeSeconds: 120, failedCount: 0 },
+    });
+  });
+
+  it("requires candidate age and stops an over-age all-unchanged direct candidate", () => {
+    const missingAge = classifySiteContentHealth(unchangedCandidateEvidence(null));
+    const overAge = classifySiteContentHealth(unchangedCandidateEvidence(601));
+
+    expect(missingAge.stopReasons).toContain("invalid_queue_health");
+    expect(missingAge.health.state).toBe("failure");
+    expect(overAge.stopReasons).toContain("pending_item_over_age");
+    expect(overAge.stopReasons).not.toContain("invalid_queue_health");
+    expect(overAge.health.state).toBe("failure");
   });
 
   it.each([

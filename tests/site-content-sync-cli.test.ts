@@ -14,7 +14,7 @@ import {
 } from "../src/lib/site-content/site-content-gate-owners";
 import { parseRagProgrammeFixture } from "../src/lib/rag/rag-programme-eval";
 import { siteContentSha256, type StaticSiteContentManifest } from "../src/lib/site-content/site-content-manifest";
-import { planSiteContentSync } from "../src/lib/site-content/site-content-sync";
+import { bindSiteContentProjection, planSiteContentSync } from "../src/lib/site-content/site-content-sync";
 import {
   fixtureSha,
   siteReleaseCandidateId,
@@ -116,6 +116,9 @@ describe("site-content synchronization CLI contract", () => {
       contentHash: fixtureSha("2"),
       sourceLineageDigest: fixtureSha("3"),
     };
+    expect(() => bindSiteContentProjection({ ...publication, recordKind: "form" })).toThrow(
+      /kind and recordKind must not conflict/,
+    );
     const writePlan = planSiteContentSync({
       projectRef: siteReleaseProjectRef,
       expectedProjectRef: siteReleaseProjectRef,
@@ -150,7 +153,11 @@ describe("site-content synchronization CLI contract", () => {
         path: "/api/admin/site-content/publish",
         body: expect.objectContaining({
           action: "publish",
-          record: expect.objectContaining({ logicalId: publication.logicalId, planDigest: writePlan.planDigest }),
+          record: expect.objectContaining({
+            logicalId: publication.logicalId,
+            recordKind: publication.kind,
+            planDigest: writePlan.planDigest,
+          }),
         }),
       }),
     );
@@ -310,7 +317,13 @@ describe("site-content synchronization CLI contract", () => {
       body: {
         action: "adopt",
         plan: prospectivePlan,
-        records: [expect.objectContaining({ ...publication, projectionDigest: expect.stringMatching(/^sha256:/) })],
+        records: [
+          expect.objectContaining({
+            ...publication,
+            recordKind: publication.kind,
+            projectionDigest: expect.stringMatching(/^sha256:/),
+          }),
+        ],
         governanceReceipt,
         mustPassReceipt,
       },

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { SiteContentRecord } from "@/lib/site-content/site-content-contracts";
 import {
   assertSiteContentRecordEligible,
+  siteContentProducerDefinitions,
   siteContentProducerForDomain,
 } from "@/lib/site-content/site-content-registry";
 import type { SiteContentDomain } from "@/lib/types";
@@ -33,6 +34,14 @@ export type StaticSiteContentManifestDiff = {
   removed: string[];
   changed: string[];
 };
+
+export type SiteContentDomainEvidence = Readonly<{
+  domain: SiteContentDomain;
+  recordCount: number;
+  reviewState: "unreviewed" | "reviewed";
+  sourceStatus: SiteContentRecord["sourceStatus"];
+  validationStatus: SiteContentRecord["validationStatus"];
+}>;
 
 type SiteContentRecordInput = Omit<SiteContentRecord, "version" | "contentHash"> & {
   version?: SiteContentRecord["version"];
@@ -254,6 +263,44 @@ export function buildStaticSiteContentManifest(
     records: manifestRecords,
     staticManifestDigest: siteContentSha256(digestPayload),
   };
+}
+
+export function buildStaticSiteContentDomainEvidence(manifest: StaticSiteContentManifest): SiteContentDomainEvidence[] {
+  const sourceStatusOrder: readonly SiteContentRecord["sourceStatus"][] = [
+    "unknown",
+    "outdated",
+    "review_due",
+    "current",
+  ];
+  const validationStatusOrder: readonly SiteContentRecord["validationStatus"][] = [
+    "unverified",
+    "locally_reviewed",
+    "approved",
+  ];
+
+  return siteContentProducerDefinitions
+    .filter((producer) => producer.producerClass === "static_repository" && producer.activationState === "eligible")
+    .map((producer) => {
+      const records = manifest.records.filter((record) => record.domain === producer.domain);
+      if (records.length === 0) {
+        throw new Error(`Eligible static site-content domain ${producer.domain} has no manifest records.`);
+      }
+      const sourceStatus = sourceStatusOrder.find((status) => records.some((record) => record.sourceStatus === status));
+      const validationStatus = validationStatusOrder.find((status) =>
+        records.some((record) => record.validationStatus === status),
+      );
+      if (!sourceStatus || !validationStatus) {
+        throw new Error(`Eligible static site-content domain ${producer.domain} has malformed review evidence.`);
+      }
+      return {
+        domain: producer.domain,
+        recordCount: records.length,
+        reviewState: validationStatus === "unverified" ? ("unreviewed" as const) : ("reviewed" as const),
+        sourceStatus,
+        validationStatus,
+      };
+    })
+    .sort((left, right) => left.domain.localeCompare(right.domain));
 }
 
 export function diffStaticSiteContentManifests(

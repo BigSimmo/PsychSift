@@ -9,8 +9,10 @@ import {
 } from "@/lib/site-content/site-content-registry";
 import {
   expectedSiteContentRegistryVersion,
+  expectedSiteContentStaticDomainEvidence,
   expectedSiteContentStaticManifestDigest,
 } from "@/lib/site-content/site-content-static-build.generated";
+import type { SiteContentDomainEvidence } from "@/lib/site-content/site-content-manifest";
 import { readSiteContentRuntimeAuthority, type SiteContentRuntimeAuthoritySnapshot } from "@/lib/supabase/health";
 
 const MAX_PENDING_LOGICAL_IDS = 100;
@@ -18,7 +20,18 @@ const MAX_PENDING_LOGICAL_IDS = 100;
 type CollectorDependencies = Readonly<{
   readAuthority?: () => Promise<SiteContentRuntimeAuthoritySnapshot>;
   deploymentSha?: () => string | null;
+  staticDomainEvidence?: readonly SiteContentDomainEvidence[];
 }>;
+
+const eligibleDynamicDomains = siteContentProducerDefinitions
+  .filter((producer) => producer.activationState === "eligible" && producer.producerClass === "dynamic_registry")
+  .map((producer) => producer.domain)
+  .sort();
+const eligibleStaticDomains = siteContentProducerDefinitions
+  .filter((producer) => producer.activationState === "eligible" && producer.producerClass === "static_repository")
+  .map((producer) => producer.domain)
+  .sort();
+const eligibleDomains = [...eligibleDynamicDomains, ...eligibleStaticDomains].sort();
 
 function integer(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -26,6 +39,34 @@ function integer(value: unknown): value is number {
 
 function timestamp(value: unknown): value is string {
   return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+function assertDomainEvidence(
+  evidence: readonly SiteContentDomainEvidence[],
+  expectedDomains: readonly string[],
+  authority: "runtime" | "static",
+) {
+  const sorted = [...evidence].sort((left, right) => left.domain.localeCompare(right.domain));
+  if (
+    !Array.isArray(evidence) ||
+    evidence.length !== expectedDomains.length ||
+    new Set(evidence.map((entry) => entry.domain)).size !== evidence.length ||
+    evidence.some(
+      (entry, index) =>
+        typeof entry.domain !== "string" ||
+        entry.domain !== sorted[index]?.domain ||
+        !integer(entry.recordCount) ||
+        entry.recordCount === 0 ||
+        !["unreviewed", "reviewed"].includes(entry.reviewState) ||
+        !["current", "review_due", "outdated", "unknown"].includes(entry.sourceStatus) ||
+        !["unverified", "locally_reviewed", "approved"].includes(entry.validationStatus),
+    ) ||
+    JSON.stringify(evidence.map((entry) => entry.domain)) !== JSON.stringify(expectedDomains)
+  ) {
+    throw new Error(
+      `${authority === "runtime" ? "Runtime authority" : "Static manifest"} domain evidence is malformed or incomplete.`,
+    );
+  }
 }
 
 function canonicalPendingIds(snapshot: SiteContentRuntimeAuthoritySnapshot) {
@@ -63,26 +104,7 @@ function assertRuntimeSnapshot(snapshot: SiteContentRuntimeAuthoritySnapshot) {
     throw new Error("Runtime authority snapshot is malformed.");
   }
   const domains = snapshot.domainEvidence;
-  const sortedDomains = Array.isArray(domains)
-    ? [...domains].sort((left, right) => left.domain.localeCompare(right.domain))
-    : [];
-  if (
-    !Array.isArray(domains) ||
-    domains.length > siteContentProducerDefinitions.length ||
-    new Set(domains.map((entry) => entry.domain)).size !== domains.length ||
-    domains.some(
-      (entry, index) =>
-        typeof entry.domain !== "string" ||
-        entry.domain !== sortedDomains[index]?.domain ||
-        !integer(entry.recordCount) ||
-        entry.recordCount === 0 ||
-        !["unreviewed", "reviewed"].includes(entry.reviewState) ||
-        !["current", "review_due", "outdated", "unknown"].includes(entry.sourceStatus) ||
-        !["unverified", "locally_reviewed", "approved"].includes(entry.validationStatus),
-    )
-  ) {
-    throw new Error("Runtime authority domain evidence is malformed or unbounded.");
-  }
+  assertDomainEvidence(domains, eligibleDynamicDomains, "runtime");
 }
 
 async function readProductionAuthority() {
@@ -97,6 +119,8 @@ export async function collectSiteContentHealthInput(
     const snapshot = await (dependencies.readAuthority ?? readProductionAuthority)();
     assertRuntimeSnapshot(snapshot);
     const pendingLogicalIds = canonicalPendingIds(snapshot);
+    const staticDomainEvidence = dependencies.staticDomainEvidence ?? expectedSiteContentStaticDomainEvidence;
+    assertDomainEvidence(staticDomainEvidence, eligibleStaticDomains, "static");
     const active = snapshot.activeRelease;
     const deploymentSha = (dependencies.deploymentSha ?? resolveDeploymentCommitSha)();
     if (!active || !deploymentSha || expectedSiteContentRegistryVersion !== siteContentRegistryVersion)
@@ -112,9 +136,15 @@ export async function collectSiteContentHealthInput(
       }))
       .sort((left, right) => left.domain.localeCompare(right.domain));
     const dispositionsByDomain = new Map(domainDispositions.map((entry) => [entry.domain, entry.disposition]));
-    const domains = snapshot.domainEvidence.map((entry) => {
+    const domainEvidence = [...snapshot.domainEvidence, ...staticDomainEvidence].sort((left, right) =>
+      left.domain.localeCompare(right.domain),
+    );
+    if (JSON.stringify(domainEvidence.map((entry) => entry.domain)) !== JSON.stringify(eligibleDomains)) {
+      throw new Error("Combined site-content domain evidence does not match the eligible producer set.");
+    }
+    const domains = domainEvidence.map((entry) => {
       const disposition = dispositionsByDomain.get(entry.domain);
-      if (!disposition) throw new Error("Runtime authority returned an unknown site-content domain.");
+      if (disposition !== "eligible") throw new Error("Site-content authority returned an ineligible domain.");
       return {
         domain: entry.domain,
         reviewState: entry.reviewState,

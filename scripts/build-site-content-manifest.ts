@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import { buildAllSiteContentRecords } from "../src/lib/site-content/adapters";
 import {
+  buildStaticSiteContentDomainEvidence,
   buildStaticSiteContentManifest,
   diffStaticSiteContentManifests,
   type StaticSiteContentManifest,
@@ -12,6 +13,7 @@ import {
 import { siteContentRegistryVersion } from "../src/lib/site-content/site-content-registry";
 import {
   expectedSiteContentRegistryVersion,
+  expectedSiteContentStaticDomainEvidence,
   expectedSiteContentStaticManifestDigest,
 } from "../src/lib/site-content/site-content-static-build.generated";
 
@@ -60,11 +62,13 @@ export async function runSiteContentManifestCli(args: readonly string[]) {
     gitSha: gitSha(),
     registryVersion: siteContentRegistryVersion,
   });
+  const staticDomainEvidence = buildStaticSiteContentDomainEvidence(manifest);
 
   if (
     check &&
     (manifest.registryVersion !== expectedSiteContentRegistryVersion ||
-      manifest.staticManifestDigest !== expectedSiteContentStaticManifestDigest)
+      manifest.staticManifestDigest !== expectedSiteContentStaticManifestDigest ||
+      JSON.stringify(staticDomainEvidence) !== JSON.stringify(expectedSiteContentStaticDomainEvidence))
   ) {
     throw new Error("Generated site-content static-build identity is stale; regenerate the checked-in identity owner.");
   }
