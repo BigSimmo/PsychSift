@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { DifferentialPresentationReleasePage } from "@/components/differentials/differential-presentation-workflow-page";
+import { DifferentialPresentationReleasePage } from "@/components/differentials/differential-presentation-release-page-client";
 import { presentationStaticParams } from "@/lib/differentials";
 
 type DifferentialPresentationRouteProps = {
@@ -23,6 +23,9 @@ export async function generateMetadata({ params }: DifferentialPresentationRoute
   return {
     title: "Differential presentation - Clinical KB",
     description: `Current public differential presentation for ${slug.replace(/-/g, " ")}.`,
+    // DB-only slugs are resolved by the client release loader, so this generic
+    // successful shell is deliberately non-indexable rather than a soft-404 SEO signal.
+    robots: { index: false, follow: false },
   };
 }
 

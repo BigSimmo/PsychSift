@@ -51,13 +51,13 @@ export function DifferentialContentState({
   const { title, description, Icon } = stateCopy(status, kind);
   const loading = status === "loading";
   return (
-    <main
-      className="grid min-h-[50dvh] place-items-center bg-[color:var(--background)] px-4 py-12 text-[color:var(--text)]"
-      role={loading ? "status" : "alert"}
-      aria-live={loading ? "polite" : "assertive"}
-      aria-busy={loading || undefined}
-    >
-      <div className="w-full max-w-lg rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6 text-center shadow-[var(--shadow-soft)]">
+    <main className="grid min-h-[50dvh] place-items-center bg-[color:var(--background)] px-4 py-12 text-[color:var(--text)]">
+      <div
+        className="w-full max-w-lg rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6 text-center shadow-[var(--shadow-soft)]"
+        role={loading ? "status" : "alert"}
+        aria-live={loading ? "polite" : "assertive"}
+        aria-busy={loading || undefined}
+      >
         <Icon
           className={`mx-auto h-7 w-7 text-[color:var(--clinical-accent)] ${loading ? "animate-spin motion-reduce:animate-none" : ""}`}
           aria-hidden

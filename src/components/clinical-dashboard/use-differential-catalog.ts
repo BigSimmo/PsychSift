@@ -340,6 +340,7 @@ export function useDifferentialRecord(slug: string): DifferentialRecordState {
           demoMode?: boolean;
           governance?: DifferentialRecordGovernance;
         };
+        if (!active) return;
         if (!payload.record || !payload.detailContext) {
           setState({ status: "error", record: null, detailContext: null, demoMode: false, governance: null });
           return;

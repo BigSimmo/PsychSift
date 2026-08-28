@@ -18,6 +18,9 @@ export async function generateMetadata({ params }: DifferentialDiagnosisRoutePro
   return {
     title: "Differential diagnosis - Clinical KB",
     description: `Current public differential diagnosis for ${slug.replace(/-/g, " ")}.`,
+    // DB-only slugs are resolved by the client release loader, so this generic
+    // successful shell is deliberately non-indexable rather than a soft-404 SEO signal.
+    robots: { index: false, follow: false },
   };
 }
 

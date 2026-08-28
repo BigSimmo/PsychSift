@@ -1,16 +1,21 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import DifferentialDiagnosisRoute, {
   dynamicParams as diagnosisDynamicParams,
+  generateMetadata as generateDiagnosisMetadata,
 } from "../src/app/(search-app)/differentials/diagnoses/[slug]/page";
 import DifferentialPresentationRoute, {
   dynamicParams as presentationDynamicParams,
+  generateMetadata as generatePresentationMetadata,
 } from "../src/app/(search-app)/differentials/presentations/[slug]/page";
 import { getDifferentialDetailContext, getDifferentialRecord, getPresentationWorkflow } from "@/lib/differentials";
 
 const authSession = vi.hoisted(() => ({
-  authorizationHeader: { Authorization: "Bearer differential-release-page-test" },
+  authorizationHeader: { Authorization: "Bearer differential-release-page-test" } as Record<string, string>,
   markSessionExpired: vi.fn(),
   session: { user: { id: "release-page-user" } },
   status: "authenticated" as const,
@@ -83,6 +88,8 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 beforeEach(() => {
+  authSession.authorizationHeader = { Authorization: "Bearer differential-release-page-test" };
+  authSession.session.user.id = "release-page-user";
   authSession.markSessionExpired.mockReset();
   fetchMock = vi.fn<typeof fetch>();
   vi.stubGlobal("fetch", fetchMock);
@@ -94,6 +101,32 @@ afterEach(() => {
 });
 
 describe("differential active-release production pages", () => {
+  it("marks generic client-resolved release metadata as non-indexable", async () => {
+    await expect(
+      generateDiagnosisMetadata({ params: Promise.resolve({ slug: "db-only-diagnosis" }) }),
+    ).resolves.toMatchObject({ robots: { index: false, follow: false } });
+    await expect(
+      generatePresentationMetadata({ params: Promise.resolve({ slug: "db-only-presentation" }) }),
+    ).resolves.toMatchObject({ robots: { index: false, follow: false } });
+  });
+
+  it("keeps the workflow renderer server-usable behind a dedicated release client loader", () => {
+    const rendererSource = readFileSync(
+      resolve(process.cwd(), "src/components/differentials/differential-presentation-workflow-page.tsx"),
+      "utf8",
+    );
+    const loaderSource = readFileSync(
+      resolve(process.cwd(), "src/components/differentials/differential-presentation-release-page-client.tsx"),
+      "utf8",
+    );
+
+    expect(rendererSource).not.toMatch(/^\s*["']use client["'];/);
+    expect(rendererSource).not.toContain("useDifferentialPresentation");
+    expect(loaderSource).toMatch(/^\s*["']use client["'];/);
+    expect(loaderSource).toContain("useDifferentialPresentation");
+    expect(loaderSource).toContain("DifferentialPresentationWorkflowPage");
+  });
+
   it("routes a DB-only presentation slug and renders the API workflow with its release-bound candidate", async () => {
     expect(presentationDynamicParams).toBe(true);
     fetchMock.mockResolvedValueOnce(
@@ -146,6 +179,45 @@ describe("differential active-release production pages", () => {
     );
   });
 
+  it("never paints a parsed diagnosis response after its slug and auth identity are invalidated", async () => {
+    let resolveOldJson!: (value: unknown) => void;
+    const oldJson = new Promise<unknown>((resolveJson) => {
+      resolveOldJson = resolveJson;
+    });
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => oldJson } as Response)
+      .mockImplementationOnce(() => new Promise<Response>(() => undefined));
+
+    const view = render(
+      await DifferentialDiagnosisRoute({
+        params: Promise.resolve({ slug: releaseDiagnosis.slug }),
+      }),
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    authSession.authorizationHeader = { Authorization: "Bearer replacement-release-page-test" };
+    authSession.session.user.id = "replacement-release-page-user";
+    view.rerender(
+      await DifferentialDiagnosisRoute({
+        params: Promise.resolve({ slug: "replacement-release-diagnosis" }),
+      }),
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      resolveOldJson({
+        record: releaseDiagnosis,
+        detailContext: releaseDetailContext,
+        governance: { sourceStatus: "current", validationStatus: "approved" },
+      });
+      await oldJson;
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading differential diagnosis");
+    expect(screen.queryByRole("heading", { name: releaseDiagnosis.title })).not.toBeInTheDocument();
+    expect(screen.queryByText(releaseDiagnosis.subtitle)).not.toBeInTheDocument();
+  });
+
   it.each([
     [401, "Sign in to view this differential"],
     [404, "Differential diagnosis not found"],
@@ -161,8 +233,10 @@ describe("differential active-release production pages", () => {
     );
 
     expect(screen.queryByRole("heading", { name: bundledDiagnosis.title })).not.toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Loading differential diagnosis");
     expect(await screen.findByRole("alert")).toHaveTextContent(expectedMessage);
+    expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: bundledDiagnosis.title })).not.toBeInTheDocument();
   });
 
@@ -179,8 +253,10 @@ describe("differential active-release production pages", () => {
     );
 
     expect(screen.queryByRole("heading", { name: bundledPresentation.title })).not.toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Loading differential presentation");
     expect(await screen.findByRole("alert")).toHaveTextContent("Differential content unavailable");
+    expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: bundledPresentation.title })).not.toBeInTheDocument();
   });
 

@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { Fragment } from "react";
 import {
@@ -18,13 +16,9 @@ import {
 } from "lucide-react";
 
 import { DiagnosisTermChip, DiagnosisTermInlineList } from "@/components/differentials/diagnosis-term-link";
-import { DifferentialContentState } from "@/components/differentials/differential-content-state";
 import { CopyAfterReviewButton } from "@/components/differentials/differential-presentation-actions";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
-import {
-  type DifferentialPresentationCandidate,
-  useDifferentialPresentation,
-} from "@/components/clinical-dashboard/use-differential-catalog";
+import { type DifferentialPresentationCandidate } from "@/components/clinical-dashboard/use-differential-catalog";
 import { RegistryModeNav } from "@/components/mode-nav/registry-mode-nav";
 import { cn } from "@/components/ui-primitives";
 import { isClinicalHingeLabel, resolveDiagnosisTermSegments } from "@/lib/differential-diagnosis-links";
@@ -725,28 +719,5 @@ export function DifferentialPresentationWorkflowPage({
         </div>
       </main>
     </>
-  );
-}
-
-export function DifferentialPresentationReleasePage({
-  query = "",
-  presentationSlug,
-  selectedIds = [],
-}: {
-  query?: string;
-  presentationSlug: string;
-  selectedIds?: string[];
-}) {
-  const { status, workflow, candidates } = useDifferentialPresentation(presentationSlug);
-  if (status !== "ready" || !workflow) {
-    return <DifferentialContentState status={status === "ready" ? "error" : status} kind="presentation" />;
-  }
-  return (
-    <DifferentialPresentationWorkflowPage
-      query={query}
-      selectedIds={selectedIds}
-      workflow={workflow}
-      candidates={candidates}
-    />
   );
 }
