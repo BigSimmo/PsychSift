@@ -43,6 +43,7 @@ describe("site-content CI change scope", () => {
     "src/lib/catalog-search.ts",
     "data/services-snapshot.json",
     "src/lib/registry-corpus.ts",
+    "src/lib/registry-records.ts",
     "scripts/embed-registry-records.ts",
     "src/lib/retrieval-selection.ts",
   ])("selects bounded manifest and domain-fixture validation for %s", (file) => {

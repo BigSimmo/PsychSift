@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-27T21:57:33.097Z",
+  "generated_at": "2026-08-28T18:46:32.197Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "aefafddcc1338472c1f0f760147260125970eec1130bb751cfcac2337baf3a0a",
-  "replay_seconds": 16,
+  "schema_sha256": "57a89f3400acbae865420853cb99b1d576026f24ced6948afcb9c189864042ac",
+  "replay_seconds": 24,
   "snapshot": {
     "views": [
       {
@@ -4434,6 +4434,14 @@
             "generated": ""
           },
           {
+            "name": "projection_digest",
+            "type": "text",
+            "default": "public.site_content_projection_digest(logical_id, domain, record_kind, slug, payload, governance, publication_version, content_hash, source_lineage_digest)",
+            "identity": "",
+            "not_null": false,
+            "generated": "s"
+          },
+          {
             "name": "publication_version",
             "type": "text",
             "default": null,
@@ -4697,6 +4705,14 @@
             "identity": "",
             "not_null": true,
             "generated": ""
+          },
+          {
+            "name": "projection_digest",
+            "type": "text",
+            "default": "public.site_content_projection_digest(logical_id, domain, record_kind, slug, payload, governance, publication_version, content_hash, source_lineage_digest)",
+            "identity": "",
+            "not_null": false,
+            "generated": "s"
           },
           {
             "name": "publication_id",
@@ -7732,6 +7748,11 @@
         "table": "rag_response_cache"
       },
       {
+        "def": "CREATE TRIGGER site_content_release_governance_guard BEFORE UPDATE OF governance_verified, state ON public.site_content_releases FOR EACH ROW EXECUTE FUNCTION public.guard_site_content_release_governance()",
+        "name": "site_content_release_governance_guard",
+        "table": "site_content_releases"
+      },
+      {
         "def": "CREATE TRIGGER source_review_events_immutable BEFORE DELETE OR UPDATE ON public.source_review_events FOR EACH ROW EXECUTE FUNCTION public.prevent_source_review_event_mutation()",
         "name": "source_review_events_immutable",
         "table": "source_review_events"
@@ -7965,7 +7986,7 @@
           "authenticated=X/postgres",
           "postgres=X/postgres"
         ],
-        "def_hash": "094dea59468d09778e064fc7674b2b2e",
+        "def_hash": "d859efc6e94a3a27d3d37a943c6af90e",
         "signature": "public.derive_site_content_release_gate_artifacts(uuid,jsonb,jsonb)"
       },
       {
@@ -8062,6 +8083,13 @@
         ],
         "def_hash": "248e7a470031632101db7d22b1dbd006",
         "signature": "public.guard_document_publication_transition()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "280764207e8c97ff259ec990293d191f",
+        "signature": "public.guard_site_content_release_governance()"
       },
       {
         "acl": [
@@ -8373,7 +8401,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "b927eed9bcbbddcc1dcd75fce6fb4f4d",
+        "def_hash": "699b1cc8815f5dc03784fd5c1c9f2dc7",
         "signature": "public.publish_site_content_record(jsonb)"
       },
       {
@@ -8438,7 +8466,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "c7c22251a96f978efb625956ed719f15",
+        "def_hash": "8510ace483776767e5c818cdfe2821a3",
         "signature": "public.read_site_content_runtime_authority()"
       },
       {
@@ -8669,6 +8697,34 @@
         ],
         "def_hash": "31766c3dabb1c7bace12bdc456cbd11d",
         "signature": "public.site_content_p05_digest(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "3aae91e65d0b1781d36a15aa3c70af7d",
+        "signature": "public.site_content_projection_digest(text,text,text,text,jsonb,jsonb,text,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "99562c54c587748169d86dd382c89402",
+        "signature": "public.site_content_projection_governance_valid(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "477d783bcd06b320952752f7057921c1",
+        "signature": "public.site_content_release_governance_valid(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "a51d512a4d7490755769493bd1730939",
+        "signature": "public.site_content_release_projection_bindings(uuid)"
       },
       {
         "acl": [
@@ -9559,8 +9615,18 @@
         "table": "site_content_publications"
       },
       {
+        "def": "CHECK (public.site_content_projection_governance_valid(governance))",
+        "name": "site_content_publications_governance_check",
+        "table": "site_content_publications"
+      },
+      {
         "def": "PRIMARY KEY (id)",
         "name": "site_content_publications_pkey",
+        "table": "site_content_publications"
+      },
+      {
+        "def": "CHECK ((projection_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_publications_projection_digest_check",
         "table": "site_content_publications"
       },
       {
@@ -9639,8 +9705,18 @@
         "table": "site_content_release_projections"
       },
       {
+        "def": "CHECK ((tombstoned OR public.site_content_projection_governance_valid(governance)))",
+        "name": "site_content_release_projections_governance_check",
+        "table": "site_content_release_projections"
+      },
+      {
         "def": "PRIMARY KEY (release_id, logical_id)",
         "name": "site_content_release_projections_pkey",
+        "table": "site_content_release_projections"
+      },
+      {
+        "def": "CHECK ((projection_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "site_content_release_projections_projection_digest_check",
         "table": "site_content_release_projections"
       },
       {

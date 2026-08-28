@@ -122,6 +122,65 @@ export function siteContentSyncDigest(value: unknown): Digest {
   return `sha256:${createHash("sha256").update(siteContentSyncCanonicalJson(value)).digest("hex")}`;
 }
 
+export type SiteContentProjectionBinding = Readonly<{
+  logicalId: string;
+  contentHash: Digest;
+  projectionDigest: Digest;
+}>;
+
+export function bindSiteContentProjection(input: unknown): SiteContentProjectionBinding {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Site-content publication must be an object.");
+  }
+  const record = input as Record<string, unknown>;
+  const governance = record.governance;
+  const recordKind = record.recordKind ?? record.kind;
+  if (
+    typeof record.logicalId !== "string" ||
+    !record.logicalId.length ||
+    typeof record.domain !== "string" ||
+    !["services", "forms", "medications", "differentials"].includes(record.domain) ||
+    typeof recordKind !== "string" ||
+    !recordKind.length ||
+    typeof record.slug !== "string" ||
+    !record.slug.length ||
+    !record.payload ||
+    typeof record.payload !== "object" ||
+    Array.isArray(record.payload) ||
+    !governance ||
+    typeof governance !== "object" ||
+    Array.isArray(governance) ||
+    (governance as Record<string, unknown>).sourceStatus !== "current" ||
+    !["locally_reviewed", "approved"].includes(
+      String((governance as Record<string, unknown>).validationStatus ?? ""),
+    ) ||
+    typeof record.publicationVersion !== "string" ||
+    !record.publicationVersion.length ||
+    typeof record.contentHash !== "string" ||
+    !/^sha256:[a-f0-9]{64}$/.test(record.contentHash) ||
+    typeof record.sourceLineageDigest !== "string" ||
+    !/^sha256:[a-f0-9]{64}$/.test(record.sourceLineageDigest)
+  ) {
+    throw new Error("Site-content publication governance or projection identity is invalid.");
+  }
+  const identity = {
+    logicalId: record.logicalId,
+    domain: record.domain,
+    recordKind,
+    slug: record.slug,
+    payload: record.payload,
+    governance,
+    publicationVersion: record.publicationVersion,
+    contentHash: record.contentHash,
+    sourceLineageDigest: record.sourceLineageDigest,
+  };
+  return Object.freeze({
+    logicalId: record.logicalId,
+    contentHash: record.contentHash as Digest,
+    projectionDigest: siteContentSyncDigest(identity),
+  });
+}
+
 function assertDigest(value: string, label: string): asserts value is Digest {
   if (!/^sha256:[a-f0-9]{64}$/.test(value)) throw new Error(`${label} must be a sha256 digest.`);
 }

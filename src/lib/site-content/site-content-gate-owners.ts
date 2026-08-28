@@ -9,9 +9,11 @@ import {
 import { siteContentSha256, type StaticSiteContentManifest } from "@/lib/site-content/site-content-manifest";
 import {
   assertSiteContentSyncPlan,
+  bindSiteContentProjection,
   siteContentSyncCanonicalJson,
   siteContentSyncDigest,
   type SiteContentSyncPlan,
+  type SiteContentProjectionBinding,
 } from "@/lib/site-content/site-content-sync";
 
 type Digest = `sha256:${string}`;
@@ -36,6 +38,7 @@ export type SiteContentGovernanceOwnerReceipt = ReceiptAuthority &
     version: "site-content-governance-owner-receipt-v1";
     owner: "site-content-governance-registry-v1";
     population: PopulationEntry[];
+    projectionBindings: SiteContentProjectionBinding[];
     registryVersion: string;
     staticManifestDigest: Digest;
     legacyReconciliationDigest: Digest;
@@ -90,7 +93,7 @@ function canonicalObservedAt(now: Date) {
 export function createSiteContentGovernanceOwnerReceipt(
   planInput: unknown,
   manifest: StaticSiteContentManifest,
-  options: { now: Date; secret: string },
+  options: { now: Date; secret: string; publications: unknown[] },
 ): SiteContentGovernanceOwnerReceipt {
   const plan = assertSiteContentSyncPlan(planInput);
   const digestPayload = {
@@ -118,6 +121,16 @@ export function createSiteContentGovernanceOwnerReceipt(
   if (JSON.stringify(population) !== JSON.stringify(populationFor(plan))) {
     throw new Error("Governance owner manifest population does not match the canonical release plan.");
   }
+  const projectionBindings = options.publications
+    .map(bindSiteContentProjection)
+    .sort((left, right) => left.logicalId.localeCompare(right.logicalId));
+  if (
+    new Set(projectionBindings.map((entry) => entry.logicalId)).size !== projectionBindings.length ||
+    JSON.stringify(projectionBindings.map(({ logicalId, contentHash }) => ({ logicalId, contentHash }))) !==
+      JSON.stringify(population)
+  ) {
+    throw new Error("Governance owner publications do not match the canonical release population.");
+  }
   const subject = subjectFor(plan);
   const withoutMac = {
     version: "site-content-governance-owner-receipt-v1" as const,
@@ -126,6 +139,7 @@ export function createSiteContentGovernanceOwnerReceipt(
     subjectDigest: siteContentSyncDigest(subject),
     observedAt: canonicalObservedAt(options.now),
     population,
+    projectionBindings,
     registryVersion: plan.registryVersion,
     staticManifestDigest: plan.staticManifestDigest,
     legacyReconciliationDigest: plan.legacyReconciliationDigest,

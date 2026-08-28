@@ -26,7 +26,9 @@ export async function createSiteContentGateOwnerReceiptCli(args: readonly string
   if (owner === "governance") {
     const secret = process.env.SITE_CONTENT_GOVERNANCE_GATE_OWNER_SECRET ?? "";
     const manifest = (await readJson(option(args, "--manifest"), "P03 manifest")) as StaticSiteContentManifest;
-    return createSiteContentGovernanceOwnerReceipt(plan, manifest, { now, secret });
+    const publications = (await readJson(option(args, "--publications"), "Persisted publications")) as unknown[];
+    if (!Array.isArray(publications)) throw new Error("Persisted publications must be an array.");
+    return createSiteContentGovernanceOwnerReceipt(plan, manifest, { now, secret, publications });
   }
   if (owner === "must-pass") {
     const secret = process.env.RAG_PROGRAMME_GATE_OWNER_SECRET ?? "";

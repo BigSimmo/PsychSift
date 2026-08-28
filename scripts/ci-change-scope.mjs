@@ -368,6 +368,7 @@ const siteContentPatterns = [
   "data/differentials-snapshot.json",
   "src/lib/registry-corpus.ts",
   "src/lib/registry-corpus-links.ts",
+  "src/lib/registry-records.ts",
   /^src\/lib\/(?:clinical-search|retrieval(?:-[^/]+)?|source-governance|source-policy|corpus-grounding|indexed-source-formatting)\.ts$/,
   /^src\/lib\/rag\/[^/]*(?:retriev|rank|source|ground|citation|chunk)[^/]*\.ts$/i,
 ];

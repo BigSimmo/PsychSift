@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import {
+  bindSiteContentProjection,
   assertSiteContentSyncPlan,
   planSiteContentSync,
   siteContentSyncCanonicalJson,
@@ -152,12 +153,16 @@ export function createSiteContentSyncWriteDriver(dependencies: {
       }
       if (plan.mode !== "write") throw new Error("A canonical write plan with recovery evidence is required.");
       if (action === "adopt") {
+        const records = (options.records ?? []).map((record) => ({
+          ...(record as Record<string, unknown>),
+          projectionDigest: bindSiteContentProjection(record).projectionDigest,
+        }));
         await dependencies.send({
           path: "/api/admin/site-content/publish",
           body: {
             action,
             plan,
-            records: options.records ?? [],
+            records,
             governanceReceipt: options.governanceReceipt,
             mustPassReceipt: options.mustPassReceipt,
           },
@@ -195,12 +200,14 @@ export function createSiteContentSyncWriteDriver(dependencies: {
       for (const operation of plan.operations.filter((entry) => entry.operation === "changed")) {
         const record = dependencies.resolvePublication?.(operation.logicalId);
         if (!record) throw new Error(`Canonical changed publication ${operation.logicalId} is unavailable.`);
+        const projectionBinding = bindSiteContentProjection(record);
         await dependencies.send({
           path: "/api/admin/site-content/publish",
           body: {
             action: "publish",
             record: {
               ...(record as Record<string, unknown>),
+              projectionDigest: projectionBinding.projectionDigest,
               candidateReleaseId: plan.candidateReleaseId,
               projectRef: plan.projectRef,
               generationId: plan.generationId,

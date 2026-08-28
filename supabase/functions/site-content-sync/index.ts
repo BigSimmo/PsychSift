@@ -129,14 +129,34 @@ export async function drainSiteContentSyncBatch(options: DrainOptions) {
 }
 
 type HandlerDependencies = Pick<DrainOptions, "workerId" | "rpc" | "processEvent" | "log" | "heartbeatIntervalMs"> & {
-  authorization: string;
+  invocationSecret: string;
   invocationId?: () => string;
 };
+
+async function timingSafeSecretMatches(presented: string, expected: string) {
+  const encoder = new TextEncoder();
+  const [presentedDigest, expectedDigest] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(presented)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+  ]);
+  const presentedBytes = new Uint8Array(presentedDigest);
+  const expectedBytes = new Uint8Array(expectedDigest);
+  let difference = presented.length === expected.length ? 0 : 1;
+  for (let index = 0; index < presentedBytes.length; index += 1) {
+    difference |= presentedBytes[index]! ^ expectedBytes[index]!;
+  }
+  return expected.length > 0 && difference === 0;
+}
+
+function bearerSecret(request: Request) {
+  const match = request.headers.get("authorization")?.match(/^Bearer ([^\s]+)$/);
+  return match?.[1] ?? "";
+}
 
 export function createSiteContentSyncHandler(dependencies: HandlerDependencies) {
   return async (request: Request) => {
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-    if (request.headers.get("authorization") !== dependencies.authorization) {
+    if (!(await timingSafeSecretMatches(bearerSecret(request), dependencies.invocationSecret))) {
       return new Response("Unauthorized", { status: 401 });
     }
     const invocationId = dependencies.invocationId?.() ?? crypto.randomUUID();
@@ -230,7 +250,7 @@ if (typeof Deno !== "undefined") {
     missingConfiguration
       ? async () => Response.json({ error: "site_content_sync_not_configured" }, { status: 503 })
       : createSiteContentSyncHandler({
-          authorization: `Bearer ${invocationSecret}`,
+          invocationSecret,
           workerId,
           rpc,
           processEvent: async (event) => {

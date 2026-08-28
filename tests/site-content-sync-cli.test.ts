@@ -108,6 +108,10 @@ describe("site-content synchronization CLI contract", () => {
     const publication = {
       logicalId: "medication:a",
       domain: "medications" as const,
+      kind: "medication",
+      slug: "a",
+      payload: { title: "Medication A", body: "Reviewed synthetic content." },
+      governance: { sourceStatus: "current", validationStatus: "locally_reviewed" },
       publicationVersion: "2026-08-24T00:00:00.000Z",
       contentHash: fixtureSha("2"),
       sourceLineageDigest: fixtureSha("3"),
@@ -179,6 +183,10 @@ describe("site-content synchronization CLI contract", () => {
     const publication = {
       logicalId: "medication:a",
       domain: "medications" as const,
+      kind: "medication",
+      slug: "a",
+      payload: { title: "Medication A", body: "Reviewed synthetic content." },
+      governance: { sourceStatus: "current", validationStatus: "locally_reviewed" },
       publicationVersion: "2026-08-24T00:00:00.000Z",
       contentHash: fixtureSha("2"),
       sourceLineageDigest: fixtureSha("3"),
@@ -260,6 +268,7 @@ describe("site-content synchronization CLI contract", () => {
     const governanceReceipt = createSiteContentGovernanceOwnerReceipt(prospectivePlan, manifest, {
       now: siteReleaseNow,
       secret: "governance-owner-secret-0000000002",
+      publications: [publication],
     });
     const mustPassReceipt = createSiteContentMustPassOwnerReceipt(prospectivePlan, fixture, run, run, {
       now: siteReleaseNow,
@@ -301,7 +310,7 @@ describe("site-content synchronization CLI contract", () => {
       body: {
         action: "adopt",
         plan: prospectivePlan,
-        records: [publication],
+        records: [expect.objectContaining({ ...publication, projectionDigest: expect.stringMatching(/^sha256:/) })],
         governanceReceipt,
         mustPassReceipt,
       },

@@ -58,6 +58,17 @@ function planAndManifest() {
   };
   manifest.staticManifestDigest = siteContentSha256(digestPayload);
   const recovery = validSiteReleaseRecoveryFixture();
+  const publications = manifest.records.map((record) => ({
+    logicalId: record.logicalId,
+    domain: record.domain,
+    kind: "medication",
+    slug: "a",
+    payload: { title: "Medication A", body: "Reviewed synthetic content." },
+    governance: { sourceStatus: record.sourceStatus, validationStatus: record.validationStatus },
+    publicationVersion: manifest.generatedAt,
+    contentHash: record.contentHash,
+    sourceLineageDigest: record.lineageDigest,
+  }));
   const plan = planSiteContentSync({
     projectRef: siteReleaseProjectRef,
     expectedProjectRef: siteReleaseProjectRef,
@@ -83,12 +94,12 @@ function planAndManifest() {
     recoveryEvidence: recovery.evidence,
     now: siteReleaseNow,
   });
-  return { plan, manifest };
+  return { plan, manifest, publications };
 }
 
 describe("fixed site-content release gate owners", () => {
   it("derives deterministic governance and must-pass receipts from canonical owned outputs", () => {
-    const { plan, manifest } = planAndManifest();
+    const { plan, manifest, publications } = planAndManifest();
     const fixture = JSON.parse(readFileSync(resolve(root, "scripts/fixtures/rag-programme-failures.v1.json"), "utf8"));
     const parsed = parseRagProgrammeFixture(fixture);
     const run = {
@@ -107,7 +118,11 @@ describe("fixed site-content release gate owners", () => {
         estimatedCostUsd: 0,
       })),
     };
-    const governance = createSiteContentGovernanceOwnerReceipt(plan, manifest, { now: siteReleaseNow, secret });
+    const governance = createSiteContentGovernanceOwnerReceipt(plan, manifest, {
+      now: siteReleaseNow,
+      secret,
+      publications,
+    });
     const mustPass = createSiteContentMustPassOwnerReceipt(plan, fixture, run, run, {
       now: siteReleaseNow,
       secret,
@@ -115,6 +130,9 @@ describe("fixed site-content release gate owners", () => {
     expect(verifySiteContentGateOwnerReceipt(governance, { secret, now: siteReleaseNow })).toBe(true);
     expect(verifySiteContentGateOwnerReceipt(mustPass, { secret, now: siteReleaseNow })).toBe(true);
     expect(governance.population).toEqual([{ logicalId: "medication:a", contentHash: fixtureSha("2") }]);
+    expect(governance.projectionBindings).toEqual([
+      expect.objectContaining({ logicalId: "medication:a", contentHash: fixtureSha("2") }),
+    ]);
     expect(mustPass.evaluatedCaseIds).toHaveLength(29);
     expect(mustPass.gatePolicyDigest).toBe(SITE_CONTENT_RAG_PROGRAMME_GATE_POLICY_DIGEST);
     expect(mustPass.gatePolicyDigest).toBe(siteContentSyncDigest(ragProgrammeGatePolicy));
@@ -151,9 +169,18 @@ describe("fixed site-content release gate owners", () => {
           ...manifest,
           records: manifest.records.map((record) => ({ ...record, sourceStatus: "review_due" as const })),
         },
-        { now: siteReleaseNow, secret },
+        { now: siteReleaseNow, secret, publications },
       ),
     ).toThrow();
+    const changedProjection = createSiteContentGovernanceOwnerReceipt(plan, manifest, {
+      now: siteReleaseNow,
+      secret,
+      publications: publications.map((publication) => ({
+        ...publication,
+        payload: { title: "Medication A", body: "Changed after governance review." },
+      })),
+    });
+    expect(changedProjection.projectionBindings).not.toEqual(governance.projectionBindings);
 
     const changedPolicyDigest = siteContentSyncDigest({
       ...ragProgrammeGatePolicy,

@@ -62,6 +62,27 @@ function assertRuntimeSnapshot(snapshot: SiteContentRuntimeAuthoritySnapshot) {
   ) {
     throw new Error("Runtime authority snapshot is malformed.");
   }
+  const domains = snapshot.domainEvidence;
+  const sortedDomains = Array.isArray(domains)
+    ? [...domains].sort((left, right) => left.domain.localeCompare(right.domain))
+    : [];
+  if (
+    !Array.isArray(domains) ||
+    domains.length > siteContentProducerDefinitions.length ||
+    new Set(domains.map((entry) => entry.domain)).size !== domains.length ||
+    domains.some(
+      (entry, index) =>
+        typeof entry.domain !== "string" ||
+        entry.domain !== sortedDomains[index]?.domain ||
+        !integer(entry.recordCount) ||
+        entry.recordCount === 0 ||
+        !["unreviewed", "reviewed"].includes(entry.reviewState) ||
+        !["current", "review_due", "outdated", "unknown"].includes(entry.sourceStatus) ||
+        !["unverified", "locally_reviewed", "approved"].includes(entry.validationStatus),
+    )
+  ) {
+    throw new Error("Runtime authority domain evidence is malformed or unbounded.");
+  }
 }
 
 async function readProductionAuthority() {
@@ -90,15 +111,18 @@ export async function collectSiteContentHealthInput(
         disposition: producer.activationState as "eligible" | "reviewed_ineligible",
       }))
       .sort((left, right) => left.domain.localeCompare(right.domain));
-    const domains = domainDispositions
-      .filter((entry) => entry.disposition === "eligible")
-      .map((entry) => ({
+    const dispositionsByDomain = new Map(domainDispositions.map((entry) => [entry.domain, entry.disposition]));
+    const domains = snapshot.domainEvidence.map((entry) => {
+      const disposition = dispositionsByDomain.get(entry.domain);
+      if (!disposition) throw new Error("Runtime authority returned an unknown site-content domain.");
+      return {
         domain: entry.domain,
-        reviewState: "reviewed" as const,
-        eligibility: "eligible" as const,
-        sourceStatus: "current" as const,
-        validationStatus: "approved" as const,
-      }));
+        reviewState: entry.reviewState,
+        eligibility: disposition,
+        sourceStatus: entry.sourceStatus,
+        validationStatus: entry.validationStatus,
+      };
+    });
     const pendingLogicalIdsDigest = siteContentPendingLogicalIdsDigest(pendingLogicalIds);
     const synchronizer = snapshot.synchronizer;
 

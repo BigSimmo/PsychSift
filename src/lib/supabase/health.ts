@@ -1,3 +1,5 @@
+import type { SiteContentDomain } from "@/lib/types";
+
 type SupabaseProbeClient = {
   from(table: string): {
     select(
@@ -33,6 +35,15 @@ export type SiteContentRuntimeAuthoritySnapshot = Readonly<{
   }>;
   pendingLogicalIds: string[];
   pendingLogicalIdCount: number;
+  domainEvidence: Array<
+    Readonly<{
+      domain: SiteContentDomain;
+      recordCount: number;
+      reviewState: "unreviewed" | "reviewed";
+      sourceStatus: "current" | "review_due" | "outdated" | "unknown";
+      validationStatus: "unverified" | "locally_reviewed" | "approved";
+    }>
+  >;
   directSuccessorCandidateCount: number;
   orphanedNonterminalOutboxCount: number;
   outbox: Readonly<{

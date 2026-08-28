@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { classifySiteContentHealth } from "@/lib/health-response";
 import { collectSiteContentHealthInput } from "@/lib/site-content/site-content-health-authority";
+import { siteContentProducerDefinitions } from "@/lib/site-content/site-content-registry";
 import { expectedSiteContentStaticManifestDigest } from "@/lib/site-content/site-content-static-build.generated";
 import type { SiteContentRuntimeAuthoritySnapshot } from "@/lib/supabase/health";
 
@@ -30,6 +31,16 @@ function authority(overrides: Partial<SiteContentRuntimeAuthoritySnapshot> = {})
     },
     pendingLogicalIds: [],
     pendingLogicalIdCount: 0,
+    domainEvidence: siteContentProducerDefinitions
+      .filter((producer) => producer.activationState === "eligible")
+      .map((producer) => ({
+        domain: producer.domain,
+        recordCount: 2,
+        reviewState: "reviewed" as const,
+        sourceStatus: "current" as const,
+        validationStatus: "locally_reviewed" as const,
+      }))
+      .sort((left, right) => left.domain.localeCompare(right.domain)),
     directSuccessorCandidateCount: 0,
     orphanedNonterminalOutboxCount: 0,
     outbox: { pendingCount: 0, leasedCount: 0, quarantinedCount: 0, oldestPendingAgeSeconds: null },
@@ -73,6 +84,44 @@ describe("site-content request-time runtime authority", () => {
       outbox: { pendingCount: 1, leasedCount: 0, quarantinedCount: 0, oldestPendingAgeSeconds: 20 },
     });
     expect(classifySiteContentHealth(await collectSiteContentHealthInput(dependencies)).health.state).toBe("updating");
+  });
+
+  it("retains a numeric candidate age after all outbox rows complete and before activation", async () => {
+    const input = await collectSiteContentHealthInput({
+      readAuthority: async () =>
+        authority({
+          pendingLogicalIds: ["medications:lithium"],
+          pendingLogicalIdCount: 1,
+          directSuccessorCandidateCount: 1,
+          outbox: { pendingCount: 0, leasedCount: 0, quarantinedCount: 0, oldestPendingAgeSeconds: 540 },
+        }),
+      deploymentSha: () => RELEASE_SHA,
+    });
+    expect(classifySiteContentHealth(input, { now: new Date("2026-08-28T00:05:00.000Z") }).health.state).toBe(
+      "updating",
+    );
+  });
+
+  it("maps active persisted governance evidence and fails stale or unverified domains closed", async () => {
+    const staleEvidence = authority().domainEvidence.map((entry, index) =>
+      index === 0
+        ? {
+            ...entry,
+            reviewState: "unreviewed" as const,
+            sourceStatus: "review_due" as const,
+            validationStatus: "unverified" as const,
+          }
+        : entry,
+    );
+    const input = await collectSiteContentHealthInput({
+      readAuthority: async () => authority({ domainEvidence: staleEvidence }),
+      deploymentSha: () => RELEASE_SHA,
+    });
+    const classified = classifySiteContentHealth(input, { now: new Date("2026-08-28T00:05:00.000Z") });
+    expect(classified.health.state).toBe("failure");
+    expect(classified.stopReasons).toEqual(
+      expect.arrayContaining(["unreviewed_domain", "stale_source_status", "stale_validation_status"]),
+    );
   });
 
   it("fails closed for incomplete pending evidence and unavailable authority", async () => {

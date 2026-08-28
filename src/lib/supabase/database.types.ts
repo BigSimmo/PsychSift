@@ -114,7 +114,7 @@ export type Database = {
       site_content_publications: {
         Row: {
           actor_id: string; content_hash: string; created_at: string; domain: string; governance: Json; id: string;
-          logical_id: string; payload: Json; publication_version: string; record_kind: string; slug: string;
+          logical_id: string; payload: Json; projection_digest: string; publication_version: string; record_kind: string; slug: string;
           source_lineage_digest: string; updated_at: string;
         };
         Insert: {
@@ -129,7 +129,7 @@ export type Database = {
         Row: {
           content_hash: string; domain: string; embedding_bytes_digest: string | null; embedding_digest: string | null;
           embedding: Json | null; embedding_dimensions: number | null; embedding_model: string | null; governance: Json; logical_id: string;
-          payload: Json; publication_id: string | null; publication_version: string; record_kind: string;
+          payload: Json; projection_digest: string; publication_id: string | null; publication_version: string; record_kind: string;
           release_id: string; slug: string; source_lineage_digest: string; tombstoned: boolean;
         };
         Insert: {
@@ -2687,6 +2687,23 @@ export type Database = {
       site_content_canonical_json: { Args: { p_value: Json }; Returns: string };
       site_content_p05_digest: { Args: { p_value: Json }; Returns: string };
       site_content_json_digest: { Args: { p_value: Json }; Returns: string };
+      site_content_projection_digest: {
+        Args: {
+          p_content_hash: string;
+          p_domain: string;
+          p_governance: Json;
+          p_logical_id: string;
+          p_payload: Json;
+          p_publication_version: string;
+          p_record_kind: string;
+          p_slug: string;
+          p_source_lineage_digest: string;
+        };
+        Returns: string;
+      };
+      site_content_projection_governance_valid: { Args: { p_governance: Json }; Returns: boolean };
+      site_content_release_governance_valid: { Args: { p_release_id: string }; Returns: boolean };
+      site_content_release_projection_bindings: { Args: { p_release_id: string }; Returns: Json };
       site_content_validation_binding_valid: {
         Args: {
           p_binding: Json;

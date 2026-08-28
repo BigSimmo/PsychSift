@@ -14,6 +14,7 @@ function mockEnv(options: {
   demoMode?: boolean;
   deepSecret?: boolean;
   providerMode?: "auto" | "openai" | "offline";
+  siteContentEvidence?: unknown;
 }) {
   vi.resetModules();
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -29,7 +30,7 @@ function mockEnv(options: {
     isDemoMode: () => Boolean(options.demoMode),
   }));
   vi.doMock("@/lib/site-content/site-content-health-authority", () => ({
-    collectSiteContentHealthInput: vi.fn(async () => CURRENT_SITE_CONTENT_EVIDENCE),
+    collectSiteContentHealthInput: vi.fn(async () => options.siteContentEvidence ?? CURRENT_SITE_CONTENT_EVIDENCE),
   }));
   vi.setSystemTime(new Date("2026-08-28T00:05:00.000Z"));
 }
@@ -64,6 +65,29 @@ describe("GET /api/health", () => {
     expect(body.demoMode).toBe(false);
     expect(typeof body.uptimeSeconds).toBe("number");
     expect(body.deploymentCommitSha).toBe("4444444444444444444444444444444444444444");
+  });
+
+  it("returns 503 for stale active governance without exposing domain or record evidence", async () => {
+    vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "4444444444444444444444444444444444444444");
+    const stale = structuredClone(CURRENT_SITE_CONTENT_EVIDENCE) as {
+      activeRelease: { integrity: { domains: Array<Record<string, unknown>> } };
+    };
+    stale.activeRelease.integrity.domains[0] = {
+      ...stale.activeRelease.integrity.domains[0],
+      reviewState: "unreviewed",
+      sourceStatus: "review_due",
+      validationStatus: "unverified",
+    };
+    mockEnv({ configured: true, siteContentEvidence: stale });
+    const { GET } = await import("../src/app/api/health/route");
+    const response = await GET(healthRequest());
+    const body = await payload(response);
+    expect(response.status).toBe(503);
+    expect(body).toMatchObject({ status: "degraded", siteContent: { state: "failure" } });
+    const raw = JSON.stringify(body);
+    expect(raw).not.toContain("review_due");
+    expect(raw).not.toContain("unverified");
+    expect(raw).not.toContain("differentials");
   });
 
   it("reports degraded with 503 when required config is missing", async () => {
