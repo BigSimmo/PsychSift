@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
 import type { ActiveSiteContentRelease } from "../src/lib/site-content/site-content-contracts";
-import { ragContextSnapshotCacheKey, resolveRagContextSnapshot } from "../src/lib/rag/rag-context-snapshot";
+import {
+  ragContextSnapshotCacheKey,
+  resolveRagContextSnapshot,
+  type RagContextSnapshotInput,
+} from "../src/lib/rag/rag-context-snapshot";
 
 const ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
@@ -29,8 +34,53 @@ function publicContextSnapshot() {
   });
 }
 
+function disabledContextSnapshot(overrides: Partial<RagContextSnapshotInput> = {}) {
+  return resolveRagContextSnapshot({
+    expectedSiteStaticManifestDigest: null,
+    activePublicSiteRelease: null,
+    publicSiteChangeEpoch: null,
+    pendingPublicSiteChangeCount: 0,
+    pendingPublicSiteLogicalIds: [],
+    documentIndexGeneration: "documents-generation-shared",
+    sourcePolicyVersion: australianSourcePolicyVersion,
+    rolloutVersion: "legacy",
+    ...overrides,
+  });
+}
+
+function changedDisabledSnapshots() {
+  return [
+    ["source policy", disabledContextSnapshot({ sourcePolicyVersion: "australian-source-policy-previous" })],
+    ["shadow mode", disabledContextSnapshot({ rolloutVersion: "shadow" })],
+    ["canary mode", disabledContextSnapshot({ rolloutVersion: "canary" })],
+    [
+      "uploaded-local authority",
+      disabledContextSnapshot({
+        uploadedLocal: {
+          indexGeneration: "documents-generation-shared",
+          activationDigest: `sha256:${"a".repeat(64)}`,
+        },
+      }),
+    ],
+    [
+      "Australian-public authority",
+      disabledContextSnapshot({
+        australianPublic: {
+          indexGeneration: "australian-generation-shared",
+          releaseDigest: `sha256:${"b".repeat(64)}`,
+        },
+      }),
+    ],
+  ] as const;
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.doUnmock("@/lib/env");
+  vi.doUnmock("@/lib/deep-memory");
+  vi.doUnmock("@/lib/clinical-search");
+  vi.doUnmock("@/lib/rag/rag-versioning");
+  vi.doUnmock("@/lib/supabase/admin");
   vi.resetModules();
 });
 
@@ -87,6 +137,125 @@ function createSharedCacheBuilder(payload: {
 }
 
 describe("shared RAG search cache", () => {
+  it("misses actual shared answer/search selectors when disabled non-site authority leaves the legacy baseline", async () => {
+    type SelectorCall = { method: "eq" | "is"; column: string; value: unknown };
+    const selectorCalls: SelectorCall[][] = [];
+
+    vi.doMock("@/lib/env", () => ({
+      env: {
+        RAG_SEARCH_CACHE_TTL_MS: 60_000,
+        RAG_SEARCH_CACHE_SIZE: 200,
+        RAG_ANSWER_CACHE_TTL_MS: 60_000,
+        RAG_ANSWER_CACHE_SIZE: 20,
+        RAG_PERSIST_RAW_QUERY_TEXT: true,
+        RAG_QUERY_HASH_SECRET: "",
+        RAG_SEMANTIC_RERANK_ENABLED: false,
+        OPENAI_ANSWER_MODEL: "answer",
+        OPENAI_FAST_ANSWER_MODEL: "fast",
+        OPENAI_STRONG_ANSWER_MODEL: "strong",
+        OPENAI_QUERY_CLASSIFIER_MODEL: "classifier",
+        OPENAI_INDEXING_MODEL: "indexing",
+        OPENAI_EMBEDDING_MODEL: "embed",
+        EMBEDDING_DIMENSIONS: 1536,
+        OPENAI_FAST_REASONING_EFFORT: "low",
+        OPENAI_STRONG_REASONING_EFFORT: "high",
+        OPENAI_TEXT_VERBOSITY: "medium",
+        OPENAI_MAX_OUTPUT_TOKENS: 4096,
+        RAG_PROVIDER_MODE: "offline",
+        OPENAI_RERANK_MODEL: "rerank",
+      },
+      isDemoMode: () => false,
+      isLocalNoAuthMode: () => false,
+    }));
+    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
+    vi.doMock("@/lib/clinical-search", () => ({ buildClinicalTextSearchQuery: (query: string) => query.trim() }));
+    vi.doMock("@/lib/rag/rag-versioning", () => ({
+      ragAnswerPromptVersion: "answer-prompt",
+      ragAnswerSchemaVersion: "answer-schema",
+      ragIndexingPromptVersion: "indexing-prompt",
+      ragQueryClassifierPromptVersion: "classifier-prompt",
+    }));
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({
+        rpc: vi.fn(async () => ({ data: "public-epoch-1", error: null })),
+        from: (table: string) => {
+          if (table === "documents") {
+            const documents = {
+              select: () => documents,
+              eq: () => documents,
+              is: () => documents,
+              or: () => documents,
+              in: () => documents,
+              order: () => documents,
+              limit: () => documents,
+              then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
+                Promise.resolve({
+                  data: [{ id: "public-doc-1", updated_at: "2026-08-29T00:00:00.000Z", metadata: {} }],
+                  error: null,
+                }).then(resolve),
+            };
+            return documents;
+          }
+          expect(table).toBe("rag_response_cache");
+          const calls: SelectorCall[] = [];
+          selectorCalls.push(calls);
+          const builder = {
+            select: () => builder,
+            eq: (column: string, value: unknown) => {
+              calls.push({ method: "eq" as const, column, value });
+              return builder;
+            },
+            is: (column: string, value: unknown) => {
+              calls.push({ method: "is" as const, column, value });
+              return builder;
+            },
+            gt: () => builder,
+            limit: () => builder,
+            maybeSingle: async () => ({ data: null, error: null }),
+          };
+          return builder;
+        },
+      }),
+    }));
+
+    const { getSharedCachedAnswer, getSharedCachedSearch } = await import("../src/lib/rag/rag-cache");
+    const request = {
+      query: "lithium monitoring",
+      ownerId,
+      accessScope: { ownerId, includePublic: true as const },
+    };
+    const cases = [
+      ["no snapshot", undefined],
+      ["legacy disabled baseline", disabledContextSnapshot()],
+      ...changedDisabledSnapshots(),
+    ] as const;
+    const identities = new Map<string, { answer: string; search: string }>();
+    const selectorIdentity = (calls: SelectorCall[]) =>
+      JSON.stringify({
+        normalizedQuery: calls.find(({ column }) => column === "normalized_query")?.value,
+        indexingVersion: calls.find(({ column }) => column === "indexing_version")?.value,
+      });
+
+    for (const [label, ragContextSnapshot] of cases) {
+      const args = { ...request, ragContextSnapshot };
+      const before = selectorCalls.length;
+      await expect(getSharedCachedSearch(args)).resolves.toEqual({ kind: "miss", reason: "unknown_filter_miss" });
+      await expect(getSharedCachedAnswer(args, Date.now())).resolves.toBeNull();
+      const [searchSelector, answerSelector] = selectorCalls.slice(before);
+      expect(searchSelector, `${label} search selector`).toBeDefined();
+      expect(answerSelector, `${label} answer selector`).toBeDefined();
+      identities.set(label, {
+        search: selectorIdentity(searchSelector!),
+        answer: selectorIdentity(answerSelector!),
+      });
+    }
+
+    expect(identities.get("legacy disabled baseline")).toEqual(identities.get("no snapshot"));
+    for (const [label] of changedDisabledSnapshots()) {
+      expect(identities.get(label), label).not.toEqual(identities.get("legacy disabled baseline"));
+    }
+  });
+
   it("keeps the public snapshot fingerprint owner-neutral without sharing private owner cache scope", async () => {
     vi.resetModules();
     const selectorCalls: Array<Array<{ method: "eq" | "is"; column: string; value: unknown }>> = [];

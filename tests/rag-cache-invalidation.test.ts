@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SiteContentHealthInput } from "../src/lib/health-response";
+import { australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
+import type { SearchTelemetry } from "../src/lib/rag/rag-contracts";
 import type { RagAnswer } from "../src/lib/types";
 import type { ActiveSiteContentRelease } from "../src/lib/site-content/site-content-contracts";
 import { resolveRagContextSnapshot, type RagContextSnapshotInput } from "../src/lib/rag/rag-context-snapshot";
@@ -69,7 +71,7 @@ function contextSnapshot(
   });
 }
 
-function siteComponentOffSnapshot() {
+function siteComponentOffSnapshot(overrides: Partial<RagContextSnapshotInput> = {}) {
   return resolveRagContextSnapshot({
     expectedSiteStaticManifestDigest: null,
     activePublicSiteRelease: null,
@@ -77,9 +79,36 @@ function siteComponentOffSnapshot() {
     pendingPublicSiteChangeCount: 0,
     pendingPublicSiteLogicalIds: [],
     documentIndexGeneration: "documents-generation-legacy",
-    sourcePolicyVersion: "source-policy-v2",
+    sourcePolicyVersion: australianSourcePolicyVersion,
     rolloutVersion: "legacy",
+    ...overrides,
   });
+}
+
+function changedDisabledSnapshots() {
+  return [
+    ["source policy", siteComponentOffSnapshot({ sourcePolicyVersion: "australian-source-policy-previous" })],
+    ["shadow mode", siteComponentOffSnapshot({ rolloutVersion: "shadow" })],
+    ["canary mode", siteComponentOffSnapshot({ rolloutVersion: "canary" })],
+    [
+      "uploaded-local authority",
+      siteComponentOffSnapshot({
+        uploadedLocal: {
+          indexGeneration: "documents-generation-legacy",
+          activationDigest: `sha256:${"a".repeat(64)}`,
+        },
+      }),
+    ],
+    [
+      "Australian-public authority",
+      siteComponentOffSnapshot({
+        australianPublic: {
+          indexGeneration: "australian-generation-2",
+          releaseDigest: `sha256:${"b".repeat(64)}`,
+        },
+      }),
+    ],
+  ] as const;
 }
 
 function sampleAnswer(answer = "Cached clinical answer."): RagAnswer {
@@ -162,7 +191,8 @@ describe("RAG cache invalidation", () => {
       ragQueryClassifierPromptVersion: "classifier-prompt",
     }));
 
-    const { retrievalPlanCacheQuery, scopedAnswerCacheKey } = await import("../src/lib/rag/rag-cache");
+    const { retrievalPlanCacheQuery, scopedAnswerCacheKey, scopedAnswerInflightKey } =
+      await import("../src/lib/rag/rag-cache");
     const legacyArgs = {
       query: "  Lithium   monitoring ",
       ownerId,
@@ -181,6 +211,137 @@ describe("RAG cache invalidation", () => {
     expect(scopedAnswerCacheKey(siteOffArgs)).toBe(expectedAnswerKey);
     expect(retrievalPlanCacheQuery(legacyArgs)).toBe(expectedSearchKey);
     expect(retrievalPlanCacheQuery(siteOffArgs)).toBe(expectedSearchKey);
+    expect(scopedAnswerInflightKey(siteOffArgs, "valid-index-authority")).toBe(
+      scopedAnswerInflightKey(legacyArgs, "valid-index-authority"),
+    );
+
+    for (const [label, snapshot] of changedDisabledSnapshots()) {
+      const changedArgs = { ...legacyArgs, ragContextSnapshot: snapshot };
+      expect(scopedAnswerCacheKey(changedArgs), label).not.toBe(expectedAnswerKey);
+      expect(retrievalPlanCacheQuery(changedArgs), label).not.toBe(expectedSearchKey);
+      expect(scopedAnswerInflightKey(changedArgs, "valid-index-authority"), label).not.toBe(
+        scopedAnswerInflightKey(legacyArgs, "valid-index-authority"),
+      );
+    }
+  });
+
+  it("misses real local answer/search entries and changes indexing authority beyond the exact disabled baseline", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/env", () => ({
+      env: {
+        RAG_ANSWER_CACHE_TTL_MS: 60_000,
+        RAG_ANSWER_CACHE_SIZE: 20,
+        RAG_SEARCH_CACHE_TTL_MS: 60_000,
+        RAG_SEARCH_CACHE_SIZE: 200,
+        RAG_PERSIST_RAW_QUERY_TEXT: false,
+        RAG_QUERY_HASH_SECRET: "test-query-hash-secret",
+        RAG_SEMANTIC_RERANK_ENABLED: false,
+        OPENAI_ANSWER_MODEL: "answer",
+        OPENAI_FAST_ANSWER_MODEL: "fast",
+        OPENAI_STRONG_ANSWER_MODEL: "strong",
+        OPENAI_QUERY_CLASSIFIER_MODEL: "classifier",
+        OPENAI_INDEXING_MODEL: "indexing",
+        OPENAI_EMBEDDING_MODEL: "embed",
+        EMBEDDING_DIMENSIONS: 1536,
+        OPENAI_FAST_REASONING_EFFORT: "low",
+        OPENAI_STRONG_REASONING_EFFORT: "high",
+        OPENAI_TEXT_VERBOSITY: "medium",
+        OPENAI_MAX_OUTPUT_TOKENS: 4096,
+        RAG_PROVIDER_MODE: "offline",
+        OPENAI_RERANK_MODEL: "rerank",
+      },
+      isDemoMode: () => false,
+      isLocalNoAuthMode: () => false,
+    }));
+    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
+    vi.doMock("@/lib/clinical-search", () => ({ buildClinicalTextSearchQuery: (query: string) => query.trim() }));
+    vi.doMock("@/lib/rag/rag-versioning", () => ({
+      ragAnswerPromptVersion: "answer-prompt",
+      ragAnswerSchemaVersion: "answer-schema",
+      ragIndexingPromptVersion: "indexing-prompt",
+      ragQueryClassifierPromptVersion: "classifier-prompt",
+    }));
+    vi.doMock("@/lib/supabase/admin", () => ({
+      createAdminClient: () => ({
+        rpc: vi.fn(async () => ({ data: "public-epoch-1", error: null })),
+        from: (table: string) => {
+          if (table === "documents") {
+            const documents = {
+              select: () => documents,
+              eq: () => documents,
+              is: () => documents,
+              or: () => documents,
+              in: () => documents,
+              order: () => documents,
+              limit: () => documents,
+              then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
+                Promise.resolve({
+                  data: [{ id: "public-doc-1", updated_at: "2026-08-29T00:00:00.000Z", metadata: {} }],
+                  error: null,
+                }).then(resolve),
+            };
+            return documents;
+          }
+          const shared = {
+            delete: () => shared,
+            eq: () => shared,
+            is: () => shared,
+            in: () => shared,
+            insert: async () => ({ data: null, error: null }),
+            then: (resolve: (value: { data: null; error: null }) => unknown) =>
+              Promise.resolve({ data: null, error: null }).then(resolve),
+          };
+          return shared;
+        },
+      }),
+    }));
+
+    const { cacheIndexingVersion, getCachedAnswer, getCachedSearch, setCachedAnswer, setCachedSearch } =
+      await import("../src/lib/rag/rag-cache");
+    const request = {
+      query: "disabled non-site authority question",
+      ownerId,
+      accessScope: { ownerId, includePublic: true as const },
+    };
+    const baselineRequest = { ...request, ragContextSnapshot: siteComponentOffSnapshot() };
+    const legacyIndexingVersion = await cacheIndexingVersion(request, { forceRefresh: true });
+    const baselineIndexingVersion = await cacheIndexingVersion(baselineRequest, { forceRefresh: true });
+    expect(baselineIndexingVersion).toBe(legacyIndexingVersion);
+
+    const telemetry: SearchTelemetry = {
+      search_cache_hit: false,
+      query_class: "unsupported_or_general",
+      text_fast_path_latency_ms: 0,
+      embedding_skipped: true,
+      embedding_latency_ms: 0,
+      embedding_cache_hit: false,
+      supabase_rpc_latency_ms: 0,
+      rerank_latency_ms: 0,
+    };
+    await setCachedAnswer(baselineRequest, sampleAnswer("legacy disabled answer"), {
+      indexingVersionAtRetrievalStart: baselineIndexingVersion,
+    });
+    await setCachedSearch(baselineRequest, [], telemetry, [], {
+      indexingVersionAtRetrievalStart: baselineIndexingVersion,
+    });
+
+    for (const [label, ragContextSnapshot] of changedDisabledSnapshots()) {
+      const changedRequest = { ...request, ragContextSnapshot };
+      const changedIndexingVersion = await cacheIndexingVersion(changedRequest, { forceRefresh: true });
+      expect(changedIndexingVersion, label).not.toBe(baselineIndexingVersion);
+      await expect(
+        getCachedAnswer(changedRequest, Date.now(), {
+          indexingVersionAtRequestStart: changedIndexingVersion,
+        }),
+        label,
+      ).resolves.toBeNull();
+      await expect(
+        getCachedSearch(changedRequest, "unsupported_or_general", [], {
+          indexingVersionAtRequestStart: changedIndexingVersion,
+        }),
+        label,
+      ).resolves.toBeNull();
+    }
   });
 
   it("binds local answer, search, and coalescing identities to the exact active request snapshot", async () => {
@@ -333,6 +494,89 @@ describe("RAG cache invalidation", () => {
     expect(o2OriginResult.answer).toBe("owner-index-O2 answer");
     expect(o2WaiterResult.answer).toBe("owner-index-O2 answer");
     expect(o2WaiterResult.routingReason).toContain("answer_inflight_coalesced");
+  });
+
+  it("runs overlapping same-owner answers independently while indexing authority is unavailable", async () => {
+    vi.resetModules();
+    const o1Answer = Promise.withResolvers<RagAnswer>();
+    const o2Answer = Promise.withResolvers<RagAnswer>();
+    let hypotheticalOwnerGeneration = "O1";
+    const siteAuthority = currentHealthAuthority();
+    const unavailableAuthority = "test-rag-version:public-authority-unavailable";
+    const cacheIndexingVersion = vi.fn(async () => unavailableAuthority);
+    const getCachedAnswer = vi.fn(async () =>
+      hypotheticalOwnerGeneration === "O1" ? o1Answer.promise : o2Answer.promise,
+    );
+
+    vi.doMock("@/lib/env", () => ({
+      env: {
+        RAG_ANSWER_CACHE_TTL_MS: 60_000,
+        RAG_ANSWER_CACHE_SIZE: 20,
+        OPENAI_ANSWER_MODEL: "answer",
+        OPENAI_FAST_ANSWER_MODEL: "fast",
+        OPENAI_STRONG_ANSWER_MODEL: "strong",
+        OPENAI_QUERY_CLASSIFIER_MODEL: "classifier",
+        OPENAI_INDEXING_MODEL: "indexing",
+        OPENAI_EMBEDDING_MODEL: "embed",
+        EMBEDDING_DIMENSIONS: 1536,
+        OPENAI_FAST_REASONING_EFFORT: "low",
+        OPENAI_STRONG_REASONING_EFFORT: "high",
+        OPENAI_TEXT_VERBOSITY: "medium",
+        OPENAI_MAX_OUTPUT_TOKENS: 4096,
+        RAG_PROVIDER_MODE: "offline",
+        RAG_SEMANTIC_RERANK_ENABLED: false,
+        OPENAI_RERANK_MODEL: "rerank",
+        RAG_PERSIST_RAW_QUERY_TEXT: false,
+        RAG_QUERY_HASH_SECRET: "test-query-hash-secret",
+      },
+      isDemoMode: () => false,
+      isLocalNoAuthMode: () => false,
+    }));
+    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
+    vi.doMock("@/lib/clinical-search", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("../src/lib/clinical-search")>()),
+      buildClinicalTextSearchQuery: (query: string) => query.trim(),
+    }));
+    vi.doMock("@/lib/rag/rag-versioning", () => ({
+      ragAnswerPromptVersion: "answer-prompt",
+      ragAnswerSchemaVersion: "answer-schema",
+      ragIndexingPromptVersion: "indexing-prompt",
+      ragQueryClassifierPromptVersion: "classifier-prompt",
+    }));
+    vi.doMock("@/lib/site-content/site-content-health-authority", () => ({
+      collectSiteContentHealthInput: vi.fn(async () => siteAuthority),
+    }));
+    vi.doMock("@/lib/rag/rag-cache", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("../src/lib/rag/rag-cache")>()),
+      cacheIndexingVersion,
+      getCachedAnswer,
+      getSharedCachedAnswer: vi.fn(async () => {
+        throw new Error("synthetic unavailable-authority answer should finish at the local boundary");
+      }),
+    }));
+
+    const [{ answerQuestionWithScope }, { answerInflight }] = await Promise.all([
+      import("../src/lib/rag/rag"),
+      import("../src/lib/rag/rag-cache"),
+    ]);
+    const request = { query: "synthetic unavailable authority question", ownerId, logQuery: false };
+    const o1 = answerQuestionWithScope(request);
+    await vi.waitFor(() => expect(getCachedAnswer).toHaveBeenCalledTimes(1));
+
+    hypotheticalOwnerGeneration = "O2";
+    const o2 = answerQuestionWithScope(request);
+    await vi.waitFor(() => expect(cacheIndexingVersion.mock.calls.length).toBeGreaterThanOrEqual(4));
+    const answerReadsBeforeRelease = getCachedAnswer.mock.calls.length;
+
+    o2Answer.resolve(sampleAnswer("hypothetical O2 answer"));
+    o1Answer.resolve(sampleAnswer("hypothetical O1 answer"));
+    const [o1Result, o2Result] = await Promise.all([o1, o2]);
+
+    expect(answerReadsBeforeRelease).toBe(2);
+    expect(o1Result.answer).toBe("hypothetical O1 answer");
+    expect(o2Result.answer).toBe("hypothetical O2 answer");
+    expect(o2Result.routingReason).not.toContain("answer_inflight_coalesced");
+    expect(answerInflight.size).toBe(0);
   });
 
   it("does not reuse a locally cached site-backed answer after the active snapshot changes", async () => {

@@ -173,6 +173,29 @@ function freezeSnapshot(snapshot: ResolvedRagContextSnapshot): ResolvedRagContex
   return Object.freeze(snapshot);
 }
 
+function defaultUploadedLocalSnapshotIdentity(documentIndexGeneration: string): UploadedLocalSnapshotIdentity {
+  return {
+    indexGeneration: documentIndexGeneration,
+    activationDigest: `sha256:${opaqueDigest(documentIndexGeneration)}`,
+  };
+}
+
+export function ragContextSnapshotUsesLegacyCacheIdentity(
+  snapshot: ResolvedRagContextSnapshot,
+  currentSourcePolicyVersion: string,
+) {
+  const baselineUploadedLocal = defaultUploadedLocalSnapshotIdentity(snapshot.documentIndexGeneration);
+  return (
+    snapshot.publicSiteContent.state === "disabled" &&
+    snapshot.rolloutVersion === "legacy" &&
+    snapshot.sourcePolicyVersion === currentSourcePolicyVersion &&
+    snapshot.uploadedLocal.indexGeneration === baselineUploadedLocal.indexGeneration &&
+    snapshot.uploadedLocal.activationDigest === baselineUploadedLocal.activationDigest &&
+    snapshot.australianPublic.indexGeneration === null &&
+    snapshot.australianPublic.releaseDigest === null
+  );
+}
+
 export function resolveRagContextSnapshot(input: RagContextSnapshotInput): ResolvedRagContextSnapshot {
   if (!nonEmpty(input.documentIndexGeneration) || !nonEmpty(input.sourcePolicyVersion)) {
     throw new Error("RAG context snapshot requires document-index and source-policy authority.");
@@ -205,10 +228,7 @@ export function resolveRagContextSnapshot(input: RagContextSnapshotInput): Resol
     rolloutVersion: input.rolloutVersion,
     uploadedLocal: input.uploadedLocal
       ? { ...input.uploadedLocal }
-      : {
-          indexGeneration: input.documentIndexGeneration,
-          activationDigest: `sha256:${opaqueDigest(input.documentIndexGeneration)}`,
-        },
+      : defaultUploadedLocalSnapshotIdentity(input.documentIndexGeneration),
     australianPublic: input.australianPublic
       ? { ...input.australianPublic }
       : {

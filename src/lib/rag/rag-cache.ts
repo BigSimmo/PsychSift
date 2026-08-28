@@ -8,6 +8,7 @@ import { queryCacheKeyForStorage } from "@/lib/query-privacy";
 import { ragCacheKeyMatchesOwner } from "@/lib/rag/rag-cache-utils";
 import {
   ragContextSnapshotCacheKey,
+  ragContextSnapshotUsesLegacyCacheIdentity,
   resolveRagContextSnapshot,
   selectRequestRagContextSnapshot,
 } from "@/lib/rag/rag-context-snapshot";
@@ -41,7 +42,7 @@ const cacheIndexingVersionCache = new Map<string, { expiresAt: number; value: st
 const publicSourceAuthorityUnavailable = `${ragDeepMemoryVersion}:public-authority-unavailable`;
 
 function cacheAuthorityAvailable(indexingVersion: string) {
-  return indexingVersion !== publicSourceAuthorityUnavailable;
+  return Boolean(indexingVersion) && indexingVersion !== publicSourceAuthorityUnavailable;
 }
 /**
  * Invalidation generations for deferred `setCachedAnswer` promotions. Review /
@@ -113,7 +114,7 @@ function modeKey(args: Pick<SearchChunksArgs, "queryMode">) {
 
 function contextSnapshotKey(args: Pick<SearchChunksArgs, "ragContextSnapshot">) {
   const snapshot = args.ragContextSnapshot;
-  if (!snapshot || snapshot.publicSiteContent.state === "disabled") return null;
+  if (!snapshot || ragContextSnapshotUsesLegacyCacheIdentity(snapshot, australianSourcePolicyVersion)) return null;
   return ragContextSnapshotCacheKey(snapshot);
 }
 
@@ -196,6 +197,7 @@ export function scopedAnswerInflightKey(
   args: Parameters<typeof scopedAnswerCacheKey>[0],
   indexingVersionAtRequestStart: string,
 ) {
+  if (!cacheAuthorityAvailable(indexingVersionAtRequestStart)) return null;
   const indexingIdentity = createHash("sha256").update(indexingVersionAtRequestStart).digest("hex");
   return `${scopedAnswerCacheKey(args)}|indexing:${indexingIdentity}`;
 }
