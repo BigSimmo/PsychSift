@@ -34,6 +34,11 @@ export type DifferentialPresentationAggregate = Readonly<{
   governance: Record<string, unknown>;
 }>;
 
+export type DifferentialReleaseSearchCatalog = Readonly<{
+  diagnoses: DifferentialRecord[];
+  presentations: DifferentialPresentationWorkflow[];
+}>;
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -160,6 +165,44 @@ function detailSource(publication: DifferentialPublication): DifferentialDetailC
     sourceTitle: "Canonical public differential release",
     sourceStatus: differentialSourceStatus(String(publication.governance.sourceStatus)),
     validationStatus,
+  };
+}
+
+export function buildDifferentialReleaseSearchCatalog(
+  partition: PublicSiteContentPartition<Record<string, unknown>>,
+): DifferentialReleaseSearchCatalog | null {
+  const catalog = releaseCatalog(partition);
+  if (!catalog) return null;
+
+  if (partition.state === "current") {
+    for (const diagnosis of catalog.diagnoses.values()) {
+      if (diagnosis.payload.related.some((related) => !catalog.diagnoses.has(related.id))) return null;
+    }
+    for (const presentation of catalog.presentations.values()) {
+      if (presentation.payload.candidates.some((candidate) => !catalog.diagnoses.has(candidate.slug))) return null;
+    }
+  }
+
+  const diagnoses = new Map(catalog.diagnoses);
+  if (partition.state === "updating") {
+    let removedDependency = true;
+    while (removedDependency) {
+      removedDependency = false;
+      for (const [slug, diagnosis] of diagnoses) {
+        if (diagnosis.payload.related.some((related) => !diagnoses.has(related.id))) {
+          diagnoses.delete(slug);
+          removedDependency = true;
+        }
+      }
+    }
+  }
+  const presentations = [...catalog.presentations.values()].filter((presentation) =>
+    presentation.payload.candidates.every((candidate) => diagnoses.has(candidate.slug)),
+  );
+
+  return {
+    diagnoses: [...diagnoses.values()].map((publication) => publication.payload),
+    presentations: presentations.map((publication) => publication.payload),
   };
 }
 

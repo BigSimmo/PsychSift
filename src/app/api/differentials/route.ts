@@ -12,8 +12,6 @@ import {
   differentialRecords,
   rankDifferentialRecords,
   rankPresentationWorkflows,
-  type DifferentialPresentationWorkflow,
-  type DifferentialRecord,
   type DifferentialPresentationMatch,
   type DifferentialRecordMatch,
 } from "@/lib/differentials";
@@ -21,6 +19,10 @@ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
 import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
 import { jsonError } from "@/lib/http";
 import { publicAccessContext } from "@/lib/public-api-access";
+import {
+  buildDifferentialReleaseSearchCatalog,
+  type DifferentialReleaseSearchCatalog,
+} from "@/lib/site-content/differential-aggregate";
 import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
@@ -81,23 +83,25 @@ function publicDifferentialPayload(kind: DifferentialRecordKind, q: string | und
 
 function releasedDifferentialPayload(
   kind: DifferentialRecordKind,
-  values: Record<string, unknown>[],
+  catalog: DifferentialReleaseSearchCatalog,
   q: string | undefined,
   limit: number,
 ) {
   if (kind === "presentation") {
-    const workflows = values as DifferentialPresentationWorkflow[];
-    const ranked = q ? rankPresentationWorkflows(workflows, q, limit) : null;
+    const workflows = catalog.presentations;
+    const ranked = q ? rankPresentationWorkflows(workflows, q, limit, [], catalog) : null;
     return {
       presentations: ranked ? ranked.map((match) => match.workflow) : workflows,
       matches: ranked ? presentationMatchesPayload(ranked) : undefined,
+      total: workflows.length,
     };
   }
-  const records = values as DifferentialRecord[];
-  const ranked = q ? rankDifferentialRecords(records, q, limit) : null;
+  const records = catalog.diagnoses;
+  const ranked = q ? rankDifferentialRecords(records, q, limit, [], catalog) : null;
   return {
     records: ranked ? ranked.map((match) => match.record) : records,
     matches: ranked ? recordMatchesPayload(ranked) : undefined,
+    total: records.length,
   };
 }
 
@@ -135,7 +139,6 @@ export async function GET(request: Request) {
     // the same canonical public differential payload.
     const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
       domain: "differentials",
-      recordKind: kind,
     });
     if (publicSiteContent) {
       if (publicSiteContent.state === "unavailable") {
@@ -147,13 +150,32 @@ export async function GET(request: Request) {
           { request, status: 503 },
         );
       }
-      const values = publicSiteContent.records.map((entry) => entry.payload);
+      const catalog = buildDifferentialReleaseSearchCatalog(publicSiteContent);
+      if (!catalog) {
+        return differentialResponse(
+          {
+            error: "Public site content is unavailable.",
+            release: {
+              id: publicSiteContent.activeReleaseId,
+              epoch: publicSiteContent.changeEpoch,
+              state: publicSiteContent.state,
+            },
+          },
+          { request, status: 503 },
+        );
+      }
+      const selectedSlugs = new Set(
+        kind === "presentation"
+          ? catalog.presentations.map((workflow) => workflow.id)
+          : catalog.diagnoses.map((record) => record.slug),
+      );
       return differentialResponse(
         {
-          ...releasedDifferentialPayload(kind, values, q, limit),
-          total: values.length,
+          ...releasedDifferentialPayload(kind, catalog, q, limit),
           governance: Object.fromEntries(
-            publicSiteContent.records.map((entry) => [entry.logical_id, entry.governance]),
+            publicSiteContent.records
+              .filter((entry) => entry.record_kind === kind && selectedSlugs.has(entry.slug))
+              .map((entry) => [entry.logical_id, entry.governance]),
           ),
           release: {
             id: publicSiteContent.activeReleaseId,

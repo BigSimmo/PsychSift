@@ -40,6 +40,8 @@ function partitionRecords(domain: string) {
   ];
 }
 
+type PublicationRecord = ReturnType<typeof publicationRecord>;
+
 type PartitionQuery = { domain: string; recordKind?: string; slug?: string };
 
 async function loadRoutes(
@@ -48,6 +50,7 @@ async function loadRoutes(
     malformedDifferentialSlug?: string;
     omitDifferential?: { kind: "diagnosis" | "presentation"; slug: string };
     flipReleaseOnSecondRead?: boolean;
+    transformDifferentialPartition?: (records: PublicationRecord[]) => PublicationRecord[];
   } = {},
 ) {
   vi.resetModules();
@@ -79,7 +82,12 @@ async function loadRoutes(
     ),
   }));
   const readPublicSiteContentPartition = vi.fn(async (_client: unknown, query: PartitionQuery) => {
-    const records = partitionRecords(query.domain)
+    const partition = partitionRecords(query.domain);
+    const sourceRecords =
+      query.domain === "differentials" && options.transformDifferentialPartition
+        ? options.transformDifferentialPartition(partition)
+        : partition;
+    const records = sourceRecords
       .filter(
         (record) =>
           (!query.recordKind || record.record_kind === query.recordKind) &&
@@ -285,6 +293,208 @@ describe("seven public route release-state matrix", () => {
       expect(payload.matches?.[0]?.score ?? 0).toBeGreaterThan(0);
     },
   );
+
+  it.each(["current", "updating"] as const)(
+    "ranks both directions from database-only %s counterpart titles and relationships in one partition read",
+    async (state) => {
+      const diagnosisTemplate = differentialRecords[0]!;
+      const presentationTemplate = differentialPresentations()[0]!;
+      const databaseDiagnosis = {
+        ...diagnosisTemplate,
+        slug: "database-only-cobaltwren",
+        title: "Database diagnosis Cobaltwren",
+        related: [],
+      };
+      const databasePresentation = {
+        ...presentationTemplate,
+        id: "database-only-zephyrneedle",
+        title: "Database presentation Zephyrneedle",
+        candidates: [
+          {
+            ...presentationTemplate.candidates[0]!,
+            slug: databaseDiagnosis.slug,
+          },
+        ],
+      };
+      const routes = await loadRoutes(state, {
+        transformDifferentialPartition: (records) => [
+          ...records,
+          publicationRecord("differentials", "diagnosis", databaseDiagnosis),
+          publicationRecord("differentials", "presentation", databasePresentation),
+        ],
+      });
+
+      const diagnosisResponse = await routes.differentialCollection.GET(
+        request("/api/differentials?kind=diagnosis&q=zephyrneedle&limit=1"),
+      );
+      const diagnosisPayload = (await diagnosisResponse.json()) as {
+        records?: Array<{ slug: string }>;
+        matches?: Array<{ record: { slug: string }; reasons: string[] }>;
+        total?: number;
+        release?: { state?: string };
+      };
+
+      expect(diagnosisResponse.status).toBe(200);
+      expect(diagnosisPayload.records?.map((record) => record.slug)).toEqual([databaseDiagnosis.slug]);
+      expect(diagnosisPayload.matches).toEqual([
+        expect.objectContaining({
+          record: expect.objectContaining({ slug: databaseDiagnosis.slug }),
+          reasons: expect.arrayContaining(["presentation link"]),
+        }),
+      ]);
+      expect(diagnosisPayload.total).toBe(differentialRecords.length + 1);
+      expect(diagnosisPayload.release?.state).toBe(state);
+      expect(routes.readPublicSiteContentPartition).toHaveBeenCalledTimes(1);
+      expect(routes.readPublicSiteContentPartition).toHaveBeenLastCalledWith(expect.anything(), {
+        domain: "differentials",
+      });
+
+      const presentationResponse = await routes.differentialCollection.GET(
+        request("/api/differentials?kind=presentation&q=cobaltwren&limit=1"),
+      );
+      const presentationPayload = (await presentationResponse.json()) as {
+        presentations?: Array<{ id: string }>;
+        matches?: Array<{ workflow: { id: string }; reasons: string[] }>;
+        total?: number;
+        release?: { state?: string };
+      };
+
+      expect(presentationResponse.status).toBe(200);
+      expect(presentationPayload.presentations?.map((workflow) => workflow.id)).toEqual([databasePresentation.id]);
+      expect(presentationPayload.matches).toEqual([
+        expect.objectContaining({
+          workflow: expect.objectContaining({ id: databasePresentation.id }),
+          reasons: expect.arrayContaining(["candidate differential"]),
+        }),
+      ]);
+      expect(presentationPayload.total).toBe(differentialPresentations().length + 1);
+      expect(presentationPayload.release?.state).toBe(state);
+      expect(routes.readPublicSiteContentPartition).toHaveBeenCalledTimes(2);
+      expect(routes.readPublicSiteContentPartition).toHaveBeenLastCalledWith(expect.anything(), {
+        domain: "differentials",
+      });
+    },
+  );
+
+  it("uses updated release links without retaining a removed bundled presentation relationship", async () => {
+    const presentation = differentialPresentations()[0]!;
+    const removedCandidate = presentation.candidates[1]!;
+    const replacement = differentialRecords.find(
+      (record) => !presentation.candidates.some((candidate) => candidate.slug === record.slug),
+    )!;
+    const routes = await loadRoutes("current", {
+      transformDifferentialPartition: (records) =>
+        records.map((record) =>
+          record.record_kind === "presentation" && record.slug === presentation.id
+            ? publicationRecord("differentials", "presentation", {
+                ...presentation,
+                title: "Release presentation Onyxbridge",
+                candidates: [{ ...presentation.candidates[0]!, slug: replacement.slug }],
+              })
+            : record,
+        ),
+    });
+
+    const response = await routes.differentialCollection.GET(
+      request("/api/differentials?kind=diagnosis&q=encephalopathy&limit=200"),
+    );
+    const payload = (await response.json()) as {
+      matches?: Array<{ record: { slug: string }; reasons: string[] }>;
+      release?: { state?: string };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.release?.state).toBe("current");
+    expect(payload.matches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          record: expect.objectContaining({ slug: replacement.slug }),
+          reasons: expect.arrayContaining(["presentation link"]),
+        }),
+      ]),
+    );
+    expect(
+      payload.matches?.some(
+        (match) => match.record.slug === removedCandidate.slug && match.reasons.includes("presentation link"),
+      ),
+    ).toBe(false);
+    expect(routes.readPublicSiteContentPartition).toHaveBeenCalledTimes(1);
+    expect(routes.readPublicSiteContentPartition).toHaveBeenCalledWith(expect.anything(), {
+      domain: "differentials",
+    });
+  });
+
+  it("fails closed for a current collection search with a missing cross-release candidate", async () => {
+    const presentation = differentialPresentations().find((workflow) => workflow.candidates.length > 0)!;
+    const routes = await loadRoutes("current", {
+      omitDifferential: { kind: "diagnosis", slug: presentation.candidates[0]!.slug },
+    });
+
+    const response = await routes.differentialCollection.GET(
+      request("/api/differentials?kind=presentation&q=acute&limit=5"),
+    );
+    const payload = (await response.json()) as { release?: { state?: string } };
+
+    expect(response.status).toBe(503);
+    expect(payload.release?.state).toBe("current");
+    expect(routes.readPublicSiteContentPartition).toHaveBeenCalledTimes(1);
+    expect(routes.readPublicSiteContentPartition).toHaveBeenCalledWith(expect.anything(), {
+      domain: "differentials",
+    });
+  });
+
+  it("keeps an unaffected updating release-only match when another workflow dependency is pending", async () => {
+    const diagnosisTemplate = differentialRecords[0]!;
+    const presentationTemplate = differentialPresentations()[0]!;
+    const unaffectedDiagnosis = {
+      ...diagnosisTemplate,
+      slug: "updating-unaffected-cobaltwren",
+      title: "Updating unaffected Cobaltwren",
+      related: [],
+    };
+    const unaffectedPresentation = {
+      ...presentationTemplate,
+      id: "updating-unaffected-zephyrneedle",
+      title: "Updating unaffected Zephyrneedle",
+      candidates: [{ ...presentationTemplate.candidates[0]!, slug: unaffectedDiagnosis.slug }],
+    };
+    const routes = await loadRoutes("updating", {
+      omitDifferential: {
+        kind: "diagnosis",
+        slug: presentationTemplate.candidates[0]!.slug,
+      },
+      transformDifferentialPartition: (records) => [
+        ...records,
+        publicationRecord("differentials", "diagnosis", unaffectedDiagnosis),
+        publicationRecord("differentials", "presentation", unaffectedPresentation),
+      ],
+    });
+
+    const response = await routes.differentialCollection.GET(
+      request("/api/differentials?kind=presentation&q=cobaltwren&limit=1"),
+    );
+    const payload = (await response.json()) as {
+      presentations?: Array<{ id: string }>;
+      matches?: Array<{ workflow: { id: string }; reasons: string[] }>;
+      governance?: Record<string, unknown>;
+      release?: { state?: string };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.release?.state).toBe("updating");
+    expect(payload.presentations?.map((workflow) => workflow.id)).toEqual([unaffectedPresentation.id]);
+    expect(payload.matches).toEqual([
+      expect.objectContaining({
+        workflow: expect.objectContaining({ id: unaffectedPresentation.id }),
+        reasons: expect.arrayContaining(["candidate differential"]),
+      }),
+    ]);
+    expect(payload.governance).not.toHaveProperty(`differential:presentation:${presentationTemplate.id}`);
+    expect(routes.readPublicSiteContentPartition).toHaveBeenCalledTimes(1);
+    expect(routes.readPublicSiteContentPartition).toHaveBeenCalledWith(expect.anything(), {
+      domain: "differentials",
+    });
+  });
 
   it.each(["current", "updating"] as const)(
     "fails closed for a %s diagnosis whose related release dependency is pending",

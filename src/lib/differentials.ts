@@ -484,12 +484,36 @@ function expandQueryTerms(terms: string[]) {
 
 // Cross-entity link indexes: presentations and diagnoses are one logical catalogue joined
 // by workflow.candidates[].slug, so each ranker also indexes the other kind's titles at low
-// weight. Both caches are built lazily from the static snapshot (no invalidation needed).
+// weight. Bundled callers use lazy static caches; release callers pass an explicit same-partition
+// context so database-only edits never mix with bundled relationships.
+
+export type DifferentialRankingContext = Readonly<{
+  diagnoses: readonly DifferentialRecord[];
+  presentations: readonly DifferentialPresentationWorkflow[];
+}>;
+
+function buildDiagnosisTitleBySlug(records: readonly DifferentialRecord[]): Map<string, string> {
+  return new Map(records.map((record) => [record.slug, record.title]));
+}
+
+function buildPresentationTitleTextBySlug(
+  presentations: readonly DifferentialPresentationWorkflow[],
+): Map<string, string> {
+  const titleTextBySlug = new Map<string, string>();
+  for (const workflow of presentations) {
+    const text = normalizeSearchText(`${workflow.title} ${workflow.id}`);
+    for (const candidate of workflow.candidates) {
+      const existing = titleTextBySlug.get(candidate.slug);
+      titleTextBySlug.set(candidate.slug, existing ? `${existing} ${text}` : text);
+    }
+  }
+  return titleTextBySlug;
+}
 
 let diagnosisTitleBySlugCache: Map<string, string> | null = null;
 
 function diagnosisTitleBySlug(): Map<string, string> {
-  diagnosisTitleBySlugCache ??= new Map(differentialRecords.map((record) => [record.slug, record.title]));
+  diagnosisTitleBySlugCache ??= buildDiagnosisTitleBySlug(differentialRecords);
   return diagnosisTitleBySlugCache;
 }
 
@@ -500,14 +524,7 @@ let presentationTitleTextBySlugCache: Map<string, string> | null = null;
  *  the differentials it works up. */
 function presentationTitleTextForDiagnosis(slug: string): string {
   if (!presentationTitleTextBySlugCache) {
-    presentationTitleTextBySlugCache = new Map();
-    for (const workflow of differentialPresentations()) {
-      const text = normalizeSearchText(`${workflow.title} ${workflow.id}`);
-      for (const candidate of workflow.candidates) {
-        const existing = presentationTitleTextBySlugCache.get(candidate.slug);
-        presentationTitleTextBySlugCache.set(candidate.slug, existing ? `${existing} ${text}` : text);
-      }
-    }
+    presentationTitleTextBySlugCache = buildPresentationTitleTextBySlug(differentialPresentations());
   }
   return presentationTitleTextBySlugCache.get(slug) ?? "";
 }
@@ -516,8 +533,10 @@ function presentationTitleTextForDiagnosis(slug: string): string {
  *  slugs for candidates outside the snapshot, e.g. owner-edited rows), so a diagnosis-shaped
  *  query ("wernicke") surfaces the presentations that work it up. Computed from the passed
  *  workflow so owner rows ranked via the differentials API get the same treatment. */
-function candidateTitlesText(workflow: DifferentialPresentationWorkflow): string {
-  const titles = diagnosisTitleBySlug();
+function candidateTitlesText(
+  workflow: DifferentialPresentationWorkflow,
+  titles: ReadonlyMap<string, string> = diagnosisTitleBySlug(),
+): string {
   return normalizeSearchText(
     workflow.candidates.map((candidate) => titles.get(candidate.slug) ?? candidate.slug.replace(/-/g, " ")).join(" "),
   );
@@ -566,7 +585,9 @@ export function rankDifferentialRecords(
   // Low-weight synonym/acronym/alias terms (see rankMedicationRecords) composed onto the
   // catalogue's own symptom-alias expansion for the shared ranker's expanded lane.
   expansions: string[] = [],
+  context?: DifferentialRankingContext,
 ): DifferentialRecordMatch[] {
+  const releasePresentationTitles = context ? buildPresentationTitleTextBySlug(context.presentations) : null;
   return rankCatalogRecords(records, query, {
     fields: [
       { id: "title", weight: 8, text: (record) => normalizeSearchText(`${record.title} ${record.slug}`) },
@@ -575,7 +596,14 @@ export function rankDifferentialRecords(
       // double-count): weight sits well below title/hinge, so a presentation-shaped query
       // surfaces the candidates without ever outranking a direct match; equal-score
       // candidates fall to the emergent-first tie-break below.
-      { id: "presentations", weight: 2, text: (record) => presentationTitleTextForDiagnosis(record.slug) },
+      {
+        id: "presentations",
+        weight: 2,
+        text: (record) =>
+          releasePresentationTitles
+            ? (releasePresentationTitles.get(record.slug) ?? "")
+            : presentationTitleTextForDiagnosis(record.slug),
+      },
     ],
     fullText: diagnosisFullText,
     contentWeight: 2,
@@ -584,7 +612,11 @@ export function rankDifferentialRecords(
     phraseBonus: 4,
     exactValues: (record) => [normalizeSearchText(record.title), normalizeSearchText(record.slug)],
     exactBonus: 10,
-    expandTokens: expansions.length ? (terms) => [...expandQueryTerms(terms), ...expansions] : expandQueryTerms,
+    expandTokens: context
+      ? (terms) => (expansions.length ? [...terms, ...expansions] : terms)
+      : expansions.length
+        ? (terms) => [...expandQueryTerms(terms), ...expansions]
+        : expandQueryTerms,
     limit,
     tieBreak: (left, right) =>
       differentialStatusRank[left.status] - differentialStatusRank[right.status] ||
@@ -631,7 +663,9 @@ export function rankPresentationWorkflows(
   // Low-weight synonym/acronym/alias terms (see rankDifferentialRecords) composed onto the
   // catalogue's own symptom-alias expansion for the shared ranker's expanded lane.
   expansions: string[] = [],
+  context?: DifferentialRankingContext,
 ): DifferentialPresentationMatch[] {
+  const releaseDiagnosisTitles = context ? buildDiagnosisTitleBySlug(context.diagnoses) : null;
   return rankCatalogRecords(workflows, query, {
     fields: [
       { id: "title", weight: 8, text: (workflow) => normalizeSearchText(`${workflow.title} ${workflow.id}`) },
@@ -639,7 +673,14 @@ export function rankPresentationWorkflows(
       // Cross-entity lane (see rankDifferentialRecords' "presentations" field): the candidate
       // differentials' titles, so a diagnosis-shaped query surfaces the presentations that
       // work it up without outranking the diagnosis's own record.
-      { id: "candidates", weight: 2, text: candidateTitlesText },
+      {
+        id: "candidates",
+        weight: 2,
+        text: (workflow) =>
+          releaseDiagnosisTitles
+            ? candidateTitlesText(workflow, releaseDiagnosisTitles)
+            : candidateTitlesText(workflow),
+      },
     ],
     fullText: presentationFullText,
     contentWeight: 2,
@@ -648,7 +689,11 @@ export function rankPresentationWorkflows(
     phraseBonus: 4,
     exactValues: (workflow) => [normalizeSearchText(workflow.title), normalizeSearchText(workflow.id)],
     exactBonus: 10,
-    expandTokens: expansions.length ? (terms) => [...expandQueryTerms(terms), ...expansions] : expandQueryTerms,
+    expandTokens: context
+      ? (terms) => (expansions.length ? [...terms, ...expansions] : terms)
+      : expansions.length
+        ? (terms) => [...expandQueryTerms(terms), ...expansions]
+        : expandQueryTerms,
     limit,
     tieBreak: (left, right) =>
       differentialStatusRank[left.status] - differentialStatusRank[right.status] ||

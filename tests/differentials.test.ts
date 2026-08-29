@@ -283,6 +283,36 @@ describe("differential records", () => {
     expect(delirium?.reasons).toContain("symptom alias");
   });
 
+  it("does not mix bundled search aliases into an explicit release ranking context", () => {
+    const diagnosis = {
+      ...differentialRecords[0]!,
+      slug: "release-alias-diagnosis",
+      title: "Delirium",
+      subtitle: "",
+      clinicalHinge: "",
+      safetySnapshot: { summary: "", tags: [] },
+      sections: [],
+      related: [],
+      currentPresentation: [],
+      investigations: [],
+      immediateActions: [],
+    };
+    const presentation = {
+      ...differentialPresentations()[0]!,
+      id: "release-alias-presentation",
+      title: "Psychosis",
+      subtitle: "",
+      safetySnapshot: { summary: "", tags: [] },
+      candidates: [],
+      reviewChecklist: [],
+      highestUrgencyNote: "",
+    };
+    const context = { diagnoses: [diagnosis], presentations: [presentation] };
+
+    expect(rankDifferentialRecords([diagnosis], "confused", 10, [], context)).toEqual([]);
+    expect(rankPresentationWorkflows([presentation], "psychotic", 10, [], context)).toEqual([]);
+  });
+
   it("returns no ranked matches for an empty query but keeps the legacy full-set contract", () => {
     expect(rankDifferentialRecords(differentialRecords, "  ")).toEqual([]);
     expect(rankPresentationWorkflows(differentialPresentations(), "")).toEqual([]);
