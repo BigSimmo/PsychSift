@@ -77,7 +77,7 @@ function materialAmbiguity(query: string, analysis: ClinicalQueryAnalysis): Clin
       query,
     );
   const requiredObject = query.match(
-    /\b(?:which|what)\s+(form|procedure|guideline|policy|document)\s+is\s+(?:required|needed|used)\b/i,
+    /\b(?:which|what)\s+(form|procedure|guideline|policy|document|service|medication|tool|calculator)\s+is\s+(?:required|needed|used)\b/i,
   );
   const hasClinicalTarget =
     analysis.medications.length > 0 ||
@@ -120,8 +120,6 @@ function identifiableComparisonSide(side: string, analysis: ClinicalQueryAnalysi
 
 function comparisonSides(query: string, analysis: ClinicalQueryAnalysis): [string, string] | null {
   if (!analysis.comparisonIntent) return null;
-  const medicines = unique(analysis.medications).slice(0, 2);
-  if (medicines.length === 2) return [medicines[0], medicines[1]];
 
   const match = query.match(/\b(?:compare|difference between)\s+(.+?)\s+(?:and|versus|vs\.?|with)\s+(.+)/i);
   if (!match) return null;
@@ -178,8 +176,8 @@ export function buildRagQueryPlan(query: string, analysis: ClinicalQueryAnalysis
       originalQuery: query,
       interpretation: `Material retrieval ambiguity requires one clarification: ${ambiguity.dimensions.join(", ")}.`,
       subquestions: [],
-      targetSiteDomains,
-      siteDomainDecision,
+      targetSiteDomains: [],
+      siteDomainDecision: "none",
       reasonCodes: [...reasonCodes, "material_retrieval_ambiguity"],
     };
   }

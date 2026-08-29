@@ -49,6 +49,27 @@ describe("bounded RAG query planning", () => {
     expect(result.subquestions).toEqual([{ id: "sq-1", question: query, purpose: "primary", required: true }]);
   });
 
+  it.each([
+    "Compare the benefits and risks of clozapine when co-prescribed with lithium.",
+    "Compare efficacy and safety of clozapine in a patient taking lithium.",
+  ])("does not promote a contextual second medicine into a comparison side for %s", (query) => {
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.kind).toBe("single");
+    expect(result.subquestions).toEqual([{ id: "sq-1", question: query, purpose: "primary", required: true }]);
+  });
+
+  it("decomposes an explicit medicine-versus-medicine relation", () => {
+    const query = "Compare clozapine versus lithium";
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.kind).toBe("decomposed");
+    expect(result.subquestions.slice(1).map((item) => item.question)).toEqual([
+      "clozapine: directly relevant evidence for this comparison.",
+      "lithium: directly relevant evidence for this comparison.",
+    ]);
+  });
+
   it("still decomposes an identifiable non-medicine setting comparison", () => {
     const query = "Compare inpatient and community monitoring requirements";
     const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
@@ -97,10 +118,22 @@ describe("bounded RAG query planning", () => {
 
     expect(result.kind).toBe("clarification_required");
     expect(result.subquestions).toEqual([]);
+    expect(result.targetSiteDomains).toEqual([]);
+    expect(result.siteDomainDecision).toBe("none");
     expect(detectClinicalAmbiguity(query, analyzeClinicalQuery(query))).toMatchObject({
       material: true,
       dimensions: expect.arrayContaining(["document", "jurisdiction", "decision"]),
     });
+  });
+
+  it("keeps every ambiguous domain-bearing plan open until clarification", () => {
+    const query = "Which tool is required?";
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.kind).toBe("clarification_required");
+    expect(result.subquestions).toEqual([]);
+    expect(result.targetSiteDomains).toEqual([]);
+    expect(result.siteDomainDecision).toBe("none");
   });
 
   it("states an interpretation instead of clarifying when a required form has retrieval anchors", () => {
@@ -110,6 +143,17 @@ describe("bounded RAG query planning", () => {
     expect(result.kind).toBe("single");
     expect(result.subquestions).toHaveLength(1);
     expect(result.interpretation).toMatch(/document|medicine|jurisdiction/i);
+    expect(result.targetSiteDomains).toEqual(["forms"]);
+    expect(result.siteDomainDecision).toBe("explicit");
     expect(detectClinicalAmbiguity(query, analyzeClinicalQuery(query))).toBeNull();
+  });
+
+  it("retains a domain hint for an anchored ordinary tool decision", () => {
+    const query = "Which tool is required for clozapine monitoring in WA?";
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.kind).toBe("single");
+    expect(result.targetSiteDomains).toEqual(["tools"]);
+    expect(result.siteDomainDecision).toBe("explicit");
   });
 });
