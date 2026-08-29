@@ -1,0 +1,551 @@
+{
+  "schemaVersion": 1,
+  "programmeId": "rag-answer-quality-and-repository-coverage-v1",
+  "phaseId": "P06",
+  "executionPredecessor": "P05",
+  "status": "accepted",
+  "packageVariant": "local",
+  "packageHash": "2ada405d103719fb8a921bac8b08ca6ca922850c27530185995d647a10dfa7d9",
+  "packageBaseSha": "dea32b8d26b32f03827bf71c0814315d92a7cb5c",
+  "packageHeadSha": "7252eb6312edf634e887578a322c53f23be7ab28",
+  "programmeImplementationBase": "7252eb6312edf634e887578a322c53f23be7ab28",
+  "branch": "codex/rag-local-build-20260822",
+  "modelRouting": {
+    "provider": "codex",
+    "plannedImplementationModel": "gpt-5.6-sol",
+    "actualImplementationModel": "gpt-5.6-sol",
+    "implementationCapabilityClass": "frontier-high",
+    "implementationReasoning": "high",
+    "plannedReviewModel": "gpt-5.6-sol",
+    "actualReviewModel": "gpt-5.6-sol",
+    "reviewCapabilityClass": "frontier-high",
+    "reviewReasoning": "xhigh",
+    "providerMappingUsed": false,
+    "fallbackUsed": false,
+    "escalationReason": null
+  },
+  "phaseStartSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+  "phaseEndSha": "766030a4fe748bb221869a2bd212fab6471a00dc",
+  "startedAt": "2026-08-24T01:44:44.4571773Z",
+  "completedAt": "2026-08-29T00:38:14.7034023Z",
+  "tasks": [
+    {
+      "globalTaskKey": "P06/repositoryContent/task-3",
+      "strategy": "tdd",
+      "taskBaseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+      "taskHeadSha": "aed1c5eec5ef7d276b16b8a9226f1ff5080a749b",
+      "commits": [
+        "10aeecc135c286fadc09e45cb2e04f43bcaefbff",
+        "00ec54523d7d6896d06ea6b56a622b95dcf4f46d",
+        "3c91ff9d6927a9df7947e10f165b6193a865212c",
+        "746c9578ba299e16a59f63e651bafc5d9e7f2fc7",
+        "1cf43c060544577b8059a9d85b529c36492e85c6",
+        "c197600a52ee9584f37989a4b36b9bb780d12849",
+        "908b7edf2af8d8aa151a170405c7e254da71ba6f",
+        "0ec478c0791a4c81fc36236126d8a00b97d0b150",
+        "aed1c5eec5ef7d276b16b8a9226f1ff5080a749b"
+      ],
+      "briefPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-brief.md",
+      "briefSha256": "4010c3575f39def38ea9eaf4bedbddbc45d13e50cbf6b92884fa5c2cb8342c55",
+      "implementerReportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-implementer-report.md",
+      "implementerReportSha256": "2534315a0c5ed561fa4ab6e43ddd0fe92abc529948bc4d5dd7f0855c901edb09",
+      "implementerAgentId": "/root/p06_repo_task3_impl",
+      "evidence": {
+        "red": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/site-content-sync.test.ts tests/site-content-sync-worker.test.ts tests/site-content-publication-access.test.ts tests/registry-records-route.test.ts tests/medications-route.test.ts tests/differentials-route.test.ts tests/registry-corpus.test.ts tests/function-grants.test.ts tests/supabase-schema.test.ts tests/ingestion-mutation-safety.test.ts tests/reindex-pipeline.test.ts",
+            "expected": "After adding durable outbox, public-reader parity, and admin-only mutation assertions and before implementation, fail because synchronization is best-effort or reader results vary by identity.",
+            "outcome": "failed-as-expected",
+            "result": "The literal selector exited 1: 3 files failed, 8 passed, 4 tests failed, and 165 passed on the absent planner, worker, migration, and canonical public reader."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/site-content-sync.test.ts tests/site-content-sync-worker.test.ts tests/site-content-publication-access.test.ts",
+            "expected": "Review regressions in atomic publication, durable candidate state, worker fencing, and fail-closed public reads fail before correction.",
+            "outcome": "failed-as-expected",
+            "result": "The first correction RED reported 3 failed files, 5 failed tests, 1 suite-load failure, and 6 passing tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/site-content-sync.test.ts tests/site-content-transaction-authority.test.ts tests/site-content-recovery-authority.test.ts tests/site-content-sync-cli.test.ts tests/site-content-sync-worker.test.ts tests/site-content-publication-access.test.ts tests/site-content-publication-route.test.ts",
+            "expected": "Canonical operation, recovery-binding, route, and executable CLI gaps fail before correction.",
+            "outcome": "failed-as-expected",
+            "result": "Correction cycle 2 reported 4 failed files, 4 failed tests, 2 suite-load failures, and 18 passing tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/site-content-recovery-authority.test.ts tests/site-content-release-evidence.test.ts tests/site-content-sync-operator.test.ts tests/site-content-publication-access.test.ts tests/site-content-transaction-authority.test.ts",
+            "expected": "Disconnected secret custody, self-attested evidence, non-executable operator transport, and permissive transaction proof fail before correction.",
+            "outcome": "failed-as-expected",
+            "result": "Correction cycle 3 reported 4 failed files, 1 passed file, 5 failed tests, 1 suite-load failure, and 12 passing tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/site-content-release-gate-verifiers.test.ts tests/site-content-production-authority.test.ts tests/site-content-recovery-authority.test.ts tests/site-content-publication-route.test.ts tests/site-content-publication-access.test.ts",
+            "expected": "Trusted gate derivation, bearer propagation, production authority, and one-time binding gaps fail before correction.",
+            "outcome": "failed-as-expected",
+            "result": "Correction cycle 4 reported 5 failed files, 7 failed tests, and 17 passing tests."
+          },
+          {
+            "command": "GATE_RECEIPTS=off node scripts/run-vitest.mjs run tests/site-content-gate-owner-provenance.test.ts tests/site-content-gate-types-parity.test.ts",
+            "expected": "Generic provenance recording and exact database-type mismatches fail before fixed-owner correction.",
+            "outcome": "failed-as-expected",
+            "result": "Correction cycle 5 reported 2 failed files on the absent fixed owner and exact observed_at/relationship parity."
+          },
+          {
+            "command": "GATE_RECEIPTS=off node scripts/run-vitest.mjs run tests/site-content-authority-secret-provisioning.test.ts tests/site-content-gate-owner-provenance.test.ts tests/site-content-publication-route.test.ts tests/site-content-sync-cli.test.ts tests/site-content-release-gate-verifiers.test.ts",
+            "expected": "Fixed-purpose secret custody, clock ownership, plan-write bootstrap, and exact policy/decision binding fail before correction.",
+            "outcome": "failed-as-expected",
+            "result": "Correction cycle 6 reported 5 failed files, 7 failed tests, 12 passing tests, and 1 expected suite-load failure."
+          },
+          {
+            "command": "GATE_RECEIPTS=off node scripts/run-vitest.mjs run tests/site-content-gate-derivation-temporal-authority.test.ts tests/site-content-publication-route.test.ts tests/site-content-release-gate-verifiers.test.ts",
+            "expected": "SQL and TypeScript temporal boundaries, pre-insert chronology, and recoverability fail before correction.",
+            "outcome": "failed-as-expected",
+            "result": "Correction cycle 7 reported 3 failed files, 4 failed tests, and 13 passing tests."
+          },
+          {
+            "command": "GATE_RECEIPTS=off node scripts/run-vitest.mjs run tests/site-content-gate-derivation-temporal-authority.test.ts tests/site-content-publication-route.test.ts tests/site-content-release-gate-verifiers.test.ts",
+            "expected": "Historical artifact clocks, fresh final binding issuance, and exact millisecond SQL parity fail before correction.",
+            "outcome": "failed-as-expected",
+            "result": "Correction cycle 8 reported 2 failed files, 3 failed tests, and 14 passing tests."
+          }
+        ],
+        "green": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/site-content-sync.test.ts tests/site-content-sync-worker.test.ts tests/site-content-publication-access.test.ts tests/registry-records-route.test.ts tests/medications-route.test.ts tests/differentials-route.test.ts tests/registry-corpus.test.ts tests/function-grants.test.ts tests/supabase-schema.test.ts tests/ingestion-mutation-safety.test.ts tests/reindex-pipeline.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "The initial literal selector passed 11 files and 177 tests."
+          },
+          {
+            "command": "GATE_RECEIPTS=off node scripts/run-vitest.mjs run tests/site-content-gate-derivation-temporal-authority.test.ts tests/site-content-publication-route.test.ts tests/site-content-release-gate-verifiers.test.ts",
+            "expected": "Historical evidence and fresh binding clocks pass the exact temporal authority contract.",
+            "outcome": "passed",
+            "result": "The final correction selector passed 3 files and 17 tests; the focused route follow-up passed 12 tests."
+          },
+          {
+            "command": "npm run typecheck",
+            "expected": "All TypeScript production and test contracts compile.",
+            "outcome": "passed",
+            "result": "Fresh final typecheck passed against 4,765 inputs."
+          },
+          {
+            "command": "npm run check:function-grants",
+            "expected": "Security-definer functions remain least privilege and revoked from PUBLIC and anonymous roles.",
+            "outcome": "passed",
+            "result": "All 34 checked functions passed the grant guard."
+          },
+          {
+            "command": "npm run check:migration-role",
+            "expected": "The forward-only migration source respects repository role and immutable-history policy without being applied.",
+            "outcome": "passed",
+            "result": "Migration-role validation passed; no migration was applied."
+          },
+          {
+            "command": "npm run check:maintainability-budgets",
+            "expected": "Protected maintainability ceilings remain satisfied.",
+            "outcome": "passed",
+            "result": "All maintainability budgets passed and src/lib/rag/rag.ts remained 4,362/4,362 lines."
+          },
+          {
+            "command": "git diff --check 1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07..aed1c5eec5ef7d276b16b8a9226f1ff5080a749b",
+            "expected": "The complete immutable nine-commit Task 3 range has no whitespace errors.",
+            "outcome": "passed",
+            "result": "The complete Task 3 range passed git diff --check."
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+          "headSha": "10aeecc135c286fadc09e45cb2e04f43bcaefbff",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-1.diff",
+          "diffPackageSha256": "572ec8379264a96671028c9ebe050957785cf41381b692d6a803124a76f6266b",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-1-report.md",
+          "reportSha256": "2da2f3cbbdbaf1edf8be5aa3452cbf6d122ce49e21e880d76389a4e69bed3e6f",
+          "reviewerAgentId": "/root/p06_repo_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+          "headSha": "00ec54523d7d6896d06ea6b56a622b95dcf4f46d",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-2.diff",
+          "diffPackageSha256": "4c585b3924065da884cf9044efd9fb0b61c809a891ba4cddba32b568a7a34466",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-2-report.md",
+          "reportSha256": "38a2ea8183a5abe9a2ff88a7df03e27a091b0dc28a830f9e2961e3503066a160",
+          "reviewerAgentId": "/root/p06_repo_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+          "headSha": "3c91ff9d6927a9df7947e10f165b6193a865212c",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-3.diff",
+          "diffPackageSha256": "5b1cfd76ede77b2d0c7433f370b9ebee8eb77f19b57632fc8dc9e5ad2d8501fb",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-3-report.md",
+          "reportSha256": "1424899d42577587920beecdfdd5e4fbc7ba55ed61f2d303de574b882f06b33c",
+          "reviewerAgentId": "/root/p06_repo_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+          "headSha": "746c9578ba299e16a59f63e651bafc5d9e7f2fc7",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-4.diff",
+          "diffPackageSha256": "c4e51767bb2a8a872cf70c0d1c94b9a9aa6cd8e54cb02b9907eda7fe86dd3087",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-4-report.md",
+          "reportSha256": "36dafbec781992de1ac22ecf03932873dfb09b941e3f9728d472f1da55e25f6a",
+          "reviewerAgentId": "/root/p06_repo_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+          "headSha": "1cf43c060544577b8059a9d85b529c36492e85c6",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-5.diff",
+          "diffPackageSha256": "a280fcd9becce55c9b9137d2d354c93e49f8ab0f7b94ea3bf5cb3d5f8da131c5",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-5-report.md",
+          "reportSha256": "e0ef6ddc68cc465b08afb452d005d0ef79f7558efad984e0def7dcb140eb92a5",
+          "reviewerAgentId": "/root/p06_repo_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+          "headSha": "c197600a52ee9584f37989a4b36b9bb780d12849",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-6.diff",
+          "diffPackageSha256": "19cc6293155ecf19e1ebefe4fd49029c9d38133708dceacb878b53b68e600ec9",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-6-report.md",
+          "reportSha256": "08c02c713972e56042818c358fced9dc7c403294bf6a54f2fb9497bd5d4948e1",
+          "reviewerAgentId": "/root/p06_repo_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+          "headSha": "908b7edf2af8d8aa151a170405c7e254da71ba6f",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-7.diff",
+          "diffPackageSha256": "2246f93e0ab9804db0524f22e80a074572877e58b716ffbccbe8c95c0044ec96",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-7-report.md",
+          "reportSha256": "bc63ce4710e4deb8200dc18bf49491fd235474092a63b3f0e7683e2377e3f7b8",
+          "reviewerAgentId": "/root/p06_repo_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+          "headSha": "0ec478c0791a4c81fc36236126d8a00b97d0b150",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-8.diff",
+          "diffPackageSha256": "e28058e43f0faa38ac8a75613c6c4e8134e45a39f602a2739179cfd7ae2340f7",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-8-report.md",
+          "reportSha256": "920755f1698480d796526523953b33644452b76bad68a0c11a8a5897c802bf89",
+          "reviewerAgentId": "/root/p06_repo_task3_review1",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+          "headSha": "aed1c5eec5ef7d276b16b8a9226f1ff5080a749b",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-9.diff",
+          "diffPackageSha256": "82b4d729e5eae77d6f89d1c01fa39cb819bda2ca9fa51ddde91bf8814317771e",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-3-review-9-report.md",
+          "reportSha256": "0e5c2ff1f0b24cdc5e04be90e93d762856a2242e80206022931a8affb146082b",
+          "reviewerAgentId": "/root/p06_repo_task3_review1",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        }
+      ]
+    },
+    {
+      "globalTaskKey": "P06/repositoryContent/task-4",
+      "strategy": "tdd",
+      "taskBaseSha": "aed1c5eec5ef7d276b16b8a9226f1ff5080a749b",
+      "taskHeadSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+      "commits": [
+        "9d5daed3e262bf0f4baa033c127781de1467a67b",
+        "ac7118f8325bf80dc0cb79500d6f9e1399bbd882",
+        "e6890743d0539515252b04ab5c76af590802dc3d",
+        "c68b238e7bc759aa89f41018dc505677f695c7d8",
+        "ed9cfc2f34240ad470b6184b90d6d7657020cf22",
+        "0ee8c09681a49b7891f99d4c3d33f426611ffd78"
+      ],
+      "briefPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-4-brief.md",
+      "briefSha256": "203d8e8d6e1e0ce69a9c1e827bf1d09184e8bd78a091dd61df4d803046620a20",
+      "implementerReportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-4-implementer-report.md",
+      "implementerReportSha256": "3e433f66769e28076e35b2cfa6e6c97d2835d036c23a6149c19b68384e186653",
+      "implementerAgentId": "/root",
+      "evidence": {
+        "red": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/site-content-freshness-workflow.test.ts tests/site-content-health.test.ts tests/ci-scope-contract.test.ts",
+            "expected": "After adding digest-bound activation assertions and before implementation, fail because static and administrator-published content do not share one activation contract.",
+            "outcome": "failed-as-expected",
+            "result": "The literal RED selector exited 1: all 3 files failed, 40 tests failed, and 1 test passed on the absent activation/freshness contract."
+          }
+        ],
+        "green": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/site-content-freshness-workflow.test.ts tests/site-content-health.test.ts tests/ci-scope-contract.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "At exact final head 0ee8c09681a49b7891f99d4c3d33f426611ffd78 the literal selector passed 3 files and 81 tests."
+          },
+          {
+            "command": "node scripts/run-vitest.mjs run tests/site-content-health-authority.test.ts tests/site-content-static-domain-evidence.test.ts tests/site-content-health.test.ts tests/site-content-runtime-governance-sql.test.ts tests/site-content-sync-auth-config.test.ts tests/site-content-sync-cli.test.ts tests/site-content-sync-worker.test.ts tests/health-route.test.ts tests/ci-scope-contract.test.ts",
+            "expected": "The final runtime-governance, domain-evidence, candidate-age, adoption, authentication, health-route, and CI-scope correction set passes together.",
+            "outcome": "passed",
+            "result": "The combined final correction selector passed 9 files and 115 tests."
+          },
+          {
+            "command": "npm run typecheck",
+            "expected": "All TypeScript production and test contracts compile after the final correction.",
+            "outcome": "passed",
+            "result": "Fresh final typecheck passed and recorded a receipt for 5,961 input files."
+          },
+          {
+            "command": "npm run check:migration-role && npm run check:function-grants && npm run drift:manifest",
+            "expected": "The forward-only local schema remains role-safe, least-privilege, and reproducible without applying a migration or contacting a live service.",
+            "outcome": "passed",
+            "result": "Migration-role and all 63 function-grant checks passed; disposable local Postgres replay completed in 15 seconds with schema SHA-256 e76358de646e9ee16ad8bf820f1b73ea83b4669b466fcfea5655afaa6fe2023a."
+          },
+          {
+            "command": "independent exact-range schema/security Review 5",
+            "expected": "A fresh xhigh schema guardian verifies the final package and closes every database/auth finding without live access.",
+            "outcome": "passed",
+            "result": "SCHEMA_VERDICT PASS and SECURITY_VERDICT PASS; report SHA-256 dc118994a82971d77ae17155afad6af0e7625f2e5de89fa3da21d2822e03a99e."
+          },
+          {
+            "command": "git diff --check aed1c5eec5ef7d276b16b8a9226f1ff5080a749b..0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+            "expected": "The complete immutable six-commit Task 4 range has no whitespace errors.",
+            "outcome": "passed",
+            "result": "The complete Task 4 range passed git diff --check."
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "baseSha": "aed1c5eec5ef7d276b16b8a9226f1ff5080a749b",
+          "headSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-4-review-5.diff",
+          "diffPackageSha256": "388b30c85ff2cfe7b7a52cae0ab2cd69f8ce86914680d081f4aa1606040a8714",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-4-review-5-report.md",
+          "reportSha256": "56db74ca63215c3ba021254c3083960e1e28196584e9866d02effe2ed49d2909",
+          "reviewerAgentId": "/root/p06_task4_governance_review5",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        }
+      ]
+    },
+    {
+      "globalTaskKey": "P06/repositoryContent/task-5",
+      "strategy": "tdd",
+      "taskBaseSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+      "taskHeadSha": "766030a4fe748bb221869a2bd212fab6471a00dc",
+      "commits": [
+        "70a05c266f9f53764900666313b23cd4f21444b6",
+        "126751ea2c9272193c84a424027f243d15e83998",
+        "d4f820cf5edad1f8a0a32031c800e1b9dd6a6e45",
+        "ac080841dda98bbf437b1fbb5824ca3f5e4a65f2",
+        "7fb3f86dab12d20571427a5390508e6cc5751ad2",
+        "3b7acae5149a72fcae7672768b7b7777d745d6ec",
+        "9b0d09d7dacdb1afb41cc925940f382c8c0681bd",
+        "eee0ae87c121e7542ec6567c5e51a11949603b0d",
+        "46c14b9e993cbf625f8f0ac73d295737cc0c91d1",
+        "766030a4fe748bb221869a2bd212fab6471a00dc"
+      ],
+      "briefPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-brief.md",
+      "briefSha256": "cc6ab9bf7a4379b346e9793138f2304b7ecbbd68bcd82c077d9596251bb26f0e",
+      "implementerReportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-implementer-report.md",
+      "implementerReportSha256": "cdff2eeabf41bac92e603956eb4efd17f1ecf79ad13405de6d1a3a8513f69076",
+      "implementerAgentId": "/root/p06_task5_impl",
+      "evidence": {
+        "red": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/rag-site-content-freshness.test.ts tests/rag-cache-invalidation.test.ts tests/rag-shared-cache.test.ts tests/rag-rollout.test.ts tests/rag-abort-signal.test.ts",
+            "expected": "After adding request-local snapshot and cache-identity assertions and before implementation, fail because a question can observe mixed releases or reuse a stale cross-release answer.",
+            "outcome": "failed-as-expected",
+            "result": "The literal selector failed four suites because the request-local snapshot owner did not yet exist; the existing abort suite passed three tests."
+          }
+        ],
+        "green": [
+          {
+            "command": "node scripts/run-vitest.mjs run tests/rag-site-content-freshness.test.ts tests/rag-cache-invalidation.test.ts tests/rag-shared-cache.test.ts tests/rag-rollout.test.ts tests/rag-abort-signal.test.ts",
+            "expected": "The identical focused command passes after implementing the task contract.",
+            "outcome": "passed",
+            "result": "The final snapshot/cache correction selector passed all 5 files and 56 tests; later phase corrections did not modify these five owners."
+          },
+          {
+            "command": "npm run test -- tests/differentials.test.ts tests/differentials-route.test.ts tests/site-content-route-release-states.test.ts",
+            "expected": "The final canonical release collection, ranking, relationship, alias, and state matrix passes without a bundled/live authority mix.",
+            "outcome": "passed",
+            "result": "The final correction passed all 3 files and 58 tests."
+          },
+          {
+            "command": "npm run typecheck",
+            "expected": "All final Task 5 production and test contracts compile.",
+            "outcome": "passed",
+            "result": "The final correction passed typecheck across 10,939 inputs."
+          }
+        ]
+      },
+      "reviews": [
+        {
+          "baseSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+          "headSha": "70a05c266f9f53764900666313b23cd4f21444b6",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-1.diff",
+          "diffPackageSha256": "aca02713488ad0f9540a6764a0fc038d9c90bb7d9d22272520e2c6a1a239d938",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-1-report.md",
+          "reportSha256": "84b093d6b56a7e0df547b77181232697d1030fcdfacd55740b56ae4d38eca2a5",
+          "reviewerAgentId": "/root/p06_task5_review2",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+          "headSha": "126751ea2c9272193c84a424027f243d15e83998",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-2.diff",
+          "diffPackageSha256": "5bdc17f811344fac810cee9a11ff32dcbca5e4a34d4cb68d4a7ab7f9462882dd",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-2-report.md",
+          "reportSha256": "afdd6fff3f08433ceb69f709ec4f43b1f190e0c02ddb0fd999eb471ac3ac7c94",
+          "reviewerAgentId": "/root/p06_task5_review2",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+          "headSha": "d4f820cf5edad1f8a0a32031c800e1b9dd6a6e45",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-3.diff",
+          "diffPackageSha256": "1034af86a476c82af37fef466079a354df17d2ccc898050b52ea61969c464c0e",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-3-report.md",
+          "reportSha256": "db28f4b5b7bdc8fff34f004831bfe6189ed145fc5800fba03bdbb764906f0ee9",
+          "reviewerAgentId": "/root/p06_task5_review2",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+          "headSha": "ac080841dda98bbf437b1fbb5824ca3f5e4a65f2",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-4.diff",
+          "diffPackageSha256": "2611eea9c9fca207403c4ddd809349b2934facf913c97a99d3f169263549b5a0",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-4-report.md",
+          "reportSha256": "cf9cd41309b9a90346647e5945f145ca3d82579d09d99910a068f189dbe75419",
+          "reviewerAgentId": "/root/p06_task5_review2",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+          "headSha": "7fb3f86dab12d20571427a5390508e6cc5751ad2",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-5.diff",
+          "diffPackageSha256": "a33be61d799a7f314e71fac3850eb07f10dd1ba44326e05f4e9977254f5c379d",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-5-report.md",
+          "reportSha256": "71c89ebb3a8b7505cb3b93f292b4c0df69d7361bcd41e15abf610472dc2f9c07",
+          "reviewerAgentId": "/root/p06_task5_review2",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        },
+        {
+          "baseSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+          "headSha": "eee0ae87c121e7542ec6567c5e51a11949603b0d",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-6.diff",
+          "diffPackageSha256": "5b7dac8a3a072c0ba7180b602c24fb5c05edaf23b252ea1b64250d8337debf21",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-6-report.md",
+          "reportSha256": "e39b7c045b63f1d5041f94cf1c0a433ad026160bb3a7411e8cdc777396423c8e",
+          "reviewerAgentId": "/root/p06_task5_review2",
+          "specVerdict": "FAIL",
+          "qualityVerdict": "FAIL"
+        },
+        {
+          "baseSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+          "headSha": "46c14b9e993cbf625f8f0ac73d295737cc0c91d1",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-7.diff",
+          "diffPackageSha256": "f4228f69281ac395511c51948eae6054afc1266a4901cec078c0210b0ce61d1a",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-7-report.md",
+          "reportSha256": "5388f2484bab322ef8bf4b50d18ac3b72e75410367ebf67ec13717dcd4803514",
+          "reviewerAgentId": "/root/p06_task5_review2",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        },
+        {
+          "baseSha": "0ee8c09681a49b7891f99d4c3d33f426611ffd78",
+          "headSha": "766030a4fe748bb221869a2bd212fab6471a00dc",
+          "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-8.diff",
+          "diffPackageSha256": "ce5e894db745ac1b113b570ac2c9aab8411f0e14ea946dad541fa0cba4e93db3",
+          "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-repository-content-task-5-receipt-review-8-report.md",
+          "reportSha256": "3974d190422c1ef21f7408a7cb2a6c6ae5c061dd3e014220b5e3f90b6b313133",
+          "reviewerAgentId": "/root/p06_task5_review2",
+          "specVerdict": "PASS",
+          "qualityVerdict": "PASS"
+        }
+      ]
+    }
+  ],
+  "phaseReviews": [
+    {
+      "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+      "headSha": "7fb3f86dab12d20571427a5390508e6cc5751ad2",
+      "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-1.diff",
+      "diffPackageSha256": "222bf7e5b992081f7dbee01ee924a1d72f1abcb8c4fbcc4a774378153a584b0a",
+      "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-1-report.md",
+      "reportSha256": "6b227d9e4b81aa088efd64d351a1b102d4e52dcb3a43d7107920032b92c5958b",
+      "reviewerAgentId": "/root/p06_phase_review4",
+      "specVerdict": "FAIL",
+      "qualityVerdict": "FAIL"
+    },
+    {
+      "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+      "headSha": "3b7acae5149a72fcae7672768b7b7777d745d6ec",
+      "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-2.diff",
+      "diffPackageSha256": "a895ea36a98c0e441acff284bd42d898762e1ee71ee449a254a31fe2fc5afe74",
+      "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-2-report.md",
+      "reportSha256": "4017f41d6deb1e1144a273ceffcb5df680543135243452cca602512389999cf2",
+      "reviewerAgentId": "/root/p06_phase_review4",
+      "specVerdict": "FAIL",
+      "qualityVerdict": "FAIL"
+    },
+    {
+      "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+      "headSha": "9b0d09d7dacdb1afb41cc925940f382c8c0681bd",
+      "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-3.diff",
+      "diffPackageSha256": "5bb0cce34fa585ea7fb55219862cd23dab5f1b95475a0f8d93a3ec50670f6cde",
+      "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-3-report.md",
+      "reportSha256": "a7dbcc34a3d1146b263173421052afed3978f55d161ab1be49641a12da35f194",
+      "reviewerAgentId": "/root/p06_phase_review4",
+      "specVerdict": "FAIL",
+      "qualityVerdict": "FAIL"
+    },
+    {
+      "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+      "headSha": "eee0ae87c121e7542ec6567c5e51a11949603b0d",
+      "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-4.diff",
+      "diffPackageSha256": "e8224429835ac0da0c9153a63a77d144146dce4f75cb2756596da3ad9d9b7fc8",
+      "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-4-report.md",
+      "reportSha256": "3d4539a569507e49007eb3ab51f69f98e9023c31069b8b52033674fd478babe3",
+      "reviewerAgentId": "/root/p06_phase_review4",
+      "specVerdict": "FAIL",
+      "qualityVerdict": "FAIL"
+    },
+    {
+      "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+      "headSha": "46c14b9e993cbf625f8f0ac73d295737cc0c91d1",
+      "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-5.diff",
+      "diffPackageSha256": "4786af1c6d7cde4a9b924b7538ed9d8eceb0545d971ce4c7bac08fbbada7004f",
+      "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-5-report.md",
+      "reportSha256": "87017f67287d89c4026f26642387498138cf92ddc8bc48a821f0680ab61dc451",
+      "reviewerAgentId": "/root/p06_phase_review4",
+      "specVerdict": "FAIL",
+      "qualityVerdict": "FAIL"
+    },
+    {
+      "baseSha": "1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07",
+      "headSha": "766030a4fe748bb221869a2bd212fab6471a00dc",
+      "diffPackagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-6.diff",
+      "diffPackageSha256": "5373c0d1449bd0f54d537bfb18c8778dbcd4ae1693875321d2a45234744a4938",
+      "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P06/P06-phase-receipt-review-6-report.md",
+      "reportSha256": "bfb8ce41683e220e0eac3527789b53d83f68c6d30fb2382b70875f5e73d932fc",
+      "reviewerAgentId": "/root/p06_phase_review4",
+      "specVerdict": "PASS",
+      "qualityVerdict": "PASS"
+    }
+  ],
+  "residualGates": [],
+  "acceptedAt": "2026-08-29T00:38:14.7034023Z"
+}

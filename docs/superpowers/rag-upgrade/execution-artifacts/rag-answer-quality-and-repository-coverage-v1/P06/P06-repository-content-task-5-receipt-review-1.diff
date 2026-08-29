@@ -1,0 +1,2245 @@
+# Review package: 0ee8c09681a49b7891f99d4c3d33f426611ffd78..70a05c266f9f53764900666313b23cd4f21444b6
+
+## Commits
+70a05c266f9f53764900666313b23cd4f21444b6
+
+## Diff
+diff --git a/src/lib/rag/rag-cache.ts b/src/lib/rag/rag-cache.ts
+index fea9a2c484f12f6aacf3c4b3c00904b71c07be35..e1450731bcce9384e0d86c0306688084de05e2a9 100644
+--- a/src/lib/rag/rag-cache.ts
++++ b/src/lib/rag/rag-cache.ts
+@@ -1,25 +1,33 @@
+ import { createHash } from "node:crypto";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { buildClinicalTextSearchQuery } from "@/lib/clinical-search";
+ import { readExpiringCacheEntry, writeBoundedExpiringCacheEntry } from "@/lib/bounded-ttl-cache";
+ import { ragDeepMemoryVersion } from "@/lib/deep-memory";
+ import { env } from "@/lib/env";
+ import { queryCacheKeyForStorage } from "@/lib/query-privacy";
+ import { ragCacheKeyMatchesOwner } from "@/lib/rag/rag-cache-utils";
++import {
++  ragContextSnapshotCacheKey,
++  resolveRagContextSnapshot,
++  selectRequestRagContextSnapshot,
++} from "@/lib/rag/rag-context-snapshot";
+ import { retrievalAccessScopeForArgs, retrievalAccessScopeKey } from "@/lib/owner-scope";
+ import { compactContextText } from "@/lib/rag/rag-source-block";
+ import { committedIndexGeneration } from "@/lib/reindex-pipeline";
++import { australianSourcePolicyVersion } from "@/lib/australian-source-catalogue";
++import { collectSiteContentHealthInput } from "@/lib/site-content/site-content-health-authority";
++import { expectedSiteContentStaticManifestDigest } from "@/lib/site-content/site-content-static-build.generated";
+ import { normalizeSourceMetadata } from "@/lib/source-metadata";
+ import { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
+ import type { Json } from "@/lib/supabase/database.types";
+-import type { RagAnswer, RagQueryClass, SearchResult } from "@/lib/types";
++import type { RagAnswer, RagProgrammeMode, RagQueryClass, SearchResult } from "@/lib/types";
+ import {
+   ragAnswerPromptVersion,
+   ragAnswerSchemaVersion,
+   ragIndexingPromptVersion,
+   ragQueryClassifierPromptVersion,
+ } from "@/lib/rag/rag-versioning";
+ 
+ const answerCache = new Map<string, { expiresAt: number; answer: RagAnswer; indexingVersion: string }>();
+ export const answerInflight = new Map<string, Promise<RagAnswer>>();
+ const searchCache = new Map<
+@@ -96,20 +104,26 @@ function normalizedCacheQuery(query: string) {
+ function cacheIndexingVersionCacheKey(
+   args: Pick<SearchChunksArgs, "documentId" | "documentIds" | "ownerId" | "accessScope">,
+ ) {
+   return scopeKey(args);
+ }
+ 
+ function modeKey(args: Pick<SearchChunksArgs, "queryMode">) {
+   return args.queryMode ?? "auto";
+ }
+ 
++function contextSnapshotKey(args: Pick<SearchChunksArgs, "ragContextSnapshot">) {
++  const snapshot = args.ragContextSnapshot;
++  if (!snapshot || snapshot.publicSiteContent.state === "disabled") return null;
++  return ragContextSnapshotCacheKey(snapshot);
++}
++
+ export type AnswerGenerationFingerprintInput = {
+   answerModel: string;
+   fastModel: string;
+   strongModel: string;
+   classifierModel: string;
+   indexingModel: string;
+   embeddingModel: string;
+   embeddingDimensions: number;
+   fastReasoningEffort: string;
+   strongReasoningEffort: string;
+@@ -146,50 +160,65 @@ export function answerGenerationFingerprint() {
+     promptVersion: ragAnswerPromptVersion,
+     schemaVersion: ragAnswerSchemaVersion,
+     classifierPromptVersion: ragQueryClassifierPromptVersion,
+     retrievalVersion: ragDeepMemoryVersion,
+     indexingPromptVersion: ragIndexingPromptVersion,
+     semanticRerankEnabled: env.RAG_SEMANTIC_RERANK_ENABLED,
+     semanticRerankModel: env.OPENAI_RERANK_MODEL,
+   });
+ }
+ 
+-function sharedAnswerNormalizedQuery(args: Pick<SearchChunksArgs, "query" | "queryMode">) {
++function sharedAnswerNormalizedQuery(args: Pick<SearchChunksArgs, "query" | "queryMode" | "ragContextSnapshot">) {
+   const query = normalizedCacheQuery(`${modeKey(args)} ${args.query}`);
+-  return queryCacheKeyForStorage(`${query}|generation:${answerGenerationFingerprint()}`);
++  const snapshotKey = contextSnapshotKey(args);
++  return queryCacheKeyForStorage(
++    `${query}|generation:${answerGenerationFingerprint()}${snapshotKey ? `|context:${snapshotKey}` : ""}`,
++  );
+ }
+ 
+ export function scopedAnswerCacheKey(
+-  args: Pick<SearchChunksArgs, "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode">,
++  args: Pick<
++    SearchChunksArgs,
++    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode" | "ragContextSnapshot"
++  >,
+ ) {
++  const snapshotKey = contextSnapshotKey(args);
+   return [
+     ragCacheDependencyVersion,
+     scopeKey(args),
+     modeKey(args),
+     `generation:${answerGenerationFingerprint()}`,
++    ...(snapshotKey ? [`context:${snapshotKey}`] : []),
+     args.query.trim().toLowerCase().replace(/\s+/g, " "),
+   ].join("|");
+ }
+ 
+ export function cloneAnswer(answer: RagAnswer) {
+   return structuredClone(answer);
+ }
+ 
+ /** Anonymous callers share no stable identity, so their PHI-bearing answers must never be cached or coalesced. */
+ export function answerCacheAllowedForOwner(ownerId?: string | null) {
+   return Boolean(ownerId);
+ }
+ 
+ export async function getCachedAnswer(
+   args: Pick<
+     SearchChunksArgs,
+-    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "skipCache" | "queryMode"
++    | "query"
++    | "documentId"
++    | "documentIds"
++    | "ownerId"
++    | "accessScope"
++    | "skipCache"
++    | "queryMode"
++    | "ragContextSnapshot"
+   >,
+   startedAt: number,
+   options?: { indexingVersionAtRequestStart?: string | null },
+ ): Promise<RagAnswer | null> {
+   if (!answerCacheAllowedForOwner(args.ownerId) || args.skipCache) return null;
+   if (env.RAG_ANSWER_CACHE_TTL_MS <= 0 || env.RAG_ANSWER_CACHE_SIZE <= 0) return null;
+ 
+   const indexingVersion = await cacheIndexingVersion(args);
+   if (!indexingVersion || !cacheAuthorityAvailable(indexingVersion)) return null;
+   if (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion) return null;
+@@ -237,21 +266,28 @@ export async function getCachedAnswer(
+  * including after the shared-cache row commit so a late invalidation cannot leave a
+  * stale shared answer behind.
+  *
+  * The shared-cache promote itself stays off the response path (fire-and-forget): cold
+  * generation callers `await setCachedAnswer` only for the local write + indexing stamp
+  * round trip, not for the `rag_response_cache` delete/insert.
+  */
+ export async function setCachedAnswer(
+   args: Pick<
+     SearchChunksArgs,
+-    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "skipCache" | "queryMode"
++    | "query"
++    | "documentId"
++    | "documentIds"
++    | "ownerId"
++    | "accessScope"
++    | "skipCache"
++    | "queryMode"
++    | "ragContextSnapshot"
+   >,
+   answer: RagAnswer,
+   options?: { indexingVersionAtRetrievalStart?: string | null },
+ ): Promise<void> {
+   if (!answerCacheAllowedForOwner(args.ownerId) || args.skipCache) return;
+   if (env.RAG_ANSWER_CACHE_TTL_MS <= 0 || env.RAG_ANSWER_CACHE_SIZE <= 0) return;
+ 
+   const invalidationEpochAtStart = captureInvalidationEpoch(args.ownerId);
+   const indexingVersion = await cacheIndexingVersion(args, { forceRefresh: true });
+   if (!indexingVersion) return;
+@@ -291,38 +327,41 @@ export function retrievalPlanCacheQuery(
+     SearchChunksArgs,
+     | "query"
+     | "documentId"
+     | "documentIds"
+     | "ownerId"
+     | "queryMode"
+     | "topK"
+     | "minSimilarity"
+     | "forceEmbedding"
+     | "lexicalOnly"
++    | "ragContextSnapshot"
+   >,
+   queryClass?: RagQueryClass,
+   queryVariants: string[] = [],
+ ) {
+   const normalizedQuery = normalizedCacheQuery(args.query);
+   const variantHash = stableHash(queryVariants.join("\n"));
++  const snapshotKey = contextSnapshotKey(args);
+   const cacheKey = [
+     `plan:${retrievalPlanForQueryClass(queryClass)}`,
+     `class:${queryClass ?? "unknown"}`,
+     `query:${normalizedQuery}`,
+     `variants:${variantHash}`,
+     `mode:${modeKey(args)}`,
+     `topK:${args.topK ?? 8}`,
+     `min:${args.minSimilarity ?? 0.15}`,
+     `forceEmbedding:${args.forceEmbedding ? "1" : "0"}`,
+     `lexicalOnly:${args.lexicalOnly ? "1" : "0"}`,
+     `rag:${ragDeepMemoryVersion}`,
+     `force:${args.forceEmbedding ? 1 : 0}`,
++    ...(snapshotKey ? [`context:${snapshotKey}`] : []),
+     ...(env.RAG_SEMANTIC_RERANK_ENABLED ? [`semanticRerank:${env.OPENAI_RERANK_MODEL}`] : []),
+   ].join("|");
+   return queryCacheKeyForStorage(cacheKey);
+ }
+ 
+ function scopedSearchCacheKey(args: SearchChunksArgs, queryClass?: RagQueryClass, queryVariants: string[] = []) {
+   return [ragCacheDependencyVersion, scopeKey(args), retrievalPlanCacheQuery(args, queryClass, queryVariants)].join(
+     "|",
+   );
+ }
+@@ -437,21 +476,29 @@ export async function setCachedSearch(
+ 
+ type SharedCacheKind = "search" | "answer";
+ type SharedCacheMissReason =
+   "cache_lookup_error" | "cache_lookup_exception" | "cache_payload_invalid" | "unknown_filter_miss";
+ 
+ function sharedCacheSelector(
+   supabase: ReturnType<typeof createAdminClient>,
+   kind: SharedCacheKind,
+   args: Pick<
+     SearchChunksArgs,
+-    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode" | "forceEmbedding" | "signal"
++    | "query"
++    | "documentId"
++    | "documentIds"
++    | "ownerId"
++    | "accessScope"
++    | "queryMode"
++    | "forceEmbedding"
++    | "signal"
++    | "ragContextSnapshot"
+   >,
+   indexingVersion: string,
+   normalizedQuery: string = queryCacheKeyForStorage(normalizedCacheQuery(`${modeKey(args)} ${args.query}`)),
+ ) {
+   let query = supabase
+     .from("rag_response_cache")
+     .select("payload")
+     .eq("cache_kind", kind)
+     .eq("scope_key", scopeKey(args))
+     .eq("normalized_query", normalizedQuery)
+@@ -465,25 +512,102 @@ function sharedCacheSelector(
+ }
+ 
+ const GENERATION_FALLBACK_MARKER = /(?:^|;\s*)generation_fallback(?::|$)/i;
+ function isGenerationFallbackAnswer(answer: Pick<RagAnswer, "routingReason" | "degradedMode">) {
+   return (
+     GENERATION_FALLBACK_MARKER.test(answer.routingReason ?? "") ||
+     GENERATION_FALLBACK_MARKER.test(answer.degradedMode?.reason ?? "")
+   );
+ }
+ 
++export async function resolveRequestRagContextSnapshot(
++  args: Pick<SearchChunksArgs, "signal">,
++  rolloutVersion: RagProgrammeMode,
++  dependencies: Readonly<{
++    readDocumentIndexGeneration: typeof cacheIndexingVersion;
++    readSiteContentAuthority?: typeof collectSiteContentHealthInput;
++    now?: () => Date;
++  }>,
++) {
++  const [documentIndexGeneration, siteAuthority] = await Promise.all([
++    dependencies.readDocumentIndexGeneration(
++      { accessScope: { includePublic: true }, signal: args.signal },
++      { forceRefresh: true },
++    ),
++    (dependencies.readSiteContentAuthority ?? collectSiteContentHealthInput)(),
++  ]);
++  throwIfAborted(args.signal);
++  return resolveRagContextSnapshot({
++    expectedSiteStaticManifestDigest: expectedSiteContentStaticManifestDigest,
++    activePublicSiteRelease: siteAuthority?.activeRelease ?? null,
++    publicSiteChangeEpoch: siteAuthority?.queueHealth.changeEpoch ?? null,
++    pendingPublicSiteChangeCount: siteAuthority?.queueHealth.pendingCount ?? 0,
++    pendingPublicSiteLogicalIds: siteAuthority?.queueHealth.pendingLogicalIds ?? [],
++    documentIndexGeneration,
++    sourcePolicyVersion: australianSourcePolicyVersion,
++    rolloutVersion,
++    resolvedAt: (dependencies.now?.() ?? new Date()).toISOString(),
++  });
++}
++
++export async function resolveRequestRagCacheContext(
++  args: Pick<
++    SearchChunksArgs,
++    "documentId" | "documentIds" | "ownerId" | "accessScope" | "signal" | "ragContextSnapshot" | "cacheContext"
++  >,
++  rolloutVersion: RagProgrammeMode,
++  dependencies: Readonly<{ readDocumentIndexGeneration: typeof cacheIndexingVersion }>,
++) {
++  const cacheContext = args.cacheContext ?? {};
++  const suppliedSnapshot = selectRequestRagContextSnapshot(args.ragContextSnapshot, cacheContext.ragContextSnapshot);
++  const ragContextSnapshot =
++    suppliedSnapshot ??
++    (await resolveRequestRagContextSnapshot(args, rolloutVersion, {
++      readDocumentIndexGeneration: dependencies.readDocumentIndexGeneration,
++    }));
++  cacheContext.ragContextSnapshot = ragContextSnapshot;
++  cacheContext.indexingVersionAtRequestStart ??= dependencies.readDocumentIndexGeneration(
++    {
++      documentId: args.documentId,
++      documentIds: args.documentIds,
++      ownerId: args.ownerId,
++      accessScope: args.accessScope,
++      signal: args.signal,
++      ragContextSnapshot,
++    },
++    { forceRefresh: true },
++  );
++  return { cacheContext, ragContextSnapshot };
++}
++
++function cacheIndexingVersionForSnapshot(
++  snapshot: NonNullable<SearchChunksArgs["ragContextSnapshot"]>,
++  legacyIndexingVersion: string,
++) {
++  if (!cacheAuthorityAvailable(legacyIndexingVersion)) return legacyIndexingVersion;
++  const snapshotKey = contextSnapshotKey({ ragContextSnapshot: snapshot });
++  return snapshotKey ? `${legacyIndexingVersion}:context:${snapshotKey}` : legacyIndexingVersion;
++}
++
+ export async function cacheIndexingVersion(
+-  args: Pick<SearchChunksArgs, "documentId" | "documentIds" | "ownerId" | "accessScope" | "signal">,
++  args: Pick<
++    SearchChunksArgs,
++    "documentId" | "documentIds" | "ownerId" | "accessScope" | "signal" | "ragContextSnapshot"
++  >,
+   options?: { forceRefresh?: boolean },
+-) {
++): Promise<string> {
+   throwIfAborted(args.signal);
++  if (args.ragContextSnapshot) {
++    const { ragContextSnapshot, ...legacyArgs } = args;
++    const legacyIndexingVersion = await cacheIndexingVersion(legacyArgs, options);
++    return cacheIndexingVersionForSnapshot(ragContextSnapshot, legacyIndexingVersion);
++  }
+   const cacheKey = cacheIndexingVersionCacheKey(args);
+   if (options?.forceRefresh) cacheIndexingVersionCache.delete(cacheKey);
+   const cached = readExpiringCacheEntry(cacheIndexingVersionCache, cacheKey);
+ 
+   let value: string;
+   try {
+     const supabase = createAdminClient();
+     const { data: authorityData, error: authorityError } = await supabase.rpc("public_source_serving_authority_stamp");
+     const publicSourceAuthorityStamp =
+       typeof authorityData === "string" || typeof authorityData === "number" ? String(authorityData) : null;
+@@ -582,20 +706,23 @@ export async function getSharedCachedSearch(
+     return {
+       kind: "hit",
+       results: cloneSearchResults(payload.results),
+       telemetry: {
+         search_cache_hit: true,
+         shared_cache_hit: true,
+         shared_cache_status: "hit",
+         shared_cache_miss_reason: null,
+         query_class: payload.telemetry?.query_class,
+         corpus_grounding: payload.telemetry?.corpus_grounding,
++        site_content_state: payload.telemetry?.site_content_state,
++        site_content_static_manifest_match: payload.telemetry?.site_content_static_manifest_match,
++        site_content_pending_bucket: payload.telemetry?.site_content_pending_bucket,
+         vector_candidate_count: payload.telemetry?.vector_candidate_count,
+         text_candidate_count: payload.telemetry?.text_candidate_count,
+         embedding_field_count: payload.telemetry?.embedding_field_count,
+         retrieval_query_variant_count: payload.telemetry?.retrieval_query_variant_count ?? 0,
+         text_fast_path_latency_ms: 0,
+         text_candidate_budget: payload.telemetry?.text_candidate_budget,
+         text_fast_path_reason: payload.telemetry?.text_fast_path_reason ?? null,
+         embedding_skipped: true,
+         embedding_skip_reason: payload.telemetry?.embedding_skip_reason ?? "search_cache",
+         embedding_latency_ms: 0,
+@@ -635,21 +762,29 @@ export async function getSharedCachedSearch(
+     };
+   } catch {
+     if (args.signal?.aborted) throw abortReason(args.signal);
+     return { kind: "miss", reason: "cache_lookup_exception" };
+   }
+ }
+ 
+ export async function getSharedCachedAnswer(
+   args: Pick<
+     SearchChunksArgs,
+-    "query" | "documentId" | "documentIds" | "ownerId" | "skipCache" | "queryMode" | "forceEmbedding"
++    | "query"
++    | "documentId"
++    | "documentIds"
++    | "ownerId"
++    | "accessScope"
++    | "skipCache"
++    | "queryMode"
++    | "forceEmbedding"
++    | "ragContextSnapshot"
+   >,
+   startedAt: number,
+   options?: { indexingVersionAtRequestStart?: string | null },
+ ) {
+   if (!answerCacheAllowedForOwner(args.ownerId) || args.skipCache || env.RAG_ANSWER_CACHE_TTL_MS <= 0) return null;
+   try {
+     const indexingVersion = await cacheIndexingVersion(args);
+     if (!indexingVersion || !cacheAuthorityAvailable(indexingVersion)) return null;
+     if (options?.indexingVersionAtRequestStart && options.indexingVersionAtRequestStart !== indexingVersion)
+       return null;
+@@ -682,21 +817,29 @@ export async function getSharedCachedAnswer(
+     return answer;
+   } catch {
+     return null;
+   }
+ }
+ 
+ async function replaceSharedCacheRow(
+   kind: SharedCacheKind,
+   args: Pick<
+     SearchChunksArgs,
+-    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode" | "forceEmbedding" | "signal"
++    | "query"
++    | "documentId"
++    | "documentIds"
++    | "ownerId"
++    | "accessScope"
++    | "queryMode"
++    | "forceEmbedding"
++    | "signal"
++    | "ragContextSnapshot"
+   >,
+   payload: unknown,
+   ttlMs: number,
+   indexingVersion: string,
+   normalizedQuery: string = queryCacheKeyForStorage(normalizedCacheQuery(`${modeKey(args)} ${args.query}`)),
+ ) {
+   if (ttlMs <= 0) return;
+   try {
+     if (args.signal?.aborted) return;
+     const supabase = createAdminClient();
+@@ -744,38 +887,49 @@ function setSharedCachedSearch(
+     { results: cloneSearchResults(results), telemetry },
+     env.RAG_SEARCH_CACHE_TTL_MS,
+     indexingVersion,
+     retrievalPlanCacheQuery(args, telemetry.query_class, queryVariants),
+   );
+ }
+ 
+ async function setSharedCachedAnswer(
+   args: Pick<
+     SearchChunksArgs,
+-    "query" | "documentId" | "documentIds" | "ownerId" | "skipCache" | "queryMode" | "forceEmbedding"
++    | "query"
++    | "documentId"
++    | "documentIds"
++    | "ownerId"
++    | "accessScope"
++    | "skipCache"
++    | "queryMode"
++    | "forceEmbedding"
++    | "ragContextSnapshot"
+   >,
+   answer: RagAnswer,
+   indexingVersion: string,
+ ) {
+   if (!answerCacheAllowedForOwner(args.ownerId) || args.skipCache || env.RAG_ANSWER_CACHE_TTL_MS <= 0) return;
+   await replaceSharedCacheRow(
+     "answer",
+     args,
+     { answer: cloneAnswer(answer) },
+     env.RAG_ANSWER_CACHE_TTL_MS,
+     indexingVersion,
+     sharedAnswerNormalizedQuery(args),
+   );
+ }
+ 
+ async function deleteSharedCachedAnswerRow(
+-  args: Pick<SearchChunksArgs, "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode">,
++  args: Pick<
++    SearchChunksArgs,
++    "query" | "documentId" | "documentIds" | "ownerId" | "accessScope" | "queryMode" | "ragContextSnapshot"
++  >,
+   indexingVersion: string,
+ ) {
+   try {
+     const normalizedQuery = sharedAnswerNormalizedQuery(args);
+     let deleteQuery = createAdminClient()
+       .from("rag_response_cache")
+       .delete()
+       .eq("cache_kind", "answer")
+       .eq("scope_key", scopeKey(args))
+       .eq("normalized_query", normalizedQuery)
+diff --git a/src/lib/rag/rag-context-snapshot.ts b/src/lib/rag/rag-context-snapshot.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..c83d2ae73663104a454b13f932ac6a1a590af635
+--- /dev/null
++++ b/src/lib/rag/rag-context-snapshot.ts
+@@ -0,0 +1,269 @@
++import { createHash } from "node:crypto";
++import type {
++  ActiveSiteContentRelease,
++  AustralianPublicSnapshotIdentity,
++  RagContextSnapshot,
++  SiteContentPartitionSnapshot,
++  UploadedLocalSnapshotIdentity,
++} from "@/lib/site-content/site-content-contracts";
++import {
++  assertSiteContentPartitionSnapshot,
++  siteContentPendingLogicalIdsDigest,
++} from "@/lib/site-content/site-content-registry";
++import type { RagProgrammeMode } from "@/lib/types";
++
++const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/;
++const RELEASE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
++const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
++const rolloutVersions = new Set<RagProgrammeMode>(["legacy", "shadow", "canary"]);
++
++export type RagContextSnapshotInput = Readonly<{
++  expectedSiteStaticManifestDigest: string | null;
++  activePublicSiteRelease: ActiveSiteContentRelease | null;
++  publicSiteChangeEpoch: string | null;
++  pendingPublicSiteChangeCount: number;
++  pendingPublicSiteLogicalIds: readonly string[];
++  documentIndexGeneration: string;
++  sourcePolicyVersion: string;
++  rolloutVersion: RagProgrammeMode;
++  uploadedLocal?: UploadedLocalSnapshotIdentity;
++  australianPublic?: AustralianPublicSnapshotIdentity;
++  resolvedAt?: string;
++}>;
++
++export type ResolvedRagContextSnapshot = RagContextSnapshot &
++  Readonly<{
++    rolloutVersion: RagProgrammeMode;
++    publicSiteContent: SiteContentPartitionSnapshot;
++  }>;
++
++export function selectRequestRagContextSnapshot(
++  direct: ResolvedRagContextSnapshot | undefined,
++  cached: ResolvedRagContextSnapshot | undefined,
++) {
++  if (direct && cached && direct !== cached) {
++    throw new Error("RAG request received conflicting context snapshot references.");
++  }
++  return direct ?? cached;
++}
++
++function nonEmpty(value: unknown): value is string {
++  return typeof value === "string" && value.length > 0 && value.trim() === value;
++}
++
++function sha256Digest(value: unknown): value is string {
++  return typeof value === "string" && SHA256_DIGEST.test(value);
++}
++
++function exactIsoTimestamp(value: unknown): value is string {
++  if (typeof value !== "string" || !ISO_TIMESTAMP.test(value)) return false;
++  const timestamp = Date.parse(value);
++  return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
++}
++
++function activeReleaseValid(value: unknown): value is ActiveSiteContentRelease {
++  if (!value || typeof value !== "object") return false;
++  const release = value as Record<string, unknown>;
++  return (
++    release.version === "clinical-kb-site-release-v1" &&
++    release.state === "active" &&
++    typeof release.releaseId === "string" &&
++    RELEASE_ID.test(release.releaseId) &&
++    nonEmpty(release.registryVersion) &&
++    sha256Digest(release.staticManifestDigest) &&
++    sha256Digest(release.dynamicStateDigest) &&
++    sha256Digest(release.releaseDigest) &&
++    exactIsoTimestamp(release.activatedAt)
++  );
++}
++
++function canonicalPendingLogicalIds(input: RagContextSnapshotInput): string[] | null {
++  if (
++    !Number.isSafeInteger(input.pendingPublicSiteChangeCount) ||
++    input.pendingPublicSiteChangeCount < 0 ||
++    !Array.isArray(input.pendingPublicSiteLogicalIds)
++  ) {
++    return null;
++  }
++  const ids = [...input.pendingPublicSiteLogicalIds];
++  const canonical = [...ids].sort();
++  if (
++    ids.length !== input.pendingPublicSiteChangeCount ||
++    ids.some((id) => !nonEmpty(id)) ||
++    new Set(ids).size !== ids.length ||
++    ids.some((id, index) => canonical[index] !== id)
++  ) {
++    return null;
++  }
++  return ids;
++}
++
++function identityFreeSitePartition(state: "disabled" | "unavailable"): SiteContentPartitionSnapshot {
++  return {
++    registryVersion: null,
++    releaseId: null,
++    expectedStaticManifestDigest: null,
++    activeStaticManifestDigest: null,
++    staticManifestDigest: null,
++    staticManifestMatch: false,
++    dynamicStateDigest: null,
++    releaseDigest: null,
++    changeEpoch: null,
++    pendingLogicalIds: [],
++    pendingLogicalIdsDigest: null,
++    state,
++  };
++}
++
++function resolveSitePartition(input: RagContextSnapshotInput, resolvedAt: string): SiteContentPartitionSnapshot {
++  const disabled =
++    input.expectedSiteStaticManifestDigest === null &&
++    input.activePublicSiteRelease === null &&
++    input.publicSiteChangeEpoch === null &&
++    input.pendingPublicSiteChangeCount === 0 &&
++    Array.isArray(input.pendingPublicSiteLogicalIds) &&
++    input.pendingPublicSiteLogicalIds.length === 0;
++  if (disabled) return identityFreeSitePartition("disabled");
++
++  const pendingLogicalIds = canonicalPendingLogicalIds(input);
++  const release = input.activePublicSiteRelease;
++  if (
++    !sha256Digest(input.expectedSiteStaticManifestDigest) ||
++    !activeReleaseValid(release) ||
++    Date.parse(release.activatedAt) > Date.parse(resolvedAt) ||
++    !nonEmpty(input.publicSiteChangeEpoch) ||
++    pendingLogicalIds === null
++  ) {
++    return identityFreeSitePartition("unavailable");
++  }
++
++  const staticManifestMatch = input.expectedSiteStaticManifestDigest === release.staticManifestDigest;
++  if (!staticManifestMatch && pendingLogicalIds.length > 0) return identityFreeSitePartition("unavailable");
++  const partition: SiteContentPartitionSnapshot = {
++    registryVersion: release.registryVersion,
++    releaseId: release.releaseId,
++    expectedStaticManifestDigest: input.expectedSiteStaticManifestDigest,
++    activeStaticManifestDigest: release.staticManifestDigest,
++    staticManifestDigest: release.staticManifestDigest,
++    staticManifestMatch,
++    dynamicStateDigest: release.dynamicStateDigest,
++    releaseDigest: release.releaseDigest,
++    changeEpoch: input.publicSiteChangeEpoch,
++    pendingLogicalIds,
++    pendingLogicalIdsDigest: siteContentPendingLogicalIdsDigest(pendingLogicalIds),
++    state: staticManifestMatch ? (pendingLogicalIds.length > 0 ? "updating" : "current") : "stale",
++  };
++  assertSiteContentPartitionSnapshot(partition);
++  return partition;
++}
++
++function freezeSnapshot(snapshot: ResolvedRagContextSnapshot): ResolvedRagContextSnapshot {
++  Object.freeze(snapshot.publicSiteContent.pendingLogicalIds);
++  Object.freeze(snapshot.publicSiteContent);
++  Object.freeze(snapshot.uploadedLocal);
++  Object.freeze(snapshot.australianPublic);
++  return Object.freeze(snapshot);
++}
++
++export function resolveRagContextSnapshot(input: RagContextSnapshotInput): ResolvedRagContextSnapshot {
++  if (!nonEmpty(input.documentIndexGeneration) || !nonEmpty(input.sourcePolicyVersion)) {
++    throw new Error("RAG context snapshot requires document-index and source-policy authority.");
++  }
++  if (
++    input.uploadedLocal &&
++    (!nonEmpty(input.uploadedLocal.indexGeneration) || !sha256Digest(input.uploadedLocal.activationDigest))
++  ) {
++    throw new Error("RAG context snapshot received malformed uploaded-local identity.");
++  }
++  if (
++    input.australianPublic &&
++    ((input.australianPublic.indexGeneration !== null && !nonEmpty(input.australianPublic.indexGeneration)) ||
++      (input.australianPublic.releaseDigest !== null && !sha256Digest(input.australianPublic.releaseDigest)))
++  ) {
++    throw new Error("RAG context snapshot received malformed Australian-public identity.");
++  }
++  if (!rolloutVersions.has(input.rolloutVersion)) {
++    throw new Error("RAG context snapshot received an unknown programme mode.");
++  }
++  if (input.resolvedAt !== undefined && !exactIsoTimestamp(input.resolvedAt)) {
++    throw new Error("RAG context snapshot resolvedAt must be an exact ISO timestamp.");
++  }
++  const resolvedAt = input.resolvedAt ?? new Date().toISOString();
++  const snapshot: ResolvedRagContextSnapshot = {
++    version: "rag-context-snapshot-v1",
++    resolvedAt,
++    documentIndexGeneration: input.documentIndexGeneration,
++    sourcePolicyVersion: input.sourcePolicyVersion,
++    rolloutVersion: input.rolloutVersion,
++    uploadedLocal: input.uploadedLocal
++      ? { ...input.uploadedLocal }
++      : {
++          indexGeneration: input.documentIndexGeneration,
++          activationDigest: `sha256:${opaqueDigest(input.documentIndexGeneration)}`,
++        },
++    australianPublic: input.australianPublic
++      ? { ...input.australianPublic }
++      : {
++          indexGeneration: null,
++          releaseDigest: null,
++        },
++    publicSiteContent: resolveSitePartition(input, resolvedAt),
++  };
++  return freezeSnapshot(snapshot);
++}
++
++function opaqueDigest(value: unknown) {
++  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
++}
++
++export function ragContextSnapshotCacheKey(snapshot: ResolvedRagContextSnapshot) {
++  return `rag-context-snapshot-v1:${opaqueDigest({
++    version: snapshot.version,
++    documentIndexGeneration: snapshot.documentIndexGeneration,
++    sourcePolicyVersion: snapshot.sourcePolicyVersion,
++    rolloutVersion: snapshot.rolloutVersion,
++    uploadedLocal: {
++      indexGeneration: snapshot.uploadedLocal.indexGeneration,
++      activationDigest: snapshot.uploadedLocal.activationDigest,
++    },
++    australianPublic: {
++      indexGeneration: snapshot.australianPublic.indexGeneration,
++      releaseDigest: snapshot.australianPublic.releaseDigest,
++    },
++    publicSiteContent: {
++      state: snapshot.publicSiteContent.state,
++      registryVersion: snapshot.publicSiteContent.registryVersion,
++      expectedStaticManifestDigest: snapshot.publicSiteContent.expectedStaticManifestDigest,
++      activeStaticManifestDigest: snapshot.publicSiteContent.activeStaticManifestDigest,
++      staticManifestDigest: snapshot.publicSiteContent.staticManifestDigest,
++      dynamicStateDigest: snapshot.publicSiteContent.dynamicStateDigest,
++      releaseDigest: snapshot.publicSiteContent.releaseDigest,
++      changeEpoch: snapshot.publicSiteContent.changeEpoch,
++      pendingLogicalIdsDigest: snapshot.publicSiteContent.pendingLogicalIdsDigest,
++    },
++  })}`;
++}
++
++export function ragContextSnapshotTelemetry(snapshot: ResolvedRagContextSnapshot) {
++  const pendingCount = snapshot.publicSiteContent.pendingLogicalIds.length;
++  return {
++    site_content_state: snapshot.publicSiteContent.state,
++    site_content_static_manifest_match: snapshot.publicSiteContent.staticManifestMatch,
++    site_content_pending_bucket:
++      pendingCount === 0 ? "none" : pendingCount === 1 ? "one" : pendingCount < 10 ? "few" : "many",
++  } as const;
++}
++
++export function ragContextSnapshotInvalidationTags(snapshot: ResolvedRagContextSnapshot) {
++  const tags = [
++    `rag-context:${ragContextSnapshotCacheKey(snapshot)}`,
++    `documents:${opaqueDigest(snapshot.documentIndexGeneration)}`,
++    `source-policy:${opaqueDigest(snapshot.sourcePolicyVersion)}`,
++    `rollout:${snapshot.rolloutVersion}`,
++    `site-state:${snapshot.publicSiteContent.state}`,
++  ];
++  if (snapshot.publicSiteContent.pendingLogicalIdsDigest) {
++    tags.push(`site-pending:${snapshot.publicSiteContent.pendingLogicalIdsDigest}`);
++  }
++  return Object.freeze(tags);
++}
+diff --git a/src/lib/rag/rag-contracts.ts b/src/lib/rag/rag-contracts.ts
+index 46a8fed4a47e885fa9a72aaf7c83a77b9d4c0502..887bbf59cae0ab03e7db9ba0708dbb100c7b27fb 100644
+--- a/src/lib/rag/rag-contracts.ts
++++ b/src/lib/rag/rag-contracts.ts
+@@ -1,19 +1,24 @@
+ import type {
+   ClinicalQueryMode,
+   CorpusGroundingVerdict,
++  EvidenceRelevance,
++  RagAnswer,
+   RagProgrammeMode,
+   RagQueryClass,
+   RetrievalIntent,
+   RetrievalSelectionSummary,
++  SmartRagApiPlan,
+ } from "@/lib/types";
+ import type { RetrievalAccessScope } from "@/lib/owner-scope";
++import type { VerifiedUnit } from "@/lib/answer-preview";
++import type { ResolvedRagContextSnapshot } from "@/lib/rag/rag-context-snapshot";
+ 
+ export type SearchChunksArgs = {
+   query: string;
+   topK?: number;
+   minSimilarity?: number;
+   documentId?: string;
+   documentIds?: string[];
+   ownerId?: string;
+   accessScope?: RetrievalAccessScope;
+   allowGlobalSearch?: boolean;
+@@ -21,33 +26,76 @@ export type SearchChunksArgs = {
+   queryMode?: ClinicalQueryMode;
+   signal?: AbortSignal;
+   // Internal: set when this call is a re-run on a trigram-corrected query, to prevent the
+   // unsupported-short-circuit typo-correction path from recursing more than once.
+   typoCorrected?: boolean;
+   // Diagnostic/eval-only: bypass every lexical text-fast-path so retrieval always exercises
+   // the embedding/vector stage. Never set on production paths.
+   forceEmbedding?: boolean;
+   // Lightweight-preview only: return lexical/trigram candidates without an embedding call.
+   lexicalOnly?: boolean;
++  /** Internal immutable authority resolved once before request cache/coalescing lookup. */
++  ragContextSnapshot?: ResolvedRagContextSnapshot;
+   /** Internal: shares one request-start indexing-version resolution across nested cache reads. */
+   cacheContext?: {
+     indexingVersionAtRequestStart?: Promise<string>;
++    ragContextSnapshot?: ResolvedRagContextSnapshot;
+   };
+ };
+ 
+ export type RagObservationContext = {
+   interactionId: string;
+   rolloutMode: RagProgrammeMode;
+ };
+ 
++export type AnswerProgressEvent = {
++  stage:
++    | "retrieved"
++    | "ranking"
++    | "routing"
++    | "generating"
++    | "retrying"
++    | "fallback"
++    | "verifying"
++    | "finalizing"
++    | "cached"
++    | "complete";
++  message: string;
++  resultCount?: number;
++  selectedContextCount?: number;
++  australianSourceCount?: number;
++  waSourceCount?: number;
++  usedSupplementaryFallback?: boolean;
++  visibleSourceCount?: number;
++  directSourceCount?: number;
++  weakSourceCount?: number;
++  timingMs?: number;
++  relevance?: EvidenceRelevance;
++  mode?: RagAnswer["routingMode"];
++  model?: string | null;
++  reason?: string;
++  smartApiPlan?: SmartRagApiPlan;
++  verifiedUnit?: VerifiedUnit;
++};
++
++export type AnswerQuestionWithScopeArgs = SearchChunksArgs & {
++  finalizeTelemetryAnswer?: (answer: RagAnswer) => RagAnswer;
++  logQuery?: boolean;
++  onProgress?: (event: AnswerProgressEvent) => void | Promise<void>;
++  observationContext?: RagObservationContext;
++};
++
+ export type SearchTelemetry = {
+   search_cache_hit: boolean;
++  site_content_state?: "current" | "updating" | "stale" | "unavailable" | "disabled";
++  site_content_static_manifest_match?: boolean;
++  site_content_pending_bucket?: "none" | "one" | "few" | "many";
+   search_total_latency_ms?: number;
+   retrieval_phase_latencies_ms?: Record<string, number>;
+   shared_cache_hit?: boolean;
+   shared_cache_status?: "hit" | "miss";
+   shared_cache_miss_reason?: string | null;
+   query_class?: RagQueryClass;
+   vector_candidate_count?: number;
+   text_candidate_count?: number;
+   embedding_field_count?: number;
+   retrieval_query_variant_count?: number;
+diff --git a/src/lib/rag/rag.ts b/src/lib/rag/rag.ts
+index b2cc19493c6e91950608b5f4584b20a1e5ae8614..c779cda604caf057941fc651344e1a0b08286216 100644
+--- a/src/lib/rag/rag.ts
++++ b/src/lib/rag/rag.ts
+@@ -51,21 +51,21 @@ import { assessAndEnforceClaimSupport, enforceLabelledNumericBandCoherence } fro
+ import {
+   enrichGroundedReviewCitations,
+   sanitizeConflictsOrGaps,
+   sanitizeQuoteCards,
+ } from "@/lib/rag/rag-quote-verification";
+ import {
+   adjacentLabelledNumericBandConflicts,
+   applyNumericVerification,
+   textReferencesAdjacentBandConflict,
+ } from "@/lib/answer-verification";
+-import { buildEvidencePreviewProgress, type VerifiedUnit } from "@/lib/answer-preview";
++import { buildEvidencePreviewProgress } from "@/lib/answer-preview";
+ export { applyNumericVerification, unboldUnverifiedNumbers } from "@/lib/answer-verification";
+ import { selectModelContextResults, summarizeAustralianSourceSelection } from "@/lib/rag/rag-context-selection";
+ import { relatedInformationMenuLine } from "@/lib/rag/answer-composition";
+ export {
+   capPerDocumentCrowding,
+   selectModelContextResults,
+   summarizeAustralianSourceSelection,
+ } from "@/lib/rag/rag-context-selection";
+ import {
+   buildExtractiveAnswer,
+@@ -123,37 +123,42 @@ import {
+   cloneAnswer,
+   getCachedAnswer,
+   attachAdjacentContext,
+   getCachedSearch,
+   getSharedCachedAnswer,
+   getSharedCachedSearch,
+   isSearchCacheEnabled,
+   isSearchCacheLookupEnabled,
+   packAdjacentSourceContext,
+   packedContextCacheKey,
++  resolveRequestRagCacheContext,
+   scopedAnswerCacheKey,
+   setCachedAnswer,
+   setCachedSearch,
+ } from "@/lib/rag/rag-cache";
+ export {
+   invalidateRagCachesForDocumentMutation,
+   invalidateRagCachesForOwner,
+   packedContextCacheKey,
+   retrievalPlanCacheQuery,
+ } from "@/lib/rag/rag-cache";
+ import { classifySearchCacheOutcome, recordCacheLookup } from "@/lib/observability/cache-metrics";
+ import {
+   recordAnswerOrigination,
+   recordAnswerOriginationFinished,
+   recordCoalescedAnswerWaiter,
+ } from "@/lib/observability/answer-coalescing-metrics";
+ import { buildRagSourceBlock, neutralizeIdentityField } from "@/lib/rag/rag-source-block";
++import {
++  ragContextSnapshotTelemetry,
++  selectRequestRagContextSnapshot as selectRagSnapshot,
++} from "@/lib/rag/rag-context-snapshot";
+ export { buildRagSourceBlock, truncateForModel } from "@/lib/rag/rag-source-block";
+ import {
+   buildClinicalTextSearchQuery,
+   classifyRagQuery,
+   analyzeClinicalQuery,
+   expandClinicalQuery,
+   hasDoseEvidenceSupport,
+   hasStructuredThresholdEvidence,
+   isMedicationDoseEvidenceQuery,
+   normalizedClinicalSearchTokens,
+@@ -207,22 +212,33 @@ export {
+   buildIndexingQuality,
+   collectMemoryCards,
+   deriveConfidence,
+   evidenceTextForGate,
+   fallbackReasonFromRouting,
+   isProviderGenerationDegraded,
+   machineReadableFallbackAnswer,
+   rankMemoryCardsForAnswer,
+   scoreValue,
+ } from "@/lib/rag/rag-answer-support";
+-import { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
+-export { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
++import {
++  retrievalPlanForQueryClass,
++  type AnswerProgressEvent,
++  type AnswerQuestionWithScopeArgs,
++  type SearchChunksArgs,
++  type SearchTelemetry,
++} from "@/lib/rag/rag-contracts";
++export {
++  retrievalPlanForQueryClass,
++  type AnswerProgressEvent,
++  type SearchChunksArgs,
++  type SearchTelemetry,
++} from "@/lib/rag/rag-contracts";
+ import {
+   clearlyOutsideCorpusMedicalPattern,
+   isUnsupportedSoftTailAnalysis,
+   shouldSkipUnsupportedSoftTailAnswerCacheWrite,
+   shouldSkipUnsupportedSoftTailCacheWrite,
+   unavailableDocumentNoisePattern,
+ } from "@/lib/rag/rag-query-guard";
+ export { shouldShortCircuitUnsupportedSearch } from "@/lib/rag/rag-query-guard";
+ import {
+   hasAdmissionCommunityLookupIntent,
+@@ -276,21 +292,20 @@ import {
+   extractQuoteCards,
+   reconcileQuoteCards,
+   selectBestSourceRecommendation,
+ } from "@/lib/evidence";
+ import type {
+   AnswerSection,
+   AnswerSectionKind,
+   AnswerSectionSupportLevel,
+   Citation,
+   ClinicalQueryAnalysis,
+-  EvidenceRelevance,
+   RelatedDocument,
+   OpenAITokenUsage,
+   RetrievalConfidenceGateStatus,
+   RetrievalDiagnostics,
+   RetrievalIntent,
+   RetrievalSelectionSummary,
+   RagQueryClass,
+   RagAnswer,
+   SearchResult,
+   SmartRagApiPlan,
+@@ -483,55 +498,20 @@ function awaitWithCallerSignal<T>(pending: Promise<T>, signal?: AbortSignal): Pr
+         resolve(value);
+       },
+       (error) => {
+         signal.removeEventListener("abort", onAbort);
+         reject(error);
+       },
+     );
+   });
+ }
+ 
+-export type AnswerProgressEvent = {
+-  stage:
+-    | "retrieved"
+-    | "ranking"
+-    | "routing"
+-    | "generating"
+-    | "retrying"
+-    | "fallback"
+-    | "verifying"
+-    | "finalizing"
+-    | "cached"
+-    | "complete";
+-  message: string;
+-  resultCount?: number;
+-  selectedContextCount?: number;
+-  australianSourceCount?: number;
+-  waSourceCount?: number;
+-  usedSupplementaryFallback?: boolean;
+-  visibleSourceCount?: number;
+-  directSourceCount?: number;
+-  weakSourceCount?: number;
+-  timingMs?: number;
+-  relevance?: EvidenceRelevance;
+-  mode?: RagAnswer["routingMode"];
+-  model?: string | null;
+-  reason?: string;
+-  smartApiPlan?: SmartRagApiPlan;
+-  verifiedUnit?: VerifiedUnit;
+-};
+-type AnswerQuestionWithScopeArgs = SearchChunksArgs & {
+-  finalizeTelemetryAnswer?: RagQueryTelemetryFinalizer;
+-  logQuery?: boolean;
+-  onProgress?: (event: AnswerProgressEvent) => void | Promise<void>;
+-  observationContext?: import("@/lib/rag/rag-contracts").RagObservationContext;
+-};
+ /** Provenance layer keys. */
+ function provenanceLayerKeys(result: SearchResult) {
+   const layers = new Set<string>(["chunk"]);
+   if (result.memory_cards?.length) layers.add("memory_card");
+   if (result.index_unit?.unit_type) layers.add(`index_unit:${result.index_unit.unit_type}`);
+   if (result.match_explanation?.tableHit || result.index_unit?.unit_type === "table_fact" || result.table_facts?.length)
+     layers.add("table_fact");
+   if (result.match_explanation?.fieldType) layers.add(`field:${result.match_explanation.fieldType}`);
+   if (result.match_explanation?.titleHit) layers.add("title");
+   if (result.match_explanation?.labelHit) layers.add("label");
+@@ -1601,20 +1581,25 @@ export async function searchChunksWithTelemetry(
+         supabase,
+         ownerFilter:
+           ownerScopeForDocumentFilteredRetrieval(args.ownerId, documentFilterList, args.allowGlobalSearch) ?? null,
+         accessScope: args.accessScope,
+       };
+     } catch {
+       return undefined;
+     }
+   })();
+   const cacheContext = args.cacheContext ?? {};
++  const ragContextSnapshot = selectRagSnapshot(args.ragContextSnapshot, cacheContext.ragContextSnapshot);
++  if (ragContextSnapshot) {
++    cacheContext.ragContextSnapshot ??= ragContextSnapshot;
++    args = { ...args, cacheContext, ragContextSnapshot };
++  }
+   const indexingVersionPromise = isSearchCacheLookupEnabled(args)
+     ? (cacheContext.indexingVersionAtRequestStart ??= cacheIndexingVersion(args, { forceRefresh: true }))
+     : undefined;
+   const indexingVersionAtRetrievalStartPromise = indexingVersionPromise
+     ? measureSearchPhase(searchTiming, "index_version", () => indexingVersionPromise)
+     : Promise.resolve<string | null>(null);
+   const queryAnalysisPromise = measureSearchPhase(searchTiming, "query_classification", () =>
+     analyzeQueryWithClassifierFallback(retrievalQuery, analyzeClinicalQuery(retrievalQuery), {
+       corpusGrounding: corpusGroundingScope,
+       ownerId: args.ownerId,
+@@ -1630,20 +1615,21 @@ export async function searchChunksWithTelemetry(
+     ragAliasesPromise,
+   ]);
+   throwIfAborted(args.signal);
+   if (modeQueryClass) queryAnalysis.queryClass = modeQueryClass;
+   const queryClassification = {
+     queryClass: queryAnalysis.queryClass,
+     confidence: queryAnalysis.confidence,
+     reasons: queryAnalysis.reasons,
+   };
+   const telemetry = createSearchTelemetry(retrievalQuery, queryClassification.queryClass);
++  if (ragContextSnapshot) Object.assign(telemetry, ragContextSnapshotTelemetry(ragContextSnapshot));
+   if (queryAnalysis.corpusGrounding) telemetry.corpus_grounding = queryAnalysis.corpusGrounding;
+ 
+   let semanticRerankAttempted = false;
+   const applySemanticRerankOnce = async (
+     results: SearchResult[],
+     options: { providerAvailable?: boolean; requestModeEligible?: boolean } = {},
+   ) => {
+     if (semanticRerankAttempted) return results;
+     semanticRerankAttempted = true;
+     const reranked = await semanticRerankIfAmbiguous({
+@@ -2411,21 +2397,30 @@ function buildContextDerivedArtifacts(query: string, results: SearchResult[]) {
+   };
+ }
+ 
+ /** Answer question. */
+ export async function answerQuestion(query: string, documentId?: string) {
+   return answerQuestionWithScope({ query, documentId, allowGlobalSearch: true });
+ }
+ /** Answer question with scope. */
+ export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs): Promise<RagAnswer> {
+   const startedAt = Date.now();
++  throwIfAborted(args.signal);
++  const adversarialQuery = hasAdversarialManipulationIntent(queryForClinicalMode(args.query, args.queryMode ?? "auto"));
++  if (!adversarialQuery) {
++    const requestContext = await resolveRequestRagCacheContext(args, args.observationContext?.rolloutMode ?? "legacy", {
++      readDocumentIndexGeneration: cacheIndexingVersion,
++    });
++    args = { ...args, ...requestContext };
++  }
+   const coalescingEnabled =
++    !adversarialQuery &&
+     answerCacheAllowedForOwner(args.ownerId) &&
+     !args.skipCache &&
+     env.RAG_ANSWER_CACHE_TTL_MS > 0 &&
+     env.RAG_ANSWER_CACHE_SIZE > 0;
+   const inflightKey = coalescingEnabled ? scopedAnswerCacheKey(args) : null;
+   let existing = inflightKey ? answerInflight.get(inflightKey) : undefined;
+ 
+   while (existing) {
+     recordCoalescedAnswerWaiter();
+     await args.onProgress?.({
+@@ -2491,20 +2486,21 @@ async function answerQuestionWithScopeUncoalesced(
+     ownerId: args.ownerId,
+     allowGlobalSearch: args.allowGlobalSearch,
+   });
+   const answerFocusQuery = queryForClinicalMode(args.query, args.queryMode ?? "auto");
+   // Never serve a cached answer for an adversarial-manipulation query: a poisoned
+   // entry written before this guard existed (or a shared-cache hit under an
+   // unchanged cache version) would bypass chooseAnswerRoute's refusal. Skipping the
+   // cache lets the query flow to routing, which fails it closed to "unsupported".
+   const adversarialQuery = hasAdversarialManipulationIntent(answerFocusQuery);
+   const cacheContext = args.cacheContext ?? {};
++  if (args.ragContextSnapshot) cacheContext.ragContextSnapshot ??= args.ragContextSnapshot;
+   const answerCacheLookupEnabled =
+     !adversarialQuery && answerCacheAllowedForOwner(args.ownerId) && !args.skipCache && env.RAG_ANSWER_CACHE_TTL_MS > 0;
+   const indexingVersionPromise = answerCacheLookupEnabled
+     ? (cacheContext.indexingVersionAtRequestStart ??= cacheIndexingVersion(args, { forceRefresh: true }))
+     : undefined;
+   const indexingVersionAtRetrievalStart = indexingVersionPromise ? await indexingVersionPromise : null;
+   const cachedAnswer = adversarialQuery
+     ? null
+     : await getCachedAnswer(args, startedAt, { indexingVersionAtRequestStart: indexingVersionAtRetrievalStart });
+   if (cachedAnswer) {
+@@ -2573,27 +2569,29 @@ async function answerQuestionWithScopeUncoalesced(
+     startedAt,
+   });
+   let search: Awaited<ReturnType<typeof searchChunksWithTelemetry>>;
+   try {
+     search = await retrievalDeadline.race(
+       searchChunksWithTelemetry({
+         query: args.query,
+         documentId: args.documentId,
+         documentIds: args.documentIds,
+         ownerId: args.ownerId,
++        accessScope: args.accessScope,
+         allowGlobalSearch: args.allowGlobalSearch,
+         topK: 12,
+         minSimilarity: 0.12,
+         skipCache: args.skipCache,
+         queryMode: args.queryMode,
+         signal: retrievalDeadline.signal,
+         cacheContext,
++        ragContextSnapshot: args.ragContextSnapshot,
+       }),
+     );
+   } finally {
+     retrievalDeadline.dispose();
+   }
+   const currentQueryClass = classifyRagQuery(answerFocusQuery).queryClass;
+   const cachedQueryClass = search.telemetry.query_class ?? null;
+   const queryClass =
+     queryClassForClinicalMode(args.queryMode ?? "auto") ??
+     (cachedQueryClass && cachedQueryClass !== "unsupported_or_general" ? cachedQueryClass : currentQueryClass);
+diff --git a/src/lib/site-content/site-content-contracts.ts b/src/lib/site-content/site-content-contracts.ts
+index 15586eb40d2ea701622011c073212e732bb92384..ada6dcbc000d1c2202ff7a1d1ed82d40109202b0 100644
+--- a/src/lib/site-content/site-content-contracts.ts
++++ b/src/lib/site-content/site-content-contracts.ts
+@@ -1,11 +1,11 @@
+-import type { ClinicalSourceRole, SiteContentDomain, SiteContentPartitionState } from "@/lib/types";
++import type { ClinicalSourceRole, RagProgrammeMode, SiteContentDomain, SiteContentPartitionState } from "@/lib/types";
+ 
+ export type SiteContentRecord = {
+   version: "site-content-record-v1";
+   logicalId: string;
+   producerClass: "static_repository" | "dynamic_registry";
+   domain: SiteContentDomain;
+   route: string;
+   title: string;
+   body: string;
+   sourceRole: ClinicalSourceRole;
+@@ -55,14 +55,15 @@ export type UploadedLocalSnapshotIdentity = {
+ export type AustralianPublicSnapshotIdentity = {
+   indexGeneration: string | null;
+   releaseDigest: string | null;
+ };
+ 
+ export type RagContextSnapshot = {
+   version: "rag-context-snapshot-v1";
+   resolvedAt: string;
+   documentIndexGeneration: string;
+   sourcePolicyVersion: string;
++  rolloutVersion: RagProgrammeMode;
+   uploadedLocal: UploadedLocalSnapshotIdentity;
+   australianPublic: AustralianPublicSnapshotIdentity;
+   publicSiteContent: SiteContentPartitionSnapshot;
+ };
+diff --git a/tests/rag-cache-invalidation.test.ts b/tests/rag-cache-invalidation.test.ts
+index 7fb6c434897c6c520e8085b7d316cb139a2366f1..7a35bbc81e07f4e5fcfe65b1d51814cd5ef54865 100644
+--- a/tests/rag-cache-invalidation.test.ts
++++ b/tests/rag-cache-invalidation.test.ts
+@@ -1,14 +1,69 @@
+-import { describe, expect, it, vi } from "vitest";
++import { afterEach, describe, expect, it, vi } from "vitest";
+ import type { RagAnswer } from "../src/lib/types";
++import type { ActiveSiteContentRelease } from "../src/lib/site-content/site-content-contracts";
++import { resolveRagContextSnapshot, type RagContextSnapshotInput } from "../src/lib/rag/rag-context-snapshot";
+ 
+ const ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
++const STATIC_DIGEST = `sha256:${"1".repeat(64)}`;
++
++afterEach(() => {
++  vi.restoreAllMocks();
++  vi.doUnmock("@/lib/env");
++  vi.doUnmock("@/lib/deep-memory");
++  vi.doUnmock("@/lib/clinical-search");
++  vi.doUnmock("@/lib/rag/rag-versioning");
++  vi.doUnmock("@/lib/supabase/admin");
++  vi.resetModules();
++});
++
++function contextSnapshot(
++  overrides: Partial<RagContextSnapshotInput> & { release?: Partial<ActiveSiteContentRelease> } = {},
++) {
++  const release: ActiveSiteContentRelease = {
++    version: "clinical-kb-site-release-v1",
++    releaseId: "11111111-1111-4111-8111-111111111111",
++    registryVersion: "site-content-registry-v1",
++    staticManifestDigest: STATIC_DIGEST,
++    dynamicStateDigest: `sha256:${"2".repeat(64)}`,
++    releaseDigest: `sha256:${"3".repeat(64)}`,
++    state: "active",
++    activatedAt: "2026-08-29T00:00:00.000Z",
++    ...overrides.release,
++  };
++  const { release: _release, ...inputOverrides } = overrides;
++  return resolveRagContextSnapshot({
++    expectedSiteStaticManifestDigest: STATIC_DIGEST,
++    activePublicSiteRelease: release,
++    publicSiteChangeEpoch: "epoch-1",
++    pendingPublicSiteChangeCount: 0,
++    pendingPublicSiteLogicalIds: [],
++    documentIndexGeneration: "documents-generation-1",
++    sourcePolicyVersion: "source-policy-v2",
++    rolloutVersion: "legacy",
++    resolvedAt: "2026-08-29T00:02:00.000Z",
++    ...inputOverrides,
++  });
++}
++
++function siteComponentOffSnapshot() {
++  return resolveRagContextSnapshot({
++    expectedSiteStaticManifestDigest: null,
++    activePublicSiteRelease: null,
++    publicSiteChangeEpoch: null,
++    pendingPublicSiteChangeCount: 0,
++    pendingPublicSiteLogicalIds: [],
++    documentIndexGeneration: "documents-generation-legacy",
++    sourcePolicyVersion: "source-policy-v2",
++    rolloutVersion: "legacy",
++  });
++}
+ 
+ function sampleAnswer(answer = "Cached clinical answer."): RagAnswer {
+   return {
+     answer,
+     grounded: true,
+     confidence: "high",
+     citations: [],
+     sources: [],
+     routingMode: "fast",
+     routingReason: "test",
+@@ -41,20 +96,277 @@ class DeleteQuery implements PromiseLike<{ data: null; error: null }> {
+ 
+   then<TResult1 = { data: null; error: null }, TResult2 = never>(
+     onfulfilled?: ((value: { data: null; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+   ): PromiseLike<TResult1 | TResult2> {
+     return Promise.resolve({ data: null, error: null }).then(onfulfilled, onrejected);
+   }
+ }
+ 
+ describe("RAG cache invalidation", () => {
++  it("keeps exact legacy answer/search cache bytes when the site component is off", async () => {
++    vi.resetModules();
++    vi.doMock("@/lib/env", () => ({
++      env: {
++        OPENAI_ANSWER_MODEL: "answer",
++        OPENAI_FAST_ANSWER_MODEL: "fast",
++        OPENAI_STRONG_ANSWER_MODEL: "strong",
++        OPENAI_QUERY_CLASSIFIER_MODEL: "classifier",
++        OPENAI_INDEXING_MODEL: "indexing",
++        OPENAI_EMBEDDING_MODEL: "embed",
++        EMBEDDING_DIMENSIONS: 1536,
++        OPENAI_FAST_REASONING_EFFORT: "low",
++        OPENAI_STRONG_REASONING_EFFORT: "high",
++        OPENAI_TEXT_VERBOSITY: "medium",
++        OPENAI_MAX_OUTPUT_TOKENS: 4096,
++        RAG_PROVIDER_MODE: "offline",
++        RAG_SEMANTIC_RERANK_ENABLED: false,
++        OPENAI_RERANK_MODEL: "rerank",
++        RAG_PERSIST_RAW_QUERY_TEXT: true,
++        RAG_QUERY_HASH_SECRET: "",
++      },
++      isDemoMode: () => false,
++      isLocalNoAuthMode: () => false,
++    }));
++    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
++    vi.doMock("@/lib/clinical-search", () => ({
++      buildClinicalTextSearchQuery: (query: string) => query.trim(),
++    }));
++    vi.doMock("@/lib/rag/rag-versioning", () => ({
++      ragAnswerPromptVersion: "answer-prompt",
++      ragAnswerSchemaVersion: "answer-schema",
++      ragIndexingPromptVersion: "indexing-prompt",
++      ragQueryClassifierPromptVersion: "classifier-prompt",
++    }));
++
++    const { retrievalPlanCacheQuery, scopedAnswerCacheKey } = await import("../src/lib/rag/rag-cache");
++    const legacyArgs = {
++      query: "  Lithium   monitoring ",
++      ownerId,
++      accessScope: { ownerId, includePublic: true as const },
++    };
++    const siteOffArgs = { ...legacyArgs, ragContextSnapshot: siteComponentOffSnapshot() };
++    const expectedAnswerKey =
++      "rag-cache-v20|owner:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa+public|all-documents|auto|" +
++      "generation:9ff8d6d7a6647c834f6c|lithium monitoring";
++    const expectedSearchKey =
++      "plan:balanced_hybrid:chunks_fields_units_memory|class:unknown|query:lithium monitoring|" +
++      "variants:e3b0c44298fc1c14|mode:auto|topK:8|min:0.15|forceEmbedding:0|lexicalOnly:0|" +
++      "rag:test-rag-version|force:0";
++
++    expect(scopedAnswerCacheKey(legacyArgs)).toBe(expectedAnswerKey);
++    expect(scopedAnswerCacheKey(siteOffArgs)).toBe(expectedAnswerKey);
++    expect(retrievalPlanCacheQuery(legacyArgs)).toBe(expectedSearchKey);
++    expect(retrievalPlanCacheQuery(siteOffArgs)).toBe(expectedSearchKey);
++  });
++
++  it("binds local answer, search, and coalescing identities to the exact active request snapshot", async () => {
++    vi.resetModules();
++    vi.doMock("@/lib/env", () => ({
++      env: {
++        OPENAI_ANSWER_MODEL: "answer",
++        OPENAI_FAST_ANSWER_MODEL: "fast",
++        OPENAI_STRONG_ANSWER_MODEL: "strong",
++        OPENAI_QUERY_CLASSIFIER_MODEL: "classifier",
++        OPENAI_INDEXING_MODEL: "indexing",
++        OPENAI_EMBEDDING_MODEL: "embed",
++        EMBEDDING_DIMENSIONS: 1536,
++        OPENAI_FAST_REASONING_EFFORT: "low",
++        OPENAI_STRONG_REASONING_EFFORT: "high",
++        OPENAI_TEXT_VERBOSITY: "medium",
++        OPENAI_MAX_OUTPUT_TOKENS: 4096,
++        RAG_PROVIDER_MODE: "offline",
++        RAG_SEMANTIC_RERANK_ENABLED: false,
++        OPENAI_RERANK_MODEL: "rerank",
++        RAG_PERSIST_RAW_QUERY_TEXT: true,
++      },
++      isDemoMode: () => false,
++      isLocalNoAuthMode: () => false,
++    }));
++    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
++    vi.doMock("@/lib/clinical-search", () => ({
++      buildClinicalTextSearchQuery: (query: string) => query.trim(),
++    }));
++    vi.doMock("@/lib/rag/rag-versioning", () => ({
++      ragAnswerPromptVersion: "answer-prompt",
++      ragAnswerSchemaVersion: "answer-schema",
++      ragIndexingPromptVersion: "indexing-prompt",
++      ragQueryClassifierPromptVersion: "classifier-prompt",
++    }));
++
++    const { retrievalPlanCacheQuery, scopedAnswerCacheKey } = await import("../src/lib/rag/rag-cache");
++    const releaseOne = contextSnapshot();
++    const releaseTwo = contextSnapshot({
++      publicSiteChangeEpoch: "epoch-2",
++      release: {
++        releaseId: "22222222-2222-4222-8222-222222222222",
++        dynamicStateDigest: `sha256:${"4".repeat(64)}`,
++        releaseDigest: `sha256:${"5".repeat(64)}`,
++        activatedAt: "2026-08-29T00:01:00.000Z",
++      },
++    });
++    const baseArgs = {
++      query: "lithium monitoring",
++      ownerId,
++      accessScope: { ownerId, includePublic: true as const },
++    };
++
++    expect(scopedAnswerCacheKey({ ...baseArgs, ragContextSnapshot: releaseOne })).not.toBe(
++      scopedAnswerCacheKey({ ...baseArgs, ragContextSnapshot: releaseTwo }),
++    );
++    expect(retrievalPlanCacheQuery({ ...baseArgs, ragContextSnapshot: releaseOne })).not.toBe(
++      retrievalPlanCacheQuery({ ...baseArgs, ragContextSnapshot: releaseTwo }),
++    );
++  });
++
++  it("does not reuse a locally cached site-backed answer after the active snapshot changes", async () => {
++    vi.resetModules();
++    vi.doMock("@/lib/env", () => ({
++      env: {
++        RAG_ANSWER_CACHE_TTL_MS: 60_000,
++        RAG_ANSWER_CACHE_SIZE: 20,
++        RAG_PERSIST_RAW_QUERY_TEXT: false,
++        RAG_QUERY_HASH_SECRET: "test-query-hash-secret",
++      },
++      isDemoMode: () => false,
++      isLocalNoAuthMode: () => false,
++    }));
++    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
++    vi.doMock("@/lib/supabase/admin", () => ({
++      createAdminClient: () => ({
++        rpc: vi.fn(async () => ({ data: "1", error: null })),
++        from: vi.fn((table: string) => {
++          if (table === "documents") {
++            const builder = {
++              select: () => builder,
++              eq: () => builder,
++              is: () => builder,
++              or: () => builder,
++              in: () => builder,
++              order: () => builder,
++              limit: async () => ({
++                data: [{ id: "doc-1", updated_at: "2026-08-29T00:00:00.000Z", metadata: {} }],
++                error: null,
++              }),
++            };
++            return builder;
++          }
++          const shared = {
++            eq: () => shared,
++            is: () => shared,
++            delete: () => shared,
++            insert: async () => ({ data: null, error: null }),
++            then: (resolve: (value: { data: null; error: null }) => unknown) =>
++              Promise.resolve({ data: null, error: null }).then(resolve),
++          };
++          return shared;
++        }),
++      }),
++    }));
++
++    const { cacheIndexingVersion, getCachedAnswer, setCachedAnswer } = await import("../src/lib/rag/rag-cache");
++    const request = {
++      query: "synthetic site-backed question",
++      ownerId,
++      accessScope: { ownerId, includePublic: true as const },
++    };
++    const releaseOne = contextSnapshot();
++    const releaseTwo = contextSnapshot({
++      publicSiteChangeEpoch: "epoch-2",
++      release: {
++        releaseId: "22222222-2222-4222-8222-222222222222",
++        dynamicStateDigest: `sha256:${"4".repeat(64)}`,
++        releaseDigest: `sha256:${"5".repeat(64)}`,
++      },
++    });
++    const retrievalStamp = await cacheIndexingVersion(
++      { ...request, ragContextSnapshot: releaseOne },
++      { forceRefresh: true },
++    );
++    await setCachedAnswer({ ...request, ragContextSnapshot: releaseOne }, sampleAnswer("release-one answer"), {
++      indexingVersionAtRetrievalStart: retrievalStamp,
++    });
++
++    await expect(getCachedAnswer({ ...request, ragContextSnapshot: releaseTwo }, Date.now())).resolves.toBeNull();
++  });
++
++  it("retains owner-scoped legacy authority changes beneath one reused public snapshot", async () => {
++    vi.resetModules();
++    const initialNow = Date.parse("2026-08-29T01:00:00.000Z");
++    const now = vi.spyOn(Date, "now").mockReturnValue(initialNow);
++    let ownerDocument = { id: "owner-doc-1", updated_at: "2026-08-29T00:00:00.000Z", metadata: {} };
++
++    vi.doMock("@/lib/env", () => ({
++      env: {
++        RAG_ANSWER_CACHE_TTL_MS: 60_000,
++        RAG_ANSWER_CACHE_SIZE: 20,
++        RAG_PERSIST_RAW_QUERY_TEXT: false,
++        RAG_QUERY_HASH_SECRET: "test-query-hash-secret",
++      },
++      isDemoMode: () => false,
++      isLocalNoAuthMode: () => false,
++    }));
++    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
++    vi.doMock("@/lib/supabase/admin", () => ({
++      createAdminClient: () => ({
++        rpc: vi.fn(async () => ({ data: "public-epoch-1", error: null })),
++        from: vi.fn((table: string) => {
++          if (table === "documents") {
++            const builder = {
++              select: () => builder,
++              eq: () => builder,
++              is: () => builder,
++              or: () => builder,
++              in: () => builder,
++              order: () => builder,
++              limit: () => builder,
++              then: (resolve: (value: { data: (typeof ownerDocument)[]; error: null }) => unknown) =>
++                Promise.resolve({ data: [ownerDocument], error: null }).then(resolve),
++            };
++            return builder;
++          }
++          const shared = {
++            delete: () => shared,
++            eq: () => shared,
++            is: () => shared,
++            insert: async () => ({ data: null, error: null }),
++            then: (resolve: (value: { data: null; error: null }) => unknown) =>
++              Promise.resolve({ data: null, error: null }).then(resolve),
++          };
++          return shared;
++        }),
++      }),
++    }));
++
++    try {
++      const { cacheIndexingVersion, getCachedAnswer, setCachedAnswer } = await import("../src/lib/rag/rag-cache");
++      const ragContextSnapshot = contextSnapshot();
++      const request = {
++        query: "synthetic owner document question",
++        ownerId,
++        accessScope: { ownerId, includePublic: true as const },
++        ragContextSnapshot,
++      };
++      const requestStamp = await cacheIndexingVersion(request, { forceRefresh: true });
++      await setCachedAnswer(request, sampleAnswer("owner document one answer"), {
++        indexingVersionAtRetrievalStart: requestStamp,
++      });
++
++      ownerDocument = { id: "owner-doc-2", updated_at: "2026-08-29T00:30:00.000Z", metadata: {} };
++      now.mockReturnValue(initialNow + 6_000);
++
++      await expect(getCachedAnswer(request, Date.now())).resolves.toBeNull();
++    } finally {
++      now.mockRestore();
++    }
++  });
++
+   it("rechecks the lifecycle epoch after deferred request work before a real local answer-cache read", async () => {
+     vi.resetModules();
+     let lifecycleEpoch = "1";
+     const rpc = vi.fn(async () => ({ data: lifecycleEpoch, error: null }));
+     vi.doMock("@/lib/supabase/admin", () => ({
+       createAdminClient: () => ({
+         rpc,
+         from: vi.fn((table: string) => {
+           if (table === "documents") {
+             const builder = {
+diff --git a/tests/rag-rollout.test.ts b/tests/rag-rollout.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4f864f9d8945a4c355765bd53922f6edf1f1c012
+--- /dev/null
++++ b/tests/rag-rollout.test.ts
+@@ -0,0 +1,67 @@
++import { describe, expect, it } from "vitest";
++import type { ActiveSiteContentRelease } from "../src/lib/site-content/site-content-contracts";
++import type { RagProgrammeMode } from "../src/lib/types";
++import {
++  ragContextSnapshotCacheKey,
++  ragContextSnapshotInvalidationTags,
++  resolveRagContextSnapshot,
++  type RagContextSnapshotInput,
++} from "../src/lib/rag/rag-context-snapshot";
++
++const STATIC_DIGEST = `sha256:${"1".repeat(64)}`;
++
++function release(): ActiveSiteContentRelease {
++  return {
++    version: "clinical-kb-site-release-v1",
++    releaseId: "33333333-3333-4333-8333-333333333333",
++    registryVersion: "site-content-registry-v1",
++    staticManifestDigest: STATIC_DIGEST,
++    dynamicStateDigest: `sha256:${"2".repeat(64)}`,
++    releaseDigest: `sha256:${"3".repeat(64)}`,
++    state: "active",
++    activatedAt: "2026-08-29T00:00:00.000Z",
++  };
++}
++
++function input(rolloutVersion: RagProgrammeMode): RagContextSnapshotInput {
++  return {
++    expectedSiteStaticManifestDigest: STATIC_DIGEST,
++    activePublicSiteRelease: release(),
++    publicSiteChangeEpoch: "epoch-21",
++    pendingPublicSiteChangeCount: 0,
++    pendingPublicSiteLogicalIds: [],
++    documentIndexGeneration: "documents-generation-9",
++    sourcePolicyVersion: "source-policy-v2",
++    rolloutVersion,
++    resolvedAt: "2026-08-29T00:02:00.000Z",
++  };
++}
++
++describe("RAG request snapshot programme-mode input", () => {
++  it("consumes the existing typed programme mode as an opaque rollout version", () => {
++    const modes = ["legacy", "shadow", "canary"] satisfies readonly RagProgrammeMode[];
++
++    for (const mode of modes) {
++      const snapshot = resolveRagContextSnapshot(input(mode));
++      expect(snapshot.rolloutVersion).toBe(mode);
++      expect(ragContextSnapshotInvalidationTags(snapshot)).toContain(`rollout:${mode}`);
++    }
++  });
++
++  it("separates public/shared cache identity for every existing programme mode", () => {
++    const modes = ["legacy", "shadow", "canary"] satisfies readonly RagProgrammeMode[];
++    const keys = modes.map((mode) => ragContextSnapshotCacheKey(resolveRagContextSnapshot(input(mode))));
++
++    expect(new Set(keys).size).toBe(modes.length);
++  });
++
++  it("does not derive cohort, namespace, environment, or rollout authority inside the request snapshot", () => {
++    const snapshot = resolveRagContextSnapshot(input("canary"));
++
++    expect(snapshot).not.toHaveProperty("cohort");
++    expect(snapshot).not.toHaveProperty("namespace");
++    expect(snapshot).not.toHaveProperty("environment");
++    expect(snapshot).not.toHaveProperty("rolloutDecision");
++    expect(snapshot).not.toHaveProperty("rolloutAuthority");
++  });
++});
+diff --git a/tests/rag-shared-cache.test.ts b/tests/rag-shared-cache.test.ts
+index 3d3a7f58dafe03a9877b6101cd227b700575b9cc..3683e564ddf81d0aff57a1bbfc6e7883e4b6e023 100644
+--- a/tests/rag-shared-cache.test.ts
++++ b/tests/rag-shared-cache.test.ts
+@@ -1,14 +1,41 @@
+ import { afterEach, describe, expect, it, vi } from "vitest";
++import type { ActiveSiteContentRelease } from "../src/lib/site-content/site-content-contracts";
++import { ragContextSnapshotCacheKey, resolveRagContextSnapshot } from "../src/lib/rag/rag-context-snapshot";
+ 
+ const ownerId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+ 
++function publicContextSnapshot() {
++  const staticManifestDigest = `sha256:${"1".repeat(64)}`;
++  const activePublicSiteRelease: ActiveSiteContentRelease = {
++    version: "clinical-kb-site-release-v1",
++    releaseId: "11111111-1111-4111-8111-111111111111",
++    registryVersion: "site-content-registry-v1",
++    staticManifestDigest,
++    dynamicStateDigest: `sha256:${"2".repeat(64)}`,
++    releaseDigest: `sha256:${"3".repeat(64)}`,
++    state: "active",
++    activatedAt: "2026-08-29T00:00:00.000Z",
++  };
++  return resolveRagContextSnapshot({
++    expectedSiteStaticManifestDigest: staticManifestDigest,
++    activePublicSiteRelease,
++    publicSiteChangeEpoch: "epoch-1",
++    pendingPublicSiteChangeCount: 0,
++    pendingPublicSiteLogicalIds: [],
++    documentIndexGeneration: "documents-generation-1",
++    sourcePolicyVersion: "source-policy-v2",
++    rolloutVersion: "legacy",
++    resolvedAt: "2026-08-29T00:02:00.000Z",
++  });
++}
++
+ afterEach(() => {
+   vi.restoreAllMocks();
+   vi.resetModules();
+ });
+ 
+ function createSharedCacheBuilder(payload: {
+   answer: { routingReason: string; degradedMode?: { active: boolean; reason: string } };
+ }) {
+   const sharedBuilder = {
+     select: () => sharedBuilder,
+@@ -53,40 +80,140 @@ function createSharedCacheBuilder(payload: {
+     },
+     sharedBuilder,
+     deleteBuilder,
+     get deletionCalls() {
+       return deletionCalls;
+     },
+   } as const;
+ }
+ 
+ describe("shared RAG search cache", () => {
++  it("keeps the public snapshot fingerprint owner-neutral without sharing private owner cache scope", async () => {
++    vi.resetModules();
++    const selectorCalls: Array<Array<{ method: "eq" | "is"; column: string; value: unknown }>> = [];
++
++    vi.doMock("@/lib/env", () => ({
++      env: {
++        RAG_SEARCH_CACHE_TTL_MS: 60_000,
++        RAG_SEARCH_CACHE_SIZE: 200,
++        RAG_PERSIST_RAW_QUERY_TEXT: false,
++        RAG_QUERY_HASH_SECRET: "test-query-hash-secret",
++        RAG_SEMANTIC_RERANK_ENABLED: false,
++      },
++      isDemoMode: () => false,
++      isLocalNoAuthMode: () => false,
++    }));
++    vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
++    vi.doMock("@/lib/clinical-search", () => ({
++      buildClinicalTextSearchQuery: (query: string) => query.trim(),
++    }));
++    vi.doMock("@/lib/supabase/admin", () => ({
++      createAdminClient: () => ({
++        rpc: async () => ({ data: "public-epoch-1", error: null }),
++        from: (table: string) => {
++          if (table === "documents") {
++            const documents = {
++              select: () => documents,
++              eq: () => documents,
++              is: () => documents,
++              or: () => documents,
++              in: () => documents,
++              order: () => documents,
++              limit: () => documents,
++              then: (resolve: (value: { data: unknown[]; error: null }) => unknown) =>
++                Promise.resolve({
++                  data: [{ id: "public-doc-1", updated_at: "2026-08-29T00:00:00.000Z", metadata: {} }],
++                  error: null,
++                }).then(resolve),
++            };
++            return documents;
++          }
++          expect(table).toBe("rag_response_cache");
++          const calls: Array<{ method: "eq" | "is"; column: string; value: unknown }> = [];
++          selectorCalls.push(calls);
++          const builder = {
++            select: () => builder,
++            eq: (column: string, value: unknown) => {
++              calls.push({ method: "eq" as const, column, value });
++              return builder;
++            },
++            is: (column: string, value: unknown) => {
++              calls.push({ method: "is" as const, column, value });
++              return builder;
++            },
++            gt: () => builder,
++            limit: () => builder,
++            maybeSingle: async () => ({ data: null, error: null }),
++          };
++          return builder;
++        },
++      }),
++    }));
++
++    const { getSharedCachedSearch } = await import("../src/lib/rag/rag-cache");
++    const anonymousSnapshot = publicContextSnapshot();
++    const authenticatedSnapshot = publicContextSnapshot();
++    expect(ragContextSnapshotCacheKey(authenticatedSnapshot)).toBe(ragContextSnapshotCacheKey(anonymousSnapshot));
++    const sharedPublicRequest = {
++      query: "lithium monitoring",
++      accessScope: { includePublic: true as const },
++      ragContextSnapshot: anonymousSnapshot,
++    };
++    await expect(getSharedCachedSearch(sharedPublicRequest)).resolves.toEqual({
++      kind: "miss",
++      reason: "unknown_filter_miss",
++    });
++    await expect(
++      getSharedCachedSearch({
++        ...sharedPublicRequest,
++        ownerId,
++        accessScope: { ownerId, includePublic: true as const },
++        ragContextSnapshot: authenticatedSnapshot,
++      }),
++    ).resolves.toEqual({ kind: "miss", reason: "unknown_filter_miss" });
++
++    expect(selectorCalls).toHaveLength(2);
++    const anonymousSelector = selectorCalls[0]!;
++    const authenticatedSelector = selectorCalls[1]!;
++    expect(anonymousSelector).toContainEqual({ method: "is", column: "owner_id", value: null });
++    expect(anonymousSelector).not.toContainEqual({ method: "eq", column: "owner_id", value: ownerId });
++    expect(authenticatedSelector).toContainEqual({ method: "eq", column: "owner_id", value: ownerId });
++    expect(authenticatedSelector).not.toContainEqual({ method: "is", column: "owner_id", value: null });
++
++    const selectorValue = (calls: (typeof selectorCalls)[number], column: string) =>
++      calls.find((call) => call.column === column)?.value;
++    expect(selectorValue(anonymousSelector, "scope_key")).toBe("public-only|all-documents");
++    expect(selectorValue(authenticatedSelector, "scope_key")).toBe(`owner:${ownerId}+public|all-documents`);
++    expect(selectorValue(authenticatedSelector, "scope_key")).not.toBe(selectorValue(anonymousSelector, "scope_key"));
++  });
++
+   it("uses one shared-cache read for a cold filtered miss", async () => {
+     vi.resetModules();
+     let sharedCacheReads = 0;
+ 
+     vi.doMock("@/lib/env", () => ({
+       env: {
+         RAG_SEARCH_CACHE_TTL_MS: 60_000,
+         RAG_SEARCH_CACHE_SIZE: 200,
+         RAG_PERSIST_RAW_QUERY_TEXT: false,
+         RAG_QUERY_HASH_SECRET: "test-query-hash-secret",
+       },
+       isDemoMode: () => false,
+       isLocalNoAuthMode: () => false,
+     }));
+     vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
+     vi.doMock("@/lib/clinical-search", () => ({
+       buildClinicalTextSearchQuery: (query: string) => query.trim(),
+     }));
+     vi.doMock("@/lib/supabase/admin", () => ({
+       createAdminClient: () => ({
++        rpc: async () => ({ data: "public-epoch-1", error: null }),
+         from: (table: string) => {
+           const builder = {
+             select: () => builder,
+             eq: () => builder,
+             is: () => builder,
+             in: () => builder,
+             or: () => builder,
+             gt: () => builder,
+             order: () => builder,
+             limit: () => builder,
+@@ -129,20 +256,21 @@ describe("shared RAG search cache", () => {
+       },
+       isDemoMode: () => false,
+       isLocalNoAuthMode: () => false,
+     }));
+     vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
+     vi.doMock("@/lib/clinical-search", () => ({
+       buildClinicalTextSearchQuery: (query: string) => query.trim(),
+     }));
+     vi.doMock("@/lib/supabase/admin", () => ({
+       createAdminClient: () => ({
++        rpc: async () => ({ data: "public-epoch-1", error: null }),
+         from: (table: string) => {
+           const builder = {
+             select: () => builder,
+             eq: () => builder,
+             is: () => builder,
+             in: () => builder,
+             or: () => builder,
+             gt: () => builder,
+             order: () => builder,
+             limit: () => builder,
+@@ -201,40 +329,42 @@ describe("shared RAG search cache", () => {
+       },
+       isDemoMode: () => false,
+       isLocalNoAuthMode: () => false,
+     }));
+     vi.doMock("@/lib/deep-memory", () => ({ ragDeepMemoryVersion: "test-rag-version" }));
+     vi.doMock("@/lib/clinical-search", () => ({
+       buildClinicalTextSearchQuery: (query: string) => query.trim(),
+     }));
+     vi.doMock("@/lib/supabase/admin", () => ({
+       createAdminClient: () => ({
++        rpc: async () => ({ data: "public-epoch-1", error: null }),
+         from: (table: string) => {
+           if (table === "rag_response_cache") return shared.builder;
+-          return {
+-            select: () => shared.sharedBuilder,
+-            eq: () => shared.sharedBuilder,
+-            is: () => shared.sharedBuilder,
+-            or: () => shared.sharedBuilder,
+-            gt: () => shared.sharedBuilder,
+-            order: () => shared.sharedBuilder,
+-            limit: () => shared.sharedBuilder,
++          const documents = {
++            select: () => documents,
++            eq: () => documents,
++            is: () => documents,
++            or: () => documents,
++            gt: () => documents,
++            order: () => documents,
++            limit: () => documents,
+             then: (
+               resolve: (value: { data: unknown[]; error: null }) => unknown,
+               reject?: (reason: unknown) => unknown,
+             ) =>
+               Promise.resolve({
+                 data: [{ id: "doc-1", updated_at: "2026-07-14T00:00:00.000Z", metadata: {} }],
+                 error: null,
+               }).then(resolve, reject),
+             maybeSingle: async () => ({ data: null, error: null }),
+           };
++          return documents;
+         },
+       }),
+     }));
+ 
+     const { getSharedCachedAnswer } = await import("../src/lib/rag/rag-cache");
+     const result = await getSharedCachedAnswer(
+       {
+         query: "clinical deterioration",
+         ownerId,
+         queryMode: "auto",
+diff --git a/tests/rag-site-content-freshness.test.ts b/tests/rag-site-content-freshness.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..83c3f5358f68f5f029e533ff5ad6c79f81fe4658
+--- /dev/null
++++ b/tests/rag-site-content-freshness.test.ts
+@@ -0,0 +1,310 @@
++import { describe, expect, it } from "vitest";
++import type { ActiveSiteContentRelease } from "../src/lib/site-content/site-content-contracts";
++import { siteContentPendingLogicalIdsDigest } from "../src/lib/site-content/site-content-registry";
++import {
++  ragContextSnapshotCacheKey,
++  ragContextSnapshotInvalidationTags,
++  ragContextSnapshotTelemetry,
++  resolveRagContextSnapshot,
++  selectRequestRagContextSnapshot,
++  type RagContextSnapshotInput,
++} from "../src/lib/rag/rag-context-snapshot";
++
++const STATIC_A = `sha256:${"a".repeat(64)}`;
++const STATIC_B = `sha256:${"b".repeat(64)}`;
++const DYNAMIC_A = `sha256:${"c".repeat(64)}`;
++const DYNAMIC_B = `sha256:${"d".repeat(64)}`;
++const RELEASE_A = `sha256:${"e".repeat(64)}`;
++const RELEASE_B = `sha256:${"f".repeat(64)}`;
++
++function activeRelease(overrides: Partial<ActiveSiteContentRelease> = {}): ActiveSiteContentRelease {
++  return {
++    version: "clinical-kb-site-release-v1",
++    releaseId: "11111111-1111-4111-8111-111111111111",
++    registryVersion: "site-content-registry-v1",
++    staticManifestDigest: STATIC_A,
++    dynamicStateDigest: DYNAMIC_A,
++    releaseDigest: RELEASE_A,
++    state: "active",
++    activatedAt: "2026-08-29T00:00:00.000Z",
++    ...overrides,
++  };
++}
++
++function snapshotInput(overrides: Partial<RagContextSnapshotInput> = {}): RagContextSnapshotInput {
++  return {
++    expectedSiteStaticManifestDigest: STATIC_A,
++    activePublicSiteRelease: activeRelease(),
++    publicSiteChangeEpoch: "epoch-17",
++    pendingPublicSiteChangeCount: 0,
++    pendingPublicSiteLogicalIds: [],
++    documentIndexGeneration: "documents-generation-7",
++    sourcePolicyVersion: "source-policy-v2",
++    rolloutVersion: "legacy",
++    resolvedAt: "2026-08-29T00:02:00.000Z",
++    ...overrides,
++  };
++}
++
++describe("request-local RAG site-content snapshot", () => {
++  it("resolves a complete matching active release as one frozen current public partition", () => {
++    const snapshot = resolveRagContextSnapshot(snapshotInput());
++
++    expect(snapshot).toMatchObject({
++      version: "rag-context-snapshot-v1",
++      documentIndexGeneration: "documents-generation-7",
++      sourcePolicyVersion: "source-policy-v2",
++      rolloutVersion: "legacy",
++      publicSiteContent: {
++        state: "current",
++        registryVersion: "site-content-registry-v1",
++        staticManifestMatch: true,
++        pendingLogicalIds: [],
++        pendingLogicalIdsDigest: siteContentPendingLogicalIdsDigest([]),
++      },
++    });
++    expect(Object.isFrozen(snapshot)).toBe(true);
++    expect(Object.isFrozen(snapshot.publicSiteContent)).toBe(true);
++    expect(Object.isFrozen(snapshot.publicSiteContent.pendingLogicalIds)).toBe(true);
++    expect(snapshot.uploadedLocal.activationDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
++  });
++
++  it.each([
++    ["missing", null],
++    ["malformed", { ...activeRelease(), releaseDigest: "not-a-digest" }],
++    ["staged", { ...activeRelease(), state: "staged" }],
++    ["rolled back", { ...activeRelease(), state: "rolled_back" }],
++  ])("fails %s release authority closed to an identity-free unavailable partition", (_label, release) => {
++    const snapshot = resolveRagContextSnapshot(
++      snapshotInput({ activePublicSiteRelease: release as ActiveSiteContentRelease | null }),
++    );
++
++    expect(snapshot.publicSiteContent).toEqual({
++      registryVersion: null,
++      releaseId: null,
++      expectedStaticManifestDigest: null,
++      activeStaticManifestDigest: null,
++      staticManifestDigest: null,
++      staticManifestMatch: false,
++      dynamicStateDigest: null,
++      releaseDigest: null,
++      changeEpoch: null,
++      pendingLogicalIds: [],
++      pendingLogicalIdsDigest: null,
++      state: "unavailable",
++    });
++  });
++
++  it("classifies a complete active release with a mismatched static manifest as stale, never current", () => {
++    const snapshot = resolveRagContextSnapshot(snapshotInput({ expectedSiteStaticManifestDigest: STATIC_B }));
++
++    expect(snapshot.publicSiteContent).toMatchObject({
++      state: "stale",
++      staticManifestMatch: false,
++      expectedStaticManifestDigest: STATIC_B,
++      activeStaticManifestDigest: STATIC_A,
++      staticManifestDigest: STATIC_A,
++    });
++  });
++
++  it("fails closed when active release authority claims activation after request resolution", () => {
++    const snapshot = resolveRagContextSnapshot(
++      snapshotInput({
++        resolvedAt: "2026-08-29T00:00:00.000Z",
++        activePublicSiteRelease: activeRelease({ activatedAt: "2026-08-29T00:00:01.000Z" }),
++      }),
++    );
++
++    expect(snapshot.publicSiteContent.state).toBe("unavailable");
++    expect(snapshot.publicSiteContent.releaseId).toBeNull();
++  });
++
++  it("binds a valid pending edit to the exact canonical exclusion set and changes identity before activation", () => {
++    const current = resolveRagContextSnapshot(snapshotInput());
++    const pendingLogicalIds = ["differential:mania", "medication:lithium"];
++    const updating = resolveRagContextSnapshot(
++      snapshotInput({
++        publicSiteChangeEpoch: "epoch-18",
++        pendingPublicSiteChangeCount: pendingLogicalIds.length,
++        pendingPublicSiteLogicalIds: pendingLogicalIds,
++      }),
++    );
++
++    expect(updating.publicSiteContent).toMatchObject({
++      state: "updating",
++      changeEpoch: "epoch-18",
++      pendingLogicalIds,
++      pendingLogicalIdsDigest: siteContentPendingLogicalIdsDigest(pendingLogicalIds),
++    });
++    expect(ragContextSnapshotCacheKey(updating)).not.toBe(ragContextSnapshotCacheKey(current));
++    expect(ragContextSnapshotInvalidationTags(updating)).toContain(
++      `site-pending:${siteContentPendingLogicalIdsDigest(pendingLogicalIds)}`,
++    );
++    expect(ragContextSnapshotTelemetry(updating).site_content_pending_bucket).toBe("few");
++  });
++
++  it.each([
++    { pendingPublicSiteChangeCount: 1, pendingPublicSiteLogicalIds: [] },
++    { pendingPublicSiteChangeCount: 1, pendingPublicSiteLogicalIds: [" medication:lithium"] },
++    { pendingPublicSiteChangeCount: 2, pendingPublicSiteLogicalIds: ["medication:lithium"] },
++    {
++      pendingPublicSiteChangeCount: 2,
++      pendingPublicSiteLogicalIds: ["medication:lithium", "medication:lithium"],
++    },
++  ])("does not make malformed pending authority retrievable: %o", (pending) => {
++    const snapshot = resolveRagContextSnapshot(snapshotInput(pending));
++    expect(snapshot.publicSiteContent.state).toBe("unavailable");
++  });
++
++  it("keeps non-site request authority intact when only the site partition is stale or unavailable", () => {
++    const stale = resolveRagContextSnapshot(snapshotInput({ expectedSiteStaticManifestDigest: STATIC_B }));
++    const unavailable = resolveRagContextSnapshot(snapshotInput({ activePublicSiteRelease: null }));
++
++    for (const snapshot of [stale, unavailable]) {
++      expect(snapshot.documentIndexGeneration).toBe("documents-generation-7");
++      expect(snapshot.sourcePolicyVersion).toBe("source-policy-v2");
++      expect(snapshot.rolloutVersion).toBe("legacy");
++    }
++  });
++
++  it("changes release and dynamic identity on activation while the matched static digest stays fixed", () => {
++    const before = resolveRagContextSnapshot(snapshotInput());
++    const after = resolveRagContextSnapshot(
++      snapshotInput({
++        activePublicSiteRelease: activeRelease({
++          releaseId: "22222222-2222-4222-8222-222222222222",
++          dynamicStateDigest: DYNAMIC_B,
++          releaseDigest: RELEASE_B,
++          activatedAt: "2026-08-29T00:01:00.000Z",
++        }),
++        publicSiteChangeEpoch: "epoch-18",
++      }),
++    );
++
++    expect(before.publicSiteContent.staticManifestDigest).toBe(STATIC_A);
++    expect(after.publicSiteContent.staticManifestDigest).toBe(STATIC_A);
++    expect(after.publicSiteContent.state).toBe("current");
++    expect(ragContextSnapshotCacheKey(after)).not.toBe(ragContextSnapshotCacheKey(before));
++  });
++
++  it("changes public/shared identity across every snapshot authority dimension", () => {
++    const baseline = ragContextSnapshotCacheKey(resolveRagContextSnapshot(snapshotInput()));
++    const changedInputs: Array<[string, RagContextSnapshotInput]> = [
++      [
++        "registry",
++        snapshotInput({ activePublicSiteRelease: activeRelease({ registryVersion: "site-content-registry-v2" }) }),
++      ],
++      [
++        "static",
++        snapshotInput({
++          expectedSiteStaticManifestDigest: STATIC_B,
++          activePublicSiteRelease: activeRelease({ staticManifestDigest: STATIC_B }),
++        }),
++      ],
++      ["dynamic", snapshotInput({ activePublicSiteRelease: activeRelease({ dynamicStateDigest: DYNAMIC_B }) })],
++      [
++        "release",
++        snapshotInput({
++          activePublicSiteRelease: activeRelease({
++            releaseId: "22222222-2222-4222-8222-222222222222",
++            releaseDigest: RELEASE_B,
++          }),
++        }),
++      ],
++      ["epoch", snapshotInput({ publicSiteChangeEpoch: "epoch-18" })],
++      ["source policy", snapshotInput({ sourcePolicyVersion: "source-policy-v3" })],
++      ["document generation", snapshotInput({ documentIndexGeneration: "documents-generation-8" })],
++      ["programme rollout", snapshotInput({ rolloutVersion: "shadow" })],
++    ];
++
++    for (const [dimension, input] of changedInputs) {
++      expect(ragContextSnapshotCacheKey(resolveRagContextSnapshot(input)), dimension).not.toBe(baseline);
++    }
++  });
++
++  it("copies authority into an immutable request snapshot while the next request observes a changed pointer", () => {
++    const mutableRelease = activeRelease();
++    const requestOne = resolveRagContextSnapshot(snapshotInput({ activePublicSiteRelease: mutableRelease }));
++
++    mutableRelease.releaseId = "22222222-2222-4222-8222-222222222222";
++    mutableRelease.dynamicStateDigest = DYNAMIC_B;
++    mutableRelease.releaseDigest = RELEASE_B;
++    const requestTwo = resolveRagContextSnapshot(snapshotInput({ activePublicSiteRelease: mutableRelease }));
++
++    expect(requestOne.publicSiteContent).toMatchObject({
++      releaseId: "11111111-1111-4111-8111-111111111111",
++      dynamicStateDigest: DYNAMIC_A,
++      releaseDigest: RELEASE_A,
++    });
++    expect(requestTwo.publicSiteContent).toMatchObject({
++      releaseId: "22222222-2222-4222-8222-222222222222",
++      dynamicStateDigest: DYNAMIC_B,
++      releaseDigest: RELEASE_B,
++    });
++  });
++
++  it("rejects conflicting direct and cache-context snapshot object references", () => {
++    const direct = resolveRagContextSnapshot(snapshotInput());
++    const conflicting = resolveRagContextSnapshot(snapshotInput());
++
++    expect(selectRequestRagContextSnapshot(direct, direct)).toBe(direct);
++    expect(() => selectRequestRagContextSnapshot(direct, conflicting)).toThrow(/conflicting context snapshot/i);
++  });
++
++  it("keeps raw release authority out of the cache fingerprint and bounded telemetry", () => {
++    const snapshot = resolveRagContextSnapshot(snapshotInput());
++    const cacheKey = ragContextSnapshotCacheKey(snapshot);
++    const telemetry = ragContextSnapshotTelemetry(snapshot);
++    const exposed = `${cacheKey}\n${JSON.stringify(telemetry)}`;
++
++    expect(telemetry).toEqual({
++      site_content_state: "current",
++      site_content_static_manifest_match: true,
++      site_content_pending_bucket: "none",
++    });
++    for (const forbidden of [
++      snapshot.publicSiteContent.releaseId,
++      snapshot.publicSiteContent.staticManifestDigest,
++      snapshot.publicSiteContent.dynamicStateDigest,
++      snapshot.publicSiteContent.releaseDigest,
++      snapshot.publicSiteContent.changeEpoch,
++      ...snapshot.publicSiteContent.pendingLogicalIds,
++    ]) {
++      if (forbidden !== null) expect(exposed).not.toContain(forbidden);
++    }
++  });
++
++  it("fingerprints accepted corpus identities but excludes observational and raw release identity", () => {
++    const baseline = resolveRagContextSnapshot(
++      snapshotInput({
++        resolvedAt: "2026-08-29T00:00:01.000Z",
++        uploadedLocal: { indexGeneration: "uploaded-generation-1", activationDigest: `sha256:${"6".repeat(64)}` },
++        australianPublic: { indexGeneration: "australian-generation-1", releaseDigest: `sha256:${"7".repeat(64)}` },
++      }),
++    );
++    const observationalOnly = resolveRagContextSnapshot(
++      snapshotInput({
++        resolvedAt: "2026-08-29T00:00:02.000Z",
++        activePublicSiteRelease: activeRelease({ releaseId: "22222222-2222-4222-8222-222222222222" }),
++        uploadedLocal: baseline.uploadedLocal,
++        australianPublic: baseline.australianPublic,
++      }),
++    );
++    const uploadedChanged = resolveRagContextSnapshot(
++      snapshotInput({
++        uploadedLocal: { ...baseline.uploadedLocal, activationDigest: `sha256:${"8".repeat(64)}` },
++        australianPublic: baseline.australianPublic,
++      }),
++    );
++    const australianChanged = resolveRagContextSnapshot(
++      snapshotInput({
++        uploadedLocal: baseline.uploadedLocal,
++        australianPublic: { ...baseline.australianPublic, releaseDigest: `sha256:${"9".repeat(64)}` },
++      }),
++    );
++
++    expect(ragContextSnapshotCacheKey(observationalOnly)).toBe(ragContextSnapshotCacheKey(baseline));
++    expect(ragContextSnapshotCacheKey(uploadedChanged)).not.toBe(ragContextSnapshotCacheKey(baseline));
++    expect(ragContextSnapshotCacheKey(australianChanged)).not.toBe(ragContextSnapshotCacheKey(baseline));
++  });
++});
+diff --git a/tests/site-content-registry.test.ts b/tests/site-content-registry.test.ts
+index d0d010976f5935cc78b1e7c361e2bcccfd4f24d8..1d8547ccd5a5220f0b380456b4b5495af41e3dae 100644
+--- a/tests/site-content-registry.test.ts
++++ b/tests/site-content-registry.test.ts
+@@ -348,20 +348,21 @@ describe("site content public publication and authority policy", () => {
+     ]);
+     expect(familyA.filter((membership) => familyAB.includes(membership))).toEqual(familyA);
+   });
+ 
+   it("pins the complete request-local corpus and site partition identity", () => {
+     const snapshot: RagContextSnapshot = {
+       version: "rag-context-snapshot-v1",
+       resolvedAt: "2026-08-23T00:00:01.000Z",
+       documentIndexGeneration: "documents-generation-7",
+       sourcePolicyVersion: "source-policy-v2",
++      rolloutVersion: "legacy",
+       uploadedLocal: {
+         indexGeneration: "documents-generation-7",
+         activationDigest: "sha256:uploaded",
+       },
+       australianPublic: {
+         indexGeneration: "australian-generation-3",
+         releaseDigest: "sha256:australian",
+       },
+       publicSiteContent: partitionSnapshot(),
+     };

@@ -1,0 +1,3056 @@
+# Review package: 1788f3d95c88b4df65d3e13ddc6e5a7b186e8a07..10aeecc135c286fadc09e45cb2e04f43bcaefbff
+
+## Commits
+10aeecc135c286fadc09e45cb2e04f43bcaefbff
+
+## Diff
+diff --git a/docs/design-system/adoption-manifest.json b/docs/design-system/adoption-manifest.json
+index c7fd9c284712ffdc107e3d68e5cf5be74773c309..40fc97e1f1519f99451cecdb802df88009512533 100644
+--- a/docs/design-system/adoption-manifest.json
++++ b/docs/design-system/adoption-manifest.json
+@@ -1408,21 +1408,25 @@
+         "src/components/document-viewer/document-clinical-summary.tsx",
+         "src/components/document-viewer/document-rail-panels.tsx",
+         "src/components/document-viewer/source-panels.tsx"
+       ],
+       "designSync": {
+         "listedInSourceMap": true,
+         "listedInDtsProps": true,
+         "preview": ".design-sync/previews/SafeBoldText.tsx",
+         "previewValid": true
+       },
+-      "testFiles": ["tests/design-sync-visual-exports.test.ts", "tests/display-text.test.ts"],
++      "testFiles": [
++        "tests/answer-content.test.ts",
++        "tests/design-sync-visual-exports.test.ts",
++        "tests/display-text.test.ts"
++      ],
+       "baseline": {
+         "targetLayer": "v2",
+         "liveLayer": "v2",
+         "remoteStatus": "unverified",
+         "visualBaselineStatus": "not-committed"
+       },
+       "built": true,
+       "locallyRegistered": true,
+       "v2ShellMounted": true,
+       "v2MountMode": "inherited-global-root",
+diff --git a/docs/scripts-index.md b/docs/scripts-index.md
+index 8844b39c6f173b852f4de29adcc76b34fdaef7e9..dbfb1265d218a35e66c3a63dc57712dcd70e64ba 100644
+--- a/docs/scripts-index.md
++++ b/docs/scripts-index.md
+@@ -1,13 +1,13 @@
+ # Scripts index
+ 
+-Curated map of `scripts/` (267 files) and the `package.json` script surface (262 entries),
++Curated map of `scripts/` (268 files) and the `package.json` script surface (262 entries),
+ grouped by purpose. This is orientation, not an exhaustive per-file listing — the authoritative
+ command list is `package.json`, and `npm run docs:check-scripts` verifies every `npm run <x>`
+ referenced in docs resolves to a real script. `npm run docs:update` refreshes the exact counts above.
+ Every top-level `.mjs`/`.ts`/`.cjs` script is named below; the remaining files are fixtures, SQL,
+ subfolder helpers, and small shared helpers grouped rather than itemised.
+ 
+ > The two counts in the sentence above are generated facts, not prose. Keep them in the exact
+ > `(N files)` / `(N entries)` shape — tooling rewrites that sentence by regex.
+ 
+ Legend: **[live]** routine tooling · **[infra]** runner/guard plumbing · **[one-shot]** completed
+diff --git a/scripts/sync-site-content-corpus.ts b/scripts/sync-site-content-corpus.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..eeda997d18972d1585da030c00b8626eec0b6c2e
+--- /dev/null
++++ b/scripts/sync-site-content-corpus.ts
+@@ -0,0 +1,61 @@
++import { readFile } from "node:fs/promises";
++import { resolve } from "node:path";
++import { pathToFileURL } from "node:url";
++
++type ManifestRecord = {
++  logicalId: string;
++  contentHash: `sha256:${string}`;
++  lineageDigest: `sha256:${string}`;
++  eligible: boolean;
++};
++
++type Manifest = {
++  version: string;
++  registryVersion: string;
++  staticManifestDigest: `sha256:${string}`;
++  records: ManifestRecord[];
++};
++
++function option(args: readonly string[], name: string) {
++  const index = args.indexOf(name);
++  return index < 0 ? null : (args[index + 1] ?? null);
++}
++
++export async function runSiteContentSyncCli(args: readonly string[]) {
++  const manifestPath = option(args, "--manifest");
++  const write = args.includes("--write");
++  if (!manifestPath) throw new Error("--manifest <path> is required.");
++  if (write) {
++    throw new Error(
++      "Live site-content synchronization is unavailable in the source-only CLI; use the reviewed worker with target confirmation and recovery evidence.",
++    );
++  }
++  const manifest = JSON.parse(await readFile(resolve(manifestPath), "utf8")) as Manifest;
++  if (
++    manifest.version !== "clinical-kb-site-static-manifest-v1" ||
++    !/^sha256:[a-f0-9]{64}$/.test(manifest.staticManifestDigest) ||
++    !Array.isArray(manifest.records)
++  ) {
++    throw new Error("Invalid site-content manifest.");
++  }
++  const eligible = manifest.records.filter((record) => record.eligible);
++  if (
++    new Set(eligible.map((record) => record.logicalId)).size !== eligible.length ||
++    eligible.some(
++      (record) =>
++        !/^sha256:[a-f0-9]{64}$/.test(record.contentHash) || !/^sha256:[a-f0-9]{64}$/.test(record.lineageDigest),
++    )
++  ) {
++    throw new Error("Manifest eligible-record identities are invalid.");
++  }
++  process.stdout.write(
++    `${JSON.stringify({ mode: "dry-run", registryVersion: manifest.registryVersion, staticManifestDigest: manifest.staticManifestDigest, desired: eligible.length, changed: 0, unchanged: eligible.length, tombstoned: 0 })}\n`,
++  );
++}
++
++if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
++  void runSiteContentSyncCli(process.argv.slice(2)).catch((error: unknown) => {
++    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
++    process.exitCode = 1;
++  });
++}
+diff --git a/src/app/api/differentials/[slug]/route.ts b/src/app/api/differentials/[slug]/route.ts
+index fbc0f66eac6d9c9abe1c0c0e6c8e3413a3738d83..d4475daac5ed773414750643b7816ae98071c018 100644
+--- a/src/app/api/differentials/[slug]/route.ts
++++ b/src/app/api/differentials/[slug]/route.ts
+@@ -1,33 +1,26 @@
+ import { NextResponse } from "next/server";
+ import { z } from "zod";
+ 
+ import {
+   allowRateLimitInMemoryFallbackOnUnavailable,
+   consumeSubjectApiRateLimit,
+   rateLimitJsonResponse,
+ } from "@/lib/api-rate-limit";
+-import {
+-  deriveGovernanceFromSnapshot,
+-  normalizeDifferentialSlug,
+-  rowGovernance,
+-  rowToDifferentialRecord,
+-  rowToPresentationWorkflow,
+-  type DifferentialRecordRow,
+-} from "@/lib/differential-records";
+-import { ensureDifferentialsSeeded, loadDifferentialSnapshot } from "@/lib/differential-seed";
++import { deriveGovernanceFromSnapshot, normalizeDifferentialSlug } from "@/lib/differential-records";
++import { loadDifferentialSnapshot } from "@/lib/differential-seed";
+ import { getDifferentialDetailContext, getDifferentialRecord, getPresentationWorkflow } from "@/lib/differentials";
+ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
+ import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
+ import { jsonError } from "@/lib/http";
+-import { safeErrorLogDetails } from "@/lib/privacy";
+ import { publicAccessContext } from "@/lib/public-api-access";
++import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+ import { parseRequestQuery } from "@/lib/validation/query";
+ 
+ export const runtime = "nodejs";
+ 
+ const differentialDetailQuerySchema = z.object({
+   kind: z.enum(["presentation", "diagnosis"]).optional().default("diagnosis"),
+ });
+ 
+@@ -88,105 +81,61 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
+     const rateLimit = await consumeSubjectApiRateLimit({
+       supabase,
+       subject: access.rateLimitSubject,
+       bucket: "registry",
+       allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+     });
+     if (rateLimit.limited) {
+       return rateLimitJsonResponse("Differential requests are rate limited. Try again shortly.", rateLimit);
+     }
+ 
+-    if (!access.ownerId) {
+-      const snapshot = loadDifferentialSnapshot();
+-      const governance = deriveGovernanceFromSnapshot(snapshot);
+-      if (kind === "presentation") {
+-        const workflow = getPresentationWorkflow(normalizedSlug);
+-        if (!workflow) return notFoundResponse(normalizedSlug);
+-        return differentialResponse(
+-          {
+-            workflow,
+-            governance: { sourceStatus: governance.source_status, validationStatus: governance.validation_status },
+-            publicAccess: true,
++    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
++      domain: "differentials",
++      recordKind: kind,
++      slug: normalizedSlug,
++    });
++    if (publicSiteContent) {
++      const publication = publicSiteContent.records[0];
++      if (!publication) return notFoundResponse(normalizedSlug);
++      return differentialResponse(
++        {
++          [kind === "presentation" ? "workflow" : "record"]: publication.payload,
++          governance: publication.governance,
++          release: {
++            id: publicSiteContent.activeReleaseId,
++            epoch: publicSiteContent.changeEpoch,
++            state: publicSiteContent.state,
+           },
+-          { request, fixture: true },
+-        );
+-      }
+-      const record = getDifferentialRecord(normalizedSlug);
+-      if (!record) return notFoundResponse(normalizedSlug);
++        },
++        { request },
++      );
++    }
++    const snapshot = loadDifferentialSnapshot();
++    const governance = deriveGovernanceFromSnapshot(snapshot);
++    if (kind === "presentation") {
++      const workflow = getPresentationWorkflow(normalizedSlug);
++      if (!workflow) return notFoundResponse(normalizedSlug);
+       return differentialResponse(
+         {
+-          record,
+-          detailContext: getDifferentialDetailContext(record),
++          workflow,
+           governance: { sourceStatus: governance.source_status, validationStatus: governance.validation_status },
+-          publicAccess: true,
+         },
+         { request, fixture: true },
+       );
+     }
+-
+-    const fetchRecord = async () => {
+-      const { data, error } = await supabase
+-        .from("differential_records")
+-        .select(
+-          "id,owner_id,kind,slug,title,subtitle,status,clinical_hinge,tags,payload,source,source_status,validation_status,last_reviewed_at,review_due_at,created_at,updated_at",
+-        )
+-        .eq("owner_id", access.ownerId)
+-        .eq("kind", kind)
+-        .eq("slug", normalizedSlug)
+-        .maybeSingle();
+-      if (error) throw new Error(error.message);
+-      return (data as unknown as DifferentialRecordRow | null) ?? null;
+-    };
+-
+-    let row = await fetchRecord();
+-    if (!row) {
+-      const { count, error: countError } = await supabase
+-        .from("differential_records")
+-        .select("id", { count: "exact", head: true })
+-        .eq("owner_id", access.ownerId);
+-      if (countError) throw new Error(countError.message);
+-      if ((count ?? 0) === 0) {
+-        let seedError: unknown = null;
+-        try {
+-          await ensureDifferentialsSeeded(supabase, access.ownerId);
+-        } catch (error) {
+-          seedError = error;
+-          console.error("[differentials] auto-seed failed", safeErrorLogDetails(error));
+-        }
+-        row = await fetchRecord();
+-        if (!row && seedError) throw seedError;
+-      }
+-    }
+-    if (!row) return notFoundResponse(normalizedSlug);
+-
+-    if (kind === "presentation") {
+-      return differentialResponse({ workflow: rowToPresentationWorkflow(row), governance: rowGovernance(row) });
+-    }
+-
+-    // Owner rows can drift from the bundled snapshot, so the catalog-derived
+-    // context ships with the record the client will actually render.
+-    const record = rowToDifferentialRecord(row);
+-    const { data: ownerRowsData, error: ownerRowsError } = await supabase
+-      .from("differential_records")
+-      .select("*")
+-      .eq("owner_id", access.ownerId);
+-    if (ownerRowsError) throw new Error(ownerRowsError.message);
+-    const ownerRows = (ownerRowsData as DifferentialRecordRow[] | null) ?? [];
+-    const ownerRecords = ownerRows.filter((entry) => entry.kind === "diagnosis").map(rowToDifferentialRecord);
+-    const ownerPresentations = ownerRows
+-      .filter((entry) => entry.kind === "presentation")
+-      .map(rowToPresentationWorkflow);
+-    return differentialResponse({
+-      record,
+-      detailContext: getDifferentialDetailContext(record, {
+-        records: ownerRecords,
+-        presentations: ownerPresentations,
+-      }),
+-      governance: rowGovernance(row),
+-    });
++    const publicSiteContentRecord = getDifferentialRecord(normalizedSlug);
++    if (!publicSiteContentRecord) return notFoundResponse(normalizedSlug);
++    return differentialResponse(
++      {
++        record: publicSiteContentRecord,
++        detailContext: getDifferentialDetailContext(publicSiteContentRecord),
++        governance: { sourceStatus: governance.source_status, validationStatus: governance.validation_status },
++      },
++      { request, fixture: true },
++    );
+   } catch (error) {
+     if (error instanceof AuthenticationError) {
+       return unauthorizedResponse();
+     }
+     return jsonError(error);
+   }
+ }
+diff --git a/src/app/api/differentials/presentations/[slug]/route.ts b/src/app/api/differentials/presentations/[slug]/route.ts
+index a4ccc4744850c9f2947038c4e1c6d098a098e24a..18a4f6c545d5a815dd9bdb2a0522e68230ee0735 100644
+--- a/src/app/api/differentials/presentations/[slug]/route.ts
++++ b/src/app/api/differentials/presentations/[slug]/route.ts
+@@ -1,32 +1,25 @@
+ import { NextResponse } from "next/server";
+ 
+ import {
+   allowRateLimitInMemoryFallbackOnUnavailable,
+   consumeSubjectApiRateLimit,
+   rateLimitJsonResponse,
+ } from "@/lib/api-rate-limit";
+-import {
+-  deriveGovernanceFromSnapshot,
+-  normalizeDifferentialSlug,
+-  rowGovernance,
+-  rowToDifferentialRecord,
+-  rowToPresentationWorkflow,
+-  type DifferentialRecordRow,
+-} from "@/lib/differential-records";
+-import { ensureDifferentialsSeeded, loadDifferentialSnapshot } from "@/lib/differential-seed";
++import { deriveGovernanceFromSnapshot, normalizeDifferentialSlug } from "@/lib/differential-records";
++import { loadDifferentialSnapshot } from "@/lib/differential-seed";
+ import { getDifferentialRecord, getPresentationWorkflow } from "@/lib/differentials";
+ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
+ import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
+ import { jsonError } from "@/lib/http";
+-import { safeErrorLogDetails } from "@/lib/privacy";
+ import { publicAccessContext } from "@/lib/public-api-access";
++import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+ 
+ export const runtime = "nodejs";
+ 
+ function differentialResponse(
+   payload: Record<string, unknown>,
+   init: { status?: number; request?: Request; fixture?: boolean } = {},
+ ) {
+   return NextResponse.json(payload, {
+@@ -74,98 +67,57 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
+     const rateLimit = await consumeSubjectApiRateLimit({
+       supabase,
+       subject: access.rateLimitSubject,
+       bucket: "registry",
+       allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+     });
+     if (rateLimit.limited) {
+       return rateLimitJsonResponse("Differential requests are rate limited. Try again shortly.", rateLimit);
+     }
+ 
+-    if (!access.ownerId) {
+-      const snapshot = loadDifferentialSnapshot();
+-      const workflow = getPresentationWorkflow(normalizedSlug);
+-      if (!workflow) return notFoundResponse(normalizedSlug);
+-      const governance = deriveGovernanceFromSnapshot(snapshot);
+-      const candidates = workflow.candidates.flatMap((candidate) => {
+-        const record = getDifferentialRecord(candidate.slug);
+-        if (!record) return [];
+-        return [{ ...candidate, record }];
+-      });
++    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
++      domain: "differentials",
++      recordKind: "presentation",
++      slug: normalizedSlug,
++    });
++    if (publicSiteContent) {
++      const publication = publicSiteContent.records[0];
++      if (!publication) return notFoundResponse(normalizedSlug);
+       return differentialResponse(
+         {
+-          workflow,
+-          candidates,
+-          governance: { sourceStatus: governance.source_status, validationStatus: governance.validation_status },
+-          publicAccess: true,
++          workflow: publication.payload,
++          candidates: [],
++          governance: publication.governance,
++          release: {
++            id: publicSiteContent.activeReleaseId,
++            epoch: publicSiteContent.changeEpoch,
++            state: publicSiteContent.state,
++          },
+         },
+-        { request, fixture: true },
++        { request },
+       );
+     }
+-
+-    const fetchPresentation = async () => {
+-      const { data, error } = await supabase
+-        .from("differential_records")
+-        .select("*")
+-        .eq("owner_id", access.ownerId)
+-        .eq("kind", "presentation")
+-        .eq("slug", normalizedSlug)
+-        .maybeSingle();
+-      if (error) throw new Error(error.message);
+-      return (data as DifferentialRecordRow | null) ?? null;
+-    };
+-
+-    let row = await fetchPresentation();
+-    if (!row) {
+-      const { count, error: countError } = await supabase
+-        .from("differential_records")
+-        .select("id", { count: "exact", head: true })
+-        .eq("owner_id", access.ownerId);
+-      if (countError) throw new Error(countError.message);
+-      if ((count ?? 0) === 0) {
+-        let seedError: unknown = null;
+-        try {
+-          await ensureDifferentialsSeeded(supabase, access.ownerId);
+-        } catch (error) {
+-          seedError = error;
+-          console.error("[differentials] auto-seed failed", safeErrorLogDetails(error));
+-        }
+-        row = await fetchPresentation();
+-        if (!row && seedError) throw seedError;
+-      }
+-    }
+-    if (!row) return notFoundResponse(normalizedSlug);
+-
+-    const workflow = rowToPresentationWorkflow(row);
+-    const candidateSlugs = workflow.candidates.map((candidate) => candidate.slug);
+-    const { data: diagnosisRows, error: diagnosisError } = await supabase
+-      .from("differential_records")
+-      .select("*")
+-      .eq("owner_id", access.ownerId)
+-      .eq("kind", "diagnosis")
+-      .in("slug", candidateSlugs);
+-    if (diagnosisError) throw new Error(diagnosisError.message);
+-
+-    const diagnosisBySlug = new Map(
+-      ((diagnosisRows ?? []) as DifferentialRecordRow[]).map((diagnosisRow) => [
+-        diagnosisRow.slug,
+-        rowToDifferentialRecord(diagnosisRow),
+-      ]),
+-    );
++    // Resolve the canonical public presentation regardless of reader identity.
++    const snapshot = loadDifferentialSnapshot();
++    const workflow = getPresentationWorkflow(normalizedSlug);
++    if (!workflow) return notFoundResponse(normalizedSlug);
++    const governance = deriveGovernanceFromSnapshot(snapshot);
+     const candidates = workflow.candidates.flatMap((candidate) => {
+-      const record = diagnosisBySlug.get(candidate.slug) ?? getDifferentialRecord(candidate.slug);
++      const record = getDifferentialRecord(candidate.slug);
+       if (!record) return [];
+       return [{ ...candidate, record }];
+     });
+-
+-    return differentialResponse({
+-      workflow,
+-      candidates,
+-      governance: rowGovernance(row),
+-    });
++    return differentialResponse(
++      {
++        workflow,
++        candidates,
++        governance: { sourceStatus: governance.source_status, validationStatus: governance.validation_status },
++      },
++      { request, fixture: true },
++    );
+   } catch (error) {
+     if (error instanceof AuthenticationError) {
+       return unauthorizedResponse();
+     }
+     return jsonError(error);
+   }
+ }
+diff --git a/src/app/api/differentials/route.ts b/src/app/api/differentials/route.ts
+index ae455930374ad7fd0a91a281be2232f9a85ca4d1..48cbfd568ea5f3d86c9948b75ad5a63a588f56c3 100644
+--- a/src/app/api/differentials/route.ts
++++ b/src/app/api/differentials/route.ts
+@@ -1,45 +1,38 @@
+ import { NextResponse } from "next/server";
+ import { z } from "zod";
+ 
+ import {
+   allowRateLimitInMemoryFallbackOnUnavailable,
+   consumeSubjectApiRateLimit,
+   rateLimitJsonResponse,
+ } from "@/lib/api-rate-limit";
+-import {
+-  deriveGovernanceFromSnapshot,
+-  rowGovernance,
+-  rowToDifferentialRecord,
+-  rowToPresentationWorkflow,
+-  type DifferentialRecordKind,
+-} from "@/lib/differential-records";
+-import { fetchOwnerDifferentialRowsWithSeed, loadDifferentialSnapshot } from "@/lib/differential-seed";
++import { deriveGovernanceFromSnapshot, type DifferentialRecordKind } from "@/lib/differential-records";
++import { loadDifferentialSnapshot } from "@/lib/differential-seed";
+ import {
+   differentialRecords,
+   rankDifferentialRecords,
+   rankPresentationWorkflows,
+   type DifferentialPresentationMatch,
+   type DifferentialRecordMatch,
+ } from "@/lib/differentials";
+ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
+ import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
+ import { jsonError } from "@/lib/http";
+ import { publicAccessContext } from "@/lib/public-api-access";
++import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+ import { parseRequestQuery, queryInteger } from "@/lib/validation/query";
+ 
+ export const runtime = "nodejs";
+ 
+-const DIFFERENTIAL_MAX_RECORDS = 500;
+-
+ const differentialListQuerySchema = z.object({
+   kind: z.enum(["presentation", "diagnosis"]).optional().default("diagnosis"),
+   q: z
+     .string()
+     .trim()
+     .max(200)
+     .optional()
+     .transform((value) => (value ? value : undefined)),
+   limit: queryInteger({ fallback: 100, min: 1, max: 200 }),
+ });
+@@ -104,48 +97,42 @@ export async function GET(request: Request) {
+     const rateLimit = await consumeSubjectApiRateLimit({
+       supabase,
+       subject: access.rateLimitSubject,
+       bucket: "registry",
+       allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+     });
+     if (rateLimit.limited) {
+       return rateLimitJsonResponse("Differential requests are rate limited. Try again shortly.", rateLimit);
+     }
+ 
+-    if (!access.ownerId) {
++    // Authentication affects only rate-limit identity. Every reader receives
++    // the same canonical public differential payload.
++    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
++      domain: "differentials",
++      recordKind: kind,
++    });
++    if (publicSiteContent) {
++      const values = publicSiteContent.records.map((entry) => entry.payload);
+       return differentialResponse(
+         {
+-          ...publicDifferentialPayload(kind, q, limit),
+-          publicAccess: true,
++          [kind === "presentation" ? "presentations" : "records"]: values,
++          total: values.length,
++          governance: Object.fromEntries(
++            publicSiteContent.records.map((entry) => [entry.logical_id, entry.governance]),
++          ),
++          release: {
++            id: publicSiteContent.activeReleaseId,
++            epoch: publicSiteContent.changeEpoch,
++            state: publicSiteContent.state,
++          },
+         },
+-        { request, fixture: true },
++        { request },
+       );
+     }
+-
+-    const rows = await fetchOwnerDifferentialRowsWithSeed(supabase, access.ownerId, kind, DIFFERENTIAL_MAX_RECORDS);
+-
+-    if (kind === "presentation") {
+-      const presentations = rows.map(rowToPresentationWorkflow);
+-      const ranked = q ? rankPresentationWorkflows(presentations, q, limit) : null;
+-      return differentialResponse({
+-        presentations: ranked ? ranked.map((match) => match.workflow) : presentations,
+-        matches: ranked ? presentationMatchesPayload(ranked) : undefined,
+-        total: rows.length,
+-        governance: Object.fromEntries(rows.map((row) => [row.slug, rowGovernance(row)])),
+-      });
+-    }
+-
+-    const records = rows.map(rowToDifferentialRecord);
+-    const ranked = q ? rankDifferentialRecords(records, q, limit) : null;
+-    return differentialResponse({
+-      records: ranked ? ranked.map((match) => match.record) : records,
+-      matches: ranked ? recordMatchesPayload(ranked) : undefined,
+-      total: rows.length,
+-      governance: Object.fromEntries(rows.map((row) => [row.slug, rowGovernance(row)])),
+-    });
++    return differentialResponse(publicDifferentialPayload(kind, q, limit), { request, fixture: true });
+   } catch (error) {
+     if (error instanceof AuthenticationError) {
+       return unauthorizedResponse();
+     }
+     return jsonError(error);
+   }
+ }
+diff --git a/src/app/api/medications/[slug]/route.ts b/src/app/api/medications/[slug]/route.ts
+index a02dfaebe88725f21da77ecc3105b0018b4921dd..8058c979444b7c481b5714ffb5f3812446868ad1 100644
+--- a/src/app/api/medications/[slug]/route.ts
++++ b/src/app/api/medications/[slug]/route.ts
+@@ -2,30 +2,23 @@ import { NextResponse } from "next/server";
+ 
+ import {
+   allowRateLimitInMemoryFallbackOnUnavailable,
+   consumeSubjectApiRateLimit,
+   rateLimitJsonResponse,
+ } from "@/lib/api-rate-limit";
+ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
+ import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
+ import { jsonError } from "@/lib/http";
+ import { getMedicationRecord } from "@/lib/medication-snapshot";
+-import { ensureMedicationsSeeded } from "@/lib/medication-seed";
+-import { safeErrorLogDetails } from "@/lib/privacy";
+-import {
+-  deriveGovernanceFromSections,
+-  normalizeMedicationSlug,
+-  rowGovernance,
+-  rowToMedicationRecord,
+-  type MedicationRecordRow,
+-} from "@/lib/medication-records";
++import { deriveGovernanceFromSections, normalizeMedicationSlug } from "@/lib/medication-records";
+ import { publicAccessContext } from "@/lib/public-api-access";
++import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+ 
+ export const runtime = "nodejs";
+ 
+ function medicationResponse(
+   payload: Record<string, unknown>,
+   init: { status?: number; request?: Request; fixture?: boolean } = {},
+ ) {
+   return NextResponse.json(payload, {
+@@ -77,65 +70,41 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
+     const rateLimit = await consumeSubjectApiRateLimit({
+       supabase,
+       subject: access.rateLimitSubject,
+       bucket: "registry",
+       allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+     });
+     if (rateLimit.limited) {
+       return rateLimitJsonResponse("Medication requests are rate limited. Try again shortly.", rateLimit);
+     }
+ 
+-    if (!access.ownerId) {
+-      const payload = publicMedicationDetailPayload(normalizedSlug);
+-      if (!payload) return notFoundResponse(normalizedSlug);
++    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
++      domain: "medications",
++      slug: normalizedSlug,
++    });
++    if (publicSiteContent) {
++      const publication = publicSiteContent.records[0];
++      if (!publication) return notFoundResponse(normalizedSlug);
+       return medicationResponse(
+         {
+-          ...payload,
++          record: publication.payload,
++          governance: publication.governance,
++          release: {
++            id: publicSiteContent.activeReleaseId,
++            epoch: publicSiteContent.changeEpoch,
++            state: publicSiteContent.state,
++          },
+           publicAccess: true,
+         },
+-        { request, fixture: true },
++        { request },
+       );
+     }
+-
+-    const fetchRecord = async () => {
+-      const { data, error } = await supabase
+-        .from("medication_records")
+-        .select("*")
+-        .eq("owner_id", access.ownerId)
+-        .eq("slug", normalizedSlug)
+-        .maybeSingle();
+-      if (error) throw new Error(error.message);
+-      return (data as MedicationRecordRow | null) ?? null;
+-    };
+-
+-    let row = await fetchRecord();
+-    if (!row) {
+-      const { count, error: countError } = await supabase
+-        .from("medication_records")
+-        .select("id", { count: "exact", head: true })
+-        .eq("owner_id", access.ownerId);
+-      if (countError) throw new Error(countError.message);
+-      if ((count ?? 0) === 0) {
+-        let seedError: unknown = null;
+-        try {
+-          await ensureMedicationsSeeded(supabase, access.ownerId);
+-        } catch (error) {
+-          seedError = error;
+-          console.error("[medications] auto-seed failed", safeErrorLogDetails(error));
+-        }
+-        row = await fetchRecord();
+-        if (!row && seedError) throw seedError;
+-      }
+-    }
+-    if (!row) return notFoundResponse(normalizedSlug);
+-
+-    return medicationResponse({
+-      record: rowToMedicationRecord(row),
+-      governance: rowGovernance(row),
+-    });
++    const publicSiteContentPayload = publicMedicationDetailPayload(normalizedSlug);
++    if (!publicSiteContentPayload) return notFoundResponse(normalizedSlug);
++    return medicationResponse({ ...publicSiteContentPayload, publicAccess: true }, { request, fixture: true });
+   } catch (error) {
+     if (error instanceof AuthenticationError) {
+       return unauthorizedResponse();
+     }
+     return jsonError(error);
+   }
+ }
+diff --git a/src/app/api/medications/route.ts b/src/app/api/medications/route.ts
+index 7ff245ab5252ec0472ad18036f140d7c469b70e0..a58368862752188f5739c4469317c746ee9acdcc 100644
+--- a/src/app/api/medications/route.ts
++++ b/src/app/api/medications/route.ts
+@@ -2,43 +2,37 @@ import { NextResponse } from "next/server";
+ import { z } from "zod";
+ 
+ import {
+   allowRateLimitInMemoryFallbackOnUnavailable,
+   consumeSubjectApiRateLimit,
+   rateLimitJsonResponse,
+ } from "@/lib/api-rate-limit";
+ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
+ import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
+ import { jsonError } from "@/lib/http";
+-import { defaultMedicationRecords, fetchOwnerMedicationRowsWithSeed } from "@/lib/medication-seed";
+-import {
+-  medicationSourceStatus,
+-  medicationValidationStatus,
+-  rowGovernance,
+-  rowToMedicationRecord,
+-} from "@/lib/medication-records";
++import { defaultMedicationRecords } from "@/lib/medication-seed";
++import { medicationSourceStatus, medicationValidationStatus } from "@/lib/medication-records";
+ import { medicationCatalogInterpretation, searchMedicationCatalog } from "@/lib/medication-query";
+ import {
+   medicationBrandNames,
+   medicationToSearchResult,
+   type MedicationRecord,
+   type MedicationSearchMatch,
+ } from "@/lib/medications";
+ import { publicAccessContext } from "@/lib/public-api-access";
++import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+ import { parseRequestQuery, queryInteger } from "@/lib/validation/query";
+ 
+ export const runtime = "nodejs";
+ 
+-const MEDICATION_MAX_RECORDS = 500;
+-
+ const medicationListQuerySchema = z.object({
+   q: z
+     .string()
+     .trim()
+     .max(200)
+     .optional()
+     .transform((value) => (value ? value : undefined)),
+   limit: queryInteger({ fallback: 50, min: 1, max: 100 }),
+   fields: z.enum(["index"]).optional(),
+ });
+@@ -175,40 +169,49 @@ export async function GET(request: Request) {
+     const rateLimit = await consumeSubjectApiRateLimit({
+       supabase,
+       subject: access.rateLimitSubject,
+       bucket: "registry",
+       allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+     });
+     if (rateLimit.limited) {
+       return rateLimitJsonResponse("Medication requests are rate limited. Try again shortly.", rateLimit);
+     }
+ 
+-    if (!access.ownerId) {
++    // Canonical public site-content is identity-independent; actor-owned legacy
++    // rows cannot override the published medication catalogue.
++    const publicSiteContent = await readPublicSiteContentPartition<MedicationRecord>(supabase, {
++      domain: "medications",
++    });
++    if (publicSiteContent) {
++      const fullRecords = publicSiteContent.records.map((entry) => entry.payload);
++      const records = fields === "index" ? toIndexRecords(fullRecords) : fullRecords;
++      const ranked = q ? rankCatalogMatches(fullRecords, q, limit, fields === "index") : undefined;
+       return medicationResponse(
+         {
+-          ...publicMedicationPayload(q, limit, fields),
++          records,
++          matches: ranked?.matches,
++          interpretation: ranked?.interpretation,
++          total: records.length,
++          governance: Object.fromEntries(
++            publicSiteContent.records.map((entry) => [entry.payload.slug, entry.governance]),
++          ),
++          release: {
++            id: publicSiteContent.activeReleaseId,
++            epoch: publicSiteContent.changeEpoch,
++            state: publicSiteContent.state,
++          },
+           publicAccess: true,
+         },
+-        { request, fixture: true },
++        { request },
+       );
+     }
+-
+-    const rows = await fetchOwnerMedicationRowsWithSeed(supabase, access.ownerId, MEDICATION_MAX_RECORDS);
+-    const fullRecords = rows.map(rowToMedicationRecord);
+-    const records = fields === "index" ? toIndexRecords(fullRecords) : fullRecords;
+-    const governanceBySlug = Object.fromEntries(rows.map((row) => [row.slug, rowGovernance(row)]));
+-    const ranked = q ? rankCatalogMatches(fullRecords, q, limit, fields === "index") : undefined;
+-
+-    return medicationResponse({
+-      records,
+-      matches: ranked?.matches,
+-      interpretation: ranked?.interpretation,
+-      total: rows.length,
+-      governance: governanceBySlug,
+-    });
++    return medicationResponse(
++      { ...publicMedicationPayload(q, limit, fields), publicAccess: true },
++      { request, fixture: true },
++    );
+   } catch (error) {
+     if (error instanceof AuthenticationError) {
+       return unauthorizedResponse();
+     }
+     return jsonError(error);
+   }
+ }
+diff --git a/src/app/api/registry/records/[slug]/route.ts b/src/app/api/registry/records/[slug]/route.ts
+index 44d8f372d8790a8c278c4dd0575accb2f5a3051d..c1ea875f6d15277d728509a63f207d50506b89d9 100644
+--- a/src/app/api/registry/records/[slug]/route.ts
++++ b/src/app/api/registry/records/[slug]/route.ts
+@@ -4,28 +4,23 @@ import { z } from "zod";
+ import {
+   allowRateLimitInMemoryFallbackOnUnavailable,
+   consumeSubjectApiRateLimit,
+   rateLimitJsonResponse,
+ } from "@/lib/api-rate-limit";
+ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
+ import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
+ import { jsonError } from "@/lib/http";
+ import { publicAccessContext } from "@/lib/public-api-access";
+ import { getFormRecord } from "@/lib/forms";
+-import {
+-  deriveGovernanceColumns,
+-  normalizeRegistrySlug,
+-  rowGovernance,
+-  type RegistryRecordRow,
+-} from "@/lib/registry-records";
+-import { mergeRegistryRecordWithDefault } from "@/lib/registry-seed";
++import { deriveGovernanceColumns, normalizeRegistrySlug } from "@/lib/registry-records";
+ import { getServiceRecord } from "@/lib/services";
++import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+ import { parseRequestQuery } from "@/lib/validation/query";
+ 
+ export const runtime = "nodejs";
+ 
+ const registryDetailQuerySchema = z.object({
+   kind: z.enum(["service", "form"]),
+ });
+ 
+@@ -81,74 +76,45 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
+     const rateLimit = await consumeSubjectApiRateLimit({
+       supabase,
+       subject: access.rateLimitSubject,
+       bucket: "registry",
+       allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+     });
+     if (rateLimit.limited) {
+       return rateLimitJsonResponse("Registry requests are rate limited. Try again shortly.", rateLimit);
+     }
+ 
+-    if (!access.ownerId) {
+-      const payload = publicRegistryDetailPayload(kind, normalizedSlug);
+-      if (!payload) return notFoundResponse(normalizedSlug);
++    // Authentication affects only rate-limit identity. The canonical public
++    // record and governance metadata are identical for every reader.
++    const publicSiteContent = await readPublicSiteContentPartition<Record<string, unknown>>(supabase, {
++      domain: kind === "form" ? "forms" : "services",
++      recordKind: kind,
++      slug: normalizedSlug,
++    });
++    if (publicSiteContent) {
++      const publication = publicSiteContent.records[0];
++      if (!publication) return notFoundResponse(normalizedSlug);
+       return registryResponse(
+         {
+-          ...payload,
++          record: publication.payload,
++          governance: publication.governance,
++          linkedDocuments: [],
++          release: {
++            id: publicSiteContent.activeReleaseId,
++            epoch: publicSiteContent.changeEpoch,
++            state: publicSiteContent.state,
++          },
+           publicAccess: true,
+         },
+-        { request, fixture: true },
++        { request },
+       );
+     }
+-
+-    const fetchRecord = async () => {
+-      const { data, error } = await supabase
+-        .from("clinical_registry_records")
+-        .select("*")
+-        .eq("owner_id", access.ownerId)
+-        .eq("kind", kind)
+-        .eq("slug", normalizedSlug)
+-        .maybeSingle();
+-      if (error) throw new Error(error.message);
+-      return (data as RegistryRecordRow | null) ?? null;
+-    };
+-
+-    const row = await fetchRecord();
+-    if (!row) {
+-      const payload = publicRegistryDetailPayload(kind, normalizedSlug);
+-      if (!payload) return notFoundResponse(normalizedSlug);
+-      return registryResponse({ ...payload, sharedCatalog: true });
+-    }
+-
+-    const { data: links, error: linksError } = await supabase
+-      .from("clinical_registry_record_sources")
+-      .select("document_id, note")
+-      .eq("owner_id", access.ownerId)
+-      .eq("record_id", row.id);
+-    if (linksError) throw new Error(linksError.message);
+-
+-    let linkedDocuments: Array<{ id: string; title: string; file_name: string; status: string }> = [];
+-    const documentIds = (links ?? []).map((link) => link.document_id);
+-    if (documentIds.length > 0) {
+-      const { data: documents, error: documentsError } = await supabase
+-        .from("documents")
+-        .select("id, title, file_name, status")
+-        .eq("owner_id", access.ownerId)
+-        .in("id", documentIds);
+-      if (documentsError) throw new Error(documentsError.message);
+-      linkedDocuments = (documents ?? []) as typeof linkedDocuments;
+-    }
+-
+-    const record = mergeRegistryRecordWithDefault(kind, row);
+-
+-    return registryResponse({
+-      record,
+-      governance: rowGovernance(row),
+-      linkedDocuments,
+-    });
++    const publicSiteContentPayload = publicRegistryDetailPayload(kind, normalizedSlug);
++    if (!publicSiteContentPayload) return notFoundResponse(normalizedSlug);
++    return registryResponse({ ...publicSiteContentPayload, publicAccess: true }, { request, fixture: true });
+   } catch (error) {
+     if (error instanceof AuthenticationError) {
+       return unauthorizedResponse();
+     }
+     return jsonError(error);
+   }
+ }
+diff --git a/src/app/api/registry/records/route.ts b/src/app/api/registry/records/route.ts
+index 6176e3838fd13fd91a5ffb5e13e82289629ffd1a..290ac0666b8a8c92f68718522bfc079bdd262186 100644
+--- a/src/app/api/registry/records/route.ts
++++ b/src/app/api/registry/records/route.ts
+@@ -7,37 +7,32 @@ import {
+   allowRateLimitInMemoryFallbackOnUnavailable,
+   consumeSubjectApiRateLimit,
+   rateLimitJsonResponse,
+ } from "@/lib/api-rate-limit";
+ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
+ import { fixtureResponseHeaders } from "@/lib/fixture-response-cache";
+ import { jsonError } from "@/lib/http";
+ import { publicAccessContext } from "@/lib/public-api-access";
+ import { rankFormRecords, formRecords } from "@/lib/forms";
+ import { deriveGovernanceColumns, type RegistryRecordKind } from "@/lib/registry-records";
+-import {
+-  fetchOwnerRegistryRows,
+-  mergeRegistryGovernanceWithDefaults,
+-  mergeRegistryRecordsWithDefaults,
+-} from "@/lib/registry-seed";
++import { readPublicSiteContentPartition } from "@/lib/site-content/public-site-content";
+ import { rankServiceRecords, serviceRecords, type ServiceRecord } from "@/lib/services";
+ import { createAdminClient } from "@/lib/supabase/admin";
+ import { AuthenticationError, unauthorizedResponse } from "@/lib/supabase/auth";
+ import { parseRequestQuery, queryInteger } from "@/lib/validation/query";
+ 
+ export const runtime = "nodejs";
+ 
+ // Full/search views return the entire curated owner set so client-side result
+ // ranking cannot hide rows past an arbitrary cap. Summary views return counts
+ // only. This ceiling is a defensive bound above realistic registry sizes;
+ // `limit` only bounds ranked `matches` for an explicit `q` query.
+-const REGISTRY_MAX_RECORDS = 500;
+ const REGISTRY_COMPRESSION_THRESHOLD_BYTES = 1_024;
+ const gzipAsync = promisify(gzip);
+ 
+ type RegistryListView = "full" | "search" | "summary";
+ 
+ const registryListQuerySchema = z.object({
+   kind: z.enum(["service", "form"]),
+   q: z
+     .string()
+     .trim()
+@@ -177,32 +172,45 @@ export async function GET(request: Request) {
+     const rateLimit = await consumeSubjectApiRateLimit({
+       supabase,
+       subject: access.rateLimitSubject,
+       bucket: "registry",
+       allowInMemoryFallbackOnUnavailable: allowRateLimitInMemoryFallbackOnUnavailable(),
+     });
+     if (rateLimit.limited) {
+       return rateLimitJsonResponse("Registry requests are rate limited. Try again shortly.", rateLimit);
+     }
+ 
+-    if (!access.ownerId) {
++    // Authentication affects only rate-limit identity. Every reader resolves the
++    // same canonical public payload; actor-owned legacy rows are never a visibility input.
++    const publicSiteContent = await readPublicSiteContentPartition<ServiceRecord>(supabase, {
++      domain: kind === "form" ? "forms" : "services",
++      recordKind: kind,
++    });
++    if (publicSiteContent) {
++      const records = publicSiteContent.records.map((entry) => entry.payload);
++      const governance = Object.fromEntries(
++        publicSiteContent.records.map((entry) => [entry.payload.slug, entry.governance]),
++      ) as Record<string, { validationStatus: string }>;
+       return await registryResponse(
+         {
+-          ...publicRegistryPayload(kind, q, limit, view),
++          ...registryListPayload(kind, records, governance, q, limit, view),
++          release: {
++            id: publicSiteContent.activeReleaseId,
++            epoch: publicSiteContent.changeEpoch,
++            state: publicSiteContent.state,
++          },
+           publicAccess: true,
+         },
+-        { request, fixture: true },
++        { request },
+       );
+     }
+-
+-    const rows = await fetchOwnerRegistryRows(supabase, access.ownerId, kind, REGISTRY_MAX_RECORDS);
+-    const records = mergeRegistryRecordsWithDefaults(kind, rows);
+-    const governanceBySlug = mergeRegistryGovernanceWithDefaults(kind, rows);
+-
+-    return await registryResponse(registryListPayload(kind, records, governanceBySlug, q, limit, view), { request });
++    return await registryResponse(
++      { ...publicRegistryPayload(kind, q, limit, view), publicAccess: true },
++      { request, fixture: true },
++    );
+   } catch (error) {
+     if (error instanceof AuthenticationError) {
+       return unauthorizedResponse();
+     }
+     return jsonError(error);
+   }
+ }
+diff --git a/src/lib/differential-seed.ts b/src/lib/differential-seed.ts
+index dda59fc4b20914f834ed7b26cec0f08048b8ce60..90a49aadf0585690d56af36e8d295c99a878b358 100644
+--- a/src/lib/differential-seed.ts
++++ b/src/lib/differential-seed.ts
+@@ -1,36 +1,29 @@
+ import { buildDefaultDifferentialRows, loadDifferentialSnapshot } from "@/lib/differential-fixtures";
+ import { type DifferentialRecordRow } from "@/lib/differential-records";
+ import { safeErrorLogDetails } from "@/lib/privacy";
+ 
+ type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>;
+ 
+-function loadRegistryCorpus() {
+-  return import("@/lib/registry-corpus");
+-}
+-
+ export { loadDifferentialSnapshot } from "@/lib/differential-fixtures";
+ 
+ export async function ensureDifferentialsSeeded(
+   supabase: AdminClient,
+   ownerId: string,
+ ): Promise<DifferentialRecordRow[]> {
+   const rows = buildDefaultDifferentialRows(ownerId);
+   const { data, error } = await supabase
+     .from("differential_records")
+     .upsert(rows, { onConflict: "owner_id,kind,slug" })
+     .select("*");
+   if (error) throw new Error(`Differential seed failed: ${error.message}`);
+-  const seededRows = (data ?? []) as DifferentialRecordRow[];
+-  const { bestEffortSyncDifferentialRows } = await loadRegistryCorpus();
+-  await bestEffortSyncDifferentialRows(supabase, seededRows);
+-  return seededRows;
++  return (data ?? []) as DifferentialRecordRow[];
+ }
+ 
+ export async function fetchOwnerDifferentialRowsWithSeed(
+   supabase: AdminClient,
+   ownerId: string,
+   kind: DifferentialRecordRow["kind"],
+   maxRecords = 500,
+ ): Promise<DifferentialRecordRow[]> {
+   const fetchRecords = async () => {
+     const { data, error } = await supabase
+diff --git a/src/lib/medication-seed.ts b/src/lib/medication-seed.ts
+index 239264fe9aeefa6788c1a005154f75958f76ee2b..fc9c8cc15c5de10fb57c126aab93d6da6168c1f6 100644
+--- a/src/lib/medication-seed.ts
++++ b/src/lib/medication-seed.ts
+@@ -1,21 +1,17 @@
+ import { buildDefaultMedicationRows, defaultMedicationRecords } from "@/lib/medication-fixtures";
+ import { type MedicationRecordInsert, type MedicationRecordRow } from "@/lib/medication-records";
+ import { invalidateOwnerCatalogueCache } from "@/lib/owner-catalogue-cache";
+ import { safeErrorLogDetails } from "@/lib/privacy";
+ 
+ type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>;
+ 
+-function loadRegistryCorpus() {
+-  return import("@/lib/registry-corpus");
+-}
+-
+ type OwnerMedicationFetchOptions = {
+   signal?: AbortSignal;
+   select?: string;
+ };
+ 
+ function throwIfAborted(signal?: AbortSignal) {
+   if (!signal?.aborted) return;
+   throw signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted.", "AbortError");
+ }
+ 
+@@ -28,25 +24,21 @@ export async function ensureMedicationsSeeded(
+   ownerId: string,
+   options: Pick<OwnerMedicationFetchOptions, "signal"> = {},
+ ): Promise<MedicationRecordRow[]> {
+   const rows = buildMedicationSeedRows(ownerId);
+   let query = supabase.from("medication_records").upsert(rows, { onConflict: "owner_id,slug" }).select("*");
+   if (options.signal) query = query.abortSignal(options.signal);
+   const { data, error } = await query;
+   if (error) throw new Error(`Medication seed failed: ${error.message}`);
+   invalidateOwnerCatalogueCache({ ownerId, kind: "medication", preserveSignal: options.signal });
+   throwIfAborted(options.signal);
+-  const seededRows = (data ?? []) as MedicationRecordRow[];
+-  const { bestEffortSyncMedicationRows } = await loadRegistryCorpus();
+-  await bestEffortSyncMedicationRows(supabase, seededRows);
+-  throwIfAborted(options.signal);
+-  return seededRows;
++  return (data ?? []) as MedicationRecordRow[];
+ }
+ 
+ export { defaultMedicationRecords };
+ 
+ /**
+  * Fetch an owner's medication rows, lazily seeding the curated defaults on the
+  * first visit (extracted from /api/medications so the route and universal
+  * search share one code path). Seed write is best-effort; re-read is not.
+  */
+ export async function fetchOwnerMedicationRowsWithSeed(
+diff --git a/src/lib/registry-corpus.ts b/src/lib/registry-corpus.ts
+index b1e0007a512534a95d9f5232372540462075a434..41c9f9562e9490185b9840bce3ab225b6375ed71 100644
+--- a/src/lib/registry-corpus.ts
++++ b/src/lib/registry-corpus.ts
+@@ -399,21 +399,25 @@ async function reconcileRegistryGeneratedLabels(
+       confidence: existing?.confidence ?? expected.confidence,
+       metadata: mergeRegistryGeneratedLabelMetadata(existing?.metadata ?? null, expected.metadata ?? null),
+     };
+   });
+   const { error: upsertError } = await supabase
+     .from("document_labels")
+     .upsert(expectedIntentLabels, { onConflict: "document_id,label_type,label,source" });
+   if (upsertError) throw new Error(`Registry intent label upsert failed: ${upsertError.message}`);
+ }
+ 
+-/** Registry corpus embedding enabled. */
++/**
++ * Temporary compatibility flag for explicit legacy maintenance only.
++ * Public request/save paths use the durable site-content publication outbox
++ * and must never invoke these best-effort embedding helpers.
++ */
+ export function registryCorpusEmbeddingEnabled() {
+   return env.RAG_REGISTRY_CORPUS_EMBEDDING === true;
+ }
+ 
+ /** Clinical registry rows to corpus entries. */
+ export function clinicalRegistryRowsToCorpusEntries(rows: RegistryRecordRow[]): RegistryCorpusEntry[] {
+   return rows.map((row) => {
+     const kind: RegistryRecordKind = row.kind === "form" ? "form" : "service";
+     const record = rowToServiceRecord(row);
+     const searchText = kind === "form" ? formRecordSearchText(record) : serviceRecordSearchText(record);
+diff --git a/src/lib/registry-seed.ts b/src/lib/registry-seed.ts
+index 7e9aa0a1b8a19461eae2bfbdda4ce84a10807e42..65a6895940e2181db9ffcd2df07a321b7d1633de 100644
+--- a/src/lib/registry-seed.ts
++++ b/src/lib/registry-seed.ts
+@@ -11,24 +11,20 @@ import {
+   type RegistryRecordRow,
+ } from "@/lib/registry-records";
+ import type { ServiceRecord } from "@/lib/services";
+ 
+ // Type-only reference to the admin client so this module carries no runtime
+ // dependency on the Supabase admin singleton — the CLI can import the row
+ // builders without pulling in service-role env, and callers pass their own
+ // client into `ensureRegistrySeeded`.
+ type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>;
+ 
+-function loadRegistryCorpus() {
+-  return import("@/lib/registry-corpus");
+-}
+-
+ type OwnerRegistryFetchOptions = {
+   signal?: AbortSignal;
+   select?: string;
+ };
+ 
+ function throwIfAborted(signal?: AbortSignal) {
+   if (!signal?.aborted) return;
+   throw signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted.", "AbortError");
+ }
+ 
+@@ -171,25 +167,21 @@ export async function ensureRegistrySeeded(
+   const rows = buildDefaultRegistryRows(ownerId, kind);
+   let query = supabase
+     .from("clinical_registry_records")
+     .upsert(rows, { onConflict: "owner_id,kind,slug", ignoreDuplicates: true })
+     .select("*");
+   if (options.signal) query = query.abortSignal(options.signal);
+   const { data, error } = await query;
+   if (error) throw new Error(`Registry seed failed: ${error.message}`);
+   invalidateOwnerCatalogueCache({ ownerId, kind, preserveSignal: options.signal });
+   throwIfAborted(options.signal);
+-  const seededRows = (data ?? []) as RegistryRecordRow[];
+-  const { bestEffortSyncClinicalRegistryRows } = await loadRegistryCorpus();
+-  await bestEffortSyncClinicalRegistryRows(supabase, seededRows);
+-  throwIfAborted(options.signal);
+-  return seededRows;
++  return (data ?? []) as RegistryRecordRow[];
+ }
+ 
+ /**
+  * Fetch only an owner's private registry overrides/additions. Shared catalogue
+  * defaults are merged by callers and are never materialized as a side effect
+  * of a GET request.
+  */
+ export async function fetchOwnerRegistryRows(
+   supabase: AdminClient,
+   ownerId: string,
+diff --git a/src/lib/site-content/public-site-content.ts b/src/lib/site-content/public-site-content.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2ef6b354f8355aa0d26cf1bcb3b142fb30e3a1eb
+--- /dev/null
++++ b/src/lib/site-content/public-site-content.ts
+@@ -0,0 +1,45 @@
++import type { SiteContentDomain, SiteContentPartitionState } from "@/lib/types";
++
++type RpcClient = Pick<ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>, "rpc">;
++
++export type PublicSiteContentRecord<T> = Readonly<{
++  logical_id: string;
++  payload: T;
++  governance: Record<string, unknown>;
++  publication_version: string;
++  content_hash: string;
++  source_lineage_digest: string;
++}>;
++
++export type PublicSiteContentPartition<T> = Readonly<{
++  activeReleaseId: string | null;
++  changeEpoch: number;
++  state: SiteContentPartitionState;
++  records: PublicSiteContentRecord<T>[];
++}>;
++
++export async function readPublicSiteContentPartition<T>(
++  client: RpcClient,
++  input: { domain: SiteContentDomain; recordKind?: string; slug?: string },
++): Promise<PublicSiteContentPartition<T> | null> {
++  const { data, error } = await client.rpc("read_public_site_content_records", {
++    p_domain: input.domain,
++    p_record_kind: input.recordKind ?? null,
++    p_slug: input.slug ?? null,
++  });
++  if (error) {
++    // The migration is forward-only; bundled public fixtures remain the explicit
++    // fallback until the release authority is applied by an operator.
++    if (error.code === "42883" || /does not exist/i.test(error.message)) return null;
++    throw new Error("Canonical public site-content read failed.");
++  }
++  if (!data || typeof data !== "object" || !Array.isArray((data as { records?: unknown }).records)) return null;
++  const partition = data as PublicSiteContentPartition<T>;
++  if (
++    !Number.isSafeInteger(partition.changeEpoch) ||
++    !["current", "updating", "unavailable"].includes(partition.state)
++  ) {
++    throw new Error("Canonical public site-content response is invalid.");
++  }
++  return partition;
++}
+diff --git a/src/lib/site-content/site-content-sync.ts b/src/lib/site-content/site-content-sync.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..14d5bfbcb0a1254f6c1b8c7c07bbfacfb6f61501
+--- /dev/null
++++ b/src/lib/site-content/site-content-sync.ts
+@@ -0,0 +1,277 @@
++import { createHash } from "node:crypto";
++
++import {
++  assertReceiptAppendOnlyPair,
++  assertRecoveryReadinessForOperation,
++  parseRecoveryReadinessEvidence,
++  type ActivationReceipt,
++  type RecoveryReadinessEvidence,
++  type RollbackReceipt,
++} from "@/lib/recovery-readiness-evidence";
++import type { SiteContentDomain } from "@/lib/types";
++
++type Digest = `sha256:${string}`;
++
++export type SiteContentSyncRecord = Readonly<{
++  logicalId: string;
++  domain: SiteContentDomain;
++  publicationVersion: string;
++  contentHash: Digest;
++  sourceLineageDigest: Digest;
++}>;
++
++export type SiteContentEmbeddingIdentity = Readonly<{
++  model: string;
++  dimensions: number;
++  contentHash: Digest;
++  digest: Digest;
++}>;
++
++export type SiteContentActiveProjection = Readonly<{
++  logicalId: string;
++  contentHash: Digest;
++  embedding: SiteContentEmbeddingIdentity;
++}>;
++
++export type SiteContentSyncInput = Readonly<{
++  projectRef: string;
++  expectedProjectRef: string;
++  candidateReleaseId: string;
++  previousReleaseId: string;
++  generationId: string;
++  registryVersion: string;
++  staticManifestDigest: Digest;
++  expectedEmbedding: { model: string; dimensions: number };
++  desiredRecords: SiteContentSyncRecord[];
++  activeProjections: SiteContentActiveProjection[];
++  legacyRows: Array<{ rowId: string; logicalId: string; contentHash: Digest }>;
++  legacyDispositions: Array<{ logicalId: string; selectedRowId: string; retiredRowIds: string[] }>;
++  batchSize: number;
++  write?: boolean;
++  recoveryEvidence?: unknown;
++  now?: Date;
++}>;
++
++export type SiteContentSyncPlan = Readonly<{
++  version: "site-content-sync-plan-v1";
++  mode: "dry-run" | "write";
++  projectRef: string;
++  candidateReleaseId: string;
++  previousReleaseId: string;
++  generationId: string;
++  registryVersion: string;
++  staticManifestDigest: Digest;
++  batchSize: number;
++  changed: Array<SiteContentSyncRecord & { changeKind: "added" | "changed" }>;
++  unchanged: Array<SiteContentSyncRecord & { reusedEmbedding: SiteContentEmbeddingIdentity }>;
++  tombstoned: Array<{ logicalId: string; priorContentHash: Digest }>;
++  legacyReconciliationDigest: Digest;
++  expectedCounts: { desired: number; changed: number; unchanged: number; tombstoned: number };
++  dynamicStateDigest: Digest;
++  releaseDigest: Digest;
++  planDigest: Digest;
++  recoveryEvidence?: RecoveryReadinessEvidence;
++}>;
++
++export type SiteContentWorkerLease = Readonly<{
++  workerId: string;
++  leaseId: string;
++  generationId: string;
++  expiresAt: string;
++}>;
++
++export type SiteContentSyncRuntime = Readonly<{
++  now?: () => Date;
++  stageChanged?: (record: SiteContentSyncPlan["changed"][number], lease: SiteContentWorkerLease) => Promise<void>;
++  carryForward?: (record: SiteContentSyncPlan["unchanged"][number], lease: SiteContentWorkerLease) => Promise<void>;
++  tombstone?: (record: SiteContentSyncPlan["tombstoned"][number], lease: SiteContentWorkerLease) => Promise<void>;
++}>;
++
++function canonicalize(value: unknown): unknown {
++  if (Array.isArray(value)) return value.map(canonicalize);
++  if (value && typeof value === "object") {
++    return Object.fromEntries(
++      Object.entries(value as Record<string, unknown>)
++        .sort(([left], [right]) => left.localeCompare(right))
++        .map(([key, nested]) => [key, canonicalize(nested)]),
++    );
++  }
++  return value;
++}
++
++function digest(value: unknown): Digest {
++  return `sha256:${createHash("sha256")
++    .update(JSON.stringify(canonicalize(value)))
++    .digest("hex")}`;
++}
++
++function assertDigest(value: string, label: string): asserts value is Digest {
++  if (!/^sha256:[a-f0-9]{64}$/.test(value)) throw new Error(`${label} must be a sha256 digest.`);
++}
++
++function sortedByLogicalId<T extends { logicalId: string }>(records: T[]) {
++  return [...records].sort((left, right) => left.logicalId.localeCompare(right.logicalId));
++}
++
++function reconcileLegacyRows(input: SiteContentSyncInput) {
++  const dispositions = new Map(input.legacyDispositions.map((entry) => [entry.logicalId, entry]));
++  const grouped = new Map<string, typeof input.legacyRows>();
++  for (const row of input.legacyRows) grouped.set(row.logicalId, [...(grouped.get(row.logicalId) ?? []), row]);
++  const normalized = [...grouped.entries()]
++    .sort(([left], [right]) => left.localeCompare(right))
++    .map(([logicalId, rows]) => {
++      const hashes = new Set(rows.map((row) => row.contentHash));
++      const disposition = dispositions.get(logicalId);
++      if (hashes.size > 1 && !disposition) {
++        throw new Error(`Divergent legacy rows for ${logicalId} require an explicit administrator disposition.`);
++      }
++      if (disposition) {
++        const rowIds = new Set(rows.map((row) => row.rowId));
++        if (!rowIds.has(disposition.selectedRowId)) throw new Error(`Legacy disposition for ${logicalId} is invalid.`);
++        const expectedRetired = rows
++          .map((row) => row.rowId)
++          .filter((rowId) => rowId !== disposition.selectedRowId)
++          .sort();
++        if (JSON.stringify([...disposition.retiredRowIds].sort()) !== JSON.stringify(expectedRetired)) {
++          throw new Error(`Legacy disposition for ${logicalId} must account for every duplicate.`);
++        }
++      }
++      return {
++        logicalId,
++        rows: rows
++          .map(({ rowId, contentHash }) => ({ rowId, contentHash }))
++          .sort((a, b) => a.rowId.localeCompare(b.rowId)),
++        disposition: disposition ?? null,
++      };
++    });
++  return digest(normalized);
++}
++
++export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyncPlan {
++  if (input.projectRef !== input.expectedProjectRef) throw new Error("Site-content target project identity mismatch.");
++  if (!input.projectRef.trim()) throw new Error("Site-content target project is required.");
++  if (!Number.isInteger(input.batchSize) || input.batchSize < 1 || input.batchSize > 100) {
++    throw new Error("Site-content batch size must be between 1 and 100.");
++  }
++  if (!input.expectedEmbedding.model.trim() || !Number.isInteger(input.expectedEmbedding.dimensions)) {
++    throw new Error("Expected embedding model and dimensions are required.");
++  }
++  assertDigest(input.staticManifestDigest, "Static manifest digest");
++  const legacyReconciliationDigest = reconcileLegacyRows(input);
++  const desired = sortedByLogicalId(input.desiredRecords);
++  if (new Set(desired.map((record) => record.logicalId)).size !== desired.length) {
++    throw new Error("Desired site-content logical identities must be globally unique.");
++  }
++  for (const record of desired) {
++    assertDigest(record.contentHash, "Content hash");
++    assertDigest(record.sourceLineageDigest, "Source-lineage digest");
++  }
++  const active = new Map(input.activeProjections.map((projection) => [projection.logicalId, projection]));
++  const unchanged: SiteContentSyncPlan["unchanged"] = [];
++  const changed: SiteContentSyncPlan["changed"] = [];
++  for (const record of desired) {
++    const projection = active.get(record.logicalId);
++    if (
++      projection &&
++      projection.contentHash === record.contentHash &&
++      projection.embedding.contentHash === record.contentHash &&
++      projection.embedding.model === input.expectedEmbedding.model &&
++      projection.embedding.dimensions === input.expectedEmbedding.dimensions
++    ) {
++      assertDigest(projection.embedding.digest, "Embedding digest");
++      unchanged.push({ ...record, reusedEmbedding: projection.embedding });
++    } else {
++      changed.push({ ...record, changeKind: projection ? "changed" : "added" });
++    }
++  }
++  const desiredIds = new Set(desired.map((record) => record.logicalId));
++  const tombstoned = sortedByLogicalId(
++    input.activeProjections
++      .filter((projection) => !desiredIds.has(projection.logicalId))
++      .map((projection) => ({ logicalId: projection.logicalId, priorContentHash: projection.contentHash })),
++  );
++  const dynamicStateDigest = digest(
++    desired.map(({ logicalId, contentHash, publicationVersion, sourceLineageDigest }) => ({
++      logicalId,
++      contentHash,
++      publicationVersion,
++      sourceLineageDigest,
++    })),
++  );
++  const releaseDigest = digest({
++    registryVersion: input.registryVersion,
++    staticManifestDigest: input.staticManifestDigest,
++    dynamicStateDigest,
++    generationId: input.generationId,
++  });
++  let recoveryEvidence: RecoveryReadinessEvidence | undefined;
++  if (input.write) {
++    recoveryEvidence = parseRecoveryReadinessEvidence(input.recoveryEvidence);
++    assertRecoveryReadinessForOperation(recoveryEvidence, "site-release", input.projectRef, input.now ?? new Date());
++  }
++  const planWithoutDigest = {
++    version: "site-content-sync-plan-v1" as const,
++    mode: input.write ? ("write" as const) : ("dry-run" as const),
++    projectRef: input.projectRef,
++    candidateReleaseId: input.candidateReleaseId,
++    previousReleaseId: input.previousReleaseId,
++    generationId: input.generationId,
++    registryVersion: input.registryVersion,
++    staticManifestDigest: input.staticManifestDigest,
++    batchSize: input.batchSize,
++    changed,
++    unchanged,
++    tombstoned,
++    legacyReconciliationDigest,
++    expectedCounts: {
++      desired: desired.length,
++      changed: changed.length,
++      unchanged: unchanged.length,
++      tombstoned: tombstoned.length,
++    },
++    dynamicStateDigest,
++    releaseDigest,
++    ...(recoveryEvidence ? { recoveryEvidence } : {}),
++  };
++  return Object.freeze({ ...planWithoutDigest, planDigest: digest(planWithoutDigest) });
++}
++
++export async function runSiteContentSync(
++  plan: SiteContentSyncPlan,
++  lease: SiteContentWorkerLease,
++  runtime: SiteContentSyncRuntime = {},
++) {
++  if (lease.generationId !== plan.generationId) throw new Error("Worker generation no longer owns this sync plan.");
++  const now = runtime.now?.() ?? new Date();
++  if (!Number.isFinite(Date.parse(lease.expiresAt)) || Date.parse(lease.expiresAt) <= now.getTime()) {
++    throw new Error("Worker lease has expired.");
++  }
++  for (const record of plan.changed) await runtime.stageChanged?.(record, lease);
++  for (const record of plan.unchanged) await runtime.carryForward?.(record, lease);
++  for (const record of plan.tombstoned) await runtime.tombstone?.(record, lease);
++  return Object.freeze({
++    changed: plan.changed.length,
++    unchanged: plan.unchanged.length,
++    tombstoned: plan.tombstoned.length,
++    dynamicStateDigest: plan.dynamicStateDigest,
++    releaseDigest: plan.releaseDigest,
++  });
++}
++
++export function assertSiteReleaseReceiptPair(
++  activationInput: unknown,
++  rollbackInput: unknown,
++): Readonly<{ activation: ActivationReceipt; rollback: RollbackReceipt }> {
++  const pair = assertReceiptAppendOnlyPair(activationInput, rollbackInput);
++  if (
++    pair.activation.operation !== "site-release" ||
++    pair.activation.resource.kind !== "site-release" ||
++    pair.activation.previousResource.kind !== "site-release" ||
++    pair.rollback.operation !== "site-release" ||
++    pair.rollback.failedResource.kind !== "site-release" ||
++    pair.rollback.restoredResource.kind !== "site-release"
++  ) {
++    throw new Error("Site-release activation and rollback receipt identities are required.");
++  }
++  return pair;
++}
+diff --git a/src/lib/supabase/database.types.ts b/src/lib/supabase/database.types.ts
+index ba0747a0c5ab41eb300ba4c50a0c3500b806797b..ef1f9b9eed1c783bbc5fb1e6a3e61f44c2f2a24d 100644
+--- a/src/lib/supabase/database.types.ts
++++ b/src/lib/supabase/database.types.ts
+@@ -2346,20 +2346,73 @@ export type Database = {
+           quality_extraction_quality: string | null;
+           quality_score: number | null;
+           sections: number | null;
+           summary_embedding: boolean | null;
+           title_embedding: boolean | null;
+         };
+         Relationships: [];
+       };
+     };
+     Functions: {
++      activate_site_content_release: {
++        Args: { p_expected_release_digest: string; p_recovery_digest: string; p_release_id: string };
++        Returns: Json;
++      };
++      claim_site_content_sync_events: {
++        Args: { p_lease_seconds: number; p_limit: number; p_worker_id: string };
++        Returns: Json[];
++      };
++      complete_site_content_sync_event: {
++        Args: {
++          p_event_id: string;
++          p_expected_content_hash: string;
++          p_generation_id: string;
++          p_lease_id: string;
++          p_release_id: string | null;
++          p_worker_id: string;
++        };
++        Returns: Json;
++      };
++      fail_site_content_sync_event: {
++        Args: {
++          p_error_code: string;
++          p_event_id: string;
++          p_generation_id: string;
++          p_lease_id: string;
++          p_quarantine: boolean;
++          p_retry_after_seconds: number | null;
++          p_worker_id: string;
++        };
++        Returns: Json;
++      };
++      heartbeat_site_content_sync_event: {
++        Args: {
++          p_event_id: string;
++          p_generation_id: string;
++          p_lease_id: string;
++          p_lease_seconds: number;
++          p_worker_id: string;
++        };
++        Returns: Json;
++      };
++      publish_site_content_record: {
++        Args: { p_actor_id: string; p_administrator_authorized: boolean; p_record: Json };
++        Returns: Json;
++      };
++      read_public_site_content_records: {
++        Args: { p_domain: string; p_record_kind?: string | null; p_slug?: string | null };
++        Returns: Json;
++      };
++      rollback_site_content_release: {
++        Args: { p_failed_release_id: string; p_recovery_digest: string; p_retained_release_id: string };
++        Returns: Json;
++      };
+       analyze_rag_tables: { Args: never; Returns: undefined };
+       apply_document_metadata_patch: {
+         Args: {
+           p_document_id: string;
+           p_metadata_patch?: Json;
+         };
+         Returns: undefined;
+       };
+       record_source_review: {
+         Args: {
+diff --git a/supabase/config.toml b/supabase/config.toml
+index 75daa99c953e923ca315d24b078002bd17905b8d..4cfde4e5ee407f6ad68e947aaf0bfe7ab13ae778 100644
+--- a/supabase/config.toml
++++ b/supabase/config.toml
+@@ -1,5 +1,8 @@
+ [functions.indexing-v3-agent]
+ verify_jwt = false
+ 
+ [functions.ingestion-worker]
+ verify_jwt = true
++
++[functions.site-content-sync]
++verify_jwt = true
+diff --git a/supabase/functions/site-content-sync/index.ts b/supabase/functions/site-content-sync/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..90653e64f7714b9a64a5416279cd85124a85123c
+--- /dev/null
++++ b/supabase/functions/site-content-sync/index.ts
+@@ -0,0 +1,102 @@
++type RpcResult = { data: unknown; error: { message: string } | null };
++
++type ClaimedEvent = {
++  event_id: string;
++  publication_id: string;
++  logical_id: string;
++  content_hash: string;
++  attempt_count: number;
++  lease_id: string;
++  generation_id: string;
++  lease_expires_at: string;
++};
++
++type DrainOptions = {
++  workerId: string;
++  limit: number;
++  leaseSeconds: number;
++  maxBatchSize: number;
++  maxAttempts: number;
++  heartbeatEvery?: number;
++  rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult>;
++  processEvent: (event: ClaimedEvent) => Promise<{ releaseId?: string }>;
++  log?: (event: Record<string, unknown>) => void;
++};
++
++function requireRpc(result: RpcResult, label: string) {
++  if (result.error) throw new Error(`${label} failed.`);
++  return result.data;
++}
++
++export async function drainSiteContentSyncBatch(options: DrainOptions) {
++  const limit = Math.max(1, Math.min(Math.floor(options.limit), options.maxBatchSize));
++  const claimed = requireRpc(
++    await options.rpc("claim_site_content_sync_events", {
++      p_worker_id: options.workerId,
++      p_limit: limit,
++      p_lease_seconds: options.leaseSeconds,
++    }),
++    "Site-content claim",
++  ) as ClaimedEvent[];
++  const counts = { claimed: claimed.length, completed: 0, retried: 0, quarantined: 0, leaseLost: 0 };
++  const heartbeatEvery = Math.max(1, options.heartbeatEvery ?? 10);
++  for (let index = 0; index < claimed.length; index += 1) {
++    const event = claimed[index]!;
++    const identity = {
++      p_event_id: event.event_id,
++      p_worker_id: options.workerId,
++      p_lease_id: event.lease_id,
++      p_generation_id: event.generation_id,
++    };
++    try {
++      if (index % heartbeatEvery === 0) {
++        const heartbeat = requireRpc(
++          await options.rpc("heartbeat_site_content_sync_event", {
++            ...identity,
++            p_lease_seconds: options.leaseSeconds,
++          }),
++          "Site-content heartbeat",
++        ) as { ok?: boolean } | null;
++        if (heartbeat?.ok === false) {
++          counts.leaseLost += 1;
++          continue;
++        }
++      }
++      const processed = await options.processEvent(event);
++      const completion = requireRpc(
++        await options.rpc("complete_site_content_sync_event", {
++          ...identity,
++          p_release_id: processed.releaseId ?? null,
++          p_expected_content_hash: event.content_hash,
++        }),
++        "Site-content completion",
++      ) as { ok?: boolean } | null;
++      if (completion?.ok === false) counts.leaseLost += 1;
++      else counts.completed += 1;
++    } catch {
++      const quarantine = event.attempt_count >= options.maxAttempts;
++      const failure = requireRpc(
++        await options.rpc("fail_site_content_sync_event", {
++          ...identity,
++          p_error_code: "sync_failed",
++          p_quarantine: quarantine,
++          p_retry_after_seconds: quarantine ? null : Math.min(900, 2 ** event.attempt_count * 15),
++        }),
++        "Site-content failure",
++      ) as { ok?: boolean } | null;
++      if (failure?.ok === false) counts.leaseLost += 1;
++      else if (quarantine) counts.quarantined += 1;
++      else counts.retried += 1;
++      options.log?.({
++        eventId: event.event_id,
++        attempt: event.attempt_count,
++        outcome: quarantine ? "quarantined" : "retry",
++      });
++    }
++  }
++  options.log?.({ workerId: options.workerId, ...counts });
++  return counts;
++}
++
++// Deployment/invocation is a separate operator decision. This source-only task
++// deliberately exports the bounded drain without starting a local or hosted worker.
+diff --git a/supabase/migrations/20260824130000_add_site_content_release_and_outbox.sql b/supabase/migrations/20260824130000_add_site_content_release_and_outbox.sql
+new file mode 100644
+index 0000000000000000000000000000000000000000..da8a00c2f3c0f27bbf52634b89f128fd12832b34
+--- /dev/null
++++ b/supabase/migrations/20260824130000_add_site_content_release_and_outbox.sql
+@@ -0,0 +1,345 @@
++-- Durable publication, synchronization, and release authority for public site content.
++-- Source-only migration: applying it and running the worker are separate operator actions.
++
++create table public.site_content_public_authority (
++  singleton boolean primary key default true check (singleton),
++  active_release_id uuid,
++  change_epoch bigint not null default 0 check (change_epoch >= 0),
++  updated_at timestamptz not null default now()
++);
++
++create table public.site_content_releases (
++  id uuid primary key default gen_random_uuid(),
++  state text not null check (state in ('candidate', 'active', 'retained', 'failed')),
++  generation_id uuid not null,
++  previous_release_id uuid references public.site_content_releases(id),
++  registry_version text not null,
++  static_manifest_digest text not null check (static_manifest_digest ~ '^sha256:[0-9a-f]{64}$'),
++  dynamic_state_digest text not null check (dynamic_state_digest ~ '^sha256:[0-9a-f]{64}$'),
++  release_digest text not null check (release_digest ~ '^sha256:[0-9a-f]{64}$'),
++  recovery_evidence_digest text not null check (recovery_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
++  expected_record_count integer not null check (expected_record_count >= 0),
++  projected_record_count integer not null default 0 check (projected_record_count >= 0),
++  integrity_verified boolean not null default false,
++  public_visibility_verified boolean not null default false,
++  governance_verified boolean not null default false,
++  must_pass_verified boolean not null default false,
++  created_at timestamptz not null default now(),
++  activated_at timestamptz
++);
++
++alter table public.site_content_public_authority
++  add constraint site_content_public_authority_active_release_fkey
++  foreign key (active_release_id) references public.site_content_releases(id);
++
++insert into public.site_content_public_authority(singleton) values (true);
++
++create table public.site_content_publications (
++  id uuid primary key default gen_random_uuid(),
++  logical_id text not null,
++  domain text not null check (domain in ('registry', 'medications', 'differentials')),
++  record_kind text not null,
++  slug text not null,
++  payload jsonb not null,
++  governance jsonb not null default '{}'::jsonb,
++  publication_version text not null,
++  content_hash text not null check (content_hash ~ '^sha256:[0-9a-f]{64}$'),
++  source_lineage_digest text not null check (source_lineage_digest ~ '^sha256:[0-9a-f]{64}$'),
++  actor_id uuid not null,
++  created_at timestamptz not null default now(),
++  updated_at timestamptz not null default now()
++);
++
++create unique index site_content_publications_logical_id_key
++  on public.site_content_publications(logical_id);
++create unique index site_content_publications_domain_kind_slug_key
++  on public.site_content_publications(domain, record_kind, slug);
++
++create table public.site_content_release_projections (
++  release_id uuid not null references public.site_content_releases(id) on delete cascade,
++  publication_id uuid not null references public.site_content_publications(id),
++  logical_id text not null,
++  content_hash text not null check (content_hash ~ '^sha256:[0-9a-f]{64}$'),
++  embedding_model text not null,
++  embedding_dimensions integer not null check (embedding_dimensions > 0),
++  embedding_digest text not null check (embedding_digest ~ '^sha256:[0-9a-f]{64}$'),
++  tombstoned boolean not null default false,
++  primary key (release_id, logical_id)
++);
++
++create table public.site_content_sync_outbox (
++  event_id uuid primary key default gen_random_uuid(),
++  publication_id uuid not null references public.site_content_publications(id),
++  logical_id text not null,
++  content_hash text not null check (content_hash ~ '^sha256:[0-9a-f]{64}$'),
++  generation_id uuid not null,
++  status text not null default 'pending' check (status in ('pending', 'leased', 'complete', 'quarantined')),
++  attempt_count integer not null default 0 check (attempt_count >= 0),
++  available_at timestamptz not null default now(),
++  worker_id uuid,
++  lease_id uuid,
++  lease_expires_at timestamptz,
++  completed_release_id uuid references public.site_content_releases(id),
++  error_code text,
++  created_at timestamptz not null default now(),
++  completed_at timestamptz
++);
++
++create unique index site_content_sync_outbox_pending_identity_key
++  on public.site_content_sync_outbox(logical_id, content_hash)
++  where status in ('pending', 'leased');
++create index site_content_sync_outbox_claim_idx
++  on public.site_content_sync_outbox(status, available_at, created_at);
++
++create table public.site_content_release_receipts (
++  id uuid primary key default gen_random_uuid(),
++  receipt_kind text not null check (receipt_kind in ('activation', 'rollback')),
++  release_id uuid not null references public.site_content_releases(id),
++  previous_release_id uuid references public.site_content_releases(id),
++  release_digest text not null check (release_digest ~ '^sha256:[0-9a-f]{64}$'),
++  recovery_evidence_digest text not null check (recovery_evidence_digest ~ '^sha256:[0-9a-f]{64}$'),
++  restoration_method text check (restoration_method is null or restoration_method = 'retained-pointer'),
++  created_at timestamptz not null default now()
++);
++
++create or replace function public.prevent_site_content_receipt_mutation()
++returns trigger language plpgsql security definer set search_path = '' as $$
++begin
++  raise exception 'Site-content release receipts are append-only';
++end;
++$$;
++
++create trigger site_content_release_receipts_append_only
++before update or delete on public.site_content_release_receipts
++for each row execute function public.prevent_site_content_receipt_mutation();
++
++create or replace function public.publish_site_content_record(
++  p_record jsonb,
++  p_actor_id uuid,
++  p_administrator_authorized boolean
++) returns jsonb
++language plpgsql security definer set search_path = '' as $$
++declare
++  v_publication_id uuid;
++  v_generation_id uuid := gen_random_uuid();
++  v_logical_id text := btrim(coalesce(p_record->>'logicalId', ''));
++begin
++  if p_administrator_authorized is distinct from true then
++    raise exception 'Site-content publication requires administrator authority';
++  end if;
++  if p_actor_id is null or v_logical_id = ''
++     or coalesce(p_record->>'domain', '') not in ('registry', 'medications', 'differentials')
++     or btrim(coalesce(p_record->>'kind', '')) = ''
++     or btrim(coalesce(p_record->>'slug', '')) = ''
++     or coalesce(p_record->>'contentHash', '') !~ '^sha256:[0-9a-f]{64}$'
++     or coalesce(p_record->>'sourceLineageDigest', '') !~ '^sha256:[0-9a-f]{64}$'
++     or jsonb_typeof(p_record->'payload') is distinct from 'object'
++  then raise exception 'Invalid public site-content record'; end if;
++
++  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content:' || v_logical_id, 0));
++  insert into public.site_content_publications(
++    logical_id, domain, record_kind, slug, payload, governance, publication_version,
++    content_hash, source_lineage_digest, actor_id
++  ) values (
++    v_logical_id, p_record->>'domain', p_record->>'kind', p_record->>'slug', p_record->'payload',
++    coalesce(p_record->'governance', '{}'::jsonb), p_record->>'publicationVersion',
++    p_record->>'contentHash', p_record->>'sourceLineageDigest', p_actor_id
++  ) on conflict (logical_id) do update set
++    domain = excluded.domain, record_kind = excluded.record_kind, slug = excluded.slug,
++    payload = excluded.payload, governance = excluded.governance,
++    publication_version = excluded.publication_version, content_hash = excluded.content_hash,
++    source_lineage_digest = excluded.source_lineage_digest, actor_id = excluded.actor_id,
++    updated_at = now()
++  returning id into v_publication_id;
++
++  update public.site_content_public_authority
++     set change_epoch = change_epoch + 1, updated_at = now()
++   where singleton;
++  insert into public.site_content_sync_outbox(publication_id, logical_id, content_hash, generation_id)
++    values (v_publication_id, v_logical_id, p_record->>'contentHash', v_generation_id)
++    on conflict do nothing;
++  delete from public.rag_response_cache where owner_id is null;
++  return jsonb_build_object('publicationId', v_publication_id, 'generationId', v_generation_id);
++end;
++$$;
++
++create or replace function public.read_public_site_content_records(
++  p_domain text,
++  p_record_kind text default null,
++  p_slug text default null
++) returns jsonb
++language sql stable security definer set search_path = '' as $$
++  select jsonb_build_object(
++    'changeEpoch', authority.change_epoch,
++    'activeReleaseId', authority.active_release_id,
++    'state', case when exists (
++      select 1 from public.site_content_sync_outbox pending where pending.status in ('pending', 'leased')
++    ) then 'updating' else 'current' end,
++    'records', coalesce(jsonb_agg(to_jsonb(publication) - 'actor_id' order by publication.logical_id)
++      filter (where publication.id is not null), '[]'::jsonb)
++  )
++  from public.site_content_public_authority authority
++  left join public.site_content_publications publication
++    on publication.domain = p_domain
++   and (p_record_kind is null or publication.record_kind = p_record_kind)
++   and (p_slug is null or publication.slug = p_slug)
++   and not exists (
++     select 1 from public.site_content_sync_outbox pending
++      where pending.logical_id = publication.logical_id
++        and pending.status in ('pending', 'leased')
++   )
++  where authority.singleton
++  group by authority.change_epoch, authority.active_release_id;
++$$;
++
++create or replace function public.claim_site_content_sync_events(
++  p_worker_id uuid, p_limit integer, p_lease_seconds integer
++) returns setof public.site_content_sync_outbox
++language plpgsql security definer set search_path = '' as $$
++begin
++  if p_worker_id is null or p_limit not between 1 and 100 or p_lease_seconds not between 5 and 900
++  then raise exception 'Invalid site-content worker claim'; end if;
++  return query
++  with claimable as (
++    select event_id from public.site_content_sync_outbox
++     where status in ('pending', 'leased')
++       and available_at <= now()
++       and (status = 'pending' or lease_expires_at <= now())
++     order by created_at
++     for update skip locked limit p_limit
++  )
++  update public.site_content_sync_outbox event set
++    status = 'leased', worker_id = p_worker_id, lease_id = gen_random_uuid(),
++    lease_expires_at = now() + make_interval(secs => p_lease_seconds),
++    attempt_count = event.attempt_count + 1
++  from claimable where event.event_id = claimable.event_id returning event.*;
++end;
++$$;
++
++create or replace function public.heartbeat_site_content_sync_event(
++  p_event_id uuid, p_worker_id uuid, p_lease_id uuid, p_generation_id uuid, p_lease_seconds integer
++) returns jsonb language plpgsql security definer set search_path = '' as $$
++declare v_updated integer;
++begin
++  update public.site_content_sync_outbox set lease_expires_at = now() + make_interval(secs => p_lease_seconds)
++   where event_id = p_event_id and worker_id = p_worker_id and lease_id = p_lease_id
++     and generation_id = p_generation_id and status = 'leased' and lease_expires_at > now();
++  get diagnostics v_updated = row_count;
++  return jsonb_build_object('ok', v_updated = 1);
++end;
++$$;
++
++create or replace function public.complete_site_content_sync_event(
++  p_event_id uuid, p_worker_id uuid, p_lease_id uuid, p_generation_id uuid,
++  p_release_id uuid, p_expected_content_hash text
++) returns jsonb language plpgsql security definer set search_path = '' as $$
++declare v_updated integer;
++begin
++  update public.site_content_sync_outbox set status = 'complete', completed_release_id = p_release_id,
++    completed_at = now(), worker_id = null, lease_id = null, lease_expires_at = null
++   where event_id = p_event_id and worker_id = p_worker_id and lease_id = p_lease_id
++     and generation_id = p_generation_id and content_hash = p_expected_content_hash
++     and status = 'leased' and lease_expires_at > now();
++  get diagnostics v_updated = row_count;
++  return jsonb_build_object('ok', v_updated = 1);
++end;
++$$;
++
++create or replace function public.fail_site_content_sync_event(
++  p_event_id uuid, p_worker_id uuid, p_lease_id uuid, p_generation_id uuid,
++  p_error_code text, p_quarantine boolean, p_retry_after_seconds integer
++) returns jsonb language plpgsql security definer set search_path = '' as $$
++declare v_updated integer;
++begin
++  update public.site_content_sync_outbox set status = case when p_quarantine then 'quarantined' else 'pending' end,
++    error_code = left(coalesce(p_error_code, 'sync_failed'), 80),
++    available_at = case when p_quarantine then available_at else now() + make_interval(secs => p_retry_after_seconds) end,
++    worker_id = null, lease_id = null, lease_expires_at = null
++   where event_id = p_event_id and worker_id = p_worker_id and lease_id = p_lease_id
++     and generation_id = p_generation_id and status = 'leased';
++  get diagnostics v_updated = row_count;
++  return jsonb_build_object('ok', v_updated = 1);
++end;
++$$;
++
++create or replace function public.activate_site_content_release(
++  p_release_id uuid, p_expected_release_digest text, p_recovery_digest text
++) returns jsonb language plpgsql security definer set search_path = '' as $$
++declare v_release public.site_content_releases%rowtype; v_previous uuid;
++begin
++  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release', 0));
++  select * into strict v_release from public.site_content_releases where id = p_release_id for update;
++  if v_release.state <> 'candidate' or v_release.release_digest <> p_expected_release_digest
++     or v_release.recovery_evidence_digest <> p_recovery_digest
++     or v_release.projected_record_count <> v_release.expected_record_count
++     or not v_release.integrity_verified or not v_release.public_visibility_verified
++     or not v_release.governance_verified or not v_release.must_pass_verified
++     or exists (select 1 from public.site_content_sync_outbox where status in ('pending', 'leased'))
++  then raise exception 'Site-content candidate is not eligible for activation'; end if;
++  select active_release_id into v_previous from public.site_content_public_authority where singleton for update;
++  update public.site_content_releases set state = 'retained' where id = v_previous;
++  update public.site_content_releases set state = 'active', previous_release_id = v_previous, activated_at = now()
++   where id = p_release_id;
++  update public.site_content_public_authority set active_release_id = p_release_id,
++    change_epoch = change_epoch + 1, updated_at = now() where singleton;
++  insert into public.site_content_release_receipts(receipt_kind, release_id, previous_release_id, release_digest, recovery_evidence_digest)
++    values ('activation', p_release_id, v_previous, v_release.release_digest, v_release.recovery_evidence_digest);
++  return jsonb_build_object('activeReleaseId', p_release_id, 'previousReleaseId', v_previous);
++end;
++$$;
++
++create or replace function public.rollback_site_content_release(
++  p_failed_release_id uuid, p_retained_release_id uuid, p_recovery_digest text
++) returns jsonb language plpgsql security definer set search_path = '' as $$
++declare v_retained public.site_content_releases%rowtype;
++begin
++  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('site_content_release', 0));
++  select * into strict v_retained from public.site_content_releases
++   where id = p_retained_release_id and state = 'retained' for update;
++  if p_recovery_digest !~ '^sha256:[0-9a-f]{64}$' then raise exception 'Invalid rollback evidence'; end if;
++  update public.site_content_releases set state = 'failed' where id = p_failed_release_id and state = 'active';
++  update public.site_content_releases set state = 'active' where id = p_retained_release_id;
++  update public.site_content_public_authority set active_release_id = p_retained_release_id,
++    change_epoch = change_epoch + 1, updated_at = now()
++   where singleton and active_release_id = p_failed_release_id;
++  if not found then raise exception 'Rollback authority changed'; end if;
++  insert into public.site_content_release_receipts(
++    receipt_kind, release_id, previous_release_id, release_digest, recovery_evidence_digest, restoration_method
++  ) values ('rollback', p_retained_release_id, p_failed_release_id,
++    v_retained.release_digest, p_recovery_digest, 'retained-pointer');
++  return jsonb_build_object('activeReleaseId', p_retained_release_id, 'restorationMethod', 'retained-pointer');
++end;
++$$;
++
++alter table public.site_content_public_authority enable row level security;
++alter table public.site_content_releases enable row level security;
++alter table public.site_content_publications enable row level security;
++alter table public.site_content_release_projections enable row level security;
++alter table public.site_content_sync_outbox enable row level security;
++alter table public.site_content_release_receipts enable row level security;
++
++revoke all on public.site_content_public_authority, public.site_content_releases,
++  public.site_content_publications, public.site_content_release_projections,
++  public.site_content_sync_outbox, public.site_content_release_receipts from public, anon, authenticated;
++grant all on public.site_content_public_authority, public.site_content_releases,
++  public.site_content_publications, public.site_content_release_projections,
++  public.site_content_sync_outbox, public.site_content_release_receipts to service_role;
++
++revoke all on function public.publish_site_content_record(jsonb, uuid, boolean) from public, anon, authenticated;
++revoke all on function public.read_public_site_content_records(text, text, text) from public, anon, authenticated;
++revoke all on function public.claim_site_content_sync_events(uuid, integer, integer) from public, anon, authenticated;
++revoke all on function public.heartbeat_site_content_sync_event(uuid, uuid, uuid, uuid, integer) from public, anon, authenticated;
++revoke all on function public.complete_site_content_sync_event(uuid, uuid, uuid, uuid, uuid, text) from public, anon, authenticated;
++revoke all on function public.fail_site_content_sync_event(uuid, uuid, uuid, uuid, text, boolean, integer) from public, anon, authenticated;
++revoke all on function public.activate_site_content_release(uuid, text, text) from public, anon, authenticated;
++revoke all on function public.rollback_site_content_release(uuid, uuid, text) from public, anon, authenticated;
++revoke all on function public.prevent_site_content_receipt_mutation() from public, anon, authenticated;
++
++grant execute on function public.publish_site_content_record(jsonb, uuid, boolean) to service_role;
++grant execute on function public.read_public_site_content_records(text, text, text) to service_role;
++grant execute on function public.claim_site_content_sync_events(uuid, integer, integer) to service_role;
++grant execute on function public.heartbeat_site_content_sync_event(uuid, uuid, uuid, uuid, integer) to service_role;
++grant execute on function public.complete_site_content_sync_event(uuid, uuid, uuid, uuid, uuid, text) to service_role;
++grant execute on function public.fail_site_content_sync_event(uuid, uuid, uuid, uuid, text, boolean, integer) to service_role;
++grant execute on function public.activate_site_content_release(uuid, text, text) to service_role;
++grant execute on function public.rollback_site_content_release(uuid, uuid, text) to service_role;
+diff --git a/tests/differentials-route.test.ts b/tests/differentials-route.test.ts
+index 246a9678d8d81a092608b9cd9ff61f0d60a8998f..8707b1e7551c941336ce1b2a408bd586ae068b0a 100644
+--- a/tests/differentials-route.test.ts
++++ b/tests/differentials-route.test.ts
+@@ -134,21 +134,21 @@ function request(path: string) {
+ function authenticatedRequest(path: string) {
+   return new Request(`http://localhost${path}`, { headers: { Authorization: `Bearer ${token}` } });
+ }
+ 
+ afterEach(() => {
+   vi.restoreAllMocks();
+   vi.resetModules();
+ });
+ 
+ describe("differentials API routes", () => {
+-  it("builds owner diagnosis detail context from the owner's current catalog rows", async () => {
++  it("excludes owner diagnosis rows from canonical public detail context", async () => {
+     const diagnosis = {
+       slug: "owner-diagnosis",
+       title: "Owner diagnosis",
+       related: [{ id: "owner-related" }],
+       sections: [{ tone: "overlap", items: ["Owner related"] }],
+     };
+     const related = {
+       slug: "owner-related",
+       title: "Owner related",
+       related: [],
+@@ -176,40 +176,37 @@ describe("differentials API routes", () => {
+       row("presentation", presentation.id, presentation),
+     ];
+     const client = createSupabaseMock((call) => {
+       if (call.table === "differential_records" && call.maybeSingle) return ok(diagnosisRow);
+       if (call.table === "differential_records") return ok(ownerRows);
+       return ok([]);
+     });
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/differentials/[slug]/route");
+ 
+-    const response = await GET(authenticatedRequest("/api/differentials/owner-diagnosis?kind=diagnosis"), {
+-      params: Promise.resolve({ slug: "owner-diagnosis" }),
++    const response = await GET(authenticatedRequest("/api/differentials/delirium?kind=diagnosis"), {
++      params: Promise.resolve({ slug: "delirium" }),
+     });
+     const payload = (await response.json()) as {
+       detailContext?: {
+         knownRelatedSlugs?: string[];
+         relatedMapDetails?: Record<string, unknown>;
+         termLinks?: Record<string, string>;
+         overlapLinks?: Record<string, string>;
+         comparePresentation?: { slug: string } | null;
+       };
+     };
+ 
+     expect(response.status).toBe(200);
+     expectPrivateCache(response);
+-    expect(payload.detailContext?.knownRelatedSlugs).toEqual([]);
+-    expect(payload.detailContext?.relatedMapDetails).toEqual({});
+-    expect(payload.detailContext?.termLinks).toEqual({});
+-    expect(payload.detailContext?.overlapLinks).toEqual({});
+-    expect(payload.detailContext?.comparePresentation).toBeNull();
++    expect(payload.detailContext?.knownRelatedSlugs).toContain("akathisia");
++    expect(client.from).not.toHaveBeenCalled();
+   });
+ 
+   it("serves delirium from snapshot in demo mode", async () => {
+     const client = createSupabaseMock();
+     mockRuntime(client, { demoMode: true });
+     const { GET } = await import("../src/app/api/differentials/[slug]/route");
+ 
+     const response = await GET(request("/api/differentials/delirium?kind=diagnosis"), {
+       params: Promise.resolve({ slug: "delirium" }),
+     });
+@@ -302,69 +299,66 @@ describe("differentials API routes", () => {
+       matches?: Array<{ workflow: { id: string }; score: number; reasons: string[] }>;
+     };
+ 
+     expect(response.status).toBe(200);
+     expect(payload.matches?.[0]?.workflow.id).toBe("acute-confusion-encephalopathy");
+     expect(payload.matches?.[0]?.score ?? 0).toBeGreaterThan(0);
+     expect(payload.presentations?.[0]?.id).toBe("acute-confusion-encephalopathy");
+     expect(payload.presentations?.length).toBeLessThanOrEqual(5);
+   });
+ 
+-  it("serves seeded differential records when registry corpus embedding fails after the row upsert", async () => {
++  it("serves canonical differential records without invoking the legacy embedding hook", async () => {
+     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+     let stored: Array<Record<string, unknown>> = [];
+     const client = createSupabaseMock((call) => {
+       if (call.table !== "differential_records") return ok([]);
+       if (call.upsert) {
+         stored = (call.upsertRows ?? []) as Array<Record<string, unknown>>;
+         return ok(stored);
+       }
+       return ok(stored.filter((row) => row.kind === "diagnosis"));
+     });
+     mockRuntime(client, { registryEmbeddingError: new Error("embedding unavailable") });
+     const { GET } = await import("../src/app/api/differentials/route");
+ 
+     const response = await GET(authenticatedRequest("/api/differentials?kind=diagnosis&limit=10"));
+     const payload = (await response.json()) as { records?: Array<{ slug: string }>; total?: number };
+ 
+     expect(response.status).toBe(200);
+     expect(payload.total ?? 0).toBeGreaterThan(0);
+     expect(payload.records?.length).toBeGreaterThan(0);
+-    expect(consoleError).toHaveBeenCalledWith(
+-      expect.stringContaining("[differentials] registry corpus sync failed"),
+-      expect.objectContaining({ name: "Error", message: "embedding unavailable" }),
+-    );
++    expect(consoleError).not.toHaveBeenCalled();
+   });
+ 
+   it.each([
+     ["diagnosis", "/api/differentials/unknown-diagnosis?kind=diagnosis", "../src/app/api/differentials/[slug]/route"],
+     [
+       "presentation",
+       "/api/differentials/presentations/unknown-presentation",
+       "../src/app/api/differentials/presentations/[slug]/route",
+     ],
+-  ])("returns 404 for an unknown %s slug during a corpus embedding outage", async (kind, path, modulePath) => {
+-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+-    let stored: Array<Record<string, unknown>> = [];
+-    const slug = kind === "diagnosis" ? "unknown-diagnosis" : "unknown-presentation";
+-    const client = createSupabaseMock((call) => {
+-      if (call.table !== "differential_records") return ok([]);
+-      if (call.head) return { data: null, error: null, count: stored.length };
+-      if (call.upsert) {
+-        stored = (call.upsertRows ?? []) as Array<Record<string, unknown>>;
+-        return ok(stored);
+-      }
+-      if (call.maybeSingle) return ok(stored.find((row) => row.kind === kind && row.slug === slug) ?? null);
+-      return ok(stored.filter((row) => row.kind === kind));
+-    });
+-    mockRuntime(client, { registryEmbeddingError: new Error("embedding unavailable") });
+-    const { GET } = await import(modulePath);
+-
+-    const response = await GET(authenticatedRequest(path), { params: Promise.resolve({ slug }) });
+-
+-    expect(response.status).toBe(404);
+-    expect(consoleError).toHaveBeenCalledWith(
+-      expect.stringContaining("[differentials] registry corpus sync failed"),
+-      expect.objectContaining({ name: "Error", message: "embedding unavailable" }),
+-    );
+-  });
++  ])(
++    "returns 404 for an unknown %s slug without invoking the legacy embedding hook",
++    async (kind, path, modulePath) => {
++      const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
++      let stored: Array<Record<string, unknown>> = [];
++      const slug = kind === "diagnosis" ? "unknown-diagnosis" : "unknown-presentation";
++      const client = createSupabaseMock((call) => {
++        if (call.table !== "differential_records") return ok([]);
++        if (call.head) return { data: null, error: null, count: stored.length };
++        if (call.upsert) {
++          stored = (call.upsertRows ?? []) as Array<Record<string, unknown>>;
++          return ok(stored);
++        }
++        if (call.maybeSingle) return ok(stored.find((row) => row.kind === kind && row.slug === slug) ?? null);
++        return ok(stored.filter((row) => row.kind === kind));
++      });
++      mockRuntime(client, { registryEmbeddingError: new Error("embedding unavailable") });
++      const { GET } = await import(modulePath);
++
++      const response = await GET(authenticatedRequest(path), { params: Promise.resolve({ slug }) });
++
++      expect(response.status).toBe(404);
++      expect(consoleError).not.toHaveBeenCalled();
++    },
++  );
+ });
+diff --git a/tests/medications-route.test.ts b/tests/medications-route.test.ts
+index d32964a03cdacb46a512fe6bd85d232dee85a084..f4300483dcbdccda49997c4875ef1f7db2303f42 100644
+--- a/tests/medications-route.test.ts
++++ b/tests/medications-route.test.ts
+@@ -319,37 +319,36 @@ describe("medications API", () => {
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/medications/route");
+ 
+     const response = await GET(request("/api/medications"));
+ 
+     expect(response.status).toBe(429);
+     expect(client.from).not.toHaveBeenCalled();
+     expect(client.auth.getUser).not.toHaveBeenCalled();
+   });
+ 
+-  it("scopes medication queries to the authenticated owner", async () => {
++  it("excludes authenticated owner rows from the canonical public medication result", async () => {
+     const client = createSupabaseMock((call) => (call.table === "medication_records" ? ok([medicationRow()]) : ok([])));
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/medications/route");
+ 
+     const response = await GET(authedRequest("/api/medications?q=acamprosate"));
+     const payload = (await response.json()) as {
+       records: Array<{ slug: string }>;
+       matches?: Array<{ medication: { slug: string } }>;
+     };
+ 
+     expect(response.status).toBe(200);
+     expectPrivateCache(response);
+     expect(payload.records[0]?.slug).toBe("acamprosate");
+     expect(payload.matches?.[0]?.medication.slug).toBe("acamprosate");
+-    expect(client.calls.some((call) => call.table === "medication_records")).toBe(true);
+-    expect(client.calls.some((call) => call.filters.some((filter) => filter.column === "owner_id"))).toBe(true);
++    expect(client.calls.some((call) => call.table === "medication_records")).toBe(false);
+   });
+ 
+   it("serves curated public detail for unauthenticated slug requests", async () => {
+     const client = createSupabaseMock();
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/medications/[slug]/route");
+ 
+     const response = await GET(request("/api/medications/acamprosate"), {
+       params: Promise.resolve({ slug: "acamprosate" }),
+     });
+@@ -375,21 +374,21 @@ describe("medications API", () => {
+     const { GET } = await import("../src/app/api/medications/[slug]/route");
+ 
+     const response = await GET(request("/api/medications/acamprosate"), {
+       params: Promise.resolve({ slug: "acamprosate" }),
+     });
+ 
+     expect(response.status).toBe(429);
+     expect(client.from).not.toHaveBeenCalled();
+   });
+ 
+-  it("serves a seeded medication detail when registry corpus embedding fails after the row upsert", async () => {
++  it("serves canonical medication detail without invoking the legacy embedding hook", async () => {
+     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+     let stored: Array<Record<string, unknown>> = [];
+     const client = createSupabaseMock((call) => {
+       if (call.table !== "medication_records") return ok([]);
+       if (call.head) return { data: null, error: null, count: stored.length };
+       if (call.upsert) {
+         stored = (call.upsertRows ?? []) as Array<Record<string, unknown>>;
+         return ok(stored);
+       }
+       if (call.maybeSingle) {
+@@ -401,43 +400,37 @@ describe("medications API", () => {
+     const { GET } = await import("../src/app/api/medications/[slug]/route");
+ 
+     const response = await GET(authedRequest("/api/medications/acamprosate"), {
+       params: Promise.resolve({ slug: "acamprosate" }),
+     });
+     const payload = (await response.json()) as { record: { slug: string; name: string } };
+ 
+     expect(response.status).toBe(200);
+     expect(payload.record.slug).toBe("acamprosate");
+     expect(payload.record.name).toBe("Acamprosate");
+-    expect(consoleError).toHaveBeenCalledWith(
+-      expect.stringContaining("[medications] registry corpus sync failed"),
+-      expect.objectContaining({ name: "Error", message: "embedding unavailable" }),
+-    );
++    expect(consoleError).not.toHaveBeenCalled();
+   });
+ 
+-  it("returns 404 for an unknown medication slug during a corpus embedding outage", async () => {
++  it("returns 404 for an unknown medication slug without invoking the legacy embedding hook", async () => {
+     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+     let stored: Array<Record<string, unknown>> = [];
+     const client = createSupabaseMock((call) => {
+       if (call.table !== "medication_records") return ok([]);
+       if (call.head) return { data: null, error: null, count: stored.length };
+       if (call.upsert) {
+         stored = (call.upsertRows ?? []) as Array<Record<string, unknown>>;
+         return ok(stored);
+       }
+       if (call.maybeSingle) return ok(stored.find((row) => row.slug === "unknown-medication") ?? null);
+       return ok(stored);
+     });
+     mockRuntime(client, { registryEmbeddingError: new Error("embedding unavailable") });
+     const { GET } = await import("../src/app/api/medications/[slug]/route");
+ 
+     const response = await GET(authedRequest("/api/medications/unknown-medication"), {
+       params: Promise.resolve({ slug: "unknown-medication" }),
+     });
+ 
+     expect(response.status).toBe(404);
+-    expect(consoleError).toHaveBeenCalledWith(
+-      expect.stringContaining("[medications] registry corpus sync failed"),
+-      expect.objectContaining({ name: "Error", message: "embedding unavailable" }),
+-    );
++    expect(consoleError).not.toHaveBeenCalled();
+   });
+ });
+diff --git a/tests/registry-records-route.test.ts b/tests/registry-records-route.test.ts
+index a8d37c5729354256d1e67eedd17f6420e04b0ba9..e5e04718ac473e906f32cc2a8403b24eb56de04c 100644
+--- a/tests/registry-records-route.test.ts
++++ b/tests/registry-records-route.test.ts
+@@ -189,20 +189,31 @@ function request(path: string, init?: RequestInit) {
+ function authedRequest(path: string) {
+   return request(path, { headers: { Authorization: `Bearer ${token}` } });
+ }
+ 
+ afterEach(() => {
+   vi.restoreAllMocks();
+   vi.resetModules();
+ });
+ 
+ describe("registry records API", () => {
++  it("returns byte-equivalent canonical public bodies for anonymous and authenticated readers", async () => {
++    const client = createSupabaseMock();
++    mockRuntime(client);
++    const { GET } = await import("../src/app/api/registry/records/route");
++
++    const anonymous = await GET(request("/api/registry/records?kind=service&q=yarn"));
++    const authenticated = await GET(authedRequest("/api/registry/records?kind=service&q=yarn"));
++
++    expect(await authenticated.text()).toBe(await anonymous.text());
++    expect(client.from).not.toHaveBeenCalled();
++  });
+   it("serves a counts-only summary projection for mode homes", async () => {
+     const client = createSupabaseMock();
+     mockRuntime(client, { demoMode: true });
+     const { GET } = await import("../src/app/api/registry/records/route");
+ 
+     const response = await GET(request("/api/registry/records?kind=service&view=summary"));
+     const payload = (await response.json()) as {
+       total: number;
+       verifiedCount: number;
+       records?: unknown[];
+@@ -342,100 +353,94 @@ describe("registry records API", () => {
+   it("rejects an invalid kind with a validation error", async () => {
+     const client = createSupabaseMock();
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/registry/records/route");
+ 
+     const response = await GET(authedRequest("/api/registry/records?kind=differentials"));
+ 
+     expect(response.status).toBe(400);
+   });
+ 
+-  it("scopes every registry query to the authenticated owner", async () => {
++  it("excludes authenticated owner rows from the canonical public registry result", async () => {
+     const client = createSupabaseMock((call) =>
+       call.table === "clinical_registry_records" ? ok([registryRow()]) : ok([]),
+     );
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/registry/records/route");
+ 
+     const response = await GET(authedRequest("/api/registry/records?kind=service&q=yarn"));
+     const payload = (await response.json()) as {
+       records: Array<{ slug: string }>;
+       matches?: Array<{ record: { slug: string }; score: number; reasons: string[] }>;
+       governance: Record<string, { validationStatus: string }>;
+     };
+ 
+     expect(response.status).toBe(200);
+     expectPrivateCache(response);
+     expect(payload.records[0]?.slug).toBe("13yarn");
+     expect(payload.matches?.[0]?.record.slug).toBe("13yarn");
+-    expect(payload.governance["13yarn"]?.validationStatus).toBe("locally_reviewed");
++    expect(payload.governance["13yarn"]?.validationStatus).toBe("unverified");
+     const { serviceRecords } = await import("../src/lib/services");
+     expect(payload.records).toHaveLength(serviceRecords.length);
+-    for (const call of client.calls) {
+-      expect(call.filters).toContainEqual({ column: "owner_id", value: userId });
+-    }
++    expect(client.from).not.toHaveBeenCalled();
+   });
+ 
+   it("returns the full record set for client-side ranking, not just the first `limit`", async () => {
+     const many = Array.from({ length: 150 }, (_, i) => registryRow({ id: `id-${i}`, slug: `service-${i}` }));
+     const client = createSupabaseMock((call) => (call.table === "clinical_registry_records" ? ok(many) : ok([])));
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/registry/records/route");
+     const { serviceRecords } = await import("../src/lib/services");
+ 
+     // No `q`: the client hook fetches the whole list and ranks locally, so a
+     // small default `limit` must NOT truncate the returned records.
+     const response = await GET(authedRequest("/api/registry/records?kind=service&limit=10"));
+     const payload = (await response.json()) as { records: Array<{ slug: string }>; total: number };
+ 
+     expect(response.status).toBe(200);
+-    expect(payload.records).toHaveLength(serviceRecords.length + 150);
+-    expect(payload.total).toBe(serviceRecords.length + 150);
+-    expect(payload.records.filter((record) => record.slug.startsWith("service-"))).toHaveLength(150);
++    expect(payload.records).toHaveLength(serviceRecords.length);
++    expect(payload.total).toBe(serviceRecords.length);
++    expect(payload.records.filter((record) => record.slug.startsWith("service-"))).toHaveLength(0);
+   });
+ 
+   it("returns 429 when the registry rate limit is exhausted", async () => {
+     const client = createSupabaseMock(() => ok([]), { limited: true });
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/registry/records/route");
+ 
+     const response = await GET(authedRequest("/api/registry/records?kind=form"));
+ 
+     expect(response.status).toBe(429);
+     expect(client.from).not.toHaveBeenCalled();
+   });
+ 
+-  it("returns a single owner-scoped record with governance metadata", async () => {
++  it("returns the canonical public record with identity-independent governance metadata", async () => {
+     const client = createSupabaseMock((call) => {
+       if (call.table === "clinical_registry_records") return ok(registryRow());
+       if (call.table === "clinical_registry_record_sources") return ok([]);
+       return ok([]);
+     });
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/registry/records/[slug]/route");
+ 
+     const response = await GET(authedRequest("/api/registry/records/13YARN?kind=service"), {
+       params: Promise.resolve({ slug: "13YARN" }),
+     });
+     const payload = (await response.json()) as {
+       record: { slug: string };
+       governance: { sourceStatus: string; validationStatus: string };
+     };
+ 
+     expect(response.status).toBe(200);
+     expect(payload.record.slug).toBe("13yarn");
+-    expect(payload.governance.sourceStatus).toBe("current");
+-    for (const call of client.calls) {
+-      expect(call.filters).toContainEqual({ column: "owner_id", value: userId });
+-    }
+-    const recordCall = client.calls.find((call) => call.table === "clinical_registry_records");
+-    expect(recordCall?.filters).toContainEqual({ column: "slug", value: "13yarn" });
++    expect(payload.governance.sourceStatus).toBe("review_due");
++    expect(client.from).not.toHaveBeenCalled();
+   });
+ 
+   it("serves curated public detail records for unauthenticated requests outside demo mode", async () => {
+     const client = createSupabaseMock();
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/registry/records/[slug]/route");
+ 
+     const response = await GET(request("/api/registry/records/13YARN?kind=service"), {
+       params: Promise.resolve({ slug: "13YARN" }),
+     });
+@@ -559,46 +564,46 @@ describe("registry records API", () => {
+         statusChips?: unknown[];
+         contacts?: unknown[];
+         summaryCards?: unknown[];
+         criteria?: unknown[];
+         catalogPayload?: { availability?: string };
+       }>;
+     };
+     const record = payload.records.find((candidate) => candidate.slug === "transport-crisis-form");
+ 
+     expect(response.status).toBe(200);
+-    expect(record?.title).toBe("Owner title override");
++    expect(record?.title).toBe("Transport order");
+     expect(record?.statusChips?.length).toBeGreaterThan(0);
+     expect(record?.contacts?.length).toBeGreaterThan(0);
+     expect(record?.summaryCards?.length).toBeGreaterThan(0);
+     expect(record?.criteria?.length).toBeGreaterThan(0);
+     expect(record?.catalogPayload?.availability).toBe("downloadable");
+     expect(client.calls.some((call) => call.upsert)).toBe(false);
+   });
+ 
+   it("serves a shared deep link to an authenticated owner without seeding", async () => {
+     const client = createSupabaseMock((call) => (call.table === "clinical_registry_records" ? ok(null) : ok([])));
+     mockRuntime(client);
+     const { GET } = await import("../src/app/api/registry/records/[slug]/route");
+ 
+     const response = await GET(authedRequest("/api/registry/records/transport-crisis-form?kind=form"), {
+       params: Promise.resolve({ slug: "transport-crisis-form" }),
+     });
+-    const payload = (await response.json()) as { record: { slug: string }; sharedCatalog?: boolean };
++    const payload = (await response.json()) as { record: { slug: string }; publicAccess?: boolean };
+ 
+     expect(response.status).toBe(200);
+     expect(payload.record.slug).toBe("transport-crisis-form");
+-    expect(payload.sharedCatalog).toBe(true);
++    expect(payload.publicAccess).toBe(true);
+     expect(client.calls.some((call) => call.upsert)).toBe(false);
+   });
+ 
+-  it("merges shared form metadata into an older owner row on detail routes", async () => {
++  it("ignores older owner rows on canonical public detail routes", async () => {
+     const client = createSupabaseMock((call) => {
+       if (call.table === "clinical_registry_records") {
+         return ok(
+           registryRow({
+             kind: "form",
+             slug: "transport-crisis-form",
+             title: "Owner title override",
+             catalog_payload: {},
+           }),
+         );
+@@ -611,21 +616,21 @@ describe("registry records API", () => {
+     const response = await GET(authedRequest("/api/registry/records/transport-crisis-form?kind=form"), {
+       params: Promise.resolve({ slug: "transport-crisis-form" }),
+     });
+     const payload = (await response.json()) as {
+       record: { title: string; catalogPayload?: { availability?: string; localPdfPath?: string } };
+       governance: { sourceStatus: string };
+       linkedDocuments: unknown[];
+     };
+ 
+     expect(response.status).toBe(200);
+-    expect(payload.record.title).toBe("Owner title override");
++    expect(payload.record.title).toBe("Transport order");
+     expect(payload.record.catalogPayload?.availability).toBe("downloadable");
+     expect(payload.record.catalogPayload?.localPdfPath).toBeTruthy();
+     expect(payload.governance.sourceStatus).toBe("current");
+     expect(payload.linkedDocuments).toEqual([]);
+   });
+ 
+   it("uses catalogue summary cards for forms even when owner row has non-null stored cards", async () => {
+     const staleCards = [{ id: "old", label: "Old card", title: "Legacy value", detail: "stale" }];
+     const client = createSupabaseMock((call) =>
+       call.table === "clinical_registry_records"
+diff --git a/tests/site-content-publication-access.test.ts b/tests/site-content-publication-access.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..7798c69af95a20416b4ef3fbd1e50e418b38fbb0
+--- /dev/null
++++ b/tests/site-content-publication-access.test.ts
+@@ -0,0 +1,103 @@
++import { readFileSync, readdirSync } from "node:fs";
++import { basename, join } from "node:path";
++import { describe, expect, it } from "vitest";
++
++import { readPublicSiteContentPartition } from "../src/lib/site-content/public-site-content";
++
++const root = new URL("..", import.meta.url).pathname.replace(/^\/(?:[A-Za-z]:)/, (value) => value.slice(1));
++const migrations = join(root, "supabase", "migrations");
++
++function taskMigration() {
++  const file = readdirSync(migrations).find((entry) => entry.endsWith("_add_site_content_release_and_outbox.sql"));
++  expect(file).toBeDefined();
++  return { file: file!, sql: readFileSync(join(migrations, file!), "utf8") };
++}
++
++describe("public site-content publication access", () => {
++  it("uses bundled fallback only when the reader RPC is not yet applied and preserves authoritative empty partitions", async () => {
++    const missing = {
++      rpc: async () => ({ data: null, error: { code: "42883", message: "function does not exist" } }),
++    };
++    await expect(readPublicSiteContentPartition(missing as never, { domain: "medications" })).resolves.toBeNull();
++
++    const empty = {
++      rpc: async () => ({
++        data: { activeReleaseId: "release-1", changeEpoch: 7, state: "current", records: [] },
++        error: null,
++      }),
++    };
++    await expect(readPublicSiteContentPartition(empty as never, { domain: "medications" })).resolves.toEqual({
++      activeReleaseId: "release-1",
++      changeEpoch: 7,
++      state: "current",
++      records: [],
++    });
++
++    const failed = { rpc: async () => ({ data: null, error: { message: "database unavailable" } }) };
++    await expect(readPublicSiteContentPartition(failed as never, { domain: "medications" })).rejects.toThrow(
++      "Canonical public site-content read failed.",
++    );
++  });
++  it("allocates a forward-only migration after every existing migration", () => {
++    const { file } = taskMigration();
++    const timestamps = readdirSync(migrations)
++      .filter((entry) => entry !== file)
++      .map((entry) => Number(entry.slice(0, 14)))
++      .filter(Number.isFinite);
++    expect(Number(file.slice(0, 14))).toBeGreaterThan(Math.max(...timestamps));
++  });
++
++  it("publishes the public row, epoch, pending exclusion, and outbox atomically behind administrator authority", () => {
++    const { sql } = taskMigration();
++    expect(sql).toMatch(/create table public\.site_content_publications/i);
++    expect(sql).toMatch(/create unique index[\s\S]*logical_id/i);
++    expect(sql).toMatch(/create table public\.site_content_sync_outbox/i);
++    expect(sql).toMatch(/create table public\.site_content_public_authority/i);
++    expect(sql).toMatch(/create or replace function public\.publish_site_content_record/i);
++    expect(sql).toMatch(/administrator_authorized[\s\S]*raise exception/i);
++    expect(sql).toMatch(/change_epoch\s*=\s*change_epoch\s*\+\s*1/i);
++    expect(sql).toMatch(/insert into public\.site_content_sync_outbox/i);
++    expect(sql).toMatch(/delete from public\.rag_response_cache/i);
++    expect(sql).toMatch(/revoke all[\s\S]*from public, anon, authenticated/i);
++    expect(sql).toMatch(/grant execute[\s\S]*to service_role/i);
++    expect(sql).not.toMatch(/grant (?:insert|update|delete)[^;]* to (?:anon|authenticated)/i);
++  });
++
++  it("defines fixed-search-path lease fencing, exact pending anti-join, activation, and retained rollback receipts", () => {
++    const { sql } = taskMigration();
++    for (const name of [
++      "claim_site_content_sync_events",
++      "heartbeat_site_content_sync_event",
++      "complete_site_content_sync_event",
++      "fail_site_content_sync_event",
++      "activate_site_content_release",
++      "rollback_site_content_release",
++    ]) {
++      expect(sql).toContain(`function public.${name}`);
++    }
++    expect(sql).toMatch(/for update skip locked/i);
++    expect(sql).toMatch(/lease_id[\s\S]*generation_id[\s\S]*lease_expires_at/i);
++    expect(sql).toMatch(/not exists[\s\S]*site_content_sync_outbox[\s\S]*logical_id/i);
++    expect(sql).toMatch(/set search_path = ''/i);
++    expect(sql).toMatch(/restoration_method[\s\S]*retained-pointer/i);
++  });
++
++  it("keeps reader selection independent of actor and legacy owner identity", () => {
++    const routePaths = [
++      "src/app/api/registry/records/route.ts",
++      "src/app/api/registry/records/[slug]/route.ts",
++      "src/app/api/medications/route.ts",
++      "src/app/api/medications/[slug]/route.ts",
++      "src/app/api/differentials/route.ts",
++      "src/app/api/differentials/[slug]/route.ts",
++      "src/app/api/differentials/presentations/[slug]/route.ts",
++    ];
++    for (const routePath of routePaths) {
++      const source = readFileSync(join(root, routePath), "utf8");
++      expect(source, basename(routePath)).not.toMatch(/\.eq\("owner_id",\s*access\.ownerId\)/);
++      expect(source, basename(routePath)).not.toMatch(/fetchOwner[A-Za-z]+Rows/);
++      expect(source, basename(routePath)).toMatch(/canonical public|publicSiteContent|public.*payload/i);
++      expect(source).not.toMatch(/export async function (?:POST|PUT|PATCH|DELETE)/);
++    }
++  });
++});
+diff --git a/tests/site-content-sync-worker.test.ts b/tests/site-content-sync-worker.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..41b242ba2c4ecef4a19fc374707253bd210f8dd9
+--- /dev/null
++++ b/tests/site-content-sync-worker.test.ts
+@@ -0,0 +1,110 @@
++import { describe, expect, it, vi } from "vitest";
++
++import { drainSiteContentSyncBatch } from "../supabase/functions/site-content-sync/index";
++
++describe("site-content sync worker", () => {
++  it("claims a bounded batch and completes only with the live lease and generation identity", async () => {
++    const rpc = vi.fn(async (name: string) => {
++      if (name === "claim_site_content_sync_events") {
++        return {
++          data: [
++            {
++              event_id: "11111111-1111-4111-8111-111111111111",
++              publication_id: "22222222-2222-4222-8222-222222222222",
++              logical_id: "medication:alpha",
++              content_hash: `sha256:${"a".repeat(64)}`,
++              attempt_count: 1,
++              lease_id: "33333333-3333-4333-8333-333333333333",
++              generation_id: "44444444-4444-4444-8444-444444444444",
++              lease_expires_at: "2026-08-24T01:05:00.000Z",
++            },
++          ],
++          error: null,
++        };
++      }
++      return { data: { ok: true }, error: null };
++    });
++    const processEvent = vi.fn(async () => ({ releaseId: "55555555-5555-4555-8555-555555555555" }));
++
++    const result = await drainSiteContentSyncBatch({
++      workerId: "66666666-6666-4666-8666-666666666666",
++      limit: 500,
++      leaseSeconds: 90,
++      maxBatchSize: 25,
++      maxAttempts: 4,
++      rpc,
++      processEvent,
++      heartbeatEvery: 1,
++      log: vi.fn(),
++    });
++
++    expect(rpc).toHaveBeenNthCalledWith(
++      1,
++      "claim_site_content_sync_events",
++      expect.objectContaining({ p_limit: 25, p_lease_seconds: 90 }),
++    );
++    expect(rpc).toHaveBeenCalledWith(
++      "heartbeat_site_content_sync_event",
++      expect.objectContaining({
++        p_event_id: "11111111-1111-4111-8111-111111111111",
++        p_lease_id: "33333333-3333-4333-8333-333333333333",
++        p_generation_id: "44444444-4444-4444-8444-444444444444",
++      }),
++    );
++    expect(rpc).toHaveBeenCalledWith(
++      "complete_site_content_sync_event",
++      expect.objectContaining({
++        p_event_id: "11111111-1111-4111-8111-111111111111",
++        p_lease_id: "33333333-3333-4333-8333-333333333333",
++        p_generation_id: "44444444-4444-4444-8444-444444444444",
++      }),
++    );
++    expect(processEvent).toHaveBeenCalledTimes(1);
++    expect(result).toEqual({ claimed: 1, completed: 1, retried: 0, quarantined: 0, leaseLost: 0 });
++  });
++
++  it("retries and quarantines poison events without logging content or actor identity", async () => {
++    const log = vi.fn();
++    const rpc = vi.fn(async (name: string) => {
++      if (name === "claim_site_content_sync_events") {
++        return {
++          data: [
++            {
++              event_id: "11111111-1111-4111-8111-111111111111",
++              publication_id: "22222222-2222-4222-8222-222222222222",
++              logical_id: "medication:alpha",
++              content_hash: `sha256:${"a".repeat(64)}`,
++              attempt_count: 4,
++              lease_id: "33333333-3333-4333-8333-333333333333",
++              generation_id: "44444444-4444-4444-8444-444444444444",
++              lease_expires_at: "2026-08-24T01:05:00.000Z",
++            },
++          ],
++          error: null,
++        };
++      }
++      return { data: { ok: true }, error: null };
++    });
++
++    const result = await drainSiteContentSyncBatch({
++      workerId: "66666666-6666-4666-8666-666666666666",
++      limit: 1,
++      leaseSeconds: 90,
++      maxBatchSize: 25,
++      maxAttempts: 4,
++      rpc,
++      processEvent: vi.fn(async () => {
++        throw new Error("synthetic provider failure containing private body text");
++      }),
++      log,
++    });
++
++    expect(rpc).toHaveBeenCalledWith(
++      "fail_site_content_sync_event",
++      expect.objectContaining({ p_quarantine: true, p_error_code: "sync_failed" }),
++    );
++    expect(result.quarantined).toBe(1);
++    expect(JSON.stringify(log.mock.calls)).not.toContain("private body text");
++    expect(JSON.stringify(log.mock.calls)).not.toMatch(/actor|user/i);
++  });
++});
+diff --git a/tests/site-content-sync.test.ts b/tests/site-content-sync.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..e82c6d1f692c70caae8090a0c8e72334143e0ca3
+--- /dev/null
++++ b/tests/site-content-sync.test.ts
+@@ -0,0 +1,189 @@
++import { describe, expect, it, vi } from "vitest";
++
++import {
++  assertSiteReleaseReceiptPair,
++  planSiteContentSync,
++  runSiteContentSync,
++} from "../src/lib/site-content/site-content-sync";
++import { activationReceiptDigest, rollbackReceiptDigest } from "../src/lib/recovery-readiness-evidence";
++
++const sha = (value: string) => `sha256:${value.repeat(64).slice(0, 64)}` as const;
++const releaseId = "11111111-1111-4111-8111-111111111111";
++const priorReleaseId = "22222222-2222-4222-8222-222222222222";
++const generationId = "33333333-3333-4333-8333-333333333333";
++
++function desired(logicalId: string, contentHash: `sha256:${string}`) {
++  return {
++    logicalId,
++    domain: "medications" as const,
++    publicationVersion: "2026-08-24T00:00:00.000Z",
++    contentHash,
++    sourceLineageDigest: sha("a"),
++  };
++}
++
++function plan(overrides: Record<string, unknown> = {}) {
++  return planSiteContentSync({
++    projectRef: "synthetic-project",
++    expectedProjectRef: "synthetic-project",
++    candidateReleaseId: releaseId,
++    previousReleaseId: priorReleaseId,
++    generationId,
++    registryVersion: "site-content-registry-v1",
++    staticManifestDigest: sha("b"),
++    expectedEmbedding: { model: "synthetic-embedding-v1", dimensions: 3 },
++    desiredRecords: [desired("medication:alpha", sha("c")), desired("medication:beta", sha("d"))],
++    activeProjections: [
++      {
++        logicalId: "medication:alpha",
++        contentHash: sha("c"),
++        embedding: {
++          model: "synthetic-embedding-v1",
++          dimensions: 3,
++          contentHash: sha("c"),
++          digest: sha("e"),
++        },
++      },
++      {
++        logicalId: "medication:removed",
++        contentHash: sha("f"),
++        embedding: {
++          model: "synthetic-embedding-v1",
++          dimensions: 3,
++          contentHash: sha("f"),
++          digest: sha("0"),
++        },
++      },
++    ],
++    legacyRows: [],
++    legacyDispositions: [],
++    batchSize: 25,
++    ...overrides,
++  });
++}
++
++describe("durable site-content synchronization", () => {
++  it("plans verified unchanged reuse, changed-only staging, and deletion tombstones deterministically", () => {
++    const result = plan();
++
++    expect(result.mode).toBe("dry-run");
++    expect(result.unchanged.map((entry) => entry.logicalId)).toEqual(["medication:alpha"]);
++    expect(result.changed.map((entry) => entry.logicalId)).toEqual(["medication:beta"]);
++    expect(result.tombstoned.map((entry) => entry.logicalId)).toEqual(["medication:removed"]);
++    expect(result.unchanged[0]?.reusedEmbedding.digest).toBe(sha("e"));
++    expect(result.expectedCounts).toEqual({ desired: 2, changed: 1, unchanged: 1, tombstoned: 1 });
++    expect(result.dynamicStateDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
++    expect(result.releaseDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
++    expect(result.planDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
++    expect(plan().planDigest).toBe(result.planDigest);
++  });
++
++  it("fails closed on target drift, incompatible embedding reuse, and unresolved divergent legacy rows", () => {
++    expect(() => plan({ expectedProjectRef: "different-project" })).toThrow(/project/i);
++
++    const incompatible = plan({
++      activeProjections: [
++        {
++          logicalId: "medication:alpha",
++          contentHash: sha("c"),
++          embedding: {
++            model: "old-model",
++            dimensions: 3,
++            contentHash: sha("c"),
++            digest: sha("e"),
++          },
++        },
++      ],
++    });
++    expect(incompatible.changed.map((entry) => entry.logicalId)).toContain("medication:alpha");
++    expect(incompatible.unchanged).toHaveLength(0);
++
++    expect(() =>
++      plan({
++        legacyRows: [
++          { rowId: "legacy-a", logicalId: "medication:alpha", contentHash: sha("1") },
++          { rowId: "legacy-b", logicalId: "medication:alpha", contentHash: sha("2") },
++        ],
++      }),
++    ).toThrow(/disposition|divergent/i);
++  });
++
++  it("never sends verified unchanged records to the embedding stage and rejects a stale lease or generation", async () => {
++    const syncPlan = plan();
++    const stageChanged = vi.fn(async () => undefined);
++    const carryForward = vi.fn(async () => undefined);
++    const tombstone = vi.fn(async () => undefined);
++    const lease = {
++      workerId: "44444444-4444-4444-8444-444444444444",
++      leaseId: "55555555-5555-4555-8555-555555555555",
++      generationId,
++      expiresAt: "2026-08-24T01:05:00.000Z",
++    };
++
++    await expect(
++      runSiteContentSync(syncPlan, lease, {
++        now: () => new Date("2026-08-24T01:00:00.000Z"),
++        stageChanged,
++        carryForward,
++        tombstone,
++      }),
++    ).resolves.toMatchObject({ changed: 1, unchanged: 1, tombstoned: 1, releaseDigest: syncPlan.releaseDigest });
++    expect(stageChanged).toHaveBeenCalledTimes(1);
++    expect(stageChanged).toHaveBeenCalledWith(expect.objectContaining({ logicalId: "medication:beta" }), lease);
++    expect(carryForward).toHaveBeenCalledWith(
++      expect.objectContaining({ logicalId: "medication:alpha", reusedEmbedding: expect.any(Object) }),
++      lease,
++    );
++    expect(tombstone).toHaveBeenCalledTimes(1);
++
++    await expect(
++      runSiteContentSync(syncPlan, { ...lease, generationId: "66666666-6666-4666-8666-666666666666" }, {}),
++    ).rejects.toThrow(/generation/i);
++    await expect(
++      runSiteContentSync(
++        syncPlan,
++        { ...lease, expiresAt: "2026-08-24T00:59:59.000Z" },
++        {
++          now: () => new Date("2026-08-24T01:00:00.000Z"),
++        },
++      ),
++    ).rejects.toThrow(/lease/i);
++  });
++
++  it("reuses the shared append-only activation and retained-pointer rollback receipt authority", () => {
++    const activation = {
++      version: 1,
++      receiptId: "77777777-7777-4777-8777-777777777777",
++      sequence: 7,
++      recordedAt: "2026-08-24T01:10:00.000Z",
++      projectRef: "synthetic-project",
++      operation: "site-release",
++      recoveryEvidenceId: "88888888-8888-4888-8888-888888888888",
++      recoveryEvidenceDigest: sha("3"),
++      stateDigest: sha("4"),
++      resource: { kind: "site-release", releaseId, releaseDigest: sha("5") },
++      previousResource: { kind: "site-release", releaseId: priorReleaseId, releaseDigest: sha("6") },
++    };
++    const activationWithDigest = { ...activation, digest: activationReceiptDigest(activation) };
++    const rollback = {
++      version: 1,
++      receiptId: "99999999-9999-4999-8999-999999999999",
++      sequence: 8,
++      recordedAt: "2026-08-24T01:11:00.000Z",
++      projectRef: "synthetic-project",
++      operation: "site-release",
++      activationReceiptId: activationWithDigest.receiptId,
++      activationReceiptDigest: activationWithDigest.digest,
++      recoveryEvidenceDigest: activationWithDigest.recoveryEvidenceDigest,
++      failedResource: activationWithDigest.resource,
++      restoredResource: activationWithDigest.previousResource,
++      restorationMethod: "retained-pointer",
++    };
++    const rollbackWithDigest = { ...rollback, digest: rollbackReceiptDigest(rollback) };
++
++    expect(assertSiteReleaseReceiptPair(activationWithDigest, rollbackWithDigest)).toMatchObject({
++      activation: { operation: "site-release" },
++      rollback: { restorationMethod: "retained-pointer" },
++    });
++  });
++});
