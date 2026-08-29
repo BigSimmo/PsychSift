@@ -35,7 +35,7 @@ const searchCache = new Map<
   string,
   { expiresAt: number; results: SearchResult[]; telemetry: SearchTelemetry; indexingVersion: string }
 >();
-const ragCacheDependencyVersion = "rag-cache-v20";
+export const ragCacheDependencyVersion = "rag-cache-v21";
 const cacheIndexingVersionTtlMs = 5000;
 const cacheIndexingVersionMaxEntries = 512;
 const cacheIndexingVersionCache = new Map<string, { expiresAt: number; value: string }>();
@@ -345,6 +345,7 @@ export function retrievalPlanCacheQuery(
     | "forceEmbedding"
     | "lexicalOnly"
     | "ragContextSnapshot"
+    | "ragQueryPlanVersion"
   >,
   queryClass?: RagQueryClass,
   queryVariants: string[] = [],
@@ -357,6 +358,7 @@ export function retrievalPlanCacheQuery(
     `class:${queryClass ?? "unknown"}`,
     `query:${normalizedQuery}`,
     `variants:${variantHash}`,
+    `queryPlan:${args.ragQueryPlanVersion ?? "rag-query-plan-v1"}`,
     `mode:${modeKey(args)}`,
     `topK:${args.topK ?? 8}`,
     `min:${args.minSimilarity ?? 0.15}`,

@@ -10,7 +10,7 @@ import { buildClinicalTextSearchQuery, normalizedClinicalSearchTokens, queriedZo
 import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
 import type { SearchChunksArgs } from "@/lib/rag/rag-contracts";
 import { shouldShortCircuitUnsupportedSearch } from "@/lib/rag/rag-query-guard";
-import type { ClinicalQueryAnalysis, RagQueryClass, SearchResult } from "@/lib/types";
+import type { ClinicalQueryAnalysis, RagProgrammeMode, RagQueryClass, RagQueryPlan, SearchResult } from "@/lib/types";
 
 const maxRetrievalQueryVariants = 4;
 export const maxTextRpcQueryVariants = 3;
@@ -212,6 +212,7 @@ export function buildRetrievalQueryVariants(
   query: string,
   analysis: ClinicalQueryAnalysis,
   aliases: RagAliasInput[] = [],
+  plan?: RagQueryPlan,
 ) {
   const variants: string[] = [];
   const seen = new Set<string>();
@@ -312,7 +313,79 @@ export function buildRetrievalQueryVariants(
     addVariant(retrievalVariantFromTerms(coreTerms.slice(0, 10)));
   }
 
-  return variants.slice(0, maxRetrievalQueryVariants);
+  const legacyVariants = variants.slice(0, maxRetrievalQueryVariants);
+  if (!plan || plan.kind !== "decomposed") return legacyVariants;
+
+  const candidateVariants: string[] = [];
+  const candidateKeys = new Set<string>();
+  for (const value of [
+    plan.originalQuery,
+    ...plan.subquestions.slice(1).map(({ question }) => question),
+    ...legacyVariants,
+  ]) {
+    const normalized = normalizeRetrievalVariant(buildClinicalTextSearchQuery(value));
+    const key = normalized.toLowerCase();
+    if (!normalized || candidateKeys.has(key)) continue;
+    candidateKeys.add(key);
+    candidateVariants.push(normalized);
+    if (candidateVariants.length >= maxRetrievalQueryVariants) break;
+  }
+  return candidateVariants;
+}
+
+const queryPlanDiagnosticReasonCodes = new Set([
+  "comparison_terms",
+  "table_or_threshold_terms",
+  "medication_dose_or_risk_terms",
+  "document_lookup_terms",
+  "document_include_terms",
+  "broad_summary_terms",
+  "typo_corrections",
+  "domain_alias_terms",
+  "freshness_terms",
+  "no_specific_rag_class_terms",
+  "document_explicit",
+  "medicine_explicit",
+  "population_explicit",
+  "jurisdiction_explicit",
+  "setting_explicit",
+  "acronym_expanded",
+  "medicine_alias_or_typo_preserved",
+  "document_section_exact",
+  "material_retrieval_ambiguity",
+  "comparison_sides_identified",
+  "broad_management_decomposition",
+  "comparison_sides_unresolved_single_plan",
+]);
+
+function contentFreeQueryPlanReasonCodes(plan: RagQueryPlan) {
+  return [...new Set(plan.reasonCodes.filter((reason) => queryPlanDiagnosticReasonCodes.has(reason)))].slice(0, 16);
+}
+
+export function buildRagRetrievalVariantPlan(
+  query: string,
+  analysis: ClinicalQueryAnalysis,
+  aliases: RagAliasInput[],
+  plan: RagQueryPlan,
+  rolloutMode: RagProgrammeMode,
+  signal?: AbortSignal,
+) {
+  const servedVariants = buildRetrievalQueryVariants(query, analysis, aliases);
+  const shadow = rolloutMode === "shadow";
+  if (shadow) throwIfAborted(signal);
+  const candidateVariants = shadow ? buildRetrievalQueryVariants(query, analysis, aliases, plan) : servedVariants;
+  if (shadow) throwIfAborted(signal);
+  return {
+    queryPlanVersion: plan.version,
+    servedVariants,
+    candidateVariants,
+    diagnostics: {
+      query_plan_kind: plan.kind,
+      subquestion_count: plan.subquestions.length,
+      query_plan_reason_codes: contentFreeQueryPlanReasonCodes(plan),
+      ...(shadow ? { candidate_retrieval_query_variant_count: candidateVariants.length } : {}),
+    },
+  };
 }
 
 // P8b: websearch_to_tsquery ANDs every term, so a long multi-term query (e.g. "ciwa score threshold

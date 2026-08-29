@@ -35,6 +35,8 @@ export type SearchChunksArgs = {
   lexicalOnly?: boolean;
   /** Internal immutable authority resolved once before request cache/coalescing lookup. */
   ragContextSnapshot?: ResolvedRagContextSnapshot;
+  /** Internal bounded query-plan contract version; raw subquestions never enter cache identity. */
+  ragQueryPlanVersion?: string;
   /** Internal: shares one request-start indexing-version resolution across nested cache reads. */
   cacheContext?: {
     indexingVersionAtRequestStart?: Promise<string>;
@@ -101,6 +103,10 @@ export type SearchTelemetry = {
   retrieval_query_variant_count?: number;
   rag_alias_count?: number;
   rag_alias_expansion_count?: number;
+  query_plan_kind?: import("@/lib/types").RagQueryPlanKind;
+  subquestion_count?: number;
+  query_plan_reason_codes?: string[];
+  candidate_retrieval_query_variant_count?: number;
   text_fast_path_latency_ms: number;
   text_candidate_budget?: number;
   text_fast_path_reason?: string | null;

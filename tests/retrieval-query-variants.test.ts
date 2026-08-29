@@ -20,6 +20,7 @@ import {
   shouldRelaxWeakTextMatches,
 } from "../src/lib/rag/rag";
 import { firstVariantPoolIsStrong, maxTextRpcQueryVariants } from "../src/lib/rag/rag-retrieval-variants";
+import { buildRagQueryPlan } from "../src/lib/rag/rag-query-plan";
 import type { SearchResult } from "../src/lib/types";
 
 function result(overrides: Partial<SearchResult> = {}): SearchResult {
@@ -56,6 +57,43 @@ function tableFact(overrides: Partial<NonNullable<SearchResult["table_facts"]>[n
 }
 
 describe("retrieval query variants", () => {
+  it("keeps simple query variants byte-identical when a single plan is supplied", () => {
+    const query = "What ANC threshold should stop clozapine?";
+    const analysis = analyzeClinicalQuery(query);
+    const legacy = buildRetrievalQueryVariants(query, analysis);
+    const planned = buildRetrievalQueryVariants(query, analysis, [], buildRagQueryPlan(query, analysis));
+
+    expect(planned).toEqual(legacy);
+  });
+
+  it.each(["What is the duress procedure during an acute ward incident?", "When is IM medication used for agitation?"])(
+    "does not convert a clinical pathway into candidate source-inventory variants: %s",
+    (query) => {
+      const analysis = analyzeClinicalQuery(query);
+      const plan = buildRagQueryPlan(query, analysis);
+
+      expect(plan.kind).toBe("single");
+      expect(buildRetrievalQueryVariants(query, analysis, [], plan)).toEqual(
+        buildRetrievalQueryVariants(query, analysis),
+      );
+    },
+  );
+
+  it.each([
+    "Give an overview of agitation management including treatment, monitoring and escalation.",
+    "Compare clozapine and olanzapine monitoring requirements.",
+    "Compare medication guidance and therapy guidance for agitation.",
+  ])("keeps the original query first and caps decomposed candidates: %s", (query) => {
+    const analysis = analyzeClinicalQuery(query);
+    const plan = buildRagQueryPlan(query, analysis);
+    const variants = buildRetrievalQueryVariants(query, analysis, [], plan);
+
+    expect(plan.kind).toBe("decomposed");
+    expect(variants[0]).toBe(buildClinicalTextSearchQuery(query));
+    expect(variants.length).toBeLessThanOrEqual(4);
+    expect(new Set(variants.map((variant) => variant.toLowerCase())).size).toBe(variants.length);
+  });
+
   it("keeps typo-corrected acronym terms in a capped variant list", () => {
     const analysis = analyzeClinicalQuery("clozapin FBC ANC threshold");
     const variants = buildRetrievalQueryVariants("clozapin FBC ANC threshold", analysis);
@@ -1175,6 +1213,17 @@ describe("retrieval query variants", () => {
     expect(key).not.toEqual(retrievalPlanCacheQuery(baseArgs, "document_lookup", ["clozapine anc", "clozapine fbc"]));
     expect(key).not.toEqual(retrievalPlanCacheQuery(baseArgs, "table_threshold", ["different variant"]));
     expect(key).not.toEqual(retrievalPlanCacheQuery({ ...baseArgs, topK: 12 }, "table_threshold", ["clozapine anc"]));
+    expect(key).not.toEqual(
+      retrievalPlanCacheQuery({ ...baseArgs, ragQueryPlanVersion: "rag-query-plan-v2" }, "table_threshold", [
+        "clozapine anc",
+        "clozapine fbc",
+      ]),
+    );
+    expect(
+      retrievalPlanCacheQuery({ ...baseArgs, ragQueryPlanVersion: "rag-query-plan-v2" }, "table_threshold", [
+        "private raw subquestion text",
+      ]),
+    ).not.toContain("private raw subquestion text");
   });
 });
 

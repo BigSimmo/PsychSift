@@ -100,7 +100,7 @@ export {
 } from "@/lib/rag/rag-extractive-answer";
 import {
   assertGlobalSearchAllowed,
-  buildRetrievalQueryVariants,
+  buildRagRetrievalVariantPlan,
   fetchEnabledRagAliases,
   normalizeRetrievalVariant,
   ownerScopeForDocumentFilteredRetrieval,
@@ -149,6 +149,7 @@ import {
 } from "@/lib/observability/answer-coalescing-metrics";
 import { buildRagSourceBlock, neutralizeIdentityField } from "@/lib/rag/rag-source-block";
 import { ragContextSnapshotTelemetry } from "@/lib/rag/rag-context-snapshot";
+import { buildRagQueryPlan } from "@/lib/rag/rag-query-plan";
 export { buildRagSourceBlock, truncateForModel } from "@/lib/rag/rag-source-block";
 import {
   buildClinicalTextSearchQuery,
@@ -173,7 +174,6 @@ import {
   logRagQueryOutcome,
   logRagQueryOutcomeForAnswerArgs,
   type RagQueryTelemetryFinalizer,
-  type RagQueryInsert,
 } from "@/lib/rag/rag-query-telemetry";
 import { withRagProgrammeDiagnostics } from "@/lib/rag/rag-programme-telemetry";
 import { normalizeOptionalSourceMetadata } from "@/lib/source-metadata";
@@ -199,7 +199,6 @@ import {
   buildIndexingQuality,
   collectMemoryCards,
   deriveConfidence,
-  fallbackReasonFromRouting,
   isProviderGenerationDegraded,
   machineReadableFallbackAnswer,
   scoreValue,
@@ -218,7 +217,6 @@ export {
 } from "@/lib/rag/rag-answer-support";
 import {
   retrievalPlanForQueryClass,
-  type AnswerProgressEvent,
   type AnswerQuestionWithScopeArgs,
   type SearchChunksArgs,
   type SearchTelemetry,
@@ -1550,20 +1548,22 @@ export async function searchChunksWithTelemetry(
     recordSearchScoreTelemetry(telemetry, []);
     return finishSearch(searchTiming, { results: [] as SearchResult[], telemetry });
   }
-  const requestContext = await resolveRequestRagCacheContext(args, "legacy", {
-    readDocumentIndexGeneration: cacheIndexingVersion,
-  });
+  const requestContext = await resolveRequestRagCacheContext(
+    args,
+    args.ragContextSnapshot?.rolloutVersion ?? "legacy",
+    {
+      readDocumentIndexGeneration: cacheIndexingVersion,
+    },
+  );
   args = { ...args, ...requestContext };
   const { cacheContext, ragContextSnapshot } = requestContext;
   const supabase = createAdminClient();
-  // When the provider is source-only (offline mode, or auto mode without a usable key) we must
-  // never call OpenAI for embeddings; retrieval falls back to the lexical text-fast-path only.
+  // Source-only retrieval never calls OpenAI embeddings and uses the lexical fast path.
   const sourceOnlyRetrieval = isSourceOnlyMode();
   if (args.forceEmbedding && sourceOnlyRetrieval) {
     throw new Error("forceEmbedding requires embedding-capable retrieval; source-only mode cannot exercise vectors.");
   }
-  // A3: shared across every withMemoryBoostedCandidates call in this request so the same
-  // owner/query memory cards are fetched at most once per (query, embedding-present, count).
+  // A3: share memory cards across this request; fetch each owner/query tuple at most once.
   const memoryCardCache: MemoryCardCache = new Map();
   const chunkLoadCache = createChunkLoadCache();
   const documentRankingMetadataCache = createDocumentRankingMetadataCache();
@@ -1573,10 +1573,8 @@ export async function searchChunksWithTelemetry(
     : args.documentId
       ? [args.documentId]
       : undefined;
-  // Finding #11: give the classifier fallback the exact owner scope retrieval will use, so
-  // corpus grounding sees the same corpus. If owner-scope derivation throws (anonymous prod
-  // call without allowGlobalSearch), grounding is skipped and the retrieval path below raises
-  // the proper owner-scope error itself.
+  // Finding #11: classifier grounding uses retrieval's exact owner scope. If derivation fails,
+  // skip grounding and let the retrieval path raise the authoritative owner-scope error.
   const corpusGroundingScope = (() => {
     try {
       return {
@@ -1612,15 +1610,25 @@ export async function searchChunksWithTelemetry(
   ]);
   throwIfAborted(args.signal);
   if (modeQueryClass) queryAnalysis.queryClass = modeQueryClass;
+  const queryPlan = buildRagQueryPlan(retrievalQuery, queryAnalysis);
+  const retrievalVariantPlan = buildRagRetrievalVariantPlan(
+    retrievalQuery,
+    queryAnalysis,
+    ragAliases,
+    queryPlan,
+    ragContextSnapshot?.rolloutVersion ?? "legacy",
+    args.signal,
+  );
+  args = { ...args, ragQueryPlanVersion: retrievalVariantPlan.queryPlanVersion };
   const queryClassification = {
     queryClass: queryAnalysis.queryClass,
     confidence: queryAnalysis.confidence,
     reasons: queryAnalysis.reasons,
   };
   const telemetry = createSearchTelemetry(retrievalQuery, queryClassification.queryClass);
+  Object.assign(telemetry, retrievalVariantPlan.diagnostics);
   if (ragContextSnapshot) Object.assign(telemetry, ragContextSnapshotTelemetry(ragContextSnapshot));
   if (queryAnalysis.corpusGrounding) telemetry.corpus_grounding = queryAnalysis.corpusGrounding;
-
   let semanticRerankAttempted = false;
   const applySemanticRerankOnce = async (
     results: SearchResult[],
@@ -1643,19 +1651,15 @@ export async function searchChunksWithTelemetry(
   const ragAliasExpansions = selectRagAliasExpansions(retrievalQuery, ragAliases);
   telemetry.rag_alias_count = ragAliases.length;
   telemetry.rag_alias_expansion_count = ragAliasExpansions.length;
-
-  const queryVariants = buildRetrievalQueryVariants(retrievalQuery, queryAnalysis, ragAliases);
+  const queryVariants = retrievalVariantPlan.servedVariants;
   telemetry.retrieval_query_variant_count = queryVariants.length;
   const cached = await measureSearchPhase(searchTiming, "local_cache_lookup", () =>
     getCachedSearch(args, queryClassification.queryClass, queryVariants, {
       indexingVersionAtRequestStart: indexingVersionAtRetrievalStart,
     }),
   );
-  // Only consult the shared cache when the process-local cache missed (preserves
-  // the original short-circuit), then record the hit-rate counter ONCE with full
-  // knowledge of both layers: a request served by either cache is a hit, so a
-  // cold process that falls through to a warm shared cache is not miscounted as a
-  // miss (deep /api/health cache hit-rate — docs/observability-slos.md §4).
+  // Consult shared cache only after a local miss; count either layer as one request hit
+  // (deep /api/health cache hit-rate — docs/observability-slos.md §4).
   const sharedCached = cached
     ? null
     : await measureSearchPhase(searchTiming, "shared_cache_lookup", () =>
@@ -1665,7 +1669,6 @@ export async function searchChunksWithTelemetry(
       );
   const cacheOutcome = classifySearchCacheOutcome(isSearchCacheEnabled(args), Boolean(cached), sharedCached);
   if (cacheOutcome !== "skip") recordCacheLookup(cacheOutcome === "hit");
-
   if (cached) return finishSearch(searchTiming, cached);
   if (sharedCached?.kind === "hit") {
     await setCachedSearch(args, sharedCached.results, sharedCached.telemetry, queryVariants, {
@@ -1682,12 +1685,8 @@ export async function searchChunksWithTelemetry(
     !args.forceEmbedding &&
     shouldApplyUnsupportedSearchShortCircuit(retrievalQuery, queryAnalysis, ragAliasExpansions)
   ) {
-    // Item 10 follow-up (RC6): a typo can make an on-topic query ("schizophrenai management") look
-    // unsupported and short-circuit before any layer runs. Before giving up, trigram-correct the
-    // query against the known clinical-term vocabulary; if it changes, re-run the whole retrieval
-    // once on the corrected text so classification + every layer benefits (not just the text fallback
-    // in searchTextChunkCandidates). Only reached for would-be-unsupported queries, so it adds no
-    // hot-path cost; `typoCorrected` guards against recursion.
+    // RC6: before an unsupported exit, trigram-correct once so classification and every layer share
+    // the corrected query. This cold path is recursion-bounded by `typoCorrected`.
     if (!args.typoCorrected && !sourceOnlyRetrieval) {
       const { data: corrected } = await supabase.rpc("correct_clinical_query_terms", {
         input_query: retrievalQuery,

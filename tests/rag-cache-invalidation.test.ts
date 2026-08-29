@@ -58,7 +58,8 @@ function contextSnapshot(
     activatedAt: "2026-08-29T00:00:00.000Z",
     ...overrides.release,
   };
-  const { release: _release, ...inputOverrides } = overrides;
+  const inputOverrides = { ...overrides };
+  delete inputOverrides.release;
   return resolveRagContextSnapshot({
     expectedSiteStaticManifestDigest: STATIC_DIGEST,
     activePublicSiteRelease: release,
@@ -162,7 +163,13 @@ class DeleteQuery implements PromiseLike<{ data: null; error: null }> {
 }
 
 describe("RAG cache invalidation", () => {
-  it("keeps exact legacy answer/search cache bytes when the site component is off", async () => {
+  it("exports the query-plan-aware dependency generation", async () => {
+    const { ragCacheDependencyVersion } = await import("../src/lib/rag/rag-cache");
+
+    expect(ragCacheDependencyVersion).toBe("rag-cache-v21");
+  });
+
+  it("keeps site-off and implicit legacy requests aligned in the query-plan-aware cache generation", async () => {
     vi.resetModules();
     vi.doMock("@/lib/australian-source-catalogue", () => ({
       australianSourcePolicyVersion: futureAustralianSourcePolicyVersion,
@@ -209,11 +216,11 @@ describe("RAG cache invalidation", () => {
     };
     const siteOffArgs = { ...legacyArgs, ragContextSnapshot: siteComponentOffSnapshot() };
     const expectedAnswerKey =
-      "rag-cache-v20|owner:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa+public|all-documents|auto|" +
+      "rag-cache-v21|owner:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa+public|all-documents|auto|" +
       "generation:9ff8d6d7a6647c834f6c|lithium monitoring";
     const expectedSearchKey =
       "plan:balanced_hybrid:chunks_fields_units_memory|class:unknown|query:lithium monitoring|" +
-      "variants:e3b0c44298fc1c14|mode:auto|topK:8|min:0.15|forceEmbedding:0|lexicalOnly:0|" +
+      "variants:e3b0c44298fc1c14|queryPlan:rag-query-plan-v1|mode:auto|topK:8|min:0.15|forceEmbedding:0|lexicalOnly:0|" +
       "rag:test-rag-version|force:0";
 
     expect(scopedAnswerCacheKey(legacyArgs)).toBe(expectedAnswerKey);

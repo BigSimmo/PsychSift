@@ -16,6 +16,7 @@ import {
   rankClinicalResults,
 } from "../src/lib/clinical-search";
 import { queryForClinicalMode } from "../src/lib/clinical-query-mode";
+import { buildRagQueryPlan } from "../src/lib/rag/rag-query-plan";
 import type { SearchResult } from "../src/lib/types";
 
 function result(overrides: Partial<SearchResult>): SearchResult {
@@ -35,6 +36,38 @@ function result(overrides: Partial<SearchResult>): SearchResult {
     ...overrides,
   };
 }
+
+describe("deterministic RAG query-plan routing", () => {
+  it.each([
+    ["Which specifier applies to panic disorder?", "specifiers"],
+    ["What differential diagnosis should be considered?", "differentials"],
+    ["Which medication is listed for acute agitation?", "medications"],
+  ] as const)("maps explicit site vocabulary without provider work: %s", (query, expectedDomain) => {
+    const plan = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(plan.targetSiteDomains).toContain(expectedDomain);
+    expect(plan.siteDomainDecision).toBe("explicit");
+  });
+
+  it.each([
+    ["What is the duress procedure during an acute ward incident?", []],
+    ["When is IM medication used for agitation?", ["medications"]],
+  ] as const)("keeps clinical pathway planning on an open or clinical site domain: %s", (query, domains) => {
+    const analysis = analyzeClinicalQuery(query);
+    const plan = buildRagQueryPlan(query, analysis);
+
+    expect(plan.kind).not.toBe("clarification_required");
+    expect(plan.targetSiteDomains).toEqual(domains);
+  });
+
+  it("keeps ambiguous clinical wording open to all site domains", () => {
+    const query = "What should be considered next?";
+    const plan = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(plan.targetSiteDomains).toEqual([]);
+    expect(plan.siteDomainDecision).toBe("none");
+  });
+});
 
 describe("clinical search query normalization", () => {
   it("does not mistake a determiner before a categorical range for a foreign subject", () => {

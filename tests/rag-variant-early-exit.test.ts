@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { SearchResult } from "../src/lib/types";
+import { resolveRagContextSnapshot } from "../src/lib/rag/rag-context-snapshot";
+import type { RagProgrammeMode, SearchResult } from "../src/lib/types";
 
 // PT-02: a question fans out to up to 3 near-duplicate lexical RPC calls per
 // text surface. When the FIRST variant already returns a deep pool anchored by
@@ -78,7 +79,21 @@ class EmptyQuery implements PromiseLike<{ data: unknown[]; error: null }> {
 // Multi-variant clinical query: alias/threshold expansion produces sibling variants.
 const multiVariantQuery = "clozapine anc monitoring";
 
-async function runLexicalSearch(chunkResults: SearchResult[]) {
+function contextSnapshot(rolloutVersion: RagProgrammeMode) {
+  return resolveRagContextSnapshot({
+    expectedSiteStaticManifestDigest: null,
+    activePublicSiteRelease: null,
+    publicSiteChangeEpoch: null,
+    pendingPublicSiteChangeCount: 0,
+    pendingPublicSiteLogicalIds: [],
+    documentIndexGeneration: "shadow-query-plan-test-generation",
+    sourcePolicyVersion: "australian-source-policy-v1",
+    rolloutVersion,
+    resolvedAt: "2026-08-29T00:00:00.000Z",
+  });
+}
+
+async function runLexicalSearch(chunkResults: SearchResult[], rolloutModes: RagProgrammeMode[] = ["legacy"]) {
   vi.stubEnv("RAG_SEARCH_CACHE_TTL_MS", "0");
   vi.stubEnv("RAG_ANSWER_CACHE_TTL_MS", "0");
 
@@ -95,16 +110,22 @@ async function runLexicalSearch(chunkResults: SearchResult[]) {
   }));
 
   const { searchChunksWithTelemetry } = await import("@/lib/rag/rag");
-  const result = await searchChunksWithTelemetry({
-    query: multiVariantQuery,
-    ownerId: "owner-1",
-    topK: 8,
-    lexicalOnly: true,
-  });
+  const results = [];
+  for (const rolloutMode of rolloutModes) {
+    results.push(
+      await searchChunksWithTelemetry({
+        query: multiVariantQuery,
+        ownerId: "owner-1",
+        topK: 8,
+        lexicalOnly: true,
+        ragContextSnapshot: contextSnapshot(rolloutMode),
+      }),
+    );
+  }
   const chunkTextCalls = rpc.mock.calls.filter(
     ([name]) => retrievalRpcBaseName(name as string) === "match_document_chunks_text",
   );
-  return { chunkTextCalls, from, telemetry: result.telemetry };
+  return { chunkTextCalls, from, result: results[0]!, results, telemetry: results[0]!.telemetry };
 }
 
 afterEach(() => {
@@ -115,6 +136,19 @@ afterEach(() => {
 });
 
 describe("lexical variant early-exit (PT-02)", () => {
+  it("returns byte-identical legacy/shadow IDs and order without candidate retrieval fanout", async () => {
+    const pool = Array.from({ length: 48 }, (_, index) => chunk(index, index === 0 ? 0.9 : 0.2));
+    const { chunkTextCalls, results } = await runLexicalSearch(pool, ["legacy", "shadow"]);
+    const [legacy, shadow] = results;
+
+    expect(shadow!.results.map(({ id }) => id)).toEqual(legacy!.results.map(({ id }) => id));
+    expect(shadow!.telemetry.retrieval_query_variant_count).toBe(legacy!.telemetry.retrieval_query_variant_count);
+    expect(legacy!.telemetry.candidate_retrieval_query_variant_count).toBeUndefined();
+    expect(shadow!.telemetry.candidate_retrieval_query_variant_count).toBeGreaterThan(0);
+    expect(chunkTextCalls).toHaveLength(2);
+    expect(JSON.stringify(shadow!.telemetry)).not.toContain(multiVariantQuery);
+  });
+
   it("a deep, precisely-anchored first pool issues exactly one chunk-text RPC", async () => {
     // Deep (48-row) pool with a precise top hit: sibling variants are pure duplication.
     const strongPool = Array.from({ length: 48 }, (_, index) => chunk(index, index === 0 ? 0.9 : 0.2));

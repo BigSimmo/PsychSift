@@ -76,6 +76,20 @@ describe("classifier verdict memoization", () => {
     expect(second).toEqual(first);
   });
 
+  it("builds a bounded plan after the finalized classifier verdict without another provider call", async () => {
+    const mock = vi.fn(async () => classifierResponse());
+    const { rag, analyzeClinicalQuery, isUnsupportedSoftTailAnalysis } = await loadWithClassifierMock(mock);
+    const { buildRagQueryPlan } = await import("../src/lib/rag/rag-query-plan");
+    const { query, analysis } = fallbackQueryAnalysis(analyzeClinicalQuery, isUnsupportedSoftTailAnalysis);
+
+    const finalized = await rag.analyzeQueryWithClassifierFallback(query, analysis);
+    const plan = buildRagQueryPlan(query, finalized);
+
+    expect(mock).toHaveBeenCalledTimes(1);
+    expect(plan.kind).toBe("decomposed");
+    expect(plan.subquestions.length).toBeLessThanOrEqual(4);
+  });
+
   it("memoizes rejected verdicts so a rejection is also deterministic", async () => {
     const mock = vi.fn(async () => classifierResponse({ confidence: 0.3 }));
     const { rag, analyzeClinicalQuery, isUnsupportedSoftTailAnalysis } = await loadWithClassifierMock(mock);
