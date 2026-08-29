@@ -36,10 +36,8 @@ describe("shadow query-plan orchestration", () => {
     const plan = buildRagQueryPlan(query, analysis);
     const legacy = buildRagRetrievalVariantPlan(query, analysis, [], plan, "legacy");
     const shadow = buildRagRetrievalVariantPlan(query, analysis, [], plan, "shadow");
-    const fixture = [source({ id: "chunk-2" }), source({ id: "chunk-1" })];
 
     expect(shadow.servedVariants).toEqual(legacy.servedVariants);
-    expect(fixture.map(({ id }) => id)).toEqual(["chunk-2", "chunk-1"]);
     expect(legacy.diagnostics.candidate_retrieval_query_variant_count).toBeUndefined();
     expect(shadow.diagnostics).toMatchObject({
       query_plan_kind: "decomposed",
