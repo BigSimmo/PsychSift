@@ -29,9 +29,10 @@ export type SubquestionEvidenceInput = {
   subquestionId: string;
   selectedChunkIds: readonly string[];
   citedChunkIds: readonly string[];
-  /** Optional existing role/governance selection; absent means selectedChunkIds are already eligible. */
-  eligibleChunkIds?: readonly string[];
-  support?: "direct" | "partial";
+  /** Explicit output of the existing role/governance selection. Omission fails closed at runtime. */
+  eligibleChunkIds: readonly string[];
+  /** Explicit direct-support decision for query classes without a canonical evidence gate. */
+  support: "direct" | "partial";
   reasonCodes?: readonly string[];
   insufficiencyReason?: RagInsufficiencyReason | null;
 };
@@ -85,7 +86,9 @@ export function evaluateAnswerCoverage(input: EvaluateAnswerCoverageInput): Answ
     const selection = selectionBySubquestion.get(subquestion.id);
     const selectedIds = new Set(selection?.selectedChunkIds ?? []);
     const citedIds = new Set(selection?.citedChunkIds ?? []);
-    const eligibleIds = selection?.eligibleChunkIds ? new Set(selection.eligibleChunkIds) : selectedIds;
+    const eligibilityDecisionMissing = !selection || !Array.isArray(selection.eligibleChunkIds);
+    const supportDecisionMissing = !selection || (selection.support !== "direct" && selection.support !== "partial");
+    const eligibleIds = eligibilityDecisionMissing ? new Set<string>() : new Set(selection.eligibleChunkIds);
     let rejectedScope = false;
     const directEvidence = [...selectedIds].flatMap((id) => {
       if (!citedIds.has(id) || !eligibleIds.has(id)) return [];
@@ -95,21 +98,29 @@ export function evaluateAnswerCoverage(input: EvaluateAnswerCoverageInput): Answ
         rejectedScope = true;
         return [];
       }
-      allDirectIds.add(id);
       return [result];
     });
     const gate = evaluateEvidenceCoverageGate(subquestion.question, directEvidence);
+    const gateApplies = gate.reason !== "coverage_gate_not_applicable";
+    const supportedEvidence = gateApplies && !gate.accepted ? [] : directEvidence;
+    for (const result of supportedEvidence) allDirectIds.add(result.id);
     const reasonCodes = [
       ...(selection?.reasonCodes ?? []),
       `evidence_gate:${gate.reason}`,
       ...(rejectedScope ? ["candidate_scope_rejected"] : []),
+      ...(eligibilityDecisionMissing ? ["eligibility_decision_missing"] : []),
+      ...(supportDecisionMissing ? ["direct_support_decision_missing"] : []),
     ];
     const status: AnswerCoveragePlan["coverage"][number]["status"] =
-      directEvidence.length === 0 ? "absent" : selection?.support === "partial" ? "partial" : "direct";
+      supportedEvidence.length === 0 || supportDecisionMissing
+        ? "absent"
+        : selection.support === "partial"
+          ? "partial"
+          : "direct";
     return {
       subquestionId: subquestion.id,
       status,
-      chunkIds: directEvidence.map((result) => result.id),
+      chunkIds: supportedEvidence.map((result) => result.id),
       reasonCodes: [...new Set(reasonCodes)],
     } satisfies AnswerCoveragePlan["coverage"][number];
   });

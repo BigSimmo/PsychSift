@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { analyzeClinicalQuery } from "@/lib/clinical-search";
-import { buildRagQueryPlan } from "@/lib/rag/rag-query-plan";
+import { buildRagQueryPlan, detectClinicalAmbiguity } from "@/lib/rag/rag-query-plan";
 
 describe("bounded RAG query planning", () => {
   it("keeps a simple threshold query single and always retains the original query", () => {
@@ -41,6 +41,26 @@ describe("bounded RAG query planning", () => {
     expect(buildRagQueryPlan(openEnded, analyzeClinicalQuery(openEnded)).subquestions).toHaveLength(1);
   });
 
+  it("does not manufacture comparison entities from benefits and risks of one medicine", () => {
+    const query = "Compare the benefits and risks of clozapine";
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.kind).toBe("single");
+    expect(result.subquestions).toEqual([{ id: "sq-1", question: query, purpose: "primary", required: true }]);
+  });
+
+  it("still decomposes an identifiable non-medicine setting comparison", () => {
+    const query = "Compare inpatient and community monitoring requirements";
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.kind).toBe("decomposed");
+    expect(result.subquestions.map((item) => item.purpose)).toEqual(["primary", "comparison_side", "comparison_side"]);
+    expect(result.subquestions.slice(1).map((item) => item.question)).toEqual([
+      "inpatient: directly relevant evidence for this comparison.",
+      "community: directly relevant evidence for this comparison.",
+    ]);
+  });
+
   it.each([
     ["ANC threshold in the clozapine monitoring guideline", "document"],
     ["clozapin withholding neutrophils", "medicine"],
@@ -69,5 +89,27 @@ describe("bounded RAG query planning", () => {
     expect(plan.kind).toBe("clarification_required");
     expect(plan.subquestions).toEqual([]);
     expect(plan.interpretation).toMatch(/clarification/i);
+  });
+
+  it("asks one bounded clarification when the required form has no workflow or jurisdiction anchor", () => {
+    const query = "Which form is required?";
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.kind).toBe("clarification_required");
+    expect(result.subquestions).toEqual([]);
+    expect(detectClinicalAmbiguity(query, analyzeClinicalQuery(query))).toMatchObject({
+      material: true,
+      dimensions: expect.arrayContaining(["document", "jurisdiction", "decision"]),
+    });
+  });
+
+  it("states an interpretation instead of clarifying when a required form has retrieval anchors", () => {
+    const query = "Which form is required for clozapine monitoring in WA?";
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.kind).toBe("single");
+    expect(result.subquestions).toHaveLength(1);
+    expect(result.interpretation).toMatch(/document|medicine|jurisdiction/i);
+    expect(detectClinicalAmbiguity(query, analyzeClinicalQuery(query))).toBeNull();
   });
 });

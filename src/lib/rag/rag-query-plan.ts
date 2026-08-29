@@ -27,6 +27,11 @@ const siteDomainSignals: ReadonlyArray<readonly [SiteContentDomain, RegExp]> = [
   ["calculators", /\bcalculators?|scores?\b/i],
   ["tools", /\btools?\b/i],
 ];
+const populationSignal =
+  /\b(?:adolescents?|children|child|paediatric|pediatric|adult|older adults?|elderly|pregnan\w*|perinatal)\b/i;
+const jurisdictionSignal =
+  /\b(?:WA|Western Australia|Australia|Australian|NSW|Victoria|Queensland|Tasmania|ACT|NT|SA)\b/i;
+const settingSignal = /\b(?:inpatient|outpatient|community|hospital|ward|emergency department|ED|clinic)\b/i;
 
 function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];
@@ -44,17 +49,13 @@ function dimensionReasons(query: string, analysis: ClinicalQueryAnalysis) {
 
   if (hasDocumentSignal) reasons.push("document_explicit");
   if (hasMedicineSignal) reasons.push("medicine_explicit");
-  if (
-    /\b(?:adolescents?|children|child|paediatric|pediatric|adult|older adults?|elderly|pregnan\w*|perinatal)\b/i.test(
-      query,
-    )
-  ) {
+  if (populationSignal.test(query)) {
     reasons.push("population_explicit");
   }
-  if (/\b(?:WA|Western Australia|Australia|Australian|NSW|Victoria|Queensland|Tasmania|ACT|NT|SA)\b/i.test(query)) {
+  if (jurisdictionSignal.test(query)) {
     reasons.push("jurisdiction_explicit");
   }
-  if (/\b(?:inpatient|outpatient|community|hospital|ward|emergency department|ED|clinic)\b/i.test(query)) {
+  if (settingSignal.test(query)) {
     reasons.push("setting_explicit");
   }
   if (analysis.acronyms.length > 0) reasons.push("acronym_expanded");
@@ -75,14 +76,46 @@ function materialAmbiguity(query: string, analysis: ClinicalQueryAnalysis): Clin
     /\b(?:adolescent|child|adult|older|pregnan|WA|Western Australia|inpatient|outpatient|community|hospital|ward|ED)\b/i.test(
       query,
     );
-  if (!asksUnqualifiedRequiredPeriod || hasRetrievalAnchor) return null;
+  const requiredObject = query.match(
+    /\b(?:which|what)\s+(form|procedure|guideline|policy|document)\s+is\s+(?:required|needed|used)\b/i,
+  );
+  const hasClinicalTarget =
+    analysis.medications.length > 0 ||
+    populationSignal.test(query) ||
+    /\b(?:monitoring|treatment|assessment|admission|discharge)\b/i.test(query);
+  const hasContextAnchor = jurisdictionSignal.test(query) || settingSignal.test(query);
+  if (requiredObject && !(hasClinicalTarget && hasContextAnchor)) {
+    const dimensions: ClinicalAmbiguity["dimensions"] = ["document"];
+    if (!hasContextAnchor) dimensions.push("jurisdiction");
+    if (!hasClinicalTarget) dimensions.push("decision");
+    return {
+      material: true,
+      dimensions,
+      clarificationQuestion: `Which clinical workflow, care setting, and jurisdiction should determine the required ${requiredObject[1].toLowerCase()}?`,
+    };
+  }
 
-  return {
-    material: true,
-    dimensions: ["population", "setting", "medicine", "jurisdiction", "decision"],
-    clarificationQuestion:
-      "Which population, care setting, medicine, or jurisdiction should the required observation period apply to?",
-  };
+  if (asksUnqualifiedRequiredPeriod && !hasRetrievalAnchor) {
+    return {
+      material: true,
+      dimensions: ["population", "setting", "medicine", "jurisdiction", "decision"],
+      clarificationQuestion:
+        "Which population, care setting, medicine, or jurisdiction should the required observation period apply to?",
+    };
+  }
+  return null;
+}
+
+function identifiableComparisonSide(side: string, analysis: ClinicalQueryAnalysis) {
+  if (
+    /^(?:the\s+)?(?:benefits?|risks?|efficacy|safety|advantages?|disadvantages?|pros?|cons?)(?:\s+of\b.*)?$/i.test(side)
+  ) {
+    return false;
+  }
+  if (analysis.medications.some((medicine) => side.toLowerCase().includes(medicine.toLowerCase()))) return true;
+  if (populationSignal.test(side) || jurisdictionSignal.test(side) || settingSignal.test(side)) return true;
+  if (/\b(?:guideline|policy|procedure|protocol|form|service|therapy|medication)\b/i.test(side)) return true;
+  return /^[A-Z][A-Z0-9-]{1,}$/.test(side.trim());
 }
 
 function comparisonSides(query: string, analysis: ClinicalQueryAnalysis): [string, string] | null {
@@ -99,7 +132,9 @@ function comparisonSides(query: string, analysis: ClinicalQueryAnalysis): [strin
       .trim();
   const left = clean(match[1]);
   const right = clean(match[2]);
-  return left && right ? [left, right] : null;
+  return left && right && identifiableComparisonSide(left, analysis) && identifiableComparisonSide(right, analysis)
+    ? [left, right]
+    : null;
 }
 
 function subquestion(id: number, question: string, purpose: RagSubquestionPurpose): RagSubquestion {

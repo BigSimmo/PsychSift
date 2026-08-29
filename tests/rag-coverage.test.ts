@@ -42,8 +42,20 @@ describe("answer coverage", () => {
       plan,
       selectedEvidence: [result("direct"), result("metadata-only")],
       evidenceBySubquestion: [
-        { subquestionId: "sq-1", selectedChunkIds: ["direct"], citedChunkIds: ["direct"] },
-        { subquestionId: "sq-2", selectedChunkIds: ["metadata-only"], citedChunkIds: [] },
+        {
+          subquestionId: "sq-1",
+          selectedChunkIds: ["direct"],
+          citedChunkIds: ["direct"],
+          eligibleChunkIds: ["direct"],
+          support: "direct",
+        },
+        {
+          subquestionId: "sq-2",
+          selectedChunkIds: ["metadata-only"],
+          citedChunkIds: [],
+          eligibleChunkIds: ["metadata-only"],
+          support: "direct",
+        },
       ],
     });
 
@@ -72,6 +84,8 @@ describe("answer coverage", () => {
           subquestionId: "sq-1",
           selectedChunkIds: ["unscoped", "unknown", "registry"],
           citedChunkIds: ["unscoped", "unknown", "registry"],
+          eligibleChunkIds: ["unscoped", "unknown", "registry"],
+          support: "direct",
         },
       ],
     });
@@ -94,6 +108,8 @@ describe("answer coverage", () => {
           subquestionId: "sq-1",
           selectedChunkIds: ["local", "australian"],
           citedChunkIds: ["local", "australian"],
+          eligibleChunkIds: ["local", "australian"],
+          support: "direct",
         },
       ],
       conflicts: [conflict],
@@ -106,5 +122,58 @@ describe("answer coverage", () => {
     expect(coverage.conflicts).toEqual([conflict]);
     expect(coverage.overall).toBe("conflicting");
     expect(coverage.insufficiencyReason).toBe("source_conflict");
+  });
+
+  it("cannot promote evidence rejected by the canonical clinical gate to direct coverage", () => {
+    const query = "What ANC threshold means withhold clozapine?";
+    const thresholdPlan: RagQueryPlan = {
+      ...plan,
+      kind: "single",
+      originalQuery: query,
+      subquestions: [{ id: "sq-1", question: query, purpose: "primary", required: true }],
+    };
+    const rejected = result("rejected", {
+      content: "General clozapine information without a blood threshold or action.",
+      similarity: 0.99,
+    });
+
+    const coverage = evaluateAnswerCoverage({
+      plan: thresholdPlan,
+      selectedEvidence: [rejected],
+      evidenceBySubquestion: [
+        {
+          subquestionId: "sq-1",
+          selectedChunkIds: ["rejected"],
+          citedChunkIds: ["rejected"],
+          eligibleChunkIds: ["rejected"],
+          support: "direct",
+        },
+      ],
+    });
+
+    expect(coverage.coverage[0]).toMatchObject({ status: "absent", chunkIds: [] });
+    expect(coverage.coverage[0].reasonCodes).toContain(
+      "evidence_gate:missing_clozapine_blood_action_structured_threshold",
+    );
+    expect(coverage.overall).not.toBe("complete");
+  });
+
+  it("fails closed when an eligibility decision is omitted", () => {
+    const coverage = evaluateAnswerCoverage({
+      plan: { ...plan, kind: "single", subquestions: [plan.subquestions[0]] },
+      selectedEvidence: [result("unchecked")],
+      evidenceBySubquestion: [
+        {
+          subquestionId: "sq-1",
+          selectedChunkIds: ["unchecked"],
+          citedChunkIds: ["unchecked"],
+          support: "direct",
+        } as never,
+      ],
+    });
+
+    expect(coverage.coverage[0]).toMatchObject({ status: "absent", chunkIds: [] });
+    expect(coverage.coverage[0].reasonCodes).toContain("eligibility_decision_missing");
+    expect(coverage.overall).toBe("absent");
   });
 });
