@@ -12,6 +12,8 @@ import {
   differentialRecords,
   rankDifferentialRecords,
   rankPresentationWorkflows,
+  type DifferentialPresentationWorkflow,
+  type DifferentialRecord,
   type DifferentialPresentationMatch,
   type DifferentialRecordMatch,
 } from "@/lib/differentials";
@@ -77,6 +79,28 @@ function publicDifferentialPayload(kind: DifferentialRecordKind, q: string | und
   };
 }
 
+function releasedDifferentialPayload(
+  kind: DifferentialRecordKind,
+  values: Record<string, unknown>[],
+  q: string | undefined,
+  limit: number,
+) {
+  if (kind === "presentation") {
+    const workflows = values as DifferentialPresentationWorkflow[];
+    const ranked = q ? rankPresentationWorkflows(workflows, q, limit) : null;
+    return {
+      presentations: ranked ? ranked.map((match) => match.workflow) : workflows,
+      matches: ranked ? presentationMatchesPayload(ranked) : undefined,
+    };
+  }
+  const records = values as DifferentialRecord[];
+  const ranked = q ? rankDifferentialRecords(records, q, limit) : null;
+  return {
+    records: ranked ? ranked.map((match) => match.record) : records,
+    matches: ranked ? recordMatchesPayload(ranked) : undefined,
+  };
+}
+
 export async function GET(request: Request) {
   try {
     const { kind, q, limit } = parseRequestQuery(request, differentialListQuerySchema, "Invalid differential query.");
@@ -126,7 +150,7 @@ export async function GET(request: Request) {
       const values = publicSiteContent.records.map((entry) => entry.payload);
       return differentialResponse(
         {
-          [kind === "presentation" ? "presentations" : "records"]: values,
+          ...releasedDifferentialPayload(kind, values, q, limit),
           total: values.length,
           governance: Object.fromEntries(
             publicSiteContent.records.map((entry) => [entry.logical_id, entry.governance]),

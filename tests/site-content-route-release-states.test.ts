@@ -249,6 +249,43 @@ describe("seven public route release-state matrix", () => {
     );
   });
 
+  it.each([
+    ["diagnosis", "delirium", "records", "record", "delirium"],
+    ["presentation", "acute confusion", "presentations", "workflow", "acute-confusion-encephalopathy"],
+  ] as const)(
+    "ranks and limits active-release %s search results",
+    async (kind, query, collectionKey, matchKey, expectedSlug) => {
+      const routes = await loadRoutes("current");
+
+      const response = await routes.differentialCollection.GET(
+        request(`/api/differentials?kind=${kind}&q=${encodeURIComponent(query)}&limit=1`),
+      );
+      const payload = (await response.json()) as {
+        records?: Array<{ slug?: string; id?: string; title: string }>;
+        presentations?: Array<{ slug?: string; id?: string; title: string }>;
+        matches?: Array<{
+          record?: { slug?: string; id?: string; title: string };
+          workflow?: { slug?: string; id?: string; title: string };
+          score: number;
+          reasons: string[];
+        }>;
+        release?: { id?: string; state?: string };
+      };
+      const collection = payload[collectionKey];
+      const match = payload.matches?.[0]?.[matchKey];
+
+      expect(response.status).toBe(200);
+      expect(payload.release).toEqual(expect.objectContaining({ id: releaseId, state: "current" }));
+      expect(collection).toHaveLength(1);
+      expect(payload.matches).toHaveLength(1);
+      expect(collection?.[0]?.slug ?? collection?.[0]?.id).toBe(expectedSlug);
+      expect(match?.slug ?? match?.id).toBe(expectedSlug);
+      expect(collection?.[0]?.title).toMatch(/^Release /);
+      expect(match?.title).toBe(collection?.[0]?.title);
+      expect(payload.matches?.[0]?.score ?? 0).toBeGreaterThan(0);
+    },
+  );
+
   it.each(["current", "updating"] as const)(
     "fails closed for a %s diagnosis whose related release dependency is pending",
     async (state) => {
