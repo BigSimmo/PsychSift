@@ -234,6 +234,65 @@ export type RagSubquestionPurpose =
   "primary" | "comparison_side" | "required_action" | "monitoring" | "risk" | "special_population";
 
 export type RagQueryPlanKind = "single" | "decomposed" | "clarification_required";
+export type RagSubquestion = {
+  id: string;
+  /** Request-local clinical question. Never persist this field in telemetry. */
+  question: string;
+  purpose: RagSubquestionPurpose;
+  required: boolean;
+};
+export type RagQueryPlan = {
+  version: "rag-query-plan-v1";
+  kind: RagQueryPlanKind;
+  /** Request-local original text. Never persist this field in telemetry. */
+  originalQuery: string;
+  interpretation: string;
+  subquestions: RagSubquestion[];
+  targetSiteDomains: SiteContentDomain[];
+  siteDomainDecision: "explicit" | "inferred" | "none";
+  reasonCodes: string[];
+};
+export type ClinicalAmbiguity = {
+  material: boolean;
+  dimensions: Array<"population" | "setting" | "medicine" | "document" | "jurisdiction" | "decision">;
+  clarificationQuestion: string;
+};
+export type SubquestionCoverage = {
+  subquestionId: string;
+  status: "direct" | "partial" | "conflicting" | "absent";
+  chunkIds: string[];
+  reasonCodes: string[];
+};
+export type AnswerCoveragePlan = {
+  interpretation: string;
+  ambiguity: ClinicalAmbiguity | null;
+  subquestions: Array<{ id: string; question: string; required: boolean }>;
+  coverage: SubquestionCoverage[];
+  conflicts: SourcePolicyConflict[];
+  overall: "complete" | "partial" | "conflicting" | "absent";
+  insufficiencyReason: RagInsufficiencyReason | null;
+};
+export type RagFallbackReasonCode =
+  | "provider_offline"
+  | "provider_missing_key"
+  | "provider_auth"
+  | "provider_quota"
+  | "provider_rate_limit"
+  | "provider_timeout"
+  | "provider_failure"
+  | "retrieval_degraded"
+  | "no_candidates"
+  | "low_signal"
+  | "coverage_gap"
+  | "source_role_mismatch"
+  | "source_conflict"
+  | "source_governance_block"
+  | "site_content_updating"
+  | "site_content_stale"
+  | "site_content_unavailable"
+  | "citation_or_claim_gate"
+  | "unsupported"
+  | "unknown";
 export type AdaptiveAnswerShape = "narrow" | "focused" | "comprehensive" | "comparison" | "partial";
 export type RagProgrammeMode = "legacy" | "shadow" | "canary";
 export type RagAugmentationOutcome = "not_needed" | "used" | "no_eligible_evidence" | "unavailable" | "disabled";
@@ -580,6 +639,10 @@ export type SearchResult = {
   retrieval_synopsis?: string | null;
   image_ids: string[];
   similarity: number;
+  /** Server-only retrieval scope; candidate selection rejects an absent or unknown value. */
+  corpus_scope?: SourceCorpusScope;
+  /** Server-only first-party site partition, when this result belongs to that corpus. */
+  site_content_domain?: SiteContentDomain | null;
   // RC9 observability: "synthetic_text" marks a `similarity` fabricated from lexical/structural
   // signals (document-lookup, memory-card, table-facts fast paths) rather than a real cosine.
   // Coverage/threshold gates are calibrated for cosine values; this tag lets telemetry measure

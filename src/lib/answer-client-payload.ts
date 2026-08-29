@@ -32,6 +32,8 @@ const sourceFieldPolicy = {
   retrieval_synopsis: "client",
   image_ids: "client",
   similarity: "client",
+  corpus_scope: "server",
+  site_content_domain: "server",
   similarity_origin: "client",
   text_rank: "client",
   hybrid_score: "client",

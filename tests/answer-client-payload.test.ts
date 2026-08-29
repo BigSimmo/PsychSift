@@ -18,6 +18,8 @@ function fullSource(overrides: Partial<SearchResult> = {}): SearchResult {
     retrieval_synopsis: "FBC weekly for 18 weeks, then monthly.",
     image_ids: [],
     similarity: 0.82,
+    corpus_scope: "clinical_kb_site",
+    site_content_domain: "medications",
     source_metadata: { document_status: "current" } as SearchResult["source_metadata"],
     adjacent_context: "Preceding paragraph context. ".repeat(20),
     document_summary: "A long document summary. ".repeat(30),
@@ -57,6 +59,8 @@ describe("toClientAnswerPayload", () => {
     expect(trimmed.table_facts).toBeUndefined();
     expect(trimmed.index_unit).toBeUndefined();
     expect(trimmed.document_summary).toBeUndefined();
+    expect(trimmed.corpus_scope).toBeUndefined();
+    expect(trimmed.site_content_domain).toBeUndefined();
     expect(trimmed.images).toEqual([]);
   });
 
