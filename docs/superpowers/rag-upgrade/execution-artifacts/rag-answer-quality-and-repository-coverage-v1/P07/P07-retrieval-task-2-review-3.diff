@@ -1,0 +1,1302 @@
+# Review package: f936f555a5d668b8a52b6ab735e5b14ad1acbb99..97a13cfaa10bff4188f57137264c86e54b23291c
+
+## Commits
+0430adf72921eae39ecfa32eede815f1018c9dd2
+0499ee71363f43d1528028f059fdc4936d61e145
+97a13cfaa10bff4188f57137264c86e54b23291c
+
+## Diff
+diff --git a/src/lib/rag/rag-cache.ts b/src/lib/rag/rag-cache.ts
+index 848e4a1c02e8a450b0500e4e34b7344f1146d440..ebdd27704cc4235a6d2a4696449f72eaa2545feb 100644
+--- a/src/lib/rag/rag-cache.ts
++++ b/src/lib/rag/rag-cache.ts
+@@ -28,21 +28,21 @@ import {
+   ragIndexingPromptVersion,
+   ragQueryClassifierPromptVersion,
+ } from "@/lib/rag/rag-versioning";
+ 
+ const answerCache = new Map<string, { expiresAt: number; answer: RagAnswer; indexingVersion: string }>();
+ export const answerInflight = new Map<string, Promise<RagAnswer>>();
+ const searchCache = new Map<
+   string,
+   { expiresAt: number; results: SearchResult[]; telemetry: SearchTelemetry; indexingVersion: string }
+ >();
+-const ragCacheDependencyVersion = "rag-cache-v20";
++export const ragCacheDependencyVersion = "rag-cache-v21";
+ const cacheIndexingVersionTtlMs = 5000;
+ const cacheIndexingVersionMaxEntries = 512;
+ const cacheIndexingVersionCache = new Map<string, { expiresAt: number; value: string }>();
+ const publicSourceAuthorityUnavailable = `${ragDeepMemoryVersion}:public-authority-unavailable`;
+ 
+ function cacheAuthorityAvailable(indexingVersion: string) {
+   return Boolean(indexingVersion) && indexingVersion !== publicSourceAuthorityUnavailable;
+ }
+ /**
+  * Invalidation generations for deferred `setCachedAnswer` promotions. Review /
+@@ -338,32 +338,34 @@ export function retrievalPlanCacheQuery(
+     | "query"
+     | "documentId"
+     | "documentIds"
+     | "ownerId"
+     | "queryMode"
+     | "topK"
+     | "minSimilarity"
+     | "forceEmbedding"
+     | "lexicalOnly"
+     | "ragContextSnapshot"
++    | "ragQueryPlanVersion"
+   >,
+   queryClass?: RagQueryClass,
+   queryVariants: string[] = [],
+ ) {
+   const normalizedQuery = normalizedCacheQuery(args.query);
+   const variantHash = stableHash(queryVariants.join("\n"));
+   const snapshotKey = contextSnapshotKey(args);
+   const cacheKey = [
+     `plan:${retrievalPlanForQueryClass(queryClass)}`,
+     `class:${queryClass ?? "unknown"}`,
+     `query:${normalizedQuery}`,
+     `variants:${variantHash}`,
++    `queryPlan:${args.ragQueryPlanVersion ?? "rag-query-plan-v1"}`,
+     `mode:${modeKey(args)}`,
+     `topK:${args.topK ?? 8}`,
+     `min:${args.minSimilarity ?? 0.15}`,
+     `forceEmbedding:${args.forceEmbedding ? "1" : "0"}`,
+     `lexicalOnly:${args.lexicalOnly ? "1" : "0"}`,
+     `rag:${ragDeepMemoryVersion}`,
+     `force:${args.forceEmbedding ? 1 : 0}`,
+     ...(snapshotKey ? [`context:${snapshotKey}`] : []),
+     ...(env.RAG_SEMANTIC_RERANK_ENABLED ? [`semanticRerank:${env.OPENAI_RERANK_MODEL}`] : []),
+   ].join("|");
+diff --git a/src/lib/rag/rag-contracts.ts b/src/lib/rag/rag-contracts.ts
+index 887bbf59cae0ab03e7db9ba0708dbb100c7b27fb..4cb8e9e6fe0be4fb29bcb21dbd57095bc5b76ac5 100644
+--- a/src/lib/rag/rag-contracts.ts
++++ b/src/lib/rag/rag-contracts.ts
+@@ -28,20 +28,22 @@ export type SearchChunksArgs = {
+   // Internal: set when this call is a re-run on a trigram-corrected query, to prevent the
+   // unsupported-short-circuit typo-correction path from recursing more than once.
+   typoCorrected?: boolean;
+   // Diagnostic/eval-only: bypass every lexical text-fast-path so retrieval always exercises
+   // the embedding/vector stage. Never set on production paths.
+   forceEmbedding?: boolean;
+   // Lightweight-preview only: return lexical/trigram candidates without an embedding call.
+   lexicalOnly?: boolean;
+   /** Internal immutable authority resolved once before request cache/coalescing lookup. */
+   ragContextSnapshot?: ResolvedRagContextSnapshot;
++  /** Internal bounded query-plan contract version; raw subquestions never enter cache identity. */
++  ragQueryPlanVersion?: string;
+   /** Internal: shares one request-start indexing-version resolution across nested cache reads. */
+   cacheContext?: {
+     indexingVersionAtRequestStart?: Promise<string>;
+     ragContextSnapshot?: ResolvedRagContextSnapshot;
+   };
+ };
+ 
+ export type RagObservationContext = {
+   interactionId: string;
+   rolloutMode: RagProgrammeMode;
+@@ -94,20 +96,24 @@ export type SearchTelemetry = {
+   shared_cache_hit?: boolean;
+   shared_cache_status?: "hit" | "miss";
+   shared_cache_miss_reason?: string | null;
+   query_class?: RagQueryClass;
+   vector_candidate_count?: number;
+   text_candidate_count?: number;
+   embedding_field_count?: number;
+   retrieval_query_variant_count?: number;
+   rag_alias_count?: number;
+   rag_alias_expansion_count?: number;
++  query_plan_kind?: import("@/lib/types").RagQueryPlanKind;
++  subquestion_count?: number;
++  query_plan_reason_codes?: string[];
++  candidate_retrieval_query_variant_count?: number;
+   text_fast_path_latency_ms: number;
+   text_candidate_budget?: number;
+   text_fast_path_reason?: string | null;
+   text_or_relaxation_used?: "none" | "empty_fallback" | "weak_augment";
+   /** RPCs actually issued per lexical surface after variant early-exit (PT-02). */
+   text_variant_rpc_calls?: Record<string, number>;
+   /** True when at least one lexical surface skipped its sibling variants. */
+   text_variant_early_exit?: boolean;
+   corpus_grounding?: CorpusGroundingVerdict;
+   synthetic_similarity_count?: number;
+diff --git a/src/lib/rag/rag-query-plan.ts b/src/lib/rag/rag-query-plan.ts
+index c068b522f0bcff71c28acffa787c313947382a48..e3f3cfde6c1c49f5584a29da43127a1f14c6951f 100644
+--- a/src/lib/rag/rag-query-plan.ts
++++ b/src/lib/rag/rag-query-plan.ts
+@@ -70,21 +70,21 @@ function materialAmbiguity(query: string, analysis: ClinicalQueryAnalysis): Clin
+   const asksUnqualifiedRequiredPeriod =
+     /\b(?:what|how long).{0,24}\brequired\s+(?:observation|monitoring|review|follow[ -]?up)\s+period\b/i.test(query);
+   const hasRetrievalAnchor =
+     analysis.medications.length > 0 ||
+     analysis.documentTitleIntent ||
+     analysis.documentTitleTerms.length > 0 ||
+     /\b(?:adolescent|child|adult|older|pregnan|WA|Western Australia|inpatient|outpatient|community|hospital|ward|ED)\b/i.test(
+       query,
+     );
+   const requiredObject = query.match(
+-    /\b(?:which|what)\s+(form|procedure|guideline|policy|document)\s+is\s+(?:required|needed|used)\b/i,
++    /\b(?:which|what)\s+(form|procedure|guideline|policy|document|service|medication|tool|calculator)\s+is\s+(?:required|needed|used)\b/i,
+   );
+   const hasClinicalTarget =
+     analysis.medications.length > 0 ||
+     populationSignal.test(query) ||
+     /\b(?:monitoring|treatment|assessment|admission|discharge)\b/i.test(query);
+   const hasContextAnchor = jurisdictionSignal.test(query) || settingSignal.test(query);
+   if (requiredObject && !(hasClinicalTarget && hasContextAnchor)) {
+     const dimensions: ClinicalAmbiguity["dimensions"] = ["document"];
+     if (!hasContextAnchor) dimensions.push("jurisdiction");
+     if (!hasClinicalTarget) dimensions.push("decision");
+@@ -113,22 +113,20 @@ function identifiableComparisonSide(side: string, analysis: ClinicalQueryAnalysi
+     return false;
+   }
+   if (analysis.medications.some((medicine) => side.toLowerCase().includes(medicine.toLowerCase()))) return true;
+   if (populationSignal.test(side) || jurisdictionSignal.test(side) || settingSignal.test(side)) return true;
+   if (/\b(?:guideline|policy|procedure|protocol|form|service|therapy|medication)\b/i.test(side)) return true;
+   return /^[A-Z][A-Z0-9-]{1,}$/.test(side.trim());
+ }
+ 
+ function comparisonSides(query: string, analysis: ClinicalQueryAnalysis): [string, string] | null {
+   if (!analysis.comparisonIntent) return null;
+-  const medicines = unique(analysis.medications).slice(0, 2);
+-  if (medicines.length === 2) return [medicines[0], medicines[1]];
+ 
+   const match = query.match(/\b(?:compare|difference between)\s+(.+?)\s+(?:and|versus|vs\.?|with)\s+(.+)/i);
+   if (!match) return null;
+   const clean = (value: string) =>
+     value
+       .replace(/[?.!]+$/g, "")
+       .replace(/\s+(?:monitoring|treatment|management|requirements?|approaches?|guidance)\b.*$/i, "")
+       .trim();
+   const left = clean(match[1]);
+   const right = clean(match[2]);
+@@ -171,22 +169,22 @@ export function buildRagQueryPlan(query: string, analysis: ClinicalQueryAnalysis
+   const targetSiteDomains = explicitDomains.length > 0 ? explicitDomains : inferredDomains;
+   const siteDomainDecision = explicitDomains.length > 0 ? "explicit" : inferredDomains.length > 0 ? "inferred" : "none";
+   const reasonCodes = unique([...analysis.reasons, ...dimensionReasons(query, analysis)]);
+   if (ambiguity) {
+     return {
+       version: "rag-query-plan-v1",
+       kind: "clarification_required",
+       originalQuery: query,
+       interpretation: `Material retrieval ambiguity requires one clarification: ${ambiguity.dimensions.join(", ")}.`,
+       subquestions: [],
+-      targetSiteDomains,
+-      siteDomainDecision,
++      targetSiteDomains: [],
++      siteDomainDecision: "none",
+       reasonCodes: [...reasonCodes, "material_retrieval_ambiguity"],
+     };
+   }
+ 
+   const sides = comparisonSides(query, analysis);
+   const broad =
+     analysis.queryClass === "broad_summary" ||
+     analysis.intent === "broad_summary" ||
+     /\b(?:managed?|management|including treatment|monitoring and escalation|comprehensive|overview)\b/i.test(query);
+   let kind: RagQueryPlan["kind"] = "single";
+diff --git a/src/lib/rag/rag-retrieval-variants.ts b/src/lib/rag/rag-retrieval-variants.ts
+index 051669bc002be5a0fa96fe587c8175f051c6e4d0..68991dd1eae25a45b32086f41587a31300bdaea1 100644
+--- a/src/lib/rag/rag-retrieval-variants.ts
++++ b/src/lib/rag/rag-retrieval-variants.ts
+@@ -3,21 +3,21 @@ import { readExpiringCacheEntry, writeBoundedExpiringCacheEntry } from "@/lib/bo
+ import {
+   retrievalAccessScopeForArgs,
+   retrievalAccessScopeKey,
+   retrievalOwnerFilter,
+   type RetrievalAccessScope,
+ } from "@/lib/owner-scope";
+ import { buildClinicalTextSearchQuery, normalizedClinicalSearchTokens, queriedZoneColour } from "@/lib/clinical-search";
+ import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
+ import type { SearchChunksArgs } from "@/lib/rag/rag-contracts";
+ import { shouldShortCircuitUnsupportedSearch } from "@/lib/rag/rag-query-guard";
+-import type { ClinicalQueryAnalysis, RagQueryClass, SearchResult } from "@/lib/types";
++import type { ClinicalQueryAnalysis, RagProgrammeMode, RagQueryClass, RagQueryPlan, SearchResult } from "@/lib/types";
+ 
+ const maxRetrievalQueryVariants = 4;
+ export const maxTextRpcQueryVariants = 3;
+ /** Aliases change rarely; longer TTL cuts cold-instance DB RTT without ranking impact. */
+ const ragAliasCacheTtlMs = 300_000;
+ const maxRagAliasCacheEntries = 256;
+ const maxRagAliasesPerScope = 200;
+ const maxRagAliasExpansions = 12;
+ 
+ function abortReason(signal: AbortSignal): Error {
+@@ -205,20 +205,21 @@ export function ownerScopeForDocumentFilteredRetrieval(
+   allowGlobalSearch?: boolean,
+ ) {
+   return retrievalOwnerFilter({ ownerId, documentIds, allowGlobalSearch });
+ }
+ 
+ /** Build retrieval query variants. */
+ export function buildRetrievalQueryVariants(
+   query: string,
+   analysis: ClinicalQueryAnalysis,
+   aliases: RagAliasInput[] = [],
++  plan?: RagQueryPlan,
+ ) {
+   const variants: string[] = [];
+   const seen = new Set<string>();
+   const aliasExpansions = selectRagAliasExpansions(query, aliases);
+   const addVariant = (value: string) => {
+     const normalized = normalizeRetrievalVariant(value);
+     if (!normalized) return;
+     const key = normalized.toLowerCase();
+     if (seen.has(key)) return;
+     seen.add(key);
+@@ -305,21 +306,93 @@ export function buildRetrievalQueryVariants(
+       ...analysis.medications,
+       ...analysis.thresholdTerms,
+       ...analysis.documentTitleTerms,
+       ...analysis.canonicalTerms,
+       ...aliasExpansions.slice(0, 4),
+       ...normalizedTokens,
+     ];
+     addVariant(retrievalVariantFromTerms(coreTerms.slice(0, 10)));
+   }
+ 
+-  return variants.slice(0, maxRetrievalQueryVariants);
++  const legacyVariants = variants.slice(0, maxRetrievalQueryVariants);
++  if (!plan || plan.kind !== "decomposed") return legacyVariants;
++
++  const candidateVariants: string[] = [];
++  const candidateKeys = new Set<string>();
++  for (const value of [
++    plan.originalQuery,
++    ...plan.subquestions.slice(1).map(({ question }) => question),
++    ...legacyVariants,
++  ]) {
++    const normalized = normalizeRetrievalVariant(buildClinicalTextSearchQuery(value));
++    const key = normalized.toLowerCase();
++    if (!normalized || candidateKeys.has(key)) continue;
++    candidateKeys.add(key);
++    candidateVariants.push(normalized);
++    if (candidateVariants.length >= maxRetrievalQueryVariants) break;
++  }
++  return candidateVariants;
++}
++
++const queryPlanDiagnosticReasonCodes = new Set([
++  "comparison_terms",
++  "table_or_threshold_terms",
++  "medication_dose_or_risk_terms",
++  "document_lookup_terms",
++  "document_include_terms",
++  "broad_summary_terms",
++  "typo_corrections",
++  "domain_alias_terms",
++  "freshness_terms",
++  "no_specific_rag_class_terms",
++  "document_explicit",
++  "medicine_explicit",
++  "population_explicit",
++  "jurisdiction_explicit",
++  "setting_explicit",
++  "acronym_expanded",
++  "medicine_alias_or_typo_preserved",
++  "document_section_exact",
++  "material_retrieval_ambiguity",
++  "comparison_sides_identified",
++  "broad_management_decomposition",
++  "comparison_sides_unresolved_single_plan",
++]);
++
++function contentFreeQueryPlanReasonCodes(plan: RagQueryPlan) {
++  return [...new Set(plan.reasonCodes.filter((reason) => queryPlanDiagnosticReasonCodes.has(reason)))].slice(0, 16);
++}
++
++export function buildRagRetrievalVariantPlan(
++  query: string,
++  analysis: ClinicalQueryAnalysis,
++  aliases: RagAliasInput[],
++  plan: RagQueryPlan,
++  rolloutMode: RagProgrammeMode,
++  signal?: AbortSignal,
++) {
++  const servedVariants = buildRetrievalQueryVariants(query, analysis, aliases);
++  const shadow = rolloutMode === "shadow";
++  if (shadow) throwIfAborted(signal);
++  const candidateVariants = shadow ? buildRetrievalQueryVariants(query, analysis, aliases, plan) : servedVariants;
++  if (shadow) throwIfAborted(signal);
++  return {
++    queryPlanVersion: plan.version,
++    servedVariants,
++    candidateVariants,
++    diagnostics: {
++      query_plan_kind: plan.kind,
++      subquestion_count: plan.subquestions.length,
++      query_plan_reason_codes: contentFreeQueryPlanReasonCodes(plan),
++      ...(shadow ? { candidate_retrieval_query_variant_count: candidateVariants.length } : {}),
++    },
++  };
+ }
+ 
+ // P8b: websearch_to_tsquery ANDs every term, so a long multi-term query (e.g. "ciwa score threshold
+ // drug treatment alcohol withdrawal") can match zero chunks even when the answer clearly exists —
+ // no single chunk contains all seven terms. Relax the primary variant to a term-OR query so recall
+ // is recovered; ts_rank_cd still ranks chunks matching more terms highest, so topical docs surface
+ // on top rather than flooding with single-term matches. Only used as a fallback when the strict
+ // AND variants returned nothing, so it never displaces a working precise match.
+ /** Relax variant to or query. */
+ export function relaxVariantToOrQuery(variant: string): string | null {
+diff --git a/src/lib/rag/rag.ts b/src/lib/rag/rag.ts
+index 3c5f8ee8a6b6dd42ac49bd13a441c3f71b6bc143..df0d805409cd6b4cb99c7783086aca814646b175 100644
+--- a/src/lib/rag/rag.ts
++++ b/src/lib/rag/rag.ts
+@@ -93,21 +93,21 @@ import { buildComparisonMatrix, comparisonEvidenceGuide, selectSafeComparisonFal
+ export {
+   classifyAnswerIntent,
+   completeExtractiveSentence,
+   generatedAnswerQualityFailureReason,
+   isBareDefinitionQuestion,
+   sourceBackedGenerationTimeoutAnswer,
+   strongReasoningEffortForQueryClass,
+ } from "@/lib/rag/rag-extractive-answer";
+ import {
+   assertGlobalSearchAllowed,
+-  buildRetrievalQueryVariants,
++  buildRagRetrievalVariantPlan,
+   fetchEnabledRagAliases,
+   normalizeRetrievalVariant,
+   ownerScopeForDocumentFilteredRetrieval,
+   selectRagAliasExpansions,
+   shouldApplyUnsupportedSearchShortCircuit,
+   textCandidateBudgetForQueryClass,
+ } from "@/lib/rag/rag-retrieval-variants";
+ export {
+   buildRetrievalQueryVariants,
+   relaxVariantToOrQuery,
+@@ -142,20 +142,21 @@ export {
+   retrievalPlanCacheQuery,
+ } from "@/lib/rag/rag-cache";
+ import { classifySearchCacheOutcome, recordCacheLookup } from "@/lib/observability/cache-metrics";
+ import {
+   recordAnswerOrigination,
+   recordAnswerOriginationFinished,
+   recordCoalescedAnswerWaiter,
+ } from "@/lib/observability/answer-coalescing-metrics";
+ import { buildRagSourceBlock, neutralizeIdentityField } from "@/lib/rag/rag-source-block";
+ import { ragContextSnapshotTelemetry } from "@/lib/rag/rag-context-snapshot";
++import { buildRagQueryPlan } from "@/lib/rag/rag-query-plan";
+ export { buildRagSourceBlock, truncateForModel } from "@/lib/rag/rag-source-block";
+ import {
+   buildClinicalTextSearchQuery,
+   classifyRagQuery,
+   analyzeClinicalQuery,
+   expandClinicalQuery,
+   hasDoseEvidenceSupport,
+   hasStructuredThresholdEvidence,
+   isMedicationDoseEvidenceQuery,
+   normalizedClinicalSearchTokens,
+@@ -166,21 +167,20 @@ import {
+   ragAnswerPromptVersion,
+   ragQueryClassifierPromptVersion,
+   ragSummaryPromptVersion,
+ } from "@/lib/rag/rag-versioning";
+ import {
+   finalRagQueryFields,
+   logRagQuery,
+   logRagQueryOutcome,
+   logRagQueryOutcomeForAnswerArgs,
+   type RagQueryTelemetryFinalizer,
+-  type RagQueryInsert,
+ } from "@/lib/rag/rag-query-telemetry";
+ import { withRagProgrammeDiagnostics } from "@/lib/rag/rag-programme-telemetry";
+ import { normalizeOptionalSourceMetadata } from "@/lib/source-metadata";
+ import { safeErrorLogDetails } from "@/lib/privacy";
+ import {
+   SOURCE_BACKED_REVIEW_FALLBACK_REASON,
+   chooseAnswerRoute,
+   hasAdversarialManipulationIntent,
+   hasDirectTitleSupport,
+   shouldRetryWithStrongAfterFast,
+@@ -192,40 +192,38 @@ import {
+   isAnswerRouteDeadlineExceeded,
+ } from "@/lib/rag/rag-route-budget";
+ import { fetchRelatedDocuments } from "@/lib/document-enrichment";
+ import { boldHighYieldClinicalText, boldRagAnswerHighYieldText, rankAnswerEvidence } from "@/lib/answer-ranking";
+ import { ragDeepMemoryVersion } from "@/lib/deep-memory";
+ import {
+   buildAnswerScoreExplanations,
+   buildIndexingQuality,
+   collectMemoryCards,
+   deriveConfidence,
+-  fallbackReasonFromRouting,
+   isProviderGenerationDegraded,
+   machineReadableFallbackAnswer,
+   scoreValue,
+ } from "@/lib/rag/rag-answer-support";
+ export {
+   buildAnswerScoreExplanations,
+   buildIndexingQuality,
+   collectMemoryCards,
+   deriveConfidence,
+   evidenceTextForGate,
+   fallbackReasonFromRouting,
+   isProviderGenerationDegraded,
+   machineReadableFallbackAnswer,
+   rankMemoryCardsForAnswer,
+   scoreValue,
+ } from "@/lib/rag/rag-answer-support";
+ import {
+   retrievalPlanForQueryClass,
+-  type AnswerProgressEvent,
+   type AnswerQuestionWithScopeArgs,
+   type SearchChunksArgs,
+   type SearchTelemetry,
+ } from "@/lib/rag/rag-contracts";
+ export {
+   retrievalPlanForQueryClass,
+   type AnswerProgressEvent,
+   type SearchChunksArgs,
+   type SearchTelemetry,
+ } from "@/lib/rag/rag-contracts";
+@@ -1543,47 +1541,47 @@ export async function searchChunksWithTelemetry(
+     // provider client, consulting either cache, or issuing any Supabase query.
+     // These requests are never cached so a stale or poisoned entry cannot make
+     // a later refusal depend on shared state.
+     const telemetry = createSearchTelemetry(retrievalQuery, "unsupported_or_general");
+     telemetry.embedding_skipped = true;
+     telemetry.embedding_skip_reason = "adversarial_manipulation_refused";
+     telemetry.retrieval_strategy = "unsupported_short_circuit";
+     recordSearchScoreTelemetry(telemetry, []);
+     return finishSearch(searchTiming, { results: [] as SearchResult[], telemetry });
+   }
+-  const requestContext = await resolveRequestRagCacheContext(args, "legacy", {
+-    readDocumentIndexGeneration: cacheIndexingVersion,
+-  });
++  const requestContext = await resolveRequestRagCacheContext(
++    args,
++    args.ragContextSnapshot?.rolloutVersion ?? "legacy",
++    {
++      readDocumentIndexGeneration: cacheIndexingVersion,
++    },
++  );
+   args = { ...args, ...requestContext };
+   const { cacheContext, ragContextSnapshot } = requestContext;
+   const supabase = createAdminClient();
+-  // When the provider is source-only (offline mode, or auto mode without a usable key) we must
+-  // never call OpenAI for embeddings; retrieval falls back to the lexical text-fast-path only.
++  // Source-only retrieval never calls OpenAI embeddings and uses the lexical fast path.
+   const sourceOnlyRetrieval = isSourceOnlyMode();
+   if (args.forceEmbedding && sourceOnlyRetrieval) {
+     throw new Error("forceEmbedding requires embedding-capable retrieval; source-only mode cannot exercise vectors.");
+   }
+-  // A3: shared across every withMemoryBoostedCandidates call in this request so the same
+-  // owner/query memory cards are fetched at most once per (query, embedding-present, count).
++  // A3: share memory cards across this request; fetch each owner/query tuple at most once.
+   const memoryCardCache: MemoryCardCache = new Map();
+   const chunkLoadCache = createChunkLoadCache();
+   const documentRankingMetadataCache = createDocumentRankingMetadataCache();
+   const modeQueryClass = queryClassForClinicalMode(args.queryMode ?? "auto");
+   const documentFilterList = args.documentIds?.length
+     ? args.documentIds
+     : args.documentId
+       ? [args.documentId]
+       : undefined;
+-  // Finding #11: give the classifier fallback the exact owner scope retrieval will use, so
+-  // corpus grounding sees the same corpus. If owner-scope derivation throws (anonymous prod
+-  // call without allowGlobalSearch), grounding is skipped and the retrieval path below raises
+-  // the proper owner-scope error itself.
++  // Finding #11: classifier grounding uses retrieval's exact owner scope. If derivation fails,
++  // skip grounding and let the retrieval path raise the authoritative owner-scope error.
+   const corpusGroundingScope = (() => {
+     try {
+       return {
+         supabase,
+         ownerFilter:
+           ownerScopeForDocumentFilteredRetrieval(args.ownerId, documentFilterList, args.allowGlobalSearch) ?? null,
+         accessScope: args.accessScope,
+       };
+     } catch {
+       return undefined;
+@@ -1605,29 +1603,39 @@ export async function searchChunksWithTelemetry(
+   const ragAliasesPromise = measureSearchPhase(searchTiming, "alias_load", () =>
+     fetchEnabledRagAliases(supabase, args.ownerId, args.accessScope, args.signal),
+   );
+   const [indexingVersionAtRetrievalStart, queryAnalysis, ragAliases] = await Promise.all([
+     indexingVersionAtRetrievalStartPromise,
+     queryAnalysisPromise,
+     ragAliasesPromise,
+   ]);
+   throwIfAborted(args.signal);
+   if (modeQueryClass) queryAnalysis.queryClass = modeQueryClass;
++  const queryPlan = buildRagQueryPlan(retrievalQuery, queryAnalysis);
++  const retrievalVariantPlan = buildRagRetrievalVariantPlan(
++    retrievalQuery,
++    queryAnalysis,
++    ragAliases,
++    queryPlan,
++    ragContextSnapshot?.rolloutVersion ?? "legacy",
++    args.signal,
++  );
++  args = { ...args, ragQueryPlanVersion: retrievalVariantPlan.queryPlanVersion };
+   const queryClassification = {
+     queryClass: queryAnalysis.queryClass,
+     confidence: queryAnalysis.confidence,
+     reasons: queryAnalysis.reasons,
+   };
+   const telemetry = createSearchTelemetry(retrievalQuery, queryClassification.queryClass);
++  Object.assign(telemetry, retrievalVariantPlan.diagnostics);
+   if (ragContextSnapshot) Object.assign(telemetry, ragContextSnapshotTelemetry(ragContextSnapshot));
+   if (queryAnalysis.corpusGrounding) telemetry.corpus_grounding = queryAnalysis.corpusGrounding;
+-
+   let semanticRerankAttempted = false;
+   const applySemanticRerankOnce = async (
+     results: SearchResult[],
+     options: { providerAvailable?: boolean; requestModeEligible?: boolean } = {},
+   ) => {
+     if (semanticRerankAttempted) return results;
+     semanticRerankAttempted = true;
+     const reranked = await semanticRerankIfAmbiguous({
+       query: retrievalQuery,
+       results,
+@@ -1636,65 +1644,56 @@ export async function searchChunksWithTelemetry(
+       safetyIdentifier: env.OPENAI_SAFETY_IDENTIFIER_SECRET ? openAISafetyIdentifier(args.ownerId) : undefined,
+       providerAvailable: options.providerAvailable,
+       requestModeEligible: options.requestModeEligible ?? !args.lexicalOnly,
+     });
+     telemetry.rerank_latency_ms += telemetry.semantic_rerank_latency_ms ?? 0;
+     return reranked;
+   };
+   const ragAliasExpansions = selectRagAliasExpansions(retrievalQuery, ragAliases);
+   telemetry.rag_alias_count = ragAliases.length;
+   telemetry.rag_alias_expansion_count = ragAliasExpansions.length;
+-
+-  const queryVariants = buildRetrievalQueryVariants(retrievalQuery, queryAnalysis, ragAliases);
++  const queryVariants = retrievalVariantPlan.servedVariants;
+   telemetry.retrieval_query_variant_count = queryVariants.length;
+   const cached = await measureSearchPhase(searchTiming, "local_cache_lookup", () =>
+     getCachedSearch(args, queryClassification.queryClass, queryVariants, {
+       indexingVersionAtRequestStart: indexingVersionAtRetrievalStart,
+     }),
+   );
+-  // Only consult the shared cache when the process-local cache missed (preserves
+-  // the original short-circuit), then record the hit-rate counter ONCE with full
+-  // knowledge of both layers: a request served by either cache is a hit, so a
+-  // cold process that falls through to a warm shared cache is not miscounted as a
+-  // miss (deep /api/health cache hit-rate — docs/observability-slos.md §4).
++  // Consult shared cache only after a local miss; count either layer as one request hit
++  // (deep /api/health cache hit-rate — docs/observability-slos.md §4).
+   const sharedCached = cached
+     ? null
+     : await measureSearchPhase(searchTiming, "shared_cache_lookup", () =>
+         getSharedCachedSearch(args, queryClassification.queryClass, queryVariants, {
+           indexingVersionAtRequestStart: indexingVersionAtRetrievalStart,
+         }),
+       );
+   const cacheOutcome = classifySearchCacheOutcome(isSearchCacheEnabled(args), Boolean(cached), sharedCached);
+   if (cacheOutcome !== "skip") recordCacheLookup(cacheOutcome === "hit");
+-
+   if (cached) return finishSearch(searchTiming, cached);
+   if (sharedCached?.kind === "hit") {
+     await setCachedSearch(args, sharedCached.results, sharedCached.telemetry, queryVariants, {
+       indexingVersionAtRetrievalStart,
+     });
+     return finishSearch(searchTiming, { results: sharedCached.results, telemetry: sharedCached.telemetry });
+   }
+   if (sharedCached?.kind === "miss") {
+     telemetry.shared_cache_status = "miss";
+     telemetry.shared_cache_miss_reason = sharedCached.reason;
+   }
+ 
+   if (
+     !args.forceEmbedding &&
+     shouldApplyUnsupportedSearchShortCircuit(retrievalQuery, queryAnalysis, ragAliasExpansions)
+   ) {
+-    // Item 10 follow-up (RC6): a typo can make an on-topic query ("schizophrenai management") look
+-    // unsupported and short-circuit before any layer runs. Before giving up, trigram-correct the
+-    // query against the known clinical-term vocabulary; if it changes, re-run the whole retrieval
+-    // once on the corrected text so classification + every layer benefits (not just the text fallback
+-    // in searchTextChunkCandidates). Only reached for would-be-unsupported queries, so it adds no
+-    // hot-path cost; `typoCorrected` guards against recursion.
++    // RC6: before an unsupported exit, trigram-correct once so classification and every layer share
++    // the corrected query. This cold path is recursion-bounded by `typoCorrected`.
+     if (!args.typoCorrected && !sourceOnlyRetrieval) {
+       const { data: corrected } = await supabase.rpc("correct_clinical_query_terms", {
+         input_query: retrievalQuery,
+         min_sim: 0.45,
+       });
+       if (typeof corrected === "string" && corrected && corrected.toLowerCase() !== retrievalQuery.toLowerCase()) {
+         const correctedSearch = await searchChunksWithTelemetry({
+           ...args,
+           cacheContext,
+           query: corrected,
+diff --git a/tests/clinical-search.test.ts b/tests/clinical-search.test.ts
+index 6f79d206ef2705e70a4afd7a1da285764a103f23..da3286834c0f20e1959c8e71da116417162886f8 100644
+--- a/tests/clinical-search.test.ts
++++ b/tests/clinical-search.test.ts
+@@ -9,40 +9,73 @@ import {
+   hasDoseEvidenceSupport,
+   hasForeignThresholdLabel,
+   hasMedicationMonitoringSubjectEvidence,
+   hasNumericOrTableEvidence,
+   hasStructuredThresholdEvidence,
+   medicationMonitoringQuerySubjectTokens,
+   normalizedClinicalSearchTokens,
+   rankClinicalResults,
+ } from "../src/lib/clinical-search";
+ import { queryForClinicalMode } from "../src/lib/clinical-query-mode";
++import { buildRagQueryPlan } from "../src/lib/rag/rag-query-plan";
+ import type { SearchResult } from "../src/lib/types";
+ 
+ function result(overrides: Partial<SearchResult>): SearchResult {
+   return {
+     id: overrides.id ?? "chunk-1",
+     document_id: overrides.document_id ?? "doc-1",
+     title: overrides.title ?? "Guideline",
+     file_name: overrides.file_name ?? "guideline.pdf",
+     page_number: 1,
+     chunk_index: 0,
+     section_heading: null,
+     content: overrides.content ?? "Treatment process text.",
+     image_ids: [],
+     similarity: overrides.similarity ?? 0.6,
+     hybrid_score: overrides.hybrid_score ?? 0.6,
+     images: [],
+     ...overrides,
+   };
+ }
+ 
++describe("deterministic RAG query-plan routing", () => {
++  it.each([
++    ["Which specifier applies to panic disorder?", "specifiers"],
++    ["What differential diagnosis should be considered?", "differentials"],
++    ["Which medication is listed for acute agitation?", "medications"],
++  ] as const)("maps explicit site vocabulary without provider work: %s", (query, expectedDomain) => {
++    const plan = buildRagQueryPlan(query, analyzeClinicalQuery(query));
++
++    expect(plan.targetSiteDomains).toContain(expectedDomain);
++    expect(plan.siteDomainDecision).toBe("explicit");
++  });
++
++  it.each([
++    ["What is the duress procedure during an acute ward incident?", []],
++    ["When is IM medication used for agitation?", ["medications"]],
++  ] as const)("keeps clinical pathway planning on an open or clinical site domain: %s", (query, domains) => {
++    const analysis = analyzeClinicalQuery(query);
++    const plan = buildRagQueryPlan(query, analysis);
++
++    expect(plan.kind).not.toBe("clarification_required");
++    expect(plan.targetSiteDomains).toEqual(domains);
++  });
++
++  it("keeps ambiguous clinical wording open to all site domains", () => {
++    const query = "What should be considered next?";
++    const plan = buildRagQueryPlan(query, analyzeClinicalQuery(query));
++
++    expect(plan.targetSiteDomains).toEqual([]);
++    expect(plan.siteDomainDecision).toBe("none");
++  });
++});
++
+ describe("clinical search query normalization", () => {
+   it("does not mistake a determiner before a categorical range for a foreign subject", () => {
+     expect(
+       hasForeignThresholdLabel(
+         "what clozapine monitoring action is needed for red range blood results",
+         "If blood results return in the red range, clozapine therapy must be discontinued immediately.",
+       ),
+     ).toBe(false);
+   });
+ 
+diff --git a/tests/rag-cache-invalidation.test.ts b/tests/rag-cache-invalidation.test.ts
+index 12dcb3753a39e01e05bf4363886329e7fd4dafca..6f7cf316960a37ac59c13ba584f29e40a7b060c9 100644
+--- a/tests/rag-cache-invalidation.test.ts
++++ b/tests/rag-cache-invalidation.test.ts
+@@ -51,21 +51,22 @@ function contextSnapshot(
+     version: "clinical-kb-site-release-v1",
+     releaseId: "11111111-1111-4111-8111-111111111111",
+     registryVersion: "site-content-registry-v1",
+     staticManifestDigest: STATIC_DIGEST,
+     dynamicStateDigest: `sha256:${"2".repeat(64)}`,
+     releaseDigest: `sha256:${"3".repeat(64)}`,
+     state: "active",
+     activatedAt: "2026-08-29T00:00:00.000Z",
+     ...overrides.release,
+   };
+-  const { release: _release, ...inputOverrides } = overrides;
++  const inputOverrides = { ...overrides };
++  delete inputOverrides.release;
+   return resolveRagContextSnapshot({
+     expectedSiteStaticManifestDigest: STATIC_DIGEST,
+     activePublicSiteRelease: release,
+     publicSiteChangeEpoch: "epoch-1",
+     pendingPublicSiteChangeCount: 0,
+     pendingPublicSiteLogicalIds: [],
+     documentIndexGeneration: "documents-generation-1",
+     sourcePolicyVersion: "source-policy-v2",
+     rolloutVersion: "legacy",
+     resolvedAt: "2026-08-29T00:02:00.000Z",
+@@ -155,21 +156,27 @@ class DeleteQuery implements PromiseLike<{ data: null; error: null }> {
+ 
+   then<TResult1 = { data: null; error: null }, TResult2 = never>(
+     onfulfilled?: ((value: { data: null; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+   ): PromiseLike<TResult1 | TResult2> {
+     return Promise.resolve({ data: null, error: null }).then(onfulfilled, onrejected);
+   }
+ }
+ 
+ describe("RAG cache invalidation", () => {
+-  it("keeps exact legacy answer/search cache bytes when the site component is off", async () => {
++  it("exports the query-plan-aware dependency generation", async () => {
++    const { ragCacheDependencyVersion } = await import("../src/lib/rag/rag-cache");
++
++    expect(ragCacheDependencyVersion).toBe("rag-cache-v21");
++  });
++
++  it("keeps site-off and implicit legacy requests aligned in the query-plan-aware cache generation", async () => {
+     vi.resetModules();
+     vi.doMock("@/lib/australian-source-catalogue", () => ({
+       australianSourcePolicyVersion: futureAustralianSourcePolicyVersion,
+     }));
+     vi.doMock("@/lib/env", () => ({
+       env: {
+         OPENAI_ANSWER_MODEL: "answer",
+         OPENAI_FAST_ANSWER_MODEL: "fast",
+         OPENAI_STRONG_ANSWER_MODEL: "strong",
+         OPENAI_QUERY_CLASSIFIER_MODEL: "classifier",
+@@ -202,25 +209,25 @@ describe("RAG cache invalidation", () => {
+ 
+     const { retrievalPlanCacheQuery, scopedAnswerCacheKey, scopedAnswerInflightKey } =
+       await import("../src/lib/rag/rag-cache");
+     const legacyArgs = {
+       query: "  Lithium   monitoring ",
+       ownerId,
+       accessScope: { ownerId, includePublic: true as const },
+     };
+     const siteOffArgs = { ...legacyArgs, ragContextSnapshot: siteComponentOffSnapshot() };
+     const expectedAnswerKey =
+-      "rag-cache-v20|owner:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa+public|all-documents|auto|" +
++      "rag-cache-v21|owner:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa+public|all-documents|auto|" +
+       "generation:9ff8d6d7a6647c834f6c|lithium monitoring";
+     const expectedSearchKey =
+       "plan:balanced_hybrid:chunks_fields_units_memory|class:unknown|query:lithium monitoring|" +
+-      "variants:e3b0c44298fc1c14|mode:auto|topK:8|min:0.15|forceEmbedding:0|lexicalOnly:0|" +
++      "variants:e3b0c44298fc1c14|queryPlan:rag-query-plan-v1|mode:auto|topK:8|min:0.15|forceEmbedding:0|lexicalOnly:0|" +
+       "rag:test-rag-version|force:0";
+ 
+     expect(scopedAnswerCacheKey(legacyArgs)).toBe(expectedAnswerKey);
+     expect(scopedAnswerCacheKey(siteOffArgs)).toBe(expectedAnswerKey);
+     expect(retrievalPlanCacheQuery(legacyArgs)).toBe(expectedSearchKey);
+     expect(retrievalPlanCacheQuery(siteOffArgs)).toBe(expectedSearchKey);
+     expect(scopedAnswerInflightKey(siteOffArgs, "valid-index-authority")).toBe(
+       scopedAnswerInflightKey(legacyArgs, "valid-index-authority"),
+     );
+ 
+diff --git a/tests/rag-classifier-memo.test.ts b/tests/rag-classifier-memo.test.ts
+index 814f45116e3ab92414e9cbd489b37af191617dcc..bf2d818a99c48017d4dc18a3fd7b932ec21c019b 100644
+--- a/tests/rag-classifier-memo.test.ts
++++ b/tests/rag-classifier-memo.test.ts
+@@ -69,20 +69,34 @@ describe("classifier verdict memoization", () => {
+       expect.objectContaining({
+         model: "gpt-classifier-test",
+         promptCacheKey: "clinical-rag-query-classifier-v1",
+       }),
+     );
+     expect(first.queryClass).toBe("broad_summary");
+     expect(second.queryClass).toBe("broad_summary");
+     expect(second).toEqual(first);
+   });
+ 
++  it("builds a bounded plan after the finalized classifier verdict without another provider call", async () => {
++    const mock = vi.fn(async () => classifierResponse());
++    const { rag, analyzeClinicalQuery, isUnsupportedSoftTailAnalysis } = await loadWithClassifierMock(mock);
++    const { buildRagQueryPlan } = await import("../src/lib/rag/rag-query-plan");
++    const { query, analysis } = fallbackQueryAnalysis(analyzeClinicalQuery, isUnsupportedSoftTailAnalysis);
++
++    const finalized = await rag.analyzeQueryWithClassifierFallback(query, analysis);
++    const plan = buildRagQueryPlan(query, finalized);
++
++    expect(mock).toHaveBeenCalledTimes(1);
++    expect(plan.kind).toBe("decomposed");
++    expect(plan.subquestions.length).toBeLessThanOrEqual(4);
++  });
++
+   it("memoizes rejected verdicts so a rejection is also deterministic", async () => {
+     const mock = vi.fn(async () => classifierResponse({ confidence: 0.3 }));
+     const { rag, analyzeClinicalQuery, isUnsupportedSoftTailAnalysis } = await loadWithClassifierMock(mock);
+     const { query, analysis } = fallbackQueryAnalysis(analyzeClinicalQuery, isUnsupportedSoftTailAnalysis);
+ 
+     const first = await rag.analyzeQueryWithClassifierFallback(query, analysis);
+     const second = await rag.analyzeQueryWithClassifierFallback(query, analysis);
+ 
+     expect(mock).toHaveBeenCalledTimes(1);
+     // Rejected verdict (confidence < 0.58) leaves the deterministic analysis untouched.
+diff --git a/tests/rag-query-plan.test.ts b/tests/rag-query-plan.test.ts
+index 14e12ad15c71d5df16454a42664789de06e85496..a11a12691d0f0cfc4732973ebcda3d12a7542286 100644
+--- a/tests/rag-query-plan.test.ts
++++ b/tests/rag-query-plan.test.ts
+@@ -42,20 +42,41 @@ describe("bounded RAG query planning", () => {
+   });
+ 
+   it("does not manufacture comparison entities from benefits and risks of one medicine", () => {
+     const query = "Compare the benefits and risks of clozapine";
+     const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+ 
+     expect(result.kind).toBe("single");
+     expect(result.subquestions).toEqual([{ id: "sq-1", question: query, purpose: "primary", required: true }]);
+   });
+ 
++  it.each([
++    "Compare the benefits and risks of clozapine when co-prescribed with lithium.",
++    "Compare efficacy and safety of clozapine in a patient taking lithium.",
++  ])("does not promote a contextual second medicine into a comparison side for %s", (query) => {
++    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
++
++    expect(result.kind).toBe("single");
++    expect(result.subquestions).toEqual([{ id: "sq-1", question: query, purpose: "primary", required: true }]);
++  });
++
++  it("decomposes an explicit medicine-versus-medicine relation", () => {
++    const query = "Compare clozapine versus lithium";
++    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
++
++    expect(result.kind).toBe("decomposed");
++    expect(result.subquestions.slice(1).map((item) => item.question)).toEqual([
++      "clozapine: directly relevant evidence for this comparison.",
++      "lithium: directly relevant evidence for this comparison.",
++    ]);
++  });
++
+   it("still decomposes an identifiable non-medicine setting comparison", () => {
+     const query = "Compare inpatient and community monitoring requirements";
+     const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+ 
+     expect(result.kind).toBe("decomposed");
+     expect(result.subquestions.map((item) => item.purpose)).toEqual(["primary", "comparison_side", "comparison_side"]);
+     expect(result.subquestions.slice(1).map((item) => item.question)).toEqual([
+       "inpatient: directly relevant evidence for this comparison.",
+       "community: directly relevant evidence for this comparison.",
+     ]);
+@@ -90,26 +111,49 @@ describe("bounded RAG query planning", () => {
+     expect(plan.subquestions).toEqual([]);
+     expect(plan.interpretation).toMatch(/clarification/i);
+   });
+ 
+   it("asks one bounded clarification when the required form has no workflow or jurisdiction anchor", () => {
+     const query = "Which form is required?";
+     const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+ 
+     expect(result.kind).toBe("clarification_required");
+     expect(result.subquestions).toEqual([]);
++    expect(result.targetSiteDomains).toEqual([]);
++    expect(result.siteDomainDecision).toBe("none");
+     expect(detectClinicalAmbiguity(query, analyzeClinicalQuery(query))).toMatchObject({
+       material: true,
+       dimensions: expect.arrayContaining(["document", "jurisdiction", "decision"]),
+     });
+   });
+ 
++  it("keeps every ambiguous domain-bearing plan open until clarification", () => {
++    const query = "Which tool is required?";
++    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
++
++    expect(result.kind).toBe("clarification_required");
++    expect(result.subquestions).toEqual([]);
++    expect(result.targetSiteDomains).toEqual([]);
++    expect(result.siteDomainDecision).toBe("none");
++  });
++
+   it("states an interpretation instead of clarifying when a required form has retrieval anchors", () => {
+     const query = "Which form is required for clozapine monitoring in WA?";
+     const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+ 
+     expect(result.kind).toBe("single");
+     expect(result.subquestions).toHaveLength(1);
+     expect(result.interpretation).toMatch(/document|medicine|jurisdiction/i);
++    expect(result.targetSiteDomains).toEqual(["forms"]);
++    expect(result.siteDomainDecision).toBe("explicit");
+     expect(detectClinicalAmbiguity(query, analyzeClinicalQuery(query))).toBeNull();
+   });
++
++  it("retains a domain hint for an anchored ordinary tool decision", () => {
++    const query = "Which tool is required for clozapine monitoring in WA?";
++    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
++
++    expect(result.kind).toBe("single");
++    expect(result.targetSiteDomains).toEqual(["tools"]);
++    expect(result.siteDomainDecision).toBe("explicit");
++  });
+ });
+diff --git a/tests/rag-routing.test.ts b/tests/rag-routing.test.ts
+index 64637d37c8fa913985c14cecd6b461cac22ca2c0..5a867f340a38ffbe391fb951d189583cd22965a0 100644
+--- a/tests/rag-routing.test.ts
++++ b/tests/rag-routing.test.ts
+@@ -1,17 +1,20 @@
+ import { describe, expect, it } from "vitest";
+ import {
+   chooseAnswerRoute,
+   hasAdversarialManipulationIntent,
+   shouldRetryWithStrongAfterFast,
+   weakRetrievalTopScoreThreshold,
+ } from "../src/lib/rag/rag-routing";
++import { analyzeClinicalQuery } from "../src/lib/clinical-search";
++import { buildRagQueryPlan } from "../src/lib/rag/rag-query-plan";
++import { buildRagRetrievalVariantPlan, buildRetrievalQueryVariants } from "../src/lib/rag/rag-retrieval-variants";
+ import { ragEvalCases } from "../src/lib/rag/rag-eval-cases";
+ import type { DocumentTableFact, SearchResult } from "../src/lib/types";
+ 
+ function source(overrides: Partial<SearchResult> = {}): SearchResult {
+   return {
+     id: "chunk-1",
+     document_id: "doc-1",
+     title: "Guideline",
+     file_name: "guideline.pdf",
+     page_number: 1,
+@@ -19,20 +22,57 @@ function source(overrides: Partial<SearchResult> = {}): SearchResult {
+     section_heading: "Overview",
+     content: "Clinical guideline text.",
+     image_ids: [],
+     similarity: 0.84,
+     hybrid_score: 0.86,
+     images: [],
+     ...overrides,
+   };
+ }
+ 
++describe("shadow query-plan orchestration", () => {
++  it("keeps served variants identical while exposing only content-free shadow diagnostics", () => {
++    const query = "Compare clozapine and olanzapine monitoring requirements.";
++    const analysis = analyzeClinicalQuery(query);
++    const plan = buildRagQueryPlan(query, analysis);
++    const legacy = buildRagRetrievalVariantPlan(query, analysis, [], plan, "legacy");
++    const shadow = buildRagRetrievalVariantPlan(query, analysis, [], plan, "shadow");
++
++    expect(shadow.servedVariants).toEqual(legacy.servedVariants);
++    expect(legacy.diagnostics.candidate_retrieval_query_variant_count).toBeUndefined();
++    expect(shadow.diagnostics).toMatchObject({
++      query_plan_kind: "decomposed",
++      subquestion_count: 3,
++      candidate_retrieval_query_variant_count: shadow.candidateVariants.length,
++    });
++    expect(JSON.stringify(shadow.diagnostics)).not.toContain(query);
++    for (const subquestion of plan.subquestions) {
++      expect(JSON.stringify(shadow.diagnostics)).not.toContain(subquestion.question);
++    }
++  });
++
++  it("aborts candidate-only shadow planning without changing legacy served variants", () => {
++    const query = "Compare clozapine and olanzapine monitoring requirements.";
++    const analysis = analyzeClinicalQuery(query);
++    const plan = buildRagQueryPlan(query, analysis);
++    const controller = new AbortController();
++    controller.abort();
++
++    expect(() => buildRagRetrievalVariantPlan(query, analysis, [], plan, "shadow", controller.signal)).toThrow(
++      /aborted/i,
++    );
++    expect(buildRagRetrievalVariantPlan(query, analysis, [], plan, "legacy").servedVariants).toEqual(
++      buildRetrievalQueryVariants(query, analysis),
++    );
++  });
++});
++
+ function tableFact(overrides: Partial<DocumentTableFact> = {}): DocumentTableFact {
+   return {
+     id: "fact-1",
+     document_id: "doc-1",
+     source_chunk_id: "chunk-1",
+     source_image_id: null,
+     page_number: 1,
+     table_title: "Admission requirements",
+     row_label: "Identity check",
+     clinical_parameter: "Admission requirement",
+diff --git a/tests/rag-variant-early-exit.test.ts b/tests/rag-variant-early-exit.test.ts
+index 2ba885326927692f582447a785db281582d14755..99671c2bbab5502cb573c6235c82341977f4257e 100644
+--- a/tests/rag-variant-early-exit.test.ts
++++ b/tests/rag-variant-early-exit.test.ts
+@@ -1,12 +1,16 @@
+ import { afterEach, describe, expect, it, vi } from "vitest";
+-import type { SearchResult } from "../src/lib/types";
++import { analyzeClinicalQuery } from "../src/lib/clinical-search";
++import { resolveRagContextSnapshot } from "../src/lib/rag/rag-context-snapshot";
++import { buildRagQueryPlan } from "../src/lib/rag/rag-query-plan";
++import { buildRagRetrievalVariantPlan } from "../src/lib/rag/rag-retrieval-variants";
++import type { RagProgrammeMode, SearchResult } from "../src/lib/types";
+ 
+ // PT-02: a question fans out to up to 3 near-duplicate lexical RPC calls per
+ // text surface. When the FIRST variant already returns a deep pool anchored by
+ // a precise hit, the sibling calls must be skipped; weak pools keep the full
+ // fan-out so recall is unchanged.
+ 
+ function retrievalRpcBaseName(name: string) {
+   return name.replace(/_v[23]$/, "");
+ }
+ 
+@@ -71,57 +75,148 @@ class EmptyQuery implements PromiseLike<{ data: unknown[]; error: null }> {
+     onfulfilled?: ((value: { data: unknown[]; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
+   ): PromiseLike<TResult1 | TResult2> {
+     return Promise.resolve({ data: [], error: null }).then(onfulfilled, onrejected);
+   }
+ }
+ 
+ // Multi-variant clinical query: alias/threshold expansion produces sibling variants.
+ const multiVariantQuery = "clozapine anc monitoring";
+ 
+-async function runLexicalSearch(chunkResults: SearchResult[]) {
++function contextSnapshot(rolloutVersion: RagProgrammeMode) {
++  return resolveRagContextSnapshot({
++    expectedSiteStaticManifestDigest: null,
++    activePublicSiteRelease: null,
++    publicSiteChangeEpoch: null,
++    pendingPublicSiteChangeCount: 0,
++    pendingPublicSiteLogicalIds: [],
++    documentIndexGeneration: "shadow-query-plan-test-generation",
++    sourcePolicyVersion: "australian-source-policy-v1",
++    rolloutVersion,
++    resolvedAt: "2026-08-29T00:00:00.000Z",
++  });
++}
++
++async function runLexicalSearch(
++  chunkResults: SearchResult[],
++  rolloutModes: RagProgrammeMode[] = ["legacy"],
++  query = multiVariantQuery,
++  chunkResultsForQuery?: (queryText: string) => SearchResult[],
++) {
+   vi.stubEnv("RAG_SEARCH_CACHE_TTL_MS", "0");
+   vi.stubEnv("RAG_ANSWER_CACHE_TTL_MS", "0");
+ 
+-  const rpc = vi.fn(async (name: string) => {
+-    if (retrievalRpcBaseName(name) === "match_document_chunks_text") return { data: chunkResults, error: null };
++  const rpc = vi.fn(async (name: string, args?: { query_text?: string }) => {
++    if (retrievalRpcBaseName(name) === "match_document_chunks_text") {
++      const queryText = args?.query_text ?? "";
++      return { data: chunkResultsForQuery?.(queryText) ?? chunkResults, error: null };
++    }
+     return { data: [], error: null };
+   });
++  const providerCalls = vi.fn(() => {
++    throw new Error("Provider work is forbidden in lexical shadow-plan fixtures.");
++  });
+   const from = vi.fn(() => new EmptyQuery());
+   vi.doMock("@/lib/supabase/admin", () => ({
+     createAdminClient: () => ({
+       rpc,
+       from,
+     }),
+   }));
++  vi.doMock("@/lib/openai", async (importOriginal) => ({
++    ...(await importOriginal<typeof import("../src/lib/openai")>()),
++    embedTextWithTelemetry: providerCalls,
++    generateParsedTextResult: providerCalls,
++  }));
+ 
+   const { searchChunksWithTelemetry } = await import("@/lib/rag/rag");
+-  const result = await searchChunksWithTelemetry({
+-    query: multiVariantQuery,
+-    ownerId: "owner-1",
+-    topK: 8,
+-    lexicalOnly: true,
+-  });
++  const results = [];
++  for (const rolloutMode of rolloutModes) {
++    results.push(
++      await searchChunksWithTelemetry({
++        query,
++        ownerId: "owner-1",
++        topK: 8,
++        lexicalOnly: true,
++        ragContextSnapshot: contextSnapshot(rolloutMode),
++      }),
++    );
++  }
+   const chunkTextCalls = rpc.mock.calls.filter(
+     ([name]) => retrievalRpcBaseName(name as string) === "match_document_chunks_text",
+   );
+-  return { chunkTextCalls, from, telemetry: result.telemetry };
++  return { chunkTextCalls, from, providerCalls, result: results[0]!, results, telemetry: results[0]!.telemetry };
+ }
+ 
+ afterEach(() => {
+   vi.doUnmock("@/lib/supabase/admin");
++  vi.doUnmock("@/lib/openai");
+   vi.resetModules();
+   vi.unstubAllEnvs();
+   vi.restoreAllMocks();
+ });
+ 
+ describe("lexical variant early-exit (PT-02)", () => {
++  it("keeps divergent decomposed shadow candidates out of served RPCs and result order", async () => {
++    const query = "Compare clozapine and olanzapine monitoring requirements.";
++    const analysis = analyzeClinicalQuery(query);
++    const plan = buildRagQueryPlan(query, analysis);
++    const legacyPlan = buildRagRetrievalVariantPlan(query, analysis, [], plan, "legacy");
++    const shadowPlan = buildRagRetrievalVariantPlan(query, analysis, [], plan, "shadow");
++    const candidateOnly = shadowPlan.candidateVariants.filter(
++      (variant) => !legacyPlan.servedVariants.includes(variant),
++    );
++    const servedResults = new Map(
++      legacyPlan.servedVariants.map((variant, index) => [variant, [chunk(100 + index, 0.8 - index * 0.2)]]),
++    );
++    const candidatePoison = chunk(999, 0.99);
++    const resultsForQuery = (queryText: string) =>
++      candidateOnly.includes(queryText) ? [candidatePoison] : (servedResults.get(queryText) ?? []);
++    const { chunkTextCalls, providerCalls, results } = await runLexicalSearch(
++      [],
++      ["legacy", "shadow"],
++      query,
++      resultsForQuery,
++    );
++    const [legacy, shadow] = results;
++    const issuedQueryTexts = chunkTextCalls.map(([, args]) => (args as { query_text: string }).query_text);
++    const expectedIds = legacyPlan.servedVariants.map((_, index) => `clozapine-chunk-${100 + index}`);
++
++    expect(plan.kind).toBe("decomposed");
++    expect(candidateOnly.length).toBeGreaterThan(0);
++    expect(shadowPlan.candidateVariants).not.toEqual(legacyPlan.servedVariants);
++    expect(legacy!.results.map(({ id }) => id)).toEqual(expectedIds);
++    expect(shadow!.results.map(({ id }) => id)).toEqual(expectedIds);
++    expect(issuedQueryTexts).toEqual([...legacyPlan.servedVariants, ...legacyPlan.servedVariants]);
++    expect(issuedQueryTexts).toEqual(expect.not.arrayContaining(candidateOnly));
++    expect(legacy!.telemetry.candidate_retrieval_query_variant_count).toBeUndefined();
++    expect(shadow!.telemetry.candidate_retrieval_query_variant_count).toBe(shadowPlan.candidateVariants.length);
++    expect(providerCalls).not.toHaveBeenCalled();
++    expect(JSON.stringify(shadow!.telemetry)).not.toContain(query);
++    candidateOnly.forEach((variant) => expect(JSON.stringify(shadow!.telemetry)).not.toContain(variant));
++    expect(legacy!.results).not.toContainEqual(expect.objectContaining({ id: candidatePoison.id }));
++    expect(shadow!.results).not.toContainEqual(expect.objectContaining({ id: candidatePoison.id }));
++  });
++
++  it("returns byte-identical legacy/shadow IDs and order without candidate retrieval fanout", async () => {
++    const pool = Array.from({ length: 48 }, (_, index) => chunk(index, index === 0 ? 0.9 : 0.2));
++    const { chunkTextCalls, results } = await runLexicalSearch(pool, ["legacy", "shadow"]);
++    const [legacy, shadow] = results;
++
++    expect(shadow!.results.map(({ id }) => id)).toEqual(legacy!.results.map(({ id }) => id));
++    expect(shadow!.telemetry.retrieval_query_variant_count).toBe(legacy!.telemetry.retrieval_query_variant_count);
++    expect(legacy!.telemetry.candidate_retrieval_query_variant_count).toBeUndefined();
++    expect(shadow!.telemetry.candidate_retrieval_query_variant_count).toBeGreaterThan(0);
++    expect(chunkTextCalls).toHaveLength(2);
++    expect(JSON.stringify(shadow!.telemetry)).not.toContain(multiVariantQuery);
++  });
++
+   it("a deep, precisely-anchored first pool issues exactly one chunk-text RPC", async () => {
+     // Deep (48-row) pool with a precise top hit: sibling variants are pure duplication.
+     const strongPool = Array.from({ length: 48 }, (_, index) => chunk(index, index === 0 ? 0.9 : 0.2));
+     const { chunkTextCalls, from, telemetry } = await runLexicalSearch(strongPool);
+     // Guard: the fixture query must actually produce sibling variants for the
+     // skip to be meaningful.
+     expect(telemetry.retrieval_query_variant_count ?? 1).toBeGreaterThan(1);
+     expect(chunkTextCalls).toHaveLength(1);
+     expect(telemetry.text_variant_early_exit).toBe(true);
+     expect(telemetry.text_variant_rpc_calls?.match_document_chunks_text).toBe(1);
+diff --git a/tests/retrieval-query-variants.test.ts b/tests/retrieval-query-variants.test.ts
+index a0055bc52fd2ba6f581b8fbefb0a2817f779d2ba..6a6cbbd734f0c666ee436dabaafa0366edd8b106 100644
+--- a/tests/retrieval-query-variants.test.ts
++++ b/tests/retrieval-query-variants.test.ts
+@@ -13,20 +13,21 @@ import {
+   decideTextFastPath,
+   evaluateEvidenceCoverageGate,
+   retrievalPlanCacheQuery,
+   selectRagAliasExpansions,
+   shouldApplyUnsupportedSearchShortCircuit,
+   textCandidateBudgetForQueryClass,
+   relaxVariantToOrQuery,
+   shouldRelaxWeakTextMatches,
+ } from "../src/lib/rag/rag";
+ import { firstVariantPoolIsStrong, maxTextRpcQueryVariants } from "../src/lib/rag/rag-retrieval-variants";
++import { buildRagQueryPlan } from "../src/lib/rag/rag-query-plan";
+ import type { SearchResult } from "../src/lib/types";
+ 
+ function result(overrides: Partial<SearchResult> = {}): SearchResult {
+   return {
+     id: "chunk-1",
+     document_id: "doc-1",
+     title: "Patient Safety Plan",
+     file_name: "patient-safety-plan.pdf",
+     page_number: 1,
+     chunk_index: 0,
+@@ -49,20 +50,57 @@ function tableFact(overrides: Partial<NonNullable<SearchResult["table_facts"]>[n
+     table_title: "Medication dose table",
+     row_label: "Lorazepam",
+     clinical_parameter: "Dose",
+     threshold_value: "1 mg IM",
+     action: "Review before repeat PRN dose.",
+     ...overrides,
+   };
+ }
+ 
+ describe("retrieval query variants", () => {
++  it("keeps simple query variants byte-identical when a single plan is supplied", () => {
++    const query = "What ANC threshold should stop clozapine?";
++    const analysis = analyzeClinicalQuery(query);
++    const legacy = buildRetrievalQueryVariants(query, analysis);
++    const planned = buildRetrievalQueryVariants(query, analysis, [], buildRagQueryPlan(query, analysis));
++
++    expect(planned).toEqual(legacy);
++  });
++
++  it.each(["What is the duress procedure during an acute ward incident?", "When is IM medication used for agitation?"])(
++    "does not convert a clinical pathway into candidate source-inventory variants: %s",
++    (query) => {
++      const analysis = analyzeClinicalQuery(query);
++      const plan = buildRagQueryPlan(query, analysis);
++
++      expect(plan.kind).toBe("single");
++      expect(buildRetrievalQueryVariants(query, analysis, [], plan)).toEqual(
++        buildRetrievalQueryVariants(query, analysis),
++      );
++    },
++  );
++
++  it.each([
++    "Give an overview of agitation management including treatment, monitoring and escalation.",
++    "Compare clozapine and olanzapine monitoring requirements.",
++    "Compare medication guidance and therapy guidance for agitation.",
++  ])("keeps the original query first and caps decomposed candidates: %s", (query) => {
++    const analysis = analyzeClinicalQuery(query);
++    const plan = buildRagQueryPlan(query, analysis);
++    const variants = buildRetrievalQueryVariants(query, analysis, [], plan);
++
++    expect(plan.kind).toBe("decomposed");
++    expect(variants[0]).toBe(buildClinicalTextSearchQuery(query));
++    expect(variants.length).toBeLessThanOrEqual(4);
++    expect(new Set(variants.map((variant) => variant.toLowerCase())).size).toBe(variants.length);
++  });
++
+   it("keeps typo-corrected acronym terms in a capped variant list", () => {
+     const analysis = analyzeClinicalQuery("clozapin FBC ANC threshold");
+     const variants = buildRetrievalQueryVariants("clozapin FBC ANC threshold", analysis);
+ 
+     expect(variants[0]).toContain("clozapine");
+     expect(variants.join(" ")).toContain("fbc");
+     expect(variants.join(" ")).toContain("anc");
+     expect(variants.length).toBeLessThanOrEqual(4);
+   });
+ 
+@@ -1168,20 +1206,31 @@ describe("retrieval query variants", () => {
+       queryMode: "auto" as const,
+     };
+     const key = retrievalPlanCacheQuery(baseArgs, "table_threshold", ["clozapine anc", "clozapine fbc"]);
+ 
+     expect(key).toMatch(/^redacted-cache:[a-f0-9]{64}$/);
+     expect(key).not.toContain("clozapine");
+     expect(key).not.toContain("class:table_threshold");
+     expect(key).not.toEqual(retrievalPlanCacheQuery(baseArgs, "document_lookup", ["clozapine anc", "clozapine fbc"]));
+     expect(key).not.toEqual(retrievalPlanCacheQuery(baseArgs, "table_threshold", ["different variant"]));
+     expect(key).not.toEqual(retrievalPlanCacheQuery({ ...baseArgs, topK: 12 }, "table_threshold", ["clozapine anc"]));
++    expect(key).not.toEqual(
++      retrievalPlanCacheQuery({ ...baseArgs, ragQueryPlanVersion: "rag-query-plan-v2" }, "table_threshold", [
++        "clozapine anc",
++        "clozapine fbc",
++      ]),
++    );
++    expect(
++      retrievalPlanCacheQuery({ ...baseArgs, ragQueryPlanVersion: "rag-query-plan-v2" }, "table_threshold", [
++        "private raw subquestion text",
++      ]),
++    ).not.toContain("private raw subquestion text");
+   });
+ });
+ 
+ describe("clinical abbreviation synonym expansion (CI-14)", () => {
+   it("expands the FBC/CBC lab family bidirectionally", () => {
+     // A clinician searching the US term "CBC" must reach FBC-only documents, and vice versa.
+     expect(expandClinicalVocabularyText("cbc")).toEqual(expect.arrayContaining(["full blood count", "fbc"]));
+     expect(expandClinicalVocabularyText("fbc")).toEqual(expect.arrayContaining(["full blood count", "cbc"]));
+     expect(expandClinicalVocabularyText("complete blood count")).toEqual(expect.arrayContaining(["fbc"]));
+   });
