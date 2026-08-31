@@ -3089,7 +3089,6 @@ export type Database = {
         }[];
       };
       invoke_indexing_v3_agent: { Args: { p_limit?: number }; Returns: number };
-      invoke_ingestion_worker: { Args: { p_limit?: number }; Returns: number };
       request_indexing_v3_enrichment: {
         Args: { p_document_id: string; p_owner_id: string };
         Returns: { job_id?: string; ok?: boolean };

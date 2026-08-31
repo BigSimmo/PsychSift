@@ -16,6 +16,7 @@ import {
   normalizeLabelCandidate,
   canonicalUnitType,
   canonicalFieldType,
+  generationMetadata,
 } from "./utils.ts";
 
 import {
@@ -25,6 +26,7 @@ import {
   missingArtifactPlan,
   parseJobStatusRpcResult,
   publicSourceWorkerPolicyViolation,
+  runEdgeJobBatch,
   scanProtectedPublicSourceChunkPages,
   shouldRunVisualArtifacts,
   type CompletionGate,
@@ -32,6 +34,9 @@ import {
   type JobStatusRpcResult,
   type MissingArtifactPlan,
 } from "./behavior.ts";
+// prettier-ignore
+// @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
+import { buildGenerationVisibility, isVisibleCommittedGenerationRow, type DocumentGenerationAuthorityRow, type GenerationVisibility } from "../_shared/ingestion-generation-visibility.ts";
 
 type ClaimedJob = {
   id: string;
@@ -43,6 +48,7 @@ type ClaimedJob = {
     id: string;
     owner_id: string | null;
     title: string | null;
+    index_generation_id: string | null;
     metadata: Record<string, unknown> | null;
   };
 };
@@ -161,6 +167,27 @@ const sql = postgres(SUPABASE_DB_URL, {
 type SqlJsonValue = Parameters<typeof sql.json>[0];
 function jsonb(value: unknown) {
   return sql.json(value as SqlJsonValue);
+}
+
+type JobGenerationPredicate = Readonly<{
+  indexGenerationId: string | null;
+  isLegacy: boolean;
+}>;
+
+function generationPredicateForJob(job: ClaimedJob, visibility: GenerationVisibility): JobGenerationPredicate {
+  const indexGenerationId = visibility.activeGenerationByDocument.get(job.document_id) ?? null;
+  const isLegacy = visibility.knownLegacyDocumentIds.has(job.document_id);
+  if ((indexGenerationId === null) === !isLegacy) {
+    throw new Error(`Generation authority is unknown or overlapping for document ${job.document_id}`);
+  }
+  return { indexGenerationId, isLegacy };
+}
+
+function visibleGenerationRows<Row extends { document_id: string; generation_id: string | null }>(
+  rows: ReadonlyArray<Row>,
+  visibility: GenerationVisibility,
+): Row[] {
+  return rows.filter((row) => isVisibleCommittedGenerationRow(row, visibility));
 }
 
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -563,22 +590,36 @@ async function stageFinish(
   `;
 }
 
-async function ensureSummary(job: ClaimedJob): Promise<string> {
-  const existing = await sql<{ summary: string }[]>`
-    select summary
+async function ensureSummary(job: ClaimedJob, visibility: GenerationVisibility): Promise<string> {
+  const generationPredicate = generationPredicateForJob(job, visibility);
+  const existingRows = await sql<Array<{ summary: string; document_id: string; generation_id: string | null }>>`
+    select summary, document_id, metadata->>'index_generation_id' as generation_id
     from public.document_summaries
     where document_id = ${job.document_id}::uuid
+      and (
+        (${generationPredicate.indexGenerationId}::uuid is not null
+          and metadata->>'index_generation_id' = ${generationPredicate.indexGenerationId}::text)
+        or (${generationPredicate.isLegacy}::boolean and metadata->>'index_generation_id' is null)
+      )
     limit 1
   `;
+  const existing = visibleGenerationRows(existingRows, visibility);
   if (existing.length > 0) return normalizeText(existing[0].summary);
 
-  const chunks = await sql<{ id: string; content: string; chunk_index: number }[]>`
-    select id, content, chunk_index
+  const chunkRows = await sql<
+    Array<{ id: string; content: string; chunk_index: number; document_id: string; generation_id: string | null }>
+  >`
+    select id, content, chunk_index, document_id, index_generation_id::text as generation_id
     from public.document_chunks
     where document_id = ${job.document_id}::uuid
+      and (
+        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+      )
     order by chunk_index asc
     limit 24
   `;
+  const chunks = visibleGenerationRows(chunkRows, visibility);
 
   const merged = normalizeText(chunks.map((c) => c.content ?? "").join(" "));
   const summary = merged.length > 1800 ? `${merged.slice(0, 1800)}...` : merged;
@@ -592,7 +633,7 @@ async function ensureSummary(job: ClaimedJob): Promise<string> {
       ${summary.length > 0 ? summary : "Summary unavailable"}::text,
       ${chunks.map((c) => c.id)}::uuid[],
       'v3-summary-heuristic',
-      ${jsonb({ generated_by: GENERATED_BY })},
+      ${jsonb({ generated_by: GENERATED_BY, ...generationMetadata(generationPredicate.indexGenerationId) })},
       now()
     )
     on conflict (document_id)
@@ -784,24 +825,41 @@ function candidateConfidence(base: number, source: string): number {
   return base;
 }
 
-async function upsertGeneratedLabelsFromParsedArtifacts(job: ClaimedJob): Promise<number> {
-  const summaryRows = await sql<{ summary: string }[]>`
-    select summary
+async function upsertGeneratedLabelsFromParsedArtifacts(
+  job: ClaimedJob,
+  visibility: GenerationVisibility,
+): Promise<number> {
+  const generationPredicate = generationPredicateForJob(job, visibility);
+  const summaryRowsRaw = await sql<Array<{ summary: string; document_id: string; generation_id: string | null }>>`
+    select summary, document_id, metadata->>'index_generation_id' as generation_id
     from public.document_summaries
     where document_id = ${job.document_id}::uuid
+      and (
+        (${generationPredicate.indexGenerationId}::uuid is not null
+          and metadata->>'index_generation_id' = ${generationPredicate.indexGenerationId}::text)
+        or (${generationPredicate.isLegacy}::boolean and metadata->>'index_generation_id' is null)
+      )
     limit 1
   `;
-  const chunksForLabels = await sql<{ content: string }[]>`
-    select content
+  const summaryRows = visibleGenerationRows(summaryRowsRaw, visibility);
+  const chunksForLabelsRaw = await sql<Array<{ content: string; document_id: string; generation_id: string | null }>>`
+    select content, document_id, index_generation_id::text as generation_id
     from public.document_chunks
     where document_id = ${job.document_id}::uuid
+      and (
+        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+      )
     order by chunk_index asc
     limit 8
   `;
+  const chunksForLabels = visibleGenerationRows(chunksForLabelsRaw, visibility);
 
-  const sections = await sql<SectionLabelSource[]>`
+  const sectionRows = await sql<Array<SectionLabelSource & { document_id: string; generation_id: string | null }>>`
     select
       s.id as section_id,
+      s.document_id,
+      s.index_generation_id::text as generation_id,
       s.heading,
       s.heading_path,
       coalesce(s.summary, '') as summary,
@@ -815,6 +873,10 @@ async function upsertGeneratedLabelsFromParsedArtifacts(job: ClaimedJob): Promis
       from public.document_chunks c
       where c.document_id = s.document_id
         and (
+          c.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and c.index_generation_id is null)
+        )
+        and (
           c.id = any(s.chunk_ids)
           or c.section_heading = s.heading
         )
@@ -824,19 +886,31 @@ async function upsertGeneratedLabelsFromParsedArtifacts(job: ClaimedJob): Promis
       limit 1
     ) c on true
     where s.document_id = ${job.document_id}::uuid
+      and (
+        s.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+        or (${generationPredicate.isLegacy}::boolean and s.index_generation_id is null)
+      )
     order by s.section_index asc
   `;
+  const sections = visibleGenerationRows(sectionRows, visibility);
 
-  const cards = await sql<MemoryCardLabelSource[]>`
+  const cardRows = await sql<Array<MemoryCardLabelSource & { document_id: string; generation_id: string | null }>>`
     select
       id as card_id,
+      document_id,
+      index_generation_id::text as generation_id,
       card_type,
       title,
       content
     from public.document_memory_cards
     where document_id = ${job.document_id}::uuid
+      and (
+        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+      )
     order by created_at desc
   `;
+  const cards = visibleGenerationRows(cardRows, visibility);
 
   const candidates = new Map<string, GeneratedLabelCandidate>();
   const sectionCount = sections.length;
@@ -981,6 +1055,7 @@ async function upsertGeneratedLabelsFromParsedArtifacts(job: ClaimedJob): Promis
           ${jsonb({
             ...candidate.metadata,
             generated_by: GENERATED_BY,
+            ...generationMetadata(generationPredicate.indexGenerationId),
             generation_source: "indexing_v3_agent_parsed_artifacts",
             section_candidates: sectionCount,
             memory_card_candidates: cardCount,
@@ -1009,21 +1084,32 @@ function memoryCardText(title: string, cardType: string, content: string, terms:
   return `${title}\n${cardType}\n${content}\nTerms: ${terms.join(", ")}`;
 }
 
-async function ensureSectionsFromChunks(job: ClaimedJob): Promise<number> {
+async function ensureSectionsFromChunks(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
+  const generationPredicate = generationPredicateForJob(job, visibility);
   const existing = await sql<{ count: number }[]>`
     select count(*)::int as count
     from public.document_sections
     where document_id = ${job.document_id}::uuid
+      and (
+        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+      )
   `;
   if ((existing[0]?.count ?? 0) > 0) return 0;
 
-  const chunks = await sql<ChunkSectionSource[]>`
-    select id, page_number, chunk_index, section_heading, section_path, content
+  const chunkRows = await sql<Array<ChunkSectionSource & { document_id: string; generation_id: string | null }>>`
+    select id, document_id, index_generation_id::text as generation_id,
+      page_number, chunk_index, section_heading, section_path, content
     from public.document_chunks
     where document_id = ${job.document_id}::uuid
+      and (
+        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+      )
     order by chunk_index asc
     limit 24
   `;
+  const chunks = visibleGenerationRows(chunkRows, visibility);
   if (chunks.length === 0) return 0;
 
   let inserted = 0;
@@ -1050,6 +1136,7 @@ async function ensureSectionsFromChunks(job: ClaimedJob): Promise<number> {
         summary,
         tags,
         extraction_quality,
+        index_generation_id,
         metadata
       ) values (
         ${job.document_id}::uuid,
@@ -1063,14 +1150,29 @@ async function ensureSectionsFromChunks(job: ClaimedJob): Promise<number> {
         ${summary}::text,
         ${tags}::text[],
         'partial',
+        ${generationPredicate.indexGenerationId}::uuid,
         ${jsonb({
           generated_by: GENERATED_BY,
+          ...generationMetadata(generationPredicate.indexGenerationId),
           source: "document_chunks",
           source_chunk_id: chunk.id,
           repaired_missing_sections: true,
         })}
       )
-      on conflict (document_id, section_index) do nothing
+      on conflict (document_id, section_index) where artifact_generation_id is null
+      do update set
+        owner_id = excluded.owner_id,
+        heading = excluded.heading,
+        heading_path = excluded.heading_path,
+        page_start = excluded.page_start,
+        page_end = excluded.page_end,
+        chunk_ids = excluded.chunk_ids,
+        summary = excluded.summary,
+        tags = excluded.tags,
+        extraction_quality = excluded.extraction_quality,
+        index_generation_id = excluded.index_generation_id,
+        metadata = excluded.metadata,
+        updated_at = now()
       returning id
     `;
     inserted += rows.length;
@@ -1079,10 +1181,13 @@ async function ensureSectionsFromChunks(job: ClaimedJob): Promise<number> {
   return inserted;
 }
 
-async function upsertMemoryCardsFromSections(job: ClaimedJob): Promise<number> {
-  const sections = await sql<MemoryCardSectionSource[]>`
+async function upsertMemoryCardsFromSections(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
+  const generationPredicate = generationPredicateForJob(job, visibility);
+  const sectionRows = await sql<Array<MemoryCardSectionSource & { document_id: string; generation_id: string | null }>>`
     select
       id as section_id,
+      document_id,
+      index_generation_id::text as generation_id,
       heading,
       heading_path,
       page_start,
@@ -1093,10 +1198,15 @@ async function upsertMemoryCardsFromSections(job: ClaimedJob): Promise<number> {
       extraction_quality
     from public.document_sections
     where document_id = ${job.document_id}::uuid
+      and (
+        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+      )
       and btrim(coalesce(summary, '')) <> ''
     order by section_index asc
     limit 16
   `;
+  const sections = visibleGenerationRows(sectionRows, visibility);
 
   if (sections.length === 0) return 0;
 
@@ -1132,6 +1242,10 @@ async function upsertMemoryCardsFromSections(job: ClaimedJob): Promise<number> {
     await tx`
       delete from public.document_memory_cards
       where document_id = ${job.document_id}::uuid
+        and (
+          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+        )
         and metadata->>'generated_by' = ${GENERATED_BY}
         and metadata->>'source' = 'document_sections'
     `;
@@ -1154,6 +1268,7 @@ async function upsertMemoryCardsFromSections(job: ClaimedJob): Promise<number> {
         source_chunk_ids,
         source_image_ids,
         confidence,
+        index_generation_id,
         metadata,
         embedding
       ) values (
@@ -1168,8 +1283,10 @@ async function upsertMemoryCardsFromSections(job: ClaimedJob): Promise<number> {
         ${chunkIds}::uuid[],
         '{}'::uuid[],
         ${section.extraction_quality === "good" ? 0.72 : section.extraction_quality === "partial" ? 0.62 : 0.54},
+        ${generationPredicate.indexGenerationId}::uuid,
         ${jsonb({
           generated_by: GENERATED_BY,
+          ...generationMetadata(generationPredicate.indexGenerationId),
           source: "document_sections",
           section_id: section.section_id,
           heading_path: section.heading_path ?? [],
@@ -1186,10 +1303,13 @@ async function upsertMemoryCardsFromSections(job: ClaimedJob): Promise<number> {
   return inserted;
 }
 
-async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
-  const sections = await sql<SectionIndexSource[]>`
+async function upsertSectionIndexUnits(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
+  const generationPredicate = generationPredicateForJob(job, visibility);
+  const sectionRows = await sql<Array<SectionIndexSource & { document_id: string; generation_id: string | null }>>`
     select
       s.id as section_id,
+      s.document_id,
+      s.index_generation_id::text as generation_id,
       s.heading,
       s.heading_path,
       s.page_start,
@@ -1207,6 +1327,10 @@ async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
       select id, anchor_id, chunk_index, metadata
       from public.document_chunks c
       where c.document_id = s.document_id
+        and (
+          c.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and c.index_generation_id is null)
+        )
         and c.anchor_id is not null
         and (
           c.id = any(s.chunk_ids)
@@ -1218,9 +1342,14 @@ async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
       limit 1
     ) c on true
     where s.document_id = ${job.document_id}::uuid
+      and (
+        s.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+        or (${generationPredicate.isLegacy}::boolean and s.index_generation_id is null)
+      )
       and btrim(coalesce(s.summary, '')) <> ''
     order by s.section_index asc
   `;
+  const sections = visibleGenerationRows(sectionRows, visibility);
 
   const preparedSections = sections
     .map((section) => {
@@ -1238,7 +1367,7 @@ async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
       (
         row,
       ): row is {
-        section: SectionIndexSource;
+        section: SectionIndexSource & { document_id: string; generation_id: string | null };
         title: string;
         content: string;
         embeddingText: string;
@@ -1254,6 +1383,10 @@ async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
     await tx`
       delete from public.document_index_units
       where document_id = ${job.document_id}::uuid
+        and (
+          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+        )
         and unit_type = 'section_summary'
         and metadata->>'generated_by' = ${GENERATED_BY}
         and metadata->>'source' = 'document_sections'
@@ -1278,6 +1411,7 @@ async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
         source_span,
         quality_score,
         extraction_mode,
+        index_generation_id,
         embedding,
         metadata
       ) values (
@@ -1295,9 +1429,11 @@ async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
         ${jsonb({ anchor_id: section.anchor_id, chunk_index: section.chunk_index })},
         ${section.extraction_quality === "good" ? 0.78 : section.extraction_quality === "partial" ? 0.58 : 0.42},
         'hybrid',
+        ${generationPredicate.indexGenerationId}::uuid,
         ${JSON.stringify(emb)}::vector,
         ${jsonb({
           generated_by: GENERATED_BY,
+          ...generationMetadata(generationPredicate.indexGenerationId),
           source: "document_sections",
           section_id: section.section_id,
           chunk_ids: section.chunk_ids ?? [],
@@ -1314,17 +1450,25 @@ async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
 
 async function upsertVisualArtifacts(
   job: ClaimedJob,
+  visibility: GenerationVisibility,
 ): Promise<{ selected_images: number; created_units: number; created_fields: number }> {
-  const images = await sql<ImageRow[]>`
+  const generationPredicate = generationPredicateForJob(job, visibility);
+  const imageRows = await sql<Array<ImageRow & { document_id: string; generation_id: string | null }>>`
     select
+      document_id, index_generation_id::text as generation_id,
       id, page_number, image_type, searchable, caption, metadata,
       width, height, source_kind, clinical_relevance_score, skip_reason
     from public.document_images
     where document_id = ${job.document_id}::uuid
+      and (
+        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+      )
       and coalesce(searchable, false) = true
       and coalesce(image_type, 'unclear') <> 'logo_decorative'
     order by page_number asc nulls last, created_at asc
   `;
+  const images = visibleGenerationRows(imageRows, visibility);
 
   const scored = images.map((img) => ({ ...img, priority: scoreImage(img) })).filter((img) => img.priority > -0.2);
 
@@ -1368,6 +1512,10 @@ async function upsertVisualArtifacts(
           },
         })}
       where id = ${img.id}::uuid
+        and (
+          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+        )
     `;
 
     for (const unit of units) {
@@ -1389,12 +1537,20 @@ async function upsertVisualArtifacts(
     await tx`
       delete from public.document_embedding_fields
       where document_id = ${job.document_id}::uuid
+        and (
+          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+        )
         and field_type = any(${VISUAL_FIELD_TYPES}::text[])
         and metadata->>'generated_by' = ${GENERATED_BY}
     `;
     await tx`
       delete from public.document_index_units
       where document_id = ${job.document_id}::uuid
+        and (
+          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+        )
         and unit_type = any(${VISUAL_UNIT_TYPES}::text[])
         and metadata->>'generated_by' = ${GENERATED_BY}
     `;
@@ -1418,6 +1574,7 @@ async function upsertVisualArtifacts(
         source_span,
         quality_score,
         extraction_mode,
+        index_generation_id,
         embedding,
         metadata
       ) values (
@@ -1435,8 +1592,14 @@ async function upsertVisualArtifacts(
         ${jsonb({ source_image_id: unit.sourceImageId, source_regions: unit.metadata.source_regions ?? [] })},
         ${unit.qualityScore},
         'hybrid',
+        ${generationPredicate.indexGenerationId}::uuid,
         ${JSON.stringify(emb)}::vector,
-        ${jsonb({ ...unit.metadata, visual_unit_type: unit.unitType, generated_by: GENERATED_BY })}
+        ${jsonb({
+          ...unit.metadata,
+          visual_unit_type: unit.unitType,
+          generated_by: GENERATED_BY,
+          ...generationMetadata(generationPredicate.indexGenerationId),
+        })}
       )
       `;
       createdUnits += 1;
@@ -1448,6 +1611,7 @@ async function upsertVisualArtifacts(
           source_chunk_id,
           field_type,
           content,
+          index_generation_id,
           embedding,
           metadata,
           content_hash
@@ -1457,8 +1621,14 @@ async function upsertVisualArtifacts(
           null,
           ${fieldType},
           ${content},
+          ${generationPredicate.indexGenerationId}::uuid,
           ${JSON.stringify(emb)}::vector,
-          ${jsonb({ source_image_id: unit.sourceImageId, visual_field_type: unit.unitType, generated_by: GENERATED_BY })},
+          ${jsonb({
+            source_image_id: unit.sourceImageId,
+            visual_field_type: unit.unitType,
+            generated_by: GENERATED_BY,
+            ...generationMetadata(generationPredicate.indexGenerationId),
+          })},
           ${contentHash}
         )
         `;
@@ -1469,7 +1639,12 @@ async function upsertVisualArtifacts(
   return { selected_images: selected.length, created_units: createdUnits, created_fields: createdFields };
 }
 
-async function upsertCoreEmbeddingFields(job: ClaimedJob, summary: string): Promise<number> {
+async function upsertCoreEmbeddingFields(
+  job: ClaimedJob,
+  summary: string,
+  visibility: GenerationVisibility,
+): Promise<number> {
+  const generationPredicate = generationPredicateForJob(job, visibility);
   const title = normalizeText(job.documents.title ?? "") || "Untitled document";
   const base = [
     { field_type: "document_title", content: title },
@@ -1486,21 +1661,26 @@ async function upsertCoreEmbeddingFields(job: ClaimedJob, summary: string): Prom
     await tx`
       delete from public.document_embedding_fields
       where document_id = ${job.document_id}::uuid
+        and (
+          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+        )
         and field_type = any(${base.map((b) => b.field_type)}::text[])
         and metadata->>'generated_by' = ${GENERATED_BY}
     `;
     for (const { row, emb, contentHash } of preparedRows) {
       await tx`
       insert into public.document_embedding_fields (
-        owner_id, document_id, source_chunk_id, field_type, content, embedding, metadata, content_hash
+        owner_id, document_id, source_chunk_id, field_type, content, index_generation_id, embedding, metadata, content_hash
       ) values (
         ${job.documents.owner_id}::uuid,
         ${job.document_id}::uuid,
         null,
         ${row.field_type},
         ${row.content},
+        ${generationPredicate.indexGenerationId}::uuid,
         ${JSON.stringify(emb)}::vector,
-        ${jsonb({ generated_by: GENERATED_BY })},
+        ${jsonb({ generated_by: GENERATED_BY, ...generationMetadata(generationPredicate.indexGenerationId) })},
         ${contentHash}
       )
       `;
@@ -1511,7 +1691,8 @@ async function upsertCoreEmbeddingFields(job: ClaimedJob, summary: string): Prom
   return inserted;
 }
 
-async function updateQuality(job: ClaimedJob): Promise<void> {
+async function updateQuality(job: ClaimedJob, visibility: GenerationVisibility): Promise<void> {
+  const generationPredicate = generationPredicateForJob(job, visibility);
   const counts = await sql<
     {
       visual_units: number;
@@ -1527,11 +1708,19 @@ async function updateQuality(job: ClaimedJob): Promise<void> {
         count(*)::int as total_units
       from public.document_index_units
       where document_id = ${job.document_id}::uuid
+        and (
+          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+        )
     ),
     image_counts as (
       select count(*)::int as visual_images
       from public.document_images
       where document_id = ${job.document_id}::uuid
+        and (
+          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+        )
         and coalesce(searchable,false)=true
         and coalesce(image_type,'unclear') <> 'logo_decorative'
     )
@@ -1633,13 +1822,18 @@ function logArtifactPlan(job: ClaimedJob, gate: CompletionGate, plan: MissingArt
   );
 }
 
-async function needsVisualArtifacts(job: ClaimedJob): Promise<boolean> {
+async function needsVisualArtifacts(job: ClaimedJob, visibility: GenerationVisibility): Promise<boolean> {
+  const generationPredicate = generationPredicateForJob(job, visibility);
   const rows = await sql<Array<{ eligible_images: number; generated_visual_units: number }>>`
     select
       (
         select count(*)::int
         from public.document_images
         where document_id = ${job.document_id}::uuid
+          and (
+            index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+            or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+          )
           and coalesce(searchable, false) = true
           and coalesce(image_type, 'unclear') <> 'logo_decorative'
       ) as eligible_images,
@@ -1647,6 +1841,10 @@ async function needsVisualArtifacts(job: ClaimedJob): Promise<boolean> {
         select count(*)::int
         from public.document_index_units
         where document_id = ${job.document_id}::uuid
+          and (
+            index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+            or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
+          )
           and source_image_id is not null
           and (
             metadata->>'generated_by' = ${GENERATED_BY}
@@ -1792,27 +1990,36 @@ async function markJobFailure(job: ClaimedJob, message: string): Promise<boolean
   return decision.shouldRetry;
 }
 
-async function assertPublicSourceWorkerPolicy(job: ClaimedJob): Promise<void> {
+async function assertPublicSourceWorkerPolicy(job: ClaimedJob, visibility: GenerationVisibility): Promise<void> {
   const initialViolation = publicSourceWorkerPolicyViolation(job.documents.metadata, false);
   if (initialViolation) throw new Error(initialViolation);
   if (job.documents.metadata?.corpus_scope !== "australian_public") return;
 
-  const containsProtectedSourceContent = await scanProtectedPublicSourceChunkPages(
-    async (offset, limit) => sql<Array<{ content: string }>>`
-      select chunk.content
-      from public.document_chunks chunk
-      where chunk.document_id = ${job.document_id}::uuid
-      order by chunk.chunk_index, chunk.id
-      limit ${limit}
-      offset ${offset}
-    `,
-  );
+  const generationPredicate = generationPredicateForJob(job, visibility);
+  const containsProtectedSourceContent = await scanProtectedPublicSourceChunkPages(async (offset, limit) => {
+    const rows = await sql<Array<{ content: string; document_id: string; generation_id: string | null }>>`
+        select chunk.content, chunk.document_id, chunk.index_generation_id::text as generation_id
+        from public.document_chunks chunk
+        where chunk.document_id = ${job.document_id}::uuid
+          and (
+            chunk.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
+            or (${generationPredicate.isLegacy}::boolean and chunk.index_generation_id is null)
+          )
+        order by chunk.chunk_index, chunk.id
+        limit ${limit}
+        offset ${offset}
+      `;
+    return visibleGenerationRows(rows, visibility);
+  });
   const violation = publicSourceWorkerPolicyViolation(job.documents.metadata, containsProtectedSourceContent);
   if (violation) throw new Error(violation);
 }
 
-async function processJob(job: ClaimedJob): Promise<{ status: "completed" | "deferred"; missing: string[] }> {
-  await assertPublicSourceWorkerPolicy(job);
+async function processJob(
+  job: ClaimedJob,
+  visibility: GenerationVisibility,
+): Promise<{ status: "completed" | "deferred"; missing: string[] }> {
+  await assertPublicSourceWorkerPolicy(job, visibility);
   let gate = await completionGate(job);
   let plan = missingArtifactPlan(gate);
   logArtifactPlan(job, gate, plan);
@@ -1828,8 +2035,8 @@ async function processJob(job: ClaimedJob): Promise<{ status: "completed" | "def
   if (plan.needs_core_embeddings) {
     const s1 = await stageStart(job, "summary_and_core_embeddings");
     try {
-      const summary = await ensureSummary(job);
-      const coreFields = await upsertCoreEmbeddingFields(job, summary);
+      const summary = await ensureSummary(job, visibility);
+      const coreFields = await upsertCoreEmbeddingFields(job, summary, visibility);
       await stageFinish(s1, true, { core_embedding_fields: coreFields });
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
@@ -1844,12 +2051,13 @@ async function processJob(job: ClaimedJob): Promise<{ status: "completed" | "def
   if (plan.needs_sections || plan.needs_index_units) {
     const s2 = await stageStart(job, "sections_and_index_units");
     try {
-      const repairedSections = plan.needs_sections ? await ensureSectionsFromChunks(job) : 0;
+      const repairedSections = plan.needs_sections ? await ensureSectionsFromChunks(job, visibility) : 0;
       if (repairedSections > 0) {
         gate = await completionGate(job);
         plan = missingArtifactPlan(gate);
       }
-      const sectionUnits = plan.needs_index_units || repairedSections > 0 ? await upsertSectionIndexUnits(job) : 0;
+      const sectionUnits =
+        plan.needs_index_units || repairedSections > 0 ? await upsertSectionIndexUnits(job, visibility) : 0;
       touchedQualityInputs = touchedQualityInputs || repairedSections > 0 || sectionUnits > 0;
       await stageFinish(s2, true, { repaired_sections: repairedSections, section_index_units: sectionUnits });
       gate = await completionGate(job);
@@ -1862,10 +2070,10 @@ async function processJob(job: ClaimedJob): Promise<{ status: "completed" | "def
     }
   }
 
-  if (await needsVisualArtifacts(job)) {
+  if (await needsVisualArtifacts(job, visibility)) {
     const s3 = await stageStart(job, "visual_priority_and_structured_extraction");
     try {
-      const out = await upsertVisualArtifacts(job);
+      const out = await upsertVisualArtifacts(job, visibility);
       touchedQualityInputs = touchedQualityInputs || out.created_units > 0 || out.created_fields > 0;
       await stageFinish(s3, true, out);
       gate = await completionGate(job);
@@ -1881,7 +2089,7 @@ async function processJob(job: ClaimedJob): Promise<{ status: "completed" | "def
   if (touchedQualityInputs) {
     const s4 = await stageStart(job, "quality_refresh");
     try {
-      await updateQuality(job);
+      await updateQuality(job, visibility);
       await stageFinish(s4, true, { refreshed: true });
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
@@ -1896,7 +2104,7 @@ async function processJob(job: ClaimedJob): Promise<{ status: "completed" | "def
   if (plan.needs_memory) {
     const s4 = await stageStart(job, "memory_cards_from_sections");
     try {
-      const memoryCards = await upsertMemoryCardsFromSections(job);
+      const memoryCards = await upsertMemoryCardsFromSections(job, visibility);
       await stageFinish(s4, true, { memory_cards: memoryCards });
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
@@ -1910,7 +2118,7 @@ async function processJob(job: ClaimedJob): Promise<{ status: "completed" | "def
   if (plan.needs_labels) {
     const s5 = await stageStart(job, "generated_labels_from_parsed_artifacts");
     try {
-      const labels = await upsertGeneratedLabelsFromParsedArtifacts(job);
+      const labels = await upsertGeneratedLabelsFromParsedArtifacts(job, visibility);
       await stageFinish(s5, true, { generated_labels: labels });
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
@@ -1952,26 +2160,48 @@ Deno.serve({ port: Number(Deno.env.get("PORT") ?? "8000") }, async (req: Request
       return Response.json({ ok: true, claimed: 0, processed: 0, failed: 0 });
     }
 
+    const claimedDocumentIds = Array.from(new Set(claimed.map((job) => job.document_id)));
+    const authorityRows = await sql<DocumentGenerationAuthorityRow[]>`
+      select id, index_generation_id, metadata
+      from public.documents
+      where id = any(${claimedDocumentIds}::uuid[])
+    `;
+    const generationVisibility = buildGenerationVisibility(authorityRows, claimedDocumentIds);
+
     let processed = 0;
     let deferred = 0;
     let failed = 0;
-    const failures: Array<{ job_id: string; document_id: string; error: string }> = [];
+    const failures: Array<{
+      job_id: string;
+      document_id: string;
+      error: string;
+      failure_recording_error?: string;
+    }> = [];
     const deferrals: Array<{ job_id: string; document_id: string; missing: string[] }> = [];
 
-    for (const job of claimed) {
-      try {
-        const result = await processJob(job);
+    const outcomes = await runEdgeJobBatch(
+      claimed,
+      (job) => processJob(job, generationVisibility),
+      (job, message) => markJobFailure(job, message),
+    );
+    for (const outcome of outcomes) {
+      const job = outcome.job;
+      if ("result" in outcome) {
+        const result = outcome.result;
         if (result.status === "completed") {
           processed += 1;
         } else {
           deferred += 1;
           deferrals.push({ job_id: job.id, document_id: job.document_id, missing: result.missing });
         }
-      } catch (e) {
+      } else {
         failed += 1;
-        const msg = e instanceof Error ? e.message : JSON.stringify(e);
-        failures.push({ job_id: job.id, document_id: job.document_id, error: msg });
-        await markJobFailure(job, msg);
+        failures.push({
+          job_id: job.id,
+          document_id: job.document_id,
+          error: outcome.error,
+          ...(outcome.failureRecordingError ? { failure_recording_error: outcome.failureRecordingError } : {}),
+        });
       }
     }
 

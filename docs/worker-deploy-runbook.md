@@ -8,6 +8,19 @@ first for the **why**. The `indexing-v3-agent` Edge Function stays in place as
 the cron-triggered completion/repair gate; the container is the extraction
 engine, not a replacement for it.
 
+The former `ingestion-worker` Edge Function was a duplicate core processor and
+is retired by `20260831100000_retire_ingestion_worker.sql`. Do not deploy or
+invoke it: `worker/main.ts` is the sole core ingestion processor, while
+`indexing-v3-agent` remains bounded to enrichment and completion repair. A
+hosted `pg_cron` command may still reference the removed invoker even though no
+such schedule is tracked in this repository; checking and removing that live
+schedule is a C07 migration-application task, not part of local deployment.
+
+Rollback of the retirement is not an Edge redeploy. It requires an explicit
+forward migration that restores a reviewed invoker and a reviewed processor
+implementation. The deleted duplicate is intentionally not kept deployable,
+and historical migrations remain the record of its former shape.
+
 This is the detailed expansion of the **Worker** bullet in
 [`launch-operator-runbook.md`](launch-operator-runbook.md) §6 (Post-deploy) —
 that runbook is the launch sequence; this one is the worker recipe. The actual

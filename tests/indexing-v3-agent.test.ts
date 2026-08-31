@@ -17,6 +17,10 @@ import {
   type CompletionGateRow,
 } from "../supabase/functions/indexing-v3-agent/behavior";
 import { forbiddenPublicSourceIdentity } from "../supabase/functions/_shared/public-source-policy";
+import {
+  buildGenerationVisibility,
+  isVisibleCommittedGenerationRow,
+} from "../supabase/functions/_shared/ingestion-generation-visibility";
 
 const completeGateRow: CompletionGateRow = {
   sections: 3,
@@ -35,6 +39,111 @@ function gateRow(overrides: Partial<CompletionGateRow> = {}): CompletionGateRow 
 }
 
 describe("indexing-v3-agent behavior", () => {
+  it("admits only legacy rows or the exact active committed generation", () => {
+    const visibility = {
+      activeGenerationByDocument: new Map([["doc-a", "gen-active"]]),
+      committedGenerationIds: new Set(["gen-active", "gen-other"]),
+      knownLegacyDocumentIds: new Set(["doc-legacy"]),
+    };
+
+    expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: null }, visibility)).toBe(false);
+    expect(isVisibleCommittedGenerationRow({ document_id: "doc-legacy", generation_id: null }, visibility)).toBe(true);
+    expect(isVisibleCommittedGenerationRow({ document_id: "doc-unknown", generation_id: null }, visibility)).toBe(
+      false,
+    );
+    expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: "gen-active" }, visibility)).toBe(
+      true,
+    );
+    expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: "gen-other" }, visibility)).toBe(
+      false,
+    );
+    expect(
+      isVisibleCommittedGenerationRow({ document_id: "doc-missing", generation_id: "gen-active" }, visibility),
+    ).toBe(false);
+  });
+
+  it("constructs generation visibility only from complete validated document authority", () => {
+    const active = "1a2b3c4d-6666-4aaa-8bbb-000000000006";
+    const visibility = buildGenerationVisibility(
+      [
+        { id: "doc-active", index_generation_id: active, metadata: { index_generation_id: active } },
+        { id: "doc-legacy", index_generation_id: null, metadata: {} },
+      ],
+      ["doc-active", "doc-legacy"],
+    );
+    expect(visibility.activeGenerationByDocument).toEqual(new Map([["doc-active", active]]));
+    expect(visibility.committedGenerationIds).toEqual(new Set([active]));
+    expect(visibility.knownLegacyDocumentIds).toEqual(new Set(["doc-legacy"]));
+
+    expect(() => buildGenerationVisibility([], ["doc-active"])).toThrow(/incomplete/i);
+    expect(() =>
+      buildGenerationVisibility(
+        [{ id: "doc-active", index_generation_id: active, metadata: { index_generation_id: "not-a-generation" } }],
+        ["doc-active"],
+      ),
+    ).toThrow(/malformed|mismatch/i);
+    expect(() =>
+      buildGenerationVisibility(
+        [
+          { id: "doc-active", index_generation_id: active, metadata: { index_generation_id: active } },
+          { id: "doc-active", index_generation_id: null, metadata: {} },
+        ],
+        ["doc-active"],
+      ),
+    ).toThrow(/overlap/i);
+    expect(() =>
+      buildGenerationVisibility([{ id: "doc-active", index_generation_id: active, metadata: {} }], ["doc-active"]),
+    ).toThrow(/incomplete|mismatch/i);
+    expect(() =>
+      buildGenerationVisibility(
+        [{ id: "doc-legacy", index_generation_id: null, metadata: { index_generation_id: null } }],
+        ["doc-legacy"],
+      ),
+    ).toThrow(/mismatch/i);
+  });
+
+  it("filters every generation-aware read before ordering, limits, counts, or completion", () => {
+    const edgeSource = readFileSync(
+      new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
+      "utf8",
+    );
+    for (const [start, end] of [
+      ["async function ensureSummary", "function unitsFromStructured"],
+      ["async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText"],
+      ["async function ensureSectionsFromChunks", "async function upsertMemoryCardsFromSections"],
+      ["async function upsertMemoryCardsFromSections", "async function upsertSectionIndexUnits"],
+      ["async function upsertSectionIndexUnits", "async function upsertVisualArtifacts"],
+      ["async function updateQuality", "async function completionGate"],
+      ["async function needsVisualArtifacts", "async function updateAgentJobStatus"],
+      ["async function assertPublicSourceWorkerPolicy", "async function processJob"],
+    ] as const) {
+      const segment = sourceSegment(edgeSource, start, end, { label: start });
+      expect(segment).toContain("generationPredicate");
+      const predicateIndex = segment.indexOf("generationPredicate");
+      for (const terminal of ["order by", "limit ", "count(*)"]) {
+        const terminalIndex = segment.toLowerCase().indexOf(terminal);
+        if (terminalIndex >= 0) expect(predicateIndex).toBeLessThan(terminalIndex);
+      }
+    }
+  });
+
+  it("writes the exact generation on every generated strict-read artifact", () => {
+    const edgeSource = readFileSync(
+      new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
+      "utf8",
+    );
+    for (const [start, end] of [
+      ["async function ensureSummary", "function unitsFromStructured"],
+      ["async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText"],
+      ["async function ensureSectionsFromChunks", "async function upsertMemoryCardsFromSections"],
+      ["async function upsertMemoryCardsFromSections", "async function upsertSectionIndexUnits"],
+      ["async function upsertSectionIndexUnits", "async function upsertVisualArtifacts"],
+      ["async function upsertVisualArtifacts", "async function upsertCoreEmbeddingFields"],
+    ] as const) {
+      expect(sourceSegment(edgeSource, start, end, { label: start })).toContain("indexGenerationId");
+    }
+  });
+
   it("blocks protected or incomplete public-source policy before provider or artifact work", async () => {
     expect(
       publicSourceWorkerPolicyViolation(
@@ -67,7 +176,7 @@ describe("indexing-v3-agent behavior", () => {
         label: "indexing-v3-agent public-source preflight",
       },
     );
-    expect(processStart).toContain("assertPublicSourceWorkerPolicy(job)");
+    expect(processStart).toContain("assertPublicSourceWorkerPolicy(job, visibility)");
   });
 
   it("normalizes protected identities identically across acquisition and worker boundaries", () => {

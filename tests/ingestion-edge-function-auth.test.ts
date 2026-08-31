@@ -1,39 +1,30 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { hasServiceRoleAuthorization } from "../supabase/functions/ingestion-worker/auth";
-
 const root = process.cwd();
-const source = readFileSync(join(root, "supabase/functions/ingestion-worker/index.ts"), "utf8");
 const config = readFileSync(join(root, "supabase/config.toml"), "utf8");
+const schema = readFileSync(join(root, "supabase/schema.sql"), "utf8");
+const databaseTypes = readFileSync(join(root, "src/lib/supabase/database.types.ts"), "utf8");
+const migrationPath = join(root, "supabase/migrations/20260831100000_retire_ingestion_worker.sql");
 
-function tokenForRole(role: string): string {
-  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
-  return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ role })}.signature`;
-}
-
-describe("ingestion-worker Edge Function authorization", () => {
-  it("accepts only a gateway-verified service-role JWT", () => {
-    expect(hasServiceRoleAuthorization(`Bearer ${tokenForRole("service_role")}`)).toBe(true);
-    expect(hasServiceRoleAuthorization(`Bearer ${tokenForRole("authenticated")}`)).toBe(false);
-    expect(hasServiceRoleAuthorization(`Bearer ${tokenForRole("anon")}`)).toBe(false);
-    expect(hasServiceRoleAuthorization("Bearer malformed")).toBe(false);
-    expect(hasServiceRoleAuthorization(null)).toBe(false);
+describe("retired duplicate ingestion-worker Edge Function", () => {
+  it("removes only the duplicate function, config registration, and current invoker surface", () => {
+    expect(existsSync(join(root, "supabase/functions/ingestion-worker/index.ts"))).toBe(false);
+    expect(existsSync(join(root, "supabase/functions/ingestion-worker/auth.ts"))).toBe(false);
+    expect(config).not.toContain("[functions.ingestion-worker]");
+    expect(schema).not.toContain("FUNCTION public.invoke_ingestion_worker");
+    expect(databaseTypes).not.toContain("invoke_ingestion_worker:");
   });
 
-  it("keeps gateway verification enabled and rejects state-changing GET requests", () => {
-    expect(config).toContain("[functions.ingestion-worker]\nverify_jwt = true");
-    expect(source).toContain('if (req.method !== "POST")');
-    expect(source).toContain('hasServiceRoleAuthorization(req.headers.get("authorization"))');
-    expect(source.indexOf("hasServiceRoleAuthorization")).toBeLessThan(source.indexOf("public.claim_ingestion_jobs"));
-    expect(source).toContain("complete_ingestion_job(");
-    expect(source).toContain("fail_or_retry_ingestion_job(");
-    expect(source).toContain("${workerId}");
-    expect(source).toContain('reason === "lease_lost"');
-    expect(source).toContain("lease_lost:");
-    expect(source).toContain("sql.begin");
-    expect(source).toContain("complete_ingestion_job did not confirm success");
+  it("ships a forward-only revoke-before-drop migration", () => {
+    expect(existsSync(migrationPath)).toBe(true);
+    const migration = readFileSync(migrationPath, "utf8").toLowerCase();
+    const revoke = migration.indexOf("revoke execute on function public.invoke_ingestion_worker(integer)");
+    const drop = migration.indexOf("drop function if exists public.invoke_ingestion_worker(integer)");
+    expect(revoke).toBeGreaterThanOrEqual(0);
+    expect(drop).toBeGreaterThan(revoke);
+    expect(migration).not.toContain("create or replace function public.invoke_ingestion_worker");
   });
 });

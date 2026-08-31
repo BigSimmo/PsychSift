@@ -2218,17 +2218,39 @@ describe("Clinical query-term corrector — tenant-safe vocabulary (F10)", () =>
     }
   });
 
-  it("moves invoke_ingestion_worker to the GUC base-URL pattern with service-role-only execute", () => {
-    for (const sql of [schema, invokeIngestionWorkerGucMigration]) {
-      expect(sql).toContain("alter database %I set app.ingestion_worker_base_url = %L");
-      expect(sql).toContain("when insufficient_privilege then");
-      expect(sql).toContain("nullif(current_setting('app.ingestion_worker_base_url', true), '')");
-      expect(sql).toContain("v_base_url || '/functions/v1/ingestion-worker?limit='");
-      expect(sql).not.toContain("[REDACTED]/functions/v1/ingestion-worker");
-      expect(sql).toContain(
-        "revoke execute on function public.invoke_ingestion_worker(integer) from public, anon, authenticated",
-      );
-      expect(sql).toContain("grant execute on function public.invoke_ingestion_worker(integer) to service_role");
+  it("preserves the historical invoker migration while retiring its current schema surface", () => {
+    expect(invokeIngestionWorkerGucMigration).toContain("alter database %I set app.ingestion_worker_base_url = %L");
+    expect(invokeIngestionWorkerGucMigration).toContain("when insufficient_privilege then");
+    expect(invokeIngestionWorkerGucMigration).toContain(
+      "nullif(current_setting('app.ingestion_worker_base_url', true), '')",
+    );
+    expect(invokeIngestionWorkerGucMigration).toContain("v_base_url || '/functions/v1/ingestion-worker?limit='");
+    expect(invokeIngestionWorkerGucMigration).toContain(
+      "revoke execute on function public.invoke_ingestion_worker(integer) from public, anon, authenticated",
+    );
+    expect(invokeIngestionWorkerGucMigration).toContain(
+      "grant execute on function public.invoke_ingestion_worker(integer) to service_role",
+    );
+    expect(schema).not.toContain("FUNCTION public.invoke_ingestion_worker");
+  });
+
+  it("reconciles strict-gate counts to the exact active generation or positive legacy rows", () => {
+    const migration = readFileSync(
+      new URL("../supabase/migrations/20260831100000_retire_ingestion_worker.sql", import.meta.url),
+      "utf8",
+    ).toLowerCase();
+    for (const sql of [schema.toLowerCase(), migration]) {
+      const viewStart = sql.lastIndexOf("create or replace view public.document_strict_gate_status");
+      expect(viewStart).toBeGreaterThanOrEqual(0);
+      const viewEnd = sql.indexOf("create or replace function public.repair_strict_enrichment_gate_batch", viewStart);
+      const view = sql.slice(viewStart, viewEnd >= 0 ? viewEnd : undefined);
+      expect(view).toContain("d.index_generation_id");
+      expect(view).toContain("d.metadata->>'index_generation_id'");
+      expect(view).toContain("s.index_generation_id = d.index_generation_id");
+      expect(view).toContain("m.index_generation_id = d.index_generation_id");
+      expect(view).toContain("l.metadata->>'index_generation_id' = d.index_generation_id::text");
+      expect(view).toContain("u.index_generation_id = d.index_generation_id");
+      expect(view).toContain("not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')");
     }
   });
 });

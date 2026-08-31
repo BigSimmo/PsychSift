@@ -68,6 +68,36 @@ export type JobStatusRpcResult = {
   status: string;
 };
 
+export type EdgeJobBatchOutcome<TJob, TResult> =
+  Readonly<{ job: TJob; result: TResult }> | Readonly<{ job: TJob; error: string; failureRecordingError?: string }>;
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return JSON.stringify(error) ?? String(error);
+}
+
+export async function runEdgeJobBatch<TJob, TResult>(
+  jobs: ReadonlyArray<TJob>,
+  process: (job: TJob) => Promise<TResult>,
+  recordFailure: (job: TJob, message: string) => Promise<unknown>,
+): Promise<Array<EdgeJobBatchOutcome<TJob, TResult>>> {
+  const outcomes: Array<EdgeJobBatchOutcome<TJob, TResult>> = [];
+  for (const job of jobs) {
+    try {
+      outcomes.push({ job, result: await process(job) });
+    } catch (error) {
+      const message = errorMessage(error);
+      try {
+        await recordFailure(job, message);
+        outcomes.push({ job, error: message });
+      } catch (failureRecordingError) {
+        outcomes.push({ job, error: message, failureRecordingError: errorMessage(failureRecordingError) });
+      }
+    }
+  }
+  return outcomes;
+}
+
 export function publicSourceWorkerPolicyViolation(
   metadata: Record<string, unknown> | null | undefined,
   containsProtectedSourceContent: boolean,

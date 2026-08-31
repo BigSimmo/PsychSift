@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { WorkerRuntimeControl } from "../worker/runtime-control";
 import { runWorkerLoop } from "../worker/run-loop";
 import type { JobRow } from "../worker/types";
+import { runEdgeJobBatch } from "../supabase/functions/indexing-v3-agent/behavior";
 
 function fakeJob(id = "job-1"): JobRow {
   return {
@@ -23,6 +24,24 @@ function fakeJob(id = "job-1"): JobRow {
 }
 
 describe("runWorkerLoop", () => {
+  it("continues the Edge batch when processing and failure recording both throw", async () => {
+    const jobs = [{ id: "edge-1" }, { id: "edge-2" }];
+    const process = vi.fn().mockRejectedValueOnce(new Error("process boom")).mockResolvedValueOnce("completed");
+    const recordFailure = vi.fn().mockRejectedValueOnce(new Error("failure recorder boom"));
+
+    const outcomes = await runEdgeJobBatch(jobs, process, recordFailure);
+
+    expect(process).toHaveBeenCalledTimes(2);
+    expect(outcomes).toEqual([
+      {
+        job: jobs[0],
+        error: "process boom",
+        failureRecordingError: "failure recorder boom",
+      },
+      { job: jobs[1], result: "completed" },
+    ]);
+  });
+
   it("exits immediately when no jobs are available and once is set", async () => {
     const ctrl = new WorkerRuntimeControl();
     const claim = vi.fn().mockResolvedValue([]);

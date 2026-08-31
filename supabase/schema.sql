@@ -3463,63 +3463,6 @@ $function$;
 revoke execute on function public.purge_expired_rag_query_misses(integer) from public, anon, authenticated;
 grant execute on function public.purge_expired_rag_query_misses(integer) to service_role;
 
--- Prefer app.ingestion_worker_base_url (GUC) with the hardcoded project URL as
--- fallback, matching invoke_indexing_v3_agent. Guarded ALTER DATABASE SET so
--- hosted Supabase (42501) still replays cleanly.
-do $$
-begin
-  execute format('alter database %I set app.ingestion_worker_base_url = %L',
-                 current_database(), 'https://sjrfecxgysukkwxsowpy.supabase.co');
-exception
-  when insufficient_privilege then
-    raise notice 'Skipping ALTER DATABASE SET app.ingestion_worker_base_url (insufficient privilege on hosted Supabase).';
-end
-$$;
-
-CREATE OR REPLACE FUNCTION public.invoke_ingestion_worker(p_limit integer DEFAULT 25)
- RETURNS bigint
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'extensions', 'vault', 'pg_temp'
-AS $function$
-declare
-  v_request_id bigint;
-  v_jwt text;
-  v_limit integer := greatest(1, least(coalesce("p_limit", 25), 200));
-  v_base_url text;
-begin
-  select "decrypted_secret" into v_jwt
-  from "vault"."decrypted_secrets"
-  where "name" = 'cron_ingestion_jwt'
-  limit 1;
-
-  if v_jwt is null or length(trim(v_jwt)) = 0 then
-    raise exception 'Missing Vault secret: cron_ingestion_jwt';
-  end if;
-
-  v_base_url := coalesce(
-    nullif(current_setting('app.ingestion_worker_base_url', true), ''),
-    'https://sjrfecxgysukkwxsowpy.supabase.co'
-  );
-
-  select "net"."http_post"(
-    url := v_base_url || '/functions/v1/ingestion-worker?limit=' || v_limit::text,
-    headers := jsonb_build_object(
-      'Content-Type','application/json',
-      'Authorization','Bearer ' || v_jwt
-    ),
-    body := jsonb_build_object('source','pg_cron','worker','ingestion-worker','ts', now()),
-    timeout_milliseconds := 60000
-  )
-  into v_request_id;
-
-  return v_request_id;
-end;
-$function$;
-
-revoke execute on function public.invoke_ingestion_worker(integer) from public, anon, authenticated;
-grant execute on function public.invoke_ingestion_worker(integer) to service_role;
-
 -- Full-inventory drift snapshot backing `npm run check:drift`. The expected
 -- state lives in supabase/drift-manifest.json (generated from a scratch replay
 -- of this file via `npm run drift:manifest`). Keep this definition byte-identical
@@ -4426,12 +4369,56 @@ with artifact_counts as (
     coalesce(d.metadata->>'indexing_v3_agent_status', 'pending') as indexing_v3_agent_status,
     coalesce(q.extraction_quality, 'unknown') as quality_extraction_quality,
     coalesce(q.quality_score, 0)::real as quality_score,
-    (select count(*)::integer from public.document_sections s where s.document_id = d.id) as sections,
-    (select count(*)::integer from public.document_memory_cards m where m.document_id = d.id) as memory_cards,
+    (
+      select count(*)::integer
+      from public.document_sections s
+      where s.document_id = d.id
+        and (
+          (
+            d.index_generation_id is not null
+            and d.metadata->>'index_generation_id' = d.index_generation_id::text
+            and s.index_generation_id = d.index_generation_id
+          )
+          or (
+            d.index_generation_id is null
+            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
+            and s.index_generation_id is null
+          )
+        )
+    ) as sections,
+    (
+      select count(*)::integer
+      from public.document_memory_cards m
+      where m.document_id = d.id
+        and (
+          (
+            d.index_generation_id is not null
+            and d.metadata->>'index_generation_id' = d.index_generation_id::text
+            and m.index_generation_id = d.index_generation_id
+          )
+          or (
+            d.index_generation_id is null
+            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
+            and m.index_generation_id is null
+          )
+        )
+    ) as memory_cards,
     (
       select count(*)::integer
       from public.document_labels l
       where l.document_id = d.id
+        and (
+          (
+            d.index_generation_id is not null
+            and d.metadata->>'index_generation_id' = d.index_generation_id::text
+            and l.metadata->>'index_generation_id' = d.index_generation_id::text
+          )
+          or (
+            d.index_generation_id is null
+            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
+            and l.metadata->>'index_generation_id' is null
+          )
+        )
         and (
           lower(l.source) = 'generated'
           or l.metadata->>'source' = 'generated'
@@ -4439,12 +4426,40 @@ with artifact_counts as (
           or lower(coalesce(l.metadata->>'generation_source', '')) = 'indexing_v3_agent_parsed_artifacts'
         )
     ) as generated_labels,
-    (select count(*)::integer from public.document_index_units u where u.document_id = d.id) as index_units,
+    (
+      select count(*)::integer
+      from public.document_index_units u
+      where u.document_id = d.id
+        and (
+          (
+            d.index_generation_id is not null
+            and d.metadata->>'index_generation_id' = d.index_generation_id::text
+            and u.index_generation_id = d.index_generation_id
+          )
+          or (
+            d.index_generation_id is null
+            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
+            and u.index_generation_id is null
+          )
+        )
+    ) as index_units,
     exists (
       select 1
       from public.document_embedding_fields f
       where f.document_id = d.id
         and f.field_type = 'document_title'
+        and (
+          (
+            d.index_generation_id is not null
+            and d.metadata->>'index_generation_id' = d.index_generation_id::text
+            and f.index_generation_id = d.index_generation_id
+          )
+          or (
+            d.index_generation_id is null
+            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
+            and f.index_generation_id is null
+          )
+        )
       limit 1
     ) as title_embedding,
     exists (
@@ -4452,6 +4467,18 @@ with artifact_counts as (
       from public.document_embedding_fields f
       where f.document_id = d.id
         and f.field_type = 'document_summary'
+        and (
+          (
+            d.index_generation_id is not null
+            and d.metadata->>'index_generation_id' = d.index_generation_id::text
+            and f.index_generation_id = d.index_generation_id
+          )
+          or (
+            d.index_generation_id is null
+            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
+            and f.index_generation_id is null
+          )
+        )
       limit 1
     ) as summary_embedding
   from public.documents d

@@ -89,6 +89,10 @@ export function safeRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+export function generationMetadata(indexGenerationId: string | null): Record<string, string> {
+  return indexGenerationId === null ? {} : { index_generation_id: indexGenerationId };
+}
+
 export function compactString(value: unknown, limit = 180): string {
   const text = normalizeText(String(value ?? ""));
   return text.length > limit ? text.slice(0, limit).trim() : text;
