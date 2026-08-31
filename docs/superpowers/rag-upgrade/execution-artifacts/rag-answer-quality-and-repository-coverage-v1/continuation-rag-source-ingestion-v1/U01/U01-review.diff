@@ -1,0 +1,2859 @@
+# Review package: d38dce7ba7fada4ab1fb4588799f400916118c81..9a3b3dc4deee971bb287c979e786c6890922aa05
+
+## Commits
+9a3b3dc4deee971bb287c979e786c6890922aa05
+
+## Diff
+diff --git a/docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-brief.md b/docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-brief.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..964ec3260590ba561d6e320f861dada4ca674dc1
+--- /dev/null
++++ b/docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-brief.md
+@@ -0,0 +1,214 @@
++# U01 task brief: retire the duplicate processor and enforce committed-generation reads
++
++## Position and ownership
++
++Unit: `U01`
++
++Plan task: Task 1 / Ingestion Task 4 / C01
++
++Task base: `d38dce7ba7fada4ab1fb4588799f400916118c81`
++
++Worktree: `C:\Users\joshs\.codex\worktrees\rag-local-build-20260822\Database`
++
++Branch: `codex/rag-local-build-20260822`
++
++This is the first product behavior unit. One implementer owns all writes. Other agents may inspect or review only. Preserve every unrelated staged, unstaged, and untracked path.
++
++## Read first
++
++- This brief in full.
++- `docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md`, only Global constraints and Task 1.
++- `.superpowers/sdd/progress.md`.
++- Relevant existing source/tests named below; do not read or resume the superseded P08A implementation draft.
++
++## Owned product files
++
++Create:
++
++- `supabase/functions/_shared/ingestion-generation-visibility.ts`
++- `supabase/migrations/20260831100000_retire_ingestion_worker.sql`
++
++Delete:
++
++- `supabase/functions/ingestion-worker/index.ts`
++- `supabase/functions/ingestion-worker/auth.ts`
++
++Delete or replace only as required by the retired function contract:
++
++- `tests/ingestion-edge-function-auth.test.ts`
++
++Modify:
++
++- `supabase/config.toml`
++- `supabase/functions/indexing-v3-agent/index.ts`
++- `supabase/functions/indexing-v3-agent/behavior.ts`
++- `supabase/functions/indexing-v3-agent/utils.ts`
++- `supabase/schema.sql`
++- `src/lib/supabase/database.types.ts`
++- `tests/indexing-v3-agent.test.ts`
++- `tests/worker-run-loop.test.ts`
++- `tests/worker-row-contract.test.ts`
++- `tests/supabase-schema.test.ts`
++- `docs/worker-deploy-runbook.md`
++
++Checkpoint this brief unchanged with the product candidate. Write the post-commit implementation report to:
++
++`docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-report.md`
++
++Do not touch any other file unless correctness makes it unavoidable; stop and report the exact need before expanding scope.
++
++## Global constraints
++
++- P00-P07 receipts and accepted artifacts are immutable. C00 is complete and must not be rewritten.
++- The superseded P08A draft and migration allocations are not implementation authority.
++- Do not process documents/corpora; access providers, hosted Supabase, Storage, scanners, or model assets; apply migrations; deploy; reindex; push; or open a PR.
++- Preserve the accepted P04 ingestion classifier, P05 protected-source preflight and recovery vocabulary, P06 site-release authority, and P07 query/cache/ranking behavior.
++- The ordinary buffered Answer path must remain unchanged and unable to reach the later continuation retrieval kernel.
++- Every SQL function uses a fixed empty or explicit `search_path`, bounded inputs, serialized conflicting writes, and no new `PUBLIC`, `anon`, or `authenticated` authority.
++- Unknown admission, policy, generation, lease, lineage, or recovery authority fails closed.
++- Use strict RED-GREEN-REFACTOR. No production code before a focused test fails for the expected missing behavior.
++
++## Implementation-time resolved interfaces
++
++- The visibility alias is `index_generation_id`, never `artifact_generation_id`.
++- `document_chunks`, `document_sections`, `document_memory_cards`, and `document_index_units` use their typed `index_generation_id` columns. Summaries and generated labels use validated `metadata->>'index_generation_id'`.
++- Before Task 4 introduces the generation ledger, build authority per claimed document from a complete read of `documents.index_generation_id` plus its raw metadata. The transitional `committedGenerationIds` set is exactly the validated non-null active generation values from that complete authority input. A document is positively legacy only when the typed value is null and the raw metadata contains no generation value. A malformed raw non-empty value, typed/raw mismatch, incomplete read, or overlap fails closed.
++- A TypeScript post-filter is defense in depth, not the ordering guarantee. Every SQL/Supabase reader must constrain the generation in its `WHERE`/query predicates before `ORDER BY`, `LIMIT`, counts, or completion decisions.
++- Generation-aware reads include summary/chunk selection, label inputs, section repair, card inputs, section-index-unit inputs, quality/index-unit counts, visual-artifact decisions, and the protected-source chunk scan.
++- Generation-aware writes include generated sections, cards, section/visual index units, summaries, and generated labels. Persist the exact active generation in the typed column or validated metadata as appropriate; legacy writes remain null only for positively classified legacy documents.
++- Reconcile `public.document_strict_gate_status` in the same forward migration and current schema snapshot so its section/card/label/index-unit counts cannot treat stale rows as current. Otherwise the completion gate could suppress repair before filtered readers run.
++- Preserve the protected-source policy sequence before provider or artifact work. Loading/validating document generation authority is local database state preparation and must not move any provider or artifact action ahead of the existing policy verdict.
++- Extract the smallest pure Edge batch helper in `indexing-v3-agent/behavior.ts` needed to prove that a processing error followed by a failure-recorder error still allows the next claimed job to run. Do not mistake the already-safe container-worker loop for proof of the Deno Edge loop.
++
++## Step 1: RED ownership and visibility behavior
++
++Add this exact matrix to `tests/indexing-v3-agent.test.ts`:
++
++```ts
++it("admits only legacy rows or the exact active committed generation", () => {
++  const visibility = {
++    activeGenerationByDocument: new Map([["doc-a", "gen-active"]]),
++    committedGenerationIds: new Set(["gen-active", "gen-other"]),
++    knownLegacyDocumentIds: new Set(["doc-legacy"]),
++  };
++
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: null }, visibility)).toBe(false);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-legacy", generation_id: null }, visibility)).toBe(true);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-unknown", generation_id: null }, visibility)).toBe(false);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: "gen-active" }, visibility)).toBe(true);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: "gen-other" }, visibility)).toBe(false);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-missing", generation_id: "gen-active" }, visibility)).toBe(
++    false,
++  );
++});
++```
++
++Also add RED assertions proving:
++
++1. stale chunk, section, card, index-unit, summary, and label rows are excluded before `ORDER BY` and `LIMIT`;
++2. null-generation compatibility is allowed only for a positively known legacy document with no active mapping;
++3. absent, incomplete, malformed, or overlapping legacy/active authority fails before `GenerationVisibility` construction;
++4. an active document excludes every null or non-matching generation row;
++5. the retired function/config/invoker remain observable before implementation; and
++6. if both processing one job and recording that failure throw, the next claimed sibling job still runs.
++
++The query contracts must explicitly cover the hidden `document_strict_gate_status` counts and the protected-source chunk scan. Tests must also prove newly generated sections/cards/index units/summaries/labels carry the current generation so strict reads can converge.
++
++Run and capture the expected RED:
++
++```text
++node scripts/run-vitest.mjs run tests/ingestion-edge-function-auth.test.ts tests/indexing-v3-agent.test.ts tests/worker-run-loop.test.ts tests/worker-row-contract.test.ts tests/supabase-schema.test.ts
++```
++
++The report must quote the failing assertions and explain why each failure is the expected missing behavior rather than a setup error.
++
++## Step 2: Shared fail-closed visibility contract
++
++Create exactly:
++
++```ts
++export type GenerationVisibleRow = Readonly<{
++  document_id: string;
++  generation_id: string | null;
++}>;
++
++export type GenerationVisibility = Readonly<{
++  activeGenerationByDocument: ReadonlyMap<string, string>;
++  committedGenerationIds: ReadonlySet<string>;
++  knownLegacyDocumentIds: ReadonlySet<string>;
++}>;
++
++export function isVisibleCommittedGenerationRow(row: GenerationVisibleRow, visibility: GenerationVisibility): boolean {
++  if (row.generation_id === null)
++    return (
++      visibility.knownLegacyDocumentIds.has(row.document_id) &&
++      !visibility.activeGenerationByDocument.has(row.document_id)
++    );
++  return (
++    visibility.activeGenerationByDocument.get(row.document_id) === row.generation_id &&
++    visibility.committedGenerationIds.has(row.generation_id)
++  );
++}
++```
++
++Project the validated generation alias for chunks, sections, cards, index units, summaries, and labels. Apply the predicate before sorting or truncating. Keep P05 protected-source preflight before provider or artifact work.
++
++Build `GenerationVisibility` only from a complete validated authority scan. Treat absence as unknown, not legacy. Reject overlapping legacy/active authority, malformed generation IDs, incomplete scans, and a committed-generation set that cannot prove the exact active generation.
++
++## Step 3: Retire only the recovered processor
++
++The new forward-only migration must:
++
++- revoke grants on `public.invoke_ingestion_worker(integer)` before dropping it;
++- drop only that current function signature;
++- use fixed `search_path` conventions where applicable;
++- leave historical migrations unchanged; and
++- preserve rollback truth in the runbook without pretending the deleted duplicate processor remains deployable.
++
++In the same migration, replace the current strict-gate view/function definition with generation-visible counts using the exact active document generation or positive legacy compatibility. Do not add another migration filename.
++
++Remove the `supabase/functions/ingestion-worker` function directory and its exact `supabase/config.toml` stanza. Remove the current schema/type entry for the invoker. Retain historical documentation only where it accurately describes past state.
++
++Replace or remove `tests/ingestion-edge-function-auth.test.ts` so current-state assertions prove the retirement rather than importing deleted files. Preserve separate historical-migration assertions in `tests/supabase-schema.test.ts`; do not edit historical migrations. Reconcile `supabase/schema.sql` and `src/lib/supabase/database.types.ts` now, but defer generated `supabase/drift-manifest.json` reconciliation to the stable C01/C02 tranche boundary exactly as the global plan requires. Do not hand-edit or copy the drift manifest.
++
++Nest failure recording in its own `try/catch` so failure-reporting cannot abort sibling jobs. Do not weaken the existing per-job outer isolation.
++
++Before finalizing a deletion of exported symbols, run the repository dead-code candidate check against the task range. If it refuses because the approved continuation plan intentionally pins the retirement, report the exact output; do not tune or bypass the gate.
++
++## Step 4: GREEN and focused static gates
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/ingestion-edge-function-auth.test.ts tests/indexing-v3-agent.test.ts tests/worker-run-loop.test.ts tests/worker-row-contract.test.ts tests/supabase-schema.test.ts
++npm run check:edge:functions
++npm run check:migration-role
++npm run check:function-grants
++```
++
++Expected: focused tests pass; the sole core processor is `worker/main.ts`, bounded enrichment remains in `indexing-v3-agent`, stale generation rows cannot reach ordering/truncation, the current schema/types/config contain no retired invoker, and no provider or connected action occurs.
++
++Record the live-only possibility of an untracked `pg_cron` command invoking the retired function as an unclosed C07 migration-application check. Do not inspect or mutate hosted schedules. Defer the broader disaster-recovery runbook sweep to planned Task 6; this task updates only `docs/worker-deploy-runbook.md` and must not expand into historical-document cleanup.
++
++Run targeted format/diff checks only after GREEN. Do not broaden verification unless a concrete changed failure path requires it. Consult `npm run arbiter -- <gate>` before any expensive additional gate.
++
++## Candidate commit and report
++
++Self-review all owned files for scope, access/grant safety, data preservation, rollback truth, query ordering, test meaning, and stray output. Stage explicit paths only, including this brief. Create one local candidate commit:
++
++```text
++fix(ingestion): retire duplicate processor
++```
++
++Never push. The report must include:
++
++- task base/head and commit;
++- RED command, exact expected failures, and why they were valid;
++- GREEN/static commands and exact outcomes;
++- every changed/deleted file;
++- migration/grant/rollback/compatibility assessment;
++- dead-code candidate check outcome;
++- self-review and concerns; and
++- an attestation that no prohibited action occurred.
++
++Return under 15 lines: status, commit, one-line RED/GREEN summary, concerns, and report path.
+diff --git a/docs/worker-deploy-runbook.md b/docs/worker-deploy-runbook.md
+index 6188cc2ba6f246ab33a61161c64c99e05a06cef5..61f7ae4d86fed806d574ca35bc6fa00307ebd2ab 100644
+--- a/docs/worker-deploy-runbook.md
++++ b/docs/worker-deploy-runbook.md
+@@ -1,20 +1,33 @@
+ # Worker deploy runbook
+ 
+ Operator recipe for shipping the containerized ingestion worker
+ (`Dockerfile.worker`). This is the "how to run it" companion to the decision
+ record in [`deployment-architecture.md`](deployment-architecture.md) §3
+ (_containerized worker over completing the edge-agent migration_) — read that
+ first for the **why**. The `indexing-v3-agent` Edge Function stays in place as
+ the cron-triggered completion/repair gate; the container is the extraction
+ engine, not a replacement for it.
+ 
++The former `ingestion-worker` Edge Function was a duplicate core processor and
++is retired by `20260831100000_retire_ingestion_worker.sql`. Do not deploy or
++invoke it: `worker/main.ts` is the sole core ingestion processor, while
++`indexing-v3-agent` remains bounded to enrichment and completion repair. A
++hosted `pg_cron` command may still reference the removed invoker even though no
++such schedule is tracked in this repository; checking and removing that live
++schedule is a C07 migration-application task, not part of local deployment.
++
++Rollback of the retirement is not an Edge redeploy. It requires an explicit
++forward migration that restores a reviewed invoker and a reviewed processor
++implementation. The deleted duplicate is intentionally not kept deployable,
++and historical migrations remain the record of its former shape.
++
+ This is the detailed expansion of the **Worker** bullet in
+ [`launch-operator-runbook.md`](launch-operator-runbook.md) §6 (Post-deploy) —
+ that runbook is the launch sequence; this one is the worker recipe. The actual
+ deploy is an operator action — see the gate in step 0.
+ 
+ Production host is **Railway** (`deployment-architecture.md` §2); the image is
+ host-agnostic, so the `docker run` recipe below maps 1:1 onto Railway service
+ env vars + a restart policy (or any OCI host).
+ 
+ ---
+diff --git a/src/lib/supabase/database.types.ts b/src/lib/supabase/database.types.ts
+index a93837b74c5d1f4fdb98bae41fc1b03880137a9a..6d438e050db858f88f1c0c25b67fe9830ebaf0af 100644
+--- a/src/lib/supabase/database.types.ts
++++ b/src/lib/supabase/database.types.ts
+@@ -3082,21 +3082,20 @@ export type Database = {
+           source_image_id: string;
+           unit_content: string;
+           unit_id: string;
+           unit_metadata: Json;
+           unit_quality_score: number;
+           unit_title: string;
+           unit_type: string;
+         }[];
+       };
+       invoke_indexing_v3_agent: { Args: { p_limit?: number }; Returns: number };
+-      invoke_ingestion_worker: { Args: { p_limit?: number }; Returns: number };
+       request_indexing_v3_enrichment: {
+         Args: { p_document_id: string; p_owner_id: string };
+         Returns: { job_id?: string; ok?: boolean };
+       };
+       is_committed_artifact_generation: {
+         Args: { artifact_metadata: Json; document_metadata: Json };
+         Returns: boolean;
+       };
+       is_committed_document_generation: {
+         Args: { document_metadata: Json; row_generation: string };
+diff --git a/supabase/config.toml b/supabase/config.toml
+index 38b703d9532cb96fb2f40ec87cf2862da15c2e23..1237ec4d14f1cbb5d97bed3c2b7f93456cf21faf 100644
+--- a/supabase/config.toml
++++ b/supabase/config.toml
+@@ -1,8 +1,5 @@
+ [functions.indexing-v3-agent]
+ verify_jwt = false
+ 
+-[functions.ingestion-worker]
+-verify_jwt = true
+-
+ [functions.site-content-sync]
+ verify_jwt = false
+diff --git a/supabase/functions/_shared/ingestion-generation-visibility.ts b/supabase/functions/_shared/ingestion-generation-visibility.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..7ad9da50938a34ef6ab29a06ba991da3acf4306f
+--- /dev/null
++++ b/supabase/functions/_shared/ingestion-generation-visibility.ts
+@@ -0,0 +1,113 @@
++export type GenerationVisibleRow = Readonly<{
++  document_id: string;
++  generation_id: string | null;
++}>;
++
++export type GenerationVisibility = Readonly<{
++  activeGenerationByDocument: ReadonlyMap<string, string>;
++  committedGenerationIds: ReadonlySet<string>;
++  knownLegacyDocumentIds: ReadonlySet<string>;
++}>;
++
++export type DocumentGenerationAuthorityRow = Readonly<{
++  id: string;
++  index_generation_id: string | null;
++  metadata: Record<string, unknown> | null;
++}>;
++
++const GENERATION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
++
++export function isVisibleCommittedGenerationRow(row: GenerationVisibleRow, visibility: GenerationVisibility): boolean {
++  if (row.generation_id === null)
++    return (
++      visibility.knownLegacyDocumentIds.has(row.document_id) &&
++      !visibility.activeGenerationByDocument.has(row.document_id)
++    );
++  return (
++    visibility.activeGenerationByDocument.get(row.document_id) === row.generation_id &&
++    visibility.committedGenerationIds.has(row.generation_id)
++  );
++}
++
++function validatedGenerationId(value: unknown, source: string): string | null {
++  if (value === undefined || value === null || value === "") return null;
++  if (typeof value !== "string" || value.trim() !== value || !GENERATION_ID_PATTERN.test(value)) {
++    throw new Error(`Generation authority is malformed at ${source}`);
++  }
++  return value;
++}
++
++export function buildGenerationVisibility(
++  rows: ReadonlyArray<DocumentGenerationAuthorityRow>,
++  expectedDocumentIds: ReadonlyArray<string>,
++): GenerationVisibility {
++  const expected = new Set(expectedDocumentIds);
++  if (expected.size !== expectedDocumentIds.length || expected.size === 0) {
++    throw new Error("Generation authority input is incomplete");
++  }
++
++  const activeGenerationByDocument = new Map<string, string>();
++  const knownLegacyDocumentIds = new Set<string>();
++  const observed = new Set<string>();
++
++  for (const row of rows) {
++    if (!expected.has(row.id)) throw new Error("Generation authority returned an unexpected document");
++
++    const metadata = row.metadata;
++    if (metadata !== null && (typeof metadata !== "object" || Array.isArray(metadata))) {
++      throw new Error(`Generation authority is malformed for document ${row.id}`);
++    }
++    const hasRawGeneration = metadata !== null && Object.prototype.hasOwnProperty.call(metadata, "index_generation_id");
++    const typedGeneration = validatedGenerationId(row.index_generation_id, `${row.id}.index_generation_id`);
++    const rawGeneration = validatedGenerationId(
++      metadata?.index_generation_id,
++      `${row.id}.metadata.index_generation_id`,
++    );
++
++    if (observed.has(row.id)) {
++      const overlaps =
++        (typedGeneration !== null && knownLegacyDocumentIds.has(row.id)) ||
++        (typedGeneration === null && activeGenerationByDocument.has(row.id));
++      throw new Error(
++        overlaps
++          ? `Generation authority overlaps legacy and active state for document ${row.id}`
++          : `Generation authority is incomplete because document ${row.id} was returned more than once`,
++      );
++    }
++    observed.add(row.id);
++
++    if (typedGeneration === null) {
++      if (hasRawGeneration) {
++        throw new Error(`Generation authority typed/raw mismatch for document ${row.id}`);
++      }
++      knownLegacyDocumentIds.add(row.id);
++      continue;
++    }
++
++    if (!hasRawGeneration || rawGeneration === null) {
++      throw new Error(`Generation authority is incomplete for active document ${row.id}`);
++    }
++    if (rawGeneration !== typedGeneration) {
++      throw new Error(`Generation authority typed/raw mismatch for document ${row.id}`);
++    }
++    activeGenerationByDocument.set(row.id, typedGeneration);
++  }
++
++  if (observed.size !== expected.size || Array.from(expected).some((documentId) => !observed.has(documentId))) {
++    throw new Error("Generation authority scan is incomplete");
++  }
++  for (const documentId of knownLegacyDocumentIds) {
++    if (activeGenerationByDocument.has(documentId)) {
++      throw new Error(`Generation authority overlaps legacy and active state for document ${documentId}`);
++    }
++  }
++
++  const committedGenerationIds = new Set(activeGenerationByDocument.values());
++  if (
++    Array.from(activeGenerationByDocument.values()).some((generationId) => !committedGenerationIds.has(generationId))
++  ) {
++    throw new Error("Generation authority cannot prove the exact active generation set");
++  }
++
++  return { activeGenerationByDocument, committedGenerationIds, knownLegacyDocumentIds };
++}
+diff --git a/supabase/functions/indexing-v3-agent/behavior.ts b/supabase/functions/indexing-v3-agent/behavior.ts
+index 3adfa34c8a46b586f8527680439d6ce153d27249..ae61acd0b505465786ba88ef6e63d70454db27ac 100644
+--- a/supabase/functions/indexing-v3-agent/behavior.ts
++++ b/supabase/functions/indexing-v3-agent/behavior.ts
+@@ -61,20 +61,50 @@ export type DeferralDecision = {
+   };
+ };
+ 
+ export type JobStatusRpcResult = {
+   ok: boolean;
+   gate_passed: boolean;
+   missing: string[] | null;
+   status: string;
+ };
+ 
++export type EdgeJobBatchOutcome<TJob, TResult> =
++  Readonly<{ job: TJob; result: TResult }> | Readonly<{ job: TJob; error: string; failureRecordingError?: string }>;
++
++function errorMessage(error: unknown): string {
++  if (error instanceof Error) return error.message;
++  return JSON.stringify(error) ?? String(error);
++}
++
++export async function runEdgeJobBatch<TJob, TResult>(
++  jobs: ReadonlyArray<TJob>,
++  process: (job: TJob) => Promise<TResult>,
++  recordFailure: (job: TJob, message: string) => Promise<unknown>,
++): Promise<Array<EdgeJobBatchOutcome<TJob, TResult>>> {
++  const outcomes: Array<EdgeJobBatchOutcome<TJob, TResult>> = [];
++  for (const job of jobs) {
++    try {
++      outcomes.push({ job, result: await process(job) });
++    } catch (error) {
++      const message = errorMessage(error);
++      try {
++        await recordFailure(job, message);
++        outcomes.push({ job, error: message });
++      } catch (failureRecordingError) {
++        outcomes.push({ job, error: message, failureRecordingError: errorMessage(failureRecordingError) });
++      }
++    }
++  }
++  return outcomes;
++}
++
+ export function publicSourceWorkerPolicyViolation(
+   metadata: Record<string, unknown> | null | undefined,
+   containsProtectedSourceContent: boolean,
+ ) {
+   return publicSourcePolicyViolation(metadata, containsProtectedSourceContent);
+ }
+ 
+ export function protectedPublicSourceChunkContents(rows: ReadonlyArray<{ content: string }>) {
+   return containsForbiddenPublicSourceChunkContent(rows);
+ }
+diff --git a/supabase/functions/indexing-v3-agent/index.ts b/supabase/functions/indexing-v3-agent/index.ts
+index 04838819432546bb6226b28d792c0f32c0499f77..65f0545026bb4ce611f04dfd6a7ff30c39bc7afe 100644
+--- a/supabase/functions/indexing-v3-agent/index.ts
++++ b/supabase/functions/indexing-v3-agent/index.ts
+@@ -9,47 +9,53 @@ import {
+   structuredProfileFromMetadata,
+   stringArrayFrom,
+   textItemsFrom,
+   sourceRegionsFromMetadata,
+   phraseLabelCandidates,
+   sha256Hex,
+   sleep,
+   normalizeLabelCandidate,
+   canonicalUnitType,
+   canonicalFieldType,
++  generationMetadata,
+ } from "./utils.ts";
+ 
+ import {
+   completionGateFromRow,
+   agentFailureDecision,
+   deferralDecision,
+   missingArtifactPlan,
+   parseJobStatusRpcResult,
+   publicSourceWorkerPolicyViolation,
++  runEdgeJobBatch,
+   scanProtectedPublicSourceChunkPages,
+   shouldRunVisualArtifacts,
+   type CompletionGate,
+   type CompletionGateRow,
+   type JobStatusRpcResult,
+   type MissingArtifactPlan,
+ } from "./behavior.ts";
++// prettier-ignore
++// @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
++import { buildGenerationVisibility, isVisibleCommittedGenerationRow, type DocumentGenerationAuthorityRow, type GenerationVisibility } from "../_shared/ingestion-generation-visibility.ts";
+ 
+ type ClaimedJob = {
+   id: string;
+   document_id: string;
+   batch_id: string | null;
+   attempt_count: number;
+   max_attempts: number;
+   documents: {
+     id: string;
+     owner_id: string | null;
+     title: string | null;
++    index_generation_id: string | null;
+     metadata: Record<string, unknown> | null;
+   };
+ };
+ 
+ type ImageRow = {
+   id: string;
+   page_number: number | null;
+   image_type: string | null;
+   searchable: boolean | null;
+   caption: string | null;
+@@ -156,20 +162,41 @@ if (!SUPABASE_DB_URL) throw new Error("SUPABASE_DB_URL is required");
+ const sql = postgres(SUPABASE_DB_URL, {
+   max: 4,
+   idle_timeout: 20,
+   connect_timeout: 10,
+ });
+ type SqlJsonValue = Parameters<typeof sql.json>[0];
+ function jsonb(value: unknown) {
+   return sql.json(value as SqlJsonValue);
+ }
+ 
++type JobGenerationPredicate = Readonly<{
++  indexGenerationId: string | null;
++  isLegacy: boolean;
++}>;
++
++function generationPredicateForJob(job: ClaimedJob, visibility: GenerationVisibility): JobGenerationPredicate {
++  const indexGenerationId = visibility.activeGenerationByDocument.get(job.document_id) ?? null;
++  const isLegacy = visibility.knownLegacyDocumentIds.has(job.document_id);
++  if ((indexGenerationId === null) === !isLegacy) {
++    throw new Error(`Generation authority is unknown or overlapping for document ${job.document_id}`);
++  }
++  return { indexGenerationId, isLegacy };
++}
++
++function visibleGenerationRows<Row extends { document_id: string; generation_id: string | null }>(
++  rows: ReadonlyArray<Row>,
++  visibility: GenerationVisibility,
++): Row[] {
++  return rows.filter((row) => isVisibleCommittedGenerationRow(row, visibility));
++}
++
+ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+ if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is required");
+ 
+ const OPENAI_EMBEDDING_MODEL = Deno.env.get("OPENAI_EMBEDDING_MODEL") ?? "text-embedding-3-small";
+ const EMBEDDING_DIMENSIONS = Number(Deno.env.get("EMBEDDING_DIMENSIONS") ?? String(EXPECTED_EMBED_DIM));
+ if (EMBEDDING_DIMENSIONS !== EXPECTED_EMBED_DIM) {
+   throw new Error(`EMBEDDING_DIMENSIONS must be ${EXPECTED_EMBED_DIM}`);
+ }
+ const OPENAI_REQUEST_TIMEOUT_MS = Math.max(5_000, Number(Deno.env.get("OPENAI_REQUEST_TIMEOUT_MS") ?? "45000"));
+ const OPENAI_MAX_RETRIES = Math.max(0, Math.min(5, Number(Deno.env.get("OPENAI_MAX_RETRIES") ?? "2")));
+@@ -556,50 +583,64 @@ async function stageFinish(
+     update public.ingestion_job_stages
+     set
+       stage_status = ${ok ? "completed" : "failed"}::text,
+       finished_at = now(),
+       artifact_counts = ${jsonb(artifactCounts)},
+       error_message = ${errorMessage ?? null}::text
+     where id = ${stageId}::uuid
+   `;
+ }
+ 
+-async function ensureSummary(job: ClaimedJob): Promise<string> {
+-  const existing = await sql<{ summary: string }[]>`
+-    select summary
++async function ensureSummary(job: ClaimedJob, visibility: GenerationVisibility): Promise<string> {
++  const generationPredicate = generationPredicateForJob(job, visibility);
++  const existingRows = await sql<Array<{ summary: string; document_id: string; generation_id: string | null }>>`
++    select summary, document_id, metadata->>'index_generation_id' as generation_id
+     from public.document_summaries
+     where document_id = ${job.document_id}::uuid
++      and (
++        (${generationPredicate.indexGenerationId}::uuid is not null
++          and metadata->>'index_generation_id' = ${generationPredicate.indexGenerationId}::text)
++        or (${generationPredicate.isLegacy}::boolean and metadata->>'index_generation_id' is null)
++      )
+     limit 1
+   `;
++  const existing = visibleGenerationRows(existingRows, visibility);
+   if (existing.length > 0) return normalizeText(existing[0].summary);
+ 
+-  const chunks = await sql<{ id: string; content: string; chunk_index: number }[]>`
+-    select id, content, chunk_index
++  const chunkRows = await sql<
++    Array<{ id: string; content: string; chunk_index: number; document_id: string; generation_id: string | null }>
++  >`
++    select id, content, chunk_index, document_id, index_generation_id::text as generation_id
+     from public.document_chunks
+     where document_id = ${job.document_id}::uuid
++      and (
++        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++      )
+     order by chunk_index asc
+     limit 24
+   `;
++  const chunks = visibleGenerationRows(chunkRows, visibility);
+ 
+   const merged = normalizeText(chunks.map((c) => c.content ?? "").join(" "));
+   const summary = merged.length > 1800 ? `${merged.slice(0, 1800)}...` : merged;
+ 
+   await sql`
+     insert into public.document_summaries (
+       document_id, owner_id, summary, source_chunk_ids, model, metadata, generated_at
+     ) values (
+       ${job.document_id}::uuid,
+       ${job.documents.owner_id}::uuid,
+       ${summary.length > 0 ? summary : "Summary unavailable"}::text,
+       ${chunks.map((c) => c.id)}::uuid[],
+       'v3-summary-heuristic',
+-      ${jsonb({ generated_by: GENERATED_BY })},
++      ${jsonb({ generated_by: GENERATED_BY, ...generationMetadata(generationPredicate.indexGenerationId) })},
+       now()
+     )
+     on conflict (document_id)
+     do update set
+       summary = excluded.summary,
+       source_chunk_ids = excluded.source_chunk_ids,
+       model = excluded.model,
+       metadata = excluded.metadata,
+       generated_at = now(),
+       updated_at = now()
+@@ -777,73 +818,106 @@ function mapMemoryCardTypeToLabelType(cardType: string): GeneratedLabelCandidate
+ 
+ function candidateConfidence(base: number, source: string): number {
+   if (source === "document_title") return Math.min(0.82, base + 0.08);
+   if (source === "section_heading") return Math.min(0.9, base + 0.12);
+   if (source === "memory_card_title") return Math.min(0.86, base + 0.1);
+   if (source === "section_tag") return Math.min(0.74, base + 0.08);
+   if (source === "memory_card_content") return Math.min(0.76, base + 0.06);
+   return base;
+ }
+ 
+-async function upsertGeneratedLabelsFromParsedArtifacts(job: ClaimedJob): Promise<number> {
+-  const summaryRows = await sql<{ summary: string }[]>`
+-    select summary
++async function upsertGeneratedLabelsFromParsedArtifacts(
++  job: ClaimedJob,
++  visibility: GenerationVisibility,
++): Promise<number> {
++  const generationPredicate = generationPredicateForJob(job, visibility);
++  const summaryRowsRaw = await sql<Array<{ summary: string; document_id: string; generation_id: string | null }>>`
++    select summary, document_id, metadata->>'index_generation_id' as generation_id
+     from public.document_summaries
+     where document_id = ${job.document_id}::uuid
++      and (
++        (${generationPredicate.indexGenerationId}::uuid is not null
++          and metadata->>'index_generation_id' = ${generationPredicate.indexGenerationId}::text)
++        or (${generationPredicate.isLegacy}::boolean and metadata->>'index_generation_id' is null)
++      )
+     limit 1
+   `;
+-  const chunksForLabels = await sql<{ content: string }[]>`
+-    select content
++  const summaryRows = visibleGenerationRows(summaryRowsRaw, visibility);
++  const chunksForLabelsRaw = await sql<Array<{ content: string; document_id: string; generation_id: string | null }>>`
++    select content, document_id, index_generation_id::text as generation_id
+     from public.document_chunks
+     where document_id = ${job.document_id}::uuid
++      and (
++        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++      )
+     order by chunk_index asc
+     limit 8
+   `;
++  const chunksForLabels = visibleGenerationRows(chunksForLabelsRaw, visibility);
+ 
+-  const sections = await sql<SectionLabelSource[]>`
++  const sectionRows = await sql<Array<SectionLabelSource & { document_id: string; generation_id: string | null }>>`
+     select
+       s.id as section_id,
++      s.document_id,
++      s.index_generation_id::text as generation_id,
+       s.heading,
+       s.heading_path,
+       coalesce(s.summary, '') as summary,
+       s.tags,
+       c.id as source_chunk_id,
+       c.anchor_id,
+       c.chunk_index
+     from public.document_sections s
+     left join lateral (
+       select id, anchor_id, chunk_index
+       from public.document_chunks c
+       where c.document_id = s.document_id
++        and (
++          c.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and c.index_generation_id is null)
++        )
+         and (
+           c.id = any(s.chunk_ids)
+           or c.section_heading = s.heading
+         )
+       order by
+         case when c.id = any(s.chunk_ids) then 0 else 1 end,
+         c.chunk_index asc
+       limit 1
+     ) c on true
+     where s.document_id = ${job.document_id}::uuid
++      and (
++        s.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++        or (${generationPredicate.isLegacy}::boolean and s.index_generation_id is null)
++      )
+     order by s.section_index asc
+   `;
++  const sections = visibleGenerationRows(sectionRows, visibility);
+ 
+-  const cards = await sql<MemoryCardLabelSource[]>`
++  const cardRows = await sql<Array<MemoryCardLabelSource & { document_id: string; generation_id: string | null }>>`
+     select
+       id as card_id,
++      document_id,
++      index_generation_id::text as generation_id,
+       card_type,
+       title,
+       content
+     from public.document_memory_cards
+     where document_id = ${job.document_id}::uuid
++      and (
++        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++      )
+     order by created_at desc
+   `;
++  const cards = visibleGenerationRows(cardRows, visibility);
+ 
+   const candidates = new Map<string, GeneratedLabelCandidate>();
+   const sectionCount = sections.length;
+   const cardCount = cards.length;
+ 
+   if (job.documents.title) {
+     pushLabelCandidate(
+       candidates,
+       job.documents.title,
+       inferLabelType(job.documents.title),
+@@ -974,20 +1048,21 @@ async function upsertGeneratedLabelsFromParsedArtifacts(job: ClaimedJob): Promis
+         ) values (
+           ${job.document_id}::uuid,
+           ${job.documents.owner_id}::uuid,
+           ${candidate.label},
+           ${candidate.label_type},
+           'generated',
+           ${Math.min(0.98, Math.max(0.2, candidate.confidence))},
+           ${jsonb({
+             ...candidate.metadata,
+             generated_by: GENERATED_BY,
++            ...generationMetadata(generationPredicate.indexGenerationId),
+             generation_source: "indexing_v3_agent_parsed_artifacts",
+             section_candidates: sectionCount,
+             memory_card_candidates: cardCount,
+             fallback_generated_count: prepared.length,
+           })}
+         )
+         on conflict (document_id, label_type, label, source)
+         do update set
+           confidence = greatest(document_labels.confidence, excluded.confidence),
+           metadata = CASE
+@@ -1002,35 +1077,46 @@ async function upsertGeneratedLabelsFromParsedArtifacts(job: ClaimedJob): Promis
+     return count;
+   });
+ 
+   return inserted;
+ }
+ 
+ function memoryCardText(title: string, cardType: string, content: string, terms: string[]): string {
+   return `${title}\n${cardType}\n${content}\nTerms: ${terms.join(", ")}`;
+ }
+ 
+-async function ensureSectionsFromChunks(job: ClaimedJob): Promise<number> {
++async function ensureSectionsFromChunks(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
++  const generationPredicate = generationPredicateForJob(job, visibility);
+   const existing = await sql<{ count: number }[]>`
+     select count(*)::int as count
+     from public.document_sections
+     where document_id = ${job.document_id}::uuid
++      and (
++        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++      )
+   `;
+   if ((existing[0]?.count ?? 0) > 0) return 0;
+ 
+-  const chunks = await sql<ChunkSectionSource[]>`
+-    select id, page_number, chunk_index, section_heading, section_path, content
++  const chunkRows = await sql<Array<ChunkSectionSource & { document_id: string; generation_id: string | null }>>`
++    select id, document_id, index_generation_id::text as generation_id,
++      page_number, chunk_index, section_heading, section_path, content
+     from public.document_chunks
+     where document_id = ${job.document_id}::uuid
++      and (
++        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++      )
+     order by chunk_index asc
+     limit 24
+   `;
++  const chunks = visibleGenerationRows(chunkRows, visibility);
+   if (chunks.length === 0) return 0;
+ 
+   let inserted = 0;
+   for (let index = 0; index < chunks.length; index += 1) {
+     const chunk = chunks[index];
+     const path = (chunk.section_path ?? []).filter(Boolean);
+     const heading =
+       normalizeText(
+         chunk.section_heading ?? path[path.length - 1] ?? job.documents.title ?? `Section ${index + 1}`,
+       ).slice(0, 220) || `Section ${index + 1}`;
+@@ -1043,67 +1129,91 @@ async function ensureSectionsFromChunks(job: ClaimedJob): Promise<number> {
+         owner_id,
+         section_index,
+         heading,
+         heading_path,
+         page_start,
+         page_end,
+         chunk_ids,
+         summary,
+         tags,
+         extraction_quality,
++        index_generation_id,
+         metadata
+       ) values (
+         ${job.document_id}::uuid,
+         ${job.documents.owner_id}::uuid,
+         ${index}::integer,
+         ${heading}::text,
+         ${path.length > 0 ? path : [heading]}::text[],
+         ${chunk.page_number}::integer,
+         ${chunk.page_number}::integer,
+         ${[chunk.id]}::uuid[],
+         ${summary}::text,
+         ${tags}::text[],
+         'partial',
++        ${generationPredicate.indexGenerationId}::uuid,
+         ${jsonb({
+           generated_by: GENERATED_BY,
++          ...generationMetadata(generationPredicate.indexGenerationId),
+           source: "document_chunks",
+           source_chunk_id: chunk.id,
+           repaired_missing_sections: true,
+         })}
+       )
+-      on conflict (document_id, section_index) do nothing
++      on conflict (document_id, section_index) where artifact_generation_id is null
++      do update set
++        owner_id = excluded.owner_id,
++        heading = excluded.heading,
++        heading_path = excluded.heading_path,
++        page_start = excluded.page_start,
++        page_end = excluded.page_end,
++        chunk_ids = excluded.chunk_ids,
++        summary = excluded.summary,
++        tags = excluded.tags,
++        extraction_quality = excluded.extraction_quality,
++        index_generation_id = excluded.index_generation_id,
++        metadata = excluded.metadata,
++        updated_at = now()
+       returning id
+     `;
+     inserted += rows.length;
+   }
+ 
+   return inserted;
+ }
+ 
+-async function upsertMemoryCardsFromSections(job: ClaimedJob): Promise<number> {
+-  const sections = await sql<MemoryCardSectionSource[]>`
++async function upsertMemoryCardsFromSections(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
++  const generationPredicate = generationPredicateForJob(job, visibility);
++  const sectionRows = await sql<Array<MemoryCardSectionSource & { document_id: string; generation_id: string | null }>>`
+     select
+       id as section_id,
++      document_id,
++      index_generation_id::text as generation_id,
+       heading,
+       heading_path,
+       page_start,
+       page_end,
+       chunk_ids,
+       summary,
+       tags,
+       extraction_quality
+     from public.document_sections
+     where document_id = ${job.document_id}::uuid
++      and (
++        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++      )
+       and btrim(coalesce(summary, '')) <> ''
+     order by section_index asc
+     limit 16
+   `;
++  const sections = visibleGenerationRows(sectionRows, visibility);
+ 
+   if (sections.length === 0) return 0;
+ 
+   const prepared = sections
+     .map((section) => {
+       const heading = normalizeText(section.heading) || "Document section";
+       const path = (section.heading_path ?? []).filter(Boolean).join(" > ");
+       const title = path ? `${path} > ${heading}` : heading;
+       const summary = normalizeText(section.summary);
+       const content = `${heading}: ${summary}`;
+@@ -1125,20 +1235,24 @@ async function upsertMemoryCardsFromSections(job: ClaimedJob): Promise<number> {
+ 
+   const embeddings = await embeddingBatch(prepared.map((card) => card.embeddingText));
+   embeddings.forEach((embedding, index) =>
+     assertEmbeddingDim(embedding, `memory card ${prepared[index].section.section_id}`),
+   );
+   let inserted = 0;
+   await sql.begin(async (tx) => {
+     await tx`
+       delete from public.document_memory_cards
+       where document_id = ${job.document_id}::uuid
++        and (
++          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++        )
+         and metadata->>'generated_by' = ${GENERATED_BY}
+         and metadata->>'source' = 'document_sections'
+     `;
+     for (let index = 0; index < prepared.length; index += 1) {
+       const card = prepared[index];
+       const section = card.section;
+       const chunkIds = section.chunk_ids ?? [];
+       const emb = embeddings[index];
+ 
+       await tx`
+@@ -1147,120 +1261,139 @@ async function upsertMemoryCardsFromSections(job: ClaimedJob): Promise<number> {
+         owner_id,
+         section_id,
+         card_type,
+         title,
+         content,
+         normalized_terms,
+         page_number,
+         source_chunk_ids,
+         source_image_ids,
+         confidence,
++        index_generation_id,
+         metadata,
+         embedding
+       ) values (
+         ${job.document_id}::uuid,
+         ${job.documents.owner_id}::uuid,
+         ${section.section_id}::uuid,
+         'section_summary',
+         ${card.title}::text,
+         ${card.content}::text,
+         ${card.terms}::text[],
+         ${section.page_start}::integer,
+         ${chunkIds}::uuid[],
+         '{}'::uuid[],
+         ${section.extraction_quality === "good" ? 0.72 : section.extraction_quality === "partial" ? 0.62 : 0.54},
++        ${generationPredicate.indexGenerationId}::uuid,
+         ${jsonb({
+           generated_by: GENERATED_BY,
++          ...generationMetadata(generationPredicate.indexGenerationId),
+           source: "document_sections",
+           section_id: section.section_id,
+           heading_path: section.heading_path ?? [],
+           page_start: section.page_start,
+           page_end: section.page_end,
+         })},
+         ${JSON.stringify(emb)}::vector
+       )
+       `;
+       inserted += 1;
+     }
+   });
+ 
+   return inserted;
+ }
+ 
+-async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
+-  const sections = await sql<SectionIndexSource[]>`
++async function upsertSectionIndexUnits(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
++  const generationPredicate = generationPredicateForJob(job, visibility);
++  const sectionRows = await sql<Array<SectionIndexSource & { document_id: string; generation_id: string | null }>>`
+     select
+       s.id as section_id,
++      s.document_id,
++      s.index_generation_id::text as generation_id,
+       s.heading,
+       s.heading_path,
+       s.page_start,
+       s.page_end,
+       s.chunk_ids,
+       s.summary,
+       s.tags,
+       s.extraction_quality,
+       c.id as source_chunk_id,
+       c.anchor_id,
+       c.chunk_index,
+       c.metadata as chunk_metadata
+     from public.document_sections s
+     join lateral (
+       select id, anchor_id, chunk_index, metadata
+       from public.document_chunks c
+       where c.document_id = s.document_id
++        and (
++          c.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and c.index_generation_id is null)
++        )
+         and c.anchor_id is not null
+         and (
+           c.id = any(s.chunk_ids)
+           or c.section_heading = s.heading
+         )
+       order by
+         case when c.id = any(s.chunk_ids) then 0 else 1 end,
+         c.chunk_index asc
+       limit 1
+     ) c on true
+     where s.document_id = ${job.document_id}::uuid
++      and (
++        s.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++        or (${generationPredicate.isLegacy}::boolean and s.index_generation_id is null)
++      )
+       and btrim(coalesce(s.summary, '')) <> ''
+     order by s.section_index asc
+   `;
++  const sections = visibleGenerationRows(sectionRows, visibility);
+ 
+   const preparedSections = sections
+     .map((section) => {
+       const content = normalizeText(section.summary);
+       const title = normalizeText(section.heading);
+       if (!content || !title) return null;
+       return {
+         section,
+         title,
+         content,
+         embeddingText: `Type: section_summary\nTitle: ${title}\nPath: ${(section.heading_path ?? []).join(" > ")}\nContent: ${content}`,
+       };
+     })
+     .filter(
+       (
+         row,
+       ): row is {
+-        section: SectionIndexSource;
++        section: SectionIndexSource & { document_id: string; generation_id: string | null };
+         title: string;
+         content: string;
+         embeddingText: string;
+       } => Boolean(row),
+     );
+ 
+   const embeddings = await embeddingBatch(preparedSections.map((section) => section.embeddingText));
+   embeddings.forEach((embedding, index) =>
+     assertEmbeddingDim(embedding, `section index unit ${preparedSections[index].section.section_id}`),
+   );
+   let inserted = 0;
+   await sql.begin(async (tx) => {
+     await tx`
+       delete from public.document_index_units
+       where document_id = ${job.document_id}::uuid
++        and (
++          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++        )
+         and unit_type = 'section_summary'
+         and metadata->>'generated_by' = ${GENERATED_BY}
+         and metadata->>'source' = 'document_sections'
+     `;
+     for (let index = 0; index < preparedSections.length; index += 1) {
+       const { section, title, content } = preparedSections[index];
+       const emb = embeddings[index];
+ 
+       await tx`
+       insert into public.document_index_units (
+@@ -1271,67 +1404,78 @@ async function upsertSectionIndexUnits(job: ClaimedJob): Promise<number> {
+         source_image_id,
+         page_start,
+         page_end,
+         heading_path,
+         title,
+         content,
+         normalized_terms,
+         source_span,
+         quality_score,
+         extraction_mode,
++        index_generation_id,
+         embedding,
+         metadata
+       ) values (
+         ${job.documents.owner_id}::uuid,
+         ${job.document_id}::uuid,
+         'section_summary',
+         ${section.source_chunk_id}::uuid,
+         null,
+         ${section.page_start},
+         ${section.page_end},
+         ${section.heading_path ?? []}::text[],
+         ${title},
+         ${content},
+         ${tokenize(`${title} ${content} ${(section.tags ?? []).join(" ")}`)}::text[],
+         ${jsonb({ anchor_id: section.anchor_id, chunk_index: section.chunk_index })},
+         ${section.extraction_quality === "good" ? 0.78 : section.extraction_quality === "partial" ? 0.58 : 0.42},
+         'hybrid',
++        ${generationPredicate.indexGenerationId}::uuid,
+         ${JSON.stringify(emb)}::vector,
+         ${jsonb({
+           generated_by: GENERATED_BY,
++          ...generationMetadata(generationPredicate.indexGenerationId),
+           source: "document_sections",
+           section_id: section.section_id,
+           chunk_ids: section.chunk_ids ?? [],
+           anchor_id: section.anchor_id,
+         })}
+       )
+       `;
+       inserted += 1;
+     }
+   });
+ 
+   return inserted;
+ }
+ 
+ async function upsertVisualArtifacts(
+   job: ClaimedJob,
++  visibility: GenerationVisibility,
+ ): Promise<{ selected_images: number; created_units: number; created_fields: number }> {
+-  const images = await sql<ImageRow[]>`
++  const generationPredicate = generationPredicateForJob(job, visibility);
++  const imageRows = await sql<Array<ImageRow & { document_id: string; generation_id: string | null }>>`
+     select
++      document_id, index_generation_id::text as generation_id,
+       id, page_number, image_type, searchable, caption, metadata,
+       width, height, source_kind, clinical_relevance_score, skip_reason
+     from public.document_images
+     where document_id = ${job.document_id}::uuid
++      and (
++        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++      )
+       and coalesce(searchable, false) = true
+       and coalesce(image_type, 'unclear') <> 'logo_decorative'
+     order by page_number asc nulls last, created_at asc
+   `;
++  const images = visibleGenerationRows(imageRows, visibility);
+ 
+   const scored = images.map((img) => ({ ...img, priority: scoreImage(img) })).filter((img) => img.priority > -0.2);
+ 
+   const selected = chooseByBudget(scored);
+ 
+   let createdUnits = 0;
+   let createdFields = 0;
+   const preparedUnits: Array<{
+     unit: VisualUnit;
+     content: string;
+@@ -1361,20 +1505,24 @@ async function upsertVisualArtifacts(
+             structured_extraction_confidence: structured.confidence,
+             ocr_text_density: Math.max(0, Math.min(1, structured.key_terms.length / 40)),
+             image_quality_score: Math.max(0, Math.min(1, 0.35 + img.priority * 0.3)),
+             crop_completeness: Math.max(
+               0.3,
+               Math.min(1, img.width && img.height && img.width * img.height > 150000 ? 0.9 : 0.55),
+             ),
+           },
+         })}
+       where id = ${img.id}::uuid
++        and (
++          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++        )
+     `;
+ 
+     for (const unit of units) {
+       const content = normalizeText(unit.content);
+       if (content.length < 4) continue;
+ 
+       const unitType = canonicalUnitType(unit.unitType);
+       const fieldType = canonicalFieldType(unit.unitType);
+       const contentHash = await sha256Hex(content);
+       preparedUnits.push({ unit, content, unitType, fieldType, contentHash });
+@@ -1382,26 +1530,34 @@ async function upsertVisualArtifacts(
+   }
+ 
+   const embeddings = await embeddingBatch(preparedUnits.map((prepared) => prepared.content));
+   embeddings.forEach((embedding, index) =>
+     assertEmbeddingDim(embedding, `visual index unit ${preparedUnits[index].unit.sourceImageId}`),
+   );
+   await sql.begin(async (tx) => {
+     await tx`
+       delete from public.document_embedding_fields
+       where document_id = ${job.document_id}::uuid
++        and (
++          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++        )
+         and field_type = any(${VISUAL_FIELD_TYPES}::text[])
+         and metadata->>'generated_by' = ${GENERATED_BY}
+     `;
+     await tx`
+       delete from public.document_index_units
+       where document_id = ${job.document_id}::uuid
++        and (
++          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++        )
+         and unit_type = any(${VISUAL_UNIT_TYPES}::text[])
+         and metadata->>'generated_by' = ${GENERATED_BY}
+     `;
+     for (let index = 0; index < preparedUnits.length; index += 1) {
+       const { unit, content, unitType, fieldType, contentHash } = preparedUnits[index];
+       const emb = embeddings[index];
+ 
+       await tx`
+       insert into public.document_index_units (
+         owner_id,
+@@ -1411,134 +1567,167 @@ async function upsertVisualArtifacts(
+         source_image_id,
+         page_start,
+         page_end,
+         heading_path,
+         title,
+         content,
+         normalized_terms,
+         source_span,
+         quality_score,
+         extraction_mode,
++        index_generation_id,
+         embedding,
+         metadata
+       ) values (
+         ${job.documents.owner_id}::uuid,
+         ${job.document_id}::uuid,
+         ${unitType},
+         null,
+         ${unit.sourceImageId}::uuid,
+         ${unit.page},
+         ${unit.page},
+         '{}'::text[],
+         ${unit.title},
+         ${content},
+         ${unit.normalizedTerms}::text[],
+         ${jsonb({ source_image_id: unit.sourceImageId, source_regions: unit.metadata.source_regions ?? [] })},
+         ${unit.qualityScore},
+         'hybrid',
++        ${generationPredicate.indexGenerationId}::uuid,
+         ${JSON.stringify(emb)}::vector,
+-        ${jsonb({ ...unit.metadata, visual_unit_type: unit.unitType, generated_by: GENERATED_BY })}
++        ${jsonb({
++          ...unit.metadata,
++          visual_unit_type: unit.unitType,
++          generated_by: GENERATED_BY,
++          ...generationMetadata(generationPredicate.indexGenerationId),
++        })}
+       )
+       `;
+       createdUnits += 1;
+ 
+       await tx`
+         insert into public.document_embedding_fields (
+           owner_id,
+           document_id,
+           source_chunk_id,
+           field_type,
+           content,
++          index_generation_id,
+           embedding,
+           metadata,
+           content_hash
+         ) values (
+           ${job.documents.owner_id}::uuid,
+           ${job.document_id}::uuid,
+           null,
+           ${fieldType},
+           ${content},
++          ${generationPredicate.indexGenerationId}::uuid,
+           ${JSON.stringify(emb)}::vector,
+-          ${jsonb({ source_image_id: unit.sourceImageId, visual_field_type: unit.unitType, generated_by: GENERATED_BY })},
++          ${jsonb({
++            source_image_id: unit.sourceImageId,
++            visual_field_type: unit.unitType,
++            generated_by: GENERATED_BY,
++            ...generationMetadata(generationPredicate.indexGenerationId),
++          })},
+           ${contentHash}
+         )
+         `;
+       createdFields += 1;
+     }
+   });
+ 
+   return { selected_images: selected.length, created_units: createdUnits, created_fields: createdFields };
+ }
+ 
+-async function upsertCoreEmbeddingFields(job: ClaimedJob, summary: string): Promise<number> {
++async function upsertCoreEmbeddingFields(
++  job: ClaimedJob,
++  summary: string,
++  visibility: GenerationVisibility,
++): Promise<number> {
++  const generationPredicate = generationPredicateForJob(job, visibility);
+   const title = normalizeText(job.documents.title ?? "") || "Untitled document";
+   const base = [
+     { field_type: "document_title", content: title },
+     { field_type: "document_summary", content: normalizeText(summary) || "Summary unavailable" },
+   ];
+ 
+   const embeddings = await embeddingBatch(base.map((row) => row.content));
+   embeddings.forEach((embedding, index) => assertEmbeddingDim(embedding, `${base[index].field_type} embedding field`));
+   let inserted = 0;
+   const preparedRows = await Promise.all(
+     base.map(async (row, index) => ({ row, emb: embeddings[index], contentHash: await sha256Hex(row.content) })),
+   );
+   await sql.begin(async (tx) => {
+     await tx`
+       delete from public.document_embedding_fields
+       where document_id = ${job.document_id}::uuid
++        and (
++          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++        )
+         and field_type = any(${base.map((b) => b.field_type)}::text[])
+         and metadata->>'generated_by' = ${GENERATED_BY}
+     `;
+     for (const { row, emb, contentHash } of preparedRows) {
+       await tx`
+       insert into public.document_embedding_fields (
+-        owner_id, document_id, source_chunk_id, field_type, content, embedding, metadata, content_hash
++        owner_id, document_id, source_chunk_id, field_type, content, index_generation_id, embedding, metadata, content_hash
+       ) values (
+         ${job.documents.owner_id}::uuid,
+         ${job.document_id}::uuid,
+         null,
+         ${row.field_type},
+         ${row.content},
++        ${generationPredicate.indexGenerationId}::uuid,
+         ${JSON.stringify(emb)}::vector,
+-        ${jsonb({ generated_by: GENERATED_BY })},
++        ${jsonb({ generated_by: GENERATED_BY, ...generationMetadata(generationPredicate.indexGenerationId) })},
+         ${contentHash}
+       )
+       `;
+       inserted += 1;
+     }
+   });
+ 
+   return inserted;
+ }
+ 
+-async function updateQuality(job: ClaimedJob): Promise<void> {
++async function updateQuality(job: ClaimedJob, visibility: GenerationVisibility): Promise<void> {
++  const generationPredicate = generationPredicateForJob(job, visibility);
+   const counts = await sql<
+     {
+       visual_units: number;
+       anchors_with_image: number;
+       total_units: number;
+       visual_images: number;
+     }[]
+   >`
+     with unit_counts as (
+       select
+         count(*) filter (where metadata->>'generated_by' = ${GENERATED_BY})::int as visual_units,
+         count(*) filter (where source_image_id is not null)::int as anchors_with_image,
+         count(*)::int as total_units
+       from public.document_index_units
+       where document_id = ${job.document_id}::uuid
++        and (
++          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++        )
+     ),
+     image_counts as (
+       select count(*)::int as visual_images
+       from public.document_images
+       where document_id = ${job.document_id}::uuid
++        and (
++          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++        )
+         and coalesce(searchable,false)=true
+         and coalesce(image_type,'unclear') <> 'logo_decorative'
+     )
+     select
+       u.visual_units,
+       u.anchors_with_image,
+       u.total_units,
+       i.visual_images
+     from unit_counts u, image_counts i
+   `;
+@@ -1626,34 +1815,43 @@ function logArtifactPlan(job: ClaimedJob, gate: CompletionGate, plan: MissingArt
+       document_id: job.document_id,
+       missing: gate.missing,
+       counts: gate.counts,
+       presence: gate.presence,
+       quality: gate.quality,
+       plan,
+     }),
+   );
+ }
+ 
+-async function needsVisualArtifacts(job: ClaimedJob): Promise<boolean> {
++async function needsVisualArtifacts(job: ClaimedJob, visibility: GenerationVisibility): Promise<boolean> {
++  const generationPredicate = generationPredicateForJob(job, visibility);
+   const rows = await sql<Array<{ eligible_images: number; generated_visual_units: number }>>`
+     select
+       (
+         select count(*)::int
+         from public.document_images
+         where document_id = ${job.document_id}::uuid
++          and (
++            index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++            or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++          )
+           and coalesce(searchable, false) = true
+           and coalesce(image_type, 'unclear') <> 'logo_decorative'
+       ) as eligible_images,
+       (
+         select count(*)::int
+         from public.document_index_units
+         where document_id = ${job.document_id}::uuid
++          and (
++            index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++            or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++          )
+           and source_image_id is not null
+           and (
+             metadata->>'generated_by' = ${GENERATED_BY}
+             or metadata->>'generated_by' = 'local-worker'
+             or metadata->>'source' = 'visual_intelligence'
+           )
+       ) as generated_visual_units
+   `;
+   const row = rows[0] ?? { eligible_images: 0, generated_visual_units: 0 };
+   return shouldRunVisualArtifacts(row);
+@@ -1785,139 +1983,149 @@ async function markJobFailure(job: ClaimedJob, message: string): Promise<boolean
+           'enrichment_error', ${message}::text
+         )
+       ),
+       updated_at = now()
+     where id = ${job.document_id}::uuid
+   `;
+   await updateAgentJobStatus(job, decision.jobStatus, message, decision.nextRunAt);
+   return decision.shouldRetry;
+ }
+ 
+-async function assertPublicSourceWorkerPolicy(job: ClaimedJob): Promise<void> {
++async function assertPublicSourceWorkerPolicy(job: ClaimedJob, visibility: GenerationVisibility): Promise<void> {
+   const initialViolation = publicSourceWorkerPolicyViolation(job.documents.metadata, false);
+   if (initialViolation) throw new Error(initialViolation);
+   if (job.documents.metadata?.corpus_scope !== "australian_public") return;
+ 
+-  const containsProtectedSourceContent = await scanProtectedPublicSourceChunkPages(
+-    async (offset, limit) => sql<Array<{ content: string }>>`
+-      select chunk.content
+-      from public.document_chunks chunk
+-      where chunk.document_id = ${job.document_id}::uuid
+-      order by chunk.chunk_index, chunk.id
+-      limit ${limit}
+-      offset ${offset}
+-    `,
+-  );
++  const generationPredicate = generationPredicateForJob(job, visibility);
++  const containsProtectedSourceContent = await scanProtectedPublicSourceChunkPages(async (offset, limit) => {
++    const rows = await sql<Array<{ content: string; document_id: string; generation_id: string | null }>>`
++        select chunk.content, chunk.document_id, chunk.index_generation_id::text as generation_id
++        from public.document_chunks chunk
++        where chunk.document_id = ${job.document_id}::uuid
++          and (
++            chunk.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++            or (${generationPredicate.isLegacy}::boolean and chunk.index_generation_id is null)
++          )
++        order by chunk.chunk_index, chunk.id
++        limit ${limit}
++        offset ${offset}
++      `;
++    return visibleGenerationRows(rows, visibility);
++  });
+   const violation = publicSourceWorkerPolicyViolation(job.documents.metadata, containsProtectedSourceContent);
+   if (violation) throw new Error(violation);
+ }
+ 
+-async function processJob(job: ClaimedJob): Promise<{ status: "completed" | "deferred"; missing: string[] }> {
+-  await assertPublicSourceWorkerPolicy(job);
++async function processJob(
++  job: ClaimedJob,
++  visibility: GenerationVisibility,
++): Promise<{ status: "completed" | "deferred"; missing: string[] }> {
++  await assertPublicSourceWorkerPolicy(job, visibility);
+   let gate = await completionGate(job);
+   let plan = missingArtifactPlan(gate);
+   logArtifactPlan(job, gate, plan);
+ 
+   if (gate.result === "complete") {
+     logCompletionGate(job, gate);
+     await completeJob(job);
+     return { status: "completed", missing: [] };
+   }
+ 
+   let touchedQualityInputs = false;
+ 
+   if (plan.needs_core_embeddings) {
+     const s1 = await stageStart(job, "summary_and_core_embeddings");
+     try {
+-      const summary = await ensureSummary(job);
+-      const coreFields = await upsertCoreEmbeddingFields(job, summary);
++      const summary = await ensureSummary(job, visibility);
++      const coreFields = await upsertCoreEmbeddingFields(job, summary, visibility);
+       await stageFinish(s1, true, { core_embedding_fields: coreFields });
+       gate = await completionGate(job);
+       plan = missingArtifactPlan(gate);
+       logArtifactPlan(job, gate, plan);
+     } catch (e) {
+       const msg = e instanceof Error ? e.message : JSON.stringify(e);
+       await stageFinish(s1, false, {}, msg);
+       throw e;
+     }
+   }
+ 
+   if (plan.needs_sections || plan.needs_index_units) {
+     const s2 = await stageStart(job, "sections_and_index_units");
+     try {
+-      const repairedSections = plan.needs_sections ? await ensureSectionsFromChunks(job) : 0;
++      const repairedSections = plan.needs_sections ? await ensureSectionsFromChunks(job, visibility) : 0;
+       if (repairedSections > 0) {
+         gate = await completionGate(job);
+         plan = missingArtifactPlan(gate);
+       }
+-      const sectionUnits = plan.needs_index_units || repairedSections > 0 ? await upsertSectionIndexUnits(job) : 0;
++      const sectionUnits =
++        plan.needs_index_units || repairedSections > 0 ? await upsertSectionIndexUnits(job, visibility) : 0;
+       touchedQualityInputs = touchedQualityInputs || repairedSections > 0 || sectionUnits > 0;
+       await stageFinish(s2, true, { repaired_sections: repairedSections, section_index_units: sectionUnits });
+       gate = await completionGate(job);
+       plan = missingArtifactPlan(gate);
+       logArtifactPlan(job, gate, plan);
+     } catch (e) {
+       const msg = e instanceof Error ? e.message : JSON.stringify(e);
+       await stageFinish(s2, false, {}, msg);
+       throw e;
+     }
+   }
+ 
+-  if (await needsVisualArtifacts(job)) {
++  if (await needsVisualArtifacts(job, visibility)) {
+     const s3 = await stageStart(job, "visual_priority_and_structured_extraction");
+     try {
+-      const out = await upsertVisualArtifacts(job);
++      const out = await upsertVisualArtifacts(job, visibility);
+       touchedQualityInputs = touchedQualityInputs || out.created_units > 0 || out.created_fields > 0;
+       await stageFinish(s3, true, out);
+       gate = await completionGate(job);
+       plan = missingArtifactPlan(gate);
+       logArtifactPlan(job, gate, plan);
+     } catch (e) {
+       const msg = e instanceof Error ? e.message : JSON.stringify(e);
+       await stageFinish(s3, false, {}, msg);
+       throw e;
+     }
+   }
+ 
+   if (touchedQualityInputs) {
+     const s4 = await stageStart(job, "quality_refresh");
+     try {
+-      await updateQuality(job);
++      await updateQuality(job, visibility);
+       await stageFinish(s4, true, { refreshed: true });
+       gate = await completionGate(job);
+       plan = missingArtifactPlan(gate);
+       logArtifactPlan(job, gate, plan);
+     } catch (e) {
+       const msg = e instanceof Error ? e.message : JSON.stringify(e);
+       await stageFinish(s4, false, {}, msg);
+       throw e;
+     }
+   }
+ 
+   if (plan.needs_memory) {
+     const s4 = await stageStart(job, "memory_cards_from_sections");
+     try {
+-      const memoryCards = await upsertMemoryCardsFromSections(job);
++      const memoryCards = await upsertMemoryCardsFromSections(job, visibility);
+       await stageFinish(s4, true, { memory_cards: memoryCards });
+       gate = await completionGate(job);
+       plan = missingArtifactPlan(gate);
+       logArtifactPlan(job, gate, plan);
+     } catch (e) {
+       const msg = e instanceof Error ? e.message : JSON.stringify(e);
+       await stageFinish(s4, false, {}, msg);
+       throw e;
+     }
+   }
+   if (plan.needs_labels) {
+     const s5 = await stageStart(job, "generated_labels_from_parsed_artifacts");
+     try {
+-      const labels = await upsertGeneratedLabelsFromParsedArtifacts(job);
++      const labels = await upsertGeneratedLabelsFromParsedArtifacts(job, visibility);
+       await stageFinish(s5, true, { generated_labels: labels });
+       gate = await completionGate(job);
+       plan = missingArtifactPlan(gate);
+       logArtifactPlan(job, gate, plan);
+     } catch (e) {
+       const msg = e instanceof Error ? e.message : JSON.stringify(e);
+       await stageFinish(s5, false, {}, msg);
+       throw e;
+     }
+   }
+@@ -1945,40 +2153,62 @@ Deno.serve({ port: Number(Deno.env.get("PORT") ?? "8000") }, async (req: Request
+ 
+     const claimSource = "documents";
+     const claimed = await sql<ClaimedJob[]>`
+       select * from public.claim_indexing_v3_agent_jobs(${workerId}::text, ${limit}::integer, 45::integer)
+     `;
+ 
+     if (claimed.length === 0) {
+       return Response.json({ ok: true, claimed: 0, processed: 0, failed: 0 });
+     }
+ 
++    const claimedDocumentIds = Array.from(new Set(claimed.map((job) => job.document_id)));
++    const authorityRows = await sql<DocumentGenerationAuthorityRow[]>`
++      select id, index_generation_id, metadata
++      from public.documents
++      where id = any(${claimedDocumentIds}::uuid[])
++    `;
++    const generationVisibility = buildGenerationVisibility(authorityRows, claimedDocumentIds);
++
+     let processed = 0;
+     let deferred = 0;
+     let failed = 0;
+-    const failures: Array<{ job_id: string; document_id: string; error: string }> = [];
++    const failures: Array<{
++      job_id: string;
++      document_id: string;
++      error: string;
++      failure_recording_error?: string;
++    }> = [];
+     const deferrals: Array<{ job_id: string; document_id: string; missing: string[] }> = [];
+ 
+-    for (const job of claimed) {
+-      try {
+-        const result = await processJob(job);
++    const outcomes = await runEdgeJobBatch(
++      claimed,
++      (job) => processJob(job, generationVisibility),
++      (job, message) => markJobFailure(job, message),
++    );
++    for (const outcome of outcomes) {
++      const job = outcome.job;
++      if ("result" in outcome) {
++        const result = outcome.result;
+         if (result.status === "completed") {
+           processed += 1;
+         } else {
+           deferred += 1;
+           deferrals.push({ job_id: job.id, document_id: job.document_id, missing: result.missing });
+         }
+-      } catch (e) {
++      } else {
+         failed += 1;
+-        const msg = e instanceof Error ? e.message : JSON.stringify(e);
+-        failures.push({ job_id: job.id, document_id: job.document_id, error: msg });
+-        await markJobFailure(job, msg);
++        failures.push({
++          job_id: job.id,
++          document_id: job.document_id,
++          error: outcome.error,
++          ...(outcome.failureRecordingError ? { failure_recording_error: outcome.failureRecordingError } : {}),
++        });
+       }
+     }
+ 
+     return Response.json({
+       ok: true,
+       worker: workerId,
+       claim_source: claimSource,
+       claimed: claimed.length,
+       processed,
+       deferred,
+diff --git a/supabase/functions/indexing-v3-agent/utils.ts b/supabase/functions/indexing-v3-agent/utils.ts
+index 99ab648b0bce30320ae62a169657795e3a41e8cc..65de66de517f19165eda78d54ad829de8db347ac 100644
+--- a/supabase/functions/indexing-v3-agent/utils.ts
++++ b/supabase/functions/indexing-v3-agent/utils.ts
+@@ -82,20 +82,24 @@ export function tokenize(v: string): string[] {
+         .split(/[^a-z0-9]+/g)
+         .filter((x) => x.length > 2),
+     ),
+   ).slice(0, 40);
+ }
+ 
+ export function safeRecord(value: unknown): Record<string, unknown> {
+   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+ }
+ 
++export function generationMetadata(indexGenerationId: string | null): Record<string, string> {
++  return indexGenerationId === null ? {} : { index_generation_id: indexGenerationId };
++}
++
+ export function compactString(value: unknown, limit = 180): string {
+   const text = normalizeText(String(value ?? ""));
+   return text.length > limit ? text.slice(0, limit).trim() : text;
+ }
+ 
+ export function uniqueStrings(values: string[], limit = 20): string[] {
+   const seen = new Set<string>();
+   const out: string[] = [];
+   for (const value of values) {
+     const normalized = normalizeText(value);
+diff --git a/supabase/functions/ingestion-worker/auth.ts b/supabase/functions/ingestion-worker/auth.ts
+deleted file mode 100644
+index aec9c87a3f54aaa012a9031f4a3ce041f0f4faea..0000000000000000000000000000000000000000
+--- a/supabase/functions/ingestion-worker/auth.ts
++++ /dev/null
+@@ -1,30 +0,0 @@
+-type JwtPayload = {
+-  role?: unknown;
+-};
+-
+-function decodeJwtPayload(token: string): JwtPayload | null {
+-  const parts = token.split(".");
+-  if (parts.length !== 3 || !parts[1]) return null;
+-
+-  try {
+-    const base64 = parts[1]
+-      .replace(/-/g, "+")
+-      .replace(/_/g, "/")
+-      .padEnd(Math.ceil(parts[1].length / 4) * 4, "=");
+-    const payload = JSON.parse(atob(base64)) as unknown;
+-    return payload && typeof payload === "object" && !Array.isArray(payload) ? (payload as JwtPayload) : null;
+-  } catch {
+-    return null;
+-  }
+-}
+-
+-/**
+- * The Edge gateway verifies the JWT before the request reaches this function
+- * (`verify_jwt = true`). This second authorization gate restricts the
+- * privileged direct-Postgres worker to the service-role cron token.
+- */
+-export function hasServiceRoleAuthorization(authorization: string | null): boolean {
+-  const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+-  if (!token) return false;
+-  return decodeJwtPayload(token)?.role === "service_role";
+-}
+diff --git a/supabase/functions/ingestion-worker/index.ts b/supabase/functions/ingestion-worker/index.ts
+deleted file mode 100644
+index 88345df06565edaf4a765ce787e448643771f012..0000000000000000000000000000000000000000
+--- a/supabase/functions/ingestion-worker/index.ts
++++ /dev/null
+@@ -1,329 +0,0 @@
+-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+-import postgres from "npm:postgres@3.4.7";
+-
+-import { hasServiceRoleAuthorization } from "./auth.ts";
+-
+-declare const Supabase: {
+-  ai: {
+-    Session: new (model: string) => {
+-      run(input: string, options: { mean_pool: boolean; normalize: boolean }): Promise<unknown>;
+-    };
+-  };
+-};
+-
+-type ClaimedJob = {
+-  id: string;
+-  document_id: string;
+-  batch_id: string | null;
+-  attempt_count: number;
+-  max_attempts: number;
+-  documents: {
+-    id: string;
+-    owner_id: string | null;
+-    title: string | null;
+-    metadata: Record<string, unknown> | null;
+-  };
+-};
+-
+-type IngestionRpcResult = {
+-  ok?: boolean;
+-  reason?: string;
+-};
+-
+-function isLeaseLost(result: IngestionRpcResult | null | undefined): boolean {
+-  return result?.ok === false && result.reason === "lease_lost";
+-}
+-
+-const SUPABASE_DB_URL = Deno.env.get("SUPABASE_DB_URL");
+-if (!SUPABASE_DB_URL) throw new Error("SUPABASE_DB_URL is required");
+-
+-const sql = postgres(SUPABASE_DB_URL, {
+-  max: 3,
+-  idle_timeout: 20,
+-  connect_timeout: 10,
+-});
+-
+-const embeddingModel = new Supabase.ai.Session("gte-small");
+-
+-function normalizeText(input: string): string {
+-  return input.replace(/\s+/g, " ").trim();
+-}
+-
+-async function sha256Hex(input: string): Promise<string> {
+-  const data = new TextEncoder().encode(input);
+-  const digest = await crypto.subtle.digest("SHA-256", data);
+-  return Array.from(new Uint8Array(digest))
+-    .map((b) => b.toString(16).padStart(2, "0"))
+-    .join("");
+-}
+-
+-async function generateEmbedding(text: string): Promise<number[]> {
+-  const vector = await embeddingModel.run(text, { mean_pool: true, normalize: true });
+-  if (!Array.isArray(vector)) throw new Error("Embedding model returned non-array output");
+-  return vector as number[];
+-}
+-
+-async function buildSummary(documentId: string): Promise<{ summary: string; sourceChunkIds: string[] }> {
+-  const chunks = await sql<
+-    {
+-      id: string;
+-      content: string;
+-      chunk_index: number;
+-    }[]
+-  >`
+-    select id, content, chunk_index
+-    from public.document_chunks
+-    where document_id = ${documentId}::uuid
+-    order by chunk_index asc
+-    limit 8
+-  `;
+-
+-  if (chunks.length === 0) {
+-    return {
+-      summary: "No chunk content available for this document yet.",
+-      sourceChunkIds: [],
+-    };
+-  }
+-
+-  const merged = normalizeText(chunks.map((c) => c.content ?? "").join(" "));
+-  const summary = merged.length > 1600 ? `${merged.slice(0, 1600)}...` : merged;
+-
+-  return {
+-    summary,
+-    sourceChunkIds: chunks.map((c) => c.id),
+-  };
+-}
+-
+-async function upsertDocumentSummary(job: ClaimedJob): Promise<string> {
+-  const docId = job.document_id;
+-  const ownerId = job.documents.owner_id;
+-
+-  const existing = await sql<{ id: string }[]>`
+-    select id
+-    from public.document_summaries
+-    where document_id = ${docId}::uuid
+-    limit 1
+-  `;
+-
+-  if (existing.length > 0) {
+-    const row = await sql<{ summary: string | null }[]>`
+-      select summary
+-      from public.document_summaries
+-      where document_id = ${docId}::uuid
+-      limit 1
+-    `;
+-
+-    return normalizeText(row[0]?.summary ?? "");
+-  }
+-
+-  const { summary, sourceChunkIds } = await buildSummary(docId);
+-
+-  await sql`
+-    insert into public.document_summaries (
+-      document_id,
+-      owner_id,
+-      summary,
+-      source_chunk_ids,
+-      model,
+-      metadata,
+-      generated_at
+-    ) values (
+-      ${docId}::uuid,
+-      ${ownerId}::uuid,
+-      ${summary},
+-      ${sourceChunkIds}::uuid[],
+-      ${"gte-small-heuristic-summary-v1"},
+-      ${JSON.stringify({ generated_by: "ingestion-worker", mode: "backfill" })}::jsonb,
+-      now()
+-    )
+-    on conflict (document_id)
+-    do update set
+-      summary = excluded.summary,
+-      source_chunk_ids = excluded.source_chunk_ids,
+-      model = excluded.model,
+-      metadata = excluded.metadata,
+-      generated_at = now(),
+-      updated_at = now()
+-  `;
+-
+-  return summary;
+-}
+-
+-async function upsertEmbeddingFields(job: ClaimedJob, summaryText: string): Promise<void> {
+-  const docId = job.document_id;
+-  const ownerId = job.documents.owner_id;
+-  const title = normalizeText(job.documents.title ?? "");
+-  const summary = normalizeText(summaryText);
+-
+-  const entries = [
+-    { fieldType: "document_title", content: title.length > 0 ? title : "Untitled document" },
+-    { fieldType: "document_summary", content: summary.length > 0 ? summary : "Summary unavailable" },
+-  ];
+-
+-  const prepared = await Promise.all(
+-    entries.map(async (entry) => ({
+-      ...entry,
+-      embedding: await generateEmbedding(entry.content),
+-      contentHash: await sha256Hex(entry.content),
+-    })),
+-  );
+-
+-  await sql.begin(async (tx) => {
+-    await tx`
+-      delete from public.document_embedding_fields
+-      where document_id = ${docId}::uuid
+-        and field_type = any(${entries.map((entry) => entry.fieldType)}::text[])
+-    `;
+-
+-    for (const entry of prepared) {
+-      await tx`
+-        insert into public.document_embedding_fields (
+-          owner_id,
+-          document_id,
+-          source_chunk_id,
+-          field_type,
+-          content,
+-          embedding,
+-          metadata,
+-          content_hash
+-        ) values (
+-          ${ownerId}::uuid,
+-          ${docId}::uuid,
+-          null,
+-          ${entry.fieldType},
+-          ${entry.content},
+-          ${JSON.stringify(entry.embedding)}::vector,
+-          ${JSON.stringify({ generated_by: "ingestion-worker", mode: "backfill" })}::jsonb,
+-          ${entry.contentHash}
+-        )
+-      `;
+-    }
+-  });
+-}
+-
+-async function markEnrichmentMetadata(documentId: string): Promise<void> {
+-  await sql`
+-    update public.documents
+-    set
+-      metadata = coalesce(metadata, '{}'::jsonb)
+-        || jsonb_build_object(
+-          'enrichment_status', 'completed',
+-          'rag_enrichment_updated_at', now()
+-        ),
+-      updated_at = now()
+-    where id = ${documentId}::uuid
+-  `;
+-}
+-
+-async function completeIngestionJob(job: ClaimedJob, workerId: string): Promise<IngestionRpcResult | null> {
+-  const [row] = await sql<Array<{ complete_ingestion_job: IngestionRpcResult }>>`
+-    select public.complete_ingestion_job(
+-      ${job.id}::uuid,
+-      ${job.document_id}::uuid,
+-      ${job.batch_id}::uuid,
+-      ${"indexed + enrichment backfill"},
+-      ${workerId}
+-    )
+-  `;
+-  return row?.complete_ingestion_job ?? null;
+-}
+-
+-async function failOrRetryIngestionJob(
+-  job: ClaimedJob,
+-  workerId: string,
+-  shouldRetry: boolean,
+-  message: string,
+-): Promise<IngestionRpcResult | null> {
+-  const [row] = await sql<Array<{ fail_or_retry_ingestion_job: IngestionRpcResult }>>`
+-    select public.fail_or_retry_ingestion_job(
+-      ${job.id}::uuid,
+-      ${job.document_id}::uuid,
+-      ${job.batch_id}::uuid,
+-      ${shouldRetry},
+-      ${"indexed"},
+-      ${"enrichment backfill failed"},
+-      ${message},
+-      ${new Date(Date.now() + 60_000).toISOString()}::timestamptz,
+-      ${workerId}
+-    )
+-  `;
+-  return row?.fail_or_retry_ingestion_job ?? null;
+-}
+-
+-async function processJob(job: ClaimedJob, workerId: string): Promise<"completed" | "lease_lost"> {
+-  const summary = await upsertDocumentSummary(job);
+-  await upsertEmbeddingFields(job, summary);
+-  await markEnrichmentMetadata(job.document_id);
+-
+-  const completion = await completeIngestionJob(job, workerId);
+-  if (isLeaseLost(completion)) return "lease_lost";
+-  if (!completion || completion.ok === false) {
+-    throw new Error(`complete_ingestion_job did not confirm success: ${completion?.reason ?? "no result row"}`);
+-  }
+-  return "completed";
+-}
+-
+-Deno.serve(async (req: Request) => {
+-  try {
+-    if (req.method !== "POST") {
+-      return new Response("Method not allowed", { status: 405, headers: { Allow: "POST" } });
+-    }
+-    if (!hasServiceRoleAuthorization(req.headers.get("authorization"))) {
+-      return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+-    }
+-
+-    const url = new URL(req.url);
+-    const limitRaw = url.searchParams.get("limit") ?? "10";
+-    const limit = Number.isFinite(Number(limitRaw)) ? Math.max(1, Math.min(50, Math.trunc(Number(limitRaw)))) : 10;
+-    const workerId = `edge-ingestion-worker-${crypto.randomUUID()}`;
+-
+-    const claimed = await sql<ClaimedJob[]>`
+-      select *
+-      from public.claim_ingestion_jobs(${workerId}, ${limit}, 45)
+-    `;
+-
+-    if (claimed.length === 0) {
+-      return Response.json({ ok: true, claimed: 0, processed: 0, failed: 0 });
+-    }
+-
+-    let processed = 0;
+-    let failed = 0;
+-    let leaseLost = 0;
+-    const failures: Array<{ job_id: string; document_id: string; error: string }> = [];
+-
+-    for (const job of claimed) {
+-      try {
+-        const outcome = await processJob(job, workerId);
+-        if (outcome === "lease_lost") {
+-          leaseLost += 1;
+-          continue;
+-        }
+-        processed += 1;
+-      } catch (error) {
+-        const message = error instanceof Error ? error.message : JSON.stringify(error);
+-        const shouldRetry = job.attempt_count < job.max_attempts;
+-        const failure = await failOrRetryIngestionJob(job, workerId, shouldRetry, message);
+-
+-        if (isLeaseLost(failure)) {
+-          leaseLost += 1;
+-          continue;
+-        }
+-
+-        failed += 1;
+-        failures.push({ job_id: job.id, document_id: job.document_id, error: message });
+-      }
+-    }
+-
+-    return Response.json({
+-      ok: true,
+-      claimed: claimed.length,
+-      processed,
+-      failed,
+-      lease_lost: leaseLost,
+-      failures,
+-    });
+-  } catch (error) {
+-    const message = error instanceof Error ? error.message : JSON.stringify(error);
+-    return Response.json({ ok: false, error: message }, { status: 500 });
+-  }
+-});
+diff --git a/supabase/migrations/20260831100000_retire_ingestion_worker.sql b/supabase/migrations/20260831100000_retire_ingestion_worker.sql
+new file mode 100644
+index 0000000000000000000000000000000000000000..f85b9c131d680848a64f5c3c8c0824182207515a
+--- /dev/null
++++ b/supabase/migrations/20260831100000_retire_ingestion_worker.sql
+@@ -0,0 +1,179 @@
++-- Retire the duplicate Edge processor. Core ingestion remains worker/main.ts;
++-- indexing-v3-agent remains the bounded enrichment processor.
++revoke execute on function public.invoke_ingestion_worker(integer) from public, anon, authenticated, service_role;
++drop function if exists public.invoke_ingestion_worker(integer);
++
++-- Completion must observe only the document's exact active generation, or
++-- positively identified legacy rows when no generation metadata exists.
++create or replace view public.document_strict_gate_status
++with (security_invoker = true)
++as
++with artifact_counts as (
++  select
++    d.id as document_id,
++    d.owner_id,
++    d.status as document_status,
++    d.updated_at as document_updated_at,
++    coalesce(d.metadata->>'enrichment_status', 'pending') as enrichment_status,
++    coalesce(d.metadata->>'indexing_v3_agent_status', 'pending') as indexing_v3_agent_status,
++    coalesce(q.extraction_quality, 'unknown') as quality_extraction_quality,
++    coalesce(q.quality_score, 0)::real as quality_score,
++    (
++      select count(*)::integer
++      from public.document_sections s
++      where s.document_id = d.id
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and s.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and s.index_generation_id is null
++          )
++        )
++    ) as sections,
++    (
++      select count(*)::integer
++      from public.document_memory_cards m
++      where m.document_id = d.id
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and m.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and m.index_generation_id is null
++          )
++        )
++    ) as memory_cards,
++    (
++      select count(*)::integer
++      from public.document_labels l
++      where l.document_id = d.id
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and l.metadata->>'index_generation_id' = d.index_generation_id::text
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and l.metadata->>'index_generation_id' is null
++          )
++        )
++        and (
++          lower(l.source) = 'generated'
++          or l.metadata->>'source' = 'generated'
++          or l.metadata->>'generated_by' = 'indexing-v3-agent'
++          or lower(coalesce(l.metadata->>'generation_source', '')) = 'indexing_v3_agent_parsed_artifacts'
++        )
++    ) as generated_labels,
++    (
++      select count(*)::integer
++      from public.document_index_units u
++      where u.document_id = d.id
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and u.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and u.index_generation_id is null
++          )
++        )
++    ) as index_units,
++    exists (
++      select 1
++      from public.document_embedding_fields f
++      where f.document_id = d.id
++        and f.field_type = 'document_title'
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and f.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and f.index_generation_id is null
++          )
++        )
++      limit 1
++    ) as title_embedding,
++    exists (
++      select 1
++      from public.document_embedding_fields f
++      where f.document_id = d.id
++        and f.field_type = 'document_summary'
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and f.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and f.index_generation_id is null
++          )
++        )
++      limit 1
++    ) as summary_embedding
++  from public.documents d
++  left join public.document_index_quality q on q.document_id = d.id
++),
++gate as (
++  select
++    artifact_counts.*,
++    array_remove(array[
++      case when sections > 0 then null else 'sections' end,
++      case when memory_cards > 0 then null else 'memory_cards' end,
++      case when generated_labels > 0 then null else 'generated_labels' end,
++      case when index_units > 0 then null else 'index_units' end,
++      case when title_embedding then null else 'title_embedding' end,
++      case when summary_embedding then null else 'summary_embedding' end
++    ], null)::text[] as missing
++  from artifact_counts
++)
++select
++  document_id,
++  owner_id,
++  document_status,
++  document_updated_at,
++  enrichment_status,
++  indexing_v3_agent_status,
++  quality_extraction_quality,
++  quality_score,
++  sections,
++  memory_cards,
++  generated_labels,
++  index_units,
++  title_embedding,
++  summary_embedding,
++  missing,
++  cardinality(missing) = 0 as gate_passed,
++  jsonb_build_object(
++    'sections', sections,
++    'memory_cards', memory_cards,
++    'generated_labels', generated_labels,
++    'index_units', index_units
++  ) as counts,
++  jsonb_build_object(
++    'title_embedding', title_embedding,
++    'summary_embedding', summary_embedding
++  ) as presence
++from gate;
++
++revoke all on table public.document_strict_gate_status from public, anon, authenticated;
++grant select on table public.document_strict_gate_status to service_role;
+diff --git a/supabase/schema.sql b/supabase/schema.sql
+index adcf4d1dc1a92eef29f7a156b5ccf64c8bb4ea87..e53738411b3d290b4f5648cc5f3ba58403569744 100644
+--- a/supabase/schema.sql
++++ b/supabase/schema.sql
+@@ -3456,77 +3456,20 @@ begin
+   end if;
+   delete from public.rag_query_misses where created_at < now() - make_interval(days => p_retention_days);
+   get diagnostics v_deleted = row_count;
+   return v_deleted;
+ end;
+ $function$;
+ 
+ revoke execute on function public.purge_expired_rag_query_misses(integer) from public, anon, authenticated;
+ grant execute on function public.purge_expired_rag_query_misses(integer) to service_role;
+ 
+--- Prefer app.ingestion_worker_base_url (GUC) with the hardcoded project URL as
+--- fallback, matching invoke_indexing_v3_agent. Guarded ALTER DATABASE SET so
+--- hosted Supabase (42501) still replays cleanly.
+-do $$
+-begin
+-  execute format('alter database %I set app.ingestion_worker_base_url = %L',
+-                 current_database(), 'https://sjrfecxgysukkwxsowpy.supabase.co');
+-exception
+-  when insufficient_privilege then
+-    raise notice 'Skipping ALTER DATABASE SET app.ingestion_worker_base_url (insufficient privilege on hosted Supabase).';
+-end
+-$$;
+-
+-CREATE OR REPLACE FUNCTION public.invoke_ingestion_worker(p_limit integer DEFAULT 25)
+- RETURNS bigint
+- LANGUAGE plpgsql
+- SECURITY DEFINER
+- SET search_path TO 'public', 'extensions', 'vault', 'pg_temp'
+-AS $function$
+-declare
+-  v_request_id bigint;
+-  v_jwt text;
+-  v_limit integer := greatest(1, least(coalesce("p_limit", 25), 200));
+-  v_base_url text;
+-begin
+-  select "decrypted_secret" into v_jwt
+-  from "vault"."decrypted_secrets"
+-  where "name" = 'cron_ingestion_jwt'
+-  limit 1;
+-
+-  if v_jwt is null or length(trim(v_jwt)) = 0 then
+-    raise exception 'Missing Vault secret: cron_ingestion_jwt';
+-  end if;
+-
+-  v_base_url := coalesce(
+-    nullif(current_setting('app.ingestion_worker_base_url', true), ''),
+-    'https://sjrfecxgysukkwxsowpy.supabase.co'
+-  );
+-
+-  select "net"."http_post"(
+-    url := v_base_url || '/functions/v1/ingestion-worker?limit=' || v_limit::text,
+-    headers := jsonb_build_object(
+-      'Content-Type','application/json',
+-      'Authorization','Bearer ' || v_jwt
+-    ),
+-    body := jsonb_build_object('source','pg_cron','worker','ingestion-worker','ts', now()),
+-    timeout_milliseconds := 60000
+-  )
+-  into v_request_id;
+-
+-  return v_request_id;
+-end;
+-$function$;
+-
+-revoke execute on function public.invoke_ingestion_worker(integer) from public, anon, authenticated;
+-grant execute on function public.invoke_ingestion_worker(integer) to service_role;
+-
+ -- Full-inventory drift snapshot backing `npm run check:drift`. The expected
+ -- state lives in supabase/drift-manifest.json (generated from a scratch replay
+ -- of this file via `npm run drift:manifest`). Keep this definition byte-identical
+ -- to the latest defining migration,
+ -- supabase/migrations/20260818090000_schema_drift_snapshot_history_probe.sql
+ -- (v2: adds the migration-history integrity probe; supersedes 20260706200000);
+ -- tests/drift-detection.test.ts enforces the parity. See docs/database-drift-detection.md.
+ create or replace function public.schema_drift_snapshot()
+ returns jsonb
+ language plpgsql
+@@ -4419,46 +4362,130 @@ as
+ with artifact_counts as (
+   select
+     d.id as document_id,
+     d.owner_id,
+     d.status as document_status,
+     d.updated_at as document_updated_at,
+     coalesce(d.metadata->>'enrichment_status', 'pending') as enrichment_status,
+     coalesce(d.metadata->>'indexing_v3_agent_status', 'pending') as indexing_v3_agent_status,
+     coalesce(q.extraction_quality, 'unknown') as quality_extraction_quality,
+     coalesce(q.quality_score, 0)::real as quality_score,
+-    (select count(*)::integer from public.document_sections s where s.document_id = d.id) as sections,
+-    (select count(*)::integer from public.document_memory_cards m where m.document_id = d.id) as memory_cards,
++    (
++      select count(*)::integer
++      from public.document_sections s
++      where s.document_id = d.id
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and s.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and s.index_generation_id is null
++          )
++        )
++    ) as sections,
++    (
++      select count(*)::integer
++      from public.document_memory_cards m
++      where m.document_id = d.id
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and m.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and m.index_generation_id is null
++          )
++        )
++    ) as memory_cards,
+     (
+       select count(*)::integer
+       from public.document_labels l
+       where l.document_id = d.id
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and l.metadata->>'index_generation_id' = d.index_generation_id::text
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and l.metadata->>'index_generation_id' is null
++          )
++        )
+         and (
+           lower(l.source) = 'generated'
+           or l.metadata->>'source' = 'generated'
+           or l.metadata->>'generated_by' = 'indexing-v3-agent'
+           or lower(coalesce(l.metadata->>'generation_source', '')) = 'indexing_v3_agent_parsed_artifacts'
+         )
+     ) as generated_labels,
+-    (select count(*)::integer from public.document_index_units u where u.document_id = d.id) as index_units,
++    (
++      select count(*)::integer
++      from public.document_index_units u
++      where u.document_id = d.id
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and u.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and u.index_generation_id is null
++          )
++        )
++    ) as index_units,
+     exists (
+       select 1
+       from public.document_embedding_fields f
+       where f.document_id = d.id
+         and f.field_type = 'document_title'
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and f.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and f.index_generation_id is null
++          )
++        )
+       limit 1
+     ) as title_embedding,
+     exists (
+       select 1
+       from public.document_embedding_fields f
+       where f.document_id = d.id
+         and f.field_type = 'document_summary'
++        and (
++          (
++            d.index_generation_id is not null
++            and d.metadata->>'index_generation_id' = d.index_generation_id::text
++            and f.index_generation_id = d.index_generation_id
++          )
++          or (
++            d.index_generation_id is null
++            and not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')
++            and f.index_generation_id is null
++          )
++        )
+       limit 1
+     ) as summary_embedding
+   from public.documents d
+   left join public.document_index_quality q on q.document_id = d.id
+ ),
+ gate as (
+   select
+     artifact_counts.*,
+     array_remove(array[
+       case when sections > 0 then null else 'sections' end,
+diff --git a/tests/indexing-v3-agent.test.ts b/tests/indexing-v3-agent.test.ts
+index 7732e0c6ba6deb4daca71c445f1516f49e65a31f..befd9fd34b8cec250b491f4443e55016cd30a6ac 100644
+--- a/tests/indexing-v3-agent.test.ts
++++ b/tests/indexing-v3-agent.test.ts
+@@ -10,38 +10,147 @@ import {
+   missingArtifactPlan,
+   parseJobStatusRpcResult,
+   protectedPublicSourceChunkPage,
+   publicSourceWorkerPolicyViolation,
+   protectedPublicSourceChunkContents,
+   scanProtectedPublicSourceChunkPages,
+   shouldRunVisualArtifacts,
+   type CompletionGateRow,
+ } from "../supabase/functions/indexing-v3-agent/behavior";
+ import { forbiddenPublicSourceIdentity } from "../supabase/functions/_shared/public-source-policy";
++import {
++  buildGenerationVisibility,
++  isVisibleCommittedGenerationRow,
++} from "../supabase/functions/_shared/ingestion-generation-visibility";
+ 
+ const completeGateRow: CompletionGateRow = {
+   sections: 3,
+   memory_cards: 8,
+   generated_labels: 4,
+   index_units: 12,
+   title_embedding: true,
+   summary_embedding: true,
+   quality_extraction_quality: "good",
+   quality_score: 0.91,
+   missing: [],
+   gate_passed: true,
+ };
+ function gateRow(overrides: Partial<CompletionGateRow> = {}): CompletionGateRow {
+   return { ...completeGateRow, ...overrides };
+ }
+ 
+ describe("indexing-v3-agent behavior", () => {
++  it("admits only legacy rows or the exact active committed generation", () => {
++    const visibility = {
++      activeGenerationByDocument: new Map([["doc-a", "gen-active"]]),
++      committedGenerationIds: new Set(["gen-active", "gen-other"]),
++      knownLegacyDocumentIds: new Set(["doc-legacy"]),
++    };
++
++    expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: null }, visibility)).toBe(false);
++    expect(isVisibleCommittedGenerationRow({ document_id: "doc-legacy", generation_id: null }, visibility)).toBe(true);
++    expect(isVisibleCommittedGenerationRow({ document_id: "doc-unknown", generation_id: null }, visibility)).toBe(
++      false,
++    );
++    expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: "gen-active" }, visibility)).toBe(
++      true,
++    );
++    expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: "gen-other" }, visibility)).toBe(
++      false,
++    );
++    expect(
++      isVisibleCommittedGenerationRow({ document_id: "doc-missing", generation_id: "gen-active" }, visibility),
++    ).toBe(false);
++  });
++
++  it("constructs generation visibility only from complete validated document authority", () => {
++    const active = "1a2b3c4d-6666-4aaa-8bbb-000000000006";
++    const visibility = buildGenerationVisibility(
++      [
++        { id: "doc-active", index_generation_id: active, metadata: { index_generation_id: active } },
++        { id: "doc-legacy", index_generation_id: null, metadata: {} },
++      ],
++      ["doc-active", "doc-legacy"],
++    );
++    expect(visibility.activeGenerationByDocument).toEqual(new Map([["doc-active", active]]));
++    expect(visibility.committedGenerationIds).toEqual(new Set([active]));
++    expect(visibility.knownLegacyDocumentIds).toEqual(new Set(["doc-legacy"]));
++
++    expect(() => buildGenerationVisibility([], ["doc-active"])).toThrow(/incomplete/i);
++    expect(() =>
++      buildGenerationVisibility(
++        [{ id: "doc-active", index_generation_id: active, metadata: { index_generation_id: "not-a-generation" } }],
++        ["doc-active"],
++      ),
++    ).toThrow(/malformed|mismatch/i);
++    expect(() =>
++      buildGenerationVisibility(
++        [
++          { id: "doc-active", index_generation_id: active, metadata: { index_generation_id: active } },
++          { id: "doc-active", index_generation_id: null, metadata: {} },
++        ],
++        ["doc-active"],
++      ),
++    ).toThrow(/overlap/i);
++    expect(() =>
++      buildGenerationVisibility([{ id: "doc-active", index_generation_id: active, metadata: {} }], ["doc-active"]),
++    ).toThrow(/incomplete|mismatch/i);
++    expect(() =>
++      buildGenerationVisibility(
++        [{ id: "doc-legacy", index_generation_id: null, metadata: { index_generation_id: null } }],
++        ["doc-legacy"],
++      ),
++    ).toThrow(/mismatch/i);
++  });
++
++  it("filters every generation-aware read before ordering, limits, counts, or completion", () => {
++    const edgeSource = readFileSync(
++      new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
++      "utf8",
++    );
++    for (const [start, end] of [
++      ["async function ensureSummary", "function unitsFromStructured"],
++      ["async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText"],
++      ["async function ensureSectionsFromChunks", "async function upsertMemoryCardsFromSections"],
++      ["async function upsertMemoryCardsFromSections", "async function upsertSectionIndexUnits"],
++      ["async function upsertSectionIndexUnits", "async function upsertVisualArtifacts"],
++      ["async function updateQuality", "async function completionGate"],
++      ["async function needsVisualArtifacts", "async function updateAgentJobStatus"],
++      ["async function assertPublicSourceWorkerPolicy", "async function processJob"],
++    ] as const) {
++      const segment = sourceSegment(edgeSource, start, end, { label: start });
++      expect(segment).toContain("generationPredicate");
++      const predicateIndex = segment.indexOf("generationPredicate");
++      for (const terminal of ["order by", "limit ", "count(*)"]) {
++        const terminalIndex = segment.toLowerCase().indexOf(terminal);
++        if (terminalIndex >= 0) expect(predicateIndex).toBeLessThan(terminalIndex);
++      }
++    }
++  });
++
++  it("writes the exact generation on every generated strict-read artifact", () => {
++    const edgeSource = readFileSync(
++      new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
++      "utf8",
++    );
++    for (const [start, end] of [
++      ["async function ensureSummary", "function unitsFromStructured"],
++      ["async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText"],
++      ["async function ensureSectionsFromChunks", "async function upsertMemoryCardsFromSections"],
++      ["async function upsertMemoryCardsFromSections", "async function upsertSectionIndexUnits"],
++      ["async function upsertSectionIndexUnits", "async function upsertVisualArtifacts"],
++      ["async function upsertVisualArtifacts", "async function upsertCoreEmbeddingFields"],
++    ] as const) {
++      expect(sourceSegment(edgeSource, start, end, { label: start })).toContain("indexGenerationId");
++    }
++  });
++
+   it("blocks protected or incomplete public-source policy before provider or artifact work", async () => {
+     expect(
+       publicSourceWorkerPolicyViolation(
+         {
+           corpus_scope: "australian_public",
+           source_catalogue_key: "wa-health",
+           source_policy_version: "australian-source-policy-v1",
+           content_mode: "indexed_content",
+           licence_policy: "public_index_permitted",
+           public_source_lifecycle: "shadow",
+@@ -60,21 +169,21 @@ describe("indexing-v3-agent behavior", () => {
+       ),
+     );
+     const processStart = sourceSegment(
+       edgeSource,
+       "async function processJob",
+       "let gate = await completionGate(job)",
+       {
+         label: "indexing-v3-agent public-source preflight",
+       },
+     );
+-    expect(processStart).toContain("assertPublicSourceWorkerPolicy(job)");
++    expect(processStart).toContain("assertPublicSourceWorkerPolicy(job, visibility)");
+   });
+ 
+   it("normalizes protected identities identically across acquisition and worker boundaries", () => {
+     for (const value of [
+       "Health<em>direct</em>",
+       "Health direct",
+       "Health&amp;direct",
+       "Health&Tab;direct",
+       "Health&NewLine;direct",
+       "Health&#9direct",
+diff --git a/tests/ingestion-edge-function-auth.test.ts b/tests/ingestion-edge-function-auth.test.ts
+index 2108ba8e8a887fe972ddfbc47e8ab9ff6b0ddd49..b721ed8bf9e9e43025eab1ce02768ed7bd5b6257 100644
+--- a/tests/ingestion-edge-function-auth.test.ts
++++ b/tests/ingestion-edge-function-auth.test.ts
+@@ -1,39 +1,30 @@
+-import { readFileSync } from "node:fs";
++import { existsSync, readFileSync } from "node:fs";
+ import { join } from "node:path";
+ 
+ import { describe, expect, it } from "vitest";
+ 
+-import { hasServiceRoleAuthorization } from "../supabase/functions/ingestion-worker/auth";
+-
+ const root = process.cwd();
+-const source = readFileSync(join(root, "supabase/functions/ingestion-worker/index.ts"), "utf8");
+ const config = readFileSync(join(root, "supabase/config.toml"), "utf8");
++const schema = readFileSync(join(root, "supabase/schema.sql"), "utf8");
++const databaseTypes = readFileSync(join(root, "src/lib/supabase/database.types.ts"), "utf8");
++const migrationPath = join(root, "supabase/migrations/20260831100000_retire_ingestion_worker.sql");
+ 
+-function tokenForRole(role: string): string {
+-  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
+-  return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ role })}.signature`;
+-}
+-
+-describe("ingestion-worker Edge Function authorization", () => {
+-  it("accepts only a gateway-verified service-role JWT", () => {
+-    expect(hasServiceRoleAuthorization(`Bearer ${tokenForRole("service_role")}`)).toBe(true);
+-    expect(hasServiceRoleAuthorization(`Bearer ${tokenForRole("authenticated")}`)).toBe(false);
+-    expect(hasServiceRoleAuthorization(`Bearer ${tokenForRole("anon")}`)).toBe(false);
+-    expect(hasServiceRoleAuthorization("Bearer malformed")).toBe(false);
+-    expect(hasServiceRoleAuthorization(null)).toBe(false);
++describe("retired duplicate ingestion-worker Edge Function", () => {
++  it("removes only the duplicate function, config registration, and current invoker surface", () => {
++    expect(existsSync(join(root, "supabase/functions/ingestion-worker/index.ts"))).toBe(false);
++    expect(existsSync(join(root, "supabase/functions/ingestion-worker/auth.ts"))).toBe(false);
++    expect(config).not.toContain("[functions.ingestion-worker]");
++    expect(schema).not.toContain("FUNCTION public.invoke_ingestion_worker");
++    expect(databaseTypes).not.toContain("invoke_ingestion_worker:");
+   });
+ 
+-  it("keeps gateway verification enabled and rejects state-changing GET requests", () => {
+-    expect(config).toContain("[functions.ingestion-worker]\nverify_jwt = true");
+-    expect(source).toContain('if (req.method !== "POST")');
+-    expect(source).toContain('hasServiceRoleAuthorization(req.headers.get("authorization"))');
+-    expect(source.indexOf("hasServiceRoleAuthorization")).toBeLessThan(source.indexOf("public.claim_ingestion_jobs"));
+-    expect(source).toContain("complete_ingestion_job(");
+-    expect(source).toContain("fail_or_retry_ingestion_job(");
+-    expect(source).toContain("${workerId}");
+-    expect(source).toContain('reason === "lease_lost"');
+-    expect(source).toContain("lease_lost:");
+-    expect(source).toContain("sql.begin");
+-    expect(source).toContain("complete_ingestion_job did not confirm success");
++  it("ships a forward-only revoke-before-drop migration", () => {
++    expect(existsSync(migrationPath)).toBe(true);
++    const migration = readFileSync(migrationPath, "utf8").toLowerCase();
++    const revoke = migration.indexOf("revoke execute on function public.invoke_ingestion_worker(integer)");
++    const drop = migration.indexOf("drop function if exists public.invoke_ingestion_worker(integer)");
++    expect(revoke).toBeGreaterThanOrEqual(0);
++    expect(drop).toBeGreaterThan(revoke);
++    expect(migration).not.toContain("create or replace function public.invoke_ingestion_worker");
+   });
+ });
+diff --git a/tests/supabase-schema.test.ts b/tests/supabase-schema.test.ts
+index f7578d92b229179467a3da2d71a5e8f13678c977..6fd29726e4d9ec84b27fd0f9184817ddbb22aaa7 100644
+--- a/tests/supabase-schema.test.ts
++++ b/tests/supabase-schema.test.ts
+@@ -2211,24 +2211,46 @@ describe("Clinical query-term corrector — tenant-safe vocabulary (F10)", () =>
+         "revoke execute on function public.match_document_chunks_text(text, integer, uuid[], uuid)",
+       );
+       expect(sql).toContain(
+         "revoke execute on function public.match_document_memory_cards_hybrid(extensions.vector, text, integer, double precision, uuid[], uuid)",
+       );
+       expect(sql).toContain("revoke execute on function public.match_documents_for_query(text, integer, uuid)");
+       expect(sql).toContain("grant execute on function public.match_documents_for_query(text, integer, uuid)");
+     }
+   });
+ 
+-  it("moves invoke_ingestion_worker to the GUC base-URL pattern with service-role-only execute", () => {
+-    for (const sql of [schema, invokeIngestionWorkerGucMigration]) {
+-      expect(sql).toContain("alter database %I set app.ingestion_worker_base_url = %L");
+-      expect(sql).toContain("when insufficient_privilege then");
+-      expect(sql).toContain("nullif(current_setting('app.ingestion_worker_base_url', true), '')");
+-      expect(sql).toContain("v_base_url || '/functions/v1/ingestion-worker?limit='");
+-      expect(sql).not.toContain("[REDACTED]/functions/v1/ingestion-worker");
+-      expect(sql).toContain(
+-        "revoke execute on function public.invoke_ingestion_worker(integer) from public, anon, authenticated",
+-      );
+-      expect(sql).toContain("grant execute on function public.invoke_ingestion_worker(integer) to service_role");
++  it("preserves the historical invoker migration while retiring its current schema surface", () => {
++    expect(invokeIngestionWorkerGucMigration).toContain("alter database %I set app.ingestion_worker_base_url = %L");
++    expect(invokeIngestionWorkerGucMigration).toContain("when insufficient_privilege then");
++    expect(invokeIngestionWorkerGucMigration).toContain(
++      "nullif(current_setting('app.ingestion_worker_base_url', true), '')",
++    );
++    expect(invokeIngestionWorkerGucMigration).toContain("v_base_url || '/functions/v1/ingestion-worker?limit='");
++    expect(invokeIngestionWorkerGucMigration).toContain(
++      "revoke execute on function public.invoke_ingestion_worker(integer) from public, anon, authenticated",
++    );
++    expect(invokeIngestionWorkerGucMigration).toContain(
++      "grant execute on function public.invoke_ingestion_worker(integer) to service_role",
++    );
++    expect(schema).not.toContain("FUNCTION public.invoke_ingestion_worker");
++  });
++
++  it("reconciles strict-gate counts to the exact active generation or positive legacy rows", () => {
++    const migration = readFileSync(
++      new URL("../supabase/migrations/20260831100000_retire_ingestion_worker.sql", import.meta.url),
++      "utf8",
++    ).toLowerCase();
++    for (const sql of [schema.toLowerCase(), migration]) {
++      const viewStart = sql.lastIndexOf("create or replace view public.document_strict_gate_status");
++      expect(viewStart).toBeGreaterThanOrEqual(0);
++      const viewEnd = sql.indexOf("create or replace function public.repair_strict_enrichment_gate_batch", viewStart);
++      const view = sql.slice(viewStart, viewEnd >= 0 ? viewEnd : undefined);
++      expect(view).toContain("d.index_generation_id");
++      expect(view).toContain("d.metadata->>'index_generation_id'");
++      expect(view).toContain("s.index_generation_id = d.index_generation_id");
++      expect(view).toContain("m.index_generation_id = d.index_generation_id");
++      expect(view).toContain("l.metadata->>'index_generation_id' = d.index_generation_id::text");
++      expect(view).toContain("u.index_generation_id = d.index_generation_id");
++      expect(view).toContain("not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')");
+     }
+   });
+ });
+diff --git a/tests/worker-run-loop.test.ts b/tests/worker-run-loop.test.ts
+index 0dad8979ff3fff2a5ac87c0cf7ab014a168203e4..3300cfd7aaf9e7d14d0498a4ca255abca0f05f38 100644
+--- a/tests/worker-run-loop.test.ts
++++ b/tests/worker-run-loop.test.ts
+@@ -1,14 +1,15 @@
+ import { describe, expect, it, vi } from "vitest";
+ import { WorkerRuntimeControl } from "../worker/runtime-control";
+ import { runWorkerLoop } from "../worker/run-loop";
+ import type { JobRow } from "../worker/types";
++import { runEdgeJobBatch } from "../supabase/functions/indexing-v3-agent/behavior";
+ 
+ function fakeJob(id = "job-1"): JobRow {
+   return {
+     id,
+     document_id: "doc-1",
+     batch_id: null,
+     attempt_count: 0,
+     max_attempts: 3,
+     documents: {
+       id: "doc-1",
+@@ -16,20 +17,38 @@ function fakeJob(id = "job-1"): JobRow {
+       title: "Test",
+       file_name: "test.pdf",
+       file_type: "application/pdf",
+       storage_path: "docs/test.pdf",
+       metadata: null,
+     },
+   };
+ }
+ 
+ describe("runWorkerLoop", () => {
++  it("continues the Edge batch when processing and failure recording both throw", async () => {
++    const jobs = [{ id: "edge-1" }, { id: "edge-2" }];
++    const process = vi.fn().mockRejectedValueOnce(new Error("process boom")).mockResolvedValueOnce("completed");
++    const recordFailure = vi.fn().mockRejectedValueOnce(new Error("failure recorder boom"));
++
++    const outcomes = await runEdgeJobBatch(jobs, process, recordFailure);
++
++    expect(process).toHaveBeenCalledTimes(2);
++    expect(outcomes).toEqual([
++      {
++        job: jobs[0],
++        error: "process boom",
++        failureRecordingError: "failure recorder boom",
++      },
++      { job: jobs[1], result: "completed" },
++    ]);
++  });
++
+   it("exits immediately when no jobs are available and once is set", async () => {
+     const ctrl = new WorkerRuntimeControl();
+     const claim = vi.fn().mockResolvedValue([]);
+     const probe = vi.fn().mockResolvedValue({ ok: true });
+ 
+     await runWorkerLoop({
+       once: true,
+       pollMs: 1000,
+       healthBackoffMs: 1000,
+       maxClaimFailures: 3,
