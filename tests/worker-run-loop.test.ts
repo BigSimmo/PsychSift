@@ -42,6 +42,28 @@ describe("runWorkerLoop", () => {
     ]);
   });
 
+  it("continues the Edge batch when processing and failure errors cannot be serialised", async () => {
+    const jobs = [{ id: "edge-1" }, { id: "edge-2" }];
+    const cyclicProcessingError: { kind: string; self?: unknown } = { kind: "cyclic_processing_error" };
+    cyclicProcessingError.self = cyclicProcessingError;
+    const process = vi.fn().mockRejectedValueOnce(cyclicProcessingError).mockResolvedValueOnce("completed");
+    const recordFailure = vi.fn().mockRejectedValueOnce({ kind: "failure_recorder_error", value: 1n });
+
+    const outcomes = await runEdgeJobBatch(jobs, process, recordFailure);
+
+    expect(process).toHaveBeenCalledTimes(2);
+    expect(recordFailure).toHaveBeenCalledWith(jobs[0], "[unserialisable thrown value]");
+    expect(outcomes).toEqual([
+      {
+        job: jobs[0],
+        error: "[unserialisable thrown value]",
+        failureRecordingError: "[unserialisable thrown value]",
+      },
+      { job: jobs[1], result: "completed" },
+    ]);
+    expect(() => JSON.stringify(outcomes)).not.toThrow();
+  });
+
   it("exits immediately when no jobs are available and once is set", async () => {
     const ctrl = new WorkerRuntimeControl();
     const claim = vi.fn().mockResolvedValue([]);

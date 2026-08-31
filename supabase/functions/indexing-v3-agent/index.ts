@@ -1065,11 +1065,13 @@ async function upsertGeneratedLabelsFromParsedArtifacts(
         on conflict (document_id, label_type, label, source)
         do update set
           confidence = greatest(document_labels.confidence, excluded.confidence),
-          metadata = CASE
-            WHEN jsonb_typeof(document_labels.metadata) = 'object' THEN
-              coalesce(document_labels.metadata, '{}'::jsonb) || excluded.metadata
-            ELSE excluded.metadata
-          END,
+          metadata = (
+            CASE
+              WHEN jsonb_typeof(document_labels.metadata) = 'object' THEN
+                coalesce(document_labels.metadata, '{}'::jsonb) - 'index_generation_id'
+              ELSE '{}'::jsonb
+            END
+          ) || excluded.metadata,
           updated_at = now()
       `;
       count += 1;

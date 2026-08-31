@@ -72,8 +72,13 @@ export type EdgeJobBatchOutcome<TJob, TResult> =
   Readonly<{ job: TJob; result: TResult }> | Readonly<{ job: TJob; error: string; failureRecordingError?: string }>;
 
 function errorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  return JSON.stringify(error) ?? String(error);
+  try {
+    if (error instanceof Error) return error.message;
+    const serialized = JSON.stringify(error);
+    return serialized ?? String(error);
+  } catch {
+    return "[unserialisable thrown value]";
+  }
 }
 
 export async function runEdgeJobBatch<TJob, TResult>(

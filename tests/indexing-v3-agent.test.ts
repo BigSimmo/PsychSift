@@ -21,6 +21,7 @@ import {
   buildGenerationVisibility,
   isVisibleCommittedGenerationRow,
 } from "../supabase/functions/_shared/ingestion-generation-visibility";
+import { generationMetadata } from "../supabase/functions/indexing-v3-agent/utils";
 
 const completeGateRow: CompletionGateRow = {
   sections: 3,
@@ -36,6 +37,74 @@ const completeGateRow: CompletionGateRow = {
 };
 function gateRow(overrides: Partial<CompletionGateRow> = {}): CompletionGateRow {
   return { ...completeGateRow, ...overrides };
+}
+
+const indexingAgentSource = readFileSync(
+  new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
+  "utf8",
+);
+
+function agentFunction(start: string, end: string) {
+  return sourceSegment(indexingAgentSource, start, end, { label: start });
+}
+
+function statementWithin(functionSource: string, start: string, end: string, label: string) {
+  return sourceSegment(functionSource, start, end, { label });
+}
+
+function normalizedSql(source: string) {
+  return source.replace(/\s+/g, " ").trim();
+}
+
+function expectTypedGenerationPredicate(
+  source: string,
+  column: string,
+  label: string,
+  terminals: ReadonlyArray<string> = [],
+) {
+  const statement = normalizedSql(source);
+  const whereIndex = statement.toLowerCase().indexOf("where ");
+  const active = `${column} = \${generationPredicate.indexGenerationId}::uuid`;
+  const legacy = `\${generationPredicate.isLegacy}::boolean and ${column} is null`;
+  const activeIndex = statement.indexOf(active);
+  expect(whereIndex, `${label}: WHERE`).toBeGreaterThanOrEqual(0);
+  expect(activeIndex, `${label}: active generation predicate`).toBeGreaterThan(whereIndex);
+  expect(statement, `${label}: positive legacy predicate`).toContain(legacy);
+  for (const terminal of terminals) {
+    const terminalIndex = statement.toLowerCase().indexOf(terminal.toLowerCase());
+    expect(terminalIndex, `${label}: ${terminal}`).toBeGreaterThan(activeIndex);
+  }
+}
+
+function expectMetadataGenerationPredicate(
+  source: string,
+  column: string,
+  label: string,
+  terminals: ReadonlyArray<string> = [],
+) {
+  const statement = normalizedSql(source);
+  const whereIndex = statement.toLowerCase().indexOf("where ");
+  const active = `${column} = \${generationPredicate.indexGenerationId}::text`;
+  const legacy = `\${generationPredicate.isLegacy}::boolean and ${column} is null`;
+  const activeIndex = statement.indexOf(active);
+  expect(whereIndex, `${label}: WHERE`).toBeGreaterThanOrEqual(0);
+  expect(activeIndex, `${label}: active metadata generation predicate`).toBeGreaterThan(whereIndex);
+  expect(statement, `${label}: positive legacy metadata predicate`).toContain(legacy);
+  for (const terminal of terminals) {
+    const terminalIndex = statement.toLowerCase().indexOf(terminal.toLowerCase());
+    expect(terminalIndex, `${label}: ${terminal}`).toBeGreaterThan(activeIndex);
+  }
+}
+
+function expectTypedGenerationWrite(source: string, label: string) {
+  const statement = normalizedSql(source);
+  expect(statement, `${label}: typed generation column`).toContain("index_generation_id");
+  expect(statement, `${label}: exact typed generation value`).toContain(
+    "${generationPredicate.indexGenerationId}::uuid",
+  );
+  expect(statement, `${label}: metadata generation value`).toContain(
+    "generationMetadata(generationPredicate.indexGenerationId)",
+  );
 }
 
 describe("indexing-v3-agent behavior", () => {
@@ -102,46 +171,374 @@ describe("indexing-v3-agent behavior", () => {
     ).toThrow(/mismatch/i);
   });
 
-  it("filters every generation-aware read before ordering, limits, counts, or completion", () => {
-    const edgeSource = readFileSync(
-      new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
-      "utf8",
+  it("binds each generation-aware read predicate to its own SQL statement before decisions", () => {
+    const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
+    expectMetadataGenerationPredicate(
+      statementWithin(
+        ensureSummary,
+        "const existingRows = await sql",
+        "const existing = visibleGenerationRows",
+        "summary lookup",
+      ),
+      "metadata->>'index_generation_id'",
+      "summary lookup",
+      ["limit 1"],
     );
-    for (const [start, end] of [
-      ["async function ensureSummary", "function unitsFromStructured"],
-      ["async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText"],
-      ["async function ensureSectionsFromChunks", "async function upsertMemoryCardsFromSections"],
-      ["async function upsertMemoryCardsFromSections", "async function upsertSectionIndexUnits"],
-      ["async function upsertSectionIndexUnits", "async function upsertVisualArtifacts"],
-      ["async function updateQuality", "async function completionGate"],
-      ["async function needsVisualArtifacts", "async function updateAgentJobStatus"],
-      ["async function assertPublicSourceWorkerPolicy", "async function processJob"],
-    ] as const) {
-      const segment = sourceSegment(edgeSource, start, end, { label: start });
-      expect(segment).toContain("generationPredicate");
-      const predicateIndex = segment.indexOf("generationPredicate");
-      for (const terminal of ["order by", "limit ", "count(*)"]) {
-        const terminalIndex = segment.toLowerCase().indexOf(terminal);
-        if (terminalIndex >= 0) expect(predicateIndex).toBeLessThan(terminalIndex);
-      }
-    }
+    expectTypedGenerationPredicate(
+      statementWithin(
+        ensureSummary,
+        "const chunkRows = await sql",
+        "const chunks = visibleGenerationRows",
+        "summary chunks",
+      ),
+      "index_generation_id",
+      "summary chunks",
+      ["order by chunk_index", "limit 24"],
+    );
+
+    const labels = agentFunction("async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText");
+    expectMetadataGenerationPredicate(
+      statementWithin(
+        labels,
+        "const summaryRowsRaw = await sql",
+        "const summaryRows = visibleGenerationRows",
+        "label summary input",
+      ),
+      "metadata->>'index_generation_id'",
+      "label summary input",
+      ["limit 1"],
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(
+        labels,
+        "const chunksForLabelsRaw = await sql",
+        "const chunksForLabels = visibleGenerationRows",
+        "label chunk input",
+      ),
+      "index_generation_id",
+      "label chunk input",
+      ["order by chunk_index", "limit 8"],
+    );
+    const labelSections = statementWithin(
+      labels,
+      "const sectionRows = await sql",
+      "const sections = visibleGenerationRows",
+      "label section input",
+    );
+    expectTypedGenerationPredicate(labelSections, "c.index_generation_id", "label lateral chunk input", [
+      "order by case when c.id",
+      "limit 1",
+    ]);
+    expectTypedGenerationPredicate(labelSections, "s.index_generation_id", "label section input", [
+      "order by s.section_index",
+    ]);
+    expectTypedGenerationPredicate(
+      statementWithin(labels, "const cardRows = await sql", "const cards = visibleGenerationRows", "label card input"),
+      "index_generation_id",
+      "label card input",
+      ["order by created_at"],
+    );
+
+    const sections = agentFunction(
+      "async function ensureSectionsFromChunks",
+      "async function upsertMemoryCardsFromSections",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(sections, "const existing = await sql", "if ((existing[0]?.count", "section repair count"),
+      "index_generation_id",
+      "section repair count",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(
+        sections,
+        "const chunkRows = await sql",
+        "const chunks = visibleGenerationRows",
+        "section repair chunks",
+      ),
+      "index_generation_id",
+      "section repair chunks",
+      ["order by chunk_index", "limit 24"],
+    );
+
+    const cards = agentFunction(
+      "async function upsertMemoryCardsFromSections",
+      "async function upsertSectionIndexUnits",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(
+        cards,
+        "const sectionRows = await sql",
+        "const sections = visibleGenerationRows",
+        "memory card section input",
+      ),
+      "index_generation_id",
+      "memory card section input",
+      ["order by section_index", "limit 16"],
+    );
+
+    const sectionUnits = agentFunction(
+      "async function upsertSectionIndexUnits",
+      "async function upsertVisualArtifacts",
+    );
+    const sectionUnitInput = statementWithin(
+      sectionUnits,
+      "const sectionRows = await sql",
+      "const sections = visibleGenerationRows",
+      "section index-unit input",
+    );
+    expectTypedGenerationPredicate(sectionUnitInput, "c.index_generation_id", "section index-unit lateral chunk", [
+      "order by case when c.id",
+      "limit 1",
+    ]);
+    expectTypedGenerationPredicate(sectionUnitInput, "s.index_generation_id", "section index-unit section", [
+      "order by s.section_index",
+    ]);
+
+    const visualArtifacts = agentFunction(
+      "async function upsertVisualArtifacts",
+      "async function upsertCoreEmbeddingFields",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(
+        visualArtifacts,
+        "const imageRows = await sql",
+        "const images = visibleGenerationRows",
+        "visual image input",
+      ),
+      "index_generation_id",
+      "visual image input",
+      ["order by page_number"],
+    );
+
+    const quality = agentFunction("async function updateQuality", "async function completionGate");
+    expectTypedGenerationPredicate(
+      statementWithin(quality, "from public.document_index_units", "image_counts as (", "quality index-unit counts"),
+      "index_generation_id",
+      "quality index-unit counts",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(quality, "from public.document_images", "u.visual_units", "quality image counts"),
+      "index_generation_id",
+      "quality image counts",
+    );
+
+    const visualDecision = agentFunction("async function needsVisualArtifacts", "async function updateAgentJobStatus");
+    expectTypedGenerationPredicate(
+      statementWithin(
+        visualDecision,
+        "from public.document_images",
+        ") as eligible_images",
+        "visual decision image count",
+      ),
+      "index_generation_id",
+      "visual decision image count",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(
+        visualDecision,
+        "from public.document_index_units",
+        ") as generated_visual_units",
+        "visual decision unit count",
+      ),
+      "index_generation_id",
+      "visual decision unit count",
+    );
+
+    const protectedScan = agentFunction("async function assertPublicSourceWorkerPolicy", "async function processJob");
+    expectTypedGenerationPredicate(
+      statementWithin(
+        protectedScan,
+        "const rows = await sql",
+        "return visibleGenerationRows",
+        "protected-source chunk scan",
+      ),
+      "chunk.index_generation_id",
+      "protected-source chunk scan",
+      ["order by chunk.chunk_index", "limit ${limit}", "offset ${offset}"],
+    );
   });
 
-  it("writes the exact generation on every generated strict-read artifact", () => {
-    const edgeSource = readFileSync(
-      new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
-      "utf8",
+  it("binds generation authority to each generated-artifact write and conflict", () => {
+    const activeGeneration = "1a2b3c4d-6666-4aaa-8bbb-000000000006";
+    expect(generationMetadata(null), "positive legacy labels omit generation authority").toEqual({});
+    expect(generationMetadata(activeGeneration), "active labels carry the exact generation authority").toEqual({
+      index_generation_id: activeGeneration,
+    });
+
+    const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
+    const summaryWrite = statementWithin(
+      ensureSummary,
+      "insert into public.document_summaries",
+      "return summary.length",
+      "summary write",
     );
-    for (const [start, end] of [
-      ["async function ensureSummary", "function unitsFromStructured"],
-      ["async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText"],
-      ["async function ensureSectionsFromChunks", "async function upsertMemoryCardsFromSections"],
-      ["async function upsertMemoryCardsFromSections", "async function upsertSectionIndexUnits"],
-      ["async function upsertSectionIndexUnits", "async function upsertVisualArtifacts"],
-      ["async function upsertVisualArtifacts", "async function upsertCoreEmbeddingFields"],
-    ] as const) {
-      expect(sourceSegment(edgeSource, start, end, { label: start })).toContain("indexGenerationId");
-    }
+    expect(normalizedSql(summaryWrite), "summary exact metadata generation").toContain(
+      "generationMetadata(generationPredicate.indexGenerationId)",
+    );
+    expect(normalizedSql(summaryWrite), "summary conflict generation replacement").toContain(
+      "metadata = excluded.metadata",
+    );
+
+    const labels = agentFunction("async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText");
+    const labelWrite = statementWithin(
+      labels,
+      "insert into public.document_labels",
+      "count += 1",
+      "generated-label write",
+    );
+    expect(normalizedSql(labelWrite), "active label exact metadata generation").toContain(
+      "generationMetadata(generationPredicate.indexGenerationId)",
+    );
+    expect(
+      normalizedSql(labelWrite).toLowerCase(),
+      "legacy label conflict removes stale or malformed generation before replacement",
+    ).toContain(
+      "when jsonb_typeof(document_labels.metadata) = 'object' then coalesce(document_labels.metadata, '{}'::jsonb) - 'index_generation_id' else '{}'::jsonb end ) || excluded.metadata",
+    );
+
+    const sections = agentFunction(
+      "async function ensureSectionsFromChunks",
+      "async function upsertMemoryCardsFromSections",
+    );
+    const sectionWrite = statementWithin(
+      sections,
+      "insert into public.document_sections",
+      "inserted += rows.length",
+      "section write",
+    );
+    expectTypedGenerationWrite(sectionWrite, "section write");
+    expect(normalizedSql(sectionWrite), "section conflict typed generation replacement").toContain(
+      "index_generation_id = excluded.index_generation_id",
+    );
+    expect(normalizedSql(sectionWrite), "section conflict metadata generation replacement").toContain(
+      "metadata = excluded.metadata",
+    );
+
+    const cards = agentFunction(
+      "async function upsertMemoryCardsFromSections",
+      "async function upsertSectionIndexUnits",
+    );
+    expectTypedGenerationWrite(
+      statementWithin(cards, "insert into public.document_memory_cards", "inserted += 1", "memory-card write"),
+      "memory-card write",
+    );
+
+    const sectionUnits = agentFunction(
+      "async function upsertSectionIndexUnits",
+      "async function upsertVisualArtifacts",
+    );
+    expectTypedGenerationWrite(
+      statementWithin(
+        sectionUnits,
+        "insert into public.document_index_units",
+        "inserted += 1",
+        "section index-unit write",
+      ),
+      "section index-unit write",
+    );
+
+    const visualArtifacts = agentFunction(
+      "async function upsertVisualArtifacts",
+      "async function upsertCoreEmbeddingFields",
+    );
+    expectTypedGenerationWrite(
+      statementWithin(
+        visualArtifacts,
+        "insert into public.document_index_units",
+        "createdUnits += 1",
+        "visual index-unit write",
+      ),
+      "visual index-unit write",
+    );
+    expectTypedGenerationWrite(
+      statementWithin(
+        visualArtifacts,
+        "insert into public.document_embedding_fields",
+        "createdFields += 1",
+        "visual embedding-field write",
+      ),
+      "visual embedding-field write",
+    );
+
+    const coreEmbeddings = agentFunction("async function upsertCoreEmbeddingFields", "async function updateQuality");
+    expectTypedGenerationWrite(
+      statementWithin(
+        coreEmbeddings,
+        "insert into public.document_embedding_fields",
+        "inserted += 1",
+        "core embedding-field write",
+      ),
+      "core embedding-field write",
+    );
+  });
+
+  it("generation-bounds each repair, replacement, and cleanup mutation", () => {
+    const cards = agentFunction(
+      "async function upsertMemoryCardsFromSections",
+      "async function upsertSectionIndexUnits",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(cards, "delete from public.document_memory_cards", "for (let index", "memory-card cleanup"),
+      "index_generation_id",
+      "memory-card cleanup",
+    );
+
+    const sectionUnits = agentFunction(
+      "async function upsertSectionIndexUnits",
+      "async function upsertVisualArtifacts",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(
+        sectionUnits,
+        "delete from public.document_index_units",
+        "for (let index",
+        "section index-unit cleanup",
+      ),
+      "index_generation_id",
+      "section index-unit cleanup",
+    );
+
+    const visualArtifacts = agentFunction(
+      "async function upsertVisualArtifacts",
+      "async function upsertCoreEmbeddingFields",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(visualArtifacts, "update public.document_images", "for (const unit", "visual image update"),
+      "index_generation_id",
+      "visual image update",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(
+        visualArtifacts,
+        "delete from public.document_embedding_fields",
+        "delete from public.document_index_units",
+        "visual embedding cleanup",
+      ),
+      "index_generation_id",
+      "visual embedding cleanup",
+    );
+    expectTypedGenerationPredicate(
+      statementWithin(
+        visualArtifacts,
+        "delete from public.document_index_units",
+        "for (let index",
+        "visual index-unit cleanup",
+      ),
+      "index_generation_id",
+      "visual index-unit cleanup",
+    );
+
+    const coreEmbeddings = agentFunction("async function upsertCoreEmbeddingFields", "async function updateQuality");
+    expectTypedGenerationPredicate(
+      statementWithin(
+        coreEmbeddings,
+        "delete from public.document_embedding_fields",
+        "for (const { row",
+        "core embedding cleanup",
+      ),
+      "index_generation_id",
+      "core embedding cleanup",
+    );
   });
 
   it("blocks protected or incomplete public-source policy before provider or artifact work", async () => {
