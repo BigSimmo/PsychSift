@@ -1,0 +1,2380 @@
+# Review package: 03aa32d731d1cb9009be55213580e9ea3994017c..834219a36f7ee75a36362ae07a1de44b325e8504
+
+## Commits
+834219a36f7ee75a36362ae07a1de44b325e8504
+
+## Diff
+diff --git a/.superpowers/sdd/progress.md b/.superpowers/sdd/progress.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..9ccf3bd4eb22ac420225d310a29998ea6d4c89d1
+--- /dev/null
++++ b/.superpowers/sdd/progress.md
+@@ -0,0 +1,25 @@
++# RAG programme SDD progress
++
++- Programme: `rag-answer-quality-and-repository-coverage-v1`
++- Worktree: `C:\Users\joshs\.codex\worktrees\rag-local-build-20260822\Database`
++- Branch: `codex/rag-local-build-20260822`
++- Programme implementation base: `7252eb6312edf634e887578a322c53f23be7ab28`
++- Current phase: `C00` metadata candidate awaiting independent review; product implementation remains paused
++- Phase start: `03aa32d731d1cb9009be55213580e9ea3994017c`
++- Current task: `rag-source-ingestion-continuation-v1/C00` (candidate anchored; awaiting independent `clinical-governance-reviewer` review)
++- Task base: `03aa32d731d1cb9009be55213580e9ea3994017c`
++- Phase end candidate: pending continuation states C00-C06
++- Status: C00 METADATA CANDIDATE; product implementation is paused pending a clean independent C00 review. P00-P07 are accepted and their current receipt hashes are imported without modifying parent evidence. P07 final product head `97a13cfaa10bff4188f57137264c86e54b23291c` passed final Task 2 and full-phase reviews; amended atomic P07 receipt commit `03aa32d731d1cb9009be55213580e9ea3994017c` passed `--accept-phase P07`. P08A `--before` and empty-draft `--resume` validation passed, but no P08A product/test/migration edit, RED run, or task commit exists. The user approved `docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md` on 2026-08-31; SHA-256 `FEC371222E5D21F10DFA1A24E02DD5DE27F941AFC685D3CE2BF3E3ECF0973676`. The concrete 13-unit plan at `docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md` has exactly two tranche reviews, structurally default-off retrieval, no connected-operation authority, and passed independent whole-plan review with no Critical or Important findings; reviewed plan plus implementation-preflight correction SHA-256 `F455EFDEF4D80A64CD0A3FA4BC2C6F637799E32332C7D81459E0FBD24755D4D7`. Resume product work only after C00 review is clean; do not resume the superseded P08A plan.
++- Downstream P08A invariant: superseded by the approved ingestion-first continuation; never use the stale planned `20260820122000` filename, reopen the conditional P08A reuse option, or recreate P06 release/epoch/pending/synchronizer authority
++- Superseded P08A Task 3 migration allocation: `20260830215420_add_corpus_scoped_retrieval_v3.sql` (never created or applied; not active continuation authority)
++- Sole continuation retrieval reservation: `20260831106000_add_source_ingestion_retrieval_kernel.sql` (absent at C00 preflight, ordered after then-latest `20260827213539_add_site_content_runtime_authority.sql`, and unapplied)
++- P08A Task 3 paused implementer: `/root/p08a_retrieval_task3_impl`; durable report `docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/P08A/P08A-retrieval-task-3-implementer-report.md`; no commits and no product changes
++- P06 Task 3 head: `aed1c5eec5ef7d276b16b8a9226f1ff5080a749b`
++- P06 Task 4 head: `0ee8c09681a49b7891f99d4c3d33f426611ffd78`
++- P06 Task 5: complete (commits `0ee8c0..766030a`, final Review 8 spec/quality clean)
++- P06 Task 5 head: `766030a4fe748bb221869a2bd212fab6471a00dc`
++- Package base: `dea32b8d26b32f03827bf71c0814315d92a7cb5c`
++- Package head: `7252eb6312edf634e887578a322c53f23be7ab28`
++- Package hash: `2ada405d103719fb8a921bac8b08ca6ca922850c27530185995d647a10dfa7d9`
++- Process artifacts: keep `.superpowers`, P08A artifacts/receipt, `1/`, the unreferenced P06 provenance artifacts, and the unreferenced P07 phase-fix report untracked until the applicable atomic phase-metadata commit
++- Live/provider/hosted actions: prohibited
+diff --git a/docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md b/docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..69ce1c1b069b231cb3516ea1b3ec3081c11b32df
+--- /dev/null
++++ b/docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md
+@@ -0,0 +1,1720 @@
++# Ingestion-First Continuation Implementation Plan
++
++> **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:subagent-driven-development` to execute this plan one behavior unit at a time. Use a fresh implementer for each numbered product task, then fresh specialist reviewers for the immutable task range. Writers are serial; independent read-only reviews may run in parallel.
++
++**Goal:** Complete the source-only clinical ingestion system from trusted admission through technically validated, default-off retrieval while preserving all accepted P00-P07 evidence and deferring unrelated answer, presentation, rollout, provider, and connected-production work.
++
++**Architecture:** Anchor a new `rag-source-ingestion-continuation-v1` evidence overlay at accepted P07 commit `03aa32d731d1cb9009be55213580e9ea3994017c`. Land the sole-processor, generation, lease, shadow-reindex, admission, safety, extraction, activation, queue, retrieval, withdrawal, and reprocessing contracts in that order. Keep the ordinary buffered Answer path byte-equivalent and unable to call the new source-ingestion retrieval kernel.
++
++**Tech stack:** Next.js 16.3 App Router, TypeScript 6 strict, Zod 4, Supabase/PostgreSQL/Storage/RLS, Node and Deno workers, Python/PyMuPDF/Tesseract, Vitest, Playwright, and the repository's migration, drift, RAG-fixture, gate-arbiter, task-brief, and immutable review-package tooling.
++
++**Spec:** [`docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md`](../specs/2026-08-31-ingestion-first-continuation-design.md)
++
++**Reasoning:** Concrete plan and final whole-range review use `xhigh`; implementation uses `high`. The plan should take 2-4 active hours. Source-only implementation, review, correction, and offline closure target 38-52 active hours, with a 58-hour contingency ceiling.
++
++## Global constraints
++
++- The immutable implementation anchor is `03aa32d731d1cb9009be55213580e9ea3994017c`. P00-P07 receipts and their accepted artifacts are never edited.
++- The unaccepted P08A draft is superseded. Do not resume it, use its reserved migration name, or claim P08A/P14/P15/P16 acceptance under the parent manifest.
++- This plan may produce only continuation states C00-C06. It cannot produce `PRODUCTION_ACCEPTED`.
++- Do not process a document or corpus. Do not access hosted Supabase, Storage, PITR, scanners, model assets, or providers. Do not apply migrations, deploy, reindex, stage, evaluate, activate, withdraw, roll back, clean up, push, or open a pull request.
++- Keep one writer at a time across `worker/**`, `supabase/**`, RAG, upload, and dashboard owners. Preserve unrelated staged, unstaged, and untracked work.
++- For each product task: create a fresh task brief; record RED before implementation; implement the smallest behavior; run the exact focused GREEN selector; create an immutable `TASK_BASE..TASK_HEAD` review package; obtain separate specification and quality verdicts; correct every Critical or Important finding; re-review the whole corrected range; then create the local checkpoint authorized by the user's save-progress request. Never push.
++- Reuse final corrected behavior from `0f9a52f22^..03d68b3a1` and the dirty `rag-ingestion-design-20260821` worktree only as read-only semantic references. Never cherry-pick or copy either range wholesale, and never treat either as acceptance evidence.
++- Preserve the accepted P04 ingestion classifier, P05 public-source policy and recovery-evidence vocabulary, P06 site-release authority, and P07 query/cache/ranking behavior unless a task below explicitly names the owner.
++- All SQL functions use a fixed empty or explicit `search_path`, validate bounded inputs, serialize conflicting writes, and revoke `PUBLIC`, `anon`, and `authenticated` unless an authenticated administrator wrapper is explicitly named.
++- `service_role` alone is not trusted-backend identity. Backend admission requires a distinct high-entropy capability whose digest is readable only inside a narrowly granted `SECURITY DEFINER` wrapper. Administrator admission independently verifies `auth.uid()`, the administrator claim, and staging ownership.
++- The source-ingestion retrieval kernel is structurally default-off. `src/lib/rag/rag.ts`, Answer/search routes, answer-support code, and legacy cache readers/writers must neither import nor invoke it.
++- Unknown admission, safety, policy, generation, lease, lineage, activation, withdrawal, or recovery state fails closed.
++- Before Task 11 route/UI work, read the installed Next 16 route-handler and dynamic-route guides named in that task. Before browser work, run `npm run ensure` and use only its printed, project-verified URL.
++- The approved migration reservation is the following ordered set. Before creating the first migration, prove every full filename is absent and every version sorts after the then-latest migration; if either check fails, stop before RED and record a newly allocated ordered set in the plan and task brief.
++
++```text
++20260831100000_retire_ingestion_worker.sql
++20260831101000_fence_ingestion_leases_and_repairs.sql
++20260831102000_stage_shadow_document_generations.sql
++20260831103000_activate_retained_document_generations.sql
++20260831104000_create_document_admission_events.sql
++20260831105000_add_document_technical_activation.sql
++20260831106000_add_source_ingestion_retrieval_kernel.sql
++```
++
++- Reconcile `supabase/schema.sql` and `src/lib/supabase/database.types.ts` in each migration-owning task. Regenerate or reconcile `supabase/drift-manifest.json` once after C01/C02 migrations stabilize and once after C03/C04 migrations stabilize; never copy generated artifacts from another worktree.
++- `npm run check:production-readiness` is approval-gated by the saved workflow flightplan. Do not execute it during C00-C06 without a later explicit approval. Record it in C07, not as a local pass.
++- Use `npm run arbiter -- <gate>` before any expensive final gate. A `DEFER` or `PROVEN` result is evidence, not a pass. Never rerun an unchanged successful gate.
++
++## Continuation evidence layout
++
++Create only concrete programme evidence, not a generalized workflow framework:
++
++```text
++docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/manifest.json
++docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C00-anchor.md
++docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C01-evidence.md
++docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C02-evidence.md
++docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C03-evidence.md
++docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C04-evidence.md
++docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C05-evidence.md
++docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C06-acceptance.md
++docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C07-connected-residuals.md
++docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/
++```
++
++Every task artifact names the task base, task head, exact commands and outcomes, implementer identity, reviewer identities, final verdicts, correction heads, and SHA-256 of the immutable review package. Continue using:
++
++```text
++npm run plans:rag:receipts:check -- --write-review-package TASK_BASE TASK_HEAD docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/TASK_ID/TASK_ID-review.diff
++```
++
++Replace `TASK_BASE`, `TASK_HEAD`, and `TASK_ID` with observed literal values before running the command. This invocation reuses the repository-owned canonical diff writer without altering parent receipts.
++
++## Exact task order and time budget
++
++| Unit | Parent mapping            | Outcome                                           | Target hours |
++| ---- | ------------------------- | ------------------------------------------------- | ------------ |
++| 1    | Ingestion Task 4 / C01    | sole processor and generation-visible reads       | 2-3          |
++| 2    | Ingestion Task 5 / C01    | source-anchored summaries                         | 2.5-3.5      |
++| 3    | Ingestion Task 6 / C01    | lease fencing and bounded repair                  | 3-4          |
++| 4    | Ingestion Task 7 / C02    | exact-generation shadow staging and evaluation    | 3.5-5        |
++| 5    | Ingestion Task 8 / C02    | activation, rollback, retention, and cleanup      | 3-4          |
++| 6    | Ingestion Task 9 / C02    | operator truth and wave runbooks                  | 0.75-1.25    |
++| 7    | Trusted Task 1 / C03      | administrator/backend admission                   | 2.5-3.5      |
++| 8    | Trusted Task 2 / C03      | ingress and provider-egress safety                | 2.5-3.5      |
++| 9    | Trusted Task 3 / C03      | reproducible OCR/layout evidence                  | 2.5-3.5      |
++| 10   | Trusted Task 4 / C03      | technical eligibility and atomic activation       | 3.5-4.5      |
++| 11   | Trusted Task 5 / C04      | durable administrator queue and complete UI       | 2.5-3.5      |
++| 12   | Trusted Task 6 / C04      | default-off retrieval kernel and withdrawal proof | 4-5          |
++| 13   | Trusted Task 7 / C05      | selective reprocessing and recovery controls      | 2-3          |
++| —    | C00, tranche reviews, C06 | anchors, integration review, final acceptance     | 4-5          |
++
++## Exact file map
++
++| Area                      | Files                                                                                                                                                                                                                                                                      |
++| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
++| Processor and summaries   | `supabase/functions/ingestion-worker/**`, `supabase/functions/indexing-v3-agent/{index,behavior,utils}.ts`, `supabase/functions/_shared/{ingestion-generation-visibility,source-anchored-summary}.ts`, `src/lib/document-enrichment.ts`, `worker/main.ts`                  |
++| Lease and repair          | `worker/{types,row-contracts,behavior,main}.ts`, `supabase/schema.sql`, `src/lib/supabase/database.types.ts`, migrations `20260831100000` and `20260831101000`                                                                                                             |
++| Shadow lifecycle          | `scripts/reindex-shadow.ts`, `scripts/lib/reindex-eval-session.ts`, `src/lib/{reindex-eval-gate,reindex-pipeline}.ts`, `scripts/{eval-retrieval,eval-quality,cleanup-abandoned-reindex-generations}.ts`, migrations `20260831102000` and `20260831103000`                  |
++| Admission and safety      | `src/lib/{trusted-document-admission,document-ingress-safety}.ts`, `src/app/api/upload/route.ts`, `scripts/import-documents.ts`, `src/lib/{upload-structure,privacy,env}.ts`, migration `20260831104000`                                                                   |
++| Extraction and activation | `worker/python/extract_pdf_assets.py`, `src/lib/extractors/document.ts`, `src/lib/types.ts`, `worker/shadow-extraction.ts`, `src/lib/{index-quality,document-technical-eligibility,publication-manifest}.ts`, migration `20260831105000`                                   |
++| Queue UI                  | `src/app/api/ingestion/quality/route.ts`, `src/app/api/ingestion/quality/tasks/[id]/route.ts`, `src/components/clinical-dashboard/{document-manager-contracts,clinical-dashboard-payloads,DocumentManagerPanel}.tsx`, `src/components/ClinicalDashboard.tsx`               |
++| Retrieval and lifecycle   | `src/lib/owner-scope.ts`, `src/lib/rag/source-ingestion-retrieval.ts`, `src/app/api/documents/[id]/route.ts`, `src/lib/{ingestion-audit,document-reprocessing}.ts`, `scripts/{audit-document-pipeline-versions,plan-document-reprocessing}.ts`, migration `20260831106000` |
++| Documentation             | `docs/{ingestion-state-machine,worker-deploy-runbook,reindex-runbook,reindex-shadow-harness-design,disaster-recovery-runbook,search-rag-master-context,openai-rag-operations}.md`, `docs/rag-improvement/data-flow-register.md`                                            |
++
++## C00: Anchor the continuation before product work
++
++**Files:**
++
++- Create: `docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/manifest.json`
++- Create: `docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C00-anchor.md`
++- Modify: `.superpowers/sdd/progress.md`
++
++Checkpoint the already approved planning inputs without changing their reviewed bytes:
++
++- `docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md`
++- `docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md`
++- `docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C00/C00-brief.md`
++
++They are untracked at the implementation base; omitting them would leave the committed `designPath` and `planPath` dangling.
++
++**Step 1: Record immutable imports**
++
++The manifest contains `programmeId`, `designPath`, `planPath`, `implementationBase`, the accepted P00-P07 receipt paths and SHA-256 digests, ordered phases C01-C06, the 13 unit identifiers, reviewer routing, migration reservations, C07 residuals, and `ordinaryAnswerServingChanged: false`.
++
++**Step 2: Prove the anchor and migration reservation**
++
++Run:
++
++```text
++git rev-parse HEAD
++git merge-base --is-ancestor 03aa32d731d1cb9009be55213580e9ea3994017c HEAD
++rg --files supabase/migrations | rg "20260831100000|20260831101000|20260831102000|20260831103000|20260831104000|20260831105000|20260831106000"
++node -e "const fs=require('node:fs');const reserved=['20260831100000_retire_ingestion_worker.sql','20260831101000_fence_ingestion_leases_and_repairs.sql','20260831102000_stage_shadow_document_generations.sql','20260831103000_activate_retained_document_generations.sql','20260831104000_create_document_admission_events.sql','20260831105000_add_document_technical_activation.sql','20260831106000_add_source_ingestion_retrieval_kernel.sql'];const existing=fs.readdirSync('supabase/migrations').sort();const latest=existing.at(-1);for(const name of reserved){if(existing.includes(name))throw new Error('reserved migration exists: '+name);if(name.localeCompare(latest)<=0)throw new Error(name+' does not sort after '+latest)}if([...reserved].sort().join()!==reserved.join())throw new Error('reservations are unordered');console.log(JSON.stringify({latest,reserved}))"
++```
++
++Expected: HEAD equals the accepted P07 metadata commit at the initial anchor, ancestry exits 0, the migration search exits 1 with no matches, the latest existing migration is reported, and all seven absent reservations sort after it in the planned order.
++
++**Step 3: Capture the dry-run gate route**
++
++Run:
++
++```text
++node scripts/ci-change-scope.mjs --json --files worker/main.ts,supabase/schema.sql,src/app/api/upload/route.ts,src/lib/document-ingress-safety.ts,src/app/api/ingestion/quality/route.ts,src/lib/rag/source-ingestion-retrieval.ts
++npm run verify:pr-local -- --dry-run --files worker/main.ts,supabase/schema.sql,src/app/api/upload/route.ts,src/lib/document-ingress-safety.ts,src/app/api/ingestion/quality/route.ts,src/lib/rag/source-ingestion-retrieval.ts
++npm run verify:pr-local -- --dry-run --extended --files worker/main.ts,supabase/schema.sql,src/app/api/upload/route.ts,src/lib/document-ingress-safety.ts,src/app/api/ingestion/quality/route.ts,src/lib/rag/source-ingestion-retrieval.ts,src/components/ClinicalDashboard.tsx
++```
++
++Expected: the scope mapper reports `ingestion_sast_changed: true`, `db_changed: true`, and `rag_eval_changed: true`. The exact primary preview prints its fail-closed source gate plan without running it. The extended preview adds `verify:ui` for the later administrator queue surface, still without running a verification command. The selector has no separate privacy or clinical categories; those risks are represented by the task's explicit privacy, clinical-governance, schema, ingestion, retrieval, and UI reviewer routing rather than falsely claimed as dry-run flags.
++
++**Step 4: Review and checkpoint C00 metadata**
++
++A fresh reviewer verifies the exact parent receipt digests, no parent-file mutation, migration order, retained/deferred list, and C07 boundaries. Create one local metadata checkpoint. Product implementation begins only after that review is clean.
++
++---
++
++## Task 1: Retire the duplicate processor and enforce committed-generation reads
++
++**Files:**
++
++- Create: `supabase/functions/_shared/ingestion-generation-visibility.ts`
++- Create: `supabase/migrations/20260831100000_retire_ingestion_worker.sql`
++- Delete: `supabase/functions/ingestion-worker/index.ts`
++- Delete: `supabase/functions/ingestion-worker/auth.ts`
++- Delete or replace: `tests/ingestion-edge-function-auth.test.ts`
++- Modify: `supabase/config.toml`
++- Modify: `supabase/functions/indexing-v3-agent/index.ts`
++- Modify: `supabase/functions/indexing-v3-agent/behavior.ts`
++- Modify: `supabase/functions/indexing-v3-agent/utils.ts`
++- Modify: `supabase/schema.sql`
++- Modify: `src/lib/supabase/database.types.ts`
++- Modify: `tests/indexing-v3-agent.test.ts`
++- Modify: `tests/worker-run-loop.test.ts`
++- Modify: `tests/worker-row-contract.test.ts`
++- Modify: `tests/supabase-schema.test.ts`
++- Modify: `docs/worker-deploy-runbook.md`
++
++**Step 1: Write RED ownership and visibility tests**
++
++Add this exact matrix to `tests/indexing-v3-agent.test.ts`:
++
++```ts
++it("admits only legacy rows or the exact active committed generation", () => {
++  const visibility = {
++    activeGenerationByDocument: new Map([["doc-a", "gen-active"]]),
++    committedGenerationIds: new Set(["gen-active", "gen-other"]),
++    knownLegacyDocumentIds: new Set(["doc-legacy"]),
++  };
++
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: null }, visibility)).toBe(false);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-legacy", generation_id: null }, visibility)).toBe(true);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-unknown", generation_id: null }, visibility)).toBe(false);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: "gen-active" }, visibility)).toBe(true);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: "gen-other" }, visibility)).toBe(false);
++  expect(isVisibleCommittedGenerationRow({ document_id: "doc-missing", generation_id: "gen-active" }, visibility)).toBe(
++    false,
++  );
++});
++```
++
++Add source-query assertions proving stale rows are filtered before `ORDER BY` and `LIMIT`, plus a loop case in which both job processing and failure recording throw but the next claimed job still runs.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-run-loop.test.ts tests/worker-row-contract.test.ts tests/supabase-schema.test.ts
++```
++
++Expected RED: the shared predicate and retirement migration are absent; the duplicate function/config/invoker and stale-generation reads remain observable.
++
++**Step 2: Add the shared predicate**
++
++Create:
++
++```ts
++export type GenerationVisibleRow = Readonly<{
++  document_id: string;
++  generation_id: string | null;
++}>;
++
++export type GenerationVisibility = Readonly<{
++  activeGenerationByDocument: ReadonlyMap<string, string>;
++  committedGenerationIds: ReadonlySet<string>;
++  knownLegacyDocumentIds: ReadonlySet<string>;
++}>;
++
++export function isVisibleCommittedGenerationRow(row: GenerationVisibleRow, visibility: GenerationVisibility): boolean {
++  if (row.generation_id === null)
++    return (
++      visibility.knownLegacyDocumentIds.has(row.document_id) &&
++      !visibility.activeGenerationByDocument.has(row.document_id)
++    );
++  return (
++    visibility.activeGenerationByDocument.get(row.document_id) === row.generation_id &&
++    visibility.committedGenerationIds.has(row.generation_id)
++  );
++}
++```
++
++Project the validated generation alias for chunks, sections, cards, index units, summaries, and labels. Apply the predicate before sorting or truncating. Preserve the P05 protected-source preflight before provider or artifact work.
++
++Null-generation compatibility is document-scoped and positive: it is allowed only when a complete authority scan explicitly classifies the document as legacy and no active mapping exists. Absence from the active map is unknown, not legacy. Reject overlapping legacy/active authority, malformed generation IDs, and incomplete authority scans before constructing `GenerationVisibility`. Once a document has an active generation, every null or non-matching generation row is stale and excluded.
++
++**Step 3: Retire only the recovered processor**
++
++The migration drops `public.invoke_ingestion_worker(integer)`, revokes its grants first, and does not edit historical migrations. Remove the `ingestion-worker` function directory and config stanza. Remove the current schema/type entry, while retaining historical documentation that accurately describes the past state. Nest failure-recording in its own `try/catch` so it cannot abort sibling jobs.
++
++**Step 4: Run GREEN and static gates**
++
++```text
++node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-run-loop.test.ts tests/worker-row-contract.test.ts tests/supabase-schema.test.ts
++npm run check:edge:functions
++npm run check:migration-role
++```
++
++Expected: focused tests pass; the sole surviving processor is `worker/main.ts` for core processing plus `indexing-v3-agent` for bounded enrichment; current schema/types/config contain no retired invoker.
++
++**Step 5: Review and checkpoint**
++
++Primary reviewer: `ingestion-worker-reviewer`. Mandatory migration/grant reviewer: `supabase-schema-guardian`. Suggested local checkpoint message: `fix(ingestion): retire duplicate processor`.
++
++---
++
++## Task 2: Produce one validated source-anchored summary payload
++
++**Files:**
++
++- Create: `supabase/functions/_shared/source-anchored-summary.ts`
++- Modify: `supabase/functions/indexing-v3-agent/index.ts`
++- Modify: `supabase/functions/indexing-v3-agent/behavior.ts`
++- Modify: `supabase/functions/indexing-v3-agent/utils.ts`
++- Modify: `src/lib/document-enrichment.ts`
++- Modify: `src/lib/types.ts`
++- Modify: `worker/main.ts`
++- Modify: `tests/indexing-v3-agent.test.ts`
++- Modify: `tests/document-enrichment.test.ts`
++- Modify: `tests/worker-shadow-extraction.test.ts`
++- Modify: `tests/check-indexing-contract.test.ts`
++
++**Step 1: Define the transport-neutral contract and RED cases**
++
++```ts
++export type SourceAnchoredSummaryProfileItem = Readonly<{
++  text: string;
++  source_chunk_ids: readonly string[];
++  source_image_ids: readonly string[];
++  pages: readonly number[];
++  evidence_type: "text" | "table" | "image" | "mixed" | "metadata";
++  support: "direct" | "partial" | "not_found";
++}>;
++
++export type SourceAnchoredClinicalProfile = Readonly<{
++  overview: string;
++  applies_to: readonly SourceAnchoredSummaryProfileItem[];
++  key_clinical_actions: readonly SourceAnchoredSummaryProfileItem[];
++  medication_dose_monitoring: readonly SourceAnchoredSummaryProfileItem[];
++  thresholds_timing: readonly SourceAnchoredSummaryProfileItem[];
++  escalation_risk_warnings: readonly SourceAnchoredSummaryProfileItem[];
++  required_forms_documentation: readonly SourceAnchoredSummaryProfileItem[];
++  not_covered: readonly SourceAnchoredSummaryProfileItem[];
++  important_tables_images: readonly SourceAnchoredSummaryProfileItem[];
++  best_questions: readonly SourceAnchoredSummaryProfileItem[];
++  source_quality_notes: readonly SourceAnchoredSummaryProfileItem[];
++}>;
++
++export type SourceAnchoredSummaryLabelType =
++  | "site"
++  | "topic"
++  | "document_type"
++  | "medication"
++  | "risk"
++  | "setting"
++  | "workflow"
++  | "population"
++  | "service"
++  | "clinical_action"
++  | "care_phase"
++  | "document_intent"
++  | "content_feature"
++  | "custom";
++
++export type SourceAnchoredSummaryPayload = Readonly<{
++  summary_kind: "structured" | "heuristic_fallback";
++  summary_version: "source-anchored-summary-v1";
++  document_id: string;
++  index_generation_id: string;
++  model: string;
++  model_version: string;
++  generated_at: string;
++  source_chunk_ids: readonly string[];
++  source_image_ids: readonly string[];
++  summary: string;
++  clinical_specifics: Readonly<{
++    profile: SourceAnchoredClinicalProfile;
++    actions: readonly string[];
++    thresholds_timing: readonly string[];
++    medication_monitoring: readonly string[];
++    risk_escalation: readonly string[];
++    documentation_forms: readonly string[];
++    exceptions_gaps: readonly string[];
++  }>;
++  labels: readonly Readonly<{
++    label: string;
++    label_type: SourceAnchoredSummaryLabelType;
++    confidence: number;
++  }>[];
++  heuristic_fallback: boolean;
++}>;
++```
++
++Test invalid document/generation/chunk/image UUIDs, unordered or duplicate whole-summary anchors, non-ISO time, conflicting `summary_kind`/`heuristic_fallback`, stale-generation reuse, late-section coverage, and replacement failure preserving the prior valid summary. For every profile item, test chunk/image allowlist membership, exact page derivation, evidence type, support level, and the rule that a `direct` or `partial` item must retain at least one claim-level anchor. Whole-summary anchors supplement those claim anchors and never replace them.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/document-enrichment.test.ts tests/worker-shadow-extraction.test.ts tests/check-indexing-contract.test.ts
++```
++
++Expected RED: the shared normalizer is missing and Edge still uses its first-N heuristic path.
++
++**Step 2: Implement strict normalization**
++
++`normalizeSourceAnchoredSummary(input)` validates bounded non-empty strings and arrays, canonical UUIDs, ordered unique whole-summary anchors, every claim-level chunk/image/page anchor against the selected source maps, profile-key completeness, evidence/support values, labels, exact version markers, ISO time, and consistent fallback/model markers. It returns a new frozen value and throws before persistence on any mismatch. Move or re-export the existing `DocumentSummaryProfileItem` and `ClinicalDocumentSummaryProfile` structural types through the shared contract so Node and Deno do not acquire divergent claim vocabularies.
++
++Use `selectCoverageAwarePromptChunks` and `buildIndexingCoverageProfile` in Node and the same deterministic selection contract in Deno. Pass the already-created `indexGenerationId` from `worker/main.ts`. Generate and validate the complete replacement before upserting the summary; replace labels only after summary persistence succeeds. Edge skips only a current, validated structured payload and regenerates missing, fallback, old-version, or superseded-generation rows.
++
++**Step 3: Run GREEN**
++
++```text
++node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/document-enrichment.test.ts tests/worker-shadow-extraction.test.ts tests/check-indexing-contract.test.ts
++npm run check:edge:functions
++npm run eval:rag:offline
++```
++
++Expected: Node/Deno contract parity passes, non-first-N coverage is retained, and no provider is called by the tests.
++
++**Step 4: Review and checkpoint**
++
++Reviewers: `ingestion-worker-reviewer` and `clinical-governance-reviewer`. Suggested local checkpoint message: `feat(ingestion): anchor summaries to committed sources`.
++
++---
++
++## Task 3: Fence every lease mutation and produce bounded repair plans
++
++**Files:**
++
++- Create: `supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql`
++- Modify: `worker/types.ts`
++- Modify: `worker/row-contracts.ts`
++- Modify: `worker/behavior.ts`
++- Modify: `worker/main.ts`
++- Modify: `supabase/functions/indexing-v3-agent/index.ts`
++- Modify: `supabase/schema.sql`
++- Modify: `src/lib/supabase/database.types.ts`
++- Modify: `tests/indexing-v3-agent.test.ts`
++- Modify: `tests/worker-behavior.test.ts`
++- Modify: `tests/worker-run-loop.test.ts`
++- Modify: `tests/worker-runtime-control.test.ts`
++- Modify: `tests/worker-row-contract.test.ts`
++- Modify: `tests/check-indexing-contract.test.ts`
++- Modify: `docs/ingestion-state-machine.md`
++- Modify: `docs/worker-deploy-runbook.md`
++- Modify: `docs/reindex-runbook.md`
++
++**Step 1: Pin stale-owner RED behavior**
++
++Add a required UUID `lease_token` to claimed-row parsing. Test that each claim rotates it; missing or malformed tokens fail parsing; old worker/token pairs cannot report progress, heartbeat, commit, complete, defer, or fail/retry after a newer claim; and lease loss does not reopen or clear the newer claim.
++
++Define and test:
++
++```ts
++export type IngestionRepairReasonCode =
++  | "missing_committed_generation"
++  | "generation_mismatch"
++  | "summary_missing"
++  | "summary_invalid"
++  | "summary_fallback_growth"
++  | "lease_abandoned";
++
++export type IngestionRepairPlan = Readonly<{
++  version: "ingestion-repair-plan-v1";
++  dryRun: true;
++  documents: readonly Readonly<{
++    documentId: string;
++    reasonCodes: readonly IngestionRepairReasonCode[];
++    expectedStateDigest: `sha256:${string}`;
++  }>[];
++  planDigest: `sha256:${string}`;
++}>;
++```
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-behavior.test.ts tests/worker-run-loop.test.ts tests/worker-runtime-control.test.ts tests/worker-row-contract.test.ts tests/check-indexing-contract.test.ts
++```
++
++Expected RED: tokens are absent from at least one mutation path and the repair planner does not exist.
++
++**Step 2: Implement atomic token fencing**
++
++Claims set `lease_token = gen_random_uuid()` and return it. Every mutation matches `id`, `document_id`, `status = 'processing'`, `locked_by`, and `lease_token` in the same statement. Return exactly `{ "ok": false, "reason": "lease_lost" }` when no row matches. Implement these service-only RPCs:
++
++```text
++update_ingestion_job_progress(p_job_id,p_document_id,p_worker_id,p_lease_token,p_stage,p_progress)
++heartbeat_ingestion_job(p_job_id,p_document_id,p_worker_id,p_lease_token)
++complete_ingestion_job(p_job_id,p_document_id,p_batch_id,p_stage,p_worker_id,p_lease_token)
++fail_or_retry_ingestion_job(p_job_id,p_document_id,p_batch_id,p_retry,p_document_status,p_stage,p_error_message,p_next_run_at,p_worker_id,p_lease_token)
++```
++
++Fence strict-agent status and generation commits equivalently. Remove direct-update fallback paths that can bypass the token. Revoke or replace the current arbitrary `repair_strict_enrichment_gate_batch(integer)` mutator.
++
++**Step 3: Implement the deterministic repair planner and append-only audit**
++
++`planIngestionRepairs` accepts 1-100 unique canonical document UUIDs, a non-empty fixed reason-code set, and exactly one `sha256:` state digest per document. It stable-sorts documents and codes before hashing. The migration creates an append-only service-role repair audit. Applying a plan is not exposed by this task.
++
++**Step 4: Run GREEN and preserve the P04 classifier**
++
++```text
++node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-behavior.test.ts tests/worker-run-loop.test.ts tests/worker-runtime-control.test.ts tests/worker-row-contract.test.ts tests/check-indexing-contract.test.ts
++npm run check:edge:functions
++npm run check:migration-role
++node scripts/run-tsx.mjs scripts/audit-ingestion-corpus.ts --input tests/fixtures/ingestion/active-corpus-inventory.json --expected data/rag-expected-source-coverage.v1.json --output .local/rag-ingestion/audit.json
++```
++
++Expected: all focused tests pass; audit output retains the accepted P04 action classification and population fingerprint contract.
++
++**Step 5: Review and checkpoint the C01 source changes**
++
++Reviewers: `ingestion-worker-reviewer`, `supabase-schema-guardian`, and `clinical-governance-reviewer` for fail-closed quality semantics. Keep schema and types aligned in this task; defer the single drift regeneration to the stable C01/C02 tranche boundary. Suggested local checkpoint message: `fix(ingestion): fence leases and repair plans`.
++
++---
++
++## Task 4: Stage and evaluate an exact shadow generation without committing it
++
++**Files:**
++
++- Create: `supabase/migrations/20260831102000_stage_shadow_document_generations.sql`
++- Create: `scripts/reindex-shadow.ts`
++- Create: `scripts/lib/reindex-eval-session.ts`
++- Create: `tests/reindex-shadow.test.ts`
++- Modify: `worker/main.ts`
++- Modify: `src/lib/reindex-eval-gate.ts`
++- Modify: `scripts/eval-retrieval.ts`
++- Modify: `scripts/eval-quality.ts`
++- Modify: `supabase/schema.sql`
++- Modify: `src/lib/supabase/database.types.ts`
++- Modify: `tests/reindex-eval-gate.test.ts`
++- Modify: `tests/profile-retrieval-rpcs.test.ts`
++- Modify: `tests/supabase-schema.test.ts`
++- Modify: `tests/worker-behavior.test.ts`
++- Reuse unchanged: `src/lib/ingestion-audit.ts`
++- Reuse unchanged: `src/lib/recovery-readiness-evidence.ts`
++
++**Step 1: Pin the staging correction in RED tests**
++
++The current worker always calls destructive generation commit and `document_pages` is generation-blind. Add tests that require standard jobs to commit, shadow jobs to stage without changing the active pointer, and exact rollback to retain generation-addressed page rows.
++
++Use one candidate generation UUID for the whole wave:
++
++```ts
++export type ShadowReindexPlanV1 = Readonly<{
++  version: 1;
++  targetProjectRef: string;
++  sourcePolicyVersion: string;
++  auditDigest: `sha256:${string}`;
++  populationFingerprint: `sha256:${string}`;
++  candidateGenerationId: string;
++  documents: readonly Readonly<{
++    documentId: string;
++    expectedStateDigest: string;
++    baselineGenerationId: string | null;
++  }>[];
++  chunkingExperiment: boolean;
++  digest: `sha256:${string}`;
++}>;
++
++export type ShadowReindexStageReceiptV1 = Readonly<{
++  version: 1;
++  planDigest: `sha256:${string}`;
++  projectRef: string;
++  recoveryEvidenceDigest: `sha256:${string}`;
++  candidateGenerationId: string;
++  stagedAt: string;
++  documents: readonly Readonly<{
++    documentId: string;
++    expectedStateDigest: string;
++    baselineGenerationId: string | null;
++    pageCount: number;
++    chunkCount: number;
++    imageCount: number;
++  }>[];
++  digest: `sha256:${string}`;
++}>;
++
++export type ReindexOperationManifestV1 = Readonly<{
++  version: 1;
++  operation: "stage" | "evaluate" | "promote" | "rollback" | "cleanup";
++  targetProjectRef: string;
++  planPath: string;
++  reportOrReceiptPath: string | null;
++  recoveryEvidencePath: string;
++  recoveryEvidenceSha256: `sha256:${string}`;
++  expectedDocumentIds: readonly string[];
++  expectedDocumentCount: number;
++  confirmationSha256: `sha256:${string}`;
++  authorizedAt: string;
++  expiresAt: string;
++}>;
++```
++
++Test that every staged document uses `candidateGenerationId`, the plan contains an explicit eligible document list and exact P04 state digests, baseline evaluation precedes stage, post-stage state drift returns `NO_GO`, incomplete generations cannot evaluate, missing metrics fail closed, and evaluate cannot promote.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/reindex-shadow.test.ts tests/reindex-eval-gate.test.ts tests/worker-behavior.test.ts tests/profile-retrieval-rpcs.test.ts tests/supabase-schema.test.ts
++```
++
++Expected RED: the stage driver/RPC is absent, the worker has no non-committing branch, and pages cannot coexist across generations.
++
++**Step 2: Add staged-generation persistence**
++
++The migration:
++
++- creates the canonical `document_index_generations` ledger with `staged` state;
++- adds generation identity to `document_pages` and replaces `unique(document_id,page_number)` with `unique(document_id,index_generation_id,page_number)`;
++- adds shadow-operation and requested-generation identity to `ingestion_jobs`;
++- updates every committed-generation helper overload consistently; and
++- adds service-only, fixed-search-path `enqueue_shadow_reindex_generation` and lease-fenced `stage_document_index_generation` RPCs.
++
++The worker branches only on a validated persisted operation mode. Standard mode retains `commit_document_index_generation`; shadow mode writes a complete generation through `stage_document_index_generation` and never calls commit.
++
++**Step 3: Add exact-generation evaluation wrappers**
++
++Create service-role-only, fixed-search-path `eval_match_document_chunks_text_v2` and `eval_match_document_chunks_hybrid_v2`. Both accept one `p_eval_generation_id`, filter all requested documents to that generation, and keep unset production GUC behavior byte-equivalent.
++
++Use one report name consistently:
++
++```ts
++export type ShadowReindexReportV1 = Readonly<{
++  version: 1;
++  planDigest: `sha256:${string}`;
++  stageReceiptDigest: `sha256:${string}`;
++  recoveryEvidenceDigest: `sha256:${string}`;
++  populationFingerprint: `sha256:${string}`;
++  candidateGenerationId: string;
++  baseline: { retrieval: RetrievalGateSummary; quality: QualityGateSummary };
++  candidate: { retrieval: RetrievalGateSummary; quality: QualityGateSummary };
++  decision: ReindexGateDecision;
++  digest: `sha256:${string}`;
++}>;
++```
++
++The pure driver validates `plan`, `stageReceipt`, and `evaluate` transitions. Its connected adapters remain present but unusable without explicit operation-manifest authorization and configured clients; tests use injected fakes only.
++
++**Step 4: Run GREEN**
++
++```text
++node scripts/run-vitest.mjs run tests/recovery-readiness-evidence.test.ts tests/reindex-shadow.test.ts tests/reindex-eval-gate.test.ts tests/worker-behavior.test.ts tests/profile-retrieval-rpcs.test.ts tests/reindex-pipeline.test.ts tests/supabase-schema.test.ts
++npm run check:migration-role
++npm run check:function-grants
++npm run check:rag:fixtures
++npm run eval:rag:offline
++```
++
++Expected: all local tests and static checks pass; no hosted session, document, embedding, or provider evaluation occurs.
++
++**Step 5: Review and checkpoint**
++
++Reviewers: `ingestion-worker-reviewer`, `supabase-schema-guardian`, and `rag-retrieval-reviewer`. Suggested local checkpoint message: `feat(reindex): stage exact shadow generations`.
++
++---
++
++## Task 5: Activate, roll back, retain, and clean exact generations
++
++**Files:**
++
++- Create: `supabase/migrations/20260831103000_activate_retained_document_generations.sql`
++- Create: `tests/reindex-generation-lifecycle.test.ts`
++- Modify: `src/lib/reindex-pipeline.ts`
++- Modify: `scripts/reindex-shadow.ts`
++- Modify: `scripts/cleanup-abandoned-reindex-generations.ts`
++- Modify: `supabase/schema.sql`
++- Modify: `src/lib/supabase/database.types.ts`
++- Modify: `tests/reindex-pipeline.test.ts`
++- Modify: `tests/reindex-shadow.test.ts`
++- Modify: `tests/supabase-schema.test.ts`
++
++**Step 1: Add lifecycle RED tests**
++
++Pin these invariants:
++
++- at most one active generation per document;
++- reindex promotion locks an already-active document and validates its exact baseline pointer, state, candidate generation, plan, evaluation, recovery, and authorization-manifest digests;
++- `GO` is necessary but insufficient without an authorized promote manifest;
++- reindex promotion cannot perform first publication and retains the previous generation without deleting it;
++- rollback restores the exact retained pointer and retains the failed candidate;
++- rollback remains usable after recovery-evidence freshness expires but still validates the promotion-bound evidence digest;
++- active or not-yet-expired retained generations cannot be cleaned; and
++- cleanup requires exact document/generation pairs, exact count, manifest digest, and explicit apply mode;
++- cleanup can call only the private deletion core, and that core cannot mutate an active pointer; and
++- only promotion, receipt-bound rollback, and the later trusted-activation wrapper can call the pointer transition core.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/reindex-generation-lifecycle.test.ts tests/reindex-pipeline.test.ts tests/reindex-shadow.test.ts tests/supabase-schema.test.ts
++```
++
++Expected RED: generation operations and retained-state cleanup guards are absent.
++
++**Step 2: Implement pure promotion and cleanup assertions**
++
++```ts
++export function assertPromotableShadowGeneration(input: {
++  plan: ShadowReindexPlanV1;
++  stageReceipt: ShadowReindexStageReceiptV1;
++  report: ShadowReindexReportV1;
++  actualStateDigests: Readonly<Record<string, string>>;
++}): void {
++  if (input.report.decision.decision !== "GO") throw new Error("shadow evaluation did not pass");
++  if (input.plan.digest !== input.report.planDigest) throw new Error("plan digest mismatch");
++  if (input.stageReceipt.digest !== input.report.stageReceiptDigest) throw new Error("stage receipt mismatch");
++  if (input.plan.candidateGenerationId !== input.stageReceipt.candidateGenerationId)
++    throw new Error("candidate generation mismatch");
++  for (const document of input.plan.documents) {
++    if (input.actualStateDigests[document.documentId] !== document.expectedStateDigest)
++      throw new Error(`state changed for ${document.documentId}`);
++  }
++}
++```
++
++Add `planDocumentGenerationCleanup`, which accepts only `abandoned` or retention-expired non-active rows, stable-sorts exact pairs, and emits a digest-bound dry-run plan.
++
++```ts
++export type DocumentGenerationCleanupPlanV1 = Readonly<{
++  version: 1;
++  projectRef: string;
++  targets: readonly Readonly<{ documentId: string; generationId: string }>[];
++  expectedCount: number;
++  createdAt: string;
++  digest: `sha256:${string}`;
++}>;
++```
++
++**Step 3: Implement append-only lifecycle SQL**
++
++The migration creates append-only `document_index_generation_operations`, a unique partial index enforcing one active generation, a private fixed-search-path pointer-only `transition_document_index_generation_core`, and a separate private fixed-search-path `delete_document_index_generations_core`; neither core has API-role grants. Only narrow wrappers may call them:
++
++```text
++promote_shadow_document_generation
++rollback_document_index_generation
++cleanup_document_index_generations
++```
++
++`promote_shadow_document_generation` requires an existing active baseline matching the shadow plan, so it cannot first-publish a staging document. It changes that baseline to `retained`, activates the exact staged candidate, and records the receipt atomically through the pointer core. Rollback is a receipt-bound wrapper around that same pointer core. Cleanup defaults to dry-run, refuses active, premature-retained, unknown, count-mismatched, or manifest-mismatched targets, and may call only the deletion core after rechecking that no target is active. The deletion core cannot update an active pointer or generation state. The script is import-safe and has no broad all-eligible apply mode. No generic pointer-mutating or deletion core is granted to an API role.
++
++**Step 4: Run GREEN**
++
++```text
++node scripts/run-vitest.mjs run tests/reindex-generation-lifecycle.test.ts tests/reindex-pipeline.test.ts tests/reindex-shadow.test.ts tests/supabase-schema.test.ts
++npm run check:migration-role
++npm run check:function-grants
++```
++
++Expected: lifecycle tests pass with prior pages/chunks/artifacts still available after activation and rollback.
++
++**Step 5: Review and checkpoint**
++
++Reviewers: `supabase-schema-guardian` and `ingestion-worker-reviewer`. Suggested local checkpoint message: `feat(reindex): retain rollback generations`.
++
++---
++
++## Task 6: Replace operator guidance with the exact dry-run lifecycle
++
++**Files:**
++
++- Modify: `docs/reindex-runbook.md`
++- Modify: `docs/reindex-shadow-harness-design.md`
++- Modify: `docs/ingestion-state-machine.md`
++- Modify: `docs/worker-deploy-runbook.md`
++- Modify: `docs/disaster-recovery-runbook.md`
++- Modify: `docs/search-rag-master-context.md`
++
++**Step 1: Update the canonical sequence**
++
++Document exactly: audit -> local plan -> authorized stage -> exact-generation evaluate -> authorized promote -> observation -> receipt-bound rollback if required -> delayed manifest-bound cleanup. Distinguish worker image rollback from document-generation rollback. State that a connected dry run is still a connected operation.
++
++**Step 2: Record crash windows and recovery truth**
++
++Cover lease loss before stage completion, process death after complete artifact writes but before the atomic receipt/activation-or-task finalizer, finalizer transaction failure, process death after atomic activation, rollback after recovery-evidence expiry, and cleanup interruption. State explicitly that a trusted-admission job cannot become completed between artifact writes and receipt-bound activation or task creation. Keep PITR and Storage restore evidence separate.
++
++**Step 3: Run documentation checks**
++
++```text
++npm run docs:check-links
++npm run docs:check-scripts
++npm run docs:check-index
++npm run docs:check-inventory
++git diff --check
++```
++
++Expected: all documentation references resolve and no destructive/default-live command is presented as source-only.
++
++**Step 4: Review and checkpoint**
++
++Reviewer: `clinical-governance-reviewer`. Suggested local checkpoint message: `docs(reindex): define targeted generation waves`.
++
++### Core-ingestion tranche review after C02
++
++Run `ingestion-worker-reviewer`, `supabase-schema-guardian`, and `rag-retrieval-reviewer` in parallel against the full C01-through-C02 range. Require one processor, generation-aware enrichment reads, non-destructive summaries, token-fenced mutations, bounded repair, a real non-committing stage path, generation-addressed pages, one candidate generation per wave, baseline/candidate population identity, digest-bound promotion, exact retained rollback, delayed cleanup, and no connected execution. Correct findings in one packet, then re-review the whole corrected tranche. Reconcile schema, types, and drift for the C01/C02 migrations once the corrected range is stable.
++
++### Trusted Task 0 entry gate
++
++Before Task 7, verify the accepted continuation C01/C02 heads are ancestors of the current head and rerun:
++
++```text
++node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-run-loop.test.ts tests/worker-row-contract.test.ts tests/reindex-shadow.test.ts tests/reindex-generation-lifecycle.test.ts tests/supabase-schema.test.ts
++npm run check:edge:functions
++npm run check:migration-role
++npm run verify:pr-local -- --dry-run --files src/app/api/upload/route.ts,src/lib/trusted-document-admission.ts,supabase/schema.sql
++```
++
++Expected: the retired function/config/invoker remain absent; the sole processor, anchored summary, lease token, staged-generation, activation, rollback, and cleanup contracts exist. This gate makes no product change. Stop if any prerequisite is missing.
++
++---
++
++## Task 7: Unify administrator and backend admission under one durable event
++
++**Files:**
++
++- Create: `src/lib/trusted-document-admission.ts`
++- Create: `tests/trusted-document-admission.test.ts`
++- Create: `tests/trusted-document-admission-schema.test.ts`
++- Create: `supabase/migrations/20260831104000_create_document_admission_events.sql`
++- Modify: `src/app/api/upload/route.ts`
++- Modify: `scripts/import-documents.ts`
++- Modify: `src/lib/publication-manifest.ts`
++- Modify: `supabase/schema.sql`
++- Modify: `src/lib/supabase/database.types.ts`
++- Modify: `tests/upload-admission.test.ts`
++- Modify: `tests/upload-duplicate-cleanup-ledger.test.ts`
++- Modify: `tests/storage-upload-compensation.test.ts`
++- Modify: `tests/private-access-routes.test.ts`
++- Modify: `tests/publication-manifest.test.ts`
++- Modify: `tests/function-grants.test.ts`
++
++**Step 1: Add RED actor, replay, and authority tests**
++
++```ts
++export type TrustedAdmissionActor =
++  | Readonly<{ kind: "administrator"; administratorId: string }>
++  | Readonly<{ kind: "trusted_backend"; principal: string }>;
++
++export type TrustedAdmissionInput = Readonly<{
++  actor: TrustedAdmissionActor;
++  sourceChannel: "admin_api" | "backend_import";
++  documentId: string;
++  stagingOwnerId: string;
++  contentSha256: `sha256:${string}`;
++  storagePath: string;
++  originalFileName: string;
++  mimeType: string;
++  byteCount: number;
++  correlationId: string;
++  admissionPolicyVersion: string;
++}>;
++
++export type TrustedDocumentAdmission = Readonly<{
++  documentId: string;
++  stagingOwnerId: string;
++  sourceChannel: "admin_api" | "backend_import";
++  contentSha256: `sha256:${string}`;
++  fileNameSha256: `sha256:${string}`;
++  storagePathSha256: `sha256:${string}`;
++  mimeType: string;
++  byteCount: number;
++  correlationId: string;
++  admissionPolicyVersion: string;
++}>;
++
++export type TrustedAdmissionRpcPayload = Readonly<{
++  document_id: string;
++  staging_owner_id: string;
++  source_channel: "admin_api" | "backend_import";
++  content_sha256: `sha256:${string}`;
++  file_name_sha256: `sha256:${string}`;
++  storage_path_sha256: `sha256:${string}`;
++  mime_type: string;
++  byte_count: number;
++  correlation_id: string;
++  admission_policy_version: string;
++}>;
++```
++
++Test that an ordinary user, missing admin claim, wrong staging owner, generic service-role caller, unknown backend principal, wrong backend capability, replay with changed metadata, raw filename/path audit storage, direct table insert, and duplicate active content are rejected. Test exact replay returns the same document/admission/job identities without another job.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/trusted-document-admission.test.ts tests/trusted-document-admission-schema.test.ts tests/function-grants.test.ts tests/private-access-routes.test.ts
++```
++
++Expected RED: the shared contract and protected admission wrappers do not exist, and upload/import still own separate writes.
++
++**Step 2: Implement pure admission construction**
++
++`createTrustedDocumentAdmission` validates canonical identifiers, size/type bounds, actor/channel compatibility, exact policy version, content hash, and correlation ID. It emits filename and Storage-path SHA-256 digests for audit and keeps raw values only in the bounded private RPC input needed to create the object row.
++
++```ts
++export function toTrustedDocumentAdmissionRpcPayload(admission: TrustedDocumentAdmission): TrustedAdmissionRpcPayload {
++  return Object.freeze({
++    document_id: admission.documentId,
++    staging_owner_id: admission.stagingOwnerId,
++    source_channel: admission.sourceChannel,
++    content_sha256: admission.contentSha256,
++    file_name_sha256: admission.fileNameSha256,
++    storage_path_sha256: admission.storagePathSha256,
++    mime_type: admission.mimeType,
++    byte_count: admission.byteCount,
++    correlation_id: admission.correlationId,
++    admission_policy_version: admission.admissionPolicyVersion,
++  });
++}
++```
++
++**Step 3: Implement two narrow SQL wrappers and one private core**
++
++The migration creates append-only admission events and a private admission core that atomically creates or reuses the document, event, and ingestion job under a content-digest lock.
++
++- `admit_administrator_document` runs in authenticated context, derives `auth.uid()`, verifies the administrator claim and matching staging owner, and never accepts a caller-supplied administrator identity.
++- `admit_backend_document` accepts a configured principal plus high-entropy capability. It compares the capability digest inside a fixed-search-path `SECURITY DEFINER` wrapper against a principal table on which `service_role` has no direct `SELECT`, `INSERT`, `UPDATE`, or `DELETE` grant.
++- The private core has no grant to API roles. Exact replay is idempotent; conflicting replay fails closed.
++
++Backend-principal provisioning is a C07 connected operation. Source-only tests seed synthetic transaction-local fixtures and never expose capability values.
++
++**Step 4: Route both adapters through the same contract**
++
++Replace the upload route's direct `create_uploaded_document_with_ingestion_job` ownership and the importer's separate document/job inserts. Preserve upload compensation when Storage succeeds but admission fails. Retain v1 RPC compatibility only as a denied or delegating wrapper with no new authority.
++
++**Step 5: Run GREEN**
++
++```text
++node scripts/run-vitest.mjs run tests/trusted-document-admission.test.ts tests/trusted-document-admission-schema.test.ts tests/upload-admission.test.ts tests/upload-duplicate-cleanup-ledger.test.ts tests/storage-upload-compensation.test.ts tests/private-access-routes.test.ts tests/publication-manifest.test.ts tests/function-grants.test.ts
++npm run check:migration-role
++npm run check:function-grants
++```
++
++Expected: both trusted channels share one atomic event; arbitrary service role and ordinary users cannot admit; tests use no live Storage or database.
++
++**Step 6: Review and checkpoint**
++
++Reviewers: `supabase-schema-guardian` and `clinical-governance-reviewer`. Suggested local checkpoint message: `feat(ingestion): unify trusted admission`.
++
++---
++
++## Task 8: Quarantine unsafe input before any provider egress
++
++**Files:**
++
++- Create: `src/lib/document-ingress-safety.ts`
++- Create: `tests/document-ingress-safety.test.ts`
++- Create: `tests/document-provider-egress-gate.test.ts`
++- Modify: `src/lib/upload-structure.ts`
++- Modify: `src/lib/privacy.ts`
++- Modify: `src/lib/env.ts`
++- Modify: `worker/main.ts`
++- Modify: `worker/row-contracts.ts`
++- Modify: `src/lib/validation/row-contracts.ts`
++- Modify: `src/app/api/upload/route.ts`
++- Modify: `scripts/import-documents.ts`
++- Modify: `tests/upload-structure.test.ts`
++- Modify: `tests/privacy.test.ts`
++- Modify: `tests/extracted-document-validation.test.ts`
++- Modify: `tests/ingestion.test.ts`
++- Modify: `tests/indexing-v3-agent.test.ts`
++- Modify: `docs/rag-improvement/data-flow-register.md`
++
++**Step 1: Add RED hard-gate and call-order tests**
++
++```ts
++export type IngressHardGateCode =
++  | "scanner_unavailable"
++  | "malware_detected"
++  | "active_content_detected"
++  | "identifier_detected"
++  | "hidden_text_conflict"
++  | "unsupported_encrypted_document"
++  | "excluded_source"
++  | "link_only_content"
++  | "index_licence_not_permitted"
++  | "source_policy_mismatch";
++
++export type ProviderEgressBinding = Readonly<{
++  admissionEventId: string;
++  documentId: string;
++  generationId: string;
++  contentSha256: `sha256:${string}`;
++}>;
++
++export type DocumentIngressSafetyResult =
++  | Readonly<{
++      verdict: "pass";
++      binding: ProviderEgressBinding;
++      policyVersion: string;
++      checks: readonly string[];
++      evidenceDigest: string;
++    }>
++  | Readonly<{
++      verdict: "quarantine";
++      binding: ProviderEgressBinding;
++      policyVersion: string;
++      codes: readonly IngressHardGateCode[];
++      evidenceDigest: string;
++    }>;
++
++export interface DocumentScanner {
++  scan(input: {
++    bytes: Uint8Array;
++    mimeType: string;
++    contentSha256: string;
++  }): Promise<{ verdict: "clean" | "malware" | "unavailable"; scannerVersion: string }>;
++}
++```
++
++Test clean, unavailable, malicious, active-content, encrypted, identifier, hidden/native-text conflict, Healthdirect, eTG/AMH protected, disallowed licence, and source-policy mismatch cases. For every failing case, injected caption, embedding, summary, and deep-memory spies remain at zero calls. Add cross-document, cross-admission, stale-generation, changed-content-hash, and wrong-provider-purpose permit reuse tests; each must throw before its provider spy runs.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/document-ingress-safety.test.ts tests/document-provider-egress-gate.test.ts
++```
++
++Expected RED: there is no opaque permit and at least one worker provider branch can be reached without it.
++
++**Step 2: Implement one reusable local safety evaluation**
++
++```ts
++const providerEgressPermitBrand = Symbol("provider-egress-permit");
++export type ProviderEgressPurpose = "caption" | "embedding" | "summary" | "deep_memory";
++
++export type ProviderEgressPermit = Readonly<{
++  binding: ProviderEgressBinding;
++  evidenceDigest: string;
++  policyVersion: string;
++  purpose: ProviderEgressPurpose;
++  [providerEgressPermitBrand]: true;
++}>;
++
++function assertExactProviderEgressBinding(actual: ProviderEgressBinding, expected: ProviderEgressBinding): void {
++  if (
++    actual.admissionEventId !== expected.admissionEventId ||
++    actual.documentId !== expected.documentId ||
++    actual.generationId !== expected.generationId ||
++    actual.contentSha256 !== expected.contentSha256
++  )
++    throw new Error("provider egress binding mismatch");
++}
++
++export function assertProviderEgressAllowed(
++  result: DocumentIngressSafetyResult,
++  expectedBinding: ProviderEgressBinding,
++  purpose: ProviderEgressPurpose,
++): ProviderEgressPermit {
++  assertExactProviderEgressBinding(result.binding, expectedBinding);
++  if (result.verdict !== "pass") throw new Error("provider egress denied");
++  return Object.freeze({
++    binding: Object.freeze({ ...result.binding }),
++    evidenceDigest: result.evidenceDigest,
++    policyVersion: result.policyVersion,
++    purpose,
++    [providerEgressPermitBrand]: true as const,
++  });
++}
++
++export function assertProviderEgressPermit(
++  permit: ProviderEgressPermit,
++  expectedBinding: ProviderEgressBinding,
++  purpose: ProviderEgressPurpose,
++): void {
++  if (permit[providerEgressPermitBrand] !== true || permit.purpose !== purpose)
++    throw new Error("provider egress permit purpose mismatch");
++  assertExactProviderEgressBinding(permit.binding, expectedBinding);
++}
++```
++
++Run order is bytes/download -> scanner and active-content/source-policy checks -> one local extraction/OCR result -> identifier and hidden-text comparison -> permit -> captions/embeddings/summaries. Reuse that extraction result; do not OCR twice. Upload/import perform the pre-Storage checks available at admission, and the worker repeats all current-policy checks before egress.
++
++Make every provider wrapper accept the expected admission/document/generation/content binding plus `ProviderEgressPermit`, and call `assertProviderEgressPermit` at runtime before egress. Add an architecture test that inventories calls to `classifyAndCaptionImageFromBase64`, `embedTexts`, `upsertDocumentEnrichment`, and `upsertDocumentDeepMemory` and requires the permit at each call site.
++
++**Step 3: Run GREEN**
++
++```text
++node scripts/run-vitest.mjs run tests/document-ingress-safety.test.ts tests/document-provider-egress-gate.test.ts tests/upload-structure.test.ts tests/privacy.test.ts tests/extracted-document-validation.test.ts tests/ingestion.test.ts tests/indexing-v3-agent.test.ts
++```
++
++Expected: all fail-closed cases quarantine before provider spies; no real scanner or provider executes.
++
++**Step 4: Review and checkpoint**
++
++Reviewers: `ingestion-worker-reviewer` and `clinical-governance-reviewer`. Suggested local checkpoint message: `feat(ingestion): quarantine unsafe provider egress`.
++
++---
++
++## Task 9: Persist reproducible page-level OCR and layout evidence
++
++**Files:**
++
++- Create: `tests/ocr-evidence-contract.test.ts`
++- Modify: `worker/python/extract_pdf_assets.py`
++- Modify: `src/lib/types.ts`
++- Modify: `src/lib/extractors/document.ts`
++- Modify: `worker/main.ts`
++- Modify: `worker/shadow-extraction.ts`
++- Modify: `src/lib/index-quality.ts`
++- Modify: `tests/pdf-extractor.test.ts`
++- Modify: `tests/pdf-extraction-budget.test.ts`
++- Modify: `tests/index-quality.test.ts`
++- Modify: `tests/worker-shadow-extraction.test.ts`
++- Modify: `tests/docling-lab-contract.test.ts`
++- Modify: `eval/docling/fixtures/manifest.v1.json`
++- Modify: `eval/docling/harness/score.py`
++- Modify: `eval/docling/report/lab-config.json`
++- Modify: `eval/docling/report/lab-contract.mjs`
++- Modify: `eval/docling/report/gate-b-decision-record.template.json`
++
++**Step 1: Add RED extraction-evidence tests**
++
++```ts
++export type PageExtractionEvidence = Readonly<{
++  extractor: Readonly<{ name: string; version: string; configurationDigest: string }>;
++  ocr: null | Readonly<{
++    engine: string;
++    version: string;
++    languages: readonly string[];
++    orientationDegrees: number | null;
++    confidenceMean: number | null;
++    confidenceP10: number | null;
++    lowConfidenceWordCount: number;
++    evidenceObjectPath: string | null;
++    evidenceSha256: string | null;
++  }>;
++  imageCoverage: number;
++  needsReview: boolean;
++  warnings: readonly string[];
++}>;
++
++export type TrustedExtractionInput = Readonly<{
++  documentId: string;
++  generationId: string;
++  contentSha256: string;
++  admittedStoragePath: string;
++  extractionPolicyVersion: string;
++}>;
++```
++
++Test native-text pages, OCR pages, mixed pages, blank pages, malformed confidences, inconsistent object path/digest, unsupported language/orientation values, critical numeric low-confidence spans, table ancestry, and generation/original-hash lineage.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/ocr-evidence-contract.test.ts tests/pdf-extractor.test.ts tests/pdf-extraction-budget.test.ts tests/index-quality.test.ts tests/worker-shadow-extraction.test.ts tests/docling-lab-contract.test.ts
++```
++
++Expected RED: the Python extractor emits only text for OCR and the TypeScript contract lacks reproducibility fields.
++
++**Step 2: Emit and validate structured OCR evidence**
++
++Replace `image_to_string` with bounded `image_to_data` processing. Compute orientation, language set, mean and P10 confidence, low-confidence word count, preprocessing/configuration digest, engine version, and content hash. Do not place unbounded word geometry in row metadata.
++
++Persist bounded evidence in generation-addressed `document_pages.metadata`. Store compressed word/geometry evidence in a private generation-addressed object only when required, and persist its object path plus SHA-256. Retrieval units carry document, generation, unit, page, span/geometry, heading/table ancestry, corpus/role/content mode, source policy, original hash, and pipeline versions.
++
++**Step 3: Apply deterministic class-specific promotion rules**
++
++`assessDocumentIndexQuality` evaluates page coverage, reading order, tables, critical numeric OCR uncertainty, and lineage as independent hard gates. `runShadowExtraction` records class metrics but cannot override a hard failure through an average score.
++
++**Step 4: Run GREEN**
++
++```text
++node scripts/run-vitest.mjs run tests/ocr-evidence-contract.test.ts tests/pdf-extractor.test.ts tests/pdf-extraction-budget.test.ts tests/index-quality.test.ts tests/worker-shadow-extraction.test.ts tests/docling-lab-contract.test.ts
++npm run check:docling-lab
++```
++
++Expected: synthetic fixtures pass and the Docling contract validates. Do not run the full model-asset lab.
++
++**Step 5: Review and checkpoint**
++
++Reviewer: `ingestion-worker-reviewer`. Suggested local checkpoint message: `feat(ingestion): persist reproducible OCR evidence`.
++
++---
++
++## Task 10: Evaluate hard gates and atomically activate or queue the exact generation
++
++**Files:**
++
++- Create: `src/lib/document-technical-eligibility.ts`
++- Create: `tests/document-technical-eligibility.test.ts`
++- Create: `supabase/migrations/20260831105000_add_document_technical_activation.sql`
++- Create: `tests/trusted-document-activation-schema.test.ts`
++- Modify: `worker/main.ts`
++- Modify: `worker/types.ts`
++- Modify: `worker/row-contracts.ts`
++- Modify: `src/lib/index-quality.ts`
++- Modify: `src/lib/publication-manifest.ts`
++- Modify: `supabase/schema.sql`
++- Modify: `src/lib/supabase/database.types.ts`
++- Modify: `tests/publication-manifest.test.ts`
++- Modify: `tests/source-review-schema.test.ts`
++- Modify: `tests/function-grants.test.ts`
++- Modify: `tests/index-quality.test.ts`
++- Modify: `tests/ingestion-mutation-safety.test.ts`
++- Modify: `tests/worker-behavior.test.ts`
++- Modify: `tests/worker-run-loop.test.ts`
++- Modify: `tests/worker-row-contract.test.ts`
++- Modify: `tests/reindex-pipeline.test.ts`
++- Modify: `tests/reindex-generation-lifecycle.test.ts`
++- Modify: `tests/supabase-schema.test.ts`
++- Modify: `scripts/sql/verify-publication-approval.sql`
++
++**Step 1: Add RED hard-gate tests**
++
++```ts
++export type TechnicalHardGateCode =
++  | "security_not_passed"
++  | "identifier_screen_not_passed"
++  | "content_mode_ineligible"
++  | "source_policy_ineligible"
++  | "empty_extraction"
++  | "page_coverage_failed"
++  | "ocr_review_required"
++  | "critical_numeric_ocr_uncertain"
++  | "table_coverage_failed"
++  | "reading_order_failed"
++  | "lineage_incomplete"
++  | "embedding_incomplete"
++  | "generation_incomplete"
++  | "source_not_current"
++  | "active_writer_present"
++  | "state_digest_changed";
++
++type TechnicalEvidenceBindingV1 = Readonly<{
++  version: "document-generation-technical-evidence-v1";
++  jobId: string;
++  documentId: string;
++  generationId: string;
++  admissionEventId: string;
++  policyVersion: string;
++  stateDigest: `sha256:${string}`;
++  evidenceDigest: `sha256:${string}`;
++}>;
++
++export type DocumentGenerationTechnicalEvidenceV1 =
++  | Readonly<
++      TechnicalEvidenceBindingV1 & {
++        verdict: "activate";
++        codes: readonly [];
++        receiptDigest: `sha256:${string}`;
++      }
++    >
++  | Readonly<
++      TechnicalEvidenceBindingV1 & {
++        verdict: "technical_review";
++        codes: readonly [TechnicalHardGateCode, ...TechnicalHardGateCode[]];
++        receiptDigest: `sha256:${string}`;
++      }
++    >;
++
++export type FinalizeTrustedDocumentIngestionInput = Readonly<{
++  jobId: string;
++  documentId: string;
++  generationId: string;
++  admissionEventId: string;
++  workerId: string;
++  leaseToken: string;
++  receipt: DocumentGenerationTechnicalEvidenceV1;
++}>;
++```
++
++Test every code individually, multiple simultaneous failures, stable code ordering and receipt digest, one hard failure amid otherwise strong metrics, a foreign or stale active writer, state change after evaluation, duplicate exact activation, conflicting activation, and failure preserving the prior active generation. Prove the exact current job/worker/lease-token owner is accepted for finalization while a stale token, foreign owner, second claim, or claim rotation is rejected. Prove both verdict branches persist the same complete job/document/generation/admission/policy/state/evidence binding; `activate` has exactly zero codes, and `technical_review` has at least one canonical code. Add worker tests proving normal processing finalizes without moving the active pointer early and that receipt persistence, activation-or-task creation, and job completion happen without an unleased interval. Add schema tests proving only the private transition core changes the active pointer; first activation and reindex promotion are narrow wrappers; the old direct commit/promotion signatures have no executable API-role grant; direct `service_role` evidence-table insertion is denied; and manually changing a task status cannot erase hard-gate evidence.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/document-technical-eligibility.test.ts tests/trusted-document-activation-schema.test.ts tests/function-grants.test.ts tests/source-review-schema.test.ts
++```
++
++Expected RED: evaluator, durable technical tasks, and trusted activation authority are absent.
++
++**Step 2: Implement the pure evaluator**
++
++`evaluateTechnicalEligibility` consumes only exact job, admission, safety, extraction, index, generation, source-policy, currentness, lease, and state-digest evidence. Its lease input names the expected current job, worker, and lease token. That exact owner is the required finalizer and does not produce `active_writer_present`; the code means a different, additional, stale, or otherwise non-owning claim exists. It returns `DocumentGenerationTechnicalEvidenceV1` for both outcomes. `evidenceDigest` is the canonical aggregate digest of those exact immutable inputs without storing the raw lease token; `receiptDigest` is the canonical digest of every receipt field except itself. It canonicalizes codes before hashing, so reevaluating identical evidence produces the same receipt digest. Missing or ambiguous evidence yields `technical_review`; no confidence average can erase a hard code.
++
++**Step 3: Implement durable tasks and lifecycle authority in one coherent migration**
++
++Create append-only `document_generation_technical_evidence` and persist one immutable receipt row for every evaluator outcome, including successful activation candidates and technical-review outcomes. The row contains the complete `DocumentGenerationTechnicalEvidenceV1` binding, canonical codes, receipt digest, and database-recorded timestamp; it permits no update or delete path. Revoke direct `INSERT`, `UPDATE`, and `DELETE` from `service_role` and all API roles: only the lease-fenced finalization function may append a receipt. Create persistent, privacy-minimized `document_technical_review_tasks` with opaque IDs, document/generation IDs, the current technical-evidence receipt ID, fixed gate codes, priority, lifecycle, assignment, optimistic version, receipt digest, and bounded diagnostics. Do not store document text.
++
++Add fixed-search-path RPCs:
++
++```text
++upsert_document_technical_review_tasks
++mutate_document_technical_review_task
++request_document_technical_reprocess
++finalize_trusted_document_ingestion
++activate_trusted_document_generation
++withdraw_trusted_document
++```
++
++`activate_trusted_document_generation` and the evidence/task insertion helpers are private, ungranted functions invoked only by the lease-fenced finalizer (or, for later reindex promotion, by that task's separately authorized wrapper). Use the receipt-bound public mutation signatures:
++
++```text
++request_document_technical_reprocess(task_id, expected_version, technical_evidence_receipt_id, reason_code, idempotency_key)
++finalize_trusted_document_ingestion(job_id, document_id, generation_id, admission_event_id, worker_id, lease_token, submitted_receipt)
++```
++
++Neither exposes independent caller-supplied state, evidence, case-set, or population digest parameters. The finalizer accepts the complete typed receipt but treats it as a claim: under row locks it reconstructs the exact server-owned job/document/generation/admission/policy/state/evidence binding, canonical codes, and digests before appending anything. `mutate_document_technical_review_task` permits assignment only; it cannot clear codes or resolve evidence. A task reaches `reprocessing` only through `request_document_technical_reprocess`, which locks the task/version, requires the supplied receipt ID to equal the task's current immutable receipt, derives and verifies its exact state digest and document/generation binding, creates or returns one idempotency-keyed `ingestion_jobs` row bound to the task/receipt/generation/reason, and appends the canonical Task 3 repair audit. A task becomes `resolved` only when a newer successful evidence receipt supersedes it or withdrawal closes it.
++
++`finalize_trusted_document_ingestion` is the sole normal-worker terminal authority for a trusted-admission job. In one transaction it locks the job, document, generation, and admission; requires `status = 'processing'` plus the exact Task 3 `(job_id, document_id, worker_id, lease_token)` claim; rejects claim rotation, a foreign/additional active writer, or state drift; reconstructs and validates the submitted receipt; and appends it. For `activate`, it calls the private `activate_trusted_document_generation`, which requires an empty code set, current policy, and exact current state/evidence binding, then delegates the pointer change to Task 5's private `transition_document_index_generation_core`. For `technical_review`, it requires a non-empty code set and invokes the private task upsert. The same transaction then marks the job complete and clears its claim. There is no release-before-activation/task window. Any failure rolls back all receipt, pointer/task, and completion writes while retaining the still-current claim for the existing failure/retry path.
++
++For the server-owned `shadow_reindex` operation mode from Task 4, the same finalizer retains the deliberately different lifecycle: it appends the validated receipt and completes the exactly claimed shadow job but leaves the generation staged and ineligible. It never calls the pointer core in that mode; later `promote_shadow_document_generation` consumes the exact successful receipt set plus the GO/recovery/manifest authority. The caller cannot select or override operation mode. A technical-review verdict in either mode writes the receipt and task atomically before completing the job.
++
++The exact current owning lease is required and is not itself an activation failure. The finalizer rejects only stale, foreign, additional, unknown, or rotated claims regardless of mutable task status. Activation is idempotent only for the exact generation and receipt digest. Case-set and population digests belong to C06 offline acceptance and shadow-wave comparison, not per-document activation. Failure retains staging and the prior active source. `complete_ingestion_job` is changed to reject trusted-admission jobs requiring technical finalization, so the worker cannot create a completed-but-unactivated gap through the older generic route.
++
++Replace `promote_shadow_document_generation` so its final form also requires an exact set of successful technical-evidence receipt IDs covering every document in the candidate population while retaining its already-active baseline, GO-report, recovery, and operation-manifest requirements. Retire the worker's old pointer-mutating normal completion: it writes all generation-addressed artifacts under its lease while the generation remains staged, evaluates their completeness, and uses the atomic finalizer above. Revoke or drop API-role execution of the old `commit_document_index_generation` pointer-mutating path. In the final schema, only `activate_trusted_document_generation`, strengthened `promote_shadow_document_generation`, and receipt-bound rollback can invoke the private transition core; there is no generic alternate activation route.
++
++Withdrawal validates exact active generation and state digest, makes the source ineligible, writes an append-only event, and invalidates affected snapshot/cache eligibility in the same transaction. Cleanup remains asynchronous and cannot restore eligibility.
++
++**Step 4: Wire the worker after exact generation completion**
++
++After all generation-addressed artifact writes and completeness evidence succeed, the generation remains staged and the worker evaluates once while retaining its exact current claim. It calls `finalize_trusted_document_ingestion` once with `FinalizeTrustedDocumentIngestionInput`. The worker never inserts the receipt, invokes activation/task helpers, clears the lease, or completes the job directly. For a normal trusted-admission job the RPC atomically persists the receipt, activates or creates/updates the review task, and completes the job; for a persisted shadow job it atomically persists the receipt, leaves the generation staged, creates/updates a review task when required, and completes the job for later authorized promotion. Lease loss, claim rotation, or state drift rejects the whole transaction; neither branch may construct or substitute receipt fields inside SQL.
++
++**Step 5: Run GREEN**
++
++```text
++node scripts/run-vitest.mjs run tests/document-technical-eligibility.test.ts tests/trusted-document-activation-schema.test.ts tests/publication-manifest.test.ts tests/source-review-schema.test.ts tests/function-grants.test.ts tests/index-quality.test.ts tests/ingestion-mutation-safety.test.ts tests/worker-behavior.test.ts tests/worker-run-loop.test.ts tests/worker-row-contract.test.ts tests/reindex-pipeline.test.ts tests/reindex-generation-lifecycle.test.ts tests/supabase-schema.test.ts
++npm run check:migration-role
++npm run check:owner-scope
++```
++
++Expected: exact eligible generations activate in synthetic SQL/source tests; ineligible generations create tasks; no live migration or document operation occurs.
++
++**Step 6: Review and checkpoint**
++
++Reviewers: `supabase-schema-guardian`, `ingestion-worker-reviewer`, and `clinical-governance-reviewer`. Suggested local checkpoint message: `feat(ingestion): activate technically eligible generations`.
++
++---
++
++## Task 11: Replace inferred quality results with a persistent administrator queue
++
++**Files:**
++
++- Create: `src/app/api/ingestion/quality/tasks/[id]/route.ts`
++- Create: `tests/ingestion-quality-task-route.test.ts`
++- Create: `tests/ingestion-quality-console.dom.test.tsx`
++- Create: `tests/ui-ingestion-quality.spec.ts`
++- Modify: `src/app/api/ingestion/quality/route.ts`
++- Modify: `src/components/clinical-dashboard/document-manager-contracts.ts`
++- Modify: `src/components/clinical-dashboard/clinical-dashboard-payloads.ts`
++- Modify: `src/components/clinical-dashboard/DocumentManagerPanel.tsx`
++- Modify: `src/components/ClinicalDashboard.tsx`
++- Modify: `tests/ingestion-quality-route.test.ts`
++- Modify: `tests/document-admin.dom.test.tsx`
++- Modify: `tests/api-route-coverage.test.ts`
++- Modify: `tests/api-validation-contract.test.ts`
++
++**Step 1: Read the installed Next 16 contracts**
++
++Read completely:
++
++```text
++node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md
++node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/route.md
++node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/dynamic-routes.md
++docs/wiring-conventions.md
++```
++
++**Step 2: Add RED route and pagination tests**
++
++```ts
++export type TechnicalTaskPage = Readonly<{
++  items: readonly IngestionTechnicalTask[];
++  nextCursor: string | null;
++  counts: Readonly<Record<TechnicalTaskStatus, number>>;
++}>;
++
++export type TechnicalTaskMutation = Readonly<{
++  action: "assign" | "reprocess" | "withdraw";
++  expectedVersion: number;
++  assigneeId?: string | null;
++  reason?: string;
++}>;
++```
++
++Test administrator-only access, bounded `limit`, invalid cursor/filter rejection, stable ordering by priority descending then creation time and ID ascending, no duplicates across cursor pages, complete traversal beyond 200 tasks, optimistic-version conflicts, bounded reprocess/withdraw reasons, exact targeted reprocess idempotency, and absence of both manual resolve and clinical-approval actions. An attempted `resolve` payload must be rejected and must not change task codes, evidence, or lifecycle.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/ingestion-quality-route.test.ts tests/ingestion-quality-task-route.test.ts tests/ingestion-quality-console.dom.test.tsx tests/document-admin.dom.test.tsx tests/api-route-coverage.test.ts tests/api-validation-contract.test.ts
++```
++
++Expected RED: GET still infers and truncates at 80, UI truncates at 12, and the mutation route is absent.
++
++**Step 3: Implement the persistent page and mutation adapters**
++
++GET accepts `cursor`, `limit`, `status`, `gateCode`, and `assignee`, queries the Task 10 table through a narrowly granted RPC, and returns `TechnicalTaskPage`. The cursor is an opaque versioned encoding of the exact sort tuple. PATCH parses `TechnicalTaskMutation`; assignment delegates to the assignment-only task RPC, `reprocess` delegates to Task 10's exact `request_document_technical_reprocess` authority, and `withdraw` calls the one withdrawal authority. Reprocess remains open or reprocessing until superseding successful evidence arrives; no administrator action can clear hard-gate evidence or mark the task resolved.
++
++Remove `buildReviewItems`, `.slice(0, 80)`, and `.slice(0, 12)`. The dashboard loads the first page, exposes filters/counts, appends or replaces pages without duplicate IDs, and renders assign/reprocess/withdraw actions with transient native-disabled states. It never renders manual resolve or clinical approval controls.
++
++**Step 4: Run GREEN and typecheck**
++
++```text
++node scripts/run-vitest.mjs run tests/ingestion-quality-route.test.ts tests/ingestion-quality-task-route.test.ts tests/ingestion-quality-console.dom.test.tsx tests/document-admin.dom.test.tsx tests/api-route-coverage.test.ts tests/api-validation-contract.test.ts
++npm run typecheck
++```
++
++Expected: focused route/DOM tests and typecheck pass.
++
++**Step 5: Run one focused browser journey**
++
++```text
++npm run ensure
++node scripts/run-playwright.mjs tests/ui-ingestion-quality.spec.ts --project=chromium
++```
++
++Use the URL printed by `ensure`. The journey stubs administrator/task/document/reprocess APIs, crosses the 200-task boundary, exercises all three actions, checks that neither manual resolve nor approval controls exist, and covers desktop plus phone widths.
++
++**Step 6: Review and checkpoint**
++
++Reviewers: `frontend-ui-reviewer` and `supabase-schema-guardian`. Suggested local checkpoint message: `feat(ingestion): add durable technical review queue`.
++
++---
++
++## Task 12: Add the structurally default-off public retrieval kernel and withdrawal proof
++
++**Files:**
++
++- Create: `src/lib/rag/source-ingestion-retrieval.ts`
++- Create: `supabase/migrations/20260831106000_add_source_ingestion_retrieval_kernel.sql`
++- Create: `tests/source-ingestion-retrieval.test.ts`
++- Create: `tests/source-ingestion-retrieval-schema.test.ts`
++- Create: `tests/source-ingestion-retrieval-default-off.test.ts`
++- Create: `tests/staging-document-retrieval-exclusion.test.ts`
++- Create: `tests/document-withdrawal-propagation.test.ts`
++- Modify: `src/lib/owner-scope.ts`
++- Modify: `src/app/api/documents/[id]/route.ts`
++- Modify: `supabase/schema.sql`
++- Modify: `src/lib/supabase/database.types.ts`
++- Modify: `tests/owner-scope.test.ts`
++- Modify: `tests/retrieval-access-scope.test.ts`
++- Modify: `tests/function-grants.test.ts`
++- Modify: `tests/document-mutation-routes.test.ts`
++- Modify: `tests/source-review-policy.test.ts`
++- Modify: `src/lib/rag/rag-eval-cases.ts`
++- Modify: `scripts/fixtures/rag-retrieval-golden.json`
++- Modify: `scripts/fixtures/rag-adversarial-cases.v1.json`
++- Modify: `tests/rag-eval-cases.test.ts`
++- Modify: `tests/rag-adversarial-fixtures.test.ts`
++- Assert unchanged and unreferenced: `src/lib/rag/rag.ts`
++- Assert unchanged and unreferenced: `src/app/api/answer/route.ts`
++- Assert unchanged and unreferenced: `src/app/api/answer/stream/route.ts`
++- Assert unchanged and unreferenced: `src/app/api/search/route.ts`
++- Assert unchanged and unreferenced: `src/lib/rag/rag-answer-support.ts`
++- Assert unchanged and unreferenced: `src/lib/rag/rag-cache.ts`
++
++**Step 1: Add RED source-scope and default-off tests**
++
++```ts
++export const SOURCE_INGESTION_RETRIEVAL_KERNEL_VERSION = "source-ingestion-retrieval-v1" as const;
++
++export type SourceIngestionRetrievalResult =
++  | Readonly<{
++      verdict: "ready";
++      namespace: string;
++      candidates: readonly SourceIngestionCandidate[];
++    }>
++  | Readonly<{
++      verdict: "insufficient";
++      namespace: string;
++      reason: "no_evidence" | "snapshot_mismatch" | "material_conflict";
++      conflictIds: readonly string[];
++    }>;
++
++export type SourceIngestionCandidateCommon = Readonly<{
++  candidateId: string;
++  indexUnitId: string;
++  chunkId: string | null;
++  pageNumber: number | null;
++  spanStart: number | null;
++  spanEnd: number | null;
++  originalSha256: string;
++  policyVersion: string;
++  sourceRole: ClinicalSourceRole;
++  contentMode: Extract<SourceContentMode, "indexed_content">;
++  conflictFamilyId: string | null;
++}>;
++
++export type SourceIngestionCandidate =
++  | (SourceIngestionCandidateCommon &
++      Readonly<{
++        corpusScope: "uploaded_local";
++        documentId: string;
++        generationId: string;
++        activationReceiptId: string;
++      }>)
++  | (SourceIngestionCandidateCommon &
++      Readonly<{
++        corpusScope: "clinical_kb_site";
++        logicalId: string;
++        releaseId: string;
++        releaseDigest: string;
++        changeEpoch: string;
++        registryVersion: string;
++      }>)
++  | (SourceIngestionCandidateCommon &
++      Readonly<{
++        corpusScope: "australian_public";
++        sourceKey: string;
++        sourceVersionId: string;
++        indexGeneration: string;
++        releaseDigest: string;
++      }>);
++```
++
++Test exact active uploaded generation, active site release/change epoch, active governed Australian version, anonymous/user/administrator public candidate-ID parity, every discriminated lineage field above, review-due/superseded/withdrawn/staging/private/link-only/excluded/non-canonical exclusion before ranking, material-conflict refusal, zero legacy cache access, and synchronous withdrawal exclusion. Add the source-ingestion retrieval, conflict-family, protected-content, parity, and default-off synthetic cases to the existing RAG fixture owners in this task so C06 does not introduce later behavior changes.
++
++`tests/source-ingestion-retrieval-default-off.test.ts` statically walks production imports and fails if `src/lib/rag/rag.ts`, Answer routes, search routes, or answer-support modules import `source-ingestion-retrieval` or call its RPC.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/source-ingestion-retrieval.test.ts tests/source-ingestion-retrieval-schema.test.ts tests/source-ingestion-retrieval-default-off.test.ts tests/staging-document-retrieval-exclusion.test.ts tests/document-withdrawal-propagation.test.ts
++```
++
++Expected RED: source-only kernel/RPC are absent and withdrawal route does not use the new authority.
++
++**Step 2: Freeze the public-only access scope and namespace**
++
++```ts
++import { ragContextSnapshotCacheKey } from "./rag-context-snapshot";
++import type { ResolvedRagContextSnapshot } from "./rag-context-snapshot";
++import type { SourceContentMode } from "../australian-source-catalogue";
++import type { ClinicalSourceRole } from "../types";
++
++export interface SourceIngestionRetrievalAdapter {
++  matchSourceIngestionCandidates(input: {
++    query: string;
++    snapshot: ResolvedRagContextSnapshot;
++    limit: number;
++    signal?: AbortSignal;
++  }): Promise<unknown>;
++}
++
++export function governedPublicRetrievalAccessScope() {
++  return Object.freeze({
++    includePublic: true as const,
++    corpusScopes: Object.freeze(["uploaded_local", "clinical_kb_site", "australian_public"] as const),
++  });
++}
++
++export function sourceIngestionCandidateNamespace(snapshot: ResolvedRagContextSnapshot): string {
++  return `${SOURCE_INGESTION_RETRIEVAL_KERNEL_VERSION}:${ragContextSnapshotCacheKey(snapshot)}`;
++}
++
++export type ResolveActiveSharedClinicalCandidates = (args: {
++  adapter: SourceIngestionRetrievalAdapter;
++  query: string;
++  snapshot: ResolvedRagContextSnapshot;
++  limit: number;
++  signal?: AbortSignal;
++}) => Promise<SourceIngestionRetrievalResult>;
++```
++
++Implement `resolveActiveSharedClinicalCandidates` with `ResolveActiveSharedClinicalCandidates`. The kernel accepts an injected adapter, a normalized query, exact immutable `ResolvedRagContextSnapshot`, bounded limit, and optional abort signal. It performs no cache read/write. It returns `insufficient` for empty, mismatched, or materially conflicting evidence.
++
++**Step 3: Implement the service-only snapshot-bound RPC**
++
++Patch-port only final corrected public-scope, sanitization, lineage, and test patterns from `0f9a52f22^..03d68b3a1`; rewrite every join for the C02 generation ledger and Task 10 activation authority.
++
++The RPC joins:
++
++- `uploaded_local` to the exact active document generation and trusted activation receipt;
++- `clinical_kb_site` to the exact active site release and change epoch; and
++- `australian_public` to the exact active governed source version.
++
++It returns document, generation, chunk/index-unit, page/span, original-hash, policy, corpus, role, content-mode, release/version, and conflict-family lineage. Original/derivative family rows collapse without double-counting; a site derivative cannot overrule its uploaded parent. It is fixed-search-path and service-role-only.
++
++Do not port broad subquestion allocation, supplementary/international ranking, rollout cohorts, canary logic, or `rag.ts` integration.
++
++**Step 4: Wire withdrawal without serving integration**
++
++For an active shared source, `DELETE /api/documents/[id]` calls Task 10's exact withdrawal RPC. Private idle staging retains its existing delete behavior. The response acknowledges eligibility removal separately from asynchronous cleanup.
++
++**Step 5: Run GREEN and static access gates**
++
++```text
++node scripts/run-vitest.mjs run tests/source-ingestion-retrieval.test.ts tests/source-ingestion-retrieval-schema.test.ts tests/source-ingestion-retrieval-default-off.test.ts tests/staging-document-retrieval-exclusion.test.ts tests/document-withdrawal-propagation.test.ts tests/owner-scope.test.ts tests/retrieval-access-scope.test.ts tests/function-grants.test.ts tests/document-mutation-routes.test.ts tests/source-review-policy.test.ts tests/rag-eval-cases.test.ts tests/rag-adversarial-fixtures.test.ts
++npm run check:migration-role
++npm run check:owner-scope
++```
++
++Expected: public technical retrieval and full lineage pass; ordinary buffered Answer remains unchanged and cannot reach the kernel.
++
++**Step 6: Review and checkpoint**
++
++Reviewers: `rag-retrieval-reviewer`, `supabase-schema-guardian`, and `clinical-governance-reviewer`. Suggested local checkpoint message: `feat(rag): add default-off ingestion retrieval`.
++
++---
++
++## Task 13: Plan selective reprocessing and close recovery/incident controls
++
++**Files:**
++
++- Create: `src/lib/document-reprocessing.ts`
++- Create: `scripts/audit-document-pipeline-versions.ts`
++- Create: `scripts/plan-document-reprocessing.ts`
++- Create: `tests/document-pipeline-version-audit.test.ts`
++- Modify: `src/lib/ingestion-audit.ts`
++- Modify: `src/lib/reindex-pipeline.ts`
++- Modify: `scripts/reindex-shadow.ts`
++- Modify: `scripts/cleanup-abandoned-reindex-generations.ts`
++- Modify: `tests/reindex-pipeline.test.ts`
++- Modify: `tests/reindex-shadow.test.ts`
++- Modify: `tests/reindex-generation-lifecycle.test.ts`
++- Modify: `tests/storage-cleanup-safety.test.ts`
++- Modify: `tests/ingestion-recovery.test.ts`
++- Modify: `docs/reindex-runbook.md`
++- Modify: `docs/openai-rag-operations.md`
++- Modify: `docs/ingestion-state-machine.md`
++- Modify: `docs/rag-improvement/data-flow-register.md`
++
++**Step 1: Add RED version-audit and recovery tests**
++
++```ts
++export type SelectiveReprocessingManifest = Readonly<{
++  version: 1;
++  auditDigest: `sha256:${string}`;
++  targetVersions: DocumentPipelineTargetVersions;
++  documents: readonly Readonly<{
++    documentId: string;
++    expectedStateDigest: string;
++    baselineGenerationId: string | null;
++    action: "metadata_only" | "targeted_reprocess" | "shadow_reindex";
++    reasonCodes: readonly IngestionAuditReason[];
++    estimatedPages: number;
++    estimatedProviderCalls: number;
++    rollbackGenerationId: string | null;
++  }>[];
++  digest: `sha256:${string}`;
++}>;
++```
++
++Test stable selection, no-op current documents, metadata-only changes, extraction/index version changes, missing expected-state digest, unsupported reason, provider-call estimate bounds, exact rollback pointer, retry exhaustion into the existing dead-letter state, active/retained cleanup refusal, worker death leaving only generation-addressed temporary paths, and interrupted cleanup remaining ineligible for reactivation.
++
++Run:
++
++```text
++node scripts/run-vitest.mjs run tests/document-pipeline-version-audit.test.ts tests/reindex-pipeline.test.ts tests/reindex-shadow.test.ts tests/reindex-generation-lifecycle.test.ts tests/storage-cleanup-safety.test.ts tests/ingestion-recovery.test.ts
++```
++
++Expected RED: the selective version planner and CLI are absent.
++
++**Step 2: Extend the canonical classifier rather than creating another**
++
++Add pipeline-version evidence to `IngestionDocumentAudit`, `auditDocument`, and `assertAuditTargetState`. Preserve accepted action precedence and existing reason values. `planDocumentReprocessing` consumes those audits and target versions, stable-sorts documents, emits the least invasive action, binds state and rollback identities, and hashes the complete manifest.
++
++**Step 3: Add dry-run-only CLIs**
++
++`audit-document-pipeline-versions.ts` reads a supplied offline inventory. `plan-document-reprocessing.ts` accepts only `--audit`, `--target-versions`, and `--out`. Neither CLI has an apply flag, client construction, provider adapter, or hosted fallback.
++
++Reuse C02 staging/evaluation/promotion/rollback/cleanup primitives. Do not add a second reindex driver, cleanup owner, or audit vocabulary.
++
++**Step 4: Update incident and restore guidance**
++
++Document targeted reprocessing, worker-kill recovery, rapid withdrawal, exact rollback, cleanup delay, PITR versus Storage restore, and source-only versus connected evidence. Never include document text in an incident record.
++
++**Step 5: Run GREEN and documentation checks**
++
++```text
++node scripts/run-vitest.mjs run tests/document-pipeline-version-audit.test.ts tests/reindex-pipeline.test.ts tests/reindex-shadow.test.ts tests/reindex-generation-lifecycle.test.ts tests/storage-cleanup-safety.test.ts tests/ingestion-recovery.test.ts
++npm run docs:check-scripts
++npm run docs:check-links
++```
++
++Expected: deterministic dry-run manifests and recovery fixtures pass; no connected adapter runs.
++
++**Step 6: Review and checkpoint**
++
++Reviewers: `ingestion-worker-reviewer` and `supabase-schema-guardian` for any cleanup/RPC delta. Suggested local checkpoint message: `feat(ingestion): plan selective lifecycle repairs`.
++
++### Trusted-ingestion tranche review after C05
++
++Run `clinical-governance-reviewer`, `supabase-schema-guardian`, `ingestion-worker-reviewer`, `rag-retrieval-reviewer`, and `frontend-ui-reviewer` in parallel against the full C03-through-C05 range, with each reviewer constrained to its specialist surface. Require:
++
++- one administrator/backend admission core with non-spoofable channel authority and exact replay semantics;
++- zero provider egress before all local gates pass;
++- reproducible generation-bound extraction evidence;
++- fail-closed technical activation or durable task creation;
++- exhaustive cursor pagination with no 80/12 truncation and no approval control;
++- public caller parity, staging/private/withdrawn exclusion, full lineage, conflict refusal, and ordinary-Answer default-off proof; and
++- dry-run-only selective reprocessing with exact rollback and cleanup owners.
++
++Return one combined correction packet, correct serially, and re-review the whole corrected trusted-ingestion tranche. Reconcile schema, types, and drift once for the C03/C04 migrations after corrections are stable.
++
++## C06: Whole-continuation acceptance
++
++Trusted Task 8 is an acceptance gate, not a fourteenth behavior unit.
++
++**Step 1: Verify the owning-task acceptance matrix without changing behavior**
++
++C06 is read-only apart from its evidence records. Verify that the already reviewed Task 7-13 ranges contain synthetic cases proving:
++
++- administrator/backend admission and ordinary-user denial;
++- scanner/identifier quarantine with zero provider calls;
++- dose-table or critical-numeric OCR uncertainty refusal;
++- private/staging exclusion and exact activation;
++- review-due, superseded, withdrawn, link-only, excluded, and non-canonical exclusion;
++- anonymous/user/administrator candidate-ID parity;
++- Healthdirect exclusion and eTG/AMH protected-content rejection;
++- exact lineage, conflict-family handling, cache invalidation, lease recovery, dead-letter behavior, and duplicate-activation protection;
++- queue completeness beyond 200 rows; and
++- ordinary buffered Answer inability to invoke the source-ingestion kernel.
++
++Task 7 owns admission/ordinary-user-denial cases; Task 8 owns scanner/identifier/no-provider cases; Task 9 owns OCR/table cases; Task 10 owns activation/lease/idempotency cases; Task 11 owns queue-scale cases; Task 12 owns retrieval/parity/protected-content/lineage/default-off RAG fixtures; and Task 13 owns recovery/dead-letter/cleanup cases. If any case is absent, reopen that owning task, add and review it there, then return to C06. Do not make a late C06 fixture change, create another vocabulary, or run a provider comparison.
++
++**Step 2: Run the focused acceptance selector once**
++
++```text
++node scripts/run-vitest.mjs run tests/trusted-document-admission.test.ts tests/document-ingress-safety.test.ts tests/document-provider-egress-gate.test.ts tests/ocr-evidence-contract.test.ts tests/document-technical-eligibility.test.ts tests/ingestion-quality-route.test.ts tests/ingestion-quality-task-route.test.ts tests/source-ingestion-retrieval.test.ts tests/staging-document-retrieval-exclusion.test.ts tests/document-withdrawal-propagation.test.ts tests/document-pipeline-version-audit.test.ts tests/rag-eval-cases.test.ts tests/rag-adversarial-fixtures.test.ts
++npm run check:rag:fixtures
++npm run eval:rag:offline
++```
++
++Expected: all source-only cases pass with zero hard violations. If a covered selector already has an unchanged successful receipt, report the reused receipt instead of rerunning it.
++
++**Step 3: Select one broad local handoff gate**
++
++```text
++npm run verify:pr-local -- --dry-run
++npm run arbiter -- verify:pr-local
++```
++
++If the arbiter says `RUN`, execute `npm run verify:pr-local` exactly once. If it says `DEFER` or `PROVEN`, record that exact verdict and evidence. Do not stack `verify:cheap`, full tests, lint, typecheck, build, or UI after the selected gate unless a distinct uncovered failure class is identified.
++
++**Step 4: Perform final whole-range reviews**
++
++Dispatch fresh `clinical-governance-reviewer`, `supabase-schema-guardian`, `rag-retrieval-reviewer`, and `ingestion-worker-reviewer` reviewers against the immutable C00-base-through-C05-head package. Dispatch `verification-router` to confirm the gate was the smallest sufficient one. Any Critical or Important finding reopens the owning product task, requires a correction commit, and triggers whole-range re-review.
++
++**Step 5: Record source completion and residuals**
++
++`C06-acceptance.md` may state `SOURCE_COMPLETE` only when all 13 task reviews, both tranche reviews, final reviews, focused acceptance, selected handoff evidence, migration uniqueness, schema/type/drift reconciliation, and documentation checks pass at exact heads.
++
++`C07-connected-residuals.md` must remain unclosed and list:
++
++- hosted project and migration-history inspection;
++- authoritative hosted type generation and drift comparison;
++- migration application and grant/RLS verification;
++- backend admission capability provisioning;
++- real scanner, OCR/model-asset, upload, Storage, and document processing;
++- worker/edge deployment;
++- exact shadow stage/evaluation, provider calls, promotion, observation, rollback drill, and cleanup;
++- activation/withdrawal against live data;
++- PITR, database backup, Storage backup, and isolated restore evidence;
++- `npm run check:production-readiness` under explicit approval;
++- provider canary and end-user Answer integration; and
++- deployment and production observation.
++
++No C07 item is implied by source completion.
++
++## Final self-review checklist for this plan
++
++- Every approved design objective maps to a numbered task or C06 acceptance item.
++- Every deferred parent behavior appears only in C07 or the design's non-goals.
++- All seven migration names are exact, ordered, and guarded by preflight.
++- All 13 behavior units have an independent RED/GREEN loop, immutable range, specialist review, correction rule, and local checkpoint message.
++- There are exactly two integration reviews: core ingestion after C02 and trusted ingestion after C05, followed by one final whole-range review.
++- C06 is read-only apart from evidence records; every synthetic case is added and reviewed in its owning Task 7-13 range.
++- Schema/types/drift reconciliation occurs once per stable migration tranche.
++- The only browser run is the focused queue journey.
++- The only broad local handoff run is arbiter-selected `verify:pr-local`.
++- No command processes documents, calls providers, reaches hosted Supabase, applies migrations, deploys, activates, withdraws, reindexes, cleans up, pushes, or publishes.
++- `src/lib/rag/rag.ts` and ordinary Answer/search serving remain outside the implementation diff.
++- `npm run check:production-readiness` remains explicit C07 work because the saved flightplan classifies it as connected/approval-gated.
+diff --git a/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C00-anchor.md b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C00-anchor.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..6d681a5cb41206815a053cd08bf09a7b2a9caaf6
+--- /dev/null
++++ b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C00-anchor.md
+@@ -0,0 +1,73 @@
++# C00 continuation anchor
++
++## Candidate state
++
++- Programme: `rag-source-ingestion-continuation-v1`
++- Status: candidate awaiting independent `clinical-governance-reviewer` review
++- Worktree: `C:\Users\joshs\.codex\worktrees\rag-local-build-20260822\Database`
++- Branch: `codex/rag-local-build-20260822`
++- Implementation base: `03aa32d731d1cb9009be55213580e9ea3994017c`
++- Observed initial HEAD: `03aa32d731d1cb9009be55213580e9ea3994017c`
++- Observed source-check HEAD: `03aa32d731d1cb9009be55213580e9ea3994017c`
++- Design SHA-256: `FEC371222E5D21F10DFA1A24E02DD5DE27F941AFC685D3CE2BF3E3ECF0973676`
++- Plan SHA-256: `F455EFDEF4D80A64CD0A3FA4BC2C6F637799E32332C7D81459E0FBD24755D4D7`
++- Ordinary Answer serving changed: `false`
++- Product work remains paused until the independent C00 review is clean.
++
++The plan, design, and C00 brief are checkpoint inputs. Their reviewed bytes are preserved in this candidate. The unaccepted P08A draft is not implementation authority and none of its artifacts were modified.
++
++## Accepted receipt imports
++
++All paths below were read from the current worktree. Every receipt reported `status: accepted`; each digest was calculated from the file rather than copied from chat.
++
++| Phase | Receipt                                                                                                  | SHA-256                                                            |
++| ----- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
++| P00   | `docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P00.json` | `cd2ee7413c397ae818fa178bb22bef1668c37e1e4756f0653666d9b79d6a4ad4` |
++| P01   | `docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P01.json` | `e7ab0da3bdb94681590559fce4841c894087f60d98e9ecc0d369d21d1b9f3730` |
++| P02   | `docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P02.json` | `216acef527a486ff9c5133b4d54bee9f9f83ad16a8b7f7202ed00eb7db128824` |
++| P03   | `docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P03.json` | `8e1b13b958b321469a008d92034de07a76812349d88eeebc2528ff108c1bb2b2` |
++| P04   | `docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P04.json` | `e946f7ee324f06518e1ed4b39d3df86ea0db6b065b872cc6bf80f77eb24cf020` |
++| P05   | `docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P05.json` | `7c8162adae6cbaf76f5de914a850715ebf9cbab2503be6de71ff28490ba6340b` |
++| P06   | `docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P06.json` | `68dfd38bdf91e851135ee7c3c74887672dffc841452ba357770a390450d9065e` |
++| P07   | `docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P07.json` | `4bee6344aaf3f44d57b19043642fb0438c302ca78b5ea22e7423b19b13338844` |
++
++## Migration reservation proof
++
++- `rg --files supabase/migrations | rg "20260831100000|20260831101000|20260831102000|20260831103000|20260831104000|20260831105000|20260831106000"` exited `1` with no output, proving all seven version prefixes are absent.
++- The latest observed migration was `20260827213539_add_site_content_runtime_authority.sql`.
++- The exact reserved filenames below were absent, were in ascending order, and each sorted after that latest migration:
++  1. `20260831100000_retire_ingestion_worker.sql`
++  2. `20260831101000_fence_ingestion_leases_and_repairs.sql`
++  3. `20260831102000_stage_shadow_document_generations.sql`
++  4. `20260831103000_activate_retained_document_generations.sql`
++  5. `20260831104000_create_document_admission_events.sql`
++  6. `20260831105000_add_document_technical_activation.sql`
++  7. `20260831106000_add_source_ingestion_retrieval_kernel.sql`
++
++The prior P08A allocation `20260830215420_add_corpus_scoped_retrieval_v3.sql` is superseded. The sole continuation retrieval reservation is `20260831106000_add_source_ingestion_retrieval_kernel.sql`; the conditional P08A reuse option is closed.
++
++## Dry-run gate route
++
++The scope mapper reported `ingestion_sast_changed: true`, `db_changed: true`, and `rag_eval_changed: true` for the representative source set. It also reported `ui_changed: false` for that primary set.
++
++The primary `verify:pr-local --dry-run` selected, without executing, `check:runtime`, `check:installed-lock-parity`, `format:changed`, `lint`, `typecheck`, `test`, `build`, both offline RAG evaluations, `check:medication-interactions`, and `check:medication-lexicon-report`.
++
++The extended `verify:pr-local --dry-run --extended` preview selected the same plan and added `verify:ui` after `src/components/ClinicalDashboard.tsx` was included. No command from either printed verification plan executed. The selector exposes no separate privacy or clinical flags; clinical and privacy risk is routed explicitly to `clinical-governance-reviewer`, alongside the task-specific schema, ingestion, retrieval, and UI specialist routes recorded in the manifest.
++
++## Retained boundary
++
++- Ingestion Tasks 4-9 and Trusted Tasks 1-7 remain the 13 independently reviewed units `U01` through `U13`.
++- Trusted Task 0 remains the C03 entry gate and Trusted Task 8 remains the final acceptance gate; neither is counted as a behavior unit.
++- The continuation retains source-only trusted admission, processor integrity, generation-addressed shadow lifecycle, technical activation, durable queue, selective recovery, and the minimum structurally default-off public retrieval kernel.
++- The existing buffered Answer path remains the supported serving path. The new kernel is unreachable from ordinary Answer serving unless a later serving tranche is separately authorized.
++- P00-P07 receipts and accepted artifacts remain immutable.
++
++## Deferred and connected boundary
++
++The continuation defers the full P08A parent phase beyond its minimum kernel; P08B Tasks 5-6; P08C Tasks 7-8; P09 Task 3; Evaluation Task 4's general canary/rollout owner; Retrieval Task 4's broad allocation, supplementary ordering, and local-primary ranking; P10 Task 6 except retained ingestion evidence invariants; P11 Tasks 5-6; P12 Tasks 1-6; P13 Tasks 1-6 while preserving buffered serving; P17 Tasks 5-6 except the named acceptance invariants; and all P18 operations.
++
++C07 remains unclosed and owns hosted project/history inspection, hosted type/drift comparison, migration application and grant/RLS verification, backend capability provisioning, real scanner/OCR/model/upload/Storage/document work, deployment, shadow evaluation and provider operations, activation/withdrawal, backups and isolated restore, approval-gated production readiness, provider/end-user Answer canary work, and production observation.
++
++## Prohibited operations attestation
++
++This candidate made metadata-only changes. It made no product, test, migration, parent-receipt, accepted-artifact, or P08A-artifact change. It processed no document or corpus and made no provider call, hosted Supabase/Storage access, connected-service call, migration application, reindex, activation, withdrawal, deployment, push, or pull request. No product verification command, product test, `check:production-readiness`, scanner, model download, or hosted check ran; only the required source inspection, dry-run gate previews, hash checks, and targeted metadata formatting validation were permitted.
+diff --git a/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/manifest.json b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/manifest.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..683d8bcb07695b69f3abb8255ffade8e314ec439
+--- /dev/null
++++ b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/manifest.json
+@@ -0,0 +1,189 @@
++{
++  "schemaVersion": 1,
++  "programmeId": "rag-source-ingestion-continuation-v1",
++  "status": "candidate-awaiting-independent-review",
++  "designPath": "docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md",
++  "designSha256": "FEC371222E5D21F10DFA1A24E02DD5DE27F941AFC685D3CE2BF3E3ECF0973676",
++  "planPath": "docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md",
++  "planSha256": "F455EFDEF4D80A64CD0A3FA4BC2C6F637799E32332C7D81459E0FBD24755D4D7",
++  "implementationBase": "03aa32d731d1cb9009be55213580e9ea3994017c",
++  "acceptedReceiptImports": [
++    {
++      "phase": "P00",
++      "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P00.json",
++      "sha256": "cd2ee7413c397ae818fa178bb22bef1668c37e1e4756f0653666d9b79d6a4ad4"
++    },
++    {
++      "phase": "P01",
++      "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P01.json",
++      "sha256": "e7ab0da3bdb94681590559fce4841c894087f60d98e9ecc0d369d21d1b9f3730"
++    },
++    {
++      "phase": "P02",
++      "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P02.json",
++      "sha256": "216acef527a486ff9c5133b4d54bee9f9f83ad16a8b7f7202ed00eb7db128824"
++    },
++    {
++      "phase": "P03",
++      "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P03.json",
++      "sha256": "8e1b13b958b321469a008d92034de07a76812349d88eeebc2528ff108c1bb2b2"
++    },
++    {
++      "phase": "P04",
++      "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P04.json",
++      "sha256": "e946f7ee324f06518e1ed4b39d3df86ea0db6b065b872cc6bf80f77eb24cf020"
++    },
++    {
++      "phase": "P05",
++      "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P05.json",
++      "sha256": "7c8162adae6cbaf76f5de914a850715ebf9cbab2503be6de71ff28490ba6340b"
++    },
++    {
++      "phase": "P06",
++      "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P06.json",
++      "sha256": "68dfd38bdf91e851135ee7c3c74887672dffc841452ba357770a390450d9065e"
++    },
++    {
++      "phase": "P07",
++      "path": "docs/superpowers/rag-upgrade/execution-receipts/rag-answer-quality-and-repository-coverage-v1/P07.json",
++      "sha256": "4bee6344aaf3f44d57b19043642fb0438c302ca78b5ea22e7423b19b13338844"
++    }
++  ],
++  "phases": ["C01", "C02", "C03", "C04", "C05", "C06"],
++  "units": [
++    {
++      "id": "U01",
++      "phase": "C01",
++      "planTask": 1,
++      "parentTask": "Ingestion Task 4",
++      "reviewers": ["ingestion-worker-reviewer", "supabase-schema-guardian"]
++    },
++    {
++      "id": "U02",
++      "phase": "C01",
++      "planTask": 2,
++      "parentTask": "Ingestion Task 5",
++      "reviewers": ["ingestion-worker-reviewer", "clinical-governance-reviewer"]
++    },
++    {
++      "id": "U03",
++      "phase": "C01",
++      "planTask": 3,
++      "parentTask": "Ingestion Task 6",
++      "reviewers": ["ingestion-worker-reviewer", "supabase-schema-guardian", "clinical-governance-reviewer"]
++    },
++    {
++      "id": "U04",
++      "phase": "C02",
++      "planTask": 4,
++      "parentTask": "Ingestion Task 7",
++      "reviewers": ["ingestion-worker-reviewer", "supabase-schema-guardian", "rag-retrieval-reviewer"]
++    },
++    {
++      "id": "U05",
++      "phase": "C02",
++      "planTask": 5,
++      "parentTask": "Ingestion Task 8",
++      "reviewers": ["supabase-schema-guardian", "ingestion-worker-reviewer"]
++    },
++    {
++      "id": "U06",
++      "phase": "C02",
++      "planTask": 6,
++      "parentTask": "Ingestion Task 9",
++      "reviewers": ["clinical-governance-reviewer"]
++    },
++    {
++      "id": "U07",
++      "phase": "C03",
++      "planTask": 7,
++      "parentTask": "Trusted Task 1",
++      "reviewers": ["supabase-schema-guardian", "clinical-governance-reviewer"]
++    },
++    {
++      "id": "U08",
++      "phase": "C03",
++      "planTask": 8,
++      "parentTask": "Trusted Task 2",
++      "reviewers": ["ingestion-worker-reviewer", "clinical-governance-reviewer"]
++    },
++    {
++      "id": "U09",
++      "phase": "C03",
++      "planTask": 9,
++      "parentTask": "Trusted Task 3",
++      "reviewers": ["ingestion-worker-reviewer"]
++    },
++    {
++      "id": "U10",
++      "phase": "C03",
++      "planTask": 10,
++      "parentTask": "Trusted Task 4",
++      "reviewers": ["supabase-schema-guardian", "ingestion-worker-reviewer", "clinical-governance-reviewer"]
++    },
++    {
++      "id": "U11",
++      "phase": "C04",
++      "planTask": 11,
++      "parentTask": "Trusted Task 5",
++      "reviewers": ["frontend-ui-reviewer", "supabase-schema-guardian"]
++    },
++    {
++      "id": "U12",
++      "phase": "C04",
++      "planTask": 12,
++      "parentTask": "Trusted Task 6",
++      "reviewers": ["rag-retrieval-reviewer", "supabase-schema-guardian", "clinical-governance-reviewer"]
++    },
++    {
++      "id": "U13",
++      "phase": "C05",
++      "planTask": 13,
++      "parentTask": "Trusted Task 7",
++      "reviewers": ["ingestion-worker-reviewer", "supabase-schema-guardian"]
++    }
++  ],
++  "reviewerRouting": {
++    "C00": ["clinical-governance-reviewer"],
++    "privacyAndClinicalRisk": ["clinical-governance-reviewer"],
++    "coreIngestionTranche": ["ingestion-worker-reviewer", "supabase-schema-guardian", "rag-retrieval-reviewer"],
++    "trustedIngestionTranche": [
++      "clinical-governance-reviewer",
++      "supabase-schema-guardian",
++      "ingestion-worker-reviewer",
++      "rag-retrieval-reviewer",
++      "frontend-ui-reviewer"
++    ],
++    "wholeContinuation": [
++      "clinical-governance-reviewer",
++      "supabase-schema-guardian",
++      "rag-retrieval-reviewer",
++      "ingestion-worker-reviewer"
++    ],
++    "finalGateSelection": ["verification-router"]
++  },
++  "migrationReservations": [
++    "20260831100000_retire_ingestion_worker.sql",
++    "20260831101000_fence_ingestion_leases_and_repairs.sql",
++    "20260831102000_stage_shadow_document_generations.sql",
++    "20260831103000_activate_retained_document_generations.sql",
++    "20260831104000_create_document_admission_events.sql",
++    "20260831105000_add_document_technical_activation.sql",
++    "20260831106000_add_source_ingestion_retrieval_kernel.sql"
++  ],
++  "c07ConnectedResiduals": [
++    "hosted project and migration-history inspection",
++    "authoritative hosted type generation and drift comparison",
++    "migration application and grant/RLS verification",
++    "backend admission capability provisioning",
++    "real scanner, OCR/model-asset, upload, Storage, and document processing",
++    "worker/edge deployment",
++    "exact shadow stage/evaluation, provider calls, promotion, observation, rollback drill, and cleanup",
++    "activation/withdrawal against live data",
++    "PITR, database backup, Storage backup, and isolated restore evidence",
++    "npm run check:production-readiness under explicit approval",
++    "provider canary and end-user Answer integration",
++    "deployment and production observation"
++  ],
++  "ordinaryAnswerServingChanged": false
++}
+diff --git a/docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C00/C00-brief.md b/docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C00/C00-brief.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..145c626571c030794437027a027387530456000c
+--- /dev/null
++++ b/docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C00/C00-brief.md
+@@ -0,0 +1,102 @@
++# C00 task brief: anchor the ingestion-first continuation
++
++## Position in the programme
++
++C00 is metadata-only. It anchors the approved `rag-source-ingestion-continuation-v1` overlay to the accepted P07 metadata commit before any product test, source, migration, RED run, document operation, provider call, or connected action.
++
++Worktree: `C:\Users\joshs\.codex\worktrees\rag-local-build-20260822\Database`
++
++Branch: `codex/rag-local-build-20260822`
++
++Implementation base: `03aa32d731d1cb9009be55213580e9ea3994017c`
++
++Approved design plus implementation-preflight clarification SHA-256: `FEC371222E5D21F10DFA1A24E02DD5DE27F941AFC685D3CE2BF3E3ECF0973676`
++
++Reviewed plan plus implementation-preflight correction SHA-256: `F455EFDEF4D80A64CD0A3FA4BC2C6F637799E32332C7D81459E0FBD24755D4D7`
++
++## Read first
++
++- `docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md`
++- `docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md`, only Global constraints, Continuation evidence layout, and C00
++- `.superpowers/sdd/progress.md`
++- Accepted P00-P07 receipts and manifests under `docs/superpowers/rag-upgrade/`
++
++Do not read or resume the superseded P08A draft as implementation authority.
++
++## Owned files
++
++Create:
++
++- `docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/manifest.json`
++- `docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/C00-anchor.md`
++- `docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C00/C00-report.md`
++
++Modify:
++
++- `.superpowers/sdd/progress.md`
++
++Checkpoint without modifying their reviewed bytes:
++
++- `docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md`
++- `docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md`
++- this brief
++
++Do not stage or modify any other untracked artifact.
++
++## Requirements
++
++1. The manifest contains:
++   - `programmeId` equal to `rag-source-ingestion-continuation-v1`;
++   - exact `designPath`, `planPath`, and `implementationBase`;
++   - every accepted P00-P07 receipt path and SHA-256 digest, derived from the current accepted files rather than copied from chat;
++   - ordered phases C01-C06;
++   - the 13 unit identifiers in plan order;
++   - reviewer routing;
++   - the seven reserved migration filenames in ascending order;
++   - the C07 connected residual list; and
++   - `ordinaryAnswerServingChanged: false`.
++2. `C00-anchor.md` records the observed base/head, exact plan/design hashes, accepted receipt imports, migration absence proof, dry-run gate route, retained/deferred boundaries, and the fact that no verification command, product change, document operation, provider call, connected service, migration apply, deployment, push, or PR occurred.
++3. Preserve all P00-P07 receipts and accepted artifacts byte-for-byte. Do not modify P08A artifacts.
++4. Update `.superpowers/sdd/progress.md` to show C00 as a candidate awaiting independent review. Replace the prior reviewed-plan hash with the exact current hash recorded above. Mark the P08A `20260830215420_add_corpus_scoped_retrieval_v3.sql` allocation superseded rather than active, and record `20260831106000_add_source_ingestion_retrieval_kernel.sql` as the sole continuation retrieval reservation. Product work remains paused until that review is clean.
++5. The independently reviewed C00 preflight correction closes the conditional P08A migration-reuse option, checkpoints the planning inputs, proves migration ordering, and records the repository selector's real categories. The design and plan must remain byte-identical to the hashes above after that review.
++
++## Required source-only checks
++
++Run and record exact outcomes:
++
++```text
++git rev-parse HEAD
++git merge-base --is-ancestor 03aa32d731d1cb9009be55213580e9ea3994017c HEAD
++rg --files supabase/migrations | rg "20260831100000|20260831101000|20260831102000|20260831103000|20260831104000|20260831105000|20260831106000"
++node -e "const fs=require('node:fs');const reserved=['20260831100000_retire_ingestion_worker.sql','20260831101000_fence_ingestion_leases_and_repairs.sql','20260831102000_stage_shadow_document_generations.sql','20260831103000_activate_retained_document_generations.sql','20260831104000_create_document_admission_events.sql','20260831105000_add_document_technical_activation.sql','20260831106000_add_source_ingestion_retrieval_kernel.sql'];const existing=fs.readdirSync('supabase/migrations').sort();const latest=existing.at(-1);for(const name of reserved){if(existing.includes(name))throw new Error('reserved migration exists: '+name);if(name.localeCompare(latest)<=0)throw new Error(name+' does not sort after '+latest)}if([...reserved].sort().join()!==reserved.join())throw new Error('reservations are unordered');console.log(JSON.stringify({latest,reserved}))"
++node scripts/ci-change-scope.mjs --json --files worker/main.ts,supabase/schema.sql,src/app/api/upload/route.ts,src/lib/document-ingress-safety.ts,src/app/api/ingestion/quality/route.ts,src/lib/rag/source-ingestion-retrieval.ts
++npm run verify:pr-local -- --dry-run --files worker/main.ts,supabase/schema.sql,src/app/api/upload/route.ts,src/lib/document-ingress-safety.ts,src/app/api/ingestion/quality/route.ts,src/lib/rag/source-ingestion-retrieval.ts
++npm run verify:pr-local -- --dry-run --extended --files worker/main.ts,supabase/schema.sql,src/app/api/upload/route.ts,src/lib/document-ingress-safety.ts,src/app/api/ingestion/quality/route.ts,src/lib/rag/source-ingestion-retrieval.ts,src/components/ClinicalDashboard.tsx
++```
++
++Expected:
++
++- initial HEAD is the implementation base;
++- ancestry succeeds;
++- the migration search exits 1 with no matches;
++- all seven reservations sort after the observed latest migration in exact order;
++- the scope mapper reports `ingestion_sast_changed: true`, `db_changed: true`, and `rag_eval_changed: true`;
++- the primary dry run prints the selected fail-closed gate plan without executing a verification command;
++- the extended dry run adds UI scope without executing a verification command; and
++- privacy and clinical risk are routed to explicit reviewers because the selector has no separate flags for them.
++
++Also run targeted Prettier validation for the owned metadata files and verify the plan/design hashes remain exact. Do not run product tests, `check:production-readiness`, providers, hosted Supabase, Storage, scanners, model downloads, migration apply, reindex, upload, or document/corpus processing.
++
++## Candidate checkpoint and report
++
++Create one explicit-path local candidate commit only after the metadata and source-only checks are complete. Suggested subject:
++
++```text
++chore(rag): anchor ingestion continuation
++```
++
++Never push. Write the full report to:
++
++`docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C00/C00-report.md`
++
++The report must include changed files, exact commit, exact commands/outcomes, imported receipt hashes, self-review, and concerns. Return only status, commit, one-line check summary, concerns, and the report path.
+diff --git a/docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md b/docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..cec844ea424627d5c335a2c45fa9c6d0214eba18
+--- /dev/null
++++ b/docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md
+@@ -0,0 +1,229 @@
++# Ingestion-First Continuation Design
++
++**Date:** 2026-08-31  
++**Status:** Approved by user on 2026-08-31  
++**Parent programme:** `rag-answer-quality-and-repository-coverage-v1`  
++**Immutable parent anchor:** accepted P07 receipt commit `03aa32d731d1cb9009be55213580e9ea3994017c`  
++**Proposed continuation:** `rag-source-ingestion-continuation-v1`
++
++## 1. Decision
++
++Continue with an ingestion-first programme rather than completing every remaining RAG, answer-composition, presentation, delivery, evaluation, and connected-acceptance phase in the parent programme.
++
++The continuation preserves all accepted P00-P07 evidence byte-for-byte, implements the smallest late retrieval kernel that the ingestion runtime genuinely requires, completes the source-only ingestion system, and records every deferred or connected gate explicitly. It does not process documents, apply migrations, access hosted data, call providers, deploy, activate a generation, run a live reindex, or claim production acceptance.
++
++## 2. Why a new continuation is required
++
++The parent package and accepted receipts bind the exact programme identity, package hash, predecessor chain, task order, artifacts, and atomic metadata commits. Editing the parent manifest in place would invalidate accepted evidence.
++
++The current parent plan also contains two forms of avoidable work:
++
++1. scheduling-only predecessors that do not provide ingestion runtime interfaces; and
++2. tasks that re-prove or recreate accepted audit, recovery, snapshot, and receipt contracts rather than consuming them.
++
++Therefore the continuation is a versioned plan and evidence overlay anchored to accepted P07. It imports accepted P00-P07 receipts by hash and ancestry, but never modifies them. It reuses the existing task-brief, report, immutable review-package, ledger and repository verification machinery; it does not build a second generalized continuation, hydration or review-readiness engine unless a concrete repeated failure later proves that tooling would repay its implementation cost.
++
++The overlay explicitly replaces the parent programme's deferred predecessor and phase-receipt contract for the retained work. It cannot claim the original P14, P15 or P16 phases accepted; it can claim only the continuation's C01-C06 offline acceptance at exact reviewed heads. This is a governance boundary, not a relaxation of product requirements.
++
++The paused unaccepted P08A draft contains no product change or test evidence. The continuation supersedes that draft. Its migration reservation `20260830215420_add_corpus_scoped_retrieval_v3.sql` could be carried forward only if a fresh implementation-time preflight proved it still sorted after every prerequisite migration. The approved implementation plan instead allocates the new ordered `20260831106000_add_source_ingestion_retrieval_kernel.sql` reservation, so the conditional P08A reuse option is closed and must not be reopened during execution.
++
++## 3. Objectives
++
++The continuation must deliver:
++
++- one surviving ingestion processor;
++- committed-generation-only reads across every enrichment and retrieval consumer;
++- source-anchored, generation-addressed summaries and reconstruction;
++- claim-token lease fencing, heartbeats, bounded retries, repair plans, and audit history;
++- exact-generation shadow reindex planning, evaluation, activation, rollback, retention, and delayed-cleanup contracts;
++- administrator/backend-only trusted admission through one durable contract;
++- fail-closed malware, active-content, identifier, licence/source-policy, and provider-egress gates;
++- reproducible OCR/layout evidence and deterministic extraction promotion by document class;
++- automatic, digest-bound technical activation or durable review routing;
++- a persistent, cursor-paginated administrator technical queue;
++- one public clinical-answer candidate population with staging/private/withdrawn exclusion;
++- exact document, generation, page, span, index-unit, original-hash, and policy lineage;
++- immediate withdrawal invalidation before asynchronous cleanup;
++- selective, dry-run-first, reversible reprocessing and incident/restore procedures; and
++- exact offline ingestion-to-answer, queue-scale, privacy, migration, rollback, and governance evidence.
++
++## 4. Non-goals and deferred work
++
++The following parent work is deferred, not deleted:
++
++- the full P08A parent phase: only its minimum public-retrieval kernel is folded into C04 after technical activation exists;
++- P08B Tasks 5-6 and P08C Tasks 7-8;
++- P09 Task 3;
++- Evaluation Task 4's general HMAC canary, component-rollout, health and rollback owner;
++- Retrieval Task 4's broad subquestion-coverage allocation, supplementary ordering and local-primary ranking;
++- P10 Task 6, except for ingestion-specific evidence invariants retained at final acceptance;
++- P11 Tasks 5-6;
++- P12 Tasks 1-6;
++- P13 Tasks 1-6, while preserving the existing buffered answer path;
++- P17 Tasks 5-6, except for same-SHA, case-set, population, and zero-hard-violation acceptance invariants; and
++- all P18 connected operations.
++
++Verified incremental delivery, adaptive presentation, feedback analytics, broad paired comparison, link-presentation refinements, and production acceptance are not prerequisites for a correct source-only ingestion system.
++
++## 5. Required late retrieval contract
++
++No separate pre-ingestion retrieval phase is required. P14 and P15 land first, then P16 establishes trusted admission and digest-bound technical activation. P16C Task 6 implements the public retrieval seam once against that final generation and activation authority.
++
++The retained kernel is deliberately smaller than full Evaluation Task 4 plus Retrieval Tasks 3-4, but it preserves every ingestion-facing safety invariant:
++
++1. service-role-only, fixed-search-path, public-only corpus-scoped v3 retrieval;
++2. exact active uploaded generation and active site release/change-epoch binding;
++3. pending, private, staging, non-canonical, review-due, superseded and withdrawn exclusion;
++4. identical anonymous, ordinary-user and administrator public candidate IDs;
++5. complete document, generation, chunk/index-unit, page/span, original-hash and policy/release lineage;
++6. bounded fail-closed conflict or insufficient-evidence output rather than silent conflict selection;
++7. a candidate namespace bound to the kernel version and immutable request snapshot, with no legacy-cache reads or writes; and
++8. synchronous eligibility/cache invalidation on activation or withdrawal.
++
++Default-off is structural: the ordinary buffered `rag.ts` serving path remains unchanged and cannot reach v3. The continuation may prove technical retrieval and lineage through direct source-only contracts, but it does not claim that newly activated sources are available in ordinary end-user Answers. General canary rollout, broad coverage allocation, Australian/international fallback ordering and conflict-caveat presentation remain a later serving tranche.
++
++## 6. Continuation phases
++
++| Phase | Purpose                                   | Retained work                                                                                                                                                              | Authority                                 |
++| ----- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
++| C00   | Anchor and execution controls             | Import P00-P07 receipt hashes; retained/deferred registry; exact base, ownership, migration-order and task-ledger preflight                                                | Local metadata only                       |
++| C01   | Processor integrity                       | Ingestion Tasks 4-6: retire duplicate processor, shared generation visibility, anchored summaries, lease fencing and bounded repair                                        | Offline source-only; migrations unapplied |
++| C02   | Reindex lifecycle                         | Ingestion Tasks 7-9: exact-generation shadow driver, non-destructive activation/rollback, cleanup eligibility and operator runbook                                         | Offline dry-run only                      |
++| C03   | Trusted admission and activation          | Trusted Tasks 0-4; Task 0 is an entry gate, followed by admission, safety/egress, extraction evidence and digest-bound technical activation                                | Offline source-only; no live documents    |
++| C04   | Durable queue and public retrieval kernel | Trusted Tasks 5-6: persistent administrator queue plus the minimum late public-retrieval, lineage, conflict-blocking and withdrawal seam                                   | Offline source-only; no live documents    |
++| C05   | Lifecycle and offline closure             | Trusted Tasks 7-8: selective reprocessing, recovery/incident controls, scale fixtures and the phase exit/acceptance gate                                                   | Offline evidence only                     |
++| C06   | Whole-continuation acceptance             | Full-range ingestion, schema, retrieval, clinical-governance and privacy review; one selected broad offline handoff gate                                                   | Offline evidence only                     |
++| C07   | Connected residual ledger                 | Record migration apply, deployment, synthetic upload, reindex, activation, rollback drill, cleanup, provider canary, backup/restore and production observation as unclosed | Separately authorized; not executed       |
++
++Authority seams remain separate: the default-off retrieval kernel, source-only ingestion, dry-run reindex, trusted ingestion, and connected operations are never merged into one acceptance claim.
++
++## 7. Reuse and delta rules
++
++Existing behavior is reusable only when a fresh continuation task package cites the exact immutable base, implementation, focused committed test, and accepted ancestor receipt where applicable.
++
++High-value reuse includes:
++
++- accepted P04/P05 ingestion audit and recovery-readiness contracts;
++- committed-generation filters already used by RAG context and cache reconstruction;
++- per-job failure isolation in the current worker loop;
++- Node enrichment coverage, source identifiers, structured provenance, and validated persistence;
++- existing worker-ID checks as a base for claim-token fencing;
++- existing document-generation activation/rollback types and retained-generation binding;
++- atomic administrator upload and ingestion-job creation;
++- upload structure validation and source-policy rejection;
++- bounded Docling shadow extraction;
++- publication row-locking and artifact-owner checks;
++- immutable RAG request snapshot and cache-key authority; and
++- the site-content outbox lease, fencing, retained-pointer and rollback pattern, reused as a pattern rather than as shared ownership tables.
++
++Two other worktrees are reference implementations, not acceptance evidence:
++
++- `0f9a52f22^..03d68b3a1` contains a corrected governed-retrieval implementation and tests. The branches diverged before P07 and its SQL targets a different site-authority model, so it is never cherry-picked wholesale. The continuation patch-ports only the minimum public-scope, isolation, lineage and test patterns, rewrites SQL against the target authority, allocates a current migration timestamp, and regenerates schema/types/drift locally.
++- the dirty `rag-ingestion-design-20260821` worktree contains useful bounded admission shapes, privacy-preserving event fields and tests. It is never committed, modified or copied wholesale. The port must repair RPC replay/idempotency, prevent arbitrary service-role callers from self-asserting backend authority, and bind activation to exact technical-eligibility and generation receipts.
++
++The continuation does not recreate these primitives. It implements only the missing delta and adds regression proof around reused behavior.
++
++Verified no-op closure is allowed only when all task criteria are already satisfied at the immutable base, fresh task-specific commands pass, an independent reviewer verifies exact source evidence, no source/test/schema change is required, and the task is not closing a prior failed product finding.
++
++## 8. Runtime flow
++
++The target flow is:
++
++1. An administrator or configured backend submits a bounded, validated upload.
++2. One durable admission event binds actor, source policy, digest, storage identity and intended corpus.
++3. Local safety gates quarantine first and fail closed before provider egress, extraction, embedding or activation.
++4. The sole processor claims a job with worker identity plus a claim-specific lease token.
++5. Extraction persists generation-addressed page/layout/OCR evidence and stable retrieval units.
++6. Enrichment produces source-anchored summaries without first-N truncation or destructive replacement.
++7. Technical eligibility evaluates exact security, source, currentness, extraction, lineage, embedding, generation and state-digest evidence.
++8. Eligible generations activate atomically; ineligible or uncertain generations create durable administrator technical tasks.
++9. The source-only retrieval kernel resolves one immutable request snapshot and admits only active shared uploaded, active public site, and eligible Australian candidates; ordinary Answer serving remains unchanged and cannot call this kernel.
++10. Withdrawal removes retrieval eligibility and invalidates affected snapshots synchronously; cleanup proceeds asynchronously and cannot restore eligibility.
++11. Reprocessing and reindex operations remain dry-run-first and emit exact manifests and receipts. Execution requires separate authorization.
++
++## 9. Failure, privacy and recovery behavior
++
++- Unknown or incomplete admission, safety, source-policy, generation, release, lease, lineage or activation state fails closed.
++- Stale workers cannot mutate a job after a newer claim.
++- A failure in one claimed job does not abort unrelated jobs.
++- Replacement summaries are committed before prior valid summaries are removed.
++- No ordinary user upload or owner-private Answer overlay is introduced.
++- No document text, excerpts, owner identity, rollout salt or cohort input enters telemetry.
++- Link-only or excluded content is rejected before acquisition and rechecked before storage, extraction, embedding, indexing and activation.
++- Rollback retains exact prior-generation identity; cleanup is delayed and manifest-bound.
++- Backup/PITR/Storage restore readiness is represented as evidence, never inferred from configuration presence.
++
++## 10. Efficiency mechanisms
++
++The continuation adopts the following without weakening product review:
++
++1. Existing task-brief, report, immutable review-package, ledger, receipt and gate machinery is reused; no generalized workflow tool is built speculatively.
++2. Retrieval and admission reference work is semantically patch-ported at the final corrected behavior, never cherry-picked or treated as proof.
++3. Admission and technical activation land before the public retrieval kernel, so active-generation eligibility is implemented once rather than temporarily denied and reopened in a later phase.
++4. Related migrations are grouped by coherent authority boundary. Schema, generated types and drift are regenerated and reviewed once per stable migration tranche, not copied from another base or repeatedly churned after every substep.
++5. Read-only specification pre-reading, next-task owner mapping and review-package preparation run in parallel with the sole writer.
++6. Reviewer findings are returned as one correction packet per task, followed by one full-range re-review.
++7. Accepted P05/P06 findings and the corrected retrieval/admission reference ranges become first-pass brief checklists so known fail-open, reader/search, cache and lifecycle defects are prevented before review.
++8. Task-level independent reviews remain mandatory. Cross-task integration is reviewed after the core-ingestion tranche and after the trusted-ingestion tranche, then once across the final whole range; metadata-only boundaries do not trigger duplicate product reviews.
++9. Focused RED/GREEN selectors run during iteration. Static migration/grant/schema checks run at the owning tranche, documentation synchronizes once after behavior is stable, and one selected broad offline gate runs at handoff. Equivalent gates are not stacked.
++10. Extra-high reasoning is reserved for architecture, SQL/RLS/access control, lease/rollback and final clinical-governance review. Concrete implementation and mechanical evidence work use high or the least capable safe tier to reduce turn cost without weakening decisions.
++
++## 11. Review and verification
++
++The retained behavior work comprises 13 independently reviewed change units: Ingestion Tasks 4-9 and Trusted Tasks 1-7. Trusted Task 0 is the entry gate and Trusted Task 8 is the final acceptance gate. Every product task retains:
++
++- a fresh implementer;
++- fresh RED and GREEN evidence for changed behavior;
++- an immutable `TASK_BASE..TASK_HEAD` package;
++- independent specification and quality verdicts;
++- correction and full-range re-review for Critical or Important findings; and
++- integration review at the two coherent tranche boundaries and a final whole-range review.
++
++Specialist review routing is based on the actual diff:
++
++- ingestion worker/retry/queue changes: ingestion worker reviewer;
++- migrations, functions, grants, RLS and owner scope: Supabase schema guardian;
++- public retrieval, ranking, selection and cache behavior: RAG retrieval reviewer;
++- source rendering, access, answer lineage and clinical output: clinical governance reviewer; and
++- final gate selection: verification router.
++
++Verification remains offline and proportionate:
++
++- focused unit/contract selectors during TDD;
++- static migration, grant, owner-scope and schema/type checks for database changes;
++- focused worker, retry, lease, reconstruction and reindex tests for ingestion changes;
++- focused public-parity, private-row exclusion, cache-isolation and lineage tests for the default-off kernel;
++- focused browser proof only if the administrator quality-queue UI changes, using `npm run ensure` and the verified project URL;
++- one final `verify:pr-local` selection for whole-continuation handoff when the product range is stable; and
++- production-readiness, provider, hosted Supabase and connected checks remain approval-gated.
++
++## 12. Completion states
++
++`SOURCE_COMPLETE` means all C00-C06 continuation evidence records and reviews pass at exact committed heads, all required offline gates pass, migrations remain unapplied, no documents were processed, and C07 lists every unresolved connected proof.
++
++`PRODUCTION_ACCEPTED` is not available from this continuation alone. It requires separately authorized C07 operations and evidence.
++
++## 13. Time and savings target
++
++The current-code delta audit found substantial reuse but also confirmed missing processor retirement, claim-token fencing, shadow reindex driver and persistence, trusted ingress/egress gates, persistent quality queue, public retrieval scope and lineage, withdrawal propagation, and scale fixtures.
++
++The revised target is **38-52 active Codex elapsed hours**, with a **58-hour contingency ceiling**, excluding connected-operation observation windows. The target includes implementation, task and integration review/correction loops, offline verification and evidence closeout. The approximately 14-22-hour reduction comes from eliminating unused rollout/coverage machinery, integrating retrieval only after activation exists, reusing corrected reference implementations, avoiding speculative process tooling and removing duplicate review/generation passes.
++
++About **34 active hours is the credible hard floor** for the full recommended source-complete scope. Going below that would likely require weakening migration reconciliation, lease fencing, rollback/withdrawal, lineage, access parity or independent review evidence rather than merely removing unused work.
++
++An optional API/CLI-first quality queue could save approximately 5-8 additional hours by deferring the complete administrator dashboard journey and browser proof. That preserves ingestion and privacy correctness but has a real administrator-usability impact and is not selected by this design; the recommended path retains the full durable queue UI.
++
++Expected savings versus the full remaining parent programme are approximately 40-60%, produced mainly by removing unrelated answer/presentation/evaluation phases, consuming accepted primitives, preventing avoidable review loops, and automating mechanical evidence work.
++
++## 14. Accepted design boundary
++
++The user approved this design on 2026-08-31 with the following boundary:
++
++- the priority is a source-complete ingestion system rather than completion of every parent RAG programme phase;
++- buffered answer behavior remains the supported serving path during this continuation;
++- source completion means governed admission through technically validated retrieval, not ordinary end-user Answer availability;
++- the minimum late public-retrieval kernel is retained while general canary and broad coverage/ranking work is deferred;
++- P00-P07 remain immutable;
++- no live or document-processing work occurs without a later explicit request;
++- source completion and production acceptance remain distinct; and
++- the revised 38-52-hour target is preferable to the full 110-150-hour parent programme estimate.

@@ -1,20 +1,35 @@
 # C00 continuation anchor
 
-## Candidate state
+## Accepted anchor state
 
 - Programme: `rag-source-ingestion-continuation-v1`
-- Status: candidate awaiting independent `clinical-governance-reviewer` review
+- Status: C00 complete; independent `clinical-governance-reviewer` review clean
 - Worktree: `C:\Users\joshs\.codex\worktrees\rag-local-build-20260822\Database`
 - Branch: `codex/rag-local-build-20260822`
 - Implementation base: `03aa32d731d1cb9009be55213580e9ea3994017c`
 - Observed initial HEAD: `03aa32d731d1cb9009be55213580e9ea3994017c`
 - Observed source-check HEAD: `03aa32d731d1cb9009be55213580e9ea3994017c`
+- Reviewed candidate head: `834219a36f7ee75a36362ae07a1de44b325e8504`
 - Design SHA-256: `FEC371222E5D21F10DFA1A24E02DD5DE27F941AFC685D3CE2BF3E3ECF0973676`
 - Plan SHA-256: `F455EFDEF4D80A64CD0A3FA4BC2C6F637799E32332C7D81459E0FBD24755D4D7`
 - Ordinary Answer serving changed: `false`
-- Product work remains paused until the independent C00 review is clean.
+- Next unit: Task 1 / `U01`, ready but not started
+- Product work remained paused through the final C00 metadata checkpoint. U01 must begin from the observed final checkpoint and record that exact task base before RED.
 
 The plan, design, and C00 brief are checkpoint inputs. Their reviewed bytes are preserved in this candidate. The unaccepted P08A draft is not implementation authority and none of its artifacts were modified.
+
+## Independent review evidence
+
+- Reviewer role: `clinical-governance-reviewer`
+- Reviewer identity: `/root/c00_governance_review`
+- Reviewed range: `03aa32d731d1cb9009be55213580e9ea3994017c..834219a36f7ee75a36362ae07a1de44b325e8504`
+- Immutable package: `docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C00/C00-review.diff`
+- Package SHA-256: `BF5C9D7BAA36D2C1C46F9CD9916B3C999B38837849424E2FFED4A6A3E64A94A4`
+- Specification compliance: `PASS`
+- Task quality: `PASS`
+- Findings: no Critical, Important, or Minor findings
+
+The review verified the metadata-only scope, imported receipt evidence, planning-input hashes, migration reservation proof, unit and reviewer routing, retained/deferred boundary, C07 residual boundary, structurally unchanged ordinary Answer serving, and prohibited-operation attestation. This final metadata checkpoint records the clean verdict; it does not add product authority beyond making U01 ready to start separately.
 
 ## Accepted receipt imports
 
@@ -70,4 +85,4 @@ C07 remains unclosed and owns hosted project/history inspection, hosted type/dri
 
 ## Prohibited operations attestation
 
-This candidate made metadata-only changes. It made no product, test, migration, parent-receipt, accepted-artifact, or P08A-artifact change. It processed no document or corpus and made no provider call, hosted Supabase/Storage access, connected-service call, migration application, reindex, activation, withdrawal, deployment, push, or pull request. No product verification command, product test, `check:production-readiness`, scanner, model download, or hosted check ran; only the required source inspection, dry-run gate previews, hash checks, and targeted metadata formatting validation were permitted.
+The candidate and final review checkpoint made metadata-only changes. They made no product, test, migration, parent-receipt, accepted-artifact, or P08A-artifact change. They processed no document or corpus and made no provider call, hosted Supabase/Storage access, connected-service call, migration application, reindex, activation, withdrawal, deployment, push, or pull request. No product verification command, product test, `check:production-readiness`, scanner, model download, or hosted check ran; only the required source inspection, dry-run gate previews, hash checks, immutable review packaging, independent review, and targeted metadata formatting validation were permitted.

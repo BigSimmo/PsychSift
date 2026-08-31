@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "programmeId": "rag-source-ingestion-continuation-v1",
-  "status": "candidate-awaiting-independent-review",
+  "status": "C00-complete-review-clean",
   "designPath": "docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md",
   "designSha256": "FEC371222E5D21F10DFA1A24E02DD5DE27F941AFC685D3CE2BF3E3ECF0973676",
   "planPath": "docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md",
@@ -162,6 +162,30 @@
     ],
     "finalGateSelection": ["verification-router"]
   },
+  "c00Review": {
+    "status": "clean",
+    "reviewerRole": "clinical-governance-reviewer",
+    "reviewerAgentId": "/root/c00_governance_review",
+    "baseSha": "03aa32d731d1cb9009be55213580e9ea3994017c",
+    "headSha": "834219a36f7ee75a36362ae07a1de44b325e8504",
+    "packagePath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C00/C00-review.diff",
+    "packageSha256": "BF5C9D7BAA36D2C1C46F9CD9916B3C999B38837849424E2FFED4A6A3E64A94A4",
+    "reportPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C00/C00-review-report.md",
+    "specComplianceVerdict": "PASS",
+    "taskQualityVerdict": "PASS",
+    "findings": {
+      "critical": 0,
+      "important": 0,
+      "minor": 0
+    }
+  },
+  "nextUnit": {
+    "id": "U01",
+    "planTask": 1,
+    "parentTask": "Ingestion Task 4",
+    "status": "ready-not-started"
+  },
+  "productWorkStarted": false,
   "migrationReservations": [
     "20260831100000_retire_ingestion_worker.sql",
     "20260831101000_fence_ingestion_leases_and_repairs.sql",

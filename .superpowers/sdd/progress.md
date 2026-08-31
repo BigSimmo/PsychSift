@@ -4,12 +4,12 @@
 - Worktree: `C:\Users\joshs\.codex\worktrees\rag-local-build-20260822\Database`
 - Branch: `codex/rag-local-build-20260822`
 - Programme implementation base: `7252eb6312edf634e887578a322c53f23be7ab28`
-- Current phase: `C00` metadata candidate awaiting independent review; product implementation remains paused
-- Phase start: `03aa32d731d1cb9009be55213580e9ea3994017c`
-- Current task: `rag-source-ingestion-continuation-v1/C00` (candidate anchored; awaiting independent `clinical-governance-reviewer` review)
-- Task base: `03aa32d731d1cb9009be55213580e9ea3994017c`
+- Current phase: `C01` ready; Task 1 / `U01` not started
+- Phase start: final C00 metadata checkpoint; observe its exact commit before U01 RED
+- Current task: `rag-source-ingestion-continuation-v1/U01` (Task 1 / Ingestion Task 4; ready, not started)
+- Task base: final C00 metadata checkpoint; record its observed exact SHA before U01 begins
 - Phase end candidate: pending continuation states C00-C06
-- Status: C00 METADATA CANDIDATE; product implementation is paused pending a clean independent C00 review. P00-P07 are accepted and their current receipt hashes are imported without modifying parent evidence. P07 final product head `97a13cfaa10bff4188f57137264c86e54b23291c` passed final Task 2 and full-phase reviews; amended atomic P07 receipt commit `03aa32d731d1cb9009be55213580e9ea3994017c` passed `--accept-phase P07`. P08A `--before` and empty-draft `--resume` validation passed, but no P08A product/test/migration edit, RED run, or task commit exists. The user approved `docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md` on 2026-08-31; SHA-256 `FEC371222E5D21F10DFA1A24E02DD5DE27F941AFC685D3CE2BF3E3ECF0973676`. The concrete 13-unit plan at `docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md` has exactly two tranche reviews, structurally default-off retrieval, no connected-operation authority, and passed independent whole-plan review with no Critical or Important findings; reviewed plan plus implementation-preflight correction SHA-256 `F455EFDEF4D80A64CD0A3FA4BC2C6F637799E32332C7D81459E0FBD24755D4D7`. Resume product work only after C00 review is clean; do not resume the superseded P08A plan.
+- Status: C00 complete (commits `03aa32d..834219a`, review clean). Independent `clinical-governance-reviewer` `/root/c00_governance_review` returned specification compliance `PASS` and task quality `PASS` with no Critical, Important, or Minor findings for immutable package SHA-256 `BF5C9D7BAA36D2C1C46F9CD9916B3C999B38837849424E2FFED4A6A3E64A94A4`. P00-P07 are accepted and their current receipt hashes remain imported without modifying parent evidence. P07 final product head `97a13cfaa10bff4188f57137264c86e54b23291c` passed final Task 2 and full-phase reviews; amended atomic P07 receipt commit `03aa32d731d1cb9009be55213580e9ea3994017c` passed `--accept-phase P07`. P08A remains superseded with no product/test/migration edit, RED run, or task commit. Design SHA-256 remains `FEC371222E5D21F10DFA1A24E02DD5DE27F941AFC685D3CE2BF3E3ECF0973676`; reviewed plan plus implementation-preflight correction SHA-256 remains `F455EFDEF4D80A64CD0A3FA4BC2C6F637799E32332C7D81459E0FBD24755D4D7`. Product work remained paused through this final C00 metadata checkpoint. Task 1 / U01 is ready but not started; do not resume the superseded P08A plan.
 - Downstream P08A invariant: superseded by the approved ingestion-first continuation; never use the stale planned `20260820122000` filename, reopen the conditional P08A reuse option, or recreate P06 release/epoch/pending/synchronizer authority
 - Superseded P08A Task 3 migration allocation: `20260830215420_add_corpus_scoped_retrieval_v3.sql` (never created or applied; not active continuation authority)
 - Sole continuation retrieval reservation: `20260831106000_add_source_ingestion_retrieval_kernel.sql` (absent at C00 preflight, ordered after then-latest `20260827213539_add_site_content_runtime_authority.sql`, and unapplied)
@@ -21,5 +21,5 @@
 - Package base: `dea32b8d26b32f03827bf71c0814315d92a7cb5c`
 - Package head: `7252eb6312edf634e887578a322c53f23be7ab28`
 - Package hash: `2ada405d103719fb8a921bac8b08ca6ca922850c27530185995d647a10dfa7d9`
-- Process artifacts: keep `.superpowers`, P08A artifacts/receipt, `1/`, the unreferenced P06 provenance artifacts, and the unreferenced P07 phase-fix report untracked until the applicable atomic phase-metadata commit
+- Process artifacts: C00 anchor, reports, immutable review package, manifest, and progress are finalized by the C00 metadata checkpoints. Keep unrelated P08A artifacts/receipt, `1/`, unreferenced P06 provenance artifacts, and the unreferenced P07 phase-fix report untouched and outside later task commits.
 - Live/provider/hosted actions: prohibited
