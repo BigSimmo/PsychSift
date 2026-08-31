@@ -1,0 +1,761 @@
+# Review package: d187915b73c98aefd146749f41b354c4d8e4ee8e..5895e5da45b96d0d90a42c32856cb25f2026bf36
+
+## Commits
+5895e5da4 fix(ingestion): close U01 review gaps
+
+## Files changed
+ .../U01/U01-fix-1-brief.md                         |  87 ++++
+ supabase/functions/indexing-v3-agent/behavior.ts   |   9 +-
+ supabase/functions/indexing-v3-agent/index.ts      |  12 +-
+ tests/indexing-v3-agent.test.ts                    | 469 +++++++++++++++++++--
+ tests/worker-run-loop.test.ts                      |  22 +
+ 5 files changed, 556 insertions(+), 43 deletions(-)
+
+## Diff
+diff --git a/docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-fix-1-brief.md b/docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-fix-1-brief.md
+new file mode 100644
+index 000000000..92103518d
+--- /dev/null
++++ b/docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-fix-1-brief.md
+@@ -0,0 +1,87 @@
++# U01 correction brief 1: close independent-review gaps
++
++## Position and ownership
++
++Unit: `U01` correction loop 1
++
++Original task base: `d38dce7ba7fada4ab1fb4588799f400916118c81`
++
++Reviewed product candidate: `9a3b3dc4deee971bb287c979e786c6890922aa05`
++
++Current checkpoint base: `d187915b73c98aefd146749f41b354c4d8e4ee8e`
++
++Worktree: `C:\Users\joshs\.codex\worktrees\rag-local-build-20260822\Database`
++
++Branch: `codex/rag-local-build-20260822`
++
++The original U01 implementer owns this serial correction pass. Preserve every unrelated staged, unstaged, and untracked path. Do not begin U02.
++
++## Read first
++
++- `U01-brief.md`
++- `U01-report.md`
++- `U01-review.diff` only as needed for original context
++- This correction brief in full
++
++## Binding constraints
++
++- All original U01 global constraints remain binding.
++- No document/corpus processing, provider or hosted access, migration apply, deploy, reindex, push, or PR.
++- Use strict RED-GREEN-REFACTOR: add focused tests for all three findings, run them and observe the expected failures before changing production code.
++- Do not broaden into U02, C07 hosted cron inspection, drift-manifest reconciliation, or historical documentation cleanup.
++- Modify only `tests/indexing-v3-agent.test.ts`, `tests/worker-run-loop.test.ts`, `supabase/functions/indexing-v3-agent/index.ts`, and `supabase/functions/indexing-v3-agent/behavior.ts` unless a concrete correctness need requires stopping and reporting scope expansion.
++
++## Verified findings to correct
++
++### 1. Positive-legacy generated-label conflicts retain stale generation authority
++
++At `index.ts` around the generated-label `ON CONFLICT`, existing object metadata is merged with `excluded.metadata`. For a positively classified legacy document, `excluded.metadata` correctly omits `index_generation_id`, but omission does not delete an existing stale or malformed key. The strict gate then rejects the label and repair may not converge.
++
++RED must prove the conflict SQL replaces generation authority rather than preserving it: stale active or malformed existing `index_generation_id` is removed for a positive-legacy conflict, while an active conflict receives the exact active generation. Implement the smallest SQL correction; do not add another migration or change label identity.
++
++### 2. Generation read/write contract tests are too broad to detect predicate removal
++
++The current tests merely find the first `generationPredicate` or any `indexGenerationId` within broad function segments. They can pass after deleting an individual SQL `WHERE` generation predicate or insert/update generation value.
++
++Replace these assertions with statement-specific proof for every U01 reader and writer named in the original brief. Each read assertion must bind the actual SQL statement's generation predicate inside its `WHERE` before that statement's own `ORDER BY`, `LIMIT`, count, or completion decision. Each write assertion must bind the exact typed `index_generation_id` or metadata generation assignment in the relevant insert/upsert, including active and positive-legacy label-conflict behavior. Prefer tight source-contract helpers in the test over production refactoring; do not extract a broad query-builder architecture.
++
++The RED must fail when evaluated against the current candidate for the missing label-conflict sanitisation and for materially stronger per-statement expectations that the current broad tests do not establish. Record the exact failing assertions.
++
++### 3. Error serialisation can escape sibling isolation
++
++`behavior.ts:errorMessage()` calls `JSON.stringify(error)` without guarding serialization. A cyclic object or `bigint` rejection can therefore throw while handling the processing error, escaping the per-job catch and aborting later siblings.
++
++RED must use an unserialisable processing rejection and a failure recorder that also throws, then prove the next sibling still runs and outcomes remain representable. Implement a deterministic, non-throwing error conversion with a safe fallback. Preserve the existing per-job and nested failure-recorder isolation.
++
++## Focused verification
++
++During RED/GREEN, run:
++
++```text
++node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/worker-run-loop.test.ts
++```
++
++After GREEN, run the original U01 focused gate once:
++
++```text
++node scripts/run-vitest.mjs run tests/ingestion-edge-function-auth.test.ts tests/indexing-v3-agent.test.ts tests/worker-run-loop.test.ts tests/worker-row-contract.test.ts tests/supabase-schema.test.ts
++npm run check:edge:functions
++npm run check:migration-role
++npm run check:function-grants
++```
++
++Run targeted formatting and `git diff --check`. Do not add broad verification without a named changed failure path; consult the arbiter before any expensive additional gate.
++
++## Commit and report
++
++Stage explicit correction paths plus this brief only. Create one local commit:
++
++```text
++fix(ingestion): close U01 review gaps
++```
++
++Write the detailed report after the commit to:
++
++`docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-fix-1-report.md`
++
++Include exact RED/GREEN outputs, changed files, self-review, scope attestation, and any concerns. Never push.
+diff --git a/supabase/functions/indexing-v3-agent/behavior.ts b/supabase/functions/indexing-v3-agent/behavior.ts
+index ae61acd0b..abf6bd7dd 100644
+--- a/supabase/functions/indexing-v3-agent/behavior.ts
++++ b/supabase/functions/indexing-v3-agent/behavior.ts
+@@ -65,22 +65,27 @@ export type JobStatusRpcResult = {
+   ok: boolean;
+   gate_passed: boolean;
+   missing: string[] | null;
+   status: string;
+ };
+ 
+ export type EdgeJobBatchOutcome<TJob, TResult> =
+   Readonly<{ job: TJob; result: TResult }> | Readonly<{ job: TJob; error: string; failureRecordingError?: string }>;
+ 
+ function errorMessage(error: unknown): string {
+-  if (error instanceof Error) return error.message;
+-  return JSON.stringify(error) ?? String(error);
++  try {
++    if (error instanceof Error) return error.message;
++    const serialized = JSON.stringify(error);
++    return serialized ?? String(error);
++  } catch {
++    return "[unserialisable thrown value]";
++  }
+ }
+ 
+ export async function runEdgeJobBatch<TJob, TResult>(
+   jobs: ReadonlyArray<TJob>,
+   process: (job: TJob) => Promise<TResult>,
+   recordFailure: (job: TJob, message: string) => Promise<unknown>,
+ ): Promise<Array<EdgeJobBatchOutcome<TJob, TResult>>> {
+   const outcomes: Array<EdgeJobBatchOutcome<TJob, TResult>> = [];
+   for (const job of jobs) {
+     try {
+diff --git a/supabase/functions/indexing-v3-agent/index.ts b/supabase/functions/indexing-v3-agent/index.ts
+index 65f054502..edccc5f39 100644
+--- a/supabase/functions/indexing-v3-agent/index.ts
++++ b/supabase/functions/indexing-v3-agent/index.ts
+@@ -1058,25 +1058,27 @@ async function upsertGeneratedLabelsFromParsedArtifacts(
+             ...generationMetadata(generationPredicate.indexGenerationId),
+             generation_source: "indexing_v3_agent_parsed_artifacts",
+             section_candidates: sectionCount,
+             memory_card_candidates: cardCount,
+             fallback_generated_count: prepared.length,
+           })}
+         )
+         on conflict (document_id, label_type, label, source)
+         do update set
+           confidence = greatest(document_labels.confidence, excluded.confidence),
+-          metadata = CASE
+-            WHEN jsonb_typeof(document_labels.metadata) = 'object' THEN
+-              coalesce(document_labels.metadata, '{}'::jsonb) || excluded.metadata
+-            ELSE excluded.metadata
+-          END,
++          metadata = (
++            CASE
++              WHEN jsonb_typeof(document_labels.metadata) = 'object' THEN
++                coalesce(document_labels.metadata, '{}'::jsonb) - 'index_generation_id'
++              ELSE '{}'::jsonb
++            END
++          ) || excluded.metadata,
+           updated_at = now()
+       `;
+       count += 1;
+     }
+     return count;
+   });
+ 
+   return inserted;
+ }
+ 
+diff --git a/tests/indexing-v3-agent.test.ts b/tests/indexing-v3-agent.test.ts
+index befd9fd34..6b4a0c03e 100644
+--- a/tests/indexing-v3-agent.test.ts
++++ b/tests/indexing-v3-agent.test.ts
+@@ -14,37 +14,106 @@ import {
+   protectedPublicSourceChunkContents,
+   scanProtectedPublicSourceChunkPages,
+   shouldRunVisualArtifacts,
+   type CompletionGateRow,
+ } from "../supabase/functions/indexing-v3-agent/behavior";
+ import { forbiddenPublicSourceIdentity } from "../supabase/functions/_shared/public-source-policy";
+ import {
+   buildGenerationVisibility,
+   isVisibleCommittedGenerationRow,
+ } from "../supabase/functions/_shared/ingestion-generation-visibility";
++import { generationMetadata } from "../supabase/functions/indexing-v3-agent/utils";
+ 
+ const completeGateRow: CompletionGateRow = {
+   sections: 3,
+   memory_cards: 8,
+   generated_labels: 4,
+   index_units: 12,
+   title_embedding: true,
+   summary_embedding: true,
+   quality_extraction_quality: "good",
+   quality_score: 0.91,
+   missing: [],
+   gate_passed: true,
+ };
+ function gateRow(overrides: Partial<CompletionGateRow> = {}): CompletionGateRow {
+   return { ...completeGateRow, ...overrides };
+ }
+ 
++const indexingAgentSource = readFileSync(
++  new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
++  "utf8",
++);
++
++function agentFunction(start: string, end: string) {
++  return sourceSegment(indexingAgentSource, start, end, { label: start });
++}
++
++function statementWithin(functionSource: string, start: string, end: string, label: string) {
++  return sourceSegment(functionSource, start, end, { label });
++}
++
++function normalizedSql(source: string) {
++  return source.replace(/\s+/g, " ").trim();
++}
++
++function expectTypedGenerationPredicate(
++  source: string,
++  column: string,
++  label: string,
++  terminals: ReadonlyArray<string> = [],
++) {
++  const statement = normalizedSql(source);
++  const whereIndex = statement.toLowerCase().indexOf("where ");
++  const active = `${column} = \${generationPredicate.indexGenerationId}::uuid`;
++  const legacy = `\${generationPredicate.isLegacy}::boolean and ${column} is null`;
++  const activeIndex = statement.indexOf(active);
++  expect(whereIndex, `${label}: WHERE`).toBeGreaterThanOrEqual(0);
++  expect(activeIndex, `${label}: active generation predicate`).toBeGreaterThan(whereIndex);
++  expect(statement, `${label}: positive legacy predicate`).toContain(legacy);
++  for (const terminal of terminals) {
++    const terminalIndex = statement.toLowerCase().indexOf(terminal.toLowerCase());
++    expect(terminalIndex, `${label}: ${terminal}`).toBeGreaterThan(activeIndex);
++  }
++}
++
++function expectMetadataGenerationPredicate(
++  source: string,
++  column: string,
++  label: string,
++  terminals: ReadonlyArray<string> = [],
++) {
++  const statement = normalizedSql(source);
++  const whereIndex = statement.toLowerCase().indexOf("where ");
++  const active = `${column} = \${generationPredicate.indexGenerationId}::text`;
++  const legacy = `\${generationPredicate.isLegacy}::boolean and ${column} is null`;
++  const activeIndex = statement.indexOf(active);
++  expect(whereIndex, `${label}: WHERE`).toBeGreaterThanOrEqual(0);
++  expect(activeIndex, `${label}: active metadata generation predicate`).toBeGreaterThan(whereIndex);
++  expect(statement, `${label}: positive legacy metadata predicate`).toContain(legacy);
++  for (const terminal of terminals) {
++    const terminalIndex = statement.toLowerCase().indexOf(terminal.toLowerCase());
++    expect(terminalIndex, `${label}: ${terminal}`).toBeGreaterThan(activeIndex);
++  }
++}
++
++function expectTypedGenerationWrite(source: string, label: string) {
++  const statement = normalizedSql(source);
++  expect(statement, `${label}: typed generation column`).toContain("index_generation_id");
++  expect(statement, `${label}: exact typed generation value`).toContain(
++    "${generationPredicate.indexGenerationId}::uuid",
++  );
++  expect(statement, `${label}: metadata generation value`).toContain(
++    "generationMetadata(generationPredicate.indexGenerationId)",
++  );
++}
++
+ describe("indexing-v3-agent behavior", () => {
+   it("admits only legacy rows or the exact active committed generation", () => {
+     const visibility = {
+       activeGenerationByDocument: new Map([["doc-a", "gen-active"]]),
+       committedGenerationIds: new Set(["gen-active", "gen-other"]),
+       knownLegacyDocumentIds: new Set(["doc-legacy"]),
+     };
+ 
+     expect(isVisibleCommittedGenerationRow({ document_id: "doc-a", generation_id: null }, visibility)).toBe(false);
+     expect(isVisibleCommittedGenerationRow({ document_id: "doc-legacy", generation_id: null }, visibility)).toBe(true);
+@@ -95,60 +164,388 @@ describe("indexing-v3-agent behavior", () => {
+       buildGenerationVisibility([{ id: "doc-active", index_generation_id: active, metadata: {} }], ["doc-active"]),
+     ).toThrow(/incomplete|mismatch/i);
+     expect(() =>
+       buildGenerationVisibility(
+         [{ id: "doc-legacy", index_generation_id: null, metadata: { index_generation_id: null } }],
+         ["doc-legacy"],
+       ),
+     ).toThrow(/mismatch/i);
+   });
+ 
+-  it("filters every generation-aware read before ordering, limits, counts, or completion", () => {
+-    const edgeSource = readFileSync(
+-      new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
+-      "utf8",
++  it("binds each generation-aware read predicate to its own SQL statement before decisions", () => {
++    const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
++    expectMetadataGenerationPredicate(
++      statementWithin(
++        ensureSummary,
++        "const existingRows = await sql",
++        "const existing = visibleGenerationRows",
++        "summary lookup",
++      ),
++      "metadata->>'index_generation_id'",
++      "summary lookup",
++      ["limit 1"],
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(
++        ensureSummary,
++        "const chunkRows = await sql",
++        "const chunks = visibleGenerationRows",
++        "summary chunks",
++      ),
++      "index_generation_id",
++      "summary chunks",
++      ["order by chunk_index", "limit 24"],
++    );
++
++    const labels = agentFunction("async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText");
++    expectMetadataGenerationPredicate(
++      statementWithin(
++        labels,
++        "const summaryRowsRaw = await sql",
++        "const summaryRows = visibleGenerationRows",
++        "label summary input",
++      ),
++      "metadata->>'index_generation_id'",
++      "label summary input",
++      ["limit 1"],
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(
++        labels,
++        "const chunksForLabelsRaw = await sql",
++        "const chunksForLabels = visibleGenerationRows",
++        "label chunk input",
++      ),
++      "index_generation_id",
++      "label chunk input",
++      ["order by chunk_index", "limit 8"],
++    );
++    const labelSections = statementWithin(
++      labels,
++      "const sectionRows = await sql",
++      "const sections = visibleGenerationRows",
++      "label section input",
++    );
++    expectTypedGenerationPredicate(labelSections, "c.index_generation_id", "label lateral chunk input", [
++      "order by case when c.id",
++      "limit 1",
++    ]);
++    expectTypedGenerationPredicate(labelSections, "s.index_generation_id", "label section input", [
++      "order by s.section_index",
++    ]);
++    expectTypedGenerationPredicate(
++      statementWithin(labels, "const cardRows = await sql", "const cards = visibleGenerationRows", "label card input"),
++      "index_generation_id",
++      "label card input",
++      ["order by created_at"],
++    );
++
++    const sections = agentFunction(
++      "async function ensureSectionsFromChunks",
++      "async function upsertMemoryCardsFromSections",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(sections, "const existing = await sql", "if ((existing[0]?.count", "section repair count"),
++      "index_generation_id",
++      "section repair count",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(
++        sections,
++        "const chunkRows = await sql",
++        "const chunks = visibleGenerationRows",
++        "section repair chunks",
++      ),
++      "index_generation_id",
++      "section repair chunks",
++      ["order by chunk_index", "limit 24"],
++    );
++
++    const cards = agentFunction(
++      "async function upsertMemoryCardsFromSections",
++      "async function upsertSectionIndexUnits",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(
++        cards,
++        "const sectionRows = await sql",
++        "const sections = visibleGenerationRows",
++        "memory card section input",
++      ),
++      "index_generation_id",
++      "memory card section input",
++      ["order by section_index", "limit 16"],
++    );
++
++    const sectionUnits = agentFunction(
++      "async function upsertSectionIndexUnits",
++      "async function upsertVisualArtifacts",
++    );
++    const sectionUnitInput = statementWithin(
++      sectionUnits,
++      "const sectionRows = await sql",
++      "const sections = visibleGenerationRows",
++      "section index-unit input",
++    );
++    expectTypedGenerationPredicate(sectionUnitInput, "c.index_generation_id", "section index-unit lateral chunk", [
++      "order by case when c.id",
++      "limit 1",
++    ]);
++    expectTypedGenerationPredicate(sectionUnitInput, "s.index_generation_id", "section index-unit section", [
++      "order by s.section_index",
++    ]);
++
++    const visualArtifacts = agentFunction(
++      "async function upsertVisualArtifacts",
++      "async function upsertCoreEmbeddingFields",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(
++        visualArtifacts,
++        "const imageRows = await sql",
++        "const images = visibleGenerationRows",
++        "visual image input",
++      ),
++      "index_generation_id",
++      "visual image input",
++      ["order by page_number"],
++    );
++
++    const quality = agentFunction("async function updateQuality", "async function completionGate");
++    expectTypedGenerationPredicate(
++      statementWithin(quality, "from public.document_index_units", "image_counts as (", "quality index-unit counts"),
++      "index_generation_id",
++      "quality index-unit counts",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(quality, "from public.document_images", "u.visual_units", "quality image counts"),
++      "index_generation_id",
++      "quality image counts",
++    );
++
++    const visualDecision = agentFunction("async function needsVisualArtifacts", "async function updateAgentJobStatus");
++    expectTypedGenerationPredicate(
++      statementWithin(
++        visualDecision,
++        "from public.document_images",
++        ") as eligible_images",
++        "visual decision image count",
++      ),
++      "index_generation_id",
++      "visual decision image count",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(
++        visualDecision,
++        "from public.document_index_units",
++        ") as generated_visual_units",
++        "visual decision unit count",
++      ),
++      "index_generation_id",
++      "visual decision unit count",
++    );
++
++    const protectedScan = agentFunction("async function assertPublicSourceWorkerPolicy", "async function processJob");
++    expectTypedGenerationPredicate(
++      statementWithin(
++        protectedScan,
++        "const rows = await sql",
++        "return visibleGenerationRows",
++        "protected-source chunk scan",
++      ),
++      "chunk.index_generation_id",
++      "protected-source chunk scan",
++      ["order by chunk.chunk_index", "limit ${limit}", "offset ${offset}"],
+     );
+-    for (const [start, end] of [
+-      ["async function ensureSummary", "function unitsFromStructured"],
+-      ["async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText"],
+-      ["async function ensureSectionsFromChunks", "async function upsertMemoryCardsFromSections"],
+-      ["async function upsertMemoryCardsFromSections", "async function upsertSectionIndexUnits"],
+-      ["async function upsertSectionIndexUnits", "async function upsertVisualArtifacts"],
+-      ["async function updateQuality", "async function completionGate"],
+-      ["async function needsVisualArtifacts", "async function updateAgentJobStatus"],
+-      ["async function assertPublicSourceWorkerPolicy", "async function processJob"],
+-    ] as const) {
+-      const segment = sourceSegment(edgeSource, start, end, { label: start });
+-      expect(segment).toContain("generationPredicate");
+-      const predicateIndex = segment.indexOf("generationPredicate");
+-      for (const terminal of ["order by", "limit ", "count(*)"]) {
+-        const terminalIndex = segment.toLowerCase().indexOf(terminal);
+-        if (terminalIndex >= 0) expect(predicateIndex).toBeLessThan(terminalIndex);
+-      }
+-    }
+   });
+ 
+-  it("writes the exact generation on every generated strict-read artifact", () => {
+-    const edgeSource = readFileSync(
+-      new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url),
+-      "utf8",
++  it("binds generation authority to each generated-artifact write and conflict", () => {
++    const activeGeneration = "1a2b3c4d-6666-4aaa-8bbb-000000000006";
++    expect(generationMetadata(null), "positive legacy labels omit generation authority").toEqual({});
++    expect(generationMetadata(activeGeneration), "active labels carry the exact generation authority").toEqual({
++      index_generation_id: activeGeneration,
++    });
++
++    const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
++    const summaryWrite = statementWithin(
++      ensureSummary,
++      "insert into public.document_summaries",
++      "return summary.length",
++      "summary write",
++    );
++    expect(normalizedSql(summaryWrite), "summary exact metadata generation").toContain(
++      "generationMetadata(generationPredicate.indexGenerationId)",
++    );
++    expect(normalizedSql(summaryWrite), "summary conflict generation replacement").toContain(
++      "metadata = excluded.metadata",
++    );
++
++    const labels = agentFunction("async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText");
++    const labelWrite = statementWithin(
++      labels,
++      "insert into public.document_labels",
++      "count += 1",
++      "generated-label write",
++    );
++    expect(normalizedSql(labelWrite), "active label exact metadata generation").toContain(
++      "generationMetadata(generationPredicate.indexGenerationId)",
++    );
++    expect(
++      normalizedSql(labelWrite).toLowerCase(),
++      "legacy label conflict removes stale or malformed generation before replacement",
++    ).toContain(
++      "when jsonb_typeof(document_labels.metadata) = 'object' then coalesce(document_labels.metadata, '{}'::jsonb) - 'index_generation_id' else '{}'::jsonb end ) || excluded.metadata",
++    );
++
++    const sections = agentFunction(
++      "async function ensureSectionsFromChunks",
++      "async function upsertMemoryCardsFromSections",
++    );
++    const sectionWrite = statementWithin(
++      sections,
++      "insert into public.document_sections",
++      "inserted += rows.length",
++      "section write",
++    );
++    expectTypedGenerationWrite(sectionWrite, "section write");
++    expect(normalizedSql(sectionWrite), "section conflict typed generation replacement").toContain(
++      "index_generation_id = excluded.index_generation_id",
++    );
++    expect(normalizedSql(sectionWrite), "section conflict metadata generation replacement").toContain(
++      "metadata = excluded.metadata",
++    );
++
++    const cards = agentFunction(
++      "async function upsertMemoryCardsFromSections",
++      "async function upsertSectionIndexUnits",
++    );
++    expectTypedGenerationWrite(
++      statementWithin(cards, "insert into public.document_memory_cards", "inserted += 1", "memory-card write"),
++      "memory-card write",
++    );
++
++    const sectionUnits = agentFunction(
++      "async function upsertSectionIndexUnits",
++      "async function upsertVisualArtifacts",
++    );
++    expectTypedGenerationWrite(
++      statementWithin(
++        sectionUnits,
++        "insert into public.document_index_units",
++        "inserted += 1",
++        "section index-unit write",
++      ),
++      "section index-unit write",
++    );
++
++    const visualArtifacts = agentFunction(
++      "async function upsertVisualArtifacts",
++      "async function upsertCoreEmbeddingFields",
++    );
++    expectTypedGenerationWrite(
++      statementWithin(
++        visualArtifacts,
++        "insert into public.document_index_units",
++        "createdUnits += 1",
++        "visual index-unit write",
++      ),
++      "visual index-unit write",
++    );
++    expectTypedGenerationWrite(
++      statementWithin(
++        visualArtifacts,
++        "insert into public.document_embedding_fields",
++        "createdFields += 1",
++        "visual embedding-field write",
++      ),
++      "visual embedding-field write",
++    );
++
++    const coreEmbeddings = agentFunction("async function upsertCoreEmbeddingFields", "async function updateQuality");
++    expectTypedGenerationWrite(
++      statementWithin(
++        coreEmbeddings,
++        "insert into public.document_embedding_fields",
++        "inserted += 1",
++        "core embedding-field write",
++      ),
++      "core embedding-field write",
++    );
++  });
++
++  it("generation-bounds each repair, replacement, and cleanup mutation", () => {
++    const cards = agentFunction(
++      "async function upsertMemoryCardsFromSections",
++      "async function upsertSectionIndexUnits",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(cards, "delete from public.document_memory_cards", "for (let index", "memory-card cleanup"),
++      "index_generation_id",
++      "memory-card cleanup",
++    );
++
++    const sectionUnits = agentFunction(
++      "async function upsertSectionIndexUnits",
++      "async function upsertVisualArtifacts",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(
++        sectionUnits,
++        "delete from public.document_index_units",
++        "for (let index",
++        "section index-unit cleanup",
++      ),
++      "index_generation_id",
++      "section index-unit cleanup",
++    );
++
++    const visualArtifacts = agentFunction(
++      "async function upsertVisualArtifacts",
++      "async function upsertCoreEmbeddingFields",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(visualArtifacts, "update public.document_images", "for (const unit", "visual image update"),
++      "index_generation_id",
++      "visual image update",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(
++        visualArtifacts,
++        "delete from public.document_embedding_fields",
++        "delete from public.document_index_units",
++        "visual embedding cleanup",
++      ),
++      "index_generation_id",
++      "visual embedding cleanup",
++    );
++    expectTypedGenerationPredicate(
++      statementWithin(
++        visualArtifacts,
++        "delete from public.document_index_units",
++        "for (let index",
++        "visual index-unit cleanup",
++      ),
++      "index_generation_id",
++      "visual index-unit cleanup",
++    );
++
++    const coreEmbeddings = agentFunction("async function upsertCoreEmbeddingFields", "async function updateQuality");
++    expectTypedGenerationPredicate(
++      statementWithin(
++        coreEmbeddings,
++        "delete from public.document_embedding_fields",
++        "for (const { row",
++        "core embedding cleanup",
++      ),
++      "index_generation_id",
++      "core embedding cleanup",
+     );
+-    for (const [start, end] of [
+-      ["async function ensureSummary", "function unitsFromStructured"],
+-      ["async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText"],
+-      ["async function ensureSectionsFromChunks", "async function upsertMemoryCardsFromSections"],
+-      ["async function upsertMemoryCardsFromSections", "async function upsertSectionIndexUnits"],
+-      ["async function upsertSectionIndexUnits", "async function upsertVisualArtifacts"],
+-      ["async function upsertVisualArtifacts", "async function upsertCoreEmbeddingFields"],
+-    ] as const) {
+-      expect(sourceSegment(edgeSource, start, end, { label: start })).toContain("indexGenerationId");
+-    }
+   });
+ 
+   it("blocks protected or incomplete public-source policy before provider or artifact work", async () => {
+     expect(
+       publicSourceWorkerPolicyViolation(
+         {
+           corpus_scope: "australian_public",
+           source_catalogue_key: "wa-health",
+           source_policy_version: "australian-source-policy-v1",
+           content_mode: "indexed_content",
+diff --git a/tests/worker-run-loop.test.ts b/tests/worker-run-loop.test.ts
+index 3300cfd7a..d0db5c288 100644
+--- a/tests/worker-run-loop.test.ts
++++ b/tests/worker-run-loop.test.ts
+@@ -35,20 +35,42 @@ describe("runWorkerLoop", () => {
+     expect(outcomes).toEqual([
+       {
+         job: jobs[0],
+         error: "process boom",
+         failureRecordingError: "failure recorder boom",
+       },
+       { job: jobs[1], result: "completed" },
+     ]);
+   });
+ 
++  it("continues the Edge batch when processing and failure errors cannot be serialised", async () => {
++    const jobs = [{ id: "edge-1" }, { id: "edge-2" }];
++    const cyclicProcessingError: { kind: string; self?: unknown } = { kind: "cyclic_processing_error" };
++    cyclicProcessingError.self = cyclicProcessingError;
++    const process = vi.fn().mockRejectedValueOnce(cyclicProcessingError).mockResolvedValueOnce("completed");
++    const recordFailure = vi.fn().mockRejectedValueOnce({ kind: "failure_recorder_error", value: 1n });
++
++    const outcomes = await runEdgeJobBatch(jobs, process, recordFailure);
++
++    expect(process).toHaveBeenCalledTimes(2);
++    expect(recordFailure).toHaveBeenCalledWith(jobs[0], "[unserialisable thrown value]");
++    expect(outcomes).toEqual([
++      {
++        job: jobs[0],
++        error: "[unserialisable thrown value]",
++        failureRecordingError: "[unserialisable thrown value]",
++      },
++      { job: jobs[1], result: "completed" },
++    ]);
++    expect(() => JSON.stringify(outcomes)).not.toThrow();
++  });
++
+   it("exits immediately when no jobs are available and once is set", async () => {
+     const ctrl = new WorkerRuntimeControl();
+     const claim = vi.fn().mockResolvedValue([]);
+     const probe = vi.fn().mockResolvedValue({ ok: true });
+ 
+     await runWorkerLoop({
+       once: true,
+       pollMs: 1000,
+       healthBackoffMs: 1000,
+       maxClaimFailures: 3,
