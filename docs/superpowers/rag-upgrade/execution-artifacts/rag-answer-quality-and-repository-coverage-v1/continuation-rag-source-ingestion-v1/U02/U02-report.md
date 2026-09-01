@@ -6,8 +6,11 @@
 - Implementer: Codex implementer `/root/u02_implementer`.
 - Implementation dispatch base: `f485df3358f43dff2b85698fcfc25d018854930a`.
 - Immutable underlying task base: `08df4cddce457ba016b0d31fcf7202a4b564776a`.
-- Candidate head: `4621b3000a05cd88494f4b87d807c8761d7f862f`.
-- Candidate subject: `feat(ingestion): anchor summaries to committed sources`.
+- Original candidate head: `4621b3000a05cd88494f4b87d807c8761d7f862f`.
+- Original candidate subject: `feat(ingestion): anchor summaries to committed sources`.
+- Correction checkpoint base: `b68a8de1476d08ec46a72f86f10d65428b1f7a11`.
+- Accepted product head: `6adb834e48b3c1af4579ef22738d942803ab6893`.
+- Correction subject: `fix(ingestion): close U02 review gaps`.
 
 ## Strict TDD evidence
 
@@ -114,3 +117,15 @@ The U02 brief was staged explicitly as requested but was unchanged and therefore
 ## Prohibited-action attestation
 
 No document or corpus was processed. No connected backfill/enrichment script was executed. No provider, hosted Supabase, Storage, PITR, scanner, or model asset was accessed. No production-readiness check ran. No migration was applied. Nothing was deployed, reindexed, pushed, or published, and no pull request was opened. No prohibited operational action occurred; the only post-check cleanup was restoring the required Edge checker's transient `deno.lock` rewrite to the committed bytes.
+
+## Correction and acceptance addendum
+
+The initial review findings were corrected in the single range `b68a8de1476d08ec46a72f86f10d65428b1f7a11..6adb834e48b3c1af4579ef22738d942803ab6893`. The durable correction chronology is in `U02-fix-1-report.md`; the exact final package is `U02-fix-1-review.diff`; the clean final verdicts are in `U02-ingestion-review-2-report.md` and `U02-clinical-review-2-report.md`; and the controlling acceptance record is `U02-acceptance.md`.
+
+The original immutable RED remains 22 intended failures and 62 existing passes. The initial correction RED was 11 failed and 85 passed. Successive review REDs were 1 failed/96 passed, 2 failed/96 passed, and finally 1 failed/97 passed. The final exact selector passed all 98 tests; the Edge checker exited 0.
+
+`npm run eval:rag:offline` remained exit 1. Its fixture/manifest phase passed, and it reproduced only the authorized exception: the same four Answer/search suites with 45 failed/56 passed in the isolated subset and 4 failed/22 passed suites with 45 failed/586 passed tests overall. This is accepted as an explicit U02 exception, not recorded as green.
+
+Both final independent read-only reviews returned no P0-P3 findings, specification `PASS`, and task quality `PASS`. Edge fallback remains provisional and deferred. `organization_profile` and `organization_profile_version` are outside U02 ownership and are preserved for the dedicated organization owner.
+
+Acceptance is local/static only. Runtime database concurrency and provider parity remain unproven. No schema, RPC, migration, ordinary Answer/search, P08A, provider, hosted, API, connected-script, deployment, reindex, production-readiness, push, or pull-request action occurred.

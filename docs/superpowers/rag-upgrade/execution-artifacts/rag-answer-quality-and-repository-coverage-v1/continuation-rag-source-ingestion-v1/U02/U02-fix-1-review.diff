@@ -1,0 +1,1387 @@
+# Review package: b68a8de1476d08ec46a72f86f10d65428b1f7a11..6adb834e48b3c1af4579ef22738d942803ab6893
+
+## Commits
+6adb834e4 fix(ingestion): close U02 review gaps
+
+## Files changed
+ scripts/backfill-smart-index.ts                    |  21 +-
+ scripts/enrich-documents.ts                        |  71 +--
+ src/lib/document-enrichment.ts                     |  67 ++-
+ .../functions/_shared/source-anchored-summary.ts   |  99 ++++-
+ supabase/functions/indexing-v3-agent/index.ts      |  28 +-
+ tests/check-indexing-contract.test.ts              |  16 +-
+ tests/document-enrichment.test.ts                  | 492 ++++++++++++++++++++-
+ tests/indexing-v3-agent.test.ts                    |  47 +-
+ tests/worker-shadow-extraction.test.ts             |  27 +-
+ worker/main.ts                                     |  32 +-
+ 10 files changed, 765 insertions(+), 135 deletions(-)
+
+## Diff
+diff --git a/scripts/backfill-smart-index.ts b/scripts/backfill-smart-index.ts
+index 706344ee0..9edbcb977 100644
+--- a/scripts/backfill-smart-index.ts
++++ b/scripts/backfill-smart-index.ts
+@@ -277,6 +277,7 @@ async function upsertIndexQuality(args: {
+     index_generation_id: args.generationId,
+   };
+   const client = args.supabase as {
++    rpc: (name: string, params: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }>;
+     from: (table: string) => {
+       upsert: (
+         row: Record<string, unknown>,
+@@ -308,18 +309,20 @@ async function upsertIndexQuality(args: {
+       page_count: metrics.page_count,
+       chunk_count: chunkCount,
+       image_count: args.images.length,
+-      metadata: {
+-        ...metadataRecord(args.document.metadata),
+-        indexed_at: new Date().toISOString(),
+-        index_generation_id: args.generationId,
+-        extraction_quality: extractionQuality,
+-        index_quality_score: Number(qualityScore.toFixed(3)),
+-        index_quality_issues: issues,
+-        index_quality_metrics: metrics,
+-      },
+     })
+     .eq("id", args.document.id);
+   if (documentError) throw new Error(documentError.message);
++  const { error: metadataError } = await client.rpc("apply_document_metadata_patch", {
++    p_document_id: args.document.id,
++    p_metadata_patch: {
++      indexed_at: new Date().toISOString(),
++      extraction_quality: extractionQuality,
++      index_quality_score: Number(qualityScore.toFixed(3)),
++      index_quality_issues: issues,
++      index_quality_metrics: metrics,
++    },
++  });
++  if (metadataError) throw new Error(metadataError.message);
+   return { qualityScore: Number(qualityScore.toFixed(3)), extractionQuality, issues };
+ }
+ 
+diff --git a/scripts/enrich-documents.ts b/scripts/enrich-documents.ts
+index 43763a32a..507943071 100644
+--- a/scripts/enrich-documents.ts
++++ b/scripts/enrich-documents.ts
+@@ -1,6 +1,5 @@
+ import { loadEnvConfig } from "@next/env";
+ import type { SupabaseClient } from "@supabase/supabase-js";
+-import type { Json } from "@/lib/supabase/database.types";
+ import { createHash } from "node:crypto";
+ import {
+   SOURCE_ANCHORED_MAX_CHUNKS,
+@@ -232,7 +231,9 @@ async function loadEvidence(supabase: SupabaseAdmin, documentId: string, indexGe
+   for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
+     const { data, error } = await supabase
+       .from("document_images")
+-      .select("id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata")
++      .select(
++        "id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata",
++      )
+       .eq("document_id", documentId)
+       .eq("index_generation_id", indexGenerationId)
+       .eq("searchable", true)
+@@ -498,10 +499,10 @@ async function stampExistingEnrichmentVersion(args: {
+     version_stamped_at: stampedAt,
+   };
+ 
+-  const { error: documentError } = await args.supabase
+-    .from("documents")
+-    .update({ metadata: { ...metadataRecord(args.document.metadata), ...marker } })
+-    .eq("id", args.document.id);
++  const { error: documentError } = await args.supabase.rpc("apply_document_metadata_patch", {
++    p_document_id: args.document.id,
++    p_metadata_patch: marker,
++  });
+   if (documentError) throw new Error(documentError.message);
+ 
+   if (args.coverage.summary) {
+@@ -593,6 +594,18 @@ async function main() {
+ 
+       while (attempts < maxAttempts && !success) {
+         try {
++          const indexGenerationId = requireExactSourceAnchoredGeneration(
++            document.index_generation_id,
++            document.metadata,
++          );
++          const evidence = await loadEvidence(supabase, document.id, indexGenerationId);
++          assertSourceAnchoredSummaryPreflight({
++            documentMetadata: document.metadata,
++            indexGenerationId,
++            chunks: evidence.chunks,
++            images: evidence.images,
++          });
++
+           if (args.mode === "metadata-stamp") {
+             if (!documentCoverage?.summary || documentCoverage.labels.every((label) => label.source !== "generated")) {
+               console.log(`SKIP cannot metadata-stamp missing enrichment: ${document.file_name}`);
+@@ -609,18 +622,6 @@ async function main() {
+             return;
+           }
+ 
+-          const indexGenerationId = requireExactSourceAnchoredGeneration(
+-            document.index_generation_id,
+-            document.metadata,
+-          );
+-          const evidence = await loadEvidence(supabase, document.id, indexGenerationId);
+-          assertSourceAnchoredSummaryPreflight({
+-            documentMetadata: document.metadata,
+-            indexGenerationId,
+-            chunks: evidence.chunks,
+-            images: evidence.images,
+-          });
+-
+           let imageMetadata = metadataRecord(document.metadata);
+           let imageStats = { searchable: 0, skipped: 0, total: 0 };
+           if (args.mode === "summaries-labels-images") {
+@@ -635,9 +636,17 @@ async function main() {
+               .from("documents")
+               .update({
+                 image_count: imageStats.searchable,
+-                metadata: imageMetadata as Json,
+               })
+               .eq("id", document.id);
++            const { error: imageMetadataError } = await supabase.rpc("apply_document_metadata_patch", {
++              p_document_id: document.id,
++              p_metadata_patch: {
++                searchable_image_count: imageStats.searchable,
++                skipped_image_count: imageStats.skipped,
++                image_enriched_at: imageMetadata.image_enriched_at,
++              },
++            });
++            if (imageMetadataError) throw new Error(imageMetadataError.message);
+           }
+ 
+           let enrichmentSummary: string | null = null;
+@@ -667,22 +676,14 @@ async function main() {
+             images: evidence.images as unknown as Parameters<typeof upsertDocumentDeepMemory>[0]["images"],
+             summary: enrichmentSummary,
+           });
+-          const { data: latestDoc } = await supabase
+-            .from("documents")
+-            .select("metadata")
+-            .eq("id", document.id)
+-            .single();
+-          const latestMetadata = metadataRecord(latestDoc?.metadata);
+-          await supabase
+-            .from("documents")
+-            .update({
+-              metadata: {
+-                ...latestMetadata,
+-                enrichment_status: "completed",
+-                enrichment_error: null,
+-              },
+-            })
+-            .eq("id", document.id);
++          const { error: completionMetadataError } = await supabase.rpc("apply_document_metadata_patch", {
++            p_document_id: document.id,
++            p_metadata_patch: {
++              enrichment_status: "completed",
++              enrichment_error: null,
++            },
++          });
++          if (completionMetadataError) throw new Error(completionMetadataError.message);
+ 
+           completed += 1;
+           console.log(
+diff --git a/src/lib/document-enrichment.ts b/src/lib/document-enrichment.ts
+index c8fff8344..fead53919 100644
+--- a/src/lib/document-enrichment.ts
++++ b/src/lib/document-enrichment.ts
+@@ -30,6 +30,7 @@ import {
+   SOURCE_ANCHORED_SUMMARY_VERSION,
+   canonicalSourceAnchoredText,
+   normalizeSourceAnchoredSummary,
++  persistedSourceAnchoredSummaryProjectionMatches,
+   projectSourceAnchoredLabels,
+   projectSourceAnchoredSummary,
+   requireSourceAnchoredSummaryGeneration,
+@@ -855,6 +856,19 @@ export async function upsertDocumentEnrichment(args: {
+     images,
+   });
+   const client = args.supabase as unknown as { from: (table: string) => any };
++  const patchEnrichmentOwnedDocumentMetadata = async (payload: SourceAnchoredSummaryPayload) => {
++    const { error } = await args.supabase.rpc("apply_document_metadata_patch", {
++      p_document_id: args.document.id,
++      p_metadata_patch: {
++        rag_enrichment_version: ragEnrichmentVersion,
++        rag_indexing_version: ragEnrichmentVersion,
++        rag_memory_version: ragEnrichmentVersion,
++        rag_enrichment_updated_at: payload.generated_at,
++        generated_label_count: payload.labels.length,
++      },
++    });
++    if (error) throw new Error(error.message);
++  };
+   const existingSummaryResult = await client
+     .from("document_summaries")
+     .select("*")
+@@ -879,9 +893,17 @@ export async function upsertDocumentEnrichment(args: {
+     payload = null;
+   }
+   const marker = metadataRecord(existingSummary?.metadata)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY] === true;
+-  if (payload && marker && labelsMatchPayload(existingLabels ?? [], payload)) {
++  if (
++    payload &&
++    payload.summary_kind === "structured" &&
++    marker &&
++    persistedSourceAnchoredSummaryProjectionMatches(existingSummary, payload) &&
++    labelsMatchPayload(existingLabels ?? [], payload)
++  ) {
++    await patchEnrichmentOwnedDocumentMetadata(payload);
+     return { summary: existingSummary as DocumentSummary, labels: payload.labels };
+   }
++  let generatedPayload = false;
+   if (!payload || payload.summary_kind !== "structured") {
+     payload = await generateSourceAnchoredSummary({
+       document: args.document,
+@@ -889,9 +911,14 @@ export async function upsertDocumentEnrichment(args: {
+       chunks: args.chunks,
+       images,
+     });
++    generatedPayload = true;
++  }
++
++  if (generatedPayload || !persistedSourceAnchoredSummaryProjectionMatches(existingSummary, payload)) {
+     const coverageProfile = buildIndexingCoverageProfile({ chunks: args.chunks, images });
+     const selectedPromptChunks = selectCoverageAwarePromptChunks(args.chunks);
+     const metadata = {
++      ...metadataRecord(existingSummary?.metadata),
+       generated_by: "local-worker",
+       rag_enrichment_version: ragEnrichmentVersion,
+       rag_indexing_version: ragEnrichmentVersion,
+@@ -925,6 +952,20 @@ export async function upsertDocumentEnrichment(args: {
+       .single();
+     if (error) throw new Error(error.message);
+     existingSummary = data;
++  } else {
++    const metadata = {
++      ...metadataRecord(existingSummary?.metadata),
++      [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
++      [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false,
++    };
++    const { data, error } = await client
++      .from("document_summaries")
++      .update({ metadata, updated_at: new Date().toISOString() })
++      .eq("document_id", args.document.id)
++      .select("*")
++      .single();
++    if (error) throw new Error(error.message);
++    existingSummary = data;
+   }
+ 
+   await persistProjectedLabels({
+@@ -945,29 +986,7 @@ export async function upsertDocumentEnrichment(args: {
+     .single();
+   if (completionError) throw new Error(completionError.message);
+ 
+-  const organization = classifyDocumentOrganization({
+-    title: args.document.title,
+-    file_name: args.document.file_name,
+-    source_path: args.document.source_path,
+-    metadata: args.document.metadata,
+-    contentText: args.chunks.map((chunk) => chunk.content).join("\n\n"),
+-    summaryText: payload.summary,
+-  });
+-  const { error: documentMetadataError } = await client
+-    .from("documents")
+-    .update({
+-      metadata: {
+-        ...metadataRecord(args.document.metadata),
+-        rag_enrichment_version: ragEnrichmentVersion,
+-        rag_indexing_version: ragEnrichmentVersion,
+-        rag_memory_version: ragEnrichmentVersion,
+-        rag_enrichment_updated_at: payload.generated_at,
+-        generated_label_count: payload.labels.length,
+-        ...organization.metadata,
+-      },
+-    })
+-    .eq("id", args.document.id);
+-  if (documentMetadataError) throw new Error(documentMetadataError.message);
++  await patchEnrichmentOwnedDocumentMetadata(payload);
+   return { summary: completedSummary as DocumentSummary, labels: payload.labels };
+ }
+ 
+diff --git a/supabase/functions/_shared/source-anchored-summary.ts b/supabase/functions/_shared/source-anchored-summary.ts
+index c9cc70e6c..6fa50c613 100644
+--- a/supabase/functions/_shared/source-anchored-summary.ts
++++ b/supabase/functions/_shared/source-anchored-summary.ts
+@@ -167,10 +167,7 @@ export function requireSourceAnchoredSummaryGeneration(value: unknown): string {
+   return canonicalUuid(value, "source_anchored_summary_requires_active_generation");
+ }
+ 
+-export function requireExactSourceAnchoredGeneration(
+-  typedGeneration: unknown,
+-  metadata: unknown,
+-): string {
++export function requireExactSourceAnchoredGeneration(typedGeneration: unknown, metadata: unknown): string {
+   const generation = requireSourceAnchoredSummaryGeneration(typedGeneration);
+   const raw = record(metadata, "source_anchored_summary_requires_active_generation").index_generation_id;
+   if (raw !== generation) fail("source_anchored_summary_requires_active_generation");
+@@ -263,11 +260,7 @@ function validateAuthority(authority: SourceAnchoredSummaryAuthority) {
+   return { documentId, indexGenerationId };
+ }
+ 
+-function validateIdArray(
+-  value: unknown,
+-  expected: readonly string[],
+-  code: string,
+-): string[] {
++function validateIdArray(value: unknown, expected: readonly string[], code: string): string[] {
+   const ids = exactArray(value, code, expected.length).map((id) => canonicalUuid(id, code));
+   if (!sameArray(ids, expected)) fail(code);
+   return ids;
+@@ -330,12 +323,7 @@ function validateProfileItem(args: {
+   }
+   const expectedPages = derivedPages(source_chunk_ids, source_image_ids, args.chunkPages, args.imagePages);
+   const pages = exactArray(value.pages, "source_anchored_summary_claim_pages_invalid", expectedPages.length);
+-  if (
+-    !sameArray(
+-      pages.map((page) => Number(page)),
+-      expectedPages,
+-    )
+-  ) {
++  if (pages.some((page) => typeof page !== "number") || !sameArray(pages as number[], expectedPages)) {
+     fail("source_anchored_summary_claim_pages_invalid");
+   }
+   return {
+@@ -386,9 +374,9 @@ function labelMatch(text: string, phrase: string) {
+   const haystack = text.toLowerCase();
+   let offset = haystack.indexOf(phrase);
+   while (offset >= 0) {
+-    const before = offset === 0 ? "" : haystack[offset - 1];
++    const before = offset === 0 ? "" : (Array.from(haystack.slice(0, offset)).at(-1) ?? "");
+     const afterIndex = offset + phrase.length;
+-    const after = afterIndex >= haystack.length ? "" : haystack[afterIndex];
++    const after = afterIndex >= haystack.length ? "" : (Array.from(haystack.slice(afterIndex))[0] ?? "");
+     const boundary = (value: string) => !value || !/[\p{L}\p{N}]/u.test(value);
+     if (boundary(before) && boundary(after)) return true;
+     offset = haystack.indexOf(phrase, offset + 1);
+@@ -430,7 +418,8 @@ function validateLabels(value: unknown, profile: SourceAnchoredClinicalProfile)
+     if (typeof raw.label_type !== "string" || !LABEL_TYPES.has(raw.label_type as SourceAnchoredSummaryLabelType)) {
+       fail("source_anchored_summary_label_invalid");
+     }
+-    const confidence = Number(raw.confidence);
++    if (typeof raw.confidence !== "number") fail("source_anchored_summary_label_invalid");
++    const confidence = raw.confidence;
+     if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) fail("source_anchored_summary_label_invalid");
+     const key = `${raw.label_type}\u0000${label}`;
+     if (seen.has(key) || !items.some((profileItem) => labelMatch(profileItem.text, label))) {
+@@ -458,6 +447,62 @@ function deepFreeze<T>(value: T): T {
+   return value;
+ }
+ 
++export type PersistedSourceAnchoredSummaryProjection = Readonly<{
++  summary?: unknown;
++  clinical_specifics?: unknown;
++  source_chunk_ids?: unknown;
++  source_image_ids?: unknown;
++  model?: unknown;
++  generated_at?: unknown;
++  metadata?: unknown;
++}>;
++
++function sameJson(left: unknown, right: unknown): boolean {
++  if (Object.is(left, right)) return true;
++  if (Array.isArray(left) || Array.isArray(right)) {
++    return (
++      Array.isArray(left) &&
++      Array.isArray(right) &&
++      left.length === right.length &&
++      left.every((item, index) => sameJson(item, right[index]))
++    );
++  }
++  if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
++  const leftRecord = left as Record<string, unknown>;
++  const rightRecord = right as Record<string, unknown>;
++  const leftKeys = Object.keys(leftRecord).sort();
++  const rightKeys = Object.keys(rightRecord).sort();
++  return sameArray(leftKeys, rightKeys) && leftKeys.every((key) => sameJson(leftRecord[key], rightRecord[key]));
++}
++
++function sameGeneratedAt(value: unknown, expected: string): boolean {
++  if (value instanceof Date) return value.toISOString() === expected;
++  if (typeof value !== "string") return false;
++  const parsed = new Date(value);
++  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString() === expected;
++}
++
++export function persistedSourceAnchoredSummaryProjectionMatches(
++  persisted: PersistedSourceAnchoredSummaryProjection | null | undefined,
++  payload: SourceAnchoredSummaryPayload,
++): boolean {
++  if (!persisted) return false;
++  const metadata =
++    persisted.metadata && typeof persisted.metadata === "object" && !Array.isArray(persisted.metadata)
++      ? (persisted.metadata as Record<string, unknown>)
++      : {};
++  return (
++    persisted.summary === payload.summary &&
++    sameJson(persisted.clinical_specifics, payload.clinical_specifics) &&
++    sameJson(persisted.source_chunk_ids, payload.source_chunk_ids) &&
++    sameJson(persisted.source_image_ids, payload.source_image_ids) &&
++    persisted.model === payload.model &&
++    sameGeneratedAt(persisted.generated_at, payload.generated_at) &&
++    sameJson(metadata[SOURCE_ANCHORED_SUMMARY_METADATA_KEY], payload) &&
++    metadata[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY] === true
++  );
++}
++
+ export function normalizeSourceAnchoredSummary(
+   input: unknown,
+   authority: SourceAnchoredSummaryAuthority,
+@@ -487,7 +532,9 @@ export function normalizeSourceAnchoredSummary(
+   if (canonicalUuid(raw.document_id, "source_anchored_summary_document_id_invalid") !== expected.documentId) {
+     fail("source_anchored_summary_document_mismatch");
+   }
+-  if (canonicalUuid(raw.index_generation_id, "source_anchored_summary_generation_invalid") !== expected.indexGenerationId) {
++  if (
++    canonicalUuid(raw.index_generation_id, "source_anchored_summary_generation_invalid") !== expected.indexGenerationId
++  ) {
+     fail("source_anchored_summary_generation_mismatch");
+   }
+   const source_chunk_ids = validateIdArray(
+@@ -582,10 +629,24 @@ export function normalizeSourceAnchoredSummary(
+     }
+     if (labels.length !== 0) fail("source_anchored_summary_fallback_labels_invalid");
+     const note = profile.source_quality_notes;
++    const expectedChunk = authority.selectedChunks[0];
++    const expectedImage = expectedChunk ? undefined : authority.selectedImages[0];
++    const expectedChunkIds = expectedChunk ? [expectedChunk.id] : [];
++    const expectedImageIds = expectedImage ? [expectedImage.id] : [];
++    const expectedPages = derivedPages(
++      expectedChunkIds,
++      expectedImageIds,
++      sourcePages(authority.selectedChunks),
++      sourcePages(authority.selectedImages),
++    );
+     if (
+       note.length !== 1 ||
+       note[0].text !== SOURCE_ANCHORED_FALLBACK_MESSAGE ||
+       note[0].support !== "partial" ||
++      note[0].evidence_type !== (expectedChunk ? "text" : "image") ||
++      !sameArray(note[0].source_chunk_ids, expectedChunkIds) ||
++      !sameArray(note[0].source_image_ids, expectedImageIds) ||
++      !sameArray(note[0].pages, expectedPages) ||
+       SOURCE_ANCHORED_PROFILE_KEYS.some((key) => key !== "source_quality_notes" && profile[key].length !== 0) ||
+       Object.entries(clinical_specifics).some(
+         ([key, value]) => key !== "profile" && Array.isArray(value) && value.length !== 0,
+diff --git a/supabase/functions/indexing-v3-agent/index.ts b/supabase/functions/indexing-v3-agent/index.ts
+index 7a0d0cb60..2d1dd93a5 100644
+--- a/supabase/functions/indexing-v3-agent/index.ts
++++ b/supabase/functions/indexing-v3-agent/index.ts
+@@ -44,7 +44,7 @@ import { buildGenerationVisibility, isVisibleCommittedGenerationRow, type Docume
+ import { buildIndexingCoverageProfile, selectCoverageAwarePromptChunks } from "../_shared/indexing-coverage.ts";
+ // prettier-ignore
+ // @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
+-import { SOURCE_ANCHORED_MAX_CHUNKS, SOURCE_ANCHORED_MAX_IMAGES, SOURCE_ANCHORED_MAX_PROMPT_IMAGES, SOURCE_ANCHORED_SOURCE_PAGE_SIZE, SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION, SOURCE_ANCHORED_SUMMARY_METADATA_KEY, SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY, buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary, projectSourceAnchoredLabels, requireSourceAnchoredSummaryGeneration, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
++import { SOURCE_ANCHORED_MAX_CHUNKS, SOURCE_ANCHORED_MAX_IMAGES, SOURCE_ANCHORED_MAX_PROMPT_IMAGES, SOURCE_ANCHORED_SOURCE_PAGE_SIZE, SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION, SOURCE_ANCHORED_SUMMARY_METADATA_KEY, SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY, buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary, persistedSourceAnchoredSummaryProjectionMatches, projectSourceAnchoredLabels, requireSourceAnchoredSummaryGeneration, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
+ 
+ type ClaimedJob = {
+   id: string;
+@@ -203,6 +203,8 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+ if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is required");
+ 
+ const OPENAI_EMBEDDING_MODEL = Deno.env.get("OPENAI_EMBEDDING_MODEL") ?? "text-embedding-3-small";
++const OPENAI_INDEXING_MODEL =
++  Deno.env.get("OPENAI_INDEXING_MODEL") ?? Deno.env.get("OPENAI_STRONG_ANSWER_MODEL") ?? "gpt-5.6-sol";
+ const EMBEDDING_DIMENSIONS = Number(Deno.env.get("EMBEDDING_DIMENSIONS") ?? String(EXPECTED_EMBED_DIM));
+ if (EMBEDDING_DIMENSIONS !== EXPECTED_EMBED_DIM) {
+   throw new Error(`EMBEDDING_DIMENSIONS must be ${EXPECTED_EMBED_DIM}`);
+@@ -686,7 +688,7 @@ async function loadSourceAnchoredSummarySources(
+     authority: {
+       documentId: job.document_id,
+       indexGenerationId,
+-      expectedStructuredModel: "edge-no-structured-provider",
++      expectedStructuredModel: OPENAI_INDEXING_MODEL,
+       expectedStructuredModelVersion: SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION,
+       selectedChunks: selected.chunks,
+       selectedImages: promptImages,
+@@ -722,7 +724,7 @@ async function persistSourceAnchoredSummary(
+           source_chunk_ids = excluded.source_chunk_ids,
+           source_image_ids = excluded.source_image_ids,
+           model = excluded.model,
+-          metadata = excluded.metadata,
++          metadata = coalesce(public.document_summaries.metadata, '{}'::jsonb) || excluded.metadata,
+           generated_at = excluded.generated_at,
+           updated_at = now()
+       `;
+@@ -778,11 +780,16 @@ async function ensureSummary(
+ ): Promise<SourceAnchoredSummaryPayload> {
+   const existing = await sql<
+     Array<{
++      summary: string | null;
++      clinical_specifics: Record<string, unknown> | null;
++      source_chunk_ids: string[] | null;
++      source_image_ids: string[] | null;
+       metadata: Record<string, unknown> | null;
+       model: string | null;
++      generated_at: string | null;
+     }>
+   >`
+-    select metadata, model
++    select summary, clinical_specifics, source_chunk_ids, source_image_ids, model, metadata, generated_at
+     from public.document_summaries
+     where document_id = ${job.document_id}::uuid
+     limit 1
+@@ -790,12 +797,7 @@ async function ensureSummary(
+   let stored: SourceAnchoredSummaryPayload | null = null;
+   try {
+     const candidate = safeRecord(existing[0]?.metadata)[SOURCE_ANCHORED_SUMMARY_METADATA_KEY];
+-    const candidateRecord = safeRecord(candidate);
+-    stored = normalizeSourceAnchoredSummary(candidate, {
+-      ...sources.authority,
+-      expectedStructuredModel:
+-        typeof candidateRecord.model === "string" ? candidateRecord.model : sources.authority.expectedStructuredModel,
+-    });
++    stored = normalizeSourceAnchoredSummary(candidate, sources.authority);
+   } catch {
+     stored = null;
+   }
+@@ -808,9 +810,9 @@ async function ensureSummary(
+       where document_id = ${job.document_id}::uuid and source = 'generated'
+       order by label_type asc, label asc
+     `;
+-    const complete = safeRecord(existing[0]?.metadata)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY] === true;
+-    if (complete && sourceAnchoredSummaryProjectionMatches(labels, stored)) return stored;
+-    await persistSourceAnchoredSummary(job, stored, false);
++    const projectionCurrent = persistedSourceAnchoredSummaryProjectionMatches(existing[0], stored);
++    if (projectionCurrent && sourceAnchoredSummaryProjectionMatches(labels, stored)) return stored;
++    await persistSourceAnchoredSummary(job, stored, !projectionCurrent);
+     return stored;
+   }
+ 
+diff --git a/tests/check-indexing-contract.test.ts b/tests/check-indexing-contract.test.ts
+index 1ed6be9ca..0670a5bbd 100644
+--- a/tests/check-indexing-contract.test.ts
++++ b/tests/check-indexing-contract.test.ts
+@@ -73,10 +73,20 @@ describe("smart-index repair selection", () => {
+   });
+ 
+   it("does not use metadata repair/random UUID fallback as summary generation authority", () => {
+-    const enrichmentSection = smartBackfillSource.slice(
+-      smartBackfillSource.indexOf("async function processDocument"),
+-    );
++    const enrichmentSection = smartBackfillSource.slice(smartBackfillSource.indexOf("async function processDocument"));
+     expect(enrichmentSection).not.toContain("repairChunkIndexingMetadata(");
+     expect(enrichmentSection).not.toContain("randomUUID(");
+   });
++
++  it("loads exact-generation evidence and completes P05 preflight before metadata-stamp writes", () => {
++    const loop = enrichDocumentsSource.slice(enrichDocumentsSource.indexOf("while (attempts < maxAttempts"));
++    const generation = loop.indexOf("requireExactSourceAnchoredGeneration(");
++    const evidence = loop.indexOf("await loadEvidence(", generation);
++    const preflight = loop.indexOf("assertSourceAnchoredSummaryPreflight(", evidence);
++    const metadataStamp = loop.indexOf('if (args.mode === "metadata-stamp")', preflight);
++    expect(generation).toBeGreaterThan(-1);
++    expect(evidence).toBeGreaterThan(generation);
++    expect(preflight).toBeGreaterThan(evidence);
++    expect(metadataStamp).toBeGreaterThan(preflight);
++  });
+ });
+diff --git a/tests/document-enrichment.test.ts b/tests/document-enrichment.test.ts
+index 04a5857fd..a4f7bec2b 100644
+--- a/tests/document-enrichment.test.ts
++++ b/tests/document-enrichment.test.ts
+@@ -100,6 +100,32 @@ type QueryCall = {
+   selected?: string;
+ };
+ 
++function jsonbMergeDeep(
++  targetObj: Record<string, unknown> | null | undefined,
++  patchObj: Record<string, unknown> | null | undefined,
++): Record<string, unknown> {
++  const merged: Record<string, unknown> = { ...(targetObj ?? {}) };
++  for (const [key, incoming] of Object.entries(patchObj ?? {})) {
++    if (incoming === null) {
++      delete merged[key];
++      continue;
++    }
++    const existing = merged[key];
++    if (
++      existing !== null &&
++      typeof existing === "object" &&
++      !Array.isArray(existing) &&
++      typeof incoming === "object" &&
++      !Array.isArray(incoming)
++    ) {
++      merged[key] = jsonbMergeDeep(existing as Record<string, unknown>, incoming as Record<string, unknown>);
++    } else {
++      merged[key] = incoming;
++    }
++  }
++  return merged;
++}
++
+ function createSupabaseMock(options: { failSummaryUpsert?: boolean } = {}) {
+   const calls: QueryCall[] = [];
+ 
+@@ -165,7 +191,8 @@ function createSupabaseMock(options: { failSummaryUpsert?: boolean } = {}) {
+ 
+     private resolve() {
+       if (this.call.table === "document_summaries" && this.call.operation === "upsert") {
+-        if (options.failSummaryUpsert) return Promise.resolve({ data: null, error: { message: "summary upsert failed" } });
++        if (options.failSummaryUpsert)
++          return Promise.resolve({ data: null, error: { message: "summary upsert failed" } });
+         return Promise.resolve({ data: { id: "summary-1", ...(this.call.payload as object) }, error: null });
+       }
+       if (this.call.table === "document_summaries" && this.call.operation === "update") {
+@@ -180,6 +207,7 @@ function createSupabaseMock(options: { failSummaryUpsert?: boolean } = {}) {
+ 
+   const supabase = {
+     calls,
++    rpc: vi.fn(async () => ({ data: null, error: null })),
+     from: vi.fn((table: string) => {
+       const call: QueryCall = { table, operation: "select", filters: [] };
+       calls.push(call);
+@@ -195,16 +223,20 @@ function createRepairSupabaseMock() {
+   const state: {
+     summary: Record<string, unknown> | null;
+     labels: Array<Record<string, unknown>>;
++    documentMetadata: Record<string, unknown>;
+     labelUpserts: number;
+     failedOnce: boolean;
++    beforeMetadataPatch: (() => void) | null;
+   } = {
+     summary: null,
+     labels: [
+       { id: "manual-1", document_id: DOCUMENT_ID, label: "manual", label_type: "custom", source: "manual" },
+       { id: "stale-1", document_id: DOCUMENT_ID, label: "stale", label_type: "topic", source: "generated" },
+     ],
++    documentMetadata: { index_generation_id: GENERATION_ID },
+     labelUpserts: 0,
+     failedOnce: false,
++    beforeMetadataPatch: null,
+   };
+ 
+   class QueryBuilder implements PromiseLike<QueryResult> {
+@@ -277,6 +309,9 @@ function createRepairSupabaseMock() {
+           error: null,
+         });
+       }
++      if (this.call.table === "documents" && this.call.operation === "select") {
++        return Promise.resolve({ data: { metadata: state.documentMetadata }, error: null });
++      }
+       if (this.call.table === "document_labels" && this.call.operation === "upsert") {
+         state.labelUpserts += 1;
+         if (!state.failedOnce && state.labelUpserts === 2) {
+@@ -308,6 +343,17 @@ function createRepairSupabaseMock() {
+   return {
+     calls,
+     state,
++    rpc: vi.fn(async (name: string, params: Record<string, unknown>) => {
++      if (name === "apply_document_metadata_patch") {
++        state.beforeMetadataPatch?.();
++        state.beforeMetadataPatch = null;
++        state.documentMetadata = jsonbMergeDeep(
++          state.documentMetadata,
++          params.p_metadata_patch as Record<string, unknown>,
++        );
++      }
++      return { data: null, error: null };
++    }),
+     from: vi.fn((table: string) => {
+       const call: QueryCall = { table, operation: "select", filters: [] };
+       calls.push(call);
+@@ -357,7 +403,6 @@ describe("document enrichment", () => {
+       (call) => call.table === "document_summaries" && call.operation === "upsert",
+     );
+     const labelsInsert = supabase.calls.find((call) => call.table === "document_labels" && call.operation === "upsert");
+-    const documentUpdate = supabase.calls.find((call) => call.table === "documents" && call.operation === "update");
+ 
+     expect((summaryUpsert?.payload as { metadata: Record<string, unknown> }).metadata).toMatchObject({
+       generated_by: "local-worker",
+@@ -374,13 +419,14 @@ describe("document enrichment", () => {
+         summary_version: "source-anchored-summary-v1",
+       }),
+     });
+-    expect((documentUpdate?.payload as { metadata: Record<string, unknown> }).metadata).toMatchObject({
+-      existing: true,
+-      index_generation_id: GENERATION_ID,
+-      rag_enrichment_version: ragEnrichmentVersion,
+-      generated_label_count: expect.any(Number),
++    expect(supabase.rpc).toHaveBeenCalledWith("apply_document_metadata_patch", {
++      p_document_id: DOCUMENT_ID,
++      p_metadata_patch: expect.objectContaining({
++        rag_enrichment_version: ragEnrichmentVersion,
++        generated_label_count: expect.any(Number),
++      }),
+     });
+-    expect(documentUpdate?.filters).toContainEqual({ column: "id", value: DOCUMENT_ID });
++    expect(supabase.calls.some((call) => call.table === "documents" && call.operation === "update")).toBe(false);
+   });
+ 
+   it("cleans noisy generated labels before inserting document labels", async () => {
+@@ -671,9 +717,7 @@ describe("source-anchored summary v1", () => {
+           ...base.clinical_specifics,
+           profile: {
+             ...base.clinical_specifics.profile,
+-            key_clinical_actions: [
+-              { ...base.clinical_specifics.profile.key_clinical_actions[0], pages: [1] },
+-            ],
++            key_clinical_actions: [{ ...base.clinical_specifics.profile.key_clinical_actions[0], pages: [1] }],
+           },
+         },
+       },
+@@ -697,6 +741,33 @@ describe("source-anchored summary v1", () => {
+     for (const value of invalid) expect(() => normalizeSourceAnchoredSummary(value, sourceAuthority())).toThrow();
+   });
+ 
++  it("rejects string-coerced claim pages and label confidence", async () => {
++    const { normalizeSourceAnchoredSummary } = await contract();
++    const base = structuredCandidate();
++    const action = base.clinical_specifics.profile.key_clinical_actions[0];
++    expect(() =>
++      normalizeSourceAnchoredSummary(
++        {
++          ...base,
++          clinical_specifics: {
++            ...base.clinical_specifics,
++            profile: {
++              ...base.clinical_specifics.profile,
++              key_clinical_actions: [{ ...action, pages: ["52"] }],
++            },
++          },
++        },
++        sourceAuthority(),
++      ),
++    ).toThrow("source_anchored_summary_claim_pages_invalid");
++    expect(() =>
++      normalizeSourceAnchoredSummary(
++        { ...base, labels: [{ ...base.labels[0], confidence: "0.92" }] },
++        sourceAuthority(),
++      ),
++    ).toThrow("source_anchored_summary_label_invalid");
++  });
++
+   it("rejects non-canonical text, divergent projections, fallback conflicts, and unsupported not_found prose", async () => {
+     const { normalizeSourceAnchoredSummary } = await contract();
+     const base = structuredCandidate();
+@@ -756,14 +827,50 @@ describe("source-anchored summary v1", () => {
+     ).toThrow();
+   });
+ 
++  it.each(["\u{10400}", "\u{104A8}"])(
++    "does not treat an astral Unicode letter or number as a label boundary (%s)",
++    async (prefix) => {
++      const { normalizeSourceAnchoredSummary } = await contract();
++      const base = structuredCandidate();
++      const text = `Review ${prefix}anc before clozapine use.`;
++      const action = {
++        ...base.clinical_specifics.profile.key_clinical_actions[0],
++        text,
++      };
++      const profile = {
++        ...base.clinical_specifics.profile,
++        overview: `- ${text}`,
++        key_clinical_actions: [action],
++      };
++      expect(() =>
++        normalizeSourceAnchoredSummary(
++          {
++            ...base,
++            summary: `- ${text}`,
++            clinical_specifics: {
++              ...base.clinical_specifics,
++              profile,
++              actions: [text],
++            },
++            labels: [{ label: "anc", label_type: "clinical_action", confidence: 0.8 }],
++          },
++          sourceAuthority(),
++        ),
++      ).toThrow("source_anchored_summary_label_unanchored");
++    },
++  );
++
+   it.each(["chunk", "image", "mixed"])("builds the exact anchored %s fallback", async (kind) => {
+     const { buildSourceAnchoredFallbackPayload, SOURCE_ANCHORED_FALLBACK_MESSAGE } = await contract();
+     const authority = sourceAuthority();
+     const selectedChunks = kind === "image" ? [] : authority.selectedChunks;
+     const selectedImages = kind === "chunk" ? [] : authority.selectedImages;
+-    const fallback = buildSourceAnchoredFallbackPayload({ ...authority, selectedChunks, selectedImages }, {
+-      generatedAt: "2026-09-01T00:00:00.000Z",
+-    });
++    const fallback = buildSourceAnchoredFallbackPayload(
++      { ...authority, selectedChunks, selectedImages },
++      {
++        generatedAt: "2026-09-01T00:00:00.000Z",
++      },
++    );
+     expect(fallback.summary_kind).toBe("heuristic_fallback");
+     expect(fallback.summary).toBe(SOURCE_ANCHORED_FALLBACK_MESSAGE);
+     expect(fallback.labels).toEqual([]);
+@@ -774,6 +881,96 @@ describe("source-anchored summary v1", () => {
+     else expect(note).toMatchObject({ source_chunk_ids: [CHUNK_ID], source_image_ids: [] });
+   });
+ 
++  it("rejects fallback notes that do not use the exact first chunk-preferred sole anchor projection", async () => {
++    const { buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary } = await contract();
++    const authority = sourceAuthority();
++    const fallback = buildSourceAnchoredFallbackPayload(authority, {
++      generatedAt: "2026-09-01T00:00:00.000Z",
++    });
++    const note = fallback.clinical_specifics.profile.source_quality_notes[0];
++    const invalidNotes = [
++      { ...note, source_chunk_ids: [LATE_CHUNK_ID], pages: [52] },
++      { ...note, source_chunk_ids: [], source_image_ids: [IMAGE_ID], pages: [4], evidence_type: "image" },
++      { ...note, source_chunk_ids: [CHUNK_ID], source_image_ids: [IMAGE_ID], pages: [1, 4], evidence_type: "mixed" },
++      { ...note, evidence_type: "metadata" },
++    ];
++    for (const invalidNote of invalidNotes) {
++      expect(() =>
++        normalizeSourceAnchoredSummary(
++          {
++            ...fallback,
++            clinical_specifics: {
++              ...fallback.clinical_specifics,
++              profile: {
++                ...fallback.clinical_specifics.profile,
++                source_quality_notes: [invalidNote],
++              },
++            },
++          },
++          authority,
++        ),
++      ).toThrow("source_anchored_summary_fallback_projection_invalid");
++    }
++  });
++
++  it("compares every persisted summary projection against the normalized payload", async () => {
++    const { normalizeSourceAnchoredSummary, persistedSourceAnchoredSummaryProjectionMatches } = await contract();
++    const payload = normalizeSourceAnchoredSummary(structuredCandidate(), sourceAuthority());
++    const reorderObjectKeys = (value: unknown): unknown => {
++      if (Array.isArray(value)) return value.map(reorderObjectKeys);
++      if (!value || typeof value !== "object") return value;
++      return Object.fromEntries(
++        Object.entries(value as Record<string, unknown>)
++          .reverse()
++          .map(([key, item]) => [key, reorderObjectKeys(item)]),
++      );
++    };
++    const persisted = {
++      summary: payload.summary,
++      clinical_specifics: payload.clinical_specifics,
++      source_chunk_ids: payload.source_chunk_ids,
++      source_image_ids: payload.source_image_ids,
++      model: payload.model,
++      generated_at: payload.generated_at,
++      metadata: {
++        source_anchored_summary_v1: payload,
++        source_anchored_summary_projection_complete_v1: true,
++      },
++    };
++    expect(persistedSourceAnchoredSummaryProjectionMatches(persisted, payload)).toBe(true);
++    expect(
++      persistedSourceAnchoredSummaryProjectionMatches(
++        {
++          ...persisted,
++          clinical_specifics: reorderObjectKeys(payload.clinical_specifics),
++          generated_at: new Date(payload.generated_at),
++          metadata: {
++            ...persisted.metadata,
++            source_anchored_summary_v1: reorderObjectKeys(payload),
++          },
++        },
++        payload,
++      ),
++    ).toBe(true);
++    for (const drift of [
++      { summary: "drifted" },
++      { clinical_specifics: { ...payload.clinical_specifics, actions: [] } },
++      { source_chunk_ids: [LATE_CHUNK_ID, CHUNK_ID] },
++      { source_image_ids: [] },
++      { model: "drifted-model" },
++      { generated_at: "2026-09-01T00:00:01.000Z" },
++      { metadata: { ...persisted.metadata, source_anchored_summary_v1: { ...payload, summary: "drifted" } } },
++      {
++        metadata: {
++          ...persisted.metadata,
++          source_anchored_summary_projection_complete_v1: false,
++        },
++      },
++    ]) {
++      expect(persistedSourceAnchoredSummaryProjectionMatches({ ...persisted, ...drift }, payload)).toBe(false);
++    }
++  });
++
+   it("shares the structured model version literal with Node", async () => {
+     const { SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION } = await contract();
+     expect(ragEnrichmentVersion).toBe(SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION);
+@@ -850,8 +1047,9 @@ describe("source-anchored summary v1", () => {
+     };
+ 
+     await expect(upsertDocumentEnrichment(args)).rejects.toThrow("label upsert failed");
+-    expect((supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY])
+-      .toBe(false);
++    expect(
++      (supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY],
++    ).toBe(false);
+     expect(supabase.state.labels).toEqual(
+       expect.arrayContaining([
+         expect.objectContaining({ id: "manual-1", source: "manual" }),
+@@ -862,12 +1060,266 @@ describe("source-anchored summary v1", () => {
+ 
+     await expect(upsertDocumentEnrichment(args)).resolves.toBeDefined();
+     expect(mocks.generateStructuredTextResponse).toHaveBeenCalledTimes(1);
+-    expect((supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY])
+-      .toBe(true);
+-    expect(supabase.state.labels.filter((label) => label.source === "generated").map((label) => label.label).sort())
+-      .toEqual(["anc", "clozapine"]);
++    expect(
++      (supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY],
++    ).toBe(true);
++    expect(
++      supabase.state.labels
++        .filter((label) => label.source === "generated")
++        .map((label) => label.label)
++        .sort(),
++    ).toEqual(["anc", "clozapine"]);
+     expect(supabase.state.labels).toEqual(
+       expect.arrayContaining([expect.objectContaining({ id: "manual-1", source: "manual" })]),
+     );
+   });
++
++  it("marks a stored projection incomplete before repairing marker-true label drift", async () => {
++    const {
++      SOURCE_ANCHORED_SUMMARY_METADATA_KEY,
++      SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY,
++      normalizeSourceAnchoredSummary,
++    } = await contract();
++    const payload = normalizeSourceAnchoredSummary(structuredCandidate(), sourceAuthority());
++    const supabase = createRepairSupabaseMock();
++    supabase.state.failedOnce = true;
++    supabase.state.summary = {
++      id: "summary-1",
++      document_id: DOCUMENT_ID,
++      summary: payload.summary,
++      clinical_specifics: payload.clinical_specifics,
++      source_chunk_ids: payload.source_chunk_ids,
++      source_image_ids: payload.source_image_ids,
++      model: payload.model,
++      generated_at: payload.generated_at,
++      metadata: {
++        [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
++        [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
++      },
++    };
++    mocks.generateStructuredTextResponse.mockClear();
++
++    await upsertDocumentEnrichment({
++      supabase: supabase as never,
++      document: {
++        id: DOCUMENT_ID,
++        owner_id: null,
++        title: "Clozapine monitoring",
++        file_name: "clozapine.pdf",
++        source_path: null,
++        metadata: { index_generation_id: GENERATION_ID },
++      },
++      indexGenerationId: GENERATION_ID,
++      chunks: sourceAuthority().selectedChunks.map((chunk, chunk_index) => ({
++        ...chunk,
++        index_generation_id: GENERATION_ID,
++        chunk_index,
++        section_heading: null,
++        content: chunk.id === LATE_CHUNK_ID ? "Check ANC before clozapine review." : "Clozapine protocol.",
++      })),
++      images: sourceAuthority().selectedImages.map((image) => ({
++        ...image,
++        index_generation_id: GENERATION_ID,
++        caption: "Clozapine monitoring table",
++      })),
++    });
++
++    const firstLabelWrite = supabase.calls.findIndex(
++      (call) => call.table === "document_labels" && call.operation === "upsert",
++    );
++    const incompleteWrite = supabase.calls.findIndex(
++      (call) =>
++        call.table === "document_summaries" &&
++        ["update", "upsert"].includes(call.operation) &&
++        (call.payload as { metadata?: Record<string, unknown> } | undefined)?.metadata?.[
++          SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY
++        ] === false,
++    );
++    expect(incompleteWrite).toBeGreaterThan(-1);
++    expect(incompleteWrite).toBeLessThan(firstLabelWrite);
++    expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
++  });
++
++  it("repairs stored-payload column drift without calling the provider", async () => {
++    const {
++      SOURCE_ANCHORED_SUMMARY_METADATA_KEY,
++      SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY,
++      normalizeSourceAnchoredSummary,
++      projectSourceAnchoredLabels,
++    } = await contract();
++    const payload = normalizeSourceAnchoredSummary(structuredCandidate(), sourceAuthority());
++    const supabase = createRepairSupabaseMock();
++    supabase.state.failedOnce = true;
++    supabase.state.summary = {
++      id: "summary-1",
++      document_id: DOCUMENT_ID,
++      summary: "drifted summary column",
++      clinical_specifics: payload.clinical_specifics,
++      source_chunk_ids: payload.source_chunk_ids,
++      source_image_ids: payload.source_image_ids,
++      model: payload.model,
++      generated_at: payload.generated_at,
++      metadata: {
++        [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
++        [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
++      },
++    };
++    supabase.state.labels = projectSourceAnchoredLabels(payload).map((label, index) => ({
++      id: `generated-${index}`,
++      document_id: DOCUMENT_ID,
++      source: "generated",
++      ...label,
++      metadata: {
++        index_generation_id: payload.index_generation_id,
++        summary_version: payload.summary_version,
++        source_chunk_ids: label.source_chunk_ids,
++        source_image_ids: label.source_image_ids,
++        pages: label.pages,
++      },
++    }));
++    mocks.generateStructuredTextResponse.mockClear();
++
++    await upsertDocumentEnrichment({
++      supabase: supabase as never,
++      document: {
++        id: DOCUMENT_ID,
++        owner_id: null,
++        title: "Clozapine monitoring",
++        file_name: "clozapine.pdf",
++        source_path: null,
++        metadata: { index_generation_id: GENERATION_ID },
++      },
++      indexGenerationId: GENERATION_ID,
++      chunks: sourceAuthority().selectedChunks.map((chunk, chunk_index) => ({
++        ...chunk,
++        index_generation_id: GENERATION_ID,
++        chunk_index,
++        section_heading: null,
++        content: chunk.id === LATE_CHUNK_ID ? "Check ANC before clozapine review." : "Clozapine protocol.",
++      })),
++      images: sourceAuthority().selectedImages.map((image) => ({
++        ...image,
++        index_generation_id: GENERATION_ID,
++        caption: "Clozapine monitoring table",
++      })),
++    });
++
++    const repair = supabase.calls.find((call) => call.table === "document_summaries" && call.operation === "upsert");
++    expect(repair?.payload).toMatchObject({ summary: payload.summary });
++    expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
++  });
++
++  it("retries the document metadata patch after summary and label completion", async () => {
++    const { SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY } = await contract();
++    const supabase = createRepairSupabaseMock();
++    const organizationProfile = {
++      canonical_display_title: "Organization-owned title",
++      review_status: "needs_review",
++    };
++    supabase.state.documentMetadata = {
++      ...supabase.state.documentMetadata,
++      organization_profile: organizationProfile,
++      organization_profile_version: "document-organization-v1",
++    };
++    supabase.state.failedOnce = true;
++    supabase.rpc.mockResolvedValueOnce({ data: null, error: { message: "document metadata patch failed" } });
++    const input = {
++      supabase: supabase as never,
++      document: {
++        id: DOCUMENT_ID,
++        owner_id: null,
++        title: "Clozapine monitoring",
++        file_name: "clozapine.pdf",
++        source_path: null,
++        metadata: {
++          index_generation_id: GENERATION_ID,
++          organization_profile: { canonical_display_title: "Stale inferred title", review_status: "needs_review" },
++        },
++      },
++      indexGenerationId: GENERATION_ID,
++      chunks: sourceAuthority().selectedChunks.map((chunk, chunk_index) => ({
++        ...chunk,
++        index_generation_id: GENERATION_ID,
++        chunk_index,
++        section_heading: null,
++        content: chunk.id === LATE_CHUNK_ID ? "Check ANC before clozapine review." : "Clozapine protocol.",
++      })),
++      images: sourceAuthority().selectedImages.map((image) => ({
++        ...image,
++        index_generation_id: GENERATION_ID,
++        caption: "Clozapine monitoring table",
++      })),
++    };
++
++    await expect(upsertDocumentEnrichment(input)).rejects.toThrow("document metadata patch failed");
++    expect(
++      (supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY],
++    ).toBe(true);
++    mocks.generateStructuredTextResponse.mockClear();
++
++    await expect(upsertDocumentEnrichment(input)).resolves.toBeDefined();
++
++    expect(supabase.rpc).toHaveBeenCalledTimes(2);
++    expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
++    expect(supabase.state.documentMetadata).toMatchObject({
++      rag_enrichment_version: ragEnrichmentVersion,
++      rag_indexing_version: ragEnrichmentVersion,
++      rag_memory_version: ragEnrichmentVersion,
++      rag_enrichment_updated_at: "2026-09-01T00:00:00.000Z",
++      generated_label_count: 1,
++      organization_profile: organizationProfile,
++      organization_profile_version: "document-organization-v1",
++    });
++    expect(supabase.rpc.mock.calls[1]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile");
++    expect(supabase.rpc.mock.calls[1]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile_version");
++  });
++
++  it("does not overwrite manual organization authority written after the live read", async () => {
++    const supabase = createRepairSupabaseMock();
++    const manualProfile = {
++      canonical_display_title: "Human governed title",
++      review_status: "manual_override",
++      human_note: "preserve this authority",
++    };
++    supabase.state.beforeMetadataPatch = () => {
++      supabase.state.documentMetadata = {
++        ...supabase.state.documentMetadata,
++        organization_profile: manualProfile,
++        organization_profile_version: "human-governed-v2",
++      };
++    };
++
++    await upsertDocumentEnrichment({
++      supabase: supabase as never,
++      document: {
++        id: DOCUMENT_ID,
++        owner_id: null,
++        title: "Clozapine monitoring",
++        file_name: "clozapine.pdf",
++        source_path: null,
++        metadata: {
++          index_generation_id: GENERATION_ID,
++          organization_profile: { canonical_display_title: "Stale inferred title", review_status: "needs_review" },
++        },
++      },
++      indexGenerationId: GENERATION_ID,
++      chunks: sourceAuthority().selectedChunks.map((chunk, chunk_index) => ({
++        ...chunk,
++        index_generation_id: GENERATION_ID,
++        chunk_index,
++        section_heading: null,
++        content: chunk.id === LATE_CHUNK_ID ? "Check ANC before clozapine review." : "Clozapine protocol.",
++      })),
++      images: sourceAuthority().selectedImages.map((image) => ({
++        ...image,
++        index_generation_id: GENERATION_ID,
++        caption: "Clozapine monitoring table",
++      })),
++    });
++
++    expect(supabase.state.documentMetadata.organization_profile).toEqual(manualProfile);
++    expect(supabase.state.documentMetadata.organization_profile_version).toBe("human-governed-v2");
++    expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile");
++    expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile_version");
++  });
+ });
+diff --git a/tests/indexing-v3-agent.test.ts b/tests/indexing-v3-agent.test.ts
+index 8185056db..fa21b2053 100644
+--- a/tests/indexing-v3-agent.test.ts
++++ b/tests/indexing-v3-agent.test.ts
+@@ -367,8 +367,8 @@ describe("indexing-v3-agent behavior", () => {
+     expect(ensureSummary, "summary metadata source generation").toContain(
+       "index_generation_id: payload.index_generation_id",
+     );
+-    expect(normalizedSql(summaryWrite), "summary conflict generation replacement").toContain(
+-      "metadata = excluded.metadata",
++    expect(normalizedSql(summaryWrite), "summary conflict preserves unrelated metadata").toContain(
++      "metadata = coalesce(public.document_summaries.metadata, '{}'::jsonb) || excluded.metadata",
+     );
+ 
+     const labels = agentFunction("async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText");
+@@ -1239,7 +1239,9 @@ describe("source-anchored summary Edge contract", () => {
+     expect(loader).toContain("source_anchored_summary_source_limit_exceeded");
+     expect(loader).toMatch(/index_generation_id\s*=\s*\$\{indexGenerationId\}::uuid/);
+     expect(loader).toMatch(/order by chunk\.chunk_index asc, chunk\.id asc/);
+-    expect(loader).toMatch(/clinical_relevance_score desc nulls last, image\.page_number asc nulls last, image\.id asc/);
++    expect(loader).toMatch(
++      /clinical_relevance_score desc nulls last, image\.page_number asc nulls last, image\.id asc/,
++    );
+   });
+ 
+   it("persists the complete payload before labels and marks projection complete only afterwards", () => {
+@@ -1254,6 +1256,45 @@ describe("source-anchored summary Edge contract", () => {
+     expect(completion).toBeGreaterThan(staleDelete);
+   });
+ 
++  it("uses independent structured-model authority and checks every persisted summary projection", () => {
++    const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
++    expect(indexingAgentSource).toContain("OPENAI_INDEXING_MODEL");
++    expect(ensureSummary).not.toContain("candidateRecord.model");
++    expect(ensureSummary).toContain("persistedSourceAnchoredSummaryProjectionMatches");
++    expect(normalizedSql(ensureSummary)).toContain(
++      "select summary, clinical_specifics, source_chunk_ids, source_image_ids, model, metadata, generated_at",
++    );
++  });
++
++  it("keeps zero-label Edge fallback provisional and deferred by the unchanged strict gate", async () => {
++    const { buildSourceAnchoredFallbackPayload } =
++      await import("../supabase/functions/_shared/source-anchored-summary");
++    const fallback = buildSourceAnchoredFallbackPayload(
++      {
++        documentId: "11111111-1111-4111-8111-111111111111",
++        indexGenerationId: "22222222-2222-4222-8222-222222222222",
++        expectedStructuredModel: "gpt-indexing-test",
++        expectedStructuredModelVersion: "rag-deep-memory-v1",
++        selectedChunks: [
++          {
++            id: "33333333-3333-4333-8333-333333333333",
++            page_number: 1,
++            index_generation_id: "22222222-2222-4222-8222-222222222222",
++          },
++        ],
++        selectedImages: [],
++      },
++      { generatedAt: "2026-09-01T00:00:00.000Z" },
++    );
++    const gate = completionGateFromRow(
++      gateRow({ generated_labels: fallback.labels.length, missing: ["generated_labels"], gate_passed: false }),
++    );
++    expect(fallback.labels).toEqual([]);
++    expect(gate).toMatchObject({ result: "deferred", missing: ["generated_labels"] });
++    expect(indexingAgentSource).not.toMatch(/generated_labels\s*>?=\s*0/);
++    expect(indexingAgentSource).not.toContain("complete_fallback_without_labels");
++  });
++
+   it("keeps Node and Edge coverage vectors identical including a late high-yield section", async () => {
+     const edge = await import("../supabase/functions/_shared/indexing-coverage");
+     const node = await import("@/lib/indexing-coverage");
+diff --git a/tests/worker-shadow-extraction.test.ts b/tests/worker-shadow-extraction.test.ts
+index 85b5e9fda..9a7299569 100644
+--- a/tests/worker-shadow-extraction.test.ts
++++ b/tests/worker-shadow-extraction.test.ts
+@@ -536,7 +536,7 @@ describe("worker source-anchored enrichment contract", () => {
+     const end = workerMain.indexOf("async function processJob", start);
+     const loader = workerMain.slice(start, end);
+     expect(loader).toContain("documentId: string, indexGenerationId: string");
+-    expect(loader).toContain('index_generation_id');
++    expect(loader).toContain("index_generation_id");
+     expect(loader).toContain('.eq("index_generation_id", indexGenerationId)');
+     expect(loader).toContain('order("chunk_index", { ascending: true })');
+     expect(loader).toContain('order("id", { ascending: true })');
+@@ -547,7 +547,9 @@ describe("worker source-anchored enrichment contract", () => {
+ 
+   it("passes the already-created generation to source loading and persistence", () => {
+     expect(workerMain).toContain("loadEnrichmentRows(job.document_id, indexGenerationId)");
+-    expect(workerMain).toMatch(/upsertDocumentEnrichment\(\{[\s\S]*?indexGenerationId,[\s\S]*?chunks:/);
++    expect(workerMain).toMatch(
++      /upsertDocumentEnrichment\(\{[\s\S]*?indexGenerationId:\s*liveIndexGenerationId,[\s\S]*?chunks:/,
++    );
+     expect(workerMain).not.toMatch(/loadEnrichmentRows\(job\.document_id\)/);
+   });
+ 
+@@ -558,4 +560,25 @@ describe("worker source-anchored enrichment contract", () => {
+     expect(section).toContain("assertSourceAnchoredSummaryPreflight");
+     expect(workerMain.indexOf("assertSourceAnchoredSummaryPreflight", start)).toBeLessThan(end);
+   });
++
++  it("reloads live generation and policy authority after commit before inline enrichment", () => {
++    expect(workerMain).toContain("async function loadLiveEnrichmentDocument");
++    const start = workerMain.indexOf("if (env.WORKER_INLINE_ENRICHMENT)");
++    const end = workerMain.indexOf("documentEmbeddingFieldTypes = await insertDocumentLevelEmbeddingFields", start);
++    const section = workerMain.slice(start, end);
++    const sourceLoad = section.indexOf("await loadEnrichmentRows(job.document_id, indexGenerationId)");
++    const liveReload = section.indexOf("await loadLiveEnrichmentDocument(job.document_id)");
++    const exactAuthority = section.indexOf("requireExactSourceAnchoredGeneration(", liveReload);
++    const preflight = section.indexOf("assertSourceAnchoredSummaryPreflight", exactAuthority);
++    const enrichment = section.indexOf("await upsertDocumentEnrichment", preflight);
++    expect(sourceLoad).toBeGreaterThan(-1);
++    expect(liveReload).toBeGreaterThan(sourceLoad);
++    expect(exactAuthority).toBeGreaterThan(liveReload);
++    expect(preflight).toBeGreaterThan(exactAuthority);
++    expect(enrichment).toBeGreaterThan(preflight);
++    expect(section).toContain("document: enrichmentDocument");
++    expect(section).not.toContain(
++      "metadata: { ...(job.documents.metadata ?? {}), index_generation_id: indexGenerationId }",
++    );
++  });
+ });
+diff --git a/worker/main.ts b/worker/main.ts
+index e5534eec6..273bac7c9 100644
+--- a/worker/main.ts
++++ b/worker/main.ts
+@@ -14,6 +14,7 @@ import {
+   SOURCE_ANCHORED_MAX_CHUNKS,
+   SOURCE_ANCHORED_MAX_IMAGES,
+   SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
++  requireExactSourceAnchoredGeneration,
+ } from "../supabase/functions/_shared/source-anchored-summary";
+ import { ragDeepMemoryVersion, upsertDocumentDeepMemory } from "../src/lib/deep-memory";
+ import { extractDocument } from "../src/lib/extractors/document";
+@@ -1723,7 +1724,9 @@ async function loadEnrichmentRows(documentId: string, indexGenerationId: string)
+   for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
+     const { data, error } = await supabase
+       .from("document_images")
+-      .select("id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata")
++      .select(
++        "id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata",
++      )
+       .eq("document_id", documentId)
+       .eq("index_generation_id", indexGenerationId)
+       .eq("searchable", true)
+@@ -1748,6 +1751,17 @@ async function loadEnrichmentRows(documentId: string, indexGenerationId: string)
+   return { chunks, images };
+ }
+ 
++async function loadLiveEnrichmentDocument(documentId: string) {
++  const { data, error } = await supabase
++    .from("documents")
++    .select("id,owner_id,title,file_name,source_path,index_generation_id,metadata")
++    .eq("id", documentId)
++    .single();
++  if (error) throw supabaseStageError("load live enrichment document", error);
++  if (!data) throw new Error("source_anchored_summary_requires_active_generation");
++  return data;
++}
++
+ async function processJob(job: JobRow) {
+   const atomicReindex = isAtomicReindexCandidate(job.documents);
+   await updateJobProgress(job.id, {
+@@ -1884,20 +1898,24 @@ async function processJob(job: JobRow) {
+       await updateJobProgress(job.id, { stage: "enriching indexed document", progress: 96 });
+       try {
+         const enrichmentRows = await loadEnrichmentRows(job.document_id, indexGenerationId);
+-        const enrichmentDocument = {
+-          ...job.documents,
+-          metadata: { ...(job.documents.metadata ?? {}), index_generation_id: indexGenerationId },
+-        };
++        const enrichmentDocument = await loadLiveEnrichmentDocument(job.document_id);
++        const liveIndexGenerationId = requireExactSourceAnchoredGeneration(
++          enrichmentDocument.index_generation_id,
++          enrichmentDocument.metadata,
++        );
++        if (liveIndexGenerationId !== indexGenerationId) {
++          throw new Error("source_anchored_summary_requires_active_generation");
++        }
+         assertSourceAnchoredSummaryPreflight({
+           documentMetadata: enrichmentDocument.metadata,
+-          indexGenerationId,
++          indexGenerationId: liveIndexGenerationId,
+           chunks: enrichmentRows.chunks,
+           images: enrichmentRows.images,
+         });
+         const enrichment = await upsertDocumentEnrichment({
+           supabase,
+           document: enrichmentDocument,
+-          indexGenerationId,
++          indexGenerationId: liveIndexGenerationId,
+           chunks: enrichmentRows.chunks,
+           images: enrichmentRows.images,
+         });
