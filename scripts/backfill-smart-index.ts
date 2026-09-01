@@ -1,5 +1,11 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { loadEnvConfig } from "@next/env";
+import {
+  SOURCE_ANCHORED_MAX_CHUNKS,
+  SOURCE_ANCHORED_MAX_IMAGES,
+  SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
+  requireExactSourceAnchoredGeneration,
+} from "../supabase/functions/_shared/source-anchored-summary";
 
 loadEnvConfig(process.cwd());
 
@@ -13,18 +19,7 @@ type Args = {
   metadataOnly: boolean;
 };
 
-type SimpleSupabaseReader = {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (
-        column: string,
-        value: unknown,
-      ) => {
-        range: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>;
-      };
-    };
-  };
-};
+type SimpleSupabaseReader = { from: (table: string) => any };
 
 /**
  * Parses command-line arguments into document repair options.
@@ -100,165 +95,35 @@ function compactSearchText(value: unknown, limit = 900) {
   return clean.length <= limit ? clean : clean.slice(0, limit).trim();
 }
 
-function stringArray(value: unknown) {
-  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
-}
-
-function chunkSectionPath(chunk: Record<string, unknown>) {
-  const metadata = metadataRecord(chunk.metadata);
-  const existing = stringArray(chunk.section_path);
-  if (existing.length) return existing;
-  const fromMetadata = stringArray(metadata.section_path).length
-    ? stringArray(metadata.section_path)
-    : stringArray(metadata.subsection_path);
-  if (fromMetadata.length) return fromMetadata;
-  const heading = String(chunk.section_heading ?? "").trim();
-  if (heading) return [heading];
-  const pageNumber =
-    chunk.page_number === null || chunk.page_number === undefined ? "unknown" : String(chunk.page_number);
-  return [`Page ${pageNumber}`];
-}
-
-function chunkAnchorId(chunk: Record<string, unknown>) {
-  const metadata = metadataRecord(chunk.metadata);
-  const existing = String(chunk.anchor_id ?? metadata.anchor_id ?? "").trim();
-  if (existing) return existing;
-  const page = chunk.page_number === null || chunk.page_number === undefined ? "x" : String(chunk.page_number);
-  const index = chunk.chunk_index === null || chunk.chunk_index === undefined ? "x" : String(chunk.chunk_index);
-  return `p${page}-c${index}`;
-}
-
-function fallbackGeneratedLabel(document: Record<string, unknown>) {
-  const text = `${document.title ?? ""} ${document.file_name ?? ""}`.toLowerCase();
-  const title = compactSearchText(document.title ?? document.file_name, 64);
-  if (/clozapine/.test(text)) return { label: "clozapine", label_type: "medication", confidence: 0.86 };
-  if (/alcohol/.test(text) && /withdrawal/.test(text))
-    return { label: "alcohol withdrawal", label_type: "topic", confidence: 0.78 };
-  if (/alcohol/.test(text) && /use\s*disorder/.test(text))
-    return { label: "alcohol use disorder", label_type: "topic", confidence: 0.78 };
-  if (/amfetamine|amphetamine|methamphetamine/.test(text)) {
-    return { label: "methamphetamine use disorder", label_type: "topic", confidence: 0.78 };
-  }
-  if (/alzheimer/.test(text)) return { label: "alzheimer disease", label_type: "topic", confidence: 0.78 };
-  if (/anorexia/.test(text)) return { label: "anorexia nervosa", label_type: "topic", confidence: 0.78 };
-  if (/agitation|arousal/.test(text)) return { label: "agitation management", label_type: "risk", confidence: 0.72 };
-  if (/home\s*visit/.test(text)) return { label: "community home visit", label_type: "workflow", confidence: 0.7 };
-  if (/discharge/.test(text)) return { label: "discharge planning", label_type: "workflow", confidence: 0.7 };
-  if (/illegal|substance/.test(text)) return { label: "substance use risk", label_type: "risk", confidence: 0.68 };
-  if (/\bid\s*pts|identification/.test(text))
-    return { label: "patient identification", label_type: "workflow", confidence: 0.68 };
-  if (/nocc/.test(text)) return { label: "nocc outcome measures", label_type: "topic", confidence: 0.75 };
-  if (/mhat|mhct|treatment\s*team/.test(text)) {
-    return { label: "treatment team process", label_type: "workflow", confidence: 0.7 };
-  }
-  return title ? { label: title, label_type: "topic", confidence: 0.58 } : null;
-}
-
-async function loadRows<T>(supabase: SimpleSupabaseReader, table: string, select: string, documentId: string) {
+async function loadRows<T>(
+  supabase: SimpleSupabaseReader,
+  table: string,
+  select: string,
+  documentId: string,
+  indexGenerationId: string,
+) {
   const rows: T[] = [];
-  for (let start = 0; ; start += 1000) {
-    const { data, error } = await supabase
+  const limit = table === "document_chunks" ? SOURCE_ANCHORED_MAX_CHUNKS : SOURCE_ANCHORED_MAX_IMAGES;
+  for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
+    let query = supabase
       .from(table)
       .select(select)
       .eq("document_id", documentId)
-      .range(start, start + 999);
+      .eq("index_generation_id", indexGenerationId);
+    query =
+      table === "document_chunks"
+        ? query.order("chunk_index", { ascending: true }).order("id", { ascending: true })
+        : query
+            .order("clinical_relevance_score", { ascending: false, nullsFirst: false })
+            .order("page_number", { ascending: true, nullsFirst: false })
+            .order("id", { ascending: true });
+    const { data, error } = await query.range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
     rows.push(...((data ?? []) as T[]));
-    if (!data || data.length < 1000) break;
+    if (rows.length > limit) throw new Error("source_anchored_summary_source_limit_exceeded");
+    if (!data || data.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
   }
   return rows;
-}
-
-async function repairChunkIndexingMetadata(args: {
-  supabase: unknown;
-  document: Record<string, unknown>;
-  chunks: Record<string, unknown>[];
-  ragDeepMemoryVersion: string;
-}) {
-  const writable = args.supabase as {
-    from: (table: string) => {
-      update: (row: Record<string, unknown>) => {
-        eq: (column: string, value: unknown) => PromiseLike<{ error: { message: string } | null }>;
-      };
-    };
-  };
-  const documentMetadata = metadataRecord(args.document.metadata);
-  const generationId =
-    typeof documentMetadata.index_generation_id === "string" && documentMetadata.index_generation_id
-      ? documentMetadata.index_generation_id
-      : randomUUID();
-
-  const chunksToUpdate: {
-    chunk: Record<string, unknown>;
-    contentHash: string;
-    sectionPath: string[];
-    anchorId: string;
-    metadata: Record<string, unknown>;
-  }[] = [];
-
-  for (const chunk of args.chunks) {
-    const sectionPath = chunkSectionPath(chunk);
-    const anchorId = chunkAnchorId(chunk);
-    const contentHash =
-      typeof chunk.content_hash === "string" && chunk.content_hash
-        ? chunk.content_hash
-        : hashText(`${chunk.section_heading ?? ""}\n${chunk.content ?? ""}`);
-
-    const chunkMetadata = metadataRecord(chunk.metadata);
-    const needsUpdate =
-      chunk.content_hash !== contentHash ||
-      chunk.index_generation_id !== generationId ||
-      chunk.anchor_id !== anchorId ||
-      chunkMetadata.rag_indexing_version !== args.ragDeepMemoryVersion ||
-      chunkMetadata.rag_memory_version !== args.ragDeepMemoryVersion ||
-      !Array.isArray(chunk.section_path) ||
-      chunk.section_path.length !== sectionPath.length ||
-      !chunk.section_path.every((val, i) => val === sectionPath[i]);
-
-    if (needsUpdate) {
-      const metadata = {
-        ...chunkMetadata,
-        content_hash: contentHash,
-        index_generation_id: generationId,
-        section_path: sectionPath,
-        anchor_id: anchorId,
-        rag_indexing_version: args.ragDeepMemoryVersion,
-        rag_memory_version: args.ragDeepMemoryVersion,
-      };
-      chunksToUpdate.push({
-        chunk,
-        contentHash,
-        sectionPath,
-        anchorId,
-        metadata,
-      });
-    }
-  }
-
-  if (chunksToUpdate.length > 0) {
-    console.log(`Updating ${chunksToUpdate.length} / ${args.chunks.length} chunks that need repair...`);
-    const limit = 5;
-    for (let start = 0; start < chunksToUpdate.length; start += limit) {
-      const batch = chunksToUpdate.slice(start, start + limit);
-      await Promise.all(
-        batch.map(async (item) => {
-          const { error } = await writable
-            .from("document_chunks")
-            .update({
-              content_hash: item.contentHash,
-              index_generation_id: generationId,
-              section_path: item.sectionPath,
-              anchor_id: item.anchorId,
-              metadata: item.metadata,
-            })
-            .eq("id", item.chunk.id);
-          if (error) throw new Error(error.message);
-        }),
-      );
-    }
-  }
-
-  return generationId;
 }
 
 async function loadDocumentSummary(args: { supabase: unknown; documentId: string }) {
@@ -341,55 +206,6 @@ async function upsertDocumentLevelEmbeddingFields(args: {
   const { error } = await writable.from("document_embedding_fields").insert(rows);
   if (error) throw new Error(error.message);
   return rows.length;
-}
-
-async function ensureGeneratedFallbackLabel(args: {
-  supabase: unknown;
-  document: Record<string, unknown>;
-  ragEnrichmentVersion: string;
-}) {
-  const client = args.supabase as {
-    from: (table: string) => {
-      select: (
-        columns: string,
-        options?: Record<string, unknown>,
-      ) => {
-        eq: (
-          column: string,
-          value: unknown,
-        ) => {
-          eq: (
-            column: string,
-            value: unknown,
-          ) => PromiseLike<{ count?: number | null; error: { message: string } | null }>;
-        };
-      };
-      insert: (row: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }>;
-    };
-  };
-  const { count, error: countError } = await client
-    .from("document_labels")
-    .select("id", { count: "exact", head: true })
-    .eq("document_id", args.document.id)
-    .eq("source", "generated");
-  if (countError) throw new Error(countError.message);
-  if ((count ?? 0) > 0) return 0;
-  const label = fallbackGeneratedLabel(args.document);
-  if (!label) return 0;
-  const { error } = await client.from("document_labels").insert({
-    document_id: args.document.id,
-    owner_id: args.document.owner_id ?? null,
-    ...label,
-    source: "generated",
-    metadata: {
-      generated_by: "backfill-fallback",
-      rag_enrichment_version: args.ragEnrichmentVersion,
-      rag_indexing_version: args.ragEnrichmentVersion,
-      rag_memory_version: args.ragEnrichmentVersion,
-    },
-  });
-  if (error) throw new Error(error.message);
-  return 1;
 }
 
 async function countRows(args: { supabase: unknown; table: string; documentId: string }) {
@@ -512,7 +328,7 @@ async function main() {
   const [
     { requireOpenAIEnv, requireServerEnv },
     { createAdminClient },
-    { upsertDocumentEnrichment, ragEnrichmentVersion },
+    { assertSourceAnchoredSummaryPreflight, upsertDocumentEnrichment },
     { upsertDocumentDeepMemory, ragDeepMemoryVersion },
     { embedTexts },
   ] = await Promise.all([
@@ -528,7 +344,7 @@ async function main() {
   const reader = supabase as unknown as SimpleSupabaseReader;
   let query = supabase
     .from("documents")
-    .select("id,owner_id,title,file_name,source_path,status,metadata")
+    .select("id,owner_id,title,file_name,source_path,status,index_generation_id,metadata")
     .order("created_at", { ascending: true })
     .limit(args.documentId ? 1 : args.limit);
   if (!args.documentId) query = query.eq("status", "indexed");
@@ -544,6 +360,7 @@ async function main() {
     console.log("Metadata-only mode: repairing chunk metadata, document-level fields, labels, and quality rows.");
 
   for (const document of documents ?? []) {
+    const generationId = requireExactSourceAnchoredGeneration(document.index_generation_id, document.metadata);
     const indexingDocument = {
       ...document,
       metadata: metadataRecord(document.metadata),
@@ -554,18 +371,22 @@ async function main() {
         "document_chunks",
         "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content_hash,index_generation_id,content,image_ids,metadata",
         document.id,
+        generationId,
       ),
       loadRows<Record<string, unknown>>(
         reader,
         "document_images",
-        "id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata",
+        "id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata",
         document.id,
+        generationId,
       ),
     ]);
-    if (!chunks.length) {
-      console.log(`SKIP ${document.file_name}: no chunks`);
-      continue;
-    }
+    assertSourceAnchoredSummaryPreflight({
+      documentMetadata: indexingDocument.metadata,
+      indexGenerationId: generationId,
+      chunks: chunks as never,
+      images: images as never,
+    });
 
     if (!writeEnabled) {
       console.log(
@@ -575,12 +396,6 @@ async function main() {
     }
 
     const summary = await loadDocumentSummary({ supabase, documentId: document.id });
-    const generationId = await repairChunkIndexingMetadata({
-      supabase,
-      document: indexingDocument,
-      chunks: chunks as Record<string, unknown>[],
-      ragDeepMemoryVersion,
-    });
     const embeddingFields = await upsertDocumentLevelEmbeddingFields({
       supabase,
       document: indexingDocument,
@@ -588,14 +403,7 @@ async function main() {
       summary,
       embedTexts,
     });
-    let fallbackLabels = 0;
-
     if (args.metadataOnly) {
-      fallbackLabels = await ensureGeneratedFallbackLabel({
-        supabase,
-        document: indexingDocument,
-        ragEnrichmentVersion,
-      });
       const [sectionCount, memoryCardCount] = await Promise.all([
         countRows({ supabase, table: "document_sections", documentId: document.id }),
         countRows({ supabase, table: "document_memory_cards", documentId: document.id }),
@@ -610,7 +418,7 @@ async function main() {
         generationId,
       });
       console.log(
-        `REPAIRED ${document.file_name}: fields=${embeddingFields} fallbackLabels=${fallbackLabels} quality=${quality.qualityScore} issues=${quality.issues.length}`,
+        `REPAIRED ${document.file_name}: fields=${embeddingFields} quality=${quality.qualityScore} issues=${quality.issues.length}`,
       );
       continue;
     }
@@ -618,13 +426,9 @@ async function main() {
     const enrichment = await upsertDocumentEnrichment({
       supabase,
       document: indexingDocument,
+      indexGenerationId: generationId,
       chunks: chunks as never,
       images: images as never,
-    });
-    fallbackLabels = await ensureGeneratedFallbackLabel({
-      supabase,
-      document: indexingDocument,
-      ragEnrichmentVersion,
     });
     const memory = await upsertDocumentDeepMemory({
       supabase,
@@ -643,7 +447,7 @@ async function main() {
       generationId,
     });
     console.log(
-      `WROTE ${document.file_name}: labels=${enrichment.labels.length} fallbackLabels=${fallbackLabels} sections=${memory.sections.length} memory=${memory.memoryCards.length} indexUnits=${memory.indexUnits.length} fields=${embeddingFields} quality=${quality.qualityScore} modelFacts=${memory.modelProfile?.clinical_facts.length ?? 0} questions=${memory.modelProfile?.askable_questions.length ?? 0}`,
+      `WROTE ${document.file_name}: labels=${enrichment.labels.length} sections=${memory.sections.length} memory=${memory.memoryCards.length} indexUnits=${memory.indexUnits.length} fields=${embeddingFields} quality=${quality.qualityScore} modelFacts=${memory.modelProfile?.clinical_facts.length ?? 0} questions=${memory.modelProfile?.askable_questions.length ?? 0}`,
     );
   }
 }

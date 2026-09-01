@@ -1,4 +1,18 @@
 // Extracted utilities for indexing-v3-agent
+// prettier-ignore
+// @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
+import { SOURCE_ANCHORED_SUMMARY_METADATA_KEY, SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
+
+export function sourceAnchoredSummaryMetadata(
+  payload: SourceAnchoredSummaryPayload,
+  projectionComplete: boolean,
+): Record<string, unknown> {
+  return {
+    index_generation_id: payload.index_generation_id,
+    [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
+    [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: projectionComplete,
+  };
+}
 
 export const LABEL_STOPWORDS = new Set([
   "about",

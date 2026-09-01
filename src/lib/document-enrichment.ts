@@ -20,6 +20,27 @@ import { ragDeepMemoryVersion } from "@/lib/deep-memory";
 import { normalizeDocumentLabelForStorage } from "@/lib/document-tags";
 import { safeErrorLogDetails } from "@/lib/privacy";
 import { cleanClinicalSummaryText, fenceSourceEvidence, sourceTextForModelEvidence } from "@/lib/source-text-sanitizer";
+import {
+  SOURCE_ANCHORED_MAX_CHUNKS,
+  SOURCE_ANCHORED_MAX_IMAGES,
+  SOURCE_ANCHORED_MAX_PROMPT_IMAGES,
+  SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION,
+  SOURCE_ANCHORED_SUMMARY_METADATA_KEY,
+  SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY,
+  SOURCE_ANCHORED_SUMMARY_VERSION,
+  canonicalSourceAnchoredText,
+  normalizeSourceAnchoredSummary,
+  projectSourceAnchoredLabels,
+  projectSourceAnchoredSummary,
+  requireSourceAnchoredSummaryGeneration,
+  type SourceAnchoredClinicalProfile,
+  type SourceAnchoredSummaryAuthority,
+  type SourceAnchoredSummaryPayload,
+} from "../../supabase/functions/_shared/source-anchored-summary";
+import {
+  containsForbiddenPublicSourceChunkContent,
+  publicSourcePolicyViolation,
+} from "../../supabase/functions/_shared/public-source-policy";
 import type {
   ClinicalDocument,
   ClinicalDocumentSummaryProfile,
@@ -66,10 +87,11 @@ const anchoredProfileItemSchema = {
     text: { type: "string" },
     source_chunk_ids: { type: "array", items: { type: "string" } },
     source_image_ids: { type: "array", items: { type: "string" } },
+    pages: { type: "array", items: { type: "integer" } },
     evidence_type: { type: "string", enum: ["text", "table", "image", "mixed", "metadata"] },
     support: { type: "string", enum: ["direct", "partial", "not_found"] },
   },
-  required: ["text", "source_chunk_ids", "source_image_ids", "evidence_type", "support"],
+  required: ["text", "source_chunk_ids", "source_image_ids", "pages", "evidence_type", "support"],
 };
 
 const summarySchema = {
@@ -165,6 +187,7 @@ const summarySchema = {
 
 type EnrichmentChunk = {
   id: string;
+  index_generation_id?: string | null;
   page_number: number | null;
   chunk_index: number;
   section_heading: string | null;
@@ -173,6 +196,7 @@ type EnrichmentChunk = {
 
 type EnrichmentImage = {
   id: string;
+  index_generation_id?: string | null;
   page_number: number | null;
   caption: string | null;
   image_type?: string | null;
@@ -602,100 +626,334 @@ export async function generateDocumentEnrichment(args: {
   };
 }
 
+export function assertSourceAnchoredSummaryPreflight(args: {
+  documentMetadata: unknown;
+  indexGenerationId: unknown;
+  chunks: readonly EnrichmentChunk[];
+  images: readonly EnrichmentImage[];
+}) {
+  const indexGenerationId = requireSourceAnchoredSummaryGeneration(args.indexGenerationId);
+  const metadata = metadataRecord(args.documentMetadata);
+  if (metadata.index_generation_id !== indexGenerationId) {
+    throw new Error("source_anchored_summary_requires_active_generation");
+  }
+  if (args.chunks.length > SOURCE_ANCHORED_MAX_CHUNKS || args.images.length > SOURCE_ANCHORED_MAX_IMAGES) {
+    throw new Error("source_anchored_summary_source_limit_exceeded");
+  }
+  if (args.chunks.length + args.images.length === 0) throw new Error("source_anchored_summary_source_missing");
+  for (const row of [...args.chunks, ...args.images]) {
+    if (row.index_generation_id !== indexGenerationId) {
+      throw new Error("source_anchored_summary_source_generation_mismatch");
+    }
+  }
+  const policyViolation = publicSourcePolicyViolation(
+    metadata,
+    containsForbiddenPublicSourceChunkContent(args.chunks.map((chunk) => ({ content: chunk.content }))),
+  );
+  if (policyViolation) throw new Error(policyViolation);
+  return indexGenerationId;
+}
+
+function sourceAuthority(args: {
+  documentId: string;
+  indexGenerationId: string;
+  chunks: EnrichmentChunk[];
+  images: EnrichmentImage[];
+}): SourceAnchoredSummaryAuthority {
+  const selected = selectCoverageAwarePromptChunks(args.chunks);
+  return {
+    documentId: args.documentId,
+    indexGenerationId: args.indexGenerationId,
+    expectedStructuredModel: env.OPENAI_INDEXING_MODEL,
+    expectedStructuredModelVersion: ragEnrichmentVersion,
+    selectedChunks: selected.chunks,
+    selectedImages: args.images.slice(0, SOURCE_ANCHORED_MAX_PROMPT_IMAGES),
+  };
+}
+
+function modelProfile(raw: Record<string, unknown>, authority: SourceAnchoredSummaryAuthority) {
+  const specifics = raw.clinical_specifics as Record<string, unknown> | undefined;
+  const profileSource = (specifics?.profile ?? {}) as Record<string, unknown>;
+  const chunkPages = new Map(authority.selectedChunks.map((row) => [row.id, row.page_number] as const));
+  const imagePages = new Map(authority.selectedImages.map((row) => [row.id, row.page_number] as const));
+  const profile: Record<string, unknown> = { overview: "pending" };
+  for (const key of summaryProfileKeys) {
+    const items = Array.isArray(profileSource[key]) ? profileSource[key] : [];
+    profile[key] = items.map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+      const value = item as Record<string, unknown>;
+      const chunkIds = Array.isArray(value.source_chunk_ids) ? value.source_chunk_ids.map(String) : [];
+      const imageIds = Array.isArray(value.source_image_ids) ? value.source_image_ids.map(String) : [];
+      const pages = Array.from(
+        new Set(
+          [...chunkIds.map((id) => chunkPages.get(id)), ...imageIds.map((id) => imagePages.get(id))].filter(
+            (page): page is number => Number.isInteger(page) && Number(page) > 0,
+          ),
+        ),
+      ).sort((a, b) => a - b);
+      return { ...value, pages };
+    });
+  }
+  const projection = projectSourceAnchoredSummary(profile as unknown as SourceAnchoredClinicalProfile);
+  profile.overview = projection;
+  return profile as unknown as SourceAnchoredClinicalProfile;
+}
+
+async function generateSourceAnchoredSummary(args: {
+  document: Pick<ClinicalDocument, "id" | "title" | "file_name" | "source_path">;
+  authority: SourceAnchoredSummaryAuthority;
+  chunks: EnrichmentChunk[];
+  images: EnrichmentImage[];
+}) {
+  try {
+    const result = await generateStructuredTextResult(buildEnrichmentPrompt(args), summarySchema, {
+      model: env.OPENAI_INDEXING_MODEL,
+      maxOutputTokens: 2400,
+      operation: "summary",
+      schemaName: "clinical_document_enrichment",
+      promptCacheKey: "clinical-document-enrichment-v1",
+      reasoningEffort: "medium",
+      textVerbosity: "medium",
+    });
+    if (result.truncated) throw new Error("truncated structured enrichment");
+    const raw = JSON.parse(result.text) as Record<string, unknown>;
+    if (raw.summary_version === SOURCE_ANCHORED_SUMMARY_VERSION) {
+      return normalizeSourceAnchoredSummary(raw, args.authority);
+    }
+    const profile = modelProfile(raw, args.authority);
+    const labels = (Array.isArray(raw.labels) ? raw.labels : [])
+      .map((item) => {
+        const value = item && typeof item === "object" && !Array.isArray(item) ? (item as Record<string, unknown>) : {};
+        return {
+          label: canonicalSourceAnchoredText(value.label).toLowerCase(),
+          label_type: value.label_type,
+          confidence: value.confidence,
+        };
+      })
+      .sort((a, b) => String(a.label_type).localeCompare(String(b.label_type)) || a.label.localeCompare(b.label));
+    const projected = projectSourceAnchoredSummary(profile);
+    return normalizeSourceAnchoredSummary(
+      {
+        summary_kind: "structured",
+        summary_version: SOURCE_ANCHORED_SUMMARY_VERSION,
+        document_id: args.document.id,
+        index_generation_id: args.authority.indexGenerationId,
+        model: env.OPENAI_INDEXING_MODEL,
+        model_version: ragEnrichmentVersion,
+        generated_at: new Date().toISOString(),
+        source_chunk_ids: args.authority.selectedChunks.map((row) => row.id),
+        source_image_ids: args.authority.selectedImages.map((row) => row.id),
+        summary: projected,
+        clinical_specifics: {
+          profile,
+          actions: profile.key_clinical_actions.map((item) => item.text),
+          thresholds_timing: profile.thresholds_timing.map((item) => item.text),
+          medication_monitoring: profile.medication_dose_monitoring.map((item) => item.text),
+          risk_escalation: profile.escalation_risk_warnings.map((item) => item.text),
+          documentation_forms: profile.required_forms_documentation.map((item) => item.text),
+          exceptions_gaps: profile.not_covered.map((item) => item.text),
+        },
+        labels,
+        heuristic_fallback: false,
+      },
+      args.authority,
+    );
+  } catch (error) {
+    console.warn("document enrichment generation failed", {
+      document: args.document.file_name ?? args.document.title,
+      ...safeErrorLogDetails(error),
+    });
+    throw new Error("source_anchored_summary_generation_failed", { cause: error });
+  }
+}
+
+function projectedLabelRows(payload: SourceAnchoredSummaryPayload, ownerId: string | null) {
+  return projectSourceAnchoredLabels(payload).map((label) => ({
+    document_id: payload.document_id,
+    owner_id: ownerId,
+    label: label.label,
+    label_type: label.label_type,
+    confidence: label.confidence,
+    source: "generated" as const,
+    metadata: {
+      index_generation_id: payload.index_generation_id,
+      summary_version: payload.summary_version,
+      source_chunk_ids: label.source_chunk_ids,
+      source_image_ids: label.source_image_ids,
+      pages: label.pages,
+    },
+  }));
+}
+
+function labelsMatchPayload(rows: unknown[], payload: SourceAnchoredSummaryPayload) {
+  const expected = projectedLabelRows(payload, null).map(({ owner_id: _owner, ...row }) => row);
+  const actual = rows
+    .filter((row) => row && typeof row === "object" && (row as Record<string, unknown>).source === "generated")
+    .map((row) => {
+      const value = row as Record<string, unknown>;
+      return {
+        document_id: value.document_id,
+        label: value.label,
+        label_type: value.label_type,
+        confidence: value.confidence,
+        source: value.source,
+        metadata: value.metadata,
+      };
+    });
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+async function persistProjectedLabels(args: {
+  supabase: SupabaseClient;
+  payload: SourceAnchoredSummaryPayload;
+  ownerId: string | null;
+}) {
+  const client = args.supabase as unknown as {
+    from: (table: string) => any;
+  };
+  const desired = projectedLabelRows(args.payload, args.ownerId);
+  for (const row of desired) {
+    const { error } = await client.from("document_labels").upsert(row, {
+      onConflict: "document_id,label_type,label,source",
+    });
+    if (error) throw new Error(error.message);
+  }
+  const { data: current, error: currentError } = await client
+    .from("document_labels")
+    .select("id,label,label_type,source")
+    .eq("document_id", args.payload.document_id)
+    .eq("source", "generated");
+  if (currentError) throw new Error(currentError.message);
+  const desiredKeys = new Set(desired.map((row) => `${row.label_type}\u0000${row.label}`));
+  for (const row of current ?? []) {
+    if (desiredKeys.has(`${row.label_type}\u0000${row.label}`)) continue;
+    const { error } = await client.from("document_labels").delete().eq("id", row.id);
+    if (error) throw new Error(error.message);
+  }
+}
+
 export async function upsertDocumentEnrichment(args: {
   supabase: SupabaseClient;
   document: Pick<ClinicalDocument, "id" | "owner_id" | "title" | "file_name" | "source_path"> & {
     metadata?: ClinicalDocument["metadata"];
   };
+  indexGenerationId: string;
   chunks: EnrichmentChunk[];
   images?: EnrichmentImage[];
 }) {
-  let enrichment: GeneratedSummary;
+  const images = args.images ?? [];
+  const indexGenerationId = assertSourceAnchoredSummaryPreflight({
+    documentMetadata: args.document.metadata,
+    indexGenerationId: args.indexGenerationId,
+    chunks: args.chunks,
+    images,
+  });
+  const authority = sourceAuthority({
+    documentId: args.document.id,
+    indexGenerationId,
+    chunks: args.chunks,
+    images,
+  });
+  const client = args.supabase as unknown as { from: (table: string) => any };
+  const existingSummaryResult = await client
+    .from("document_summaries")
+    .select("*")
+    .eq("document_id", args.document.id)
+    .maybeSingle();
+  if (existingSummaryResult.error) throw new Error(existingSummaryResult.error.message);
+  let existingSummary = existingSummaryResult.data;
+  const { data: existingLabels, error: existingLabelsError } = await client
+    .from("document_labels")
+    .select("id,document_id,label,label_type,source,confidence,metadata")
+    .eq("document_id", args.document.id)
+    .eq("source", "generated")
+    .order("label_type", { ascending: true })
+    .order("label", { ascending: true });
+  if (existingLabelsError) throw new Error(existingLabelsError.message);
+
+  let payload: SourceAnchoredSummaryPayload | null = null;
   try {
-    enrichment = await generateDocumentEnrichment(args);
-  } catch (error) {
-    // Same rationale as parseGeneratedSummary: a failed generation (e.g. an
-    // OpenAI outage) degrades this document's retrieval quality, so record it
-    // instead of swallowing the error and silently persisting the fallback.
-    console.warn("document enrichment generation failed", {
-      document: args.document.file_name ?? args.document.title,
-      ...safeErrorLogDetails(error),
+    const stored = metadataRecord(existingSummary?.metadata)[SOURCE_ANCHORED_SUMMARY_METADATA_KEY];
+    payload = normalizeSourceAnchoredSummary(stored, authority);
+  } catch {
+    payload = null;
+  }
+  const marker = metadataRecord(existingSummary?.metadata)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY] === true;
+  if (payload && marker && labelsMatchPayload(existingLabels ?? [], payload)) {
+    return { summary: existingSummary as DocumentSummary, labels: payload.labels };
+  }
+  if (!payload || payload.summary_kind !== "structured") {
+    payload = await generateSourceAnchoredSummary({
+      document: args.document,
+      authority,
+      chunks: args.chunks,
+      images,
     });
-    enrichment = {
-      summary: `- ${args.document.title}: indexed source text is available for source-backed review.`,
-      clinical_specifics: fallbackClinicalSpecifics(),
-      labels: inferLabels(args.document),
+    const coverageProfile = buildIndexingCoverageProfile({ chunks: args.chunks, images });
+    const selectedPromptChunks = selectCoverageAwarePromptChunks(args.chunks);
+    const metadata = {
+      generated_by: "local-worker",
+      rag_enrichment_version: ragEnrichmentVersion,
+      rag_indexing_version: ragEnrichmentVersion,
+      rag_memory_version: ragEnrichmentVersion,
+      clinical_profile_version: summaryProfileVersion,
+      coverage_profile: coverageProfile,
+      enrichment_prompt_strategy: selectedPromptChunks.strategy,
+      enrichment_prompt_chunk_ids: selectedPromptChunks.chunks.map((chunk) => chunk.id),
+      label_count: payload.labels.length,
+      [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
+      [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false,
     };
+    const { data, error } = await client
+      .from("document_summaries")
+      .upsert(
+        {
+          document_id: args.document.id,
+          owner_id: args.document.owner_id ?? null,
+          summary: payload.summary,
+          clinical_specifics: payload.clinical_specifics,
+          source_chunk_ids: payload.source_chunk_ids,
+          source_image_ids: payload.source_image_ids,
+          model: payload.model,
+          metadata,
+          generated_at: payload.generated_at,
+          updated_at: payload.generated_at,
+        },
+        { onConflict: "document_id" },
+      )
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    existingSummary = data;
   }
 
-  const selectedPromptChunks = selectCoverageAwarePromptChunks(args.chunks);
-  const coverageProfile = buildIndexingCoverageProfile({ chunks: args.chunks, images: args.images ?? [] });
+  await persistProjectedLabels({
+    supabase: args.supabase,
+    payload,
+    ownerId: args.document.owner_id ?? null,
+  });
+  const completedMetadata = {
+    ...metadataRecord(existingSummary?.metadata),
+    [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
+    [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
+  };
+  const { data: completedSummary, error: completionError } = await client
+    .from("document_summaries")
+    .update({ metadata: completedMetadata, updated_at: new Date().toISOString() })
+    .eq("document_id", args.document.id)
+    .select("*")
+    .single();
+  if (completionError) throw new Error(completionError.message);
+
   const organization = classifyDocumentOrganization({
     title: args.document.title,
     file_name: args.document.file_name,
     source_path: args.document.source_path,
     metadata: args.document.metadata,
     contentText: args.chunks.map((chunk) => chunk.content).join("\n\n"),
-    summaryText: enrichment.summary,
+    summaryText: payload.summary,
   });
-  enrichment = {
-    ...enrichment,
-    labels: normalizeGeneratedLabels([...enrichment.labels, ...organization.labels]),
-  };
-  const sourceChunkIds = args.chunks.map((chunk) => chunk.id);
-  const sourceImageIds = (args.images ?? []).map((image) => image.id);
-  const enrichedAt = new Date().toISOString();
-  const generatedMetadata = {
-    generated_by: "local-worker",
-    rag_enrichment_version: ragEnrichmentVersion,
-    rag_indexing_version: ragEnrichmentVersion,
-    rag_memory_version: ragEnrichmentVersion,
-    clinical_profile_version: summaryProfileVersion,
-    enriched_at: enrichedAt,
-  };
-  const coverageMetadata = {
-    coverage_profile: coverageProfile,
-    enrichment_prompt_strategy: selectedPromptChunks.strategy,
-    enrichment_prompt_chunk_ids: selectedPromptChunks.chunks.map((chunk) => chunk.id),
-  };
-
-  const { data: summary, error: summaryError } = await args.supabase
-    .from("document_summaries")
-    .upsert(
-      {
-        document_id: args.document.id,
-        owner_id: args.document.owner_id ?? null,
-        summary: enrichment.summary,
-        clinical_specifics: enrichment.clinical_specifics,
-        source_chunk_ids: sourceChunkIds,
-        source_image_ids: sourceImageIds,
-        model: env.OPENAI_INDEXING_MODEL,
-        metadata: { ...generatedMetadata, ...coverageMetadata, label_count: enrichment.labels.length },
-        generated_at: enrichedAt,
-        updated_at: enrichedAt,
-      },
-      { onConflict: "document_id" },
-    )
-    .select("*")
-    .single();
-
-  if (summaryError) throw new Error(summaryError.message);
-
-  await args.supabase.from("document_labels").delete().eq("document_id", args.document.id).eq("source", "generated");
-  if (enrichment.labels.length > 0) {
-    const { error: labelsError } = await args.supabase.from("document_labels").insert(
-      enrichment.labels.map((label) => ({
-        document_id: args.document.id,
-        owner_id: args.document.owner_id ?? null,
-        ...label,
-        source: "generated",
-        metadata: generatedMetadata,
-      })),
-    );
-    if (labelsError) throw new Error(labelsError.message);
-  }
-
-  const { error: documentMetadataError } = await args.supabase
+  const { error: documentMetadataError } = await client
     .from("documents")
     .update({
       metadata: {
@@ -703,17 +961,14 @@ export async function upsertDocumentEnrichment(args: {
         rag_enrichment_version: ragEnrichmentVersion,
         rag_indexing_version: ragEnrichmentVersion,
         rag_memory_version: ragEnrichmentVersion,
-        rag_enrichment_updated_at: enrichedAt,
-        generated_label_count: enrichment.labels.length,
+        rag_enrichment_updated_at: payload.generated_at,
+        generated_label_count: payload.labels.length,
         ...organization.metadata,
-        ...coverageMetadata,
       },
     })
     .eq("id", args.document.id);
-
   if (documentMetadataError) throw new Error(documentMetadataError.message);
-
-  return { summary: summary as DocumentSummary, labels: enrichment.labels };
+  return { summary: completedSummary as DocumentSummary, labels: payload.labels };
 }
 
 function tokenSet(text: string) {

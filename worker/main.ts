@@ -5,7 +5,16 @@ import path from "node:path";
 import { captureWorkerException, flushWorkerErrorTracking } from "./observability";
 import { env } from "../src/lib/env";
 import { buildChunks } from "../src/lib/chunking";
-import { ragEnrichmentVersion, upsertDocumentEnrichment } from "../src/lib/document-enrichment";
+import {
+  assertSourceAnchoredSummaryPreflight,
+  ragEnrichmentVersion,
+  upsertDocumentEnrichment,
+} from "../src/lib/document-enrichment";
+import {
+  SOURCE_ANCHORED_MAX_CHUNKS,
+  SOURCE_ANCHORED_MAX_IMAGES,
+  SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
+} from "../supabase/functions/_shared/source-anchored-summary";
 import { ragDeepMemoryVersion, upsertDocumentDeepMemory } from "../src/lib/deep-memory";
 import { extractDocument } from "../src/lib/extractors/document";
 import { assertEmbeddingDim } from "../src/lib/embedding-dimensions";
@@ -1688,41 +1697,46 @@ function extractionMetrics(
   };
 }
 
-async function loadEnrichmentRows(documentId: string) {
+async function loadEnrichmentRows(documentId: string, indexGenerationId: string) {
   const chunks: unknown[] = [];
   const images: unknown[] = [];
-  const MAX_ENRICHMENT_CHUNKS = 5000;
 
-  for (let start = 0; ; start += 1000) {
+  for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("document_chunks")
       .select(
-        "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,image_ids,metadata",
+        "id,document_id,index_generation_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,image_ids,metadata",
       )
       .eq("document_id", documentId)
+      .eq("index_generation_id", indexGenerationId)
       .order("chunk_index", { ascending: true })
-      .range(start, start + 999);
+      .order("id", { ascending: true })
+      .range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
     chunks.push(...(data ?? []));
-    if (chunks.length > MAX_ENRICHMENT_CHUNKS) {
-      throw new Error(
-        `Document ${documentId} exceeded maximum enrichment chunk limit of ${MAX_ENRICHMENT_CHUNKS}. Aborting enrichment to prevent memory exhaustion.`,
-      );
+    if (chunks.length > SOURCE_ANCHORED_MAX_CHUNKS) {
+      throw new Error("source_anchored_summary_source_limit_exceeded");
     }
-    if (!data || data.length < 1000) break;
+    if (!data || data.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
   }
 
-  for (let start = 0; ; start += 1000) {
+  for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("document_images")
-      .select("id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata")
+      .select("id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata")
       .eq("document_id", documentId)
+      .eq("index_generation_id", indexGenerationId)
       .eq("searchable", true)
-      .order("clinical_relevance_score", { ascending: false })
-      .range(start, start + 999);
+      .order("clinical_relevance_score", { ascending: false, nullsFirst: false })
+      .order("page_number", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
     images.push(...(data ?? []));
-    if (!data || data.length < 1000) break;
+    if (images.length > SOURCE_ANCHORED_MAX_IMAGES) {
+      throw new Error("source_anchored_summary_source_limit_exceeded");
+    }
+    if (!data || data.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
   }
 
   // #212 T4: these read-backs feed upsertDocumentEnrichment and upsertDocumentDeepMemory,
@@ -1869,10 +1883,21 @@ async function processJob(job: JobRow) {
     if (env.WORKER_INLINE_ENRICHMENT) {
       await updateJobProgress(job.id, { stage: "enriching indexed document", progress: 96 });
       try {
-        const enrichmentRows = await loadEnrichmentRows(job.document_id);
+        const enrichmentRows = await loadEnrichmentRows(job.document_id, indexGenerationId);
+        const enrichmentDocument = {
+          ...job.documents,
+          metadata: { ...(job.documents.metadata ?? {}), index_generation_id: indexGenerationId },
+        };
+        assertSourceAnchoredSummaryPreflight({
+          documentMetadata: enrichmentDocument.metadata,
+          indexGenerationId,
+          chunks: enrichmentRows.chunks,
+          images: enrichmentRows.images,
+        });
         const enrichment = await upsertDocumentEnrichment({
           supabase,
-          document: job.documents,
+          document: enrichmentDocument,
+          indexGenerationId,
           chunks: enrichmentRows.chunks,
           images: enrichmentRows.images,
         });

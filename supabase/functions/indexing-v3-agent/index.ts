@@ -17,6 +17,7 @@ import {
   canonicalUnitType,
   canonicalFieldType,
   generationMetadata,
+  sourceAnchoredSummaryMetadata,
 } from "./utils.ts";
 
 import {
@@ -29,6 +30,7 @@ import {
   runEdgeJobBatch,
   scanProtectedPublicSourceChunkPages,
   shouldRunVisualArtifacts,
+  sourceAnchoredSummaryProjectionMatches,
   type CompletionGate,
   type CompletionGateRow,
   type JobStatusRpcResult,
@@ -37,6 +39,12 @@ import {
 // prettier-ignore
 // @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
 import { buildGenerationVisibility, isVisibleCommittedGenerationRow, type DocumentGenerationAuthorityRow, type GenerationVisibility } from "../_shared/ingestion-generation-visibility.ts";
+// prettier-ignore
+// @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
+import { buildIndexingCoverageProfile, selectCoverageAwarePromptChunks } from "../_shared/indexing-coverage.ts";
+// prettier-ignore
+// @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
+import { SOURCE_ANCHORED_MAX_CHUNKS, SOURCE_ANCHORED_MAX_IMAGES, SOURCE_ANCHORED_MAX_PROMPT_IMAGES, SOURCE_ANCHORED_SOURCE_PAGE_SIZE, SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION, SOURCE_ANCHORED_SUMMARY_METADATA_KEY, SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY, buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary, projectSourceAnchoredLabels, requireSourceAnchoredSummaryGeneration, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
 
 type ClaimedJob = {
   id: string;
@@ -55,6 +63,7 @@ type ClaimedJob = {
 
 type ImageRow = {
   id: string;
+  index_generation_id?: string;
   page_number: number | null;
   image_type: string | null;
   searchable: boolean | null;
@@ -590,63 +599,224 @@ async function stageFinish(
   `;
 }
 
-async function ensureSummary(job: ClaimedJob, visibility: GenerationVisibility): Promise<string> {
-  const generationPredicate = generationPredicateForJob(job, visibility);
-  const existingRows = await sql<Array<{ summary: string; document_id: string; generation_id: string | null }>>`
-    select summary, document_id, metadata->>'index_generation_id' as generation_id
+type SummarySourceChunk = {
+  id: string;
+  document_id: string;
+  index_generation_id: string;
+  page_number: number | null;
+  chunk_index: number;
+  section_heading: string | null;
+  content: string;
+};
+
+type SummarySourceImage = {
+  id: string;
+  document_id: string;
+  index_generation_id: string;
+  page_number: number | null;
+  caption: string | null;
+  clinical_relevance_score: number | null;
+};
+
+type SourceAnchoredSummarySources = {
+  chunks: SummarySourceChunk[];
+  images: SummarySourceImage[];
+  authority: SourceAnchoredSummaryAuthority;
+  coverage: ReturnType<typeof buildIndexingCoverageProfile>;
+};
+
+function requireSourceAnchoredSummaryGenerationForJob(job: ClaimedJob) {
+  const generation = requireSourceAnchoredSummaryGeneration(job.documents.index_generation_id);
+  if (safeRecord(job.documents.metadata).index_generation_id !== generation) {
+    throw new Error("source_anchored_summary_requires_active_generation");
+  }
+  return generation;
+}
+
+async function loadSourceAnchoredSummarySources(
+  job: ClaimedJob,
+  indexGenerationId: string,
+): Promise<SourceAnchoredSummarySources> {
+  const chunks: SummarySourceChunk[] = [];
+  const images: SummarySourceImage[] = [];
+  for (let offset = 0; ; offset += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
+    const page = await sql<SummarySourceChunk[]>`
+      select chunk.id, chunk.document_id, chunk.index_generation_id::text as index_generation_id,
+        chunk.page_number, chunk.chunk_index, chunk.section_heading, chunk.content
+      from public.document_chunks chunk
+      where chunk.document_id = ${job.document_id}::uuid
+        and chunk.index_generation_id = ${indexGenerationId}::uuid
+      order by chunk.chunk_index asc, chunk.id asc
+      limit ${SOURCE_ANCHORED_SOURCE_PAGE_SIZE}
+      offset ${offset}
+    `;
+    chunks.push(...page);
+    if (chunks.length > SOURCE_ANCHORED_MAX_CHUNKS) {
+      throw new Error("source_anchored_summary_source_limit_exceeded");
+    }
+    if (page.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
+  }
+  for (let offset = 0; ; offset += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
+    const page = await sql<SummarySourceImage[]>`
+      select image.id, image.document_id, image.index_generation_id::text as index_generation_id,
+        image.page_number, image.caption, image.clinical_relevance_score
+      from public.document_images image
+      where image.document_id = ${job.document_id}::uuid
+        and image.index_generation_id = ${indexGenerationId}::uuid
+        and image.searchable is true
+      order by image.clinical_relevance_score desc nulls last, image.page_number asc nulls last, image.id asc
+      limit ${SOURCE_ANCHORED_SOURCE_PAGE_SIZE}
+      offset ${offset}
+    `;
+    images.push(...page);
+    if (images.length > SOURCE_ANCHORED_MAX_IMAGES) {
+      throw new Error("source_anchored_summary_source_limit_exceeded");
+    }
+    if (page.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
+  }
+  if (chunks.length + images.length === 0) throw new Error("source_anchored_summary_source_missing");
+  if ([...chunks, ...images].some((row) => row.index_generation_id !== indexGenerationId)) {
+    throw new Error("source_anchored_summary_source_generation_mismatch");
+  }
+  const selected = selectCoverageAwarePromptChunks(chunks);
+  const promptImages = images.slice(0, SOURCE_ANCHORED_MAX_PROMPT_IMAGES);
+  return {
+    chunks,
+    images,
+    authority: {
+      documentId: job.document_id,
+      indexGenerationId,
+      expectedStructuredModel: "edge-no-structured-provider",
+      expectedStructuredModelVersion: SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION,
+      selectedChunks: selected.chunks,
+      selectedImages: promptImages,
+    },
+    coverage: buildIndexingCoverageProfile({ chunks, images }),
+  };
+}
+
+async function persistSourceAnchoredSummary(
+  job: ClaimedJob,
+  payload: SourceAnchoredSummaryPayload,
+  writePayload: boolean,
+) {
+  const desired = projectSourceAnchoredLabels(payload);
+  await sql.begin(async (tx) => {
+    if (writePayload) {
+      const metadata = {
+        generated_by: GENERATED_BY,
+        ...sourceAnchoredSummaryMetadata(payload, false),
+      };
+      await tx`
+        insert into public.document_summaries (
+          document_id, owner_id, summary, clinical_specifics, source_chunk_ids, source_image_ids,
+          model, metadata, generated_at
+        ) values (
+          ${job.document_id}::uuid, ${job.documents.owner_id}::uuid, ${payload.summary},
+          ${jsonb(payload.clinical_specifics)}, ${payload.source_chunk_ids}::uuid[],
+          ${payload.source_image_ids}::uuid[], ${payload.model}, ${jsonb(metadata)}, ${payload.generated_at}::timestamptz
+        )
+        on conflict (document_id) do update set
+          summary = excluded.summary,
+          clinical_specifics = excluded.clinical_specifics,
+          source_chunk_ids = excluded.source_chunk_ids,
+          source_image_ids = excluded.source_image_ids,
+          model = excluded.model,
+          metadata = excluded.metadata,
+          generated_at = excluded.generated_at,
+          updated_at = now()
+      `;
+    } else {
+      await tx`
+        update public.document_summaries
+        set metadata = coalesce(metadata, '{}'::jsonb) || ${jsonb({
+          [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false,
+        })}, updated_at = now()
+        where document_id = ${job.document_id}::uuid
+      `;
+    }
+
+    for (const label of desired) {
+      await tx`
+        insert into public.document_labels (
+          document_id, owner_id, label, label_type, source, confidence, metadata
+        ) values (
+          ${job.document_id}::uuid, ${job.documents.owner_id}::uuid, ${label.label}, ${label.label_type},
+          'generated', ${label.confidence}, ${jsonb({
+            generated_by: GENERATED_BY,
+            index_generation_id: payload.index_generation_id,
+            summary_version: payload.summary_version,
+            source_chunk_ids: label.source_chunk_ids,
+            source_image_ids: label.source_image_ids,
+            pages: label.pages,
+          })}
+        )
+        on conflict (document_id, label_type, label, source) do update set
+          confidence = excluded.confidence, metadata = excluded.metadata, updated_at = now()
+      `;
+    }
+    const desiredKeys = desired.map((label) => `${label.label_type}\u0001${label.label}`);
+    await tx`
+      delete from public.document_labels
+      where document_id = ${job.document_id}::uuid
+        and source = 'generated'
+        and not ((label_type || chr(1) || label) = any(${desiredKeys}::text[]))
+    `;
+    await tx`
+      update public.document_summaries
+      set metadata = coalesce(metadata, '{}'::jsonb) || ${jsonb({
+        [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
+      })}, updated_at = now()
+      where document_id = ${job.document_id}::uuid
+    `;
+  });
+}
+
+async function ensureSummary(
+  job: ClaimedJob,
+  sources: SourceAnchoredSummarySources,
+): Promise<SourceAnchoredSummaryPayload> {
+  const existing = await sql<
+    Array<{
+      metadata: Record<string, unknown> | null;
+      model: string | null;
+    }>
+  >`
+    select metadata, model
     from public.document_summaries
     where document_id = ${job.document_id}::uuid
-      and (
-        (${generationPredicate.indexGenerationId}::uuid is not null
-          and metadata->>'index_generation_id' = ${generationPredicate.indexGenerationId}::text)
-        or (${generationPredicate.isLegacy}::boolean and metadata->>'index_generation_id' is null)
-      )
     limit 1
   `;
-  const existing = visibleGenerationRows(existingRows, visibility);
-  if (existing.length > 0) return normalizeText(existing[0].summary);
+  let stored: SourceAnchoredSummaryPayload | null = null;
+  try {
+    const candidate = safeRecord(existing[0]?.metadata)[SOURCE_ANCHORED_SUMMARY_METADATA_KEY];
+    const candidateRecord = safeRecord(candidate);
+    stored = normalizeSourceAnchoredSummary(candidate, {
+      ...sources.authority,
+      expectedStructuredModel:
+        typeof candidateRecord.model === "string" ? candidateRecord.model : sources.authority.expectedStructuredModel,
+    });
+  } catch {
+    stored = null;
+  }
+  if (stored?.summary_kind === "structured") {
+    const labels = await sql<
+      Array<{ label: string; label_type: string; confidence: number; metadata: Record<string, unknown> | null }>
+    >`
+      select label, label_type, confidence, metadata
+      from public.document_labels
+      where document_id = ${job.document_id}::uuid and source = 'generated'
+      order by label_type asc, label asc
+    `;
+    const complete = safeRecord(existing[0]?.metadata)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY] === true;
+    if (complete && sourceAnchoredSummaryProjectionMatches(labels, stored)) return stored;
+    await persistSourceAnchoredSummary(job, stored, false);
+    return stored;
+  }
 
-  const chunkRows = await sql<
-    Array<{ id: string; content: string; chunk_index: number; document_id: string; generation_id: string | null }>
-  >`
-    select id, content, chunk_index, document_id, index_generation_id::text as generation_id
-    from public.document_chunks
-    where document_id = ${job.document_id}::uuid
-      and (
-        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
-      )
-    order by chunk_index asc
-    limit 24
-  `;
-  const chunks = visibleGenerationRows(chunkRows, visibility);
-
-  const merged = normalizeText(chunks.map((c) => c.content ?? "").join(" "));
-  const summary = merged.length > 1800 ? `${merged.slice(0, 1800)}...` : merged;
-
-  await sql`
-    insert into public.document_summaries (
-      document_id, owner_id, summary, source_chunk_ids, model, metadata, generated_at
-    ) values (
-      ${job.document_id}::uuid,
-      ${job.documents.owner_id}::uuid,
-      ${summary.length > 0 ? summary : "Summary unavailable"}::text,
-      ${chunks.map((c) => c.id)}::uuid[],
-      'v3-summary-heuristic',
-      ${jsonb({ generated_by: GENERATED_BY, ...generationMetadata(generationPredicate.indexGenerationId) })},
-      now()
-    )
-    on conflict (document_id)
-    do update set
-      summary = excluded.summary,
-      source_chunk_ids = excluded.source_chunk_ids,
-      model = excluded.model,
-      metadata = excluded.metadata,
-      generated_at = now(),
-      updated_at = now()
-  `;
-
-  return summary.length > 0 ? summary : "Summary unavailable";
+  const fallback = buildSourceAnchoredFallbackPayload(sources.authority);
+  await persistSourceAnchoredSummary(job, fallback, true);
+  return fallback;
 }
 
 function unitsFromStructured(image: ImageRow, structured: ReturnType<typeof parseStructuredVisual>): VisualUnit[] {
@@ -2022,6 +2192,9 @@ async function processJob(
   visibility: GenerationVisibility,
 ): Promise<{ status: "completed" | "deferred"; missing: string[] }> {
   await assertPublicSourceWorkerPolicy(job, visibility);
+  const indexGenerationId = requireSourceAnchoredSummaryGenerationForJob(job);
+  const summarySources = await loadSourceAnchoredSummarySources(job, indexGenerationId);
+  const summaryPayload = await ensureSummary(job, summarySources);
   let gate = await completionGate(job);
   let plan = missingArtifactPlan(gate);
   logArtifactPlan(job, gate, plan);
@@ -2037,8 +2210,7 @@ async function processJob(
   if (plan.needs_core_embeddings) {
     const s1 = await stageStart(job, "summary_and_core_embeddings");
     try {
-      const summary = await ensureSummary(job, visibility);
-      const coreFields = await upsertCoreEmbeddingFields(job, summary, visibility);
+      const coreFields = await upsertCoreEmbeddingFields(job, summaryPayload.summary, visibility);
       await stageFinish(s1, true, { core_embedding_fields: coreFields });
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
@@ -2114,20 +2286,6 @@ async function processJob(
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
       await stageFinish(s4, false, {}, msg);
-      throw e;
-    }
-  }
-  if (plan.needs_labels) {
-    const s5 = await stageStart(job, "generated_labels_from_parsed_artifacts");
-    try {
-      const labels = await upsertGeneratedLabelsFromParsedArtifacts(job, visibility);
-      await stageFinish(s5, true, { generated_labels: labels });
-      gate = await completionGate(job);
-      plan = missingArtifactPlan(gate);
-      logArtifactPlan(job, gate, plan);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : JSON.stringify(e);
-      await stageFinish(s5, false, {}, msg);
       throw e;
     }
   }

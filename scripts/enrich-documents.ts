@@ -2,6 +2,12 @@ import { loadEnvConfig } from "@next/env";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Json } from "@/lib/supabase/database.types";
 import { createHash } from "node:crypto";
+import {
+  SOURCE_ANCHORED_MAX_CHUNKS,
+  SOURCE_ANCHORED_MAX_IMAGES,
+  SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
+  requireExactSourceAnchoredGeneration,
+} from "../supabase/functions/_shared/source-anchored-summary";
 
 loadEnvConfig(process.cwd());
 
@@ -80,7 +86,7 @@ async function findOwnerIdByEmail(supabase: SupabaseAdmin, email: string) {
 async function loadDocuments(supabase: SupabaseAdmin, args: EnrichArgs, ownerId?: string) {
   let query = supabase
     .from("documents")
-    .select("id,owner_id,title,file_name,source_path,status,metadata")
+    .select("id,owner_id,title,file_name,source_path,status,index_generation_id,metadata")
     .eq("status", "indexed")
     .order("created_at", { ascending: true })
     .limit(args.documentId ? 1 : Math.max(args.limit * 10, 1000));
@@ -177,10 +183,11 @@ async function loadDeepMemoryCoverage(supabase: SupabaseAdmin, documentIds: stri
   return coverage;
 }
 
-async function loadEvidence(supabase: SupabaseAdmin, documentId: string) {
+async function loadEvidence(supabase: SupabaseAdmin, documentId: string, indexGenerationId: string) {
   const chunks: Array<{
     id: string;
     document_id: string;
+    index_generation_id: string;
     page_number: number | null;
     chunk_index: number;
     section_heading: string | null;
@@ -192,6 +199,8 @@ async function loadEvidence(supabase: SupabaseAdmin, documentId: string) {
   }> = [];
   const images: Array<{
     id: string;
+    document_id: string;
+    index_generation_id: string;
     page_number: number | null;
     caption: string;
     image_type: string;
@@ -201,31 +210,42 @@ async function loadEvidence(supabase: SupabaseAdmin, documentId: string) {
     metadata: Record<string, unknown> | null;
   }> = [];
 
-  for (let start = 0; ; start += 1000) {
+  for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("document_chunks")
       .select(
-        "id,document_id,page_number,chunk_index,section_heading,section_path,anchor_id,content,image_ids,metadata",
+        "id,document_id,index_generation_id,page_number,chunk_index,section_heading,section_path,anchor_id,content,image_ids,metadata",
       )
       .eq("document_id", documentId)
+      .eq("index_generation_id", indexGenerationId)
       .order("chunk_index", { ascending: true })
-      .range(start, start + 999);
+      .order("id", { ascending: true })
+      .range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
     chunks.push(...(data ?? []));
-    if (!data || data.length < 1000) break;
+    if (chunks.length > SOURCE_ANCHORED_MAX_CHUNKS) {
+      throw new Error("source_anchored_summary_source_limit_exceeded");
+    }
+    if (!data || data.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
   }
 
-  for (let start = 0; ; start += 1000) {
+  for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("document_images")
-      .select("id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata")
+      .select("id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata")
       .eq("document_id", documentId)
+      .eq("index_generation_id", indexGenerationId)
       .eq("searchable", true)
-      .order("clinical_relevance_score", { ascending: false })
-      .range(start, start + 999);
+      .order("clinical_relevance_score", { ascending: false, nullsFirst: false })
+      .order("page_number", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
     images.push(...(data ?? []));
-    if (!data || data.length < 1000) break;
+    if (images.length > SOURCE_ANCHORED_MAX_IMAGES) {
+      throw new Error("source_anchored_summary_source_limit_exceeded");
+    }
+    if (!data || data.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
   }
 
   return { chunks, images };
@@ -515,7 +535,7 @@ async function main() {
 
   const [
     { requireOpenAIEnv, requireServerEnv },
-    { ragEnrichmentVersion, upsertDocumentEnrichment },
+    { assertSourceAnchoredSummaryPreflight, ragEnrichmentVersion, upsertDocumentEnrichment },
     { ragDeepMemoryVersion, upsertDocumentDeepMemory },
     supabase,
   ] = await Promise.all([
@@ -589,6 +609,18 @@ async function main() {
             return;
           }
 
+          const indexGenerationId = requireExactSourceAnchoredGeneration(
+            document.index_generation_id,
+            document.metadata,
+          );
+          const evidence = await loadEvidence(supabase, document.id, indexGenerationId);
+          assertSourceAnchoredSummaryPreflight({
+            documentMetadata: document.metadata,
+            indexGenerationId,
+            chunks: evidence.chunks,
+            images: evidence.images,
+          });
+
           let imageMetadata = metadataRecord(document.metadata);
           let imageStats = { searchable: 0, skipped: 0, total: 0 };
           if (args.mode === "summaries-labels-images") {
@@ -608,17 +640,12 @@ async function main() {
               .eq("id", document.id);
           }
 
-          const evidence = await loadEvidence(supabase, document.id);
-          if (evidence.chunks.length === 0) {
-            console.log(`SKIP no chunks: ${document.file_name}`);
-            return;
-          }
-
           let enrichmentSummary: string | null = null;
           if (args.mode === "summaries-labels-images") {
             const enrichment = await upsertDocumentEnrichment({
               supabase,
               document: { ...document, metadata: imageMetadata },
+              indexGenerationId,
               chunks: evidence.chunks,
               images: evidence.images,
             });

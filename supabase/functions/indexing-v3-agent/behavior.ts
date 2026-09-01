@@ -1,6 +1,9 @@
 // prettier-ignore
 // @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
 import { createProtectedPublicSourceScanner, containsForbiddenPublicSourceChunkContent, publicSourcePolicyViolation, type ProtectedPublicSourceScanner } from "../_shared/public-source-policy.ts";
+// prettier-ignore
+// @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
+import { projectSourceAnchoredLabels, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
 
 export type CompletionGate = {
   counts: {
@@ -67,6 +70,35 @@ export type JobStatusRpcResult = {
   missing: string[] | null;
   status: string;
 };
+
+export function sourceAnchoredSummaryProjectionMatches(
+  rows: ReadonlyArray<{
+    label: string;
+    label_type: string;
+    confidence: number;
+    metadata: Record<string, unknown> | null;
+  }>,
+  payload: SourceAnchoredSummaryPayload,
+): boolean {
+  const expected = projectSourceAnchoredLabels(payload);
+  return (
+    rows.length === expected.length &&
+    rows.every((row, index) => {
+      const label = expected[index];
+      const metadata = row.metadata ?? {};
+      return (
+        row.label === label.label &&
+        row.label_type === label.label_type &&
+        row.confidence === label.confidence &&
+        metadata.index_generation_id === payload.index_generation_id &&
+        metadata.summary_version === payload.summary_version &&
+        JSON.stringify(metadata.source_chunk_ids) === JSON.stringify(label.source_chunk_ids) &&
+        JSON.stringify(metadata.source_image_ids) === JSON.stringify(label.source_image_ids) &&
+        JSON.stringify(metadata.pages) === JSON.stringify(label.pages)
+      );
+    })
+  );
+}
 
 export type EdgeJobBatchOutcome<TJob, TResult> =
   Readonly<{ job: TJob; result: TResult }> | Readonly<{ job: TJob; error: string; failureRecordingError?: string }>;

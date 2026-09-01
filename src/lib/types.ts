@@ -18,6 +18,11 @@ export type ImageEvidenceCategory =
 export type ClinicalImageUseClass =
   "clinical_evidence" | "administrative" | "reference" | "decorative_or_empty" | "ambiguous";
 
+import type {
+  SourceAnchoredClinicalProfile,
+  SourceAnchoredSummaryProfileItem,
+} from "../../supabase/functions/_shared/source-anchored-summary";
+
 export type DocumentLabelType =
   | "site"
   | "topic"
@@ -930,31 +935,10 @@ export type DocumentSummary = {
   updated_at?: string;
 };
 
-export type DocumentSummaryEvidenceType = "text" | "table" | "image" | "mixed" | "metadata";
-export type DocumentSummarySupportLevel = "direct" | "partial" | "not_found";
-
-export type DocumentSummaryProfileItem = {
-  text: string;
-  source_chunk_ids: string[];
-  source_image_ids: string[];
-  pages: number[];
-  evidence_type: DocumentSummaryEvidenceType;
-  support: DocumentSummarySupportLevel;
-};
-
-export type ClinicalDocumentSummaryProfile = {
-  overview: string;
-  applies_to: DocumentSummaryProfileItem[];
-  key_clinical_actions: DocumentSummaryProfileItem[];
-  medication_dose_monitoring: DocumentSummaryProfileItem[];
-  thresholds_timing: DocumentSummaryProfileItem[];
-  escalation_risk_warnings: DocumentSummaryProfileItem[];
-  required_forms_documentation: DocumentSummaryProfileItem[];
-  not_covered: DocumentSummaryProfileItem[];
-  important_tables_images: DocumentSummaryProfileItem[];
-  best_questions: DocumentSummaryProfileItem[];
-  source_quality_notes: DocumentSummaryProfileItem[];
-};
+export type DocumentSummaryEvidenceType = SourceAnchoredSummaryProfileItem["evidence_type"];
+export type DocumentSummarySupportLevel = SourceAnchoredSummaryProfileItem["support"];
+export type DocumentSummaryProfileItem = SourceAnchoredSummaryProfileItem;
+export type ClinicalDocumentSummaryProfile = SourceAnchoredClinicalProfile;
 
 export type RagIndexingVersion = "rag-universal-v1" | "rag-deep-memory-v1";
 

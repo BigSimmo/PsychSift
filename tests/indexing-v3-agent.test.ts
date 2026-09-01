@@ -172,29 +172,20 @@ describe("indexing-v3-agent behavior", () => {
   });
 
   it("binds each generation-aware read predicate to its own SQL statement before decisions", () => {
+    const sourceLoader = agentFunction(
+      "async function loadSourceAnchoredSummarySources",
+      "async function persistSourceAnchoredSummary",
+    );
+    expect(normalizedSql(sourceLoader)).toContain(
+      "chunk.index_generation_id = ${indexGenerationId}::uuid order by chunk.chunk_index asc, chunk.id asc",
+    );
+    expect(normalizedSql(sourceLoader)).toContain(
+      "image.index_generation_id = ${indexGenerationId}::uuid and image.searchable is true order by image.clinical_relevance_score desc nulls last",
+    );
     const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
-    expectMetadataGenerationPredicate(
-      statementWithin(
-        ensureSummary,
-        "const existingRows = await sql",
-        "const existing = visibleGenerationRows",
-        "summary lookup",
-      ),
-      "metadata->>'index_generation_id'",
-      "summary lookup",
-      ["limit 1"],
-    );
-    expectTypedGenerationPredicate(
-      statementWithin(
-        ensureSummary,
-        "const chunkRows = await sql",
-        "const chunks = visibleGenerationRows",
-        "summary chunks",
-      ),
-      "index_generation_id",
-      "summary chunks",
-      ["order by chunk_index", "limit 24"],
-    );
+    expect(ensureSummary).toContain("normalizeSourceAnchoredSummary(candidate");
+    expect(ensureSummary).toContain("sources.authority");
+    expect(ensureSummary).not.toMatch(/limit\s+24/i);
 
     const labels = agentFunction("async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText");
     expectMetadataGenerationPredicate(
@@ -365,15 +356,16 @@ describe("indexing-v3-agent behavior", () => {
       index_generation_id: activeGeneration,
     });
 
-    const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
+    const ensureSummary = agentFunction("async function persistSourceAnchoredSummary", "async function ensureSummary");
     const summaryWrite = statementWithin(
       ensureSummary,
       "insert into public.document_summaries",
-      "return summary.length",
+      "} else {",
       "summary write",
     );
-    expect(normalizedSql(summaryWrite), "summary exact metadata generation").toContain(
-      "generationMetadata(generationPredicate.indexGenerationId)",
+    expect(normalizedSql(summaryWrite), "summary exact metadata generation").toContain("${jsonb(metadata)}");
+    expect(ensureSummary, "summary metadata source generation").toContain(
+      "index_generation_id: payload.index_generation_id",
     );
     expect(normalizedSql(summaryWrite), "summary conflict generation replacement").toContain(
       "metadata = excluded.metadata",
@@ -1206,5 +1198,73 @@ describe("indexing-v3-agent behavior", () => {
       status: "completed",
       missing: [],
     });
+  });
+});
+
+describe("source-anchored summary Edge contract", () => {
+  it("uses the shared coverage selector and source-anchored normalizer instead of first-N summary text", () => {
+    expect(indexingAgentSource).toContain('from "../_shared/source-anchored-summary.ts"');
+    expect(indexingAgentSource).toContain('from "../_shared/indexing-coverage.ts"');
+    const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
+    const sourceLoader = agentFunction(
+      "async function loadSourceAnchoredSummarySources",
+      "async function persistSourceAnchoredSummary",
+    );
+    expect(sourceLoader).toContain("selectCoverageAwarePromptChunks");
+    expect(ensureSummary).toContain("buildSourceAnchoredFallbackPayload");
+    expect(ensureSummary).toContain("normalizeSourceAnchoredSummary");
+    expect(ensureSummary).not.toMatch(/limit\s+24/i);
+    expect(ensureSummary).not.toContain("v3-summary-heuristic");
+  });
+
+  it("requires active generation and validates the summary before the first completion-gate decision", () => {
+    const processJob = agentFunction("async function processJob", "Deno.serve");
+    const policy = processJob.indexOf("await assertPublicSourceWorkerPolicy");
+    const generation = processJob.indexOf("requireSourceAnchoredSummaryGeneration");
+    const sources = processJob.indexOf("await loadSourceAnchoredSummarySources");
+    const summary = processJob.indexOf("await ensureSummary");
+    const gate = processJob.indexOf("await completionGate");
+    expect(policy).toBeGreaterThan(-1);
+    expect(generation).toBeGreaterThan(policy);
+    expect(sources).toBeGreaterThan(generation);
+    expect(summary).toBeGreaterThan(sources);
+    expect(gate).toBeGreaterThan(summary);
+  });
+
+  it("pages and caps exact-generation chunks/images before deterministic selection", () => {
+    const loader = agentFunction("async function loadSourceAnchoredSummarySources", "async function ensureSummary");
+    expect(loader).toContain("SOURCE_ANCHORED_SOURCE_PAGE_SIZE");
+    expect(loader).toContain("SOURCE_ANCHORED_MAX_CHUNKS");
+    expect(loader).toContain("SOURCE_ANCHORED_MAX_IMAGES");
+    expect(loader).toContain("source_anchored_summary_source_limit_exceeded");
+    expect(loader).toMatch(/index_generation_id\s*=\s*\$\{indexGenerationId\}::uuid/);
+    expect(loader).toMatch(/order by chunk\.chunk_index asc, chunk\.id asc/);
+    expect(loader).toMatch(/clinical_relevance_score desc nulls last, image\.page_number asc nulls last, image\.id asc/);
+  });
+
+  it("persists the complete payload before labels and marks projection complete only afterwards", () => {
+    const persistence = agentFunction("async function persistSourceAnchoredSummary", "function unitsFromStructured");
+    const summaryWrite = persistence.indexOf("SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false");
+    const labelUpsert = persistence.indexOf("insert into public.document_labels");
+    const staleDelete = persistence.indexOf("delete from public.document_labels");
+    const completion = persistence.indexOf("SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true");
+    expect(summaryWrite).toBeGreaterThan(-1);
+    expect(labelUpsert).toBeGreaterThan(summaryWrite);
+    expect(staleDelete).toBeGreaterThan(labelUpsert);
+    expect(completion).toBeGreaterThan(staleDelete);
+  });
+
+  it("keeps Node and Edge coverage vectors identical including a late high-yield section", async () => {
+    const edge = await import("../supabase/functions/_shared/indexing-coverage");
+    const node = await import("@/lib/indexing-coverage");
+    const chunks = Array.from({ length: 60 }, (_, chunk_index) => ({
+      id: `chunk-${chunk_index}`,
+      page_number: chunk_index + 1,
+      chunk_index,
+      section_heading: chunk_index % 12 === 0 ? `Section ${chunk_index}` : null,
+      content: chunk_index === 52 ? "ANC threshold requires urgent specialist review." : `Routine ${chunk_index}`,
+    }));
+    expect(edge.selectCoverageAwarePromptChunks(chunks)).toEqual(node.selectCoverageAwarePromptChunks(chunks));
+    expect(edge.selectCoverageAwarePromptChunks(chunks).chunks.map((chunk) => chunk.id)).toContain("chunk-52");
   });
 });

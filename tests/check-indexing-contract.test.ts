@@ -8,6 +8,7 @@ import {
 
 const source = readFileSync(new URL("../scripts/check-indexing.ts", import.meta.url), "utf8");
 const smartBackfillSource = readFileSync(new URL("../scripts/backfill-smart-index.ts", import.meta.url), "utf8");
+const enrichDocumentsSource = readFileSync(new URL("../scripts/enrich-documents.ts", import.meta.url), "utf8");
 
 describe("indexing health scan", () => {
   it("does not require an OpenAI key for the staging offline profile", () => {
@@ -55,5 +56,27 @@ describe("indexing health scan", () => {
 describe("smart-index repair selection", () => {
   it("does not combine an exact document id with an ambient owner default", () => {
     expect(smartBackfillSource).toContain("if (args.documentId) args.ownerId = undefined");
+  });
+
+  it.each([
+    ["smart backfill", smartBackfillSource],
+    ["document enrichment", enrichDocumentsSource],
+  ])("binds %s to typed/raw exact-generation authority before source/provider work", (_label, scriptSource) => {
+    expect(scriptSource).toContain("index_generation_id");
+    expect(scriptSource).toContain("requireExactSourceAnchoredGeneration");
+    expect(scriptSource).toContain('.eq("index_generation_id", indexGenerationId)');
+    expect(scriptSource).toContain("assertSourceAnchoredSummaryPreflight");
+    expect(scriptSource).toContain("SOURCE_ANCHORED_MAX_CHUNKS");
+    expect(scriptSource).toContain("SOURCE_ANCHORED_MAX_IMAGES");
+    expect(scriptSource).toContain("source_anchored_summary_source_limit_exceeded");
+    expect(scriptSource).toMatch(/upsertDocumentEnrichment\(\{[\s\S]*?indexGenerationId(?:\s*:\s*generationId)?,/);
+  });
+
+  it("does not use metadata repair/random UUID fallback as summary generation authority", () => {
+    const enrichmentSection = smartBackfillSource.slice(
+      smartBackfillSource.indexOf("async function processDocument"),
+    );
+    expect(enrichmentSection).not.toContain("repairChunkIndexingMetadata(");
+    expect(enrichmentSection).not.toContain("randomUUID(");
   });
 });

@@ -529,3 +529,33 @@ describe("worker/main.ts + env + image contract (source text)", () => {
     expect(Object.keys(sample)).toHaveLength(17);
   });
 });
+
+describe("worker source-anchored enrichment contract", () => {
+  it("loads only the exact committed generation with bounded complete paging", () => {
+    const start = workerMain.indexOf("async function loadEnrichmentRows");
+    const end = workerMain.indexOf("async function processJob", start);
+    const loader = workerMain.slice(start, end);
+    expect(loader).toContain("documentId: string, indexGenerationId: string");
+    expect(loader).toContain('index_generation_id');
+    expect(loader).toContain('.eq("index_generation_id", indexGenerationId)');
+    expect(loader).toContain('order("chunk_index", { ascending: true })');
+    expect(loader).toContain('order("id", { ascending: true })');
+    expect(loader).toContain("SOURCE_ANCHORED_MAX_CHUNKS");
+    expect(loader).toContain("SOURCE_ANCHORED_MAX_IMAGES");
+    expect(loader).toContain("source_anchored_summary_source_limit_exceeded");
+  });
+
+  it("passes the already-created generation to source loading and persistence", () => {
+    expect(workerMain).toContain("loadEnrichmentRows(job.document_id, indexGenerationId)");
+    expect(workerMain).toMatch(/upsertDocumentEnrichment\(\{[\s\S]*?indexGenerationId,[\s\S]*?chunks:/);
+    expect(workerMain).not.toMatch(/loadEnrichmentRows\(job\.document_id\)/);
+  });
+
+  it("runs the local source-policy preflight before summary provider or persistence work", () => {
+    const start = workerMain.indexOf("const enrichmentRows = await loadEnrichmentRows");
+    const end = workerMain.indexOf("const enrichment = await upsertDocumentEnrichment", start);
+    const section = workerMain.slice(start, end);
+    expect(section).toContain("assertSourceAnchoredSummaryPreflight");
+    expect(workerMain.indexOf("assertSourceAnchoredSummaryPreflight", start)).toBeLessThan(end);
+  });
+});
