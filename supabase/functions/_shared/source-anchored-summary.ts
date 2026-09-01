@@ -167,10 +167,7 @@ export function requireSourceAnchoredSummaryGeneration(value: unknown): string {
   return canonicalUuid(value, "source_anchored_summary_requires_active_generation");
 }
 
-export function requireExactSourceAnchoredGeneration(
-  typedGeneration: unknown,
-  metadata: unknown,
-): string {
+export function requireExactSourceAnchoredGeneration(typedGeneration: unknown, metadata: unknown): string {
   const generation = requireSourceAnchoredSummaryGeneration(typedGeneration);
   const raw = record(metadata, "source_anchored_summary_requires_active_generation").index_generation_id;
   if (raw !== generation) fail("source_anchored_summary_requires_active_generation");
@@ -263,11 +260,7 @@ function validateAuthority(authority: SourceAnchoredSummaryAuthority) {
   return { documentId, indexGenerationId };
 }
 
-function validateIdArray(
-  value: unknown,
-  expected: readonly string[],
-  code: string,
-): string[] {
+function validateIdArray(value: unknown, expected: readonly string[], code: string): string[] {
   const ids = exactArray(value, code, expected.length).map((id) => canonicalUuid(id, code));
   if (!sameArray(ids, expected)) fail(code);
   return ids;
@@ -330,12 +323,7 @@ function validateProfileItem(args: {
   }
   const expectedPages = derivedPages(source_chunk_ids, source_image_ids, args.chunkPages, args.imagePages);
   const pages = exactArray(value.pages, "source_anchored_summary_claim_pages_invalid", expectedPages.length);
-  if (
-    !sameArray(
-      pages.map((page) => Number(page)),
-      expectedPages,
-    )
-  ) {
+  if (pages.some((page) => typeof page !== "number") || !sameArray(pages as number[], expectedPages)) {
     fail("source_anchored_summary_claim_pages_invalid");
   }
   return {
@@ -386,9 +374,9 @@ function labelMatch(text: string, phrase: string) {
   const haystack = text.toLowerCase();
   let offset = haystack.indexOf(phrase);
   while (offset >= 0) {
-    const before = offset === 0 ? "" : haystack[offset - 1];
+    const before = offset === 0 ? "" : (Array.from(haystack.slice(0, offset)).at(-1) ?? "");
     const afterIndex = offset + phrase.length;
-    const after = afterIndex >= haystack.length ? "" : haystack[afterIndex];
+    const after = afterIndex >= haystack.length ? "" : (Array.from(haystack.slice(afterIndex))[0] ?? "");
     const boundary = (value: string) => !value || !/[\p{L}\p{N}]/u.test(value);
     if (boundary(before) && boundary(after)) return true;
     offset = haystack.indexOf(phrase, offset + 1);
@@ -430,7 +418,8 @@ function validateLabels(value: unknown, profile: SourceAnchoredClinicalProfile) 
     if (typeof raw.label_type !== "string" || !LABEL_TYPES.has(raw.label_type as SourceAnchoredSummaryLabelType)) {
       fail("source_anchored_summary_label_invalid");
     }
-    const confidence = Number(raw.confidence);
+    if (typeof raw.confidence !== "number") fail("source_anchored_summary_label_invalid");
+    const confidence = raw.confidence;
     if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) fail("source_anchored_summary_label_invalid");
     const key = `${raw.label_type}\u0000${label}`;
     if (seen.has(key) || !items.some((profileItem) => labelMatch(profileItem.text, label))) {
@@ -456,6 +445,62 @@ function deepFreeze<T>(value: T): T {
     Object.freeze(value);
   }
   return value;
+}
+
+export type PersistedSourceAnchoredSummaryProjection = Readonly<{
+  summary?: unknown;
+  clinical_specifics?: unknown;
+  source_chunk_ids?: unknown;
+  source_image_ids?: unknown;
+  model?: unknown;
+  generated_at?: unknown;
+  metadata?: unknown;
+}>;
+
+function sameJson(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((item, index) => sameJson(item, right[index]))
+    );
+  }
+  if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord).sort();
+  const rightKeys = Object.keys(rightRecord).sort();
+  return sameArray(leftKeys, rightKeys) && leftKeys.every((key) => sameJson(leftRecord[key], rightRecord[key]));
+}
+
+function sameGeneratedAt(value: unknown, expected: string): boolean {
+  if (value instanceof Date) return value.toISOString() === expected;
+  if (typeof value !== "string") return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString() === expected;
+}
+
+export function persistedSourceAnchoredSummaryProjectionMatches(
+  persisted: PersistedSourceAnchoredSummaryProjection | null | undefined,
+  payload: SourceAnchoredSummaryPayload,
+): boolean {
+  if (!persisted) return false;
+  const metadata =
+    persisted.metadata && typeof persisted.metadata === "object" && !Array.isArray(persisted.metadata)
+      ? (persisted.metadata as Record<string, unknown>)
+      : {};
+  return (
+    persisted.summary === payload.summary &&
+    sameJson(persisted.clinical_specifics, payload.clinical_specifics) &&
+    sameJson(persisted.source_chunk_ids, payload.source_chunk_ids) &&
+    sameJson(persisted.source_image_ids, payload.source_image_ids) &&
+    persisted.model === payload.model &&
+    sameGeneratedAt(persisted.generated_at, payload.generated_at) &&
+    sameJson(metadata[SOURCE_ANCHORED_SUMMARY_METADATA_KEY], payload) &&
+    metadata[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY] === true
+  );
 }
 
 export function normalizeSourceAnchoredSummary(
@@ -487,7 +532,9 @@ export function normalizeSourceAnchoredSummary(
   if (canonicalUuid(raw.document_id, "source_anchored_summary_document_id_invalid") !== expected.documentId) {
     fail("source_anchored_summary_document_mismatch");
   }
-  if (canonicalUuid(raw.index_generation_id, "source_anchored_summary_generation_invalid") !== expected.indexGenerationId) {
+  if (
+    canonicalUuid(raw.index_generation_id, "source_anchored_summary_generation_invalid") !== expected.indexGenerationId
+  ) {
     fail("source_anchored_summary_generation_mismatch");
   }
   const source_chunk_ids = validateIdArray(
@@ -582,10 +629,24 @@ export function normalizeSourceAnchoredSummary(
     }
     if (labels.length !== 0) fail("source_anchored_summary_fallback_labels_invalid");
     const note = profile.source_quality_notes;
+    const expectedChunk = authority.selectedChunks[0];
+    const expectedImage = expectedChunk ? undefined : authority.selectedImages[0];
+    const expectedChunkIds = expectedChunk ? [expectedChunk.id] : [];
+    const expectedImageIds = expectedImage ? [expectedImage.id] : [];
+    const expectedPages = derivedPages(
+      expectedChunkIds,
+      expectedImageIds,
+      sourcePages(authority.selectedChunks),
+      sourcePages(authority.selectedImages),
+    );
     if (
       note.length !== 1 ||
       note[0].text !== SOURCE_ANCHORED_FALLBACK_MESSAGE ||
       note[0].support !== "partial" ||
+      note[0].evidence_type !== (expectedChunk ? "text" : "image") ||
+      !sameArray(note[0].source_chunk_ids, expectedChunkIds) ||
+      !sameArray(note[0].source_image_ids, expectedImageIds) ||
+      !sameArray(note[0].pages, expectedPages) ||
       SOURCE_ANCHORED_PROFILE_KEYS.some((key) => key !== "source_quality_notes" && profile[key].length !== 0) ||
       Object.entries(clinical_specifics).some(
         ([key, value]) => key !== "profile" && Array.isArray(value) && value.length !== 0,

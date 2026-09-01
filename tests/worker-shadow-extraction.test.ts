@@ -536,7 +536,7 @@ describe("worker source-anchored enrichment contract", () => {
     const end = workerMain.indexOf("async function processJob", start);
     const loader = workerMain.slice(start, end);
     expect(loader).toContain("documentId: string, indexGenerationId: string");
-    expect(loader).toContain('index_generation_id');
+    expect(loader).toContain("index_generation_id");
     expect(loader).toContain('.eq("index_generation_id", indexGenerationId)');
     expect(loader).toContain('order("chunk_index", { ascending: true })');
     expect(loader).toContain('order("id", { ascending: true })');
@@ -547,7 +547,9 @@ describe("worker source-anchored enrichment contract", () => {
 
   it("passes the already-created generation to source loading and persistence", () => {
     expect(workerMain).toContain("loadEnrichmentRows(job.document_id, indexGenerationId)");
-    expect(workerMain).toMatch(/upsertDocumentEnrichment\(\{[\s\S]*?indexGenerationId,[\s\S]*?chunks:/);
+    expect(workerMain).toMatch(
+      /upsertDocumentEnrichment\(\{[\s\S]*?indexGenerationId:\s*liveIndexGenerationId,[\s\S]*?chunks:/,
+    );
     expect(workerMain).not.toMatch(/loadEnrichmentRows\(job\.document_id\)/);
   });
 
@@ -557,5 +559,26 @@ describe("worker source-anchored enrichment contract", () => {
     const section = workerMain.slice(start, end);
     expect(section).toContain("assertSourceAnchoredSummaryPreflight");
     expect(workerMain.indexOf("assertSourceAnchoredSummaryPreflight", start)).toBeLessThan(end);
+  });
+
+  it("reloads live generation and policy authority after commit before inline enrichment", () => {
+    expect(workerMain).toContain("async function loadLiveEnrichmentDocument");
+    const start = workerMain.indexOf("if (env.WORKER_INLINE_ENRICHMENT)");
+    const end = workerMain.indexOf("documentEmbeddingFieldTypes = await insertDocumentLevelEmbeddingFields", start);
+    const section = workerMain.slice(start, end);
+    const sourceLoad = section.indexOf("await loadEnrichmentRows(job.document_id, indexGenerationId)");
+    const liveReload = section.indexOf("await loadLiveEnrichmentDocument(job.document_id)");
+    const exactAuthority = section.indexOf("requireExactSourceAnchoredGeneration(", liveReload);
+    const preflight = section.indexOf("assertSourceAnchoredSummaryPreflight", exactAuthority);
+    const enrichment = section.indexOf("await upsertDocumentEnrichment", preflight);
+    expect(sourceLoad).toBeGreaterThan(-1);
+    expect(liveReload).toBeGreaterThan(sourceLoad);
+    expect(exactAuthority).toBeGreaterThan(liveReload);
+    expect(preflight).toBeGreaterThan(exactAuthority);
+    expect(enrichment).toBeGreaterThan(preflight);
+    expect(section).toContain("document: enrichmentDocument");
+    expect(section).not.toContain(
+      "metadata: { ...(job.documents.metadata ?? {}), index_generation_id: indexGenerationId }",
+    );
   });
 });

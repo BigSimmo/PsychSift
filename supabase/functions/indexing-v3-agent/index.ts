@@ -44,7 +44,7 @@ import { buildGenerationVisibility, isVisibleCommittedGenerationRow, type Docume
 import { buildIndexingCoverageProfile, selectCoverageAwarePromptChunks } from "../_shared/indexing-coverage.ts";
 // prettier-ignore
 // @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
-import { SOURCE_ANCHORED_MAX_CHUNKS, SOURCE_ANCHORED_MAX_IMAGES, SOURCE_ANCHORED_MAX_PROMPT_IMAGES, SOURCE_ANCHORED_SOURCE_PAGE_SIZE, SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION, SOURCE_ANCHORED_SUMMARY_METADATA_KEY, SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY, buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary, projectSourceAnchoredLabels, requireSourceAnchoredSummaryGeneration, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
+import { SOURCE_ANCHORED_MAX_CHUNKS, SOURCE_ANCHORED_MAX_IMAGES, SOURCE_ANCHORED_MAX_PROMPT_IMAGES, SOURCE_ANCHORED_SOURCE_PAGE_SIZE, SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION, SOURCE_ANCHORED_SUMMARY_METADATA_KEY, SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY, buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary, persistedSourceAnchoredSummaryProjectionMatches, projectSourceAnchoredLabels, requireSourceAnchoredSummaryGeneration, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
 
 type ClaimedJob = {
   id: string;
@@ -203,6 +203,8 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is required");
 
 const OPENAI_EMBEDDING_MODEL = Deno.env.get("OPENAI_EMBEDDING_MODEL") ?? "text-embedding-3-small";
+const OPENAI_INDEXING_MODEL =
+  Deno.env.get("OPENAI_INDEXING_MODEL") ?? Deno.env.get("OPENAI_STRONG_ANSWER_MODEL") ?? "gpt-5.6-sol";
 const EMBEDDING_DIMENSIONS = Number(Deno.env.get("EMBEDDING_DIMENSIONS") ?? String(EXPECTED_EMBED_DIM));
 if (EMBEDDING_DIMENSIONS !== EXPECTED_EMBED_DIM) {
   throw new Error(`EMBEDDING_DIMENSIONS must be ${EXPECTED_EMBED_DIM}`);
@@ -686,7 +688,7 @@ async function loadSourceAnchoredSummarySources(
     authority: {
       documentId: job.document_id,
       indexGenerationId,
-      expectedStructuredModel: "edge-no-structured-provider",
+      expectedStructuredModel: OPENAI_INDEXING_MODEL,
       expectedStructuredModelVersion: SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION,
       selectedChunks: selected.chunks,
       selectedImages: promptImages,
@@ -722,7 +724,7 @@ async function persistSourceAnchoredSummary(
           source_chunk_ids = excluded.source_chunk_ids,
           source_image_ids = excluded.source_image_ids,
           model = excluded.model,
-          metadata = excluded.metadata,
+          metadata = coalesce(public.document_summaries.metadata, '{}'::jsonb) || excluded.metadata,
           generated_at = excluded.generated_at,
           updated_at = now()
       `;
@@ -778,11 +780,16 @@ async function ensureSummary(
 ): Promise<SourceAnchoredSummaryPayload> {
   const existing = await sql<
     Array<{
+      summary: string | null;
+      clinical_specifics: Record<string, unknown> | null;
+      source_chunk_ids: string[] | null;
+      source_image_ids: string[] | null;
       metadata: Record<string, unknown> | null;
       model: string | null;
+      generated_at: string | null;
     }>
   >`
-    select metadata, model
+    select summary, clinical_specifics, source_chunk_ids, source_image_ids, model, metadata, generated_at
     from public.document_summaries
     where document_id = ${job.document_id}::uuid
     limit 1
@@ -790,12 +797,7 @@ async function ensureSummary(
   let stored: SourceAnchoredSummaryPayload | null = null;
   try {
     const candidate = safeRecord(existing[0]?.metadata)[SOURCE_ANCHORED_SUMMARY_METADATA_KEY];
-    const candidateRecord = safeRecord(candidate);
-    stored = normalizeSourceAnchoredSummary(candidate, {
-      ...sources.authority,
-      expectedStructuredModel:
-        typeof candidateRecord.model === "string" ? candidateRecord.model : sources.authority.expectedStructuredModel,
-    });
+    stored = normalizeSourceAnchoredSummary(candidate, sources.authority);
   } catch {
     stored = null;
   }
@@ -808,9 +810,9 @@ async function ensureSummary(
       where document_id = ${job.document_id}::uuid and source = 'generated'
       order by label_type asc, label asc
     `;
-    const complete = safeRecord(existing[0]?.metadata)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY] === true;
-    if (complete && sourceAnchoredSummaryProjectionMatches(labels, stored)) return stored;
-    await persistSourceAnchoredSummary(job, stored, false);
+    const projectionCurrent = persistedSourceAnchoredSummaryProjectionMatches(existing[0], stored);
+    if (projectionCurrent && sourceAnchoredSummaryProjectionMatches(labels, stored)) return stored;
+    await persistSourceAnchoredSummary(job, stored, !projectionCurrent);
     return stored;
   }
 

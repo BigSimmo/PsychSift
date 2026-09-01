@@ -1,6 +1,5 @@
 import { loadEnvConfig } from "@next/env";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Json } from "@/lib/supabase/database.types";
 import { createHash } from "node:crypto";
 import {
   SOURCE_ANCHORED_MAX_CHUNKS,
@@ -232,7 +231,9 @@ async function loadEvidence(supabase: SupabaseAdmin, documentId: string, indexGe
   for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("document_images")
-      .select("id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata")
+      .select(
+        "id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata",
+      )
       .eq("document_id", documentId)
       .eq("index_generation_id", indexGenerationId)
       .eq("searchable", true)
@@ -498,10 +499,10 @@ async function stampExistingEnrichmentVersion(args: {
     version_stamped_at: stampedAt,
   };
 
-  const { error: documentError } = await args.supabase
-    .from("documents")
-    .update({ metadata: { ...metadataRecord(args.document.metadata), ...marker } })
-    .eq("id", args.document.id);
+  const { error: documentError } = await args.supabase.rpc("apply_document_metadata_patch", {
+    p_document_id: args.document.id,
+    p_metadata_patch: marker,
+  });
   if (documentError) throw new Error(documentError.message);
 
   if (args.coverage.summary) {
@@ -593,6 +594,18 @@ async function main() {
 
       while (attempts < maxAttempts && !success) {
         try {
+          const indexGenerationId = requireExactSourceAnchoredGeneration(
+            document.index_generation_id,
+            document.metadata,
+          );
+          const evidence = await loadEvidence(supabase, document.id, indexGenerationId);
+          assertSourceAnchoredSummaryPreflight({
+            documentMetadata: document.metadata,
+            indexGenerationId,
+            chunks: evidence.chunks,
+            images: evidence.images,
+          });
+
           if (args.mode === "metadata-stamp") {
             if (!documentCoverage?.summary || documentCoverage.labels.every((label) => label.source !== "generated")) {
               console.log(`SKIP cannot metadata-stamp missing enrichment: ${document.file_name}`);
@@ -609,18 +622,6 @@ async function main() {
             return;
           }
 
-          const indexGenerationId = requireExactSourceAnchoredGeneration(
-            document.index_generation_id,
-            document.metadata,
-          );
-          const evidence = await loadEvidence(supabase, document.id, indexGenerationId);
-          assertSourceAnchoredSummaryPreflight({
-            documentMetadata: document.metadata,
-            indexGenerationId,
-            chunks: evidence.chunks,
-            images: evidence.images,
-          });
-
           let imageMetadata = metadataRecord(document.metadata);
           let imageStats = { searchable: 0, skipped: 0, total: 0 };
           if (args.mode === "summaries-labels-images") {
@@ -635,9 +636,17 @@ async function main() {
               .from("documents")
               .update({
                 image_count: imageStats.searchable,
-                metadata: imageMetadata as Json,
               })
               .eq("id", document.id);
+            const { error: imageMetadataError } = await supabase.rpc("apply_document_metadata_patch", {
+              p_document_id: document.id,
+              p_metadata_patch: {
+                searchable_image_count: imageStats.searchable,
+                skipped_image_count: imageStats.skipped,
+                image_enriched_at: imageMetadata.image_enriched_at,
+              },
+            });
+            if (imageMetadataError) throw new Error(imageMetadataError.message);
           }
 
           let enrichmentSummary: string | null = null;
@@ -667,22 +676,14 @@ async function main() {
             images: evidence.images as unknown as Parameters<typeof upsertDocumentDeepMemory>[0]["images"],
             summary: enrichmentSummary,
           });
-          const { data: latestDoc } = await supabase
-            .from("documents")
-            .select("metadata")
-            .eq("id", document.id)
-            .single();
-          const latestMetadata = metadataRecord(latestDoc?.metadata);
-          await supabase
-            .from("documents")
-            .update({
-              metadata: {
-                ...latestMetadata,
-                enrichment_status: "completed",
-                enrichment_error: null,
-              },
-            })
-            .eq("id", document.id);
+          const { error: completionMetadataError } = await supabase.rpc("apply_document_metadata_patch", {
+            p_document_id: document.id,
+            p_metadata_patch: {
+              enrichment_status: "completed",
+              enrichment_error: null,
+            },
+          });
+          if (completionMetadataError) throw new Error(completionMetadataError.message);
 
           completed += 1;
           console.log(

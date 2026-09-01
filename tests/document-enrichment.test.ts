@@ -100,6 +100,32 @@ type QueryCall = {
   selected?: string;
 };
 
+function jsonbMergeDeep(
+  targetObj: Record<string, unknown> | null | undefined,
+  patchObj: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...(targetObj ?? {}) };
+  for (const [key, incoming] of Object.entries(patchObj ?? {})) {
+    if (incoming === null) {
+      delete merged[key];
+      continue;
+    }
+    const existing = merged[key];
+    if (
+      existing !== null &&
+      typeof existing === "object" &&
+      !Array.isArray(existing) &&
+      typeof incoming === "object" &&
+      !Array.isArray(incoming)
+    ) {
+      merged[key] = jsonbMergeDeep(existing as Record<string, unknown>, incoming as Record<string, unknown>);
+    } else {
+      merged[key] = incoming;
+    }
+  }
+  return merged;
+}
+
 function createSupabaseMock(options: { failSummaryUpsert?: boolean } = {}) {
   const calls: QueryCall[] = [];
 
@@ -165,7 +191,8 @@ function createSupabaseMock(options: { failSummaryUpsert?: boolean } = {}) {
 
     private resolve() {
       if (this.call.table === "document_summaries" && this.call.operation === "upsert") {
-        if (options.failSummaryUpsert) return Promise.resolve({ data: null, error: { message: "summary upsert failed" } });
+        if (options.failSummaryUpsert)
+          return Promise.resolve({ data: null, error: { message: "summary upsert failed" } });
         return Promise.resolve({ data: { id: "summary-1", ...(this.call.payload as object) }, error: null });
       }
       if (this.call.table === "document_summaries" && this.call.operation === "update") {
@@ -180,6 +207,7 @@ function createSupabaseMock(options: { failSummaryUpsert?: boolean } = {}) {
 
   const supabase = {
     calls,
+    rpc: vi.fn(async () => ({ data: null, error: null })),
     from: vi.fn((table: string) => {
       const call: QueryCall = { table, operation: "select", filters: [] };
       calls.push(call);
@@ -195,16 +223,20 @@ function createRepairSupabaseMock() {
   const state: {
     summary: Record<string, unknown> | null;
     labels: Array<Record<string, unknown>>;
+    documentMetadata: Record<string, unknown>;
     labelUpserts: number;
     failedOnce: boolean;
+    beforeMetadataPatch: (() => void) | null;
   } = {
     summary: null,
     labels: [
       { id: "manual-1", document_id: DOCUMENT_ID, label: "manual", label_type: "custom", source: "manual" },
       { id: "stale-1", document_id: DOCUMENT_ID, label: "stale", label_type: "topic", source: "generated" },
     ],
+    documentMetadata: { index_generation_id: GENERATION_ID },
     labelUpserts: 0,
     failedOnce: false,
+    beforeMetadataPatch: null,
   };
 
   class QueryBuilder implements PromiseLike<QueryResult> {
@@ -277,6 +309,9 @@ function createRepairSupabaseMock() {
           error: null,
         });
       }
+      if (this.call.table === "documents" && this.call.operation === "select") {
+        return Promise.resolve({ data: { metadata: state.documentMetadata }, error: null });
+      }
       if (this.call.table === "document_labels" && this.call.operation === "upsert") {
         state.labelUpserts += 1;
         if (!state.failedOnce && state.labelUpserts === 2) {
@@ -308,6 +343,17 @@ function createRepairSupabaseMock() {
   return {
     calls,
     state,
+    rpc: vi.fn(async (name: string, params: Record<string, unknown>) => {
+      if (name === "apply_document_metadata_patch") {
+        state.beforeMetadataPatch?.();
+        state.beforeMetadataPatch = null;
+        state.documentMetadata = jsonbMergeDeep(
+          state.documentMetadata,
+          params.p_metadata_patch as Record<string, unknown>,
+        );
+      }
+      return { data: null, error: null };
+    }),
     from: vi.fn((table: string) => {
       const call: QueryCall = { table, operation: "select", filters: [] };
       calls.push(call);
@@ -357,7 +403,6 @@ describe("document enrichment", () => {
       (call) => call.table === "document_summaries" && call.operation === "upsert",
     );
     const labelsInsert = supabase.calls.find((call) => call.table === "document_labels" && call.operation === "upsert");
-    const documentUpdate = supabase.calls.find((call) => call.table === "documents" && call.operation === "update");
 
     expect((summaryUpsert?.payload as { metadata: Record<string, unknown> }).metadata).toMatchObject({
       generated_by: "local-worker",
@@ -374,13 +419,14 @@ describe("document enrichment", () => {
         summary_version: "source-anchored-summary-v1",
       }),
     });
-    expect((documentUpdate?.payload as { metadata: Record<string, unknown> }).metadata).toMatchObject({
-      existing: true,
-      index_generation_id: GENERATION_ID,
-      rag_enrichment_version: ragEnrichmentVersion,
-      generated_label_count: expect.any(Number),
+    expect(supabase.rpc).toHaveBeenCalledWith("apply_document_metadata_patch", {
+      p_document_id: DOCUMENT_ID,
+      p_metadata_patch: expect.objectContaining({
+        rag_enrichment_version: ragEnrichmentVersion,
+        generated_label_count: expect.any(Number),
+      }),
     });
-    expect(documentUpdate?.filters).toContainEqual({ column: "id", value: DOCUMENT_ID });
+    expect(supabase.calls.some((call) => call.table === "documents" && call.operation === "update")).toBe(false);
   });
 
   it("cleans noisy generated labels before inserting document labels", async () => {
@@ -671,9 +717,7 @@ describe("source-anchored summary v1", () => {
           ...base.clinical_specifics,
           profile: {
             ...base.clinical_specifics.profile,
-            key_clinical_actions: [
-              { ...base.clinical_specifics.profile.key_clinical_actions[0], pages: [1] },
-            ],
+            key_clinical_actions: [{ ...base.clinical_specifics.profile.key_clinical_actions[0], pages: [1] }],
           },
         },
       },
@@ -695,6 +739,33 @@ describe("source-anchored summary v1", () => {
       },
     ];
     for (const value of invalid) expect(() => normalizeSourceAnchoredSummary(value, sourceAuthority())).toThrow();
+  });
+
+  it("rejects string-coerced claim pages and label confidence", async () => {
+    const { normalizeSourceAnchoredSummary } = await contract();
+    const base = structuredCandidate();
+    const action = base.clinical_specifics.profile.key_clinical_actions[0];
+    expect(() =>
+      normalizeSourceAnchoredSummary(
+        {
+          ...base,
+          clinical_specifics: {
+            ...base.clinical_specifics,
+            profile: {
+              ...base.clinical_specifics.profile,
+              key_clinical_actions: [{ ...action, pages: ["52"] }],
+            },
+          },
+        },
+        sourceAuthority(),
+      ),
+    ).toThrow("source_anchored_summary_claim_pages_invalid");
+    expect(() =>
+      normalizeSourceAnchoredSummary(
+        { ...base, labels: [{ ...base.labels[0], confidence: "0.92" }] },
+        sourceAuthority(),
+      ),
+    ).toThrow("source_anchored_summary_label_invalid");
   });
 
   it("rejects non-canonical text, divergent projections, fallback conflicts, and unsupported not_found prose", async () => {
@@ -756,14 +827,50 @@ describe("source-anchored summary v1", () => {
     ).toThrow();
   });
 
+  it.each(["\u{10400}", "\u{104A8}"])(
+    "does not treat an astral Unicode letter or number as a label boundary (%s)",
+    async (prefix) => {
+      const { normalizeSourceAnchoredSummary } = await contract();
+      const base = structuredCandidate();
+      const text = `Review ${prefix}anc before clozapine use.`;
+      const action = {
+        ...base.clinical_specifics.profile.key_clinical_actions[0],
+        text,
+      };
+      const profile = {
+        ...base.clinical_specifics.profile,
+        overview: `- ${text}`,
+        key_clinical_actions: [action],
+      };
+      expect(() =>
+        normalizeSourceAnchoredSummary(
+          {
+            ...base,
+            summary: `- ${text}`,
+            clinical_specifics: {
+              ...base.clinical_specifics,
+              profile,
+              actions: [text],
+            },
+            labels: [{ label: "anc", label_type: "clinical_action", confidence: 0.8 }],
+          },
+          sourceAuthority(),
+        ),
+      ).toThrow("source_anchored_summary_label_unanchored");
+    },
+  );
+
   it.each(["chunk", "image", "mixed"])("builds the exact anchored %s fallback", async (kind) => {
     const { buildSourceAnchoredFallbackPayload, SOURCE_ANCHORED_FALLBACK_MESSAGE } = await contract();
     const authority = sourceAuthority();
     const selectedChunks = kind === "image" ? [] : authority.selectedChunks;
     const selectedImages = kind === "chunk" ? [] : authority.selectedImages;
-    const fallback = buildSourceAnchoredFallbackPayload({ ...authority, selectedChunks, selectedImages }, {
-      generatedAt: "2026-09-01T00:00:00.000Z",
-    });
+    const fallback = buildSourceAnchoredFallbackPayload(
+      { ...authority, selectedChunks, selectedImages },
+      {
+        generatedAt: "2026-09-01T00:00:00.000Z",
+      },
+    );
     expect(fallback.summary_kind).toBe("heuristic_fallback");
     expect(fallback.summary).toBe(SOURCE_ANCHORED_FALLBACK_MESSAGE);
     expect(fallback.labels).toEqual([]);
@@ -772,6 +879,96 @@ describe("source-anchored summary v1", () => {
     const note = fallback.clinical_specifics.profile.source_quality_notes[0];
     if (kind === "image") expect(note).toMatchObject({ source_chunk_ids: [], source_image_ids: [IMAGE_ID] });
     else expect(note).toMatchObject({ source_chunk_ids: [CHUNK_ID], source_image_ids: [] });
+  });
+
+  it("rejects fallback notes that do not use the exact first chunk-preferred sole anchor projection", async () => {
+    const { buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary } = await contract();
+    const authority = sourceAuthority();
+    const fallback = buildSourceAnchoredFallbackPayload(authority, {
+      generatedAt: "2026-09-01T00:00:00.000Z",
+    });
+    const note = fallback.clinical_specifics.profile.source_quality_notes[0];
+    const invalidNotes = [
+      { ...note, source_chunk_ids: [LATE_CHUNK_ID], pages: [52] },
+      { ...note, source_chunk_ids: [], source_image_ids: [IMAGE_ID], pages: [4], evidence_type: "image" },
+      { ...note, source_chunk_ids: [CHUNK_ID], source_image_ids: [IMAGE_ID], pages: [1, 4], evidence_type: "mixed" },
+      { ...note, evidence_type: "metadata" },
+    ];
+    for (const invalidNote of invalidNotes) {
+      expect(() =>
+        normalizeSourceAnchoredSummary(
+          {
+            ...fallback,
+            clinical_specifics: {
+              ...fallback.clinical_specifics,
+              profile: {
+                ...fallback.clinical_specifics.profile,
+                source_quality_notes: [invalidNote],
+              },
+            },
+          },
+          authority,
+        ),
+      ).toThrow("source_anchored_summary_fallback_projection_invalid");
+    }
+  });
+
+  it("compares every persisted summary projection against the normalized payload", async () => {
+    const { normalizeSourceAnchoredSummary, persistedSourceAnchoredSummaryProjectionMatches } = await contract();
+    const payload = normalizeSourceAnchoredSummary(structuredCandidate(), sourceAuthority());
+    const reorderObjectKeys = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(reorderObjectKeys);
+      if (!value || typeof value !== "object") return value;
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>)
+          .reverse()
+          .map(([key, item]) => [key, reorderObjectKeys(item)]),
+      );
+    };
+    const persisted = {
+      summary: payload.summary,
+      clinical_specifics: payload.clinical_specifics,
+      source_chunk_ids: payload.source_chunk_ids,
+      source_image_ids: payload.source_image_ids,
+      model: payload.model,
+      generated_at: payload.generated_at,
+      metadata: {
+        source_anchored_summary_v1: payload,
+        source_anchored_summary_projection_complete_v1: true,
+      },
+    };
+    expect(persistedSourceAnchoredSummaryProjectionMatches(persisted, payload)).toBe(true);
+    expect(
+      persistedSourceAnchoredSummaryProjectionMatches(
+        {
+          ...persisted,
+          clinical_specifics: reorderObjectKeys(payload.clinical_specifics),
+          generated_at: new Date(payload.generated_at),
+          metadata: {
+            ...persisted.metadata,
+            source_anchored_summary_v1: reorderObjectKeys(payload),
+          },
+        },
+        payload,
+      ),
+    ).toBe(true);
+    for (const drift of [
+      { summary: "drifted" },
+      { clinical_specifics: { ...payload.clinical_specifics, actions: [] } },
+      { source_chunk_ids: [LATE_CHUNK_ID, CHUNK_ID] },
+      { source_image_ids: [] },
+      { model: "drifted-model" },
+      { generated_at: "2026-09-01T00:00:01.000Z" },
+      { metadata: { ...persisted.metadata, source_anchored_summary_v1: { ...payload, summary: "drifted" } } },
+      {
+        metadata: {
+          ...persisted.metadata,
+          source_anchored_summary_projection_complete_v1: false,
+        },
+      },
+    ]) {
+      expect(persistedSourceAnchoredSummaryProjectionMatches({ ...persisted, ...drift }, payload)).toBe(false);
+    }
   });
 
   it("shares the structured model version literal with Node", async () => {
@@ -850,8 +1047,9 @@ describe("source-anchored summary v1", () => {
     };
 
     await expect(upsertDocumentEnrichment(args)).rejects.toThrow("label upsert failed");
-    expect((supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY])
-      .toBe(false);
+    expect(
+      (supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY],
+    ).toBe(false);
     expect(supabase.state.labels).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: "manual-1", source: "manual" }),
@@ -862,12 +1060,266 @@ describe("source-anchored summary v1", () => {
 
     await expect(upsertDocumentEnrichment(args)).resolves.toBeDefined();
     expect(mocks.generateStructuredTextResponse).toHaveBeenCalledTimes(1);
-    expect((supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY])
-      .toBe(true);
-    expect(supabase.state.labels.filter((label) => label.source === "generated").map((label) => label.label).sort())
-      .toEqual(["anc", "clozapine"]);
+    expect(
+      (supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY],
+    ).toBe(true);
+    expect(
+      supabase.state.labels
+        .filter((label) => label.source === "generated")
+        .map((label) => label.label)
+        .sort(),
+    ).toEqual(["anc", "clozapine"]);
     expect(supabase.state.labels).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: "manual-1", source: "manual" })]),
     );
+  });
+
+  it("marks a stored projection incomplete before repairing marker-true label drift", async () => {
+    const {
+      SOURCE_ANCHORED_SUMMARY_METADATA_KEY,
+      SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY,
+      normalizeSourceAnchoredSummary,
+    } = await contract();
+    const payload = normalizeSourceAnchoredSummary(structuredCandidate(), sourceAuthority());
+    const supabase = createRepairSupabaseMock();
+    supabase.state.failedOnce = true;
+    supabase.state.summary = {
+      id: "summary-1",
+      document_id: DOCUMENT_ID,
+      summary: payload.summary,
+      clinical_specifics: payload.clinical_specifics,
+      source_chunk_ids: payload.source_chunk_ids,
+      source_image_ids: payload.source_image_ids,
+      model: payload.model,
+      generated_at: payload.generated_at,
+      metadata: {
+        [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
+        [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
+      },
+    };
+    mocks.generateStructuredTextResponse.mockClear();
+
+    await upsertDocumentEnrichment({
+      supabase: supabase as never,
+      document: {
+        id: DOCUMENT_ID,
+        owner_id: null,
+        title: "Clozapine monitoring",
+        file_name: "clozapine.pdf",
+        source_path: null,
+        metadata: { index_generation_id: GENERATION_ID },
+      },
+      indexGenerationId: GENERATION_ID,
+      chunks: sourceAuthority().selectedChunks.map((chunk, chunk_index) => ({
+        ...chunk,
+        index_generation_id: GENERATION_ID,
+        chunk_index,
+        section_heading: null,
+        content: chunk.id === LATE_CHUNK_ID ? "Check ANC before clozapine review." : "Clozapine protocol.",
+      })),
+      images: sourceAuthority().selectedImages.map((image) => ({
+        ...image,
+        index_generation_id: GENERATION_ID,
+        caption: "Clozapine monitoring table",
+      })),
+    });
+
+    const firstLabelWrite = supabase.calls.findIndex(
+      (call) => call.table === "document_labels" && call.operation === "upsert",
+    );
+    const incompleteWrite = supabase.calls.findIndex(
+      (call) =>
+        call.table === "document_summaries" &&
+        ["update", "upsert"].includes(call.operation) &&
+        (call.payload as { metadata?: Record<string, unknown> } | undefined)?.metadata?.[
+          SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY
+        ] === false,
+    );
+    expect(incompleteWrite).toBeGreaterThan(-1);
+    expect(incompleteWrite).toBeLessThan(firstLabelWrite);
+    expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
+  });
+
+  it("repairs stored-payload column drift without calling the provider", async () => {
+    const {
+      SOURCE_ANCHORED_SUMMARY_METADATA_KEY,
+      SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY,
+      normalizeSourceAnchoredSummary,
+      projectSourceAnchoredLabels,
+    } = await contract();
+    const payload = normalizeSourceAnchoredSummary(structuredCandidate(), sourceAuthority());
+    const supabase = createRepairSupabaseMock();
+    supabase.state.failedOnce = true;
+    supabase.state.summary = {
+      id: "summary-1",
+      document_id: DOCUMENT_ID,
+      summary: "drifted summary column",
+      clinical_specifics: payload.clinical_specifics,
+      source_chunk_ids: payload.source_chunk_ids,
+      source_image_ids: payload.source_image_ids,
+      model: payload.model,
+      generated_at: payload.generated_at,
+      metadata: {
+        [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
+        [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
+      },
+    };
+    supabase.state.labels = projectSourceAnchoredLabels(payload).map((label, index) => ({
+      id: `generated-${index}`,
+      document_id: DOCUMENT_ID,
+      source: "generated",
+      ...label,
+      metadata: {
+        index_generation_id: payload.index_generation_id,
+        summary_version: payload.summary_version,
+        source_chunk_ids: label.source_chunk_ids,
+        source_image_ids: label.source_image_ids,
+        pages: label.pages,
+      },
+    }));
+    mocks.generateStructuredTextResponse.mockClear();
+
+    await upsertDocumentEnrichment({
+      supabase: supabase as never,
+      document: {
+        id: DOCUMENT_ID,
+        owner_id: null,
+        title: "Clozapine monitoring",
+        file_name: "clozapine.pdf",
+        source_path: null,
+        metadata: { index_generation_id: GENERATION_ID },
+      },
+      indexGenerationId: GENERATION_ID,
+      chunks: sourceAuthority().selectedChunks.map((chunk, chunk_index) => ({
+        ...chunk,
+        index_generation_id: GENERATION_ID,
+        chunk_index,
+        section_heading: null,
+        content: chunk.id === LATE_CHUNK_ID ? "Check ANC before clozapine review." : "Clozapine protocol.",
+      })),
+      images: sourceAuthority().selectedImages.map((image) => ({
+        ...image,
+        index_generation_id: GENERATION_ID,
+        caption: "Clozapine monitoring table",
+      })),
+    });
+
+    const repair = supabase.calls.find((call) => call.table === "document_summaries" && call.operation === "upsert");
+    expect(repair?.payload).toMatchObject({ summary: payload.summary });
+    expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
+  });
+
+  it("retries the document metadata patch after summary and label completion", async () => {
+    const { SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY } = await contract();
+    const supabase = createRepairSupabaseMock();
+    const organizationProfile = {
+      canonical_display_title: "Organization-owned title",
+      review_status: "needs_review",
+    };
+    supabase.state.documentMetadata = {
+      ...supabase.state.documentMetadata,
+      organization_profile: organizationProfile,
+      organization_profile_version: "document-organization-v1",
+    };
+    supabase.state.failedOnce = true;
+    supabase.rpc.mockResolvedValueOnce({ data: null, error: { message: "document metadata patch failed" } });
+    const input = {
+      supabase: supabase as never,
+      document: {
+        id: DOCUMENT_ID,
+        owner_id: null,
+        title: "Clozapine monitoring",
+        file_name: "clozapine.pdf",
+        source_path: null,
+        metadata: {
+          index_generation_id: GENERATION_ID,
+          organization_profile: { canonical_display_title: "Stale inferred title", review_status: "needs_review" },
+        },
+      },
+      indexGenerationId: GENERATION_ID,
+      chunks: sourceAuthority().selectedChunks.map((chunk, chunk_index) => ({
+        ...chunk,
+        index_generation_id: GENERATION_ID,
+        chunk_index,
+        section_heading: null,
+        content: chunk.id === LATE_CHUNK_ID ? "Check ANC before clozapine review." : "Clozapine protocol.",
+      })),
+      images: sourceAuthority().selectedImages.map((image) => ({
+        ...image,
+        index_generation_id: GENERATION_ID,
+        caption: "Clozapine monitoring table",
+      })),
+    };
+
+    await expect(upsertDocumentEnrichment(input)).rejects.toThrow("document metadata patch failed");
+    expect(
+      (supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY],
+    ).toBe(true);
+    mocks.generateStructuredTextResponse.mockClear();
+
+    await expect(upsertDocumentEnrichment(input)).resolves.toBeDefined();
+
+    expect(supabase.rpc).toHaveBeenCalledTimes(2);
+    expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
+    expect(supabase.state.documentMetadata).toMatchObject({
+      rag_enrichment_version: ragEnrichmentVersion,
+      rag_indexing_version: ragEnrichmentVersion,
+      rag_memory_version: ragEnrichmentVersion,
+      rag_enrichment_updated_at: "2026-09-01T00:00:00.000Z",
+      generated_label_count: 1,
+      organization_profile: organizationProfile,
+      organization_profile_version: "document-organization-v1",
+    });
+    expect(supabase.rpc.mock.calls[1]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile");
+    expect(supabase.rpc.mock.calls[1]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile_version");
+  });
+
+  it("does not overwrite manual organization authority written after the live read", async () => {
+    const supabase = createRepairSupabaseMock();
+    const manualProfile = {
+      canonical_display_title: "Human governed title",
+      review_status: "manual_override",
+      human_note: "preserve this authority",
+    };
+    supabase.state.beforeMetadataPatch = () => {
+      supabase.state.documentMetadata = {
+        ...supabase.state.documentMetadata,
+        organization_profile: manualProfile,
+        organization_profile_version: "human-governed-v2",
+      };
+    };
+
+    await upsertDocumentEnrichment({
+      supabase: supabase as never,
+      document: {
+        id: DOCUMENT_ID,
+        owner_id: null,
+        title: "Clozapine monitoring",
+        file_name: "clozapine.pdf",
+        source_path: null,
+        metadata: {
+          index_generation_id: GENERATION_ID,
+          organization_profile: { canonical_display_title: "Stale inferred title", review_status: "needs_review" },
+        },
+      },
+      indexGenerationId: GENERATION_ID,
+      chunks: sourceAuthority().selectedChunks.map((chunk, chunk_index) => ({
+        ...chunk,
+        index_generation_id: GENERATION_ID,
+        chunk_index,
+        section_heading: null,
+        content: chunk.id === LATE_CHUNK_ID ? "Check ANC before clozapine review." : "Clozapine protocol.",
+      })),
+      images: sourceAuthority().selectedImages.map((image) => ({
+        ...image,
+        index_generation_id: GENERATION_ID,
+        caption: "Clozapine monitoring table",
+      })),
+    });
+
+    expect(supabase.state.documentMetadata.organization_profile).toEqual(manualProfile);
+    expect(supabase.state.documentMetadata.organization_profile_version).toBe("human-governed-v2");
+    expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile");
+    expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile_version");
   });
 });

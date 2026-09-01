@@ -73,10 +73,20 @@ describe("smart-index repair selection", () => {
   });
 
   it("does not use metadata repair/random UUID fallback as summary generation authority", () => {
-    const enrichmentSection = smartBackfillSource.slice(
-      smartBackfillSource.indexOf("async function processDocument"),
-    );
+    const enrichmentSection = smartBackfillSource.slice(smartBackfillSource.indexOf("async function processDocument"));
     expect(enrichmentSection).not.toContain("repairChunkIndexingMetadata(");
     expect(enrichmentSection).not.toContain("randomUUID(");
+  });
+
+  it("loads exact-generation evidence and completes P05 preflight before metadata-stamp writes", () => {
+    const loop = enrichDocumentsSource.slice(enrichDocumentsSource.indexOf("while (attempts < maxAttempts"));
+    const generation = loop.indexOf("requireExactSourceAnchoredGeneration(");
+    const evidence = loop.indexOf("await loadEvidence(", generation);
+    const preflight = loop.indexOf("assertSourceAnchoredSummaryPreflight(", evidence);
+    const metadataStamp = loop.indexOf('if (args.mode === "metadata-stamp")', preflight);
+    expect(generation).toBeGreaterThan(-1);
+    expect(evidence).toBeGreaterThan(generation);
+    expect(preflight).toBeGreaterThan(evidence);
+    expect(metadataStamp).toBeGreaterThan(preflight);
   });
 });

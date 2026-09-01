@@ -14,6 +14,7 @@ import {
   SOURCE_ANCHORED_MAX_CHUNKS,
   SOURCE_ANCHORED_MAX_IMAGES,
   SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
+  requireExactSourceAnchoredGeneration,
 } from "../supabase/functions/_shared/source-anchored-summary";
 import { ragDeepMemoryVersion, upsertDocumentDeepMemory } from "../src/lib/deep-memory";
 import { extractDocument } from "../src/lib/extractors/document";
@@ -1723,7 +1724,9 @@ async function loadEnrichmentRows(documentId: string, indexGenerationId: string)
   for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("document_images")
-      .select("id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata")
+      .select(
+        "id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata",
+      )
       .eq("document_id", documentId)
       .eq("index_generation_id", indexGenerationId)
       .eq("searchable", true)
@@ -1746,6 +1749,17 @@ async function loadEnrichmentRows(documentId: string, indexGenerationId: string)
   assertEnrichmentChunkRows(chunks);
   assertEnrichmentImageRows(images);
   return { chunks, images };
+}
+
+async function loadLiveEnrichmentDocument(documentId: string) {
+  const { data, error } = await supabase
+    .from("documents")
+    .select("id,owner_id,title,file_name,source_path,index_generation_id,metadata")
+    .eq("id", documentId)
+    .single();
+  if (error) throw supabaseStageError("load live enrichment document", error);
+  if (!data) throw new Error("source_anchored_summary_requires_active_generation");
+  return data;
 }
 
 async function processJob(job: JobRow) {
@@ -1884,20 +1898,24 @@ async function processJob(job: JobRow) {
       await updateJobProgress(job.id, { stage: "enriching indexed document", progress: 96 });
       try {
         const enrichmentRows = await loadEnrichmentRows(job.document_id, indexGenerationId);
-        const enrichmentDocument = {
-          ...job.documents,
-          metadata: { ...(job.documents.metadata ?? {}), index_generation_id: indexGenerationId },
-        };
+        const enrichmentDocument = await loadLiveEnrichmentDocument(job.document_id);
+        const liveIndexGenerationId = requireExactSourceAnchoredGeneration(
+          enrichmentDocument.index_generation_id,
+          enrichmentDocument.metadata,
+        );
+        if (liveIndexGenerationId !== indexGenerationId) {
+          throw new Error("source_anchored_summary_requires_active_generation");
+        }
         assertSourceAnchoredSummaryPreflight({
           documentMetadata: enrichmentDocument.metadata,
-          indexGenerationId,
+          indexGenerationId: liveIndexGenerationId,
           chunks: enrichmentRows.chunks,
           images: enrichmentRows.images,
         });
         const enrichment = await upsertDocumentEnrichment({
           supabase,
           document: enrichmentDocument,
-          indexGenerationId,
+          indexGenerationId: liveIndexGenerationId,
           chunks: enrichmentRows.chunks,
           images: enrichmentRows.images,
         });

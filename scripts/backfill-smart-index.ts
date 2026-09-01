@@ -277,6 +277,7 @@ async function upsertIndexQuality(args: {
     index_generation_id: args.generationId,
   };
   const client = args.supabase as {
+    rpc: (name: string, params: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }>;
     from: (table: string) => {
       upsert: (
         row: Record<string, unknown>,
@@ -308,18 +309,20 @@ async function upsertIndexQuality(args: {
       page_count: metrics.page_count,
       chunk_count: chunkCount,
       image_count: args.images.length,
-      metadata: {
-        ...metadataRecord(args.document.metadata),
-        indexed_at: new Date().toISOString(),
-        index_generation_id: args.generationId,
-        extraction_quality: extractionQuality,
-        index_quality_score: Number(qualityScore.toFixed(3)),
-        index_quality_issues: issues,
-        index_quality_metrics: metrics,
-      },
     })
     .eq("id", args.document.id);
   if (documentError) throw new Error(documentError.message);
+  const { error: metadataError } = await client.rpc("apply_document_metadata_patch", {
+    p_document_id: args.document.id,
+    p_metadata_patch: {
+      indexed_at: new Date().toISOString(),
+      extraction_quality: extractionQuality,
+      index_quality_score: Number(qualityScore.toFixed(3)),
+      index_quality_issues: issues,
+      index_quality_metrics: metrics,
+    },
+  });
+  if (metadataError) throw new Error(metadataError.message);
   return { qualityScore: Number(qualityScore.toFixed(3)), extractionQuality, issues };
 }
 

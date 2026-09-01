@@ -367,8 +367,8 @@ describe("indexing-v3-agent behavior", () => {
     expect(ensureSummary, "summary metadata source generation").toContain(
       "index_generation_id: payload.index_generation_id",
     );
-    expect(normalizedSql(summaryWrite), "summary conflict generation replacement").toContain(
-      "metadata = excluded.metadata",
+    expect(normalizedSql(summaryWrite), "summary conflict preserves unrelated metadata").toContain(
+      "metadata = coalesce(public.document_summaries.metadata, '{}'::jsonb) || excluded.metadata",
     );
 
     const labels = agentFunction("async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText");
@@ -1239,7 +1239,9 @@ describe("source-anchored summary Edge contract", () => {
     expect(loader).toContain("source_anchored_summary_source_limit_exceeded");
     expect(loader).toMatch(/index_generation_id\s*=\s*\$\{indexGenerationId\}::uuid/);
     expect(loader).toMatch(/order by chunk\.chunk_index asc, chunk\.id asc/);
-    expect(loader).toMatch(/clinical_relevance_score desc nulls last, image\.page_number asc nulls last, image\.id asc/);
+    expect(loader).toMatch(
+      /clinical_relevance_score desc nulls last, image\.page_number asc nulls last, image\.id asc/,
+    );
   });
 
   it("persists the complete payload before labels and marks projection complete only afterwards", () => {
@@ -1252,6 +1254,45 @@ describe("source-anchored summary Edge contract", () => {
     expect(labelUpsert).toBeGreaterThan(summaryWrite);
     expect(staleDelete).toBeGreaterThan(labelUpsert);
     expect(completion).toBeGreaterThan(staleDelete);
+  });
+
+  it("uses independent structured-model authority and checks every persisted summary projection", () => {
+    const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
+    expect(indexingAgentSource).toContain("OPENAI_INDEXING_MODEL");
+    expect(ensureSummary).not.toContain("candidateRecord.model");
+    expect(ensureSummary).toContain("persistedSourceAnchoredSummaryProjectionMatches");
+    expect(normalizedSql(ensureSummary)).toContain(
+      "select summary, clinical_specifics, source_chunk_ids, source_image_ids, model, metadata, generated_at",
+    );
+  });
+
+  it("keeps zero-label Edge fallback provisional and deferred by the unchanged strict gate", async () => {
+    const { buildSourceAnchoredFallbackPayload } =
+      await import("../supabase/functions/_shared/source-anchored-summary");
+    const fallback = buildSourceAnchoredFallbackPayload(
+      {
+        documentId: "11111111-1111-4111-8111-111111111111",
+        indexGenerationId: "22222222-2222-4222-8222-222222222222",
+        expectedStructuredModel: "gpt-indexing-test",
+        expectedStructuredModelVersion: "rag-deep-memory-v1",
+        selectedChunks: [
+          {
+            id: "33333333-3333-4333-8333-333333333333",
+            page_number: 1,
+            index_generation_id: "22222222-2222-4222-8222-222222222222",
+          },
+        ],
+        selectedImages: [],
+      },
+      { generatedAt: "2026-09-01T00:00:00.000Z" },
+    );
+    const gate = completionGateFromRow(
+      gateRow({ generated_labels: fallback.labels.length, missing: ["generated_labels"], gate_passed: false }),
+    );
+    expect(fallback.labels).toEqual([]);
+    expect(gate).toMatchObject({ result: "deferred", missing: ["generated_labels"] });
+    expect(indexingAgentSource).not.toMatch(/generated_labels\s*>?=\s*0/);
+    expect(indexingAgentSource).not.toContain("complete_fallback_without_labels");
   });
 
   it("keeps Node and Edge coverage vectors identical including a late high-yield section", async () => {

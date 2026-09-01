@@ -30,6 +30,7 @@ import {
   SOURCE_ANCHORED_SUMMARY_VERSION,
   canonicalSourceAnchoredText,
   normalizeSourceAnchoredSummary,
+  persistedSourceAnchoredSummaryProjectionMatches,
   projectSourceAnchoredLabels,
   projectSourceAnchoredSummary,
   requireSourceAnchoredSummaryGeneration,
@@ -855,6 +856,19 @@ export async function upsertDocumentEnrichment(args: {
     images,
   });
   const client = args.supabase as unknown as { from: (table: string) => any };
+  const patchEnrichmentOwnedDocumentMetadata = async (payload: SourceAnchoredSummaryPayload) => {
+    const { error } = await args.supabase.rpc("apply_document_metadata_patch", {
+      p_document_id: args.document.id,
+      p_metadata_patch: {
+        rag_enrichment_version: ragEnrichmentVersion,
+        rag_indexing_version: ragEnrichmentVersion,
+        rag_memory_version: ragEnrichmentVersion,
+        rag_enrichment_updated_at: payload.generated_at,
+        generated_label_count: payload.labels.length,
+      },
+    });
+    if (error) throw new Error(error.message);
+  };
   const existingSummaryResult = await client
     .from("document_summaries")
     .select("*")
@@ -879,9 +893,17 @@ export async function upsertDocumentEnrichment(args: {
     payload = null;
   }
   const marker = metadataRecord(existingSummary?.metadata)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY] === true;
-  if (payload && marker && labelsMatchPayload(existingLabels ?? [], payload)) {
+  if (
+    payload &&
+    payload.summary_kind === "structured" &&
+    marker &&
+    persistedSourceAnchoredSummaryProjectionMatches(existingSummary, payload) &&
+    labelsMatchPayload(existingLabels ?? [], payload)
+  ) {
+    await patchEnrichmentOwnedDocumentMetadata(payload);
     return { summary: existingSummary as DocumentSummary, labels: payload.labels };
   }
+  let generatedPayload = false;
   if (!payload || payload.summary_kind !== "structured") {
     payload = await generateSourceAnchoredSummary({
       document: args.document,
@@ -889,9 +911,14 @@ export async function upsertDocumentEnrichment(args: {
       chunks: args.chunks,
       images,
     });
+    generatedPayload = true;
+  }
+
+  if (generatedPayload || !persistedSourceAnchoredSummaryProjectionMatches(existingSummary, payload)) {
     const coverageProfile = buildIndexingCoverageProfile({ chunks: args.chunks, images });
     const selectedPromptChunks = selectCoverageAwarePromptChunks(args.chunks);
     const metadata = {
+      ...metadataRecord(existingSummary?.metadata),
       generated_by: "local-worker",
       rag_enrichment_version: ragEnrichmentVersion,
       rag_indexing_version: ragEnrichmentVersion,
@@ -925,6 +952,20 @@ export async function upsertDocumentEnrichment(args: {
       .single();
     if (error) throw new Error(error.message);
     existingSummary = data;
+  } else {
+    const metadata = {
+      ...metadataRecord(existingSummary?.metadata),
+      [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
+      [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false,
+    };
+    const { data, error } = await client
+      .from("document_summaries")
+      .update({ metadata, updated_at: new Date().toISOString() })
+      .eq("document_id", args.document.id)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    existingSummary = data;
   }
 
   await persistProjectedLabels({
@@ -945,29 +986,7 @@ export async function upsertDocumentEnrichment(args: {
     .single();
   if (completionError) throw new Error(completionError.message);
 
-  const organization = classifyDocumentOrganization({
-    title: args.document.title,
-    file_name: args.document.file_name,
-    source_path: args.document.source_path,
-    metadata: args.document.metadata,
-    contentText: args.chunks.map((chunk) => chunk.content).join("\n\n"),
-    summaryText: payload.summary,
-  });
-  const { error: documentMetadataError } = await client
-    .from("documents")
-    .update({
-      metadata: {
-        ...metadataRecord(args.document.metadata),
-        rag_enrichment_version: ragEnrichmentVersion,
-        rag_indexing_version: ragEnrichmentVersion,
-        rag_memory_version: ragEnrichmentVersion,
-        rag_enrichment_updated_at: payload.generated_at,
-        generated_label_count: payload.labels.length,
-        ...organization.metadata,
-      },
-    })
-    .eq("id", args.document.id);
-  if (documentMetadataError) throw new Error(documentMetadataError.message);
+  await patchEnrichmentOwnedDocumentMetadata(payload);
   return { summary: completedSummary as DocumentSummary, labels: payload.labels };
 }
 
