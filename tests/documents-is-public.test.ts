@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPublicDocument, isPublicDocumentRow } from "@/lib/documents";
+import { isPublicDocument, isPublicDocumentRow, publicScopedRetrievalRowIsVisible } from "@/lib/documents";
 
 describe("isPublicDocument helper", () => {
   it("handles null, undefined, and non-object inputs safely", () => {
@@ -59,5 +59,52 @@ describe("isPublicDocument helper", () => {
         metadata: { extraction_quality: "good" },
       }),
     ).toBe(false);
+  });
+});
+
+describe("publicScopedRetrievalRowIsVisible — #ZBAC9D defence in depth", () => {
+  it("keeps a chunk whose document carries the published marker", () => {
+    expect(publicScopedRetrievalRowIsVisible({ id: "c1", source_metadata: { public_corpus: true } })).toBe(true);
+  });
+
+  it("drops a chunk whose document was never published (the orphan case)", () => {
+    expect(
+      publicScopedRetrievalRowIsVisible({ id: "c2", source_metadata: { title: "Orphaned after user delete" } }),
+    ).toBe(false);
+    expect(publicScopedRetrievalRowIsVisible({ id: "c3", source_metadata: {} })).toBe(false);
+    expect(publicScopedRetrievalRowIsVisible({ id: "c4", source_metadata: null })).toBe(true);
+  });
+
+  it("honours an explicit private marker even when public_corpus is set", () => {
+    expect(
+      publicScopedRetrievalRowIsVisible({ id: "c5", source_metadata: { public_corpus: true, private: true } }),
+    ).toBe(false);
+  });
+
+  it("parses a JSON-encoded source_metadata payload", () => {
+    expect(publicScopedRetrievalRowIsVisible({ id: "c6", source_metadata: '{"public_corpus":true}' })).toBe(true);
+    expect(publicScopedRetrievalRowIsVisible({ id: "c7", source_metadata: '{"title":"orphan"}' })).toBe(false);
+    // Unreadable payload is not evidence of an orphan; the foreign key is the real guard.
+    expect(publicScopedRetrievalRowIsVisible({ id: "c8", source_metadata: "not json" })).toBe(true);
+  });
+
+  it("applies the full owner predicate to rows that carry owner_id", () => {
+    expect(publicScopedRetrievalRowIsVisible({ id: "d1", owner_id: null, metadata: { public_corpus: true } })).toBe(
+      true,
+    );
+    expect(publicScopedRetrievalRowIsVisible({ id: "d2", owner_id: null, metadata: {} })).toBe(false);
+  });
+
+  it("retains artifact rows, which carry their OWN metadata rather than the document's", () => {
+    // f.metadata / u.metadata on table-fact and index-unit rows is not the document's
+    // metadata. Judging them on it would empty every public search of those surfaces.
+    expect(publicScopedRetrievalRowIsVisible({ id: "t1", metadata: { threshold_value: "30" } })).toBe(true);
+    expect(publicScopedRetrievalRowIsVisible({ id: "u1", metadata: {} })).toBe(true);
+    expect(publicScopedRetrievalRowIsVisible({ id: "e1", text_rank: 0.4 })).toBe(true);
+  });
+
+  it("does not judge non-object rows", () => {
+    expect(publicScopedRetrievalRowIsVisible(null)).toBe(true);
+    expect(publicScopedRetrievalRowIsVisible("row")).toBe(true);
   });
 });

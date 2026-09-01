@@ -11,6 +11,7 @@
  * callers import from it.
  */
 import { createAdminClient } from "@/lib/supabase/admin";
+import { publicScopedRetrievalRowIsVisible } from "@/lib/documents";
 import {
   PUBLIC_OWNER_FILTER_SENTINEL,
   retrievalAccessScopeForArgs,
@@ -101,6 +102,18 @@ function mergeLegacyAccessRows<T>(ownerRows: T[], publicRows: T[], matchCount: u
  * @param signal - Optional AbortSignal for query cancellation
  * @returns Object with retrieved data rows or error
  */
+// #ZBAC9D defence in depth. A public-scoped RPC call resolves the public sentinel to
+// `row_owner_id is null` and checks no published marker, so a document orphaned by an
+// auth-user deletion would read as public corpus. PR #2502 made orphans impossible at the
+// foreign key; this is the layer behind that. Applied ONLY where every row is known to be
+// public-scoped - never to an owner-scoped result, whose private rows legitimately carry no
+// marker. Rows the predicate cannot judge are retained; see publicScopedRetrievalRowIsVisible.
+function retainPublicScopedRows<T extends unknown[]>(rows: T | null): T | null {
+  if (!Array.isArray(rows)) return rows;
+  const kept = (rows as unknown[]).filter((row) => publicScopedRetrievalRowIsVisible(row));
+  return (kept.length === rows.length ? rows : kept) as T;
+}
+
 export async function callVersionedRetrievalRpc<T extends unknown[] = unknown[]>(
   supabase: ReturnType<typeof createAdminClient>,
   versionedName: string,
@@ -115,8 +128,12 @@ export async function callVersionedRetrievalRpc<T extends unknown[] = unknown[]>
       signal && typeof pending.abortSignal === "function" ? pending.abortSignal(signal) : pending;
     return await pendingWithAbort;
   };
+  const publicScoped = String(args.owner_filter ?? "") === PUBLIC_OWNER_FILTER_SENTINEL;
   const versioned = await executeRpc(versionedName, args);
-  if (versioned && !isMissingRetrievalRpcError(versioned.error)) return versioned;
+  if (versioned && !isMissingRetrievalRpcError(versioned.error)) {
+    if (!publicScoped || versioned.error) return versioned;
+    return { data: retainPublicScopedRows(versioned.data), error: versioned.error };
+  }
   const legacyArgs = { ...args };
   delete legacyArgs.include_public;
   const ownerResult = await executeRpc(legacyName, legacyArgs);
@@ -127,7 +144,8 @@ export async function callVersionedRetrievalRpc<T extends unknown[] = unknown[]>
     !ownerFilter ||
     ownerFilter === PUBLIC_OWNER_FILTER_SENTINEL
   ) {
-    return ownerResult;
+    if (!publicScoped || ownerResult.error) return ownerResult;
+    return { data: retainPublicScopedRows(ownerResult.data), error: ownerResult.error };
   }
   const publicResult = await executeRpc(legacyName, {
     ...legacyArgs,
@@ -137,7 +155,7 @@ export async function callVersionedRetrievalRpc<T extends unknown[] = unknown[]>
   return {
     data: mergeLegacyAccessRows(
       ownerResult.data ?? [],
-      publicResult.data ?? [],
+      retainPublicScopedRows(publicResult.data) ?? [],
       args.match_count,
       legacyRankFields(versionedName),
     ) as T,

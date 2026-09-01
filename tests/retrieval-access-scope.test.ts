@@ -183,3 +183,84 @@ describe("owner-plus-public retrieval contract", () => {
     expect(result.data?.map((row) => row.id)).toEqual(["a-public", "z-owner"]);
   });
 });
+
+describe("public-scoped results require the published marker (#ZBAC9D)", () => {
+  it("drops an unpublished orphan from a public-scoped versioned call, and keeps published rows", async () => {
+    const { callVersionedRetrievalRpc } = await import("../src/lib/rag/rag");
+    const rpc = vi.fn(async () => ({
+      data: [
+        { id: "published", source_metadata: { public_corpus: true } },
+        { id: "orphan", source_metadata: { title: "Orphaned after user delete" } },
+      ],
+      error: null,
+    }));
+
+    const result = await callVersionedRetrievalRpc<Array<{ id: string }>>({ rpc } as never, "search_v2", "search", {
+      owner_filter: "00000000-0000-0000-0000-000000000000",
+      include_public: true,
+      match_count: 8,
+    });
+
+    expect(result.data?.map((row) => row.id)).toEqual(["published"]);
+  });
+
+  it("NEVER filters an owner-scoped result — a private document legitimately has no marker", async () => {
+    const { callVersionedRetrievalRpc } = await import("../src/lib/rag/rag");
+    const rpc = vi.fn(async () => ({
+      data: [{ id: "my-private-doc", source_metadata: { title: "not published, and mine" } }],
+      error: null,
+    }));
+
+    const result = await callVersionedRetrievalRpc<Array<{ id: string }>>({ rpc } as never, "search_v2", "search", {
+      owner_filter: "owner-a",
+      include_public: true,
+      match_count: 8,
+    });
+
+    // Filtering here would delete the owner's own documents from their own search.
+    expect(result.data?.map((row) => row.id)).toEqual(["my-private-doc"]);
+  });
+
+  it("filters only the public half of the legacy owner/public merge", async () => {
+    const { callVersionedRetrievalRpc } = await import("../src/lib/rag/rag");
+    const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+      if (name === "search_v2") return { data: null, error: { code: "PGRST202", message: "schema cache miss" } };
+      if (args.owner_filter === "owner-a") {
+        // Unmarked and unfiltered: this is the caller's own private document.
+        return { data: [{ id: "mine", hybrid_score: 0.9, source_metadata: { title: "private" } }], error: null };
+      }
+      return {
+        data: [
+          { id: "public-published", hybrid_score: 0.8, source_metadata: { public_corpus: true } },
+          { id: "public-orphan", hybrid_score: 0.7, source_metadata: { title: "orphan" } },
+        ],
+        error: null,
+      };
+    });
+
+    const result = await callVersionedRetrievalRpc<Array<{ id: string }>>({ rpc } as never, "search_v2", "search", {
+      owner_filter: "owner-a",
+      include_public: true,
+      match_count: 8,
+    });
+
+    expect(result.data?.map((row) => row.id)).toEqual(["mine", "public-published"]);
+  });
+
+  it("retains artifact rows in a public-scoped call, whose metadata is their own not the document's", async () => {
+    const { callVersionedRetrievalRpc } = await import("../src/lib/rag/rag");
+    const rpc = vi.fn(async () => ({
+      data: [{ id: "fact-1", metadata: { threshold_value: "30" }, text_rank: 0.4 }],
+      error: null,
+    }));
+
+    const result = await callVersionedRetrievalRpc<Array<{ id: string }>>(
+      { rpc } as never,
+      "match_document_table_facts_text_v2",
+      "match_document_table_facts_text",
+      { owner_filter: "00000000-0000-0000-0000-000000000000", include_public: true, match_count: 8 },
+    );
+
+    expect(result.data?.map((row) => row.id)).toEqual(["fact-1"]);
+  });
+});

@@ -1,1 +1,6 @@
-export { isPublicDocument, isPublicDocumentRow, type DocumentVisibilityTarget } from "./is-public-document";
+export {
+  isPublicDocument,
+  isPublicDocumentRow,
+  publicScopedRetrievalRowIsVisible,
+  type DocumentVisibilityTarget,
+} from "./is-public-document";
