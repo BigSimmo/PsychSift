@@ -1,0 +1,3 @@
+[codex/rag-local-build-20260822 876cb09405] fix(ingestion): canonicalize multi-item summary projections
+ 2 files changed, 152 insertions(+), 1 deletion(-)
+EXIT_CODE=0

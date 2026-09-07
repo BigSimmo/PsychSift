@@ -1,0 +1,6 @@
+{
+  "imports": {
+    "entities": "npm:entities@8.0.0",
+    "entities/decode": "npm:entities@8.0.0/decode"
+  }
+}

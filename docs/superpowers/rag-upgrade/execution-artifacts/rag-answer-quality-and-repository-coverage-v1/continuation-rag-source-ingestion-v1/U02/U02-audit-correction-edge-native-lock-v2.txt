@@ -1,0 +1,14 @@
+COMMAND=deno check --frozen --node-modules-dir=false --lock=C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native-composite-v2.deno.lock --import-map=C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native.importmap.json supabase/functions/indexing-v3-agent/index.ts supabase/functions/site-content-sync/index.ts
+DENO_NO_PACKAGE_JSON=1 (process-local)
+COORDINATOR=exclusive lease acquired
+HASHES_BEFORE={"C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/deno.lock":"b92c0d1c752f6d48da195ef062e473dfaca35f13e5cc692f8f95b92bed3881b9","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/package-lock.json":"f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063","C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native-composite-v2.deno.lock":"6e5122daa4915ca299551e5f67251e910f38168a3f3ff02c8b67e693388bb6c6","C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native.importmap.json":"be863301cacda4921a9bc2bedaba51b4caf907bfe80e8c7c216a6be98a6d6d93","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/supabase/functions/_shared/source-anchored-summary.ts":"a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/tests/document-enrichment.test.ts":"56aa59c3906d9aada65a7cc93f0088738feaf24af8c567248f26a2ee811e8fad"}
+deno 2.9.4 (stable, release, x86_64-pc-windows-msvc)
+v8 15.0.245.2-rusty
+typescript 6.0.3
+Check supabase/functions/indexing-v3-agent/index.ts
+Check supabase/functions/site-content-sync/index.ts
+DENO_EXIT_CODE=0
+HASHES_AFTER={"C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/deno.lock":"b92c0d1c752f6d48da195ef062e473dfaca35f13e5cc692f8f95b92bed3881b9","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/package-lock.json":"f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063","C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native-composite-v2.deno.lock":"6e5122daa4915ca299551e5f67251e910f38168a3f3ff02c8b67e693388bb6c6","C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native.importmap.json":"be863301cacda4921a9bc2bedaba51b4caf907bfe80e8c7c216a6be98a6d6d93","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/supabase/functions/_shared/source-anchored-summary.ts":"a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/tests/document-enrichment.test.ts":"56aa59c3906d9aada65a7cc93f0088738feaf24af8c567248f26a2ee811e8fad"}
+COORDINATOR=exclusive lease released
+IDENTITIES_UNCHANGED=true
+EXIT_CODE=0

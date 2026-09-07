@@ -1,0 +1,18 @@
+{
+  "original_deno_lock_sha256": "b92c0d1c752f6d48da195ef062e473dfaca35f13e5cc692f8f95b92bed3881b9",
+  "original_npm_lock_sha256": "f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063",
+  "composite_lock_sha256": "975139820ebc3f6c3d6ceadf810f485b194cb8ac9321d5bf1c5c201b8e3c5779",
+  "importmap_sha256": "be863301cacda4921a9bc2bedaba51b4caf907bfe80e8c7c216a6be98a6d6d93",
+  "all_existing_deno_lock_fields_unchanged": true,
+  "only_addition": {
+    "specifier": "npm:entities@8.0.0",
+    "version": "8.0.0",
+    "integrity": "sha512-zwfzJecQ/Uej6tusMqwAqU/6KL2XaB2VZ2Jg54Je6ahNBGNH6Ek6g3jjNCF0fG9EWQKGZNddNjU5F1ZQn/sBnA==",
+    "source": "package-lock.json packages['node_modules/entities']",
+    "transitive_dependencies": []
+  },
+  "package_tarball_binding": "entities-locked-cache-evidence.json",
+  "network_requests": 0,
+  "repository_writes": 0,
+  "gate_executed": false
+}

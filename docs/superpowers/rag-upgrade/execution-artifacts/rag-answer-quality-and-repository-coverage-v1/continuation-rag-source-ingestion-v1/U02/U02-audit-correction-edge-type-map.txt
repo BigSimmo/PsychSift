@@ -1,0 +1,22 @@
+VENDOR_TYPE_URL entities=file:///C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/node_modules/entities/dist/index.d.ts
+VENDOR_TYPE_URL entities/decode=file:///C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/node_modules/entities/dist/decode.d.ts
+COMMAND=deno check --frozen --node-modules-dir=false --import-map=C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-locked-types.importmap.json supabase/functions/indexing-v3-agent/index.ts supabase/functions/site-content-sync/index.ts
+DENO_NO_PACKAGE_JSON=1 (process-local)
+COORDINATOR=exclusive lease acquired
+HASHES_BEFORE={"deno.lock":"b92c0d1c752f6d48da195ef062e473dfaca35f13e5cc692f8f95b92bed3881b9","package-lock.json":"f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063","node_modules/entities/package.json":"86e28ac6361377a9c0a82dc7ce849b16bfcc6b13d862c563bbf9b3fe9267773a","node_modules/entities/dist/index.d.ts":"4ac4d5bbfd8b888d1298c90249a84e29eb039980125d30748f7fe58fa8f97198","node_modules/entities/dist/decode.d.ts":"6e58fb5960ba31b5b3fc2e484ee27a170373098e3b53a59b938caac97fa1e83e","node_modules/entities/dist/decode-codepoint.d.ts":"064b9b22b6e5123762dad859f9cef4cc9a6c42ea53b0147ce82303f4f10a4b8d","node_modules/entities/dist/encode.d.ts":"2d6cb47725bff7664b0d6d411a5b7f1e5ea3d513ed8c36e91ad48d449b3fbf82","node_modules/entities/dist/escape.d.ts":"abaa29549e4f661f437edc3c0b17d6bf1b05132380c18399ec7ea2ebe9eb07d9","node_modules/entities/dist/generated/decode-data-html.d.ts":"b7d93c698f801b98c48953443ce741244a695f27ff2934d135c6689730022b19","node_modules/entities/dist/generated/decode-data-xml.d.ts":"29d8aa980b3ced0f40d5a1f9821cb17568f078edea29f9dcf6708e1efdf886b0","supabase/functions/_shared/source-anchored-summary.ts":"a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2","tests/document-enrichment.test.ts":"56aa59c3906d9aada65a7cc93f0088738feaf24af8c567248f26a2ee811e8fad","importMap":"05433bee1e235d013e2aad5cfe13c03fb00b6064f78abd853b275f322b014fd0"}
+deno 2.9.4 (stable, release, x86_64-pc-windows-msvc)
+v8 15.0.245.2-rusty
+typescript 6.0.3
+Check supabase/functions/indexing-v3-agent/index.ts
+Check supabase/functions/site-content-sync/index.ts
+TS2749 [ERROR]: 'DecodingMode' refers to a value, but is being used as a type here. Did you mean 'typeof DecodingMode'?
+    mode?: DecodingMode | undefined;
+           ~~~~~~~~~~~~
+    at file:///C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/node_modules/entities/dist/index.d.ts:57:12
+
+error: Type checking failed.
+DENO_EXIT_CODE=1
+HASHES_AFTER={"deno.lock":"b92c0d1c752f6d48da195ef062e473dfaca35f13e5cc692f8f95b92bed3881b9","package-lock.json":"f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063","node_modules/entities/package.json":"86e28ac6361377a9c0a82dc7ce849b16bfcc6b13d862c563bbf9b3fe9267773a","node_modules/entities/dist/index.d.ts":"4ac4d5bbfd8b888d1298c90249a84e29eb039980125d30748f7fe58fa8f97198","node_modules/entities/dist/decode.d.ts":"6e58fb5960ba31b5b3fc2e484ee27a170373098e3b53a59b938caac97fa1e83e","node_modules/entities/dist/decode-codepoint.d.ts":"064b9b22b6e5123762dad859f9cef4cc9a6c42ea53b0147ce82303f4f10a4b8d","node_modules/entities/dist/encode.d.ts":"2d6cb47725bff7664b0d6d411a5b7f1e5ea3d513ed8c36e91ad48d449b3fbf82","node_modules/entities/dist/escape.d.ts":"abaa29549e4f661f437edc3c0b17d6bf1b05132380c18399ec7ea2ebe9eb07d9","node_modules/entities/dist/generated/decode-data-html.d.ts":"b7d93c698f801b98c48953443ce741244a695f27ff2934d135c6689730022b19","node_modules/entities/dist/generated/decode-data-xml.d.ts":"29d8aa980b3ced0f40d5a1f9821cb17568f078edea29f9dcf6708e1efdf886b0","supabase/functions/_shared/source-anchored-summary.ts":"a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2","tests/document-enrichment.test.ts":"56aa59c3906d9aada65a7cc93f0088738feaf24af8c567248f26a2ee811e8fad","importMap":"05433bee1e235d013e2aad5cfe13c03fb00b6064f78abd853b275f322b014fd0"}
+COORDINATOR=exclusive lease released
+IDENTITIES_UNCHANGED=true
+EXIT_CODE=1

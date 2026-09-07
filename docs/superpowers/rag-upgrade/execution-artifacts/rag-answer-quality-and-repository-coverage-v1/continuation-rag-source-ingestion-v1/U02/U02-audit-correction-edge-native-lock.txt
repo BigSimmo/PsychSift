@@ -1,0 +1,65 @@
+COMMAND=deno check --frozen --node-modules-dir=false --lock=C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native-composite.deno.lock --import-map=C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native.importmap.json supabase/functions/indexing-v3-agent/index.ts supabase/functions/site-content-sync/index.ts
+DENO_NO_PACKAGE_JSON=1 (process-local)
+COORDINATOR=exclusive lease acquired
+HASHES_BEFORE={"C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/deno.lock":"b92c0d1c752f6d48da195ef062e473dfaca35f13e5cc692f8f95b92bed3881b9","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/package-lock.json":"f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063","C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native-composite.deno.lock":"975139820ebc3f6c3d6ceadf810f485b194cb8ac9321d5bf1c5c201b8e3c5779","C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native.importmap.json":"be863301cacda4921a9bc2bedaba51b4caf907bfe80e8c7c216a6be98a6d6d93","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/supabase/functions/_shared/source-anchored-summary.ts":"a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/tests/document-enrichment.test.ts":"56aa59c3906d9aada65a7cc93f0088738feaf24af8c567248f26a2ee811e8fad"}
+deno 2.9.4 (stable, release, x86_64-pc-windows-msvc)
+v8 15.0.245.2-rusty
+typescript 6.0.3
+error: The lockfile is out of date. Run `deno install --frozen=false`, or rerun with `--frozen=false` to update it.
+changes:
+  5 | +    "npm:entities@8.0.0": "8.0.0",
+    | ...
+  6 | -    "npm:postgres@3.4.7": "3.4.7",
+  7 | +    "npm:postgres@3.4.7": "3.4.7"
+  7 | -    "npm:entities@8.0.0": "8.0.0"
+    | ...
+ 70 | +    "entities@8.0.0": {
+ 71 | +      "integrity": "sha512-zwfzJecQ/Uej6tusMqwAqU/6KL2XaB2VZ2Jg54Je6ahNBGNH6Ek6g3jjNCF0fG9EWQKGZNddNjU5F1ZQn/sBnA=="
+ 72 | +    },
+    | ...
+222 | -    },
+223 | -    "entities@8.0.0": {
+224 | -      "integrity": "sha512-zwfzJecQ/Uej6tusMqwAqU/6KL2XaB2VZ2Jg54Je6ahNBGNH6Ek6g3jjNCF0fG9EWQKGZNddNjU5F1ZQn/sBnA=="
+225 | -    }
+226 | -  },
+227 | -  "workspace": {
+228 | -    "packageJson": {
+229 | -      "dependencies": [
+230 | -        "npm:@axe-core/playwright@^4.12.1",
+231 | -        "npm:@babel/parser@^8.0.4",
+232 | -        "npm:@next/bundle-analyzer@^16.2.12",
+233 | -        "npm:@next/env@16.2.12",
+234 | -        "npm:@sentry/nextjs@^10.69.0",
+235 | -        "npm:@sentry/node@^10.69.0",
+236 | -        "npm:@supabase/ssr@~0.12.3",
+237 | -        "npm:@supabase/supabase-js@^2.110.8",
+238 | -        "npm:@tailwindcss/postcss@^4.3.3",
+239 | -        "npm:@testing-library/dom@^10.4.1",
+240 | -        "npm:@testing-library/jest-dom@7",
+241 | -        "npm:@testing-library/react@^16.3.2",
+242 | -        "npm:@testing-library/user-event@^14.6.1",
+243 | -        "npm:@types/node@^26.1.1",
+244 | -        "npm:@types/pdfkit@~0.17.6",
+245 | -        "npm:@types/react-dom@^19.2.3",
+246 | -        "npm:@types/react@^19.2.17",
+247 | -        "npm:@typescript/typescript6@^6.0.2",
+248 | -        "npm:@vitest/coverage-v8@^4.1.10",
+249 | -        "npm:entities@8",
+250 | -        "npm:esbuild@0.28.1",
+251 | -        "npm:eslint-config-next@16.2.12",
+252 | -        "npm:eslint@^9.39.5",
+253 | -        "npm:exceljs@^4.4.0",
+254 | -        "npm:fast-check@^4.8.0",
+255 | -        "npm:jsdom@^29.1.1",
+256 | -        "npm:jszip@^3.10.1",
+257 | -        "npm:knip@^6.29.0",
+258 | -        "npm:lucide-react@^1.27.0",
+259 | -        "npm:mammoth@^1.12.0",
+260 | -        "npm:next@^16.2.12",
+261 | -        "npm:openai@^6.49.0",
+... 30 more lines omitted ...
+DENO_EXIT_CODE=1
+HASHES_AFTER={"C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/deno.lock":"b92c0d1c752f6d48da195ef062e473dfaca35f13e5cc692f8f95b92bed3881b9","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/package-lock.json":"f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063","C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native-composite.deno.lock":"975139820ebc3f6c3d6ceadf810f485b194cb8ac9321d5bf1c5c201b8e3c5779","C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native.importmap.json":"be863301cacda4921a9bc2bedaba51b4caf907bfe80e8c7c216a6be98a6d6d93","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/supabase/functions/_shared/source-anchored-summary.ts":"a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2","C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/tests/document-enrichment.test.ts":"56aa59c3906d9aada65a7cc93f0088738feaf24af8c567248f26a2ee811e8fad"}
+COORDINATOR=exclusive lease released
+IDENTITIES_UNCHANGED=true
+EXIT_CODE=1

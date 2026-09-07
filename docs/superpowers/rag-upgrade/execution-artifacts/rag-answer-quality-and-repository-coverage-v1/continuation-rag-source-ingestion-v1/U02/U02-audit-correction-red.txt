@@ -1,0 +1,48 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+stderr | tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips multi-item source-anchored summaries from the real producer
+document enrichment generation failed {
+  document: 'synthetic-inventory.txt',
+  name: 'Error',
+  message: 'source_anchored_summary_profile_overview_invalid',
+  stack: 'at fail (C:[path])'
+}
+
+ ❯ |node| tests/document-enrichment.test.ts (29 tests | 1 failed | 28 skipped) 31ms
+     × round-trips multi-item source-anchored summaries from the real producer 29ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips multi-item source-anchored summaries from the real producer
+Error: source_anchored_summary_generation_failed
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:767:11
+    765|       ...safeErrorLogDetails(error),
+    766|     });
+    767|     throw new Error("source_anchored_summary_generation_failed", { cau…
+       |           ^
+    768|   }
+    769| }
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:908:15
+ ❯ produceSummary tests/document-enrichment.test.ts:693:5
+ ❯ tests/document-enrichment.test.ts:726:21
+
+Caused by: Error: source_anchored_summary_profile_overview_invalid
+ ❯ fail supabase/functions/_shared/source-anchored-summary.ts:150:9
+ ❯ boundedCanonicalText supabase/functions/_shared/source-anchored-summary.ts:185:42
+ ❯ validateProfile supabase/functions/_shared/source-anchored-summary.ts:349:15
+ ❯ normalizeSourceAnchoredSummary supabase/functions/_shared/source-anchored-summary.ts:565:19
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:736:12
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:908:15
+ ❯ produceSummary tests/document-enrichment.test.ts:693:5
+ ❯ tests/document-enrichment.test.ts:726:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 28 skipped (29)
+   Start at  19:22:01
+   Duration  1.30s (transform 572ms, setup 0ms, import 942ms, tests 31ms, environment 0ms)
+
+EXIT_CODE=1

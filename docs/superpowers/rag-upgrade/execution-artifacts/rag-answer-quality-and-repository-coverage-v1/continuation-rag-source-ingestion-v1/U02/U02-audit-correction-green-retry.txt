@@ -1,0 +1,10 @@
+file:///C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/scripts/test-run-lock.mjs:505
+      throw new Error(message);
+            ^
+
+Error: Database focused-test capacity is full (current owner PID 25900, worktree C:\Users\joshs\.codex\worktrees\canary-fallback-repair-20260907\Database, started 2026-09-07T11:23:17.125Z): approved fixed baseline: 36 retrieval and 44 answer cases
+    at acquireHeavyRunLock (file:///C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/scripts/test-run-lock.mjs:505:13)
+    at file:///C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database/scripts/run-vitest.mjs:56:14
+
+Node.js v24.19.0
+EXIT_CODE=1

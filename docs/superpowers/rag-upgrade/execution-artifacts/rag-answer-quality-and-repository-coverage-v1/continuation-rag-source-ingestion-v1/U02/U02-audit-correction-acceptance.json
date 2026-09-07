@@ -1,0 +1,383 @@
+{
+  "record_kind": "manual-continuation-local-product-acceptance",
+  "programme": "rag-answer-quality-and-repository-coverage-v1",
+  "continuation": "rag-source-ingestion-continuation-v1",
+  "unit": "U02/ING-F02-audit-correction",
+  "status": "ACCEPTED_LOCAL_PRODUCT",
+  "worktree": "C:\\Users\\joshs\\.codex\\worktrees\\rag-local-build-20260822\\Database",
+  "branch": "codex/rag-local-build-20260822",
+  "task_base": "ae500cafc661d9a06536d09d73d827726f057ffa",
+  "task_head": "876cb09405d81d9c4a8a4931b3d735fd252934ba",
+  "commits": ["876cb09405d81d9c4a8a4931b3d735fd252934ba"],
+  "product_files": ["supabase/functions/_shared/source-anchored-summary.ts", "tests/document-enrichment.test.ts"],
+  "historical_accepted_u02_product": "6adb834e48b3c1af4579ef22738d942803ab6893",
+  "assessed_head": "2dad59e0ee26ab6586f6a49ec1dfdb993d1f9ad7",
+  "planning_product": "4cf61dfe065b7c41eb53bc9f890d1fd16dfbad70",
+  "planning_acceptance_checkpoint": "ae500cafc661d9a06536d09d73d827726f057ffa",
+  "review_package": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-review-1.diff",
+  "review_package_sha256": "d56e5a23c0c9b4c6c1a16f8f34eb817cff18edef931413353156119c58b2a628",
+  "writer": {
+    "session": "01a07b98-2191-7b60-87a3-237ccc09336f",
+    "agent_path": "/root/u02_audit_correction_impl",
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "provider": "openai",
+    "evidence": "U02-audit-correction-session-evidence.json",
+    "limit": "Observed local resolved configuration, not backend execution attestation."
+  },
+  "reviewers": [
+    {
+      "agent": "/root/u02_ingestion_review",
+      "role": "ingestion-worker-reviewer",
+      "session": "01a07bbd-89a4-7302-bbbb-576438c7c616",
+      "requested_model": "gpt-6-astra",
+      "requested_effort": "high",
+      "observed_local_model": "gpt-6-astra",
+      "observed_local_effort": "high",
+      "specification": "PASS",
+      "quality": "PASS",
+      "report": "U02-audit-correction-ingestion-review-1.md"
+    },
+    {
+      "agent": "/root/u02_clinical_review",
+      "role": "clinical-governance-reviewer",
+      "session": "01a07bbd-efc5-7a70-866a-95e038c8f32b",
+      "requested_model": "gpt-6-astra",
+      "requested_effort": "high",
+      "observed_local_model": "gpt-6-astra",
+      "observed_local_effort": "high",
+      "specification": "PASS",
+      "quality": "PASS",
+      "report": "U02-audit-correction-clinical-review-1.md"
+    }
+  ],
+  "routing_limit": "Selected exact local session metadata establishes resolved configuration, not backend execution attestation.",
+  "finding_dispositions": {
+    "ING-F02": "corrected and locally accepted",
+    "ING-F14": "actual-producer proof added for this packet only; finding not wholly closed",
+    "other_findings": "Adopted owners and unresolved evidence unchanged; no programme-wide defect closure."
+  },
+  "checks": {
+    "red": {
+      "command": "node scripts/run-vitest.mjs run tests/document-enrichment.test.ts -t \"round-trips multi-item source-anchored summaries from the real producer\"",
+      "exit_code": 1,
+      "failed": 1,
+      "skipped": 28,
+      "expected_cause": "source_anchored_summary_profile_overview_invalid",
+      "actual_cause": "source_anchored_summary_profile_overview_invalid",
+      "artifact": "U02-audit-correction-red.txt"
+    },
+    "intervening_green_attempts": {
+      "count": 2,
+      "exit_code": 1,
+      "classification": "coordinator capacity unavailable before Vitest; not product failures or passes"
+    },
+    "green": {
+      "same_command_as_red": true,
+      "exit_code": 0,
+      "passed": 1,
+      "skipped": 32,
+      "artifact": "U02-audit-correction-green-after-lease.txt"
+    },
+    "affected_selector": {
+      "command": "node scripts/run-vitest.mjs run tests/indexing-v3-agent.test.ts tests/document-enrichment.test.ts tests/worker-shadow-extraction.test.ts tests/check-indexing-contract.test.ts",
+      "exit_code": 0,
+      "files_passed": 4,
+      "tests_passed": 103,
+      "tests_failed": 0,
+      "artifact": "U02-audit-correction-final-tests.txt"
+    },
+    "execution_controls": "Process-local GATE_RECEIPTS=off and GATE_ARBITER=off; arbiter RUN/off; coordinator/offline environment retained; previous settings restored; no repeated successful test execution for review.",
+    "edge_equivalent": {
+      "label": "native Edge type-check equivalent using a reviewed composite of existing locked dependencies",
+      "exit_code": 0,
+      "deno": "2.9.4",
+      "typescript": "6.0.3",
+      "command": "deno check --frozen --node-modules-dir=false --lock=C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native-composite-v2.deno.lock --import-map=C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U02-edge-native.importmap.json supabase/functions/indexing-v3-agent/index.ts supabase/functions/site-content-sync/index.ts",
+      "artifact": "U02-audit-correction-edge-native-lock-v2.txt",
+      "environment": "DENO_NO_PACKAGE_JSON=1 process-local/restored; existing exclusive coordinator and lock.environment.",
+      "effective_lock_sha256": "6e5122daa4915ca299551e5f67251e910f38168a3f3ff02c8b67e693388bb6c6",
+      "native_map_sha256": "be863301cacda4921a9bc2bedaba51b4caf907bfe80e8c7c216a6be98a6d6d93",
+      "repository_deno_lock_sha256": "b92c0d1c752f6d48da195ef062e473dfaca35f13e5cc692f8f95b92bed3881b9",
+      "repository_npm_lock_sha256": "f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063",
+      "prior_failures": [
+        "original frozen app-package discovery",
+        "direct declaration-map TS2749",
+        "first composite frozen metadata/key order"
+      ],
+      "literal_npm_wrapper": "unrun and not repaired; no passing wrapper claim",
+      "network_evidence": "No download event observed; network-free execution is not claimed.",
+      "runtime_provider_deployment_acceptance": false
+    },
+    "scope": "Product bytes unchanged after checks; exact two-file candidate; manual import/module-index/adoption/visual scope inspection passed; no generated contract affected."
+  },
+  "historical_u02_evaluation": {
+    "exit_code": 1,
+    "failed_suites": 4,
+    "failed_tests_overall": 45,
+    "passed_tests_overall": 586,
+    "green": false,
+    "inherited_by_this_correction_or_future_units": false,
+    "baseline_omission": "Bounded gate selection only, not renewal or acceptance of the historical exception."
+  },
+  "phase_state": {
+    "C00": "complete",
+    "C01": "incomplete",
+    "U03": "unstarted",
+    "P00_P07": "retained historical foundations",
+    "P08A": "superseded",
+    "retrieval_kernel": "default-off"
+  },
+  "next_dependency": "Freeze shared contracts and review the U03 owner/verification brief under existing serial local continuation authority before U03 product dispatch.",
+  "residual_gates": [
+    "Semantic entailment and clinical adjudication",
+    "Native extraction fidelity",
+    "Actual SQL/persistence concurrency",
+    "Hosted/provider/model and deployment parity",
+    "Detailed ordinary Answer usefulness and approved supplementary-source behaviour",
+    "Literal npm Edge wrapper automatic package discovery remains unrepaired"
+  ],
+  "not_run": [
+    "Broad Answer/search baseline",
+    "check:production-readiness (approval-gated)",
+    "Providers/real documents/native extraction",
+    "SQL/migrations/workers/operations",
+    "Hosted/deployment/activation/publication"
+  ],
+  "ledger_record": "docs/branch-review-records/5cb51ad1e113b2f968b01e8d992331600037eb82a2b9ce85b5537a17498c441d.record.md",
+  "artifacts": [
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-implementer-report.md",
+      "sha256": "cd0f147c34fc1cbc2adf249a52293d3f46959e090dce1ae70b9e7a0bb8a72441",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-implementer-report.md",
+      "outside_sha256": "186b9db9bc423d6f9cbc2d2235b9d95946223aa8891f14aa262d763bc8cfbcd6",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-session-evidence.json",
+      "sha256": "614e9adc7351a5f0ae02a73859a43fa484d9330668944e19a40403b4d038c5cf",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-session-evidence.json",
+      "outside_sha256": "7cfdaca042bf7d8887f96d7c6010bb17922dc0654d8476e2842b2e03f3048319",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-dispatch.json",
+      "sha256": "219796bdac68c9739cac0797c37b34e2780a565cac12e533f94de63224b166e8",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-dispatch.json",
+      "outside_sha256": "219796bdac68c9739cac0797c37b34e2780a565cac12e533f94de63224b166e8",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-dispatch-at-launch.json",
+      "sha256": "3df85c0fe5379999c12326de6171e5e482f769e826e035f3b12b5a0a5a80f7df",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-dispatch-at-launch.json",
+      "outside_sha256": "1144c3b97c81770436607d97a83d2bb4ed46429dfa96c188ac91fea10de70944",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-original-task-context.md",
+      "sha256": "47f3d143e6ba4dd19cdfe3e5aba62c90730f30dc4d177a301a45d9745f8eb33f",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-original-task-context.md",
+      "outside_sha256": "47f3d143e6ba4dd19cdfe3e5aba62c90730f30dc4d177a301a45d9745f8eb33f",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-red.txt",
+      "sha256": "c92790a1490f7172b84293bfccad0a49c473615b442da796782a94a8d61298c0",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-red.txt",
+      "outside_sha256": "c2bfce0967c429c4adeba6656574467a2e4e87492ea49f67f7138aadbe86575d",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-green.txt",
+      "sha256": "a79821039cc59e628363bc7f6f062778fcb5048e324fd697b22e29c8183c3ffb",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-green.txt",
+      "outside_sha256": "e2adb2053de876b2aea542191ccf5536988b22c5db559ea53b55f38e06e12f7a",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-green-retry.txt",
+      "sha256": "a79821039cc59e628363bc7f6f062778fcb5048e324fd697b22e29c8183c3ffb",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-green-retry.txt",
+      "outside_sha256": "e2adb2053de876b2aea542191ccf5536988b22c5db559ea53b55f38e06e12f7a",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-green-after-lease.txt",
+      "sha256": "23be9782ba1595616a6c852cf1ea36f1e4eaf70649f3a32e7608446774ddf02d",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-green-after-lease.txt",
+      "outside_sha256": "4736649d491127b3d904397f716416473e957cbaa3db7a0c2840d8a2b6d96c6c",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-final-tests.txt",
+      "sha256": "b18173f8ab4f35c6481aac0ac87fc651290e08a3356ee8c7c08bcb3535de1d6e",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-final-tests.txt",
+      "outside_sha256": "f3b6c14a15c88d8c07e0e6087f753d020106e1e04a96b73e1e31a95bf3a415e6",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-edge.txt",
+      "sha256": "7531c9eb765c13722b18e50f9859616b781e82c8ad16656c176ccf3abdbb5929",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-edge.txt",
+      "outside_sha256": "916ca252db11fd58ec6fb91151274379e6bc13dbf62612e720905f311fd29e3a",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-edge-type-map.txt",
+      "sha256": "1b92e81b1c5c145d58d86376e3d6bb69139a70a361e10a81dda2627e0f0230b6",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-edge-type-map.txt",
+      "outside_sha256": "6b7a43eeff9a6c341e5b4b15236f5c2b05430edd72de4ea89150f0769e6627cb",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-edge-native-lock.txt",
+      "sha256": "42817fffeaf2f273254e4b428cd14d07d5589c515d92e302f081161e3139666b",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-edge-native-lock.txt",
+      "outside_sha256": "46adaf04afb817398c7d3443edb817182e092dc609adb31543344d3b1b96b976",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-edge-native-lock-v2.txt",
+      "sha256": "d66cfba8252e146e14e5075a4fde87307ca4b43fc1ece070f841d3f7544190aa",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-edge-native-lock-v2.txt",
+      "outside_sha256": "8b72f003075e250fc0a52fab601cae20352a477f3c57a9ec0e36c67ee6bd5e08",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-edge-native-lock-v2-check.mjs",
+      "sha256": "4db47d69bc7413bc0eaabe297aba78634207b307294c94d919199ad9b70d87c9",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-edge-native-lock-v2-check.mjs",
+      "outside_sha256": "fcfe1cb88f98eec1555274107ba42c82bf92ce2cdbf22a27939d95553e57f366",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-scope-inspection.txt",
+      "sha256": "4c9f3cdd70799f543f77331367666f291dc17e24bd58470d0c3545b03560d2a6",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-scope-inspection.txt",
+      "outside_sha256": "ffd63160198a47323912fa8bef5924f254cc729ecb82bda478af2a10b2c2bbfc",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-commit.txt",
+      "sha256": "2e52d1fd75d649688f32e2ec79ec1b5744daf347519e6b25306b121f8751266b",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-commit.txt",
+      "outside_sha256": "2e1adf5ac16c749ad28e8f216ea2514a0afee91bb1a98998df635dfdca91393a",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-edge-native.importmap.json",
+      "sha256": "be863301cacda4921a9bc2bedaba51b4caf907bfe80e8c7c216a6be98a6d6d93",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-edge-native.importmap.json",
+      "outside_sha256": "be863301cacda4921a9bc2bedaba51b4caf907bfe80e8c7c216a6be98a6d6d93",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-edge-native-composite-v2.deno.lock",
+      "sha256": "6e5122daa4915ca299551e5f67251e910f38168a3f3ff02c8b67e693388bb6c6",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-edge-native-composite-v2.deno.lock",
+      "outside_sha256": "6e5122daa4915ca299551e5f67251e910f38168a3f3ff02c8b67e693388bb6c6",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-edge-composite-lock-evidence.json",
+      "sha256": "f71f55845b651f6193351f03064bbedd58a4a6e96ebb58ada0627a7cc414a5b1",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-edge-composite-lock-evidence.json",
+      "outside_sha256": "f71f55845b651f6193351f03064bbedd58a4a6e96ebb58ada0627a7cc414a5b1",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-edge-composite-v2-evidence.json",
+      "sha256": "0449e1591812c1b24d0b41257108b708ccbac35396855c62a9660092fb002f37",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-edge-composite-v2-evidence.json",
+      "outside_sha256": "0449e1591812c1b24d0b41257108b708ccbac35396855c62a9660092fb002f37",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-entities-locked-cache-evidence.json",
+      "sha256": "63e09beb0cf533613a9744bdd98f118a9c4368f7dc86919d3d1d33f957677b57",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\entities-locked-cache-evidence.json",
+      "outside_sha256": "68b5fd0c0c7dc9dfb8894bc01d4697bb37cc272791b8d549bf5357e2abc7e0ad",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-edge-package-discovery-disposition.md",
+      "sha256": "24a30be259b2359f001e328bef1d4fb01941965a4a5b2565f6ee05d2c4c93290",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\edge-package-discovery-disposition.md",
+      "outside_sha256": "24a30be259b2359f001e328bef1d4fb01941965a4a5b2565f6ee05d2c4c93290",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-edge-locked-type-map-disposition.md",
+      "sha256": "d803c93127a1b05b08d4033dc80e4277e1d49b40e21a59c27f092ef355aba21b",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\edge-locked-type-map-disposition.md",
+      "outside_sha256": "d803c93127a1b05b08d4033dc80e4277e1d49b40e21a59c27f092ef355aba21b",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-edge-composite-lock-disposition.md",
+      "sha256": "4357b5356fdda2036afdb4e4e34e2e8a3ba5e38cfbd285209e7724f6e91f8f4d",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\edge-composite-lock-disposition.md",
+      "outside_sha256": "4357b5356fdda2036afdb4e4e34e2e8a3ba5e38cfbd285209e7724f6e91f8f4d",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-edge-composite-v2-disposition.md",
+      "sha256": "908c83a62c6b925c69c11e645d445ab785a843ccfcd2e9db59f530f04a73278b",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\edge-composite-v2-disposition.md",
+      "outside_sha256": "908c83a62c6b925c69c11e645d445ab785a843ccfcd2e9db59f530f04a73278b",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-edge-type-map-addendum.md",
+      "sha256": "fdd5feaeb8e0ec44188e16ddcaf2632ca943435d4a8b5b652f6c53e60b91ef2b",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-edge-type-map-addendum.md",
+      "outside_sha256": "fdd5feaeb8e0ec44188e16ddcaf2632ca943435d4a8b5b652f6c53e60b91ef2b",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-edge-native-lock-addendum.md",
+      "sha256": "a3bd46f503901c2f44319a9adf0f34c03418759af308db3c4d9f2fce9ba19658",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-edge-native-lock-addendum.md",
+      "outside_sha256": "a3bd46f503901c2f44319a9adf0f34c03418759af308db3c4d9f2fce9ba19658",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-edge-native-v2-addendum.md",
+      "sha256": "ecb758efeb37f9f3423459b420251311e4202b247b57ba3d6ec0e7ec3b26ad98",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-edge-native-v2-addendum.md",
+      "outside_sha256": "ecb758efeb37f9f3423459b420251311e4202b247b57ba3d6ec0e7ec3b26ad98",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-ingestion-review-1.md",
+      "sha256": "8c3853e68061448c5df70b98ef51e516c3dac3f1067911988d84b59d287802ea",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-ingestion-review-1.md",
+      "outside_sha256": "d3f11ad7f43c39cf0eb212a0472381c0fb2736e8fe1d5d72c5a491aad63a7be2",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-clinical-review-1.md",
+      "sha256": "13f5f5ef95dd38cdcc04ec06780027a167a381c00623cff245a317e24c22a9ce",
+      "outside_source": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-audit-correction-clinical-review-1.md",
+      "outside_sha256": "13f5f5ef95dd38cdcc04ec06780027a167a381c00623cff245a317e24c22a9ce",
+      "copy_transform": "CRLF to LF only"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-dispatch-brief.md",
+      "sha256": "ed71ad8f87a072fa76d82a565fdf1472f18d17a1a9bcd9feedd18b31bf6ca017",
+      "working_sha256": "ed71ad8f87a072fa76d82a565fdf1472f18d17a1a9bcd9feedd18b31bf6ca017"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-review-1.diff",
+      "sha256": "d56e5a23c0c9b4c6c1a16f8f34eb817cff18edef931413353156119c58b2a628",
+      "working_sha256": "d56e5a23c0c9b4c6c1a16f8f34eb817cff18edef931413353156119c58b2a628"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-acceptance.md",
+      "sha256": "d3c337be531629c7af66dd18f3a20e730c2217c0c33df562dbf6da3c226faef2"
+    }
+  ],
+  "copy_policy": "Outside originals retained. Canonical evidence copies normalize CRLF to LF only, with raw outside hashes distinct from committed-copy hashes. Raw logs/reports/immutable patches are not reformatted. Effective run identities bind raw outside bytes.",
+  "checkpoint_contract": "Explicit staged paths only; verify all staged artifact SHA256 values and unchanged product/history before commit. Exclude only immutable raw evidence from authored-document formatting; preserve canonical diff context spaces. Scoped SKIP_DOCS_SYNC_HOOK=1 avoids protected-untracked enumeration and is restored; no publication authority."
+}
