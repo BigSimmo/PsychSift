@@ -667,6 +667,156 @@ describe("source-anchored summary v1", () => {
     return import("../supabase/functions/_shared/source-anchored-summary");
   }
 
+  async function produceSummary(texts: string[]) {
+    const supabase = createSupabaseMock();
+    const items = texts.map((text) => ({
+      text,
+      source_chunk_ids: [CHUNK_ID],
+      source_image_ids: [],
+      pages: [1],
+      evidence_type: "text",
+      support: "direct",
+    }));
+    // No summary_version: exercise the real provider-response adapter, not its
+    // already-normalized payload shortcut. Ordinary categories allow six items.
+    mocks.generateStructuredTextResponse.mockResolvedValueOnce(
+      JSON.stringify({
+        clinical_specifics: {
+          profile: {
+            ...structuredCandidate().clinical_specifics.profile,
+            overview: "Provider overview is replaced by the anchored projection.",
+            applies_to: items.slice(0, 6),
+            key_clinical_actions: items.slice(6),
+          },
+        },
+        labels: [],
+      }),
+    );
+    await upsertDocumentEnrichment({
+      supabase: supabase as never,
+      document: {
+        id: DOCUMENT_ID,
+        owner_id: null,
+        title: "Synthetic archive inventory",
+        file_name: "synthetic-inventory.txt",
+        source_path: null,
+        metadata: { index_generation_id: GENERATION_ID },
+      },
+      indexGenerationId: GENERATION_ID,
+      chunks: [
+        {
+          id: CHUNK_ID,
+          index_generation_id: GENERATION_ID,
+          page_number: 1,
+          chunk_index: 0,
+          section_heading: null,
+          content: texts.join(" "),
+        },
+      ],
+      images: [],
+    });
+    const written = supabase.calls.find((call) => call.table === "document_summaries" && call.operation === "upsert");
+    const metadata = (written?.payload as { metadata: Record<string, unknown> }).metadata;
+    const { normalizeSourceAnchoredSummary, SOURCE_ANCHORED_SUMMARY_METADATA_KEY } = await contract();
+    return normalizeSourceAnchoredSummary(metadata[SOURCE_ANCHORED_SUMMARY_METADATA_KEY], {
+      ...sourceAuthority(),
+      selectedChunks: [{ id: CHUNK_ID, page_number: 1, index_generation_id: GENERATION_ID }],
+      selectedImages: [],
+    });
+  }
+
+  it("round-trips multi-item source-anchored summaries from the real producer", async () => {
+    const texts = ["The archive contains a blue folder.", "The archive contains a green folder."];
+    const payload = await produceSummary(texts);
+    expect(payload.summary).toBe(texts.map((text) => `- ${text}`).join(" "));
+    expect(payload.clinical_specifics.profile.overview).toBe(payload.summary);
+    expect(payload.clinical_specifics.profile.applies_to.map((item) => item.text)).toEqual(texts);
+  });
+
+  it.each([1, 8])("round-trips %i supported items without truncating canonical Unicode text", async (count) => {
+    const texts = Array.from({ length: count }, (_, index) => `${index + 1}: ${"界".repeat(597)}`);
+    const payload = await produceSummary(texts);
+    expect(payload.summary).toBe(texts.map((text) => `- ${text}`).join(" "));
+    expect(payload.summary.length).toBe(count * 603 - 1);
+    expect(payload.clinical_specifics.profile.overview).toBe(payload.summary);
+    expect(
+      [
+        ...payload.clinical_specifics.profile.applies_to,
+        ...payload.clinical_specifics.profile.key_clinical_actions,
+      ].map((item) => item.text),
+    ).toEqual(texts);
+    expect(payload.clinical_specifics.actions).toEqual(texts.slice(6));
+  });
+
+  it("rejects altered multi-item aggregates and nested contract violations after the producer round trip", async () => {
+    const { normalizeSourceAnchoredSummary } = await contract();
+    const payload = await produceSummary([
+      "The archive contains a blue folder.",
+      "The archive contains a green folder.",
+    ]);
+    const authority = {
+      ...sourceAuthority(),
+      selectedChunks: [{ id: CHUNK_ID, page_number: 1, index_generation_id: GENERATION_ID }],
+      selectedImages: [],
+    };
+    const profile = payload.clinical_specifics.profile;
+    const first = profile.applies_to[0];
+    const withProfile = (patch: Record<string, unknown>) => ({
+      ...payload,
+      clinical_specifics: { ...payload.clinical_specifics, profile: { ...profile, ...patch } },
+    });
+    const invalid: Array<[unknown, string]> = [
+      [{ ...payload, summary: "- A different archive." }, "projection_invalid"],
+      [withProfile({ overview: "- A different archive." }), "projection_invalid"],
+      [{ ...payload, summary: payload.summary.replace(" - ", "\n- ") }, "text_invalid"],
+      [withProfile({ overview: payload.summary.replace(" - ", "\n- ") }), "profile_overview_invalid"],
+      [{ ...payload, summary: "x".repeat(5001) }, "text_invalid"],
+      [withProfile({ overview: "x".repeat(5001) }), "profile_overview_invalid"],
+      [
+        withProfile({ applies_to: [{ ...first, text: "Archive  inventory." }, profile.applies_to[1]] }),
+        "profile_text_invalid",
+      ],
+      [
+        withProfile({ applies_to: [{ ...first, text: "Ａrchive inventory." }, profile.applies_to[1]] }),
+        "profile_text_invalid",
+      ],
+      [
+        withProfile({ applies_to: [{ ...first, source_chunk_ids: [LATE_CHUNK_ID] }, profile.applies_to[1]] }),
+        "claim_chunk_invalid",
+      ],
+      [
+        withProfile({ applies_to: [{ ...first, source_image_ids: [IMAGE_ID] }, profile.applies_to[1]] }),
+        "claim_image_invalid",
+      ],
+      [withProfile({ applies_to: [{ ...first, pages: [2] }, profile.applies_to[1]] }), "claim_pages_invalid"],
+      [
+        withProfile({ applies_to: [{ ...first, index_generation_id: GENERATION_ID }, profile.applies_to[1]] }),
+        "profile_item_invalid",
+      ],
+      [withProfile({ applies_to: { text: first.text } }), "profile_array_invalid"],
+      [withProfile({ applies_to: Array.from({ length: 7 }, () => first) }), "profile_array_invalid"],
+      [withProfile({ applies_to: [null, profile.applies_to[1]] }), "profile_item_invalid"],
+      [{ ...payload, summary: [payload.summary] }, "text_invalid"],
+      [{ ...payload, index_generation_id: LATE_CHUNK_ID }, "generation_mismatch"],
+    ];
+    for (const [candidate, code] of invalid) {
+      expect(() => normalizeSourceAnchoredSummary(candidate, authority)).toThrow(`source_anchored_summary_${code}`);
+    }
+    expect(() =>
+      normalizeSourceAnchoredSummary(payload, {
+        ...authority,
+        selectedChunks: [{ ...authority.selectedChunks[0], index_generation_id: LATE_CHUNK_ID }],
+      }),
+    ).toThrow("source_anchored_summary_source_generation_mismatch");
+  });
+
+  it("rejects oversized canonical items through the real producer instead of truncating evidence", async () => {
+    await expect(produceSummary(["界".repeat(601)])).rejects.toMatchObject({
+      message: "source_anchored_summary_generation_failed",
+      cause: expect.objectContaining({ message: "source_anchored_summary_profile_text_invalid" }),
+    });
+  });
+
   it("normalizes a complete exact-generation payload without repairing it and freezes the result", async () => {
     const { normalizeSourceAnchoredSummary } = await contract();
     const candidate = structuredCandidate();

@@ -364,10 +364,11 @@ function projectedClaimItems(profile: SourceAnchoredClinicalProfile) {
 }
 
 export function projectSourceAnchoredSummary(profile: SourceAnchoredClinicalProfile): string {
+  // Both aggregate fields use canonical whitespace, just like the validated items.
   return projectedClaimItems(profile)
     .slice(0, 8)
     .map((item) => `- ${item.text}`)
-    .join("\n");
+    .join(" ");
 }
 
 function labelMatch(text: string, phrase: string) {
