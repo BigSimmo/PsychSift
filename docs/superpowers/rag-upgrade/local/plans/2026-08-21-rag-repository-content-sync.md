@@ -102,6 +102,12 @@ This plan is complete only when:
 
 ---
 
+## Ingestion audit amendment — planning authority
+
+Updated at the user's request on 7 September 2026. This changes the plan, not historical acceptance or execution authority.
+
+F12 proposes only the P03/P06 seed/legacy producer full-content/lineage correction: previews may be clipped for display, evidence bodies may not silently use the clipped preview. Carry actual upstream source-family lineage through authoritative adapters, including >8000-character tail evidence. Exercise seed and dynamic publication paths without generalising clipping to all publications. Original and derivative are one corroboration family; independent sources stay separate. Preserve deliberate eligibility exclusions and P06 release/epoch/outbox, candidate-content binding and invalidation authority; do not reactivate the historical inventory wholesale.
+
 ### Task 1: Define first-party scope, domain, authority, and snapshot contracts
 
 **Files:**

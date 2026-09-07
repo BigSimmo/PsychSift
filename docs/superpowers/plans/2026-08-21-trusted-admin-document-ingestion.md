@@ -108,6 +108,12 @@ This plan executes only as programme phases P16A–P16D. P16A consumes the accep
 
 ---
 
+## Ingestion audit amendment — planning authority
+
+Updated at the user's request on 7 September 2026. This changes the plan, not historical acceptance or execution authority.
+
+Prospective continuation U07-U13 acceptance covers F01/F03-F11/F13-F16 through the actual supported producers, not only fabricated valid payloads. Use the continuation design's native DOCX/XLSX/TXT evidence, PDF/OCR conflicts, exact coordinate/support and limitation requirements. Keep Trusted Task 0 before formal tranche execution, human/service assurance, full durable queue UI, U05/U10's single activation authority and default-off retrieval. Early synthetic fixture preparation is not formal out-of-order task acceptance. Do not implement ordinary Answer or treat C07 as that missing implementation.
+
 ### Task 0: Verify the accepted sole-processor and recovery baseline
 
 **Files:**

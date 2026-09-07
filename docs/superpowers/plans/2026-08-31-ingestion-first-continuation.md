@@ -4,13 +4,17 @@
 
 **Goal:** Complete the source-only clinical ingestion system from trusted admission through technically validated, default-off retrieval while preserving all accepted P00-P07 evidence and deferring unrelated answer, presentation, rollout, provider, and connected-production work.
 
-**Architecture:** Anchor a new `rag-source-ingestion-continuation-v1` evidence overlay at accepted P07 commit `03aa32d731d1cb9009be55213580e9ea3994017c`. Land the sole-processor, generation, lease, shadow-reindex, admission, safety, extraction, activation, queue, retrieval, withdrawal, and reprocessing contracts in that order. Keep the ordinary buffered Answer path byte-equivalent and unable to call the new source-ingestion retrieval kernel.
+**Architecture (historical initial sequence; the audit amendment below governs remaining scheduling):** Anchor a new `rag-source-ingestion-continuation-v1` evidence overlay at accepted P07 commit `03aa32d731d1cb9009be55213580e9ea3994017c`. Land the sole-processor, generation, lease, shadow-reindex, admission, safety, extraction, activation, queue, retrieval, withdrawal, and reprocessing contracts in that order. Keep the ordinary buffered Answer path byte-equivalent and unable to call the new source-ingestion retrieval kernel.
 
 **Tech stack:** Next.js 16.3 App Router, TypeScript 6 strict, Zod 4, Supabase/PostgreSQL/Storage/RLS, Node and Deno workers, Python/PyMuPDF/Tesseract, Vitest, Playwright, and the repository's migration, drift, RAG-fixture, gate-arbiter, task-brief, and immutable review-package tooling.
 
 **Spec:** [`docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md`](../specs/2026-08-31-ingestion-first-continuation-design.md)
 
-**Reasoning:** Concrete plan and final whole-range review use `xhigh`; implementation uses `high`. The plan should take 2-4 active hours. Source-only implementation, review, correction, and offline closure target 38-52 active hours, with a 58-hour contingency ceiling.
+**Reasoning:** Concrete plan and final whole-range review use `xhigh`; implementation uses `high`. The original 2-4-hour planning estimate and 38-52-hour implementation/closure target, with a 58-hour contingency ceiling, are retained historical estimates. They are not the remaining-work forecast after the audit; re-estimate after contract and fixture sizing.
+
+## Current execution authority
+
+The user has authorised adoption, independent xhigh planning review, routing/checkpoint preflight, the narrow U02 correction with local commits, and serial plan continuation after unit acceptance. [Execution authority](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/2026-09-07-execution-authority.md) supersedes older local implementation/agent/commit pauses. [R1–R5 evidence handoff](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md) is binding alongside A1–A7. Connected/operational and native-document-processing boundaries remain separate.
 
 ## Global constraints
 
@@ -19,7 +23,7 @@
 - This plan may produce only continuation states C00-C06. It cannot produce `PRODUCTION_ACCEPTED`.
 - Do not process a document or corpus. Do not access hosted Supabase, Storage, PITR, scanners, model assets, or providers. Do not apply migrations, deploy, reindex, stage, evaluate, activate, withdraw, roll back, clean up, push, or open a pull request.
 - Keep one writer at a time across `worker/**`, `supabase/**`, RAG, upload, and dashboard owners. Preserve unrelated staged, unstaged, and untracked work.
-- For each product task: create a fresh task brief; record RED before implementation; implement the smallest behavior; run the exact focused GREEN selector; create an immutable `TASK_BASE..TASK_HEAD` review package; obtain separate specification and quality verdicts; correct every Critical or Important finding; re-review the whole corrected range; then create the local checkpoint authorized by the user's save-progress request. Never push.
+- Before product dispatch, verify current execution authority and complete the independent planning review/capability gates; local task-commit and implementation authority are granted. For each authorised product task: create a fresh task brief; record RED before implementation; implement the smallest behavior; run the exact focused GREEN selector; create the scoped candidate task commit needed to pin `TASK_HEAD`; create an immutable `TASK_BASE..TASK_HEAD` review package; obtain separate specification and quality verdicts; correct every Critical or Important finding in authorised follow-up commits; re-review the whole corrected range; then record the accepted checkpoint. A candidate commit is not acceptance. Never push.
 - Reuse final corrected behavior from `0f9a52f22^..03d68b3a1` and the dirty `rag-ingestion-design-20260821` worktree only as read-only semantic references. Never cherry-pick or copy either range wholesale, and never treat either as acceptance evidence.
 - Preserve the accepted P04 ingestion classifier, P05 public-source policy and recovery-evidence vocabulary, P06 site-release authority, and P07 query/cache/ranking behavior unless a task below explicitly names the owner.
 - All SQL functions use a fixed empty or explicit `search_path`, validate bounded inputs, serialize conflicting writes, and revoke `PUBLIC`, `anon`, and `authenticated` unless an authenticated administrator wrapper is explicitly named.
@@ -68,7 +72,25 @@ npm run plans:rag:receipts:check -- --write-review-package TASK_BASE TASK_HEAD d
 
 Replace `TASK_BASE`, `TASK_HEAD`, and `TASK_ID` with observed literal values before running the command. This invocation reuses the repository-owned canonical diff writer without altering parent receipts.
 
-## Exact task order and time budget
+## Audit amendment and revised scheduling boundary
+
+Read the current [amendment and decision record](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/2026-09-07-audit-amendment.md), [complete findings](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/audit-findings.md), [E1-E7 acceptance matrix](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/extraction-fidelity-acceptance.md), [agent allocation](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/smart-agent-allocation.md) and [acceleration register](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/acceleration-register.md). These are the planning entry points; C00 and prior receipts remain historical.
+
+This update and subsequent local implementation are authorised by the current execution-authority record; product dispatch still requires independent planning review and capability gates. The dated continuation amendment record owns approved source hashes, decisions and prospective route evidence. Preserve P00-P07, C00's historical manifest and every accepted U01/U02 artifact. U03 remains unstarted; P08A remains superseded; ordinary Answer and the kernel import prohibition remain unchanged.
+
+First product packet proposed: U02 F02 only, under a fresh audit-correction brief. Then freeze evidence/support/coordinate/resolver and all-writer/egress/generation contracts before widening U03. U03 -> U04 -> U05 remains the lifecycle order. U07/U08 are prerequisites to real processing; U09/U10 are prerequisites to technical activation. U05 owns the single atomic generation switch; U10 supplies its exact technical verdict, not a second switch. U11/U12 consume stable task/eligibility/evidence authority; U13 consumes stable identity/recovery authority; C06 judges integration and C07 remains separate.
+
+Permit early U09/P05/P06 fixture specification and, only with specific synthetic-testing authority, isolated pure producer/adapter experiments after shared contract freeze. This removes waiting for final U06 prose or U11 UI, not runtime or Trusted Task 0 prerequisites. Keep one writer, no out-of-order formal U09/C03 acceptance, no early schema/activation path and no concurrent shared-owner edits. Integrate and formally review early work in its owning U09/P05/P06 corrective range; do not hide product changes in documentation or C06. U06 may prepare vocabulary early but its C02 runbook/review gate remains; final UI guidance must reflect actual U11 behaviour.
+
+E1-E7 are one native PDF, one mixed/OCR PDF, one DOCX, one XLSX, one saved approved HTML, one static/registry producer family and one TXT control. Use actual serialized producer output through extraction -> structure -> chunk/index unit -> exact evidence resolver, including tail content, numeric relationship, qualification and a correctly refused counterpart. Expected evidence is authored independently. F02's 1/2/8-item cases join this milestone. These fixtures demonstrate evidence preservation, not model quality or ordinary Answer availability.
+
+Historical U02 evidence remains 98/98 focused tests and Edge exit 0. `npm run eval:rag:offline` remains exit 1: four failed suites, 45 failed and 586 passed tests overall (the affected subset was 45 failed/56 passed). It is not green. Its accepted exception belongs only to the historical U02 scope; no automatic carry-forward to a correction, U03 or C06. A narrow F02 gate may deliberately omit unrelated Answer suites with an explicit scope rationale; omission is not a renewed exception or a pass. If a later required evaluation fails, retain its exact result and block the relevant completion pending repair or a new explicit scope decision.
+
+Every new brief names the real producer, consumer, relevant finding IDs, exact source/dependency identities, required reviewer set, literal focused RED/GREEN selector and residual proof. Reuse unchanged historical proof only with its original result and limitations. Do not rerun the audit diagnostic or broad baseline on unchanged code. C06 adds no product tests: missing proof reopens the named owning task. Existing C06 final selectors and broad-gate selection remain, augmented by owning-unit E1-E7 proof; no equivalent broad gates are stacked.
+
+For future authorised work, use the continuation-specific smart allocation in canonical sdd-execution.md. It does not alter P-phase routing or validate U/C receipts through an unknown-phase fallback. Dispatch is authorised after required preflight and review. Planned routing is not observed runtime acceptance. The original hour table is historical; measure active work, review rework, orchestration and coordinator wait before forecasting savings.
+
+## Historical task order and time budget
 
 | Unit | Parent mapping            | Outcome                                           | Target hours |
 | ---- | ------------------------- | ------------------------------------------------- | ------------ |
@@ -260,6 +282,8 @@ Primary reviewer: `ingestion-worker-reviewer`. Mandatory migration/grant reviewe
 
 ## Task 2: Produce one validated source-anchored summary payload
 
+**Audit acceptance requirements (under current authority and unit gates):** F02 corrective acceptance uses the actual provider-response adapter, projection and validator for one, two and eight supported items. Canonical individual text and aggregate formatting must agree, with strict projection equality and existing bounds intact. Reject wrong aggregate, noncanonical item, invalid nested anchors/generation and field shapes. Keep this correction separate from F03 semantic-support design, F08 persistence/schema work and Answer/search. Use the new audit-correction brief; preserve the accepted original brief and exception record.
+
 **Files:**
 
 - Create: `supabase/functions/_shared/source-anchored-summary.ts`
@@ -379,6 +403,8 @@ Reviewers: `ingestion-worker-reviewer` and `clinical-governance-reviewer`. Sugge
 
 ## Task 3: Fence every lease mutation and produce bounded repair plans
 
+**Audit acceptance requirements (under current authority and unit gates):** F08/F01 require an inventory of every job, heartbeat, terminal, artifact, summary, label, metadata, fallback and repair writer. Bind each mutation to durable attempt identity, expected generation and current source/policy authority. Same worker ID is not attempt identity. Missing-RPC fallback cannot bypass fencing; cancellation/lease loss bounds further work. Preserve U02-owned metadata boundaries. Caller mocks prove arguments only; separately authorised disposable SQL schedules must prove reclaim, stale heartbeat, sibling isolation, cancellation and G1-after-G2 summary races before concurrency is claimed.
+
 **Files:**
 
 - Create: `supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql`
@@ -469,6 +495,8 @@ Reviewers: `ingestion-worker-reviewer`, `supabase-schema-guardian`, and `clinica
 ---
 
 ## Task 4: Stage and evaluate an exact shadow generation without committing it
+
+**Audit acceptance requirements (under current authority and unit gates):** F06/F08/F09 extend staging/evaluation to the complete immutable artifact inventory: pages, native/structural evidence, chunks/index units, images, summaries, labels and generation metadata. Reconcile expected/retained/failed/skipped units and all cap/conflict reasons. A candidate remains invisible to ordinary readers; failure preserves the prior valid set. Include controlled boundary failure fixtures and later executable SQL evidence.
 
 **Files:**
 
@@ -611,6 +639,8 @@ Reviewers: `ingestion-worker-reviewer`, `supabase-schema-guardian`, and `rag-ret
 
 ## Task 5: Activate, roll back, retain, and clean exact generations
 
+**Audit acceptance requirements (under current authority and unit gates):** F09: this unit owns the sole atomic publication/rollback mechanism, consuming U10's exact generation-bound gate verdict. Switch the complete artifact set. Retain permitted prior evidence for governed rollback; withdrawal excludes immediately and cannot be undone by rollback. Cleanup may remove only unreferenced, deletion-authorised artifacts, never active/retained/newly referenced objects; test activation/cleanup and rollback/cleanup races later with actual SQL.
+
 **Files:**
 
 - Create: `supabase/migrations/20260831103000_activate_retained_document_generations.sql`
@@ -711,6 +741,8 @@ Reviewers: `supabase-schema-guardian` and `ingestion-worker-reviewer`. Suggested
 
 ## Task 6: Replace operator guidance with the exact dry-run lifecycle
 
+**Audit acceptance requirements (under current authority and unit gates):** F11/F15: define admitted, processing, extracted, indexed, technically eligible, active, kernel evidence available and available to Answer as distinct states. An inferred recent view cannot claim queue emptiness. Document actionable failure/repair reasons and policy-bound retention. Keep the C02 runbook gate; defer only final UI-specific wording until U11 behaviour is known, with a recorded owner.
+
 **Files:**
 
 - Modify: `docs/reindex-runbook.md`
@@ -764,6 +796,10 @@ Expected: the retired function/config/invoker remain absent; the sole processor,
 ---
 
 ## Task 7: Unify administrator and backend admission under one durable event
+
+**Audit acceptance requirements (under current authority and unit gates):** F10/F01: admission records explicit source role/authority, rights/currentness, owner/staging identity, policy/purpose and supported features; never derive authority from document prose. Preserve the distinct backend capability and human administrator/MFA/recent-reauth requirement. Establish where assurance is enforced before duplicating controls. Prove idempotent event creation, invalid-template/insufficient-assurance/user denial and trusted-service cases offline. Hosted enforcement remains separate.
+
+R1 distinguishes primary preference from restriction and requires passage readiness. RAG owns request resolution; admission owns source/access/policy authority. H1/H2/H7 do not enable international sources or treat link-only catalogue entries as factual evidence.
 
 **Files:**
 
@@ -893,6 +929,8 @@ Reviewers: `supabase-schema-guardian` and `clinical-governance-reviewer`. Sugges
 ---
 
 ## Task 8: Quarantine unsafe input before any provider egress
+
+**Audit acceptance requirements (under current authority and unit gates):** F01/F10: current content-bound safety, owner, rights, policy and purpose clearance precedes every actual caption, embedding and enrichment producer, including fallback/retry/cache paths. Enqueue-time approval alone is insufficient. Test denied/revoked-after-enqueue/stale/unsafe/late-content inputs with zero provider spy calls, plus a cleared positive and revocation before finalisation. Rejection must remain actionable without reopening an unguarded fallback. No real disclosure or universal sanitisation guarantee is inferred.
 
 **Files:**
 
@@ -1042,6 +1080,10 @@ Reviewers: `ingestion-worker-reviewer` and `clinical-governance-reviewer`. Sugge
 
 ## Task 9: Persist reproducible page-level OCR and layout evidence
 
+**Audit acceptance requirements (under current authority and unit gates):** F03-F07/F12/F16: extend existing supported producers, not formats. Actual E1-E7 serialized fixtures preserve critical atoms, row/header/unit/footnote and image/caption relationships, hrefs, late material and source family. Preserve DOCX native relationships and XLSX formula/cached-result/format distinctions without evaluation/fetch; separate preview from full repository evidence. Version persisted coordinates/mappings; resolve real spans after Unicode/whitespace transforms. Independently account for every cap/skip/failed unit and native/OCR disagreement. Reproduce heuristic normalisation concerns before changing behaviour. Preserve originals; optional interpretation is not verified evidence. Full effective cache context is specified here; U13 owns reuse integration.
+
+R2/R3/R5 require supported paraphrase versus invented nonnumeric causal relations, late-source evidence, typed fallback capabilities and the shared source-to-answer reference case. Preserve originals outside bounded summaries. Supplier proof ends at resolved evidence; RAG owns every displayed-claim check.
+
 **Files:**
 
 - Create: `tests/ocr-evidence-contract.test.ts`
@@ -1128,6 +1170,10 @@ Reviewer: `ingestion-worker-reviewer`. Suggested local checkpoint message: `feat
 ---
 
 ## Task 10: Evaluate hard gates and atomically activate or queue the exact generation
+
+**Audit acceptance requirements (under current authority and unit gates):** F03/F06/F08/F09: consume generation-bound completeness, safety, source/permission, support/limitation and fencing verdicts. Unknown or critically incomplete evidence cannot pass its relevant hard gate. Optional unsupported enrichment is withheld without deleting usable originals. Pass one immutable verdict to U05's activation mechanism or create the durable U11 task; no competing switch or clinical-approval inference. Test incomplete/capped/conflicted/stale artifacts and all-writer atomicity, with actual SQL proof separately authorised.
+
+R3 keeps typed extraction/provider cause, capability/completeness, authority and support distinct through finalisation. Optional enrichment failure preserves sound originals; no partial path bypasses a hard gate.
 
 **Files:**
 
@@ -1284,6 +1330,8 @@ Reviewers: `supabase-schema-guardian`, `ingestion-worker-reviewer`, and `clinica
 
 ## Task 11: Replace inferred quality results with a persistent administrator queue
 
+**Audit acceptance requirements (under current authority and unit gates):** F10/F11: replace bounded inferred results with durable task identity and complete authorised pagination. Define a cursor snapshot/order and count semantics that cannot skip or duplicate tasks during updates. Include >200 documents/>80 tasks, older tasks and backend-owned tasks. Repair actions are stage-specific, assured and fenced; dismissal never waives safety/fidelity/clinical gates. Retain full administrator UI and focused browser acceptance; no API-only scope reduction is selected.
+
 **Files:**
 
 - Create: `src/app/api/ingestion/quality/tasks/[id]/route.ts`
@@ -1370,6 +1418,10 @@ Reviewers: `frontend-ui-reviewer` and `supabase-schema-guardian`. Suggested loca
 
 ## Task 12: Add the structurally default-off public retrieval kernel and withdrawal proof
 
+**Audit acceptance requirements (under current authority and unit gates):** F03/F07/F12/F13: add a versioned candidate-plus-evidence resolver returning original text/structure/qualifications, exact versioned anchors, policy/role/currentness, source family and support/limitation/invalidation identity from one immutable snapshot. Unavailable/stale/withdrawn evidence fails closed without substitution. Exercise actual upload, approved-source and repository producers. Source and derivative are one corroboration family; independent evidence stays distinct. Preserve public-only scope, Healthdirect exclusion, eTG/AMH link-only rules, P05/P06 authority and structural default-off. Record the separate RAG consumer handoff; this unit does not wire ordinary Answer.
+
+R1–R5 in the evidence-handoff contract bind this unit. Safe independent evidence may be retained only with complete snapshot/access/qualification binding; unknown/mismatched snapshots fail the whole request. Reviewed conflict inputs need a governance creation/review/persistence/loading/expiry owner. An empty list is not proof of no conflict. Ingestion owns source bindings; separate RAG owners own request scope, packing, composition, DTOs, every displayed claim, follow-up and delivery.
+
 **Files:**
 
 - Create: `src/lib/rag/source-ingestion-retrieval.ts`
@@ -1410,6 +1462,12 @@ export type SourceIngestionRetrievalResult =
       verdict: "ready";
       namespace: string;
       candidates: readonly SourceIngestionCandidate[];
+    }>
+  | Readonly<{
+      verdict: "partial";
+      namespace: string;
+      candidates: readonly SourceIngestionCandidate[];
+      unresolved: readonly { reason: "material_conflict" | "evidence_unavailable"; conflictIds: readonly string[] }[];
     }>
   | Readonly<{
       verdict: "insufficient";
@@ -1508,7 +1566,7 @@ export type ResolveActiveSharedClinicalCandidates = (args: {
 }) => Promise<SourceIngestionRetrievalResult>;
 ```
 
-Implement `resolveActiveSharedClinicalCandidates` with `ResolveActiveSharedClinicalCandidates`. The kernel accepts an injected adapter, a normalized query, exact immutable `ResolvedRagContextSnapshot`, bounded limit, and optional abort signal. It performs no cache read/write. It returns `insufficient` for empty, mismatched, or materially conflicting evidence.
+Implement `resolveActiveSharedClinicalCandidates` with `ResolveActiveSharedClinicalCandidates`. The kernel accepts an injected adapter, a normalized query, exact immutable `ResolvedRagContextSnapshot`, bounded limit, and optional abort signal. It performs no cache read/write. It returns `insufficient` for empty evidence or a mismatched/unknown snapshot. Materially conflicting evidence is never ready. A `partial` result requires non-empty independently eligible candidates and explicit unresolved reasons in the same complete immutable snapshot; prove the candidates share no affected claim, required qualification or authority dependency with the excluded group. If safe partition is not proved, return insufficient. Consumers preserve limitations and never infer no conflict from missing reviewed inputs.
 
 **Step 3: Implement the service-only snapshot-bound RPC**
 
@@ -1545,6 +1603,10 @@ Reviewers: `rag-retrieval-reviewer`, `supabase-schema-guardian`, and `clinical-g
 ---
 
 ## Task 13: Plan selective reprocessing and close recovery/incident controls
+
+**Audit acceptance requirements (under current authority and unit gates):** F05/F09/F16: stage-selective repair and reuse require exact source/artifact/owner/policy identity and current attempt/generation. Key image cache from the same complete canonical model-visible request/settings, not a 900-character prefix when longer context is sent. Test tail-context invalidation, exact-input reuse, model/prompt/detail/schema/policy changes and revoked/cross-owner refusal. Reuse P06 unchanged-content authority without clipped-preview identity. Page reuse, batching and concurrency expansion require measured bottlenecks and failure-isolation evidence; no broad cache framework is a prerequisite to correct extraction.
+
+R3/R4 bind replacement, withdrawal and policy changes to invalidation of evidence, fallback reuse and reviewed-difference references. Missing review remains unknown. H3/H4 cover dependent exclusion and independent safe evidence.
 
 **Files:**
 
@@ -1638,6 +1700,10 @@ Run `clinical-governance-reviewer`, `supabase-schema-guardian`, `ingestion-worke
 - dry-run-only selective reprocessing with exact rollback and cleanup owners.
 
 Return one combined correction packet, correct serially, and re-review the whole corrected trusted-ingestion tranche. Reconcile schema, types, and drift once for the C03/C04 migrations after corrections are stable.
+
+## C06 evidence extension from the audit
+
+F13-F15: inspect the owning-unit E1-E7 actual-producer records and all F01-F16 dispositions; no unresolved Critical/Important requirement may disappear through ownership mapping. Separate positive fidelity, safe refusal, static/caller proof, native extraction, SQL schedules, provider, hosted and clinical evidence. Local SQL not run means concurrency remains unproved, even with static source completion. Preserve the existing full-range review and required C06 selector; the historical U02 exit-1 exception cannot satisfy it. C07 and the separately implemented ordinary Answer handoff remain unclosed.
 
 ## C06: Whole-continuation acceptance
 

@@ -4,6 +4,12 @@ Date: 2026-08-21
 Status: Approved requirements; reconciled into the RAG planning package on 2026-08-22. No implementation from another worktree is assumed or included; every task must be revalidated and implemented from the execution package's recorded current-main base.
 Scope: Administrator/backend document admission, extraction and OCR, technical quality gating, shared-corpus activation, retrieval eligibility, review operations, and Supabase control-plane ownership
 
+## Ingestion audit amendment — planning authority
+
+Updated at the user's request on 7 September 2026. This changes the plan, not historical acceptance or execution authority.
+
+Prospective continuation requirements clarify existing sections 6.3, 6.4 and 11: supported DOCX/XLSX/TXT need native structure and resolvable anchors alongside PDF/OCR; every critical relationship, cap, skip and conflict has a named evidence/gate outcome. Preserve source role/rights/currentness from the trusted admission template/backend manifest and retained human MFA/recent-reauth assurance; establish the enforcement owner without adding a competing clinical approval gate. Egress requires current source/content/purpose clearance before every provider path. Retain policy-permitted recoverable HTML evidence, original/derivative lineage and honest queue/Answer status. The continuation design's finite E1-E7/support contract governs future acceptance; it does not claim historical semantic or hosted proof.
+
 ## 1. Decision summary
 
 Clinical KB uses a trusted-admission model:

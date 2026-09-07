@@ -88,6 +88,12 @@ Report separately:
 
 ---
 
+## Ingestion audit amendment — planning authority
+
+Updated at the user's request on 7 September 2026. This changes the plan, not historical acceptance or execution authority.
+
+F01/F05 propose a narrow P05 acquisition/worker contract amendment: current content/owner/rights/policy/purpose clearance before any caption/embedding/enrichment egress, including delayed retries. Preserve policy-permitted recoverable HTML structure, tables, qualifying asides, captions, footnotes and reference hrefs, with source/transform hashes and exact relationship anchors. A digest-only upstream record is not recoverable evidence. Scripts/navigation remain excluded; saved fixture tests make no fetches. No new licence, host or non-Australian scope follows; retain Healthdirect exclusion and eTG/AMH link-only rules. U09 owns producer fidelity and U13 governed reuse/retention; existing P05 policy/version authority is retained.
+
 ### Task 1: Define the versioned Australian catalogue
 
 **Files:**
@@ -330,6 +336,8 @@ git commit -m "feat(sources): normalize source roles and lifecycle"
 ---
 
 ### Task 3: Enforce role eligibility, local priority, and explicit conflicts
+
+**Ingestion R1/R4 amendment:** [R1–R5](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md) require a governance owner for creation/clinical review, persistence/access, request loading and expiry/reconciliation of reviewed differences. U12 consumes source-version/passage/review references; U13 invalidates them on replacement, withdrawal or policy change. Separate RAG P08C/P12 owners load and present differences. Family identity, OCR conflict and an empty difference list are not clinical adjudication. Australian evidence may supplement permitted local guidance; explicit restrictions remain strict and international/link-only scope is not widened. Preserve accepted policy evidence; these are new input/handoff obligations.
 
 **Files:**
 

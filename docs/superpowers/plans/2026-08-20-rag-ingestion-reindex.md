@@ -97,6 +97,12 @@ Report separately:
 
 ---
 
+## Ingestion audit amendment — planning authority
+
+Updated at the user's request on 7 September 2026. This changes the plan, not historical acceptance or execution authority.
+
+Prospective U03-U06/U13 work is governed by the ingestion-first continuation, not a restarted parent sequence. F08/F09 inventory every attempt/generation-bound artifact writer, including summaries, labels, metadata and fallback/repair. U05 owns the single atomic generation switch; U10 supplies the gate verdict. Preserve prior valid artifacts, rights-bound rollback and reference-safe cleanup. F16 corrects only the inherited effective-request cache identity seam before wider reuse. P00-P07 receipts remain immutable; runtime SQL schedules and connected execution need separate authority.
+
 ### Task 1: Build the read-only ingestion integrity audit
 
 **Files:**

@@ -203,7 +203,9 @@ Verification remains offline and proportionate:
 
 `PRODUCTION_ACCEPTED` is not available from this continuation alone. It requires separately authorized C07 operations and evidence.
 
-## 13. Time and savings target
+## 13. Historical time and savings target
+
+This section preserves the 31 August estimate and its assumptions. It is not a current forecast or measured saving; the 7 September audit amendment in section 14 governs the remaining scope and re-estimation.
 
 The current-code delta audit found substantial reuse but also confirmed missing processor retirement, claim-token fencing, shadow reindex driver and persistence, trusted ingress/egress gates, persistent quality queue, public retrieval scope and lineage, withdrawal propagation, and scale fixtures.
 
@@ -215,7 +217,29 @@ An optional API/CLI-first quality queue could save approximately 5-8 additional 
 
 Expected savings versus the full remaining parent programme are approximately 40-60%, produced mainly by removing unrelated answer/presentation/evaluation phases, consuming accepted primitives, preventing avoidable review loops, and automating mechanical evidence work.
 
-## 14. Accepted design boundary
+## 14. Audit amendment: evidence preservation and support
+
+The user requested the plan update on 7 September 2026 after receiving the completed audit and amendment proposal. This section governs planning. The later [execution-authority record](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/2026-09-07-execution-authority.md) authorises serial local implementation and commits after the required gates. Connected operations remain separate. Historical acceptance in section 15 and P00-P07/U01/U02 receipts remains unchanged. The dated continuation amendment record binds updated planning source bytes; do not refresh C00's historical hashes.
+
+The source-complete goal covers supported PDF, DOCX, XLSX and TXT uploads, policy-approved HTML/PDF sources and canonical eligible repository producers. Preserve complete original evidence, source meaning, qualifications, numeric and table relationships, figures, references and late material within declared capabilities. A count, digest, valid anchor ID or complete processing status does not establish semantic support.
+
+Treat structural validity, exact anchor identity, extraction completeness and semantic support as separate verdicts. Preserve original evidence independently of optional summaries/labels. Distinguish extractive evidence, unverified model interpretation and independently assessed support without relabelling the existing structural direct/partial/not_found field as verification. Every exposed claim retains exact evidence-version/relationship anchors and relevant limitations. Unsupported critical interpretation is withheld from factual evidence, while usable originals remain available. Do not claim universal semantic validation from substring checks, a second model or this finite fixture matrix.
+
+The finite E1-E7 acceptance matrix requires all nominated critical atoms and relationships to survive on positive supported fixtures, every exposed exact anchor to resolve, zero unsupported critical relationships promoted as supported, zero silent cap losses and zero false corroboration. A correctly withheld negative is a safe refusal, not extraction success or eligibility. Report preserved, withheld and missing counts separately, with a fixed source-authored denominator; withholding every positive fixture cannot pass. Unresolved critical OCR/native contradiction prevents the relevant evidence from passing its completeness/support gate. Do not average away a missing critical qualification.
+
+DOCX uses paragraph/table/media relationships, XLSX worksheet/cell/range coordinates, and TXT versioned text coordinates; none promises physical PDF pagination. Formula execution, external-link resolution, new formats, decryption and arbitrary crawling are outside this amendment. Policy-permitted HTML artifacts must preserve recoverable structure and references; a digest alone is not reconstruction. If rights prohibit sufficient retention, record the limitation and withhold unsupported downstream claims rather than relaxing policy.
+
+U09 owns extraction, normalisation, chunk/source-coordinate and inherited producer fidelity seams. U12 owns a versioned candidate-plus-evidence resolver in the same immutable generation/release snapshot: original evidence, qualifications, structural anchors, policy/role/currentness, source-family lineage, support limitations and invalidation identity. Missing or stale evidence is unavailable, never silently substituted. P05 source authority and P06 release/epoch/outbox authority remain the owners. Source and derivative are one corroboration family.
+
+The early milestone is a synthetic-only demonstration that evidence survived the real producer and adapter chain. It does not accept U09 out of order or enable the kernel. A separate RAG owner must later implement and demonstrate ordinary detailed Answer use under separate authority. The kernel remains structurally default-off and ordinary Answer serving unchanged.
+
+If separately approved, source-only acceptance permits native extraction of authored, non-sensitive synthetic fixture bytes in local temporary output, with no provider/network/model-asset download and no durable corpus processing. This is a narrow clarification of the historical no-document-processing boundary, not authority for real uploads or runtime ingestion. Local SQL execution remains separately authorised. SOURCE_COMPLETE still cannot imply connected, clinical or production acceptance.
+
+The historical hours and savings in section 13 remain historical planning estimates, not current measurements or guarantees. Re-estimate remaining work only after contract/fixture sizing. Development measures and runtime measures are recorded separately; no efficiency change may weaken fidelity, privacy, source rights, recovery or required independent reviews.
+
+The adopted [R1–R5 handoff](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md) defines source preference/restriction, explanatory support expectations, independent safe evidence and typed fallback limits, reviewed-conflict ownership, and the shared downstream answer reference case. U12 partial results cannot bypass snapshot/access/qualification dependencies. International activation and separate Answer implementation are not inferred.
+
+## 15. Historical accepted design boundary
 
 The user approved this design on 2026-08-31 with the following boundary:
 
