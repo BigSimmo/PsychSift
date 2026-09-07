@@ -27,3 +27,13 @@
 - Package hash: `2ada405d103719fb8a921bac8b08ca6ca922850c27530185995d647a10dfa7d9`
 - Process artifacts: C00 anchor, reports, immutable review package, manifest, and progress are finalized by the C00 metadata checkpoints. Keep unrelated P08A artifacts/receipt, `1/`, unreferenced P06 provenance artifacts, and the unreferenced P07 phase-fix report untouched and outside later task commits.
 - Live/provider/hosted actions: prohibited
+
+
+## 7 September 2026 local continuation adoption checkpoint
+
+- Current authority: docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/2026-09-07-execution-authority.md supersedes the historical documentation-only and U03-pause permit. Serial local continuation and scoped local commits are authorised after the recorded gates; provider, SQL, native-document, operational and publication boundaries remain separate.
+- Adopted A1-A7 and R1-R5 planning range: 2dad59e0ee26ab6586f6a49ec1dfdb993d1f9ad7..4cf61dfe065b7c41eb53bc9f890d1fd16dfbad70. Independent /root/plan_clinical_review and /root/plan_execution_review each returned Specification PASS and Quality PASS, with no Critical/Important planning findings. Both exact child session records show locally resolved gpt-6-astra/xhigh; this is not backend attestation.
+- Durable planning evidence: docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/ADOPT/ADOPT-acceptance.json and its hashed full-range package/reports. Actual task-brief extraction and canonical review-package writing succeeded. Safe focused-test bookkeeping and local-commit mechanisms are recorded. Edge offline verification capability remains unresolved at this checkpoint and must be dispositioned before U02 dispatch.
+- Current task: narrow U02/ING-F02 correction awaiting final capability/brief binding; no corrective product edit or test has run. U03 remains unstarted. All earlier accepted products and the historical non-green evaluation exception remain unchanged; no future acceptance inherits it.
+
+- Capability disposition: the independent execution reviewer accepted the frozen-lock Edge equivalent under the user's existing public dependency-restoration authority. The earlier blanket no-network reading was too broad; preserve the failed offline probes as capability evidence. Check execution remains unrun. Planning review and route/checkpoint capability are complete; bind the new corrective base/brief and dispatch U02 next.

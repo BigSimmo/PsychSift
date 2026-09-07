@@ -1,0 +1,9 @@
+{
+  "source_docs": 16,
+  "mirrors_byte_equal": 12,
+  "new_links_checked": 124,
+  "npm_script_references": "all resolve",
+  "diff_check": "passed",
+  "product_unchanged": true,
+  "generator": "exit 1, two unchanged historical migration collisions"
+}

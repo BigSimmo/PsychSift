@@ -1,0 +1,142 @@
+{
+  "programme": "rag-source-ingestion-continuation-v1",
+  "unit": "ADOPT",
+  "kind": "manual-continuation-planning-acceptance",
+  "original_base": "2dad59e0ee26ab6586f6a49ec1dfdb993d1f9ad7",
+  "accepted_planning_head": "4cf61dfe065b7c41eb53bc9f890d1fd16dfbad70",
+  "commits": ["4cf61dfe065b7c41eb53bc9f890d1fd16dfbad70"],
+  "specification": "PASS",
+  "quality": "PASS",
+  "critical_or_important_planning_findings": [],
+  "product_acceptance": false,
+  "reviewers": [
+    {
+      "agent": "/root/plan_clinical_review",
+      "role": "clinical-governance-reviewer",
+      "session": "01a07b82-da45-7921-931c-2a2d6afebb90",
+      "requested_model": "gpt-6-astra",
+      "requested_effort": "xhigh",
+      "observed_local_model": "gpt-6-astra",
+      "observed_local_effort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS"
+    },
+    {
+      "agent": "/root/plan_execution_review",
+      "role": "ingestion-worker-reviewer",
+      "session": "01a07b83-409b-7ab1-97aa-0585d48ea177",
+      "requested_model": "gpt-6-astra",
+      "requested_effort": "xhigh",
+      "observed_local_model": "gpt-6-astra",
+      "observed_local_effort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS"
+    }
+  ],
+  "routing_limit": "Selected exact local session metadata, not backend execution attestation.",
+  "checks": {
+    "source_docs": 16,
+    "mirrors_byte_equal": 12,
+    "new_links_checked": 124,
+    "npm_script_references": "all resolve",
+    "diff_check": "passed",
+    "product_unchanged": true,
+    "generator": "exit 1, two unchanged historical migration collisions"
+  },
+  "extracted_original_task2": {
+    "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U02-original-task-context.md",
+    "sha256": "47f3d143e6ba4dd19cdfe3e5aba62c90730f30dc4d177a301a45d9745f8eb33f",
+    "lines": 121
+  },
+  "artifacts": [
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/ADOPT/ADOPT-review-1.diff",
+      "sha256": "100cad3992a5c56b8097572eb40c364268fbd59a72ba484b0cb1c6f079ad4085"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/ADOPT/ADOPT-clinical-review-1.md",
+      "sha256": "c1b5d24a4b97332dd4edf19c21e184ffda5e07f8ba8129067617deb6ab7ec08a"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/ADOPT/ADOPT-execution-review-1.md",
+      "sha256": "ddf505a9f37cdf78cc56f5ba63c6ea980f5eb3f49dbfc28394c7978adc105e41"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/ADOPT/ADOPT-execution-preflight.md",
+      "sha256": "4632068a41ca739fc3a78861f1af77c611fd556081b4bbec326883ccf5d46bb5"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/ADOPT/ADOPT-document-checks.json",
+      "sha256": "36bf74171b864b116e6004b05bb1b8d272461e33bf0daf91ba6879e75f46edf3"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/ADOPT/ADOPT-edge-offline-preflight.md",
+      "sha256": "07b235869e25e2507756fab95fc80a20fd896227fc23079fc272ed914e37274a"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/ADOPT/ADOPT-edge-gate-disposition.md",
+      "sha256": "b76fd04556aec730caf640094159be38c90b5254e9ab2e823606502baae74271"
+    }
+  ],
+  "dispatch_prerequisites": [
+    "Pin new U02 corrective TASK_BASE and exact current brief/global-constraint hashes before product dispatch."
+  ],
+  "historical_u02_evaluation": {
+    "exit_code": 1,
+    "failed_suites": 4,
+    "failed_tests_overall": 45,
+    "passed_tests_overall": 586,
+    "green": false,
+    "inherited_by_future_units": false
+  },
+  "later_gates": [
+    "Shared contract freeze before wider U03 implementation.",
+    "Reviewed protected-safe scoped migration-role validation before U03 gate.",
+    "Native extraction, SQL, real sources, providers, hosted, clinical and ordinary Answer acceptance remain separate."
+  ],
+  "report_copy_policy": "Original outside reports retained unchanged; committed copies normalize CRLF to LF only. Artifact SHA256 values bind committed LF bytes.",
+  "outside_report_hashes": [
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\plan-clinical-review-1.md",
+      "sha256": "556c143d2609f7470dbb3c1bff1e604789f74926dfe4ce28c3710dcb601932f2",
+      "committed_copy_sha256": "c1b5d24a4b97332dd4edf19c21e184ffda5e07f8ba8129067617deb6ab7ec08a"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\plan-execution-review-1.md",
+      "sha256": "ddf505a9f37cdf78cc56f5ba63c6ea980f5eb3f49dbfc28394c7978adc105e41",
+      "committed_copy_sha256": "ddf505a9f37cdf78cc56f5ba63c6ea980f5eb3f49dbfc28394c7978adc105e41"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\execution-preflight.md",
+      "sha256": "4632068a41ca739fc3a78861f1af77c611fd556081b4bbec326883ccf5d46bb5",
+      "committed_copy_sha256": "4632068a41ca739fc3a78861f1af77c611fd556081b4bbec326883ccf5d46bb5"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\planning-doc-checks.json",
+      "sha256": "f09fb247015f5179cc437bccb418a72f5491c8f6e78b61b62c45f9189b0a387e",
+      "committed_copy_sha256": "36bf74171b864b116e6004b05bb1b8d272461e33bf0daf91ba6879e75f46edf3"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\edge-offline-preflight.md",
+      "sha256": "07b235869e25e2507756fab95fc80a20fd896227fc23079fc272ed914e37274a",
+      "committed_copy_sha256": "07b235869e25e2507756fab95fc80a20fd896227fc23079fc272ed914e37274a"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\execution-gate-disposition.md",
+      "sha256": "b76fd04556aec730caf640094159be38c90b5254e9ab2e823606502baae74271",
+      "committed_copy_sha256": "b76fd04556aec730caf640094159be38c90b5254e9ab2e823606502baae74271"
+    }
+  ],
+  "checkpoint_whitespace_check": "The unfiltered staged diff check reports the canonical .diff context-space lines as trailing whitespace. Preserve package bytes/hash; check authored Markdown/JSON separately, excluding only the immutable canonical .diff artifact.",
+  "capability_verdict": "PASS: task extraction, canonical range writer, local route evidence, protected-safe focused checks and commits; Edge uses independently reviewed frozen-lock equivalent.",
+  "edge_gate": {
+    "command_shape": "deno check --frozen --node-modules-dir=false <same sorted immediate function entrypoints>",
+    "route": "reviewed and available",
+    "execution": "unrun until corrective code",
+    "authority": "Current user instructions permit normal public dependency restoration from an existing lockfile; no application/provider calls or lifecycle execution.",
+    "required_unchanged_lock_sha256": "b92c0d1c752f6d48da195ef062e473dfaca35f13e5cc692f8f95b92bed3881b9"
+  },
+  "rulings": [
+    "Normal restoration of public dependencies pinned by the existing lock is covered by current local-verification authority. Use a frozen-lock Edge equivalent; this grants no provider/application/real-document access. If the scope interpretation were wrong, the exposure is public package request metadata and local cache writes; no source document or application payload is sent."
+  ]
+}
