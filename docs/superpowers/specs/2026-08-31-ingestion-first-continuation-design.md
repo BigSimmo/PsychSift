@@ -239,6 +239,8 @@ The historical hours and savings in section 13 remain historical planning estima
 
 The adopted [R1–R5 handoff](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md) defines source preference/restriction, explanatory support expectations, independent safe evidence and typed fallback limits, reviewed-conflict ownership, and the shared downstream answer reference case. U12 partial results cannot bypass snapshot/access/qualification dependencies. International activation and separate Answer implementation are not inferred.
 
+The post-U02 [shared contract freeze](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/shared-contract-freeze-v1.md) supplies the versioned evidence envelope, exact persisted-text/native-coordinate semantics, safe partial-result conditions and explicit governance ownership. The [U03 execution contract](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md) supplies the concrete all-writer fencing boundary. Both require independent acceptance before wider implementation; they preserve the historical design and defer clinical/provider/runtime acceptance to the appropriate owners.
+
 ## 15. Historical accepted design boundary
 
 The user approved this design on 2026-08-31 with the following boundary:

@@ -8,6 +8,8 @@ Owning documents: [continuation design](../../../specs/2026-08-31-ingestion-firs
 
 The user adopted these five requirements on 7 September 2026. They extend existing ingestion owners and define the separate RAG consumer dependency, without transferring implementation or acceptance between worktrees.
 
+The post-U02 [shared contract freeze](shared-contract-freeze-v1.md) resolves the supplier-side R1 mode boundary, R3 dependency/snapshot conditions and R4 implementation stewardship for independent review. Source-governance Task 3 owns canonical reviewed records; the actual clinical adjudicator remains unassigned and blocks clinical acceptance. U03 lease work cannot create a clinical review record or make an unreviewed difference authoritative. Separate RAG execution/acceptance remains with its existing task owners.
+
 ### R1 — Define source preference and usable-source readiness
 
 The U07/U12 handoff must distinguish **only the explicitly restricted source(s)** from **preferred primary plus approved supplementary evidence**. An inferred topic/domain is not an access permission or a user restriction. RAG owns request resolution and bounded gap-driven selection; ingestion owns eligible evidence, source roles, rights/currentness, exact scope and withdrawal. Do not add broad query fanout to U12.

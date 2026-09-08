@@ -16,6 +16,8 @@
 
 The user has authorised adoption, independent xhigh planning review, routing/checkpoint preflight, the narrow U02 correction with local commits, and serial plan continuation after unit acceptance. [Execution authority](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/2026-09-07-execution-authority.md) supersedes older local implementation/agent/commit pauses. [R1–R5 evidence handoff](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md) is binding alongside A1–A7. Connected/operational and native-document-processing boundaries remain separate.
 
+The post-U02 [shared contract freeze](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/shared-contract-freeze-v1.md) and [U03 execution contract](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md) refine these interfaces against accepted checkpoint `fd043b262ebd9b20315c2e46bc4838265787fa80`. Their independent acceptance record must precede U03 product dispatch. The source-only implementation owner and the still-unassigned clinical adjudicator are distinct; local lease work does not create clinical acceptance.
+
 ## Global constraints
 
 - The immutable implementation anchor is `03aa32d731d1cb9009be55213580e9ea3994017c`. P00-P07 receipts and their accepted artifacts are never edited.
@@ -402,6 +404,8 @@ Reviewers: `ingestion-worker-reviewer` and `clinical-governance-reviewer`. Sugge
 ---
 
 ## Task 3: Fence every lease mutation and produce bounded repair plans
+
+**Concrete execution supplement:** use [U03 execution contract](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md) for the reviewed all-writer inventory, atomic authority predicates, bounded domain mutations, lost-response handling, precise selectors and protected-safe verification equivalents. It explicitly includes the enrichment/deep-memory persistence owners omitted from the original list below. Keep one original U03 range across its serial implementation increments; do not accept an increment that leaves another writer unfenced as complete U03.
 
 **Audit acceptance requirements (under current authority and unit gates):** F08/F01 require an inventory of every job, heartbeat, terminal, artifact, summary, label, metadata, fallback and repair writer. Bind each mutation to durable attempt identity, expected generation and current source/policy authority. Same worker ID is not attempt identity. Missing-RPC fallback cannot bypass fencing; cancellation/lease loss bounds further work. Preserve U02-owned metadata boundaries. Caller mocks prove arguments only; separately authorised disposable SQL schedules must prove reclaim, stale heartbeat, sibling isolation, cancellation and G1-after-G2 summary races before concurrency is claimed.
 
