@@ -1,0 +1,17 @@
+{
+  "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\07\\rollout-2026-09-07T17-51-03-01a07b47-4623-7e90-825a-ec25116b8531.jsonl",
+  "selectedSession": {
+    "line": 1,
+    "id": "01a07b47-4623-7e90-825a-ec25116b8531",
+    "provider": "openai"
+  },
+  "latestTurn": {
+    "line": 2279,
+    "timestamp": "2026-09-08T12:41:23.511Z",
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "settingsModel": "gpt-6-astra",
+    "settingsEffort": "high"
+  },
+  "interpretation": "Observed local resolved configuration only; not backend attestation."
+}

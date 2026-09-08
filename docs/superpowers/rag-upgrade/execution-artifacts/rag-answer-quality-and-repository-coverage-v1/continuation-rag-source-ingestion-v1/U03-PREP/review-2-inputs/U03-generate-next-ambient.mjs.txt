@@ -1,0 +1,139 @@
+// Unexecuted U03 review candidate. See U03-verification-recipes-v3.md.
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, relative, resolve, sep } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+export const ROOT = 'C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database';
+export const OUT = 'C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation';
+export const MANIFEST_SHA256 = 'edd5a7bba598532082fe69049cbcf3d3a09d126258f6ee29713e57a5e4d29643';
+export const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+export const pathKey = p => resolve(p).replaceAll('\\', '/').toLowerCase();
+export const within = (base, p) => pathKey(p) === pathKey(base) || pathKey(p).startsWith(pathKey(base) + '/');
+export const git = args => execFileSync('git', args, {
+  cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
+  stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+});
+
+export function readReviewedInputs() {
+  const bytes = readFileSync(resolve(OUT, 'U03-reviewed-compile-inputs.json'));
+  if (hash(bytes) !== MANIFEST_SHA256) throw new Error('Reviewed input manifest changed; rebind after review.');
+  const input = JSON.parse(bytes.toString('utf8'));
+  if (input.schema !== 'u03-verification-inputs-v3' || input.repository !== ROOT) throw new Error('Unexpected input manifest.');
+  return input;
+}
+
+export function verifyContext(input) {
+  if (pathKey(git(['rev-parse', '--show-toplevel']).trim()) !== pathKey(ROOT)) throw new Error('Wrong worktree.');
+  if (git(['branch', '--show-current']).trim() !== input.branch) throw new Error('Wrong branch.');
+  git(['merge-base', '--is-ancestor', input.preparationHead, 'HEAD']);
+  return git(['rev-parse', 'HEAD']).trim();
+}
+
+export function verifyPins(input) {
+  for (const [p, expected] of Object.entries(input.pins)) {
+    if (p === '1' || p.startsWith('1/') || !within(ROOT, resolve(ROOT, p))) throw new Error('Forbidden pinned input.');
+    if (hash(readFileSync(resolve(ROOT, p))) !== expected) throw new Error(`Reviewed configuration/framework input changed: ${p}`);
+  }
+}
+
+export function readRouteInventory(input) {
+  const paths = git(['ls-files', '--cached', '-z', '--', 'src/app/', 'src/pages/', 'pages/', 'app/', ':(top,exclude)1', ':(top,exclude)1/**'])
+    .split('\0').filter(Boolean).sort();
+  if (paths.length !== input.routeInventory.count || hash(paths.join('\n') + '\n') !== input.routeInventory.sha256) {
+    throw new Error('Tracked route inventory drifted; review ambient generation scope.');
+  }
+  if (paths.some(p => !p.startsWith('src/app/'))) throw new Error('App-only router assumption changed.');
+  return paths;
+}
+
+export function writeNewEvidence(name, value) {
+  writeFileSync(resolve(OUT, name), JSON.stringify(value, null, 2) + '\n', { encoding: 'utf8', flag: 'wx' });
+}
+
+async function main() {
+  const input = readReviewedInputs();
+  const startHead = verifyContext(input);
+  verifyPins(input); // Before loading either repository helpers or Next implementation.
+  const routeFiles = readRouteInventory(input);
+  const require = createRequire(resolve(ROOT, 'package.json'));
+  if (require('next/package.json').version !== input.nextVersion) throw new Error('Reviewed Next version changed.');
+  const { acquireHeavyRunLock } = await import(pathToFileURL(resolve(ROOT, 'scripts/test-run-lock.mjs')).href);
+  const { offlineTestEnvironment } = await import(pathToFileURL(resolve(ROOT, 'scripts/test-environment.mjs')).href);
+  const offline = offlineTestEnvironment(process.env, { NEXT_TELEMETRY_DISABLED: '1', ANALYZE: 'false' });
+  // The pinned helper retains source keys and explicitly neutralizes its listed provider keys.
+  // This affects only this CLI process; no environment values are logged.
+  Object.assign(process.env, offline);
+  process.chdir(ROOT);
+  const taskRoot = resolve(ROOT, input.generatedAmbient.directory);
+  const parent = dirname(taskRoot);
+  if (!within(ROOT, taskRoot) || within(resolve(ROOT, '1'), taskRoot)) throw new Error('Forbidden output directory.');
+  if (existsSync(parent) && !within(realpathSync(ROOT), realpathSync(parent))) throw new Error('Output parent escapes worktree.');
+  if (existsSync(taskRoot) || existsSync(resolve(OUT, input.generatedAmbient.evidenceFile))) throw new Error('Owned output already exists; preserve it and review a new attempt name.');
+  const appDir = resolve(ROOT, input.typegenFacts.appDirectory);
+  const extensions = input.typegenFacts.pageExtensions;
+  const { createValidFileMatcher } = require('next/dist/server/lib/find-page-file');
+  const { isMetadataRouteFile } = require('next/dist/lib/metadata/is-metadata-route');
+  const { createPagesMapping, processAppRoutes, processLayoutRoutes } = require('next/dist/build/route-discovery');
+  const { extractSlotsFromRoutes, combineSlots } = require('next/dist/build/file-classifier');
+  const { UNDERSCORE_NOT_FOUND_ROUTE_ENTRY, UNDERSCORE_GLOBAL_ERROR_ROUTE_ENTRY } = require('next/dist/shared/lib/entry-constants');
+  const { createRouteTypesManifest, writeRouteTypesManifest } = require('next/dist/server/lib/router-utils/route-types-utils');
+  const { writeRootParamsTypes } = require('next/dist/server/lib/router-utils/root-params-type-utils');
+  const { writeAppTypeDeclarations } = require('next/dist/lib/typescript/writeAppTypeDeclarations');
+  const matcher = createValidFileMatcher(extensions, appDir);
+  const candidates = routeFiles.map(p => relative(appDir, resolve(ROOT, p)))
+    .filter(p => !p.split(sep).some(part => part.startsWith('_')));
+  const metadataOnly = candidates.filter(p => matcher.isMetadataFile(resolve(appDir, p)));
+  if (metadataOnly.some(p => p.split(sep).some(part => part.startsWith('@')))) throw new Error('Metadata-only slot needs revised exact generation scope.');
+  const ordinary = candidates.filter(p => !matcher.isMetadataFile(resolve(appDir, p)));
+  // Match the precise branch in createPagesMapping that would invoke AST/native parsing.
+  if (ordinary.some(p => isMetadataRouteFile(sep + p, extensions, true))) throw new Error('Metadata classification mismatch; native parsing is prohibited here.');
+  const pages = ordinary.filter(p => matcher.isAppRouterPage(resolve(appDir, p)) || matcher.isRootNotFound(resolve(appDir, p)));
+  const layouts = ordinary.filter(p => matcher.isAppLayoutPage(resolve(appDir, p)));
+  const defaults = ordinary.filter(p => matcher.isAppDefaultPage(resolve(appDir, p)));
+  if (!pages.length || !layouts.length) throw new Error('Unexpected empty app/layout inventory.');
+  // Native recursiveReadDir strips appDir but retains its leading separator.
+  // Supply exactly that shape without enumerating the physical app directory.
+  const map = pagePaths => createPagesMapping({ isDev: false, pageExtensions: extensions, pagePaths: pagePaths.map(p => sep + p), pagesType: 'app', appDir, appDirOnly: true });
+  const lease = acquireHeavyRunLock({ projectRoot: ROOT, command: 'U03 tracked Next ambient generation v3', mode: 'exclusive' });
+  try {
+    const [mappedPages, mappedLayouts, mappedDefaults] = await Promise.all([map(pages), map(layouts), map(defaults)]);
+    const { appRoutes, appRouteHandlers } = processAppRoutes(mappedPages, matcher, ROOT, true);
+    const layoutRoutes = processLayoutRoutes(mappedLayouts, ROOT, true);
+    const slots = combineSlots(extractSlotsFromRoutes(mappedPages, new Set([UNDERSCORE_NOT_FOUND_ROUTE_ENTRY, UNDERSCORE_GLOBAL_ERROR_ROUTE_ENTRY])), extractSlotsFromRoutes(mappedDefaults));
+    const dist = resolve(taskRoot, 'dist/types');
+    const manifest = await createRouteTypesManifest({
+      dir: ROOT, appRoutes, appRouteHandlers, layoutRoutes, slots, pageRoutes: [], pageApiRoutes: [],
+      rewrites: async () => ({ beforeFiles: [], fallback: [], afterFiles: input.typegenFacts.rewriteSources.map(source => ({ source })) }),
+      validatorFilePath: resolve(dist, 'validator.ts'),
+    });
+    // Reserve a new task directory atomically; never rewrite an earlier generation.
+    mkdirSync(parent, { recursive: true });
+    if (!within(realpathSync(ROOT), realpathSync(parent))) throw new Error('Output parent changed.');
+    mkdirSync(taskRoot);
+    mkdirSync(dist, { recursive: true });
+    await writeRouteTypesManifest(manifest, resolve(dist, 'routes.d.ts'), { experimental: { strictRouteTypes: false }, typedRoutes: false });
+    await writeRootParamsTypes(manifest, resolve(dist, 'root-params.d.ts'));
+    await writeAppTypeDeclarations({ baseDir: taskRoot, distDir: 'dist', imageImportsEnabled: true, hasPagesDir: false, hasAppDir: true, strictRouteTypes: false, typedRoutes: false });
+    const outputHashes = Object.fromEntries(input.generatedAmbient.files.map(p => [p, hash(readFileSync(resolve(ROOT, p)))]));
+    verifyPins(input);
+    readRouteInventory(input);
+    if (verifyContext(input) !== startHead) throw new Error('HEAD changed during ambient generation.');
+    writeNewEvidence(input.generatedAmbient.evidenceFile, {
+      schema: 'u03-next-ambient-generation-v3', head: startHead, inputManifestSha256: MANIFEST_SHA256,
+      generatorSha256: hash(readFileSync(fileURLToPath(import.meta.url))), nextVersion: input.nextVersion,
+      routeInventory: input.routeInventory, routeFiles, selected: { pages, layouts, defaults }, metadataOnly,
+      outputs: outputHashes, identitiesUnchanged: true,
+      scope: 'Framework ambient declarations only; no CLI/build/server/application evaluation/native parser/providers/route-export validator.',
+    });
+    process.stdout.write('U03 Next ambient declarations generated; compilation has not run.\n');
+  } finally {
+    lease.release();
+  }
+}
+
+if (process.argv[1] && pathKey(process.argv[1]) === pathKey(fileURLToPath(import.meta.url))) {
+  main().catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 1; });
+}

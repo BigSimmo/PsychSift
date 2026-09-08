@@ -1,0 +1,454 @@
+# Review package: fd043b262ebd9b20315c2e46bc4838265787fa80..73b5b0f39671073eb135ddfd8e8ab25e2afba9ca
+
+## Commits
+481270d8b4267d479bc78d58815b365439f8a2ec
+73b5b0f39671073eb135ddfd8e8ab25e2afba9ca
+
+## Diff
+diff --git a/docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md b/docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md
+index 2f677d30d7727689f834e93ded525ea56ec3f9e7..28218d4ab0c8899c97ff83c09403a628d5d8cfa5 100644
+--- a/docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md
++++ b/docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md
+@@ -9,20 +9,22 @@
+ **Tech stack:** Next.js 16.3 App Router, TypeScript 6 strict, Zod 4, Supabase/PostgreSQL/Storage/RLS, Node and Deno workers, Python/PyMuPDF/Tesseract, Vitest, Playwright, and the repository's migration, drift, RAG-fixture, gate-arbiter, task-brief, and immutable review-package tooling.
+ 
+ **Spec:** [`docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md`](../specs/2026-08-31-ingestion-first-continuation-design.md)
+ 
+ **Reasoning:** Concrete plan and final whole-range review use `xhigh`; implementation uses `high`. The original 2-4-hour planning estimate and 38-52-hour implementation/closure target, with a 58-hour contingency ceiling, are retained historical estimates. They are not the remaining-work forecast after the audit; re-estimate after contract and fixture sizing.
+ 
+ ## Current execution authority
+ 
+ The user has authorised adoption, independent xhigh planning review, routing/checkpoint preflight, the narrow U02 correction with local commits, and serial plan continuation after unit acceptance. [Execution authority](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/2026-09-07-execution-authority.md) supersedes older local implementation/agent/commit pauses. [R1–R5 evidence handoff](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md) is binding alongside A1–A7. Connected/operational and native-document-processing boundaries remain separate.
+ 
++The post-U02 [shared contract freeze](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/shared-contract-freeze-v1.md) and [U03 execution contract](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md) refine these interfaces against accepted checkpoint `fd043b262ebd9b20315c2e46bc4838265787fa80`. Their independent acceptance record must precede U03 product dispatch. The source-only implementation owner and the still-unassigned clinical adjudicator are distinct; local lease work does not create clinical acceptance.
++
+ ## Global constraints
+ 
+ - The immutable implementation anchor is `03aa32d731d1cb9009be55213580e9ea3994017c`. P00-P07 receipts and their accepted artifacts are never edited.
+ - The unaccepted P08A draft is superseded. Do not resume it, use its reserved migration name, or claim P08A/P14/P15/P16 acceptance under the parent manifest.
+ - This plan may produce only continuation states C00-C06. It cannot produce `PRODUCTION_ACCEPTED`.
+ - Do not process a document or corpus. Do not access hosted Supabase, Storage, PITR, scanners, model assets, or providers. Do not apply migrations, deploy, reindex, stage, evaluate, activate, withdraw, roll back, clean up, push, or open a pull request.
+ - Keep one writer at a time across `worker/**`, `supabase/**`, RAG, upload, and dashboard owners. Preserve unrelated staged, unstaged, and untracked work.
+ - Before product dispatch, verify current execution authority and complete the independent planning review/capability gates; local task-commit and implementation authority are granted. For each authorised product task: create a fresh task brief; record RED before implementation; implement the smallest behavior; run the exact focused GREEN selector; create the scoped candidate task commit needed to pin `TASK_HEAD`; create an immutable `TASK_BASE..TASK_HEAD` review package; obtain separate specification and quality verdicts; correct every Critical or Important finding in authorised follow-up commits; re-review the whole corrected range; then record the accepted checkpoint. A candidate commit is not acceptance. Never push.
+ - Reuse final corrected behavior from `0f9a52f22^..03d68b3a1` and the dirty `rag-ingestion-design-20260821` worktree only as read-only semantic references. Never cherry-pick or copy either range wholesale, and never treat either as acceptance evidence.
+ - Preserve the accepted P04 ingestion classifier, P05 public-source policy and recovery-evidence vocabulary, P06 site-release authority, and P07 query/cache/ranking behavior unless a task below explicitly names the owner.
+@@ -396,20 +398,22 @@ npm run eval:rag:offline
+ Expected: Node/Deno contract parity passes, non-first-N coverage is retained, and no provider is called by the tests.
+ 
+ **Step 4: Review and checkpoint**
+ 
+ Reviewers: `ingestion-worker-reviewer` and `clinical-governance-reviewer`. Suggested local checkpoint message: `feat(ingestion): anchor summaries to committed sources`.
+ 
+ ---
+ 
+ ## Task 3: Fence every lease mutation and produce bounded repair plans
+ 
++**Concrete execution supplement:** use [U03 execution contract](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md) for the reviewed all-writer inventory, atomic authority predicates, bounded domain mutations, lost-response handling, precise selectors and protected-safe verification equivalents. It explicitly includes the enrichment/deep-memory persistence owners omitted from the original list below. Keep one original U03 range across its serial implementation increments; do not accept an increment that leaves another writer unfenced as complete U03.
++
+ **Audit acceptance requirements (under current authority and unit gates):** F08/F01 require an inventory of every job, heartbeat, terminal, artifact, summary, label, metadata, fallback and repair writer. Bind each mutation to durable attempt identity, expected generation and current source/policy authority. Same worker ID is not attempt identity. Missing-RPC fallback cannot bypass fencing; cancellation/lease loss bounds further work. Preserve U02-owned metadata boundaries. Caller mocks prove arguments only; separately authorised disposable SQL schedules must prove reclaim, stale heartbeat, sibling isolation, cancellation and G1-after-G2 summary races before concurrency is claimed.
+ 
+ **Files:**
+ 
+ - Create: `supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql`
+ - Modify: `worker/types.ts`
+ - Modify: `worker/row-contracts.ts`
+ - Modify: `worker/behavior.ts`
+ - Modify: `worker/main.ts`
+ - Modify: `supabase/functions/indexing-v3-agent/index.ts`
+diff --git a/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..43da046ea3e4fecbf9eb13568dec6973228d5e82
+--- /dev/null
++++ b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md
+@@ -0,0 +1,205 @@
++# U03 execution contract
++
++Review candidate against accepted checkpoint `fd043b262ebd9b20315c2e46bc4838265787fa80`. This supplements original Task 3 in the [continuation plan](../../../plans/2026-08-31-ingestion-first-continuation.md); it does not create another U03 acceptance range. The [shared contract](shared-contract-freeze-v1.md) and [execution authority](2026-09-07-execution-authority.md) apply. Independent xhigh acceptance of the complete planning range precedes product dispatch.
++
++## Outcome and limits
++
++Every inventoried Node/strict-Edge ingestion writer must prove the current durable attempt, expected generation and source authority inside its database mutation transaction. A stale attempt must not publish evidence, overwrite metadata, finish a replacement attempt or reopen it. Repair planning is deterministic, bounded and dry-run only. Preserve sound committed evidence, accepted U02 projections and manual/organisation-owned metadata.
++
++U03 supplies source changes and offline proof. It does not apply SQL, run workers or providers, acquire/process real documents, activate source versions, enable the kernel, perform repairs or publish anything. In-memory authored regression data is permitted. SQL lock/role/concurrency schedules, physical Storage cancellation, native extraction and connected acceptance remain separate, unrun gates. A caller mock is not atomicity proof.
++
++## Frozen input and ownership
++
++The outside preparation files are at `C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/`:
++
++- `U03-frozen-task-context.md`: original Task 3, SHA-256 `f19c9a082edf068d9700e09401badfbcd270694abecb4ef8a0c4a6e62d3cdcea`.
++- `U03-frozen-owner-preparation.md`: reused all-writer inventory, SHA-256 `74bf1c4d4960feaf87787f187f1de474b9680b98b8e8b7594da324a256e78ec7`.
++- `U03-schema-contract-recommendation.md`: chosen schema contribution including its operator-compatibility appendix, SHA-256 `adb0735ae327f04a2206a78f2bc2c7ba8a51ce6bded28d89042cdf6065f2da0c`. Its author's recommendation is not independent acceptance. The pre-append version is retained in preparation history, not used as the complete current input.
++- `U03-operator-compatibility-followup.md`: exact entry boundaries, import-safe seam and tests, SHA-256 `b22168040664b13fb15d4b30f5e68a5fd53db4d1311798caba12f60ca982215a`.
++- `U03-verification-preparation.md`: evolving bounded check preparation; the acceptance manifest must bind its final bytes and the approved executable recipes. Earlier compiler recipes explicitly superseded there are not executable authority.
++
++One fresh Astra High implementer owns the complete original U03 range. The controller owns scope, evidence, gate execution and integration. Use serial increments, one repository writer and at most two concurrent children. Planning contributors cannot independently accept their own contribution. No recursive delegation or other-task message is authorised.
++
++Create only these product paths:
++
++- `supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql`
++- `supabase/functions/_shared/ingestion-attempt.ts` — shared pure Fence/result parsing and monotonic cancellation state; no server startup.
++- `src/lib/ingestion-repair-plan.ts` — deterministic pure planner and canonical digest encoding.
++- `scripts/lib/ingestion-operator-compatibility.ts` — pure unleased-mode refusal and direct-invocation identity helper.
++- `tests/ingestion-lease-fencing.test.ts`
++- `tests/ingestion-repair-plan.test.ts`
++- `tests/ingestion-operator-compatibility.test.ts`
++
++Modify only these existing owners when required:
++
++- `worker/types.ts`, `worker/row-contracts.ts`, `worker/behavior.ts`, `worker/main.ts`.
++- `supabase/functions/indexing-v3-agent/index.ts`, `supabase/functions/indexing-v3-agent/behavior.ts`.
++- `src/lib/document-enrichment.ts`, `src/lib/deep-memory.ts`.
++- `scripts/backfill-smart-index.ts`, `scripts/enrich-documents.ts`, `scripts/archive/backfill-enrichment.ts` — only the explicit unleased-write refusal and type-compatible call-site treatment described below.
++- `supabase/schema.sql`, `src/lib/supabase/database.types.ts`.
++- `tests/indexing-v3-agent.test.ts`, `tests/worker-behavior.test.ts`, `tests/worker-run-loop.test.ts`, `tests/worker-runtime-control.test.ts`, `tests/worker-row-contract.test.ts`, `tests/check-indexing-contract.test.ts`, `tests/document-enrichment.test.ts`, `tests/deep-memory.test.ts`, `tests/deep-memory-transaction-sql.test.ts`, `tests/worker-visual-capture.test.ts`, `tests/worker-shadow-extraction.test.ts`, `tests/storage-upload-compensation.test.ts`.
++- `docs/ingestion-state-machine.md`, `docs/worker-deploy-runbook.md`, `docs/reindex-runbook.md`, `docs/codebase-index.md`, `docs/scripts-index.md`.
++
++Keep the existing general Storage helper's unrelated consumers unchanged; change ingestion call sites and their focused tests. Keep `_shared/source-anchored-summary.ts` unchanged unless an actual U03 persistence integration defect requires a reviewed scope amendment; its accepted normalisation is not being redesigned. Controller-owned unit evidence and progress records are separate explicit allowlists. Additional product owners require a concrete reviewed brief amendment, not an implicit directory-wide permission.
++
++## Attempt and generation contract
++
++Both `ingestion_jobs` and `indexing_v3_agent_jobs` receive `lease_token uuid`, `lease_expected_generation_id uuid` nullable, `lease_write_generation_id uuid`, `lease_authority_digest text`, `lease_expires_at timestamptz` and bounded `lease_duration_seconds integer`. Preserve the existing claim parameter's 45-minute default; validate integer `p_stale_after_minutes` in 1–1440 and persist seconds in 60–86400. Reject out-of-range configuration explicitly rather than clamping silently. Processing rows require the complete tuple; enforce digest syntax and duration bounds in the schema. Each claim/reclaim generates a new UUID even for the same worker. Persist the duration at claim; heartbeat cannot renew an expired lease or choose an arbitrary new threshold.
++
++Do not fabricate valid tokens for historical processing rows. The migration must refuse application with a clear drain-required precondition while any such rows remain. Operational draining/application is separately authorised. Non-processing historical rows may retain null lease fields.
++
++Every mutating domain call has this required non-defaulted Fence:
++
++```text
++job_kind (node | indexing_v3), job_id, document_id, worker_id,
++lease_token, expected_generation_id, authority_digest
++```
++
++The internal `assert_current_ingestion_attempt` references both job tables through two explicit static branches. Match full identity, `status = processing`, unexpired lease, the durable expected generation and recomputed current source authority under locks. A target generation must equal the durable write generation. No null-worker, missing-token, missing-digest, generation-only or caller-selected-table branch exists.
++
++Node claim reserves write generation G1 and records committed G0. Staging writes belong only to G1 while the live pointer stays G0. The non-empty fenced core commit changes the pointer to G1 and advances the job's expected generation in the same transaction, returning the new Fence. Later summary/quality/deep-memory writes require G1. Holding G0 is not permission to invent that handoff. The initial Node G0-null case is allowed only when typed generation is null and generation metadata is absent, not malformed or contradictory. `documents.index_generation_id` is generated from metadata; do not assign it directly.
++
++Edge claim requires an exact non-null committed generation, used as expected and write generation. Both claim paths recheck both queues under the document lock; only one live Node/Edge attempt may own a document. Include `job_kind` even when UUIDs in the two tables happen to match. Reset only this attempt's unpublished staging generation; do not delete prior committed or identifiable legacy evidence because a document status changed.
++
++Exactly return `{ "ok": false, "reason": "lease_lost" }` for absent/stale identity, expiry, generation or authority, with zero database side effects. Gate refusal has a separate typed failure such as `completion_gate_blocked`. Invalid input, missing RPC, permission error, malformed RPC response and database failure are hard failures. None authorises a direct-write fallback.
++
++## Source authority and lock order
++
++Reuse P05; add no source catalogue or publication mechanism. Catalogue-tagged documents require one exact version linked through `staging_document_id`, the latest activating event, matching event/policy/digest and permitted lifecycle, exact source URL/version/hash/licence/owner/content-clearance identity. Any P05 link or public-source marker forbids the non-catalogue fallback. Unknown, contradictory, unsupported or withdrawn authority refuses. The digest combines `public_source_acquisition_identity_digest(version_id)`, version identity/lifecycle and latest event identity/sequence/decision/policy. It excludes changing progress and generation, which are checked independently.
++
++For a genuinely non-catalogue document, digest the locked document's exact owner, source/storage/file/content identity and governance/content-clearance fields with explicit null representation. Do not reinterpret public sentinels or retrieval owner scope. SQL identity matching does not replace protected-content scans or future U07/U08 pre-egress clearance.
++
++Use one order for claims and domain functions:
++
++1. For P05, the existing `pg_advisory_xact_lock(pg_catalog.hashtextextended('public_source:' || catalogue_key, 0))` namespace.
++2. Latest source event, then exact version row.
++3. Document row.
++4. Node jobs, then Edge jobs, ordered by UUID within each table; only needed rows.
++5. Owned artifact families in fixed order, with stable row-key order.
++6. Affected batch rows ordered by UUID, before aggregate queries.
++
++A pre-lock key lookup routes the lock only. After acquiring the document lock, revalidate the link/key; refuse a changed route rather than taking a second source lock out of order. Claims may choose candidate IDs without locks, then use try-advisory-lock and ordered `FOR UPDATE SKIP LOCKED` with eligibility rechecks. A job-first lock followed by document/source waiting is forbidden.
++
++The existing P05 event writer uses this same source advisory lock. If a policy event wins, the next mutation refuses; if the mutation wins, it finishes before that event. Recompute authority while holding locks inside every write transaction, not merely in caller preflight. Repeat the complete fence predicates in each job update. Unexpected affected-row counts roll back every write in that function through an exception/subtransaction boundary; returning false after earlier writes is not rollback.
++
++No provider, native tool, HTTP Storage or callback runs inside SQL transactions. Use empty `search_path`, qualified objects and owner `postgres` for necessary `SECURITY DEFINER` functions. Revoke PUBLIC/anon/authenticated execution; grant only named service-role entry points. Internal helpers and obsolete unfenced overloads are not worker-callable. This protects the inventoried execution paths; it does not turn a database owner or arbitrary service-role client into an unprivileged principal.
++
++Evaluate expiry with the actual wall clock after lock acquisition, not a transaction-start timestamp captured before waiting. Renewal derives the duration from the locked claim. A transaction that wins the shared locks may finish atomically before a reclaimer; no separate provider work may extend its lock lifetime.
++
++## Domain operations and all-writer coverage
++
++No arbitrary table/column/SQL/callback/unrestricted-patch RPC is allowed. Each operation has fixed SQL and bounded named artifact inputs.
++
++| Mutation owner          | Required operation and atomic boundary                                                                                                                                                                                                                                                           |
++| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
++| Node control            | `update_ingestion_job_progress`, `heartbeat_ingestion_job`, `patch_ingestion_document_state`; full Fence, explicit worker-owned metadata fields. Unparseable rejected claims cannot mutate terminal state.                                                                                       |
++| Node base artifacts     | `reset_ingestion_attempt_artifacts`, `write_ingestion_base_artifacts`, fenced `commit_document_index_generation`, `persist_ingestion_index_quality`; named chunks/images/table facts/embedding fields/index units, pages in core commit.                                                         |
++| Node and Edge summaries | `persist_ingestion_summary_projection`; exact summary, generated labels, completion marker and enrichment-owned metadata in one transaction.                                                                                                                                                     |
++| Deep memory             | `stage_ingestion_deep_memory`, `cleanup_ingestion_deep_memory_staging`, fenced `commit_document_deep_memory_generation`; sections/cards/units, chunk-anchor repair, stamps and owned aliases.                                                                                                    |
++| Edge stages             | `start_ingestion_job_stage`, `finish_ingestion_job_stage`; persist and match kind/job/document/attempt/generation, never stage ID alone.                                                                                                                                                         |
++| Edge generated families | `replace_indexing_v3_sections`, `replace_indexing_v3_memory_cards`, `replace_indexing_v3_visual_artifacts`, `replace_indexing_v3_core_embeddings`; their units/facts/fields/image metadata are included in the respective fixed transaction. Summary-generated labels use the summary operation. |
++| Terminal/retry/defer    | `complete_ingestion_job`, `fail_or_retry_ingestion_job`, `complete_strict_enrichment_job`, `update_indexing_v3_agent_job_status`; gate outcome, document/job metadata, release and actual batch aggregation are one transaction. Add `heartbeat_indexing_v3_agent_job`.                          |
++| Caption cache           | `persist_ingestion_image_caption_cache`; derive owner from the locked document, retain current validation, require Fence. Full cache representation identity is U09/U13.                                                                                                                         |
++| Image upload            | `prepare_ingestion_image_upload` assigns an immutable attempt path; base-artifact attachment rechecks Fence. HTTP bytes remain outside SQL atomicity.                                                                                                                                            |
++
++Extend the four original service RPC signatures with required expected-generation/authority inputs. No default argument may recreate old tokenless calls. Inspect all overloads and grants, including Edge SQL and shared library callers. The same wrapper's explicit success/error parser must handle actual RPC responses, not just compile-time types.
++
++Preserve accepted U02 byte-stable multi-item projection, exact source arrays/anchors, manual labels, `organization_profile` and `organization_profile_version`. The summary wrapper consumes the existing validated payload/projection; it cannot invent new model normalisation. Replace only generated labels for this document and merge owned keys under lock. Enrichment metadata owns only `rag_enrichment_version`, `rag_indexing_version`, `rag_memory_version`, `rag_enrichment_updated_at`, `generated_label_count`. Worker-state metadata has its own explicit field allowlist; broad stale document snapshots are forbidden. Provisional Edge fallback carries no generated labels, cannot complete structured enrichment and cannot downgrade an already valid structured payload. Valid retries remain provider-free and idempotent.
++
++Deep-memory staging retains producer and artifact-generation ownership, adds attempt provenance and fences every batch. Move chunk-anchor repair/stamps and producer-owned aliases into the generation commit. Repair anchors only where still null, for the exact generation; merge owned metadata keys. Validate expected counts and membership, preserve foreign/manual aliases and refuse producer collisions. Alias failure rolls back the commit. Exact committed-identity retry may return its stored result only after current Fence validation, without duplicate aliases. Never clean staging after commit invocation: a lost response may mean success. Pre-invocation cleanup is fenced and limited to that producer's unpublished generation; lease loss leaves inert leftovers for U13.
++
++Choose **no sibling supersession** in U03. Current queued siblings lack durable generation/policy equivalence, so removing the broad sibling-completion optimisation is safer than claiming they are satisfied. Live, unowned, pending and failed siblings retain their own lifecycle. Derive batch identity from the matched job, reject a conflicting supplied ID and lock batches before aggregate reads. Retry budgets come from the locked job. Terminal/enrichment failures preserve the prior committed pointer and evidence.
++
++Strict completion updates only its gate evidence; it cannot erase independent extraction issues or force quality to good from non-zero counts. U10 retains threshold ownership. Remove worker fallback calls to generic metadata patch, sibling/batch updates and arbitrary repair. The generic `apply_document_metadata_patch` has an independent webhook caller: do not globally revoke that unrelated capability. Revoke the old `repair_strict_enrichment_gate_batch(integer)` mutation endpoint.
++
++## Operator compatibility until U13
++
++Three existing npm-callable scripts use the shared persistence exports without a durable attempt and can mutate before reaching them. Requiring Fence only at the final helper call would leave earlier writes. The selected temporary compatibility change is an explicit non-successful `ingestion_attempt_required` refusal before lazy operational imports/client setup:
++
++- `index:backfill`: reject every `--write` request, with or without confirmation or metadata-only flags. Preserve its existing no-write inspection mode, whose hosted reads remain separately authorised.
++- `enrich:documents`: reject all three valid modes (summaries-labels-images, deep-memory, metadata-stamp). This command has no supported read-only mode; do not invent one.
++- `enrich:backfill`: reject default/mutating calls; preserve explicit `--dry-run`. Move local parsing ahead of its current lazy imports/health probe.
++
++Implement `assertUnleasedOperatorModeAllowed` in the named pure helper with these three discriminated request shapes. It accepts no Fence, override, test flag or environment bypass. Export each real script's existing `main` with explicit argv input. Move environment loading and automatic main/catch/exit into a pure Node path/URL direct-invocation guard, so imports do not load environment files, create clients, log, run or exit. Keep provider modules lazy. Do not create a command framework.
++
++Shared enrichment/deep-memory exports require a real Fence. Replace now-invalid unleased call expressions with the same explicit unavailable-operation outcome; no casts, fake claims, optional Fence or legacy RPC escape. Preserve unrelated historical/pure/read-only helpers; this is not dead-code cleanup. U13 owns the reviewed lease-acquiring reprocessing adapter required to re-enable these write modes. Document the temporary operational behavior in the runbooks and scripts index; no operator script runs in U03 acceptance.
++
++The new compatibility suite imports the actual three entry functions with fail-on-use lazy module mocks. Assert no import side effects, early refusal for every write-mode variant before provider/client/write setup, explicit error and non-successful direct CLI handling, and mock-only read modes reaching only read surfaces. Keep equivalent U02 generation/source assertions in `check-indexing-contract`; changing call shape must not erase them. Explicitly include the archived entry as a compilation root even though the normal config excludes its directory.
++
++## Storage and cancellation
++
++Retain private buckets. Image paths contain document UUID, lease token, reserved generation and upload UUID, with `upsert:false`. Only a guarded prepare operation chooses them; model payloads do not choose paths. A late upload may still write bytes after cancellation, but its immutable path cannot overwrite committed evidence or attach to a reclaimed attempt. Do not claim an atomic Storage fence or zero stale physical writes.
++
++Remove worker physical compensation after ambiguous attachment/commit errors or lease loss. Retain the exact unreferenced path and a structured non-sensitive recovery signal. SQL staging cleanup remains fenced. Physical orphan inventories, retention/disposal and serving lifecycle belong to U04/U05/U09/U12/U13; no garbage collector or bucket-policy redesign is introduced.
++
++Use one monotonic cancellation state per attempt. Missing RPC, failed renewal or `lease_lost` stops subsequent provider/native/Storage calls and late result publication. Check before/after non-interruptible operations and each batch; propagate `AbortSignal` where supported. Catch blocks may not swallow cancellation and proceed to metadata/stage/failure writes. Replace the existing shadow test's swallowed-lease-error expectation with actual orchestration refusal; ordinary optional shadow failure may remain non-fatal without demoting sound evidence. Cancellation cannot retract already sent bytes; U07/U08 own full clearance and live egress proof.
++
++## Exact schema prerequisite
++
++The current `schema.sql` omits P05 objects present in tracked migrations. Reconcile the **effective direct dependency closure** inside U03's schema increment; do not regenerate unrelated drift or copy another worktree.
++
++- `20260820121000_create_public_source_control_plane.sql`: effective `public_source_activation_events`, `public_source_versions`, indexes/FKs/checks, RLS, SELECT-only service-role grants and immutable-event/version triggers.
++- `20260824120000_consolidate_public_source_lifecycle_authority.sql`: final `source_sequence` constraint/uniqueness, lifecycle including superseded, acquisition digest column/check and final `guard_public_source_version_identity`.
++- `20260824123000_harden_public_source_lifecycle_authority.sql`: final `public_source_acquisition_identity_digest(uuid)` and exact service/internal grants.
++- To preserve the shared policy-writer boundary, include effective `record_public_source_activation_event(jsonb)`, `make_public_source_version_ineligible(uuid,text)` plus UUID compatibility wrapper, `public_source_serving_authority` table/seed/RLS/grants, `bump_public_source_serving_authority()` and final six-argument `transition_public_source_version`, taking final definitions from consolidation/hardening. Do not restore the obsolete seven-argument overload.
++- Follow the selected writers' DML trigger dependencies: include final `guard_document_publication_transition()` from `20260824120000_consolidate_public_source_lifecycle_authority.sql` and preserve its `documents_require_publication_approval` trigger binding. Include the three `document_publication_approvals` columns `source_catalogue_key`, `source_policy_version`, `reviewed_index_generation_id` and `document_publication_approvals_v2_evidence_complete` from `20260822123000_govern_australian_source_activation.sql`. The exact lifecycle-exit binding and immutable public reviewed-state checks must match effective P05; the older snapshot trigger is not equivalent. This named correction supersedes the preparation recommendation's omission of publication guards from the selected closure. Do not import obsolete bulk-publication functions or historical data backfills.
++
++Use final CREATE definitions, not historical numbering/quarantine/publication backfills or trigger-disable DML. The existing document, publication-approval, artifact/job/cache and extension objects remain dependencies. Reconcile directly required grants/triggers/types/index documentation together. Before closing this increment, a static effective-object comparison must show the selected objects' bodies/signatures/checks/grants agree with their final tracked migration owners and that their direct referenced schema objects and DML-trigger dependencies exist with the effective definitions. Include the named publication guard, binding, approval columns and v2 constraint in that comparison. If that reveals another missing P05 transitive dependency, name and review the exact addition before changing it. Omitted unrelated activation/fetch/stage/tombstone/serving definitions remain explicit snapshot-parity debt; do not claim whole-schema parity. Under separate SQL authority, compare valid exact lifecycle exit and exit without its binding against both migration-chain and snapshot environments. Actual replay remains unrun.
++
++Recheck the exact tracked migration prefix and named file immediately before creation. At preparation HEAD the proposed U03 migration is absent; `20260831100000_retire_ingestion_worker.sql` exists and remains the predecessor.
++
++## Dry-run repair contract
++
++Keep original `IngestionRepairPlan` version, `dryRun:true`, 1–100 unique lowercase canonical document UUIDs, non-empty fixed reason sets and exactly one lowercase `sha256:` state digest per document. Reject unknown fields, duplicate IDs, duplicate reason codes, unsupported reasons and malformed digests; do not silently deduplicate input. Reasons remain `missing_committed_generation`, `generation_mismatch`, `summary_missing`, `summary_invalid`, `summary_fallback_growth`, `lease_abandoned`. Sort IDs and reason codes.
++
++Hash UTF-8 bytes of `ingestion-repair-plan-v1\n`, then one line per sorted document: UUID, tab, comma-joined sorted reasons, tab, expected-state digest, newline. The fixed UUID/reason/digest vocabulary cannot inject separators. TypeScript and SQL use this encoding; do not assume JavaScript JSON serialisation equals `jsonb::text`.
++
++Add `ingestion_repair_plan_audit` with audit ID/time, canonical plan/digest and outcome fixed to `planned`. `record_ingestion_repair_plan` validates the bounded payload/recomputes the digest, then appends only that row. RLS on; service SELECT only, RPC-only insert; no UPDATE/DELETE/TRUNCATE grants and rejection triggers covering those operations. This is database access immutability, not protection from the database owner. No apply endpoint or document/job/source mutation exists.
++
++Expected-state identity includes exact source/version/event, generation, summary/projection/label state and both queue states/attempts. A planner input digest is not proof that the snapshot is still current. U13 re-reads and compares under locks before any later application; `planned` is never `repaired`.
++
++## Serial implementation and acceptance
++
++Pin one U03 `TASK_BASE` at the accepted freeze checkpoint. Extract original Task 3 and attach this version/hash, shared contracts, final allowed paths and authorised check recipes. Do not reset the base between increments:
++
++1. P05 snapshot prerequisites, token/guard/claim primitives and shared parsing.
++2. Node core/control and Edge stages/terminal ownership.
++3. Atomic summary/deep-memory/alias/family persistence, Storage and cancellation call sites.
++4. Repair planner/audit, types/docs and complete writer-coverage proof.
++
++Each increment is a reviewable local candidate, not separate U03 acceptance. Actual-producer RED must show stale/missing identity can reach an existing mutation seam before correction, and planner RED separately proves the absent contract. Do not count a missing-module import as proof of every stale-write case. Refactor real orchestration into the named importable seams only as necessary; tests must not start worker/Edge servers. Final GREEN includes:
++
++- New token per Node/Edge claim, including same worker; missing/malformed/cross-kind/expired identities refuse, heartbeat cannot revive expiry.
++- Node/Edge mutual exclusion and G0-to-G1 reserved-generation handoff; stale G0 callers refuse.
++- G1 pauses, G2 wins: every listed artifact/control/cache/summary/label/stage/deep-memory/alias/terminal path rejects G1 and preserves G2.
++- Policy event/withdrawal before mutation, and policy change after client preflight, refuse. SQL schedules separately establish lock ordering and the opposite interleaving.
++- Summary/labels/metadata rollback; U02 positive/negative projections, manual organisation/labels and provisional zero-label fallback retained.
++- Deep-memory staged counts/ownership, exact-generation anchors/stamps, alias rollback and lost-response non-cleanup.
++- Late upload cannot overwrite/attach to another attempt; ambiguous response does not delete potentially committed bytes.
++- Cancellation escapes optional-shadow catch; stale stage finish cannot finish a new attempt; missing/false/malformed RPC never falls back to direct mutation.
++- Terminal retry limits, strict quality preservation, batch identity/aggregation and unchanged siblings.
++- Planner order invariance/bounds/invalid inputs and SQL append-only access; obsolete repair grants revoked.
++- All three unleased operator entry points refuse before any effects; the two existing read-only modes remain read-only under mocks, and importing a command has no startup effects.
++- An explicit all-writer source/SQL inventory has no unfenced remaining path, with effective schema signatures/grants and types aligned.
++
++Use the final focused selector once after the relevant changes; smaller changed-file subsets may supply iteration feedback without re-running unchanged successes:
++
++```text
++node scripts/run-vitest.mjs run tests/ingestion-lease-fencing.test.ts tests/ingestion-repair-plan.test.ts tests/ingestion-operator-compatibility.test.ts tests/indexing-v3-agent.test.ts tests/worker-behavior.test.ts tests/worker-run-loop.test.ts tests/worker-runtime-control.test.ts tests/worker-row-contract.test.ts tests/check-indexing-contract.test.ts tests/document-enrichment.test.ts tests/deep-memory.test.ts tests/deep-memory-transaction-sql.test.ts tests/worker-visual-capture.test.ts tests/worker-shadow-extraction.test.ts tests/storage-upload-compensation.test.ts
++```
++
++Process-local `GATE_RECEIPTS=off` and `GATE_ARBITER=off` preserve restricted discovery; restore them in `finally`. Consult the arbiter for selected test/typecheck commands, retain its actual verdict and keep the coordinator intact. A busy lease is not bypassed. Test environment must remain scrubbed/provider-free. Review the actual final diff with `verification-router` before handoff; no full baseline, Answer eval or unrelated suite is added by default.
++
++Required additional evidence:
++
++- Compilation for changed TypeScript contracts and their callers, preserving the original compiler option/type-discovery semantics. The reviewed tracked-input equivalent must exclude `1/` in Git pathspec **before enumeration**, avoid unrelated untracked traversal and retain explicit Next ambient dependencies. The two generated declarations currently named by `next-env.d.ts` are absent; this is an environment/input issue to resolve through a reviewed local generation route before claiming compilation, not a passed or inherited exception. Native Edge compilation is separate.
++- Both actual Edge roots (`indexing-v3-agent` and `site-content-sync`) through the accepted frozen native Deno environment, rebound to new source closure hashes. Retain the exact outside composite lock/import map; new dependencies invalidate affected resolution proof. No stubs, root omission, loosened lock or declaration suppression. This is the named native Edge equivalent, not the unrepaired literal npm wrapper.
++- Scoped **staged migration-role equivalent** calling unchanged exported validator on exact indexed guarded roots, including immutable historical migration and the new U03 migration. Do not invoke the CLI's unrelated-untracked discovery path or call the equivalent the literal npm command.
++- Focused format/diff and explicit-input module-index/schema-table coverage, script references and actual changed import/adoption edges. Update the exact scripts-index count for the new helper, then use `node scripts/update-docs-inventory.mjs --check`, whose discovery is restricted to tracked `scripts/` filenames and package scripts. No full generator that discovers untracked files. Preserve immutable raw evidence bytes outside formatting checks.
++- Reuse accepted P04 classifier evidence only while its full classifier/input/config dependency set remains unchanged. Existing audit SHA-256 is `f7421f631f846fe6570f8c0614224c2f7c0b221797b5ea3f5f891c1a0f7d3c6b`, population `sha256:08bf1d12e8b431f3ec2e243fcc595b743acb222cb4bb7593fd766ce0834a5083`, with 3 documents, 1 targeted reprocess, 0 shadow, 0 blocked. If an affected dependency changes, run the pure fixture command once to a new outside output and compare exact population/actions; never `--live-read` or overwrite the historical artifact.
++
++The acceptance manifest pins literal approved commands, wrapper/config/input hashes, product/base/head, exact outcomes, raw and committed-copy hashes, reviews, failed attempts and residuals. The planning review must inspect concrete outside recipes before execution; an unreviewed command sketch is not an executable gate. Normal locked public dependency restoration may be used within current authority; it provides no provider/hosted proof.
++
++Freeze the complete product range with the canonical review-package writer. Fresh `ingestion-worker-reviewer`, `supabase-schema-guardian` and `clinical-governance-reviewer` review that same original base through all corrections. Preserve failed reviews; resolve Critical/Important findings, verify actual requested/observed routes and obtain Specification/Quality PASS before source acceptance. Evidence checkpoint is a separate scoped local commit and append-only `.superpowers/sdd/progress.md` update. No next unit starts on an unaccepted U03 product candidate.
++
++Historical U02 offline evaluation remains **exit 1, four failed suites, 45 failed and 586 passed tests overall**. It is not green and supplies no U03 exception. C01 remains incomplete until its own gates; local source acceptance is not SQL, native, provider, production-readiness, clinical or ordinary Answer acceptance. `check:production-readiness` and connected acceptance remain at their governing C07 boundary; do not silently run or mark them passed here.
+diff --git a/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md
+index 0700b66f427c41cffbe57628276f5d97035c7d15..76c1a76bca262ec338ac93bdfd492e097f9621fc 100644
+--- a/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md
++++ b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md
+@@ -1,20 +1,22 @@
+ # Ingestion evidence handoff to the separate RAG programme
+ 
+ Adopted R1–R5 requirements under [current execution authority](2026-09-07-execution-authority.md). ING-F01–F16 retain ingestion identity; RAG-F01–F21 remain findings in the separately assessed programme. Current ingestion evidence establishes an ingestion defect; the other worktree diagnostic alone does not.
+ 
+ Provenance: RAG assessment SHA-256 984be51bbababa37326e401b0ec581c05d4cb42050dc566fa7aa70e2d4dfb964; handoff 38a7ab31b0b405dabdf5cb54be9f8392d4575ae2fa152d8b974064c19cb52252; snapshot d927d3429731cacf42ad213bea27d83991565e4585781651694777bd29e215bb. These match completed ingestion audit references. RAG assessed HEAD 64da5e56a70eb7e21017eb21f9e6c3001bee43c8 is historical and distinct from this programme.
+ 
+ Owning documents: [continuation design](../../../specs/2026-08-31-ingestion-first-continuation-design.md), [continuation plan](../../../plans/2026-08-31-ingestion-first-continuation.md), [source governance](../../../plans/2026-08-20-rag-australian-source-governance.md), [extraction acceptance](extraction-fidelity-acceptance.md). Ordinary Answer, query/follow-up/cache, DTO, prompt/render and streaming implementation stay with the separate RAG programme. No task message or code transfer is implied.
+ 
+ The user adopted these five requirements on 7 September 2026. They extend existing ingestion owners and define the separate RAG consumer dependency, without transferring implementation or acceptance between worktrees.
+ 
++The post-U02 [shared contract freeze](shared-contract-freeze-v1.md) resolves the supplier-side R1 mode boundary, R3 dependency/snapshot conditions and R4 implementation stewardship for independent review. Source-governance Task 3 owns canonical reviewed records; the actual clinical adjudicator remains unassigned and blocks clinical acceptance. U03 lease work cannot create a clinical review record or make an unreviewed difference authoritative. Separate RAG execution/acceptance remains with its existing task owners.
++
+ ### R1 — Define source preference and usable-source readiness
+ 
+ The U07/U12 handoff must distinguish **only the explicitly restricted source(s)** from **preferred primary plus approved supplementary evidence**. An inferred topic/domain is not an access permission or a user restriction. RAG owns request resolution and bounded gap-driven selection; ingestion owns eligible evidence, source roles, rights/currentness, exact scope and withdrawal. Do not add broad query fanout to U12.
+ 
+ For each reference answer part, record the nominated primary or supplementary passage, source version/anchor, permitted claim role, access/rights state and readiness: catalogue-only, admitted, evidence retained, indexed, technically eligible, retrievable, or consumer accepted. A catalogue entry or publisher approval does not establish passage readiness. The reference map is acceptance evidence, not a new production database.
+ 
+ Current U12 plans shared activated uploaded_local, australian_public and clinical_kb_site. The other worktree's temporary uploaded exclusion is not this programme's permanent target. Approved Australian sources may already serve a supplementary role. International expansion needs a distinct policy/rights and activation owner; U07/P16 completion alone cannot be assumed to supply it. Link-only sources cannot fill factual gaps using unseen content.
+ 
+ Acceptance: primary complete, primary partial plus approved supplement, explicit restriction, supplements disabled, role-ineligible and link-only variants remain distinct. Adding a source must fill a material supported gap rather than inflate source count. This extends ING-F10/F13/F14; it does not relax eligibility.
+ 
+diff --git a/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/shared-contract-freeze-v1.md b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/shared-contract-freeze-v1.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..d1da1dc136614891eef50b51dcfdf71a3042f82c
+--- /dev/null
++++ b/docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/shared-contract-freeze-v1.md
+@@ -0,0 +1,126 @@
++# Shared ingestion contracts v1
++
++Review candidate based on accepted checkpoint `fd043b262ebd9b20315c2e46bc4838265787fa80`. The independent acceptance record, not this heading, establishes the frozen revision. These contracts refine the adopted A1–A7/R1–R5 requirements; they do not accept unfinished product work or rewrite historical receipts.
++
++Owners: [continuation design](../../../specs/2026-08-31-ingestion-first-continuation-design.md), [continuation plan](../../../plans/2026-08-31-ingestion-first-continuation.md), [RAG handoff](rag-evidence-handoff.md), [extraction acceptance](extraction-fidelity-acceptance.md), [U03 execution contract](U03-execution-contract.md). Current [execution authority](2026-09-07-execution-authority.md) permits serial local implementation after these gates. P05 source policy, P06 release/epoch/outbox authority and the accepted U02 summary contract remain their existing owners.
++
++## 1. Scope and interpretation
++
++The supported routes remain PDF/DOCX/XLSX/TXT uploads, policy-approved HTML/PDF acquisition and canonical eligible repository producers. Public retrieval eventually admits the active shared `uploaded_local`, `australian_public` and `clinical_kb_site` populations. This contract adds no formats, source licence, international expansion, ordinary-user private upload overlay, general crawler, formula execution or automatic source activation.
++
++Use one source identity and an immutable content version throughout admission, extraction, storage, index generation, eligibility and resolution. A derivative carries its true upstream family identity as well as its own representation identity. Family membership deduplicates corroboration; it never proves agreement, support or permission.
++
++Full evidence is distinct from a bounded display summary, selected context or query result. Existing U02 aggregate/category limits remain unchanged. All nominated source evidence and its required qualifications must remain resolvable outside that overview. An intentionally bounded projection cannot be reused as the complete source representation.
++
++## 2. Evidence identity and coordinates — U09 supplies, U12 resolves
++
++Every evidence unit binds the immutable source version, original artifact digest, representation digest/version, native unit identity, and the exact generation or release/epoch. It also carries source role, content mode, applicable policy identity and source-family lineage. Original/structured evidence remains stored independently of optional summaries and labels, subject to source rights.
++
++The versioned text range is half-open `[start, end)` in **UTF-16 code units of the exact persisted evidence-text string**, after its declared transform. Record that string's digest and transform version. Bounds are checked against that exact string; code-point, byte and pre-normalisation offsets must not be treated as equivalent. A transform changing offsets supplies a source mapping or an exact native structural anchor. If neither can reconstruct the claimed relationship, mark the anchor unresolved rather than claiming exactness. Do not silently search another generation for a matching substring.
++
++Native anchors supplement that text range:
++
++| Format             | Required native identity and relationship                                                                                                                                                                                                               |
++| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
++| PDF                | Original physical page number, page geometry/rotation and extraction path; boxes declare coordinate origin, units and transform. Text/OCR alternatives retain distinct method identities for the same source region.                                    |
++| DOCX               | Package/part identity and stable paragraph/table-cell/media relationship within that exact version; table row/column/header and footnote relationships remain attached. No invented physical page number.                                               |
++| XLSX               | Worksheet identity and cell/range coordinates; distinguish source formula, cached value and displayed representation. Preserve merged-cell/header/unit relationships. Missing cached values stay unavailable; never execute formulas or external links. |
++| TXT                | Original text artifact and declared decoding/normalisation mapping to the persisted evidence text.                                                                                                                                                      |
++| HTML               | Policy-permitted retained snapshot and exact structural/text-node identity, including qualifying asides, tables, captions, footnotes and source links. A digest without recoverable retained evidence is insufficient.                                  |
++| Repository content | Canonical producer identity, exact release/epoch and representation version, plus genuine upstream lineage where derived. Preview clipping never replaces the full body.                                                                                |
++
++U09 chooses persisted field names against its real producers; it cannot weaken these coordinate semantics. U12 validates/resolves them in one snapshot. Schema storage choice is an owning-task decision; no generic coordinate service or duplicate source catalogue is required by this contract.
++
++The supplier/resolver envelope is `source-evidence-v1`. Its required logical fields are below; an owning-task adapter must explicitly map an existing storage field to each field rather than duplicate the record:
++
++| Logical field                                                 | Contract                                                                                                                                                                                      |
++| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
++| `sourceBinding`                                               | The complete existing U12 candidate discriminant and its route-specific document/generation/activation or source-version/release/epoch binding; no cross-route optional-field bag.            |
++| `evidenceId`, `representationVersion`, `representationSha256` | Stable unit identity within that immutable representation. The same unit ID under changed bytes is a different version, never an in-place identity substitution.                              |
++| `originalSha256`, `sourceFamilyId`                            | Exact source bytes and corroboration lineage, separately from generated representation hashes. Unknown family is not inferred independence.                                                   |
++| `originalEvidence`                                            | Exact retained text/structure payload or an access-controlled reference that this resolver actually resolves; its digest must match. A reference-only catalogue result is not ready evidence. |
++| `anchor`                                                      | Versioned native anchor plus exact text range/coordinate declaration where applicable; unresolved anchors are typed unavailable.                                                              |
++| `requiredEvidenceIds`                                         | Complete known qualification/structural dependencies in the same immutable bundle. Unknown dependency completeness is explicit and cannot prove safe partition.                               |
++| `authorityBinding`                                            | Applicable policy/version, role/content mode, currentness and lifecycle/eligibility identity; validation comes from authority, not generated payload claims.                                  |
++| `interpretation`                                              | Original extractive evidence or model interpretation, with separate structural producer support and independently assessed support/reference. Missing independent review is unassessed.       |
++| `limitations`                                                 | Versioned typed stage/dimension/code and affected scope, retaining cause independently of the resulting eligibility decision.                                                                 |
++
++`resolveSourceEvidenceV1` is a contract name for the U12 adapter boundary, not a new service mandate: it accepts exact candidate references plus the immutable request snapshot and returns this resolved evidence in that same snapshot or typed unavailability. U12 must bind that payload to its candidate result in the same invocation/evidence package; a second unbound "fetch latest" call cannot complete it.
++
++## 3. Four independent verdicts and typed limitations
++
++Keep these dimensions separate in producer output, serialisation, eligibility, resolution and acceptance records:
++
++1. **Structure/identity:** shape, exact version, valid ranges and linked relationships.
++2. **Extraction completeness/capability:** expected units, retained units, excluded/failed units and capabilities actually available.
++3. **Source authority:** access, rights, currentness, policy, lifecycle and source role.
++4. **Semantic support:** unassessed interpretation, independently assessed supported/unsupported interpretation, or inconclusive assessment with a scoped reason.
++
++U02 `direct`/`partial`/`not_found` remain structural producer labels. They do not populate an independently assessed support verdict. A model result, anchor membership, lexical overlap, confidence downgrade or quality average cannot create that verdict. Absence claims are limited to the selected/inspected evidence unless full relevant coverage was proved.
++
++Use a closed, versioned reason vocabulary at the owning implementation seam. The required distinctions include unsupported feature, unavailable native/OCR capability, resource cap, missing unit/qualification, unresolved coordinate, native/OCR disagreement, optional enrichment/provider failure, unsupported interpretation, policy/access rejection, stale source/snapshot, unreviewed difference, reviewed material conflict, cancellation and lease loss. Each reason binds the affected unit/artifact/stage, whether it is critical to the requested evidence, and its effect on eligibility. Do not collapse these into one success flag or free-text error. U09/U10 own extraction and eligibility reasons; U08 authority/egress; U03 attempt refusal; U12 resolution; U13 invalidation.
++
++Expected inventory is identity-based. Every expected unit is retained, deliberately excluded, failed or skipped with its reason. Counters must reconcile to that inventory. Failed and withheld positive fixtures do not count as preserved evidence. Existing finite E1–E7 expectations, including late evidence and ordinary explanatory paraphrases, supply the denominators; there is no universal semantic guarantee.
++
++## 4. R1 source preference and restriction
++
++Request interpretation remains with the separate RAG owner. It supplies an explicit mode: restricted source set, or preferred primary with permitted supplements. A topic inference is neither an access grant nor a source restriction. Unknown/contradictory restriction resolution is not widened by ingestion.
++
++For restricted mode, the consumer may use only evidence belonging to the explicit authorised set. For preferred mode, independently eligible approved supplementary passages may fill a supported material gap; they do not silently replace valid local guidance. Supplements-disabled, role-ineligible and link-only states remain distinct. eTG/AMH remain link-only and Healthdirect excluded. Unseen linked content cannot support a factual gap.
++
++The passage-level reference map records source role, exact version/anchor, permitted claim role and readiness: catalogue-only, admitted, retained, indexed, technically eligible, retrievable or consumer-accepted. Those states are not synonyms. U07/U12 enforce supplier authority and eligibility; RAG owns bounded request selection and source preference. U12 gains no broad query fanout or ranking-policy implementation from this contract.
++
++## 5. R3 partial resolution without weakened authority
++
++Retain the planned `ready | partial | insufficient` result union and version it with the U12 kernel/evidence contract. All successful candidates carry resolvable original evidence and qualifications; a candidate identifier by itself is insufficient evidence delivery. The resolver must return a typed unavailable outcome if the exact payload cannot be resolved. No old-generation, inaccessible or family-adjacent substitution is allowed.
++
++- `ready`: non-empty eligible evidence, exact immutable request snapshot, and no unresolved issue affecting that returned evidence or a required qualification. This is supplier readiness, not complete coverage of the user's question or semantic verification of generated prose.
++- `partial`: non-empty independently eligible evidence plus non-empty bounded unresolved reasons. The complete request authority/version snapshot is known and matches. Every retained part is proven independent of the excluded claim, required qualification, source authority and material-difference scope.
++- `insufficient`: no safe non-empty set, unknown/mismatched snapshot, or inability to establish that independence. Material conflict blocks the affected set; unknown review state cannot be presented as a reviewed no-conflict result.
++
++The dependency proof is tied to explicit source units/relationships and reviewed claim scopes, not a model assertion or mere topic separation. Unknown cross-unit dependency means the candidate set cannot safely be partitioned. A denied or withdrawn supplement may be omitted only if the remaining source's authority and qualifications are independently sound in the same current snapshot. Do not expose the denied source's private identity in public limitation payloads.
++
++Optional summary/enrichment failure cannot erase valid original evidence or make a fallback claim more complete than its input. Required safety, permission, source, generation and critical-completeness failures still block their dependent evidence. RAG P08B/P08C/P12 own how the supported subset and its limitations are composed and displayed; internal owner, review and private identifiers are not automatically public DTO fields.
++
++## 6. R4 reviewed differences and accountable ownership
++
++The **source-governance Task 3 owner** (`src/lib/source-governance.ts` and `src/lib/source-role-policy.ts` contract) owns canonical reviewed-difference creation, persistence/access policy and reconciliation rules. This is a named implementation owner, not a claim that the required clinical reviewer has been appointed or that persistence already exists. Reuse its `SourcePolicyConflict` vocabulary; do not create a competing clinical conflict model in U03 or U12.
++
++| Responsibility                                                                                                                               | Owning task and acceptance boundary                                                                                                                                                                                            |
++| -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
++| Propose a material difference with both exact source versions, permitted passages, claim/population/qualification scope and supporting units | Source-governance Task 3; a proposal is unreviewed data.                                                                                                                                                                       |
++| Clinically adjudicate supported differences or explicit no-material-difference                                                               | A user-appointed clinical/subject-matter reviewer; currently **unassigned**. Clinical acceptance remains blocked until the person/service, method and scope are recorded. No model or administrator role silently substitutes. |
++| Persist and access-control the canonical reviewed record and immutable review reference                                                      | Source-governance Task 3; a narrow governed owner, no direct model-authored canonical record.                                                                                                                                  |
++| Load exact review identity for the immutable evidence request                                                                                | U12 supplies source/version/review binding; separate RAG P08C consumes it.                                                                                                                                                     |
++| Present supported differences with correct authority                                                                                         | Separate RAG P12; not ingestion acceptance.                                                                                                                                                                                    |
++| Expire/reconcile after replacement, withdrawal, review expiry or policy change                                                               | U13 invalidates synchronously; source-governance Task 3 creates any reviewed replacement.                                                                                                                                      |
++
++At the boundary distinguish `unknown/unreviewed`, `reviewed_difference` and `reviewed_no_material_difference`, all with explicit scope. An empty differences array alone is unknown. Existing consumers that accept only an array require a reviewed compatibility adapter in their owning task; do not retrofit that array into evidence of no conflict. Clinical records cannot outlive either source/version/policy binding. Native/OCR disagreement stays a separate extraction limitation.
++
++The unassigned clinical person and separate RAG execution owner prevent their dependent clinical/consumer acceptance, not U03's source-only lease work. Formal review must verify that the U03 implementation cannot mint or consume a false clinical approval. This explicitly records the unresolved evidence instead of declaring R4 fully operational.
++
++## 7. Attempt, egress and artifact boundaries
++
++The [U03 execution contract](U03-execution-contract.md) binds each actual Node/Edge mutation owner to a durable attempt and server-owned generation/policy authority. Same worker ID is not the same attempt. Authority validation and mutation must be atomic; client preflight and RPC argument mocks cannot establish that property. Required runtime SQL schedules remain separately authorised.
++
++Carry the attempt/cancellation guard to every provider/native invocation boundary and check again before publishing its result. Cancellation/lease loss prevents further work and late publication; it cannot retract bytes already sent to a provider. U07/U08 own admission, malware/identifier/rights clearance and pre-egress permits. U03 must expose the guard without claiming those later clearance gates exist.
++
++The complete artifact inventory includes pages/OCR/layout and private evidence objects; chunks, embeddings, index units, embedding fields and table facts; images/captions; sections/cards and deep-memory generations; summaries, generated labels and projection markers; aliases; document/quality metadata; stages, heartbeats, jobs, terminal/sibling/batch state; caches; and repair audit. U04 stages the inventory, U05 owns its single switch/retention, U10 supplies the final eligibility receipt, U13 owns invalidation and governed cleanup. U03 fencing is not a second activation mechanism.
++
++No task can declare completion using only the active pointer if other writers can still overwrite evidence. Candidate Storage objects need attempt/generation identity, no overwrite of shared current paths and safe exact-owner compensation; ambiguous/lost-response publication is never followed by destructive cleanup of potentially committed evidence. Existing deep-memory lost-response protection remains mandatory.
++
++## 8. Acceptance and early user value
++
++Reuse E1–E7 and H1–H7 with one shared reference case: primary source supports two requested parts, an approved supplement supplies a third, and a fourth is unresolved. Record every supported part and qualification through actual source producer, retained structure, index unit and U12 resolution. The separate RAG owner proves packing, verified claim retention and full display/copy. A mock finaliser object alone cannot supply producer proof.
++
++The early milestone is retrievable preserved evidence, including late qualifications and exact source anchors. It can prepare authored in-memory adapter tests under current authority; native file extraction requires the separate synthetic-document exception. Do not accept U09/C03 out of order, activate the kernel or claim ordinary Answer availability from this milestone.
++
++Finite positive fixtures must preserve every nominated critical atom/relationship; negative mutations must not gain supported status. Record preserved, withheld and missing separately. Improve the targeted weak Answer cases by supported requested-part coverage or useful supported explanation; longer generic prose and ties do not establish improvement. Semantic/provider usefulness needs its own authorised reviewer/evaluation.
++
++## 9. Freeze, implementation and residual decisions
++
++Independent xhigh review covers this full contract and the concrete U03 brief. Preserve all failed reviews, resolve Critical/Important findings, pin the accepted original range/hash, then dispatch one fresh U03 implementer at the required High floor. Later unit briefs inherit these semantics and choose their smallest concrete storage/type implementation; a change to a frozen semantic boundary requires a reviewed amendment before dependent implementation.
++
++No renewed general approval is needed for authorised local work. Actual-source licence/retention, international expansion, the clinical adjudicator, native fixture execution, disposable SQL, providers/hosted acceptance and publication/activation remain separate decisions before their dependent actions. Unknown states retain conservative behaviour. C01 remains incomplete; U03 remains unstarted until dispatch; P00–P07/C00/U01/U02 history remains unchanged; P08A superseded; kernel default-off.
++
++Historical U02 offline evaluation remains exit 1, four failed suites, 45 failed and 586 passed overall. Its exception is not green and not inherited. The latest U02 corrective acceptance is the two-file product at `876cb09405d81d9c4a8a4931b3d735fd252934ba` with 103/103 focused tests and reviewed Edge compilation equivalence, not new semantic or runtime proof.
+diff --git a/docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md b/docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md
+index 4a8ea9168e06316dee36ba4bb87ad80a17c36739..dd421b6873a9f863253b2f6cdb1caa40107ed2da 100644
+--- a/docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md
++++ b/docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md
+@@ -232,20 +232,22 @@ DOCX uses paragraph/table/media relationships, XLSX worksheet/cell/range coordin
+ U09 owns extraction, normalisation, chunk/source-coordinate and inherited producer fidelity seams. U12 owns a versioned candidate-plus-evidence resolver in the same immutable generation/release snapshot: original evidence, qualifications, structural anchors, policy/role/currentness, source-family lineage, support limitations and invalidation identity. Missing or stale evidence is unavailable, never silently substituted. P05 source authority and P06 release/epoch/outbox authority remain the owners. Source and derivative are one corroboration family.
+ 
+ The early milestone is a synthetic-only demonstration that evidence survived the real producer and adapter chain. It does not accept U09 out of order or enable the kernel. A separate RAG owner must later implement and demonstrate ordinary detailed Answer use under separate authority. The kernel remains structurally default-off and ordinary Answer serving unchanged.
+ 
+ If separately approved, source-only acceptance permits native extraction of authored, non-sensitive synthetic fixture bytes in local temporary output, with no provider/network/model-asset download and no durable corpus processing. This is a narrow clarification of the historical no-document-processing boundary, not authority for real uploads or runtime ingestion. Local SQL execution remains separately authorised. SOURCE_COMPLETE still cannot imply connected, clinical or production acceptance.
+ 
+ The historical hours and savings in section 13 remain historical planning estimates, not current measurements or guarantees. Re-estimate remaining work only after contract/fixture sizing. Development measures and runtime measures are recorded separately; no efficiency change may weaken fidelity, privacy, source rights, recovery or required independent reviews.
+ 
+ The adopted [R1–R5 handoff](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md) defines source preference/restriction, explanatory support expectations, independent safe evidence and typed fallback limits, reviewed-conflict ownership, and the shared downstream answer reference case. U12 partial results cannot bypass snapshot/access/qualification dependencies. International activation and separate Answer implementation are not inferred.
+ 
++The post-U02 [shared contract freeze](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/shared-contract-freeze-v1.md) supplies the versioned evidence envelope, exact persisted-text/native-coordinate semantics, safe partial-result conditions and explicit governance ownership. The [U03 execution contract](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md) supplies the concrete all-writer fencing boundary. Both require independent acceptance before wider implementation; they preserve the historical design and defer clinical/provider/runtime acceptance to the appropriate owners.
++
+ ## 15. Historical accepted design boundary
+ 
+ The user approved this design on 2026-08-31 with the following boundary:
+ 
+ - the priority is a source-complete ingestion system rather than completion of every parent RAG programme phase;
+ - buffered answer behavior remains the supported serving path during this continuation;
+ - source completion means governed admission through technically validated retrieval, not ordinary end-user Answer availability;
+ - the minimum late public-retrieval kernel is retained while general canary and broad coverage/ranking work is deferred;
+ - P00-P07 remain immutable;
+ - no live or document-processing work occurs without a later explicit request;

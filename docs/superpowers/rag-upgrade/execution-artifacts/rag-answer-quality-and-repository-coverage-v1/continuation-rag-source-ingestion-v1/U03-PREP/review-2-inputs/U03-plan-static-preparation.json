@@ -1,0 +1,13 @@
+{
+  "kind": "focused planning static checks",
+  "formattedFiles": [
+    "docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/shared-contract-freeze-v1.md",
+    "docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md",
+    "docs/superpowers/plans/2026-08-31-ingestion-first-continuation.md",
+    "docs/superpowers/specs/2026-08-31-ingestion-first-continuation-design.md",
+    "docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/rag-evidence-handoff.md"
+  ],
+  "checkedNewDocumentLinks": 10,
+  "failures": [],
+  "testsRun": false
+}

@@ -1,0 +1,105 @@
+{
+  "schema": "u03-verification-inputs-v3",
+  "preparationHead": "fd043b262ebd9b20315c2e46bc4838265787fa80",
+  "repository": "C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database",
+  "branch": "codex/rag-local-build-20260822",
+  "nextVersion": "16.3.0",
+  "typescriptVersion": "6.0.3",
+  "authoringStatus": "unexecuted-review-candidate",
+  "briefPath": "docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md",
+  "futureSourceFiles": [
+    "supabase/functions/_shared/ingestion-attempt.ts",
+    "src/lib/ingestion-repair-plan.ts",
+    "tests/ingestion-lease-fencing.test.ts",
+    "tests/ingestion-repair-plan.test.ts",
+    "scripts/lib/ingestion-operator-compatibility.ts",
+    "tests/ingestion-operator-compatibility.test.ts"
+  ],
+  "requiredExistingRoots": [
+    "scripts/backfill-smart-index.ts",
+    "scripts/enrich-documents.ts",
+    "scripts/archive/backfill-enrichment.ts"
+  ],
+  "forcedRoots": [
+    "supabase/functions/_shared/ingestion-attempt.ts",
+    "scripts/archive/backfill-enrichment.ts"
+  ],
+  "rootPrefixes": [
+    "src/",
+    "worker/",
+    "scripts/",
+    "tests/"
+  ],
+  "rootConfigFiles": [
+    "next.config.ts",
+    "playwright.config.ts",
+    "playwright.visual.config.ts",
+    "vitest.config.mts"
+  ],
+  "generatedAmbient": {
+    "directory": ".next-playwright/u03-typegen-fd043b262",
+    "root": ".next-playwright/u03-typegen-fd043b262/next-env.d.ts",
+    "files": [
+      ".next-playwright/u03-typegen-fd043b262/next-env.d.ts",
+      ".next-playwright/u03-typegen-fd043b262/dist/types/routes.d.ts",
+      ".next-playwright/u03-typegen-fd043b262/dist/types/root-params.d.ts"
+    ],
+    "evidenceFile": "U03-next-ambient-generation-v3.json"
+  },
+  "routeInventory": {
+    "count": 295,
+    "sha256": "4687951bd3b4490040053fc0fa847bd2268d527d6897584a20039c6cc1860788",
+    "encoding": "UTF-8 of ordinal-sorted Git paths joined by LF, plus final LF"
+  },
+  "typegenFacts": {
+    "appDirectory": "src/app",
+    "hasPagesDirectory": false,
+    "pageExtensions": [
+      "tsx",
+      "ts",
+      "jsx",
+      "js"
+    ],
+    "strictRouteTypes": false,
+    "typedRoutes": false,
+    "imageImportsEnabled": true,
+    "rewriteSources": [
+      "/therapy-compass-data/therapies.json",
+      "/therapy-compass-data/therapies-index.json",
+      "/therapy-compass-data/therapies-home.json"
+    ]
+  },
+  "pins": {
+    "next.config.ts": "77b69c9ec677db03a53bb66b4ce7cf173113ad997312111ec52678988f971b45",
+    "tsconfig.json": "0538022c480806e9dcab855efe91dc225a8cbfd81d01c6d9ba9caae239dbaabc",
+    "tsconfig.typecheck.json": "70b65ca0463dbd4468768f7ad994b4e33ec2124e6d7965df1dd25b53aac049d8",
+    "package.json": "53b6763fc9ba52771d480ab23db19eb988a2bad98cf9c76b9e5ce8fbcfd05bab",
+    "package-lock.json": "f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063",
+    "next-env.d.ts": "15e6ad9b148d1cf91d211abc485cc9de5de14496191785ca7283c77c50e74249",
+    "scripts/test-run-lock.mjs": "a0ff442d91baa98742b78601b39892e5c19cfbdf46b30e8b19662e83e20b9caf",
+    "scripts/test-environment.mjs": "c3ca8fa0a471c2c67020852acbc3e673aa82b67ccc4d7a60d5bfa216af481b1a",
+    "node_modules/next/package.json": "7bd991b2e608539915711fc0286a87de7bfcea244e9edaef4a031da7c0d74904",
+    "node_modules/next/dist/build/route-discovery.js": "f89bf3d74b53e6266ef67ff62911993de32e56da300153ab7603d60b74bcfa4e",
+    "node_modules/next/dist/server/lib/find-page-file.js": "513dc7a12c2618bc4cd0842ac0d589978a26b9931e697d02284b0956486f0b14",
+    "node_modules/next/dist/build/file-classifier.js": "428509dabb21476238c4ef63fd7e9ae180a3de89d12da631f1d10e3305f07f57",
+    "node_modules/next/dist/shared/lib/entry-constants.js": "8545ef6bd7e329467679a6e82f265ace4772bd783a44cc777d287cf1eb2b624d",
+    "node_modules/next/dist/server/lib/router-utils/route-types-utils.js": "e58d369918d9e3c9f50b429cc5cc85881aa57b9c73791fc3bad5cfadcf26c952",
+    "node_modules/next/dist/server/lib/router-utils/root-params-type-utils.js": "d08e53213b27e02f5b7825c863f90c27d6885f096b6234781068c0cf0678e0a2",
+    "node_modules/next/dist/lib/typescript/writeAppTypeDeclarations.js": "3973ebf0093b08136059a790442951ba498421627a52bfcf06e1584360e034c9",
+    "node_modules/next/dist/server/lib/router-utils/typegen.js": "ae5c59e939b908320e9e90247e478b607977dd61ea88b451cb0f4c39da05ff00",
+    "node_modules/next/dist/server/config-shared.js": "2c15353ce27ba7ea7322b53f3194c6d39593936f2c73e303cbd2dd7d37d88f0a",
+    "node_modules/next/dist/shared/lib/router/utils/app-paths.js": "a7477c3776af700dca2d70d5787028ac73aa0e6b7cdfb907ae5ff5ce536626ed",
+    "node_modules/next/dist/lib/metadata/get-metadata-route.js": "9083a7fa69483e0b7433371206cacf776ad578fd2c00ffb3f54d8c1172116a18",
+    "node_modules/next/dist/lib/metadata/is-metadata-route.js": "0fd467d163874b8c1a00c5b4c8b4a688853be0fc2b0ab5af27ff3d7c1a52031e",
+    "node_modules/next/dist/shared/lib/segment.js": "949714284ce035e986e311527f66bd177f80ffea6b3bea7a8faab66642e6fde0",
+    "node_modules/typescript/package.json": "9332e97c30d3e53ed54910b89207ed657fb444066484df6e5b6965bf130865e9",
+    "node_modules/typescript/lib/typescript.js": "569177652966bd528c319171c7dd22860dbf72bde116cbc4f644f1d02bb12e39",
+    "scripts/retryable-fs.mjs": "48ad1f5de8b41d49501c6713c883022bd1e4dcc6971be8a5a56efefb33f828cc",
+    "scripts/sensitive-text.mjs": "4ac54d7b38bff823ba5eb5d18bbb6642fcb6dfa583f6e5983e628bae35c294f6",
+    "node_modules/next/dist/shared/lib/router/utils/route-regex.js": "e8a6452768381bca145fe5687381be55964db0b2057bd3c5bf2af1a8fa81bad5",
+    "node_modules/next/dist/lib/try-to-parse-path.js": "ba8d9ebb33d5c541a6788dcec6b04e160c930389a3f86be33922f3fb4632573d",
+    "node_modules/next/dist/shared/lib/router/utils/interception-routes.js": "95413b15825fde492f23eb6563621d394e617ba8231082071e80f6011694cda7",
+    "node_modules/next/dist/shared/lib/page-path/normalize-path-sep.js": "d626313c19faf4b3e62d32e94c8db73143090456f0bee2b48fa4601f98501a87",
+    "node_modules/next/dist/shared/lib/router/utils/is-dynamic.js": "5d8c3a47c562930c88e3ec5c5e4b83eb4bac57ab5d014618a31128223fce7106"
+  }
+}

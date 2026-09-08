@@ -1,0 +1,94 @@
+{
+  "kind": "frozen documentation and execution recipe review inputs; not acceptance",
+  "base": "fd043b262ebd9b20315c2e46bc4838265787fa80",
+  "head": "481270d8b4267d479bc78d58815b365439f8a2ec",
+  "canonicalPackage": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03-PREP/U03-contract-review-1.diff",
+  "canonicalPackageSha256": "1d32c81401e22eeabba54b5b5f02bcdd967a4cc43f2c43bd14a9e0c26cdc4c40",
+  "files": [
+    {
+      "name": "U03-frozen-task-context.md",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-frozen-task-context.md",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-frozen-task-context.md",
+      "sha256": "f19c9a082edf068d9700e09401badfbcd270694abecb4ef8a0c4a6e62d3cdcea"
+    },
+    {
+      "name": "U03-frozen-owner-preparation.md",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-frozen-owner-preparation.md",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-frozen-owner-preparation.md",
+      "sha256": "74bf1c4d4960feaf87787f187f1de474b9680b98b8e8b7594da324a256e78ec7"
+    },
+    {
+      "name": "U03-schema-contract-recommendation.md",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-schema-contract-recommendation.md",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-schema-contract-recommendation.md",
+      "sha256": "adb0735ae327f04a2206a78f2bc2c7ba8a51ce6bded28d89042cdf6065f2da0c"
+    },
+    {
+      "name": "U03-operator-compatibility-followup.md",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-operator-compatibility-followup.md",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-operator-compatibility-followup.md",
+      "sha256": "b22168040664b13fb15d4b30f5e68a5fd53db4d1311798caba12f60ca982215a"
+    },
+    {
+      "name": "U03-verification-preparation.md",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-verification-preparation.md",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-verification-preparation.md",
+      "sha256": "21abda3f3606389592fe56a71c456e3d595ffd7dfeca361291de84f37713ac0a"
+    },
+    {
+      "name": "U03-verification-recipes-v3.md",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-verification-recipes-v3.md",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-verification-recipes-v3.md",
+      "sha256": "89affd9a450e51521b87ddb98d79e8e96274299fc750d37874c237f0400d26c2"
+    },
+    {
+      "name": "U03-generate-next-ambient.mjs",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-generate-next-ambient.mjs",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-generate-next-ambient.mjs",
+      "sha256": "5e030753100ff2c7fbc51a5893ba751e806f7b5a0a9b80a505a936a68b78caf4"
+    },
+    {
+      "name": "U03-tracked-typecheck-v3.mjs",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-tracked-typecheck-v3.mjs",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-tracked-typecheck-v3.mjs",
+      "sha256": "76b7d36588738e7db9edd60c146026e1771455315278ed495b07d97386b72879"
+    },
+    {
+      "name": "U03-reviewed-compile-inputs.json",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-reviewed-compile-inputs.json",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-reviewed-compile-inputs.json",
+      "sha256": "edd5a7bba598532082fe69049cbcf3d3a09d126258f6ee29713e57a5e4d29643"
+    },
+    {
+      "name": "U03-staged-migration-role.mjs",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-staged-migration-role.mjs",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-staged-migration-role.mjs",
+      "sha256": "08f41c5dd10428d8b55b3c2594b566890af71e485a6e9d4f2aca791651128bae"
+    },
+    {
+      "name": "U03-staged-index-coverage.mjs",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-staged-index-coverage.mjs",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-staged-index-coverage.mjs",
+      "sha256": "f4b08f35b5f08c02c054e1364dd8cddb860e579321e9ddd8308e041bf6581041"
+    },
+    {
+      "name": "U03-edge-native-check.mjs",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-native-check.mjs",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-edge-native-check.mjs",
+      "sha256": "72a9989a3a36a8f89b64487f68b7a1784ce4d40fee81899a7a4ec7cde3408535"
+    },
+    {
+      "name": "U03-controller-gate-recipes.md",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-gate-recipes.md",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-controller-gate-recipes.md",
+      "sha256": "3c3a9736e65b89966e1b30cffd9cd566fd50981e8248665bca4c4cfbceaac9a0"
+    },
+    {
+      "name": "U03-plan-static-preparation.json",
+      "original": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-plan-static-preparation.json",
+      "frozenCopy": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-contract-review-1-inputs\\U03-plan-static-preparation.json",
+      "sha256": "e1224decb77a6e4ffaf706fdecad6eaac62e51277bf59d3f9411a0bfdf894389"
+    }
+  ],
+  "noProductExecution": true
+}
