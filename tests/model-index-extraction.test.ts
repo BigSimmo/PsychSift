@@ -134,7 +134,7 @@ describe("review correction: actual model-index cancellation wrapper", () => {
     mocks.generateStructuredTextResponse.mockResolvedValueOnce(empty);
     const controller = new AbortController();
     await generateModelIndexProfile({ ...args, signal: controller.signal });
-    expect(mocks.generateStructuredTextResponse.mock.calls[0]?.[2]).toMatchObject({ signal: controller.signal });
+    expect(mocks.generateStructuredTextResponse.mock.calls[0]?.[2]?.signal).toBe(controller.signal);
   });
   it.each([true, false])("refuses pre-aborted work before model invocation, empty=%s", async (isEmpty) => {
     mocks.generateStructuredTextResponse.mockResolvedValue(empty);

@@ -812,7 +812,7 @@ describe("review correction: actual caption cancellation wrapper", () => {
     const { classifyAndCaptionImageFromBase64 } = await import("../src/lib/openai");
     const controller = new AbortController();
     await classifyAndCaptionImageFromBase64({ base64: "ZmFrZQ==", mimeType: "image/png", signal: controller.signal });
-    expect(create.mock.calls[0]?.[1]).toMatchObject({ signal: controller.signal });
+    expect(create.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
   });
   it("refuses pre-aborted work before SDK invocation", async () => {
     const create = vi.fn(() => ({ withResponse: async () => success() }));
