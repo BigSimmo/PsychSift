@@ -19,6 +19,8 @@ The [retained-evidence binding](../../execution-artifacts/rag-answer-quality-and
 
 ## Qualifications that remain governing
 
+- Subsequent U04 preparation established a [historical discovery qualification](../../execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-verification-discovery-qualification.md): named Vitest file selectors do not prove exact filesystem discovery. U03's recorded executed tests remain evidence; no unrelated-file access is retroactively inferred. Future U04 gates require the reviewed restricted-discovery mechanism before execution.
+
 - Historical U02 `eval:rag:offline`: **exit 1, four failed suites, 45 failed and 586 passed tests overall**. Its accepted exception is not green and is not inherited by U03, C01's other units or any successor. The C01 consolidation preserves that history rather than turning it into a phase-wide waiver.
 - U03 module-index remains **exit 1**, with the independently established unchanged `.superpowers` root gap and nine `site_content_*` table-documentation gaps; zero new U03 gap. Its acceptance record names the exact baseline disposition. This is not a passing index gate or permission for unrelated cleanup.
 - U03 scoped Node compilation and two-root native Edge compilation passed at their recorded input identities. Both are qualified by the existing source `@ts-ignore` on the changed Edge runtime import line; independent source review verified the actual exports. Neither result proves that line unsuppressed. The final two test-assertion changes were not freshly compiled.
