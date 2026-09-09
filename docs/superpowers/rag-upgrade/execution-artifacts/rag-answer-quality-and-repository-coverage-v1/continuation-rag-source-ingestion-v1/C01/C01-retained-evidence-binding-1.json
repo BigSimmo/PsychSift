@@ -1,0 +1,51 @@
+{
+  "status": "Read-only historical binding check; no C01 acceptance or new gate execution",
+  "head": "bbd978a5708ed70c51e293aab079ead9c5bcb1ce",
+  "ancestorHeads": [
+    "5895e5da45b96d0d90a42c32856cb25f2026bf36",
+    "08df4cddce457ba016b0d31fcf7202a4b564776a",
+    "6adb834e48b3c1af4579ef22738d942803ab6893",
+    "2dad59e0ee26ab6586f6a49ec1dfdb993d1f9ad7",
+    "876cb09405d81d9c4a8a4931b3d735fd252934ba",
+    "fd043b262ebd9b20315c2e46bc4838265787fa80",
+    "8c11f138e6c683a13db3b465332e7f3cbb515c62"
+  ],
+  "packages": [
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-review.diff",
+      "sha256": "0289a6b08737f5435b39dc5638332b49140ba93e29b7aaf2469ed148f41a919d"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-fix-1-review.diff",
+      "sha256": "748822b177e5e12f7981254ba8f560551a531d3da8cd6c7493b021f53eacf636"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-review-1.diff",
+      "sha256": "35468c6c92b07458bf0e71de8b1c708a66f1efcc89c3be7d4ab42d5debaefe09"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-fix-1-review.diff",
+      "sha256": "14dc41b94ab6fbdbd69b62f2450ede94ed126b059a67c91f290d975dd7027f0d"
+    }
+  ],
+  "documents": [
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U01/U01-acceptance.md",
+      "sha256": "ba04060e7e5fd53e23f552f055d673d5d95cd3d2c1eca2f01b1b4d6e04beb553"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-acceptance.md",
+      "sha256": "b0394202901c526fedad5aa941b883c9b71d89a115697e03ce726240f5d3114c"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U02/U02-audit-correction-acceptance.json",
+      "sha256": "1ed4d181af7c78f3ad1374cc05f683524dfedf3b19c4c5e9687e5746b1457e24"
+    }
+  ],
+  "acceptedU02Normalizer": {
+    "path": "supabase/functions/_shared/source-anchored-summary.ts",
+    "sha256": "a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2",
+    "unchanged": true
+  },
+  "remaining": "U03 acceptance commit before C01 evidence consolidation; C01/C02 integration and drift reconciliation after U06/C02"
+}
