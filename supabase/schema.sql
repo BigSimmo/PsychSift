@@ -12062,8 +12062,9 @@ begin
   select * into v_summary from public.document_summaries where document_id = v_document_id for update;
   if v_payload->>'summary_kind' <> 'structured'
     and v_summary.metadata->'source_anchored_summary_v1'->>'summary_kind' = 'structured'
-    and v_summary.metadata->'source_anchored_summary_v1'->>'index_generation_id' = p_fence->>'expected_generation_id'
-    then return jsonb_build_object('ok',true,'summary',to_jsonb(v_summary),'preserved_structured',true); end if;
+    -- Kind is not evidence of validity. Refuse under the current row lock; a
+    -- rejected/concurrently replaced structured row needs governed structured repair.
+    then raise exception 'ingestion_summary_requires_structured_repair'; end if;
   perform 1 from public.document_labels where document_id = v_document_id order by id for update;
   insert into public.document_summaries(document_id,owner_id,summary,clinical_specifics,source_chunk_ids,source_image_ids,model,metadata,generated_at,updated_at)
   values(v_document_id,v_owner,p_summary->>'summary',p_summary->'clinical_specifics',

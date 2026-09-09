@@ -29,7 +29,7 @@ import {
   runEdgeJobBatch,
   scanProtectedPublicSourceChunkPages,
   shouldRunVisualArtifacts,
-  sourceAnchoredSummaryProjectionMatches,
+  ensureSourceAnchoredSummary,
   type CompletionGate,
   type CompletionGateRow,
   type MissingArtifactPlan,
@@ -42,7 +42,7 @@ import { buildGenerationVisibility, isVisibleCommittedGenerationRow, type Docume
 import { buildIndexingCoverageProfile, selectCoverageAwarePromptChunks } from "../_shared/indexing-coverage.ts";
 // prettier-ignore
 // @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
-import { SOURCE_ANCHORED_MAX_CHUNKS, SOURCE_ANCHORED_MAX_IMAGES, SOURCE_ANCHORED_MAX_PROMPT_IMAGES, SOURCE_ANCHORED_SOURCE_PAGE_SIZE, SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION, SOURCE_ANCHORED_SUMMARY_METADATA_KEY,  buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary, persistedSourceAnchoredSummaryProjectionMatches, projectSourceAnchoredLabels, requireSourceAnchoredSummaryGeneration, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
+import { SOURCE_ANCHORED_MAX_CHUNKS, SOURCE_ANCHORED_MAX_IMAGES, SOURCE_ANCHORED_MAX_PROMPT_IMAGES, SOURCE_ANCHORED_SOURCE_PAGE_SIZE, SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION, projectSourceAnchoredLabels, requireSourceAnchoredSummaryGeneration, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
 
 type ClaimedJob = {
   locked_by: string;
@@ -754,7 +754,7 @@ async function persistSourceAnchoredSummary(
   payload: SourceAnchoredSummaryPayload,
   _writePayload: boolean,
 ) {
-  await edgeMutation(job, "persist_ingestion_summary_projection", {
+  return edgeMutation(job, "persist_ingestion_summary_projection", {
     p_summary: {
       document_id: job.document_id,
       summary: payload.summary,
@@ -807,31 +807,26 @@ async function ensureSummary(
     where document_id = ${job.document_id}::uuid
     limit 1
   `;
-  let stored: SourceAnchoredSummaryPayload | null = null;
+  const labels = await sql<
+    Array<{ label: string; label_type: string; confidence: number; metadata: Record<string, unknown> | null }>
+  >`
+    select label, label_type, confidence, metadata
+    from public.document_labels
+    where document_id = ${job.document_id}::uuid and source = 'generated'
+    order by label_type asc, label asc
+  `;
+  const attempt = edgeAttempt(job);
   try {
-    const candidate = safeRecord(existing[0]?.metadata)[SOURCE_ANCHORED_SUMMARY_METADATA_KEY];
-    stored = normalizeSourceAnchoredSummary(candidate, sources.authority);
-  } catch {
-    stored = null;
+    return await ensureSourceAnchoredSummary({
+      existing: existing[0],
+      labels,
+      authority: sources.authority,
+      persist: (payload) => persistSourceAnchoredSummary(job, payload, true),
+    });
+  } catch (error) {
+    attempt.cancel();
+    throw error;
   }
-  if (stored?.summary_kind === "structured") {
-    const labels = await sql<
-      Array<{ label: string; label_type: string; confidence: number; metadata: Record<string, unknown> | null }>
-    >`
-      select label, label_type, confidence, metadata
-      from public.document_labels
-      where document_id = ${job.document_id}::uuid and source = 'generated'
-      order by label_type asc, label asc
-    `;
-    const projectionCurrent = persistedSourceAnchoredSummaryProjectionMatches(existing[0], stored);
-    if (projectionCurrent && sourceAnchoredSummaryProjectionMatches(labels, stored)) return stored;
-    await persistSourceAnchoredSummary(job, stored, !projectionCurrent);
-    return stored;
-  }
-
-  const fallback = buildSourceAnchoredFallbackPayload(sources.authority);
-  await persistSourceAnchoredSummary(job, fallback, true);
-  return fallback;
 }
 
 function unitsFromStructured(image: ImageRow, structured: ReturnType<typeof parseStructuredVisual>): VisualUnit[] {

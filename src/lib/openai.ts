@@ -1100,6 +1100,7 @@ function sanitizeImageLabels(labels: unknown) {
 }
 
 export async function classifyAndCaptionImageFromBase64(args: {
+  signal?: AbortSignal;
   base64: string;
   mimeType: string;
   nearbyText?: string;
@@ -1110,6 +1111,7 @@ export async function classifyAndCaptionImageFromBase64(args: {
   tableRole?: string | null;
   tableText?: string | null;
 }) {
+  args.signal?.throwIfAborted();
   const extractionContext = [
     `Source kind: ${args.sourceKind ?? "unknown"}`,
     args.candidateType ? `Candidate type: ${args.candidateType}` : null,
@@ -1142,6 +1144,7 @@ export async function classifyAndCaptionImageFromBase64(args: {
   ];
 
   const response = await generateStructuredTextResult(input, imageClassificationSchema, {
+    signal: args.signal,
     model: env.OPENAI_VISION_MODEL,
     maxOutputTokens: 260,
     operation: "vision_classification",
@@ -1159,6 +1162,8 @@ export async function classifyAndCaptionImageFromBase64(args: {
     promptCacheKey: "clinical-image-classification-v1",
     reasoningEffort: env.OPENAI_VISION_REASONING_EFFORT,
   });
+
+  args.signal?.throwIfAborted();
 
   try {
     const parsed = JSON.parse(response.text) as Record<string, unknown>;

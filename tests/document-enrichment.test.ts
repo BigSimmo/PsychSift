@@ -1,3 +1,5 @@
+import { IngestionAttempt } from "../supabase/functions/_shared/ingestion-attempt";
+import { runIngestionEnrichmentStage, runIngestionPreparedWork, runIngestionMutation } from "../worker/behavior";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -398,6 +400,61 @@ describe("document enrichment", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
+
+  it.each(["returned", "rejected"])(
+    "review correction: summary %s persistence failure stops actual optional orchestration",
+    async (mode) => {
+      const supabase = createRepairSupabaseMock();
+      const attempt = new IngestionAttempt(TEST_FENCE);
+      supabase.rpc.mockImplementation(async () => {
+        if (mode === "rejected") throw new Error("summary transport rejected");
+        return { data: null, error: { message: "summary RPC unavailable" } };
+      });
+      const native = vi.fn();
+      const laterRpc = vi.fn(async () => ({ data: { ok: true }, error: null }));
+      const process = async () => {
+        await runIngestionEnrichmentStage(attempt, () =>
+          upsertDocumentEnrichment({
+            supabase: supabase as never,
+            fence: attempt.fence,
+            signal: attempt.signal,
+            document: {
+              id: DOCUMENT_ID,
+              owner_id: null,
+              title: "Clozapine monitoring",
+              file_name: "monitoring.pdf",
+              source_path: null,
+              metadata: { index_generation_id: GENERATION_ID },
+            },
+            indexGenerationId: GENERATION_ID,
+            chunks: sourceAuthority().selectedChunks.map((row, chunk_index) => ({
+              ...row,
+              index_generation_id: GENERATION_ID,
+              chunk_index,
+              section_heading: null,
+              content: "Check ANC before clozapine review.",
+            })),
+            images: sourceAuthority().selectedImages.map((row) => ({
+              ...row,
+              index_generation_id: GENERATION_ID,
+              caption: "Monitoring",
+            })),
+          }),
+        );
+        await runIngestionPreparedWork(
+          attempt,
+          () => runIngestionMutation(attempt, laterRpc, "update_ingestion_job_progress"),
+          native,
+        );
+        await runIngestionMutation(attempt, laterRpc, "complete_ingestion_job");
+      };
+      await expect(process()).rejects.toBeDefined();
+      expect(attempt.signal.aborted).toBe(true);
+      expect(supabase.rpc).toHaveBeenCalledOnce();
+      expect(native).not.toHaveBeenCalled();
+      expect(laterRpc).not.toHaveBeenCalled();
+    },
+  );
 
   it("U03 refuses summary publication after attempt replacement", async () => {
     const supabase = createRepairSupabaseMock();

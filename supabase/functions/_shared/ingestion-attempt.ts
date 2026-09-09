@@ -19,6 +19,27 @@ export class IngestionAttemptError extends Error {
     this.name = "IngestionAttemptError";
   }
 }
+/** An RPC failure is fatal persistence uncertainty, not an optional model failure. */
+export class IngestionPersistenceError extends IngestionAttemptError {
+  constructor(cause: unknown) {
+    super("ingestion_rpc_invalid");
+    this.name = "IngestionPersistenceError";
+    this.message = cause instanceof Error ? cause.message : String(cause);
+    this.cause = cause;
+  }
+}
+export async function runIngestionPersistence(
+  request: () => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+) {
+  try {
+    const { data, error } = await request();
+    if (error) throw new Error(error.message);
+    return parseIngestionMutationResult(data);
+  } catch (error) {
+    if (error instanceof IngestionAttemptError) throw error;
+    throw new IngestionPersistenceError(error);
+  }
+}
 export function parseIngestionFence(value: unknown): IngestionFence {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new IngestionAttemptError("ingestion_attempt_required");
@@ -63,8 +84,21 @@ export function parseIngestionMutationResult(value: unknown): Record<string, unk
 export class IngestionAttempt {
   private readonly controller = new AbortController();
   private current: IngestionFence;
+  private dispatchTail: Promise<void> = Promise.resolve();
   constructor(fence: IngestionFence) {
     this.current = parseIngestionFence(fence);
+  }
+  /** Drain in-flight requests through the handoff response; capture authority only inside work. */
+  serialize<T>(work: () => Promise<T>): Promise<T> {
+    const result = this.dispatchTail.then(() => {
+      this.check();
+      return work();
+    });
+    this.dispatchTail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
   get fence() {
     this.check();

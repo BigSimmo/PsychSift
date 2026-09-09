@@ -115,3 +115,57 @@ describe("model index extraction", () => {
     expect(prompt).not.toMatch(/system prompt/i);
   });
 });
+
+describe("review correction: actual model-index cancellation wrapper", () => {
+  afterEach(() => vi.clearAllMocks());
+  const args = {
+    document: { title: "Mock protocol", file_name: "mock.txt" },
+    chunks: [{ id: "chunk-1", page_number: 1, chunk_index: 0, section_heading: null, content: "Monitoring protocol." }],
+  };
+  const empty = JSON.stringify({
+    sections: [],
+    askable_questions: [],
+    clinical_facts: [],
+    table_facts: [],
+    aliases: [],
+    quality_issues: [],
+  });
+  it("passes the same signal into lower structured generation", async () => {
+    mocks.generateStructuredTextResponse.mockResolvedValueOnce(empty);
+    const controller = new AbortController();
+    await generateModelIndexProfile({ ...args, signal: controller.signal });
+    expect(mocks.generateStructuredTextResponse.mock.calls[0]?.[2]).toMatchObject({ signal: controller.signal });
+  });
+  it.each([true, false])("refuses pre-aborted work before model invocation, empty=%s", async (isEmpty) => {
+    mocks.generateStructuredTextResponse.mockResolvedValue(empty);
+    const controller = new AbortController();
+    controller.abort(new Error("model cancelled"));
+    await expect(
+      generateModelIndexProfile({ ...args, chunks: isEmpty ? [] : args.chunks, signal: controller.signal }),
+    ).rejects.toThrow("model cancelled");
+    expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
+  });
+  it("refuses a successful lower result released after abort", async () => {
+    let release!: (value: string) => void;
+    mocks.generateStructuredTextResponse.mockImplementationOnce(
+      () =>
+        new Promise<string>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const controller = new AbortController();
+    const result = generateModelIndexProfile({ ...args, signal: controller.signal });
+    const observed = result.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+    controller.abort(new Error("late model cancelled"));
+    release(empty);
+    expect(await observed).toHaveProperty("error");
+  });
+  it("retains uncancelled empty-input behavior without model work", async () => {
+    const profile = await generateModelIndexProfile({ ...args, chunks: [], signal: new AbortController().signal });
+    expect(profile.sections).toEqual([]);
+    expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
+  });
+});

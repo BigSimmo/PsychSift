@@ -362,13 +362,16 @@ ${imageBlock || "No image metadata."}`;
 }
 
 export async function generateModelIndexProfile(args: {
+  signal?: AbortSignal;
   document: { title: string; file_name: string; source_path?: string | null };
   chunks: ModelIndexChunk[];
   images?: ModelIndexImage[];
 }) {
+  args.signal?.throwIfAborted();
   if (args.chunks.length === 0) return emptyProfile();
   const model = env.OPENAI_INDEXING_MODEL;
   const result = await generateStructuredTextResult(buildPrompt({ ...args, images: args.images ?? [] }), schema, {
+    signal: args.signal,
     model,
     // Answer-size budget; responseBody() floors the effective cap by reasoning effort so
     // medium-effort reasoning cannot starve the model-index JSON (reasoningHeadroomFloor).
@@ -379,6 +382,7 @@ export async function generateModelIndexProfile(args: {
     reasoningEffort: "medium",
     textVerbosity: "medium",
   });
+  args.signal?.throwIfAborted();
   // Ingestion runs unattended over the whole corpus; a truncated extraction silently drops
   // model-index coverage for the document. Warn loudly (greppable, with document identity)
   // instead of failing silent; parsing still proceeds on the partial text.

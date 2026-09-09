@@ -69,6 +69,7 @@ import {
   runIngestionMutation,
   persistIngestionImage,
   runIngestionPreparedWork,
+  runIngestionEnrichmentStage,
   enrichmentRepairDecision,
   ingestionFailureDecision,
 } from "./behavior";
@@ -159,28 +160,35 @@ async function completeJob(job: JobRow, stage: string) {
 }
 async function completeStrictEnrichmentJob(job: JobRow) {
   const attempt = attemptForJob(job.id);
-  const { data, error } = await supabase.rpc("complete_strict_enrichment_job", {
-    p_fence: attempt.fence,
-    p_stage: "indexed; enrichment completed",
-    p_agent_version: "visual-core-v3",
-    p_visual_indexing_version: "visual-v3",
+  return attempt.serialize(async () => {
+    try {
+      const { data, error } = await supabase.rpc("complete_strict_enrichment_job", {
+        p_fence: attempt.fence,
+        p_stage: "indexed; enrichment completed",
+        p_agent_version: "visual-core-v3",
+        p_visual_indexing_version: "visual-v3",
+      });
+      if (error) {
+        attempt.cancel();
+        throw new Error(error.message);
+      }
+      if (
+        data &&
+        typeof data === "object" &&
+        !Array.isArray(data) &&
+        data.ok === false &&
+        data.reason === "completion_gate_blocked"
+      ) {
+        const missing = Array.isArray(data.missing) ? data.missing.map(String) : ["strict_completion_gate_blocked"];
+        return { completed: false, missing, message: "Strict enrichment completion blocked" };
+      }
+      attempt.accept(data);
+      return { completed: true, missing: [] as string[], message: null };
+    } catch (error) {
+      attempt.cancel();
+      throw error;
+    }
   });
-  if (error) {
-    attempt.cancel();
-    throw new Error(error.message);
-  }
-  if (
-    data &&
-    typeof data === "object" &&
-    !Array.isArray(data) &&
-    data.ok === false &&
-    data.reason === "completion_gate_blocked"
-  ) {
-    const missing = Array.isArray(data.missing) ? data.missing.map(String) : ["strict_completion_gate_blocked"];
-    return { completed: false, missing, message: "Strict enrichment completion blocked" };
-  }
-  attempt.accept(data);
-  return { completed: true, missing: [] as string[], message: null };
 }
 async function failOrRetryJob(args: {
   job: JobRow;
@@ -895,6 +903,7 @@ async function uploadAndCaptionImages(
           const bytes = await readFile(task.image.path);
           attemptForJob(job.id).check();
           classification = await classifyAndCaptionImageFromBase64({
+            signal: attemptForJob(job.id).signal,
             base64: bytes.toString("base64"),
             mimeType: task.image.mimeType,
             nearbyText: task.nearbyText,
@@ -1675,7 +1684,7 @@ async function processJob(job: JobRow) {
 
     if (env.WORKER_INLINE_ENRICHMENT) {
       await updateJobProgress(job.id, { stage: "enriching indexed document", progress: 96 });
-      try {
+      const enrichmentOutcome = await runIngestionEnrichmentStage(attempt, async () => {
         const enrichmentRows = await loadEnrichmentRows(job.document_id, indexGenerationId);
         const enrichmentDocument = await loadLiveEnrichmentDocument(job.document_id);
         const liveIndexGenerationId = requireExactSourceAnchoredGeneration(
@@ -1729,12 +1738,9 @@ async function processJob(job: JobRow) {
         });
         await upsertIndexQuality(finalQuality);
         enrichmentUpdatedAt = new Date().toISOString();
-      } catch (enrichmentError) {
-        attempt.check();
-        if (enrichmentError instanceof IngestionAttemptError) {
-          attempt.cancel();
-          throw enrichmentError;
-        }
+      });
+      if (enrichmentOutcome.status === "failed") {
+        const enrichmentError = enrichmentOutcome.error;
         enrichmentStatus = "failed";
         enrichmentErrorMessage = enrichmentError instanceof Error ? enrichmentError.message : String(enrichmentError);
         console.warn("Optional document enrichment failed", safeErrorLogDetails(enrichmentError));

@@ -316,3 +316,57 @@ describe("reviewed P05 dependency closure (static source, no installed privilege
     }
   });
 });
+
+describe("review correction: actual core and heartbeat dispatch ordering", () => {
+  it.each(["core first", "heartbeat first"])("drains %s before dispatching the competing request", async (order) => {
+    const attempt = new IngestionAttempt(fence);
+    let release!: () => void;
+    let started!: () => void;
+    const firstStarted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const sent: Array<{ name: string; generation: unknown }> = [];
+    let liveGeneration = fence.expected_generation_id;
+    const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+      const captured = args.p_fence as IngestionFence;
+      sent.push({ name, generation: captured.expected_generation_id });
+      if (sent.length === 1) {
+        started();
+        await held;
+      }
+      if (captured.expected_generation_id !== liveGeneration)
+        return { data: { ok: false, reason: "lease_lost" }, error: null };
+      if (name === "commit_document_index_generation") {
+        liveGeneration = nextGeneration;
+        return { data: { ok: true, fence: { ...fence, expected_generation_id: nextGeneration } }, error: null };
+      }
+      return { data: { ok: true }, error: null };
+    });
+    const core = () =>
+      runIngestionMutation(attempt, rpc, "commit_document_index_generation", { p_generation: nextGeneration });
+    const heartbeat = () => runIngestionMutation(attempt, rpc, "heartbeat_ingestion_job");
+    const first = (order === "core first" ? core() : heartbeat()).catch((error: unknown) => error);
+    await firstStarted;
+    const second = (order === "core first" ? heartbeat() : core()).catch((error: unknown) => error);
+    await Promise.resolve();
+    const dispatchedWhileHeld = sent.length;
+    release();
+    const outcomes = await Promise.all([first, second]);
+    expect(dispatchedWhileHeld).toBe(1);
+    expect(outcomes.every((result) => !(result instanceof Error))).toBe(true);
+    expect(attempt.fence.expected_generation_id).toBe(nextGeneration);
+    expect(sent[1]?.generation).toBe(order === "core first" ? nextGeneration : fence.expected_generation_id);
+    await runIngestionMutation(attempt, rpc, "update_ingestion_job_progress");
+    expect(sent.at(-1)?.generation).toBe(nextGeneration);
+  });
+  it("refuses fallback over an unvalidated structured row under the SQL row lock", () => {
+    const sql = body("persist_ingestion_summary_projection");
+    expect(sql).not.toContain("'preserved_structured',true");
+    expect(sql.indexOf("raise exception 'ingestion_summary_requires_structured_repair'")).toBeGreaterThan(
+      sql.indexOf("for update"),
+    );
+  });
+});

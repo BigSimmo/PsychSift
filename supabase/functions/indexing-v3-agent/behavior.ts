@@ -1,10 +1,12 @@
-import type { IngestionAttempt, IngestionFence } from "../_shared/ingestion-attempt.ts";
+// prettier-ignore
+// @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
+import { IngestionAttemptError, parseIngestionMutationResult, type IngestionAttempt, type IngestionFence } from "../_shared/ingestion-attempt.ts";
 // prettier-ignore
 // @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
 import { createProtectedPublicSourceScanner, containsForbiddenPublicSourceChunkContent, publicSourcePolicyViolation, type ProtectedPublicSourceScanner } from "../_shared/public-source-policy.ts";
 // prettier-ignore
 // @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
-import { projectSourceAnchoredLabels, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
+import { buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary, persistedSourceAnchoredSummaryProjectionMatches, SOURCE_ANCHORED_SUMMARY_METADATA_KEY, projectSourceAnchoredLabels, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
 
 export type CompletionGate = {
   counts: {
@@ -303,11 +305,63 @@ export async function runEdgeIngestionMutation(
   attempt: IngestionAttempt,
   execute: (fence: IngestionFence) => Promise<unknown>,
 ) {
-  attempt.check();
+  return attempt.serialize(async () => {
+    attempt.check();
+    try {
+      return attempt.accept(await execute(attempt.fence));
+    } catch (error) {
+      attempt.cancel();
+      throw error;
+    }
+  });
+}
+
+/** Actual summary selection/publication boundary; database access is supplied by the Edge entrypoint. */
+export async function ensureSourceAnchoredSummary(args: {
+  existing: Parameters<typeof persistedSourceAnchoredSummaryProjectionMatches>[0];
+  labels: Parameters<typeof sourceAnchoredSummaryProjectionMatches>[0];
+  authority: SourceAnchoredSummaryAuthority;
+  persist: (payload: SourceAnchoredSummaryPayload) => Promise<unknown>;
+}): Promise<SourceAnchoredSummaryPayload> {
+  const persist = async (payload: SourceAnchoredSummaryPayload) => {
+    const result = parseIngestionMutationResult(await args.persist(payload));
+    const row = result.summary;
+    if (!row || typeof row !== "object" || Array.isArray(row)) throw new IngestionAttemptError("ingestion_rpc_invalid");
+    const projection = row as NonNullable<typeof args.existing>;
+    const metadata = projection.metadata as Record<string, unknown> | null;
+    // The shared projection checker requires a structured completion marker. Validate
+    // the actual marker separately for provisional rows, then reuse its exact field check.
+    if (
+      metadata?.source_anchored_summary_projection_complete_v1 !== (payload.summary_kind === "structured") ||
+      !persistedSourceAnchoredSummaryProjectionMatches(
+        { ...projection, metadata: { ...metadata, source_anchored_summary_projection_complete_v1: true } },
+        payload,
+      )
+    ) {
+      throw new IngestionAttemptError("ingestion_rpc_invalid");
+    }
+  };
+  let stored: SourceAnchoredSummaryPayload | null = null;
   try {
-    return attempt.accept(await execute(attempt.fence));
-  } catch (error) {
-    attempt.cancel();
-    throw error;
+    const metadata = args.existing?.metadata;
+    const candidate =
+      metadata && typeof metadata === "object" && !Array.isArray(metadata)
+        ? (metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_METADATA_KEY]
+        : undefined;
+    stored = normalizeSourceAnchoredSummary(candidate, args.authority);
+  } catch {
+    stored = null;
   }
+  if (stored?.summary_kind === "structured") {
+    if (
+      persistedSourceAnchoredSummaryProjectionMatches(args.existing, stored) &&
+      sourceAnchoredSummaryProjectionMatches(args.labels, stored)
+    )
+      return stored;
+    await persist(stored);
+    return stored;
+  }
+  const fallback = buildSourceAnchoredFallbackPayload(args.authority);
+  await persist(fallback);
+  return fallback;
 }

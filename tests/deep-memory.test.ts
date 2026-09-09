@@ -1,3 +1,6 @@
+import { embedTexts } from "../src/lib/openai";
+import { IngestionAttempt } from "../supabase/functions/_shared/ingestion-attempt";
+import { runIngestionEnrichmentStage, runIngestionMutation } from "../worker/behavior";
 import { describe, expect, it, vi } from "vitest";
 import { rankClinicalResults } from "../src/lib/clinical-search";
 import {
@@ -701,21 +704,23 @@ describe("deep RAG memory indexing", () => {
     expect(supabase.rpc.mock.calls.some(([name]) => name === "commit_document_deep_memory_generation")).toBe(false);
     expect(supabase.directWrite).not.toHaveBeenCalled();
   });
-  it("keeps the original staging error when fenced cleanup also fails", async () => {
-    const supabase = memoryRpcHarness({ failStage: "units", failCleanup: true });
+  it("treats fenced cleanup transport failure as fatal after local construction failure", async () => {
+    vi.mocked(embedTexts).mockImplementationOnce(async (texts) => texts.map(() => [0.01]));
+    const supabase = memoryRpcHarness({ failCleanup: true });
     await expect(
       upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
-    ).rejects.toThrow("units stage failed");
+    ).rejects.toMatchObject({ code: "ingestion_rpc_invalid", message: "cleanup failed" });
     expect(supabase.rpc.mock.calls.filter(([name]) => name === "cleanup_ingestion_deep_memory_staging")).toHaveLength(
       1,
     );
     expect(supabase.directWrite).not.toHaveBeenCalled();
   });
   it("passes exact attempt and unpublished artifact generation to cleanup", async () => {
-    const supabase = memoryRpcHarness({ failStage: "units" });
+    vi.mocked(embedTexts).mockImplementationOnce(async (texts) => texts.map(() => [0.01]));
+    const supabase = memoryRpcHarness();
     await expect(
       upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
-    ).rejects.toThrow("units stage failed");
+    ).rejects.toThrow("document_memory_cards");
     const generation = supabase.rpc.mock.calls[0][1].p_artifact_generation;
     expect(supabase.rpc).toHaveBeenLastCalledWith("cleanup_ingestion_deep_memory_staging", {
       p_fence: FENCE,
@@ -768,5 +773,70 @@ describe("deep RAG memory indexing", () => {
       }),
     ).rejects.toThrow("claim replaced");
     expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("review correction: actual deep-memory optional orchestration", () => {
+  it.each(["sections", "cards", "units", "lost commit response", "rejected stage"])(
+    "cancels %s without cleanup or continuation",
+    async (failure) => {
+      const supabase = memoryRpcHarness(
+        failure === "lost commit response"
+          ? { commitError: "response lost", lostResponse: true }
+          : { failStage: failure },
+      );
+      if (failure === "rejected stage") supabase.rpc.mockRejectedValueOnce(new Error("stage transport rejected"));
+      const attempt = new IngestionAttempt(FENCE);
+      const later = vi.fn(async () => ({ data: { ok: true }, error: null }));
+      const process = async () => {
+        await runIngestionEnrichmentStage(attempt, () =>
+          upsertDocumentDeepMemory({
+            supabase: supabase as never,
+            fence: attempt.fence,
+            signal: attempt.signal,
+            document,
+            chunks: [chunk({ content: "If ANC is low, stop clozapine and obtain urgent review." })],
+          }),
+        );
+        await runIngestionMutation(attempt, later, "persist_ingestion_index_quality");
+        await runIngestionMutation(attempt, later, "complete_ingestion_job");
+      };
+      await expect(process()).rejects.toBeDefined();
+      expect(attempt.signal.aborted).toBe(true);
+      expect(later).not.toHaveBeenCalled();
+      expect(supabase.rpc.mock.calls.some(([name]) => name === "cleanup_ingestion_deep_memory_staging")).toBe(false);
+    },
+  );
+  it("review correction: cleanup uncertainty cancels actual optional orchestration", async () => {
+    vi.mocked(embedTexts).mockImplementationOnce(async (texts) => texts.map(() => [0.01]));
+    const supabase = memoryRpcHarness({ failCleanup: true });
+    const attempt = new IngestionAttempt(FENCE);
+    const later = vi.fn(async () => ({ data: { ok: true }, error: null }));
+    const process = async () => {
+      await runIngestionEnrichmentStage(attempt, () =>
+        upsertDocumentDeepMemory({
+          supabase: supabase as never,
+          fence: attempt.fence,
+          signal: attempt.signal,
+          document,
+          chunks: [chunk({})],
+        }),
+      );
+      await runIngestionMutation(attempt, later, "complete_ingestion_job");
+    };
+    await expect(process()).rejects.toBeDefined();
+    expect(attempt.signal.aborted).toBe(true);
+    expect(later).not.toHaveBeenCalled();
+  });
+  it("keeps an ordinary optional model failure distinct while subsequent fenced RPCs succeed", async () => {
+    const attempt = new IngestionAttempt(FENCE);
+    const optional = await runIngestionEnrichmentStage(attempt, async () => {
+      throw new Error("optional model unavailable");
+    });
+    expect(optional).toMatchObject({ status: "failed" });
+    const rpc = vi.fn(async () => ({ data: { ok: true }, error: null }));
+    await runIngestionMutation(attempt, rpc, "update_ingestion_job_progress");
+    expect(attempt.signal.aborted).toBe(false);
+    expect(rpc).toHaveBeenCalledOnce();
   });
 });

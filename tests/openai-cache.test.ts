@@ -791,3 +791,113 @@ describe("OpenAI query embedding cache", () => {
     expect(error.message).toBe("OpenAI is rate limited. Retry in a moment.");
   });
 });
+
+describe("review correction: actual caption cancellation wrapper", () => {
+  function captionSdk(create: ReturnType<typeof vi.fn>) {
+    vi.stubEnv("OPENAI_API_KEY", "test-key");
+    vi.stubEnv("OPENAI_VISION_MODEL", "gpt-5.5");
+    vi.doMock("openai", () => ({
+      default: class {
+        embeddings = { create: vi.fn() };
+        responses = { create };
+      },
+    }));
+  }
+  const success = () => ({ data: { status: "completed", output_text: "{}" }, request_id: "offline-caption" });
+  it("passes the same signal to the SDK request options", async () => {
+    const create = vi.fn((_body: unknown, _options?: { signal?: AbortSignal }) => ({
+      withResponse: async () => success(),
+    }));
+    captionSdk(create);
+    const { classifyAndCaptionImageFromBase64 } = await import("../src/lib/openai");
+    const controller = new AbortController();
+    await classifyAndCaptionImageFromBase64({ base64: "ZmFrZQ==", mimeType: "image/png", signal: controller.signal });
+    expect(create.mock.calls[0]?.[1]).toMatchObject({ signal: controller.signal });
+  });
+  it("refuses pre-aborted work before SDK invocation", async () => {
+    const create = vi.fn(() => ({ withResponse: async () => success() }));
+    captionSdk(create);
+    const { classifyAndCaptionImageFromBase64 } = await import("../src/lib/openai");
+    const controller = new AbortController();
+    controller.abort(new Error("caption cancelled"));
+    await expect(
+      classifyAndCaptionImageFromBase64({ base64: "ZmFrZQ==", mimeType: "image/png", signal: controller.signal }),
+    ).rejects.toThrow("caption cancelled");
+    expect(create).not.toHaveBeenCalled();
+  });
+  it("refuses a deferred successful caption released after cancellation", async () => {
+    let release!: () => void;
+    let started!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const deferred = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    captionSdk(
+      vi.fn(() => ({
+        withResponse: async () => {
+          started();
+          await deferred;
+          return success();
+        },
+      })),
+    );
+    const { classifyAndCaptionImageFromBase64 } = await import("../src/lib/openai");
+    const controller = new AbortController();
+    const result = classifyAndCaptionImageFromBase64({
+      base64: "ZmFrZQ==",
+      mimeType: "image/png",
+      signal: controller.signal,
+    });
+    const observed = result.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+    await entered;
+    controller.abort(new Error("late caption cancelled"));
+    release();
+    expect(await observed).toHaveProperty("error");
+  });
+  it.each([false, true])("SDK retry schedule has no next request after cancellation=%s", async (cancel) => {
+    let release!: () => void;
+    let started!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const backoff = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const fetches = vi.fn();
+    // Mirrors installed SDK 7.4 makeRequest checking the same options.signal
+    // after non-abortable backoff, before the next fetch. No real SDK/network call.
+    const create = vi.fn((_body: unknown, options?: { signal?: AbortSignal }) => ({
+      withResponse: async () => {
+        fetches();
+        started();
+        await backoff;
+        options?.signal?.throwIfAborted();
+        fetches();
+        return success();
+      },
+    }));
+    captionSdk(create);
+    const { classifyAndCaptionImageFromBase64 } = await import("../src/lib/openai");
+    const controller = new AbortController();
+    const result = classifyAndCaptionImageFromBase64({
+      base64: "ZmFrZQ==",
+      mimeType: "image/png",
+      signal: controller.signal,
+    });
+    const observed = result.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+    await entered;
+    if (cancel) controller.abort(new Error("retry cancelled"));
+    release();
+    const outcome = await observed;
+    expect(fetches).toHaveBeenCalledTimes(cancel ? 1 : 2);
+    expect(outcome).toHaveProperty(cancel ? "error" : "value");
+  });
+});

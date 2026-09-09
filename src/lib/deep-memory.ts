@@ -1,6 +1,6 @@
 import {
   parseIngestionFence,
-  parseIngestionMutationResult,
+  runIngestionPersistence,
   IngestionAttemptError,
   type IngestionFence,
 } from "../../supabase/functions/_shared/ingestion-attempt";
@@ -613,9 +613,7 @@ export async function upsertDocumentDeepMemory(args: {
     throw new IngestionAttemptError("ingestion_attempt_required");
   const mutate = async (name: string, payload: Record<string, unknown>) => {
     args.signal?.throwIfAborted();
-    const { data, error } = await args.supabase.rpc(name, { ...payload, p_fence: fence });
-    if (error) throw new Error(error.message);
-    const result = parseIngestionMutationResult(data);
+    const result = await runIngestionPersistence(() => args.supabase.rpc(name, { ...payload, p_fence: fence }));
     args.signal?.throwIfAborted();
     return result;
   };
@@ -628,6 +626,7 @@ export async function upsertDocumentDeepMemory(args: {
   let modelProfile: ModelIndexProfile | null = null;
   try {
     modelProfile = await generateModelIndexProfile({
+      signal: args.signal,
       document: args.document,
       chunks: args.chunks,
       images: args.images ?? [],
@@ -725,12 +724,9 @@ export async function upsertDocumentDeepMemory(args: {
   }));
 
   const cleanupStagedArtifacts = async () => {
-    // Only an acknowledged pre-commit failure is eligible; refusal never triggers a direct delete.
-    try {
-      await mutate("cleanup_ingestion_deep_memory_staging", { p_artifact_generation: artifactGenerationId });
-    } catch {
-      /* Inert staging remains for U13; never replace the original error. */
-    }
+    // Only a local pre-commit failure is eligible; cleanup uncertainty is fatal,
+    // and inert staging remains for U13. Never fall back to a direct delete.
+    await mutate("cleanup_ingestion_deep_memory_staging", { p_artifact_generation: artifactGenerationId });
   };
   let insertedSections: Array<{ id: string; section_index: number }> = [];
   for (let start = 0; start < stagedSections.length; start += 500) {

@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { sourceSegment } from "./helpers/source-contract";
 import {
+  ensureSourceAnchoredSummary,
   agentFailureDecision,
   completionGateFromRow,
   deferralDecision,
@@ -193,7 +194,10 @@ describe("indexing-v3-agent behavior", () => {
       "image.index_generation_id = ${indexGenerationId}::uuid and image.searchable is true order by image.clinical_relevance_score desc nulls last",
     );
     const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
-    expect(ensureSummary).toContain("normalizeSourceAnchoredSummary(candidate");
+    expect(ensureSummary).toContain("ensureSourceAnchoredSummary(");
+    expect(
+      readFileSync(new URL("../supabase/functions/indexing-v3-agent/behavior.ts", import.meta.url), "utf8"),
+    ).toContain("normalizeSourceAnchoredSummary(candidate");
     expect(ensureSummary).toContain("sources.authority");
     expect(ensureSummary).not.toMatch(/limit\s+24/i);
 
@@ -1029,8 +1033,13 @@ describe("source-anchored summary Edge contract", () => {
       "async function persistSourceAnchoredSummary",
     );
     expect(sourceLoader).toContain("selectCoverageAwarePromptChunks");
-    expect(ensureSummary).toContain("buildSourceAnchoredFallbackPayload");
-    expect(ensureSummary).toContain("normalizeSourceAnchoredSummary");
+    const behavior = readFileSync(
+      new URL("../supabase/functions/indexing-v3-agent/behavior.ts", import.meta.url),
+      "utf8",
+    );
+    expect(ensureSummary).toContain("ensureSourceAnchoredSummary(");
+    expect(behavior).toContain("buildSourceAnchoredFallbackPayload(args.authority)");
+    expect(behavior).toContain("normalizeSourceAnchoredSummary(candidate, args.authority)");
     expect(ensureSummary).not.toMatch(/limit\s+24/i);
     expect(ensureSummary).not.toContain("v3-summary-heuristic");
   });
@@ -1077,7 +1086,10 @@ describe("source-anchored summary Edge contract", () => {
     const ensureSummary = agentFunction("async function ensureSummary", "function unitsFromStructured");
     expect(indexingAgentSource).toContain("OPENAI_INDEXING_MODEL");
     expect(ensureSummary).not.toContain("candidateRecord.model");
-    expect(ensureSummary).toContain("persistedSourceAnchoredSummaryProjectionMatches");
+    expect(ensureSummary).toContain("ensureSourceAnchoredSummary(");
+    expect(
+      readFileSync(new URL("../supabase/functions/indexing-v3-agent/behavior.ts", import.meta.url), "utf8"),
+    ).toContain("persistedSourceAnchoredSummaryProjectionMatches");
     expect(normalizedSql(ensureSummary)).toContain(
       "select summary, clinical_specifics, source_chunk_ids, source_image_ids, model, metadata, generated_at",
     );
@@ -1124,5 +1136,185 @@ describe("source-anchored summary Edge contract", () => {
     }));
     expect(edge.selectCoverageAwarePromptChunks(chunks)).toEqual(node.selectCoverageAwarePromptChunks(chunks));
     expect(edge.selectCoverageAwarePromptChunks(chunks).chunks.map((chunk) => chunk.id)).toContain("chunk-52");
+  });
+});
+
+describe("review correction: actual Edge summary orchestration", () => {
+  const DOCUMENT_ID = "11111111-1111-4111-8111-111111111111";
+  const GENERATION_ID = "22222222-2222-4222-8222-222222222222";
+  const CHUNK_ID = "33333333-3333-4333-8333-333333333333";
+  const LATE_CHUNK_ID = "44444444-4444-4444-8444-444444444444";
+  const IMAGE_ID = "55555555-5555-4555-8555-555555555555";
+  const ragEnrichmentVersion = "rag-deep-memory-v1";
+  function sourceAuthority() {
+    return {
+      documentId: DOCUMENT_ID,
+      indexGenerationId: GENERATION_ID,
+      expectedStructuredModel: "gpt-indexing-test",
+      expectedStructuredModelVersion: ragEnrichmentVersion,
+      selectedChunks: [
+        { id: CHUNK_ID, page_number: 1 },
+        { id: LATE_CHUNK_ID, page_number: 52 },
+      ],
+      selectedImages: [{ id: IMAGE_ID, page_number: 4 }],
+    };
+  }
+
+  function structuredCandidate() {
+    const action = {
+      text: "Check ANC before clozapine review.",
+      source_chunk_ids: [LATE_CHUNK_ID],
+      source_image_ids: [],
+      pages: [52],
+      evidence_type: "text",
+      support: "direct",
+    };
+    const profile = {
+      overview: `- ${action.text}`,
+      applies_to: [],
+      key_clinical_actions: [action],
+      medication_dose_monitoring: [],
+      thresholds_timing: [],
+      escalation_risk_warnings: [],
+      required_forms_documentation: [],
+      not_covered: [],
+      important_tables_images: [],
+      best_questions: [],
+      source_quality_notes: [],
+    };
+    return {
+      summary_kind: "structured",
+      summary_version: "source-anchored-summary-v1",
+      document_id: DOCUMENT_ID,
+      index_generation_id: GENERATION_ID,
+      model: "gpt-indexing-test",
+      model_version: ragEnrichmentVersion,
+      generated_at: "2026-09-01T00:00:00.000Z",
+      source_chunk_ids: [CHUNK_ID, LATE_CHUNK_ID],
+      source_image_ids: [IMAGE_ID],
+      summary: `- ${action.text}`,
+      clinical_specifics: {
+        profile,
+        actions: [action.text],
+        thresholds_timing: [],
+        medication_monitoring: [],
+        risk_escalation: [],
+        documentation_forms: [],
+        exceptions_gaps: [],
+      },
+      labels: [{ label: "clozapine", label_type: "medication", confidence: 0.92 }],
+      heuristic_fallback: false,
+    };
+  }
+
+  it.each(["malformed", "old model", "wrong source"])(
+    "refuses a preserved %s structured payload before a complete old gate can run",
+    async (kind) => {
+      const shared = await import("../supabase/functions/_shared/source-anchored-summary");
+      const candidate = structuredCandidate();
+      const invalid = {
+        ...candidate,
+        ...(kind === "malformed"
+          ? { clinical_specifics: {} }
+          : kind === "old model"
+            ? { model: "superseded-model" }
+            : { source_chunk_ids: [IMAGE_ID] }),
+      };
+      const row = { ...candidate, metadata: { source_anchored_summary_v1: invalid } };
+      const oldLabels = [
+        {
+          label: "clozapine",
+          label_type: "medication",
+          confidence: 0.92,
+          metadata: { index_generation_id: GENERATION_ID },
+        },
+      ];
+      // Faithfully models the failed candidate SQL's locked kind/generation preservation branch.
+      // No SQL execution: the separate static assertion requires removal of that branch.
+      const persist = vi.fn(async () => ({ ok: true, summary: row, preserved_structured: true }));
+      const complete = vi.fn(() => completionGateFromRow(gateRow()));
+      const process = async () => {
+        const payload = await ensureSourceAnchoredSummary({
+          existing: row,
+          labels: oldLabels,
+          authority: sourceAuthority(),
+          persist,
+        });
+        complete();
+        return payload;
+      };
+      expect(() => shared.normalizeSourceAnchoredSummary(invalid, sourceAuthority())).toThrow();
+      await expect(process()).rejects.toBeDefined();
+      expect(persist).toHaveBeenCalledOnce();
+      expect(complete).not.toHaveBeenCalled();
+      expect(row.metadata.source_anchored_summary_v1).toEqual(invalid);
+      expect(oldLabels).toHaveLength(1);
+    },
+  );
+  it("propagates locked SQL refusal before the existing complete gate", async () => {
+    const row = {
+      ...structuredCandidate(),
+      metadata: { source_anchored_summary_v1: { summary_kind: "structured", index_generation_id: GENERATION_ID } },
+    };
+    const complete = vi.fn();
+    const process = async () => {
+      await ensureSourceAnchoredSummary({
+        existing: row,
+        labels: [],
+        authority: sourceAuthority(),
+        persist: async () => {
+          throw new Error("ingestion_summary_requires_structured_repair");
+        },
+      });
+      complete();
+    };
+    await expect(process()).rejects.toThrow("ingestion_summary_requires_structured_repair");
+    expect(complete).not.toHaveBeenCalled();
+  });
+  it("publishes an agreed zero-label fallback only as provisional", async () => {
+    let persisted: unknown;
+    const payload = await ensureSourceAnchoredSummary({
+      existing: null,
+      labels: [],
+      authority: sourceAuthority(),
+      persist: async (requested) => {
+        persisted = requested;
+        return {
+          ok: true,
+          summary: {
+            ...requested,
+            metadata: { source_anchored_summary_v1: requested, source_anchored_summary_projection_complete_v1: false },
+          },
+        };
+      },
+    });
+    expect(payload).toEqual(persisted);
+    expect(payload.summary_kind).toBe("heuristic_fallback");
+    expect(payload.labels).toEqual([]);
+    expect(
+      completionGateFromRow(gateRow({ generated_labels: 0, missing: ["generated_labels"], gate_passed: false })).result,
+    ).toBe("deferred");
+  });
+  it("preserves an actually validated structured payload and its matching projection", async () => {
+    const shared = await import("../supabase/functions/_shared/source-anchored-summary");
+    const payload = shared.normalizeSourceAnchoredSummary(structuredCandidate(), sourceAuthority());
+    const row = {
+      ...payload,
+      metadata: { source_anchored_summary_v1: payload, source_anchored_summary_projection_complete_v1: true },
+    };
+    const labels = shared.projectSourceAnchoredLabels(payload).map((label) => ({
+      ...label,
+      metadata: {
+        index_generation_id: GENERATION_ID,
+        summary_version: payload.summary_version,
+        source_chunk_ids: label.source_chunk_ids,
+        source_image_ids: label.source_image_ids,
+        pages: label.pages,
+      },
+    }));
+    const persist = vi.fn(async () => ({ ok: true, summary: row }));
+    const result = await ensureSourceAnchoredSummary({ existing: row, labels, authority: sourceAuthority(), persist });
+    expect(result).toEqual(payload);
+    expect(persist).not.toHaveBeenCalled();
   });
 });

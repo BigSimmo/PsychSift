@@ -91,17 +91,19 @@ export async function runIngestionMutation(
   name: string,
   payload: Record<string, unknown> = {},
 ) {
-  attempt.check();
-  try {
-    const result = await rpc(name, { ...payload, p_fence: attempt.fence });
-    if (result.error) throw new Error(result.error.message);
-    return name === "commit_document_index_generation"
-      ? attempt.handoff(result.data, payload.p_generation)
-      : attempt.accept(result.data);
-  } catch (error) {
-    attempt.cancel();
-    throw error;
-  }
+  return attempt.serialize(async () => {
+    attempt.check();
+    try {
+      const result = await rpc(name, { ...payload, p_fence: attempt.fence });
+      if (result.error) throw new Error(result.error.message);
+      return name === "commit_document_index_generation"
+        ? attempt.handoff(result.data, payload.p_generation)
+        : attempt.accept(result.data);
+    } catch (error) {
+      attempt.cancel();
+      throw error;
+    }
+  });
 }
 export function claimedJobFence(
   job: {
@@ -180,4 +182,21 @@ export async function runIngestionPreparedWork<T>(
   const result = await work();
   attempt.check();
   return result;
+}
+
+/** Actual optional enrichment boundary used by processJob. */
+export async function runIngestionEnrichmentStage<T>(attempt: IngestionAttempt, work: () => Promise<T>) {
+  attempt.check();
+  try {
+    const value = await work();
+    attempt.check();
+    return { status: "completed" as const, value };
+  } catch (error) {
+    attempt.check();
+    if (error instanceof IngestionAttemptError) {
+      attempt.cancel();
+      throw error;
+    }
+    return { status: "failed" as const, error };
+  }
 }

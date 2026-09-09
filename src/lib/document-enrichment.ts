@@ -1,7 +1,7 @@
 import {
   IngestionAttemptError,
   parseIngestionFence,
-  parseIngestionMutationResult,
+  runIngestionPersistence,
   type IngestionFence,
 } from "../../supabase/functions/_shared/ingestion-attempt";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -870,20 +870,20 @@ export async function upsertDocumentEnrichment(args: {
       [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
     },
   };
-  const { data, error } = await args.supabase.rpc("persist_ingestion_summary_projection", {
-    p_fence: fence,
-    p_summary: summary,
-    p_labels: projectedLabelRows(payload, args.document.owner_id ?? null),
-    p_metadata: {
-      rag_enrichment_version: ragEnrichmentVersion,
-      rag_indexing_version: ragEnrichmentVersion,
-      rag_memory_version: ragEnrichmentVersion,
-      rag_enrichment_updated_at: payload.generated_at,
-      generated_label_count: payload.labels.length,
-    },
-  });
-  if (error) throw new Error(error.message);
-  const result = parseIngestionMutationResult(data);
+  const result = await runIngestionPersistence(() =>
+    args.supabase.rpc("persist_ingestion_summary_projection", {
+      p_fence: fence,
+      p_summary: summary,
+      p_labels: projectedLabelRows(payload, args.document.owner_id ?? null),
+      p_metadata: {
+        rag_enrichment_version: ragEnrichmentVersion,
+        rag_indexing_version: ragEnrichmentVersion,
+        rag_memory_version: ragEnrichmentVersion,
+        rag_enrichment_updated_at: payload.generated_at,
+        generated_label_count: payload.labels.length,
+      },
+    }),
+  );
   args.signal?.throwIfAborted();
   if (!result.summary || typeof result.summary !== "object" || Array.isArray(result.summary))
     throw new IngestionAttemptError("ingestion_rpc_invalid");
