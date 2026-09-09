@@ -1,0 +1,288 @@
+{
+  "kind": "U03 test-proof correction round2 source freeze7; not programme acceptance",
+  "taskBase": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "head": "57ba6d6fc2505f03a1ee0df82b186bccd0a455c2",
+  "branch": "codex/rag-local-build-20260822",
+  "worktree": "C:\\Users\\joshs\\.codex\\worktrees\\rag-local-build-20260822\\Database",
+  "route": {
+    "sessionId": "01a08132-76f2-7161-a28c-07d907a472f4",
+    "limitation": "Selected own local configuration only, not backend attestation",
+    "model": "gpt-6-astra",
+    "effort": "high"
+  },
+  "atUtc": "2026-09-09T02:54:23.433051+00:00",
+  "files": [
+    {
+      "path": "docs/codebase-index.md",
+      "kind": "modified",
+      "sha256": "8b2a83555b2755e5a0c18954c547599f24d43cf9be882fccb578e8ead32ce398",
+      "bytes": 53778
+    },
+    {
+      "path": "docs/ingestion-state-machine.md",
+      "kind": "modified",
+      "sha256": "db103656a2ddb41a41e3d4f169969436b7281990cd99aa02a84dd272d03ec21c",
+      "bytes": 54176
+    },
+    {
+      "path": "docs/reindex-runbook.md",
+      "kind": "modified",
+      "sha256": "4a3f882afefd139a1ca1435056ca793126d3ea4bf98e2a53031be76b6b91c829",
+      "bytes": 7095
+    },
+    {
+      "path": "docs/scripts-index.md",
+      "kind": "modified",
+      "sha256": "fbdba991d8317b5dab295fa0fd5f568cddc817085cd276c58210db60b0bc2bb4",
+      "bytes": 31859
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md",
+      "kind": "modified",
+      "sha256": "877594a62de02ef3391ae0c9ca7594b827e768d8b0603eef3adfba0530dc2939",
+      "bytes": 39513
+    },
+    {
+      "path": "docs/worker-deploy-runbook.md",
+      "kind": "modified",
+      "sha256": "26905d350d69cad2c6d80791758fde73427bf29726e8a807a5c1c5851822072c",
+      "bytes": 34800
+    },
+    {
+      "path": "scripts/archive/backfill-enrichment.ts",
+      "kind": "modified",
+      "sha256": "0cd838d19a18e26159c50c9291f33fbcb2263c6e8b0cbaf1d2ca981682fb0059",
+      "bytes": 19213
+    },
+    {
+      "path": "scripts/backfill-smart-index.ts",
+      "kind": "modified",
+      "sha256": "e99df48b3474a7674616d0fb7e674adc4636ebcc68ea92f1e0993231963d05ba",
+      "bytes": 17365
+    },
+    {
+      "path": "scripts/enrich-documents.ts",
+      "kind": "modified",
+      "sha256": "6f7d02225bfa4331c1ec7a75b1aaea7f15bb7d71ace1b0ac6c9e500748973b92",
+      "bytes": 29525
+    },
+    {
+      "path": "scripts/lib/ingestion-operator-compatibility.ts",
+      "kind": "new",
+      "sha256": "1280b45cf22e8042c1d824721a67759eba5c8ad2dc6cd49c311ad635ba883fe0",
+      "bytes": 1300
+    },
+    {
+      "path": "src/lib/deep-memory.ts",
+      "kind": "modified",
+      "sha256": "5c49a98df7cc3c4137a8cecf3faea84ecfe681f499328f24e4c67ca82ada76b4",
+      "bytes": 41829
+    },
+    {
+      "path": "src/lib/document-enrichment.ts",
+      "kind": "modified",
+      "sha256": "f61d7eb90176e256908c7191be18d06762b1ca74cbb1bda3abac9e91f021680f",
+      "bytes": 47549
+    },
+    {
+      "path": "src/lib/ingestion-repair-plan.ts",
+      "kind": "new",
+      "sha256": "5d271f9f51a6a01b5189a5d3b741c8c83e58b7b59e9ed57b7f8a3de5b0f58d9d",
+      "bytes": 3743
+    },
+    {
+      "path": "src/lib/model-index-extraction.ts",
+      "kind": "modified",
+      "sha256": "a56e05d4ec761307711285070f43585717d221937680f7e4ec575fd73cce2eda",
+      "bytes": 14887
+    },
+    {
+      "path": "src/lib/openai.ts",
+      "kind": "modified",
+      "sha256": "91a4c355799f8b40e54a0a667704b65a9b7a2adcd1a3084912566b94c30a3600",
+      "bytes": 46418
+    },
+    {
+      "path": "src/lib/supabase/database.types.ts",
+      "kind": "modified",
+      "sha256": "dcb21f4473fa1bc75d772583b2b5cbc239064f19084bc8a04514a852cc440480",
+      "bytes": 128884
+    },
+    {
+      "path": "supabase/functions/_shared/ingestion-attempt.ts",
+      "kind": "new",
+      "sha256": "d1ca227522e8aca6e4f28f1fa94a61c1980202a59b83cee3e8d4384e518cf0a7",
+      "bytes": 5447
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/behavior.ts",
+      "kind": "modified",
+      "sha256": "18dc1a342773953d02a14a1609c1fd10f99776646aff7db28ee0775c6c8fad1a",
+      "bytes": 13224
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/index.ts",
+      "kind": "modified",
+      "sha256": "37de3c8731fb379b0786ab22ff4ce9c7254ba8f504cf95cb7f0f2409a956a331",
+      "bytes": 69857
+    },
+    {
+      "path": "supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql",
+      "kind": "new",
+      "sha256": "92924c2c2b324866a18a0436a581b37886a44f440b6fbc8cd84fda22eed9ad0f",
+      "bytes": 119861
+    },
+    {
+      "path": "supabase/schema.sql",
+      "kind": "modified",
+      "sha256": "34c22c97cabd6b9a0f754265c1b4da69b440c5c250f66fb3bffa551b83a31741",
+      "bytes": 663527
+    },
+    {
+      "path": "tests/check-indexing-contract.test.ts",
+      "kind": "modified",
+      "sha256": "52f422d78bc76172404ee6677ae71817d639070bbf92dff082576718009f122e",
+      "bytes": 5170
+    },
+    {
+      "path": "tests/deep-memory-transaction-sql.test.ts",
+      "kind": "modified",
+      "sha256": "dbd6cfab7b858d4023386f1054641fb644e01716cf3ecd34db0cec8b2700e533",
+      "bytes": 7226
+    },
+    {
+      "path": "tests/deep-memory.test.ts",
+      "kind": "modified",
+      "sha256": "cb70e89b5a78c9892478f6e081ba456b7e233fad6e9202d3405451fc629617b0",
+      "bytes": 32969
+    },
+    {
+      "path": "tests/document-clinical-summary.test.ts",
+      "kind": "modified",
+      "sha256": "5bda65ee6ab49b2a2f4b6cb773e77fccd775d88aee4732d63286e605b49841a6",
+      "bytes": 5058
+    },
+    {
+      "path": "tests/document-enrichment.test.ts",
+      "kind": "modified",
+      "sha256": "8949b27ab7d80216c01660c28cc4b93aa863dfa94a9f4c27e2bd2ab8711d92dc",
+      "bytes": 63863
+    },
+    {
+      "path": "tests/indexing-v3-agent.test.ts",
+      "kind": "modified",
+      "sha256": "5b96628096ace1791d84447f1cff3daa48dd1ec62ce72ecda5ca2872da7e76d5",
+      "bytes": 52126
+    },
+    {
+      "path": "tests/ingestion-lease-fencing.test.ts",
+      "kind": "new",
+      "sha256": "d0a1501be8b9e553a4c990e872832533556dd55fe7a1e2e4a0372c29af6da575",
+      "bytes": 18697
+    },
+    {
+      "path": "tests/ingestion-operator-compatibility.test.ts",
+      "kind": "new",
+      "sha256": "54716210a3f6de028c1a2f219cb1cf1f90e281019c281e8b898c95937f025961",
+      "bytes": 5045
+    },
+    {
+      "path": "tests/ingestion-repair-plan.test.ts",
+      "kind": "new",
+      "sha256": "4b8d6236584fed0fca96219fb007d3476fed2efdb833ef2a0b59149450f816f4",
+      "bytes": 3178
+    },
+    {
+      "path": "tests/model-index-extraction.test.ts",
+      "kind": "modified",
+      "sha256": "93fff787e4e025f8576d13263a3fe2aba1b7fea4e32e47c738c5d6536a196a2a",
+      "bytes": 6339
+    },
+    {
+      "path": "tests/openai-cache.test.ts",
+      "kind": "modified",
+      "sha256": "24d77864efa8ddfab58d9a7f73400058559313a26371a0142bb340cf1af1cb5b",
+      "bytes": 33563
+    },
+    {
+      "path": "tests/storage-upload-compensation.test.ts",
+      "kind": "modified",
+      "sha256": "addc75e18eea0b1bb15dcebb4474637a58eaee0a0de05964d7ffbb21b0f455b2",
+      "bytes": 4717
+    },
+    {
+      "path": "tests/worker-row-contract.test.ts",
+      "kind": "modified",
+      "sha256": "0b87c98f55e464ecc5675f63b76df4cfd2f756d7cbd7c3a305ab8705e50b0c10",
+      "bytes": 14161
+    },
+    {
+      "path": "tests/worker-run-loop.test.ts",
+      "kind": "modified",
+      "sha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5",
+      "bytes": 7695
+    },
+    {
+      "path": "tests/worker-shadow-extraction.test.ts",
+      "kind": "modified",
+      "sha256": "85369bb50897e913bcebbb743b82708132fe5d59d4c2e73a2b8e725b2f6eca7f",
+      "bytes": 28084
+    },
+    {
+      "path": "tests/worker-visual-capture.test.ts",
+      "kind": "modified",
+      "sha256": "f3f793cce7bc8a01910f7c8d44a7671d26d823cdb5dd8a7022675950b81178a6",
+      "bytes": 6342
+    },
+    {
+      "path": "worker/behavior.ts",
+      "kind": "modified",
+      "sha256": "0c88c04898e3d9425b7158c30b55fed15a4788fac246a006f734f9f7a48d1183",
+      "bytes": 6589
+    },
+    {
+      "path": "worker/main.ts",
+      "kind": "modified",
+      "sha256": "bc7554899c99953cc21da91f1ee3ce745e46fdac90cb8e092282b96f69bc871c",
+      "bytes": 80947
+    },
+    {
+      "path": "worker/row-contracts.ts",
+      "kind": "modified",
+      "sha256": "41474352c1ea70ec15e77894e50e656ccb8e76e071713243b7e1f20e899252db",
+      "bytes": 11833
+    },
+    {
+      "path": "worker/types.ts",
+      "kind": "modified",
+      "sha256": "b9c2647b1982149551756648436d1f7d4b630cf06be9700d4a701338222bb53c",
+      "bytes": 713
+    }
+  ],
+  "fullProductChangedCount": 41,
+  "changedSinceCandidate": [
+    "tests/model-index-extraction.test.ts",
+    "tests/openai-cache.test.ts"
+  ],
+  "changedSincePreviousFreeze": [
+    "tests/model-index-extraction.test.ts",
+    "tests/openai-cache.test.ts"
+  ],
+  "previousFreeze": {
+    "path": "U03-implementation-freeze-6.json",
+    "sha256": "13ab6556319cd71146d0da8fdfb7b3596aa4b7f0188700a012560f248b083283"
+  },
+  "sourceFrozen": true,
+  "runningChecks": [],
+  "proof": {
+    "command": "node scripts/run-vitest.mjs run tests/openai-cache.test.ts tests/model-index-extraction.test.ts",
+    "exit": 0,
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0,
+    "files": 2,
+    "inputs": "U03-test-proof-round-2-inputs.json",
+    "inputsSha256": "94b0118f656f0238b6a1a36f53d44b57b893be73ea8d4770f55c3dedb78159f0"
+  },
+  "limitation": "Two identity assertions strengthened; no production change or product RED claimed; all remaining acceptance is controller-owned."
+}

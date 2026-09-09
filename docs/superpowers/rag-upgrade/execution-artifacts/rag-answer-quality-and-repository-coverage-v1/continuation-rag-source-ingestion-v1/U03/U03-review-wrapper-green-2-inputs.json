@@ -1,0 +1,26 @@
+[
+  {
+    "sha256": "91a4c355799f8b40e54a0a667704b65a9b7a2adcd1a3084912566b94c30a3600",
+    "path": "src/lib/openai.ts"
+  },
+  {
+    "sha256": "a56e05d4ec761307711285070f43585717d221937680f7e4ec575fd73cce2eda",
+    "path": "src/lib/model-index-extraction.ts"
+  },
+  {
+    "sha256": "bc7554899c99953cc21da91f1ee3ce745e46fdac90cb8e092282b96f69bc871c",
+    "path": "worker/main.ts"
+  },
+  {
+    "sha256": "33489691ba9129f1b9c855825d922dae213fdcca5f92f4e215df183119594a51",
+    "path": "src/lib/deep-memory.ts"
+  },
+  {
+    "sha256": "7a81176ac9714585122cc855160b3e7dd2b15767c6984f1d07a5f21ee270ea26",
+    "path": "tests/openai-cache.test.ts"
+  },
+  {
+    "sha256": "448686b87165b8f55cd93b837961322fb22fb084905be635444d0f7823005757",
+    "path": "tests/model-index-extraction.test.ts"
+  }
+]

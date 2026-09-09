@@ -1,0 +1,18 @@
+[
+  {
+    "sha256": "33489691ba9129f1b9c855825d922dae213fdcca5f92f4e215df183119594a51",
+    "path": "src/lib/deep-memory.ts"
+  },
+  {
+    "sha256": "0c88c04898e3d9425b7158c30b55fed15a4788fac246a006f734f9f7a48d1183",
+    "path": "worker/behavior.ts"
+  },
+  {
+    "sha256": "d1ca227522e8aca6e4f28f1fa94a61c1980202a59b83cee3e8d4384e518cf0a7",
+    "path": "supabase/functions/_shared/ingestion-attempt.ts"
+  },
+  {
+    "sha256": "16f29613d2db0c5d4fa887ed0b4a1b5e62804f662a97e4090f848704a4727288",
+    "path": "tests/deep-memory.test.ts"
+  }
+]

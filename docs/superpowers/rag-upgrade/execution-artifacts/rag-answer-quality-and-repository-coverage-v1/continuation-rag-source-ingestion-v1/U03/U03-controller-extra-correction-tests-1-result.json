@@ -1,0 +1,8 @@
+{
+  "command": "node scripts/run-vitest.mjs run tests/storage-upload-compensation.test.ts tests/worker-shadow-extraction.test.ts -t \"actual ingestion image publication|actual shadow preparation/work orchestration\"",
+  "exit": 0,
+  "head": "b651ee23d8541fbebea77ca1c621fcdec42540ad",
+  "freeze": "U03-implementation-freeze-6.json",
+  "arbiter": "RUN/off",
+  "atUtc": "2026-09-09T02:27:25.7953976Z"
+}

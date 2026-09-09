@@ -1,0 +1,175 @@
+{
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "head": "57ba6d6fc2505f03a1ee0df82b186bccd0a455c2",
+  "accepted": false,
+  "outcomes": {
+    "correctionSelector": {
+      "passed": 176,
+      "files": 6,
+      "exit": 0,
+      "proof": "GREEN3; qualified reuse across proven whitespace-only test reflow to freeze6"
+    },
+    "wrappers": {
+      "passed": 29,
+      "files": 2,
+      "exit": 0,
+      "proof": "GREEN2 exact wrapper/test bytes; later cleanup-only deep-memory caller change separately covered by GREEN3"
+    },
+    "extraSeams": {
+      "passed": 6,
+      "skipped": 25,
+      "files": 2,
+      "exit": 0,
+      "proof": "Fresh named Storage/shadow cases; actual-config post-run qualification preserved"
+    },
+    "compiler": {
+      "exit": 0,
+      "diagnostics": 0,
+      "ioViolations": 0,
+      "proof": "Fresh scoped compiler atfreeze5, qualified reuse after whitespace-only test formatting; new Node import annotation qualified in routing"
+    },
+    "edge": {
+      "exit": 0,
+      "roots": 2,
+      "unchanged": true
+    },
+    "migrationRole": {
+      "exit": 0,
+      "guardedInputs": 522
+    },
+    "moduleIndex": {
+      "exit": 1,
+      "status": "Failed with unchanged pre-existing .superpowers plus nine site_content table documentation gaps; no new U03 gap; never green"
+    },
+    "format": {
+      "firstExit": 1,
+      "failedFile": "tests/indexing-v3-agent.test.ts",
+      "correctionExit": 0,
+      "proof": "Final same-file checkPASS; other15 paths passed unchanged first check"
+    },
+    "p04": {
+      "scope": "Reused historical fixture only;21closurefiles freshlyverifiedunchanged"
+    },
+    "scriptInventory": {
+      "scope": "Reused candidate1PASS272files/262npm scripts; unchanged membership/package/docs"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "U03-candidate-binding-2.json",
+      "sha256": "edf2f8feb6ec557a6cecfaab565e00407e5cf5abd7a0ec22772d56d0cd3bf539"
+    },
+    {
+      "path": "U03-implementation-freeze-6.json",
+      "sha256": "13ab6556319cd71146d0da8fdfb7b3596aa4b7f0188700a012560f248b083283"
+    },
+    {
+      "path": "U03-controller-freeze-6-verification.json",
+      "sha256": "d32d73c66c60c03ba593967bc2a3e41cad57663c509516aa9bf1b2b3ec21992f"
+    },
+    {
+      "path": "U03-product-correction-report-1.md",
+      "sha256": "820a6867881eb4c52624122e5cc1ed52003ae633b60fae3dfab40375e4280bc4"
+    },
+    {
+      "path": "U03-product-correction-artifacts-1.json",
+      "sha256": "ff62de83f53999191acc117425e3e393311aac2e9d08a08b6bfbb7fa3f4b11d3"
+    },
+    {
+      "path": "U03-format-correction-report-1.md",
+      "sha256": "a6f76e96d00953e639631f4a13895c491e41a60996c7406627d283fb51a97484"
+    },
+    {
+      "path": "U03-review-correction-final-verification-route-1.md",
+      "sha256": "ea056ce234fd6edbf453a17c6431fc25a0048f3f144de7813676b862a239be2d"
+    },
+    {
+      "path": "U03-controller-typecheck-review-correction-1.log",
+      "sha256": "e8f2a177e9e2c12b0b4046a9c7370621f708944efc60a367556826b2a7f0256c"
+    },
+    {
+      "path": "U03-tracked-typecheck-v3-review-correction-1-result.json",
+      "sha256": "1ac907e035220b8a231a2166c525b69efa3966b40ff1ddd80e753c5b488a6032"
+    },
+    {
+      "path": "U03-review-correction-typecheck-arbiter-1.log",
+      "sha256": "e20f3a0561c1b97f714975fd2abc4ed3f6abf8c4e8d6f515acfa894d202113b2"
+    },
+    {
+      "path": "U03-controller-extra-correction-tests-1.log",
+      "sha256": "8c49913da346bf473fbb8e08f4d85971f08782444f3c7f5909747b271cc1ee95"
+    },
+    {
+      "path": "U03-controller-extra-correction-tests-1-inputs.json",
+      "sha256": "41b1fab1ffeeb560a25ca264ab13f1bef61758f59b1917b679c43c19ad5c53f1"
+    },
+    {
+      "path": "U03-controller-extra-correction-tests-1-result.json",
+      "sha256": "5484df6b38c832807a0194e077dced985664810a6a5a25c1daebed49f986ed74"
+    },
+    {
+      "path": "U03-controller-extra-correction-tests-1-arbiter.log",
+      "sha256": "9bc48e30183638e66b923e8551f046ae9ae5729e1766be32440eb2f1b6b63b0b"
+    },
+    {
+      "path": "U03-controller-extra-correction-tests-1-config-qualification.json",
+      "sha256": "cbba78ba9a9509c9a5346c84aa6c7b868e0205af926d0f435c7807c180428fe2"
+    },
+    {
+      "path": "U03-edge-reviewed-inputs-2.json",
+      "sha256": "3432615f89228f4f57e1071d7e89e49d5f71f3cbcb6dba0d7fc35c0059c1451a"
+    },
+    {
+      "path": "U03-edge-closure-discovery-2.json",
+      "sha256": "ef2f1e422ebde25ebde9d2e411d13098f2466419d597a494f0d4b84e202eed55"
+    },
+    {
+      "path": "U03-controller-edge-2.log",
+      "sha256": "a4aefee777ba599ed128cca3675e58a89935130fdee1c72ffba9666733430632"
+    },
+    {
+      "path": "U03-edge-native-result-2.json",
+      "sha256": "65dd1f8882a226252cc4cdd5adc5a3fded8c81cdd8eadd8feaf310c1003af5cf"
+    },
+    {
+      "path": "U03-controller-migration-role-3.log",
+      "sha256": "9abe927670e497506c6de2c5ce4dfb5914948eacc275f9c07fed2a1befa2a9f6"
+    },
+    {
+      "path": "U03-staged-migration-role-result-3.json",
+      "sha256": "598f39db24e1279bd9a451d536540f0eb5179fc03e879eb0be8027437247497f"
+    },
+    {
+      "path": "U03-controller-index-coverage-2.log",
+      "sha256": "754b0aad4b76006e1cc9b52c439be413b3aa02d1632b3df38ac3a489f4019cbc"
+    },
+    {
+      "path": "U03-staged-index-coverage-result-2.json",
+      "sha256": "2434d21109e99283d53d48c61a7c30be39dc4db78c989dfe8479a84663d21a2a"
+    },
+    {
+      "path": "U03-controller-format-3.log",
+      "sha256": "1d8688da237c58e3481d75e1a4c02c941307f1caa0ffceb53c6853127b7d3eea"
+    },
+    {
+      "path": "U03-format-correction-1-check.log",
+      "sha256": "f20510a9da4717c51c4cffee6d0dd88d6c9a723d0a83711d01216f5b48961283"
+    },
+    {
+      "path": "U03-format-correction-1-result.json",
+      "sha256": "288b1906d07b0691cab62d5af9a9ebad4bb25983496370b156d7557d1d165e5c"
+    },
+    {
+      "path": "U03-controller-correction-evidence-recheck-1.json",
+      "sha256": "4977d9d9c5db7f6ef5c1e268ecde943de15d6dce63794876b9d58471cf491dfd"
+    },
+    {
+      "path": "U03-controller-verification-inventory-1.json",
+      "sha256": "d9c1b360f11b6d3013557989d252e50d807b64c54394f5f3c961cfcf2b2cf816"
+    },
+    {
+      "path": "U03-final-verification-route-addendum-1.md",
+      "sha256": "5598254b959e4c12064d63f3244923222dab11aaecdd38f51a696cef4d3f6836"
+    }
+  ]
+}

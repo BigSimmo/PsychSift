@@ -1,0 +1,20 @@
+{
+  "reviewSha256": "972b1689765d396a039ce55f528af2de802060e9104f5e36a1e47776b37b3ab6",
+  "additionalPath": "tests/document-clinical-summary.test.ts",
+  "candidateSha256": "5bda65ee6ab49b2a2f4b6cb773e77fccd775d88aee4732d63286e605b49841a6",
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "amendment": "U03-compiler-fixture-amendment-1.md",
+  "specification": "PASS",
+  "observedRoute": {
+    "type": "turn_context",
+    "model": "gpt-6-astra",
+    "effort": "xhigh",
+    "collaborationModel": "gpt-6-astra",
+    "collaborationEffort": "xhigh"
+  },
+  "atUtc": "2026-09-09T01:34:06.7099684Z",
+  "kind": "Controller admission of reviewed exact compiler fixture supplement; not U03 acceptance",
+  "amendmentSha256": "9b234ad1736799e5e8f849159cc59b0f6998f44807ba03ca97037d7bb8a2f890",
+  "quality": "PASS",
+  "review": "U03-compiler-fixture-amendment-review-1.md"
+}

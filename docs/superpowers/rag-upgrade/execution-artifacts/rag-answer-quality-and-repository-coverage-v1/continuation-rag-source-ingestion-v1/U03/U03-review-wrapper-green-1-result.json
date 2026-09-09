@@ -1,0 +1,7 @@
+{
+  "gateArbiter": "off",
+  "command": "node scripts/run-vitest.mjs run tests/openai-cache.test.ts tests/model-index-extraction.test.ts",
+  "arbiter": "RUN",
+  "receipts": "off",
+  "exit": 0
+}

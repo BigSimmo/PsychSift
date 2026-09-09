@@ -1,0 +1,158 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+stderr | tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips multi-item source-anchored summaries from the real producer
+document enrichment generation failed {
+  document: 'synthetic-inventory.txt',
+  name: 'Error',
+  message: 'source_anchored_summary_payload_invalid',
+  stack: 'at fail (C:[path])'
+}
+
+stderr | tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips 1 supported items without truncating canonical Unicode text
+document enrichment generation failed {
+  document: 'synthetic-inventory.txt',
+  name: 'Error',
+  message: 'source_anchored_summary_payload_invalid',
+  stack: 'at fail (C:[path])'
+}
+
+stderr | tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips 8 supported items without truncating canonical Unicode text
+document enrichment generation failed {
+  document: 'synthetic-inventory.txt',
+  name: 'Error',
+  message: 'source_anchored_summary_payload_invalid',
+  stack: 'at fail (C:[path])'
+}
+
+stderr | tests/document-enrichment.test.ts > source-anchored summary v1 > rejects altered multi-item aggregates and nested contract violations after the producer round trip
+document enrichment generation failed {
+  document: 'synthetic-inventory.txt',
+  name: 'Error',
+  message: 'source_anchored_summary_payload_invalid',
+  stack: 'at fail (C:[path])'
+}
+
+stderr | tests/document-enrichment.test.ts > source-anchored summary v1 > rejects oversized canonical items through the real producer instead of truncating evidence
+document enrichment generation failed {
+  document: 'synthetic-inventory.txt',
+  name: 'Error',
+  message: 'source_anchored_summary_payload_invalid',
+  stack: 'at fail (C:[path])'
+}
+
+ ❯ |node| tests/document-enrichment.test.ts (34 tests | 5 failed) 120ms
+     × round-trips multi-item source-anchored summaries from the real producer 11ms
+     × round-trips 1 supported items without truncating canonical Unicode text 8ms
+     × round-trips 8 supported items without truncating canonical Unicode text 20ms
+     × rejects altered multi-item aggregates and nested contract violations after the producer round trip 2ms
+     × rejects oversized canonical items through the real producer instead of truncating evidence 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips multi-item source-anchored summaries from the real producer
+Error: source_anchored_summary_generation_failed
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:774:11
+    772|       ...safeErrorLogDetails(error),
+    773|     });
+    774|     throw new Error("source_anchored_summary_generation_failed", { cau…
+       |           ^
+    775|   }
+    776| }
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:841:15
+ ❯ produceSummary tests/document-enrichment.test.ts:776:5
+ ❯ tests/document-enrichment.test.ts:812:21
+
+Caused by: Error: source_anchored_summary_payload_invalid
+ ❯ fail supabase/functions/_shared/source-anchored-summary.ts:150:9
+ ❯ exactKeys supabase/functions/_shared/source-anchored-summary.ts:201:98
+ ❯ normalizeSourceAnchoredSummary supabase/functions/_shared/source-anchored-summary.ts:513:3
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:741:12
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:841:15
+ ❯ produceSummary tests/document-enrichment.test.ts:776:5
+ ❯ tests/document-enrichment.test.ts:812:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |node| tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips 1 supported items without truncating canonical Unicode text
+ FAIL  |node| tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips 8 supported items without truncating canonical Unicode text
+Error: source_anchored_summary_generation_failed
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:774:11
+    772|       ...safeErrorLogDetails(error),
+    773|     });
+    774|     throw new Error("source_anchored_summary_generation_failed", { cau…
+       |           ^
+    775|   }
+    776| }
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:841:15
+ ❯ produceSummary tests/document-enrichment.test.ts:776:5
+ ❯ tests/document-enrichment.test.ts:820:21
+
+Caused by: Error: source_anchored_summary_payload_invalid
+ ❯ fail supabase/functions/_shared/source-anchored-summary.ts:150:9
+ ❯ exactKeys supabase/functions/_shared/source-anchored-summary.ts:201:98
+ ❯ normalizeSourceAnchoredSummary supabase/functions/_shared/source-anchored-summary.ts:513:3
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:741:12
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:841:15
+ ❯ produceSummary tests/document-enrichment.test.ts:776:5
+ ❯ tests/document-enrichment.test.ts:820:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |node| tests/document-enrichment.test.ts > source-anchored summary v1 > rejects altered multi-item aggregates and nested contract violations after the producer round trip
+Error: source_anchored_summary_generation_failed
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:774:11
+    772|       ...safeErrorLogDetails(error),
+    773|     });
+    774|     throw new Error("source_anchored_summary_generation_failed", { cau…
+       |           ^
+    775|   }
+    776| }
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:841:15
+ ❯ produceSummary tests/document-enrichment.test.ts:776:5
+ ❯ tests/document-enrichment.test.ts:835:21
+
+Caused by: Error: source_anchored_summary_payload_invalid
+ ❯ fail supabase/functions/_shared/source-anchored-summary.ts:150:9
+ ❯ exactKeys supabase/functions/_shared/source-anchored-summary.ts:201:98
+ ❯ normalizeSourceAnchoredSummary supabase/functions/_shared/source-anchored-summary.ts:513:3
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:741:12
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:841:15
+ ❯ produceSummary tests/document-enrichment.test.ts:776:5
+ ❯ tests/document-enrichment.test.ts:835:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |node| tests/document-enrichment.test.ts > source-anchored summary v1 > rejects oversized canonical items through the real producer instead of truncating evidence
+AssertionError: expected Error: source_anchored_summary_generation… to match object { …(2) }
+
+- Expected
++ Received
+
+- {
+-   "cause": ObjectContaining {
+-     "message": "source_anchored_summary_profile_text_invalid",
+-   },
++ Error {
+    "message": "source_anchored_summary_generation_failed",
++   "cause": Error {
++     "message": "source_anchored_summary_payload_invalid",
++   },
+  }
+
+ ❯ tests/document-enrichment.test.ts:896:52
+    894|
+    895|   it("rejects oversized canonical items through the real producer inst…
+    896|     await expect(produceSummary(["界".repeat(601)])).rejects.toMatchObj…
+       |                                                    ^
+    897|       message: "source_anchored_summary_generation_failed",
+    898|       cause: expect.objectContaining({ message: "source_anchored_summa…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  5 failed | 71 passed (76)
+   Start at  08:07:47
+   Duration  1.10s (transform 733ms, setup 0ms, import 1.10s, tests 330ms, environment 0ms)
+

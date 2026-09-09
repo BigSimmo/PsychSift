@@ -1,0 +1,501 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+ ❯ |node| tests/deep-memory.test.ts (33 tests | 5 failed) 288ms
+     × cancels sections without cleanup or continuation 29ms
+     × cancels cards without cleanup or continuation 18ms
+     × cancels units without cleanup or continuation 15ms
+     × cancels lost commit response without cleanup or continuation 18ms
+     × cancels rejected stage without cleanup or continuation 23ms
+ ❯ |node| tests/indexing-v3-agent.test.ts (42 tests | 5 failed) 164ms
+     × binds each generation-aware read predicate to its own SQL statement before decisions 10ms
+     × uses the shared coverage selector and source-anchored normalizer instead of first-N summary text 2ms
+     × refuses a preserved malformed structured payload before a complete old gate can run 5ms
+     × refuses a preserved old model structured payload before a complete old gate can run 2ms
+     × refuses a preserved wrong source structured payload before a complete old gate can run 2ms
+ ❯ |node| tests/document-enrichment.test.ts (36 tests | 2 failed) 136ms
+     × review correction: summary returned persistence failure stops actual optional orchestration 23ms
+     × review correction: summary rejected persistence failure stops actual optional orchestration 2ms
+ ❯ |node| tests/ingestion-lease-fencing.test.ts (48 tests | 3 failed) 73ms
+     × drains core first before dispatching the competing request 7ms
+     × drains heartbeat first before dispatching the competing request 1ms
+     × refuses fallback over an unvalidated structured row under the SQL row lock 4ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 15 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/deep-memory.test.ts > review correction: actual deep-memory optional orchestration > cancels sections without cleanup or continuation
+ FAIL  |node| tests/deep-memory.test.ts > review correction: actual deep-memory optional orchestration > cancels cards without cleanup or continuation
+ FAIL  |node| tests/deep-memory.test.ts > review correction: actual deep-memory optional orchestration > cancels units without cleanup or continuation
+ FAIL  |node| tests/deep-memory.test.ts > review correction: actual deep-memory optional orchestration > cancels lost commit response without cleanup or continuation
+ FAIL  |node| tests/deep-memory.test.ts > review correction: actual deep-memory optional orchestration > cancels rejected stage without cleanup or continuation
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ tests/deep-memory.test.ts:790:28
+    788|       await runIngestionMutation(attempt, later, "complete_ingestion_j…
+    789|     };
+    790|     await expect(process()).rejects.toBeDefined();
+       |                            ^
+    791|     expect(attempt.signal.aborted).toBe(true);
+    792|     expect(later).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯
+
+ FAIL  |node| tests/document-enrichment.test.ts > document enrichment > review correction: summary returned persistence failure stops actual optional orchestration
+ FAIL  |node| tests/document-enrichment.test.ts > document enrichment > review correction: summary rejected persistence failure stops actual optional orchestration
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ tests/document-enrichment.test.ts:424:28
+    422|       await runIngestionMutation(attempt, laterRpc, "complete_ingestio…
+    423|     };
+    424|     await expect(process()).rejects.toBeDefined();
+       |                            ^
+    425|     expect(attempt.signal.aborted).toBe(true);
+    426|     expect(supabase.rpc).toHaveBeenCalledOnce();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/15]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > indexing-v3-agent behavior > binds each generation-aware read predicate to its own SQL statement before decisions
+AssertionError: expected 'async function ensureSummary(\n  job:…' to contain 'normalizeSourceAnchoredSummary(candid…'
+
+- Expected
++ Received
+
+- normalizeSourceAnchoredSummary(candidate
++ async function ensureSummary(
++   job: ClaimedJob,
++   sources: SourceAnchoredSummarySources,
++ ): Promise<SourceAnchoredSummaryPayload> {
++   const existing = await sql<
++     Array<{
++       summary: string | null;
++       clinical_specifics: Record<string, unknown> | null;
++       source_chunk_ids: string[] | null;
++       source_image_ids: string[] | null;
++       metadata: Record<string, unknown> | null;
++       model: string | null;
++       generated_at: string | null;
++     }>
++   >`
++     select summary, clinical_specifics, source_chunk_ids, source_image_ids, model, metadata, generated_at
++     from public.document_summaries
++     where document_id = ${job.document_id}::uuid
++     limit 1
++   `;
++   const labels = await sql<
++     Array<{ label: string; label_type: string; confidence: number; metadata: Record<string, unknown> | null }>
++   >`
++     select label, label_type, confidence, metadata
++     from public.document_labels
++     where document_id = ${job.document_id}::uuid and source = 'generated'
++     order by label_type asc, label asc
++   `;
++   return ensureSourceAnchoredSummary({
++     existing: existing[0], labels, authority: sources.authority,
++     persist: (payload) => persistSourceAnchoredSummary(job, payload, true),
++   });
++ }
++
++
+
+ ❯ tests/indexing-v3-agent.test.ts:197:27
+    195|     );
+    196|     const ensureSummary = agentFunction("async function ensureSummary"…
+    197|     expect(ensureSummary).toContain("normalizeSourceAnchoredSummary(ca…
+       |                           ^
+    198|     expect(ensureSummary).toContain("sources.authority");
+    199|     expect(ensureSummary).not.toMatch(/limit\s+24/i);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/15]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > source-anchored summary Edge contract > uses the shared coverage selector and source-anchored normalizer instead of first-N summary text
+AssertionError: expected 'async function ensureSummary(\n  job:…' to contain 'buildSourceAnchoredFallbackPayload'
+
+- Expected
++ Received
+
+- buildSourceAnchoredFallbackPayload
++ async function ensureSummary(
++   job: ClaimedJob,
++   sources: SourceAnchoredSummarySources,
++ ): Promise<SourceAnchoredSummaryPayload> {
++   const existing = await sql<
++     Array<{
++       summary: string | null;
++       clinical_specifics: Record<string, unknown> | null;
++       source_chunk_ids: string[] | null;
++       source_image_ids: string[] | null;
++       metadata: Record<string, unknown> | null;
++       model: string | null;
++       generated_at: string | null;
++     }>
++   >`
++     select summary, clinical_specifics, source_chunk_ids, source_image_ids, model, metadata, generated_at
++     from public.document_summaries
++     where document_id = ${job.document_id}::uuid
++     limit 1
++   `;
++   const labels = await sql<
++     Array<{ label: string; label_type: string; confidence: number; metadata: Record<string, unknown> | null }>
++   >`
++     select label, label_type, confidence, metadata
++     from public.document_labels
++     where document_id = ${job.document_id}::uuid and source = 'generated'
++     order by label_type asc, label asc
++   `;
++   return ensureSourceAnchoredSummary({
++     existing: existing[0], labels, authority: sources.authority,
++     persist: (payload) => persistSourceAnchoredSummary(job, payload, true),
++   });
++ }
++
++
+
+ ❯ tests/indexing-v3-agent.test.ts:1033:27
+    1031|     );
+    1032|     expect(sourceLoader).toContain("selectCoverageAwarePromptChunks");
+    1033|     expect(ensureSummary).toContain("buildSourceAnchoredFallbackPayloa…
+       |                           ^
+    1034|     expect(ensureSummary).toContain("normalizeSourceAnchoredSummary");
+    1035|     expect(ensureSummary).not.toMatch(/limit\s+24/i);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/15]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > review correction: actual Edge summary orchestration > refuses a preserved malformed structured payload before a complete old gate can run
+AssertionError: promise resolved "{ …(13) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "clinical_specifics": {
++     "actions": [],
++     "documentation_forms": [],
++     "exceptions_gaps": [],
++     "medication_monitoring": [],
++     "profile": {
++       "applies_to": [],
++       "best_questions": [],
++       "escalation_risk_warnings": [],
++       "important_tables_images": [],
++       "key_clinical_actions": [],
++       "medication_dose_monitoring": [],
++       "not_covered": [],
++       "overview": "A deterministic source-only fallback is available; inspect the anchored source evidence before clinical use.",
++       "required_forms_documentation": [],
++       "source_quality_notes": [
++         {
++           "evidence_type": "text",
++           "pages": [
++             1,
++           ],
++           "source_chunk_ids": [
++             "33333333-3333-4333-8333-333333333333",
++           ],
++           "source_image_ids": [],
++           "support": "partial",
++           "text": "A deterministic source-only fallback is available; inspect the anchored source evidence before clinical use.",
++         },
++       ],
++       "thresholds_timing": [],
++     },
++     "risk_escalation": [],
++     "thresholds_timing": [],
++   },
++   "document_id": "11111111-1111-4111-8111-111111111111",
++   "generated_at": "2026-09-09T02:07:41.530Z",
++   "heuristic_fallback": true,
++   "index_generation_id": "22222222-2222-4222-8222-222222222222",
++   "labels": [],
++   "model": "deterministic-source-coverage-heuristic",
++   "model_version": "source-anchored-summary-v1",
++   "source_chunk_ids": [
++     "33333333-3333-4333-8333-333333333333",
++     "44444444-4444-4444-8444-444444444444",
++   ],
++   "source_image_ids": [
++     "55555555-5555-4555-8555-555555555555",
++   ],
++   "summary": "A deterministic source-only fallback is available; inspect the anchored source evidence before clinical use.",
++   "summary_kind": "heuristic_fallback",
++   "summary_version": "source-anchored-summary-v1",
+  }
+
+ ❯ tests/indexing-v3-agent.test.ts:1217:28
+    1215|     };
+    1216|     expect(() => shared.normalizeSourceAnchoredSummary(invalid, source…
+    1217|     await expect(process()).rejects.toBeDefined();
+       |                            ^
+    1218|     expect(persist).toHaveBeenCalledOnce();
+    1219|     expect(complete).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/15]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > review correction: actual Edge summary orchestration > refuses a preserved old model structured payload before a complete old gate can run
+AssertionError: promise resolved "{ …(13) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "clinical_specifics": {
++     "actions": [],
++     "documentation_forms": [],
++     "exceptions_gaps": [],
++     "medication_monitoring": [],
++     "profile": {
++       "applies_to": [],
++       "best_questions": [],
++       "escalation_risk_warnings": [],
++       "important_tables_images": [],
++       "key_clinical_actions": [],
++       "medication_dose_monitoring": [],
++       "not_covered": [],
++       "overview": "A deterministic source-only fallback is available; inspect the anchored source evidence before clinical use.",
++       "required_forms_documentation": [],
++       "source_quality_notes": [
++         {
++           "evidence_type": "text",
++           "pages": [
++             1,
++           ],
++           "source_chunk_ids": [
++             "33333333-3333-4333-8333-333333333333",
++           ],
++           "source_image_ids": [],
++           "support": "partial",
++           "text": "A deterministic source-only fallback is available; inspect the anchored source evidence before clinical use.",
++         },
++       ],
++       "thresholds_timing": [],
++     },
++     "risk_escalation": [],
++     "thresholds_timing": [],
++   },
++   "document_id": "11111111-1111-4111-8111-111111111111",
++   "generated_at": "2026-09-09T02:07:41.535Z",
++   "heuristic_fallback": true,
++   "index_generation_id": "22222222-2222-4222-8222-222222222222",
++   "labels": [],
++   "model": "deterministic-source-coverage-heuristic",
++   "model_version": "source-anchored-summary-v1",
++   "source_chunk_ids": [
++     "33333333-3333-4333-8333-333333333333",
++     "44444444-4444-4444-8444-444444444444",
++   ],
++   "source_image_ids": [
++     "55555555-5555-4555-8555-555555555555",
++   ],
++   "summary": "A deterministic source-only fallback is available; inspect the anchored source evidence before clinical use.",
++   "summary_kind": "heuristic_fallback",
++   "summary_version": "source-anchored-summary-v1",
+  }
+
+ ❯ tests/indexing-v3-agent.test.ts:1217:28
+    1215|     };
+    1216|     expect(() => shared.normalizeSourceAnchoredSummary(invalid, source…
+    1217|     await expect(process()).rejects.toBeDefined();
+       |                            ^
+    1218|     expect(persist).toHaveBeenCalledOnce();
+    1219|     expect(complete).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/15]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > review correction: actual Edge summary orchestration > refuses a preserved wrong source structured payload before a complete old gate can run
+AssertionError: promise resolved "{ …(13) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "clinical_specifics": {
++     "actions": [],
++     "documentation_forms": [],
++     "exceptions_gaps": [],
++     "medication_monitoring": [],
++     "profile": {
++       "applies_to": [],
++       "best_questions": [],
++       "escalation_risk_warnings": [],
++       "important_tables_images": [],
++       "key_clinical_actions": [],
++       "medication_dose_monitoring": [],
++       "not_covered": [],
++       "overview": "A deterministic source-only fallback is available; inspect the anchored source evidence before clinical use.",
++       "required_forms_documentation": [],
++       "source_quality_notes": [
++         {
++           "evidence_type": "text",
++           "pages": [
++             1,
++           ],
++           "source_chunk_ids": [
++             "33333333-3333-4333-8333-333333333333",
++           ],
++           "source_image_ids": [],
++           "support": "partial",
++           "text": "A deterministic source-only fallback is available; inspect the anchored source evidence before clinical use.",
++         },
++       ],
++       "thresholds_timing": [],
++     },
++     "risk_escalation": [],
++     "thresholds_timing": [],
++   },
++   "document_id": "11111111-1111-4111-8111-111111111111",
++   "generated_at": "2026-09-09T02:07:41.537Z",
++   "heuristic_fallback": true,
++   "index_generation_id": "22222222-2222-4222-8222-222222222222",
++   "labels": [],
++   "model": "deterministic-source-coverage-heuristic",
++   "model_version": "source-anchored-summary-v1",
++   "source_chunk_ids": [
++     "33333333-3333-4333-8333-333333333333",
++     "44444444-4444-4444-8444-444444444444",
++   ],
++   "source_image_ids": [
++     "55555555-5555-4555-8555-555555555555",
++   ],
++   "summary": "A deterministic source-only fallback is available; inspect the anchored source evidence before clinical use.",
++   "summary_kind": "heuristic_fallback",
++   "summary_version": "source-anchored-summary-v1",
+  }
+
+ ❯ tests/indexing-v3-agent.test.ts:1217:28
+    1215|     };
+    1216|     expect(() => shared.normalizeSourceAnchoredSummary(invalid, source…
+    1217|     await expect(process()).rejects.toBeDefined();
+       |                            ^
+    1218|     expect(persist).toHaveBeenCalledOnce();
+    1219|     expect(complete).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/15]⎯
+
+ FAIL  |node| tests/ingestion-lease-fencing.test.ts > review correction: actual core and heartbeat dispatch ordering > drains core first before dispatching the competing request
+ FAIL  |node| tests/ingestion-lease-fencing.test.ts > review correction: actual core and heartbeat dispatch ordering > drains heartbeat first before dispatching the competing request
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ tests/ingestion-lease-fencing.test.ts:349:33
+    347|     release();
+    348|     const outcomes = await Promise.all([first, second]);
+    349|     expect(dispatchedWhileHeld).toBe(1);
+       |                                 ^
+    350|     expect(outcomes.every((result) => !(result instanceof Error))).toB…
+    351|     expect(attempt.fence.expected_generation_id).toBe(nextGeneration);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/15]⎯
+
+ FAIL  |node| tests/ingestion-lease-fencing.test.ts > review correction: actual core and heartbeat dispatch ordering > refuses fallback over an unvalidated structured row under the SQL row lock
+AssertionError: expected 'function public.persist_ingestion_sum…' not to contain '\'preserved_structured\',true'
+
+- Expected
++ Received
+
+- 'preserved_structured',true
++ function public.persist_ingestion_summary_projection(p_fence jsonb, p_summary jsonb, p_labels jsonb, p_metadata jsonb)
++ returns jsonb language plpgsql security definer set search_path = '' as $$
++ declare v_locked jsonb; v_document_id uuid; v_owner uuid; v_summary public.document_summaries%rowtype; v_payload jsonb; v_label jsonb;
++ begin
++   if p_fence->>'expected_generation_id' is null then raise exception 'ingestion_attempt_required'; end if;
++   v_locked := public.assert_current_ingestion_attempt(p_fence, (p_fence->>'expected_generation_id')::uuid);
++   if v_locked is null then return jsonb_build_object('ok',false,'reason','lease_lost'); end if;
++   v_document_id := (p_fence->>'document_id')::uuid;
++   v_owner := (v_locked->'document'->>'owner_id')::uuid;
++   v_payload := p_summary->'metadata'->'source_anchored_summary_v1';
++   if jsonb_typeof(p_summary) is distinct from 'object' or jsonb_typeof(p_labels) is distinct from 'array'
++     or jsonb_typeof(p_metadata) is distinct from 'object' or jsonb_typeof(p_summary->'metadata') is distinct from 'object'
++     or jsonb_typeof(v_payload) is distinct from 'object'
++     or jsonb_typeof(p_summary->'source_chunk_ids') is distinct from 'array' or jsonb_typeof(p_summary->'source_image_ids') is distinct from 'array'
++     or jsonb_array_length(p_labels) > 100 or v_payload->>'document_id' is distinct from v_document_id::text
++     or v_payload->>'index_generation_id' is distinct from p_fence->>'expected_generation_id'
++     or coalesce(v_payload->>'summary_kind','') not in ('structured','heuristic_fallback')
++     or p_summary->>'summary' is distinct from v_payload->>'summary'
++     or p_summary->'clinical_specifics' is distinct from v_payload->'clinical_specifics'
++     or p_summary->'source_chunk_ids' is distinct from v_payload->'source_chunk_ids'
++     or p_summary->'source_image_ids' is distinct from v_payload->'source_image_ids'
++     or (v_payload->>'summary_kind' <> 'structured' and jsonb_array_length(p_labels) <> 0)
++     or p_summary->>'model' is distinct from v_payload->>'model'
++     or p_summary->>'generated_at' is distinct from v_payload->>'generated_at'
++     or jsonb_typeof(v_payload->'labels') is distinct from 'array' or jsonb_array_length(v_payload->'labels') <> jsonb_array_length(p_labels)
++     or exists(select 1 from jsonb_object_keys(p_summary->'metadata') k where k <> all(array[
++       'generated_by','index_generation_id','rag_enrichment_version','rag_indexing_version','rag_memory_version','clinical_profile_version',
++       'coverage_profile','enrichment_prompt_strategy','enrichment_prompt_chunk_ids','label_count','source_anchored_summary_v1','source_anchored_summary_projection_complete_v1']))
++     or exists (select 1 from jsonb_object_keys(p_metadata) k where k <> all(array[
++       'rag_enrichment_version','rag_indexing_version','rag_memory_version','rag_enrichment_updated_at','generated_label_count']))
++     then raise exception 'invalid_ingestion_summary_projection'; end if;
++   perform public.assert_ingestion_artifact_sources(p_summary,v_document_id,(p_fence->>'expected_generation_id')::uuid,null);
++   select * into v_summary from public.document_summaries where document_id = v_document_id for update;
++   if v_payload->>'summary_kind' <> 'structured'
++     and v_summary.metadata->'source_anchored_summary_v1'->>'summary_kind' = 'structured'
++     and v_summary.metadata->'source_anchored_summary_v1'->>'index_generation_id' = p_fence->>'expected_generation_id'
++     then return jsonb_build_object('ok',true,'summary',to_jsonb(v_summary),'preserved_structured',true); end if;
++   perform 1 from public.document_labels where document_id = v_document_id order by id for update;
++   insert into public.document_summaries(document_id,owner_id,summary,clinical_specifics,source_chunk_ids,source_image_ids,model,metadata,generated_at,updated_at)
++   values(v_document_id,v_owner,p_summary->>'summary',p_summary->'clinical_specifics',
++     array(select jsonb_array_elements_text(p_summary->'source_chunk_ids'))::uuid[],
++     array(select jsonb_array_elements_text(p_summary->'source_image_ids'))::uuid[], p_summary->>'model',
++     coalesce(v_summary.metadata,'{}'::jsonb) || p_summary->'metadata' || jsonb_build_object('source_anchored_summary_projection_complete_v1', v_payload->>'summary_kind' = 'structured','index_generation_id',p_fence->>'expected_generation_id','ingestion_lease_token',p_fence->>'lease_token','ingestion_job_kind',p_fence->>'job_kind','ingestion_job_id',p_fence->>'job_id'),
++     (p_summary->>'generated_at')::timestamptz, pg_catalog.clock_timestamp())
++   on conflict(document_id) do update set summary=excluded.summary, clinical_specifics=excluded.clinical_specifics,
++     source_chunk_ids=excluded.source_chunk_ids, source_image_ids=excluded.source_image_ids, model=excluded.model,
++     metadata=excluded.metadata, generated_at=excluded.generated_at, updated_at=excluded.updated_at
++   returning * into v_summary;
++   delete from public.document_labels where document_id = v_document_id and source = 'generated';
++   for v_label in select value from jsonb_array_elements(p_labels) loop
++     if v_label->>'document_id' is distinct from v_document_id::text or v_label->>'source' is distinct from 'generated'
++       or v_label->'metadata'->>'index_generation_id' is distinct from p_fence->>'expected_generation_id'
++       or not exists(select 1 from jsonb_array_elements(v_payload->'labels') label
++         where label->>'label'=v_label->>'label' and label->>'label_type'=v_label->>'label_type'
++           and label->'confidence'=v_label->'confidence')
++       then raise exception 'invalid_ingestion_summary_label'; end if;
++     perform public.assert_ingestion_artifact_sources(v_label->'metadata',v_document_id,(p_fence->>'expected_generation_id')::uuid,null);
++     insert into public.document_labels(document_id,owner_id,label,label_type,confidence,source,metadata)
++     values(v_document_id,v_owner,v_label->>'label',v_label->>'label_type',(v_label->>'confidence')::real,'generated',v_label->'metadata');
++   end loop;
+
+ Test Files  4 failed | 2 passed (6)
+      Tests  15 failed | 158 passed (173)
+   Start at  10:07:40
+   Duration  1.95s (transform 728ms, setup 0ms, import 1.29s, tests 1.20s, environment 1ms)
+
++   update public.documents set metadata = public.jsonb_merge_deep(metadata,p_metadata), updated_at=pg_catalog.clock_timestamp() where id=v_document_id;
++   return jsonb_build_object('ok',true,'summary',to_jsonb(v_summary));
++
+
+ ❯ tests/ingestion-lease-fencing.test.ts:358:21
+    356|   it("refuses fallback over an unvalidated structured row under the SQ…
+    357|     const sql = body("persist_ingestion_summary_projection");
+    358|     expect(sql).not.toContain("'preserved_structured',true");
+       |                     ^
+    359|     expect(sql.indexOf("raise exception 'ingestion_summary_requires_st…
+    360|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/15]⎯
+

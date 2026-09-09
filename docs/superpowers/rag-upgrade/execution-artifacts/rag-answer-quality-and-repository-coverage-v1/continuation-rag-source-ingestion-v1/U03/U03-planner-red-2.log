@@ -1,0 +1,33 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+ ❯ |node| tests/ingestion-repair-plan.test.ts (1 test | 1 failed) 8ms
+     × provides the bounded dry-run planner contract 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/ingestion-repair-plan.test.ts > ingestion repair planner > provides the bounded dry-run planner contract
+AssertionError: U03 bounded repair planner is absent: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/ingestion-repair-plan.test.ts:8:76
+      6|   it("provides the bounded dry-run planner contract", async () => {
+      7|     const modulePath = resolve(process.cwd(), "src/lib/ingestion-repai…
+      8|     expect(existsSync(modulePath), "U03 bounded repair planner is abse…
+       |                                                                            ^
+      9|   });
+     10| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  02:35:26
+   Duration  264ms (transform 24ms, setup 0ms, import 40ms, tests 8ms, environment 0ms)
+

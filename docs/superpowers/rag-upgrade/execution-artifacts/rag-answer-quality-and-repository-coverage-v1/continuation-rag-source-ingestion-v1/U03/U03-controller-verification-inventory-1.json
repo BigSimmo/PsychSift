@@ -1,0 +1,229 @@
+{
+  "kind": "Controller verification inventory for immutable unaccepted U03 candidate",
+  "head": "b651ee23d8541fbebea77ca1c621fcdec42540ad",
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "outcomes": {
+    "finalSelector": {
+      "files": 15,
+      "passed": 277,
+      "exit": 0,
+      "freeze": 3
+    },
+    "affectedCorrection": {
+      "files": 4,
+      "passed": 98,
+      "exit": 0,
+      "limitation": "Private unused type-alias removal postdates this run; no runtime change"
+    },
+    "additionalFixture": {
+      "files": 1,
+      "passed": 6,
+      "exit": 0,
+      "limitation": "Pre-run model path typo; preserved partial inventory and explicitly post-run corrected model/types/normalizer identity, not reconstructed pre-run proof"
+    },
+    "trackedCompiler": {
+      "exit": 0,
+      "diagnostics": 0,
+      "ioViolations": 0,
+      "head": "b651ee23d8541fbebea77ca1c621fcdec42540ad",
+      "scope": "Tracked application/worker/script/test source health, explicit archive caller and pure shared attempt root, framework-generated Next ambient replacement; not repository-wide/native Edge proof."
+    },
+    "nativeEdge": {
+      "exit": 0,
+      "unchanged": true,
+      "scope": "two-root native Edge compilation equivalent",
+      "limitation": "Passing source compilation at preceding HEAD with unchanged complete closure; no handler/runtime/provider proof"
+    },
+    "migrationRole": {
+      "exit": 0,
+      "guardedInputs": 522
+    },
+    "format": "PASS focused changed files; earlier unchanged result reused",
+    "diff": "PASS",
+    "scriptInventory": "PASS 272/262",
+    "moduleIndex": {
+      "exit": 1,
+      "status": "FAIL unchanged baseline gaps; no additional U03 gap; pending specialist acceptance of scoped disposition"
+    },
+    "P04": "Reused historical fixture evidence after unchanged closure verification"
+  },
+  "remaining": "Fresh specialist reports and any corrections; separate acceptance/evidence checkpoint. SQL, native extraction, providers, hosted/runtime/clinical/C07 remain separately gated.",
+  "artifacts": [
+    {
+      "name": "U03-candidate-binding-1.json",
+      "sha256": "bca26796b68eb6fe94a3de7e8c5e5f4ad72e94bdf210dd672f5cdd693dd62ed4",
+      "bytes": 12652
+    },
+    {
+      "name": "U03-implementation-freeze-4.json",
+      "sha256": "d56cee0eba974a08e4ed9afa60af28268ab451b7f36266f2ef2c08f4153cd6b1",
+      "bytes": 25684
+    },
+    {
+      "name": "U03-controller-final-tests-1.log",
+      "sha256": "83f1e58847c38b83b8000643eabe6b4f9cf54d0f81e84ff90bc8fca0a31bce8c",
+      "bytes": 265
+    },
+    {
+      "name": "U03-controller-final-tests-1.json",
+      "sha256": "284d31551b5719430c21b8289258baf7e929750c86a6f739c0ca8cdd12f5682d",
+      "bytes": 116
+    },
+    {
+      "name": "U03-final-test-arbiter-1.log",
+      "sha256": "9bc48e30183638e66b923e8551f046ae9ae5729e1766be32440eb2f1b6b63b0b",
+      "bytes": 150
+    },
+    {
+      "name": "U03-compiler-correction-1.log",
+      "sha256": "716f3135b0e386255aed7d178327ac824dde4922ee1ed10127e985ce890f3368",
+      "bytes": 261
+    },
+    {
+      "name": "U03-compiler-correction-1.json",
+      "sha256": "83ecab4cb44abcdcb2b599a3710b143cba59a0547cd836b322b9b7d5ce117362",
+      "bytes": 257
+    },
+    {
+      "name": "U03-compiler-correction-1-inputs.json",
+      "sha256": "b740a28fc53f970f190bfcf720da97daf80caad151a17b59f0cf348eb5113b96",
+      "bytes": 1132
+    },
+    {
+      "name": "U03-clinical-fixture-1.log",
+      "sha256": "381601fb021bdc10e8e068d8bbf18217efa42fcfbd2e3e9c639c0c0a949e299d",
+      "bytes": 258
+    },
+    {
+      "name": "U03-clinical-fixture-1.json",
+      "sha256": "4948b934ebf9ac3f02f743a27f26c94ec470142a73b8276c53047c8771aa52c9",
+      "bytes": 151
+    },
+    {
+      "name": "U03-clinical-fixture-1-inputs-corrected.json",
+      "sha256": "be493e8fe40a89b27b59374134f87cb0b72f2e71cb1223ddc74865fe44d9818f",
+      "bytes": 884
+    },
+    {
+      "name": "U03-controller-typecheck-final.log",
+      "sha256": "0f32ce42cd874017219214fafffa8b9f2129fad67888fef7fa6b59ecf32a7449",
+      "bytes": 13387
+    },
+    {
+      "name": "U03-tracked-typecheck-v3-final-result.json",
+      "sha256": "8987da8731b48ccd5b57408c4c14fe80dec4f7d505c2c798d54799f969357bec",
+      "bytes": 1715798
+    },
+    {
+      "name": "U03-controller-typecheck-correction-1.log",
+      "sha256": "e8f2a177e9e2c12b0b4046a9c7370621f708944efc60a367556826b2a7f0256c",
+      "bytes": 79
+    },
+    {
+      "name": "U03-tracked-typecheck-v3-correction-1-result.json",
+      "sha256": "d8743a0fb92955606dd1499abdfb83f06f2f0d5ecb338b8f33d62ddbd7b64ca5",
+      "bytes": 1715804
+    },
+    {
+      "name": "U03-typecheck-correction-1-arbiter.log",
+      "sha256": "e20f3a0561c1b97f714975fd2abc4ed3f6abf8c4e8d6f515acfa894d202113b2",
+      "bytes": 160
+    },
+    {
+      "name": "U03-edge-native-result-1.json",
+      "sha256": "4badc77cc9a79691997304ded30fe84975e6bac2026a06a1076299f729564be6",
+      "bytes": 8358
+    },
+    {
+      "name": "U03-controller-edge-1.log",
+      "sha256": "a4aefee777ba599ed128cca3675e58a89935130fdee1c72ffba9666733430632",
+      "bytes": 106
+    },
+    {
+      "name": "U03-edge-reviewed-inputs-1.json",
+      "sha256": "9a860c337d03b4d4e9f7702cb3359d1d0ec1b9b9c9a224740a004dfb035d942c",
+      "bytes": 2364
+    },
+    {
+      "name": "U03-edge-closure-review-1.md",
+      "sha256": "2c338e1faa8380767d604ba5face7b1cc56a12029d46f68d9c2885a0991cb72e",
+      "bytes": 4005
+    },
+    {
+      "name": "U03-controller-migration-role-2.log",
+      "sha256": "9abe927670e497506c6de2c5ce4dfb5914948eacc275f9c07fed2a1befa2a9f6",
+      "bytes": 85
+    },
+    {
+      "name": "U03-staged-migration-role-result-2.json",
+      "sha256": "cfad358c6f6ad6bd2878c1e3a69a342828e09408446a847711ce47684246e91c",
+      "bytes": 85401
+    },
+    {
+      "name": "U03-controller-format-2.log",
+      "sha256": "f20510a9da4717c51c4cffee6d0dd88d6c9a723d0a83711d01216f5b48961283",
+      "bytes": 68
+    },
+    {
+      "name": "U03-controller-freeze-4-verification.json",
+      "sha256": "1337b6861cf4c2910af5eedc33f275ee11d9658402e289f267cf8d96531b5002",
+      "bytes": 347
+    },
+    {
+      "name": "U03-controller-script-inventory-2.log",
+      "sha256": "cf49d9f2fb0ec639cba44fd7edaaeebc78bab8ed36352a32aca8eaeeccb43a8b",
+      "bytes": 60
+    },
+    {
+      "name": "U03-controller-script-inventory-2.json",
+      "sha256": "2d8e7d89d06998b1726daf6c8479a0304481584059b5da5c2b3aef1ecbf900ae",
+      "bytes": 180
+    },
+    {
+      "name": "U03-controller-index-coverage-1.log",
+      "sha256": "754b0aad4b76006e1cc9b52c439be413b3aa02d1632b3df38ac3a489f4019cbc",
+      "bytes": 466
+    },
+    {
+      "name": "U03-controller-index-coverage-1.json",
+      "sha256": "9ac93708c77df92823a37dbde51b7153c2e5644b4dc8fafa3d34667cc50e1110",
+      "bytes": 215
+    },
+    {
+      "name": "U03-staged-index-coverage-result-1.json",
+      "sha256": "d43015d6b1ed82eae8c79b7521901eefcff60adec3377650bf3001e02f2846c6",
+      "bytes": 5851
+    },
+    {
+      "name": "U03-controller-inventory-baseline-1.json",
+      "sha256": "11f5085ba36d79b87492b6a5af319e85be2c8dedafd29397bbc60016f153425b",
+      "bytes": 896
+    },
+    {
+      "name": "U03-final-verification-route-addendum-1.md",
+      "sha256": "5598254b959e4c12064d63f3244923222dab11aaecdd38f51a696cef4d3f6836",
+      "bytes": 4823
+    },
+    {
+      "name": "U03-p04-reuse-inputs-1.json",
+      "sha256": "d9cda5bbd020377bbdb64ac2e8041a253bbd8af0b54c745014c9dc8f21fecfdf",
+      "bytes": 4501
+    },
+    {
+      "name": "U03-p04-reuse-verification-1.json",
+      "sha256": "909e601e6e2cf3fabc986bc54c60d2d65c34e0491c1c38245790964ee72fe247",
+      "bytes": 399
+    },
+    {
+      "name": "U03-compiler-fixture-amendment-admission-1.json",
+      "sha256": "1fdca67671a4bdf359419d4e03b91e0268845a5423aa4949f8394ced695bbf18",
+      "bytes": 888
+    },
+    {
+      "name": "U03-p05-prerequisite-amendment-acceptance-1.json",
+      "sha256": "ce89d880c39bf582f607bc3cc1e597380c50420dcf8a44d59ea08f7b1e73c78b",
+      "bytes": 3445
+    }
+  ],
+  "atUtc": "2026-09-09T01:46:40.479Z"
+}

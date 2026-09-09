@@ -1,0 +1,12 @@
+{
+  "command": "node scripts/run-vitest.mjs run tests/openai-cache.test.ts tests/model-index-extraction.test.ts",
+  "formatCheckExit": 0,
+  "gateReceipts": "off",
+  "gateArbiter": "off",
+  "exit": 0,
+  "arbiterExit": 0,
+  "arbiter": "RUN/off",
+  "formatExit": 0,
+  "arbiterCommand": "npm run arbiter -- test",
+  "scopedErrorActionPreference": "Stop"
+}

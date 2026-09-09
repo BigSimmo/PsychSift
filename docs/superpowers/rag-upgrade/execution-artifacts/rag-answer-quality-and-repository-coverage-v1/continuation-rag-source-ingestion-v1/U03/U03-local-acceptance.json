@@ -1,0 +1,2045 @@
+{
+  "record_kind": "manual-continuation-local-product-acceptance",
+  "programme": "rag-answer-quality-and-repository-coverage-v1",
+  "continuation": "rag-source-ingestion-continuation-v1",
+  "unit": "U03",
+  "status": "ACCEPTED_LOCAL_PRODUCT",
+  "worktree": "C:\\Users\\joshs\\.codex\\worktrees\\rag-local-build-20260822\\Database",
+  "branch": "codex/rag-local-build-20260822",
+  "task_base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "task_head": "bbd978a5708ed70c51e293aab079ead9c5bcb1ce",
+  "commits": [
+    "b651ee23d8541fbebea77ca1c621fcdec42540ad",
+    "57ba6d6fc2505f03a1ee0df82b186bccd0a455c2",
+    "bbd978a5708ed70c51e293aab079ead9c5bcb1ce"
+  ],
+  "product_files": [
+    {
+      "path": "docs/codebase-index.md",
+      "rawSha256": "8b2a83555b2755e5a0c18954c547599f24d43cf9be882fccb578e8ead32ce398",
+      "committedBlobSha256": "8b2a83555b2755e5a0c18954c547599f24d43cf9be882fccb578e8ead32ce398"
+    },
+    {
+      "path": "docs/ingestion-state-machine.md",
+      "rawSha256": "db103656a2ddb41a41e3d4f169969436b7281990cd99aa02a84dd272d03ec21c",
+      "committedBlobSha256": "db103656a2ddb41a41e3d4f169969436b7281990cd99aa02a84dd272d03ec21c"
+    },
+    {
+      "path": "docs/reindex-runbook.md",
+      "rawSha256": "4a3f882afefd139a1ca1435056ca793126d3ea4bf98e2a53031be76b6b91c829",
+      "committedBlobSha256": "4a3f882afefd139a1ca1435056ca793126d3ea4bf98e2a53031be76b6b91c829"
+    },
+    {
+      "path": "docs/scripts-index.md",
+      "rawSha256": "fbdba991d8317b5dab295fa0fd5f568cddc817085cd276c58210db60b0bc2bb4",
+      "committedBlobSha256": "fbdba991d8317b5dab295fa0fd5f568cddc817085cd276c58210db60b0bc2bb4"
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md",
+      "rawSha256": "877594a62de02ef3391ae0c9ca7594b827e768d8b0603eef3adfba0530dc2939",
+      "committedBlobSha256": "877594a62de02ef3391ae0c9ca7594b827e768d8b0603eef3adfba0530dc2939"
+    },
+    {
+      "path": "docs/worker-deploy-runbook.md",
+      "rawSha256": "26905d350d69cad2c6d80791758fde73427bf29726e8a807a5c1c5851822072c",
+      "committedBlobSha256": "26905d350d69cad2c6d80791758fde73427bf29726e8a807a5c1c5851822072c"
+    },
+    {
+      "path": "scripts/archive/backfill-enrichment.ts",
+      "rawSha256": "0cd838d19a18e26159c50c9291f33fbcb2263c6e8b0cbaf1d2ca981682fb0059",
+      "committedBlobSha256": "0cd838d19a18e26159c50c9291f33fbcb2263c6e8b0cbaf1d2ca981682fb0059"
+    },
+    {
+      "path": "scripts/backfill-smart-index.ts",
+      "rawSha256": "e99df48b3474a7674616d0fb7e674adc4636ebcc68ea92f1e0993231963d05ba",
+      "committedBlobSha256": "e99df48b3474a7674616d0fb7e674adc4636ebcc68ea92f1e0993231963d05ba"
+    },
+    {
+      "path": "scripts/enrich-documents.ts",
+      "rawSha256": "6f7d02225bfa4331c1ec7a75b1aaea7f15bb7d71ace1b0ac6c9e500748973b92",
+      "committedBlobSha256": "6f7d02225bfa4331c1ec7a75b1aaea7f15bb7d71ace1b0ac6c9e500748973b92"
+    },
+    {
+      "path": "scripts/lib/ingestion-operator-compatibility.ts",
+      "rawSha256": "1280b45cf22e8042c1d824721a67759eba5c8ad2dc6cd49c311ad635ba883fe0",
+      "committedBlobSha256": "1280b45cf22e8042c1d824721a67759eba5c8ad2dc6cd49c311ad635ba883fe0"
+    },
+    {
+      "path": "src/lib/deep-memory.ts",
+      "rawSha256": "5c49a98df7cc3c4137a8cecf3faea84ecfe681f499328f24e4c67ca82ada76b4",
+      "committedBlobSha256": "5c49a98df7cc3c4137a8cecf3faea84ecfe681f499328f24e4c67ca82ada76b4"
+    },
+    {
+      "path": "src/lib/document-enrichment.ts",
+      "rawSha256": "f61d7eb90176e256908c7191be18d06762b1ca74cbb1bda3abac9e91f021680f",
+      "committedBlobSha256": "f61d7eb90176e256908c7191be18d06762b1ca74cbb1bda3abac9e91f021680f"
+    },
+    {
+      "path": "src/lib/ingestion-repair-plan.ts",
+      "rawSha256": "5d271f9f51a6a01b5189a5d3b741c8c83e58b7b59e9ed57b7f8a3de5b0f58d9d",
+      "committedBlobSha256": "5d271f9f51a6a01b5189a5d3b741c8c83e58b7b59e9ed57b7f8a3de5b0f58d9d"
+    },
+    {
+      "path": "src/lib/model-index-extraction.ts",
+      "rawSha256": "a56e05d4ec761307711285070f43585717d221937680f7e4ec575fd73cce2eda",
+      "committedBlobSha256": "a56e05d4ec761307711285070f43585717d221937680f7e4ec575fd73cce2eda"
+    },
+    {
+      "path": "src/lib/openai.ts",
+      "rawSha256": "91a4c355799f8b40e54a0a667704b65a9b7a2adcd1a3084912566b94c30a3600",
+      "committedBlobSha256": "91a4c355799f8b40e54a0a667704b65a9b7a2adcd1a3084912566b94c30a3600"
+    },
+    {
+      "path": "src/lib/supabase/database.types.ts",
+      "rawSha256": "dcb21f4473fa1bc75d772583b2b5cbc239064f19084bc8a04514a852cc440480",
+      "committedBlobSha256": "dcb21f4473fa1bc75d772583b2b5cbc239064f19084bc8a04514a852cc440480"
+    },
+    {
+      "path": "supabase/functions/_shared/ingestion-attempt.ts",
+      "rawSha256": "d1ca227522e8aca6e4f28f1fa94a61c1980202a59b83cee3e8d4384e518cf0a7",
+      "committedBlobSha256": "d1ca227522e8aca6e4f28f1fa94a61c1980202a59b83cee3e8d4384e518cf0a7"
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/behavior.ts",
+      "rawSha256": "18dc1a342773953d02a14a1609c1fd10f99776646aff7db28ee0775c6c8fad1a",
+      "committedBlobSha256": "18dc1a342773953d02a14a1609c1fd10f99776646aff7db28ee0775c6c8fad1a"
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/index.ts",
+      "rawSha256": "37de3c8731fb379b0786ab22ff4ce9c7254ba8f504cf95cb7f0f2409a956a331",
+      "committedBlobSha256": "37de3c8731fb379b0786ab22ff4ce9c7254ba8f504cf95cb7f0f2409a956a331"
+    },
+    {
+      "path": "supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql",
+      "rawSha256": "92924c2c2b324866a18a0436a581b37886a44f440b6fbc8cd84fda22eed9ad0f",
+      "committedBlobSha256": "92924c2c2b324866a18a0436a581b37886a44f440b6fbc8cd84fda22eed9ad0f"
+    },
+    {
+      "path": "supabase/schema.sql",
+      "rawSha256": "34c22c97cabd6b9a0f754265c1b4da69b440c5c250f66fb3bffa551b83a31741",
+      "committedBlobSha256": "34c22c97cabd6b9a0f754265c1b4da69b440c5c250f66fb3bffa551b83a31741"
+    },
+    {
+      "path": "tests/check-indexing-contract.test.ts",
+      "rawSha256": "52f422d78bc76172404ee6677ae71817d639070bbf92dff082576718009f122e",
+      "committedBlobSha256": "52f422d78bc76172404ee6677ae71817d639070bbf92dff082576718009f122e"
+    },
+    {
+      "path": "tests/deep-memory-transaction-sql.test.ts",
+      "rawSha256": "dbd6cfab7b858d4023386f1054641fb644e01716cf3ecd34db0cec8b2700e533",
+      "committedBlobSha256": "dbd6cfab7b858d4023386f1054641fb644e01716cf3ecd34db0cec8b2700e533"
+    },
+    {
+      "path": "tests/deep-memory.test.ts",
+      "rawSha256": "cb70e89b5a78c9892478f6e081ba456b7e233fad6e9202d3405451fc629617b0",
+      "committedBlobSha256": "cb70e89b5a78c9892478f6e081ba456b7e233fad6e9202d3405451fc629617b0"
+    },
+    {
+      "path": "tests/document-clinical-summary.test.ts",
+      "rawSha256": "5bda65ee6ab49b2a2f4b6cb773e77fccd775d88aee4732d63286e605b49841a6",
+      "committedBlobSha256": "5bda65ee6ab49b2a2f4b6cb773e77fccd775d88aee4732d63286e605b49841a6"
+    },
+    {
+      "path": "tests/document-enrichment.test.ts",
+      "rawSha256": "8949b27ab7d80216c01660c28cc4b93aa863dfa94a9f4c27e2bd2ab8711d92dc",
+      "committedBlobSha256": "8949b27ab7d80216c01660c28cc4b93aa863dfa94a9f4c27e2bd2ab8711d92dc"
+    },
+    {
+      "path": "tests/indexing-v3-agent.test.ts",
+      "rawSha256": "5b96628096ace1791d84447f1cff3daa48dd1ec62ce72ecda5ca2872da7e76d5",
+      "committedBlobSha256": "5b96628096ace1791d84447f1cff3daa48dd1ec62ce72ecda5ca2872da7e76d5"
+    },
+    {
+      "path": "tests/ingestion-lease-fencing.test.ts",
+      "rawSha256": "d0a1501be8b9e553a4c990e872832533556dd55fe7a1e2e4a0372c29af6da575",
+      "committedBlobSha256": "d0a1501be8b9e553a4c990e872832533556dd55fe7a1e2e4a0372c29af6da575"
+    },
+    {
+      "path": "tests/ingestion-operator-compatibility.test.ts",
+      "rawSha256": "54716210a3f6de028c1a2f219cb1cf1f90e281019c281e8b898c95937f025961",
+      "committedBlobSha256": "54716210a3f6de028c1a2f219cb1cf1f90e281019c281e8b898c95937f025961"
+    },
+    {
+      "path": "tests/ingestion-repair-plan.test.ts",
+      "rawSha256": "4b8d6236584fed0fca96219fb007d3476fed2efdb833ef2a0b59149450f816f4",
+      "committedBlobSha256": "4b8d6236584fed0fca96219fb007d3476fed2efdb833ef2a0b59149450f816f4"
+    },
+    {
+      "path": "tests/model-index-extraction.test.ts",
+      "rawSha256": "93fff787e4e025f8576d13263a3fe2aba1b7fea4e32e47c738c5d6536a196a2a",
+      "committedBlobSha256": "93fff787e4e025f8576d13263a3fe2aba1b7fea4e32e47c738c5d6536a196a2a"
+    },
+    {
+      "path": "tests/openai-cache.test.ts",
+      "rawSha256": "24d77864efa8ddfab58d9a7f73400058559313a26371a0142bb340cf1af1cb5b",
+      "committedBlobSha256": "24d77864efa8ddfab58d9a7f73400058559313a26371a0142bb340cf1af1cb5b"
+    },
+    {
+      "path": "tests/storage-upload-compensation.test.ts",
+      "rawSha256": "addc75e18eea0b1bb15dcebb4474637a58eaee0a0de05964d7ffbb21b0f455b2",
+      "committedBlobSha256": "addc75e18eea0b1bb15dcebb4474637a58eaee0a0de05964d7ffbb21b0f455b2"
+    },
+    {
+      "path": "tests/worker-row-contract.test.ts",
+      "rawSha256": "0b87c98f55e464ecc5675f63b76df4cfd2f756d7cbd7c3a305ab8705e50b0c10",
+      "committedBlobSha256": "0b87c98f55e464ecc5675f63b76df4cfd2f756d7cbd7c3a305ab8705e50b0c10"
+    },
+    {
+      "path": "tests/worker-run-loop.test.ts",
+      "rawSha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5",
+      "committedBlobSha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5"
+    },
+    {
+      "path": "tests/worker-shadow-extraction.test.ts",
+      "rawSha256": "85369bb50897e913bcebbb743b82708132fe5d59d4c2e73a2b8e725b2f6eca7f",
+      "committedBlobSha256": "85369bb50897e913bcebbb743b82708132fe5d59d4c2e73a2b8e725b2f6eca7f"
+    },
+    {
+      "path": "tests/worker-visual-capture.test.ts",
+      "rawSha256": "f3f793cce7bc8a01910f7c8d44a7671d26d823cdb5dd8a7022675950b81178a6",
+      "committedBlobSha256": "f3f793cce7bc8a01910f7c8d44a7671d26d823cdb5dd8a7022675950b81178a6"
+    },
+    {
+      "path": "worker/behavior.ts",
+      "rawSha256": "0c88c04898e3d9425b7158c30b55fed15a4788fac246a006f734f9f7a48d1183",
+      "committedBlobSha256": "0c88c04898e3d9425b7158c30b55fed15a4788fac246a006f734f9f7a48d1183"
+    },
+    {
+      "path": "worker/main.ts",
+      "rawSha256": "bc7554899c99953cc21da91f1ee3ce745e46fdac90cb8e092282b96f69bc871c",
+      "committedBlobSha256": "bc7554899c99953cc21da91f1ee3ce745e46fdac90cb8e092282b96f69bc871c"
+    },
+    {
+      "path": "worker/row-contracts.ts",
+      "rawSha256": "41474352c1ea70ec15e77894e50e656ccb8e76e071713243b7e1f20e899252db",
+      "committedBlobSha256": "41474352c1ea70ec15e77894e50e656ccb8e76e071713243b7e1f20e899252db"
+    },
+    {
+      "path": "worker/types.ts",
+      "rawSha256": "b9c2647b1982149551756648436d1f7d4b630cf06be9700d4a701338222bb53c",
+      "committedBlobSha256": "b9c2647b1982149551756648436d1f7d4b630cf06be9700d4a701338222bb53c"
+    }
+  ],
+  "review_package": {
+    "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-3.diff",
+    "sha256": "a7713f3c523a1c55c9c8cabca3c93e58209d798f01ce95a239227ad23f19d244"
+  },
+  "reviewers": [
+    {
+      "role": "ingestion-worker-reviewer",
+      "report": "U03-product-ingestion-review-3.md",
+      "sha256": "f4f9d6bfade8d0bea3af7994bfe08c49bf4a4829db6864139ade67a475b0a185",
+      "agent": "/root/u03_product_ingestion_review_2",
+      "session": "01a08401-1c25-7690-a95d-46a32f246891",
+      "requestedModel": "gpt-6-astra",
+      "requestedEffort": "xhigh",
+      "observedModel": "gpt-6-astra",
+      "observedEffort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS",
+      "scope": "Full original U03 base through candidate3, with unchanged prior source assessment incorporated"
+    },
+    {
+      "role": "supabase-schema-guardian",
+      "report": "U03-product-schema-review-3.md",
+      "sha256": "740f4b474810745198586c203fe95da8336e4a888ebf08b4def2b887352a0121",
+      "agent": "/root/u03_product_schema_review_2",
+      "session": "01a08401-d9f7-7bb0-89e1-a4496f010a43",
+      "requestedModel": "gpt-6-astra",
+      "requestedEffort": "xhigh",
+      "observedModel": "gpt-6-astra",
+      "observedEffort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS",
+      "scope": "Full original U03 base through candidate3, with unchanged prior source assessment incorporated"
+    },
+    {
+      "role": "clinical-governance-reviewer",
+      "report": "U03-product-clinical-review-3.md",
+      "sha256": "642cb0857707acccdaf48d72eeedfb590b61085108fb1bb6b6fed3f691bbe06f",
+      "agent": "/root/u03_product_clinical_review_2",
+      "session": "01a0840a-2fb1-7532-971c-ba0e3d0f90c7",
+      "requestedModel": "gpt-6-astra",
+      "requestedEffort": "xhigh",
+      "observedModel": "gpt-6-astra",
+      "observedEffort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS",
+      "scope": "Full original U03 base through candidate3, with unchanged prior source assessment incorporated"
+    },
+    {
+      "role": "rag-retrieval-reviewer",
+      "report": "U03-product-wrapper-review-2.md",
+      "sha256": "7d17dc960c7379a6e5697b31ef2a69fb866f58a125069e93e6913aa10c84cdf7",
+      "agent": "/root/u03_product_wrapper_review_1",
+      "session": "01a0840c-168e-7fd0-bdac-98b09b074c88",
+      "requestedModel": "gpt-6-astra",
+      "requestedEffort": "xhigh",
+      "observedModel": "gpt-6-astra",
+      "observedEffort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS",
+      "scope": "Bounded actual-wrapper product and exact-signal proof closure"
+    }
+  ],
+  "route_evidence": [
+    "U03-implementer-route-1.json",
+    "U03-product-review-routes-1.json",
+    "U03-product-review-routes-2a.json",
+    "U03-product-review-routes-2b.json",
+    "U03-product-review-routes-3a.json",
+    "U03-product-review-routes-3b.json"
+  ],
+  "route_limit": "Observed selected local resolved configuration only, not backend attestation",
+  "reviewed_amendments": [
+    "U03-p05-prerequisite-amendment-acceptance-1.json",
+    "U03-compiler-fixture-amendment-admission-1.json",
+    "U03-cancellation-closure-amendment-admission-1.json"
+  ],
+  "findings": {
+    "ING_U03_1_U03_S2_U03_CG01": "Closed locally: fatal persistence/cleanup uncertainty escapes optional enrichment; no cleanup after commit invocation",
+    "ING_U03_2_U03_S1": "Closed locally: shared queue captures Fence after admission and serializes heartbeat with generation handoff",
+    "U03_CG02": "Closed locally: actual producer validates projection; locked fallback refuses any current structured row",
+    "ING_U03_3": "Closed locally: original optional AbortSignal forwarded and guarded before/after provider work",
+    "U03_WR_01": "Closed: exact signal identity assertions; production was already correct",
+    "audit_F08": "U03 all-writer source/offline portion complete; SQL execution remains unproven",
+    "audit_F01": "U03 stale-attempt portion only; U07/U08 pre-egress clearance remains",
+    "audit_F14": "Actual-producer proof for this unit only; programme finding not wholly closed"
+  },
+  "checks": {
+    "initial_candidate": {
+      "finalSelector": {
+        "files": 15,
+        "passed": 277,
+        "exit": 0,
+        "freeze": 3
+      },
+      "affectedCorrection": {
+        "files": 4,
+        "passed": 98,
+        "exit": 0,
+        "limitation": "Private unused type-alias removal postdates this run; no runtime change"
+      },
+      "additionalFixture": {
+        "files": 1,
+        "passed": 6,
+        "exit": 0,
+        "limitation": "Pre-run model path typo; preserved partial inventory and explicitly post-run corrected model/types/normalizer identity, not reconstructed pre-run proof"
+      },
+      "trackedCompiler": {
+        "exit": 0,
+        "diagnostics": 0,
+        "ioViolations": 0,
+        "head": "b651ee23d8541fbebea77ca1c621fcdec42540ad",
+        "scope": "Tracked application/worker/script/test source health, explicit archive caller and pure shared attempt root, framework-generated Next ambient replacement; not repository-wide/native Edge proof."
+      },
+      "nativeEdge": {
+        "exit": 0,
+        "unchanged": true,
+        "scope": "two-root native Edge compilation equivalent",
+        "limitation": "Passing source compilation at preceding HEAD with unchanged complete closure; no handler/runtime/provider proof"
+      },
+      "migrationRole": {
+        "exit": 0,
+        "guardedInputs": 522
+      },
+      "format": "PASS focused changed files; earlier unchanged result reused",
+      "diff": "PASS",
+      "scriptInventory": "PASS 272/262",
+      "moduleIndex": {
+        "exit": 1,
+        "status": "FAIL unchanged baseline gaps; no additional U03 gap; pending specialist acceptance of scoped disposition"
+      },
+      "P04": "Reused historical fixture evidence after unchanged closure verification"
+    },
+    "production_correction": {
+      "correctionSelector": {
+        "passed": 176,
+        "files": 6,
+        "exit": 0,
+        "proof": "GREEN3; qualified reuse across proven whitespace-only test reflow to freeze6"
+      },
+      "wrappers": {
+        "passed": 29,
+        "files": 2,
+        "exit": 0,
+        "proof": "GREEN2 exact wrapper/test bytes; later cleanup-only deep-memory caller change separately covered by GREEN3"
+      },
+      "extraSeams": {
+        "passed": 6,
+        "skipped": 25,
+        "files": 2,
+        "exit": 0,
+        "proof": "Fresh named Storage/shadow cases; actual-config post-run qualification preserved"
+      },
+      "compiler": {
+        "exit": 0,
+        "diagnostics": 0,
+        "ioViolations": 0,
+        "proof": "Fresh scoped compiler atfreeze5, qualified reuse after whitespace-only test formatting; new Node import annotation qualified in routing"
+      },
+      "edge": {
+        "exit": 0,
+        "roots": 2,
+        "unchanged": true
+      },
+      "migrationRole": {
+        "exit": 0,
+        "guardedInputs": 522
+      },
+      "moduleIndex": {
+        "exit": 1,
+        "status": "Failed with unchanged pre-existing .superpowers plus nine site_content table documentation gaps; no new U03 gap; never green"
+      },
+      "format": {
+        "firstExit": 1,
+        "failedFile": "tests/indexing-v3-agent.test.ts",
+        "correctionExit": 0,
+        "proof": "Final same-file checkPASS; other15 paths passed unchanged first check"
+      },
+      "p04": {
+        "scope": "Reused historical fixture only;21closurefiles freshlyverifiedunchanged"
+      },
+      "scriptInventory": {
+        "scope": "Reused candidate1PASS272files/262npm scripts; unchanged membership/package/docs"
+      }
+    },
+    "final_assertion_correction": {
+      "command": "node scripts/run-vitest.mjs run tests/openai-cache.test.ts tests/model-index-extraction.test.ts",
+      "exit": 0,
+      "passed": 29,
+      "skipped": 0,
+      "files": 2,
+      "inputsVerified": 12
+    },
+    "current_evidence": "176 passed in six production correction test files; 6 passed/25 skipped Storage-shadow cases; final exact wrapper identity 29/29. Results have different scopes; not a combined full-suite total.",
+    "reuse": "Original 15-file 277-test evidence retained for unchanged scope. Later affected selectors supersede changed paths. Compiler/Edge/static/P04 results remain bound to their original inputs; final two test assertions were not freshly compiled. No unchanged successful gate rerun.",
+    "failed_attempts": "All three first product reviews FAIL, wrapper review1 Quality FAIL, product/test fixture RED and failed intermediate GREEN, compiler/static/format failures preserved in included inventories/artifacts.",
+    "qualification": "Module-index remains exit1 with unchanged .superpowers and nine site_content table gaps, zero new U03 gap. Both Node and Deno see @ts-ignore at the Edge import; source inspection verifies actual exports, neither compiler proves that line unsuppressed. Some earlier config/type inventories were corrected after execution and are explicitly post-run evidence, not reconstructed pre-run proof."
+  },
+  "historical_u02_exception": {
+    "exit_code": 1,
+    "failed_suites": 4,
+    "failed_tests": 45,
+    "passed_tests": 586,
+    "status": "Not green; never inherited by U03 or future units"
+  },
+  "residuals": [
+    "PostgreSQL replay/application, exact installed grants/triggers, lease expiry/lock interleavings and atomic rollback unrun",
+    "Physical Storage cancellation and live provider cancellation/egress unproven; SDK backoff does not settle immediately",
+    "Real documents, native extraction and extraction-fidelity/semantic clinical adjudication unrun",
+    "C01 evidence consolidation remains; C01/C02 integration and drift reconciliation belong after C02",
+    "C07 production-readiness, activation, deployment, publication and ordinary Answer availability not accepted"
+  ],
+  "next": "Consolidate retained U01/U02 plus U03 C01 evidence, then prepare and independently review U04 exact shadow-staging contract under existing serial local authority. No out-of-order runtime operation.",
+  "invariants": [
+    "P00-P07 retained",
+    "C00 retained complete",
+    "P08A superseded",
+    "Retrieval kernel default-off",
+    "No connected operation or publication"
+  ],
+  "artifacts": [
+    {
+      "name": "U03-authoring-encoding-correction-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-authoring-encoding-correction-1.json",
+      "raw_sha256": "ea277f0eae0075602a1ff19fe948ad63a246f4c98d496a8875cd7e4c5bb47b58",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-authoring-encoding-correction-1.json",
+      "committed_copy_sha256": "0587b16d2878300ff4d251dd9306a62ff45659ebda722de996a2b4fc7bb4a8e2",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-cancellation-closure-amendment-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-cancellation-closure-amendment-1.md",
+      "raw_sha256": "0dddcc98e7e98df36ccc39a941155f5d98d3f85ff747d8fe28550aca5e1a08e4",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-cancellation-closure-amendment-1.md",
+      "committed_copy_sha256": "0dddcc98e7e98df36ccc39a941155f5d98d3f85ff747d8fe28550aca5e1a08e4",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-cancellation-closure-amendment-admission-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-cancellation-closure-amendment-admission-1.json",
+      "raw_sha256": "f2e6946b6fc38019c0175c57ae57eb402aaa3686d2b2bb7aaf872c0b8a425c33",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-cancellation-closure-amendment-admission-1.json",
+      "committed_copy_sha256": "ad9fa2ef3e8c4aa117ffd9ec3ad8de0a816c63eb7887ea5335936e17ec4edfc5",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-cancellation-closure-amendment-review-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-cancellation-closure-amendment-review-1.md",
+      "raw_sha256": "75c780ba056a7b012aaf3d3a600590bd2369275e617da31523339856c63e69f5",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-cancellation-closure-amendment-review-1.md",
+      "committed_copy_sha256": "75c780ba056a7b012aaf3d3a600590bd2369275e617da31523339856c63e69f5",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-candidate-binding-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-candidate-binding-1.json",
+      "raw_sha256": "bca26796b68eb6fe94a3de7e8c5e5f4ad72e94bdf210dd672f5cdd693dd62ed4",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-candidate-binding-1.json",
+      "committed_copy_sha256": "bca26796b68eb6fe94a3de7e8c5e5f4ad72e94bdf210dd672f5cdd693dd62ed4",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-candidate-binding-2.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-candidate-binding-2.json",
+      "raw_sha256": "edf2f8feb6ec557a6cecfaab565e00407e5cf5abd7a0ec22772d56d0cd3bf539",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-candidate-binding-2.json",
+      "committed_copy_sha256": "edf2f8feb6ec557a6cecfaab565e00407e5cf5abd7a0ec22772d56d0cd3bf539",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-candidate-binding-3.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-candidate-binding-3.json",
+      "raw_sha256": "4759824eb7d37b93eefd232df7d659116fc631fa01b66a4e17db46514306e4bb",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-candidate-binding-3.json",
+      "committed_copy_sha256": "4759824eb7d37b93eefd232df7d659116fc631fa01b66a4e17db46514306e4bb",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-clinical-fixture-1-inputs-corrected.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-clinical-fixture-1-inputs-corrected.json",
+      "raw_sha256": "be493e8fe40a89b27b59374134f87cb0b72f2e71cb1223ddc74865fe44d9818f",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-clinical-fixture-1-inputs-corrected.json",
+      "committed_copy_sha256": "be493e8fe40a89b27b59374134f87cb0b72f2e71cb1223ddc74865fe44d9818f",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-clinical-fixture-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-clinical-fixture-1.json",
+      "raw_sha256": "4948b934ebf9ac3f02f743a27f26c94ec470142a73b8276c53047c8771aa52c9",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-clinical-fixture-1.json",
+      "committed_copy_sha256": "5ba611e7280b28a36a08bc883e6f23d9ba113308629bd0aa5a33c92ff5e11bcf",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-clinical-fixture-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-clinical-fixture-1.log",
+      "raw_sha256": "381601fb021bdc10e8e068d8bbf18217efa42fcfbd2e3e9c639c0c0a949e299d",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-clinical-fixture-1.log",
+      "committed_copy_sha256": "d71862843695f625616a3655d17653a0cc948a78527fc453b042973cbd2bf55e",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-clinical-fixture-format-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-clinical-fixture-format-1.log",
+      "raw_sha256": "05397ba5dcb41ee5b34ae382e4de9d4583927ba24565be1b1936e6bb1088c972",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-clinical-fixture-format-1.log",
+      "committed_copy_sha256": "857780ffbcbf60b27f8502e80ceab8f8d786a737f965cbba9734674b9149d191",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-compiler-correction-1-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-compiler-correction-1-inputs.json",
+      "raw_sha256": "b740a28fc53f970f190bfcf720da97daf80caad151a17b59f0cf348eb5113b96",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-compiler-correction-1-inputs.json",
+      "committed_copy_sha256": "b6852fee0ccd60d46a03bb5108196b3d770bb0b92725381e721f369603c5fb22",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-compiler-correction-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-compiler-correction-1.json",
+      "raw_sha256": "83ecab4cb44abcdcb2b599a3710b143cba59a0547cd836b322b9b7d5ce117362",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-compiler-correction-1.json",
+      "committed_copy_sha256": "35280f50c33cd42825e66f74597c478e4b1c61b41fa07b59d362060d433bfdb3",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-compiler-correction-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-compiler-correction-1.log",
+      "raw_sha256": "716f3135b0e386255aed7d178327ac824dde4922ee1ed10127e985ce890f3368",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-compiler-correction-1.log",
+      "committed_copy_sha256": "67a6fd93ffbb287a3f8fdc4cd40484d43c12e78657a2b63f867414b97e327469",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-compiler-correction-format-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-compiler-correction-format-1.log",
+      "raw_sha256": "b6de9a802b8ac4bb54202d4c09d81ae68825d7334483366227e8e6b2905c62a7",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-compiler-correction-format-1.log",
+      "committed_copy_sha256": "5a8856a531362d3b2444f10f7ed858c34fca0821754b250397ab76fe16b77cbb",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-compiler-correction-report-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-compiler-correction-report-1.md",
+      "raw_sha256": "5139963e578d149db803d2dbe62d2e729b0557e5f756416c1cc3ef7aac35532c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-compiler-correction-report-1.md",
+      "committed_copy_sha256": "5139963e578d149db803d2dbe62d2e729b0557e5f756416c1cc3ef7aac35532c",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-compiler-diagnostic-source-baseline-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-compiler-diagnostic-source-baseline-1.json",
+      "raw_sha256": "51c151efeeb4621d267b4d5f2c5f68aa20081484eb8d973cb2fb891db1bd0130",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-compiler-diagnostic-source-baseline-1.json",
+      "committed_copy_sha256": "51c151efeeb4621d267b4d5f2c5f68aa20081484eb8d973cb2fb891db1bd0130",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-compiler-fixture-amendment-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-compiler-fixture-amendment-1.md",
+      "raw_sha256": "9b234ad1736799e5e8f849159cc59b0f6998f44807ba03ca97037d7bb8a2f890",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-compiler-fixture-amendment-1.md",
+      "committed_copy_sha256": "9b234ad1736799e5e8f849159cc59b0f6998f44807ba03ca97037d7bb8a2f890",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-compiler-fixture-amendment-admission-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-compiler-fixture-amendment-admission-1.json",
+      "raw_sha256": "1fdca67671a4bdf359419d4e03b91e0268845a5423aa4949f8394ced695bbf18",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-compiler-fixture-amendment-admission-1.json",
+      "committed_copy_sha256": "94e1001e71dac1eae5373532e530205d75d3911e88410d61fc0aca2d2dcc3e1f",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-compiler-fixture-amendment-review-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-compiler-fixture-amendment-review-1.md",
+      "raw_sha256": "972b1689765d396a039ce55f528af2de802060e9104f5e36a1e47776b37b3ab6",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-compiler-fixture-amendment-review-1.md",
+      "committed_copy_sha256": "972b1689765d396a039ce55f528af2de802060e9104f5e36a1e47776b37b3ab6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-correction-evidence-recheck-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-correction-evidence-recheck-1.json",
+      "raw_sha256": "4977d9d9c5db7f6ef5c1e268ecde943de15d6dce63794876b9d58471cf491dfd",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-correction-evidence-recheck-1.json",
+      "committed_copy_sha256": "31b1c056a20925aa0dc51eb301e976f6f8eea7d6e5a5a7553e120d9b72f5ee81",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-edge-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-edge-1.log",
+      "raw_sha256": "a4aefee777ba599ed128cca3675e58a89935130fdee1c72ffba9666733430632",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-edge-1.log",
+      "committed_copy_sha256": "ab7f3c8fa5c1c66c1773575de55d16045774eea110cd86eb6fafb22c8c9bcec6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-edge-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-edge-2.log",
+      "raw_sha256": "a4aefee777ba599ed128cca3675e58a89935130fdee1c72ffba9666733430632",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-edge-2.log",
+      "committed_copy_sha256": "ab7f3c8fa5c1c66c1773575de55d16045774eea110cd86eb6fafb22c8c9bcec6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-extra-correction-tests-1-arbiter.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-extra-correction-tests-1-arbiter.log",
+      "raw_sha256": "9bc48e30183638e66b923e8551f046ae9ae5729e1766be32440eb2f1b6b63b0b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-extra-correction-tests-1-arbiter.log",
+      "committed_copy_sha256": "ba6e0051cbd9733fa85166e3c37143158fb055a9a7a9f98565222aaf46973541",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-extra-correction-tests-1-config-qualification.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-extra-correction-tests-1-config-qualification.json",
+      "raw_sha256": "cbba78ba9a9509c9a5346c84aa6c7b868e0205af926d0f435c7807c180428fe2",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-extra-correction-tests-1-config-qualification.json",
+      "committed_copy_sha256": "cbba78ba9a9509c9a5346c84aa6c7b868e0205af926d0f435c7807c180428fe2",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-extra-correction-tests-1-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-extra-correction-tests-1-inputs.json",
+      "raw_sha256": "41b1fab1ffeeb560a25ca264ab13f1bef61758f59b1917b679c43c19ad5c53f1",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-extra-correction-tests-1-inputs.json",
+      "committed_copy_sha256": "0fdbaca34c03e8bfa892568ca2471e57d7966a18ce95161cd444cdb96bac3630",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-extra-correction-tests-1-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-extra-correction-tests-1-result.json",
+      "raw_sha256": "5484df6b38c832807a0194e077dced985664810a6a5a25c1daebed49f986ed74",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-extra-correction-tests-1-result.json",
+      "committed_copy_sha256": "c992ea5a763fac7e26deb6a292bb78112b68d56b117b61bdd882cfd71ebb9398",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-extra-correction-tests-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-extra-correction-tests-1.log",
+      "raw_sha256": "8c49913da346bf473fbb8e08f4d85971f08782444f3c7f5909747b271cc1ee95",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-extra-correction-tests-1.log",
+      "committed_copy_sha256": "5018c08670138cf9ebebe6a73dd121f0bdee9f79947ee4928b4767e0158aded6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-final-review-seal-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-final-review-seal-1.json",
+      "raw_sha256": "d5dc9d509a5f9735091a0436d52f768341ae4674b39aa4bf9c01de0e9b3e7b78",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-final-review-seal-1.json",
+      "committed_copy_sha256": "a2a4e236df8621f01783a3a52bbf6e02ee512237287dcc116bded0dc2eb0b3df",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-final-tests-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-final-tests-1.json",
+      "raw_sha256": "284d31551b5719430c21b8289258baf7e929750c86a6f739c0ca8cdd12f5682d",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-final-tests-1.json",
+      "committed_copy_sha256": "807274229438d86dd99800153f4dc00b76f2a5215fe9c817af7b52d2974f0865",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-final-tests-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-final-tests-1.log",
+      "raw_sha256": "83f1e58847c38b83b8000643eabe6b4f9cf54d0f81e84ff90bc8fca0a31bce8c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-final-tests-1.log",
+      "committed_copy_sha256": "31f3998ccb0b2a7e012c42a687d35f57dcaf92b53271da0d0e27422d7a52f102",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-format-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-format-2.log",
+      "raw_sha256": "f20510a9da4717c51c4cffee6d0dd88d6c9a723d0a83711d01216f5b48961283",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-format-2.log",
+      "committed_copy_sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-format-3.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-format-3.log",
+      "raw_sha256": "1d8688da237c58e3481d75e1a4c02c941307f1caa0ffceb53c6853127b7d3eea",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-format-3.log",
+      "committed_copy_sha256": "3efd10992d23fd6ac91c9d4baf4cd281832475365930e87d449e2807d6479b43",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-freeze-4-verification.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-freeze-4-verification.json",
+      "raw_sha256": "1337b6861cf4c2910af5eedc33f275ee11d9658402e289f267cf8d96531b5002",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-freeze-4-verification.json",
+      "committed_copy_sha256": "d7b9ec45d4a70c4cb91f3ee6112ef372a3e9eb31ec1db8e58f0717a84f782879",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-freeze-6-verification.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-freeze-6-verification.json",
+      "raw_sha256": "d32d73c66c60c03ba593967bc2a3e41cad57663c509516aa9bf1b2b3ec21992f",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-freeze-6-verification.json",
+      "committed_copy_sha256": "8cb7227c281249c74ef8fe99bc6a96e8c4b2cb57c057eaabeb11049ff9255a3f",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-freeze-7-verification.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-freeze-7-verification.json",
+      "raw_sha256": "14392bf1b805c67c7513da6d21b00a9fe15dcf751d009993bac4c31b26535f94",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-freeze-7-verification.json",
+      "committed_copy_sha256": "63846b65bb1913b30165cfa140de048d98b23b376effd80ba50ae4194c851c73",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-import-diagnostic-qualification-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-import-diagnostic-qualification-1.md",
+      "raw_sha256": "399b52984dee7aae1fc644e73637355b548b0a49482dff94425cd7c1aad7b1ec",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-import-diagnostic-qualification-1.md",
+      "committed_copy_sha256": "399b52984dee7aae1fc644e73637355b548b0a49482dff94425cd7c1aad7b1ec",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-index-coverage-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-index-coverage-1.json",
+      "raw_sha256": "9ac93708c77df92823a37dbde51b7153c2e5644b4dc8fafa3d34667cc50e1110",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-index-coverage-1.json",
+      "committed_copy_sha256": "407a875a84d1a6ac1d6107ce458b0a9226fd8dab9256e1d725215a9a1366a608",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-index-coverage-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-index-coverage-1.log",
+      "raw_sha256": "754b0aad4b76006e1cc9b52c439be413b3aa02d1632b3df38ac3a489f4019cbc",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-index-coverage-1.log",
+      "committed_copy_sha256": "69aec5f69f7b617ff2b2896bd95afcc91e1c6105609d2e1a7489d96d2737cd39",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-index-coverage-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-index-coverage-2.log",
+      "raw_sha256": "754b0aad4b76006e1cc9b52c439be413b3aa02d1632b3df38ac3a489f4019cbc",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-index-coverage-2.log",
+      "committed_copy_sha256": "69aec5f69f7b617ff2b2896bd95afcc91e1c6105609d2e1a7489d96d2737cd39",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-inventory-baseline-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-inventory-baseline-1.json",
+      "raw_sha256": "11f5085ba36d79b87492b6a5af319e85be2c8dedafd29397bbc60016f153425b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-inventory-baseline-1.json",
+      "committed_copy_sha256": "11f5085ba36d79b87492b6a5af319e85be2c8dedafd29397bbc60016f153425b",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-migration-role-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-migration-role-2.log",
+      "raw_sha256": "9abe927670e497506c6de2c5ce4dfb5914948eacc275f9c07fed2a1befa2a9f6",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-migration-role-2.log",
+      "committed_copy_sha256": "9f885df305db9492a475b58f69b7823fd4e3b90a938a58b050b34411a86e48cd",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-migration-role-3.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-migration-role-3.log",
+      "raw_sha256": "9abe927670e497506c6de2c5ce4dfb5914948eacc275f9c07fed2a1befa2a9f6",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-migration-role-3.log",
+      "committed_copy_sha256": "9f885df305db9492a475b58f69b7823fd4e3b90a938a58b050b34411a86e48cd",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-script-inventory-2.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-script-inventory-2.json",
+      "raw_sha256": "2d8e7d89d06998b1726daf6c8479a0304481584059b5da5c2b3aef1ecbf900ae",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-script-inventory-2.json",
+      "committed_copy_sha256": "f3d8efc4e707cbfc6da4db6c7465b612055ebe177de275829c5e8b8995c60cba",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-script-inventory-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-script-inventory-2.log",
+      "raw_sha256": "cf49d9f2fb0ec639cba44fd7edaaeebc78bab8ed36352a32aca8eaeeccb43a8b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-script-inventory-2.log",
+      "committed_copy_sha256": "e46b425ec65758c3dd2009793f4ae4faa349a134a29cfb757eba0fbf8ba17b61",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-typecheck-correction-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-typecheck-correction-1.log",
+      "raw_sha256": "e8f2a177e9e2c12b0b4046a9c7370621f708944efc60a367556826b2a7f0256c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-typecheck-correction-1.log",
+      "committed_copy_sha256": "76526f9eded3806ff20c553f9515b73e58ba8168f25e98ae4a0238cc4698b568",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-typecheck-final.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-typecheck-final.log",
+      "raw_sha256": "0f32ce42cd874017219214fafffa8b9f2129fad67888fef7fa6b59ecf32a7449",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-typecheck-final.log",
+      "committed_copy_sha256": "5777813c9e27905acb889a547222706a5b17e44f06ed71d6ebdc25d46d7deb9a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-typecheck-review-correction-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-typecheck-review-correction-1.log",
+      "raw_sha256": "e8f2a177e9e2c12b0b4046a9c7370621f708944efc60a367556826b2a7f0256c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-typecheck-review-correction-1.log",
+      "committed_copy_sha256": "76526f9eded3806ff20c553f9515b73e58ba8168f25e98ae4a0238cc4698b568",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-verification-inventory-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-verification-inventory-1.json",
+      "raw_sha256": "d9c1b360f11b6d3013557989d252e50d807b64c54394f5f3c961cfcf2b2cf816",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-verification-inventory-1.json",
+      "committed_copy_sha256": "d9c1b360f11b6d3013557989d252e50d807b64c54394f5f3c961cfcf2b2cf816",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-verification-inventory-2.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-verification-inventory-2.json",
+      "raw_sha256": "1f7e03137c13660fa0907f494c4d3ec44fb027f86ecdfdb12c39afc691f03abf",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-verification-inventory-2.json",
+      "committed_copy_sha256": "1f7e03137c13660fa0907f494c4d3ec44fb027f86ecdfdb12c39afc691f03abf",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-controller-verification-inventory-3.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-controller-verification-inventory-3.json",
+      "raw_sha256": "147e4f3b06d5008db7d5838aabea0d45b3459f57085f84cb47499ba208967061",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-controller-verification-inventory-3.json",
+      "committed_copy_sha256": "147e4f3b06d5008db7d5838aabea0d45b3459f57085f84cb47499ba208967061",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-edge-ancestor-config-presence-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-ancestor-config-presence-1.json",
+      "raw_sha256": "49221393eb71db124b19ad3db554471cc349382fccd29f88a3f9296675338c8a",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-edge-ancestor-config-presence-1.json",
+      "committed_copy_sha256": "45c9f623e8462bdb754ce7d60ce4e4a81e8165202d7c43f856d40fba5e13d738",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-edge-closure-discovery-2.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-closure-discovery-2.json",
+      "raw_sha256": "ef2f1e422ebde25ebde9d2e411d13098f2466419d597a494f0d4b84e202eed55",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-edge-closure-discovery-2.json",
+      "committed_copy_sha256": "ef2f1e422ebde25ebde9d2e411d13098f2466419d597a494f0d4b84e202eed55",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-edge-closure-review-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-closure-review-1.md",
+      "raw_sha256": "2c338e1faa8380767d604ba5face7b1cc56a12029d46f68d9c2885a0991cb72e",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-edge-closure-review-1.md",
+      "committed_copy_sha256": "2c338e1faa8380767d604ba5face7b1cc56a12029d46f68d9c2885a0991cb72e",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-edge-native-check.mjs",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-native-check.mjs",
+      "raw_sha256": "a5a02594c3a4e4e91c0492b275364fff6dfd6c6dc25fec69a33167c5852172b7",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-edge-native-check.mjs",
+      "committed_copy_sha256": "a5a02594c3a4e4e91c0492b275364fff6dfd6c6dc25fec69a33167c5852172b7",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-edge-native-result-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-native-result-1.json",
+      "raw_sha256": "4badc77cc9a79691997304ded30fe84975e6bac2026a06a1076299f729564be6",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-edge-native-result-1.json",
+      "committed_copy_sha256": "4badc77cc9a79691997304ded30fe84975e6bac2026a06a1076299f729564be6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-edge-native-result-2.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-native-result-2.json",
+      "raw_sha256": "65dd1f8882a226252cc4cdd5adc5a3fded8c81cdd8eadd8feaf310c1003af5cf",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-edge-native-result-2.json",
+      "committed_copy_sha256": "65dd1f8882a226252cc4cdd5adc5a3fded8c81cdd8eadd8feaf310c1003af5cf",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-edge-reviewed-inputs-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-reviewed-inputs-1.json",
+      "raw_sha256": "9a860c337d03b4d4e9f7702cb3359d1d0ec1b9b9c9a224740a004dfb035d942c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-edge-reviewed-inputs-1.json",
+      "committed_copy_sha256": "e7351c4700cb07bff037d50aa7c6932278b8e471c0ad1d97132ee00219763e3b",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-edge-reviewed-inputs-2.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-reviewed-inputs-2.json",
+      "raw_sha256": "3432615f89228f4f57e1071d7e89e49d5f71f3cbcb6dba0d7fc35c0059c1451a",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-edge-reviewed-inputs-2.json",
+      "committed_copy_sha256": "dda03bdec1e2e2ae1cec1693f908d169a37741c59c8068eaacd6900e30122d17",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-execution-contract-prerequisite-candidate-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-execution-contract-prerequisite-candidate-1.md",
+      "raw_sha256": "877594a62de02ef3391ae0c9ca7594b827e768d8b0603eef3adfba0530dc2939",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-execution-contract-prerequisite-candidate-1.md",
+      "committed_copy_sha256": "877594a62de02ef3391ae0c9ca7594b827e768d8b0603eef3adfba0530dc2939",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-final-test-arbiter-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-final-test-arbiter-1.log",
+      "raw_sha256": "9bc48e30183638e66b923e8551f046ae9ae5729e1766be32440eb2f1b6b63b0b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-final-test-arbiter-1.log",
+      "committed_copy_sha256": "ba6e0051cbd9733fa85166e3c37143158fb055a9a7a9f98565222aaf46973541",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-final-verification-route-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-final-verification-route-1.md",
+      "raw_sha256": "303acb42431f9371295035adf2f75c5b1196dc72a68764fb20e6605654080229",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-final-verification-route-1.md",
+      "committed_copy_sha256": "303acb42431f9371295035adf2f75c5b1196dc72a68764fb20e6605654080229",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-final-verification-route-addendum-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-final-verification-route-addendum-1.md",
+      "raw_sha256": "5598254b959e4c12064d63f3244923222dab11aaecdd38f51a696cef4d3f6836",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-final-verification-route-addendum-1.md",
+      "committed_copy_sha256": "5598254b959e4c12064d63f3244923222dab11aaecdd38f51a696cef4d3f6836",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-format-correction-1-check.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-format-correction-1-check.log",
+      "raw_sha256": "f20510a9da4717c51c4cffee6d0dd88d6c9a723d0a83711d01216f5b48961283",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-format-correction-1-check.log",
+      "committed_copy_sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-format-correction-1-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-format-correction-1-result.json",
+      "raw_sha256": "288b1906d07b0691cab62d5af9a9ebad4bb25983496370b156d7557d1d165e5c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-format-correction-1-result.json",
+      "committed_copy_sha256": "50b49b5c453ca819aaa7a31acb8d47a3c3bbaa88c1fc47a397473fef932c49b1",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-format-correction-report-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-format-correction-report-1.md",
+      "raw_sha256": "a6f76e96d00953e639631f4a13895c491e41a60996c7406627d283fb51a97484",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-format-correction-report-1.md",
+      "committed_copy_sha256": "a6f76e96d00953e639631f4a13895c491e41a60996c7406627d283fb51a97484",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-frozen-p05-prerequisite-comparison-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-frozen-p05-prerequisite-comparison-1.md",
+      "raw_sha256": "e070a47a0ff29d2c4a6643c12fdc01f73f8f91f0f694ffc51306717fa7a3bbb0",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-frozen-p05-prerequisite-comparison-1.md",
+      "committed_copy_sha256": "e070a47a0ff29d2c4a6643c12fdc01f73f8f91f0f694ffc51306717fa7a3bbb0",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-frozen-p05-prerequisite-inventory-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-frozen-p05-prerequisite-inventory-1.json",
+      "raw_sha256": "d26029cd84b9bbf9677425b1234aa3adb4043a436c74177035a8fe7fa7332168",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-frozen-p05-prerequisite-inventory-1.json",
+      "committed_copy_sha256": "72db656c7193bcdc04ea5f848212a5fbfeab39f3ee577a3e03b63b8406b5b094",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementation-dispatch-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementation-dispatch-1.md",
+      "raw_sha256": "dfe31c92a79d2417aac42727f5bada7baed5dd64b8ec0f622c04439a7a284fcf",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementation-dispatch-1.md",
+      "committed_copy_sha256": "dfe31c92a79d2417aac42727f5bada7baed5dd64b8ec0f622c04439a7a284fcf",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementation-freeze-2.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementation-freeze-2.json",
+      "raw_sha256": "41705b7341e1f3a766c06efe48efb3999fb4a0579c75619f8d8c331b19150160",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementation-freeze-2.json",
+      "committed_copy_sha256": "41705b7341e1f3a766c06efe48efb3999fb4a0579c75619f8d8c331b19150160",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementation-freeze-3.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementation-freeze-3.json",
+      "raw_sha256": "7225dc399508b51bc88dcb809b1e5989587550420ff82c7390500f5239f304b6",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementation-freeze-3.json",
+      "committed_copy_sha256": "7225dc399508b51bc88dcb809b1e5989587550420ff82c7390500f5239f304b6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementation-freeze-4.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementation-freeze-4.json",
+      "raw_sha256": "d56cee0eba974a08e4ed9afa60af28268ab451b7f36266f2ef2c08f4153cd6b1",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementation-freeze-4.json",
+      "committed_copy_sha256": "d56cee0eba974a08e4ed9afa60af28268ab451b7f36266f2ef2c08f4153cd6b1",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementation-freeze-5.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementation-freeze-5.json",
+      "raw_sha256": "198730fb1732ad1b8075dde09cdcc0a97a3eb78ca4bb54905a460ef74227fb50",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementation-freeze-5.json",
+      "committed_copy_sha256": "198730fb1732ad1b8075dde09cdcc0a97a3eb78ca4bb54905a460ef74227fb50",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementation-freeze-6.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementation-freeze-6.json",
+      "raw_sha256": "13ab6556319cd71146d0da8fdfb7b3596aa4b7f0188700a012560f248b083283",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementation-freeze-6.json",
+      "committed_copy_sha256": "13ab6556319cd71146d0da8fdfb7b3596aa4b7f0188700a012560f248b083283",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementation-freeze-7.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementation-freeze-7.json",
+      "raw_sha256": "df84e179232a4c0408b742bbac2822c206679f9d70e364d32a82780894d930c2",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementation-freeze-7.json",
+      "committed_copy_sha256": "df84e179232a4c0408b742bbac2822c206679f9d70e364d32a82780894d930c2",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementation-inputs-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementation-inputs-1.json",
+      "raw_sha256": "1677b582e8123d5b3b4f4834b39446efaa23aeaf3b542fa92814eb29f41322e3",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementation-inputs-1.json",
+      "committed_copy_sha256": "1677b582e8123d5b3b4f4834b39446efaa23aeaf3b542fa92814eb29f41322e3",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementation-report-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementation-report-1.md",
+      "raw_sha256": "21087a3631e0425ab5668c07822f683e61055374989f65a0fc1d4743423b32c7",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementation-report-1.md",
+      "committed_copy_sha256": "21087a3631e0425ab5668c07822f683e61055374989f65a0fc1d4743423b32c7",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-implementer-route-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-implementer-route-1.json",
+      "raw_sha256": "b363c42bcfa56b1fb7b6607884da302434e41bf7127d424617149820dc242f7d",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-implementer-route-1.json",
+      "committed_copy_sha256": "7362be7ab636b31bce1d0969bc6a63d8ca4b78d37223c7755abbad0e6dd1d9d7",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-increment-1-green-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-increment-1-green-1.log",
+      "raw_sha256": "4a3c395011c1249fae9b4ca44da21c7b9557adca40d0704272240b27b08920be",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-increment-1-green-1.log",
+      "committed_copy_sha256": "944f35af0b3fc2b0fcd6939213c03884675e91a4f4ad57d582d38098d91284f3",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-increment-1-red-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-increment-1-red-1.log",
+      "raw_sha256": "6c062bc99f2d6f464fb181558367a58b4fa990f35f1435b4f774dc7a7843da31",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-increment-1-red-1.log",
+      "committed_copy_sha256": "24eb304f82bba03bcd78119c2950a68ff7b1011fe7b88e6cc6e5f06417cb5bf9",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-increment-1-regression-test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-increment-1-regression-test.ts.txt",
+      "raw_sha256": "a8479e3df617229ce43844c0df2d9dad71a66e74302407bcf3b79819a0949b14",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-increment-1-regression-test.ts.txt",
+      "committed_copy_sha256": "7c684ade7383a79b7734a152c90fb32e5bb8015d809f402fe8879f3afbc2256c",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-next-ambient-generation-v3.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-next-ambient-generation-v3.json",
+      "raw_sha256": "5029f380bc691dca8cfc6abab5d073b366c17358bd8147d51484cbe727dd8c68",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-next-ambient-generation-v3.json",
+      "committed_copy_sha256": "5029f380bc691dca8cfc6abab5d073b366c17358bd8147d51484cbe727dd8c68",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-operator-planner-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-operator-planner-1.log",
+      "raw_sha256": "ad09de3dd7e92870af4307da72a0d37778305ebf6f92d100df3482f5b6b3c65e",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-operator-planner-1.log",
+      "committed_copy_sha256": "ea24a372e8d5e60c5ac98075c062d81af6212ca46e282b5506734a2e2ff9fc94",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-owners-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-owners-1.log",
+      "raw_sha256": "5fe3c9b0c2306cd8c770724e927ab31b8f359cd0619d2b3dcfc88171a4723f3c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-owners-1.log",
+      "committed_copy_sha256": "fa1b241069aad6fc55664854c63ed37445ab4ec18cd7138b489d1b747bfe450f",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-owners-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-owners-2.log",
+      "raw_sha256": "dbce024a75b1a93d555c3341c6bcd3d4346cbb111b79ce9bd823fb673a4db0dc",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-owners-2.log",
+      "committed_copy_sha256": "d9936550a9f433a6c725cd0e21f3a14a57350d1ed915d980c8b904fc823173df",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p04-reuse-inputs-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p04-reuse-inputs-1.json",
+      "raw_sha256": "d9cda5bbd020377bbdb64ac2e8041a253bbd8af0b54c745014c9dc8f21fecfdf",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p04-reuse-inputs-1.json",
+      "committed_copy_sha256": "3a7d366919c51454b0ba46cbab54d957c66673be53fa0186b778ccc7b0345463",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p04-reuse-verification-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p04-reuse-verification-1.json",
+      "raw_sha256": "909e601e6e2cf3fabc986bc54c60d2d65c34e0491c1c38245790964ee72fe247",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p04-reuse-verification-1.json",
+      "committed_copy_sha256": "a19dbabe066ef3abd011b987ced41a3c9e77f4d89298efd2f23f86931bf97712",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p05-acl-correction-1.sql.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-acl-correction-1.sql.txt",
+      "raw_sha256": "e7783ab81851a9f1c035781fff8609031aeebaee9ba3a6cc7abb6400ae39205d",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p05-acl-correction-1.sql.txt",
+      "committed_copy_sha256": "e7783ab81851a9f1c035781fff8609031aeebaee9ba3a6cc7abb6400ae39205d",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p05-acl-dependency-inventory-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-acl-dependency-inventory-1.md",
+      "raw_sha256": "79e89d96f673ea55d731e81c4428c5c63185bdbf1272ee5bc4537bec7644c72c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p05-acl-dependency-inventory-1.md",
+      "committed_copy_sha256": "79e89d96f673ea55d731e81c4428c5c63185bdbf1272ee5bc4537bec7644c72c",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p05-closure-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-closure-1.log",
+      "raw_sha256": "1f2ff562b81381e8c81270b0e9c0e7cc7ed3d175267cacd7ce533929c14ebf07",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p05-closure-1.log",
+      "committed_copy_sha256": "38207909b483f3d97e564db254c427ff68c312293e8fcea303376051c52c2159",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p05-closure-addition-1.sql.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-closure-addition-1.sql.txt",
+      "raw_sha256": "f0a4d9fbf17e62d6d65326f2ec952cd7ee9233fca3317a0647ae9ac98e5a96ee",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p05-closure-addition-1.sql.txt",
+      "committed_copy_sha256": "f0a4d9fbf17e62d6d65326f2ec952cd7ee9233fca3317a0647ae9ac98e5a96ee",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p05-prerequisite-amendment-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-prerequisite-amendment-1.md",
+      "raw_sha256": "2b1fb50f4d78cb558148ee6d93fd8a09e4cf6a2aeb057882de3ba06905540943",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p05-prerequisite-amendment-1.md",
+      "committed_copy_sha256": "2b1fb50f4d78cb558148ee6d93fd8a09e4cf6a2aeb057882de3ba06905540943",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p05-prerequisite-amendment-acceptance-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-prerequisite-amendment-acceptance-1.json",
+      "raw_sha256": "ce89d880c39bf582f607bc3cc1e597380c50420dcf8a44d59ea08f7b1e73c78b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p05-prerequisite-amendment-acceptance-1.json",
+      "committed_copy_sha256": "32199f600deb6afee3d8398f79b2e3e5d83939f462b721102e7786429e858a88",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p05-prerequisite-amendment-inputs-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-prerequisite-amendment-inputs-1.json",
+      "raw_sha256": "9cd5b29e3860f2432b33c0e347f69ff0a83baedbedf65fe83276989c13a8a0dd",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p05-prerequisite-amendment-inputs-1.json",
+      "committed_copy_sha256": "bfd6aca42ed5fd19bb5f2e45098bec89d267509c331f71ec27d0ef3d4e791365",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p05-prerequisite-clinical-review-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-prerequisite-clinical-review-1.md",
+      "raw_sha256": "a93678073876a129b96205538cc932ca4faf124d69a7edf651498356a5a9e80e",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p05-prerequisite-clinical-review-1.md",
+      "committed_copy_sha256": "a93678073876a129b96205538cc932ca4faf124d69a7edf651498356a5a9e80e",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-p05-prerequisite-execution-review-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-prerequisite-execution-review-1.md",
+      "raw_sha256": "d9ae5b38f1b821567225e82d927b3cba47ba4ae2f30b480b40eb51ca2aee5a43",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-p05-prerequisite-execution-review-1.md",
+      "committed_copy_sha256": "d9ae5b38f1b821567225e82d927b3cba47ba4ae2f30b480b40eb51ca2aee5a43",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-planner-green-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-planner-green-1.log",
+      "raw_sha256": "8ba97a66a0e545546343ccc36b292cfd3d8046fdbea941d3e5d486296c56f832",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-planner-green-1.log",
+      "committed_copy_sha256": "4e451c05c0bf914517ce4377fe70f8a09dfe5165469d21420f5a642ed7934297",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-planner-red-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-planner-red-1.log",
+      "raw_sha256": "1ec10636efb0e9fa8a6cf1bb324892f9595b63988f21d5cf3b3a545cdfec6407",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-planner-red-1.log",
+      "committed_copy_sha256": "44872e6de31871b6fe45b14344347c06f2436d6f84934d9ba65b618cdc136106",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-planner-red-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-planner-red-2.log",
+      "raw_sha256": "d8a1b05015317aa9d0a03848923ffe9a56b956366ba05538d4fbc418f459c613",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-planner-red-2.log",
+      "committed_copy_sha256": "4e5a75f2039ec1ce2977865f2c30296f2bf48998c69c83739257b18a79e980ec",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-clinical-review-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-clinical-review-1.md",
+      "raw_sha256": "11cf295d8f3555a0ec2a8f0de20435b3011c26d67321132034556c3c4917a3a6",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-clinical-review-1.md",
+      "committed_copy_sha256": "11cf295d8f3555a0ec2a8f0de20435b3011c26d67321132034556c3c4917a3a6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-clinical-review-2.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-clinical-review-2.md",
+      "raw_sha256": "146541229e8720c0f2dabcfe5daf5d1162fc914d8710a4d141b4f6a417103bfe",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-clinical-review-2.md",
+      "committed_copy_sha256": "146541229e8720c0f2dabcfe5daf5d1162fc914d8710a4d141b4f6a417103bfe",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-clinical-review-3.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-clinical-review-3.md",
+      "raw_sha256": "642cb0857707acccdaf48d72eeedfb590b61085108fb1bb6b6fed3f691bbe06f",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-clinical-review-3.md",
+      "committed_copy_sha256": "642cb0857707acccdaf48d72eeedfb590b61085108fb1bb6b6fed3f691bbe06f",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-correction-artifacts-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-correction-artifacts-1.json",
+      "raw_sha256": "ff62de83f53999191acc117425e3e393311aac2e9d08a08b6bfbb7fa3f4b11d3",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-correction-artifacts-1.json",
+      "committed_copy_sha256": "ff62de83f53999191acc117425e3e393311aac2e9d08a08b6bfbb7fa3f4b11d3",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-correction-report-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-correction-report-1.md",
+      "raw_sha256": "820a6867881eb4c52624122e5cc1ed52003ae633b60fae3dfab40375e4280bc4",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-correction-report-1.md",
+      "committed_copy_sha256": "820a6867881eb4c52624122e5cc1ed52003ae633b60fae3dfab40375e4280bc4",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-correction-round-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-correction-round-1.md",
+      "raw_sha256": "61bfb0652bad772491cec3366c9fd15a585dae62adb885cba7bee0c26a21bf10",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-correction-round-1.md",
+      "committed_copy_sha256": "61bfb0652bad772491cec3366c9fd15a585dae62adb885cba7bee0c26a21bf10",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-ingestion-review-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-ingestion-review-1.md",
+      "raw_sha256": "b7df41f7778b814e3cddc920f1f2b7f2c672fbf71a4a398d06bfb355d2828b1c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-ingestion-review-1.md",
+      "committed_copy_sha256": "b7df41f7778b814e3cddc920f1f2b7f2c672fbf71a4a398d06bfb355d2828b1c",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-ingestion-review-2.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-ingestion-review-2.md",
+      "raw_sha256": "4801e8106070c0b1018580ca5db35b04826bc362c04af410ec108ebaa931b9c1",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-ingestion-review-2.md",
+      "committed_copy_sha256": "4801e8106070c0b1018580ca5db35b04826bc362c04af410ec108ebaa931b9c1",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-ingestion-review-3.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-ingestion-review-3.md",
+      "raw_sha256": "f4f9d6bfade8d0bea3af7994bfe08c49bf4a4829db6864139ade67a475b0a185",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-ingestion-review-3.md",
+      "committed_copy_sha256": "353c9a8606b0fc581f1a2c4497e9c01c9de94413dab7ca21fec774fcb676d04f",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-review-1.diff",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-review-1.diff",
+      "raw_sha256": "36d56dc5f7dc79aea8ef8598ff81106560e7f161ffb1402a73a9f36576e48adf",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-1.diff",
+      "committed_copy_sha256": "36d56dc5f7dc79aea8ef8598ff81106560e7f161ffb1402a73a9f36576e48adf",
+      "copy_policy": "Exact immutable canonical package bytes"
+    },
+    {
+      "name": "U03-product-review-2.diff",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-review-2.diff",
+      "raw_sha256": "5f0807fecba0aa3863e94bf3cb4df4377234e5f9d20b88dec8c39e974db17236",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-2.diff",
+      "committed_copy_sha256": "5f0807fecba0aa3863e94bf3cb4df4377234e5f9d20b88dec8c39e974db17236",
+      "copy_policy": "Exact immutable canonical package bytes"
+    },
+    {
+      "name": "U03-product-review-3.diff",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-review-3.diff",
+      "raw_sha256": "a7713f3c523a1c55c9c8cabca3c93e58209d798f01ce95a239227ad23f19d244",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-3.diff",
+      "committed_copy_sha256": "a7713f3c523a1c55c9c8cabca3c93e58209d798f01ce95a239227ad23f19d244",
+      "copy_policy": "Exact immutable canonical package bytes"
+    },
+    {
+      "name": "U03-product-review-round-1-disposition.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-review-round-1-disposition.json",
+      "raw_sha256": "c916920a4cc690abf6d568eb73b172147cf327976180c214d54f2ecf2310283a",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-round-1-disposition.json",
+      "committed_copy_sha256": "d236d7c54c4227721a6c56d755ae489ef78585e762d4392bc857803b0024a3c9",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-review-routes-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-review-routes-1.json",
+      "raw_sha256": "558aff7c7a435968a54a8e7532ac4ea2cabd5575cd2350022d615c10341cccb3",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-routes-1.json",
+      "committed_copy_sha256": "c137ce5a4f2032a64263c04ad38bd63237f9b2c75a174d98d86fc3a0ddbc229f",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-review-routes-2a.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-review-routes-2a.json",
+      "raw_sha256": "6d2223f81fa50cc9104f504581793a6d19f46093c37ddceb2278a4f3f16fa79c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-routes-2a.json",
+      "committed_copy_sha256": "aadb5306a7ca24cc5dc2d31b5bdf4c894d3fce61754a785163755077f48075b2",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-review-routes-2b.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-review-routes-2b.json",
+      "raw_sha256": "9c3ecf499776b1428eb20ce2f263fd3cf4b5df32a18401350f29d2c8117e4f1f",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-routes-2b.json",
+      "committed_copy_sha256": "2602193af28fec4de081602717e4d7d24a3eb032ba12cfc7e44ef2474eb37461",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-review-routes-3a.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-review-routes-3a.json",
+      "raw_sha256": "d4d3c38f56662426add38b26948fa5c3ab3d3a916bb9024dccbe94f7ed897ccc",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-routes-3a.json",
+      "committed_copy_sha256": "8820813c3524bc5a727f2bc6564c15ea5ebd2140b91df44935168ef5230c0a0a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-review-routes-3b.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-review-routes-3b.json",
+      "raw_sha256": "11d189f5111f9ca53cddd15f3b3640be05530955c1638d206dcaa558494f0840",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-routes-3b.json",
+      "committed_copy_sha256": "c2a55969e55a3c98201d5f3ac160a22256b26441334496d63cdccaac54bec590",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-schema-review-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-schema-review-1.md",
+      "raw_sha256": "a90ed203105f6219512b73294447b5d0c274a7c1a6f53c97f404c98d1ca38978",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-schema-review-1.md",
+      "committed_copy_sha256": "671c69b9660fb08bc03e2faf74f177006537f2159271e32084f7f10a27649753",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-schema-review-2-import-qualification.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-schema-review-2-import-qualification.md",
+      "raw_sha256": "ae664a7ad6f1d757bc4c7d303360bc25ba24e359cd8af86e1ca2cd1d3f47ea6a",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-schema-review-2-import-qualification.md",
+      "committed_copy_sha256": "ae664a7ad6f1d757bc4c7d303360bc25ba24e359cd8af86e1ca2cd1d3f47ea6a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-schema-review-2.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-schema-review-2.md",
+      "raw_sha256": "49a12b16e10ff3ff07a7a00bad504becb725358eb1d50dd385631ee250ad0550",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-schema-review-2.md",
+      "committed_copy_sha256": "49a12b16e10ff3ff07a7a00bad504becb725358eb1d50dd385631ee250ad0550",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-schema-review-3.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-schema-review-3.md",
+      "raw_sha256": "740f4b474810745198586c203fe95da8336e4a888ebf08b4def2b887352a0121",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-schema-review-3.md",
+      "committed_copy_sha256": "740f4b474810745198586c203fe95da8336e4a888ebf08b4def2b887352a0121",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-wrapper-review-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-wrapper-review-1.md",
+      "raw_sha256": "76186838d749237cd69c5db79632e30d1c7f59e376bb41310955087e0d276f41",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-wrapper-review-1.md",
+      "committed_copy_sha256": "76186838d749237cd69c5db79632e30d1c7f59e376bb41310955087e0d276f41",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-product-wrapper-review-2.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-product-wrapper-review-2.md",
+      "raw_sha256": "7d17dc960c7379a6e5697b31ef2a69fb866f58a125069e93e6913aa10c84cdf7",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-wrapper-review-2.md",
+      "committed_copy_sha256": "7d17dc960c7379a6e5697b31ef2a69fb866f58a125069e93e6913aa10c84cdf7",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-cleanup-red-1-deep-memory.test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-cleanup-red-1-deep-memory.test.ts.txt",
+      "raw_sha256": "16f29613d2db0c5d4fa887ed0b4a1b5e62804f662a97e4090f848704a4727288",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-cleanup-red-1-deep-memory.test.ts.txt",
+      "committed_copy_sha256": "16f29613d2db0c5d4fa887ed0b4a1b5e62804f662a97e4090f848704a4727288",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-cleanup-red-1-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-cleanup-red-1-inputs.json",
+      "raw_sha256": "1f39ccbedf06fd0381b4403bac45a9b07f39c41e993b16e0882c5039788e2c5b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-cleanup-red-1-inputs.json",
+      "committed_copy_sha256": "8d1b1255ea83fc397988852bb0acd85556503c2c21ed9faef20809e81d3b9689",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-cleanup-red-1-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-cleanup-red-1-result.json",
+      "raw_sha256": "5d82c60b85830a148fad85b0d9a5362954d26aa2089244636e8b6605a54b50b5",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-cleanup-red-1-result.json",
+      "committed_copy_sha256": "1dd4fc14ca794c2548347741083451785e44987b96d59ddbe8a66d444598bd7e",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-cleanup-red-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-cleanup-red-1.log",
+      "raw_sha256": "0a96226b77318f9a2c2d5b51abb60d1dd33163f6376f12abf3250fb10c13511a",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-cleanup-red-1.log",
+      "committed_copy_sha256": "faa3a298b8b1cd5f0ddf1b5ff79f15e0b35c4c0f85db83d0f830c604334bb888",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-final-verification-route-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-final-verification-route-1.md",
+      "raw_sha256": "ea056ce234fd6edbf453a17c6431fc25a0048f3f144de7813676b862a239be2d",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-final-verification-route-1.md",
+      "committed_copy_sha256": "ea056ce234fd6edbf453a17c6431fc25a0048f3f144de7813676b862a239be2d",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-green-1-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-green-1-inputs.json",
+      "raw_sha256": "cc77f9f7a91204131add910e07ef7cf4f7a21fcc13a1df7668fcf933d94c7665",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-green-1-inputs.json",
+      "committed_copy_sha256": "6251dc3b8e604870fea78097d8566e7700594fa2b8499942ee94a92d556606d9",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-green-1-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-green-1-result.json",
+      "raw_sha256": "0549f51d0c10d5db00bfc16c4efabe83ec983213b910a66aa0b6cc5e572a16b5",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-green-1-result.json",
+      "committed_copy_sha256": "f779307ac641b5f214d75afa9a9f9bb65d945a611fa6416399e44e098fb852f6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-green-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-green-1.log",
+      "raw_sha256": "0f9108a0c6419172d920acbfb319a548114d3be9763e184293048e001540cd57",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-green-1.log",
+      "committed_copy_sha256": "e5172014489946afc43a0b715d097a1370c70a310cfe1802cb77c0568b5b0c3a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-green-2-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-green-2-inputs.json",
+      "raw_sha256": "290751543c99601c84a48030fba74022f4813e272405db84681e9ab2a25136af",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-green-2-inputs.json",
+      "committed_copy_sha256": "251f97f5cd25b8c1ed6b359a6af6afbf6271ecf80948405493c008837b4bca33",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-green-2-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-green-2-result.json",
+      "raw_sha256": "a7a613e5b056be3de4a62e89290d1c3ed07c5540bf2005d5cbcbb8f862dfcf62",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-green-2-result.json",
+      "committed_copy_sha256": "3fe6b55e0efa1e12e4da3edcc8b7bc755ac8ff2cbb5411e16578f435c3487a73",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-green-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-green-2.log",
+      "raw_sha256": "17c30e51303e8adb73dfef3724ba512b72020f033e701b78ab841aaf2eaa4250",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-green-2.log",
+      "committed_copy_sha256": "4928f314dcd912ea7c6f0d666a6bed0b3c49483f607f03cee90828527e630987",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-green-3-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-green-3-inputs.json",
+      "raw_sha256": "2bb788f658047ca54c7149e89f7a3ab711390ce14bdd2146f7cfc996db98f23e",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-green-3-inputs.json",
+      "committed_copy_sha256": "5b8d8281b41679899fbec5ba2be07f24b1bf1d0dfe586de3ca43f06cc5d9088a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-green-3-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-green-3-result.json",
+      "raw_sha256": "60dcd9e112b6d6f0fcd7e7f85cb9c5e49eaf8e0c50ad5207326847f32bd695ac",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-green-3-result.json",
+      "committed_copy_sha256": "4359949846b6d17e943d341a133286d86f43a944e7327dbcb3d21f39d80e84ed",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-green-3.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-green-3.log",
+      "raw_sha256": "0ecac889a355cf9eecdc47985de90d8b5f10bc58d1ec61f1760d18a49f292c7c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-green-3.log",
+      "committed_copy_sha256": "cb1f94e5b35b7e68e6eb541a2863c36ac840453c18a18c34e9745a17db2d4e00",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-red-1-deep-memory.test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-red-1-deep-memory.test.ts.txt",
+      "raw_sha256": "ea9e683871175ce689c5bb4bf6b058e4e10c67fe5a18baeccf16f4947dd2cd9b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-red-1-deep-memory.test.ts.txt",
+      "committed_copy_sha256": "ea9e683871175ce689c5bb4bf6b058e4e10c67fe5a18baeccf16f4947dd2cd9b",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-red-1-document-enrichment.test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-red-1-document-enrichment.test.ts.txt",
+      "raw_sha256": "c09844f5ad063c9922e121ac77d8ec5e80e9892d65ec1f1eb698e7471cc0cdc8",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-red-1-document-enrichment.test.ts.txt",
+      "committed_copy_sha256": "c09844f5ad063c9922e121ac77d8ec5e80e9892d65ec1f1eb698e7471cc0cdc8",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-red-1-indexing-v3-agent.test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-red-1-indexing-v3-agent.test.ts.txt",
+      "raw_sha256": "a848b1b6e771476883f31b5c499bf1627574d80566aa0c05ff4086d71d97bf82",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-red-1-indexing-v3-agent.test.ts.txt",
+      "committed_copy_sha256": "a848b1b6e771476883f31b5c499bf1627574d80566aa0c05ff4086d71d97bf82",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-red-1-ingestion-lease-fencing.test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-red-1-ingestion-lease-fencing.test.ts.txt",
+      "raw_sha256": "0481577209bac69c86d66f9a524e45ceed76f0030b3673b58638aedd102b56c6",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-red-1-ingestion-lease-fencing.test.ts.txt",
+      "committed_copy_sha256": "0481577209bac69c86d66f9a524e45ceed76f0030b3673b58638aedd102b56c6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-red-1-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-red-1-inputs.json",
+      "raw_sha256": "94315ab98a2018b0a57b00e56f1ff5519f86578d0e26ec57ee8f90b81a005d93",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-red-1-inputs.json",
+      "committed_copy_sha256": "60da0a8cdff909280ce7d8adec7033975952868068a8ce9252373004cee69fb0",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-red-1-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-red-1-result.json",
+      "raw_sha256": "90df6097d8d66b580d9cd5a9ad984b3033dd01abd12b6023d3f92516989c04f0",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-red-1-result.json",
+      "committed_copy_sha256": "48b2644a39d76608a67e786b60b160c112b84a140d288254b6762291b3e557fc",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-red-1-worker-behavior.test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-red-1-worker-behavior.test.ts.txt",
+      "raw_sha256": "929b27afe1d90457580f8d266797bff8764534a922f7291cc56cf55e3d461127",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-red-1-worker-behavior.test.ts.txt",
+      "committed_copy_sha256": "929b27afe1d90457580f8d266797bff8764534a922f7291cc56cf55e3d461127",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-red-1-worker-run-loop.test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-red-1-worker-run-loop.test.ts.txt",
+      "raw_sha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-red-1-worker-run-loop.test.ts.txt",
+      "committed_copy_sha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-red-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-red-1.log",
+      "raw_sha256": "5bb484467990c2e124e7e01b3578e93ff72cabf4c734890073b70a3dfdba2dc3",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-red-1.log",
+      "committed_copy_sha256": "11b344b6b113ac3fbeceb4e45883deae47857821ac87bf738c2501d43f9dccd7",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-correction-typecheck-arbiter-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-correction-typecheck-arbiter-1.log",
+      "raw_sha256": "e20f3a0561c1b97f714975fd2abc4ed3f6abf8c4e8d6f515acfa894d202113b2",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-correction-typecheck-arbiter-1.log",
+      "committed_copy_sha256": "b07e7442bea5ea508bac7dcd636c5f598658add3779cd64e16f742a8fbd58760",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-final-format-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-final-format-1.log",
+      "raw_sha256": "7aa8292331c07c3718e39196c169c843a441af7a4c8e406edb8073c05a53e108",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-final-format-1.log",
+      "committed_copy_sha256": "d0991814882c7e449b7a4973cc31a3329655ee32ff18ca5ace72385ec0cfcc72",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-records-pending-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-records-pending-1.json",
+      "raw_sha256": "8940e6368aaddcb8b1157ee927bec1ff163aab6cdf479d76f5cc99212568ad4a",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-records-pending-1.json",
+      "committed_copy_sha256": "8940e6368aaddcb8b1157ee927bec1ff163aab6cdf479d76f5cc99212568ad4a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-green-1-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-green-1-inputs.json",
+      "raw_sha256": "ae7e8f10daa520ebdc80ea34b4930ee5fdb525a3a9bf679579c192c50263c1d5",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-green-1-inputs.json",
+      "committed_copy_sha256": "59b72000552bffe7fc2d02d7ee2e1a3c34af8d2b763e6bd7c9547d3afb94047a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-green-1-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-green-1-result.json",
+      "raw_sha256": "615e66dfdda79af1ca3a03866006c74d65966d758c319e54714ba9c68eb115df",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-green-1-result.json",
+      "committed_copy_sha256": "483bdab76ef26d48301bbb7fc0897af4813b349ca82474a856c4a60d6910d77c",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-green-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-green-1.log",
+      "raw_sha256": "e8e1e7c096b9006e76ca3ee0bb8a9eae8b486d6f1124da2dd7d4719680223290",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-green-1.log",
+      "committed_copy_sha256": "bcb35713649b5571dd7a22c05e3298b3886aa1c5dc22ffc288cab021c977775a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-green-2-arbiter.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-green-2-arbiter.log",
+      "raw_sha256": "82627bbbbc6871be85d955e0043c72963be1f0842797257ce342fe97327944ca",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-green-2-arbiter.log",
+      "committed_copy_sha256": "3bae260e774882387d28ac33945006595f9b4282096c58142fe34ee6080f1113",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-green-2-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-green-2-inputs.json",
+      "raw_sha256": "5da4e274ac4a80ea487661b4e75d61b0244aa26eaf456cd16fa795f86b50d676",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-green-2-inputs.json",
+      "committed_copy_sha256": "185a0cc1b6ccc89d761eb48cf354f10be0a2266f9e00e13813a723fce57c17da",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-green-2-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-green-2-result.json",
+      "raw_sha256": "81c863c3caad27d92ba26a9575225d4d7c4c4c73ab12956785c9171a92d1e5b6",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-green-2-result.json",
+      "committed_copy_sha256": "320a642494053aed5d1a5d6e9e65018e57c2477b53e686ee97a766e3ec2b1d1c",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-green-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-green-2.log",
+      "raw_sha256": "793b7b05449a55212fa2e086d1a31d9caac7fb3ce48549996176524b436d50c1",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-green-2.log",
+      "committed_copy_sha256": "0b332ee5cba75f5fe3daa419de9c316a36012f671fddfcff6e27fcb94f2ce3f0",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-red-1-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-red-1-inputs.json",
+      "raw_sha256": "aa09971c019084fc8fa998a8cd3da1e5657fc21ed8e8e8a7481492675e5e2873",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-red-1-inputs.json",
+      "committed_copy_sha256": "069fa6ebb1c0d260036514088e214e94b0c2ff1783a1e4ed48f0fc340ff163a9",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-red-1-model-index-extraction.test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-red-1-model-index-extraction.test.ts.txt",
+      "raw_sha256": "ca118be477fd330a67cfe1005c25d14d1551af8847728294b359406edae9ac03",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-red-1-model-index-extraction.test.ts.txt",
+      "committed_copy_sha256": "ca118be477fd330a67cfe1005c25d14d1551af8847728294b359406edae9ac03",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-red-1-openai-cache.test.ts.txt",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-red-1-openai-cache.test.ts.txt",
+      "raw_sha256": "af2636a720c1d599f031a2d83fa621e8d9c1821d1c451d15a7c12503468dd178",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-red-1-openai-cache.test.ts.txt",
+      "committed_copy_sha256": "af2636a720c1d599f031a2d83fa621e8d9c1821d1c451d15a7c12503468dd178",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-red-1-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-red-1-result.json",
+      "raw_sha256": "9bee114ecdb9d4dc22e0bd0e35649cebf5e79ca4521f6222ae33b5cc7978898d",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-red-1-result.json",
+      "committed_copy_sha256": "74bb34aad6c560a2f8a3014f52403bf413c961b20bc0c80d519829ee132ef4d3",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-review-wrapper-red-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-review-wrapper-red-1.log",
+      "raw_sha256": "a3f9be321a65f38520f111add205d1b60c92b8a014d732d38face5991c094a7e",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-review-wrapper-red-1.log",
+      "committed_copy_sha256": "cf646916d9a73eb12bfd96edfd0bdb546484a70bde2f129246b068de9b092670",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-reviewed-compile-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-reviewed-compile-inputs.json",
+      "raw_sha256": "edd5a7bba598532082fe69049cbcf3d3a09d126258f6ee29713e57a5e4d29643",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-reviewed-compile-inputs.json",
+      "committed_copy_sha256": "edd5a7bba598532082fe69049cbcf3d3a09d126258f6ee29713e57a5e4d29643",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-script-count-correction-report-1.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-script-count-correction-report-1.md",
+      "raw_sha256": "f31ac05fecc675d5f5a06b4d4e9115dc86d74b066878babb2ea71f0fc975ed3b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-script-count-correction-report-1.md",
+      "committed_copy_sha256": "f31ac05fecc675d5f5a06b4d4e9115dc86d74b066878babb2ea71f0fc975ed3b",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-script-count-format-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-script-count-format-1.log",
+      "raw_sha256": "372efd3048d05a67f6057933d689c5e14cc5a4c9d7272f9709aa61b3ddca14e2",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-script-count-format-1.log",
+      "committed_copy_sha256": "c6f75d4bc4632220db00db0e44373640569c884a3ca424f2c45d0db76a79d275",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-shadow-edge-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-shadow-edge-1.log",
+      "raw_sha256": "1b7f37d8013d20d8171799ed08e4352b9df16b35e28839b923320eca907ff7ea",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-shadow-edge-1.log",
+      "committed_copy_sha256": "d9836e80db5c7763fb3507b2fedce5b520df311fd1c8a5b681676fdb4b2be464",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-sql-row-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-sql-row-1.log",
+      "raw_sha256": "d42399bb3bacce83ca4069bfaa2f2361acbfa0a9a83ae3b4b1ecc48ee133d04b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-sql-row-1.log",
+      "committed_copy_sha256": "3038d115eb245c81e7be8c4308509a0a9096108e655b208f886880ea7da31c71",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-staged-index-coverage-result-1.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-staged-index-coverage-result-1.json",
+      "raw_sha256": "d43015d6b1ed82eae8c79b7521901eefcff60adec3377650bf3001e02f2846c6",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-staged-index-coverage-result-1.json",
+      "committed_copy_sha256": "d43015d6b1ed82eae8c79b7521901eefcff60adec3377650bf3001e02f2846c6",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-staged-index-coverage-result-2.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-staged-index-coverage-result-2.json",
+      "raw_sha256": "2434d21109e99283d53d48c61a7c30be39dc4db78c989dfe8479a84663d21a2a",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-staged-index-coverage-result-2.json",
+      "committed_copy_sha256": "2434d21109e99283d53d48c61a7c30be39dc4db78c989dfe8479a84663d21a2a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-staged-index-coverage.mjs",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-staged-index-coverage.mjs",
+      "raw_sha256": "f4b08f35b5f08c02c054e1364dd8cddb860e579321e9ddd8308e041bf6581041",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-staged-index-coverage.mjs",
+      "committed_copy_sha256": "f4b08f35b5f08c02c054e1364dd8cddb860e579321e9ddd8308e041bf6581041",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-staged-migration-role-result-2.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-staged-migration-role-result-2.json",
+      "raw_sha256": "cfad358c6f6ad6bd2878c1e3a69a342828e09408446a847711ce47684246e91c",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-staged-migration-role-result-2.json",
+      "committed_copy_sha256": "cfad358c6f6ad6bd2878c1e3a69a342828e09408446a847711ce47684246e91c",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-staged-migration-role-result-3.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-staged-migration-role-result-3.json",
+      "raw_sha256": "598f39db24e1279bd9a451d536540f0eb5179fc03e879eb0be8027437247497f",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-staged-migration-role-result-3.json",
+      "committed_copy_sha256": "598f39db24e1279bd9a451d536540f0eb5179fc03e879eb0be8027437247497f",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-staged-migration-role.mjs",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-staged-migration-role.mjs",
+      "raw_sha256": "08f41c5dd10428d8b55b3c2594b566890af71e485a6e9d4f2aca791651128bae",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-staged-migration-role.mjs",
+      "committed_copy_sha256": "08f41c5dd10428d8b55b3c2594b566890af71e485a6e9d4f2aca791651128bae",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-summary-deep-planner-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-summary-deep-planner-1.log",
+      "raw_sha256": "f100945d73ece07749172920e86bba95ef1e5f884640776101aa22bd2eded198",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-summary-deep-planner-1.log",
+      "committed_copy_sha256": "4e51b9d99ba2a5cd1b44ec6c5147717e8ad5d0df9d3b92526ccabfec665376f7",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-summary-operator-1.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-summary-operator-1.log",
+      "raw_sha256": "5517b6719c8689065f37d03315a458bb5acaa02220d0be3a2e03b77c37b35685",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-summary-operator-1.log",
+      "committed_copy_sha256": "d550aee3f2842a69c39cffe549df15f0decb8843dfa5f9f802ae5919ffbd9d6d",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-test-proof-correction-round-2.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-correction-round-2.md",
+      "raw_sha256": "1e003a76410fc520772c2af0078e6cef8ca7b004fbc49289c4261bded63df94b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-correction-round-2.md",
+      "committed_copy_sha256": "1e003a76410fc520772c2af0078e6cef8ca7b004fbc49289c4261bded63df94b",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-test-proof-round-2-arbiter.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-round-2-arbiter.log",
+      "raw_sha256": "9bc48e30183638e66b923e8551f046ae9ae5729e1766be32440eb2f1b6b63b0b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-round-2-arbiter.log",
+      "committed_copy_sha256": "ba6e0051cbd9733fa85166e3c37143158fb055a9a7a9f98565222aaf46973541",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-test-proof-round-2-format-check.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-round-2-format-check.log",
+      "raw_sha256": "f20510a9da4717c51c4cffee6d0dd88d6c9a723d0a83711d01216f5b48961283",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-round-2-format-check.log",
+      "committed_copy_sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-test-proof-round-2-format.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-round-2-format.log",
+      "raw_sha256": "0713a8c29bf68ecfb96d81870b657931bd1e326c68daf2468b96b12fac6b020b",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-round-2-format.log",
+      "committed_copy_sha256": "cc6b69376dfb18d124a5f689c177d00ad1c63d4ae8859d73f8da29b982f52060",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-test-proof-round-2-inputs.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-round-2-inputs.json",
+      "raw_sha256": "94b0118f656f0238b6a1a36f53d44b57b893be73ea8d4770f55c3dedb78159f0",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-round-2-inputs.json",
+      "committed_copy_sha256": "d00e35d38d1c1904d075ea188fa31504108bf44c4996d9791858c52170d329a7",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-test-proof-round-2-report.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-round-2-report.md",
+      "raw_sha256": "ee9fe0607201f9a1f70a44be86dc345daa41438f000b82536edf96622bbe3a6f",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-round-2-report.md",
+      "committed_copy_sha256": "ee9fe0607201f9a1f70a44be86dc345daa41438f000b82536edf96622bbe3a6f",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-test-proof-round-2-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-round-2-result.json",
+      "raw_sha256": "58ab6b98cd7ab5c34d741ed8e78fc2ad780160ed433516ba7728cf14d6ad054f",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-round-2-result.json",
+      "committed_copy_sha256": "62e3a489b522007bf0dfd89d357d1123876fe87e441fb8245356827cdc02e282",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-test-proof-round-2-verification-route.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-round-2-verification-route.md",
+      "raw_sha256": "b6225bec0404ae97b74739c46f15a59a18bc912b225564c4b4f38a33121c099e",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-round-2-verification-route.md",
+      "committed_copy_sha256": "b6225bec0404ae97b74739c46f15a59a18bc912b225564c4b4f38a33121c099e",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-test-proof-round-2.diff",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-round-2.diff",
+      "raw_sha256": "9cf5cb870f9689c28f96e734a830946c72227c8472d5f731709d9b6d3a417dfc",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-round-2.diff",
+      "committed_copy_sha256": "9cf5cb870f9689c28f96e734a830946c72227c8472d5f731709d9b6d3a417dfc",
+      "copy_policy": "Exact immutable canonical package bytes"
+    },
+    {
+      "name": "U03-test-proof-round-2.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-test-proof-round-2.log",
+      "raw_sha256": "58bdffee9725256c20562076d7b5416e9986ed497b530193af102afcc50e8982",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-test-proof-round-2.log",
+      "committed_copy_sha256": "442220b819ac76dee40179ff02f3e1aed108a1be7ff5d3714e778bf060864114",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-tracked-typecheck-v3-correction-1-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-tracked-typecheck-v3-correction-1-result.json",
+      "raw_sha256": "d8743a0fb92955606dd1499abdfb83f06f2f0d5ecb338b8f33d62ddbd7b64ca5",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-tracked-typecheck-v3-correction-1-result.json",
+      "committed_copy_sha256": "d8743a0fb92955606dd1499abdfb83f06f2f0d5ecb338b8f33d62ddbd7b64ca5",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-tracked-typecheck-v3-final-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-tracked-typecheck-v3-final-result.json",
+      "raw_sha256": "8987da8731b48ccd5b57408c4c14fe80dec4f7d505c2c798d54799f969357bec",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-tracked-typecheck-v3-final-result.json",
+      "committed_copy_sha256": "8987da8731b48ccd5b57408c4c14fe80dec4f7d505c2c798d54799f969357bec",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-tracked-typecheck-v3-review-correction-1-result.json",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-tracked-typecheck-v3-review-correction-1-result.json",
+      "raw_sha256": "1ac907e035220b8a231a2166c525b69efa3966b40ff1ddd80e753c5b488a6032",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-tracked-typecheck-v3-review-correction-1-result.json",
+      "committed_copy_sha256": "1ac907e035220b8a231a2166c525b69efa3966b40ff1ddd80e753c5b488a6032",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-tracked-typecheck-v3.mjs",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-tracked-typecheck-v3.mjs",
+      "raw_sha256": "76b7d36588738e7db9edd60c146026e1771455315278ed495b07d97386b72879",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-tracked-typecheck-v3.mjs",
+      "committed_copy_sha256": "76b7d36588738e7db9edd60c146026e1771455315278ed495b07d97386b72879",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-typecheck-correction-1-arbiter.log",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-typecheck-correction-1-arbiter.log",
+      "raw_sha256": "e20f3a0561c1b97f714975fd2abc4ed3f6abf8c4e8d6f515acfa894d202113b2",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-typecheck-correction-1-arbiter.log",
+      "committed_copy_sha256": "b07e7442bea5ea508bac7dcd636c5f598658add3779cd64e16f742a8fbd58760",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    },
+    {
+      "name": "U03-verification-preparation.md",
+      "outside_path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-verification-preparation.md",
+      "raw_sha256": "21abda3f3606389592fe56a71c456e3d595ffd7dfeca361291de84f37713ac0a",
+      "committed_copy_path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-verification-preparation.md",
+      "committed_copy_sha256": "21abda3f3606389592fe56a71c456e3d595ffd7dfeca361291de84f37713ac0a",
+      "copy_policy": "UTF8 CRLF-to-LF copy; original raw bytes preserved outside"
+    }
+  ],
+  "review_records": [
+    {
+      "report": "U03-product-ingestion-review-1.md",
+      "sourceSha256": "b7df41f7778b814e3cddc920f1f2b7f2c672fbf71a4a398d06bfb355d2828b1c",
+      "path": "docs/branch-review-records/1011bc243a7af678b3e030b42e9bf939a9fc86a979669782b60b73f27f7e9c59.record.md",
+      "preserved": true
+    },
+    {
+      "report": "U03-product-schema-review-1.md",
+      "sourceSha256": "a90ed203105f6219512b73294447b5d0c274a7c1a6f53c97f404c98d1ca38978",
+      "path": "docs/branch-review-records/8a4fc4f89fd8769d72d8d6267d240593288ac1170dd23c12d72f6ec1db2cb591.record.md",
+      "preserved": true
+    },
+    {
+      "report": "U03-product-clinical-review-1.md",
+      "sourceSha256": "11cf295d8f3555a0ec2a8f0de20435b3011c26d67321132034556c3c4917a3a6",
+      "path": "docs/branch-review-records/003b467b33e4e1df260f619f0916b3d1bfe37e6b202b48376060cf3b0cd754c3.record.md",
+      "preserved": true
+    },
+    {
+      "report": "U03-product-ingestion-review-2.md",
+      "sourceSha256": "4801e8106070c0b1018580ca5db35b04826bc362c04af410ec108ebaa931b9c1",
+      "path": "docs/branch-review-records/6f999a4242ddbc47366f9dc8f8239e49c2505196d54398640b4157df451fefec.record.md"
+    },
+    {
+      "report": "U03-product-schema-review-2.md",
+      "sourceSha256": "49a12b16e10ff3ff07a7a00bad504becb725358eb1d50dd385631ee250ad0550",
+      "path": "docs/branch-review-records/a0fa9de47aafba41eb995c21426a1178798b695613253b6f2f86876d62a4be5f.record.md"
+    },
+    {
+      "report": "U03-product-clinical-review-2.md",
+      "sourceSha256": "146541229e8720c0f2dabcfe5daf5d1162fc914d8710a4d141b4f6a417103bfe",
+      "path": "docs/branch-review-records/58fead3a6a9c81499c5fb5f4c535eff524cafd59c51f6cacc37dd13fc200a94b.record.md"
+    },
+    {
+      "report": "U03-product-wrapper-review-1.md",
+      "sourceSha256": "76186838d749237cd69c5db79632e30d1c7f59e376bb41310955087e0d276f41",
+      "path": "docs/branch-review-records/31a12dcba7cd448fe35747ae77a54e1fbff2e811d519c8977b73912ce5510b41.record.md"
+    },
+    {
+      "report": "U03-p05-prerequisite-clinical-review-1.md",
+      "sourceSha256": "a93678073876a129b96205538cc932ca4faf124d69a7edf651498356a5a9e80e",
+      "path": "docs/branch-review-records/cf2b74cb82fea2ade6fd933acd046776ff4456824266729dcf31999556eb9d78.record.md"
+    },
+    {
+      "report": "U03-p05-prerequisite-execution-review-1.md",
+      "sourceSha256": "d9ae5b38f1b821567225e82d927b3cba47ba4ae2f30b480b40eb51ca2aee5a43",
+      "path": "docs/branch-review-records/194566704419de071aa78cecbe85b43718658b24b666ad73f38618970de0e025.record.md"
+    },
+    {
+      "report": "U03-compiler-fixture-amendment-review-1.md",
+      "sourceSha256": "972b1689765d396a039ce55f528af2de802060e9104f5e36a1e47776b37b3ab6",
+      "path": "docs/branch-review-records/916ef496a0b8d4c89139646a47499f15c705b3efeb48d71bce9c34e7aa925d05.record.md"
+    },
+    {
+      "report": "U03-cancellation-closure-amendment-review-1.md",
+      "sourceSha256": "75c780ba056a7b012aaf3d3a600590bd2369275e617da31523339856c63e69f5",
+      "path": "docs/branch-review-records/e97bee64c5d211064bc6f7ace8dabacf17cf0673b4fde504881dd0e353c17656.record.md"
+    },
+    {
+      "report": "U03-product-ingestion-review-3.md",
+      "sourceSha256": "f4f9d6bfade8d0bea3af7994bfe08c49bf4a4829db6864139ade67a475b0a185",
+      "path": "docs/branch-review-records/9922a8435426e85ae75dcc8111d6fb6f55d7a6ce125ed8af6ea94c04e810ba43.record.md"
+    },
+    {
+      "report": "U03-product-schema-review-3.md",
+      "sourceSha256": "740f4b474810745198586c203fe95da8336e4a888ebf08b4def2b887352a0121",
+      "path": "docs/branch-review-records/5e6177c1dfa4d5cd8296fa4536b03e38778a7ddcfa9f4764180582936a8e8a38.record.md"
+    },
+    {
+      "report": "U03-product-clinical-review-3.md",
+      "sourceSha256": "642cb0857707acccdaf48d72eeedfb590b61085108fb1bb6b6fed3f691bbe06f",
+      "path": "docs/branch-review-records/d1b5a31efdb82096cdaa2202ce653a5bb43f12b88714f284d348a341088380be.record.md"
+    },
+    {
+      "report": "U03-product-wrapper-review-2.md",
+      "sourceSha256": "7d17dc960c7379a6e5697b31ef2a69fb866f58a125069e93e6913aa10c84cdf7",
+      "path": "docs/branch-review-records/43f65f317d57fd7dee22c64b8959e5acaf08266da0970e71fe046570cfbc0797.record.md"
+    }
+  ],
+  "accepted_at_utc": "2026-09-09T03:16:18.381Z"
+}

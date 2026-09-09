@@ -1,0 +1,47 @@
+{
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "kind": "Bounded immutable source comparison; not baseline compiler execution",
+  "files": [
+    {
+      "path": "tests/document-clinical-summary.test.ts",
+      "rawBaselineSha256": "edf8aa024045ee258b91421781adb5fbb78dc6802b8a5370f9262cc4c2645320",
+      "rawCurrentSha256": "edf8aa024045ee258b91421781adb5fbb78dc6802b8a5370f9262cc4c2645320",
+      "identical": true
+    },
+    {
+      "path": "src/lib/types.ts",
+      "rawBaselineSha256": "bf59aac7d2841ac8902d636c87d08fee18e5f480a91710b5cbdab50457aa958b",
+      "rawCurrentSha256": "bf59aac7d2841ac8902d636c87d08fee18e5f480a91710b5cbdab50457aa958b",
+      "identical": true
+    },
+    {
+      "path": "supabase/functions/_shared/source-anchored-summary.ts",
+      "rawBaselineSha256": "a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2",
+      "rawCurrentSha256": "a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2",
+      "identical": true
+    }
+  ],
+  "functions": [
+    {
+      "file": "src/lib/document-enrichment.ts",
+      "name": "emptyClinicalProfile",
+      "baselineSha256": "3e69bea316fcf46b1dfd03f19a5513d5d0e362df778f92b7f522d29c3f133fea",
+      "currentSha256": "3e69bea316fcf46b1dfd03f19a5513d5d0e362df778f92b7f522d29c3f133fea",
+      "identical": true
+    },
+    {
+      "file": "src/lib/document-enrichment.ts",
+      "name": "profileItemsToStrings",
+      "baselineSha256": "74a91da4cb997922cd472f871e9269fe40be6261ef86bcadfdcefc5126282209",
+      "currentSha256": "74a91da4cb997922cd472f871e9269fe40be6261ef86bcadfdcefc5126282209",
+      "identical": true
+    },
+    {
+      "file": "src/lib/document-enrichment.ts",
+      "name": "normalizeClinicalProfile",
+      "baselineSha256": "91a54a65e211332266d1cc9ce28ed85112c38c483511c380e34b8b5b2ddb0cdb",
+      "currentSha256": "91a54a65e211332266d1cc9ce28ed85112c38c483511c380e34b8b5b2ddb0cdb",
+      "identical": true
+    }
+  ]
+}

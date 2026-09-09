@@ -1,0 +1,8 @@
+{
+  "timing": "POST-RUN verification only",
+  "issue": "The pre-run input list mistakenly named nonexistent vitest.config.ts; PowerShell reported a missing-path error and retained the partial input inventory. The subsequent selected test command itself ran and exited0.",
+  "actualConfig": "vitest.config.mts",
+  "sha256": "c9e57e014bcf37baabc368b237d20638eca8507df7bc93873103b9b25107add8",
+  "unchangedAgainst": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "limitation": "This is not reconstructed pre-run config capture. Config is tracked, unchanged in the complete original range; all selected source/test pins were captured before the run."
+}

@@ -1,0 +1,42 @@
+[
+  {
+    "path": "tests/storage-upload-compensation.test.ts",
+    "sha256": "addc75e18eea0b1bb15dcebb4474637a58eaee0a0de05964d7ffbb21b0f455b2"
+  },
+  {
+    "path": "tests/worker-shadow-extraction.test.ts",
+    "sha256": "85369bb50897e913bcebbb743b82708132fe5d59d4c2e73a2b8e725b2f6eca7f"
+  },
+  {
+    "path": "worker/behavior.ts",
+    "sha256": "0c88c04898e3d9425b7158c30b55fed15a4788fac246a006f734f9f7a48d1183"
+  },
+  {
+    "path": "worker/main.ts",
+    "sha256": "bc7554899c99953cc21da91f1ee3ce745e46fdac90cb8e092282b96f69bc871c"
+  },
+  {
+    "path": "supabase/functions/_shared/ingestion-attempt.ts",
+    "sha256": "d1ca227522e8aca6e4f28f1fa94a61c1980202a59b83cee3e8d4384e518cf0a7"
+  },
+  {
+    "path": "package.json",
+    "sha256": "53b6763fc9ba52771d480ab23db19eb988a2bad98cf9c76b9e5ce8fbcfd05bab"
+  },
+  {
+    "path": "package-lock.json",
+    "sha256": "f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063"
+  },
+  {
+    "path": "scripts/run-vitest.mjs",
+    "sha256": "0247703de7440ca3b217ce450849d9d634fcd8f57bb7b26414267d7d8421b8a3"
+  },
+  {
+    "path": "scripts/test-environment.mjs",
+    "sha256": "c3ca8fa0a471c2c67020852acbc3e673aa82b67ccc4d7a60d5bfa216af481b1a"
+  },
+  {
+    "path": "scripts/test-run-lock.mjs",
+    "sha256": "a0ff442d91baa98742b78601b39892e5c19cfbdf46b30e8b19662e83e20b9caf"
+  }
+]

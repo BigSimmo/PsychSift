@@ -1,0 +1,232 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+ ❯ |node| tests/model-index-extraction.test.ts (7 tests | 4 failed) 36ms
+     × passes the same signal into lower structured generation 8ms
+     × refuses pre-aborted work before model invocation, empty=true 2ms
+     × refuses pre-aborted work before model invocation, empty=false 2ms
+     × refuses a successful lower result released after abort 2ms
+ ❯ |node| tests/openai-cache.test.ts (22 tests | 4 failed) 1774ms
+     × passes the same signal to the SDK request options 46ms
+     × refuses pre-aborted work before SDK invocation 25ms
+     × refuses a deferred successful caption released after cancellation 24ms
+     × SDK retry schedule has no next request after cancellation=true 21ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/model-index-extraction.test.ts > review correction: actual model-index cancellation wrapper > passes the same signal into lower structured generation
+AssertionError: expected { model: 'gpt-indexing-test', …(6) } to match object { …(1) }
+(7 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "signal": AbortSignal {
+-     Symbol(kEvents): undefined,
+-     Symbol(events.maxEventTargetListeners): 0,
+-     Symbol(events.maxEventTargetListenersWarned): false,
+-     Symbol(kHandlers): undefined,
+-     Symbol(kAborted): false,
+-     Symbol(kReason): undefined,
+-     Symbol(kComposite): false,
+-   },
++   "maxOutputTokens": 3200,
++   "model": "gpt-indexing-test",
++   "operation": "summary",
++   "promptCacheKey": "clinical-model-index-profile-v1",
++   "reasoningEffort": "medium",
++   "schemaName": "clinical_model_index_profile",
++   "textVerbosity": "medium",
+  }
+
+ ❯ tests/model-index-extraction.test.ts:127:69
+    125|     const controller = new AbortController();
+    126|     await generateModelIndexProfile({ ...args, signal: controller.sign…
+    127|     expect(mocks.generateStructuredTextResponse.mock.calls[0]?.[2]).to…
+       |                                                                     ^
+    128|   });
+    129|   it.each([true, false])("refuses pre-aborted work before model invoca…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  |node| tests/model-index-extraction.test.ts > review correction: actual model-index cancellation wrapper > refuses pre-aborted work before model invocation, empty=true
+AssertionError: promise resolved "{ sections: [], …(7) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "aliases": [],
++   "askable_questions": [],
++   "clinical_facts": [],
++   "model": null,
++   "quality_issues": [],
++   "sections": [],
++   "table_facts": [],
++   "version": "model-heavy-index-v1",
+  }
+
+ ❯ tests/model-index-extraction.test.ts:132:120
+    130|     mocks.generateStructuredTextResponse.mockResolvedValue(empty);
+    131|     const controller = new AbortController(); controller.abort(new Err…
+    132|     await expect(generateModelIndexProfile({ ...args, chunks: isEmpty …
+       |                                                                                                                        ^
+    133|     expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled(…
+    134|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  |node| tests/model-index-extraction.test.ts > review correction: actual model-index cancellation wrapper > refuses pre-aborted work before model invocation, empty=false
+AssertionError: promise resolved "{ sections: [], …(7) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "aliases": [],
++   "askable_questions": [],
++   "clinical_facts": [],
++   "model": "gpt-indexing-test",
++   "quality_issues": [],
++   "sections": [],
++   "table_facts": [],
++   "version": "model-heavy-index-v1",
+  }
+
+ ❯ tests/model-index-extraction.test.ts:132:120
+    130|     mocks.generateStructuredTextResponse.mockResolvedValue(empty);
+    131|     const controller = new AbortController(); controller.abort(new Err…
+    132|     await expect(generateModelIndexProfile({ ...args, chunks: isEmpty …
+       |                                                                                                                        ^
+    133|     expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled(…
+    134|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  |node| tests/model-index-extraction.test.ts > review correction: actual model-index cancellation wrapper > refuses a successful lower result released after abort
+AssertionError: expected { value: { sections: [], …(7) } } to have property "error"
+ ❯ tests/model-index-extraction.test.ts:142:28
+    140|     const observed = result.then((value) => ({ value }), (error: unkno…
+    141|     controller.abort(new Error("late model cancelled")); release(empty…
+    142|     expect(await observed).toHaveProperty("error");
+       |                            ^
+    143|   });
+    144|   it("retains uncancelled empty-input behavior without model work", as…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  |node| tests/openai-cache.test.ts > review correction: actual caption cancellation wrapper > passes the same signal to the SDK request options
+AssertionError: expected { timeout: 45000, maxRetries: +0 } to match object { …(1) }
+(2 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "signal": AbortSignal {
+-     Symbol(kEvents): undefined,
+-     Symbol(events.maxEventTargetListeners): 0,
+-     Symbol(events.maxEventTargetListenersWarned): false,
+-     Symbol(kHandlers): undefined,
+-     Symbol(kAborted): false,
+-     Symbol(kReason): undefined,
+-     Symbol(kComposite): false,
+-   },
++   "maxRetries": 0,
++   "timeout": 45000,
+  }
+
+ ❯ tests/openai-cache.test.ts:808:39
+    806|     const controller = new AbortController();
+    807|     await classifyAndCaptionImageFromBase64({ base64: "ZmFrZQ==", mime…
+    808|     expect(create.mock.calls[0]?.[1]).toMatchObject({ signal: controll…
+       |                                       ^
+    809|   });
+    810|   it("refuses pre-aborted work before SDK invocation", async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  |node| tests/openai-cache.test.ts > review correction: actual caption cancellation wrapper > refuses pre-aborted work before SDK invocation
+AssertionError: promise resolved "{ image_type: 'unclear', …(11) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "admin_signal_score": 0,
++   "caption": "Extracted source image.",
++   "clinical_relevance_score": 0,
++   "clinical_signal_score": 0,
++   "clinical_use_class": "ambiguous",
++   "clinical_use_reason": "ambiguous image evidence; clinical signals=0; admin/reference signals=0",
++   "image_type": "unclear",
++   "labels": [],
++   "searchable": false,
++   "skip_reason": "ambiguous image evidence; clinical signals=0; admin/reference signals=0",
++   "structured_extraction_confidence": NaN,
++   "structured_visual_profile": {
++     "actions": [],
++     "chart_axes": [],
++     "chart_findings": [],
++     "clinical_purpose": null,
++     "confidence": NaN,
++     "flowchart_edges": [],
++     "flowchart_nodes": [],
++     "key_terms": [],
++     "medications": [],
++     "monitoring_items": [],
++     "risk_matrix_axes": [],
++     "risk_matrix_cells": [],
++     "source_regions": [],
++     "table_column_roles": {},
++     "thresholds": [],
++   },
+  }
+
+ ❯ tests/openai-cache.test.ts:815:126
+    813|     const { classifyAndCaptionImageFromBase64 } = await import("../src…
+    814|     const controller = new AbortController(); controller.abort(new Err…
+    815|     await expect(classifyAndCaptionImageFromBase64({ base64: "ZmFrZQ==…
+       |                                                                                                                              ^
+    816|     expect(create).not.toHaveBeenCalled();
+    817|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  |node| tests/openai-cache.test.ts > review correction: actual caption cancellation wrapper > refuses a deferred successful caption released after cancellation
+AssertionError: expected { value: { …(12) } } to have property "error"
+ ❯ tests/openai-cache.test.ts:829:28
+    827|     const observed = result.then((value) => ({ value }), (error: unkno…
+    828|     await entered; controller.abort(new Error("late caption cancelled"…
+    829|     expect(await observed).toHaveProperty("error");
+       |                            ^
+    830|   });
+    831|   it.each([false, true])("SDK retry schedule has no next request after…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  |node| tests/openai-cache.test.ts > review correction: actual caption cancellation wrapper > SDK retry schedule has no next request after cancellation=true
+AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+ ❯ tests/openai-cache.test.ts:853:21
+    851|     release();
+    852|     const outcome = await observed;
+    853|     expect(fetches).toHaveBeenCalledTimes(cancel ? 1 : 2);
+       |                     ^
+    854|     expect(outcome).toHaveProperty(cancel ? "error" : "value");
+    855|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  8 failed | 21 passed (29)
+   Start at  10:12:15
+   Duration  2.14s (transform 354ms, setup 0ms, import 352ms, tests 1.81s, environment 0ms)
+

@@ -1,0 +1,185 @@
+{
+  "kind": "Outside raw iteration evidence inventory; no acceptance claim",
+  "artifacts": [
+    {
+      "path": "U03-review-correction-red-1.log",
+      "sha256": "5bb484467990c2e124e7e01b3578e93ff72cabf4c734890073b70a3dfdba2dc3",
+      "bytes": 25029
+    },
+    {
+      "path": "U03-review-correction-red-1-inputs.json",
+      "sha256": "94315ab98a2018b0a57b00e56f1ff5519f86578d0e26ec57ee8f90b81a005d93",
+      "bytes": 2026
+    },
+    {
+      "path": "U03-review-correction-red-1-result.json",
+      "sha256": "90df6097d8d66b580d9cd5a9ad984b3033dd01abd12b6023d3f92516989c04f0",
+      "bytes": 326
+    },
+    {
+      "path": "U03-review-correction-green-1.log",
+      "sha256": "0f9108a0c6419172d920acbfb319a548114d3be9763e184293048e001540cd57",
+      "bytes": 2257
+    },
+    {
+      "path": "U03-review-correction-green-1-inputs.json",
+      "sha256": "cc77f9f7a91204131add910e07ef7cf4f7a21fcc13a1df7668fcf933d94c7665",
+      "bytes": 2155
+    },
+    {
+      "path": "U03-review-correction-green-1-result.json",
+      "sha256": "0549f51d0c10d5db00bfc16c4efabe83ec983213b910a66aa0b6cc5e572a16b5",
+      "bytes": 326
+    },
+    {
+      "path": "U03-review-correction-green-2.log",
+      "sha256": "17c30e51303e8adb73dfef3724ba512b72020f033e701b78ab841aaf2eaa4250",
+      "bytes": 263
+    },
+    {
+      "path": "U03-review-correction-green-2-inputs.json",
+      "sha256": "290751543c99601c84a48030fba74022f4813e272405db84681e9ab2a25136af",
+      "bytes": 2155
+    },
+    {
+      "path": "U03-review-correction-green-2-result.json",
+      "sha256": "a7a613e5b056be3de4a62e89290d1c3ed07c5540bf2005d5cbcbb8f862dfcf62",
+      "bytes": 326
+    },
+    {
+      "path": "U03-review-correction-green-3.log",
+      "sha256": "0ecac889a355cf9eecdc47985de90d8b5f10bc58d1ec61f1760d18a49f292c7c",
+      "bytes": 263
+    },
+    {
+      "path": "U03-review-correction-green-3-inputs.json",
+      "sha256": "2bb788f658047ca54c7149e89f7a3ab711390ce14bdd2146f7cfc996db98f23e",
+      "bytes": 2155
+    },
+    {
+      "path": "U03-review-correction-green-3-result.json",
+      "sha256": "60dcd9e112b6d6f0fcd7e7f85cb9c5e49eaf8e0c50ad5207326847f32bd695ac",
+      "bytes": 326
+    },
+    {
+      "path": "U03-review-wrapper-red-1.log",
+      "sha256": "a3f9be321a65f38520f111add205d1b60c92b8a014d732d38face5991c094a7e",
+      "bytes": 10067
+    },
+    {
+      "path": "U03-review-wrapper-red-1-inputs.json",
+      "sha256": "aa09971c019084fc8fa998a8cd3da1e5657fc21ed8e8e8a7481492675e5e2873",
+      "bytes": 557
+    },
+    {
+      "path": "U03-review-wrapper-red-1-result.json",
+      "sha256": "9bee114ecdb9d4dc22e0bd0e35649cebf5e79ca4521f6222ae33b5cc7978898d",
+      "bytes": 200
+    },
+    {
+      "path": "U03-review-wrapper-green-1.log",
+      "sha256": "e8e1e7c096b9006e76ca3ee0bb8a9eae8b486d6f1124da2dd7d4719680223290",
+      "bytes": 261
+    },
+    {
+      "path": "U03-review-wrapper-green-1-inputs.json",
+      "sha256": "ae7e8f10daa520ebdc80ea34b4930ee5fdb525a3a9bf679579c192c50263c1d5",
+      "bytes": 813
+    },
+    {
+      "path": "U03-review-wrapper-green-1-result.json",
+      "sha256": "615e66dfdda79af1ca3a03866006c74d65966d758c319e54714ba9c68eb115df",
+      "bytes": 200
+    },
+    {
+      "path": "U03-review-wrapper-green-2.log",
+      "sha256": "793b7b05449a55212fa2e086d1a31d9caac7fb3ce48549996176524b436d50c1",
+      "bytes": 261
+    },
+    {
+      "path": "U03-review-wrapper-green-2-inputs.json",
+      "sha256": "5da4e274ac4a80ea487661b4e75d61b0244aa26eaf456cd16fa795f86b50d676",
+      "bytes": 813
+    },
+    {
+      "path": "U03-review-wrapper-green-2-result.json",
+      "sha256": "81c863c3caad27d92ba26a9575225d4d7c4c4c73ab12956785c9171a92d1e5b6",
+      "bytes": 220
+    },
+    {
+      "path": "U03-review-cleanup-red-1.log",
+      "sha256": "0a96226b77318f9a2c2d5b51abb60d1dd33163f6376f12abf3250fb10c13511a",
+      "bytes": 1280
+    },
+    {
+      "path": "U03-review-cleanup-red-1-inputs.json",
+      "sha256": "1f39ccbedf06fd0381b4403bac45a9b07f39c41e993b16e0882c5039788e2c5b",
+      "bytes": 557
+    },
+    {
+      "path": "U03-review-cleanup-red-1-result.json",
+      "sha256": "5d82c60b85830a148fad85b0d9a5362954d26aa2089244636e8b6605a54b50b5",
+      "bytes": 189
+    },
+    {
+      "path": "U03-review-wrapper-green-2-arbiter.log",
+      "sha256": "82627bbbbc6871be85d955e0043c72963be1f0842797257ce342fe97327944ca",
+      "bytes": 419
+    },
+    {
+      "path": "U03-review-final-format-1.log",
+      "sha256": "7aa8292331c07c3718e39196c169c843a441af7a4c8e406edb8073c05a53e108",
+      "bytes": 79
+    },
+    {
+      "path": "U03-implementation-freeze-5.json",
+      "sha256": "198730fb1732ad1b8075dde09cdcc0a97a3eb78ca4bb54905a460ef74227fb50",
+      "bytes": 10219
+    },
+    {
+      "path": "U03-review-correction-red-1-worker-behavior.test.ts.txt",
+      "sha256": "929b27afe1d90457580f8d266797bff8764534a922f7291cc56cf55e3d461127",
+      "bytes": 2733
+    },
+    {
+      "path": "U03-review-correction-red-1-worker-run-loop.test.ts.txt",
+      "sha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5",
+      "bytes": 7695
+    },
+    {
+      "path": "U03-review-correction-red-1-document-enrichment.test.ts.txt",
+      "sha256": "c09844f5ad063c9922e121ac77d8ec5e80e9892d65ec1f1eb698e7471cc0cdc8",
+      "bytes": 63468
+    },
+    {
+      "path": "U03-review-correction-red-1-deep-memory.test.ts.txt",
+      "sha256": "ea9e683871175ce689c5bb4bf6b058e4e10c67fe5a18baeccf16f4947dd2cd9b",
+      "bytes": 31648
+    },
+    {
+      "path": "U03-review-correction-red-1-indexing-v3-agent.test.ts.txt",
+      "sha256": "a848b1b6e771476883f31b5c499bf1627574d80566aa0c05ff4086d71d97bf82",
+      "bytes": 49660
+    },
+    {
+      "path": "U03-review-correction-red-1-ingestion-lease-fencing.test.ts.txt",
+      "sha256": "0481577209bac69c86d66f9a524e45ceed76f0030b3673b58638aedd102b56c6",
+      "bytes": 18628
+    },
+    {
+      "path": "U03-review-wrapper-red-1-openai-cache.test.ts.txt",
+      "sha256": "af2636a720c1d599f031a2d83fa621e8d9c1821d1c451d15a7c12503468dd178",
+      "bytes": 33223
+    },
+    {
+      "path": "U03-review-wrapper-red-1-model-index-extraction.test.ts.txt",
+      "sha256": "ca118be477fd330a67cfe1005c25d14d1551af8847728294b359406edae9ac03",
+      "bytes": 6235
+    },
+    {
+      "path": "U03-review-cleanup-red-1-deep-memory.test.ts.txt",
+      "sha256": "16f29613d2db0c5d4fa887ed0b4a1b5e62804f662a97e4090f848704a4727288",
+      "bytes": 32844
+    }
+  ]
+}

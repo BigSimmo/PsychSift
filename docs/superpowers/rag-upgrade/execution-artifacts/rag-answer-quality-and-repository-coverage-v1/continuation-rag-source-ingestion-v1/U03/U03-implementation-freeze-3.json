@@ -1,0 +1,608 @@
+{
+  "kind": "U03 supplemental implementer product freeze 3; not final acceptance",
+  "taskBase": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "head": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "branch": "codex/rag-local-build-20260822",
+  "worktree": "C:\\Users\\joshs\\.codex\\worktrees\\rag-local-build-20260822\\Database",
+  "sessionId": "01a08132-76f2-7161-a28c-07d907a472f4",
+  "route": {
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "limitation": "Observed local configuration, not backend attestation"
+  },
+  "files": [
+    {
+      "path": "docs/codebase-index.md",
+      "kind": "modified",
+      "sha256": "8b2a83555b2755e5a0c18954c547599f24d43cf9be882fccb578e8ead32ce398",
+      "bytes": 53778
+    },
+    {
+      "path": "docs/ingestion-state-machine.md",
+      "kind": "modified",
+      "sha256": "e11371cc59a8ccfb00735c51663360d3df20944ed75f8aadc4dc28d92f0d93cc",
+      "bytes": 52959
+    },
+    {
+      "path": "docs/reindex-runbook.md",
+      "kind": "modified",
+      "sha256": "4a3f882afefd139a1ca1435056ca793126d3ea4bf98e2a53031be76b6b91c829",
+      "bytes": 7095
+    },
+    {
+      "path": "docs/scripts-index.md",
+      "kind": "modified",
+      "sha256": "fbdba991d8317b5dab295fa0fd5f568cddc817085cd276c58210db60b0bc2bb4",
+      "bytes": 31859
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md",
+      "kind": "modified",
+      "sha256": "877594a62de02ef3391ae0c9ca7594b827e768d8b0603eef3adfba0530dc2939",
+      "bytes": 39513
+    },
+    {
+      "path": "docs/worker-deploy-runbook.md",
+      "kind": "modified",
+      "sha256": "26905d350d69cad2c6d80791758fde73427bf29726e8a807a5c1c5851822072c",
+      "bytes": 34800
+    },
+    {
+      "path": "scripts/archive/backfill-enrichment.ts",
+      "kind": "modified",
+      "sha256": "0cd838d19a18e26159c50c9291f33fbcb2263c6e8b0cbaf1d2ca981682fb0059",
+      "bytes": 19213
+    },
+    {
+      "path": "scripts/backfill-smart-index.ts",
+      "kind": "modified",
+      "sha256": "e99df48b3474a7674616d0fb7e674adc4636ebcc68ea92f1e0993231963d05ba",
+      "bytes": 17365
+    },
+    {
+      "path": "scripts/enrich-documents.ts",
+      "kind": "modified",
+      "sha256": "d75dbbd2fcddcff444b3a2dfe7fcb399bc1d7d1ed23906609d6f008b39455854",
+      "bytes": 29065
+    },
+    {
+      "path": "scripts/lib/ingestion-operator-compatibility.ts",
+      "kind": "new",
+      "sha256": "1280b45cf22e8042c1d824721a67759eba5c8ad2dc6cd49c311ad635ba883fe0",
+      "bytes": 1300
+    },
+    {
+      "path": "src/lib/deep-memory.ts",
+      "kind": "modified",
+      "sha256": "40e0278ca438ca456b8d7418f2399b77da5ad1ef465bd0e2c393de7150700132",
+      "bytes": 41936
+    },
+    {
+      "path": "src/lib/document-enrichment.ts",
+      "kind": "modified",
+      "sha256": "c88add155b52c32043b2b21fedaf758ea9ff531206f8ecd995322f85ea9d4d5a",
+      "bytes": 47655
+    },
+    {
+      "path": "src/lib/ingestion-repair-plan.ts",
+      "kind": "new",
+      "sha256": "5d271f9f51a6a01b5189a5d3b741c8c83e58b7b59e9ed57b7f8a3de5b0f58d9d",
+      "bytes": 3743
+    },
+    {
+      "path": "src/lib/supabase/database.types.ts",
+      "kind": "modified",
+      "sha256": "cc66971dd7355e4422d29df1cacefa40524ee7b4ec81729e0017acd95a70eda8",
+      "bytes": 128744
+    },
+    {
+      "path": "supabase/functions/_shared/ingestion-attempt.ts",
+      "kind": "new",
+      "sha256": "9b202e70f1b1d67ea729ba9fb1e178e7e7a202055e86f2e9787ea5a485be4e71",
+      "bytes": 4230
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/behavior.ts",
+      "kind": "modified",
+      "sha256": "5f3846d6ffaf9e06bb52f92f4c3e91d3bb0b3f37b3cb7b020e9d2f7260a1d0c2",
+      "bytes": 10497
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/index.ts",
+      "kind": "modified",
+      "sha256": "9024019f81f7f42099cca9323621b12cbd9768bdf420e39053d99dc4074e5188",
+      "bytes": 70487
+    },
+    {
+      "path": "supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql",
+      "kind": "new",
+      "sha256": "5f83705c1de209ac324b095130df4d7687768e9031adaf994f4b4630106a9a9f",
+      "bytes": 119846
+    },
+    {
+      "path": "supabase/schema.sql",
+      "kind": "modified",
+      "sha256": "8b8bfaefc8cde9b9552fb9704905ecfb624979d546c8c08795e394acff2e9f9e",
+      "bytes": 663512
+    },
+    {
+      "path": "tests/check-indexing-contract.test.ts",
+      "kind": "modified",
+      "sha256": "52f422d78bc76172404ee6677ae71817d639070bbf92dff082576718009f122e",
+      "bytes": 5170
+    },
+    {
+      "path": "tests/deep-memory-transaction-sql.test.ts",
+      "kind": "modified",
+      "sha256": "dbd6cfab7b858d4023386f1054641fb644e01716cf3ecd34db0cec8b2700e533",
+      "bytes": 7226
+    },
+    {
+      "path": "tests/deep-memory.test.ts",
+      "kind": "modified",
+      "sha256": "aa9278696f18d4b37d3f2d9b553d93ad562b1de4bf45e1a4e85da926701d6bc7",
+      "bytes": 29527
+    },
+    {
+      "path": "tests/document-enrichment.test.ts",
+      "kind": "modified",
+      "sha256": "9740af0731e37343f50745155f28036459920585538be9a3d79e5bb6e3c3d898",
+      "bytes": 61430
+    },
+    {
+      "path": "tests/indexing-v3-agent.test.ts",
+      "kind": "modified",
+      "sha256": "1660055600d47fd98b082dff458f82cb5e1a76d4d8be9eb7d5812db1e7f0daf1",
+      "bytes": 44687
+    },
+    {
+      "path": "tests/ingestion-lease-fencing.test.ts",
+      "kind": "new",
+      "sha256": "137ae7ddbedbc982de488255717e06f50bdc15a8a932936546f83754fd417719",
+      "bytes": 15979
+    },
+    {
+      "path": "tests/ingestion-operator-compatibility.test.ts",
+      "kind": "new",
+      "sha256": "54716210a3f6de028c1a2f219cb1cf1f90e281019c281e8b898c95937f025961",
+      "bytes": 5045
+    },
+    {
+      "path": "tests/ingestion-repair-plan.test.ts",
+      "kind": "new",
+      "sha256": "4b8d6236584fed0fca96219fb007d3476fed2efdb833ef2a0b59149450f816f4",
+      "bytes": 3178
+    },
+    {
+      "path": "tests/storage-upload-compensation.test.ts",
+      "kind": "modified",
+      "sha256": "addc75e18eea0b1bb15dcebb4474637a58eaee0a0de05964d7ffbb21b0f455b2",
+      "bytes": 4717
+    },
+    {
+      "path": "tests/worker-row-contract.test.ts",
+      "kind": "modified",
+      "sha256": "0b87c98f55e464ecc5675f63b76df4cfd2f756d7cbd7c3a305ab8705e50b0c10",
+      "bytes": 14161
+    },
+    {
+      "path": "tests/worker-run-loop.test.ts",
+      "kind": "modified",
+      "sha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5",
+      "bytes": 7695
+    },
+    {
+      "path": "tests/worker-shadow-extraction.test.ts",
+      "kind": "modified",
+      "sha256": "85369bb50897e913bcebbb743b82708132fe5d59d4c2e73a2b8e725b2f6eca7f",
+      "bytes": 28084
+    },
+    {
+      "path": "tests/worker-visual-capture.test.ts",
+      "kind": "modified",
+      "sha256": "f3f793cce7bc8a01910f7c8d44a7671d26d823cdb5dd8a7022675950b81178a6",
+      "bytes": 6342
+    },
+    {
+      "path": "worker/behavior.ts",
+      "kind": "modified",
+      "sha256": "32abf24491a8e08ce3c861be16cc36e8e722cead68f7b522eaab969ca15ee17c",
+      "bytes": 6023
+    },
+    {
+      "path": "worker/main.ts",
+      "kind": "modified",
+      "sha256": "2156e3aad1488523433997a316845c34491729bb9c97869190065da7c7db4cca",
+      "bytes": 80608
+    },
+    {
+      "path": "worker/row-contracts.ts",
+      "kind": "modified",
+      "sha256": "41474352c1ea70ec15e77894e50e656ccb8e76e071713243b7e1f20e899252db",
+      "bytes": 11833
+    },
+    {
+      "path": "worker/types.ts",
+      "kind": "modified",
+      "sha256": "b9c2647b1982149551756648436d1f7d4b630cf06be9700d4a701338222bb53c",
+      "bytes": 713
+    }
+  ],
+  "newMigrationFunctions": [
+    {
+      "name": "lock_ingestion_document_authority",
+      "arguments": "p_document_id uuid, p_try boolean",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": false,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "assert_current_ingestion_attempt",
+      "arguments": "p_fence jsonb, p_target_generation uuid",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": false,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "claim_ingestion_jobs",
+      "arguments": "p_worker_id text, p_claim_limit integer default 1, p_stale_after_minutes integer default 45",
+      "returns": "setof jsonb",
+      "calls_current_attempt_guard": false,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "claim_indexing_v3_agent_jobs",
+      "arguments": "p_worker_id text, p_claim_limit integer default 1, p_stale_after_minutes integer default 45",
+      "returns": "setof jsonb",
+      "calls_current_attempt_guard": false,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "assert_ingestion_artifact_sources",
+      "arguments": "p_row jsonb, p_document_id uuid, p_generation uuid, p_section_generation uuid",
+      "returns": "void",
+      "calls_current_attempt_guard": false,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "persist_ingestion_summary_projection",
+      "arguments": "p_fence jsonb, p_summary jsonb, p_labels jsonb, p_metadata jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "heartbeat_ingestion_job",
+      "arguments": "p_fence jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "heartbeat_indexing_v3_agent_job",
+      "arguments": "p_fence jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "update_ingestion_job_progress",
+      "arguments": "p_fence jsonb, p_stage text, p_progress integer",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "patch_ingestion_document_state",
+      "arguments": "p_fence jsonb, p_state jsonb, p_metadata jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "start_ingestion_job_stage",
+      "arguments": "p_fence jsonb, p_stage text, p_metadata jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "finish_ingestion_job_stage",
+      "arguments": "p_fence jsonb, p_stage_id uuid, p_ok boolean, p_counts jsonb, p_error text",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "prepare_ingestion_image_upload",
+      "arguments": "p_fence jsonb, p_generation uuid, p_extension text",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "write_ingestion_base_artifacts",
+      "arguments": "p_fence jsonb, p_generation uuid, p_chunks jsonb, p_images jsonb, p_table_facts jsonb, p_embedding_fields jsonb, p_index_units jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "reset_ingestion_attempt_artifacts",
+      "arguments": "p_fence jsonb, p_generation uuid",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "persist_ingestion_index_quality",
+      "arguments": "p_fence jsonb, p_quality jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "commit_document_index_generation",
+      "arguments": "p_fence jsonb, p_generation uuid, p_page_count integer, p_chunk_count integer, p_image_count integer, p_metadata jsonb, p_pages jsonb, p_quality jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "persist_ingestion_image_caption_cache",
+      "arguments": "p_fence jsonb, p_cache jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "complete_ingestion_job",
+      "arguments": "p_fence jsonb, p_batch_id uuid, p_stage text",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "fail_or_retry_ingestion_job",
+      "arguments": "p_fence jsonb, p_batch_id uuid, p_retry boolean, p_stage text, p_error_message text, p_next_run_at timestamptz",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "complete_strict_enrichment_job",
+      "arguments": "p_fence jsonb, p_stage text, p_agent_version text, p_visual_indexing_version text",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "update_indexing_v3_agent_job_status",
+      "arguments": "p_fence jsonb, p_status text, p_error text, p_next_run_at timestamptz, p_metadata jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "stage_ingestion_deep_memory",
+      "arguments": "p_fence jsonb, p_artifact_generation uuid, p_sections jsonb, p_cards jsonb, p_units jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "cleanup_ingestion_deep_memory_staging",
+      "arguments": "p_fence jsonb, p_artifact_generation uuid",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "commit_document_deep_memory_generation",
+      "arguments": "p_fence jsonb, p_artifact_generation uuid, p_rag_memory_version text, p_document_intelligence_version text, p_section_count integer, p_memory_card_count integer, p_index_unit_counts_by_type jsonb, p_anchors jsonb, p_aliases jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "replace_indexing_v3_sections",
+      "arguments": "p_fence jsonb, p_sections jsonb, p_units jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "replace_indexing_v3_memory_cards",
+      "arguments": "p_fence jsonb, p_cards jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "replace_indexing_v3_core_embeddings",
+      "arguments": "p_fence jsonb, p_fields jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "replace_indexing_v3_visual_artifacts",
+      "arguments": "p_fence jsonb, p_images jsonb, p_units jsonb, p_fields jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": true,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "reject_ingestion_repair_audit_mutation",
+      "arguments": "",
+      "returns": "trigger",
+      "calls_current_attempt_guard": false,
+      "postgres_owner_declaration": true
+    },
+    {
+      "name": "record_ingestion_repair_plan",
+      "arguments": "p_plan jsonb",
+      "returns": "jsonb",
+      "calls_current_attempt_guard": false,
+      "postgres_owner_declaration": true
+    }
+  ],
+  "iterationEvidence": [
+    {
+      "name": "U03-increment-1-red-1",
+      "sidecar": {
+        "taskBase": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+        "sourceSha256": "f548a4b6ac8b56262c8f2c057d5e236eb1f950bb4da49f4bf5641b1aa794727e",
+        "arbiterExit": 0,
+        "arbiter": "off",
+        "receipts": "off",
+        "testSha256": "a8479e3df617229ce43844c0df2d9dad71a66e74302407bcf3b79819a0949b14",
+        "command": "node scripts/run-vitest.mjs run tests/document-enrichment.test.ts -t \"U03 refuses summary publication after attempt replacement\"",
+        "childExit": 1
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-increment-1-red-1.log",
+      "log_sha256": "6c062bc99f2d6f464fb181558367a58b4fa990f35f1435b4f774dc7a7843da31"
+    },
+    {
+      "name": "U03-increment-1-green-1",
+      "sidecar": {
+        "receipts": "off",
+        "arbiter": "off",
+        "testSha256": "a8479e3df617229ce43844c0df2d9dad71a66e74302407bcf3b79819a0949b14",
+        "childExit": 0,
+        "sourceSha256": "205e0ebfa1fdbd7a1a2b356f6f782746d456dfc8d64be373baf1deb9b3a079bb",
+        "helperSha256": "ced78d2129594fd144ab1eae35c6e1ba17d4965a6350094b15c9590673a29595",
+        "command": "node scripts/run-vitest.mjs run tests/document-enrichment.test.ts -t \"U03 refuses summary publication after attempt replacement\""
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-increment-1-green-1.log",
+      "log_sha256": "4a3c395011c1249fae9b4ca44da21c7b9557adca40d0704272240b27b08920be"
+    },
+    {
+      "name": "U03-planner-red-1",
+      "sidecar": {
+        "arbiter": "off",
+        "command": "node scripts/run-vitest.mjs run tests/ingestion-repair-plan.test.ts -t \"provides the bounded dry-run planner contract\"",
+        "childExit": 1,
+        "testSha256": "4f62dfbb80f89b2109938d63ba8e04664da7d87e56cbe89d80d19aacdd669913",
+        "receipts": "off"
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-planner-red-1.log",
+      "log_sha256": "1ec10636efb0e9fa8a6cf1bb324892f9595b63988f21d5cf3b3a545cdfec6407"
+    },
+    {
+      "name": "U03-planner-red-2",
+      "sidecar": {
+        "receipts": "off",
+        "command": "node scripts/run-vitest.mjs run tests/ingestion-repair-plan.test.ts -t \"provides the bounded dry-run planner contract\"",
+        "testSha256": "4f62dfbb80f89b2109938d63ba8e04664da7d87e56cbe89d80d19aacdd669913",
+        "childExit": 1,
+        "arbiter": "off"
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-planner-red-2.log",
+      "log_sha256": "d8a1b05015317aa9d0a03848923ffe9a56b956366ba05538d4fbc418f459c613"
+    },
+    {
+      "name": "U03-planner-green-1",
+      "sidecar": {
+        "testSha256": "c7e9a7e57974139fae5be3d75ff858778fc33d2490b48e86bea24bcc767c7d5f",
+        "command": "node scripts/run-vitest.mjs run tests/ingestion-repair-plan.test.ts -t \"provides the bounded dry-run planner contract\"",
+        "sourceSha256": "e87ff50109004ad1f4ab2bf9c5282b95974fa9d79ed4245c4c67c118ce0f3d8b",
+        "childExit": 0
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-planner-green-1.log",
+      "log_sha256": "8ba97a66a0e545546343ccc36b292cfd3d8046fdbea941d3e5d486296c56f832"
+    },
+    {
+      "name": "U03-operator-planner-1",
+      "sidecar": {
+        "exit": 1,
+        "arbiter": "off",
+        "receipts": "off",
+        "command": "node scripts/run-vitest.mjs run tests/ingestion-repair-plan.test.ts tests/ingestion-operator-compatibility.test.ts"
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-operator-planner-1.log",
+      "log_sha256": "ad09de3dd7e92870af4307da72a0d37778305ebf6f92d100df3482f5b6b3c65e"
+    },
+    {
+      "name": "U03-summary-operator-1",
+      "sidecar": {
+        "command": "node scripts/run-vitest.mjs run tests/document-enrichment.test.ts tests/ingestion-operator-compatibility.test.ts",
+        "exit": 1,
+        "receipts": "off",
+        "arbiter": "off"
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-summary-operator-1.log",
+      "log_sha256": "5517b6719c8689065f37d03315a458bb5acaa02220d0be3a2e03b77c37b35685"
+    },
+    {
+      "name": "U03-summary-deep-planner-1",
+      "sidecar": {
+        "command": "node scripts/run-vitest.mjs run tests/document-enrichment.test.ts tests/deep-memory.test.ts tests/ingestion-repair-plan.test.ts",
+        "exit": 1,
+        "receipts": "off",
+        "arbiter": "off"
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-summary-deep-planner-1.log",
+      "log_sha256": "f100945d73ece07749172920e86bba95ef1e5f884640776101aa22bd2eded198"
+    },
+    {
+      "name": "U03-owners-1",
+      "sidecar": {
+        "receipts": "off",
+        "exit": 1,
+        "arbiter": "off",
+        "command": "node scripts/run-vitest.mjs run tests/document-enrichment.test.ts tests/ingestion-lease-fencing.test.ts tests/worker-row-contract.test.ts tests/worker-behavior.test.ts tests/indexing-v3-agent.test.ts tests/check-indexing-contract.test.ts tests/worker-runtime-control.test.ts tests/worker-run-loop.test.ts"
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-owners-1.log",
+      "log_sha256": "5fe3c9b0c2306cd8c770724e927ab31b8f359cd0619d2b3dcfc88171a4723f3c"
+    },
+    {
+      "name": "U03-owners-2",
+      "sidecar": {
+        "exit": 1,
+        "receipts": "off",
+        "arbiter": "off",
+        "command": "node scripts/run-vitest.mjs run tests/deep-memory.test.ts tests/worker-row-contract.test.ts tests/indexing-v3-agent.test.ts tests/check-indexing-contract.test.ts tests/worker-visual-capture.test.ts tests/worker-shadow-extraction.test.ts tests/storage-upload-compensation.test.ts tests/deep-memory-transaction-sql.test.ts tests/ingestion-lease-fencing.test.ts"
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-owners-2.log",
+      "log_sha256": "dbce024a75b1a93d555c3341c6bcd3d4346cbb111b79ce9bd823fb673a4db0dc"
+    },
+    {
+      "name": "U03-shadow-edge-1",
+      "sidecar": {
+        "arbiter": "off",
+        "receipts": "off",
+        "command": "node scripts/run-vitest.mjs run tests/worker-shadow-extraction.test.ts tests/indexing-v3-agent.test.ts",
+        "exit": 0
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-shadow-edge-1.log",
+      "log_sha256": "1b7f37d8013d20d8171799ed08e4352b9df16b35e28839b923320eca907ff7ea"
+    },
+    {
+      "name": "U03-sql-row-1",
+      "sidecar": {
+        "command": "node scripts/run-vitest.mjs run tests/worker-row-contract.test.ts tests/deep-memory-transaction-sql.test.ts tests/ingestion-lease-fencing.test.ts",
+        "exit": 0,
+        "receipts": "off",
+        "arbiter": "off"
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-sql-row-1.log",
+      "log_sha256": "d42399bb3bacce83ca4069bfaa2f2361acbfa0a9a83ae3b4b1ecc48ee133d04b"
+    },
+    {
+      "name": "U03-p05-closure-1",
+      "sidecar": {
+        "arbiter": "off",
+        "receipts": "off",
+        "command": "node scripts/run-vitest.mjs run tests/ingestion-lease-fencing.test.ts -t \"reviewed P05 dependency closure|mirrors effective U03 objects\"",
+        "exit": 0
+      },
+      "log": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-p05-closure-1.log",
+      "log_sha256": "1f2ff562b81381e8c81270b0e9c0e7cc7ed3d175267cacd7ce533929c14ebf07"
+    }
+  ],
+  "processesRunning": false,
+  "testsNotRunByWriter": "Final 15-file selector/compilers/static gates owned by controller; SQL and connected/native/provider execution unauthorised",
+  "supersedes": "U03-implementation-freeze-2.json; only scripts-index headline count corrected from270 to272, npm262 unchanged, per controller measured inventory.",
+  "staging": "Controller-staged36 files preserved. Only docs/scripts-index.md has this additional unstaged correction. Writer did not stage or unstage."
+}

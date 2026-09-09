@@ -1,0 +1,35 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+ ❯ |node| tests/document-enrichment.test.ts (34 tests | 1 failed | 33 skipped) 40ms
+     × U03 refuses summary publication after attempt replacement 34ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/document-enrichment.test.ts > document enrichment > U03 refuses summary publication after attempt replacement
+AssertionError: stale actual producer must report typed lease loss: expected undefined to match object { code: 'lease_lost' }
+
+- Expected:
+{
+  "code": "lease_lost",
+}
+
++ Received:
+undefined
+
+ ❯ tests/document-enrichment.test.ts:438:80
+    436|     release(JSON.stringify(structuredCandidate()));
+    437|     const result = await outcome;
+    438|     expect(result.error, "stale actual producer must report typed leas…
+       |                                                                                ^
+    439|     expect({ summary: supabase.state.summary, labels: supabase.state.l…
+    440|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 33 skipped (34)
+   Start at  21:28:59
+   Duration  2.63s (transform 1.14s, setup 0ms, import 1.57s, tests 40ms, environment 0ms)
+

@@ -1,0 +1,44 @@
+{
+  "atUtc": "2026-09-09T01:59:46.9348781Z",
+  "reports": [
+    {
+      "file": "U03-product-ingestion-review-1.md",
+      "findingIds": [
+        "ING-U03-1",
+        "ING-U03-2",
+        "ING-U03-3"
+      ],
+      "sha": "b7df41f7778b814e3cddc920f1f2b7f2c672fbf71a4a398d06bfb355d2828b1c"
+    },
+    {
+      "file": "U03-product-schema-review-1.md",
+      "findingIds": [
+        "U03-S1",
+        "U03-S2"
+      ],
+      "sha": "a90ed203105f6219512b73294447b5d0c274a7c1a6f53c97f404c98d1ca38978"
+    },
+    {
+      "file": "U03-product-clinical-review-1.md",
+      "findingIds": [
+        "U03-CG-01",
+        "U03-CG-02"
+      ],
+      "sha": "11cf295d8f3555a0ec2a8f0de20435b3011c26d67321132034556c3c4917a3a6"
+    }
+  ],
+  "kind": "U03 failed full-range product review round1; not acceptance",
+  "specification": "FAIL",
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "uniqueImportantFindings": [
+    "Fatal shared persistence transport closure",
+    "Concurrent G0-to-G1 heartbeat handoff",
+    "Caption/model-index provider signal propagation",
+    "Fallback preserves invalid structured payload"
+  ],
+  "correctionBriefSha256": "61bfb0652bad772491cec3366c9fd15a585dae62adb885cba7bee0c26a21bf10",
+  "correctionBrief": "U03-product-correction-round-1.md",
+  "routeEvidence": "U03-product-review-routes-1.json",
+  "head": "b651ee23d8541fbebea77ca1c621fcdec42540ad",
+  "quality": "FAIL"
+}

@@ -1,0 +1,7 @@
+{
+  "receipts": "off",
+  "exit": 1,
+  "arbiter": "RUN",
+  "command": "node scripts/run-vitest.mjs run tests/worker-behavior.test.ts tests/worker-run-loop.test.ts tests/document-enrichment.test.ts tests/deep-memory.test.ts tests/indexing-v3-agent.test.ts tests/ingestion-lease-fencing.test.ts",
+  "gateArbiter": "off"
+}

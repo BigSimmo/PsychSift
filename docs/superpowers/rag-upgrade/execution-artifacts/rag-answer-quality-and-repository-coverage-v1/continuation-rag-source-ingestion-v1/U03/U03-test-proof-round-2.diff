@@ -1,0 +1,26 @@
+diff --git a/tests/model-index-extraction.test.ts b/tests/model-index-extraction.test.ts
+index 6aaf676866..c5c7d1d0b5 100644
+--- a/tests/model-index-extraction.test.ts
++++ b/tests/model-index-extraction.test.ts
+@@ -134,7 +134,7 @@ describe("review correction: actual model-index cancellation wrapper", () => {
+     mocks.generateStructuredTextResponse.mockResolvedValueOnce(empty);
+     const controller = new AbortController();
+     await generateModelIndexProfile({ ...args, signal: controller.signal });
+-    expect(mocks.generateStructuredTextResponse.mock.calls[0]?.[2]).toMatchObject({ signal: controller.signal });
++    expect(mocks.generateStructuredTextResponse.mock.calls[0]?.[2]?.signal).toBe(controller.signal);
+   });
+   it.each([true, false])("refuses pre-aborted work before model invocation, empty=%s", async (isEmpty) => {
+     mocks.generateStructuredTextResponse.mockResolvedValue(empty);
+diff --git a/tests/openai-cache.test.ts b/tests/openai-cache.test.ts
+index 3404f7357f..ef8381c156 100644
+--- a/tests/openai-cache.test.ts
++++ b/tests/openai-cache.test.ts
+@@ -812,7 +812,7 @@ describe("review correction: actual caption cancellation wrapper", () => {
+     const { classifyAndCaptionImageFromBase64 } = await import("../src/lib/openai");
+     const controller = new AbortController();
+     await classifyAndCaptionImageFromBase64({ base64: "ZmFrZQ==", mimeType: "image/png", signal: controller.signal });
+-    expect(create.mock.calls[0]?.[1]).toMatchObject({ signal: controller.signal });
++    expect(create.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+   });
+   it("refuses pre-aborted work before SDK invocation", async () => {
+     const create = vi.fn(() => ({ withResponse: async () => success() }));

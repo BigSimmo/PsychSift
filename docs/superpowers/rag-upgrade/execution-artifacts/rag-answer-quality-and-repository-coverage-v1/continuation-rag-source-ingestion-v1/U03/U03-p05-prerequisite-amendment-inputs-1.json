@@ -1,0 +1,36 @@
+{
+  "status": "unreviewed; no dependent repository change authorised yet",
+  "files": [
+    {
+      "path": "U03-p05-prerequisite-amendment-1.md",
+      "sha256": "2b1fb50f4d78cb558148ee6d93fd8a09e4cf6a2aeb057882de3ba06905540943"
+    },
+    {
+      "path": "U03-frozen-p05-prerequisite-comparison-1.md",
+      "sha256": "e070a47a0ff29d2c4a6643c12fdc01f73f8f91f0f694ffc51306717fa7a3bbb0"
+    },
+    {
+      "path": "U03-frozen-p05-prerequisite-inventory-1.json",
+      "sha256": "d26029cd84b9bbf9677425b1234aa3adb4043a436c74177035a8fe7fa7332168"
+    },
+    {
+      "path": "U03-p05-acl-dependency-inventory-1.md",
+      "sha256": "79e89d96f673ea55d731e81c4428c5c63185bdbf1272ee5bc4537bec7644c72c"
+    },
+    {
+      "path": "U03-p05-closure-addition-1.sql.txt",
+      "sha256": "f0a4d9fbf17e62d6d65326f2ec952cd7ee9233fca3317a0647ae9ac98e5a96ee"
+    },
+    {
+      "path": "U03-p05-acl-correction-1.sql.txt",
+      "sha256": "e7783ab81851a9f1c035781fff8609031aeebaee9ba3a6cc7abb6400ae39205d"
+    },
+    {
+      "path": "U03-execution-contract-prerequisite-candidate-1.md",
+      "sha256": "877594a62de02ef3391ae0c9ca7594b827e768d8b0603eef3adfba0530dc2939"
+    }
+  ],
+  "originalContract": "docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md",
+  "kind": "Frozen exact U03 prerequisite amendment review inputs",
+  "taskBase": "8c11f138e6c683a13db3b465332e7f3cbb515c62"
+}

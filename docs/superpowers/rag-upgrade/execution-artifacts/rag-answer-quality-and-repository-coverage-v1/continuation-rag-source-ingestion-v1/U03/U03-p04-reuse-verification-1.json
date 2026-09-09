@@ -1,0 +1,8 @@
+{
+  "auditSha256": "f7421f631f846fe6570f8c0614224c2f7c0b221797b5ea3f5f891c1a0f7d3c6b",
+  "atUtc": "2026-09-09T01:23:36.1335135Z",
+  "unchangedInputs": 21,
+  "inputManifest": "U03-p04-reuse-inputs-1.json",
+  "scope": "3 fixture documents, 1 targeted, 0 shadow, 0 blocked; not hosted population",
+  "kind": "Reused historical P04 fixture proof after frozen-input comparison; no audit rerun"
+}

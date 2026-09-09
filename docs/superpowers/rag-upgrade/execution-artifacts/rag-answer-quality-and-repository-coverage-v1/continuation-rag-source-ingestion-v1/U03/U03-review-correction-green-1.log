@@ -1,0 +1,47 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+ ❯ |node| tests/deep-memory.test.ts (33 tests | 2 failed) 277ms
+     × keeps the original local construction error when fenced cleanup also fails 8ms
+     × passes exact attempt and unpublished artifact generation to cleanup 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/deep-memory.test.ts > deep RAG memory indexing > keeps the original local construction error when fenced cleanup also fails
+AssertionError: expected [Function] to throw error including 'document_memory_cards' but got 'OpenAI returned an unexpected memory-…'
+
+Expected: "document_memory_cards"
+Received: "OpenAI returned an unexpected memory-card embedding count."
+
+ ❯ tests/deep-memory.test.ts:712:6
+    710|     await expect(
+    711|       upsertDocumentDeepMemory({ supabase: supabase as never, fence: F…
+    712|     ).rejects.toThrow("document_memory_cards");
+       |      ^
+    713|     expect(supabase.rpc.mock.calls.filter(([name]) => name === "cleanu…
+    714|       1,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |node| tests/deep-memory.test.ts > deep RAG memory indexing > passes exact attempt and unpublished artifact generation to cleanup
+AssertionError: expected [Function] to throw error including 'document_memory_cards' but got 'OpenAI returned an unexpected memory-…'
+
+Expected: "document_memory_cards"
+Received: "OpenAI returned an unexpected memory-card embedding count."
+
+ ❯ tests/deep-memory.test.ts:723:6
+    721|     await expect(
+    722|       upsertDocumentDeepMemory({ supabase: supabase as never, fence: F…
+    723|     ).rejects.toThrow("document_memory_cards");
+       |      ^
+    724|     const generation = supabase.rpc.mock.calls[0][1].p_artifact_genera…
+    725|     expect(supabase.rpc).toHaveBeenLastCalledWith("cleanup_ingestion_d…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 5 passed (6)
+      Tests  2 failed | 171 passed (173)
+   Start at  10:14:02
+   Duration  1.95s (transform 718ms, setup 0ms, import 1.22s, tests 1.14s, environment 1ms)
+

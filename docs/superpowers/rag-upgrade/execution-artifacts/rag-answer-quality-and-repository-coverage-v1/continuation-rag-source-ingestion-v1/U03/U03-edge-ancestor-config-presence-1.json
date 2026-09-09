@@ -1,0 +1,104 @@
+{
+  "kind": "Read-only exact ancestor configuration presence; no directory enumeration or configuration execution",
+  "observedAtUtc": "2026-09-09T00:08:47.1615130Z",
+  "root": "C:\\Users\\joshs\\.codex\\worktrees\\rag-local-build-20260822\\Database",
+  "records": [
+    {
+      "path": "C:\\Users\\joshs\\.codex\\worktrees\\rag-local-build-20260822\\deno.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\worktrees\\rag-local-build-20260822\\deno.jsonc",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\worktrees\\rag-local-build-20260822\\package.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\worktrees\\rag-local-build-20260822\\tsconfig.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\worktrees\\deno.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\worktrees\\deno.jsonc",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\worktrees\\package.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\worktrees\\tsconfig.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\deno.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\deno.jsonc",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\package.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\.codex\\tsconfig.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\deno.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\deno.jsonc",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\package.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\joshs\\tsconfig.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\deno.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\deno.jsonc",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\package.json",
+      "present": false
+    },
+    {
+      "path": "C:\\Users\\tsconfig.json",
+      "present": false
+    },
+    {
+      "path": "C:\\deno.json",
+      "present": false
+    },
+    {
+      "path": "C:\\deno.jsonc",
+      "present": false
+    },
+    {
+      "path": "C:\\package.json",
+      "present": false
+    },
+    {
+      "path": "C:\\tsconfig.json",
+      "present": false
+    }
+  ],
+  "limits": "Final native Edge manifest still requires complete local import/config closure review and repeat presence check. Any present ancestor config requires disposition before execution. DENO_NO_PACKAGE_JSON=1 remains mandatory in the approved wrapper."
+}

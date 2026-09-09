@@ -1,0 +1,17 @@
+{
+  "cause": "Windows Python default cp1252 read_text decoded UTF8 originals; restored only reversible encodings of characters present in HEAD, preserving product edits. Future reads explicit UTF8.",
+  "files": [
+    {
+      "path": "src/lib/deep-memory.ts",
+      "repaired_original_characters": 7
+    },
+    {
+      "path": "tests/document-enrichment.test.ts",
+      "repaired_original_characters": 3
+    },
+    {
+      "path": "worker/main.ts",
+      "repaired_original_characters": 8
+    }
+  ]
+}

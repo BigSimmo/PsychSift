@@ -1,0 +1,6 @@
+{
+  "checkCommand": "node node_modules/prettier/bin/prettier.cjs --check tests/indexing-v3-agent.test.ts",
+  "writeExit": 0,
+  "writeCommand": "node node_modules/prettier/bin/prettier.cjs --write tests/indexing-v3-agent.test.ts",
+  "checkExit": 0
+}

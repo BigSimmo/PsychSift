@@ -1,0 +1,3 @@
+Checking formatting...
+[warn] tests/indexing-v3-agent.test.ts
+[warn] Code style issues found in the above file. Run Prettier with --write to fix.

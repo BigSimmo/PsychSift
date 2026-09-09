@@ -1,0 +1,54 @@
+{
+  "version": "u03-edge-inputs-v1",
+  "sourceBase": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "reviewReference": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U03-edge-closure-review-1.md SHA256 2c338e1faa8380767d604ba5face7b1cc56a12029d46f68d9c2885a0991cb72e",
+  "files": [
+    {
+      "path": "package.json",
+      "sha256": "53b6763fc9ba52771d480ab23db19eb988a2bad98cf9c76b9e5ce8fbcfd05bab"
+    },
+    {
+      "path": "supabase/functions/_shared/indexing-coverage.ts",
+      "sha256": "06559304c198a38a566bae5ca3e617dedf2b0ea01bac9ea2aa2dbb5b37e969a8"
+    },
+    {
+      "path": "supabase/functions/_shared/ingestion-attempt.ts",
+      "sha256": "9b202e70f1b1d67ea729ba9fb1e178e7e7a202055e86f2e9787ea5a485be4e71"
+    },
+    {
+      "path": "supabase/functions/_shared/ingestion-generation-visibility.ts",
+      "sha256": "e1f49e632c73d0820d61df35bc829326500267cba1a417680c2697e1e70e894d"
+    },
+    {
+      "path": "supabase/functions/_shared/public-source-policy.ts",
+      "sha256": "89e7a06950e69e1b8d0c836eb6b94148f1568c261ab9b97219f72e272928b1ff"
+    },
+    {
+      "path": "supabase/functions/_shared/source-anchored-summary.ts",
+      "sha256": "a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2"
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/behavior.ts",
+      "sha256": "5f3846d6ffaf9e06bb52f92f4c3e91d3bb0b3f37b3cb7b020e9d2f7260a1d0c2"
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/index.ts",
+      "sha256": "9024019f81f7f42099cca9323621b12cbd9768bdf420e39053d99dc4074e5188"
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/utils.ts",
+      "sha256": "423a416187f3865e90a74208a4bf9ad42452c249f7bbfe387250350006b75f95"
+    },
+    {
+      "path": "supabase/functions/site-content-sync/index.ts",
+      "sha256": "e40afdce2bfbfe642c9efd88e2747934218ea016b0cdb1663b1e69e62a93a45e"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "0538022c480806e9dcab855efe91dc225a8cbfd81d01c6d9ba9caae239dbaabc"
+    }
+  ],
+  "discoverySha256": "de66784e17abd53a43a0187e2038cce44ed37ab23eceb2a0c2ac97682d9e368c",
+  "ancestorConfigurationEvidence": "U03-edge-ancestor-config-presence-1.json",
+  "limits": "Complete local import/config input binding; compilation and final product review separate"
+}

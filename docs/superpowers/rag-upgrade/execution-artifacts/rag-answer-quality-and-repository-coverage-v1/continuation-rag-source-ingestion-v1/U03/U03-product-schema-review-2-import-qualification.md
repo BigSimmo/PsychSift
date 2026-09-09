@@ -1,0 +1,13 @@
+# U03 schema review 2 import-line qualification
+
+This clarifies one evidence statement in `U03-product-schema-review-2.md`, SHA256 `49a12b16e10ff3ff07a7a00bad504becb725358eb1d50dd385631ee250ad0550`. The original report and hash remain unchanged. It is not a new branch review or review of subsequent wrapper-test changes.
+
+Candidate remains `57ba6d6fc2505f03a1ee0df82b186bccd0a455c2`, original base `8c11f138e6c683a13db3b465332e7f3cbb515c62`.
+
+The native Edge evidence row's wording that the native check "validates the actual runtime import independently" was too broad. The source `@ts-ignore` at `supabase/functions/indexing-v3-agent/behavior.ts:2` also applies when Deno processes the import at line 3. Neither the scoped Node compiler PASS nor the two-root native Deno PASS alone provides unqualified diagnostic proof for that annotated import line. Native compilation remains evidence for the actual checked closure and its consumers, subject to source annotations. It does not supersede the annotation or replace source inspection at this line.
+
+I inspected the actual shared source during the original review and rechecked these exact immutable candidate blobs for this clarification using `git show <candidate>:<path>`, with the task worktree supplied explicitly. The annotated import resolves by its literal relative path to `supabase/functions/_shared/ingestion-attempt.ts`. That committed module contains real exported definitions for runtime `IngestionAttemptError` (line 14) and `parseIngestionMutationResult` (line 72), and real exported contracts for the type-only imports `IngestionFence` (line 2) and `IngestionAttempt` (line 84). The latter class implements the used `serialize` API at line 92. The actual Edge entrypoint separately imports the shared class/error/parser at `index.ts:1` and imports the production behavior seam. These are source-inspection conclusions, not claims of executed runtime import resolution or unsuppressed compiler diagnostics.
+
+My **Specification PASS and Quality PASS remain unchanged for the reviewed candidate's authorised source/offline scope**, with this explicit evidentiary limitation. The correction does not establish SQL, provider, native-document or production acceptance. The controller's `U03-controller-import-diagnostic-qualification-1.md` accurately states this limitation.
+
+Only the three named immutable Edge/shared blobs and the controller's outside qualification were read for this clarification. No moving repository file, test, gate, compiler, provider, SQL, worker or operational command was inspected or run. Only this new outside note was written. Author: the same independent schema reviewer, `/root/u03_product_schema_review_2`, session `01a08401-d9f7-7bb0-89e1-a4496f010a43`.

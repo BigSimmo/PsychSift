@@ -1,0 +1,74 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+ ❯ |node| tests/ingestion-operator-compatibility.test.ts (11 tests | 4 failed) 123ms
+     × refuses index write flags undefined before effects 4ms
+     × refuses index write flags "--confirm" before effects 7ms
+     × refuses index write flags "--metadata-only" before effects 2ms
+     × refuses index write flags "--confirm" before effects 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/ingestion-operator-compatibility.test.ts > actual unleased operator entry points > refuses index write flags undefined before effects
+TypeError: flags is not iterable
+ ❯ tests/ingestion-operator-compatibility.test.ts:31:54
+     29|   it.each([[], ["--confirm"], ["--metadata-only"], ["--confirm", "--me…
+     30|     const { main } = await import("../scripts/backfill-smart-index");
+     31|     await expect(main(["--all-owners", "--write", ...flags])).rejects.…
+       |                                                      ^
+     32|     expect(harness.imports).toEqual([]); expect(harness.reads).toEqual…
+     33|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |node| tests/ingestion-operator-compatibility.test.ts > actual unleased operator entry points > refuses index write flags "--confirm" before effects
+ FAIL  |node| tests/ingestion-operator-compatibility.test.ts > actual unleased operator entry points > refuses index write flags "--confirm" before effects
+AssertionError: expected Error: Missing value for m to match object { code: 'ingestion_attempt_required' }
+
+- Expected
++ Received
+
+- {
+-   "code": "ingestion_attempt_required",
++ Error {
++   "message": "Missing value for m",
+  }
+
+ ❯ tests/ingestion-operator-compatibility.test.ts:31:62
+     29|   it.each([[], ["--confirm"], ["--metadata-only"], ["--confirm", "--me…
+     30|     const { main } = await import("../scripts/backfill-smart-index");
+     31|     await expect(main(["--all-owners", "--write", ...flags])).rejects.…
+       |                                                              ^
+     32|     expect(harness.imports).toEqual([]); expect(harness.reads).toEqual…
+     33|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |node| tests/ingestion-operator-compatibility.test.ts > actual unleased operator entry points > refuses index write flags "--metadata-only" before effects
+AssertionError: expected Error: Missing value for y to match object { code: 'ingestion_attempt_required' }
+
+- Expected
++ Received
+
+- {
+-   "code": "ingestion_attempt_required",
++ Error {
++   "message": "Missing value for y",
+  }
+
+ ❯ tests/ingestion-operator-compatibility.test.ts:31:62
+     29|   it.each([[], ["--confirm"], ["--metadata-only"], ["--confirm", "--me…
+     30|     const { main } = await import("../scripts/backfill-smart-index");
+     31|     await expect(main(["--all-owners", "--write", ...flags])).rejects.…
+       |                                                              ^
+     32|     expect(harness.imports).toEqual([]); expect(harness.reads).toEqual…
+     33|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  4 failed | 22 passed (26)
+   Start at  07:58:43
+   Duration  432ms (transform 181ms, setup 0ms, import 158ms, tests 133ms, environment 0ms)
+

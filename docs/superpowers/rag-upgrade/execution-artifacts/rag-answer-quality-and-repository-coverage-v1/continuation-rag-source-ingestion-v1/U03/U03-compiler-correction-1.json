@@ -1,0 +1,6 @@
+{
+  "arbiter": "off",
+  "exit": 0,
+  "receipts": "off",
+  "command": "node scripts/run-vitest.mjs run tests/document-enrichment.test.ts tests/deep-memory.test.ts tests/ingestion-operator-compatibility.test.ts tests/worker-shadow-extraction.test.ts"
+}

@@ -1,0 +1,11 @@
+# U03 import-line diagnostic qualification
+
+Candidate: `57ba6d6fc2505f03a1ee0df82b186bccd0a455c2`; original base `8c11f138e6c683a13db3b465332e7f3cbb515c62`.
+
+The new runtime import in `supabase/functions/indexing-v3-agent/behavior.ts` has a source `@ts-ignore` for the existing Node/Deno extension compatibility boundary. That same annotation is visible to Deno. Neither the scoped Node compiler PASS nor the two-root native Deno PASS alone supplies unqualified diagnostic proof for this annotated import line. No declaration stub, remap, root omission or compiler-option relaxation was added.
+
+The controller inspected the actual source diff and shared owner. The runtime imports `IngestionAttemptError` and `parseIngestionMutationResult` are real exported class/function definitions; the type-only `IngestionAttempt` and `IngestionFence` are real exported contracts, and the class implements the used queue API. The independent ingestion review2 separately confirms these actual exports and explicitly states the annotation limits both compiler verdicts. Native compilation remains useful evidence for the rest of the real closure and its consumers.
+
+The final verification route and schema review2 contain wording that native compilation independently validates this runtime import. Read those sentences subject to the precise limitation above, not as a claim that Deno ignores the source annotation. Their raw reports/hashes remain unchanged. Source inspection provides the annotated-line evidence; successful compilers do not replace it. This is a controller evidence qualification, not a changed reviewer verdict, product edit, rerun, or runtime/native-document proof.
+
+A bounded request for the schema reviewer to clarify that wording could not start while the clinical and RAG wrapper review wave occupied the runtime thread capacity. No duplicate review or skipped requirement was substituted. The verified independent ingestion report already supplies the conservative source/diagnostic distinction.

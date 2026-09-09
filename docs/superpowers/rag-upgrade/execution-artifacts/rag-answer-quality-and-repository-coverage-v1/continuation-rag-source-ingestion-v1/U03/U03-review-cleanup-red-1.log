@@ -1,0 +1,35 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+ ❯ |node| tests/deep-memory.test.ts (34 tests | 1 failed | 33 skipped) 36ms
+     × review correction: cleanup uncertainty cancels actual optional orchestration 35ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/deep-memory.test.ts > review correction: actual deep-memory optional orchestration > review correction: cleanup uncertainty cancels actual optional orchestration
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ tests/deep-memory.test.ts:819:28
+    817|       await runIngestionMutation(attempt, later, "complete_ingestion_j…
+    818|     };
+    819|     await expect(process()).rejects.toBeDefined();
+       |                            ^
+    820|     expect(attempt.signal.aborted).toBe(true);
+    821|     expect(later).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 33 skipped (34)
+   Start at  10:17:58
+   Duration  687ms (transform 317ms, setup 0ms, import 475ms, tests 36ms, environment 0ms)
+

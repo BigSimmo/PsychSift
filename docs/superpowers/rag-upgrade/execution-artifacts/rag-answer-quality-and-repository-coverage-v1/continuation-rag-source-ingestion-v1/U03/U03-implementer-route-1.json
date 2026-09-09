@@ -1,0 +1,14 @@
+{
+  "session": "01a08132-76f2-7161-a28c-07d907a472f4",
+  "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\08\\rollout-2026-09-08T21-26-03-01a08132-76f2-7161-a28c-07d907a472f4.jsonl",
+  "observed": {
+    "line": 8,
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "timestamp": "2026-09-08T13:26:07.713Z"
+  },
+  "requestedModel": "gpt-6-astra",
+  "requestedEffort": "high",
+  "taskBase": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "limit": "Observed local resolved configuration; not backend attestation"
+}

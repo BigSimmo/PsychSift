@@ -1,0 +1,70 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+stderr | tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips 1 supported items without truncating canonical Unicode text
+document enrichment generation failed {
+  document: 'synthetic-inventory.txt',
+  name: 'Error',
+  message: 'source_anchored_summary_profile_text_invalid',
+  stack: 'at fail (C:[path])'
+}
+
+stderr | tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips 8 supported items without truncating canonical Unicode text
+document enrichment generation failed {
+  document: 'synthetic-inventory.txt',
+  name: 'Error',
+  message: 'source_anchored_summary_profile_overview_invalid',
+  stack: 'at fail (C:[path])'
+}
+
+ ❯ |node| tests/document-enrichment.test.ts (34 tests | 3 failed) 134ms
+     × round-trips 1 supported items without truncating canonical Unicode text 18ms
+     × round-trips 8 supported items without truncating canonical Unicode text 37ms
+     × does not overwrite manual organization authority written after the live read 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips 1 supported items without truncating canonical Unicode text
+ FAIL  |node| tests/document-enrichment.test.ts > source-anchored summary v1 > round-trips 8 supported items without truncating canonical Unicode text
+Error: source_anchored_summary_generation_failed
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:768:11
+    766|       ...safeErrorLogDetails(error),
+    767|     });
+    768|     throw new Error("source_anchored_summary_generation_failed", { cau…
+       |           ^
+    769|   }
+    770| }
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:835:15
+ ❯ produceSummary tests/document-enrichment.test.ts:776:5
+ ❯ tests/document-enrichment.test.ts:820:21
+
+Caused by: Error: source_anchored_summary_profile_text_invalid
+ ❯ fail supabase/functions/_shared/source-anchored-summary.ts:150:9
+ ❯ boundedCanonicalText supabase/functions/_shared/source-anchored-summary.ts:183:78
+ ❯ validateProfileItem supabase/functions/_shared/source-anchored-summary.ts:296:16
+ ❯ supabase/functions/_shared/source-anchored-summary.ts:354:7
+ ❯ validateProfile supabase/functions/_shared/source-anchored-summary.ts:353:97
+ ❯ normalizeSourceAnchoredSummary supabase/functions/_shared/source-anchored-summary.ts:566:19
+ ❯ generateSourceAnchoredSummary src/lib/document-enrichment.ts:737:12
+ ❯ Module.upsertDocumentEnrichment src/lib/document-enrichment.ts:835:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |node| tests/document-enrichment.test.ts > source-anchored summary v1 > does not overwrite manual organization authority written after the live read
+TypeError: Cannot convert undefined or null to object
+ ❯ tests/document-enrichment.test.ts:1553:67
+
+    1551|     expect(supabase.state.documentMetadata.organization_profile).toEqu…
+    1552|     expect(supabase.state.documentMetadata.organization_profile_versio…
+    1553|     expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata_patch).not.toHa…
+       |                                                                   ^
+    1554|     expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata_patch).not.toHa…
+    1555|   });
+ Test Files  1 failed | 1 passed (2)
+      Tests  3 failed | 42 passed (45)
+   Start at  08:02:09
+   Duration  1.15s (transform 831ms, setup 0ms, import 968ms, tests 346ms, environment 0ms)
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+

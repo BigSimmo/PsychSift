@@ -1,0 +1,24 @@
+{
+  "kind": "Post-run corrected input inventory; original pre-run inventory1 omitted model path due mistaken .ts suffix",
+  "files": [
+    {
+      "path": "tests/document-clinical-summary.test.ts",
+      "sha256": "5bda65ee6ab49b2a2f4b6cb773e77fccd775d88aee4732d63286e605b49841a6"
+    },
+    {
+      "path": "src/components/document-viewer/document-clinical-summary.tsx",
+      "sha256": "b72042ff76db599ed79c3456fa9e0da836467fd312f4475f231d736d03d8070f",
+      "identicalToImmutableBase": true
+    },
+    {
+      "path": "src/lib/types.ts",
+      "sha256": "bf59aac7d2841ac8902d636c87d08fee18e5f480a91710b5cbdab50457aa958b",
+      "identicalToImmutableBase": true
+    },
+    {
+      "path": "supabase/functions/_shared/source-anchored-summary.ts",
+      "sha256": "a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2",
+      "identicalToImmutableBase": true
+    }
+  ]
+}

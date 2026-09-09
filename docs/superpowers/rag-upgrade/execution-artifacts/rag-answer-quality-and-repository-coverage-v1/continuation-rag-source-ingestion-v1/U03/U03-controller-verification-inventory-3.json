@@ -1,0 +1,106 @@
+{
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "head": "bbd978a5708ed70c51e293aab079ead9c5bcb1ce",
+  "accepted": false,
+  "newProof": {
+    "command": "node scripts/run-vitest.mjs run tests/openai-cache.test.ts tests/model-index-extraction.test.ts",
+    "exit": 0,
+    "passed": 29,
+    "skipped": 0,
+    "files": 2,
+    "inputsVerified": 12
+  },
+  "reuse": "All prior production/SQL/Edge/P04 evidence retained at original input identities; two assertion-only changes introduce no production/type contract; no fresh compiler claim. See round2 verification route.",
+  "qualification": "Both compilers are limited at the annotated Edge import line; actual exports independently inspected; schema qualification confirms verdict unchanged. Module-index remains failed with unchanged baseline gaps.",
+  "pending": "Corrected-head three full-original-range specialist rebinds and bounded RAG Quality closure",
+  "artifacts": [
+    {
+      "path": "U03-candidate-binding-3.json",
+      "sha256": "4759824eb7d37b93eefd232df7d659116fc631fa01b66a4e17db46514306e4bb"
+    },
+    {
+      "path": "U03-implementation-freeze-7.json",
+      "sha256": "df84e179232a4c0408b742bbac2822c206679f9d70e364d32a82780894d930c2"
+    },
+    {
+      "path": "U03-controller-freeze-7-verification.json",
+      "sha256": "14392bf1b805c67c7513da6d21b00a9fe15dcf751d009993bac4c31b26535f94"
+    },
+    {
+      "path": "U03-controller-verification-inventory-2.json",
+      "sha256": "1f7e03137c13660fa0907f494c4d3ec44fb027f86ecdfdb12c39afc691f03abf"
+    },
+    {
+      "path": "U03-test-proof-correction-round-2.md",
+      "sha256": "1e003a76410fc520772c2af0078e6cef8ca7b004fbc49289c4261bded63df94b"
+    },
+    {
+      "path": "U03-test-proof-round-2-report.md",
+      "sha256": "ee9fe0607201f9a1f70a44be86dc345daa41438f000b82536edf96622bbe3a6f"
+    },
+    {
+      "path": "U03-test-proof-round-2-inputs.json",
+      "sha256": "94b0118f656f0238b6a1a36f53d44b57b893be73ea8d4770f55c3dedb78159f0"
+    },
+    {
+      "path": "U03-test-proof-round-2-result.json",
+      "sha256": "58ab6b98cd7ab5c34d741ed8e78fc2ad780160ed433516ba7728cf14d6ad054f"
+    },
+    {
+      "path": "U03-test-proof-round-2.log",
+      "sha256": "58bdffee9725256c20562076d7b5416e9986ed497b530193af102afcc50e8982"
+    },
+    {
+      "path": "U03-test-proof-round-2-arbiter.log",
+      "sha256": "9bc48e30183638e66b923e8551f046ae9ae5729e1766be32440eb2f1b6b63b0b"
+    },
+    {
+      "path": "U03-test-proof-round-2-format.log",
+      "sha256": "0713a8c29bf68ecfb96d81870b657931bd1e326c68daf2468b96b12fac6b020b"
+    },
+    {
+      "path": "U03-test-proof-round-2-format-check.log",
+      "sha256": "f20510a9da4717c51c4cffee6d0dd88d6c9a723d0a83711d01216f5b48961283"
+    },
+    {
+      "path": "U03-test-proof-round-2.diff",
+      "sha256": "9cf5cb870f9689c28f96e734a830946c72227c8472d5f731709d9b6d3a417dfc"
+    },
+    {
+      "path": "U03-test-proof-round-2-verification-route.md",
+      "sha256": "b6225bec0404ae97b74739c46f15a59a18bc912b225564c4b4f38a33121c099e"
+    },
+    {
+      "path": "U03-product-ingestion-review-2.md",
+      "sha256": "4801e8106070c0b1018580ca5db35b04826bc362c04af410ec108ebaa931b9c1"
+    },
+    {
+      "path": "U03-product-schema-review-2.md",
+      "sha256": "49a12b16e10ff3ff07a7a00bad504becb725358eb1d50dd385631ee250ad0550"
+    },
+    {
+      "path": "U03-product-clinical-review-2.md",
+      "sha256": "146541229e8720c0f2dabcfe5daf5d1162fc914d8710a4d141b4f6a417103bfe"
+    },
+    {
+      "path": "U03-product-wrapper-review-1.md",
+      "sha256": "76186838d749237cd69c5db79632e30d1c7f59e376bb41310955087e0d276f41"
+    },
+    {
+      "path": "U03-product-schema-review-2-import-qualification.md",
+      "sha256": "ae664a7ad6f1d757bc4c7d303360bc25ba24e359cd8af86e1ca2cd1d3f47ea6a"
+    },
+    {
+      "path": "U03-controller-import-diagnostic-qualification-1.md",
+      "sha256": "399b52984dee7aae1fc644e73637355b548b0a49482dff94425cd7c1aad7b1ec"
+    },
+    {
+      "path": "U03-product-review-routes-2a.json",
+      "sha256": "6d2223f81fa50cc9104f504581793a6d19f46093c37ddceb2278a4f3f16fa79c"
+    },
+    {
+      "path": "U03-product-review-routes-2b.json",
+      "sha256": "9c3ecf499776b1428eb20ce2f263fd3cf4b5df32a18401350f29d2c8117e4f1f"
+    }
+  ]
+}

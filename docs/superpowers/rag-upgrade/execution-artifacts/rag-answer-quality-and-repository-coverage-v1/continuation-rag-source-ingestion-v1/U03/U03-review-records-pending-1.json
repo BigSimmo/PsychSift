@@ -1,0 +1,23 @@
+{
+  "status": "Prepared canonical helper output only; repository immutable records not yet written",
+  "records": [
+    {
+      "report": "U03-product-ingestion-review-1.md",
+      "sourceSha256": "b7df41f7778b814e3cddc920f1f2b7f2c672fbf71a4a398d06bfb355d2828b1c",
+      "path": "docs/branch-review-records/1011bc243a7af678b3e030b42e9bf939a9fc86a979669782b60b73f27f7e9c59.record.md",
+      "row": "| 2026-09-09 | codex/rag-local-build-20260822 | b651ee23d8541fbebea77ca1c621fcdec42540ad | U03 product ingestion round1 original-range review | 3 Important findings; Spec FAIL; Quality FAIL | Independent gpt-6-astra/xhigh read-only review; shared controller local evidence consumed, no reviewer test run; report U03-product-ingestion-review-1.md SHA256 b7df41f7778b814e3cddc920f1f2b7f2c672fbf71a4a398d06bfb355d2828b1c; SQL/provider/native/clinical acceptance unrun. Failed verdict preserved. |"
+    },
+    {
+      "report": "U03-product-schema-review-1.md",
+      "sourceSha256": "a90ed203105f6219512b73294447b5d0c274a7c1a6f53c97f404c98d1ca38978",
+      "path": "docs/branch-review-records/8a4fc4f89fd8769d72d8d6267d240593288ac1170dd23c12d72f6ec1db2cb591.record.md",
+      "row": "| 2026-09-09 | codex/rag-local-build-20260822 | b651ee23d8541fbebea77ca1c621fcdec42540ad | U03 product schema round1 original-range review | 2 Important findings; Spec FAIL; Quality FAIL | Independent gpt-6-astra/xhigh read-only review; shared controller local evidence consumed, no reviewer test run; report U03-product-schema-review-1.md SHA256 a90ed203105f6219512b73294447b5d0c274a7c1a6f53c97f404c98d1ca38978; SQL/provider/native/clinical acceptance unrun. Failed verdict preserved. |"
+    },
+    {
+      "report": "U03-product-clinical-review-1.md",
+      "sourceSha256": "11cf295d8f3555a0ec2a8f0de20435b3011c26d67321132034556c3c4917a3a6",
+      "path": "docs/branch-review-records/003b467b33e4e1df260f619f0916b3d1bfe37e6b202b48376060cf3b0cd754c3.record.md",
+      "row": "| 2026-09-09 | codex/rag-local-build-20260822 | b651ee23d8541fbebea77ca1c621fcdec42540ad | U03 product clinical round1 original-range review | 2 Important findings; Spec FAIL; Quality FAIL | Independent gpt-6-astra/xhigh read-only review; shared controller local evidence consumed, no reviewer test run; report U03-product-clinical-review-1.md SHA256 11cf295d8f3555a0ec2a8f0de20435b3011c26d67321132034556c3c4917a3a6; SQL/provider/native/clinical acceptance unrun. Failed verdict preserved. |"
+    }
+  ]
+}

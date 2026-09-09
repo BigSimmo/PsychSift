@@ -1,0 +1,34 @@
+[
+  {
+    "path": "scripts/enrich-documents.ts",
+    "sha256": "6f7d02225bfa4331c1ec7a75b1aaea7f15bb7d71ace1b0ac6c9e500748973b92"
+  },
+  {
+    "path": "src/lib/document-enrichment.ts",
+    "sha256": "5b501bfdbeed26e9049c52ce3828b9563b413f1e8dc240c2f01905d700c2c760"
+  },
+  {
+    "path": "src/lib/supabase/database.types.ts",
+    "sha256": "dcb21f4473fa1bc75d772583b2b5cbc239064f19084bc8a04514a852cc440480"
+  },
+  {
+    "path": "tests/deep-memory.test.ts",
+    "sha256": "0673fa803d2f64a25d2b625aff23d272a44a7c8d009604f51b9cb40563d289e6"
+  },
+  {
+    "path": "tests/document-enrichment.test.ts",
+    "sha256": "1715614315832268f7e1e8b6c440ed780916314246d3d4439f2423cdfa7dcd17"
+  },
+  {
+    "path": "tests/ingestion-operator-compatibility.test.ts",
+    "sha256": "54716210a3f6de028c1a2f219cb1cf1f90e281019c281e8b898c95937f025961"
+  },
+  {
+    "path": "tests/worker-shadow-extraction.test.ts",
+    "sha256": "85369bb50897e913bcebbb743b82708132fe5d59d4c2e73a2b8e725b2f6eca7f"
+  },
+  {
+    "path": "worker/main.ts",
+    "sha256": "9d962c2384991ae4503f33f0750a75c692ad3881ee5c6d3c9b1f5f016e6ac871"
+  }
+]

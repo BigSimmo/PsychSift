@@ -1,0 +1,9 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+
+ Test Files  2 passed (2)
+      Tests  64 passed (64)
+   Start at  08:38:20
+   Duration  1.09s (transform 303ms, setup 0ms, import 1.01s, tests 213ms, environment 0ms)
+

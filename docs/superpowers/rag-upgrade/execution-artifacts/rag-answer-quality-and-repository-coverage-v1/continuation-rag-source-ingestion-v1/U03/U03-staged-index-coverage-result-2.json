@@ -1,0 +1,322 @@
+{
+  "kind": "scoped staged tracked module-index equivalent",
+  "head": "b651ee23d8541fbebea77ca1c621fcdec42540ad",
+  "checkerSha256": "838ad3b31bfc0db4c178dc53a892099ce9dbf7569dcbcfa3917cb79ce38e322d",
+  "trackedPathListSha256": "c9e28418cdf98869ceb289692945f8dabef0983084595a402188785bbb0a0522",
+  "indexSha256": "8b2a83555b2755e5a0c18954c547599f24d43cf9be882fccb578e8ead32ce398",
+  "schemaSha256": "34c22c97cabd6b9a0f754265c1b4da69b440c5c250f66fb3bffa551b83a31741",
+  "groups": [
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": ".agents"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": ".claude"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": ".codex"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": ".cursor"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": ".design-sync"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": ".githooks"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": ".github"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": ".superpowers"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": ".vscode"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "data"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "docs"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "eslint-rules"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "eval"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "mockups"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "plugins"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "public"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "scripts"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "src"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "supabase"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "tests"
+    },
+    {
+      "kind": "root",
+      "dir": ".",
+      "name": "worker"
+    },
+    {
+      "kind": "lib",
+      "dir": "src/lib",
+      "name": "developer-area"
+    },
+    {
+      "kind": "lib",
+      "dir": "src/lib",
+      "name": "documents"
+    },
+    {
+      "kind": "lib",
+      "dir": "src/lib",
+      "name": "extractors"
+    },
+    {
+      "kind": "lib",
+      "dir": "src/lib",
+      "name": "observability"
+    },
+    {
+      "kind": "lib",
+      "dir": "src/lib",
+      "name": "rag"
+    },
+    {
+      "kind": "lib",
+      "dir": "src/lib",
+      "name": "site-content"
+    },
+    {
+      "kind": "lib",
+      "dir": "src/lib",
+      "name": "supabase"
+    },
+    {
+      "kind": "lib",
+      "dir": "src/lib",
+      "name": "validation"
+    },
+    {
+      "kind": "lib",
+      "dir": "src/lib",
+      "name": "webhooks"
+    },
+    {
+      "kind": "route",
+      "dir": "src/app",
+      "name": "(search-app)"
+    },
+    {
+      "kind": "route",
+      "dir": "src/app",
+      "name": "applications"
+    },
+    {
+      "kind": "route",
+      "dir": "src/app",
+      "name": "auth"
+    },
+    {
+      "kind": "route",
+      "dir": "src/app",
+      "name": "icons"
+    },
+    {
+      "kind": "route",
+      "dir": "src/app",
+      "name": "mockups"
+    },
+    {
+      "kind": "route",
+      "dir": "src/app",
+      "name": "privacy"
+    },
+    {
+      "kind": "route",
+      "dir": "src/app",
+      "name": "reference"
+    },
+    {
+      "kind": "route",
+      "dir": "src/app",
+      "name": "safety-plan"
+    },
+    {
+      "kind": "route",
+      "dir": "src/app",
+      "name": "ward-management"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "account"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "admin"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "answer"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "answer-feedback"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "differentials"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "documents"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "eval-cases"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "health"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "images"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "ingestion"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "jobs"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "local-project-id"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "medications"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "registry"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "search"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "setup-status"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "upload"
+    },
+    {
+      "kind": "api",
+      "dir": "src/app/api",
+      "name": "webhooks"
+    }
+  ],
+  "gaps": [
+    {
+      "full": "./.superpowers",
+      "kind": "root",
+      "tried": [
+        ".superpowers/"
+      ]
+    }
+  ],
+  "tables": {
+    "missing": [
+      "site_content_public_authority",
+      "site_content_publications",
+      "site_content_release_gate_artifacts",
+      "site_content_release_operations",
+      "site_content_release_projections",
+      "site_content_releases",
+      "site_content_sync_outbox",
+      "site_content_synchronizer_state",
+      "site_content_validation_binding_consumptions"
+    ],
+    "stale": []
+  },
+  "excluded": [
+    "protected 1/",
+    "unrelated untracked directories"
+  ]
+}

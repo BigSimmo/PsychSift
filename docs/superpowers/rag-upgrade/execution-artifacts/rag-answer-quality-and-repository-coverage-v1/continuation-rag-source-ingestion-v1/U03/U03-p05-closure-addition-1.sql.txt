@@ -1,0 +1,135 @@
+-- REVIEW CANDIDATE ONLY. Exact selected P05 snapshot dependencies from immutable TASK_BASE. No SQL execution authorised.
+
+create or replace function public.require_document_publication_approval_state_digest()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_metadata jsonb;
+  v_index_generation_id uuid;
+begin
+  if new.reviewed_state_digest is null then
+    raise exception 'publication approval requires a reviewed content/state digest';
+  end if;
+
+  select d.metadata, d.index_generation_id
+  into v_metadata, v_index_generation_id
+  from public.documents d
+  where d.id = new.document_id
+  for share;
+  if not found then
+    raise exception 'publication approval document % was not found', new.document_id;
+  end if;
+
+  if v_metadata->>'corpus_scope' = 'australian_public' then
+    if new.source_catalogue_key is null
+      or new.source_policy_version is null
+      or new.reviewed_index_generation_id is null then
+      raise exception 'Australian publication approval requires version-2 source and generation evidence';
+    end if;
+    if new.reviewed_index_generation_id is distinct from v_index_generation_id then
+      raise exception 'Australian publication approval generation does not match the committed document generation';
+    end if;
+    if v_metadata->>'source_catalogue_key' is distinct from new.source_catalogue_key
+      or v_metadata->>'source_policy_version' is distinct from new.source_policy_version then
+      raise exception 'Australian publication approval source policy does not match document metadata';
+    end if;
+    if v_metadata->>'content_mode' is distinct from 'indexed_content'
+      or v_metadata->>'licence_policy' is distinct from 'public_index_permitted' then
+      raise exception 'Australian publication approval requires publicly indexable content';
+    end if;
+    if v_metadata->>'document_status' is distinct from 'current'
+      or coalesce(v_metadata->>'change_state', '') not in ('unchanged', 'changed')
+      or nullif(btrim(coalesce(v_metadata->>'superseded_by_document_id', '')), '') is not null then
+      raise exception 'Australian publication approval requires an active current source';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.public_source_document_is_serving_eligible(p_document_id uuid)
+returns boolean language sql stable security definer set search_path = ''
+as $$
+  select case
+    when document.metadata->>'corpus_scope' = 'australian_public'
+      and nullif(btrim(document.metadata->>'source_catalogue_key'), '') is null then false
+    when document.metadata->>'source_catalogue_key' is null then true
+    else exists (
+      select 1
+      from public.public_source_versions version
+      join public.document_publication_approvals approval
+        on approval.id = version.publication_approval_id
+       and approval.document_id = document.id
+       and approval.expected_prior_owner_id = version.staging_owner_id
+       and approval.decision = 'approved'
+       and approval.source_catalogue_key = version.source_catalogue_key
+       and approval.source_policy_version = version.source_policy_version
+       and approval.reviewed_index_generation_id = version.publication_reviewed_index_generation_id
+       and approval.reviewed_state_digest = version.publication_reviewed_state_digest
+       and approval.manifest_digest = version.publication_manifest_digest
+      where version.staging_document_id = document.id
+        and version.source_catalogue_key = document.metadata->>'source_catalogue_key'
+        and version.lifecycle = 'active'
+        and document.owner_id is null
+        and document.status = 'indexed'
+        and document.index_generation_id = approval.reviewed_index_generation_id
+        and document.metadata->>'publication_approval_id' = approval.id::text
+    )
+  end
+  from public.documents document where document.id = p_document_id;
+$$;
+
+create or replace function public.require_active_public_source_version_for_publication()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  if new.owner_id is null
+     and (new.metadata->>'corpus_scope' = 'australian_public'
+       or new.metadata->>'source_catalogue_key' is not null)
+     and not public.public_source_document_is_serving_eligible(new.id)
+  then raise exception 'Catalogue-tagged public document requires its exact active public source version'; end if;
+  return new;
+end;
+$$;
+
+create or replace function public.require_active_public_source_artifact_for_publication()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  if new.owner_id is null and not public.public_source_document_is_serving_eligible(new.document_id)
+  then raise exception 'Public source artifact requires its exact active source version'; end if;
+  return new;
+end;
+$$;
+
+create constraint trigger public_source_documents_require_active_version
+after insert or update on public.documents
+deferrable initially immediate
+for each row execute function public.require_active_public_source_version_for_publication();
+
+create constraint trigger public_source_document_labels_require_active_version after insert or update on public.document_labels deferrable initially immediate for each row execute function public.require_active_public_source_artifact_for_publication();
+
+create constraint trigger public_source_document_summaries_require_active_version after insert or update on public.document_summaries deferrable initially immediate for each row execute function public.require_active_public_source_artifact_for_publication();
+
+create constraint trigger public_source_document_sections_require_active_version after insert or update on public.document_sections deferrable initially immediate for each row execute function public.require_active_public_source_artifact_for_publication();
+
+create constraint trigger public_source_document_memory_cards_require_active_version after insert or update on public.document_memory_cards deferrable initially immediate for each row execute function public.require_active_public_source_artifact_for_publication();
+
+create constraint trigger public_source_document_table_facts_require_active_version after insert or update on public.document_table_facts deferrable initially immediate for each row execute function public.require_active_public_source_artifact_for_publication();
+
+create constraint trigger public_source_document_embedding_fields_require_active_version after insert or update on public.document_embedding_fields deferrable initially immediate for each row execute function public.require_active_public_source_artifact_for_publication();
+
+create constraint trigger public_source_document_index_quality_require_active_version after insert or update on public.document_index_quality deferrable initially immediate for each row execute function public.require_active_public_source_artifact_for_publication();
+
+create constraint trigger public_source_document_index_units_require_active_version after insert or update on public.document_index_units deferrable initially immediate for each row execute function public.require_active_public_source_artifact_for_publication();
+
+-- Exact explicit declarations missing from the snapshot; effective service_role ACL correction is a separate reviewed proposal.
+revoke all on function public.require_document_publication_approval_state_digest() from public, anon, authenticated;
+revoke all on function public.require_active_public_source_artifact_for_publication() from public, anon, authenticated;
+revoke all on function public.public_source_document_is_serving_eligible(uuid) from public, anon, authenticated;
+revoke all on function public.require_active_public_source_version_for_publication() from public, anon, authenticated;
+revoke all on function public.reject_public_source_activation_event_mutation() from public, anon, authenticated;
+revoke all on function public.guard_public_source_version_identity() from public, anon, authenticated;

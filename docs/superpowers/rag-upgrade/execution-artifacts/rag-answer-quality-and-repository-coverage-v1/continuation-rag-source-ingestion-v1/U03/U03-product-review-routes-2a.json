@@ -1,0 +1,82 @@
+[
+  {
+    "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T10-31-00-01a08401-1c25-7690-a95d-46a32f246891.jsonl",
+    "observed": [
+      {
+        "line": 1,
+        "type": "session_meta",
+        "id": "01a08401-1c25-7690-a95d-46a32f246891",
+        "agent_role": "ingestion-worker-reviewer",
+        "agent_path": "/root/u03_product_ingestion_review_2",
+        "source": {
+          "subagent": {
+            "thread_spawn": {
+              "parent_thread_id": "01a07b47-4623-7e90-825a-ec25116b8531",
+              "depth": 1,
+              "agent_path": "/root/u03_product_ingestion_review_2",
+              "agent_nickname": "Jason",
+              "agent_role": "ingestion-worker-reviewer"
+            }
+          }
+        },
+        "model_provider": "openai"
+      },
+      {
+        "line": 8,
+        "type": "turn_context",
+        "timestamp": "2026-09-09T02:31:04.109Z",
+        "model": "gpt-6-astra",
+        "effort": "xhigh",
+        "collaboration_mode": {
+          "mode": "default",
+          "settings": {
+            "model": "gpt-6-astra",
+            "reasoning_effort": "xhigh",
+            "developer_instructions": null
+          }
+        }
+      }
+    ],
+    "limitation": "Parent read exact child selected local configuration only; not backend attestation"
+  },
+  {
+    "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T10-31-49-01a08401-d9f7-7bb0-89e1-a4496f010a43.jsonl",
+    "observed": [
+      {
+        "line": 1,
+        "type": "session_meta",
+        "id": "01a08401-d9f7-7bb0-89e1-a4496f010a43",
+        "agent_role": "supabase-schema-guardian",
+        "agent_path": "/root/u03_product_schema_review_2",
+        "source": {
+          "subagent": {
+            "thread_spawn": {
+              "parent_thread_id": "01a07b47-4623-7e90-825a-ec25116b8531",
+              "depth": 1,
+              "agent_path": "/root/u03_product_schema_review_2",
+              "agent_nickname": "Anscombe",
+              "agent_role": "supabase-schema-guardian"
+            }
+          }
+        },
+        "model_provider": "openai"
+      },
+      {
+        "line": 8,
+        "type": "turn_context",
+        "timestamp": "2026-09-09T02:31:52.44Z",
+        "model": "gpt-6-astra",
+        "effort": "xhigh",
+        "collaboration_mode": {
+          "mode": "default",
+          "settings": {
+            "model": "gpt-6-astra",
+            "reasoning_effort": "xhigh",
+            "developer_instructions": null
+          }
+        }
+      }
+    ],
+    "limitation": "Parent read exact child selected local configuration only; not backend attestation"
+  }
+]

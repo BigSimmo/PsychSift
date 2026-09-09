@@ -1,0 +1,1640 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+ ❯ |node| tests/indexing-v3-agent.test.ts (38 tests | 5 failed) 202ms
+     × binds each generation-aware read predicate to its own SQL statement before decisions 8ms
+     × binds generation authority to each generated-artifact write and conflict 1ms
+     × generation-bounds each repair, replacement, and cleanup mutation 1ms
+     × replaces every generated enrichment family inside one database transaction 7ms
+     × persists the complete payload before labels and marks projection complete only afterwards 0ms
+ ❯ |node| tests/worker-row-contract.test.ts (28 tests | 10 failed) 37ms
+     × accepts a realistic claimed row without mutating it 10ms
+     × preserves unknown columns at both levels rather than stripping them 2ms
+     × accepts null owner_id and batch_id, which are nullable columns 1ms
+     × accepts every document status the check constraint permits 1ms
+     × reports only Zod issue paths, never row content 4ms
+     × returns an all-valid batch by the same references in the same order 5ms
+     × rejects only the malformed row and keeps valid siblings 1ms
+     × tolerates a missing batch_id key when building the failable identity 1ms
+     × preserves an indexed document status so a bad reindex row cannot demote a live index 1ms
+     × falls back to a null owner and failed status when documents is unreadable 1ms
+ ❯ |node| tests/check-indexing-contract.test.ts (9 tests | 2 failed) 11ms
+     × binds smart backfill to typed/raw exact-generation authority before source/provider work 5ms
+     × binds document enrichment to typed/raw exact-generation authority before source/provider work 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 17 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/check-indexing-contract.test.ts > smart-index repair selection > binds smart backfill to typed/raw exact-generation authority before source/provider work
+AssertionError: expected 'import { assertUnleasedOperatorModeAl…' to match /upsertDocumentEnrichment\(\{[\s\S]*?i…/
+
+- Expected:
+/upsertDocumentEnrichment\(\{[\s\S]*?indexGenerationId(?:\s*:\s*generationId)?,/
+
++ Received:
+"import { assertUnleasedOperatorModeAllowed, isDirectScriptInvocation, unavailableUnleasedIngestionOperation } from \"./lib/ingestion-operator-compatibility\";
+import { createHash } from \"node:crypto\";
+import { loadEnvConfig } from \"@next/env\";
+import {
+  SOURCE_ANCHORED_MAX_CHUNKS,
+  SOURCE_ANCHORED_MAX_IMAGES,
+  SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
+  requireExactSourceAnchoredGeneration,
+} from \"../supabase/functions/_shared/source-anchored-summary\";
+
+
+type Args = {
+  allOwners: boolean;
+  ownerId?: string;
+  documentId?: string;
+  limit: number;
+  write: boolean;
+  confirm: boolean;
+  metadataOnly: boolean;
+};
+
+type SimpleSupabaseReader = { from: (table: string) => any };
+
+/**
+ * Parses command-line arguments into document repair options.
+ *
+ * @param argv - Command-line argument tokens.
+ * @returns The validated repair options.
+ * @throws Error if a required flag value is missing, no scope selector is provided, or the limit is not a positive integer.
+ */
+function parseArgs(argv: string[]): Args {
+  const args: Args = {
+    allOwners: false,
+    ownerId: process.env.RAG_EVAL_OWNER_ID ?? process.env.LOCAL_NO_AUTH_OWNER_ID,
+    limit: 10,
+    write: false,
+    confirm: false,
+    metadataOnly: false,
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (token === \"--all-owners\") {
+      args.allOwners = true;
+      args.ownerId = undefined;
+      continue;
+    }
+    if (token === \"--write\") {
+      args.write = true;
+      continue;
+    }
+    if (token === \"--confirm\") {
+      args.confirm = true;
+      continue;
+    }
+    if (token === \"--metadata-only\") {
+      args.metadataOnly = true;
+      continue;
+    }
+    const value = argv[index + 1];
+    if (!value || value.startsWith(\"--\")) throw new Error(`Missing value for ${token}`);
+    index += 1;
+    if (token === \"--owner-id\") args.ownerId = value;
+    if (token === \"--document-id\") args.documentId = value;
+    if (token === \"--limit\") args.limit = Number.parseInt(value, 10);
+  }
+  if (!args.allOwners && !args.ownerId && !args.documentId) {
+    throw new Error(\"Provide --owner-id, --document-id, --all-owners, or LOCAL_NO_AUTH_OWNER_ID/RAG_EVAL_OWNER_ID.\");
+  }
+  if (!Number.isInteger(args.limit) || args.limit <= 0) throw new Error(\"--limit must be a positive integer.\");
+  // A document id is already an exact, service-role scoped selector. Keeping
+  // the ambient local owner default here made public corpus repairs match zero
+  // rows even when the requested document existed.
+  if (args.documentId) args.ownerId = undefined;
+  return args;
+}
+
+function metadataRecord(metadata: unknown): Record<string, unknown> {
+  return metadata && typeof metadata === \"object\" && !Array.isArray(metadata)
+    ? { ...(metadata as Record<string, unknown>) }
+    : {};
+}
+
+function hashText(value: string) {
+  return createHash(\"sha256\").update(value).digest(\"hex\");
+}
+
+function hashEmbeddingFieldText(value: string) {
+  return createHash(\"md5\").update(value).digest(\"hex\");
+}
+
+function compactSearchText(value: unknown, limit = 900) {
+  const clean = String(value ?? \"\")
+    .replace(/\\s+/g, \" \")
+    .trim();
+  return clean.length <= limit ? clean : clean.slice(0, limit).trim();
+}
+
+async function loadRows<T>(
+  supabase: SimpleSupabaseReader,
+  table: string,
+  select: string,
+  documentId: string,
+  indexGenerationId: string,
+) {
+  const rows: T[] = [];
+  const limit = table === \"document_chunks\" ? SOURCE_ANCHORED_MAX_CHUNKS : SOURCE_ANCHORED_MAX_IMAGES;
+  for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
+    let query = supabase
+      .from(table)
+      .select(select)
+      .eq(\"document_id\", documentId)
+      .eq(\"index_generation_id\", indexGenerationId);
+    query =
+      table === \"document_chunks\"
+        ? query.order(\"chunk_index\", { ascending: true }).order(\"id\", { ascending: true })
+        : query
+            .order(\"clinical_relevance_score\", { ascending: false, nullsFirst: false })
+            .order(\"page_number\", { ascending: true, nullsFirst: false })
+            .order(\"id\", { ascending: true });
+    const { data, error } = await query.range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...((data ?? []) as T[]));
+    if (rows.length > limit) throw new Error(\"source_anchored_summary_source_limit_exceeded\");
+    if (!data || data.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
+  }
+  return rows;
+}
+
+async function loadDocumentSummary(args: { supabase: unknown; documentId: string }) {
+  const readable = args.supabase as {
+    from: (table: string) => {
+      select: (columns: string) => {
+        eq: (
+          column: string,
+          value: unknown,
+        ) => {
+          maybeSingle: () => PromiseLike<{
+            data: { summary?: string | null } | null;
+            error: { message: string } | null;
+          }>;
+        };
+      };
+    };
+  };
+  const { data, error } = await readable
+    .from(\"document_summaries\")
+    .select(\"summary\")
+    .eq(\"document_id\", args.documentId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.summary ?? null;
+}
+
+async function upsertDocumentLevelEmbeddingFields(args: {
+  supabase: unknown;
+  document: Record<string, unknown>;
+  chunks: Record<string, unknown>[];
+  summary: string | null;
+  embedTexts: (texts: string[]) => Promise<number[][]>;
+}) {
+  const sourceChunkId = args.chunks[0]?.id;
+  if (!sourceChunkId) return 0;
+  const writable = args.supabase as {
+    from: (table: string) => {
+      delete: () => {
+        eq: (
+          column: string,
+          value: unknown,
+        ) => {
+          in: (column: string, values: unknown[]) => PromiseLike<{ error: { message: string } | null }>;
+        };
+      };
+      insert: (rows: Record<string, unknown>[]) => PromiseLike<{ error: { message: string } | null }>;
+    };
+  };
+  const inputs = [
+    {
+      field_type: \"document_title\",
+      content: compactSearchText(`${args.document.title ?? \"\"} ${args.document.file_name ?? \"\"}`, 600),
+    },
+    {
+      field_type: \"document_summary\",
+      content: compactSearchText(`${args.document.title ?? \"\"} ${args.summary ?? \"\"}`, 1200),
+    },
+  ].filter((input) => input.content);
+  if (inputs.length === 0) return 0;
+
+  const { error: deleteError } = await writable
+    .from(\"document_embedding_fields\")
+    .delete()
+    .eq(\"document_id\", args.document.id)
+    .in(\"field_type\", [\"document_title\", \"document_summary\"]);
+  if (deleteError) throw new Error(deleteError.message);
+
+  const embeddings = await args.embedTexts(inputs.map((input) => input.content));
+  const rows = inputs.map((input, index) => ({
+    owner_id: args.document.owner_id ?? null,
+    document_id: args.document.id,
+    source_chunk_id: sourceChunkId,
+    field_type: input.field_type,
+    content: input.content,
+    content_hash: hashEmbeddingFieldText(input.content),
+    embedding: embeddings[index],
+    metadata: { source: \"backfill_document_level\" },
+  }));
+  const { error } = await writable.from(\"document_embedding_fields\").insert(rows);
+  if (error) throw new Error(error.message);
+  return rows.length;
+}
+
+async function countRows(args: { supabase: unknown; table: string; documentId: string }) {
+  const readable = args.supabase as {
+    from: (table: string) => {
+      select: (
+        columns: string,
+        options?: Record<string, unknown>,
+      ) => {
+        eq: (
+          column: string,
+          value: unknown,
+        ) => PromiseLike<{ count?: number | null; error: { message: string } | null }>;
+      };
+    };
+  };
+  const { count, error } = await readable
+    .from(args.table)
+    .select(\"id\", { count: \"exact\", head: true })
+    .eq(\"document_id\", args.documentId);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+async function upsertIndexQuality(args: {
+  supabase: unknown;
+  document: Record<string, unknown>;
+  chunks: Record<string, unknown>[];
+  images: Record<string, unknown>[];
+  sectionCount: number;
+  memoryCardCount: number;
+  generationId: string;
+}) {
+  const chunkCount = args.chunks.length;
+  const headingCount = args.chunks.filter((chunk) => String(chunk.section_heading ?? \"\").trim()).length;
+  const fingerprints = args.chunks.map((chunk) => hashText(String(chunk.content ?? \"\")));
+  const duplicateChunkRatio = chunkCount ? 1 - new Set(fingerprints).size / Math.max(fingerprints.length, 1) : 0;
+  const avgChunkLength = chunkCount
+    ? args.chunks.reduce((sum, chunk) => sum + String(chunk.content ?? \"\").length, 0) / chunkCount
+    : 0;
+  const headingDensity = chunkCount ? headingCount / chunkCount : 0;
+  const tableImages = args.images.filter(
+    (image) => image.source_kind === \"table_crop\" || image.image_type === \"clinical_table\",
+  );
+  const issues: string[] = [];
+  if (chunkCount === 0) issues.push(\"no indexed chunks\");
+  if (avgChunkLength < 120 && chunkCount > 0) issues.push(\"short average chunks\");
+  if (headingDensity < 0.08 && chunkCount >= 8) issues.push(\"low heading density\");
+  if (duplicateChunkRatio > 0.18) issues.push(\"high duplicate chunk ratio\");
+  if (args.sectionCount === 0) issues.push(\"no structured sections\");
+  if (args.memoryCardCount === 0) issues.push(\"no memory cards\");
+  let qualityScore = 1 - issues.length * 0.08 - Math.min(0.2, duplicateChunkRatio * 0.5);
+  if (headingDensity < 0.08 && chunkCount >= 8) qualityScore -= 0.08;
+  qualityScore = Math.max(0, Math.min(1, qualityScore));
+  const extractionQuality = qualityScore >= 0.78 ? \"good\" : qualityScore >= 0.48 ? \"partial\" : \"poor\";
+  const metrics = {
+    page_count:
+      args.document.page_count ||
+      Math.max(0, ...args.chunks.map((chunk) => Number(chunk.page_number ?? 0)).filter(Number.isFinite)),
+    chunk_count: chunkCount,
+    image_count: args.images.length,
+    table_image_count: tableImages.length,
+    text_character_count: args.chunks.reduce((sum, chunk) => sum + String(chunk.content ?? \"\").length, 0),
+    avg_chunk_length: Number(avgChunkLength.toFixed(1)),
+    duplicate_chunk_ratio: Number(duplicateChunkRatio.toFixed(3)),
+    heading_density: Number(headingDensity.toFixed(3)),
+    section_count: args.sectionCount,
+    memory_card_count: args.memoryCardCount,
+    index_generation_id: args.generationId,
+  };
+  const client = args.supabase as {
+    rpc: (name: string, params: Record<string, unknown>) => PromiseLike<{ error: { message: string } | null }>;
+    from: (table: string) => {
+      upsert: (
+        row: Record<string, unknown>,
+        options?: Record<string, unknown>,
+      ) => PromiseLike<{ error: { message: string } | null }>;
+      update: (row: Record<string, unknown>) => {
+        eq: (column: string, value: unknown) => PromiseLike<{ error: { message: string } | null }>;
+      };
+    };
+  };
+  const { error } = await client.from(\"document_index_quality\").upsert(
+    {
+      document_id: args.document.id,
+      owner_id: args.document.owner_id ?? null,
+      quality_score: Number(qualityScore.toFixed(3)),
+      extraction_quality: extractionQuality,
+      issues,
+      metrics,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: \"document_id\" },
+  );
+  if (error) throw new Error(error.message);
+  const { error: documentError } = await client
+    .from(\"documents\")
+    .update({
+      status: \"indexed\",
+      error_message: null,
+      page_count: metrics.page_count,
+      chunk_count: chunkCount,
+      image_count: args.images.length,
+    })
+    .eq(\"id\", args.document.id);
+  if (documentError) throw new Error(documentError.message);
+  const { error: metadataError } = await client.rpc(\"apply_document_metadata_patch\", {
+    p_document_id: args.document.id,
+    p_metadata_patch: {
+      indexed_at: new Date().toISOString(),
+      extraction_quality: extractionQuality,
+      index_quality_score: Number(qualityScore.toFixed(3)),
+      index_quality_issues: issues,
+      index_quality_metrics: metrics,
+    },
+  });
+  if (metadataError) throw new Error(metadataError.message);
+  return { qualityScore: Number(qualityScore.toFixed(3)), extractionQuality, issues };
+}
+
+export async function main(argv: string[]) {
+  const args = parseArgs(argv);
+  assertUnleasedOperatorModeAllowed({ command: \"index:backfill\", write: args.write });
+  const [
+    { requireOpenAIEnv, requireServerEnv },
+    { createAdminClient },
+    { assertSourceAnchoredSummaryPreflight, upsertDocumentEnrichment },
+    { upsertDocumentDeepMemory, ragDeepMemoryVersion },
+    { embedTexts },
+  ] = await Promise.all([
+    import(\"@/lib/env\"),
+    import(\"@/lib/supabase/admin\"),
+    import(\"@/lib/document-enrichment\"),
+    import(\"@/lib/deep-memory\"),
+    import(\"@/lib/openai\"),
+  ]);
+  requireServerEnv();
+  requireOpenAIEnv();
+  const supabase = createAdminClient();
+  const reader = supabase as unknown as SimpleSupabaseReader;
+  let query = supabase
+    .from(\"documents\")
+    .select(\"id,owner_id,title,file_name,source_path,status,index_generation_id,metadata\")
+    .order(\"created_at\", { ascending: true })
+    .limit(args.documentId ? 1 : args.limit);
+  if (!args.documentId) query = query.eq(\"status\", \"indexed\");
+  if (args.documentId) query = query.eq(\"id\", args.documentId);
+  if (args.ownerId) query = query.eq(\"owner_id\", args.ownerId);
+  const { data: documents, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const writeEnabled = args.write && args.confirm;
+  console.log(`Smart index backfill ${writeEnabled ? \"WRITE\" : \"DRY-RUN\"} documents=${documents?.length ?? 0}`);
+  if (args.write && !args.confirm) console.log(\"WRITE requested without --confirm; staying in dry-run mode.\");
+  if (args.metadataOnly)
+    console.log(\"Metadata-only mode: repairing chunk metadata, document-level fields, labels, and quality rows.\");
+
+  for (const document of documents ?? []) {
+    const generationId = requireExactSourceAnchoredGeneration(document.index_generation_id, document.metadata);
+    const indexingDocument = {
+      ...document,
+      metadata: metadataRecord(document.metadata),
+    };
+    const [chunks, images] = await Promise.all([
+      loadRows<Record<string, unknown>>(
+        reader,
+        \"document_chunks\",
+        \"id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content_hash,index_generation_id,content,image_ids,metadata\",
+        document.id,
+        generationId,
+      ),
+      loadRows<Record<string, unknown>>(
+        reader,
+        \"document_images\",
+        \"id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata\",
+        document.id,
+        generationId,
+      ),
+    ]);
+    assertSourceAnchoredSummaryPreflight({
+      documentMetadata: indexingDocument.metadata,
+      indexGenerationId: generationId,
+      chunks: chunks as never,
+      images: images as never,
+    });
+
+    if (!writeEnabled) {
+      console.log(
+        `DRY ${document.file_name}: chunks=${chunks.length} images=${images.length}; would refresh enrichment, model-heavy memory cards, index units, aliases, and quality metadata`,
+      );
+      continue;
+    }
+
+    const summary = await loadDocumentSummary({ supabase, documentId: document.id });
+    const embeddingFields = await upsertDocumentLevelEmbeddingFields({
+      supabase,
+      document: indexingDocument,
+      chunks: chunks as Record<string, unknown>[],
+      summary,
+      embedTexts,
+    });
+    if (args.metadataOnly) {
+      const [sectionCount, memoryCardCount] = await Promise.all([
+        countRows({ supabase, table: \"document_sections\", documentId: document.id }),
+        countRows({ supabase, table: \"document_memory_cards\", documentId: document.id }),
+      ]);
+      const quality = await upsertIndexQuality({
+        supabase,
+        document: indexingDocument,
+        chunks: chunks as Record<string, unknown>[],
+        images: images as Record<string, unknown>[],
+        sectionCount,
+        memoryCardCount,
+        generationId,
+      });
+      console.log(
+        `REPAIRED ${document.file_name}: fields=${embeddingFields} quality=${quality.qualityScore} issues=${quality.issues.length}`,
+      );
+      continue;
+    }
+
+    const enrichment = await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentEnrichment>>>();
+    const memory = await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentDeepMemory>>>();
+    const quality = await upsertIndexQuality({
+      supabase,
+      document: indexingDocument,
+      chunks: chunks as Record<string, unknown>[],
+      images: images as Record<string, unknown>[],
+      sectionCount: memory.sections.length,
+      memoryCardCount: memory.memoryCards.length,
+      generationId,
+    });
+    console.log(
+      `WROTE ${document.file_name}: labels=${enrichment.labels.length} sections=${memory.sections.length} memory=${memory.memoryCards.length} indexUnits=${memory.indexUnits.length} fields=${embeddingFields} quality=${quality.qualityScore} modelFacts=${memory.modelProfile?.clinical_facts.length ?? 0} questions=${memory.modelProfile?.askable_questions.length ?? 0}`,
+    );
+  }
+}
+
+if (isDirectScriptInvocation(import.meta.url, process.argv[1])) {
+  loadEnvConfig(process.cwd());
+  main(process.argv.slice(2)).catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});
+
+}
+"
+
+ ❯ tests/check-indexing-contract.test.ts:72:26
+     70|     expect(scriptSource).toContain("SOURCE_ANCHORED_MAX_IMAGES");
+     71|     expect(scriptSource).toContain("source_anchored_summary_source_lim…
+     72|     expect(scriptSource).toMatch(/upsertDocumentEnrichment\(\{[\s\S]*?…
+       |                          ^
+     73|   });
+     74|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/17]⎯
+
+ FAIL  |node| tests/check-indexing-contract.test.ts > smart-index repair selection > binds document enrichment to typed/raw exact-generation authority before source/provider work
+AssertionError: expected 'import { assertUnleasedOperatorModeAl…' to match /upsertDocumentEnrichment\(\{[\s\S]*?i…/
+
+- Expected:
+/upsertDocumentEnrichment\(\{[\s\S]*?indexGenerationId(?:\s*:\s*generationId)?,/
+
++ Received:
+"import { assertUnleasedOperatorModeAllowed, isDirectScriptInvocation, unavailableUnleasedIngestionOperation } from \"./lib/ingestion-operator-compatibility\";
+import { loadEnvConfig } from \"@next/env\";
+import type { SupabaseClient } from \"@supabase/supabase-js\";
+import { createHash } from \"node:crypto\";
+import {
+  SOURCE_ANCHORED_MAX_CHUNKS,
+  SOURCE_ANCHORED_MAX_IMAGES,
+  SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
+  requireExactSourceAnchoredGeneration,
+} from \"../supabase/functions/_shared/source-anchored-summary\";
+
+
+type EnrichArgs = {
+  ownerEmail?: string;
+  ownerId?: string;
+  allOwners: boolean;
+  mode: string;
+  limit: number;
+  documentId?: string;
+  includeCurrent: boolean;
+  document?: string;
+};
+
+type SupabaseAdmin = Awaited<ReturnType<typeof loadAdminClient>>;
+type MetadataRow = { id?: string; document_id: string; metadata?: unknown; source?: string | null };
+
+async function loadAdminClient() {
+  const { createAdminClient } = await import(\"@/lib/supabase/admin\");
+  return createAdminClient();
+}
+
+function parseArgs(argv: string[]): EnrichArgs {
+  const args: EnrichArgs = {
+    ownerEmail: process.env.RAG_EVAL_OWNER_EMAIL,
+    ownerId: process.env.RAG_EVAL_OWNER_ID ?? process.env.LOCAL_NO_AUTH_OWNER_ID,
+    allOwners:
+      !process.env.RAG_EVAL_OWNER_EMAIL && !process.env.RAG_EVAL_OWNER_ID && !process.env.LOCAL_NO_AUTH_OWNER_ID,
+    mode: \"summaries-labels-images\",
+    limit: 25,
+    includeCurrent: false,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const token = argv[index];
+    if (!token.startsWith(\"--\")) continue;
+    if (token === \"--all-owners\") {
+      args.allOwners = true;
+      continue;
+    }
+    if (token === \"--include-current\") {
+      args.includeCurrent = true;
+      continue;
+    }
+    const value = argv[index + 1];
+    if (!value || value.startsWith(\"--\")) throw new Error(`Missing value for ${token}`);
+    index += 1;
+
+    if (token === \"--owner-email\") args.ownerEmail = value;
+    if (token === \"--owner-id\") args.ownerId = value;
+    if (token === \"--mode\") args.mode = value;
+    if (token === \"--limit\") args.limit = Number.parseInt(value, 10);
+    if (token === \"--document-id\") args.documentId = value;
+    if (token === \"--document\") args.document = value;
+  }
+
+  if (!Number.isInteger(args.limit) || args.limit <= 0) throw new Error(\"--limit must be a positive integer.\");
+  return args;
+}
+
+async function findOwnerIdByEmail(supabase: SupabaseAdmin, email: string) {
+  const normalized = email.trim().toLowerCase();
+  const perPage = 1000;
+
+  for (let page = 1; page < 50; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw new Error(error.message);
+    const user = data.users.find((candidate) => candidate.email?.toLowerCase() === normalized);
+    if (user?.id) return user.id;
+    if (data.users.length < perPage) break;
+  }
+
+  throw new Error(`No Supabase Auth user found for ${email}. Sign in once before enriching documents.`);
+}
+
+async function loadDocuments(supabase: SupabaseAdmin, args: EnrichArgs, ownerId?: string) {
+  let query = supabase
+    .from(\"documents\")
+    .select(\"id,owner_id,title,file_name,source_path,status,index_generation_id,metadata\")
+    .eq(\"status\", \"indexed\")
+    .order(\"created_at\", { ascending: true })
+    .limit(args.documentId ? 1 : Math.max(args.limit * 10, 1000));
+
+  if (ownerId) query = query.eq(\"owner_id\", ownerId);
+  if (args.documentId) query = query.eq(\"id\", args.documentId);
+  if (args.document) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(args.document);
+    if (isUuid) {
+      query = query.or(`id.eq.${args.document},file_name.ilike.%${args.document}%,title.ilike.%${args.document}%`);
+    } else {
+      query = query.or(`file_name.ilike.%${args.document}%,title.ilike.%${args.document}%`);
+    }
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+async function loadEnrichmentCoverage(supabase: SupabaseAdmin, documentIds: string[]) {
+  const summaries: MetadataRow[] = [];
+  const labels: MetadataRow[] = [];
+
+  for (let start = 0; start < documentIds.length; start += 5) {
+    const ids = documentIds.slice(start, start + 5);
+    const [summaryResult, labelResult] = await Promise.all([
+      supabase.from(\"document_summaries\").select(\"document_id,metadata\").in(\"document_id\", ids),
+      supabase.from(\"document_labels\").select(\"id,document_id,source,metadata\").in(\"document_id\", ids),
+    ]);
+
+    if (summaryResult.error) throw new Error(summaryResult.error.message);
+    if (labelResult.error) throw new Error(labelResult.error.message);
+    summaries.push(...((summaryResult.data ?? []) as MetadataRow[]));
+    labels.push(...((labelResult.data ?? []) as MetadataRow[]));
+  }
+
+  const coverage = new Map<string, { summary?: MetadataRow; labels: MetadataRow[] }>();
+  for (const documentId of documentIds) coverage.set(documentId, { labels: [] });
+  for (const summary of summaries) {
+    coverage.set(summary.document_id, { ...(coverage.get(summary.document_id) ?? { labels: [] }), summary });
+  }
+  for (const label of labels) {
+    const existing = coverage.get(label.document_id) ?? { labels: [] };
+    coverage.set(label.document_id, { ...existing, labels: [...existing.labels, label] });
+  }
+
+  return coverage;
+}
+
+async function loadRowsForDocuments(
+  supabase: SupabaseAdmin,
+  table: \"document_sections\" | \"document_memory_cards\",
+  select: string,
+  documentIds: string[],
+) {
+  const rows: MetadataRow[] = [];
+  for (let start = 0; start < documentIds.length; start += 5) {
+    const ids = documentIds.slice(start, start + 5);
+    for (let rangeStart = 0; ; rangeStart += 1000) {
+      // Dynamic table/select strings need the untyped client surface.
+      const { data, error } = await (supabase as unknown as SupabaseClient)
+        .from(table)
+        .select(select)
+        .in(\"document_id\", ids)
+        .range(rangeStart, rangeStart + 999);
+      if (error) throw new Error(error.message);
+      rows.push(...((data ?? []) as unknown as MetadataRow[]));
+      if (!data || data.length < 1000) break;
+    }
+  }
+  return rows;
+}
+
+async function loadDeepMemoryCoverage(supabase: SupabaseAdmin, documentIds: string[]) {
+  const sections = await loadRowsForDocuments(supabase, \"document_sections\", \"document_id,metadata\", documentIds);
+  const memoryCards = await loadRowsForDocuments(
+    supabase,
+    \"document_memory_cards\",
+    \"document_id,metadata\",
+    documentIds,
+  );
+
+  const coverage = new Map<string, { sections: MetadataRow[]; memoryCards: MetadataRow[] }>();
+  for (const documentId of documentIds) coverage.set(documentId, { sections: [], memoryCards: [] });
+  for (const section of sections) {
+    const existing = coverage.get(section.document_id) ?? { sections: [], memoryCards: [] };
+    coverage.set(section.document_id, { ...existing, sections: [...existing.sections, section] });
+  }
+  for (const card of memoryCards) {
+    const existing = coverage.get(card.document_id) ?? { sections: [], memoryCards: [] };
+    coverage.set(card.document_id, { ...existing, memoryCards: [...existing.memoryCards, card] });
+  }
+  return coverage;
+}
+
+async function loadEvidence(supabase: SupabaseAdmin, documentId: string, indexGenerationId: string) {
+  const chunks: Array<{
+    id: string;
+    document_id: string;
+    index_generation_id: string;
+    page_number: number | null;
+    chunk_index: number;
+    section_heading: string | null;
+    section_path: string[];
+    anchor_id: string | null;
+    content: string;
+    image_ids: string[];
+    metadata: Record<string, unknown> | null;
+  }> = [];
+  const images: Array<{
+    id: string;
+    document_id: string;
+    index_generation_id: string;
+    page_number: number | null;
+    caption: string;
+    image_type: string;
+    labels: string[];
+    source_kind: string;
+    clinical_relevance_score: number;
+    metadata: Record<string, unknown> | null;
+  }> = [];
+
+  for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from(\"document_chunks\")
+      .select(
+        \"id,document_id,index_generation_id,page_number,chunk_index,section_heading,section_path,anchor_id,content,image_ids,metadata\",
+      )
+      .eq(\"document_id\", documentId)
+      .eq(\"index_generation_id\", indexGenerationId)
+      .order(\"chunk_index\", { ascending: true })
+      .order(\"id\", { ascending: true })
+      .range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    chunks.push(...(data ?? []));
+    if (chunks.length > SOURCE_ANCHORED_MAX_CHUNKS) {
+      throw new Error(\"source_anchored_summary_source_limit_exceeded\");
+    }
+    if (!data || data.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
+  }
+
+  for (let start = 0; ; start += SOURCE_ANCHORED_SOURCE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from(\"document_images\")
+      .select(
+        \"id,document_id,index_generation_id,page_number,caption,image_type,labels,source_kind,clinical_relevance_score,metadata\",
+      )
+      .eq(\"document_id\", documentId)
+      .eq(\"index_generation_id\", indexGenerationId)
+      .eq(\"searchable\", true)
+      .order(\"clinical_relevance_score\", { ascending: false, nullsFirst: false })
+      .order(\"page_number\", { ascending: true, nullsFirst: false })
+      .order(\"id\", { ascending: true })
+      .range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    images.push(...(data ?? []));
+    if (images.length > SOURCE_ANCHORED_MAX_IMAGES) {
+      throw new Error(\"source_anchored_summary_source_limit_exceeded\");
+    }
+    if (!data || data.length < SOURCE_ANCHORED_SOURCE_PAGE_SIZE) break;
+  }
+
+  return { chunks, images };
+}
+
+function hashBytes(bytes: Buffer) {
+  return createHash(\"sha256\").update(bytes).digest(\"hex\");
+}
+
+function metadataString(metadata: unknown, key: string) {
+  if (!metadata || typeof metadata !== \"object\" || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === \"string\" && value.trim() ? value.trim() : null;
+}
+
+function metadataRecord(metadata: unknown): Record<string, unknown> {
+  return metadata && typeof metadata === \"object\" && !Array.isArray(metadata)
+    ? { ...(metadata as Record<string, unknown>) }
+    : {};
+}
+
+function hasCurrentEnrichmentVersion(metadata: unknown, expectedVersion: string) {
+  return metadataRecord(metadata).rag_enrichment_version === expectedVersion;
+}
+
+function hasCurrentMemoryVersion(metadata: unknown, expectedVersion: string) {
+  const record = metadataRecord(metadata);
+  return record.rag_memory_version === expectedVersion || record.rag_indexing_version === expectedVersion;
+}
+
+function needsEnrichmentBackfill(args: {
+  document: { metadata?: unknown };
+  coverage?: { summary?: MetadataRow; labels: MetadataRow[] };
+  memoryCoverage?: { sections: MetadataRow[]; memoryCards: MetadataRow[] };
+  ragEnrichmentVersion: string;
+  ragDeepMemoryVersion: string;
+}) {
+  const generatedLabels = args.coverage?.labels.filter((label) => label.source === \"generated\") ?? [];
+  const sections = args.memoryCoverage?.sections ?? [];
+  const memoryCards = args.memoryCoverage?.memoryCards ?? [];
+  const summaryMetadata = metadataRecord(args.coverage?.summary?.metadata);
+  const documentMetadata = metadataRecord(args.document.metadata);
+  return (
+    !args.coverage?.summary ||
+    generatedLabels.length === 0 ||
+    !summaryMetadata.coverage_profile ||
+    !documentMetadata.coverage_profile ||
+    !hasCurrentEnrichmentVersion(args.document.metadata, args.ragEnrichmentVersion) ||
+    !hasCurrentEnrichmentVersion(args.coverage.summary?.metadata, args.ragEnrichmentVersion) ||
+    generatedLabels.every((label) => !hasCurrentEnrichmentVersion(label.metadata, args.ragEnrichmentVersion)) ||
+    sections.length === 0 ||
+    memoryCards.length === 0 ||
+    !hasCurrentMemoryVersion(args.document.metadata, args.ragDeepMemoryVersion) ||
+    sections.every((section) => !hasCurrentMemoryVersion(section.metadata, args.ragDeepMemoryVersion)) ||
+    memoryCards.every((card) => !hasCurrentMemoryVersion(card.metadata, args.ragDeepMemoryVersion))
+  );
+}
+
+async function classifyExistingImages(supabase: SupabaseAdmin, documentId: string) {
+  const [
+    { env },
+    {
+      assessClinicalImageUse,
+      cheapImageSkipReason,
+      classifiedImageSkipReason,
+      clinicalImagePolicyVersion,
+      imagePlacementDedupeKey,
+      lightweightPerceptualHash,
+      normalizeImageBbox,
+    },
+    { classifyAndCaptionImageFromBase64 },
+  ] = await Promise.all([import(\"@/lib/env\"), import(\"@/lib/image-filtering\"), import(\"@/lib/openai\")]);
+  const { data: images, error } = await supabase
+    .from(\"document_images\")
+    .select(
+      \"id,page_number,storage_path,mime_type,caption,bbox,width,height,source_kind,image_hash,image_type,searchable,clinical_relevance_score,skip_reason,labels,metadata\",
+    )
+    .eq(\"document_id\", documentId)
+    .order(\"page_number\", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  const seenHashes = new Set<string>();
+  let searchable = 0;
+  let skipped = 0;
+
+  for (const image of images ?? []) {
+    const existingMetadata = metadataRecord(image.metadata);
+    if (existingMetadata.image_policy_version === clinicalImagePolicyVersion) {
+      if (image.searchable) searchable += 1;
+      else skipped += 1;
+      continue;
+    }
+
+    const download = await supabase.storage.from(env.SUPABASE_IMAGE_BUCKET).download(image.storage_path);
+    if (download.error || !download.data) {
+      await supabase
+        .from(\"document_images\")
+        .update({ searchable: false, skip_reason: download.error?.message ?? \"image unavailable in storage\" })
+        .eq(\"id\", image.id);
+      skipped += 1;
+      continue;
+    }
+
+    const bytes = Buffer.from(await download.data.arrayBuffer());
+    const imageHash = image.image_hash ?? hashBytes(bytes);
+    const perceptualHash = lightweightPerceptualHash(imageHash, image.width, image.height);
+    const filterImage = {
+      bbox: normalizeImageBbox(image.bbox),
+      width: image.width,
+      height: image.height,
+      pageNumber: typeof image.page_number === \"number\" ? image.page_number : undefined,
+      sourceKind: image.source_kind as
+        \"embedded\" | \"table_crop\" | \"diagram_crop\" | \"page_region\" | \"fallback\" | undefined,
+    };
+    const cheapSkip = cheapImageSkipReason({
+      bytesLength: bytes.length,
+      imageHash,
+      seenHashes,
+      image: filterImage,
+    });
+
+    if (cheapSkip) {
+      await supabase
+        .from(\"document_images\")
+        .update({
+          searchable: false,
+          skip_reason: cheapSkip,
+          image_hash: imageHash,
+          perceptual_hash: perceptualHash,
+          clinical_relevance_score: 0,
+        })
+        .eq(\"id\", image.id);
+      skipped += 1;
+      continue;
+    }
+    const placementKey = imagePlacementDedupeKey({ imageHash, image: filterImage });
+    if (placementKey) seenHashes.add(placementKey);
+
+    const baseAssessment = assessClinicalImageUse({
+      imageType: image.image_type,
+      searchable: image.searchable,
+      clinicalRelevanceScore: image.clinical_relevance_score,
+      sourceKind: image.source_kind,
+      tableRole: metadataString(image.metadata, \"table_role\"),
+      tableText: metadataString(image.metadata, \"table_text\"),
+      tableTitle: metadataString(image.metadata, \"table_title\"),
+      tableLabel: metadataString(image.metadata, \"table_label\"),
+      caption: image.caption,
+      labels: Array.isArray(image.labels) ? image.labels : [],
+      skipReason: image.skip_reason,
+    });
+    const classification =
+      image.source_kind === \"table_crop\" && [\"administrative\", \"reference\"].includes(baseAssessment.clinical_use_class)
+        ? {
+            image_type: image.image_type || \"clinical_table\",
+            searchable: false,
+            clinical_relevance_score: 0,
+            labels: [],
+            caption:
+              baseAssessment.clinical_use_class === \"administrative\"
+                ? \"Administrative document-control table retained for audit, not clinical evidence.\"
+                : \"Reference table retained for audit, not clinical evidence.\",
+            skip_reason: baseAssessment.clinical_use_reason,
+            clinical_use_class: baseAssessment.clinical_use_class,
+            clinical_use_reason: baseAssessment.clinical_use_reason,
+            clinical_signal_score: baseAssessment.clinical_signal_score,
+            admin_signal_score: baseAssessment.admin_signal_score,
+          }
+        : await classifyAndCaptionImageFromBase64({
+            base64: bytes.toString(\"base64\"),
+            mimeType: image.mime_type,
+            nearbyText: image.caption ?? undefined,
+            sourceKind: image.source_kind,
+            candidateType: metadataString(image.metadata, \"candidate_type\"),
+            tableLabel: metadataString(image.metadata, \"table_label\"),
+            tableTitle: metadataString(image.metadata, \"table_title\"),
+            tableRole: metadataString(image.metadata, \"table_role\"),
+            tableText: metadataString(image.metadata, \"table_text\"),
+          });
+    const finalAssessment = assessClinicalImageUse({
+      imageType: classification.image_type,
+      searchable: classification.searchable,
+      clinicalRelevanceScore: classification.clinical_relevance_score,
+      sourceKind: image.source_kind,
+      tableRole: metadataString(image.metadata, \"table_role\"),
+      tableText: metadataString(image.metadata, \"table_text\"),
+      tableTitle: metadataString(image.metadata, \"table_title\"),
+      tableLabel: metadataString(image.metadata, \"table_label\"),
+      caption: classification.caption,
+      labels: classification.labels,
+      skipReason: classification.skip_reason,
+    });
+    const classifiedSkip = classifiedImageSkipReason({
+      ...classification,
+      searchable: finalAssessment.searchable,
+      clinical_relevance_score: finalAssessment.clinical_relevance_score,
+      clinical_use_class: finalAssessment.clinical_use_class,
+      clinical_use_reason: finalAssessment.clinical_use_reason,
+      clinical_signal_score: finalAssessment.clinical_signal_score,
+      admin_signal_score: finalAssessment.admin_signal_score,
+    } as Parameters<typeof classifiedImageSkipReason>[0]);
+    const retainAsAuditTable =
+      image.source_kind === \"table_crop\" &&
+      [\"administrative\", \"reference\"].includes(finalAssessment.clinical_use_class) &&
+      classification.image_type !== \"logo_decorative\";
+    const nextSearchable = finalAssessment.searchable;
+
+    await supabase
+      .from(\"document_images\")
+      .update({
+        caption: classification.caption || image.caption,
+        image_type: classification.image_type,
+        searchable: nextSearchable,
+        clinical_relevance_score: nextSearchable ? finalAssessment.clinical_relevance_score : 0,
+        skip_reason: nextSearchable ? null : classifiedSkip,
+        image_hash: imageHash,
+        perceptual_hash: perceptualHash,
+        labels: classification.labels,
+        metadata: {
+          ...metadataRecord(image.metadata),
+          clinical_use_class: finalAssessment.clinical_use_class,
+          clinical_use_reason: finalAssessment.clinical_use_reason,
+          clinical_signal_score: finalAssessment.clinical_signal_score,
+          admin_signal_score: finalAssessment.admin_signal_score,
+          image_policy_version: clinicalImagePolicyVersion,
+          retained_for_audit: retainAsAuditTable || undefined,
+          retained_for_document_view: retainAsAuditTable || undefined,
+        },
+      })
+      .eq(\"id\", image.id);
+
+    if (!nextSearchable) skipped += 1;
+    else searchable += 1;
+  }
+
+  return { searchable, skipped, total: images?.length ?? 0 };
+}
+
+async function stampExistingEnrichmentVersion(args: {
+  supabase: SupabaseAdmin;
+  document: { id: string; metadata?: unknown };
+  coverage: { summary?: MetadataRow; labels: MetadataRow[] };
+  ragEnrichmentVersion: string;
+}) {
+  const stampedAt = new Date().toISOString();
+  const marker = {
+    rag_enrichment_version: args.ragEnrichmentVersion,
+    rag_enrichment_updated_at: stampedAt,
+    version_stamped_at: stampedAt,
+  };
+
+  const { error: documentError } = await args.supabase.rpc(\"apply_document_metadata_patch\", {
+    p_document_id: args.document.id,
+    p_metadata_patch: marker,
+  });
+  if (documentError) throw new Error(documentError.message);
+
+  if (args.coverage.summary) {
+    const { error: summaryError } = await args.supabase
+      .from(\"document_summaries\")
+      .update({ metadata: { ...metadataRecord(args.coverage.summary.metadata), ...marker } })
+      .eq(\"document_id\", args.document.id);
+    if (summaryError) throw new Error(summaryError.message);
+  }
+
+  for (const label of args.coverage.labels.filter((item) => item.source === \"generated\")) {
+    if (!label.id) continue;
+    const { error: labelError } = await args.supabase
+      .from(\"document_labels\")
+      .update({ metadata: { ...metadataRecord(label.metadata), ...marker } })
+      .eq(\"id\", label.id);
+    if (labelError) throw new Error(labelError.message);
+  }
+}
+
+export async function main(argv: string[]) {
+  const args = parseArgs(argv);
+  if (!args.ownerId && !args.ownerEmail && !args.allOwners) {
+    throw new Error(
+      'Provide --owner-id, set LOCAL_NO_AUTH_OWNER_ID or RAG_EVAL_OWNER_ID, provide --owner-email \"you@example.com\", or pass --all-owners.',
+    );
+  }
+  if (![\"summaries-labels-images\", \"metadata-stamp\", \"deep-memory\"].includes(args.mode)) {
+    throw new Error(\"--mode supports summaries-labels-images, deep-memory, or metadata-stamp.\");
+  }
+
+  assertUnleasedOperatorModeAllowed({ command: \"enrich:documents\" });
+
+  const [
+    { requireOpenAIEnv, requireServerEnv },
+    { assertSourceAnchoredSummaryPreflight, ragEnrichmentVersion, upsertDocumentEnrichment },
+    { ragDeepMemoryVersion, upsertDocumentDeepMemory },
+    supabase,
+  ] = await Promise.all([
+    import(\"@/lib/env\"),
+    import(\"@/lib/document-enrichment\"),
+    import(\"@/lib/deep-memory\"),
+    loadAdminClient(),
+  ]);
+  requireServerEnv();
+  if (args.mode === \"summaries-labels-images\" || args.mode === \"deep-memory\") requireOpenAIEnv();
+
+  const ownerId =
+    !args.allOwners && args.ownerId
+      ? args.ownerId
+      : args.ownerEmail && !args.allOwners
+        ? await findOwnerIdByEmail(supabase, args.ownerEmail)
+        : undefined;
+  const loadedDocuments = await loadDocuments(supabase, args, ownerId);
+  const coverage = await loadEnrichmentCoverage(
+    supabase,
+    loadedDocuments.map((document) => document.id),
+  );
+  const memoryCoverage = await loadDeepMemoryCoverage(
+    supabase,
+    loadedDocuments.map((document) => document.id),
+  );
+  const documents = loadedDocuments
+    .filter((document) =>
+      args.includeCurrent
+        ? true
+        : needsEnrichmentBackfill({
+            document,
+            coverage: coverage.get(document.id),
+            memoryCoverage: memoryCoverage.get(document.id),
+            ragEnrichmentVersion,
+            ragDeepMemoryVersion,
+          }),
+    )
+    .slice(0, args.limit);
+
+  console.log(
+    `Enriching ${documents.length} indexed document(s). scope=${ownerId ? \"owner\" : \"all\"} version=${ragEnrichmentVersion}`,
+  );
+
+  let completed = 0;
+  const CONCURRENCY = 1;
+  const activeTasks = new Set<Promise<void>>();
+
+  for (const document of documents) {
+    const documentCoverage = coverage.get(document.id);
+    const taskPromise = (async () => {
+      let attempts = 0;
+      const maxAttempts = 6;
+      let success = false;
+
+      while (attempts < maxAttempts && !success) {
+        try {
+          const indexGenerationId = requireExactSourceAnchoredGeneration(
+            document.index_generation_id,
+            document.metadata,
+          );
+          const evidence = await loadEvidence(supabase, document.id, indexGenerationId);
+          assertSourceAnchoredSummaryPreflight({
+            documentMetadata: document.metadata,
+            indexGenerationId,
+            chunks: evidence.chunks,
+            images: evidence.images,
+          });
+
+          if (args.mode === \"metadata-stamp\") {
+            if (!documentCoverage?.summary || documentCoverage.labels.every((label) => label.source !== \"generated\")) {
+              console.log(`SKIP cannot metadata-stamp missing enrichment: ${document.file_name}`);
+              return;
+            }
+            await stampExistingEnrichmentVersion({
+              supabase,
+              document,
+              coverage: documentCoverage,
+              ragEnrichmentVersion,
+            });
+            completed += 1;
+            console.log(`STAMPED ${document.file_name}`);
+            return;
+          }
+
+          let imageMetadata = metadataRecord(document.metadata);
+          let imageStats = { searchable: 0, skipped: 0, total: 0 };
+          if (args.mode === \"summaries-labels-images\") {
+            imageStats = await classifyExistingImages(supabase, document.id);
+            imageMetadata = {
+              ...imageMetadata,
+              searchable_image_count: imageStats.searchable,
+              skipped_image_count: imageStats.skipped,
+              image_enriched_at: new Date().toISOString(),
+            };
+            await supabase
+              .from(\"documents\")
+              .update({
+                image_count: imageStats.searchable,
+              })
+              .eq(\"id\", document.id);
+            const { error: imageMetadataError } = await supabase.rpc(\"apply_document_metadata_patch\", {
+              p_document_id: document.id,
+              p_metadata_patch: {
+                searchable_image_count: imageStats.searchable,
+                skipped_image_count: imageStats.skipped,
+                image_enriched_at: imageMetadata.image_enriched_at,
+              },
+            });
+            if (imageMetadataError) throw new Error(imageMetadataError.message);
+          }
+
+          let enrichmentSummary: string | null = null;
+          if (args.mode === \"summaries-labels-images\") {
+            const enrichment = await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentEnrichment>>>();
+            enrichmentSummary = enrichment.summary.summary;
+          } else if (args.mode === \"deep-memory\") {
+            const { data: sumData } = await supabase
+              .from(\"document_summaries\")
+              .select(\"summary\")
+              .eq(\"document_id\", document.id)
+              .maybeSingle();
+            if (sumData?.summary) {
+              enrichmentSummary = sumData.summary;
+            }
+          }
+          const deepMemory = await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentDeepMemory>>>();
+          const { error: completionMetadataError } = await supabase.rpc(\"apply_document_metadata_patch\", {
+            p_document_id: document.id,
+            p_metadata_patch: {
+              enrichment_status: \"completed\",
+              enrichment_error: null,
+            },
+          });
+          if (completionMetadataError) throw new Error(completionMetadataError.message);
+
+          completed += 1;
+          console.log(
+            `ENRICHED ${document.file_name} chunks=${evidence.chunks.length} sections=${deepMemory.sections.length} memory=${deepMemory.memoryCards.length} images=${imageStats.searchable}/${imageStats.total} skipped=${imageStats.skipped}`,
+          );
+          success = true;
+
+          // Small delay to space out OpenAI calls
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const isRateLimit = /rate limit|rate_limit|429/i.test(errorMessage);
+
+          if (isRateLimit && attempts < maxAttempts - 1) {
+            attempts += 1;
+            const delayMs = Math.pow(2, attempts) * 8000 + Math.random() * 3000;
+            console.warn(
+              `Rate limit hit on ${document.file_name}. Waiting ${Math.round(delayMs / 1000)}s before retry ${attempts}/${maxAttempts}...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          } else {
+            console.error(`ERROR enriching ${document.file_name}:`, errorMessage);
+            break; // Break the retry loop for non-rate-limit errors
+          }
+        }
+      }
+    })();
+
+    activeTasks.add(taskPromise);
+    taskPromise.then(() => activeTasks.delete(taskPromise));
+    if (activeTasks.size >= CONCURRENCY) {
+      await Promise.race(activeTasks);
+    }
+  }
+
+  await Promise.all(activeTasks);
+
+  console.log(`Enrichment complete. completed=${completed} skipped=${documents.length - completed}`);
+}
+
+if (isDirectScriptInvocation(import.meta.url, process.argv[1])) {
+  loadEnvConfig(process.cwd());
+  main(process.argv.slice(2)).catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});
+
+}
+"
+
+ ❯ tests/check-indexing-contract.test.ts:72:26
+     70|     expect(scriptSource).toContain("SOURCE_ANCHORED_MAX_IMAGES");
+     71|     expect(scriptSource).toContain("source_anchored_summary_source_lim…
+     72|     expect(scriptSource).toMatch(/upsertDocumentEnrichment\(\{[\s\S]*?…
+       |                          ^
+     73|   });
+     74|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/17]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > indexing-v3-agent behavior > binds each generation-aware read predicate to its own SQL statement before decisions
+Error: label summary input: start marker not found: "const summaryRowsRaw = await sql"
+ ❯ sourceSegment tests/helpers/source-contract.ts:83:11
+     81|   const start = contents.indexOf(startMarker);
+     82|   if (start < 0) {
+     83|     throw new Error(`${context}start marker not found: "${describeMark…
+       |           ^
+     84|   }
+     85|
+ ❯ statementWithin tests/indexing-v3-agent.test.ts:52:10
+ ❯ tests/indexing-v3-agent.test.ts:192:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/17]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > indexing-v3-agent behavior > binds generation authority to each generated-artifact write and conflict
+Error: summary write: start marker not found: "insert into public.document_summaries"
+ ❯ sourceSegment tests/helpers/source-contract.ts:83:11
+     81|   const start = contents.indexOf(startMarker);
+     82|   if (start < 0) {
+     83|     throw new Error(`${context}start marker not found: "${describeMark…
+       |           ^
+     84|   }
+     85|
+ ❯ statementWithin tests/indexing-v3-agent.test.ts:52:10
+ ❯ tests/indexing-v3-agent.test.ts:360:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/17]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > indexing-v3-agent behavior > generation-bounds each repair, replacement, and cleanup mutation
+Error: memory-card cleanup: start marker not found: "delete from public.document_memory_cards"
+ ❯ sourceSegment tests/helpers/source-contract.ts:83:11
+     81|   const start = contents.indexOf(startMarker);
+     82|   if (start < 0) {
+     83|     throw new Error(`${context}start marker not found: "${describeMark…
+       |           ^
+     84|   }
+     85|
+ ❯ statementWithin tests/indexing-v3-agent.test.ts:52:10
+ ❯ tests/indexing-v3-agent.test.ts:473:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/17]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > indexing-v3-agent behavior > replaces every generated enrichment family inside one database transaction
+AssertionError: expected 'async function upsertMemoryCardsFromS…' to contain 'await sql.begin(async (tx) =>'
+
+- Expected
++ Received
+
+- await sql.begin(async (tx) =>
++ async function upsertMemoryCardsFromSections(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
++   const artifactRows: Record<string, Array<Record<string, unknown>>> = { document_memory_cards: [] };
++   const generationPredicate = generationPredicateForJob(job, visibility);
++   const sectionRows = await sql<Array<MemoryCardSectionSource & { document_id: string; generation_id: string | null }>>`
++     select
++       id as section_id,
++       document_id,
++       index_generation_id::text as generation_id,
++       heading,
++       heading_path,
++       page_start,
++       page_end,
++       chunk_ids,
++       summary,
++       tags,
++       extraction_quality
++     from public.document_sections
++     where document_id = ${job.document_id}::uuid
++       and (
++         index_generation_id = ${generationPredicate.indexGenerationId}::uuid
++         or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
++       )
++       and btrim(coalesce(summary, '')) <> ''
++     order by section_index asc
++     limit 16
++   `;
++   const sections = visibleGenerationRows(sectionRows, visibility);
++
++   if (sections.length === 0) return 0;
++
++   const prepared = sections
++     .map((section) => {
++       const heading = normalizeText(section.heading) || "Document section";
++       const path = (section.heading_path ?? []).filter(Boolean).join(" > ");
++       const title = path ? `${path} > ${heading}` : heading;
++       const summary = normalizeText(section.summary);
++       const content = `${heading}: ${summary}`;
++       const terms = uniqueStrings(
++         [...tokenize(`${title} ${summary}`), ...(section.tags ?? []).map((tag) => normalizeText(tag.toLowerCase()))],
++         24,
++       );
++       return {
++         section,
++         title: title.slice(0, 240),
++         content,
++         terms,
++         embeddingText: memoryCardText(title, "section_summary", content, terms),
++       };
++     })
++     .filter((card) => card.content.length >= 12);
++
++   if (prepared.length === 0) return 0;
++
++   const embeddings = await embeddingBatch(job, prepared.map((card) => card.embeddingText));
++   embeddings.forEach((embedding, index) =>
++     assertEmbeddingDim(embedding, `memory card ${prepared[index].section.section_id}`),
++   );
++   let inserted = 0;
++   {
++     
++     for (let index = 0; index < prepared.length; index += 1) {
++       const card = prepared[index];
++       const section = card.section;
++       const chunkIds = section.chunk_ids ?? [];
++       const emb = embeddings[index];
++
++       artifactRows.document_memory_cards.push({ document_id: job.document_id,
++ owner_id: job.documents.owner_id,
++ section_id: section.section_id,
++ card_type: 'section_summary',
++ title: card.title,
++ content: card.content,
++ normalized_terms: card.terms,
++ page_number: section.page_start,
++ source_chunk_ids: chunkIds,
++ source_image_ids: [],
++ confidence: section.extraction_quality === "good" ? 0.72 : section.extraction_quality === "partial" ? 0.62 : 0.54,
++ index_generation_id: generationPredicate.indexGenerationId,
++ metadata: {
++           generated_by: GENERATED_BY,
++           ...generationMetadata(generationPredicate.indexGenerationId),
++           source: "document_sections",
++           section_id: section.section_id,
++           heading_path: section.heading_path ?? [],
++           page_start: section.page_start,
++           page_end: section.page_end,
++         },
++ embedding: emb });
++       inserted += 1;
++     }
++   }
++
++   await edgeMutation(job, "replace_indexing_v3_memory_cards", { p_cards: artifactRows.document_memory_cards });
++
++   return inserted;
++ }
++
++
+
+ ❯ tests/indexing-v3-agent.test.ts:1130:20
+    1128|     ]) {
+    1129|       const body = functionBody(name, nextName);
+    1130|       expect(body).toContain("await sql.begin(async (tx) =>");
+       |                    ^
+    1131|       expect(body).toContain("await tx`");
+    1132|       expect(body.indexOf("delete from public.document_")).toBeLessTha…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/17]⎯
+
+ FAIL  |node| tests/indexing-v3-agent.test.ts > source-anchored summary Edge contract > persists the complete payload before labels and marks projection complete only afterwards
+AssertionError: expected -1 to be greater than -1
+ ❯ tests/indexing-v3-agent.test.ts:1253:26
+    1251|     const staleDelete = persistence.indexOf("delete from public.docume…
+    1252|     const completion = persistence.indexOf("SOURCE_ANCHORED_SUMMARY_PR…
+    1253|     expect(summaryWrite).toBeGreaterThan(-1);
+       |                          ^
+    1254|     expect(labelUpsert).toBeGreaterThan(summaryWrite);
+    1255|     expect(staleDelete).toBeGreaterThan(labelUpsert);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed job row contract > accepts a realistic claimed row without mutating it
+AssertionError: expected [Function] to not throw an error but 'WorkerRowShapeError: "claim_ingestion…' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"WorkerRowShapeError: \"claim_ingestion_jobs\" returned data that does not match the worker contract: lease_token: Invalid input: expected string, received undefined; lease_expected_generation_id: Invalid input: expected string, received undefined; lease_write_generation_id: Invalid input: expected string, received undefined; lease_authority_digest: Invalid input: expected string, received undefined; lease_expires_at: Invalid input: expected string, received undefined; and 1 more"
+
+ ❯ tests/worker-row-contract.test.ts:101:48
+     99|     const before = structuredClone(row);
+    100|
+    101|     expect(() => assertClaimedJobRow(row)).not.toThrow();
+       |                                                ^
+    102|
+    103|     // Assert, do not transform: the row enters the job lifecycle by t…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed job row contract > preserves unknown columns at both levels rather than stripping them
+WorkerRowShapeError: "claim_ingestion_jobs" returned data that does not match the worker contract: lease_token: Invalid input: expected string, received undefined; lease_expected_generation_id: Invalid input: expected string, received undefined; lease_write_generation_id: Invalid input: expected string, received undefined; lease_authority_digest: Invalid input: expected string, received undefined; lease_expires_at: Invalid input: expected string, received undefined; and 1 more
+ ❯ assertAgainst worker/row-contracts.ts:76:9
+     74|     rowCount: Array.isArray(value) ? value.length : null,
+     75|   });
+     76|   throw new WorkerRowShapeError(source, issues);
+       |         ^
+     77| }
+     78|
+ ❯ Module.assertClaimedJobRow worker/row-contracts.ts:146:3
+ ❯ tests/worker-row-contract.test.ts:115:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed job row contract > accepts null owner_id and batch_id, which are nullable columns
+AssertionError: expected [Function] to not throw an error but 'WorkerRowShapeError: "claim_ingestion…' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"WorkerRowShapeError: \"claim_ingestion_jobs\" returned data that does not match the worker contract: lease_token: Invalid input: expected string, received undefined; lease_expected_generation_id: Invalid input: expected string, received undefined; lease_write_generation_id: Invalid input: expected string, received undefined; lease_authority_digest: Invalid input: expected string, received undefined; lease_expires_at: Invalid input: expected string, received undefined; and 1 more"
+
+ ❯ tests/worker-row-contract.test.ts:125:11
+    123|     expect(() =>
+    124|       assertClaimedJobRow(claimedRow({ batch_id: null, documents: clai…
+    125|     ).not.toThrow();
+       |           ^
+    126|   });
+    127|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed job row contract > accepts every document status the check constraint permits
+AssertionError: expected [Function] to not throw an error but 'WorkerRowShapeError: "claim_ingestion…' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"WorkerRowShapeError: \"claim_ingestion_jobs\" returned data that does not match the worker contract: lease_token: Invalid input: expected string, received undefined; lease_expected_generation_id: Invalid input: expected string, received undefined; lease_write_generation_id: Invalid input: expected string, received undefined; lease_authority_digest: Invalid input: expected string, received undefined; lease_expires_at: Invalid input: expected string, received undefined; and 1 more"
+
+ ❯ tests/worker-row-contract.test.ts:130:102
+    128|   it("accepts every document status the check constraint permits", () …
+    129|     for (const status of ["queued", "processing", "indexed", "failed"]…
+    130|       expect(() => assertClaimedJobRow(claimedRow({ documents: claimed…
+       |                                                                                                      ^
+    131|     }
+    132|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed job row contract > reports only Zod issue paths, never row content
+AssertionError: expected '"claim_ingestion_jobs" returned data …' to contain 'documents.storage_path'
+
+Expected: "documents.storage_path"
+Received: ""claim_ingestion_jobs" returned data that does not match the worker contract: lease_token: Invalid input: expected string, received undefined; lease_expected_generation_id: Invalid input: expected string, received undefined; lease_write_generation_id: Invalid input: expected string, received undefined; lease_authority_digest: Invalid input: expected string, received undefined; lease_expires_at: Invalid input: expected string, received undefined; and 2 more"
+
+ ❯ tests/worker-row-contract.test.ts:171:23
+    169|       expect(error).toBeInstanceOf(WorkerRowShapeError);
+    170|       const message = (error as WorkerRowShapeError).message;
+    171|       expect(message).toContain("documents.storage_path");
+       |                       ^
+    172|       expect(message).not.toContain(secretTitle);
+    173|       expect(message).not.toContain("ranzcp-mood.pdf");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed batch partition > returns an all-valid batch by the same references in the same order
+AssertionError: expected [ { …(2) }, { …(2) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "error": WorkerRowShapeError {
++       "message": "\"claim_ingestion_jobs\" returned data that does not match the worker contract: lease_token: Invalid input: expected string, received undefined; lease_expected_generation_id: Invalid input: expected string, received undefined; lease_write_generation_id: Invalid input: expected string, received undefined; lease_authority_digest: Invalid input: expected string, received undefined; lease_expires_at: Invalid input: expected string, received undefined; and 1 more",
++       "source": "claim_ingestion_jobs",
++       "issues": [
++         "lease_token: Invalid input: expected string, received undefined",
++         "lease_expected_generation_id: Invalid input: expected string, received undefined",
++         "lease_write_generation_id: Invalid input: expected string, received undefined",
++         "lease_authority_digest: Invalid input: expected string, received undefined",
++         "lease_expires_at: Invalid input: expected string, received undefined",
++         "and 1 more",
++       ],
++       "name": "WorkerRowShapeError",
++     },
++     "failable": null,
++   },
++   {
++     "error": WorkerRowShapeError {
++       "message": "\"claim_ingestion_jobs\" returned data that does not match the worker contract: lease_token: Invalid input: expected string, received undefined; lease_expected_generation_id: Invalid input: expected string, received undefined; lease_write_generation_id: Invalid input: expected string, received undefined; lease_authority_digest: Invalid input: expected string, received undefined; lease_expires_at: Invalid input: expected string, received undefined; and 1 more",
++       "source": "claim_ingestion_jobs",
++       "issues": [
++         "lease_token: Invalid input: expected string, received undefined",
++         "lease_expected_generation_id: Invalid input: expected string, received undefined",
++         "lease_write_generation_id: Invalid input: expected string, received undefined",
++         "lease_authority_digest: Invalid input: expected string, received undefined",
++         "lease_expires_at: Invalid input: expected string, received undefined",
++         "and 1 more",
++       ],
++       "name": "WorkerRowShapeError",
++     },
++     "failable": null,
++   },
++ ]
+
+ ❯ tests/worker-row-contract.test.ts:201:22
+    199|     const rows = [claimedRow(), claimedRow({ id: "8e6f2b01-8888-4aaa-8…
+    200|     const { accepted, rejected } = partitionClaimedJobRows(rows);
+    201|     expect(rejected).toEqual([]);
+       |                      ^
+    202|     expect(accepted).toHaveLength(2);
+    203|     expect(accepted[0]).toBe(rows[0]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed batch partition > rejects only the malformed row and keeps valid siblings
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ tests/worker-row-contract.test.ts:217:22
+    215|     });
+    216|     const { accepted, rejected } = partitionClaimedJobRows([bad, good]…
+    217|     expect(accepted).toHaveLength(1);
+       |                      ^
+    218|     expect(accepted[0]).toBe(good);
+    219|     expect(rejected).toHaveLength(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed batch partition > tolerates a missing batch_id key when building the failable identity
+AssertionError: expected null to match object { batch_id: null }
+
+- Expected:
+{
+  "batch_id": null,
+}
+
++ Received:
+null
+
+ ❯ tests/worker-row-contract.test.ts:240:34
+    238|     delete bad.batch_id;
+    239|     const { rejected } = partitionClaimedJobRows([bad]);
+    240|     expect(rejected[0].failable).toMatchObject({ batch_id: null });
+       |                                  ^
+    241|   });
+    242|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed batch partition > preserves an indexed document status so a bad reindex row cannot demote a live index
+AssertionError: expected null to match object { documentStatus: 'indexed' }
+
+- Expected:
+{
+  "documentStatus": "indexed",
+}
+
++ Received:
+null
+
+ ❯ tests/worker-row-contract.test.ts:251:34
+    249|     });
+    250|     const { rejected } = partitionClaimedJobRows([bad]);
+    251|     expect(rejected[0].failable).toMatchObject({ documentStatus: "inde…
+       |                                  ^
+    252|   });
+    253|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/17]⎯
+
+ FAIL  |node| tests/worker-row-contract.test.ts > claimed batch partition > falls back to a null owner and failed status when documents is unreadable
+AssertionError: expected null to match object { ownerId: null, …(1) }
+
+- Expected:
+{
+  "documentStatus": "failed",
+  "ownerId": null,
+}
+
++ Received:
+null
+
+ ❯ tests/worker-row-contract.test.ts:256:34
+    254|   it("falls back to a null owner and failed status when documents is u…
+    255|     const { rejected } = partitionClaimedJobRows([claimedRow({ documen…
+    256|     expect(rejected[0].failable).toMatchObject({ ownerId: null, docume…
+       |                                  ^
+    257|   });
+    258| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/17]⎯
+
+
+ Test Files  3 failed | 5 passed (8)
+      Tests  17 failed | 146 passed (163)
+   Start at  08:11:45
+   Duration  2.43s (transform 1.20s, setup 0ms, import 1.71s, tests 944ms, environment 1ms)
+

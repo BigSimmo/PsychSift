@@ -1,0 +1,37 @@
+
+ RUN  v4.1.10 C:/Users/joshs/.codex/worktrees/rag-local-build-20260822/Database
+
+ ❯ |node| tests/worker-shadow-extraction.test.ts (23 tests | 1 failed) 82ms
+     × runs the shadow extractor only after the legacy generation is committed and before the final metadata merge 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |node| tests/worker-shadow-extraction.test.ts > worker/main.ts + env + image contract (source text) > runs the shadow extractor only after the legacy generation is committed and before the final metadata merge
+AssertionError: expected 'await updateJobProgress(job.id, { sta…' to match /\.catch\(\s*\(\)\s*=>\s*\{\}\s*,?\s*\)/
+
+- Expected:
+/\.catch\(\s*\(\)\s*=>\s*\{\}\s*,?\s*\)/
+
++ Received:
+"await updateJobProgress(job.id, { stage: \"indexed; shadow extraction (docling)\", progress: 98 }).catch(() => {
+        attempt.cancel();
+      });
+      attempt.check();
+      "
+
+ ❯ tests/worker-shadow-extraction.test.ts:476:31
+    474|       workerMain.indexOf("const shadowHeartbeat = setInterval("),
+    475|     );
+    476|     expect(shadowStageUpdate).toMatch(/\.catch\(\s*\(\)\s*=>\s*\{\}\s*…
+       |                               ^
+    477|     // The record travels only inside finalMetadata (deep-merged by ap…
+    478|     expect(workerMain.match(/shadow_extraction: shadowExtraction/g)).t…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 8 passed (9)
+      Tests  1 failed | 183 passed (184)
+   Start at  08:33:09
+   Duration  2.43s (transform 694ms, setup 0ms, import 2.62s, tests 555ms, environment 1ms)
+

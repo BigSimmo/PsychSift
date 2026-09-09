@@ -1,0 +1,4 @@
+[gate-arbiter] RUN "test" — db scope never defers — CI's own routing treats it as heavy
+[gate-arbiter]   · CI coverage: ci.yml runs "test:coverage" in job "coverage", whose guard coverage_changed=true this change satisfies
+[gate-arbiter]   · unverifiable CI preconditions (assumed true): github.event.pull_request.draft != true
+[gate-arbiter]   · change class: db (classified by scripts/ci-change-scope.mjs)

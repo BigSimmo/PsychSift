@@ -1,0 +1,62 @@
+[
+  {
+    "sha256": "0c88c04898e3d9425b7158c30b55fed15a4788fac246a006f734f9f7a48d1183",
+    "path": "worker/behavior.ts"
+  },
+  {
+    "sha256": "bc7554899c99953cc21da91f1ee3ce745e46fdac90cb8e092282b96f69bc871c",
+    "path": "worker/main.ts"
+  },
+  {
+    "sha256": "d1ca227522e8aca6e4f28f1fa94a61c1980202a59b83cee3e8d4384e518cf0a7",
+    "path": "supabase/functions/_shared/ingestion-attempt.ts"
+  },
+  {
+    "sha256": "18dc1a342773953d02a14a1609c1fd10f99776646aff7db28ee0775c6c8fad1a",
+    "path": "supabase/functions/indexing-v3-agent/behavior.ts"
+  },
+  {
+    "sha256": "37de3c8731fb379b0786ab22ff4ce9c7254ba8f504cf95cb7f0f2409a956a331",
+    "path": "supabase/functions/indexing-v3-agent/index.ts"
+  },
+  {
+    "sha256": "f61d7eb90176e256908c7191be18d06762b1ca74cbb1bda3abac9e91f021680f",
+    "path": "src/lib/document-enrichment.ts"
+  },
+  {
+    "sha256": "33489691ba9129f1b9c855825d922dae213fdcca5f92f4e215df183119594a51",
+    "path": "src/lib/deep-memory.ts"
+  },
+  {
+    "sha256": "92924c2c2b324866a18a0436a581b37886a44f440b6fbc8cd84fda22eed9ad0f",
+    "path": "supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql"
+  },
+  {
+    "sha256": "34c22c97cabd6b9a0f754265c1b4da69b440c5c250f66fb3bffa551b83a31741",
+    "path": "supabase/schema.sql"
+  },
+  {
+    "sha256": "929b27afe1d90457580f8d266797bff8764534a922f7291cc56cf55e3d461127",
+    "path": "tests/worker-behavior.test.ts"
+  },
+  {
+    "sha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5",
+    "path": "tests/worker-run-loop.test.ts"
+  },
+  {
+    "sha256": "8949b27ab7d80216c01660c28cc4b93aa863dfa94a9f4c27e2bd2ab8711d92dc",
+    "path": "tests/document-enrichment.test.ts"
+  },
+  {
+    "sha256": "8a1e3bbebf5952bda00404da4718cce932795b005006cae795432e0e8eaf1ba2",
+    "path": "tests/deep-memory.test.ts"
+  },
+  {
+    "sha256": "577f5992151b27ac43db66f23be2ad98624ea8b3d7d604f9ba85585994656023",
+    "path": "tests/indexing-v3-agent.test.ts"
+  },
+  {
+    "sha256": "d0a1501be8b9e553a4c990e872832533556dd55fe7a1e2e4a0372c29af6da575",
+    "path": "tests/ingestion-lease-fencing.test.ts"
+  }
+]

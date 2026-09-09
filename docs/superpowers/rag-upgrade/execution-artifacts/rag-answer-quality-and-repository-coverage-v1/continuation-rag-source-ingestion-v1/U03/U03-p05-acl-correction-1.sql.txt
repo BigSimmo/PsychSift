@@ -1,0 +1,22 @@
+-- REVIEW CANDIDATE ONLY. Authored U03 migration and snapshot correction; do not execute here.
+-- Default declarations prove inherited INSERT/UPDATE/DELETE, not every possible table privilege.
+-- Explicitly reset only the three selected P05 tables to the contract's intended SELECT grant.
+revoke all on table public.public_source_activation_events from service_role;
+revoke all on table public.public_source_versions from service_role;
+revoke all on table public.public_source_serving_authority from service_role;
+grant select on table public.public_source_activation_events to service_role;
+grant select on table public.public_source_versions to service_role;
+grant select on table public.public_source_serving_authority to service_role;
+
+-- Retain direct calls through governed service-role entrypoints; these are their selected internal dependencies.
+revoke all on function public.reject_public_source_activation_event_mutation() from service_role;
+revoke all on function public.guard_public_source_version_identity() from service_role;
+revoke all on function public.bump_public_source_serving_authority() from service_role;
+revoke all on function public.public_source_acquisition_identity_digest(uuid) from service_role;
+revoke all on function public.make_public_source_version_ineligible(uuid,text) from service_role;
+revoke all on function public.make_public_source_version_ineligible(uuid) from service_role;
+revoke all on function public.public_source_document_is_serving_eligible(uuid) from service_role;
+revoke all on function public.require_active_public_source_version_for_publication() from service_role;
+revoke all on function public.require_active_public_source_artifact_for_publication() from service_role;
+revoke all on function public.require_document_publication_approval_state_digest() from service_role;
+revoke all on function public.guard_document_publication_transition() from service_role;

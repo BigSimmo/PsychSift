@@ -1,0 +1,36 @@
+[
+  {
+    "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T10-31-49-01a08401-d9f7-7bb0-89e1-a4496f010a43.jsonl",
+    "session": {
+      "line": 1,
+      "id": "01a08401-d9f7-7bb0-89e1-a4496f010a43",
+      "agentPath": "/root/u03_product_schema_review_2",
+      "role": "supabase-schema-guardian",
+      "provider": "openai"
+    },
+    "latestObservedTurn": {
+      "line": 228,
+      "timestamp": "2026-09-09T03:05:02.552Z",
+      "model": "gpt-6-astra",
+      "effort": "xhigh"
+    },
+    "limitation": "Selected local resolved configuration, not backend attestation"
+  },
+  {
+    "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T10-42-59-01a0840c-168e-7fd0-bdac-98b09b074c88.jsonl",
+    "session": {
+      "line": 1,
+      "id": "01a0840c-168e-7fd0-bdac-98b09b074c88",
+      "agentPath": "/root/u03_product_wrapper_review_1",
+      "role": "rag-retrieval-reviewer",
+      "provider": "openai"
+    },
+    "latestObservedTurn": {
+      "line": 125,
+      "timestamp": "2026-09-09T03:05:19.936Z",
+      "model": "gpt-6-astra",
+      "effort": "xhigh"
+    },
+    "limitation": "Selected local resolved configuration, not backend attestation"
+  }
+]

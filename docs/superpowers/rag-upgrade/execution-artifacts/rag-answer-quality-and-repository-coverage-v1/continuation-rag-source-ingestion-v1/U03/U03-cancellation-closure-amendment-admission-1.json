@@ -1,0 +1,27 @@
+{
+  "amendment": "U03-cancellation-closure-amendment-1.md",
+  "reviewSha256": "75c780ba056a7b012aaf3d3a600590bd2369275e617da31523339856c63e69f5",
+  "observedRoute": {
+    "role": "rag-retrieval-reviewer",
+    "effort": "xhigh",
+    "model": "gpt-6-astra",
+    "id": "01a083df-c7cc-7f20-8f0e-1ffb06331889",
+    "limitation": "Local selected configuration only"
+  },
+  "kind": "Controller admission of reviewed cancellation-closure4-owner supplement; not product acceptance",
+  "SDKLimit": "OpenAI7.4.0 backoff sleep is not abortable; preserve proof of no next fetch after cancellation, not immediate settlement",
+  "specification": "PASS",
+  "quality": "PASS",
+  "inputsSha256": "e6de642c2bc56e89be72dc9adf91d949de6d883ad6ff750e2061a20262c02e6e",
+  "candidate": "b651ee23d8541fbebea77ca1c621fcdec42540ad",
+  "additionalOwners": [
+    "src/lib/openai.ts",
+    "src/lib/model-index-extraction.ts",
+    "tests/openai-cache.test.ts",
+    "tests/model-index-extraction.test.ts"
+  ],
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "review": "U03-cancellation-closure-amendment-review-1.md",
+  "atUtc": "2026-09-09T02:01:27.3010082Z",
+  "amendmentSha256": "0dddcc98e7e98df36ccc39a941155f5d98d3f85ff747d8fe28550aca5e1a08e4"
+}

@@ -1,0 +1,36 @@
+[
+  {
+    "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T10-31-00-01a08401-1c25-7690-a95d-46a32f246891.jsonl",
+    "session": {
+      "line": 1,
+      "id": "01a08401-1c25-7690-a95d-46a32f246891",
+      "agentPath": "/root/u03_product_ingestion_review_2",
+      "role": "ingestion-worker-reviewer",
+      "provider": "openai"
+    },
+    "latestObservedTurn": {
+      "line": 233,
+      "timestamp": "2026-09-09T03:11:28.193Z",
+      "model": "gpt-6-astra",
+      "effort": "xhigh"
+    },
+    "limitation": "Selected local resolved configuration, not backend attestation"
+  },
+  {
+    "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T10-40-55-01a0840a-2fb1-7532-971c-ba0e3d0f90c7.jsonl",
+    "session": {
+      "line": 1,
+      "id": "01a0840a-2fb1-7532-971c-ba0e3d0f90c7",
+      "agentPath": "/root/u03_product_clinical_review_2",
+      "role": "clinical-governance-reviewer",
+      "provider": "openai"
+    },
+    "latestObservedTurn": {
+      "line": 258,
+      "timestamp": "2026-09-09T03:08:46.25Z",
+      "model": "gpt-6-astra",
+      "effort": "xhigh"
+    },
+    "limitation": "Selected local resolved configuration, not backend attestation"
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "recordedAtUtc": "2026-09-09T00:58:44.1513338Z",
+  "gate": "index-coverage",
+  "staged": true,
+  "log": "U03-controller-index-coverage-1.log",
+  "freeze": "U03-implementation-freeze-2.json",
+  "exit": 1
+}

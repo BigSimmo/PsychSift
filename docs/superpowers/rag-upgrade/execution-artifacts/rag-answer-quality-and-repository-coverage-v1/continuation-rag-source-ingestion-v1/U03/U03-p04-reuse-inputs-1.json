@@ -1,0 +1,105 @@
+{
+  "kind": "P04 reuse input preparation; final source freeze recheck required",
+  "date": "2026-09-09",
+  "acceptedComparison": "fd043b262ebd9b20315c2e46bc4838265787fa80",
+  "taskBase": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "comparisonCommand": "git diff --quiet fd043b262ebd9b20315c2e46bc4838265787fa80 -- <exact paths listed in files>",
+  "comparisonExit": 0,
+  "files": [
+    {
+      "path": "scripts/audit-ingestion-corpus.ts",
+      "sha256": "51644c86913648726948c5aa642e02e03b7613adcf648bd243e37e6d47f1acf8"
+    },
+    {
+      "path": "scripts/lib/indexing-audit-adapter.ts",
+      "sha256": "fd668f018902cf38132e6b6fb4e8d73464c8e4fdb831e2d098bdaf64b1c4df14"
+    },
+    {
+      "path": "scripts/lib/indexing-health-document.ts",
+      "sha256": "411a566d987e6450a50060aaca94ac0cf8644c65c301799c005921a045eb1a4f"
+    },
+    {
+      "path": "src/lib/ingestion-audit.ts",
+      "sha256": "5510b56099a520d3b85cab5cede9baf6cd3e184a24b4c350a8708f3debe42ddb"
+    },
+    {
+      "path": "src/lib/source-coverage-registry.ts",
+      "sha256": "dc328d006cb5c563f0498e71c13abc434775b919ce2fc7238d8d88f0132dd04c"
+    },
+    {
+      "path": "src/lib/australian-source-catalogue.ts",
+      "sha256": "e211fcc50e7024a2d76cc016d8d8df861dc9c1bd269a98e2f3d46db5b2ca36ab"
+    },
+    {
+      "path": "src/lib/source-metadata.ts",
+      "sha256": "6a2623761a5a468d7f4f970094243b5b2db50cd19811f7a46726a4f4d463f1d1"
+    },
+    {
+      "path": "src/lib/source-authority-registry.ts",
+      "sha256": "7e739e43020637c1d5c3ee507a09d8c1a4955a41e149360cdb740c00cd3a7fda"
+    },
+    {
+      "path": "src/lib/types.ts",
+      "sha256": "bf59aac7d2841ac8902d636c87d08fee18e5f480a91710b5cbdab50457aa958b"
+    },
+    {
+      "path": "supabase/functions/_shared/source-anchored-summary.ts",
+      "sha256": "a2fdb6b4f4dd6e7f3a692c822a2a9c99439d1db2c4a58a664f42cd8f253e97f2"
+    },
+    {
+      "path": "data/australian-source-verification.v1.json",
+      "sha256": "eb903d5f033f919d4d4bce1e537c10c0ef5a4834e96eecfb47e02c21ea5504b0"
+    },
+    {
+      "path": "tests/fixtures/ingestion/active-corpus-inventory.json",
+      "sha256": "cb10bd85130c84282305baf0b9bf6327129750974cae44effa536080e69e2201"
+    },
+    {
+      "path": "data/rag-expected-source-coverage.v1.json",
+      "sha256": "337654e1e8a629e83733a13ba9fcaa6b95add2d6d0cbdf353f13495ee7fa53f9"
+    },
+    {
+      "path": "scripts/run-tsx.mjs",
+      "sha256": "b634f0d9b4e805915a9fc4061bff18c32e10e34185ef606387b4c4d9c2693248"
+    },
+    {
+      "path": "scripts/resolve-tsx-cli.mjs",
+      "sha256": "d8ce9a67d5ca71376fbde443acf184241c69851a761f9b589ce4ac34cf3843ac"
+    },
+    {
+      "path": "scripts/enable-server-only-stub.mjs",
+      "sha256": "8a72fde1e46805ed4f27291c07c68bfdfecb7ce8aaab05b87c6eed97c59e1e1b"
+    },
+    {
+      "path": "scripts/register-server-only.mjs",
+      "sha256": "be6e88ea9c34ab91cc99204e17db89c49721340f6b98dc7f2a6d8a3b23961112"
+    },
+    {
+      "path": "tests/stubs/server-only.ts",
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "package.json",
+      "sha256": "53b6763fc9ba52771d480ab23db19eb988a2bad98cf9c76b9e5ce8fbcfd05bab"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "0538022c480806e9dcab855efe91dc225a8cbfd81d01c6d9ba9caae239dbaabc"
+    }
+  ],
+  "audit": {
+    "path": ".local/rag-ingestion/audit.json",
+    "sha256": "f7421f631f846fe6570f8c0614224c2f7c0b221797b5ea3f5f891c1a0f7d3c6b",
+    "populationFingerprint": "sha256:08bf1d12e8b431f3ec2e243fcc595b743acb222cb4bb7593fd766ce0834a5083",
+    "documents": 3,
+    "targetedReprocess": 1,
+    "shadowReindex": 0,
+    "blocked": 0
+  },
+  "rationale": "Read-only inspection resolved the classifier and imported runtime policy/helper graph, explicit fixture/registry, direct type dependencies, runner and server-only hook closure, and package/lock/tsconfig. SourceAnchoredSummary is a type-only edge and remains pinned. Node builtins and locked zod/tsx dependencies are not new product owners.",
+  "limits": "No audit/test/operator command executed. Historical evidence remains historical. Final owned diff and these raw hashes must still match before reuse at acceptance; this preparation does not freeze moving U03 files or claim live corpus coverage."
+}

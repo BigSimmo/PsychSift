@@ -1,0 +1,6 @@
+{
+  "receipts": "off",
+  "exit": 0,
+  "command": "node scripts/run-vitest.mjs run tests/document-clinical-summary.test.ts",
+  "arbiter": "off"
+}

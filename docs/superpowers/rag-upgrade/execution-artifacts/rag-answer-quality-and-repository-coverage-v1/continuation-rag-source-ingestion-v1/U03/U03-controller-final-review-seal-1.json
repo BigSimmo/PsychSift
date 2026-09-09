@@ -1,0 +1,69 @@
+{
+  "controllerReadComplete": true,
+  "head": "bbd978a5708ed70c51e293aab079ead9c5bcb1ce",
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "reviews": [
+    {
+      "role": "ingestion-worker-reviewer",
+      "report": "U03-product-ingestion-review-3.md",
+      "sha256": "f4f9d6bfade8d0bea3af7994bfe08c49bf4a4829db6864139ade67a475b0a185",
+      "agent": "/root/u03_product_ingestion_review_2",
+      "session": "01a08401-1c25-7690-a95d-46a32f246891",
+      "requestedModel": "gpt-6-astra",
+      "requestedEffort": "xhigh",
+      "observedModel": "gpt-6-astra",
+      "observedEffort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS",
+      "scope": "Full original U03 base through candidate3, with unchanged prior source assessment incorporated"
+    },
+    {
+      "role": "supabase-schema-guardian",
+      "report": "U03-product-schema-review-3.md",
+      "sha256": "740f4b474810745198586c203fe95da8336e4a888ebf08b4def2b887352a0121",
+      "agent": "/root/u03_product_schema_review_2",
+      "session": "01a08401-d9f7-7bb0-89e1-a4496f010a43",
+      "requestedModel": "gpt-6-astra",
+      "requestedEffort": "xhigh",
+      "observedModel": "gpt-6-astra",
+      "observedEffort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS",
+      "scope": "Full original U03 base through candidate3, with unchanged prior source assessment incorporated"
+    },
+    {
+      "role": "clinical-governance-reviewer",
+      "report": "U03-product-clinical-review-3.md",
+      "sha256": "642cb0857707acccdaf48d72eeedfb590b61085108fb1bb6b6fed3f691bbe06f",
+      "agent": "/root/u03_product_clinical_review_2",
+      "session": "01a0840a-2fb1-7532-971c-ba0e3d0f90c7",
+      "requestedModel": "gpt-6-astra",
+      "requestedEffort": "xhigh",
+      "observedModel": "gpt-6-astra",
+      "observedEffort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS",
+      "scope": "Full original U03 base through candidate3, with unchanged prior source assessment incorporated"
+    },
+    {
+      "role": "rag-retrieval-reviewer",
+      "report": "U03-product-wrapper-review-2.md",
+      "sha256": "7d17dc960c7379a6e5697b31ef2a69fb866f58a125069e93e6913aa10c84cdf7",
+      "agent": "/root/u03_product_wrapper_review_1",
+      "session": "01a0840c-168e-7fd0-bdac-98b09b074c88",
+      "requestedModel": "gpt-6-astra",
+      "requestedEffort": "xhigh",
+      "observedModel": "gpt-6-astra",
+      "observedEffort": "xhigh",
+      "specification": "PASS",
+      "quality": "PASS",
+      "scope": "Bounded actual-wrapper product and exact-signal proof closure"
+    }
+  ],
+  "routeEvidence": [
+    "U03-product-review-routes-3a.json",
+    "U03-product-review-routes-3b.json"
+  ],
+  "closedFindings": "All original Important product findings and U03-WR-01 locally closed; residuals preserved",
+  "atUtc": "2026-09-09T03:16:15.8373291Z"
+}

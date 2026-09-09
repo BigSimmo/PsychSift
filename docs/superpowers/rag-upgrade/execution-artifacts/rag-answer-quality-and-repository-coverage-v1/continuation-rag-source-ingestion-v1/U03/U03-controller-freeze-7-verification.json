@@ -1,0 +1,15 @@
+{
+  "atUtc": "2026-09-09T02:56:35.1793039Z",
+  "head": "57ba6d6fc2505f03a1ee0df82b186bccd0a455c2",
+  "freeze": "U03-implementation-freeze-7.json",
+  "verifiedFiles": 41,
+  "verifiedTestInputs": 12,
+  "onlyChangedPaths": [
+    "tests/model-index-extraction.test.ts",
+    "tests/openai-cache.test.ts"
+  ],
+  "other39Unchanged": true,
+  "proof": "Parent inspected exact two identity assertion changes; production and all other assertions untouched",
+  "toolingNote": "Initial read-only recheck incorrectly iterated the input manifest object instead of its files array; failed before output or any gate. Corrected to actual files field, all12 inputs match.",
+  "accepted": false
+}

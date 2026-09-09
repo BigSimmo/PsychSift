@@ -1,0 +1,7 @@
+{
+  "command": "node scripts/run-vitest.mjs run tests/deep-memory.test.ts -t \"cleanup uncertainty\"",
+  "receipts": "off",
+  "gateArbiter": "off",
+  "exit": 1,
+  "arbiter": "RUN"
+}

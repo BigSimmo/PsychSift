@@ -1,0 +1,10 @@
+{
+  "atUtc": "2026-09-09T02:26:57.7280878Z",
+  "freeze": "U03-implementation-freeze-6.json",
+  "sha256": "13ab6556319cd71146d0da8fdfb7b3596aa4b7f0188700a012560f248b083283",
+  "verifiedFiles": 41,
+  "changedFromFreeze5": [
+    "tests/indexing-v3-agent.test.ts"
+  ],
+  "evidence": "Controller inspected exact chain/map reflow; only whitespace changed. GREEN3 and compiler reused with original input identities, not claimed new runs."
+}

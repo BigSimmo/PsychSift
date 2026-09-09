@@ -1,0 +1,33 @@
+{
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "rootGaps": [
+    {
+      "full": "./.superpowers",
+      "kind": "root",
+      "tried": [
+        ".superpowers/"
+      ]
+    }
+  ],
+  "tables": {
+    "missing": [
+      "site_content_public_authority",
+      "site_content_publications",
+      "site_content_release_gate_artifacts",
+      "site_content_release_operations",
+      "site_content_release_projections",
+      "site_content_releases",
+      "site_content_sync_outbox",
+      "site_content_synchronizer_state",
+      "site_content_validation_binding_consumptions"
+    ],
+    "stale": []
+  },
+  "baseScriptCount": 271,
+  "baseScriptSummary": [
+    "Curated map of `scripts/` (269 files) and the `package.json` script surface (262 entries),"
+  ],
+  "currentScriptSummary": [
+    "Curated map of `scripts/` (270 files) and the `package.json` script surface (262 entries),"
+  ]
+}

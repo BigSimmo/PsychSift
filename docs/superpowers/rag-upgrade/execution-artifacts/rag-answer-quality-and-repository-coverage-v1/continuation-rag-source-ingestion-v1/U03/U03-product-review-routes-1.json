@@ -1,0 +1,32 @@
+[
+  {
+    "session": "01a083d1-bc19-7733-9ec3-f78fad0a7046",
+    "role": "ingestion-worker-reviewer",
+    "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T09-39-15-01a083d1-bc19-7733-9ec3-f78fad0a7046.jsonl",
+    "collaborationModel": "gpt-6-astra",
+    "limitation": "Observed local selected configuration, not backend attestation",
+    "collaborationEffort": "xhigh",
+    "model": "gpt-6-astra",
+    "effort": "xhigh"
+  },
+  {
+    "session": "01a083d2-353e-7f62-bc04-0abfc57696ab",
+    "role": "supabase-schema-guardian",
+    "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T09-39-46-01a083d2-353e-7f62-bc04-0abfc57696ab.jsonl",
+    "collaborationModel": "gpt-6-astra",
+    "limitation": "Observed local selected configuration, not backend attestation",
+    "collaborationEffort": "xhigh",
+    "model": "gpt-6-astra",
+    "effort": "xhigh"
+  },
+  {
+    "session": "01a083d7-6e06-7f73-aa2c-c983d2eb7aa0",
+    "role": "clinical-governance-reviewer",
+    "log": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T09-45-28-01a083d7-6e06-7f73-aa2c-c983d2eb7aa0.jsonl",
+    "collaborationModel": "gpt-6-astra",
+    "limitation": "Observed local selected configuration, not backend attestation",
+    "collaborationEffort": "xhigh",
+    "model": "gpt-6-astra",
+    "effort": "xhigh"
+  }
+]

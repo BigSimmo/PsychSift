@@ -1,0 +1,55 @@
+{
+  "kind": "Exact before-run selected input identities; required paths checked with ErrorActionPreference Stop",
+  "vitestConfig": "vitest.config.mts",
+  "head": "57ba6d6fc2505f03a1ee0df82b186bccd0a455c2",
+  "files": [
+    {
+      "path": "tests/openai-cache.test.ts",
+      "sha256": "24d77864efa8ddfab58d9a7f73400058559313a26371a0142bb340cf1af1cb5b"
+    },
+    {
+      "path": "tests/model-index-extraction.test.ts",
+      "sha256": "93fff787e4e025f8576d13263a3fe2aba1b7fea4e32e47c738c5d6536a196a2a"
+    },
+    {
+      "path": "src/lib/openai.ts",
+      "sha256": "91a4c355799f8b40e54a0a667704b65a9b7a2adcd1a3084912566b94c30a3600"
+    },
+    {
+      "path": "src/lib/model-index-extraction.ts",
+      "sha256": "a56e05d4ec761307711285070f43585717d221937680f7e4ec575fd73cce2eda"
+    },
+    {
+      "path": "src/lib/env.ts",
+      "sha256": "152b37e95ef7922b20b4828021cde9b69d1d424c8b232748d1ea11f1c6018474"
+    },
+    {
+      "path": "package.json",
+      "sha256": "53b6763fc9ba52771d480ab23db19eb988a2bad98cf9c76b9e5ce8fbcfd05bab"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "f969c2ddd1b058437b09eb61bf16b9ecc3bfb6ebb74539ec8e62ccdd7090e063"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "0538022c480806e9dcab855efe91dc225a8cbfd81d01c6d9ba9caae239dbaabc"
+    },
+    {
+      "path": "vitest.config.mts",
+      "sha256": "c9e57e014bcf37baabc368b237d20638eca8507df7bc93873103b9b25107add8"
+    },
+    {
+      "path": "scripts/run-vitest.mjs",
+      "sha256": "0247703de7440ca3b217ce450849d9d634fcd8f57bb7b26414267d7d8421b8a3"
+    },
+    {
+      "path": "scripts/test-cache-path.mjs",
+      "sha256": "e233299e4499796eeb936423bb2943019cac4fe00da2e738b8d7927a0b0e1507"
+    },
+    {
+      "path": "scripts/coverage-contract.mjs",
+      "sha256": "7da92cc9d6c9d75f67751ad106fbe718f1008569727bf4694dac18c9582d654f"
+    }
+  ]
+}

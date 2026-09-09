@@ -1,0 +1,5 @@
+
+> prompt-for-codex-medical-knowledge-base@0.1.0 arbiter
+> node scripts/gate-arbiter.mjs typecheck
+
+[gate-arbiter] RUN "typecheck" — GATE_ARBITER is off

@@ -1,0 +1,312 @@
+{
+  "kind": "Immutable unaccepted U03 product candidate binding",
+  "base": "8c11f138e6c683a13db3b465332e7f3cbb515c62",
+  "head": "b651ee23d8541fbebea77ca1c621fcdec42540ad",
+  "branch": "codex/rag-local-build-20260822",
+  "commits": [
+    "b651ee23d8541fbebea77ca1c621fcdec42540ad"
+  ],
+  "diff": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U03/U03-product-review-1.diff",
+  "diffSha256": "36d56dc5f7dc79aea8ef8598ff81106560e7f161ffb1402a73a9f36576e48adf",
+  "sourceFreeze": "U03-implementation-freeze-4.json",
+  "sourceFreezeSha256": "d56cee0eba974a08e4ed9afa60af28268ab451b7f36266f2ef2c08f4153cd6b1",
+  "files": [
+    {
+      "path": "docs/codebase-index.md",
+      "kind": "modified",
+      "sha256": "8b2a83555b2755e5a0c18954c547599f24d43cf9be882fccb578e8ead32ce398",
+      "bytes": 53778,
+      "committedBlobSha256": "8b2a83555b2755e5a0c18954c547599f24d43cf9be882fccb578e8ead32ce398",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "docs/ingestion-state-machine.md",
+      "kind": "modified",
+      "sha256": "e11371cc59a8ccfb00735c51663360d3df20944ed75f8aadc4dc28d92f0d93cc",
+      "bytes": 52959,
+      "committedBlobSha256": "e11371cc59a8ccfb00735c51663360d3df20944ed75f8aadc4dc28d92f0d93cc",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "docs/reindex-runbook.md",
+      "kind": "modified",
+      "sha256": "4a3f882afefd139a1ca1435056ca793126d3ea4bf98e2a53031be76b6b91c829",
+      "bytes": 7095,
+      "committedBlobSha256": "4a3f882afefd139a1ca1435056ca793126d3ea4bf98e2a53031be76b6b91c829",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "docs/scripts-index.md",
+      "kind": "modified",
+      "sha256": "fbdba991d8317b5dab295fa0fd5f568cddc817085cd276c58210db60b0bc2bb4",
+      "bytes": 31859,
+      "committedBlobSha256": "fbdba991d8317b5dab295fa0fd5f568cddc817085cd276c58210db60b0bc2bb4",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U03-execution-contract.md",
+      "kind": "modified",
+      "sha256": "877594a62de02ef3391ae0c9ca7594b827e768d8b0603eef3adfba0530dc2939",
+      "bytes": 39513,
+      "committedBlobSha256": "877594a62de02ef3391ae0c9ca7594b827e768d8b0603eef3adfba0530dc2939",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "docs/worker-deploy-runbook.md",
+      "kind": "modified",
+      "sha256": "26905d350d69cad2c6d80791758fde73427bf29726e8a807a5c1c5851822072c",
+      "bytes": 34800,
+      "committedBlobSha256": "26905d350d69cad2c6d80791758fde73427bf29726e8a807a5c1c5851822072c",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "scripts/archive/backfill-enrichment.ts",
+      "kind": "modified",
+      "sha256": "0cd838d19a18e26159c50c9291f33fbcb2263c6e8b0cbaf1d2ca981682fb0059",
+      "bytes": 19213,
+      "committedBlobSha256": "0cd838d19a18e26159c50c9291f33fbcb2263c6e8b0cbaf1d2ca981682fb0059",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "scripts/backfill-smart-index.ts",
+      "kind": "modified",
+      "sha256": "e99df48b3474a7674616d0fb7e674adc4636ebcc68ea92f1e0993231963d05ba",
+      "bytes": 17365,
+      "committedBlobSha256": "e99df48b3474a7674616d0fb7e674adc4636ebcc68ea92f1e0993231963d05ba",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "scripts/enrich-documents.ts",
+      "kind": "modified",
+      "sha256": "6f7d02225bfa4331c1ec7a75b1aaea7f15bb7d71ace1b0ac6c9e500748973b92",
+      "bytes": 29525,
+      "committedBlobSha256": "6f7d02225bfa4331c1ec7a75b1aaea7f15bb7d71ace1b0ac6c9e500748973b92",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "scripts/lib/ingestion-operator-compatibility.ts",
+      "kind": "new",
+      "sha256": "1280b45cf22e8042c1d824721a67759eba5c8ad2dc6cd49c311ad635ba883fe0",
+      "bytes": 1300,
+      "committedBlobSha256": "1280b45cf22e8042c1d824721a67759eba5c8ad2dc6cd49c311ad635ba883fe0",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "src/lib/deep-memory.ts",
+      "kind": "modified",
+      "sha256": "40e0278ca438ca456b8d7418f2399b77da5ad1ef465bd0e2c393de7150700132",
+      "bytes": 41936,
+      "committedBlobSha256": "40e0278ca438ca456b8d7418f2399b77da5ad1ef465bd0e2c393de7150700132",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "src/lib/document-enrichment.ts",
+      "kind": "modified",
+      "sha256": "74cfa3107f40ac50fb3a84f6b948a46fe50e8288445bda6119c617a3b98b7a41",
+      "bytes": 47600,
+      "committedBlobSha256": "74cfa3107f40ac50fb3a84f6b948a46fe50e8288445bda6119c617a3b98b7a41",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "src/lib/ingestion-repair-plan.ts",
+      "kind": "new",
+      "sha256": "5d271f9f51a6a01b5189a5d3b741c8c83e58b7b59e9ed57b7f8a3de5b0f58d9d",
+      "bytes": 3743,
+      "committedBlobSha256": "5d271f9f51a6a01b5189a5d3b741c8c83e58b7b59e9ed57b7f8a3de5b0f58d9d",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "src/lib/supabase/database.types.ts",
+      "kind": "modified",
+      "sha256": "dcb21f4473fa1bc75d772583b2b5cbc239064f19084bc8a04514a852cc440480",
+      "bytes": 128884,
+      "committedBlobSha256": "dcb21f4473fa1bc75d772583b2b5cbc239064f19084bc8a04514a852cc440480",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "supabase/functions/_shared/ingestion-attempt.ts",
+      "kind": "new",
+      "sha256": "9b202e70f1b1d67ea729ba9fb1e178e7e7a202055e86f2e9787ea5a485be4e71",
+      "bytes": 4230,
+      "committedBlobSha256": "9b202e70f1b1d67ea729ba9fb1e178e7e7a202055e86f2e9787ea5a485be4e71",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/behavior.ts",
+      "kind": "modified",
+      "sha256": "5f3846d6ffaf9e06bb52f92f4c3e91d3bb0b3f37b3cb7b020e9d2f7260a1d0c2",
+      "bytes": 10497,
+      "committedBlobSha256": "5f3846d6ffaf9e06bb52f92f4c3e91d3bb0b3f37b3cb7b020e9d2f7260a1d0c2",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "supabase/functions/indexing-v3-agent/index.ts",
+      "kind": "modified",
+      "sha256": "9024019f81f7f42099cca9323621b12cbd9768bdf420e39053d99dc4074e5188",
+      "bytes": 70487,
+      "committedBlobSha256": "9024019f81f7f42099cca9323621b12cbd9768bdf420e39053d99dc4074e5188",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql",
+      "kind": "new",
+      "sha256": "5f83705c1de209ac324b095130df4d7687768e9031adaf994f4b4630106a9a9f",
+      "bytes": 119846,
+      "committedBlobSha256": "5f83705c1de209ac324b095130df4d7687768e9031adaf994f4b4630106a9a9f",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "supabase/schema.sql",
+      "kind": "modified",
+      "sha256": "8b8bfaefc8cde9b9552fb9704905ecfb624979d546c8c08795e394acff2e9f9e",
+      "bytes": 663512,
+      "committedBlobSha256": "8b8bfaefc8cde9b9552fb9704905ecfb624979d546c8c08795e394acff2e9f9e",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/check-indexing-contract.test.ts",
+      "kind": "modified",
+      "sha256": "52f422d78bc76172404ee6677ae71817d639070bbf92dff082576718009f122e",
+      "bytes": 5170,
+      "committedBlobSha256": "52f422d78bc76172404ee6677ae71817d639070bbf92dff082576718009f122e",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/deep-memory-transaction-sql.test.ts",
+      "kind": "modified",
+      "sha256": "dbd6cfab7b858d4023386f1054641fb644e01716cf3ecd34db0cec8b2700e533",
+      "bytes": 7226,
+      "committedBlobSha256": "dbd6cfab7b858d4023386f1054641fb644e01716cf3ecd34db0cec8b2700e533",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/deep-memory.test.ts",
+      "kind": "modified",
+      "sha256": "0673fa803d2f64a25d2b625aff23d272a44a7c8d009604f51b9cb40563d289e6",
+      "bytes": 29507,
+      "committedBlobSha256": "0673fa803d2f64a25d2b625aff23d272a44a7c8d009604f51b9cb40563d289e6",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/document-clinical-summary.test.ts",
+      "kind": "modified",
+      "sha256": "5bda65ee6ab49b2a2f4b6cb773e77fccd775d88aee4732d63286e605b49841a6",
+      "bytes": 5058,
+      "committedBlobSha256": "5bda65ee6ab49b2a2f4b6cb773e77fccd775d88aee4732d63286e605b49841a6",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/document-enrichment.test.ts",
+      "kind": "modified",
+      "sha256": "1715614315832268f7e1e8b6c440ed780916314246d3d4439f2423cdfa7dcd17",
+      "bytes": 61461,
+      "committedBlobSha256": "1715614315832268f7e1e8b6c440ed780916314246d3d4439f2423cdfa7dcd17",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/indexing-v3-agent.test.ts",
+      "kind": "modified",
+      "sha256": "1660055600d47fd98b082dff458f82cb5e1a76d4d8be9eb7d5812db1e7f0daf1",
+      "bytes": 44687,
+      "committedBlobSha256": "1660055600d47fd98b082dff458f82cb5e1a76d4d8be9eb7d5812db1e7f0daf1",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/ingestion-lease-fencing.test.ts",
+      "kind": "new",
+      "sha256": "137ae7ddbedbc982de488255717e06f50bdc15a8a932936546f83754fd417719",
+      "bytes": 15979,
+      "committedBlobSha256": "137ae7ddbedbc982de488255717e06f50bdc15a8a932936546f83754fd417719",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/ingestion-operator-compatibility.test.ts",
+      "kind": "new",
+      "sha256": "54716210a3f6de028c1a2f219cb1cf1f90e281019c281e8b898c95937f025961",
+      "bytes": 5045,
+      "committedBlobSha256": "54716210a3f6de028c1a2f219cb1cf1f90e281019c281e8b898c95937f025961",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/ingestion-repair-plan.test.ts",
+      "kind": "new",
+      "sha256": "4b8d6236584fed0fca96219fb007d3476fed2efdb833ef2a0b59149450f816f4",
+      "bytes": 3178,
+      "committedBlobSha256": "4b8d6236584fed0fca96219fb007d3476fed2efdb833ef2a0b59149450f816f4",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/storage-upload-compensation.test.ts",
+      "kind": "modified",
+      "sha256": "addc75e18eea0b1bb15dcebb4474637a58eaee0a0de05964d7ffbb21b0f455b2",
+      "bytes": 4717,
+      "committedBlobSha256": "addc75e18eea0b1bb15dcebb4474637a58eaee0a0de05964d7ffbb21b0f455b2",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/worker-row-contract.test.ts",
+      "kind": "modified",
+      "sha256": "0b87c98f55e464ecc5675f63b76df4cfd2f756d7cbd7c3a305ab8705e50b0c10",
+      "bytes": 14161,
+      "committedBlobSha256": "0b87c98f55e464ecc5675f63b76df4cfd2f756d7cbd7c3a305ab8705e50b0c10",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/worker-run-loop.test.ts",
+      "kind": "modified",
+      "sha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5",
+      "bytes": 7695,
+      "committedBlobSha256": "3e44bd5f35b26d2c7cd8dbfc49bef80dc8ccf9d7551ba6036a82a8e1045238d5",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/worker-shadow-extraction.test.ts",
+      "kind": "modified",
+      "sha256": "85369bb50897e913bcebbb743b82708132fe5d59d4c2e73a2b8e725b2f6eca7f",
+      "bytes": 28084,
+      "committedBlobSha256": "85369bb50897e913bcebbb743b82708132fe5d59d4c2e73a2b8e725b2f6eca7f",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "tests/worker-visual-capture.test.ts",
+      "kind": "modified",
+      "sha256": "f3f793cce7bc8a01910f7c8d44a7671d26d823cdb5dd8a7022675950b81178a6",
+      "bytes": 6342,
+      "committedBlobSha256": "f3f793cce7bc8a01910f7c8d44a7671d26d823cdb5dd8a7022675950b81178a6",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "worker/behavior.ts",
+      "kind": "modified",
+      "sha256": "32abf24491a8e08ce3c861be16cc36e8e722cead68f7b522eaab969ca15ee17c",
+      "bytes": 6023,
+      "committedBlobSha256": "32abf24491a8e08ce3c861be16cc36e8e722cead68f7b522eaab969ca15ee17c",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "worker/main.ts",
+      "kind": "modified",
+      "sha256": "9d962c2384991ae4503f33f0750a75c692ad3881ee5c6d3c9b1f5f016e6ac871",
+      "bytes": 80649,
+      "committedBlobSha256": "9d962c2384991ae4503f33f0750a75c692ad3881ee5c6d3c9b1f5f016e6ac871",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "worker/row-contracts.ts",
+      "kind": "modified",
+      "sha256": "41474352c1ea70ec15e77894e50e656ccb8e76e071713243b7e1f20e899252db",
+      "bytes": 11833,
+      "committedBlobSha256": "41474352c1ea70ec15e77894e50e656ccb8e76e071713243b7e1f20e899252db",
+      "rawEqualsBlob": true
+    },
+    {
+      "path": "worker/types.ts",
+      "kind": "modified",
+      "sha256": "b9c2647b1982149551756648436d1f7d4b630cf06be9700d4a701338222bb53c",
+      "bytes": 713,
+      "committedBlobSha256": "b9c2647b1982149551756648436d1f7d4b630cf06be9700d4a701338222bb53c",
+      "rawEqualsBlob": true
+    }
+  ],
+  "atUtc": "2026-09-09T01:41:19.684Z"
+}
