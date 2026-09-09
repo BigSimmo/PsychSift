@@ -660,6 +660,7 @@ export type Database = {
       };
       document_images: {
         Row: {
+          index_generation_id: string | null;
           bbox: Json | null;
           caption: string;
           caption_confidence: number | null;
@@ -688,6 +689,7 @@ export type Database = {
           width: number | null;
         };
         Insert: {
+          index_generation_id?: string | null;
           bbox?: Json | null;
           caption?: string;
           caption_confidence?: number | null;
@@ -716,6 +718,7 @@ export type Database = {
           width?: number | null;
         };
         Update: {
+          index_generation_id?: string | null;
           bbox?: Json | null;
           caption?: string;
           caption_confidence?: number | null;
@@ -1722,6 +1725,10 @@ export type Database = {
       };
       ingestion_job_stages: {
         Row: {
+          job_kind: string | null;
+          lease_token: string | null;
+          index_generation_id: string | null;
+
           artifact_counts: Json;
           created_at: string;
           document_id: string;
@@ -1737,6 +1744,10 @@ export type Database = {
           started_at: string;
         };
         Insert: {
+          job_kind?: string | null;
+          lease_token?: string | null;
+          index_generation_id?: string | null;
+
           artifact_counts?: Json;
           created_at?: string;
           document_id: string;
@@ -1752,6 +1763,10 @@ export type Database = {
           started_at?: string;
         };
         Update: {
+          job_kind?: string | null;
+          lease_token?: string | null;
+          index_generation_id?: string | null;
+
           artifact_counts?: Json;
           created_at?: string;
           document_id?: string;
@@ -1783,8 +1798,108 @@ export type Database = {
           },
         ];
       };
+      indexing_v3_agent_jobs: {
+        Row: {
+          id: string;
+          document_id: string;
+          status: string;
+          enrichment_status: string;
+          attempt_count: number;
+          max_attempts: number;
+          locked_by: string | null;
+          locked_at: string | null;
+          next_run_at: string | null;
+          version: string;
+          last_error: string | null;
+          metadata: Json;
+          created_at: string;
+          updated_at: string;
+          lease_token: string | null;
+          lease_expected_generation_id: string | null;
+          lease_write_generation_id: string | null;
+          lease_authority_digest: string | null;
+          lease_expires_at: string | null;
+          lease_duration_seconds: number | null;
+        };
+        Insert: {
+          id?: string;
+          document_id: string;
+          status?: string;
+          enrichment_status?: string;
+          attempt_count?: number;
+          max_attempts?: number;
+          locked_by?: string | null;
+          locked_at?: string | null;
+          next_run_at?: string | null;
+          version?: string;
+          last_error?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+          lease_token?: string | null;
+          lease_expected_generation_id?: string | null;
+          lease_write_generation_id?: string | null;
+          lease_authority_digest?: string | null;
+          lease_expires_at?: string | null;
+          lease_duration_seconds?: number | null;
+        };
+        Update: {
+          id?: string;
+          document_id?: string;
+          status?: string;
+          enrichment_status?: string;
+          attempt_count?: number;
+          max_attempts?: number;
+          locked_by?: string | null;
+          locked_at?: string | null;
+          next_run_at?: string | null;
+          version?: string;
+          last_error?: string | null;
+          metadata?: Json;
+          created_at?: string;
+          updated_at?: string;
+          lease_token?: string | null;
+          lease_expected_generation_id?: string | null;
+          lease_write_generation_id?: string | null;
+          lease_authority_digest?: string | null;
+          lease_expires_at?: string | null;
+          lease_duration_seconds?: number | null;
+        };
+        Relationships: [];
+      };
+      ingestion_repair_plan_audit: {
+        Row: {
+          id: string;
+          created_at: string;
+          plan: Json;
+          plan_digest: string;
+          outcome: "planned";
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          plan: Json;
+          plan_digest: string;
+          outcome?: "planned";
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          plan?: Json;
+          plan_digest?: string;
+          outcome?: "planned";
+        };
+        Relationships: [];
+      };
       ingestion_jobs: {
         Row: {
+          lease_token: string | null;
+          lease_expected_generation_id: string | null;
+          lease_write_generation_id: string | null;
+          lease_authority_digest: string | null;
+          lease_expires_at: string | null;
+          lease_duration_seconds: number | null;
+
           attempt_count: number;
           batch_id: string | null;
           completed_at: string | null;
@@ -1803,6 +1918,13 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          lease_token?: string | null;
+          lease_expected_generation_id?: string | null;
+          lease_write_generation_id?: string | null;
+          lease_authority_digest?: string | null;
+          lease_expires_at?: string | null;
+          lease_duration_seconds?: number | null;
+
           attempt_count?: number;
           batch_id?: string | null;
           completed_at?: string | null;
@@ -1821,6 +1943,13 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          lease_token?: string | null;
+          lease_expected_generation_id?: string | null;
+          lease_write_generation_id?: string | null;
+          lease_authority_digest?: string | null;
+          lease_expires_at?: string | null;
+          lease_duration_seconds?: number | null;
+
           attempt_count?: number;
           batch_id?: string | null;
           completed_at?: string | null;
@@ -2584,6 +2713,180 @@ export type Database = {
       };
     };
     Functions: {
+      record_ingestion_repair_plan: {
+        Args: {
+          p_plan: Json;
+        };
+        Returns: Json;
+      };
+      replace_indexing_v3_visual_artifacts: {
+        Args: {
+          p_fence: Json;
+          p_images: Json;
+          p_units: Json;
+          p_fields: Json;
+        };
+        Returns: Json;
+      };
+      replace_indexing_v3_core_embeddings: {
+        Args: {
+          p_fence: Json;
+          p_fields: Json;
+        };
+        Returns: Json;
+      };
+      replace_indexing_v3_memory_cards: {
+        Args: {
+          p_fence: Json;
+          p_cards: Json;
+        };
+        Returns: Json;
+      };
+      replace_indexing_v3_sections: {
+        Args: {
+          p_fence: Json;
+          p_sections: Json;
+          p_units: Json;
+        };
+        Returns: Json;
+      };
+      cleanup_ingestion_deep_memory_staging: {
+        Args: {
+          p_fence: Json;
+          p_artifact_generation: string;
+        };
+        Returns: Json;
+      };
+      stage_ingestion_deep_memory: {
+        Args: {
+          p_fence: Json;
+          p_artifact_generation: string;
+          p_sections: Json;
+          p_cards: Json;
+          p_units: Json;
+        };
+        Returns: Json;
+      };
+      update_indexing_v3_agent_job_status: {
+        Args: {
+          p_fence: Json;
+          p_status: string;
+          p_error: string | null;
+          p_next_run_at: string | null;
+          p_metadata: Json;
+        };
+        Returns: Json;
+      };
+      persist_ingestion_image_caption_cache: {
+        Args: {
+          p_fence: Json;
+          p_cache: Json;
+        };
+        Returns: Json;
+      };
+      persist_ingestion_index_quality: {
+        Args: {
+          p_fence: Json;
+          p_quality: Json;
+        };
+        Returns: Json;
+      };
+      reset_ingestion_attempt_artifacts: {
+        Args: {
+          p_fence: Json;
+          p_generation: string;
+        };
+        Returns: Json;
+      };
+      write_ingestion_base_artifacts: {
+        Args: {
+          p_fence: Json;
+          p_generation: string;
+          p_chunks: Json;
+          p_images: Json;
+          p_table_facts: Json;
+          p_embedding_fields: Json;
+          p_index_units: Json;
+        };
+        Returns: Json;
+      };
+      prepare_ingestion_image_upload: {
+        Args: {
+          p_fence: Json;
+          p_generation: string;
+          p_extension: string;
+        };
+        Returns: Json;
+      };
+      finish_ingestion_job_stage: {
+        Args: {
+          p_fence: Json;
+          p_stage_id: string;
+          p_ok: boolean;
+          p_counts: Json;
+          p_error: string | null;
+        };
+        Returns: Json;
+      };
+      start_ingestion_job_stage: {
+        Args: {
+          p_fence: Json;
+          p_stage: string;
+          p_metadata: Json;
+        };
+        Returns: Json;
+      };
+      patch_ingestion_document_state: {
+        Args: {
+          p_fence: Json;
+          p_state: Json;
+          p_metadata: Json;
+        };
+        Returns: Json;
+      };
+      update_ingestion_job_progress: {
+        Args: {
+          p_fence: Json;
+          p_stage: string;
+          p_progress: number;
+        };
+        Returns: Json;
+      };
+      heartbeat_indexing_v3_agent_job: {
+        Args: {
+          p_fence: Json;
+        };
+        Returns: Json;
+      };
+      heartbeat_ingestion_job: {
+        Args: {
+          p_fence: Json;
+        };
+        Returns: Json;
+      };
+      persist_ingestion_summary_projection: {
+        Args: {
+          p_fence: Json;
+          p_summary: Json;
+          p_labels: Json;
+          p_metadata: Json;
+        };
+        Returns: Json;
+      };
+      assert_current_ingestion_attempt: {
+        Args: {
+          p_fence: Json;
+          p_target_generation: string | null;
+        };
+        Returns: Json;
+      };
+      lock_ingestion_document_authority: {
+        Args: {
+          p_document_id: string;
+          p_try: boolean;
+        };
+        Returns: Json;
+      };
       adopt_site_content_baseline: {
         Args: { p_adoption: Json; p_validation_binding: Json };
         Returns: Json;
@@ -2834,45 +3137,19 @@ export type Database = {
       };
       claim_indexing_v3_agent_jobs: {
         Args: {
+          p_worker_id: string;
           p_claim_limit?: number;
           p_stale_after_minutes?: number;
-          p_worker_id: string;
         };
-        Returns: {
-          attempt_count: number;
-          batch_id: string;
-          document_id: string;
-          documents: Json;
-          error_message: string;
-          id: string;
-          locked_at: string;
-          locked_by: string;
-          max_attempts: number;
-          progress: number;
-          stage: string;
-          status: string;
-        }[];
+        Returns: Json[];
       };
       claim_ingestion_jobs: {
         Args: {
+          p_worker_id: string;
           p_claim_limit?: number;
           p_stale_after_minutes?: number;
-          p_worker_id: string;
         };
-        Returns: {
-          attempt_count: number;
-          batch_id: string;
-          document_id: string;
-          documents: Json;
-          error_message: string;
-          id: string;
-          locked_at: string;
-          locked_by: string;
-          max_attempts: number;
-          progress: number;
-          stage: string;
-          status: string;
-        }[];
+        Returns: Json[];
       };
       cleanup_abandoned_document_index_generations: {
         Args: { p_document_id?: string | null; p_dry_run?: boolean; p_limit?: number };
@@ -2880,38 +3157,36 @@ export type Database = {
       };
       commit_document_deep_memory_generation: {
         Args: {
-          p_artifact_generation_id: string;
-          p_document_id: string;
-          p_document_intelligence_version: string;
-          p_index_unit_counts_by_type: Json;
-          p_memory_card_count: number;
-          p_producer: string;
+          p_fence: Json;
+          p_artifact_generation: string;
           p_rag_memory_version: string;
-          p_repaired_anchor_count?: number;
+          p_document_intelligence_version: string;
           p_section_count: number;
+          p_memory_card_count: number;
+          p_index_unit_counts_by_type: Json;
+          p_anchors: Json;
+          p_aliases: Json;
         };
         Returns: Json;
       };
       commit_document_index_generation: {
         Args: {
-          p_chunk_count?: number;
-          p_document_id: string;
-          p_image_count?: number;
-          p_index_generation_id: string;
-          p_metadata?: Json;
-          p_page_count?: number;
-          p_pages?: Json;
-          p_quality?: Json;
-          p_status?: string;
+          p_fence: Json;
+          p_generation: string;
+          p_page_count: number;
+          p_chunk_count: number;
+          p_image_count: number;
+          p_metadata: Json;
+          p_pages: Json;
+          p_quality: Json;
         };
         Returns: Json;
       };
       complete_ingestion_job: {
         Args: {
-          p_batch_id?: string | null;
-          p_document_id: string;
-          p_job_id: string;
-          p_stage?: string;
+          p_fence: Json;
+          p_batch_id: string | null;
+          p_stage: string;
         };
         Returns: Json;
       };
@@ -2924,22 +3199,12 @@ export type Database = {
       };
       complete_strict_enrichment_job: {
         Args: {
-          p_agent_version?: string;
-          p_document_id: string;
-          p_job_id?: string;
-          p_stage?: string;
-          p_visual_indexing_version?: string;
+          p_fence: Json;
+          p_stage: string;
+          p_agent_version: string;
+          p_visual_indexing_version: string;
         };
-        Returns: {
-          completed_job_ids: string[];
-          counts: Json;
-          document_id: string;
-          gate_passed: boolean;
-          missing: string[];
-          ok: boolean;
-          presence: Json;
-          status: string;
-        }[];
+        Returns: Json;
       };
       consume_api_rate_limit: {
         Args: {
@@ -3049,14 +3314,12 @@ export type Database = {
       };
       fail_or_retry_ingestion_job: {
         Args: {
-          p_batch_id?: string | null;
-          p_document_id: string;
-          p_document_status?: string;
-          p_error_message?: string;
-          p_job_id: string;
-          p_next_run_at?: string | null;
-          p_retry?: boolean;
-          p_stage?: string;
+          p_fence: Json;
+          p_batch_id: string | null;
+          p_retry: boolean;
+          p_stage: string;
+          p_error_message: string | null;
+          p_next_run_at: string | null;
         };
         Returns: Json;
       };

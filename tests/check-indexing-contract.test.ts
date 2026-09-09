@@ -69,7 +69,12 @@ describe("smart-index repair selection", () => {
     expect(scriptSource).toContain("SOURCE_ANCHORED_MAX_CHUNKS");
     expect(scriptSource).toContain("SOURCE_ANCHORED_MAX_IMAGES");
     expect(scriptSource).toContain("source_anchored_summary_source_limit_exceeded");
-    expect(scriptSource).toMatch(/upsertDocumentEnrichment\(\{[\s\S]*?indexGenerationId(?:\s*:\s*generationId)?,/);
+    expect(scriptSource).toContain(
+      "unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentEnrichment>>>()",
+    );
+    expect(
+      scriptSource.indexOf("assertUnleasedOperatorModeAllowed({", scriptSource.indexOf("export async function main")),
+    ).toBeLessThan(scriptSource.indexOf("await Promise.all([", scriptSource.indexOf("export async function main")));
   });
 
   it("does not use metadata repair/random UUID fallback as summary generation authority", () => {

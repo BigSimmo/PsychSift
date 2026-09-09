@@ -43,6 +43,14 @@ function claimedDocuments(overrides: Record<string, unknown> = {}) {
 
 function claimedRow(overrides: Record<string, unknown> = {}) {
   return {
+    job_kind: "node",
+    lease_token: "77777777-7777-4777-8777-777777777777",
+    lease_expected_generation_id: null,
+    lease_write_generation_id: "88888888-8888-4888-8888-888888888888",
+    lease_authority_digest: `sha256:${"a".repeat(64)}`,
+    lease_expires_at: "2026-09-09T12:00:00.000Z",
+    lease_duration_seconds: 2700,
+
     id: "7d5e1a90-4444-4aaa-8bbb-000000000004",
     document_id: "3f1a2b6c-1111-4aaa-8bbb-000000000001",
     batch_id: null,
@@ -158,6 +166,13 @@ describe("claimed job row contract", () => {
     );
   });
 
+  it("rejects a substituted embedded document and malformed UUID before attempt construction", () => {
+    expect(() =>
+      assertClaimedJobRow(claimedRow({ documents: claimedDocuments({ id: "55555555-5555-4555-8555-555555555555" }) })),
+    ).toThrow(WorkerRowShapeError);
+    expect(() => assertClaimedJobRow(claimedRow({ id: "not-a-uuid" }))).toThrow(WorkerRowShapeError);
+  });
+
   it("reports only Zod issue paths, never row content", () => {
     // Claimed rows carry document titles and storage paths; an error message that echoed
     // one would leak content into job error_message columns and Sentry.
@@ -218,13 +233,7 @@ describe("claimed batch partition", () => {
     expect(accepted[0]).toBe(good);
     expect(rejected).toHaveLength(1);
     expect(rejected[0].error).toBeInstanceOf(WorkerRowShapeError);
-    expect(rejected[0].failable).toEqual({
-      id: "8e6f2b01-8888-4aaa-8bbb-000000000008",
-      document_id: "3f1a2b6c-1111-4aaa-8bbb-000000000001",
-      batch_id: null,
-      ownerId: "0b6c9e21-5555-4aaa-8bbb-000000000005",
-      documentStatus: "failed",
-    });
+    expect(rejected[0].failable).toBeNull();
   });
 
   it("yields no failable identity when even the job id is untrustworthy", () => {
@@ -233,14 +242,14 @@ describe("claimed batch partition", () => {
     expect(rejected[0].failable).toBeNull();
   });
 
-  it("tolerates a missing batch_id key when building the failable identity", () => {
+  it("does not invent a terminal identity when batch_id is missing", () => {
     const bad: Record<string, unknown> = claimedRow({ attempt_count: "1" });
     delete bad.batch_id;
     const { rejected } = partitionClaimedJobRows([bad]);
-    expect(rejected[0].failable).toMatchObject({ batch_id: null });
+    expect(rejected[0].failable).toBeNull();
   });
 
-  it("preserves an indexed document status so a bad reindex row cannot demote a live index", () => {
+  it("refuses malformed reindex terminal mutation so a live index cannot be demoted", () => {
     // Mirrors preservedStatus in worker/behavior.ts: atomic reindex failures keep the
     // document indexed rather than blanking a live index.
     const bad = claimedRow({
@@ -248,12 +257,12 @@ describe("claimed batch partition", () => {
       documents: claimedDocuments({ status: "indexed" }),
     });
     const { rejected } = partitionClaimedJobRows([bad]);
-    expect(rejected[0].failable).toMatchObject({ documentStatus: "indexed" });
+    expect(rejected[0].failable).toBeNull();
   });
 
-  it("falls back to a null owner and failed status when documents is unreadable", () => {
+  it("never fabricates owner or failed status when documents is unreadable", () => {
     const { rejected } = partitionClaimedJobRows([claimedRow({ documents: "corrupt" })]);
-    expect(rejected[0].failable).toMatchObject({ ownerId: null, documentStatus: "failed" });
+    expect(rejected[0].failable).toBeNull();
   });
 });
 

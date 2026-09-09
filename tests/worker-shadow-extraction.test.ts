@@ -18,6 +18,8 @@ import {
   type ShadowRunnerResult,
   type ShadowScriptRunner,
 } from "../worker/shadow-extraction";
+import { IngestionAttempt, type IngestionFence } from "../supabase/functions/_shared/ingestion-attempt";
+import { runIngestionPreparedWork, runIngestionMutation } from "../worker/behavior";
 import type { ExtractedDocument } from "../src/lib/types";
 
 // Packet B4 contract tests. Every test injects a fake runner — CI has no docling. The
@@ -459,7 +461,7 @@ describe("runShadowExtraction (fail-open orchestration)", () => {
 describe("worker/main.ts + env + image contract (source text)", () => {
   it("runs the shadow extractor only after the legacy generation is committed and before the final metadata merge", () => {
     const commitIndex = workerMain.indexOf("await commitDocumentIndexGeneration({");
-    const shadowCallIndex = workerMain.indexOf("shadowExtraction = await runShadowExtraction(");
+    const shadowCallIndex = workerMain.indexOf("shadowExtraction = await runIngestionPreparedWork(");
     const finalMetadataIndex = workerMain.indexOf("const finalMetadata = {");
     const finalWriteIndex = workerMain.indexOf("metadata: finalMetadata,");
     expect(commitIndex).toBeGreaterThan(-1);
@@ -467,14 +469,10 @@ describe("worker/main.ts + env + image contract (source text)", () => {
     expect(finalMetadataIndex).toBeGreaterThan(shadowCallIndex);
     expect(finalWriteIndex).toBeGreaterThan(finalMetadataIndex);
     expect(workerMain).toContain('if (env.WORKER_DOCUMENT_EXTRACTOR_MODE === "shadow") {');
-    // Fail-open: the stage update before the shadow run must swallow a lost lease, otherwise
-    // shadow mode could fail a job whose generation is already committed.
-    const shadowStageUpdate = workerMain.slice(
-      workerMain.indexOf('await updateJobProgress(job.id, { stage: "indexed; shadow extraction (docling)"'),
-      workerMain.indexOf("const shadowHeartbeat = setInterval("),
-    );
-    expect(shadowStageUpdate).toMatch(/\.catch\(\s*\(\)\s*=>\s*\{\}\s*,?\s*\)/);
-    // The record travels only inside finalMetadata (deep-merged by apply_document_metadata_patch).
+    const shadowStep = workerMain.slice(shadowCallIndex, workerMain.indexOf("} finally {", shadowCallIndex));
+    expect(shadowStep).toContain('() => updateJobProgress(job.id, { stage: "indexed; shadow extraction (docling)"');
+    expect(shadowStep).toMatch(/\(\) =>\s*runShadowExtraction\(/);
+    // The record travels only inside the fenced, owned finalMetadata patch.
     expect(workerMain.match(/shadow_extraction: shadowExtraction/g)).toHaveLength(1);
     expect(workerMain).toContain("...(shadowExtraction ? { shadow_extraction: shadowExtraction } : {})");
     // Legacy extraction is timed so the record can compare like with like.
@@ -580,5 +578,58 @@ describe("worker source-anchored enrichment contract", () => {
     expect(section).not.toContain(
       "metadata: { ...(job.documents.metadata ?? {}), index_generation_id: indexGenerationId }",
     );
+  });
+});
+
+const preparedFence: IngestionFence = {
+  job_kind: "node",
+  job_id: "11111111-1111-4111-8111-111111111111",
+  document_id: "22222222-2222-4222-8222-222222222222",
+  worker_id: "worker",
+  lease_token: "33333333-3333-4333-8333-333333333333",
+  expected_generation_id: "44444444-4444-4444-8444-444444444444",
+  authority_digest: `sha256:${"a".repeat(64)}`,
+};
+describe("actual shadow preparation/work orchestration (mocked native work)", () => {
+  it("refuses native work after progress reports lease loss", async () => {
+    const attempt = new IngestionAttempt(preparedFence);
+    const nativeWork = vi.fn(async () => null);
+    const rpc = vi.fn(async () => ({ data: { ok: false, reason: "lease_lost" }, error: null }));
+    await expect(
+      runIngestionPreparedWork(
+        attempt,
+        () => runIngestionMutation(attempt, rpc, "update_ingestion_job_progress"),
+        nativeWork,
+      ),
+    ).rejects.toMatchObject({ code: "lease_lost" });
+    expect(nativeWork).not.toHaveBeenCalled();
+    expect(attempt.signal.aborted).toBe(true);
+  });
+  it("keeps ordinary optional work failure distinct from cancellation", async () => {
+    const attempt = new IngestionAttempt(preparedFence);
+    const failed = new Error("optional shadow unavailable");
+    await expect(
+      runIngestionPreparedWork(
+        attempt,
+        async () => undefined,
+        async () => {
+          throw failed;
+        },
+      ),
+    ).rejects.toBe(failed);
+    expect(attempt.signal.aborted).toBe(false);
+  });
+  it("drops a late native result after cancellation", async () => {
+    const attempt = new IngestionAttempt(preparedFence);
+    await expect(
+      runIngestionPreparedWork(
+        attempt,
+        async () => undefined,
+        async () => {
+          attempt.cancel();
+          return { outcome: "ok" };
+        },
+      ),
+    ).rejects.toMatchObject({ code: "lease_lost" });
   });
 });

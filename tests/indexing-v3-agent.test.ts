@@ -23,6 +23,16 @@ import {
 } from "../supabase/functions/_shared/ingestion-generation-visibility";
 import { generationMetadata } from "../supabase/functions/indexing-v3-agent/utils";
 
+const fencingSql = readFileSync(
+  new URL("../supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql", import.meta.url),
+  "utf8",
+);
+function fencedSqlBody(name: string) {
+  const start = fencingSql.indexOf(`function public.${name}(`);
+  expect(start).toBeGreaterThan(-1);
+  return fencingSql.slice(start, fencingSql.indexOf("end $$;", start));
+}
+
 const completeGateRow: CompletionGateRow = {
   sections: 3,
   memory_cards: 8,
@@ -187,48 +197,9 @@ describe("indexing-v3-agent behavior", () => {
     expect(ensureSummary).toContain("sources.authority");
     expect(ensureSummary).not.toMatch(/limit\s+24/i);
 
-    const labels = agentFunction("async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText");
-    expectMetadataGenerationPredicate(
-      statementWithin(
-        labels,
-        "const summaryRowsRaw = await sql",
-        "const summaryRows = visibleGenerationRows",
-        "label summary input",
-      ),
-      "metadata->>'index_generation_id'",
-      "label summary input",
-      ["limit 1"],
-    );
-    expectTypedGenerationPredicate(
-      statementWithin(
-        labels,
-        "const chunksForLabelsRaw = await sql",
-        "const chunksForLabels = visibleGenerationRows",
-        "label chunk input",
-      ),
-      "index_generation_id",
-      "label chunk input",
-      ["order by chunk_index", "limit 8"],
-    );
-    const labelSections = statementWithin(
-      labels,
-      "const sectionRows = await sql",
-      "const sections = visibleGenerationRows",
-      "label section input",
-    );
-    expectTypedGenerationPredicate(labelSections, "c.index_generation_id", "label lateral chunk input", [
-      "order by case when c.id",
-      "limit 1",
-    ]);
-    expectTypedGenerationPredicate(labelSections, "s.index_generation_id", "label section input", [
-      "order by s.section_index",
-    ]);
-    expectTypedGenerationPredicate(
-      statementWithin(labels, "const cardRows = await sql", "const cards = visibleGenerationRows", "label card input"),
-      "index_generation_id",
-      "label card input",
-      ["order by created_at"],
-    );
+    // Generated labels now consume only the already validated summary projection.
+    expect(indexingAgentSource).not.toContain("upsertGeneratedLabelsFromParsedArtifacts");
+    expect(indexingAgentSource).toContain('edgeMutation(job, "persist_ingestion_summary_projection"');
 
     const sections = agentFunction(
       "async function ensureSectionsFromChunks",
@@ -349,188 +320,43 @@ describe("indexing-v3-agent behavior", () => {
     );
   });
 
-  it("binds generation authority to each generated-artifact write and conflict", () => {
-    const activeGeneration = "1a2b3c4d-6666-4aaa-8bbb-000000000006";
-    expect(generationMetadata(null), "positive legacy labels omit generation authority").toEqual({});
-    expect(generationMetadata(activeGeneration), "active labels carry the exact generation authority").toEqual({
-      index_generation_id: activeGeneration,
-    });
-
-    const ensureSummary = agentFunction("async function persistSourceAnchoredSummary", "async function ensureSummary");
-    const summaryWrite = statementWithin(
-      ensureSummary,
-      "insert into public.document_summaries",
-      "} else {",
-      "summary write",
-    );
-    expect(normalizedSql(summaryWrite), "summary exact metadata generation").toContain("${jsonb(metadata)}");
-    expect(ensureSummary, "summary metadata source generation").toContain(
-      "index_generation_id: payload.index_generation_id",
-    );
-    expect(normalizedSql(summaryWrite), "summary conflict preserves unrelated metadata").toContain(
-      "metadata = coalesce(public.document_summaries.metadata, '{}'::jsonb) || excluded.metadata",
-    );
-
-    const labels = agentFunction("async function upsertGeneratedLabelsFromParsedArtifacts", "function memoryCardText");
-    const labelWrite = statementWithin(
-      labels,
-      "insert into public.document_labels",
-      "count += 1",
-      "generated-label write",
-    );
-    expect(normalizedSql(labelWrite), "active label exact metadata generation").toContain(
-      "generationMetadata(generationPredicate.indexGenerationId)",
-    );
-    expect(
-      normalizedSql(labelWrite).toLowerCase(),
-      "legacy label conflict removes stale or malformed generation before replacement",
-    ).toContain(
-      "when jsonb_typeof(document_labels.metadata) = 'object' then coalesce(document_labels.metadata, '{}'::jsonb) - 'index_generation_id' else '{}'::jsonb end ) || excluded.metadata",
-    );
-
-    const sections = agentFunction(
-      "async function ensureSectionsFromChunks",
-      "async function upsertMemoryCardsFromSections",
-    );
-    const sectionWrite = statementWithin(
-      sections,
-      "insert into public.document_sections",
-      "inserted += rows.length",
-      "section write",
-    );
-    expectTypedGenerationWrite(sectionWrite, "section write");
-    expect(normalizedSql(sectionWrite), "section conflict typed generation replacement").toContain(
-      "index_generation_id = excluded.index_generation_id",
-    );
-    expect(normalizedSql(sectionWrite), "section conflict metadata generation replacement").toContain(
-      "metadata = excluded.metadata",
-    );
-
-    const cards = agentFunction(
-      "async function upsertMemoryCardsFromSections",
-      "async function upsertSectionIndexUnits",
-    );
-    expectTypedGenerationWrite(
-      statementWithin(cards, "insert into public.document_memory_cards", "inserted += 1", "memory-card write"),
-      "memory-card write",
-    );
-
-    const sectionUnits = agentFunction(
-      "async function upsertSectionIndexUnits",
-      "async function upsertVisualArtifacts",
-    );
-    expectTypedGenerationWrite(
-      statementWithin(
-        sectionUnits,
-        "insert into public.document_index_units",
-        "inserted += 1",
-        "section index-unit write",
-      ),
-      "section index-unit write",
-    );
-
-    const visualArtifacts = agentFunction(
-      "async function upsertVisualArtifacts",
-      "async function upsertCoreEmbeddingFields",
-    );
-    expectTypedGenerationWrite(
-      statementWithin(
-        visualArtifacts,
-        "insert into public.document_index_units",
-        "createdUnits += 1",
-        "visual index-unit write",
-      ),
-      "visual index-unit write",
-    );
-    expectTypedGenerationWrite(
-      statementWithin(
-        visualArtifacts,
-        "insert into public.document_embedding_fields",
-        "createdFields += 1",
-        "visual embedding-field write",
-      ),
-      "visual embedding-field write",
-    );
-
-    const coreEmbeddings = agentFunction("async function upsertCoreEmbeddingFields", "async function updateQuality");
-    expectTypedGenerationWrite(
-      statementWithin(
-        coreEmbeddings,
-        "insert into public.document_embedding_fields",
-        "inserted += 1",
-        "core embedding-field write",
-      ),
-      "core embedding-field write",
+  it("binds generated family writes to the current fenced generation", () => {
+    for (const name of [
+      "replace_indexing_v3_sections",
+      "replace_indexing_v3_memory_cards",
+      "replace_indexing_v3_visual_artifacts",
+      "replace_indexing_v3_core_embeddings",
+    ]) {
+      const body = fencedSqlBody(name);
+      expect(body).toContain(
+        "public.assert_current_ingestion_attempt(p_fence,(p_fence->>'expected_generation_id')::uuid)",
+      );
+      expect(body).toContain("'index_generation_id',v_generation");
+      expect(body).toContain("'ingestion_lease_token',p_fence->>'lease_token'");
+      expect(indexingAgentSource).toContain(`edgeMutation(job, "${name}"`);
+    }
+    const summary = fencedSqlBody("persist_ingestion_summary_projection");
+    expect(summary).toContain("coalesce(v_summary.metadata,'{}'::jsonb) || p_summary->'metadata'");
+    expect(summary).toContain(
+      "v_label->'metadata'->>'index_generation_id' is distinct from p_fence->>'expected_generation_id'",
     );
   });
 
-  it("generation-bounds each repair, replacement, and cleanup mutation", () => {
-    const cards = agentFunction(
-      "async function upsertMemoryCardsFromSections",
-      "async function upsertSectionIndexUnits",
-    );
-    expectTypedGenerationPredicate(
-      statementWithin(cards, "delete from public.document_memory_cards", "for (let index", "memory-card cleanup"),
-      "index_generation_id",
-      "memory-card cleanup",
-    );
-
-    const sectionUnits = agentFunction(
-      "async function upsertSectionIndexUnits",
-      "async function upsertVisualArtifacts",
-    );
-    expectTypedGenerationPredicate(
-      statementWithin(
-        sectionUnits,
-        "delete from public.document_index_units",
-        "for (let index",
-        "section index-unit cleanup",
-      ),
-      "index_generation_id",
-      "section index-unit cleanup",
-    );
-
-    const visualArtifacts = agentFunction(
-      "async function upsertVisualArtifacts",
-      "async function upsertCoreEmbeddingFields",
-    );
-    expectTypedGenerationPredicate(
-      statementWithin(visualArtifacts, "update public.document_images", "for (const unit", "visual image update"),
-      "index_generation_id",
-      "visual image update",
-    );
-    expectTypedGenerationPredicate(
-      statementWithin(
-        visualArtifacts,
-        "delete from public.document_embedding_fields",
-        "delete from public.document_index_units",
-        "visual embedding cleanup",
-      ),
-      "index_generation_id",
-      "visual embedding cleanup",
-    );
-    expectTypedGenerationPredicate(
-      statementWithin(
-        visualArtifacts,
-        "delete from public.document_index_units",
-        "for (let index",
-        "visual index-unit cleanup",
-      ),
-      "index_generation_id",
-      "visual index-unit cleanup",
-    );
-
-    const coreEmbeddings = agentFunction("async function upsertCoreEmbeddingFields", "async function updateQuality");
-    expectTypedGenerationPredicate(
-      statementWithin(
-        coreEmbeddings,
-        "delete from public.document_embedding_fields",
-        "for (const { row",
-        "core embedding cleanup",
-      ),
-      "index_generation_id",
-      "core embedding cleanup",
-    );
+  it("generation-bounds each repair and replacement in the SQL domain owner", () => {
+    for (const name of [
+      "replace_indexing_v3_sections",
+      "replace_indexing_v3_memory_cards",
+      "replace_indexing_v3_visual_artifacts",
+      "replace_indexing_v3_core_embeddings",
+    ]) {
+      const sql = fencedSqlBody(name);
+      for (const deletion of sql.matchAll(/delete from public\.document_[^;]+;/g)) {
+        expect(deletion[0]).toContain("document_id=v_document_id");
+        expect(deletion[0]).toContain("index_generation_id=v_generation");
+        expect(deletion[0]).toContain("metadata->>'generated_by'='indexing-v3-agent'");
+      }
+    }
+    expect(indexingAgentSource).not.toMatch(/(?:insert into|delete from|update) public\.document_/);
   });
 
   it("blocks protected or incomplete public-source policy before provider or artifact work", async () => {
@@ -1109,27 +935,19 @@ describe("indexing-v3-agent behavior", () => {
     expect(edgeSource).toContain("metadata->>'source' = 'visual_intelligence'");
   });
 
-  it("replaces every generated enrichment family inside one database transaction", async () => {
-    const edgeSource = String(
-      await import("node:fs/promises").then((fs) =>
-        fs.readFile(new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url), "utf8"),
-      ),
-    );
-    const functionBody = (name: string, nextName: string) =>
-      sourceSegment(edgeSource, `async function ${name}`, `async function ${nextName}`, {
-        label: `indexing-v3-agent function ${name}`,
-      });
-
-    for (const [name, nextName] of [
-      ["upsertMemoryCardsFromSections", "upsertSectionIndexUnits"],
-      ["upsertSectionIndexUnits", "upsertVisualArtifacts"],
-      ["upsertVisualArtifacts", "upsertCoreEmbeddingFields"],
-      ["upsertCoreEmbeddingFields", "updateQuality"],
+  it("routes each generated family through one atomic fixed-domain transaction", () => {
+    for (const [name, nextName, rpc] of [
+      ["upsertMemoryCardsFromSections", "upsertSectionIndexUnits", "replace_indexing_v3_memory_cards"],
+      ["upsertSectionIndexUnits", "upsertVisualArtifacts", "replace_indexing_v3_sections"],
+      ["upsertVisualArtifacts", "upsertCoreEmbeddingFields", "replace_indexing_v3_visual_artifacts"],
+      ["upsertCoreEmbeddingFields", "updateQuality", "replace_indexing_v3_core_embeddings"],
     ]) {
-      const body = functionBody(name, nextName);
-      expect(body).toContain("await sql.begin(async (tx) =>");
-      expect(body).toContain("await tx`");
-      expect(body.indexOf("delete from public.document_")).toBeLessThan(body.indexOf("insert into public.document_"));
+      const body = agentFunction(`async function ${name}`, `async function ${nextName}`);
+      expect(body).toContain(`await edgeMutation(job, "${rpc}"`);
+      expect(body).not.toContain("await sql.begin");
+      const sql = fencedSqlBody(rpc);
+      expect(sql.indexOf("assert_current_ingestion_attempt")).toBeLessThan(sql.indexOf("delete from public.document_"));
+      expect(sql.indexOf("delete from public.document_")).toBeLessThan(sql.indexOf("insert into public.document_"));
     }
   });
 
@@ -1244,16 +1062,15 @@ describe("source-anchored summary Edge contract", () => {
     );
   });
 
-  it("persists the complete payload before labels and marks projection complete only afterwards", () => {
-    const persistence = agentFunction("async function persistSourceAnchoredSummary", "function unitsFromStructured");
-    const summaryWrite = persistence.indexOf("SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false");
-    const labelUpsert = persistence.indexOf("insert into public.document_labels");
-    const staleDelete = persistence.indexOf("delete from public.document_labels");
-    const completion = persistence.indexOf("SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true");
-    expect(summaryWrite).toBeGreaterThan(-1);
-    expect(labelUpsert).toBeGreaterThan(summaryWrite);
-    expect(staleDelete).toBeGreaterThan(labelUpsert);
-    expect(completion).toBeGreaterThan(staleDelete);
+  it("persists summary, labels and completion marker through one atomic projection operation", () => {
+    const persistence = agentFunction("async function persistSourceAnchoredSummary", "async function ensureSummary");
+    expect(persistence).toContain('edgeMutation(job, "persist_ingestion_summary_projection"');
+    expect(persistence).toContain("projectSourceAnchoredLabels(payload)");
+    expect(persistence).not.toMatch(/insert into|delete from|update public/);
+    const sql = fencedSqlBody("persist_ingestion_summary_projection");
+    expect(sql).toContain("source_anchored_summary_projection_complete_v1");
+    expect(sql).toContain("delete from public.document_labels");
+    expect(sql).toContain("update public.documents set metadata");
   });
 
   it("uses independent structured-model authority and checks every persisted summary projection", () => {

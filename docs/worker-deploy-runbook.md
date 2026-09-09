@@ -32,27 +32,15 @@ env vars + a restart policy (or any OCI host).
 
 ---
 
-## 0. Pre-deploy gate — do not deploy before this is live
+## 0. U03 pre-deploy gate — separate operational authority
 
-**Migration `20260708130000_ingestion_concurrency_rpc_hardening.sql` must be
-applied to the live project _before_ the worker is (re)deployed from current
-`main`.**
+The historical July `p_worker_id`-only check is insufficient for the U03 callers. The matching authored migration is `20260831101000_fence_ingestion_leases_and_repairs.sql`. A separately authorised application plan must drain both processing queues first: the migration refuses historical processing rows and never fabricates lease tokens.
 
-`worker/main.ts` passes `p_worker_id` to the lease-fence RPCs
-(`complete_ingestion_job`, `fail_or_retry_ingestion_job`,
-`complete_strict_enrichment_job`). Deploying the new worker against a database
-that has not yet taken this migration means the R1/R2 lease fences the worker
-relies on are not present. See
-[`operator-apply-july8-batch.md`](archive/operator-apply-july8-batch.md) (step 2:
-_"apply before worker redeploy"_) for the ordered apply plan.
+Before starting either updated processor, apply the matching schema and verify complete required Fence signatures and named service-role grants. Old tokenless completion/retry/generation/status overloads and the old batch-repair mutation endpoint are unavailable to these callers. Never deploy new callers against old RPCs or use a missing-RPC error to bypass fencing.
 
-Confirm the gate before continuing:
+Migration-chain and selected snapshot replay, role checks, reclaim/policy-change schedules, startup and Storage behavior need their own evidence. U03 local source work has not applied SQL or started a processor. Active P05 reviewed sources cannot be reindexed in place; their replacement requires a governed candidate and separate publication authority.
 
-```bash
-npm run reindex:health   # ok:true, and the RPC signatures accept p_worker_id
-```
-
-If migrations are still outstanding, stop here and apply them first.
+The build/operator recipes below remain connected operational instructions requiring their own authorisation. The earlier [July application plan](archive/operator-apply-july8-batch.md) is historical prerequisite context, not sufficient U03 deployment acceptance.
 
 ---
 

@@ -1,3 +1,8 @@
+import {
+  assertUnleasedOperatorModeAllowed,
+  isDirectScriptInvocation,
+  unavailableUnleasedIngestionOperation,
+} from "./lib/ingestion-operator-compatibility";
 import { loadEnvConfig } from "@next/env";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
@@ -7,8 +12,6 @@ import {
   SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
   requireExactSourceAnchoredGeneration,
 } from "../supabase/functions/_shared/source-anchored-summary";
-
-loadEnvConfig(process.cwd());
 
 type EnrichArgs = {
   ownerEmail?: string;
@@ -221,7 +224,11 @@ async function loadEvidence(supabase: SupabaseAdmin, documentId: string, indexGe
       .order("id", { ascending: true })
       .range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
-    chunks.push(...(data ?? []));
+    for (const row of data ?? []) {
+      const generation = row.index_generation_id;
+      if (generation !== indexGenerationId) throw new Error("source_anchored_summary_generation_mismatch");
+      chunks.push({ ...row, index_generation_id: generation });
+    }
     if (chunks.length > SOURCE_ANCHORED_MAX_CHUNKS) {
       throw new Error("source_anchored_summary_source_limit_exceeded");
     }
@@ -242,7 +249,11 @@ async function loadEvidence(supabase: SupabaseAdmin, documentId: string, indexGe
       .order("id", { ascending: true })
       .range(start, start + SOURCE_ANCHORED_SOURCE_PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
-    images.push(...(data ?? []));
+    for (const row of data ?? []) {
+      const generation = row.index_generation_id;
+      if (generation !== indexGenerationId) throw new Error("source_anchored_summary_generation_mismatch");
+      images.push({ ...row, index_generation_id: generation });
+    }
     if (images.length > SOURCE_ANCHORED_MAX_IMAGES) {
       throw new Error("source_anchored_summary_source_limit_exceeded");
     }
@@ -523,8 +534,8 @@ async function stampExistingEnrichmentVersion(args: {
   }
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
+export async function main(argv: string[]) {
+  const args = parseArgs(argv);
   if (!args.ownerId && !args.ownerEmail && !args.allOwners) {
     throw new Error(
       'Provide --owner-id, set LOCAL_NO_AUTH_OWNER_ID or RAG_EVAL_OWNER_ID, provide --owner-email "you@example.com", or pass --all-owners.',
@@ -533,6 +544,8 @@ async function main() {
   if (!["summaries-labels-images", "metadata-stamp", "deep-memory"].includes(args.mode)) {
     throw new Error("--mode supports summaries-labels-images, deep-memory, or metadata-stamp.");
   }
+
+  assertUnleasedOperatorModeAllowed({ command: "enrich:documents" });
 
   const [
     { requireOpenAIEnv, requireServerEnv },
@@ -651,13 +664,8 @@ async function main() {
 
           let enrichmentSummary: string | null = null;
           if (args.mode === "summaries-labels-images") {
-            const enrichment = await upsertDocumentEnrichment({
-              supabase,
-              document: { ...document, metadata: imageMetadata },
-              indexGenerationId,
-              chunks: evidence.chunks,
-              images: evidence.images,
-            });
+            const enrichment =
+              await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentEnrichment>>>();
             enrichmentSummary = enrichment.summary.summary;
           } else if (args.mode === "deep-memory") {
             const { data: sumData } = await supabase
@@ -669,13 +677,8 @@ async function main() {
               enrichmentSummary = sumData.summary;
             }
           }
-          const deepMemory = await upsertDocumentDeepMemory({
-            supabase,
-            document: { ...document, metadata: imageMetadata },
-            chunks: evidence.chunks as unknown as Parameters<typeof upsertDocumentDeepMemory>[0]["chunks"],
-            images: evidence.images as unknown as Parameters<typeof upsertDocumentDeepMemory>[0]["images"],
-            summary: enrichmentSummary,
-          });
+          const deepMemory =
+            await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentDeepMemory>>>();
           const { error: completionMetadataError } = await supabase.rpc("apply_document_metadata_patch", {
             p_document_id: document.id,
             p_metadata_patch: {
@@ -724,7 +727,10 @@ async function main() {
   console.log(`Enrichment complete. completed=${completed} skipped=${documents.length - completed}`);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+if (isDirectScriptInvocation(import.meta.url, process.argv[1])) {
+  loadEnvConfig(process.cwd());
+  main(process.argv.slice(2)).catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}

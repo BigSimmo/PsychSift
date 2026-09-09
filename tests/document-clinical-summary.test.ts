@@ -34,7 +34,8 @@ function profile(overrides: Partial<ClinicalDocumentSummaryProfile> = {}): Clini
   };
 }
 
-function documentWithProfile(summaryProfile: ClinicalDocumentSummaryProfile): ClinicalDocument {
+// Persisted JSON may be malformed; production code must validate this raw fixture boundary.
+function documentWithProfile(summaryProfile: unknown): ClinicalDocument {
   return {
     id: "document-1",
     title: "Lithium monitoring protocol",
@@ -114,15 +115,12 @@ describe("buildDocumentClinicalSummaryModel", () => {
     const textOnlyItem = {
       text: "Review monitoring after dose changes.",
       pages: [5],
-    } as DocumentSummaryProfileItem;
+    };
     const model = buildDocumentClinicalSummaryModel(
-      documentWithProfile(
-        profile({
-          escalation_risk_warnings: [],
-          thresholds_timing: [textOnlyItem],
-          key_clinical_actions: [],
-        }),
-      ),
+      documentWithProfile({
+        ...profile({ escalation_risk_warnings: [], key_clinical_actions: [] }),
+        thresholds_timing: [textOnlyItem],
+      }),
     );
 
     expect(model.priorities).toHaveLength(1);

@@ -1,3 +1,4 @@
+import type { IngestionAttempt, IngestionFence } from "../_shared/ingestion-attempt.ts";
 // prettier-ignore
 // @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
 import { createProtectedPublicSourceScanner, containsForbiddenPublicSourceChunkContent, publicSourcePolicyViolation, type ProtectedPublicSourceScanner } from "../_shared/public-source-policy.ts";
@@ -295,4 +296,18 @@ export function deferralDecision(args: {
       max_deferrals: args.maxDeferrals,
     },
   };
+}
+
+/** Import-safe actual Edge mutation boundary; SQL remains in the fixed domain dispatch. */
+export async function runEdgeIngestionMutation(
+  attempt: IngestionAttempt,
+  execute: (fence: IngestionFence) => Promise<unknown>,
+) {
+  attempt.check();
+  try {
+    return attempt.accept(await execute(attempt.fence));
+  } catch (error) {
+    attempt.cancel();
+    throw error;
+  }
 }

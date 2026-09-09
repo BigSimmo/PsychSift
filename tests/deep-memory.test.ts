@@ -28,8 +28,70 @@ vi.mock("@/lib/model-index-extraction", async (importOriginal) => ({
   generateModelIndexProfile: generateModelIndexProfileMock,
 }));
 
+const FENCE = {
+  job_kind: "node" as const,
+  job_id: "66666666-6666-4666-8666-666666666666",
+  document_id: "11111111-1111-4111-8111-111111111111",
+  worker_id: "worker",
+  lease_token: "77777777-7777-4777-8777-777777777777",
+  expected_generation_id: "22222222-2222-4222-8222-222222222222",
+  authority_digest: `sha256:${"a".repeat(64)}`,
+};
+function memoryRpcHarness(
+  options: { failStage?: string; failCleanup?: boolean; commitError?: string; lostResponse?: boolean } = {},
+) {
+  const staged: Record<string, Record<string, unknown>[]> = { sections: [], cards: [], units: [] };
+  const directWrite = vi.fn(() => {
+    throw new Error("unfenced direct write");
+  });
+  const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+    expect(args.p_fence).toEqual(FENCE);
+    if (name === "stage_ingestion_deep_memory") {
+      for (const family of ["sections", "cards", "units"]) {
+        const rows = args[`p_${family}`] as Record<string, unknown>[];
+        if (rows.length && family === options.failStage)
+          return { data: null, error: { message: `${family} stage failed` } };
+        staged[family].push(...rows);
+      }
+      return {
+        data: {
+          ok: true,
+          sections: staged.sections.map((row, index) => ({ id: `section-${index}`, section_index: row.section_index })),
+        },
+        error: null,
+      };
+    }
+    if (name === "cleanup_ingestion_deep_memory_staging") {
+      if (options.failCleanup) throw new Error("cleanup failed");
+      for (const rows of Object.values(staged)) rows.length = 0;
+      return { data: { ok: true }, error: null };
+    }
+    if (name === "commit_document_deep_memory_generation") {
+      if (options.lostResponse)
+        for (const rows of Object.values(staged))
+          for (const row of rows) row.index_generation_id = FENCE.expected_generation_id;
+      return options.commitError
+        ? { data: null, error: { message: options.commitError } }
+        : { data: { ok: true }, error: null };
+    }
+    throw new Error(`unexpected RPC ${name}`);
+  });
+  return {
+    staged,
+    directWrite,
+    rpc,
+    from: vi.fn(() => ({
+      select: () => ({ eq: async () => ({ data: [], error: null }) }),
+      insert: directWrite,
+      update: directWrite,
+      upsert: directWrite,
+      delete: directWrite,
+    })),
+  };
+}
+
 const document = {
-  id: "doc-1",
+  id: "11111111-1111-4111-8111-111111111111",
   owner_id: "user-1",
   title: "Future Uploaded Clinical Protocol",
   file_name: "future-upload.pdf",
@@ -40,20 +102,20 @@ const document = {
 function chunk(overrides: Partial<SearchResult> & { chunk_index?: number; page_number?: number | null }) {
   return {
     id: overrides.id ?? "chunk-1",
-    document_id: overrides.document_id ?? "doc-1",
+    document_id: overrides.document_id ?? "11111111-1111-4111-8111-111111111111",
     page_number: overrides.page_number ?? 1,
     chunk_index: overrides.chunk_index ?? 0,
     section_heading: overrides.section_heading ?? "Clinical Workflow",
     content: overrides.content ?? "Clinical protocol text.",
     image_ids: overrides.image_ids ?? [],
-    metadata: overrides.source_metadata ?? {},
+    metadata: { index_generation_id: FENCE.expected_generation_id, ...(overrides.source_metadata ?? {}) },
   };
 }
 
 function result(overrides: Partial<SearchResult>): SearchResult {
   return {
     id: overrides.id ?? "chunk-1",
-    document_id: overrides.document_id ?? "doc-1",
+    document_id: overrides.document_id ?? "11111111-1111-4111-8111-111111111111",
     title: overrides.title ?? "Future Uploaded Clinical Protocol",
     file_name: overrides.file_name ?? "future-upload.pdf",
     page_number: 1,
@@ -194,7 +256,7 @@ describe("deep RAG memory indexing", () => {
       [
         {
           id: "card-1",
-          document_id: "doc-1",
+          document_id: "11111111-1111-4111-8111-111111111111",
           owner_id: "user-1",
           section_id: null,
           card_type: "threshold",
@@ -228,7 +290,7 @@ describe("deep RAG memory indexing", () => {
       [
         {
           id: "card-hybrid",
-          document_id: "doc-1",
+          document_id: "11111111-1111-4111-8111-111111111111",
           owner_id: "user-1",
           section_id: null,
           card_type: "table_row",
@@ -256,7 +318,7 @@ describe("deep RAG memory indexing", () => {
     const cards = [
       {
         id: "card-new",
-        document_id: "doc-1",
+        document_id: "11111111-1111-4111-8111-111111111111",
         owner_id: "user-1",
         section_id: null,
         card_type: "threshold",
@@ -467,128 +529,41 @@ describe("deep RAG memory indexing", () => {
     },
   );
 
-  it("persists memory cards without leaking internal section indexes into inserts", async () => {
-    const insertedSections: Record<string, unknown>[] = [];
-    const insertedMemoryRows: Record<string, unknown>[] = [];
-    const insertedIndexUnits: Record<string, unknown>[] = [];
-    const updatedRows = new Map<string, Record<string, unknown>[]>();
-    const rpc = vi.fn(async () => ({ data: { committed: true }, error: null }));
-    const supabase = {
-      from: vi.fn((table: string) => ({
-        insert: (payload: Record<string, unknown>[]) => {
-          if (table === "document_sections") {
-            insertedSections.push(...payload);
-            return {
-              select: async () => ({
-                data: payload.map((section, index) => ({
-                  id: `section-${index}`,
-                  section_index: section.section_index,
-                })),
-                error: null,
-              }),
-            };
-          }
-          if (table === "document_index_units") {
-            insertedIndexUnits.push(...payload);
-            return Promise.resolve({ data: null, error: null });
-          }
-          insertedMemoryRows.push(...payload);
-          return Promise.resolve({ data: null, error: null });
-        },
-        select: (columns: string) => ({
-          eq: (column: string, value: unknown) => {
-            void columns;
-            void column;
-            void value;
-            if (table === "documents") {
-              return {
-                single: async () => ({ data: { metadata: {} }, error: null }),
-              };
-            }
-            if (table === "document_chunks") {
-              return Promise.resolve({
-                data: [{ id: "chunk-upsert", metadata: {} }],
-                error: null,
-              });
-            }
-            if (["document_sections", "document_memory_cards", "document_index_units"].includes(table)) {
-              return Promise.resolve({ data: [], error: null });
-            }
-            return {
-              single: async () => ({ data: null, error: null }),
-            };
-          },
-        }),
-        update: (payload: Record<string, unknown>) => ({
-          eq: (column: string, value: unknown) => {
-            void column;
-            void value;
-            updatedRows.set(table, [...(updatedRows.get(table) ?? []), payload]);
-            return Promise.resolve({ data: null, error: null });
-          },
-        }),
-      })),
-      rpc,
-    };
-
+  it("persists memory cards without leaking section indexes and binds all batches to the attempt", async () => {
+    const supabase = memoryRpcHarness();
     await upsertDocumentDeepMemory({
       supabase: supabase as never,
+      fence: FENCE,
       document,
-      chunks: [
-        chunk({
-          id: "chunk-upsert",
-          content: "If ANC is < 1.5, stop clozapine and urgent specialist review is required.",
-        }),
-      ],
+      chunks: [chunk({ content: "If ANC is below 1.5, stop clozapine and seek urgent review." })],
     });
-
-    expect(insertedMemoryRows.length).toBeGreaterThan(0);
-    expect(insertedIndexUnits.length).toBeGreaterThan(0);
-    expect(insertedIndexUnits.some((row) => row.unit_type === "document_profile")).toBe(true);
-    expect(insertedMemoryRows.every((row) => !("section_index" in row))).toBe(true);
-    expect(insertedMemoryRows.every((row) => typeof row.section_id === "string" || row.section_id === null)).toBe(true);
-    const artifactGeneration = insertedSections[0]?.artifact_generation_id;
-    expect(artifactGeneration).toEqual(expect.any(String));
-    for (const row of [...insertedSections, ...insertedMemoryRows, ...insertedIndexUnits]) {
-      expect(row).toEqual(
-        expect.objectContaining({
-          producer: "local-worker",
-          artifact_generation_id: artifactGeneration,
-          index_generation_id: artifactGeneration,
-        }),
-      );
-      expect(row.metadata).toEqual(
-        expect.objectContaining({
-          generated_by: "local-worker",
-          artifact_generation_id: artifactGeneration,
-          index_generation_id: artifactGeneration,
-        }),
-      );
+    expect(supabase.staged.cards.length).toBeGreaterThan(0);
+    expect(supabase.staged.units.some((row) => row.unit_type === "document_profile")).toBe(true);
+    expect(supabase.staged.cards.every((row) => !("section_index" in row))).toBe(true);
+    const generation = supabase.staged.sections[0].artifact_generation_id;
+    for (const row of Object.values(supabase.staged).flat()) {
+      expect(row).toMatchObject({
+        producer: "local-worker",
+        artifact_generation_id: generation,
+        index_generation_id: generation,
+      });
+      expect(row.metadata).toMatchObject({ ingestion_lease_token: FENCE.lease_token, generated_by: "local-worker" });
       expect(
-        isCommittedGenerationMetadata({
-          rowMetadata: row.metadata,
-          committedGeneration: "00000000-0000-4000-8000-000000000010",
-        }),
+        isCommittedGenerationMetadata({ rowMetadata: row.metadata, committedGeneration: FENCE.expected_generation_id }),
       ).toBe(false);
     }
-    expect(updatedRows.has("documents")).toBe(false);
-    expect(updatedRows.get("document_chunks")?.[0]?.metadata).toEqual(
+    expect(supabase.rpc).toHaveBeenLastCalledWith(
+      "commit_document_deep_memory_generation",
       expect.objectContaining({
-        rag_indexing_version: ragDeepMemoryVersion,
-        rag_memory_version: ragDeepMemoryVersion,
+        p_fence: FENCE,
+        p_artifact_generation: generation,
+        p_anchors: [],
+        p_aliases: [],
+        p_memory_card_count: supabase.staged.cards.length,
+        p_section_count: supabase.staged.sections.length,
       }),
     );
-    expect(rpc).toHaveBeenCalledWith("commit_document_deep_memory_generation", {
-      p_artifact_generation_id: artifactGeneration,
-      p_document_id: document.id,
-      p_document_intelligence_version: expect.any(String),
-      p_index_unit_counts_by_type: expect.objectContaining({ document_profile: 1 }),
-      p_memory_card_count: insertedMemoryRows.length,
-      p_producer: "local-worker",
-      p_rag_memory_version: ragDeepMemoryVersion,
-      p_repaired_anchor_count: expect.any(Number),
-      p_section_count: insertedSections.length,
-    });
+    expect(supabase.directWrite).not.toHaveBeenCalled();
   });
 
   it("rejects mixed local and agent artifacts before model generation, embeddings, or deletion", async () => {
@@ -609,7 +584,7 @@ describe("deep RAG memory indexing", () => {
     };
 
     await expect(
-      upsertDocumentDeepMemory({ supabase: supabase as never, document, chunks: [chunk({})] }),
+      upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
     ).rejects.toBeInstanceOf(DeepMemoryOwnershipConflictError);
     expect(generateModelIndexProfileMock).not.toHaveBeenCalled();
     expect(deleteSpy).not.toHaveBeenCalled();
@@ -628,7 +603,7 @@ describe("deep RAG memory indexing", () => {
     };
 
     await expect(
-      upsertDocumentDeepMemory({ supabase: supabase as never, document, chunks: [chunk({})] }),
+      upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
     ).rejects.toBeInstanceOf(DeepMemoryOwnershipConflictError);
   });
 
@@ -648,7 +623,7 @@ describe("deep RAG memory indexing", () => {
     };
 
     await expect(
-      upsertDocumentDeepMemory({ supabase: supabase as never, document, chunks: [chunk({})] }),
+      upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
     ).rejects.toBeInstanceOf(DeepMemoryOwnershipConflictError);
   });
 
@@ -662,7 +637,7 @@ describe("deep RAG memory indexing", () => {
     };
 
     await expect(
-      upsertDocumentDeepMemory({ supabase: supabase as never, document, chunks: [chunk({})] }),
+      upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
     ).rejects.toBeInstanceOf(DeepMemoryOwnershipConflictError);
   });
 
@@ -686,7 +661,7 @@ describe("deep RAG memory indexing", () => {
     };
 
     await expect(
-      upsertDocumentDeepMemory({ supabase: supabase as never, document, chunks: [chunk({})] }),
+      upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
     ).rejects.not.toBeInstanceOf(DeepMemoryOwnershipConflictError);
     expect(queriedTables).toEqual(
       expect.arrayContaining(["document_sections", "document_memory_cards", "document_index_units"]),
@@ -708,245 +683,90 @@ describe("deep RAG memory indexing", () => {
       })),
     };
 
-    await expect(assertLocalDeepMemoryOwnership(supabase as never, "doc-1")).resolves.toBeUndefined();
+    await expect(
+      assertLocalDeepMemoryOwnership(supabase as never, "11111111-1111-4111-8111-111111111111"),
+    ).resolves.toBeUndefined();
   });
 
-  it.each(["document_sections", "document_memory_cards", "document_index_units"])(
-    "keeps committed artifacts and document metadata untouched when staging %s fails",
-    async (failingTable) => {
-      const operations: string[] = [];
-      const supabase = {
-        from: vi.fn((table: string) => ({
-          select: () => ({ eq: async () => ({ data: [], error: null }) }),
-          delete: () => {
-            operations.push(`delete:${table}:staged`);
-            const query = { eq: () => query };
-            return query;
-          },
-          insert: (payload: Record<string, unknown>[]) => {
-            operations.push(`insert:${table}`);
-            const result = {
-              data:
-                table === "document_sections"
-                  ? payload.map((row, index) => ({ id: `section-${index}`, section_index: row.section_index }))
-                  : null,
-              error: table === failingTable ? { message: `${table} stage failed` } : null,
-            };
-            return table === "document_sections" ? { select: async () => result } : Promise.resolve(result);
-          },
-          update: () => ({
-            eq: async () => {
-              operations.push(`update:${table}`);
-              return { data: null, error: null };
-            },
-          }),
-        })),
-        rpc: vi.fn(async () => ({ data: null, error: null })),
-      };
-
-      await expect(
-        upsertDocumentDeepMemory({
-          supabase: supabase as never,
-          document,
-          chunks: [chunk({ content: "If ANC is below 1.5, stop clozapine and seek urgent specialist review." })],
-        }),
-      ).rejects.toThrow(`${failingTable} stage failed`);
-      expect(operations).not.toContain("update:documents");
-      expect(operations.some((operation) => operation.startsWith("delete:") && !operation.includes("staged"))).toBe(
-        false,
-      );
-    },
-  );
-
-  it("keeps committed artifacts and document metadata untouched when the commit RPC fails", async () => {
-    const operations: string[] = [];
-    const supabase = {
-      from: vi.fn((table: string) => ({
-        select: () => ({ eq: async () => ({ data: [], error: null }) }),
-        insert: (payload: Record<string, unknown>[]) => {
-          operations.push(`insert:${table}`);
-          if (table === "document_sections") {
-            return {
-              select: async () => ({
-                data: payload.map((row, index) => ({ id: `section-${index}`, section_index: row.section_index })),
-                error: null,
-              }),
-            };
-          }
-          return Promise.resolve({ data: null, error: null });
-        },
-        delete: () => ({
-          eq: () => ({ eq: () => ({ eq: async () => ({ data: null, error: null }) }) }),
-        }),
-        update: () => ({
-          eq: async () => {
-            operations.push(`update:${table}`);
-            return { data: null, error: null };
-          },
-        }),
-      })),
-      rpc: vi.fn(async () => ({ data: null, error: { message: "deep-memory commit failed" } })),
-    };
-
+  it.each(["sections", "cards", "units"])("preserves committed evidence when %s staging fails", async (family) => {
+    const supabase = memoryRpcHarness({ failStage: family });
     await expect(
       upsertDocumentDeepMemory({
         supabase: supabase as never,
+        fence: FENCE,
         document,
-        chunks: [chunk({ content: "If ANC is below 1.5, stop clozapine and seek urgent specialist review." })],
+        chunks: [chunk({ content: "Check ANC before review." })],
       }),
-    ).rejects.toThrow("deep-memory commit failed");
-    expect(operations).not.toContain("update:documents");
+    ).rejects.toThrow(`${family} stage failed`);
+    expect(supabase.rpc.mock.calls.some(([name]) => name === "commit_document_deep_memory_generation")).toBe(false);
+    expect(supabase.directWrite).not.toHaveBeenCalled();
   });
-
-  it("does not hide a staging failure when staged-row cleanup also fails", async () => {
-    const failingDeleteBuilder = () => {
-      let filterCount = 0;
-      const builder = {
-        eq: () => {
-          filterCount += 1;
-          if (filterCount === 7) throw new Error("cleanup failed");
-          return builder;
-        },
-      };
-      return builder;
-    };
-    const supabase = {
-      from: vi.fn((table: string) => ({
-        select: () => ({ eq: async () => ({ data: [], error: null }) }),
-        insert: (payload: Record<string, unknown>[]) =>
-          table === "document_sections"
-            ? {
-                select: async () => ({
-                  data: payload.map((row, index) => ({ id: `section-${index}`, section_index: row.section_index })),
-                  error: null,
-                }),
-              }
-            : Promise.resolve({
-                data: null,
-                error: table === "document_index_units" ? { message: "original staging failure" } : null,
-              }),
-        delete: failingDeleteBuilder,
-        update: () => ({ eq: async () => ({ data: null, error: null }) }),
-      })),
-      rpc: vi.fn(async () => ({ data: null, error: null })),
-    };
-
+  it("keeps the original staging error when fenced cleanup also fails", async () => {
+    const supabase = memoryRpcHarness({ failStage: "units", failCleanup: true });
+    await expect(
+      upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
+    ).rejects.toThrow("units stage failed");
+    expect(supabase.rpc.mock.calls.filter(([name]) => name === "cleanup_ingestion_deep_memory_staging")).toHaveLength(
+      1,
+    );
+    expect(supabase.directWrite).not.toHaveBeenCalled();
+  });
+  it("passes exact attempt and unpublished artifact generation to cleanup", async () => {
+    const supabase = memoryRpcHarness({ failStage: "units" });
+    await expect(
+      upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
+    ).rejects.toThrow("units stage failed");
+    const generation = supabase.rpc.mock.calls[0][1].p_artifact_generation;
+    expect(supabase.rpc).toHaveBeenLastCalledWith("cleanup_ingestion_deep_memory_staging", {
+      p_fence: FENCE,
+      p_artifact_generation: generation,
+    });
+    expect(supabase.directWrite).not.toHaveBeenCalled();
+  });
+  it.each([false, true])("never cleans after commit invocation, including lost response=%s", async (lostResponse) => {
+    const supabase = memoryRpcHarness({ commitError: "response lost after commit", lostResponse });
+    await expect(
+      upsertDocumentDeepMemory({ supabase: supabase as never, fence: FENCE, document, chunks: [chunk({})] }),
+    ).rejects.toThrow("response lost after commit");
+    expect(supabase.rpc.mock.calls.some(([name]) => name === "cleanup_ingestion_deep_memory_staging")).toBe(false);
+    expect(supabase.directWrite).not.toHaveBeenCalled();
+    if (lostResponse)
+      expect(
+        Object.values(supabase.staged)
+          .flat()
+          .every((row) => row.index_generation_id === FENCE.expected_generation_id),
+      ).toBe(true);
+  });
+  it("refuses missing generation evidence before models or mutations", async () => {
+    const supabase = memoryRpcHarness();
+    generateModelIndexProfileMock.mockClear();
     await expect(
       upsertDocumentDeepMemory({
         supabase: supabase as never,
+        fence: FENCE,
         document,
-        chunks: [chunk({ content: "If ANC is below 1.5, stop clozapine and seek urgent specialist review." })],
+        chunks: [{ ...chunk({}), metadata: {} }],
       }),
-    ).rejects.toThrow("original staging failure");
+    ).rejects.toMatchObject({ code: "ingestion_attempt_required" });
+    expect(generateModelIndexProfileMock).not.toHaveBeenCalled();
     expect(supabase.rpc).not.toHaveBeenCalled();
   });
-
-  it("cleanup targets only rows that still carry every staged-generation marker", async () => {
-    const cleanupFilters = new Map<string, Array<[string, unknown]>>();
-    const deleteBuilder = (table: string) => {
-      const filters: Array<[string, unknown]> = [];
-      cleanupFilters.set(table, filters);
-      const builder = {
-        eq: (column: string, value: unknown) => {
-          filters.push([column, value]);
-          return builder;
-        },
-      };
-      return builder;
-    };
-    const supabase = {
-      from: vi.fn((table: string) => ({
-        select: () => ({ eq: async () => ({ data: [], error: null }) }),
-        insert: (payload: Record<string, unknown>[]) =>
-          table === "document_sections"
-            ? {
-                select: async () => ({
-                  data: payload.map((row, index) => ({ id: `section-${index}`, section_index: row.section_index })),
-                  error: null,
-                }),
-              }
-            : Promise.resolve({
-                data: null,
-                error: table === "document_index_units" ? { message: "index stage failed" } : null,
-              }),
-        delete: () => deleteBuilder(table),
-        update: () => ({ eq: async () => ({ data: null, error: null }) }),
-      })),
-      rpc: vi.fn(async () => ({ data: null, error: null })),
-    };
-
+  it("cancellation during model generation escapes deterministic fallback before embedding or staging", async () => {
+    const supabase = memoryRpcHarness();
+    const controller = new AbortController();
+    generateModelIndexProfileMock.mockImplementationOnce(async () => {
+      controller.abort(new Error("claim replaced"));
+      throw new Error("model canceled");
+    });
     await expect(
       upsertDocumentDeepMemory({
         supabase: supabase as never,
+        fence: FENCE,
+        signal: controller.signal,
         document,
-        chunks: [chunk({ content: "If ANC is below 1.5, stop clozapine and seek urgent specialist review." })],
+        chunks: [chunk({})],
       }),
-    ).rejects.toThrow("index stage failed");
-
-    for (const filters of cleanupFilters.values()) {
-      const artifactGeneration = filters.find(([column]) => column === "artifact_generation_id")?.[1];
-      expect(filters).toEqual([
-        ["document_id", document.id],
-        ["producer", "local-worker"],
-        ["artifact_generation_id", artifactGeneration],
-        ["index_generation_id", artifactGeneration],
-        ["metadata->>generated_by", "local-worker"],
-        ["metadata->>artifact_generation_id", artifactGeneration],
-        ["metadata->>index_generation_id", artifactGeneration],
-      ]);
-    }
-  });
-
-  it("never cleans up a generation after an ambiguous committed-but-response-lost RPC outcome", async () => {
-    const deleteCalls: string[] = [];
-    const insertedRows: Record<string, Record<string, unknown>[]> = {};
-    const supabase = {
-      from: vi.fn((table: string) => ({
-        select: () => ({ eq: async () => ({ data: [], error: null }) }),
-        insert: (payload: Record<string, unknown>[]) => {
-          insertedRows[table] = [...(insertedRows[table] ?? []), ...payload];
-          return table === "document_sections"
-            ? {
-                select: async () => ({
-                  data: payload.map((row, index) => ({ id: `section-${index}`, section_index: row.section_index })),
-                  error: null,
-                }),
-              }
-            : Promise.resolve({ data: null, error: null });
-        },
-        delete: () => ({
-          eq: () => ({
-            eq: () => ({
-              eq: async () => {
-                deleteCalls.push(table);
-                return { data: null, error: null };
-              },
-            }),
-          }),
-        }),
-        update: () => ({ eq: async () => ({ data: null, error: null }) }),
-      })),
-      rpc: vi.fn(async () => {
-        // Model a transaction which committed before the transport lost the response.
-        for (const rows of Object.values(insertedRows)) {
-          for (const row of rows) row.index_generation_id = "committed-generation";
-        }
-        return { data: null, error: { message: "response lost after commit" } };
-      }),
-    };
-
-    await expect(
-      upsertDocumentDeepMemory({
-        supabase: supabase as never,
-        document,
-        chunks: [chunk({ content: "If ANC is below 1.5, stop clozapine and seek urgent specialist review." })],
-      }),
-    ).rejects.toThrow("response lost after commit");
-    expect(deleteCalls).toEqual([]);
-    expect(
-      Object.values(insertedRows)
-        .flat()
-        .every((row) => row.index_generation_id === "committed-generation"),
-    ).toBe(true);
+    ).rejects.toThrow("claim replaced");
+    expect(supabase.rpc).not.toHaveBeenCalled();
   });
 });

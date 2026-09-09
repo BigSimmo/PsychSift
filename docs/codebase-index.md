@@ -100,7 +100,7 @@ Smaller top-level directories that are easy to miss:
 | Area          | Routes                                                                                                                 | Entry files                                                     |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | Account       | `/api/account/favourites`, `/api/account/preferences`                                                                  | `account/`                                                      |
-| Admin         | `/api/admin/site-content/publish`                                                                                       | `admin/site-content/publish/route.ts`                           |
+| Admin         | `/api/admin/site-content/publish`                                                                                      | `admin/site-content/publish/route.ts`                           |
 | Answers       | `/api/answer`, `/api/answer/stream`, `/api/answer-feedback`                                                            | `answer/route.ts`, `answer/stream/route.ts`, `answer-feedback/` |
 | Search        | `/api/search`, `/api/search/interaction`, `/api/search/universal`                                                      | `search/`                                                       |
 | Upload        | `/api/upload`                                                                                                          | `upload/route.ts`                                               |
@@ -140,15 +140,16 @@ The `rag.ts` orchestrator and its `rag-*` cluster live in **`src/lib/rag/`** (im
 
 ### Ingestion and indexing
 
-| Module                                                                   | Role                                                |
-| ------------------------------------------------------------------------ | --------------------------------------------------- |
-| `ingestion.ts`, `ingestion-recovery.ts`, `ingestion-mutation-safety.ts`  | Job queue semantics and recovery                    |
-| `ingestion-enqueue.ts`, `webhooks/` (`secret-auth.ts`, `chat-notify.ts`) | Reindex enqueue + inbound webhook auth/chat forward |
-| `chunking.ts`, `extractors/document.ts`                                  | Text extraction and chunking                        |
-| `document-index-units.ts`, `document-enrichment.ts`, `deep-memory.ts`    | Index artifacts and enrichment                      |
-| `visual-intelligence.ts`, `image-filtering.ts`                           | Image captioning and filtering                      |
-| `index-quality.ts`, `indexing-coverage.ts`, `model-index-extraction.ts`  | Index quality gates                                 |
-| `reindex-pipeline.ts`, `reindex-eval-gate.ts`, `bulk-import.ts`          | Atomic reindex and bulk import                      |
+| Module                                                                   | Role                                                                         |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `ingestion.ts`, `ingestion-recovery.ts`, `ingestion-mutation-safety.ts`  | Job queue semantics and recovery                                             |
+| `ingestion-enqueue.ts`, `webhooks/` (`secret-auth.ts`, `chat-notify.ts`) | Reindex enqueue + inbound webhook auth/chat forward                          |
+| `chunking.ts`, `extractors/document.ts`                                  | Text extraction and chunking                                                 |
+| `document-index-units.ts`, `document-enrichment.ts`, `deep-memory.ts`    | Index artifacts and enrichment                                               |
+| `ingestion-repair-plan.ts`                                               | Pure bounded dry-run planner and canonical digest; no operational apply path |
+| `visual-intelligence.ts`, `image-filtering.ts`                           | Image captioning and filtering                                               |
+| `index-quality.ts`, `indexing-coverage.ts`, `model-index-extraction.ts`  | Index quality gates                                                          |
+| `reindex-pipeline.ts`, `reindex-eval-gate.ts`, `bulk-import.ts`          | Atomic reindex and bulk import                                               |
 
 ### Source governance and metadata
 
@@ -202,7 +203,7 @@ The `rag.ts` orchestrator and its `rag-*` cluster live in **`src/lib/rag/`** (im
 
 ### Schema tables
 
-`documents`, `document_pages`, `document_images`, `document_chunks`, `document_embedding_fields`, `document_index_units`, `document_table_facts`, `document_labels`, `document_summaries`, `document_sections`, `document_memory_cards`, `document_index_quality`, `document_title_words`, `document_publication_approvals`, `ingestion_jobs`, `ingestion_job_stages`, `indexing_v3_agent_jobs`, `import_batches`, `image_caption_cache`, `rag_queries`, `rag_query_misses`, `rag_aliases`, `rag_response_cache`, `rag_retrieval_logs`, `rag_visual_eval_cases`, `rag_visual_eval_runs`, `rag_answer_feedback`, `clinical_registry_records`, `clinical_registry_record_sources`, `medication_records`, `differential_records`, `source_review_events`, `user_favourites`, `user_preferences`, `api_rate_limits`, `api_rate_limit_subjects`, `audit_logs`, `storage_cleanup_jobs`
+`documents`, `document_pages`, `document_images`, `document_chunks`, `document_embedding_fields`, `document_index_units`, `document_table_facts`, `document_labels`, `document_summaries`, `document_sections`, `document_memory_cards`, `document_index_quality`, `document_title_words`, `document_publication_approvals`, `ingestion_jobs`, `ingestion_job_stages`, `ingestion_repair_plan_audit`, `public_source_versions`, `public_source_activation_events`, `public_source_serving_authority`, `indexing_v3_agent_jobs`, `import_batches`, `image_caption_cache`, `rag_queries`, `rag_query_misses`, `rag_aliases`, `rag_response_cache`, `rag_retrieval_logs`, `rag_visual_eval_cases`, `rag_visual_eval_runs`, `rag_answer_feedback`, `clinical_registry_records`, `clinical_registry_record_sources`, `medication_records`, `differential_records`, `source_review_events`, `user_favourites`, `user_preferences`, `api_rate_limits`, `api_rate_limit_subjects`, `audit_logs`, `storage_cleanup_jobs`
 
 **Storage buckets:** `clinical-documents`, `clinical-images` (private)
 
@@ -403,3 +404,5 @@ One shared composer (`master-search-header.tsx`) serves every mode. Placement:
 ---
 
 _Generated for agent onboarding. Update when adding major modules, API surfaces, or migration themes._
+
+U03 ingestion boundaries: `supabase/functions/_shared/ingestion-attempt.ts` supplies import-pure Fence/result parsing and monotonic cancellation to Node and Edge. `worker/behavior.ts` and `indexing-v3-agent/behavior.ts` expose actual transport seams without starting processors. `scripts/lib/ingestion-operator-compatibility.ts` refuses unleased writes and guards direct CLI invocation. The new migration `20260831101000_fence_ingestion_leases_and_repairs.sql` defines fixed fenced operations and the append-only planning audit. The schema mirror contains the selected effective P05 prerequisites and U03 definitions; omitted unrelated P05 lifecycle/serving definitions remain snapshot-parity debt, not a whole-schema parity claim.

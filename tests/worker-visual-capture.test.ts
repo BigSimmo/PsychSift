@@ -40,16 +40,13 @@ describe("worker visual capture hardening", () => {
     expect(workerSource).toContain("cover_image_id: coverImageId");
   });
 
-  it("fails closed when the lease-fenced commit RPC is unavailable and keeps image uploads generation-scoped", () => {
-    expect(workerSource).toContain("p_job_id: args.jobId");
-    expect(workerSource).toContain("p_worker_id: workerId");
-    expect(workerSource).not.toContain("await replacePageRows(args.documentId, args.pages)");
-    // The commit RPC prunes stale/legacy generation rows and upserts index quality atomically
-    // server-side; the worker must surface any RPC failure (fail closed) rather than run a
-    // client-side fallback that could partially write after an error.
-    expect(workerSource).toContain('if (error) throw supabaseStageError("commit_document_index_generation", error)');
+  it("uses durable core and immutable image publication seams without direct fallbacks", () => {
+    expect(workerSource).toContain('"commit_document_index_generation"');
+    expect(workerSource).toContain("p_generation: args.indexGenerationId");
+    expect(workerSource).toContain("runIngestionMutation(attempt");
+    expect(workerSource).toContain("await persistIngestionImage({");
+    expect(workerSource).not.toContain("compensateUploadedArtifactAndThrow");
     expect(workerSource).not.toContain("deleteStaleIndexGenerationRows");
-    expect(workerSource).toContain("`${imagePrefix}/${indexGenerationId}/image-${index + 1}${ext}`");
     expect(workerSource).toContain('indexing_v3_agent_repair_reason: "core_index_committed"');
     expect(workerSource).toContain("indexing_v3_agent_repair_reason: null");
   });
@@ -63,10 +60,11 @@ describe("worker visual capture hardening", () => {
     expect(workerSource).toContain("indexing_v3_agent_repair_reason: strictCompletionRepairReason");
   });
 
-  it("logs fallback import-batch update failures when RPC-based refresh is unavailable", () => {
-    expect(workerSource).toContain("Import batch status fallback update failed");
-    expect(workerSource).toContain("update import batch status fallback");
-    expect(workerSource).toContain("const { error: fallbackUpdateError } = await supabase");
+  it("leaves terminal/batch writes in the fenced SQL owner without fallback", () => {
+    expect(workerSource).not.toContain("fallbackUpdateError");
+    expect(workerSource).not.toContain('from("import_batches")');
+    expect(workerSource).toContain('"complete_ingestion_job"');
+    expect(workerSource).toContain("p_batch_id: job.batch_id");
   });
 
   it("invalidates stale image caption cache entries by policy, prompt, and context versions", () => {

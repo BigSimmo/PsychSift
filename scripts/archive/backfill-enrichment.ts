@@ -1,8 +1,11 @@
+import {
+  assertUnleasedOperatorModeAllowed,
+  isDirectScriptInvocation,
+  unavailableUnleasedIngestionOperation,
+} from "../lib/ingestion-operator-compatibility";
 import { createHash } from "node:crypto";
 import { loadEnvConfig } from "@next/env";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-loadEnvConfig(process.cwd());
 
 type SupabaseAdmin = SupabaseClient;
 
@@ -396,21 +399,11 @@ async function processDocument(supabase: SupabaseAdmin, document: BackfillDocume
     enrichment_chunk_count: evidence.chunks.length,
     enrichment_image_count: evidence.images.length,
   });
-  const enrichment = await upsertDocumentEnrichment({
-    supabase,
-    document,
-    chunks: evidence.chunks,
-    images: evidence.images,
-  });
+  const enrichment =
+    await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentEnrichment>>>();
 
   await updateDocumentStage(supabase, document, "building_deep_memory");
-  const memory = await upsertDocumentDeepMemory({
-    supabase,
-    document,
-    chunks: evidence.chunks,
-    images: evidence.images,
-    summary: enrichment.summary.summary,
-  });
+  const memory = await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentDeepMemory>>>();
 
   await updateDocumentStage(supabase, document, "embedding_document_profile");
   const documentEmbeddingFieldTypes = await insertDocumentLevelEmbeddingFields({
@@ -442,7 +435,9 @@ async function processDocument(supabase: SupabaseAdmin, document: BackfillDocume
   };
 }
 
-async function main() {
+export async function main(argv: string[]) {
+  const args = parseArgs(argv);
+  assertUnleasedOperatorModeAllowed({ command: "enrich:backfill", dryRun: args.dryRun });
   const [deepMemoryModule, enrichmentModule, indexUnitModule, envModule, openAiModule, adminModule, healthModule] =
     await Promise.all([
       import("@/lib/deep-memory"),
@@ -463,7 +458,6 @@ async function main() {
   assertSupabaseHealthy = healthModule.assertSupabaseHealthy as typeof assertSupabaseHealthy;
   probeSupabaseHealth = healthModule.probeSupabaseHealth as typeof probeSupabaseHealth;
 
-  const args = parseArgs(process.argv.slice(2));
   envModule.requireServerEnv();
   envModule.requireOpenAIEnv();
 
@@ -520,7 +514,10 @@ async function main() {
   if (failed > 0) process.exitCode = 1;
 }
 
-main().catch((error) => {
-  console.error(formatError(error));
-  process.exitCode = 1;
-});
+if (isDirectScriptInvocation(import.meta.url, process.argv[1])) {
+  loadEnvConfig(process.cwd());
+  main(process.argv.slice(2)).catch((error) => {
+    console.error(formatError(error));
+    process.exitCode = 1;
+  });
+}

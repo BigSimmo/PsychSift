@@ -13,6 +13,13 @@ export type JobDocument = {
 };
 
 export type JobRow = {
+  locked_by: string;
+  lease_token: string;
+  lease_expected_generation_id: string | null;
+  lease_write_generation_id: string;
+  lease_authority_digest: string;
+  lease_expires_at: string;
+  lease_duration_seconds: number;
   id: string;
   document_id: string;
   batch_id: string | null;

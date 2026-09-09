@@ -1,5 +1,15 @@
 # Adaptive RAG reindex runbook
 
+## U03 planning and operator boundary
+
+U03 provides deterministic dry-run plans only: 1–100 unique canonical lowercase document UUIDs, fixed non-empty reason sets and one `sha256:` expected-state digest per document. IDs/reasons are sorted. The digest hashes UTF-8 `ingestion-repair-plan-v1\n`, followed by each UUID, tab, comma-joined reasons, tab, state digest and newline. Unknown fields, duplicate IDs/reasons and malformed digests refuse.
+
+Expected-state identity covers exact source/version/event, committed generation, summary/projection/labels and both queue states/attempts. A supplied digest does not prove currentness. `record_ingestion_repair_plan` appends only a `planned` audit row with the recomputed canonical digest; SELECT is the only direct service-role access, and UPDATE/DELETE/TRUNCATE are denied. There is no U03 apply endpoint. U13 must reread and compare under locks before any future application.
+
+Until the governed lease adapter exists, `index:backfill --write` refuses before operational imports, including confirmation and metadata-only variants. Every `enrich:documents` mode refuses. `enrich:backfill` default/mutating calls refuse. The existing no-write `index:backfill` inspection and explicit `enrich:backfill --dry-run` remain read-only and require separate hosted-read authority. Importing these modules performs no environment loading, startup or exit.
+
+The historical connected recipes below were not run by U03. Local source acceptance does not authorise repair, activation, real-document processing or in-place mutation of active P05 reviewed evidence. The kernel stays default-off; P08A remains superseded. Historical U02 evaluation is exit 1, four failed suites, 45 failed and 586 passed tests overall; it is neither green nor a U03 exception.
+
 Use this sequence when applying RAG indexing changes to the live `Clinical KB Database` Supabase project.
 
 ## Consolidated pipeline command

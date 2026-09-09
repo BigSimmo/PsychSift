@@ -1,6 +1,6 @@
 # Scripts index
 
-Curated map of `scripts/` (269 files) and the `package.json` script surface (262 entries),
+Curated map of `scripts/` (272 files) and the `package.json` script surface (262 entries),
 grouped by purpose. This is orientation, not an exhaustive per-file listing — the authoritative
 command list is `package.json`, and `npm run docs:check-scripts` verifies every `npm run <x>`
 referenced in docs resolves to a real script. `npm run docs:update` refreshes the exact counts above.
@@ -197,3 +197,5 @@ if their live classification is deliberately revisited.
 `external-workflow.mjs` (`workflow:run/status/verify/deps/clean-state/export/handoff`) and
 `productivity-workflow.mjs` (`workflow:flightplan/triage/clinical-proof/design-sweep/rag-lab/
 operator-closeout/lifecycle`) — see `docs/productivity-workflows.md`.
+
+U03 compatibility: `scripts/lib/ingestion-operator-compatibility.ts` is the pure import/direct-invocation and unleased-write boundary for `backfill-smart-index.ts`, `enrich-documents.ts`, and `archive/backfill-enrichment.ts`. The two existing read-only modes remain; all unleased write modes refuse pending the U13 adapter. No package-script mappings changed.

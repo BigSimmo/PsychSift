@@ -1,3 +1,4 @@
+import { IngestionAttempt, IngestionAttemptError, parseIngestionFence } from "../_shared/ingestion-attempt.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import postgres from "npm:postgres@3.4.7";
 import {
@@ -10,10 +11,8 @@ import {
   stringArrayFrom,
   textItemsFrom,
   sourceRegionsFromMetadata,
-  phraseLabelCandidates,
   sha256Hex,
   sleep,
-  normalizeLabelCandidate,
   canonicalUnitType,
   canonicalFieldType,
   generationMetadata,
@@ -21,11 +20,11 @@ import {
 } from "./utils.ts";
 
 import {
+  runEdgeIngestionMutation,
   completionGateFromRow,
   agentFailureDecision,
   deferralDecision,
   missingArtifactPlan,
-  parseJobStatusRpcResult,
   publicSourceWorkerPolicyViolation,
   runEdgeJobBatch,
   scanProtectedPublicSourceChunkPages,
@@ -33,7 +32,6 @@ import {
   sourceAnchoredSummaryProjectionMatches,
   type CompletionGate,
   type CompletionGateRow,
-  type JobStatusRpcResult,
   type MissingArtifactPlan,
 } from "./behavior.ts";
 // prettier-ignore
@@ -44,9 +42,16 @@ import { buildGenerationVisibility, isVisibleCommittedGenerationRow, type Docume
 import { buildIndexingCoverageProfile, selectCoverageAwarePromptChunks } from "../_shared/indexing-coverage.ts";
 // prettier-ignore
 // @ts-ignore -- Deno requires the extension that the Node TypeScript gate rejects.
-import { SOURCE_ANCHORED_MAX_CHUNKS, SOURCE_ANCHORED_MAX_IMAGES, SOURCE_ANCHORED_MAX_PROMPT_IMAGES, SOURCE_ANCHORED_SOURCE_PAGE_SIZE, SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION, SOURCE_ANCHORED_SUMMARY_METADATA_KEY, SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY, buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary, persistedSourceAnchoredSummaryProjectionMatches, projectSourceAnchoredLabels, requireSourceAnchoredSummaryGeneration, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
+import { SOURCE_ANCHORED_MAX_CHUNKS, SOURCE_ANCHORED_MAX_IMAGES, SOURCE_ANCHORED_MAX_PROMPT_IMAGES, SOURCE_ANCHORED_SOURCE_PAGE_SIZE, SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION, SOURCE_ANCHORED_SUMMARY_METADATA_KEY,  buildSourceAnchoredFallbackPayload, normalizeSourceAnchoredSummary, persistedSourceAnchoredSummaryProjectionMatches, projectSourceAnchoredLabels, requireSourceAnchoredSummaryGeneration, type SourceAnchoredSummaryAuthority, type SourceAnchoredSummaryPayload } from "../_shared/source-anchored-summary.ts";
 
 type ClaimedJob = {
+  locked_by: string;
+  lease_token: string;
+  lease_expected_generation_id: string;
+  lease_write_generation_id: string;
+  lease_authority_digest: string;
+  lease_expires_at: string;
+  lease_duration_seconds: number;
   id: string;
   document_id: string;
   batch_id: string | null;
@@ -101,23 +106,6 @@ type SectionIndexSource = {
   anchor_id: string;
   chunk_index: number;
   chunk_metadata: Record<string, unknown> | null;
-};
-
-type GeneratedLabelCandidate = {
-  label: string;
-  label_type:
-    | "site"
-    | "topic"
-    | "document_type"
-    | "medication"
-    | "risk"
-    | "setting"
-    | "workflow"
-    | "population"
-    | "service"
-    | "custom";
-  confidence: number;
-  metadata: Record<string, unknown>;
 };
 
 type SectionLabelSource = {
@@ -286,16 +274,17 @@ function assertEmbeddingDim(vec: unknown, context: string): asserts vec is numbe
   }
 }
 
-async function fetchEmbeddingBatch(texts: string[]): Promise<number[][]> {
+async function fetchEmbeddingBatch(job: ClaimedJob, texts: string[]): Promise<number[][]> {
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt <= OPENAI_MAX_RETRIES; attempt += 1) {
+    edgeAttempt(job).check();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), OPENAI_REQUEST_TIMEOUT_MS);
     try {
       const response = await fetch("https://api.openai.com/v1/embeddings", {
         method: "POST",
-        signal: controller.signal,
+        signal: AbortSignal.any([controller.signal, edgeAttempt(job).signal]),
         headers: {
           Authorization: `Bearer ${OPENAI_API_KEY}`,
           "Content-Type": "application/json",
@@ -324,6 +313,7 @@ async function fetchEmbeddingBatch(texts: string[]): Promise<number[][]> {
         if (rows.length !== texts.length) {
           throw new Error(`OpenAI embedding response returned ${rows.length} rows for ${texts.length} inputs`);
         }
+        edgeAttempt(job).check();
         return rows
           .slice()
           .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
@@ -333,6 +323,7 @@ async function fetchEmbeddingBatch(texts: string[]): Promise<number[][]> {
           });
       }
     } catch (e) {
+      edgeAttempt(job).check();
       lastError = e;
       const nonRetryable = e instanceof Error && (e as Error & { nonRetryable?: boolean }).nonRetryable === true;
       if (e instanceof Error && e.name !== "AbortError" && (nonRetryable || attempt >= OPENAI_MAX_RETRIES)) throw e;
@@ -348,11 +339,11 @@ async function fetchEmbeddingBatch(texts: string[]): Promise<number[][]> {
   throw lastError instanceof Error ? lastError : new Error("OpenAI embedding request failed");
 }
 
-async function embeddingBatch(texts: string[]): Promise<number[][]> {
+async function embeddingBatch(job: ClaimedJob, texts: string[]): Promise<number[][]> {
   const normalized = texts.map((text) => normalizeText(text).slice(0, 12_000) || " ");
   const out: number[][] = [];
   for (let start = 0; start < normalized.length; start += OPENAI_EMBEDDING_BATCH_SIZE) {
-    out.push(...(await fetchEmbeddingBatch(normalized.slice(start, start + OPENAI_EMBEDDING_BATCH_SIZE))));
+    out.push(...(await fetchEmbeddingBatch(job, normalized.slice(start, start + OPENAI_EMBEDDING_BATCH_SIZE))));
   }
   return out;
 }
@@ -568,37 +559,98 @@ function chooseByBudget(images: Array<ImageRow & { priority: number }>): Array<I
     .slice(0, 40);
 }
 
-async function stageStart(job: ClaimedJob, stageName: string, metadata: Record<string, unknown> = {}): Promise<string> {
-  const row = await sql<{ id: string }[]>`
-    insert into public.ingestion_job_stages (
-      job_id, document_id, stage_name, stage_status, metadata
-    ) values (
-      ${job.id}::uuid,
-      ${job.document_id}::uuid,
-      ${stageName}::text,
-      'started',
-      ${jsonb(metadata)}
-    )
-    returning id
-  `;
-  return row[0].id;
+const jobAttempts = new WeakMap<ClaimedJob, IngestionAttempt>();
+function edgeAttempt(job: ClaimedJob) {
+  const attempt = jobAttempts.get(job);
+  if (!attempt) throw new IngestionAttemptError("ingestion_attempt_required");
+  attempt.check();
+  return attempt;
 }
-
+async function edgeMutation(job: ClaimedJob, name: string, args: Record<string, unknown> = {}) {
+  const attempt = edgeAttempt(job);
+  return runEdgeIngestionMutation(attempt, async (currentFence) => {
+    const fence = jsonb(currentFence);
+    let rows: Array<{ result: unknown }>;
+    switch (name) {
+      case "heartbeat_indexing_v3_agent_job":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.heartbeat_indexing_v3_agent_job(${fence}::jsonb) as result`;
+        break;
+      case "start_ingestion_job_stage":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.start_ingestion_job_stage(${fence}::jsonb, ${args.p_stage as string | null}::text, ${jsonb(args.p_metadata)}::jsonb) as result`;
+        break;
+      case "finish_ingestion_job_stage":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.finish_ingestion_job_stage(${fence}::jsonb, ${args.p_stage_id as string | null}::uuid, ${args.p_ok as boolean}::boolean, ${jsonb(args.p_counts)}::jsonb, ${args.p_error as string | null}::text) as result`;
+        break;
+      case "persist_ingestion_summary_projection":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.persist_ingestion_summary_projection(${fence}::jsonb, ${jsonb(args.p_summary)}::jsonb, ${jsonb(args.p_labels)}::jsonb, ${jsonb(args.p_metadata)}::jsonb) as result`;
+        break;
+      case "replace_indexing_v3_sections":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.replace_indexing_v3_sections(${fence}::jsonb, ${jsonb(args.p_sections)}::jsonb, ${jsonb(args.p_units)}::jsonb) as result`;
+        break;
+      case "replace_indexing_v3_memory_cards":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.replace_indexing_v3_memory_cards(${fence}::jsonb, ${jsonb(args.p_cards)}::jsonb) as result`;
+        break;
+      case "replace_indexing_v3_visual_artifacts":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.replace_indexing_v3_visual_artifacts(${fence}::jsonb, ${jsonb(args.p_images)}::jsonb, ${jsonb(args.p_units)}::jsonb, ${jsonb(args.p_fields)}::jsonb) as result`;
+        break;
+      case "replace_indexing_v3_core_embeddings":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.replace_indexing_v3_core_embeddings(${fence}::jsonb, ${jsonb(args.p_fields)}::jsonb) as result`;
+        break;
+      case "persist_ingestion_index_quality":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.persist_ingestion_index_quality(${fence}::jsonb, ${jsonb(args.p_quality)}::jsonb) as result`;
+        break;
+      case "update_indexing_v3_agent_job_status":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.update_indexing_v3_agent_job_status(${fence}::jsonb, ${args.p_status as string | null}::text, ${args.p_error as string | null}::text, ${args.p_next_run_at as string | null}::timestamptz, ${jsonb(args.p_metadata)}::jsonb) as result`;
+        break;
+      case "complete_strict_enrichment_job":
+        rows = await sql<
+          Array<{ result: unknown }>
+        >`select public.complete_strict_enrichment_job(${fence}::jsonb, ${args.p_stage as string | null}::text, ${args.p_agent_version as string | null}::text, ${args.p_visual_indexing_version as string | null}::text) as result`;
+        break;
+      default:
+        throw new IngestionAttemptError("ingestion_rpc_invalid");
+    }
+    return rows[0]?.result;
+  });
+}
+async function stageStart(job: ClaimedJob, stageName: string, metadata: Record<string, unknown> = {}): Promise<string> {
+  const result = await edgeMutation(job, "start_ingestion_job_stage", { p_stage: stageName, p_metadata: metadata });
+  if (typeof result.stage_id !== "string") throw new IngestionAttemptError("ingestion_rpc_invalid");
+  return result.stage_id;
+}
 async function stageFinish(
+  job: ClaimedJob,
   stageId: string,
   ok: boolean,
   artifactCounts: Record<string, unknown> = {},
   errorMessage?: string,
 ): Promise<void> {
-  await sql`
-    update public.ingestion_job_stages
-    set
-      stage_status = ${ok ? "completed" : "failed"}::text,
-      finished_at = now(),
-      artifact_counts = ${jsonb(artifactCounts)},
-      error_message = ${errorMessage ?? null}::text
-    where id = ${stageId}::uuid
-  `;
+  await edgeMutation(job, "finish_ingestion_job_stage", {
+    p_stage_id: stageId,
+    p_ok: ok,
+    p_counts: artifactCounts,
+    p_error: errorMessage ?? null,
+  });
 }
 
 type SummarySourceChunk = {
@@ -700,77 +752,38 @@ async function loadSourceAnchoredSummarySources(
 async function persistSourceAnchoredSummary(
   job: ClaimedJob,
   payload: SourceAnchoredSummaryPayload,
-  writePayload: boolean,
+  _writePayload: boolean,
 ) {
-  const desired = projectSourceAnchoredLabels(payload);
-  await sql.begin(async (tx) => {
-    if (writePayload) {
-      const metadata = {
+  await edgeMutation(job, "persist_ingestion_summary_projection", {
+    p_summary: {
+      document_id: job.document_id,
+      summary: payload.summary,
+      clinical_specifics: payload.clinical_specifics,
+      source_chunk_ids: payload.source_chunk_ids,
+      source_image_ids: payload.source_image_ids,
+      model: payload.model,
+      generated_at: payload.generated_at,
+      metadata: {
         generated_by: GENERATED_BY,
-        ...sourceAnchoredSummaryMetadata(payload, false),
-      };
-      await tx`
-        insert into public.document_summaries (
-          document_id, owner_id, summary, clinical_specifics, source_chunk_ids, source_image_ids,
-          model, metadata, generated_at
-        ) values (
-          ${job.document_id}::uuid, ${job.documents.owner_id}::uuid, ${payload.summary},
-          ${jsonb(payload.clinical_specifics)}, ${payload.source_chunk_ids}::uuid[],
-          ${payload.source_image_ids}::uuid[], ${payload.model}, ${jsonb(metadata)}, ${payload.generated_at}::timestamptz
-        )
-        on conflict (document_id) do update set
-          summary = excluded.summary,
-          clinical_specifics = excluded.clinical_specifics,
-          source_chunk_ids = excluded.source_chunk_ids,
-          source_image_ids = excluded.source_image_ids,
-          model = excluded.model,
-          metadata = coalesce(public.document_summaries.metadata, '{}'::jsonb) || excluded.metadata,
-          generated_at = excluded.generated_at,
-          updated_at = now()
-      `;
-    } else {
-      await tx`
-        update public.document_summaries
-        set metadata = coalesce(metadata, '{}'::jsonb) || ${jsonb({
-          [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false,
-        })}, updated_at = now()
-        where document_id = ${job.document_id}::uuid
-      `;
-    }
-
-    for (const label of desired) {
-      await tx`
-        insert into public.document_labels (
-          document_id, owner_id, label, label_type, source, confidence, metadata
-        ) values (
-          ${job.document_id}::uuid, ${job.documents.owner_id}::uuid, ${label.label}, ${label.label_type},
-          'generated', ${label.confidence}, ${jsonb({
-            generated_by: GENERATED_BY,
-            index_generation_id: payload.index_generation_id,
-            summary_version: payload.summary_version,
-            source_chunk_ids: label.source_chunk_ids,
-            source_image_ids: label.source_image_ids,
-            pages: label.pages,
-          })}
-        )
-        on conflict (document_id, label_type, label, source) do update set
-          confidence = excluded.confidence, metadata = excluded.metadata, updated_at = now()
-      `;
-    }
-    const desiredKeys = desired.map((label) => `${label.label_type}\u0001${label.label}`);
-    await tx`
-      delete from public.document_labels
-      where document_id = ${job.document_id}::uuid
-        and source = 'generated'
-        and not ((label_type || chr(1) || label) = any(${desiredKeys}::text[]))
-    `;
-    await tx`
-      update public.document_summaries
-      set metadata = coalesce(metadata, '{}'::jsonb) || ${jsonb({
-        [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
-      })}, updated_at = now()
-      where document_id = ${job.document_id}::uuid
-    `;
+        ...sourceAnchoredSummaryMetadata(payload, payload.summary_kind === "structured"),
+      },
+    },
+    p_labels: projectSourceAnchoredLabels(payload).map((label) => ({
+      document_id: job.document_id,
+      source: "generated",
+      label: label.label,
+      label_type: label.label_type,
+      confidence: label.confidence,
+      metadata: {
+        generated_by: GENERATED_BY,
+        index_generation_id: payload.index_generation_id,
+        summary_version: payload.summary_version,
+        source_chunk_ids: label.source_chunk_ids,
+        source_image_ids: label.source_image_ids,
+        pages: label.pages,
+      },
+    })),
+    p_metadata: {},
   });
 }
 
@@ -923,342 +936,12 @@ function unitsFromStructured(image: ImageRow, structured: ReturnType<typeof pars
   return units;
 }
 
-function inferLabelType(text: string): GeneratedLabelCandidate["label_type"] {
-  const hay = normalizeText(text).toLowerCase();
-  if (
-    /(clozapine|lithium|antipsychotic|antidepressant|insulin|antibiotic|opioid|benzodiazepine|medicat|doses?|tablet|drug|prescription)/.test(
-      hay,
-    )
-  )
-    return "medication";
-  if (/(risk|safety|seclusion|restraint|suicide|self.?harm|violence|agitation|escalat)/.test(hay)) return "risk";
-  if (/(home|community|inpatient|outpatient|ward|clinic|hospital|emergency|ambulance|unit|setting)/.test(hay))
-    return "setting";
-  if (/(workflow|pathway|process|algorithm|protocol|care.?plan|admission|discharge|handoff)/.test(hay))
-    return "workflow";
-  if (/(document|guideline|policy|manual|procedure|form|checklist|assessment|screening|brief)/.test(hay))
-    return "document_type";
-  if (
-    /(child|children|adult|adolescent|elderly|geriatric|neonat|pediatric|prenatal|pregnant|population|service user)/.test(
-      hay,
-    )
-  )
-    return "population";
-  if (/(service|team|multidisciplinary|support)/.test(hay)) return "service";
-  return "topic";
-}
-
-function pushLabelCandidate(
-  candidates: Map<string, GeneratedLabelCandidate>,
-  rawLabel: string,
-  labelType: GeneratedLabelCandidate["label_type"],
-  confidence: number,
-  metadata: Record<string, unknown>,
-) {
-  const label = normalizeLabelCandidate(rawLabel);
-  if (!label) return;
-  const key = `${labelType}::${label}`;
-  const existing = candidates.get(key);
-  if (existing) {
-    existing.confidence = Math.max(existing.confidence, confidence);
-    existing.metadata = { ...existing.metadata, ...metadata };
-    return;
-  }
-
-  candidates.set(key, {
-    label,
-    label_type: labelType,
-    confidence,
-    metadata,
-  });
-}
-
-function mapMemoryCardTypeToLabelType(cardType: string): GeneratedLabelCandidate["label_type"] {
-  if (cardType === "medication") return "medication";
-  if (cardType === "risk") return "risk";
-  if (cardType === "workflow") return "workflow";
-  if (
-    cardType === "table_row" ||
-    cardType === "askable_question" ||
-    cardType === "section_summary" ||
-    cardType === "definition" ||
-    cardType === "citation_anchor"
-  )
-    return "topic";
-  return "custom";
-}
-
-function candidateConfidence(base: number, source: string): number {
-  if (source === "document_title") return Math.min(0.82, base + 0.08);
-  if (source === "section_heading") return Math.min(0.9, base + 0.12);
-  if (source === "memory_card_title") return Math.min(0.86, base + 0.1);
-  if (source === "section_tag") return Math.min(0.74, base + 0.08);
-  if (source === "memory_card_content") return Math.min(0.76, base + 0.06);
-  return base;
-}
-
-async function upsertGeneratedLabelsFromParsedArtifacts(
-  job: ClaimedJob,
-  visibility: GenerationVisibility,
-): Promise<number> {
-  const generationPredicate = generationPredicateForJob(job, visibility);
-  const summaryRowsRaw = await sql<Array<{ summary: string; document_id: string; generation_id: string | null }>>`
-    select summary, document_id, metadata->>'index_generation_id' as generation_id
-    from public.document_summaries
-    where document_id = ${job.document_id}::uuid
-      and (
-        (${generationPredicate.indexGenerationId}::uuid is not null
-          and metadata->>'index_generation_id' = ${generationPredicate.indexGenerationId}::text)
-        or (${generationPredicate.isLegacy}::boolean and metadata->>'index_generation_id' is null)
-      )
-    limit 1
-  `;
-  const summaryRows = visibleGenerationRows(summaryRowsRaw, visibility);
-  const chunksForLabelsRaw = await sql<Array<{ content: string; document_id: string; generation_id: string | null }>>`
-    select content, document_id, index_generation_id::text as generation_id
-    from public.document_chunks
-    where document_id = ${job.document_id}::uuid
-      and (
-        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
-      )
-    order by chunk_index asc
-    limit 8
-  `;
-  const chunksForLabels = visibleGenerationRows(chunksForLabelsRaw, visibility);
-
-  const sectionRows = await sql<Array<SectionLabelSource & { document_id: string; generation_id: string | null }>>`
-    select
-      s.id as section_id,
-      s.document_id,
-      s.index_generation_id::text as generation_id,
-      s.heading,
-      s.heading_path,
-      coalesce(s.summary, '') as summary,
-      s.tags,
-      c.id as source_chunk_id,
-      c.anchor_id,
-      c.chunk_index
-    from public.document_sections s
-    left join lateral (
-      select id, anchor_id, chunk_index
-      from public.document_chunks c
-      where c.document_id = s.document_id
-        and (
-          c.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-          or (${generationPredicate.isLegacy}::boolean and c.index_generation_id is null)
-        )
-        and (
-          c.id = any(s.chunk_ids)
-          or c.section_heading = s.heading
-        )
-      order by
-        case when c.id = any(s.chunk_ids) then 0 else 1 end,
-        c.chunk_index asc
-      limit 1
-    ) c on true
-    where s.document_id = ${job.document_id}::uuid
-      and (
-        s.index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-        or (${generationPredicate.isLegacy}::boolean and s.index_generation_id is null)
-      )
-    order by s.section_index asc
-  `;
-  const sections = visibleGenerationRows(sectionRows, visibility);
-
-  const cardRows = await sql<Array<MemoryCardLabelSource & { document_id: string; generation_id: string | null }>>`
-    select
-      id as card_id,
-      document_id,
-      index_generation_id::text as generation_id,
-      card_type,
-      title,
-      content
-    from public.document_memory_cards
-    where document_id = ${job.document_id}::uuid
-      and (
-        index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-        or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
-      )
-    order by created_at desc
-  `;
-  const cards = visibleGenerationRows(cardRows, visibility);
-
-  const candidates = new Map<string, GeneratedLabelCandidate>();
-  const sectionCount = sections.length;
-  const cardCount = cards.length;
-
-  if (job.documents.title) {
-    pushLabelCandidate(
-      candidates,
-      job.documents.title,
-      inferLabelType(job.documents.title),
-      candidateConfidence(0.68, "document_title"),
-      { source: "document_title", source_text: job.documents.title },
-    );
-  }
-  if (summaryRows.length > 0 && summaryRows[0].summary) {
-    for (const keyword of phraseLabelCandidates(summaryRows[0].summary, 4)) {
-      pushLabelCandidate(
-        candidates,
-        keyword,
-        inferLabelType(summaryRows[0].summary),
-        candidateConfidence(0.55, "section_heading"),
-        { source: "document_summary_token" },
-      );
-    }
-  }
-
-  for (const chunk of chunksForLabels) {
-    for (const keyword of phraseLabelCandidates(chunk.content, 3)) {
-      pushLabelCandidate(
-        candidates,
-        keyword,
-        inferLabelType(chunk.content),
-        candidateConfidence(0.52, "section_heading"),
-        { source: "document_chunk_token" },
-      );
-    }
-  }
-
-  for (const section of sections) {
-    if (section.heading) {
-      pushLabelCandidate(
-        candidates,
-        section.heading,
-        inferLabelType(section.heading),
-        candidateConfidence(0.78, "section_heading"),
-        {
-          source: "document_section",
-          section_id: section.section_id,
-          source_chunk_id: section.source_chunk_id ?? null,
-          chunk_index: section.chunk_index ?? null,
-          anchor_id: section.anchor_id ?? null,
-        },
-      );
-    }
-
-    if ((section.heading_path ?? []).length > 0) {
-      const pathLabel = section.heading_path!.join(" > ");
-      if (pathLabel.length > 4) {
-        pushLabelCandidate(
-          candidates,
-          pathLabel,
-          inferLabelType(section.heading),
-          candidateConfidence(0.56, "section_tag"),
-          {
-            source: "document_section_path",
-            section_id: section.section_id,
-            source_chunk_id: section.source_chunk_id ?? null,
-            chunk_index: section.chunk_index ?? null,
-            anchor_id: section.anchor_id ?? null,
-          },
-        );
-      }
-    }
-
-    if (section.summary) {
-      for (const keyword of phraseLabelCandidates(section.summary, 4)) {
-        pushLabelCandidate(
-          candidates,
-          keyword,
-          inferLabelType(section.summary),
-          candidateConfidence(0.6, "section_heading"),
-          {
-            source: "document_section_summary_token",
-            section_id: section.section_id,
-            source_chunk_id: section.source_chunk_id ?? null,
-            chunk_index: section.chunk_index ?? null,
-            anchor_id: section.anchor_id ?? null,
-          },
-        );
-      }
-    }
-
-    for (const tag of section.tags ?? []) {
-      pushLabelCandidate(candidates, tag, inferLabelType(tag), candidateConfidence(0.62, "section_tag"), {
-        source: "document_section_tag",
-        section_id: section.section_id,
-        source_chunk_id: section.source_chunk_id,
-        chunk_index: section.chunk_index,
-        anchor_id: section.anchor_id,
-      });
-    }
-  }
-
-  for (const card of cards) {
-    const labelType = mapMemoryCardTypeToLabelType(card.card_type);
-    pushLabelCandidate(candidates, card.title, labelType, candidateConfidence(0.72, "memory_card_title"), {
-      source: "document_memory_card",
-      card_id: card.card_id,
-      card_type: card.card_type,
-    });
-    for (const term of phraseLabelCandidates(card.content, 4)) {
-      pushLabelCandidate(candidates, term, labelType, candidateConfidence(0.55, "memory_card_content"), {
-        source: "document_memory_card_content",
-        card_id: card.card_id,
-        card_type: card.card_type,
-      });
-    }
-  }
-
-  const prepared = Array.from(candidates.values()).slice(0, 80);
-  if (prepared.length === 0) return 0;
-
-  const inserted = await sql.begin(async (tx) => {
-    let count = 0;
-    for (const candidate of prepared) {
-      await tx`
-        insert into public.document_labels (
-          document_id,
-          owner_id,
-          label,
-          label_type,
-          source,
-          confidence,
-          metadata
-        ) values (
-          ${job.document_id}::uuid,
-          ${job.documents.owner_id}::uuid,
-          ${candidate.label},
-          ${candidate.label_type},
-          'generated',
-          ${Math.min(0.98, Math.max(0.2, candidate.confidence))},
-          ${jsonb({
-            ...candidate.metadata,
-            generated_by: GENERATED_BY,
-            ...generationMetadata(generationPredicate.indexGenerationId),
-            generation_source: "indexing_v3_agent_parsed_artifacts",
-            section_candidates: sectionCount,
-            memory_card_candidates: cardCount,
-            fallback_generated_count: prepared.length,
-          })}
-        )
-        on conflict (document_id, label_type, label, source)
-        do update set
-          confidence = greatest(document_labels.confidence, excluded.confidence),
-          metadata = (
-            CASE
-              WHEN jsonb_typeof(document_labels.metadata) = 'object' THEN
-                coalesce(document_labels.metadata, '{}'::jsonb) - 'index_generation_id'
-              ELSE '{}'::jsonb
-            END
-          ) || excluded.metadata,
-          updated_at = now()
-      `;
-      count += 1;
-    }
-    return count;
-  });
-
-  return inserted;
-}
-
 function memoryCardText(title: string, cardType: string, content: string, terms: string[]): string {
   return `${title}\n${cardType}\n${content}\nTerms: ${terms.join(", ")}`;
 }
 
 async function ensureSectionsFromChunks(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
+  const artifactRows: Record<string, Array<Record<string, unknown>>> = { document_sections: [] };
   const generationPredicate = generationPredicateForJob(job, visibility);
   const existing = await sql<{ count: number }[]>`
     select count(*)::int as count
@@ -1297,65 +980,44 @@ async function ensureSectionsFromChunks(job: ClaimedJob, visibility: GenerationV
     const summary = normalizeText(chunk.content).slice(0, 1400) || heading;
     const tags = uniqueStrings(tokenize(`${heading} ${summary}`).slice(0, 8), 8);
 
-    const rows = await sql<{ id: string }[]>`
-      insert into public.document_sections (
-        document_id,
-        owner_id,
-        section_index,
-        heading,
-        heading_path,
-        page_start,
-        page_end,
-        chunk_ids,
-        summary,
-        tags,
-        extraction_quality,
-        index_generation_id,
-        metadata
-      ) values (
-        ${job.document_id}::uuid,
-        ${job.documents.owner_id}::uuid,
-        ${index}::integer,
-        ${heading}::text,
-        ${path.length > 0 ? path : [heading]}::text[],
-        ${chunk.page_number}::integer,
-        ${chunk.page_number}::integer,
-        ${[chunk.id]}::uuid[],
-        ${summary}::text,
-        ${tags}::text[],
-        'partial',
-        ${generationPredicate.indexGenerationId}::uuid,
-        ${jsonb({
+    const rows = [
+      {
+        id: crypto.randomUUID(),
+        document_id: job.document_id,
+        owner_id: job.documents.owner_id,
+        section_index: index,
+        heading: heading,
+        heading_path: path.length > 0 ? path : [heading],
+        page_start: chunk.page_number,
+        page_end: chunk.page_number,
+        chunk_ids: [chunk.id],
+        summary: summary,
+        tags: tags,
+        extraction_quality: "partial",
+        index_generation_id: generationPredicate.indexGenerationId,
+        metadata: {
           generated_by: GENERATED_BY,
           ...generationMetadata(generationPredicate.indexGenerationId),
           source: "document_chunks",
           source_chunk_id: chunk.id,
           repaired_missing_sections: true,
-        })}
-      )
-      on conflict (document_id, section_index) where artifact_generation_id is null
-      do update set
-        owner_id = excluded.owner_id,
-        heading = excluded.heading,
-        heading_path = excluded.heading_path,
-        page_start = excluded.page_start,
-        page_end = excluded.page_end,
-        chunk_ids = excluded.chunk_ids,
-        summary = excluded.summary,
-        tags = excluded.tags,
-        extraction_quality = excluded.extraction_quality,
-        index_generation_id = excluded.index_generation_id,
-        metadata = excluded.metadata,
-        updated_at = now()
-      returning id
-    `;
+        },
+      },
+    ];
+    artifactRows.document_sections.push(...rows);
     inserted += rows.length;
   }
+
+  await edgeMutation(job, "replace_indexing_v3_sections", {
+    p_sections: artifactRows.document_sections,
+    p_units: null,
+  });
 
   return inserted;
 }
 
 async function upsertMemoryCardsFromSections(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
+  const artifactRows: Record<string, Array<Record<string, unknown>>> = { document_memory_cards: [] };
   const generationPredicate = generationPredicateForJob(job, visibility);
   const sectionRows = await sql<Array<MemoryCardSectionSource & { document_id: string; generation_id: string | null }>>`
     select
@@ -1407,58 +1069,36 @@ async function upsertMemoryCardsFromSections(job: ClaimedJob, visibility: Genera
 
   if (prepared.length === 0) return 0;
 
-  const embeddings = await embeddingBatch(prepared.map((card) => card.embeddingText));
+  const embeddings = await embeddingBatch(
+    job,
+    prepared.map((card) => card.embeddingText),
+  );
   embeddings.forEach((embedding, index) =>
     assertEmbeddingDim(embedding, `memory card ${prepared[index].section.section_id}`),
   );
   let inserted = 0;
-  await sql.begin(async (tx) => {
-    await tx`
-      delete from public.document_memory_cards
-      where document_id = ${job.document_id}::uuid
-        and (
-          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
-        )
-        and metadata->>'generated_by' = ${GENERATED_BY}
-        and metadata->>'source' = 'document_sections'
-    `;
+  {
     for (let index = 0; index < prepared.length; index += 1) {
       const card = prepared[index];
       const section = card.section;
       const chunkIds = section.chunk_ids ?? [];
       const emb = embeddings[index];
 
-      await tx`
-      insert into public.document_memory_cards (
-        document_id,
-        owner_id,
-        section_id,
-        card_type,
-        title,
-        content,
-        normalized_terms,
-        page_number,
-        source_chunk_ids,
-        source_image_ids,
-        confidence,
-        index_generation_id,
-        metadata,
-        embedding
-      ) values (
-        ${job.document_id}::uuid,
-        ${job.documents.owner_id}::uuid,
-        ${section.section_id}::uuid,
-        'section_summary',
-        ${card.title}::text,
-        ${card.content}::text,
-        ${card.terms}::text[],
-        ${section.page_start}::integer,
-        ${chunkIds}::uuid[],
-        '{}'::uuid[],
-        ${section.extraction_quality === "good" ? 0.72 : section.extraction_quality === "partial" ? 0.62 : 0.54},
-        ${generationPredicate.indexGenerationId}::uuid,
-        ${jsonb({
+      artifactRows.document_memory_cards.push({
+        document_id: job.document_id,
+        owner_id: job.documents.owner_id,
+        section_id: section.section_id,
+        card_type: "section_summary",
+        title: card.title,
+        content: card.content,
+        normalized_terms: card.terms,
+        page_number: section.page_start,
+        source_chunk_ids: chunkIds,
+        source_image_ids: [],
+        confidence:
+          section.extraction_quality === "good" ? 0.72 : section.extraction_quality === "partial" ? 0.62 : 0.54,
+        index_generation_id: generationPredicate.indexGenerationId,
+        metadata: {
           generated_by: GENERATED_BY,
           ...generationMetadata(generationPredicate.indexGenerationId),
           source: "document_sections",
@@ -1466,18 +1106,20 @@ async function upsertMemoryCardsFromSections(job: ClaimedJob, visibility: Genera
           heading_path: section.heading_path ?? [],
           page_start: section.page_start,
           page_end: section.page_end,
-        })},
-        ${JSON.stringify(emb)}::vector
-      )
-      `;
+        },
+        embedding: emb,
+      });
       inserted += 1;
     }
-  });
+  }
+
+  await edgeMutation(job, "replace_indexing_v3_memory_cards", { p_cards: artifactRows.document_memory_cards });
 
   return inserted;
 }
 
 async function upsertSectionIndexUnits(job: ClaimedJob, visibility: GenerationVisibility): Promise<number> {
+  const artifactRows: Record<string, Array<Record<string, unknown>>> = { document_index_units: [] };
   const generationPredicate = generationPredicateForJob(job, visibility);
   const sectionRows = await sql<Array<SectionIndexSource & { document_id: string; generation_id: string | null }>>`
     select
@@ -1548,75 +1190,53 @@ async function upsertSectionIndexUnits(job: ClaimedJob, visibility: GenerationVi
       } => Boolean(row),
     );
 
-  const embeddings = await embeddingBatch(preparedSections.map((section) => section.embeddingText));
+  const embeddings = await embeddingBatch(
+    job,
+    preparedSections.map((section) => section.embeddingText),
+  );
   embeddings.forEach((embedding, index) =>
     assertEmbeddingDim(embedding, `section index unit ${preparedSections[index].section.section_id}`),
   );
   let inserted = 0;
-  await sql.begin(async (tx) => {
-    await tx`
-      delete from public.document_index_units
-      where document_id = ${job.document_id}::uuid
-        and (
-          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
-        )
-        and unit_type = 'section_summary'
-        and metadata->>'generated_by' = ${GENERATED_BY}
-        and metadata->>'source' = 'document_sections'
-    `;
+  {
     for (let index = 0; index < preparedSections.length; index += 1) {
       const { section, title, content } = preparedSections[index];
       const emb = embeddings[index];
 
-      await tx`
-      insert into public.document_index_units (
-        owner_id,
-        document_id,
-        unit_type,
-        source_chunk_id,
-        source_image_id,
-        page_start,
-        page_end,
-        heading_path,
-        title,
-        content,
-        normalized_terms,
-        source_span,
-        quality_score,
-        extraction_mode,
-        index_generation_id,
-        embedding,
-        metadata
-      ) values (
-        ${job.documents.owner_id}::uuid,
-        ${job.document_id}::uuid,
-        'section_summary',
-        ${section.source_chunk_id}::uuid,
-        null,
-        ${section.page_start},
-        ${section.page_end},
-        ${section.heading_path ?? []}::text[],
-        ${title},
-        ${content},
-        ${tokenize(`${title} ${content} ${(section.tags ?? []).join(" ")}`)}::text[],
-        ${jsonb({ anchor_id: section.anchor_id, chunk_index: section.chunk_index })},
-        ${section.extraction_quality === "good" ? 0.78 : section.extraction_quality === "partial" ? 0.58 : 0.42},
-        'hybrid',
-        ${generationPredicate.indexGenerationId}::uuid,
-        ${JSON.stringify(emb)}::vector,
-        ${jsonb({
+      artifactRows.document_index_units.push({
+        owner_id: job.documents.owner_id,
+        document_id: job.document_id,
+        unit_type: "section_summary",
+        source_chunk_id: section.source_chunk_id,
+        source_image_id: null,
+        page_start: section.page_start,
+        page_end: section.page_end,
+        heading_path: section.heading_path ?? [],
+        title: title,
+        content: content,
+        normalized_terms: tokenize(`${title} ${content} ${(section.tags ?? []).join(" ")}`),
+        source_span: { anchor_id: section.anchor_id, chunk_index: section.chunk_index },
+        quality_score:
+          section.extraction_quality === "good" ? 0.78 : section.extraction_quality === "partial" ? 0.58 : 0.42,
+        extraction_mode: "hybrid",
+        index_generation_id: generationPredicate.indexGenerationId,
+        embedding: emb,
+        metadata: {
           generated_by: GENERATED_BY,
           ...generationMetadata(generationPredicate.indexGenerationId),
           source: "document_sections",
           section_id: section.section_id,
           chunk_ids: section.chunk_ids ?? [],
           anchor_id: section.anchor_id,
-        })}
-      )
-      `;
+        },
+      });
       inserted += 1;
     }
+  }
+
+  await edgeMutation(job, "replace_indexing_v3_sections", {
+    p_sections: null,
+    p_units: artifactRows.document_index_units,
   });
 
   return inserted;
@@ -1626,6 +1246,11 @@ async function upsertVisualArtifacts(
   job: ClaimedJob,
   visibility: GenerationVisibility,
 ): Promise<{ selected_images: number; created_units: number; created_fields: number }> {
+  const artifactRows: Record<string, Array<Record<string, unknown>>> = {
+    document_images: [],
+    document_index_units: [],
+    document_embedding_fields: [],
+  };
   const generationPredicate = generationPredicateForJob(job, visibility);
   const imageRows = await sql<Array<ImageRow & { document_id: string; generation_id: string | null }>>`
     select
@@ -1662,35 +1287,23 @@ async function upsertVisualArtifacts(
     const structured = parseStructuredVisual(img);
     const units = unitsFromStructured(img, structured);
 
-    await sql`
-      update public.document_images
-      set
-        metadata = (
-          case
-            when jsonb_typeof(coalesce(metadata, '{}'::jsonb)) = 'object'
-              then coalesce(metadata, '{}'::jsonb)
-            else jsonb_build_object('legacy_metadata', metadata)
-          end
-        ) || ${jsonb({
-          v3_structured_visual: structured,
-          v3_visual_metrics: {
-            clinical_priority_score: img.priority,
-            caption_confidence: Math.max(0.35, Math.min(0.98, structured.confidence - 0.05)),
-            structured_extraction_confidence: structured.confidence,
-            ocr_text_density: Math.max(0, Math.min(1, structured.key_terms.length / 40)),
-            image_quality_score: Math.max(0, Math.min(1, 0.35 + img.priority * 0.3)),
-            crop_completeness: Math.max(
-              0.3,
-              Math.min(1, img.width && img.height && img.width * img.height > 150000 ? 0.9 : 0.55),
-            ),
-          },
-        })}
-      where id = ${img.id}::uuid
-        and (
-          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
-        )
-    `;
+    artifactRows.document_images.push({
+      id: img.id,
+      metadata: {
+        v3_structured_visual: structured,
+        v3_visual_metrics: {
+          clinical_priority_score: img.priority,
+          caption_confidence: Math.max(0.35, Math.min(0.98, structured.confidence - 0.05)),
+          structured_extraction_confidence: structured.confidence,
+          ocr_text_density: Math.max(0, Math.min(1, structured.key_terms.length / 40)),
+          image_quality_score: Math.max(0, Math.min(1, 0.35 + img.priority * 0.3)),
+          crop_completeness: Math.max(
+            0.3,
+            Math.min(1, img.width && img.height && img.width * img.height > 150000 ? 0.9 : 0.55),
+          ),
+        },
+      },
+    });
 
     for (const unit of units) {
       const content = normalizeText(unit.content);
@@ -1703,111 +1316,68 @@ async function upsertVisualArtifacts(
     }
   }
 
-  const embeddings = await embeddingBatch(preparedUnits.map((prepared) => prepared.content));
+  const embeddings = await embeddingBatch(
+    job,
+    preparedUnits.map((prepared) => prepared.content),
+  );
   embeddings.forEach((embedding, index) =>
     assertEmbeddingDim(embedding, `visual index unit ${preparedUnits[index].unit.sourceImageId}`),
   );
-  await sql.begin(async (tx) => {
-    await tx`
-      delete from public.document_embedding_fields
-      where document_id = ${job.document_id}::uuid
-        and (
-          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
-        )
-        and field_type = any(${VISUAL_FIELD_TYPES}::text[])
-        and metadata->>'generated_by' = ${GENERATED_BY}
-    `;
-    await tx`
-      delete from public.document_index_units
-      where document_id = ${job.document_id}::uuid
-        and (
-          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
-        )
-        and unit_type = any(${VISUAL_UNIT_TYPES}::text[])
-        and metadata->>'generated_by' = ${GENERATED_BY}
-    `;
+  {
     for (let index = 0; index < preparedUnits.length; index += 1) {
       const { unit, content, unitType, fieldType, contentHash } = preparedUnits[index];
       const emb = embeddings[index];
 
-      await tx`
-      insert into public.document_index_units (
-        owner_id,
-        document_id,
-        unit_type,
-        source_chunk_id,
-        source_image_id,
-        page_start,
-        page_end,
-        heading_path,
-        title,
-        content,
-        normalized_terms,
-        source_span,
-        quality_score,
-        extraction_mode,
-        index_generation_id,
-        embedding,
-        metadata
-      ) values (
-        ${job.documents.owner_id}::uuid,
-        ${job.document_id}::uuid,
-        ${unitType},
-        null,
-        ${unit.sourceImageId}::uuid,
-        ${unit.page},
-        ${unit.page},
-        '{}'::text[],
-        ${unit.title},
-        ${content},
-        ${unit.normalizedTerms}::text[],
-        ${jsonb({ source_image_id: unit.sourceImageId, source_regions: unit.metadata.source_regions ?? [] })},
-        ${unit.qualityScore},
-        'hybrid',
-        ${generationPredicate.indexGenerationId}::uuid,
-        ${JSON.stringify(emb)}::vector,
-        ${jsonb({
+      artifactRows.document_index_units.push({
+        owner_id: job.documents.owner_id,
+        document_id: job.document_id,
+        unit_type: unitType,
+        source_chunk_id: null,
+        source_image_id: unit.sourceImageId,
+        page_start: unit.page,
+        page_end: unit.page,
+        heading_path: [],
+        title: unit.title,
+        content: content,
+        normalized_terms: unit.normalizedTerms,
+        source_span: { source_image_id: unit.sourceImageId, source_regions: unit.metadata.source_regions ?? [] },
+        quality_score: unit.qualityScore,
+        extraction_mode: "hybrid",
+        index_generation_id: generationPredicate.indexGenerationId,
+        embedding: emb,
+        metadata: {
           ...unit.metadata,
           visual_unit_type: unit.unitType,
           generated_by: GENERATED_BY,
           ...generationMetadata(generationPredicate.indexGenerationId),
-        })}
-      )
-      `;
+        },
+      });
       createdUnits += 1;
 
-      await tx`
-        insert into public.document_embedding_fields (
-          owner_id,
-          document_id,
-          source_chunk_id,
-          field_type,
-          content,
-          index_generation_id,
-          embedding,
-          metadata,
-          content_hash
-        ) values (
-          ${job.documents.owner_id}::uuid,
-          ${job.document_id}::uuid,
-          null,
-          ${fieldType},
-          ${content},
-          ${generationPredicate.indexGenerationId}::uuid,
-          ${JSON.stringify(emb)}::vector,
-          ${jsonb({
-            source_image_id: unit.sourceImageId,
-            visual_field_type: unit.unitType,
-            generated_by: GENERATED_BY,
-            ...generationMetadata(generationPredicate.indexGenerationId),
-          })},
-          ${contentHash}
-        )
-        `;
+      artifactRows.document_embedding_fields.push({
+        owner_id: job.documents.owner_id,
+        document_id: job.document_id,
+        source_chunk_id: null,
+        field_type: fieldType,
+        content: content,
+        index_generation_id: generationPredicate.indexGenerationId,
+        embedding: emb,
+        metadata: {
+          source_image_id: unit.sourceImageId,
+          visual_field_type: unit.unitType,
+          generated_by: GENERATED_BY,
+          ...generationMetadata(generationPredicate.indexGenerationId),
+        },
+        content_hash: contentHash,
+      });
       createdFields += 1;
     }
+  }
+
+  await edgeMutation(job, "replace_indexing_v3_visual_artifacts", {
+    p_images: artifactRows.document_images,
+    p_units: artifactRows.document_index_units,
+    p_fields: artifactRows.document_embedding_fields,
   });
 
   return { selected_images: selected.length, created_units: createdUnits, created_fields: createdFields };
@@ -1818,6 +1388,7 @@ async function upsertCoreEmbeddingFields(
   summary: string,
   visibility: GenerationVisibility,
 ): Promise<number> {
+  const artifactRows: Record<string, Array<Record<string, unknown>>> = { document_embedding_fields: [] };
   const generationPredicate = generationPredicateForJob(job, visibility);
   const title = normalizeText(job.documents.title ?? "") || "Untitled document";
   const base = [
@@ -1825,47 +1396,39 @@ async function upsertCoreEmbeddingFields(
     { field_type: "document_summary", content: normalizeText(summary) || "Summary unavailable" },
   ];
 
-  const embeddings = await embeddingBatch(base.map((row) => row.content));
+  const embeddings = await embeddingBatch(
+    job,
+    base.map((row) => row.content),
+  );
   embeddings.forEach((embedding, index) => assertEmbeddingDim(embedding, `${base[index].field_type} embedding field`));
   let inserted = 0;
   const preparedRows = await Promise.all(
     base.map(async (row, index) => ({ row, emb: embeddings[index], contentHash: await sha256Hex(row.content) })),
   );
-  await sql.begin(async (tx) => {
-    await tx`
-      delete from public.document_embedding_fields
-      where document_id = ${job.document_id}::uuid
-        and (
-          index_generation_id = ${generationPredicate.indexGenerationId}::uuid
-          or (${generationPredicate.isLegacy}::boolean and index_generation_id is null)
-        )
-        and field_type = any(${base.map((b) => b.field_type)}::text[])
-        and metadata->>'generated_by' = ${GENERATED_BY}
-    `;
+  {
     for (const { row, emb, contentHash } of preparedRows) {
-      await tx`
-      insert into public.document_embedding_fields (
-        owner_id, document_id, source_chunk_id, field_type, content, index_generation_id, embedding, metadata, content_hash
-      ) values (
-        ${job.documents.owner_id}::uuid,
-        ${job.document_id}::uuid,
-        null,
-        ${row.field_type},
-        ${row.content},
-        ${generationPredicate.indexGenerationId}::uuid,
-        ${JSON.stringify(emb)}::vector,
-        ${jsonb({ generated_by: GENERATED_BY, ...generationMetadata(generationPredicate.indexGenerationId) })},
-        ${contentHash}
-      )
-      `;
+      artifactRows.document_embedding_fields.push({
+        owner_id: job.documents.owner_id,
+        document_id: job.document_id,
+        source_chunk_id: null,
+        field_type: row.field_type,
+        content: row.content,
+        index_generation_id: generationPredicate.indexGenerationId,
+        embedding: emb,
+        metadata: { generated_by: GENERATED_BY, ...generationMetadata(generationPredicate.indexGenerationId) },
+        content_hash: contentHash,
+      });
       inserted += 1;
     }
-  });
+  }
+
+  await edgeMutation(job, "replace_indexing_v3_core_embeddings", { p_fields: artifactRows.document_embedding_fields });
 
   return inserted;
 }
 
 async function updateQuality(job: ClaimedJob, visibility: GenerationVisibility): Promise<void> {
+  const artifactRows: Record<string, Array<Record<string, unknown>>> = { document_index_quality: [] };
   const generationPredicate = generationPredicateForJob(job, visibility);
   const counts = await sql<
     {
@@ -1912,50 +1475,28 @@ async function updateQuality(job: ClaimedJob, visibility: GenerationVisibility):
   const retrievableVisualHit = c.visual_units > 0 && c.visual_images > 0;
   const issues = c.visual_images > 0 && !retrievableVisualHit ? ["no retrievable visual evidence"] : [];
 
-  await sql`
-    insert into public.document_index_quality (
-      document_id,
-      owner_id,
-      quality_score,
-      extraction_quality,
-      metrics,
-      issues,
-      updated_at
-    ) values (
-      ${job.document_id}::uuid,
-      ${job.documents.owner_id}::uuid,
-      ${Math.max(0, Math.min(1, 0.55 + typedCoverage * 0.25 + anchorCoverage * 0.2))},
-      'partial',
-      ${jsonb({
-        indexing_v3_agent: {
-          visual_units: c.visual_units,
-          total_units: c.total_units,
-          visual_images: c.visual_images,
-          retrievable_visual_hit: retrievableVisualHit,
-          typed_unit_coverage: typedCoverage,
-          anchor_coverage: anchorCoverage,
-          source_span_coverage: anchorCoverage,
-          model_fallback_rate: 0,
-          noisy_unit_rate: Math.max(0, 1 - typedCoverage),
-        },
-      })},
-      ${issues}::text[],
-      now()
-    )
-    on conflict (document_id)
-    do update set
-      quality_score = greatest(public.document_index_quality.quality_score, excluded.quality_score),
-      extraction_quality = case
-        when public.document_index_quality.extraction_quality in ('good', 'partial') then public.document_index_quality.extraction_quality
-        else excluded.extraction_quality
-      end,
-      metrics = coalesce(public.document_index_quality.metrics, '{}'::jsonb) || excluded.metrics,
-      issues = coalesce((
-        select array_agg(distinct issue order by issue)
-        from unnest(coalesce(public.document_index_quality.issues, '{}'::text[]) || excluded.issues) as issue
-      ), '{}'::text[]),
-      updated_at = now()
-  `;
+  artifactRows.document_index_quality.push({
+    document_id: job.document_id,
+    owner_id: job.documents.owner_id,
+    quality_score: Math.max(0, Math.min(1, 0.55 + typedCoverage * 0.25 + anchorCoverage * 0.2)),
+    extraction_quality: "partial",
+    metrics: {
+      indexing_v3_agent: {
+        visual_units: c.visual_units,
+        total_units: c.total_units,
+        visual_images: c.visual_images,
+        retrievable_visual_hit: retrievableVisualHit,
+        typed_unit_coverage: typedCoverage,
+        anchor_coverage: anchorCoverage,
+        source_span_coverage: anchorCoverage,
+        model_fallback_rate: 0,
+        noisy_unit_rate: Math.max(0, 1 - typedCoverage),
+      },
+    },
+    issues: issues,
+    updated_at: new Date().toISOString(),
+  });
+  await edgeMutation(job, "persist_ingestion_index_quality", { p_quality: artifactRows.document_index_quality[0] });
 }
 
 async function completionGate(job: ClaimedJob): Promise<CompletionGate> {
@@ -2036,20 +1577,14 @@ async function updateAgentJobStatus(
   status: AgentJobStatus,
   error: string | null = null,
   nextRunAt: string | null = null,
+  metadata: Record<string, unknown> = {},
 ): Promise<void> {
-  const rows = await sql<JobStatusRpcResult[]>`
-    select *
-    from public.update_indexing_v3_agent_job_status(
-      ${job.document_id}::uuid,
-      ${status}::text,
-      ${error}::text,
-      ${nextRunAt}::timestamptz
-    )
-  `;
-  const result = parseJobStatusRpcResult(rows[0], "update_indexing_v3_agent_job_status");
-  if (!result?.ok) {
-    throw new Error(`Failed to update indexing_v3_agent_jobs status to ${status} for document ${job.document_id}`);
-  }
+  await edgeMutation(job, "update_indexing_v3_agent_job_status", {
+    p_status: status === "pending" ? "deferred" : status,
+    p_error: error,
+    p_next_run_at: nextRunAt,
+    p_metadata: metadata,
+  });
 }
 
 function logCompletionGate(job: ClaimedJob, gate: CompletionGate): void {
@@ -2076,58 +1611,25 @@ async function deferJob(job: ClaimedJob, gate: CompletionGate): Promise<void> {
     nowMs: Date.now(),
   });
 
-  await sql`
-    update public.documents
-    set
-      metadata = jsonb_strip_nulls(
-        (coalesce(metadata, '{}'::jsonb)
-          - 'indexing_v3_agent_locked_by'
-          - 'indexing_v3_agent_locked_at'
-          - 'indexing_v3_agent_last_error'
-          - 'indexing_v3_agent_next_run_at')
-        || jsonb_build_object(
-          'indexing_v3_agent_status', ${decision.status}::text,
-          'indexing_v3_agent_version', 'visual-core-v3',
-          'indexing_v3_agent_updated_at', now(),
-          'indexing_v3_agent_deferral_count', ${decision.deferral_count}::integer,
-          'indexing_v3_agent_next_run_at', ${decision.next_run_at}::timestamptz,
-          'completion_gate', ${jsonb(decision.details)},
-          'completion_gate_missing', ${jsonb(gate.missing)},
-          'enrichment_status', ${decision.enrichment_status}::text
-        )
-      ),
-      updated_at = now()
-    where id = ${job.document_id}::uuid
-  `;
   await updateAgentJobStatus(
     job,
     decision.status === "needs_enrichment_artifacts" ? "needs_enrichment_artifacts" : "pending",
     null,
-    decision.status === "needs_enrichment_artifacts" ? null : decision.next_run_at,
+    decision.next_run_at,
+    {
+      indexing_v3_agent_deferral_count: decision.deferral_count,
+      completion_gate: decision.details,
+      completion_gate_missing: gate.missing,
+    },
   );
 }
 
 async function completeJob(job: ClaimedJob): Promise<void> {
-  const rows = await sql<JobStatusRpcResult[]>`
-    select *
-    from public.complete_strict_enrichment_job(
-      ${job.document_id}::uuid,
-      ${job.id}::uuid,
-      'indexed; enrichment completed',
-      'visual-core-v3',
-      'visual-v3'
-    )
-  `;
-  const result = parseJobStatusRpcResult(rows[0], "complete_strict_enrichment_job");
-  if (!result?.ok || !result.gate_passed) {
-    throw new Error(
-      `Strict enrichment completion blocked: ${JSON.stringify({
-        status: result?.status ?? "missing_result",
-        missing: result?.missing ?? ["completion_rpc_failed"],
-      })}`,
-    );
-  }
-  await updateAgentJobStatus(job, "completed");
+  await edgeMutation(job, "complete_strict_enrichment_job", {
+    p_stage: "indexed; enrichment completed",
+    p_agent_version: "visual-core-v3",
+    p_visual_indexing_version: "visual-v3",
+  });
 }
 
 async function markJobFailure(job: ClaimedJob, message: string): Promise<boolean> {
@@ -2137,29 +1639,6 @@ async function markJobFailure(job: ClaimedJob, message: string): Promise<boolean
     nowMs: Date.now(),
     retryDelayMs: INDEXING_V3_RETRY_DELAY_MS,
   });
-  await sql`
-    update public.documents
-    set
-      metadata = jsonb_strip_nulls(
-        (coalesce(metadata, '{}'::jsonb)
-          - 'indexing_v3_agent_locked_by'
-          - 'indexing_v3_agent_locked_at'
-          - 'indexing_v3_agent_next_run_at')
-        || jsonb_build_object(
-          'indexing_v3_agent_status', ${decision.status}::text,
-          'indexing_v3_agent_version', 'visual-core-v3',
-          'indexing_v3_agent_updated_at', now(),
-          'indexing_v3_agent_attempt_count', ${job.attempt_count}::integer,
-          'indexing_v3_agent_max_attempts', ${job.max_attempts}::integer,
-          'indexing_v3_agent_next_run_at', ${decision.nextRunAt}::timestamptz,
-          'indexing_v3_agent_last_error', ${message}::text,
-          'enrichment_status', ${decision.enrichmentStatus}::text,
-          'enrichment_error', ${message}::text
-        )
-      ),
-      updated_at = now()
-    where id = ${job.document_id}::uuid
-  `;
   await updateAgentJobStatus(job, decision.jobStatus, message, decision.nextRunAt);
   return decision.shouldRetry;
 }
@@ -2213,13 +1692,13 @@ async function processJob(
     const s1 = await stageStart(job, "summary_and_core_embeddings");
     try {
       const coreFields = await upsertCoreEmbeddingFields(job, summaryPayload.summary, visibility);
-      await stageFinish(s1, true, { core_embedding_fields: coreFields });
+      await stageFinish(job, s1, true, { core_embedding_fields: coreFields });
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
       logArtifactPlan(job, gate, plan);
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
-      await stageFinish(s1, false, {}, msg);
+      await stageFinish(job, s1, false, {}, msg);
       throw e;
     }
   }
@@ -2235,13 +1714,13 @@ async function processJob(
       const sectionUnits =
         plan.needs_index_units || repairedSections > 0 ? await upsertSectionIndexUnits(job, visibility) : 0;
       touchedQualityInputs = touchedQualityInputs || repairedSections > 0 || sectionUnits > 0;
-      await stageFinish(s2, true, { repaired_sections: repairedSections, section_index_units: sectionUnits });
+      await stageFinish(job, s2, true, { repaired_sections: repairedSections, section_index_units: sectionUnits });
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
       logArtifactPlan(job, gate, plan);
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
-      await stageFinish(s2, false, {}, msg);
+      await stageFinish(job, s2, false, {}, msg);
       throw e;
     }
   }
@@ -2251,13 +1730,13 @@ async function processJob(
     try {
       const out = await upsertVisualArtifacts(job, visibility);
       touchedQualityInputs = touchedQualityInputs || out.created_units > 0 || out.created_fields > 0;
-      await stageFinish(s3, true, out);
+      await stageFinish(job, s3, true, out);
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
       logArtifactPlan(job, gate, plan);
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
-      await stageFinish(s3, false, {}, msg);
+      await stageFinish(job, s3, false, {}, msg);
       throw e;
     }
   }
@@ -2266,13 +1745,13 @@ async function processJob(
     const s4 = await stageStart(job, "quality_refresh");
     try {
       await updateQuality(job, visibility);
-      await stageFinish(s4, true, { refreshed: true });
+      await stageFinish(job, s4, true, { refreshed: true });
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
       logArtifactPlan(job, gate, plan);
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
-      await stageFinish(s4, false, {}, msg);
+      await stageFinish(job, s4, false, {}, msg);
       throw e;
     }
   }
@@ -2281,13 +1760,13 @@ async function processJob(
     const s4 = await stageStart(job, "memory_cards_from_sections");
     try {
       const memoryCards = await upsertMemoryCardsFromSections(job, visibility);
-      await stageFinish(s4, true, { memory_cards: memoryCards });
+      await stageFinish(job, s4, true, { memory_cards: memoryCards });
       gate = await completionGate(job);
       plan = missingArtifactPlan(gate);
       logArtifactPlan(job, gate, plan);
     } catch (e) {
       const msg = e instanceof Error ? e.message : JSON.stringify(e);
-      await stageFinish(s4, false, {}, msg);
+      await stageFinish(job, s4, false, {}, msg);
       throw e;
     }
   }
@@ -2314,9 +1793,31 @@ Deno.serve({ port: Number(Deno.env.get("PORT") ?? "8000") }, async (req: Request
     const workerId = `indexing-v3-agent-${crypto.randomUUID()}`;
 
     const claimSource = "documents";
-    const claimed = await sql<ClaimedJob[]>`
-      select * from public.claim_indexing_v3_agent_jobs(${workerId}::text, ${limit}::integer, 45::integer)
+    const claimRows = await sql<Array<{ claim: ClaimedJob }>>`
+      select public.claim_indexing_v3_agent_jobs(${workerId}::text, ${limit}::integer, 45::integer) as claim
     `;
+    const claimed = claimRows.map((row) => row.claim);
+    for (const job of claimed) {
+      const fence = parseIngestionFence({
+        job_kind: "indexing_v3",
+        job_id: job.id,
+        document_id: job.document_id,
+        worker_id: job.locked_by,
+        lease_token: job.lease_token,
+        expected_generation_id: job.lease_expected_generation_id,
+        authority_digest: job.lease_authority_digest,
+      });
+      if (
+        job.lease_write_generation_id !== fence.expected_generation_id ||
+        !Number.isInteger(job.lease_duration_seconds) ||
+        job.lease_duration_seconds < 60 ||
+        job.lease_duration_seconds > 86400 ||
+        !Number.isFinite(Date.parse(job.lease_expires_at))
+      ) {
+        throw new IngestionAttemptError("ingestion_rpc_invalid");
+      }
+      jobAttempts.set(job, new IngestionAttempt(fence));
+    }
 
     if (claimed.length === 0) {
       return Response.json({ ok: true, claimed: 0, processed: 0, failed: 0 });
@@ -2343,7 +1844,21 @@ Deno.serve({ port: Number(Deno.env.get("PORT") ?? "8000") }, async (req: Request
 
     const outcomes = await runEdgeJobBatch(
       claimed,
-      (job) => processJob(job, generationVisibility),
+      async (job) => {
+        const heartbeat = setInterval(
+          () => {
+            edgeMutation(job, "heartbeat_indexing_v3_agent_job").catch(() => {
+              jobAttempts.get(job)?.cancel();
+            });
+          },
+          Math.max(1000, Math.floor((job.lease_duration_seconds * 1000) / 3)),
+        );
+        try {
+          return await processJob(job, generationVisibility);
+        } finally {
+          clearInterval(heartbeat);
+        }
+      },
       (job, message) => markJobFailure(job, message),
     );
     for (const outcome of outcomes) {

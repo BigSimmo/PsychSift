@@ -1,3 +1,8 @@
+import {
+  assertUnleasedOperatorModeAllowed,
+  isDirectScriptInvocation,
+  unavailableUnleasedIngestionOperation,
+} from "./lib/ingestion-operator-compatibility";
 import { createHash } from "node:crypto";
 import { loadEnvConfig } from "@next/env";
 import {
@@ -6,8 +11,6 @@ import {
   SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
   requireExactSourceAnchoredGeneration,
 } from "../supabase/functions/_shared/source-anchored-summary";
-
-loadEnvConfig(process.cwd());
 
 type Args = {
   allOwners: boolean;
@@ -326,8 +329,9 @@ async function upsertIndexQuality(args: {
   return { qualityScore: Number(qualityScore.toFixed(3)), extractionQuality, issues };
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
+export async function main(argv: string[]) {
+  const args = parseArgs(argv);
+  assertUnleasedOperatorModeAllowed({ command: "index:backfill", write: args.write });
   const [
     { requireOpenAIEnv, requireServerEnv },
     { createAdminClient },
@@ -426,20 +430,9 @@ async function main() {
       continue;
     }
 
-    const enrichment = await upsertDocumentEnrichment({
-      supabase,
-      document: indexingDocument,
-      indexGenerationId: generationId,
-      chunks: chunks as never,
-      images: images as never,
-    });
-    const memory = await upsertDocumentDeepMemory({
-      supabase,
-      document: indexingDocument,
-      chunks: chunks as never,
-      images: images as never,
-      summary: enrichment.summary.summary,
-    });
+    const enrichment =
+      await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentEnrichment>>>();
+    const memory = await unavailableUnleasedIngestionOperation<Awaited<ReturnType<typeof upsertDocumentDeepMemory>>>();
     const quality = await upsertIndexQuality({
       supabase,
       document: indexingDocument,
@@ -455,7 +448,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+if (isDirectScriptInvocation(import.meta.url, process.argv[1])) {
+  loadEnvConfig(process.cwd());
+  main(process.argv.slice(2)).catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}

@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { IngestionAttempt, IngestionAttemptError } from "../supabase/functions/_shared/ingestion-attempt";
 import { createHash, randomUUID } from "node:crypto";
 import { readFile, rm } from "node:fs/promises";
 import os from "node:os";
@@ -37,16 +39,15 @@ import {
   lightweightPerceptualHash,
   imagePlacementDedupeKey,
 } from "../src/lib/image-filtering";
-import { shouldPersistJobProgress, terminalBatchStatus } from "../src/lib/ingestion";
+import { shouldPersistJobProgress } from "../src/lib/ingestion";
 import { assessDocumentIndexQuality } from "../src/lib/index-quality";
 import { classifyAndCaptionImageFromBase64, embedTexts } from "../src/lib/openai";
-import { safeErrorLogDetails, safeIngestionJobLog, redactCaptionIdentifiers } from "../src/lib/privacy";
+import { safeErrorLogDetails, redactCaptionIdentifiers } from "../src/lib/privacy";
 import { isAtomicReindexCandidate } from "../src/lib/reindex-pipeline";
 import { invalidateRagCachesForDocumentMutation } from "../src/lib/rag/rag";
 import { createAdminClient } from "../src/lib/supabase/admin";
 import { probeSupabaseHealth } from "../src/lib/supabase/health";
-import type { Json, TablesInsert, TablesUpdate } from "../src/lib/supabase/database.types";
-import { compensateUploadedArtifactAndThrow } from "../src/lib/storage-upload-compensation";
+import type { Json, TablesUpdate } from "../src/lib/supabase/database.types";
 import type { ExtractedDocument, ImageEvidenceCategory } from "../src/lib/types";
 import { buildAdditionalEmbeddingFieldInputs } from "./embedding-fields";
 import {
@@ -63,12 +64,21 @@ import {
 import { annotateChunkAssertions, defaultAssertionTargets } from "./assertion-tagging";
 import { runShadowExtraction } from "./shadow-extraction";
 import { buildTableFactRows } from "./table-facts";
-import { enrichmentRepairDecision, ingestionFailureDecision } from "./behavior";
+import {
+  claimedJobFence,
+  runIngestionMutation,
+  persistIngestionImage,
+  runIngestionPreparedWork,
+  enrichmentRepairDecision,
+  ingestionFailureDecision,
+} from "./behavior";
 import { WorkerRuntimeControl, WorkerAbortError } from "./runtime-control";
 import { runWorkerLoop } from "./run-loop";
-import type { JobDocument, JobRow } from "./types";
+import type { JobRow } from "./types";
 
 const supabase = createAdminClient();
+// Dynamic fixed-operation transport is validated by the shared response parser and SQL payload guards.
+const ingestionRpcClient: SupabaseClient = supabase;
 const workerId = `${os.hostname()}-${process.pid}-${randomUUID().slice(0, 8)}`;
 const progressUpdateState = new Map<string, { updatedAt: number; progress: number; stage: string }>();
 const progressUpdateMinIntervalMs = env.WORKER_PROGRESS_UPDATE_MIN_INTERVAL_MS;
@@ -79,8 +89,6 @@ const progressUpdateMinDelta = 4;
 // several heartbeats before staleness; floored at 30s.
 const jobLeaseHeartbeatMs = Math.max(30_000, Math.floor((env.WORKER_STALE_AFTER_MINUTES * 60_000) / 3));
 const maxSupabaseBackoffMs = env.WORKER_HEALTH_BACKOFF_MS;
-const analyzeRagTablesThrottleMs = 45_000;
-let lastAnalyzeRagTablesAt = 0;
 
 type OptionalIndexWriteIssue = {
   stage: string;
@@ -101,22 +109,29 @@ function supabaseStageError(
   return wrapped;
 }
 
-async function updateJob(jobId: string, patch: TablesUpdate<"ingestion_jobs">) {
-  const { error } = await supabase.from("ingestion_jobs").update(patch).eq("id", jobId);
-  if (error) throw supabaseStageError("update ingestion job", error);
-  if (typeof patch.progress === "number" || typeof patch.stage === "string") {
-    progressUpdateState.set(jobId, {
-      updatedAt: Date.now(),
-      progress: typeof patch.progress === "number" ? patch.progress : (progressUpdateState.get(jobId)?.progress ?? 0),
-      stage: typeof patch.stage === "string" ? patch.stage : (progressUpdateState.get(jobId)?.stage ?? ""),
-    });
-  }
+const attempts = new Map<string, IngestionAttempt>();
+const documentAttempts = new Map<string, IngestionAttempt>();
+function attemptForJob(jobId: string) {
+  const attempt = attempts.get(jobId);
+  if (!attempt) throw new IngestionAttemptError("ingestion_attempt_required");
+  attempt.check();
+  return attempt;
 }
-
+function attemptForDocument(documentId: string) {
+  const attempt = documentAttempts.get(documentId);
+  if (!attempt) throw new IngestionAttemptError("ingestion_attempt_required");
+  attempt.check();
+  return attempt;
+}
+const mutation = (attempt: IngestionAttempt, name: string, args: Record<string, unknown> = {}) =>
+  runIngestionMutation(attempt, (rpcName, payload) => ingestionRpcClient.rpc(rpcName, payload), name, args);
+async function updateJob(jobId: string, patch: { stage?: string; progress?: number }) {
+  await updateJobProgress(jobId, { stage: patch.stage ?? "processing", progress: patch.progress ?? 0 });
+}
 async function updateJobProgress(jobId: string, patch: { stage: string; progress: number }) {
+  const attempt = attemptForJob(jobId);
   const previous = progressUpdateState.get(jobId);
   const now = Date.now();
-
   if (
     !shouldPersistJobProgress({
       previous,
@@ -126,269 +141,62 @@ async function updateJobProgress(jobId: string, patch: { stage: string; progress
       minDelta: progressUpdateMinDelta,
       heartbeatMs: jobLeaseHeartbeatMs,
     })
-  ) {
+  )
     return;
-  }
-
-  // Audit R1: the progress write doubles as a lease heartbeat — refresh
-  // locked_at, but only while we still hold the lease (`locked_by = workerId`),
-  // so a worker that was already reclaimed no-ops instead of resurrecting or
-  // overwriting a lease another worker now owns.
-  const { data, error } = await supabase
-    .from("ingestion_jobs")
-    .update({ ...patch, locked_at: new Date().toISOString() })
-    .eq("id", jobId)
-    .eq("locked_by", workerId)
-    .eq("status", "processing")
-    .select("id");
-  if (error) {
-    console.warn(
-      "Ingestion progress update failed",
-      safeErrorLogDetails(supabaseStageError("update ingestion progress", error)),
-    );
-    return;
-  }
-  if (!data || data.length !== 1) {
-    throw new Error("Ingestion lease lost before progress update.");
-  }
-  progressUpdateState.set(jobId, { updatedAt: now, progress: patch.progress, stage: patch.stage });
+  await mutation(attempt, "update_ingestion_job_progress", { p_stage: patch.stage, p_progress: patch.progress });
+  progressUpdateState.set(jobId, { updatedAt: now, ...patch });
 }
-
-async function updateDocument(documentId: string, ownerId: string | null, patch: TablesUpdate<"documents">) {
-  const { metadata, ...remainingPatch } = patch as TablesUpdate<"documents">;
-  const updatePayload = remainingPatch;
-  const hasUpdatePayload = Object.keys(updatePayload).length > 0;
-  if (hasUpdatePayload) {
-    let query = supabase.from("documents").update(updatePayload).eq("id", documentId);
-    query = ownerId ? query.eq("owner_id", ownerId) : query.is("owner_id", null);
-    const { error } = await query;
-    if (error) throw supabaseStageError("update document", error);
-  }
-
-  // R5: deep-merge worker-owned metadata keys onto live documents.metadata so
-  // concurrent renames / bulk-metadata / agent patches survive reclaim races.
-  if (typeof metadata !== "undefined") {
-    const metadataPatch = sanitizeJsonbRecord(metadata);
-    const { error } = await supabase.rpc("apply_document_metadata_patch", {
-      p_document_id: documentId,
-      p_metadata_patch: metadataPatch,
-    });
-    if (!error) return;
-    if (!isMissingSchemaError(error)) throw supabaseStageError("apply document metadata patch", error);
-
-    // Expand/contract fallback before the R5 migration is applied: best-effort
-    // shallow merge against the current row (still races under reclaim, same as
-    // the pre-R5 path). Prefer the RPC once live has the migration.
-    let readQuery = supabase.from("documents").select("metadata").eq("id", documentId);
-    readQuery = ownerId ? readQuery.eq("owner_id", ownerId) : readQuery.is("owner_id", null);
-    const { data: current, error: readError } = await readQuery.maybeSingle();
-    if (readError) throw supabaseStageError("read document metadata for merge fallback", readError);
-
-    let updateQuery = supabase
-      .from("documents")
-      .update({
-        metadata: sanitizeJsonbRecord({
-          ...((current?.metadata as Record<string, unknown> | null) ?? {}),
-          ...metadataPatch,
-        }),
-      })
-      .eq("id", documentId);
-    updateQuery = ownerId ? updateQuery.eq("owner_id", ownerId) : updateQuery.is("owner_id", null);
-
-    const { error: fallbackError } = await updateQuery;
-    if (fallbackError) throw supabaseStageError("fallback document metadata merge", fallbackError);
-  }
-}
-
-async function markSupersededSiblingJobs(job: JobRow) {
-  const { error } = await supabase
-    .from("ingestion_jobs")
-    .update({
-      status: "completed",
-      stage: "superseded by successful index",
-      progress: 100,
-      error_message: null,
-      locked_at: null,
-      locked_by: null,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("document_id", job.document_id)
-    .neq("id", job.id)
-    .is("locked_by", null)
-    .in("status", ["pending", "processing", "failed"]);
-  if (error) throw supabaseStageError("mark superseded ingestion jobs", error);
-}
-
-async function updateBatch(batchId: string | null) {
-  if (!batchId) return;
-
-  const { error: refreshError } = await supabase.rpc("refresh_import_batch_status", { p_batch_id: batchId });
-  if (!refreshError) return;
-
-  if (!isMissingSchemaError(refreshError)) {
-    console.warn(
-      "Import batch status refresh failed",
-      safeErrorLogDetails(supabaseStageError("refresh import batch status", refreshError)),
-    );
-    return;
-  }
-
-  const { data, error } = await supabase.from("ingestion_jobs").select("status").eq("batch_id", batchId);
-  if (error || !data) return;
-
-  const queued = data.filter((job) => job.status === "pending").length;
-  const processing = data.filter((job) => job.status === "processing").length;
-  const failed = data.filter((job) => job.status === "failed").length;
-  const status = terminalBatchStatus({ queued, processing, failed });
-
-  const { error: fallbackUpdateError } = await supabase
-    .from("import_batches")
-    .update({
-      status,
-      failed_files: failed,
-      completed_at: status === "processing" ? null : new Date().toISOString(),
-    })
-    .eq("id", batchId);
-  if (fallbackUpdateError) {
-    console.warn(
-      "Import batch status fallback update failed",
-      safeErrorLogDetails(supabaseStageError("update import batch status fallback", fallbackUpdateError)),
-    );
-  }
-}
-
-async function completeJob(job: JobRow, stage: string) {
-  const { data, error } = await supabase.rpc("complete_ingestion_job", {
-    p_job_id: job.id,
-    p_document_id: job.document_id,
-    // SQL default for p_batch_id is null, so omitting the key when batch_id
-    // is null sends the same value the explicit null did.
-    p_batch_id: job.batch_id ?? undefined,
-    p_stage: stage,
-    p_worker_id: workerId,
+async function updateDocument(documentId: string, _ownerId: string | null, patch: TablesUpdate<"documents">) {
+  const { metadata, ...state } = patch;
+  await mutation(attemptForDocument(documentId), "patch_ingestion_document_state", {
+    p_state: state,
+    p_metadata: sanitizeJsonbRecord(metadata ?? {}),
   });
-  if (!error) {
-    // Audit R1: the RPC returns ok:false when this worker no longer holds the
-    // lease (a stale reclaim took it). The reclaiming worker owns the outcome —
-    // do not fall back or clobber its state.
-    if ((data as { ok?: boolean } | null)?.ok === false) {
-      console.warn("Ingestion completion skipped; lease lost to a reclaim", safeIngestionJobLog(job.id));
-      return;
-    }
-    invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
-    return;
-  }
-  if (!isMissingSchemaError(error)) throw supabaseStageError("complete ingestion job", error);
-
-  const { error: updateError } = await supabase
-    .from("ingestion_jobs")
-    .update({
-      status: "completed",
-      stage,
-      progress: 100,
-      locked_at: null,
-      locked_by: null,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("id", job.id)
-    .eq("locked_by", workerId);
-  if (updateError) throw supabaseStageError("complete ingestion job fallback", updateError);
-
-  try {
-    await markSupersededSiblingJobs(job);
-  } catch (siblingError) {
-    console.warn("Non-fatal error superseding sibling jobs", safeErrorLogDetails(siblingError));
-  }
-  await updateBatch(job.batch_id);
+}
+async function completeJob(job: JobRow, stage: string) {
+  await mutation(attemptForJob(job.id), "complete_ingestion_job", { p_batch_id: job.batch_id, p_stage: stage });
   invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
 }
-
 async function completeStrictEnrichmentJob(job: JobRow) {
+  const attempt = attemptForJob(job.id);
   const { data, error } = await supabase.rpc("complete_strict_enrichment_job", {
-    p_document_id: job.document_id,
-    p_job_id: job.id,
+    p_fence: attempt.fence,
     p_stage: "indexed; enrichment completed",
     p_agent_version: "visual-core-v3",
     p_visual_indexing_version: "visual-v3",
   });
-
   if (error) {
-    return {
-      completed: false,
-      missing: ["strict_completion_rpc_failed"],
-      message: supabaseStageError("complete strict enrichment job", error).message,
-    };
+    attempt.cancel();
+    throw new Error(error.message);
   }
-
-  const result = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
-  const missing = Array.isArray(result?.missing) ? result.missing.map(String) : [];
-  if (result?.ok === true && result?.gate_passed === true) {
-    return { completed: true, missing, message: null };
+  if (
+    data &&
+    typeof data === "object" &&
+    !Array.isArray(data) &&
+    data.ok === false &&
+    data.reason === "completion_gate_blocked"
+  ) {
+    const missing = Array.isArray(data.missing) ? data.missing.map(String) : ["strict_completion_gate_blocked"];
+    return { completed: false, missing, message: "Strict enrichment completion blocked" };
   }
-
-  return {
-    completed: false,
-    missing: missing.length > 0 ? missing : ["strict_completion_gate_blocked"],
-    message: `Strict enrichment completion blocked: ${JSON.stringify({
-      status: typeof result?.status === "string" ? result.status : "missing_result",
-      missing: missing.length > 0 ? missing : ["strict_completion_gate_blocked"],
-    })}`,
-  };
+  attempt.accept(data);
+  return { completed: true, missing: [] as string[], message: null };
 }
-
 async function failOrRetryJob(args: {
-  // Structurally narrowed so a contract-rejected claimed row (whose `documents` payload
-  // cannot be trusted) can still be failed terminally: the RPC path needs only the ids,
-  // and the missing-schema fallback reads `documents.owner_id` solely as an ownership
-  // filter. The ordinary caller passes a full JobRow unchanged.
-  job: Pick<JobRow, "id" | "document_id" | "batch_id"> & { documents: Pick<JobDocument, "owner_id"> };
+  job: JobRow;
   retry: boolean;
   documentStatus: "queued" | "failed" | "indexed";
   stage: string;
   errorMessage: string;
   nextRunAt?: string;
 }) {
-  const { data, error } = await supabase.rpc("fail_or_retry_ingestion_job", {
-    p_job_id: args.job.id,
-    p_document_id: args.job.document_id,
-    p_batch_id: args.job.batch_id ?? undefined,
+  await mutation(attemptForJob(args.job.id), "fail_or_retry_ingestion_job", {
+    p_batch_id: args.job.batch_id,
     p_retry: args.retry,
-    p_document_status: args.documentStatus,
     p_stage: args.stage,
     p_error_message: args.errorMessage,
-    p_next_run_at: args.nextRunAt ?? undefined,
-    p_worker_id: workerId,
+    p_next_run_at: args.nextRunAt ?? null,
   });
-  if (!error) {
-    // Audit R1: ok:false means this worker lost the lease; the reclaimer owns
-    // the document/job state, so do not fall back and demote it.
-    if ((data as { ok?: boolean } | null)?.ok === false) {
-      console.warn("Ingestion fail/retry skipped; lease lost to a reclaim", safeIngestionJobLog(args.job.id));
-      return;
-    }
-    return;
-  }
-  if (!isMissingSchemaError(error)) throw supabaseStageError("fail or retry ingestion job", error);
-
-  await updateDocument(args.job.document_id, args.job.documents.owner_id, {
-    status: args.documentStatus,
-    error_message: args.errorMessage,
-  });
-  await updateJob(args.job.id, {
-    status: args.retry ? "pending" : "failed",
-    stage: args.stage,
-    progress: args.retry ? 0 : 100,
-    error_message: args.errorMessage,
-    locked_at: null,
-    locked_by: null,
-    ...(args.nextRunAt ? { next_run_at: args.nextRunAt } : {}),
-    completed_at: args.retry ? null : new Date().toISOString(),
-  });
-  await updateBatch(args.job.batch_id);
-}
-
-function isMissingSchemaError(error: { message?: string; code?: string }) {
-  return /could not find the function|schema cache|PGRST20\d/i.test(error.message ?? "") || error.code === "PGRST202";
 }
 
 function workerBackoffMs(failures: number) {
@@ -396,6 +204,7 @@ function workerBackoffMs(failures: number) {
 }
 
 function optionalIndexWriteWarning(stage: string, error: unknown): OptionalIndexWriteIssue {
+  if (error instanceof IngestionAttemptError) throw error;
   const details = safeErrorLogDetails(error);
   console.warn(`Optional ${stage} write failed`, details);
   return {
@@ -414,17 +223,6 @@ async function cleanupExtractedTemporaryPaths(extracted: ExtractedDocument | nul
       console.warn("Temporary extraction cleanup failed", safeErrorLogDetails(error));
     }
   }
-}
-
-async function refreshRagTableStats() {
-  const now = Date.now();
-  if (now - lastAnalyzeRagTablesAt < analyzeRagTablesThrottleMs) return;
-
-  const { error } = await supabase.rpc("analyze_rag_tables");
-  lastAnalyzeRagTablesAt = now;
-  if (!error) return;
-
-  optionalIndexWriteWarning("rag table statistics refresh", supabaseStageError("analyze_rag_tables", error));
 }
 
 function noteSkippedImage(skipReasons: Map<string, number>, reason: string) {
@@ -446,39 +244,22 @@ async function claimJobs(): Promise<JobRow[]> {
   // lifecycle entirely — the run-loop claim catch backs off and repolls (and exits the
   // process under --once) — while the RPC has already committed leases and attempt_count
   // increments for every row, orphaning valid siblings. A row that fails the contract is
-  // failed terminally instead (a shape mismatch is deterministic; retrying reruns the same
-  // to_jsonb over the same columns) and never reaches processJob.
+  // refused without mutation because a malformed row supplies no trusted Fence; valid
+  // siblings still enter processJob and the bounded invalid lease is left for reclaim.
   const { accepted, rejected } = partitionClaimedJobRows(data ?? []);
   for (const rejection of rejected) await terminallyFailRejectedClaimedRow(rejection);
+  for (const job of accepted) {
+    const attempt = new IngestionAttempt(claimedJobFence(job, "node"));
+    attempts.set(job.id, attempt);
+    documentAttempts.set(job.document_id, attempt);
+  }
   return accepted;
 }
 
 async function terminallyFailRejectedClaimedRow(rejection: RejectedClaimedJobRow) {
-  if (!rejection.failable) {
-    // No trustworthy job identity: leave the held lease to the stale reclaim, which is
-    // bounded — claim eligibility requires attempt_count < max_attempts and every claim
-    // increments the count, so a persistently malformed row cannot loop forever.
-    console.warn("Claimed job row failed the shape contract without a usable job id; leaving to stale reclaim", {
-      issues: rejection.error.issues,
-    });
-    return;
-  }
-  const { id, document_id, batch_id, ownerId, documentStatus } = rejection.failable;
-  try {
-    await failOrRetryJob({
-      job: { id, document_id, batch_id, documents: { owner_id: ownerId } },
-      retry: false,
-      documentStatus,
-      stage: "claimed row failed shape contract",
-      errorMessage: rejection.error.message,
-    });
-  } catch (failError) {
-    // The fail path must not take down the batch either; stale reclaim recovers this row.
-    console.warn(
-      "Terminal fail of a malformed claimed row did not complete; leaving to stale reclaim",
-      safeErrorLogDetails(failError),
-    );
-  }
+  console.warn("Malformed claimed row has no trusted attempt; leaving bounded lease for reclaim", {
+    issues: rejection.error.issues,
+  });
 }
 
 async function downloadDocument(storagePath: string) {
@@ -545,10 +326,11 @@ function sanitizeJsonbRecord(value: unknown): JsonbRecord {
 }
 
 async function resetDocumentIndex(documentId: string) {
-  const { error } = await supabase.rpc("reset_document_index", { p_document_id: documentId });
-  if (error) throw supabaseStageError("reset_document_index", error);
+  const attempt = attemptForDocument(documentId);
+  const job = activeJobs.get(attempt.fence.job_id);
+  if (!job) throw new IngestionAttemptError("ingestion_attempt_required");
+  await mutation(attempt, "reset_ingestion_attempt_artifacts", { p_generation: job.lease_write_generation_id });
 }
-
 async function commitDocumentIndexGeneration(args: {
   jobId: string;
   documentId: string;
@@ -560,31 +342,35 @@ async function commitDocumentIndexGeneration(args: {
   pages: ReturnType<typeof buildDocumentPageRows>;
   quality: ReturnType<typeof buildIndexQualityPayload>;
 }) {
-  // Audit L9: p_image_count is searchable-only (insertedImages excludes
-  // audit-retained non-searchable rows). Retrieval filters searchable=true, so
-  // the persisted count intentionally differs from extracted_image_count.
-  const { error } = await supabase.rpc("commit_document_index_generation", {
-    p_job_id: args.jobId,
-    p_worker_id: workerId,
-    p_document_id: args.documentId,
-    p_index_generation_id: args.indexGenerationId,
-    p_status: "indexed",
+  await mutation(attemptForJob(args.jobId), "commit_document_index_generation", {
+    p_generation: args.indexGenerationId,
     p_page_count: args.pageCount,
     p_chunk_count: args.chunkCount,
     p_image_count: args.imageCount,
     p_metadata: sanitizeJsonbRecord(args.metadata),
-    p_pages: args.pages.map((page) => ({
-      page_number: page.page_number,
-      text: page.text,
-      ocr_used: page.ocr_used,
-      metadata: sanitizeJsonbRecord(page.metadata),
-    })),
+    p_pages: args.pages,
     p_quality: sanitizeJsonbRecord(args.quality),
   });
-  // The RPC upserts index quality and prunes stale/legacy generation rows atomically server-side
-  // (20260702000000_commit_generation_preserve_legacy_artifacts, lease-fenced by
-  // 20260713062125_fence_index_generation_commit), so the worker only needs to surface failures.
-  if (error) throw supabaseStageError("commit_document_index_generation", error);
+}
+const activeJobs = new Map<string, JobRow>();
+async function writeBaseArtifacts(
+  job: JobRow,
+  rows: {
+    chunks?: unknown[];
+    images?: unknown[];
+    tableFacts?: unknown[];
+    embeddingFields?: unknown[];
+    indexUnits?: unknown[];
+  },
+) {
+  return mutation(attemptForJob(job.id), "write_ingestion_base_artifacts", {
+    p_generation: job.lease_write_generation_id,
+    p_chunks: rows.chunks ?? [],
+    p_images: rows.images ?? [],
+    p_table_facts: rows.tableFacts ?? [],
+    p_embedding_fields: rows.embeddingFields ?? [],
+    p_index_units: rows.indexUnits ?? [],
+  });
 }
 
 function buildDocumentPageRows(documentId: string, extracted: ExtractedDocument) {
@@ -598,12 +384,9 @@ function buildDocumentPageRows(documentId: string, extracted: ExtractedDocument)
 }
 
 async function upsertIndexQuality(quality: ReturnType<typeof buildIndexQualityPayload>) {
-  const { error } = await supabase
-    .from("document_index_quality")
-    .upsert(sanitizeJsonbRecord(quality) as unknown as TablesInsert<"document_index_quality">, {
-      onConflict: "document_id",
-    });
-  if (error) throw supabaseStageError("upsert document_index_quality", error);
+  await mutation(attemptForDocument(quality.document_id), "persist_ingestion_index_quality", {
+    p_quality: sanitizeJsonbRecord(quality),
+  });
 }
 
 function hashBytes(bytes: Buffer) {
@@ -839,6 +622,7 @@ async function getCachedImageClassification(ownerId: string | null, imageHash: s
 }
 
 async function setCachedImageClassification(args: {
+  job: JobRow;
   ownerId: string | null;
   imageHash: string;
   contextHash: string;
@@ -848,8 +632,8 @@ async function setCachedImageClassification(args: {
   const classification = redactImageClassification(args.classification);
   if (!args.ownerId || !classification.caption.trim()) return;
 
-  const { error } = await supabase.from("image_caption_cache").upsert(
-    {
+  await mutation(attemptForJob(args.job.id), "persist_ingestion_image_caption_cache", {
+    p_cache: {
       owner_id: args.ownerId,
       image_hash: args.imageHash,
       model: env.OPENAI_VISION_MODEL,
@@ -879,12 +663,7 @@ async function setCachedImageClassification(args: {
       } as unknown as Json,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: "owner_id,image_hash,model" },
-  );
-
-  if (error) {
-    console.warn("Image caption cache write failed", safeErrorLogDetails(error));
-  }
+  });
 }
 
 async function uploadAndCaptionImages(
@@ -1114,6 +893,7 @@ async function uploadAndCaptionImages(
         }
         if (!classification) {
           const bytes = await readFile(task.image.path);
+          attemptForJob(job.id).check();
           classification = await classifyAndCaptionImageFromBase64({
             base64: bytes.toString("base64"),
             mimeType: task.image.mimeType,
@@ -1125,7 +905,9 @@ async function uploadAndCaptionImages(
             tableRole: task.tableMetadata.tableRole,
             tableText: task.tableMetadata.tableText,
           });
+          attemptForJob(job.id).check();
           await setCachedImageClassification({
+            job,
             ownerId: job.documents.owner_id,
             imageHash: task.imageHash,
             contextHash: task.contextHash,
@@ -1211,89 +993,76 @@ async function uploadAndCaptionImages(
 
     const ext = path.extname(image.path) || ".png";
     const bytes = await readFile(image.path);
-    const imagePrefix = job.documents.owner_id
-      ? `${job.documents.owner_id}/images/${job.document_id}`
-      : `local/${job.document_id}`;
-    const imagePath = `${imagePrefix}/${indexGenerationId}/image-${index + 1}${ext}`;
-    const upload = await supabase.storage
-      .from(env.SUPABASE_IMAGE_BUCKET)
-      .upload(imagePath, bytes, { contentType: image.mimeType, upsert: true });
-
-    if (upload.error) throw new Error(upload.error.message);
-
-    const { data, error } = await supabase
-      .from("document_images")
-      .insert({
-        document_id: job.document_id,
-        page_number: image.pageNumber,
-        storage_path: imagePath,
-        mime_type: image.mimeType,
-        caption: classification.caption,
-        bbox: image.bbox ?? null,
-        image_type: classification.image_type,
-        searchable: persistedSearchable,
-        clinical_relevance_score: persistedSearchable ? classification.clinical_relevance_score : 0,
-        source_kind: image.sourceKind ?? "embedded",
-        width: image.width ?? null,
-        height: image.height ?? null,
+    const imageRow = {
+      id: randomUUID(),
+      document_id: job.document_id,
+      page_number: image.pageNumber,
+      mime_type: image.mimeType,
+      caption: classification.caption,
+      bbox: image.bbox ?? null,
+      image_type: classification.image_type,
+      searchable: persistedSearchable,
+      clinical_relevance_score: persistedSearchable ? classification.clinical_relevance_score : 0,
+      source_kind: image.sourceKind ?? "embedded",
+      width: image.width ?? null,
+      height: image.height ?? null,
+      image_hash: imageHash,
+      perceptual_hash: perceptualHash,
+      labels: classification.labels.map(cleanString),
+      metadata: sanitizeJsonbRecord({
+        ...(image.metadata ?? {}),
+        extractor: "local-worker",
+        index_generation_id: indexGenerationId,
         image_hash: imageHash,
         perceptual_hash: perceptualHash,
-        labels: classification.labels.map(cleanString),
-        metadata: sanitizeJsonbRecord({
-          ...(image.metadata ?? {}),
-          extractor: "local-worker",
-          index_generation_id: indexGenerationId,
-          image_hash: imageHash,
-          perceptual_hash: perceptualHash,
-          classification_cache_hit: classificationCacheHit,
-          candidate_type: tableMetadata.candidateType ?? image.metadata?.candidate_type ?? null,
-          table_label: tableMetadata.tableLabel,
-          table_title: tableMetadata.tableTitle,
-          table_text: tableMetadata.tableText,
-          table_text_snippet: tableMetadata.tableTextSnippet,
-          table_role: tableMetadata.tableRole,
-          table_confidence: tableMetadata.tableConfidence,
-          table_rows: tableMetadata.tableRows,
-          table_columns: tableMetadata.tableColumns,
-          accessible_table_markdown: tableMetadata.accessibleTableMarkdown,
-          clinical_use_class: policyAssessment.clinical_use_class,
-          clinical_use_reason: policyAssessment.clinical_use_reason,
-          clinical_signal_score: policyAssessment.clinical_signal_score,
-          admin_signal_score: policyAssessment.admin_signal_score,
-          image_policy_version: clinicalImagePolicyVersion,
-          visual_intelligence_version: visualIntelligenceVersion,
-          image_caption_cache_version: imageCaptionCacheVersion,
-          vision_classification_prompt_version: visionClassificationPromptVersion,
-          caption_context_hash: contextHash,
-          visual_family_id: image.metadata?.visual_family_id ?? perceptualHash,
-          parent_visual_id: image.metadata?.parent_visual_id ?? null,
-          candidate_priority_score: candidate.candidatePriorityScore,
-          image_quality_score: candidate.imageQualityScore,
-          crop_completeness: candidate.cropCompleteness,
-          ocr_text_density: candidate.ocrTextDensity,
-          caption_confidence: classification.clinical_relevance_score,
-          structured_extraction_confidence: structuredExtractionConfidence,
-          visual_duplicate_group: candidate.duplicateGroup,
-          structured_visual_profile: structuredVisualProfile,
-          visual_budget_class: candidate.captionBudgetClass,
-          visual_priority_reasons: candidate.reasons,
-          retained_for_audit: retainAsAuditTable || undefined,
-          retained_for_document_view: retainForDocumentView || undefined,
-          skip_reason: retainAsAuditTable ? classifiedSkipReason : classification.skip_reason,
-        }),
-      })
-      .select("id,caption,page_number,image_type,labels,searchable")
-      .single();
-
-    if (error) {
-      await compensateUploadedArtifactAndThrow({
-        storage: supabase.storage,
-        bucket: env.SUPABASE_IMAGE_BUCKET,
-        path: imagePath,
-        persistenceError: new Error(error.message),
-      });
-    }
-    if (!data) throw new Error("Document image insert returned no row.");
+        classification_cache_hit: classificationCacheHit,
+        candidate_type: tableMetadata.candidateType ?? image.metadata?.candidate_type ?? null,
+        table_label: tableMetadata.tableLabel,
+        table_title: tableMetadata.tableTitle,
+        table_text: tableMetadata.tableText,
+        table_text_snippet: tableMetadata.tableTextSnippet,
+        table_role: tableMetadata.tableRole,
+        table_confidence: tableMetadata.tableConfidence,
+        table_rows: tableMetadata.tableRows,
+        table_columns: tableMetadata.tableColumns,
+        accessible_table_markdown: tableMetadata.accessibleTableMarkdown,
+        clinical_use_class: policyAssessment.clinical_use_class,
+        clinical_use_reason: policyAssessment.clinical_use_reason,
+        clinical_signal_score: policyAssessment.clinical_signal_score,
+        admin_signal_score: policyAssessment.admin_signal_score,
+        image_policy_version: clinicalImagePolicyVersion,
+        visual_intelligence_version: visualIntelligenceVersion,
+        image_caption_cache_version: imageCaptionCacheVersion,
+        vision_classification_prompt_version: visionClassificationPromptVersion,
+        caption_context_hash: contextHash,
+        visual_family_id: image.metadata?.visual_family_id ?? perceptualHash,
+        parent_visual_id: image.metadata?.parent_visual_id ?? null,
+        candidate_priority_score: candidate.candidatePriorityScore,
+        image_quality_score: candidate.imageQualityScore,
+        crop_completeness: candidate.cropCompleteness,
+        ocr_text_density: candidate.ocrTextDensity,
+        caption_confidence: classification.clinical_relevance_score,
+        structured_extraction_confidence: structuredExtractionConfidence,
+        visual_duplicate_group: candidate.duplicateGroup,
+        structured_visual_profile: structuredVisualProfile,
+        visual_budget_class: candidate.captionBudgetClass,
+        visual_priority_reasons: candidate.reasons,
+        retained_for_audit: retainAsAuditTable || undefined,
+        retained_for_document_view: retainForDocumentView || undefined,
+        skip_reason: retainAsAuditTable ? classifiedSkipReason : classification.skip_reason,
+      }),
+    };
+    const data = await persistIngestionImage({
+      attempt: attemptForJob(job.id),
+      generation: indexGenerationId,
+      extension: ext.replace(/^\./, "").toLowerCase(),
+      row: imageRow,
+      rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
+      upload: (storagePath, options) =>
+        supabase.storage
+          .from(env.SUPABASE_IMAGE_BUCKET)
+          .upload(storagePath, bytes, { contentType: image.mimeType, ...options }),
+    });
     if (image.sourceKind === "cover_page" && !coverImageId) {
       coverImageId = data.id;
     }
@@ -1451,7 +1220,11 @@ async function insertDocumentLevelEmbeddingFields(args: {
     },
   ].filter((field) => field.content);
   if (inputs.length === 0) return [];
-  const embeddings = await embedTexts(inputs.map((field) => field.content));
+  const embeddings = await embedTexts(
+    inputs.map((field) => field.content),
+    { signal: attemptForJob(args.job.id).signal },
+  );
+  attemptForJob(args.job.id).check();
   const rows = inputs.map((field, index) => ({
     owner_id: args.job.documents.owner_id,
     document_id: args.job.document_id,
@@ -1465,16 +1238,13 @@ async function insertDocumentLevelEmbeddingFields(args: {
       index_generation_id: args.chunkRows[0]?.index_generation_id ?? null,
     },
   }));
-  const { error } = await supabase
-    .from("document_embedding_fields")
-    .insert(rows as unknown as TablesInsert<"document_embedding_fields">[]);
-  if (error) throw supabaseStageError("insert document-level embedding fields", error);
+  await writeBaseArtifacts(args.job, { embeddingFields: rows });
   return rows.map((row) => row.field_type);
 }
 
 async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
   const pagesByNumber = new Map(extracted.pages.map((page) => [page.pageNumber, page.text] as const));
-  const indexGenerationId = randomUUID();
+  const indexGenerationId = job.lease_write_generation_id;
   const imageResult = await uploadAndCaptionImages(job, extracted, pagesByNumber, indexGenerationId);
   const { insertedImages } = imageResult;
   const optionalIndexWriteIssues: OptionalIndexWriteIssue[] = [];
@@ -1522,7 +1292,10 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
       progress: Math.min(94, 75 + Math.round((start / Math.max(chunks.length, 1)) * 18)),
     });
 
-    const embeddings = await embedTexts(batch.map((chunk) => chunk.content));
+    const embeddings = await embedTexts(
+      batch.map((chunk) => chunk.content),
+      { signal: attemptForJob(job.id).signal },
+    );
     const rows = batch.map((chunk, index) => ({
       id: randomUUID(),
       document_id: chunk.document_id,
@@ -1544,15 +1317,15 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
     })) satisfies IndexedChunkRow[];
     indexedChunkRows.push(...rows);
 
-    const { error } = await supabase
-      .from("document_chunks")
-      .insert(rows as unknown as TablesInsert<"document_chunks">[]);
-    if (error) throw new Error(error.message);
+    await writeBaseArtifacts(job, { chunks: rows });
 
     const fieldInputs = buildEmbeddingFieldInputs(job, rows);
     if (fieldInputs.length > 0) {
       try {
-        const fieldEmbeddings = await embedTexts(fieldInputs.map((field) => field.content));
+        const fieldEmbeddings = await embedTexts(
+          fieldInputs.map((field) => field.content),
+          { signal: attemptForJob(job.id).signal },
+        );
         const fieldRows = fieldInputs.map((field, index) => ({
           ...field,
           content: cleanString(field.content),
@@ -1562,10 +1335,7 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
         }));
         for (let start = 0; start < fieldRows.length; start += 50) {
           const batch = fieldRows.slice(start, start + 50);
-          const { error: fieldsError } = await supabase
-            .from("document_embedding_fields")
-            .insert(batch as unknown as TablesInsert<"document_embedding_fields">[]);
-          if (fieldsError) throw supabaseStageError("insert section-context embedding fields", fieldsError);
+          await writeBaseArtifacts(job, { embeddingFields: batch });
         }
       } catch (error) {
         optionalIndexWriteIssues.push(optionalIndexWriteWarning("section-context embedding field", error));
@@ -1583,13 +1353,13 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
     metadata: sanitizeJsonbRecord({ ...row.metadata, index_generation_id: indexGenerationId }),
   }));
   if (tableFacts.length > 0) {
-    const { error: factsError } = await supabase
-      .from("document_table_facts")
-      .insert(tableFacts as unknown as TablesInsert<"document_table_facts">[]);
-    if (factsError)
-      optionalIndexWriteIssues.push(
-        optionalIndexWriteWarning("table fact", supabaseStageError("insert table facts", factsError)),
-      );
+    try {
+      for (let start = 0; start < tableFacts.length; start += 100) {
+        await writeBaseArtifacts(job, { tableFacts: tableFacts.slice(start, start + 100) });
+      }
+    } catch (error) {
+      optionalIndexWriteIssues.push(optionalIndexWriteWarning("table fact", error));
+    }
   }
 
   const visualIndexUnits = buildVisualDocumentIndexUnitInputs({
@@ -1605,17 +1375,16 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
   });
   if (visualIndexUnits.length > 0) {
     try {
-      const unitEmbeddings = await embedTexts(visualIndexUnits.map(embeddingTextForDocumentIndexUnit));
+      const unitEmbeddings = await embedTexts(visualIndexUnits.map(embeddingTextForDocumentIndexUnit), {
+        signal: attemptForJob(job.id).signal,
+      });
       for (let start = 0; start < visualIndexUnits.length; start += 50) {
         const batch = visualIndexUnits.slice(start, start + 50).map((unit, index) => ({
           ...unit,
           embedding: assertEmbeddingDim(unitEmbeddings[start + index], `document_index_units.visual.${start + index}`),
           metadata: sanitizeJsonbRecord({ ...unit.metadata, index_generation_id: indexGenerationId }),
         }));
-        const { error: visualUnitError } = await supabase
-          .from("document_index_units")
-          .insert(batch as unknown as TablesInsert<"document_index_units">[]);
-        if (visualUnitError) throw supabaseStageError("insert visual index units", visualUnitError);
+        await writeBaseArtifacts(job, { indexUnits: batch });
       }
     } catch (error) {
       optionalIndexWriteIssues.push(optionalIndexWriteWarning("visual index unit", error));
@@ -1631,7 +1400,10 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
   });
   if (additionalFieldInputs.length > 0) {
     try {
-      const additionalEmbeddings = await embedTexts(additionalFieldInputs.map((field) => field.content));
+      const additionalEmbeddings = await embedTexts(
+        additionalFieldInputs.map((field) => field.content),
+        { signal: attemptForJob(job.id).signal },
+      );
       const additionalRows = additionalFieldInputs.map((field, index) => {
         const content = cleanString(field.content);
         return {
@@ -1644,11 +1416,7 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
       });
       for (let start = 0; start < additionalRows.length; start += 50) {
         const batch = additionalRows.slice(start, start + 50);
-        const { error: additionalFieldsError } = await supabase
-          .from("document_embedding_fields")
-          .insert(batch as unknown as TablesInsert<"document_embedding_fields">[]);
-        if (additionalFieldsError)
-          throw supabaseStageError("insert supplemental embedding fields", additionalFieldsError);
+        await writeBaseArtifacts(job, { embeddingFields: batch });
       }
     } catch (error) {
       optionalIndexWriteIssues.push(optionalIndexWriteWarning("supplemental embedding field", error));
@@ -1763,22 +1531,32 @@ async function loadLiveEnrichmentDocument(documentId: string) {
 }
 
 async function processJob(job: JobRow) {
+  activeJobs.set(job.id, job);
+  const attempt = attemptForJob(job.id);
+  const leaseHeartbeat = setInterval(
+    () => {
+      mutation(attempt, "heartbeat_ingestion_job").catch(() => attempt.cancel());
+    },
+    Math.max(1000, Math.floor((job.lease_duration_seconds * 1000) / 3)),
+  );
   const atomicReindex = isAtomicReindexCandidate(job.documents);
-  await updateJobProgress(job.id, {
-    stage: "downloading",
-    progress: 5,
-  });
-  if (atomicReindex) {
-    await updateDocument(job.document_id, job.documents.owner_id, { error_message: null });
-  } else {
-    await updateDocument(job.document_id, job.documents.owner_id, { status: "processing", error_message: null });
-  }
-  await updateBatch(job.batch_id);
   let extracted: ExtractedDocument | null = null;
 
   try {
-    if (!atomicReindex) await resetDocumentIndex(job.document_id);
+    await updateJobProgress(job.id, {
+      stage: "downloading",
+      progress: 5,
+    });
+    if (atomicReindex) {
+      await updateDocument(job.document_id, job.documents.owner_id, { error_message: null });
+    } else {
+      await updateDocument(job.document_id, job.documents.owner_id, { status: "processing", error_message: null });
+    }
+
+    await resetDocumentIndex(job.document_id);
+    attempt.check();
     const buffer = await downloadDocument(job.documents.storage_path);
+    attempt.check();
     await updateJobProgress(job.id, { stage: "extracting text/images", progress: 20 });
     // Finding #7: Ingestion Worker Heartbeat. Prevent stale locks during long PDF extractions.
     let leaseLost = false;
@@ -1786,6 +1564,7 @@ async function processJob(job: JobRow) {
       () => {
         updateJobProgress(job.id, { stage: "extracting text/images", progress: 20 }).catch(() => {
           leaseLost = true;
+          attempt.cancel();
         });
       },
       Math.min(60_000, jobLeaseHeartbeatMs),
@@ -1800,7 +1579,7 @@ async function processJob(job: JobRow) {
         mimeType: job.documents.file_type,
       });
       if (leaseLost) {
-        throw new Error("Ingestion lease lost during document extraction; aborting job processing.");
+        throw new IngestionAttemptError("lease_lost");
       }
     } finally {
       clearInterval(heartbeat);
@@ -1914,6 +1693,8 @@ async function processJob(job: JobRow) {
         });
         const enrichment = await upsertDocumentEnrichment({
           supabase,
+          fence: attempt.fence,
+          signal: attempt.signal,
           document: enrichmentDocument,
           indexGenerationId: liveIndexGenerationId,
           chunks: enrichmentRows.chunks,
@@ -1927,6 +1708,8 @@ async function processJob(job: JobRow) {
         await updateJobProgress(job.id, { stage: "building structured memory", progress: 98 });
         const deepMemory = await upsertDocumentDeepMemory({
           supabase,
+          fence: attempt.fence,
+          signal: attempt.signal,
           document: job.documents,
           chunks: enrichmentRows.chunks,
           images: enrichmentRows.images,
@@ -1947,6 +1730,11 @@ async function processJob(job: JobRow) {
         await upsertIndexQuality(finalQuality);
         enrichmentUpdatedAt = new Date().toISOString();
       } catch (enrichmentError) {
+        attempt.check();
+        if (enrichmentError instanceof IngestionAttemptError) {
+          attempt.cancel();
+          throw enrichmentError;
+        }
         enrichmentStatus = "failed";
         enrichmentErrorMessage = enrichmentError instanceof Error ? enrichmentError.message : String(enrichmentError);
         console.warn("Optional document enrichment failed", safeErrorLogDetails(enrichmentError));
@@ -1963,37 +1751,44 @@ async function processJob(job: JobRow) {
     // or the document is outside the cohort, in which case nothing is written.
     let shadowExtraction: Awaited<ReturnType<typeof runShadowExtraction>> = null;
     if (env.WORKER_DOCUMENT_EXTRACTOR_MODE === "shadow") {
-      // Fail-open: updateJobProgress throws on a lost lease, and a lost lease must not fail a
-      // job whose generation is already committed — swallow it exactly like the heartbeat.
-      await updateJobProgress(job.id, { stage: "indexed; shadow extraction (docling)", progress: 98 }).catch(() => {});
+      const shadowLegacy = extracted;
+      // Optional shadow failures stay fail-open; lost attempt authority stops all further work.
       const shadowHeartbeat = setInterval(
         () => {
-          updateJobProgress(job.id, { stage: "indexed; shadow extraction (docling)", progress: 98 }).catch(() => {});
+          updateJobProgress(job.id, { stage: "indexed; shadow extraction (docling)", progress: 98 }).catch(() => {
+            attempt.cancel();
+          });
         },
         Math.min(60_000, jobLeaseHeartbeatMs),
       );
       try {
-        shadowExtraction = await runShadowExtraction(
-          {
-            documentId: job.document_id,
-            indexGenerationId,
-            fileName: job.documents.file_name,
-            mimeType: job.documents.file_type,
-            buffer,
-            legacy: extracted,
-            legacyWallMs: legacyExtractionWallMs,
-            quality: { issues: finalQuality.issues, metrics: finalQuality.metrics },
-          },
-          {
-            config: {
-              mode: env.WORKER_DOCUMENT_EXTRACTOR_MODE,
-              cohortPercent: env.WORKER_SHADOW_EXTRACTION_COHORT_PERCENT,
-              pythonBin: env.WORKER_DOCLING_PYTHON_BIN,
-            },
-          },
+        shadowExtraction = await runIngestionPreparedWork(
+          attempt,
+          () => updateJobProgress(job.id, { stage: "indexed; shadow extraction (docling)", progress: 98 }),
+          () =>
+            runShadowExtraction(
+              {
+                documentId: job.document_id,
+                indexGenerationId,
+                fileName: job.documents.file_name,
+                mimeType: job.documents.file_type,
+                buffer,
+                legacy: shadowLegacy,
+                legacyWallMs: legacyExtractionWallMs,
+                quality: { issues: finalQuality.issues, metrics: finalQuality.metrics },
+              },
+              {
+                config: {
+                  mode: env.WORKER_DOCUMENT_EXTRACTOR_MODE,
+                  cohortPercent: env.WORKER_SHADOW_EXTRACTION_COHORT_PERCENT,
+                  pythonBin: env.WORKER_DOCLING_PYTHON_BIN,
+                },
+              },
+            ),
         );
       } finally {
         clearInterval(shadowHeartbeat);
+        attempt.check();
       }
     }
 
@@ -2051,6 +1846,7 @@ async function processJob(job: JobRow) {
     let completionStage = enrichmentStatus === "completed" ? "indexed" : "indexed; enrichment deferred";
     if (enrichmentStatus === "completed") {
       const strictCompletion = await completeStrictEnrichmentJob(job);
+      if (strictCompletion.completed) return;
       if (!strictCompletion.completed) {
         completionStage = "indexed; enrichment deferred";
         const strictCompletionMessage = strictCompletion.message ?? "Strict enrichment completion blocked.";
@@ -2073,8 +1869,12 @@ async function processJob(job: JobRow) {
     }
 
     await completeJob(job, completionStage);
-    await refreshRagTableStats();
   } catch (error) {
+    if (error instanceof IngestionAttemptError) {
+      attempt.cancel();
+      throw error;
+    }
+    attempt.check();
     console.error("Ingestion job failed", safeErrorLogDetails(error));
     const decision = ingestionFailureDecision({
       error,
@@ -2084,10 +1884,14 @@ async function processJob(job: JobRow) {
     });
     await failOrRetryJob({ job, ...decision });
   } finally {
+    clearInterval(leaseHeartbeat);
     await cleanupExtractedTemporaryPaths(extracted);
     // The progress-throttle entry is only needed while this job is processing;
     // drop it so the module-level map does not grow for the worker's lifetime.
     progressUpdateState.delete(job.id);
+    activeJobs.delete(job.id);
+    attempts.delete(job.id);
+    documentAttempts.delete(job.document_id);
   }
 }
 

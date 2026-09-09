@@ -1,3 +1,9 @@
+import {
+  IngestionAttemptError,
+  parseIngestionFence,
+  parseIngestionMutationResult,
+  type IngestionFence,
+} from "../../supabase/functions/_shared/ingestion-attempt";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { classifyDocumentOrganization } from "@/lib/document-organization";
 import { env } from "@/lib/env";
@@ -24,13 +30,11 @@ import {
   SOURCE_ANCHORED_MAX_CHUNKS,
   SOURCE_ANCHORED_MAX_IMAGES,
   SOURCE_ANCHORED_MAX_PROMPT_IMAGES,
-  SOURCE_ANCHORED_STRUCTURED_MODEL_VERSION,
   SOURCE_ANCHORED_SUMMARY_METADATA_KEY,
   SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY,
   SOURCE_ANCHORED_SUMMARY_VERSION,
   canonicalSourceAnchoredText,
   normalizeSourceAnchoredSummary,
-  persistedSourceAnchoredSummaryProjectionMatches,
   projectSourceAnchoredLabels,
   projectSourceAnchoredSummary,
   requireSourceAnchoredSummaryGeneration,
@@ -72,8 +76,6 @@ const summaryProfileKeys = [
   "best_questions",
   "source_quality_notes",
 ] as const;
-
-type SummaryProfileKey = (typeof summaryProfileKeys)[number];
 
 function metadataRecord(metadata: unknown): Record<string, unknown> {
   return metadata && typeof metadata === "object" && !Array.isArray(metadata)
@@ -363,7 +365,7 @@ function normalizeProfileItems(args: {
   return normalized;
 }
 
-function profileItemsToStrings(items: DocumentSummaryProfileItem[], limit = 6) {
+function profileItemsToStrings(items: readonly DocumentSummaryProfileItem[], limit = 6) {
   return items
     .filter((item) => item.support !== "not_found")
     .map((item) => item.text)
@@ -396,20 +398,20 @@ function normalizeClinicalProfile(args: {
   const chunkPages = new Map(args.chunks.map((chunk) => [chunk.id, chunk.page_number] as const));
   const imagePages = new Map(args.images.map((image) => [image.id, image.page_number] as const));
   const overview = cleanClinicalSummaryText(String(raw.overview ?? "")) || args.fallbackOverview;
-  const profile = emptyClinicalProfile(overview);
-
-  for (const key of summaryProfileKeys) {
-    profile[key] = normalizeProfileItems({
-      items: raw[key],
-      validChunkIds,
-      validImageIds,
-      chunkPages,
-      imagePages,
-      maxItems: key === "best_questions" ? 8 : 6,
-    }) as ClinicalDocumentSummaryProfile[SummaryProfileKey];
-  }
-
-  return profile;
+  return summaryProfileKeys.reduce<ClinicalDocumentSummaryProfile>(
+    (profile, key) => ({
+      ...profile,
+      [key]: normalizeProfileItems({
+        items: raw[key],
+        validChunkIds,
+        validImageIds,
+        chunkPages,
+        imagePages,
+        maxItems: key === "best_questions" ? 8 : 6,
+      }),
+    }),
+    emptyClinicalProfile(overview),
+  );
 }
 
 export function inferLabels(document: Pick<ClinicalDocument, "title" | "file_name" | "source_path">): GeneratedLabel[] {
@@ -705,9 +707,12 @@ async function generateSourceAnchoredSummary(args: {
   authority: SourceAnchoredSummaryAuthority;
   chunks: EnrichmentChunk[];
   images: EnrichmentImage[];
+  signal?: AbortSignal;
 }) {
   try {
+    args.signal?.throwIfAborted();
     const result = await generateStructuredTextResult(buildEnrichmentPrompt(args), summarySchema, {
+      signal: args.signal,
       model: env.OPENAI_INDEXING_MODEL,
       maxOutputTokens: 2400,
       operation: "summary",
@@ -716,6 +721,7 @@ async function generateSourceAnchoredSummary(args: {
       reasoningEffort: "medium",
       textVerbosity: "medium",
     });
+    args.signal?.throwIfAborted();
     if (result.truncated) throw new Error("truncated structured enrichment");
     const raw = JSON.parse(result.text) as Record<string, unknown>;
     if (raw.summary_version === SOURCE_ANCHORED_SUMMARY_VERSION) {
@@ -760,6 +766,7 @@ async function generateSourceAnchoredSummary(args: {
       args.authority,
     );
   } catch (error) {
+    args.signal?.throwIfAborted();
     console.warn("document enrichment generation failed", {
       document: args.document.file_name ?? args.document.title,
       ...safeErrorLogDetails(error),
@@ -786,55 +793,10 @@ function projectedLabelRows(payload: SourceAnchoredSummaryPayload, ownerId: stri
   }));
 }
 
-function labelsMatchPayload(rows: unknown[], payload: SourceAnchoredSummaryPayload) {
-  const expected = projectedLabelRows(payload, null).map(({ owner_id: _owner, ...row }) => row);
-  const actual = rows
-    .filter((row) => row && typeof row === "object" && (row as Record<string, unknown>).source === "generated")
-    .map((row) => {
-      const value = row as Record<string, unknown>;
-      return {
-        document_id: value.document_id,
-        label: value.label,
-        label_type: value.label_type,
-        confidence: value.confidence,
-        source: value.source,
-        metadata: value.metadata,
-      };
-    });
-  return JSON.stringify(actual) === JSON.stringify(expected);
-}
-
-async function persistProjectedLabels(args: {
-  supabase: SupabaseClient;
-  payload: SourceAnchoredSummaryPayload;
-  ownerId: string | null;
-}) {
-  const client = args.supabase as unknown as {
-    from: (table: string) => any;
-  };
-  const desired = projectedLabelRows(args.payload, args.ownerId);
-  for (const row of desired) {
-    const { error } = await client.from("document_labels").upsert(row, {
-      onConflict: "document_id,label_type,label,source",
-    });
-    if (error) throw new Error(error.message);
-  }
-  const { data: current, error: currentError } = await client
-    .from("document_labels")
-    .select("id,label,label_type,source")
-    .eq("document_id", args.payload.document_id)
-    .eq("source", "generated");
-  if (currentError) throw new Error(currentError.message);
-  const desiredKeys = new Set(desired.map((row) => `${row.label_type}\u0000${row.label}`));
-  for (const row of current ?? []) {
-    if (desiredKeys.has(`${row.label_type}\u0000${row.label}`)) continue;
-    const { error } = await client.from("document_labels").delete().eq("id", row.id);
-    if (error) throw new Error(error.message);
-  }
-}
-
 export async function upsertDocumentEnrichment(args: {
   supabase: SupabaseClient;
+  fence: IngestionFence;
+  signal?: AbortSignal;
   document: Pick<ClinicalDocument, "id" | "owner_id" | "title" | "file_name" | "source_path"> & {
     metadata?: ClinicalDocument["metadata"];
   };
@@ -842,6 +804,11 @@ export async function upsertDocumentEnrichment(args: {
   chunks: EnrichmentChunk[];
   images?: EnrichmentImage[];
 }) {
+  const fence = parseIngestionFence(args.fence);
+  args.signal?.throwIfAborted();
+  if (fence.document_id !== args.document.id || fence.expected_generation_id !== args.indexGenerationId) {
+    throw new IngestionAttemptError("ingestion_attempt_required");
+  }
   const images = args.images ?? [];
   const indexGenerationId = assertSourceAnchoredSummaryPreflight({
     documentMetadata: args.document.metadata,
@@ -849,145 +816,78 @@ export async function upsertDocumentEnrichment(args: {
     chunks: args.chunks,
     images,
   });
-  const authority = sourceAuthority({
-    documentId: args.document.id,
-    indexGenerationId,
-    chunks: args.chunks,
-    images,
-  });
+  const authority = sourceAuthority({ documentId: args.document.id, indexGenerationId, chunks: args.chunks, images });
   const client = args.supabase as unknown as { from: (table: string) => any };
-  const patchEnrichmentOwnedDocumentMetadata = async (payload: SourceAnchoredSummaryPayload) => {
-    const { error } = await args.supabase.rpc("apply_document_metadata_patch", {
-      p_document_id: args.document.id,
-      p_metadata_patch: {
-        rag_enrichment_version: ragEnrichmentVersion,
-        rag_indexing_version: ragEnrichmentVersion,
-        rag_memory_version: ragEnrichmentVersion,
-        rag_enrichment_updated_at: payload.generated_at,
-        generated_label_count: payload.labels.length,
-      },
-    });
-    if (error) throw new Error(error.message);
-  };
-  const existingSummaryResult = await client
+  const existing = await client
     .from("document_summaries")
     .select("*")
     .eq("document_id", args.document.id)
     .maybeSingle();
-  if (existingSummaryResult.error) throw new Error(existingSummaryResult.error.message);
-  let existingSummary = existingSummaryResult.data;
-  const { data: existingLabels, error: existingLabelsError } = await client
-    .from("document_labels")
-    .select("id,document_id,label,label_type,source,confidence,metadata")
-    .eq("document_id", args.document.id)
-    .eq("source", "generated")
-    .order("label_type", { ascending: true })
-    .order("label", { ascending: true });
-  if (existingLabelsError) throw new Error(existingLabelsError.message);
-
+  if (existing.error) throw new Error(existing.error.message);
   let payload: SourceAnchoredSummaryPayload | null = null;
   try {
-    const stored = metadataRecord(existingSummary?.metadata)[SOURCE_ANCHORED_SUMMARY_METADATA_KEY];
-    payload = normalizeSourceAnchoredSummary(stored, authority);
+    payload = normalizeSourceAnchoredSummary(
+      metadataRecord(existing.data?.metadata)[SOURCE_ANCHORED_SUMMARY_METADATA_KEY],
+      authority,
+    );
   } catch {
     payload = null;
   }
-  const marker = metadataRecord(existingSummary?.metadata)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY] === true;
-  if (
-    payload &&
-    payload.summary_kind === "structured" &&
-    marker &&
-    persistedSourceAnchoredSummaryProjectionMatches(existingSummary, payload) &&
-    labelsMatchPayload(existingLabels ?? [], payload)
-  ) {
-    await patchEnrichmentOwnedDocumentMetadata(payload);
-    return { summary: existingSummary as DocumentSummary, labels: payload.labels };
-  }
-  let generatedPayload = false;
+  args.signal?.throwIfAborted();
   if (!payload || payload.summary_kind !== "structured") {
     payload = await generateSourceAnchoredSummary({
       document: args.document,
       authority,
       chunks: args.chunks,
       images,
+      signal: args.signal,
     });
-    generatedPayload = true;
   }
-
-  if (generatedPayload || !persistedSourceAnchoredSummaryProjectionMatches(existingSummary, payload)) {
-    const coverageProfile = buildIndexingCoverageProfile({ chunks: args.chunks, images });
-    const selectedPromptChunks = selectCoverageAwarePromptChunks(args.chunks);
-    const metadata = {
-      ...metadataRecord(existingSummary?.metadata),
+  args.signal?.throwIfAborted();
+  const selected = selectCoverageAwarePromptChunks(args.chunks);
+  const summary = {
+    document_id: args.document.id,
+    owner_id: args.document.owner_id ?? null,
+    summary: payload.summary,
+    clinical_specifics: payload.clinical_specifics,
+    source_chunk_ids: payload.source_chunk_ids,
+    source_image_ids: payload.source_image_ids,
+    model: payload.model,
+    generated_at: payload.generated_at,
+    updated_at: payload.generated_at,
+    metadata: {
       generated_by: "local-worker",
+      index_generation_id: payload.index_generation_id,
       rag_enrichment_version: ragEnrichmentVersion,
       rag_indexing_version: ragEnrichmentVersion,
       rag_memory_version: ragEnrichmentVersion,
       clinical_profile_version: summaryProfileVersion,
-      coverage_profile: coverageProfile,
-      enrichment_prompt_strategy: selectedPromptChunks.strategy,
-      enrichment_prompt_chunk_ids: selectedPromptChunks.chunks.map((chunk) => chunk.id),
+      coverage_profile: buildIndexingCoverageProfile({ chunks: args.chunks, images }),
+      enrichment_prompt_strategy: selected.strategy,
+      enrichment_prompt_chunk_ids: selected.chunks.map((chunk) => chunk.id),
       label_count: payload.labels.length,
       [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
-      [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false,
-    };
-    const { data, error } = await client
-      .from("document_summaries")
-      .upsert(
-        {
-          document_id: args.document.id,
-          owner_id: args.document.owner_id ?? null,
-          summary: payload.summary,
-          clinical_specifics: payload.clinical_specifics,
-          source_chunk_ids: payload.source_chunk_ids,
-          source_image_ids: payload.source_image_ids,
-          model: payload.model,
-          metadata,
-          generated_at: payload.generated_at,
-          updated_at: payload.generated_at,
-        },
-        { onConflict: "document_id" },
-      )
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
-    existingSummary = data;
-  } else {
-    const metadata = {
-      ...metadataRecord(existingSummary?.metadata),
-      [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
-      [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false,
-    };
-    const { data, error } = await client
-      .from("document_summaries")
-      .update({ metadata, updated_at: new Date().toISOString() })
-      .eq("document_id", args.document.id)
-      .select("*")
-      .single();
-    if (error) throw new Error(error.message);
-    existingSummary = data;
-  }
-
-  await persistProjectedLabels({
-    supabase: args.supabase,
-    payload,
-    ownerId: args.document.owner_id ?? null,
-  });
-  const completedMetadata = {
-    ...metadataRecord(existingSummary?.metadata),
-    [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
-    [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
+      [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
+    },
   };
-  const { data: completedSummary, error: completionError } = await client
-    .from("document_summaries")
-    .update({ metadata: completedMetadata, updated_at: new Date().toISOString() })
-    .eq("document_id", args.document.id)
-    .select("*")
-    .single();
-  if (completionError) throw new Error(completionError.message);
-
-  await patchEnrichmentOwnedDocumentMetadata(payload);
-  return { summary: completedSummary as DocumentSummary, labels: payload.labels };
+  const { data, error } = await args.supabase.rpc("persist_ingestion_summary_projection", {
+    p_fence: fence,
+    p_summary: summary,
+    p_labels: projectedLabelRows(payload, args.document.owner_id ?? null),
+    p_metadata: {
+      rag_enrichment_version: ragEnrichmentVersion,
+      rag_indexing_version: ragEnrichmentVersion,
+      rag_memory_version: ragEnrichmentVersion,
+      rag_enrichment_updated_at: payload.generated_at,
+      generated_label_count: payload.labels.length,
+    },
+  });
+  if (error) throw new Error(error.message);
+  const result = parseIngestionMutationResult(data);
+  args.signal?.throwIfAborted();
+  if (!result.summary || typeof result.summary !== "object" || Array.isArray(result.summary))
+    throw new IngestionAttemptError("ingestion_rpc_invalid");
+  return { summary: result.summary as DocumentSummary, labels: payload.labels };
 }
 
 function tokenSet(text: string) {

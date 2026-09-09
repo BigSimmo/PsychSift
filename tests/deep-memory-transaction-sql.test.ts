@@ -8,7 +8,7 @@ const migration = readFileSync(
   .replace(/\s+/g, " ")
   .toLowerCase();
 
-describe("producer-scoped deep-memory transaction SQL", () => {
+describe("historical producer-scoped deep-memory transaction SQL", () => {
   it("allows overlapping section indexes only across explicit generations", () => {
     expect(migration).toContain("drop constraint if exists document_sections_document_id_section_index_key");
     expect(migration).toContain("where artifact_generation_id is null");
@@ -69,5 +69,55 @@ describe("producer-scoped deep-memory transaction SQL", () => {
     expect(migration).toContain("'deep_memory_generations'");
     expect(migration).toContain("'section_count', p_section_count");
     expect(migration).toContain("'memory_card_count', p_memory_card_count");
+  });
+});
+
+const fencedMigration = readFileSync(
+  new URL("../supabase/migrations/20260831101000_fence_ingestion_leases_and_repairs.sql", import.meta.url),
+  "utf8",
+);
+const commitStart = fencedMigration.indexOf("function public.commit_document_deep_memory_generation(p_fence");
+const fencedCommit = fencedMigration.slice(commitStart, fencedMigration.indexOf("end $$;", commitStart));
+describe("U03 effective fenced deep-memory commit SQL (static only)", () => {
+  it("checks current authority before exact receipt reuse and rejects altered commit identity", () => {
+    expect(fencedCommit.indexOf("assert_current_ingestion_attempt")).toBeLessThan(fencedCommit.indexOf("v_receipt :="));
+    expect(fencedCommit).toContain("v_receipt->'request' is distinct from v_request");
+    for (const key of [
+      "'fence'",
+      "'artifact_generation'",
+      "'anchors'",
+      "'aliases'",
+      "'section_count'",
+      "'memory_card_count'",
+      "'index_unit_counts_by_type'",
+    ])
+      expect(fencedCommit).toContain(key);
+  });
+  it("fences chunk anchors and aliases inside the same generation commit rollback boundary", () => {
+    expect(fencedCommit).toContain("and anchor_id is null");
+    expect(fencedCommit).toContain("index_generation_id=(p_fence->>'expected_generation_id')::uuid");
+    expect(fencedCommit).toContain("deep_memory_alias_owner_collision");
+    expect(fencedCommit).toContain("public.commit_document_deep_memory_generation(v_document_id,'local-worker'");
+    expect(fencedCommit.indexOf("insert into public.rag_aliases")).toBeLessThan(
+      fencedCommit.indexOf("'deep_memory_commit_receipts'", fencedCommit.indexOf("insert into public.rag_aliases")),
+    );
+    expect(fencedCommit).not.toContain("exception when");
+    expect(fencedCommit).toContain("raise exception 'invalid_deep_memory_commit_result'");
+    expect(fencedCommit.indexOf("invalid_deep_memory_commit_result")).toBeLessThan(
+      fencedCommit.indexOf("delete from public.rag_aliases"),
+    );
+  });
+  it("revokes the obsolete worker-callable commit and bounds cleanup to unpublished exact attempts", () => {
+    expect(fencedMigration).toContain(
+      "commit_document_deep_memory_generation(uuid,text,uuid,text,text,integer,integer,jsonb,integer) from public,anon,authenticated,service_role",
+    );
+    const start = fencedMigration.indexOf("function public.cleanup_ingestion_deep_memory_staging");
+    const cleanup = fencedMigration.slice(start, fencedMigration.indexOf("end $$;", start));
+    expect(cleanup).toContain("cannot_cleanup_committed_deep_memory");
+    for (const deletion of cleanup.matchAll(/delete from public\.document_[^;]+;/g)) {
+      expect(deletion[0]).toContain("producer='local-worker'");
+      expect(deletion[0]).toContain("artifact_generation_id=p_artifact_generation");
+      expect(deletion[0]).toContain("metadata->>'ingestion_lease_token'=p_fence->>'lease_token'");
+    }
   });
 });

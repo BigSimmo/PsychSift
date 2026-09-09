@@ -1,5 +1,25 @@
 # Ingestion state machine — documents × ingestion_jobs × index generations
 
+## U03 durable attempts — authored execution contract
+
+The U03 source changes supersede the historical lease and mutation descriptions below for Node and strict Edge ingestion. The July race inventory remains historical evidence, including its old no-heartbeat descriptions; it is not a statement of deployed behavior.
+
+Both queues issue a fresh UUID token on every claim, even for the same worker. Every named mutation checks job kind, job/document IDs, worker, token, expected generation and live source-authority digest under database locks, using wall-clock expiry after locking. Heartbeat renews only a still-current lease using its stored duration. Missing or malformed RPC responses are hard failures with no direct-write fallback.
+
+Node reserves G1 while G0 remains committed. The non-empty core commit advances the document pointer and durable expected generation together; subsequent callers use its returned G1 Fence. Edge requires an exact committed generation. The queues exclude simultaneous live attempts. Terminal calls derive the matched job's actual batch and do not complete siblings speculatively.
+
+Summary, generated labels and enrichment-owned metadata publish atomically. Manual labels, organisation authority and the accepted U02 source projection remain intact. Deep-memory staging belongs to an exact producer/artifact generation/attempt; the commit includes exact-generation anchor repair, stamps and owned aliases. Exact committed retry requires the same full commit identity. Alias failure rolls back the transaction. There is no staging cleanup after commit invocation, because a lost response can mean success.
+
+Cancellation blocks subsequent provider/native/Storage work and publication; it cannot retract work already sent. Storage uses immutable document/token/generation/upload paths with overwrite disabled. A late or ambiguous response never authorises deletion of possibly committed bytes. Inert leftovers are U13 repair inputs.
+
+P05 mutation authority permits only exact eligible shadow/approved candidates. Active reviewed versions refuse ingestion mutation authority and retain their serving evidence. Replacement requires governed staging and separate publication authority. P05 acquisition digests and publication guards are unchanged; non-catalogue shared documents retain their distinct authority path.
+
+The reviewed P05 prerequisite closure restores the final approval guard and active-version constraint triggers in the snapshot. Its narrow ACL correction resets only the three control-plane tables to service-role SELECT and revokes direct service-role execution of eleven internal helpers. Eight governed entrypoints retain their existing grants. Installed owners, inherited privileges and trigger behavior require separate SQL acceptance.
+
+These are source contracts with static/mocked evidence. SQL replay, roles and concurrent schedules, real extraction, physical Storage cancellation, providers and deployment remain separately authorised and unrun here.
+
+## Historical July 2026 race inventory
+
 Phase-1 deliverable of the ingestion-concurrency/scale review (2026-07-07, branch
 `claude/ingestion-concurrency-scale`). Documents every legal state of the ingestion
 pipeline, which writer may perform each transition, what happens on a crash

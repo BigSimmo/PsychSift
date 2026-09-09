@@ -29,6 +29,15 @@ const GENERATION_ID = "22222222-2222-4222-8222-222222222222";
 const CHUNK_ID = "33333333-3333-4333-8333-333333333333";
 const LATE_CHUNK_ID = "44444444-4444-4444-8444-444444444444";
 const IMAGE_ID = "55555555-5555-4555-8555-555555555555";
+const TEST_FENCE = {
+  job_kind: "node" as const,
+  job_id: "66666666-6666-4666-8666-666666666666",
+  document_id: DOCUMENT_ID,
+  worker_id: "u03-worker",
+  lease_token: "77777777-7777-4777-8777-777777777777",
+  expected_generation_id: GENERATION_ID,
+  authority_digest: `sha256:${"a".repeat(64)}`,
+};
 
 function sourceAuthority() {
   return {
@@ -207,7 +216,11 @@ function createSupabaseMock(options: { failSummaryUpsert?: boolean } = {}) {
 
   const supabase = {
     calls,
-    rpc: vi.fn(async () => ({ data: null, error: null })),
+    rpc: vi.fn(async (name: string, params: Record<string, unknown>): Promise<QueryResult> => {
+      if (name !== "persist_ingestion_summary_projection") throw new Error("unexpected RPC");
+      if (options.failSummaryUpsert) return { data: null, error: { message: "summary upsert failed" } };
+      return { data: { ok: true, summary: { id: "summary-1", ...(params.p_summary as object) } }, error: null };
+    }),
     from: vi.fn((table: string) => {
       const call: QueryCall = { table, operation: "select", filters: [] };
       calls.push(call);
@@ -343,16 +356,31 @@ function createRepairSupabaseMock() {
   return {
     calls,
     state,
-    rpc: vi.fn(async (name: string, params: Record<string, unknown>) => {
-      if (name === "apply_document_metadata_patch") {
-        state.beforeMetadataPatch?.();
-        state.beforeMetadataPatch = null;
-        state.documentMetadata = jsonbMergeDeep(
-          state.documentMetadata,
-          params.p_metadata_patch as Record<string, unknown>,
-        );
+    rpc: vi.fn(async (name: string, params: Record<string, unknown>): Promise<QueryResult> => {
+      if (name !== "persist_ingestion_summary_projection") throw new Error("unexpected RPC");
+      const labels = params.p_labels as Array<Record<string, unknown>>;
+      state.beforeMetadataPatch?.();
+      state.beforeMetadataPatch = null;
+      if (!state.failedOnce && labels.length > 1) {
+        state.failedOnce = true;
+        return { data: null, error: { message: "label upsert failed" } };
       }
-      return { data: null, error: null };
+      // This in-memory atomic boundary tests caller rollback expectations; it is not SQL proof.
+      state.summary = {
+        id: "summary-1",
+        ...(params.p_summary as object),
+        metadata: {
+          ...((state.summary?.metadata as object) ?? {}),
+          ...((params.p_summary as Record<string, unknown>).metadata as object),
+          source_anchored_summary_projection_complete_v1: true,
+        },
+      };
+      state.labels = [
+        ...state.labels.filter((label) => label.source !== "generated"),
+        ...labels.map((row, index) => ({ id: `generated-${index}`, ...row })),
+      ];
+      state.documentMetadata = jsonbMergeDeep(state.documentMetadata, params.p_metadata as Record<string, unknown>);
+      return { data: { ok: true, summary: state.summary }, error: null };
     }),
     from: vi.fn((table: string) => {
       const call: QueryCall = { table, operation: "select", filters: [] };
@@ -371,11 +399,111 @@ describe("document enrichment", () => {
     vi.clearAllMocks();
   });
 
+  it("U03 refuses summary publication after attempt replacement", async () => {
+    const supabase = createRepairSupabaseMock();
+    const fence = {
+      job_kind: "node" as const,
+      job_id: "66666666-6666-4666-8666-666666666666",
+      document_id: DOCUMENT_ID,
+      worker_id: "u03-worker",
+      lease_token: "77777777-7777-4777-8777-777777777777",
+      expected_generation_id: GENERATION_ID,
+      authority_digest: `sha256:${"a".repeat(64)}`,
+    };
+    let liveFence = { ...fence };
+    const originalRpc = supabase.rpc.getMockImplementation()!;
+    supabase.rpc.mockImplementation(async (name, params) => {
+      if (name === "persist_ingestion_summary_projection") {
+        if (JSON.stringify(params.p_fence) !== JSON.stringify(liveFence)) {
+          return { data: { ok: false, reason: "lease_lost" }, error: null };
+        }
+        throw new Error("Unexpected current-attempt publication in stale regression");
+      }
+      return originalRpc(name, params);
+    });
+    let release!: (value: string) => void;
+    let started!: () => void;
+    const generationStarted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    mocks.generateStructuredTextResponse.mockImplementationOnce(() => {
+      started();
+      return new Promise<string>((resolve) => {
+        release = resolve;
+      });
+    });
+    const args = {
+      supabase: supabase as never,
+      fence,
+      document: {
+        id: DOCUMENT_ID,
+        owner_id: null,
+        title: "Clozapine monitoring",
+        file_name: "monitoring.pdf",
+        source_path: null,
+        metadata: { index_generation_id: GENERATION_ID },
+      },
+      indexGenerationId: GENERATION_ID,
+      chunks: sourceAuthority().selectedChunks.map((row, chunk_index) => ({
+        ...row,
+        index_generation_id: GENERATION_ID,
+        chunk_index,
+        section_heading: null,
+        content: chunk_index ? "Check ANC before clozapine review." : "Clozapine monitoring workflow.",
+      })),
+      images: sourceAuthority().selectedImages.map((row) => ({
+        ...row,
+        index_generation_id: GENERATION_ID,
+        caption: "Clozapine monitoring table",
+      })),
+    };
+    const outcome = upsertDocumentEnrichment(args).then(
+      (value) => ({ value, error: undefined }),
+      (error: unknown) => ({ value: undefined, error }),
+    );
+    await generationStarted;
+    const nextGeneration = "88888888-8888-4888-8888-888888888888";
+    liveFence = {
+      ...fence,
+      lease_token: "99999999-9999-4999-8999-999999999999",
+      expected_generation_id: nextGeneration,
+    };
+    supabase.state.summary = {
+      id: "g2-summary",
+      summary: "G2 committed summary",
+      metadata: { projection_complete: true },
+    };
+    supabase.state.labels = [
+      { id: "g2-label", label: "G2", source: "generated", metadata: { index_generation_id: nextGeneration } },
+      { id: "manual-label", label: "Manual", source: "manual" },
+    ];
+    supabase.state.documentMetadata = {
+      index_generation_id: nextGeneration,
+      organization_profile: { owner: "manual" },
+      organization_profile_version: "manual-v2",
+      generated_label_count: 1,
+    };
+    const committed = structuredClone({
+      summary: supabase.state.summary,
+      labels: supabase.state.labels,
+      metadata: supabase.state.documentMetadata,
+    });
+    release(JSON.stringify(structuredCandidate()));
+    const result = await outcome;
+    expect(result.error, "stale actual producer must report typed lease loss").toMatchObject({ code: "lease_lost" });
+    expect({
+      summary: supabase.state.summary,
+      labels: supabase.state.labels,
+      metadata: supabase.state.documentMetadata,
+    }).toEqual(committed);
+  });
+
   it("writes the current RAG enrichment version to summaries, labels, and document metadata", async () => {
     const supabase = createSupabaseMock();
 
     await upsertDocumentEnrichment({
       supabase: supabase as never,
+      fence: TEST_FENCE,
       document: {
         id: DOCUMENT_ID,
         owner_id: null,
@@ -399,10 +527,8 @@ describe("document enrichment", () => {
       })),
     });
 
-    const summaryUpsert = supabase.calls.find(
-      (call) => call.table === "document_summaries" && call.operation === "upsert",
-    );
-    const labelsInsert = supabase.calls.find((call) => call.table === "document_labels" && call.operation === "upsert");
+    const summaryUpsert = { payload: supabase.rpc.mock.calls.at(-1)?.[1]?.p_summary };
+    const labelsInsert = { payload: (supabase.rpc.mock.calls.at(-1)?.[1]?.p_labels as unknown[])?.[0] };
 
     expect((summaryUpsert?.payload as { metadata: Record<string, unknown> }).metadata).toMatchObject({
       generated_by: "local-worker",
@@ -419,13 +545,16 @@ describe("document enrichment", () => {
         summary_version: "source-anchored-summary-v1",
       }),
     });
-    expect(supabase.rpc).toHaveBeenCalledWith("apply_document_metadata_patch", {
-      p_document_id: DOCUMENT_ID,
-      p_metadata_patch: expect.objectContaining({
-        rag_enrichment_version: ragEnrichmentVersion,
-        generated_label_count: expect.any(Number),
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "persist_ingestion_summary_projection",
+      expect.objectContaining({
+        p_fence: TEST_FENCE,
+        p_metadata: expect.objectContaining({
+          rag_enrichment_version: ragEnrichmentVersion,
+          generated_label_count: expect.any(Number),
+        }),
       }),
-    });
+    );
     expect(supabase.calls.some((call) => call.table === "documents" && call.operation === "update")).toBe(false);
   });
 
@@ -434,6 +563,7 @@ describe("document enrichment", () => {
 
     await upsertDocumentEnrichment({
       supabase: supabase as never,
+      fence: TEST_FENCE,
       document: {
         id: DOCUMENT_ID,
         owner_id: null,
@@ -457,7 +587,7 @@ describe("document enrichment", () => {
       })),
     });
 
-    const labelUpsert = supabase.calls.find((call) => call.table === "document_labels" && call.operation === "upsert");
+    const labelUpsert = { payload: (supabase.rpc.mock.calls.at(-1)?.[1]?.p_labels as unknown[])?.[0] };
     expect(labelUpsert?.payload).toMatchObject({ label: "clozapine", label_type: "medication" });
   });
 
@@ -694,6 +824,7 @@ describe("source-anchored summary v1", () => {
     );
     await upsertDocumentEnrichment({
       supabase: supabase as never,
+      fence: TEST_FENCE,
       document: {
         id: DOCUMENT_ID,
         owner_id: null,
@@ -715,7 +846,7 @@ describe("source-anchored summary v1", () => {
       ],
       images: [],
     });
-    const written = supabase.calls.find((call) => call.table === "document_summaries" && call.operation === "upsert");
+    const written = { payload: supabase.rpc.mock.calls.at(-1)?.[1]?.p_summary };
     const metadata = (written?.payload as { metadata: Record<string, unknown> }).metadata;
     const { normalizeSourceAnchoredSummary, SOURCE_ANCHORED_SUMMARY_METADATA_KEY } = await contract();
     return normalizeSourceAnchoredSummary(metadata[SOURCE_ANCHORED_SUMMARY_METADATA_KEY], {
@@ -1132,6 +1263,7 @@ describe("source-anchored summary v1", () => {
     await expect(
       upsertDocumentEnrichment({
         supabase: supabase as never,
+        fence: TEST_FENCE,
         document: {
           id: DOCUMENT_ID,
           owner_id: null,
@@ -1159,7 +1291,7 @@ describe("source-anchored summary v1", () => {
     expect(supabase.calls.some((call) => call.table === "document_labels" && call.operation === "insert")).toBe(false);
   });
 
-  it("repairs a partial generated-label replacement without another provider call and preserves manual labels", async () => {
+  it("rolls back failed projection replacement and retries an existing validated payload without the provider", async () => {
     const { SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY } = await contract();
     mocks.generateStructuredTextResponse.mockClear();
     const supabase = createRepairSupabaseMock();
@@ -1170,9 +1302,19 @@ describe("source-anchored summary v1", () => {
         { label: "clozapine", label_type: "medication", confidence: 0.92 },
       ],
     };
-    mocks.generateStructuredTextResponse.mockResolvedValueOnce(JSON.stringify(candidate));
+    const { normalizeSourceAnchoredSummary, SOURCE_ANCHORED_SUMMARY_METADATA_KEY } = await contract();
+    const priorPayload = normalizeSourceAnchoredSummary(candidate, sourceAuthority());
+    supabase.state.summary = {
+      id: "prior",
+      metadata: {
+        [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: priorPayload,
+        [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: false,
+      },
+    };
+    const prior = structuredClone(supabase.state.summary);
     const args = {
       supabase: supabase as never,
+      fence: TEST_FENCE,
       document: {
         id: DOCUMENT_ID,
         owner_id: null,
@@ -1197,6 +1339,7 @@ describe("source-anchored summary v1", () => {
     };
 
     await expect(upsertDocumentEnrichment(args)).rejects.toThrow("label upsert failed");
+    expect(supabase.state.summary).toEqual(prior);
     expect(
       (supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY],
     ).toBe(false);
@@ -1206,10 +1349,10 @@ describe("source-anchored summary v1", () => {
         expect.objectContaining({ id: "stale-1", source: "generated" }),
       ]),
     );
-    expect(mocks.generateStructuredTextResponse).toHaveBeenCalledTimes(1);
+    expect(mocks.generateStructuredTextResponse).toHaveBeenCalledTimes(0);
 
     await expect(upsertDocumentEnrichment(args)).resolves.toBeDefined();
-    expect(mocks.generateStructuredTextResponse).toHaveBeenCalledTimes(1);
+    expect(mocks.generateStructuredTextResponse).toHaveBeenCalledTimes(0);
     expect(
       (supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY],
     ).toBe(true);
@@ -1224,7 +1367,7 @@ describe("source-anchored summary v1", () => {
     );
   });
 
-  it("marks a stored projection incomplete before repairing marker-true label drift", async () => {
+  it("atomically repairs marker-true label drift without exposing an incomplete projection", async () => {
     const {
       SOURCE_ANCHORED_SUMMARY_METADATA_KEY,
       SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY,
@@ -1251,6 +1394,7 @@ describe("source-anchored summary v1", () => {
 
     await upsertDocumentEnrichment({
       supabase: supabase as never,
+      fence: TEST_FENCE,
       document: {
         id: DOCUMENT_ID,
         owner_id: null,
@@ -1274,19 +1418,12 @@ describe("source-anchored summary v1", () => {
       })),
     });
 
-    const firstLabelWrite = supabase.calls.findIndex(
-      (call) => call.table === "document_labels" && call.operation === "upsert",
-    );
-    const incompleteWrite = supabase.calls.findIndex(
-      (call) =>
-        call.table === "document_summaries" &&
-        ["update", "upsert"].includes(call.operation) &&
-        (call.payload as { metadata?: Record<string, unknown> } | undefined)?.metadata?.[
-          SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY
-        ] === false,
-    );
-    expect(incompleteWrite).toBeGreaterThan(-1);
-    expect(incompleteWrite).toBeLessThan(firstLabelWrite);
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+    expect(supabase.state.summary?.metadata).toMatchObject({ [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true });
+    expect(supabase.state.labels.filter((label) => label.source === "generated").map((label) => label.label)).toEqual([
+      "clozapine",
+    ]);
+    expect(supabase.calls.every((call) => call.operation === "select")).toBe(true);
     expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
   });
 
@@ -1331,6 +1468,7 @@ describe("source-anchored summary v1", () => {
 
     await upsertDocumentEnrichment({
       supabase: supabase as never,
+      fence: TEST_FENCE,
       document: {
         id: DOCUMENT_ID,
         owner_id: null,
@@ -1354,12 +1492,12 @@ describe("source-anchored summary v1", () => {
       })),
     });
 
-    const repair = supabase.calls.find((call) => call.table === "document_summaries" && call.operation === "upsert");
+    const repair = { payload: supabase.rpc.mock.calls.at(-1)?.[1]?.p_summary };
     expect(repair?.payload).toMatchObject({ summary: payload.summary });
     expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
   });
 
-  it("retries the document metadata patch after summary and label completion", async () => {
+  it("rolls back summary and labels with a failed atomic metadata write", async () => {
     const { SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY } = await contract();
     const supabase = createRepairSupabaseMock();
     const organizationProfile = {
@@ -1375,6 +1513,7 @@ describe("source-anchored summary v1", () => {
     supabase.rpc.mockResolvedValueOnce({ data: null, error: { message: "document metadata patch failed" } });
     const input = {
       supabase: supabase as never,
+      fence: TEST_FENCE,
       document: {
         id: DOCUMENT_ID,
         owner_id: null,
@@ -1402,15 +1541,13 @@ describe("source-anchored summary v1", () => {
     };
 
     await expect(upsertDocumentEnrichment(input)).rejects.toThrow("document metadata patch failed");
-    expect(
-      (supabase.state.summary?.metadata as Record<string, unknown>)[SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY],
-    ).toBe(true);
+    expect(supabase.state.summary).toBeNull();
     mocks.generateStructuredTextResponse.mockClear();
 
     await expect(upsertDocumentEnrichment(input)).resolves.toBeDefined();
 
     expect(supabase.rpc).toHaveBeenCalledTimes(2);
-    expect(mocks.generateStructuredTextResponse).not.toHaveBeenCalled();
+    expect(mocks.generateStructuredTextResponse).toHaveBeenCalledTimes(1);
     expect(supabase.state.documentMetadata).toMatchObject({
       rag_enrichment_version: ragEnrichmentVersion,
       rag_indexing_version: ragEnrichmentVersion,
@@ -1420,8 +1557,8 @@ describe("source-anchored summary v1", () => {
       organization_profile: organizationProfile,
       organization_profile_version: "document-organization-v1",
     });
-    expect(supabase.rpc.mock.calls[1]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile");
-    expect(supabase.rpc.mock.calls[1]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile_version");
+    expect(supabase.rpc.mock.calls[1]?.[1]?.p_metadata).not.toHaveProperty("organization_profile");
+    expect(supabase.rpc.mock.calls[1]?.[1]?.p_metadata).not.toHaveProperty("organization_profile_version");
   });
 
   it("does not overwrite manual organization authority written after the live read", async () => {
@@ -1441,6 +1578,7 @@ describe("source-anchored summary v1", () => {
 
     await upsertDocumentEnrichment({
       supabase: supabase as never,
+      fence: TEST_FENCE,
       document: {
         id: DOCUMENT_ID,
         owner_id: null,
@@ -1469,7 +1607,7 @@ describe("source-anchored summary v1", () => {
 
     expect(supabase.state.documentMetadata.organization_profile).toEqual(manualProfile);
     expect(supabase.state.documentMetadata.organization_profile_version).toBe("human-governed-v2");
-    expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile");
-    expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata_patch).not.toHaveProperty("organization_profile_version");
+    expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata).not.toHaveProperty("organization_profile");
+    expect(supabase.rpc.mock.calls[0]?.[1]?.p_metadata).not.toHaveProperty("organization_profile_version");
   });
 });
