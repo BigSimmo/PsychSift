@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "scope": "U04 internal RAG evaluation adapter scope approval only",
+  "sourceHead": "3822cc1271b04dc85ec9d7c4afcf7afa26b06db2",
+  "userReply": "Please can you continue now",
+  "context": "Direct response to controller scope approval question; narrow reviewed proposal approved",
+  "productAccepted": false,
+  "implementationDispatched": false,
+  "review": "Scope proposal PASS; whole-unit amendment review remains required",
+  "reviewer": {
+    "session": "01a0840c-168e-7fd0-bdac-98b09b074c88",
+    "agent": "/root/u03_product_wrapper_review_1",
+    "observedModel": "gpt-6-astra",
+    "observedEffort": "xhigh",
+    "limit": "Local resolved configuration, not backend attestation"
+  },
+  "copies": [
+    {
+      "outsidePath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-scope-decision-proposal-1.md",
+      "rawSha256": "366dfbf8c4b8848d47fad68c03d0b3d4675a2c8cbab3ee88d034ecbc0a4c70ce",
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PREP/U04-scope-decision-proposal-1.md",
+      "committedCopySha256": "366dfbf8c4b8848d47fad68c03d0b3d4675a2c8cbab3ee88d034ecbc0a4c70ce",
+      "transform": "CRLF to LF only"
+    },
+    {
+      "outsidePath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-evaluation-scope-review-1.md",
+      "rawSha256": "7f2c706937ea46b3dcea9c2f94661eb67c84ea4151f68b50152a7833533dba1d",
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PREP/U04-evaluation-scope-review-1.md",
+      "committedCopySha256": "7f2c706937ea46b3dcea9c2f94661eb67c84ea4151f68b50152a7833533dba1d",
+      "transform": "CRLF to LF only"
+    },
+    {
+      "outsidePath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-evaluation-scope-review-route-1.json",
+      "rawSha256": "3d5a0dc9a461de0d155477e392abdfaf474cb0b805914348a7eeec9b5416962b",
+      "path": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PREP/U04-evaluation-scope-review-route-1.json",
+      "committedCopySha256": "01a4228accaf3ac7e5c5ba2c5ac139b761116b5b2b83a4c93c23f87aac938c40",
+      "transform": "CRLF to LF only"
+    }
+  ]
+}

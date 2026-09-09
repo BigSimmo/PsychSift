@@ -16,6 +16,8 @@ This record supersedes earlier documentation-only, no-agent, no-product-work, no
 
 ## Boundaries that remain separate
 
+The user's 9 September request to continue, in direct response to the reviewed U04 scope question, approves the [narrow internal RAG evaluation-adapter extension](U04-scope-authority-2026-09-09.md). That record names the seven shared owners and conditional read-helper symbols. It supersedes the RAG-owner exclusion below only for that internal U04 evaluation seam; ordinary Answer behavior, separate RAG programme work and all connected boundaries remain outside this extension. Final U04 contract/verification preparation and independent xhigh amendment review are still required before product dispatch.
+
 This authorisation does not include publication/push/PR/merge, worktree history rewriting, code transfer, messages to another task, live providers, hosted inspection, actual source acquisition or real documents, applying migrations, local SQL execution, running ingestion workers or operational reindex/evaluate/promote/withdraw/cleanup commands, activation, deployment or recovery operations.
 
 The native synthetic-document extraction exception remains a separate, explicit decision before the dependent extraction run. Source fixture specifications and pure in-memory adapter tests can proceed in the meantime. Required SQL/hosted/clinical proof stays visible as residual evidence; do not call it passed or waive a gate that actually requires it. Licence/retention, international-source expansion and named clinical adjudication decisions remain with their appropriate owners before the dependent action.

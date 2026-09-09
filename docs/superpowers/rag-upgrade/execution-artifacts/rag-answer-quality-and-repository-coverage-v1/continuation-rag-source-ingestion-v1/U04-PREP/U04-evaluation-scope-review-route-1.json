@@ -1,0 +1,28 @@
+{
+  "logPath": "C:\\Users\\joshs\\.codex\\sessions\\2026\\09\\09\\rollout-2026-09-09T10-42-59-01a0840c-168e-7fd0-bdac-98b09b074c88.jsonl",
+  "observedAtUtc": "2026-09-09T04:03:05.1975184Z",
+  "session": {
+    "id": "01a0840c-168e-7fd0-bdac-98b09b074c88",
+    "source": {
+      "subagent": {
+        "thread_spawn": {
+          "parent_thread_id": "01a07b47-4623-7e90-825a-ec25116b8531",
+          "depth": 1,
+          "agent_path": "/root/u03_product_wrapper_review_1",
+          "agent_nickname": "Singer",
+          "agent_role": "rag-retrieval-reviewer"
+        }
+      }
+    },
+    "agent_path": "/root/u03_product_wrapper_review_1",
+    "agent_role": "rag-retrieval-reviewer",
+    "model_provider": "openai"
+  },
+  "latestTurn": {
+    "turn_id": "01a08450-0b0a-7fc2-ba2c-05baebc3f485",
+    "model": "gpt-6-astra",
+    "effort": "xhigh"
+  },
+  "limit": "Observed local resolved configuration only, not backend attestation",
+  "serviceTier": "unavailable"
+}
