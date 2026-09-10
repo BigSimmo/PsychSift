@@ -1,0 +1,15 @@
+# U04 amendment review 1 — correction disposition
+
+At unchanged HEAD 378c9c3997f91921d89aa6d919b5c9ef05b2152a, both independent xhigh reviews returned Spec FAIL / Quality FAIL. These are proposal defects, not newly proved production ingestion defects. No implementation has begun.
+
+| Finding | Disposition and narrow correction | Proposed proof / owner |
+|---|---|---|
+| Schema I1 / RAG R2: manual alias population absent from atomic capture signature | Accepted. Request-context-and-capture contract1 adds explicit bounded manual alias IDs and profile digest; full-profile validation and equality bind capture, baseline, enqueue and every reader. No global aliases or second capture. | Different reviewed M lists under same W, disabled outside-W alias, scope/lineage/missing/duplicate refusals, mutation drift and profile mismatch. U04 session/fixed SQL operations. |
+| RAG R1: ordinary pre-cache context resolver escapes bound evidence closure | Accepted. Same appendix explicitly bypasses ordinary resolver before any side effects, constructs a frozen evaluation-only compatible snapshot, excludes site/registry partitions and rejects foreign cache promises/context. | Actual search and answer, absent/prefilled/conflicting context variants, zero ordinary admin/site/index/cache calls; unchanged ordinary no-context positive behavior. U04 within approved shared owners. |
+| RAG R3: inventory and measurement records lack implementable closed schemas | Accepted. Evidence-record contract1 supplies literal tagged shapes, family mapping, requiredness/capability and supported reviewed-manual evidence binding. | Positive authored full record reaches actual P04 parsing and candidate reconciliation; malformed/unknown/duplicate/conflicting/missing/wrong-identity evidence fails; optional losses cannot satisfy required metrics. U04 consumer, U09/C03 real measurement producers, downstream semantic acceptance separately owned. |
+
+The schema reviewer considered the descriptive inventory/measurement direction sufficient, while the RAG reviewer identified missing literal validators and policy bindings. The controller adopts the narrower concrete appendix because it resolves implementation ambiguity without changing accepted P04 algorithms or inventing a new assessor. No reviewer finding is silently waived.
+
+Candidate2 and its new appendices need a frozen package and independent correction review. Package1 and both FAIL reports remain immutable. Scope already authorizes these internal interfaces; no repeat user approval is requested. Numerical ceilings and reviewed-manual measurement consumption were accepted for local design by both reviews, with connected profile/performance and real operational evidence still unproved.
+
+Historical U02 offline evaluation remains exit 1, four failed suites, 45 failed and 586 passed overall; not green and no inherited exception. U04 source-only/fixture proof never substitutes for SQL concurrency, role/RLS, native, hosted, provider or clinical acceptance.

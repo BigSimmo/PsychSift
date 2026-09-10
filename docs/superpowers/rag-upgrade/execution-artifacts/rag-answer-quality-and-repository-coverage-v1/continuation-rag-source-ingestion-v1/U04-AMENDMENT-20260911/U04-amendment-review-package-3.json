@@ -1,0 +1,102 @@
+{
+  "kind": "U04 whole-unit amendment corrected review package3",
+  "head": "378c9c3997f91921d89aa6d919b5c9ef05b2152a",
+  "productImplementationStarted": false,
+  "pins": [
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-integrated-amendment-candidate-3.md",
+      "sha256": "f22d394f805f9eae44d1799fd652a43df5ff863056caa5b35761da3553c03acc"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-controller-contract-decisions-2.md",
+      "sha256": "2e1c3e0c38b3d289e8b290e72246937188376dd418fa355a585f838dc7586346"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-evaluation-interface-contract-3.md",
+      "sha256": "eccb897da735c27aeb7c9d5fcec5a8da14d8b9ff166bf7ee0d81876bb6245a11"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-evaluation-sql-binding-1.md",
+      "sha256": "6ffbeb7351e0ad6b58ff293c2441017a671cc54a0315caa2dd7dce64ec45a8de"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-origin-transaction-contract-3.md",
+      "sha256": "60dfd0cdaa29dd717154cc90622a1c178bc6b0c00f66c16c2cf6323682f3c520"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-origin-column-parity-1.md",
+      "sha256": "e541c1f6495c6c7a480d6d48a8a3d0cd171d58aedf3f46bc51021407d2e2ce22"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-origin-column-contract-2.json",
+      "sha256": "8f933621bfa7d9a73e839567e5fe368dd53f23436cd05eda26c81011ef7fab90"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-controller-contract-decisions-1.md",
+      "sha256": "37ecdb202c75a462a8a43b04c06a036ade7e28ff403a7a255e36bde6d15f43f8"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-state-comparison-contract-1.md",
+      "sha256": "27f4635420851f9e8ba00d76f57d57b6dad7f18296b7c2cf785a8ee690e25af2"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-schema-contract-recommendation-1.md",
+      "sha256": "8ac2b47f8448bc851c9ac447eb87a7fa23af6208a3596061531b20337b54528e"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-controller-acceptance-constraints-1.md",
+      "sha256": "974222d88439ebb4300851d446ce403b4bda7f35a8c3a26a0bc172b87280484a"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-task4-at-b335cfbe5e.md",
+      "sha256": "f968d03ff603dbbc35b39a7a2c9a326efe4a6d3ef3447d7bcf0bea99b16956b5"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-request-context-and-capture-contract-1.md",
+      "sha256": "236171701e986f98a9d643412417d0d1ddc3dff2babf29f0b6d9791da444e9cb"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-evidence-record-contract-1.md",
+      "sha256": "34bb0981884966bef9a664e70bc28938cee9949bd58f1cd1514a74f310eeb03e"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-amendment-correction-disposition-1.md",
+      "sha256": "5d5505c09cc982653156be0edc07a3c6e32a68b82fa91760c1c7566bba292cf2"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-amendment-rag-review-1.md",
+      "sha256": "1d484cf1fbf59042e306b20f0d30168693b7bd74e55d457c6442076e8d65aed7"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-amendment-schema-review-1.md",
+      "sha256": "6f92b33b0db23a96d36bc06eaeab77ec90d0842b2f2416d4f8f11b4c8d8ad136"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-lifecycle-acceptance-1.md",
+      "sha256": "907ced0f3f039e80261ecf54cde9eea7a5cbcf876ba8dfa7e39c365a8a0a8d9c"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-experiment-review-6.md",
+      "sha256": "11f0d9c70d9abef2b38f3da6f9e087b07f50584f0d3175a6f6ab49e2d6969932"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-inventory-manifest-storage-contract-1.md",
+      "sha256": "b4ebd6e7796e6e5d1afc148c58a890f57e8bbaca4f4df4e8de09e6643af5248d"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-document-owned-policy-mapping-1.md",
+      "sha256": "c213a31822beda1d4e20cbd8706cb0f4caccf5a08fec01ea34ffd38a52cad521"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-amendment-schema-review-2.md",
+      "sha256": "ecb6823b7d2870b15c1b3684b6efd256168322aef7141849195731e8dde587ec"
+    },
+    {
+      "path": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-amendment-rag-review-2.md",
+      "sha256": "92e093d0e0e0b0f813f5b5c0687603a5d7bd70c19abd437a0baa00e1b493de7f"
+    }
+  ],
+  "runner": "Runner5/host5 source PASS; harness4 review6 PASS; no real Vitest manifest admitted",
+  "knownRuntime": "Host attempt3 PASS five scenarios exit0 with pin parity and environment restored; earlier attempts1/2 FAIL retained",
+  "scope": "Local source amendment review only"
+}

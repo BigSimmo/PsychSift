@@ -1,0 +1,154 @@
+{
+  "exitCode": 0,
+  "cleanupConfirmed": true,
+  "cancelled": false,
+  "results": [
+    {
+      "name": "healthy",
+      "status": {
+        "code": 0,
+        "signal": null
+      },
+      "report": {
+        "version": 1,
+        "nonce": "7d100623-a5ad-4c2d-aa78-ef2b98c53787",
+        "specSha256": "558f138c1904a32c9ac360f8105b37260c2fb1c5d85f3509b1c2ce2977ad566e",
+        "hostSha256": "22c711c7f3e0d703719729940d30494b49a95d511c312731af1220e72df6cec5",
+        "hostPid": 40252,
+        "parentPid": 39748,
+        "started": true,
+        "timeout": false,
+        "cancelled": false,
+        "forcedCleanup": false,
+        "cleanupConfirmed": true,
+        "exitCode": 0,
+        "primaryExitCode": 0,
+        "primaryPid": 46972,
+        "terminatedPrimaryHandlesReleased": true,
+        "activeAfterPrimaryWait": 1,
+        "naturalCleanupGraceMs": 47,
+        "activeBeforeCleanup": 0,
+        "activeAfterCleanup": 0
+      },
+      "specPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-healthy-spec.json",
+      "resultPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-healthy-result.json"
+    },
+    {
+      "name": "failed",
+      "status": {
+        "code": 1,
+        "signal": null
+      },
+      "report": {
+        "version": 1,
+        "nonce": "ada92593-ae14-4373-97b4-aee4c412e6bd",
+        "specSha256": "f56408612dbda472c58fb853caae3861a23778e05fe94a9a9d43dc15d27a584b",
+        "hostSha256": "22c711c7f3e0d703719729940d30494b49a95d511c312731af1220e72df6cec5",
+        "hostPid": 16312,
+        "parentPid": 39748,
+        "started": true,
+        "timeout": false,
+        "cancelled": false,
+        "forcedCleanup": false,
+        "cleanupConfirmed": true,
+        "exitCode": 1,
+        "primaryExitCode": 7,
+        "primaryPid": 41824,
+        "terminatedPrimaryHandlesReleased": true,
+        "activeAfterPrimaryWait": 0,
+        "naturalCleanupGraceMs": 0,
+        "activeBeforeCleanup": 0,
+        "activeAfterCleanup": 0
+      },
+      "specPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-failed-spec.json",
+      "resultPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-failed-result.json"
+    },
+    {
+      "name": "early-cancel",
+      "status": {
+        "code": 1,
+        "signal": null
+      },
+      "report": {
+        "version": 1,
+        "nonce": "275c77c9-a05b-4263-ac50-5e487f668665",
+        "specSha256": "74459b35ee57bef9abd3f51528abfb92b18fb4e07003d20de7ef426f094fbc14",
+        "hostSha256": "22c711c7f3e0d703719729940d30494b49a95d511c312731af1220e72df6cec5",
+        "hostPid": 42632,
+        "parentPid": 39748,
+        "started": false,
+        "timeout": false,
+        "cancelled": true,
+        "forcedCleanup": false,
+        "cleanupConfirmed": true,
+        "exitCode": 1,
+        "primaryExitCode": null,
+        "error": "InterruptedError: Cancelled before primary creation",
+        "activeAfterCleanup": 0
+      },
+      "specPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-early-cancel-spec.json",
+      "resultPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-early-cancel-result.json"
+    },
+    {
+      "name": "stuck",
+      "status": {
+        "code": 1,
+        "signal": null
+      },
+      "report": {
+        "version": 1,
+        "nonce": "4a0369e3-4423-49ed-9dd4-0e6507f50075",
+        "specSha256": "005a120f37d004622bbc6aa0f4bd0e735772598b1bc148bea2f5399b4c20ee0e",
+        "hostSha256": "22c711c7f3e0d703719729940d30494b49a95d511c312731af1220e72df6cec5",
+        "hostPid": 41200,
+        "parentPid": 39748,
+        "started": true,
+        "timeout": true,
+        "cancelled": false,
+        "forcedCleanup": true,
+        "cleanupConfirmed": true,
+        "exitCode": 1,
+        "primaryExitCode": 259,
+        "primaryPid": 19780,
+        "activeAfterPrimaryWait": 4,
+        "naturalCleanupGraceMs": 0,
+        "activeBeforeCleanup": 4,
+        "terminatedPrimaryHandlesReleased": true,
+        "activeAfterCleanup": 0
+      },
+      "specPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-stuck-spec.json",
+      "resultPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-stuck-result.json"
+    },
+    {
+      "name": "orphan",
+      "status": {
+        "code": 1,
+        "signal": null
+      },
+      "report": {
+        "version": 1,
+        "nonce": "9bc40c6b-f69e-4ea0-847f-2ab8173b0455",
+        "specSha256": "ef9b20f162f705676b3db2bd6eb1c9609a92e6681516d6970f02162a7a26877f",
+        "hostSha256": "22c711c7f3e0d703719729940d30494b49a95d511c312731af1220e72df6cec5",
+        "hostPid": 37644,
+        "parentPid": 39748,
+        "started": true,
+        "timeout": false,
+        "cancelled": false,
+        "forcedCleanup": true,
+        "cleanupConfirmed": true,
+        "exitCode": 1,
+        "primaryExitCode": 0,
+        "primaryPid": 46768,
+        "terminatedPrimaryHandlesReleased": true,
+        "activeAfterPrimaryWait": 1,
+        "naturalCleanupGraceMs": 1000,
+        "activeBeforeCleanup": 1,
+        "activeAfterCleanup": 0
+      },
+      "specPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-orphan-spec.json",
+      "resultPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-host-proof-20260910-3-orphan-result.json"
+    }
+  ],
+  "atUtc": "2026-09-10T15:54:33.577Z"
+}

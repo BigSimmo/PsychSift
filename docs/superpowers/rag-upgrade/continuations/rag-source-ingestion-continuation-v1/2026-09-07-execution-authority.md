@@ -28,6 +28,8 @@ Historical U02 eval:rag:offline remains exit 1, four failed suites, 45 failed an
 
 ## Persistent progress and review
 
+On 11 September 2026, independent schema and RAG/evidence xhigh reviews passed the corrected whole-unit U04 amendment. The [adopted U04 execution contract](U04-execution-contract.md) now governs its named local implementation, evidence preservation and staged verification. No repeat scope approval is needed. This design adoption is not U04 product acceptance and does not expand any connected-operation boundary above.
+
 The existing .superpowers/sdd/progress.md remains the programme progress owner; append current continuation events without rewriting historical entries. Committed continuation records and unit-qualified artifacts supply durable acceptance evidence. Skill scratch is never the only record, and no skill cleanup instruction authorises deleting this worktree or its evidence.
 
 Before a unit, pin its original TASK_BASE, brief version/hash and allowed paths. Candidate and correction commits establish TASK_HEAD. Use the repository canonical review-package writer, independent Specification and Quality verdicts, and review the whole corrected original range. Before moving to the next unit, record the exact accepted head, tests, review identities/routes, unresolved residual gates and next dependency. Unknown U/C phases must not be submitted to the parent P-phase receipt checker as accepted phases.

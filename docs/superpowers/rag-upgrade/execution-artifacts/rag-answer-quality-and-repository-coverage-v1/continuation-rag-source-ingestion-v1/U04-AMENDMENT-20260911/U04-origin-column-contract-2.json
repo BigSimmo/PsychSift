@@ -1,0 +1,2494 @@
+{
+  "kind": "U04 literal current source column contract; manually reviewed effective CREATE plus listed ALTER additions; not database execution or drift proof",
+  "version": 2,
+  "head": "378c9c3997f91921d89aa6d919b5c9ef05b2152a",
+  "sourceInventorySha256": "c803b5cc8bfb64c1b4436cade3c961bf9cfd6fbe9b84f8639b7d6e944a95341e",
+  "schemaSha256": "34c22c97cabd6b9a0f754265c1b4da69b440c5c250f66fb3bffa551b83a31741",
+  "typesSha256": "dcb21f4473fa1bc75d772583b2b5cbc239064f19084bc8a04514a852cc440480",
+  "tableCount": 22,
+  "sqlColumnCount": 335,
+  "generatedSearchVectorCount": 7,
+  "inventory": [
+    {
+      "table": "documents",
+      "createLine": 60,
+      "sqlColumnCount": 22,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "title",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "description",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "file_name",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "file_type",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "file_size",
+          "sqlDeclaration": "bigint not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "storage_path",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "content_hash",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_path",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "import_batch_id",
+          "sqlDeclaration": "uuid references public.import_batches(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "status",
+          "sqlDeclaration": "text not null default 'queued' check (status in ('queued', 'processing', 'indexed', 'failed'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_count",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "chunk_count",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "image_count",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "error_message",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "search_tsv",
+          "sqlDeclaration": "tsvector generated always as ( to_tsvector('english', coalesce(title, '') || ' ' || coalesce(file_name, '')) ) stored",
+          "sourceKind": "create_table",
+          "representation": "generated_search_vector_represented_by_inputs_and_schema_identity",
+          "sourceInputs": [
+            "title",
+            "file_name"
+          ]
+        },
+        {
+          "name": "title_search_tsv",
+          "sqlDeclaration": "tsvector generated always as ( to_tsvector( 'english', regexp_replace( regexp_replace(coalesce(title, '') || ' ' || coalesce(file_name, ''), '([[:lower:]])([[:upper:]])', '\\1 \\2', 'g'), '[^[:alnum:]]+', ' ', 'g' ) ) ) stored",
+          "sourceKind": "create_table",
+          "representation": "generated_search_vector_represented_by_inputs_and_schema_identity",
+          "sourceInputs": [
+            "title",
+            "file_name"
+          ]
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid generated always as ( case when metadata->>'index_generation_id' ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then (metadata->>'index_generation_id')::uuid else null end ) stored",
+          "sourceKind": "create_table",
+          "representation": "generated_typed_value_retained_with_metadata_key_presence",
+          "sourceInputs": [
+            "metadata"
+          ]
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "id IN W",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_pages",
+      "createLine": 109,
+      "sqlColumnCount": 7,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_number",
+          "sqlDeclaration": "integer not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "text",
+          "sqlDeclaration": "text not null default ''",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "ocr_used",
+          "sqlDeclaration": "boolean not null default false",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_chunks",
+      "createLine": 294,
+      "sqlColumnCount": 19,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_number",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "chunk_index",
+          "sqlDeclaration": "integer not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "section_heading",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "section_path",
+          "sqlDeclaration": "text[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "heading_level",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "parent_heading",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "anchor_id",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "content",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "retrieval_synopsis",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "content_hash",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "token_estimate",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "image_ids",
+          "sqlDeclaration": "uuid[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "embedding",
+          "sqlDeclaration": "extensions.vector(1536) not null",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "search_tsv",
+          "sqlDeclaration": "tsvector generated always as ( to_tsvector('english', coalesce(section_heading, '') || ' ' || coalesce(retrieval_synopsis, '') || ' ' || content) ) stored",
+          "sourceKind": "create_table",
+          "representation": "generated_search_vector_represented_by_inputs_and_schema_identity",
+          "sourceInputs": [
+            "section_heading",
+            "retrieval_synopsis",
+            "content"
+          ]
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_images",
+      "createLine": 120,
+      "sqlColumnCount": 27,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_number",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "storage_path",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "mime_type",
+          "sqlDeclaration": "text not null default 'image/png'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "caption",
+          "sqlDeclaration": "text not null default ''",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "bbox",
+          "sqlDeclaration": "jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "image_type",
+          "sqlDeclaration": "text not null default 'unclear' check (image_type in ( 'clinical_table', 'flowchart_algorithm', 'form_checklist', 'risk_matrix', 'medication_chart', 'graph', 'screenshot_ui', 'photo', 'logo_decorative', 'unclear' ))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "searchable",
+          "sqlDeclaration": "boolean not null default true",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "clinical_relevance_score",
+          "sqlDeclaration": "real not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "skip_reason",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_kind",
+          "sqlDeclaration": "text not null default 'embedded'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "width",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "height",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "image_hash",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "perceptual_hash",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "labels",
+          "sqlDeclaration": "text[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "caption_confidence",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "clinical_priority_score",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "crop_completeness",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "image_quality_score",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "ocr_text_density",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "structured_extraction_confidence",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "visual_duplicate_group",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_table_facts",
+      "createLine": 318,
+      "sqlColumnCount": 16,
+      "sqlOnlyColumns": [
+        "index_generation_id"
+      ],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_chunk_id",
+          "sqlDeclaration": "uuid references public.document_chunks(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_image_id",
+          "sqlDeclaration": "uuid references public.document_images(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_number",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "table_title",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "row_label",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "clinical_parameter",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "threshold_value",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "action",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "normalized_terms",
+          "sqlDeclaration": "text[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "search_tsv",
+          "sqlDeclaration": "tsvector generated always as ( to_tsvector( 'english', coalesce(table_title, '') || ' ' || coalesce(row_label, '') || ' ' || coalesce(clinical_parameter, '') || ' ' || coalesce(threshold_value, '') || ' ' || coalesce(action, '') ) ) stored",
+          "sourceKind": "create_table",
+          "representation": "generated_search_vector_represented_by_inputs_and_schema_identity",
+          "sourceInputs": [
+            "table_title",
+            "row_label",
+            "clinical_parameter",
+            "threshold_value",
+            "action"
+          ]
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_embedding_fields",
+      "createLine": 346,
+      "sqlColumnCount": 12,
+      "sqlOnlyColumns": [
+        "index_generation_id"
+      ],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_chunk_id",
+          "sqlDeclaration": "uuid references public.document_chunks(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "field_type",
+          "sqlDeclaration": "text not null check ( field_type in ( 'document_title', 'document_summary', 'section_context', 'memory_card', 'chunk_high_yield', 'table_row', 'image_caption', 'clinical_action', 'threshold_fact' ) )",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "content",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "content_hash",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "embedding",
+          "sqlDeclaration": "extensions.vector(1536) not null",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "search_tsv",
+          "sqlDeclaration": "tsvector generated always as (to_tsvector('english', content)) stored",
+          "sourceKind": "create_table",
+          "representation": "generated_search_vector_represented_by_inputs_and_schema_identity",
+          "sourceInputs": [
+            "content"
+          ]
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_index_units",
+      "createLine": 399,
+      "sqlColumnCount": 23,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "unit_type",
+          "sqlDeclaration": "text not null check (unit_type in ('document_profile', 'section_summary', 'page_text', 'chunk_evidence', 'table_fact', 'askable_question', 'clinical_fact', 'threshold', 'workflow_step', 'medication_monitoring', 'alias', 'vocabulary_term', 'visual_summary', 'flowchart_step', 'diagram_decision', 'risk_matrix_cell', 'medication_chart_row', 'chart_finding', 'visual_askable_question', 'table_threshold'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_chunk_id",
+          "sqlDeclaration": "uuid references public.document_chunks(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_image_id",
+          "sqlDeclaration": "uuid references public.document_images(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_start",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_end",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "heading_path",
+          "sqlDeclaration": "text[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "title",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "content",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "normalized_terms",
+          "sqlDeclaration": "text[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_span",
+          "sqlDeclaration": "jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "quality_score",
+          "sqlDeclaration": "real not null default 0.7 check (quality_score >= 0 and quality_score <= 1)",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "extraction_mode",
+          "sqlDeclaration": "text not null default 'deterministic' check (extraction_mode in ('deterministic', 'model_heavy', 'hybrid'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "producer",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "artifact_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "embedding",
+          "sqlDeclaration": "extensions.vector(1536) not null",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "search_tsv",
+          "sqlDeclaration": "tsvector generated always as (to_tsvector('english', coalesce(unit_type, '') || ' ' || coalesce(title, '') || ' ' || coalesce(content, ''))) stored",
+          "sourceKind": "create_table",
+          "representation": "generated_search_vector_represented_by_inputs_and_schema_identity",
+          "sourceInputs": [
+            "unit_type",
+            "title",
+            "content"
+          ]
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_sections",
+      "createLine": 221,
+      "sqlColumnCount": 18,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "section_index",
+          "sqlDeclaration": "integer not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "heading",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "heading_path",
+          "sqlDeclaration": "text[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_start",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_end",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "chunk_ids",
+          "sqlDeclaration": "uuid[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "summary",
+          "sqlDeclaration": "text not null default ''",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "tags",
+          "sqlDeclaration": "text[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "extraction_quality",
+          "sqlDeclaration": "text not null default 'unknown' check (extraction_quality in ('good', 'partial', 'poor', 'unknown'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "producer",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "artifact_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_memory_cards",
+      "createLine": 252,
+      "sqlColumnCount": 20,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "section_id",
+          "sqlDeclaration": "uuid references public.document_sections(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "card_type",
+          "sqlDeclaration": "text not null check (card_type in ( 'section_summary', 'askable_question', 'table_row', 'threshold', 'medication', 'risk', 'workflow', 'definition', 'citation_anchor' ))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "title",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "content",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "normalized_terms",
+          "sqlDeclaration": "text[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "page_number",
+          "sqlDeclaration": "integer",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_chunk_ids",
+          "sqlDeclaration": "uuid[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_image_ids",
+          "sqlDeclaration": "uuid[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "confidence",
+          "sqlDeclaration": "real not null default 0.5 check (confidence >= 0 and confidence <= 1)",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "producer",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "artifact_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "embedding",
+          "sqlDeclaration": "extensions.vector(1536) not null",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "search_tsv",
+          "sqlDeclaration": "tsvector generated always as ( to_tsvector( 'english', coalesce(title, '') || ' ' || coalesce(content, '') ) ) stored",
+          "sourceKind": "create_table",
+          "representation": "generated_search_vector_represented_by_inputs_and_schema_identity",
+          "sourceInputs": [
+            "title",
+            "content"
+          ]
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_summaries",
+      "createLine": 206,
+      "sqlColumnCount": 12,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null unique references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "summary",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "clinical_specifics",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_chunk_ids",
+          "sqlDeclaration": "uuid[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_image_ids",
+          "sqlDeclaration": "uuid[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "model",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "generated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_labels",
+      "createLine": 175,
+      "sqlColumnCount": 10,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "label",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "label_type",
+          "sqlDeclaration": "text not null check (label_type in ( 'site', 'topic', 'document_type', 'medication', 'risk', 'setting', 'workflow', 'population', 'service', 'clinical_action', 'care_phase', 'document_intent', 'content_feature', 'custom' ))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source",
+          "sqlDeclaration": "text not null default 'generated' check (source in ('generated', 'manual'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "confidence",
+          "sqlDeclaration": "real not null default 0.5 check (confidence >= 0 and confidence <= 1)",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_index_quality",
+      "createLine": 376,
+      "sqlColumnCount": 13,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "document_id"
+      ],
+      "columns": [
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid primary key references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "quality_score",
+          "sqlDeclaration": "real not null default 0 check (quality_score >= 0 and quality_score <= 1)",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "extraction_quality",
+          "sqlDeclaration": "text not null default 'unknown' check (extraction_quality in ('good', 'partial', 'poor', 'unknown'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "anchor_coverage",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "model_fallback_rate",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "noisy_unit_rate",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "retrievable_visual_hit",
+          "sqlDeclaration": "boolean",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_span_coverage",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "typed_unit_coverage",
+          "sqlDeclaration": "real",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "metrics",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "issues",
+          "sqlDeclaration": "text[] not null default '{}'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "document_id IN W; all generations, producers and legacy rows, no active-generation filtering in integrity inventory",
+      "setOrder": [
+        "document_id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "ingestion_jobs",
+      "createLine": 485,
+      "sqlColumnCount": 22,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "batch_id",
+          "sqlDeclaration": "uuid references public.import_batches(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "status",
+          "sqlDeclaration": "text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "stage",
+          "sqlDeclaration": "text not null default 'queued'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "progress",
+          "sqlDeclaration": "integer not null default 0 check (progress between 0 and 100)",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "error_message",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "attempt_count",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "max_attempts",
+          "sqlDeclaration": "integer not null default 3",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "locked_at",
+          "sqlDeclaration": "timestamptz",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "locked_by",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "next_run_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "started_at",
+          "sqlDeclaration": "timestamptz",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "completed_at",
+          "sqlDeclaration": "timestamptz",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "lease_token",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "alter_table",
+          "sourceLine": 11751,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lease_expected_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "alter_table",
+          "sourceLine": 11751,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lease_write_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "alter_table",
+          "sourceLine": 11751,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lease_authority_digest",
+          "sqlDeclaration": "text",
+          "sourceKind": "alter_table",
+          "sourceLine": 11751,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lease_expires_at",
+          "sqlDeclaration": "timestamptz",
+          "sourceKind": "alter_table",
+          "sourceLine": 11751,
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "lease_duration_seconds",
+          "sqlDeclaration": "integer",
+          "sourceKind": "alter_table",
+          "sourceLine": 11751,
+          "representation": "retained_full_stored_value"
+        }
+      ],
+      "populationPredicate": "document_id IN W OR batch_id IN B; record selected-document rows and out-of-wave batch siblings as disjoint roles",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "indexing_v3_agent_jobs",
+      "createLine": 5723,
+      "sqlColumnCount": 20,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default extensions.gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "status",
+          "sqlDeclaration": "text not null default 'pending' check (status in ('pending', 'processing', 'completed', 'failed', 'needs_enrichment_artifacts'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "enrichment_status",
+          "sqlDeclaration": "text not null default 'pending' check (enrichment_status in ('pending', 'processing', 'completed', 'failed', 'needs_enrichment_artifacts'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "attempt_count",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "max_attempts",
+          "sqlDeclaration": "integer not null default 3",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "locked_by",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "locked_at",
+          "sqlDeclaration": "timestamptz",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "next_run_at",
+          "sqlDeclaration": "timestamptz",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "version",
+          "sqlDeclaration": "text not null default 'visual-core-v3'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "last_error",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "lease_token",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "alter_table",
+          "sourceLine": 11765,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lease_expected_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "alter_table",
+          "sourceLine": 11765,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lease_write_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "alter_table",
+          "sourceLine": 11765,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lease_authority_digest",
+          "sqlDeclaration": "text",
+          "sourceKind": "alter_table",
+          "sourceLine": 11765,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lease_expires_at",
+          "sqlDeclaration": "timestamptz",
+          "sourceKind": "alter_table",
+          "sourceLine": 11765,
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "lease_duration_seconds",
+          "sqlDeclaration": "integer",
+          "sourceKind": "alter_table",
+          "sourceLine": 11765,
+          "representation": "retained_full_stored_value"
+        }
+      ],
+      "populationPredicate": "document_id IN W",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "ingestion_job_stages",
+      "createLine": 505,
+      "sqlColumnCount": 16,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "job_id",
+          "sqlDeclaration": "uuid not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "stage_name",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "stage_status",
+          "sqlDeclaration": "text not null default 'started' check (stage_status in ('started', 'completed', 'failed'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "error_class",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "retry_count",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "artifact_counts",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "error_message",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "started_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "finished_at",
+          "sqlDeclaration": "timestamptz",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "job_kind",
+          "sqlDeclaration": "text check(job_kind in ('node','indexing_v3'))",
+          "sourceKind": "alter_table",
+          "sourceLine": 12182,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lease_token",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "alter_table",
+          "sourceLine": 12182,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "alter_table",
+          "sourceLine": 12182,
+          "representation": "retained_full_stored_value"
+        }
+      ],
+      "populationPredicate": "document_id IN W OR job_id IN Q; retain inconsistent cross-document rows; Q contains only selected-document Node/Edge job IDs",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "import_batches",
+      "createLine": 41,
+      "sqlColumnCount": 15,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete set null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "name",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_root",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "include_glob",
+          "sqlDeclaration": "text not null default '**/*.pdf'",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "status",
+          "sqlDeclaration": "text not null default 'queued' check (status in ('queued', 'processing', 'completed', 'completed_with_errors', 'failed'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "total_files",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "queued_files",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "skipped_files",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "failed_files",
+          "sqlDeclaration": "integer not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "total_bytes",
+          "sqlDeclaration": "bigint not null default 0",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "completed_at",
+          "sqlDeclaration": "timestamptz",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "id IN B; B is all batch_id from original selected-document Node rows UNION documents.import_batch_id",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "rag_aliases",
+      "createLine": 566,
+      "sqlColumnCount": 10,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "owner_id",
+          "sqlDeclaration": "uuid references auth.users(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "alias",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "canonical",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "alias_type",
+          "sqlDeclaration": "text not null check (alias_type in ('medication', 'document_title', 'acronym', 'service', 'workflow', 'typo', 'clinical_term', 'custom'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "weight",
+          "sqlDeclaration": "real not null default 1.0",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "enabled",
+          "sqlDeclaration": "boolean not null default true",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "metadata",
+          "sqlDeclaration": "jsonb not null default '{}'::jsonb",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "integrity: metadata.document_id text exactly IN W; evaluation additionally includes exact frozen permitted manual alias IDs M, with prospective admission predicate to detect additions/enabled flips; see report",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_title_words",
+      "createLine": 5135,
+      "sqlColumnCount": 2,
+      "sqlOnlyColumns": [
+        "document_id",
+        "word"
+      ],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "word",
+        "document_id"
+      ],
+      "columns": [
+        {
+          "name": "word",
+          "sqlDeclaration": "text not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null references public.documents(id) on delete cascade",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        }
+      ],
+      "populationPredicate": "document_id IN W; no whole-corpus title-word reader in exact-wave evaluation",
+      "setOrder": [
+        "word",
+        "document_id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "public_source_versions",
+      "createLine": 11211,
+      "sqlColumnCount": 25,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_catalogue_key",
+          "sqlDeclaration": "text NOT NULL CHECK (btrim(source_catalogue_key) <> '')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_policy_version",
+          "sqlDeclaration": "text NOT NULL CHECK (btrim(source_policy_version) <> '')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_policy_digest",
+          "sqlDeclaration": "text NOT NULL CHECK (source_policy_digest ~ '^sha256:[0-9a-f]{64}$')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "exact_canonical_url",
+          "sqlDeclaration": "text NOT NULL CHECK (exact_canonical_url ~ '^https://')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "exact_version_url",
+          "sqlDeclaration": "text NOT NULL CHECK (exact_version_url ~ '^https://')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "exact_version",
+          "sqlDeclaration": "text NOT NULL CHECK (btrim(exact_version) <> '')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "content_hash",
+          "sqlDeclaration": "text NOT NULL CHECK (content_hash ~ '^sha256:[0-9a-f]{64}$')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "staged_content_hash",
+          "sqlDeclaration": "text NOT NULL CHECK (staged_content_hash ~ '^sha256:[0-9a-f]{64}$')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "retrieved_at",
+          "sqlDeclaration": "timestamptz NOT NULL",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "licence_evidence_digest",
+          "sqlDeclaration": "text NOT NULL CHECK (licence_evidence_digest ~ '^sha256:[0-9a-f]{64}$')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "staging_document_id",
+          "sqlDeclaration": "uuid NOT NULL REFERENCES public.documents(id) ON DELETE RESTRICT",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "extraction_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lifecycle",
+          "sqlDeclaration": "text NOT NULL CHECK (lifecycle IN ('discovered', 'shadow', 'approved', 'active', 'superseded', 'quarantined', 'tombstoned'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "acquisition_identity_digest",
+          "sqlDeclaration": "text CHECK (acquisition_identity_digest IS NULL OR acquisition_identity_digest ~ '^sha256:[0-9a-f]{64}$')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "supersedes_version_id",
+          "sqlDeclaration": "uuid REFERENCES public.public_source_versions(id) ON DELETE RESTRICT",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "activation_event_id",
+          "sqlDeclaration": "uuid NOT NULL REFERENCES public.public_source_activation_events(id) ON DELETE RESTRICT",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "staging_owner_id",
+          "sqlDeclaration": "uuid NOT NULL",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "publication_approval_id",
+          "sqlDeclaration": "uuid REFERENCES public.document_publication_approvals(id) ON DELETE RESTRICT",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "publication_manifest_digest",
+          "sqlDeclaration": "text CHECK ( publication_manifest_digest IS NULL OR publication_manifest_digest ~ '^[0-9a-f]{64}$' )",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "publication_reviewed_state_digest",
+          "sqlDeclaration": "text CHECK ( publication_reviewed_state_digest IS NULL OR publication_reviewed_state_digest ~ '^[0-9a-f]{64}$' )",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "publication_reviewed_index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz NOT NULL DEFAULT now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz NOT NULL DEFAULT now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "staging_document_id IN W",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "public_source_activation_events",
+      "createLine": 11191,
+      "sqlColumnCount": 10,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid PRIMARY KEY DEFAULT gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_catalogue_key",
+          "sqlDeclaration": "text NOT NULL CHECK (btrim(source_catalogue_key) <> '')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_policy_version",
+          "sqlDeclaration": "text NOT NULL CHECK (btrim(source_policy_version) <> '')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_policy_digest",
+          "sqlDeclaration": "text NOT NULL CHECK (source_policy_digest ~ '^sha256:[0-9a-f]{64}$')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "decision",
+          "sqlDeclaration": "text NOT NULL CHECK (decision IN ('activate', 'quarantine', 'retire'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "operator_id",
+          "sqlDeclaration": "uuid NOT NULL",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "reason",
+          "sqlDeclaration": "text NOT NULL CHECK (btrim(reason) <> '' AND length(reason) <= 1000)",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "evidence_references",
+          "sqlDeclaration": "text[] NOT NULL CHECK ( cardinality(evidence_references) BETWEEN 1 AND 50 AND array_position(evidence_references, '') IS NULL )",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_sequence",
+          "sqlDeclaration": "bigint NOT NULL",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "created_at",
+          "sqlDeclaration": "timestamptz NOT NULL DEFAULT now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "source_catalogue_key IN K; K is UNION of selected document source_catalogue_key and selected version source_catalogue_key; retain all matching events, independently choose latest sequence for authority",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "public_source_serving_authority",
+      "createLine": 11307,
+      "sqlColumnCount": 3,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "singleton"
+      ],
+      "columns": [
+        {
+          "name": "singleton",
+          "sqlDeclaration": "boolean primary key default true check (singleton)",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "lifecycle_epoch",
+          "sqlDeclaration": "bigint not null default 1 check (lifecycle_epoch > 0)",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "updated_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        }
+      ],
+      "populationPredicate": "singleton = true; exactly one row required",
+      "setOrder": [
+        "singleton"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    },
+    {
+      "table": "document_publication_approvals",
+      "createLine": 8159,
+      "sqlColumnCount": 13,
+      "sqlOnlyColumns": [],
+      "typesOnlyColumns": [],
+      "rowKey": [
+        "id"
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "sqlDeclaration": "uuid primary key default gen_random_uuid()",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "document_id",
+          "sqlDeclaration": "uuid not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "expected_prior_owner_id",
+          "sqlDeclaration": "uuid not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "approving_operator_id",
+          "sqlDeclaration": "uuid not null",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "decision",
+          "sqlDeclaration": "text not null check (decision in ('approved', 'keep_private', 'quarantine'))",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "reason",
+          "sqlDeclaration": "text not null check (char_length(trim(reason)) between 3 and 2000)",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "evidence_references",
+          "sqlDeclaration": "text[] not null check (cardinality(evidence_references) > 0)",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "manifest_digest",
+          "sqlDeclaration": "text not null check (manifest_digest ~ '^[0-9a-f]{64}$')",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "reviewed_state_digest",
+          "sqlDeclaration": "text",
+          "sourceKind": "create_table",
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "approved_at",
+          "sqlDeclaration": "timestamptz not null default now()",
+          "sourceKind": "create_table",
+          "representation": "retained_lossless_server_text_or_raw_envelope_no_js_roundtrip"
+        },
+        {
+          "name": "source_catalogue_key",
+          "sqlDeclaration": "text",
+          "sourceKind": "alter_table",
+          "sourceLine": 11558,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "source_policy_version",
+          "sqlDeclaration": "text",
+          "sourceKind": "alter_table",
+          "sourceLine": 11558,
+          "representation": "retained_full_stored_value"
+        },
+        {
+          "name": "reviewed_index_generation_id",
+          "sqlDeclaration": "uuid",
+          "sourceKind": "alter_table",
+          "sourceLine": 11558,
+          "representation": "retained_full_stored_value"
+        }
+      ],
+      "populationPredicate": "document_id IN W OR id IN A; A is publication_approval_id from selected versions UNION valid captured document publication_approval_id metadata; retain mismatch for refusal",
+      "setOrder": [
+        "id"
+      ],
+      "arrayPolicy": "Preserve all array order and duplicates within each stored row; sort only row populations by declared rowKey.",
+      "normalization": "None for full stored evidence; retain null, empty, key presence, whitespace, Unicode and native numeric/timestamp precision."
+    }
+  ],
+  "populationSymbols": {
+    "W": "sorted unique exact authorized document UUID set",
+    "Q": "all original selected-document Node and Edge job UUIDs; job_kind and document mismatches retained",
+    "B": "exact original batch closure; no recursive graph walk from siblings",
+    "K": "exact catalogue-key union derived from W and selected versions; a disagreement refuses authority",
+    "A": "exact referenced publication approval UUIDs plus selected-document approvals; malformed source IDs refuse",
+    "M": "exact frozen permitted manual alias IDs selected by reviewed alias admission rule; rule remains a finite dispatch decision"
+  },
+  "barrierBoundaries": [
+    "enqueue_wave",
+    "seal_member_or_wave_terminal_acceptance"
+  ],
+  "intermediateWrites": "U03 authority/source/document/queue locks plus exact private C member/first-token/control checkpoint; append only candidate-owned artifacts; no broad relation barrier and no claimed full-origin equality until terminal seal."
+}
