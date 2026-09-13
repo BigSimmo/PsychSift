@@ -2,6 +2,22 @@
 
 Task 7 is complete at the authored source and mocked/offline boundary. Both administrator uploads and configured backend imports now use one authority-bound admission contract and atomic SQL entry point. Admission does not grant provider clearance, public visibility or clinical approval.
 
+## Corrected acceptance — 13 September 2026
+
+The initial acceptance below was reopened for U07-R1 and U07-R2. Corrective product `e55614203649f240c19e7fa7e91c0aa453661bda` closes both at the local source/offline boundary. The earlier records remain unchanged historical evidence.
+
+- U07-R1: SQL retains only explicit naming/provenance/diagnostic metadata and establishes conservative server-owned clinical, extraction, catalogue and indexing values. The full original request fingerprint remains bound before filtering.
+- U07-R2: a definitive Storage collision requires complete byte/hash verification, followed by upload of current verified bytes to a fresh attempt-owned sibling. The borrowed object is never admitted or compensated. Replay reconstructs the persisted path and original naming while retaining current caller authority and retry budget. A concurrent winner updates importer naming caches and replay accounting correctly.
+- **218 composed correction passes across four affected suites:** 210 unchanged passes retained from `U04-u07-correction-1-result.json` (218 passed, exit 0, 10.39 seconds), plus 8 fresh passes in correction 2 (170 deliberately unselected cases, exit 0, 1.70 seconds). The follow-up covered two changed route fixtures and the complete upload/import admission suite. All 702 final input pins matched. Focused compiler correction 2 passed with 15 roots, zero diagnostics and zero input/I/O violations; correction 1's three test-fixture typing errors remain recorded as failed evidence.
+- Function-grants source check passed for 200 functions; migration-role source check passed for 530 inputs. Independent schema, ingestion and clinical-governance correction reviews returned Specification and bounded Quality PASS. No open P0–P2 correction finding remains. No SQL or hosted race was executed.
+- Acceptance: `C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U07-local-acceptance-2.json`, SHA-256 `b13cc2f6290002730a104f1217a692dc0efa9779f0d8526c7d5d32141679bf7e`. It binds all 16 current product files and the [corrected original-range package](../../execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U07/U07-corrected-original-range-review-2.diff), SHA-256 `b2ac55542223920a011bb9fc1fc937730ea23bdbb6c8b39a42f1264d1e46e841`.
+
+The correction used disjoint Sol implementation owners, focused independent reviews, one batched correction and reused passing evidence. No broad tests, new recovery framework or renewed programme audit was added. Actual Storage error/read visibility, PostgreSQL race ordering, maximum-size collision memory and governed reconciliation of never-admitted uncertain objects remain runtime acceptance limits; no blind cleanup is authorised. U08 remains unstarted.
+
+Checkpoint documentation qualification: the full governing-plan link check exited 1 for 27 pre-existing missing/planned paths. Rechecking the unchanged parent plan produced the exact same diagnostic log; no correction-introduced link error was found. These references remain unresolved, and this full-plan check is not reported as green. Index, inventory and script-reference checks passed.
+
+## Initial acceptance record — retained history
+
 - Original base: `97860697a6dcc5646b083ff66ea25167e55082f1`.
 - Product commit: `9918841ee520c4d82287ce229b07a5e14b208171` on `codex/rag-local-build-20260822`.
 - Canonical [original-range review package](../../execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U07/U07-original-range-review-1.diff): `4cb519e0b232fb38ae8b32d5ca13f1e3fd3a33dc2c7b2d78cc909fbce2045674`.
