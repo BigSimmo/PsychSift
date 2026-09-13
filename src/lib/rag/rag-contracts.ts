@@ -1,10 +1,12 @@
 import type {
   ClinicalQueryMode,
   CorpusGroundingVerdict,
+  DocumentLabel,
   EvidenceRelevance,
   RagAnswer,
   RagProgrammeMode,
   RagQueryClass,
+  SearchResult,
   RetrievalIntent,
   RetrievalSelectionSummary,
   SmartRagApiPlan,
@@ -12,6 +14,508 @@ import type {
 import type { RetrievalAccessScope } from "@/lib/owner-scope";
 import type { VerifiedUnit } from "@/lib/answer-preview";
 import type { ResolvedRagContextSnapshot } from "@/lib/rag/rag-context-snapshot";
+import type { RankingConfig } from "@/lib/ranking-config";
+import type { OpenAIReasoningEffort, OpenAITextResult } from "@/lib/openai";
+import type { SemanticRerankGenerator } from "@/lib/semantic-rerank";
+import type { ZodType } from "zod";
+
+export type RagEvaluationSide = "baseline" | "candidate";
+
+export type RagEvaluationOperation =
+  | "adjacent_chunks"
+  | "aliases"
+  | "chunks_by_ids"
+  | "chunks_by_indexes"
+  | "corpus_terms"
+  | "correct_terms"
+  | "documents"
+  | "embedding_fields"
+  | "hybrid_chunks"
+  | "images_by_ids"
+  | "images_by_pages"
+  | "index_units"
+  | "lookup_chunk_prefix"
+  | "lookup_chunk_terms"
+  | "lookup_chunks"
+  | "lookup_document_terms"
+  | "lookup_documents"
+  | "memory_cards_hybrid"
+  | "memory_cards_lexical"
+  | "quality"
+  | "ranking_metadata"
+  | "related_documents"
+  | "table_facts"
+  | "text_chunks"
+  | "vector_chunks"
+  | "visual_rows";
+
+export type RagEvaluationReadBinding = Readonly<{
+  sessionId: string;
+  side: RagEvaluationSide;
+  operation: RagEvaluationOperation;
+  documentIds: readonly string[];
+  snapshotDigest: string;
+  ownerId: string | null;
+  includePublic: boolean;
+  provenanceDigest: string;
+}>;
+
+export type RagEvaluationReadResult<T> =
+  | Readonly<{ kind: "success"; binding: RagEvaluationReadBinding; value: T }>
+  | Readonly<{ kind: "unavailable"; binding: RagEvaluationReadBinding; reason: string }>;
+
+export type RagEvaluationFailureCode =
+  | "context_mismatch"
+  | "dependency_error"
+  | "dependency_unavailable"
+  | "malformed_result"
+  | "provider_error";
+
+export type RagEvaluationProviderOperation = "embed_query" | "classify_query" | "rerank" | "generate_answer";
+
+export type RagEvaluationFailureCollector = Readonly<{
+  record(
+    failure: Readonly<{
+      code: RagEvaluationFailureCode;
+      operation: RagEvaluationOperation | RagEvaluationProviderOperation | "context";
+    }>,
+  ): void;
+  assertComplete(): void;
+}>;
+
+export type RagEvaluationReadScope = Readonly<{
+  sessionId: string;
+  side: RagEvaluationSide;
+  documentIds: readonly string[];
+  snapshotDigest: string;
+  ownerId: string | null;
+  includePublic: boolean;
+}>;
+
+type ScopedRequest<T extends object> = Readonly<RagEvaluationReadScope & T>;
+type BoundRows<T> = Promise<RagEvaluationReadResult<readonly T[]>>;
+
+export type RagEvaluationAliasRow = Readonly<{
+  alias: string;
+  canonical: string;
+  alias_type: string;
+  weight: number;
+  owner_id: string | null;
+}>;
+
+export type RagEvaluationCorpusTermRow = Readonly<{
+  term: string;
+  has_ts_signal: boolean;
+  title_doc_count: number;
+  chunk_present: boolean;
+  total_doc_count: number;
+}>;
+
+export type RagEvaluationDocumentMetadataRow = Readonly<{
+  document_id: string;
+  labels: readonly DocumentLabel[];
+  summary: string | null;
+}>;
+
+export type RagEvaluationRelatedDocumentRow = RagEvaluationDocumentMetadataRow;
+
+export type RagEvaluationQualityRow = Readonly<{
+  document_id: string;
+  owner_id: string | null;
+  quality_score: number;
+  extraction_quality: string;
+  metrics: unknown;
+  issues: readonly string[];
+  updated_at: string;
+}>;
+export type RagEvaluationStoredImageRow = Readonly<{
+  id: string;
+  document_id: string;
+  page_number: number | null;
+  storage_path: string;
+  caption: string;
+  bbox: unknown;
+  image_type: string;
+  searchable: boolean;
+  clinical_relevance_score: number;
+  source_kind: string;
+  width: number | null;
+  height: number | null;
+  labels: readonly string[];
+  metadata: unknown;
+}>;
+export type RagEvaluationHydratedChunkRow = Readonly<{
+  id: string;
+  document_id: string;
+  page_number: number | null;
+  chunk_index: number;
+  section_heading: string | null;
+  section_path: readonly string[];
+  heading_level: number | null;
+  parent_heading: string | null;
+  anchor_id: string | null;
+  content: string;
+  retrieval_synopsis: string | null;
+  image_ids: readonly string[];
+  index_generation_id: string | null;
+}>;
+export type RagEvaluationDocumentRow = Readonly<{
+  id: string;
+  title: string;
+  file_name: string;
+  metadata: unknown;
+  owner_id: string | null;
+  status: string;
+}>;
+export type RagEvaluationLookupDocumentRow = RagEvaluationDocumentRow &
+  Readonly<{ page_count: number; chunk_count: number; image_count: number; text_rank?: number; match_reason?: string }>;
+export type RagEvaluationLookupChunkRow = Omit<RagEvaluationHydratedChunkRow, "index_generation_id"> &
+  Readonly<{ text_rank?: number }>;
+export type RagEvaluationTableFactRow = Readonly<{
+  id: string;
+  document_id: string;
+  source_chunk_id: string | null;
+  source_image_id: string | null;
+  page_number: number | null;
+  table_title: string | null;
+  row_label: string | null;
+  clinical_parameter: string | null;
+  threshold_value: string | null;
+  action: string | null;
+  text_rank: number;
+  match_reason: string;
+  metadata: unknown;
+}>;
+export type RagEvaluationEmbeddingFieldRow = Readonly<{
+  id: string;
+  document_id: string;
+  source_chunk_id: string;
+  field_type: string;
+  content: string;
+  similarity: number;
+  text_rank: number;
+  hybrid_score: number;
+}>;
+export type RagEvaluationIndexUnitRow = Readonly<{
+  id: string;
+  document_id: string;
+  source_chunk_id: string;
+  source_image_id: string | null;
+  unit_type: string;
+  title: string;
+  content: string;
+  page_start: number | null;
+  page_end: number | null;
+  heading_path: readonly string[];
+  normalized_terms: readonly string[];
+  source_span: unknown;
+  quality_score: number;
+  extraction_mode: string;
+  similarity: number;
+  text_rank: number;
+  hybrid_score: number;
+  metadata: unknown;
+}>;
+export type RagEvaluationVisualRow = Readonly<{
+  id: string;
+  document_id: string;
+  page_number: number | null;
+  source_kind: string;
+  searchable: boolean;
+  image_type: string;
+  clinical_relevance_score: number;
+  metadata: unknown;
+}>;
+
+export type RagEvaluationAdjacentChunkRow = Readonly<{
+  id: string;
+  document_id: string;
+  page_number: number | null;
+  chunk_index: number;
+  section_heading: string | null;
+  content: string;
+  retrieval_synopsis: string | null;
+  index_generation_id: string | null;
+}>;
+
+export type RagEvaluationReadDependencies = Readonly<{
+  readAliases(
+    request: ScopedRequest<Record<never, never>>,
+  ): Promise<
+    RagEvaluationReadResult<
+      Readonly<{ ownerRows: readonly RagEvaluationAliasRow[]; publicRows: readonly RagEvaluationAliasRow[] }>
+    >
+  >;
+  readCorpusTermStats(request: ScopedRequest<{ terms: readonly string[] }>): BoundRows<RagEvaluationCorpusTermRow>;
+  correctClinicalTerms(
+    request: ScopedRequest<{ input_query: string; min_sim: number }>,
+  ): Promise<RagEvaluationReadResult<string>>;
+  readTextChunks(
+    request: ScopedRequest<{ query_text: string; match_count: number; document_filters: readonly string[] | null }>,
+  ): BoundRows<SearchResult>;
+  readHybridChunks(
+    request: ScopedRequest<{
+      query_embedding: string;
+      query_text: string;
+      match_count: number;
+      min_similarity: number;
+      document_filters: readonly string[] | null;
+    }>,
+  ): BoundRows<SearchResult>;
+  readVectorChunks(
+    request: ScopedRequest<{
+      query_embedding: string;
+      match_count: number;
+      min_similarity: number;
+      document_filter: string | null;
+    }>,
+  ): BoundRows<SearchResult>;
+  readLookupChunks(
+    request: ScopedRequest<{ query_text: string; document_filters: readonly string[] | null; match_count: number }>,
+  ): BoundRows<RagEvaluationLookupChunkRow>;
+  readLookupDocuments(
+    request: ScopedRequest<{ query_text: string; match_count: number }>,
+  ): BoundRows<RagEvaluationLookupDocumentRow>;
+  readLookupChunkPrefix(
+    request: ScopedRequest<{ document_filters: readonly string[] | null; match_count: number }>,
+  ): BoundRows<RagEvaluationLookupChunkRow>;
+  readLookupChunkTerms(
+    request: ScopedRequest<{ document_filters: readonly string[] | null; terms: readonly string[]; match_count: number }>,
+  ): BoundRows<RagEvaluationLookupChunkRow>;
+  readLookupDocumentTerms(
+    request: ScopedRequest<{ terms: readonly string[] }>,
+  ): BoundRows<RagEvaluationLookupDocumentRow>;
+  readTableFacts(
+    request: ScopedRequest<{ query_text: string; match_count: number; document_filters: readonly string[] | null }>,
+  ): BoundRows<RagEvaluationTableFactRow>;
+  readEmbeddingFields(
+    request: ScopedRequest<{
+      query_embedding: string;
+      query_text: string;
+      match_count: number;
+      min_similarity: number;
+      document_filters: readonly string[] | null;
+    }>,
+  ): BoundRows<RagEvaluationEmbeddingFieldRow>;
+  readIndexUnits(
+    request: ScopedRequest<{
+      query_embedding: string;
+      query_text: string;
+      match_count: number;
+      min_similarity: number;
+      document_filters: readonly string[] | null;
+    }>,
+  ): BoundRows<RagEvaluationIndexUnitRow>;
+  readMemoryCardsLexical(
+    request: ScopedRequest<{ query_text: string; document_filters: readonly string[] | null; match_count: number }>,
+  ): BoundRows<import("@/lib/types").DocumentMemoryCard>;
+  readMemoryCardsHybrid(
+    request: ScopedRequest<{
+      query_embedding: string;
+      query_text: string;
+      match_count: number;
+      min_similarity: number;
+      document_filters: readonly string[] | null;
+    }>,
+  ): BoundRows<import("@/lib/types").DocumentMemoryCard>;
+  readChunksByIds(request: ScopedRequest<{ ids: readonly string[] }>): BoundRows<RagEvaluationHydratedChunkRow>;
+  readChunksByIndexes(
+    request: ScopedRequest<{ document_ids: readonly string[]; indexes: readonly number[]; match_count: number }>,
+  ): BoundRows<RagEvaluationHydratedChunkRow>;
+  readDocumentSnapshots(request: ScopedRequest<{ ids: readonly string[] }>): BoundRows<RagEvaluationDocumentRow>;
+  readRankingMetadata(
+    request: ScopedRequest<{ document_ids: readonly string[] }>,
+  ): BoundRows<RagEvaluationDocumentMetadataRow>;
+  readQuality(request: ScopedRequest<{ document_ids: readonly string[] }>): BoundRows<RagEvaluationQualityRow>;
+  readImagesByIds(request: ScopedRequest<{ ids: readonly string[] }>): BoundRows<RagEvaluationStoredImageRow>;
+  readImagesByPages(
+    request: ScopedRequest<{ document_ids: readonly string[]; page_numbers: readonly number[] }>,
+  ): BoundRows<RagEvaluationStoredImageRow>;
+  readVisualCounts(request: ScopedRequest<{ document_ids: readonly string[] }>): BoundRows<RagEvaluationVisualRow>;
+  readRelatedDocuments(
+    request: ScopedRequest<{ document_ids: readonly string[] }>,
+  ): BoundRows<RagEvaluationRelatedDocumentRow>;
+  readAdjacentChunks(
+    request: ScopedRequest<{ document_ids: readonly string[]; chunk_indexes: readonly number[] }>,
+  ): BoundRows<RagEvaluationAdjacentChunkRow>;
+}>;
+
+export type RagEvaluationGenerationConfiguration = Readonly<{
+  answerModel: string;
+  fastModel: string;
+  strongModel: string;
+  classifierModel: string;
+  indexingModel: string;
+  embeddingModel: string;
+  embeddingDimensions: number;
+  fastReasoningEffort: OpenAIReasoningEffort;
+  strongReasoningEffort: OpenAIReasoningEffort;
+  answerVerbosity: "low" | "medium" | "high";
+  maxOutputTokens: number;
+  providerMode: "openai" | "offline";
+  promptVersion: string;
+  schemaVersion: string;
+  classifierPromptVersion: string;
+  retrievalVersion: string;
+  indexingPromptVersion: string;
+  semanticRerankEnabled: boolean;
+  semanticRerankModel: string;
+}>;
+
+export type RagEvaluationProviderPolicy = Readonly<{
+  requestTimeoutMs: number;
+  answerTimeoutMs: number;
+  embeddingMaxRetries: number;
+  generationMaxRetries: number;
+  promptCacheRetention: "off" | "in_memory" | "24h";
+  promptCacheTtl: "off" | "30m" | null;
+  storeResponses: boolean;
+  routeBudgetMs: Readonly<{ unsupported: number; extractive: number; fast: number; strong: number }>;
+  generationRecoveryReserveMs: number;
+  minimumGenerationRetryMs: number;
+}>;
+
+export type RagEvaluationSdkRequestPolicy = Readonly<{
+  promptCacheRetention: RagEvaluationProviderPolicy["promptCacheRetention"];
+  promptCacheTtl: RagEvaluationProviderPolicy["promptCacheTtl"];
+  storeResponses: boolean;
+}>;
+
+export type RagEvaluationConfiguration = Readonly<{
+  generation: RagEvaluationGenerationConfiguration;
+  retrieval: Readonly<{
+    textWeakOrRelaxation: boolean;
+  }>;
+  ranking: Readonly<RankingConfig>;
+}>;
+
+export type RagEvaluationAnswerGenerationOptions = Readonly<{
+  model: string;
+  maxOutputTokens: number;
+  operation: "answer";
+  schemaName: "clinical_rag_answer";
+  instructions: string;
+  promptCacheKey: string;
+  timeoutMs: number;
+  maxRetries: 0;
+  reasoningEffort: OpenAIReasoningEffort;
+  textVerbosity: "low" | "medium" | "high";
+  promptCacheRetention: RagEvaluationProviderPolicy["promptCacheRetention"];
+  promptCacheTtl: RagEvaluationProviderPolicy["promptCacheTtl"];
+  storeResponses: boolean;
+  signal?: AbortSignal;
+}>;
+
+export type RagEvaluationProviderDependencies = Readonly<{
+  embedQuery(
+    request: Readonly<{
+      query: string;
+      model: string;
+      dimensions: number;
+      timeoutMs: number;
+      maxRetries: number;
+      signal?: AbortSignal;
+    }>,
+  ): Promise<Readonly<{ embedding: readonly number[]; cacheHit: boolean }>>;
+  generateClassifier(
+    input: readonly Readonly<Record<string, unknown>>[],
+    schema: ZodType<unknown>,
+    options: Readonly<{
+      model: string;
+      maxOutputTokens: 220;
+      operation: "text_generation";
+      instructions: string;
+      reasoningEffort: "low";
+      textVerbosity: "low";
+      schemaName: "clinical_rag_query_classifier";
+      promptCacheKey: string;
+      timeoutMs: number;
+      maxRetries: number;
+      promptCacheRetention: RagEvaluationProviderPolicy["promptCacheRetention"];
+      promptCacheTtl: RagEvaluationProviderPolicy["promptCacheTtl"];
+      storeResponses: boolean;
+      signal?: AbortSignal;
+    }>,
+  ): Promise<Readonly<{ parsed: unknown }>>;
+  generateRerank(
+    input: Parameters<SemanticRerankGenerator>[0],
+    schema: Parameters<SemanticRerankGenerator>[1],
+    options: Parameters<SemanticRerankGenerator>[2],
+    policy: RagEvaluationSdkRequestPolicy,
+  ): ReturnType<SemanticRerankGenerator>;
+  generateAnswer(
+    input: string,
+    schema: Readonly<Record<string, unknown>>,
+    options: RagEvaluationAnswerGenerationOptions,
+  ): Promise<OpenAITextResult>;
+}>;
+
+export type RagEvaluationContext = Readonly<{
+  kind: "u04-rag-evaluation-context-v1";
+  sessionId: string;
+  side: RagEvaluationSide;
+  documentIds: readonly string[];
+  snapshotDigest: string;
+  ownerId: string | null;
+  includePublic: boolean;
+  sourceOnly: boolean;
+  providerAvailable: boolean;
+  configuration: RagEvaluationConfiguration;
+  providerPolicy: RagEvaluationProviderPolicy;
+  ragContextSnapshot: ResolvedRagContextSnapshot;
+  indexingVersionAtRequestStart: Promise<string>;
+  readers: RagEvaluationReadDependencies;
+  providers: RagEvaluationProviderDependencies;
+  failures: RagEvaluationFailureCollector;
+  now(): number;
+}>;
+
+export function ragEvaluationReadScope(context: RagEvaluationContext): RagEvaluationReadScope {
+  return {
+    sessionId: context.sessionId,
+    side: context.side,
+    documentIds: context.documentIds,
+    snapshotDigest: context.snapshotDigest,
+    ownerId: context.ownerId,
+    includePublic: context.includePublic,
+  };
+}
+
+export async function acceptRagEvaluationRead<T>(
+  context: RagEvaluationContext,
+  operation: RagEvaluationOperation,
+  read: () => Promise<RagEvaluationReadResult<T>>,
+): Promise<T> {
+  let result: RagEvaluationReadResult<T>;
+  try {
+    result = await read();
+  } catch (error) {
+    context.failures.record({ code: "dependency_error", operation });
+    throw error;
+  }
+  try {
+    const binding = result?.binding;
+    if (
+      !result || (result.kind !== "success" && result.kind !== "unavailable") || !binding ||
+      binding.sessionId !== context.sessionId || binding.side !== context.side || binding.operation !== operation ||
+      binding.snapshotDigest !== context.snapshotDigest || binding.ownerId !== context.ownerId ||
+      binding.includePublic !== context.includePublic || !Array.isArray(binding.documentIds) ||
+      binding.documentIds.length !== context.documentIds.length ||
+      binding.documentIds.some((documentId, index) => documentId !== context.documentIds[index]) ||
+      typeof binding.provenanceDigest !== "string" || !/^sha256:[0-9a-f]{64}$/.test(binding.provenanceDigest) ||
+      (result.kind === "success" && !Object.hasOwn(result, "value")) ||
+      (result.kind === "unavailable" && typeof result.reason !== "string")
+    ) throw new Error("Invalid evaluation result.");
+  } catch {
+    context.failures.record({ code: "malformed_result", operation });
+    throw new Error(`Invalid U04 evaluation result binding for ${operation}.`);
+  }
+  if (result.kind === "unavailable") {
+    context.failures.record({ code: "dependency_unavailable", operation });
+    throw new Error(`U04 evaluation dependency unavailable for ${operation}.`);
+  }
+  return result.value;
+}
 
 export type SearchChunksArgs = {
   query: string;

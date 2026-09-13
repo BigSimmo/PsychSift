@@ -9,15 +9,21 @@ import {
   loadGoldenRetrievalCases,
   retrievalLimitForGoldenCase,
   summarizeGoldenRetrievalResults,
+  type GoldenRetrievalCase,
   type GoldenRetrievalResult,
 } from "./eval-retrieval";
 import {
+  configuredCostRates,
+  configuredEvaluatorRetry,
   estimateCostUsd,
   loadAdminClient,
   percentile,
   resolveEvalOwnerId,
   validateRagAnswer,
   withProviderBackoff,
+  type EvalCostRates,
+  type EvaluatorRetry,
+  type ProviderBackoffEvent,
 } from "./eval-utils";
 import {
   loadCapturedRagEvalCases,
@@ -31,9 +37,8 @@ import { sourceGovernanceWarnings } from "@/lib/source-governance";
 import { answerRouteBudgetMs } from "@/lib/rag/rag-route-budget";
 import type { AnswerRouteMode } from "@/lib/rag/rag-routing";
 import type { RagAnswer } from "@/lib/types";
+import type { searchChunksWithTelemetry, answerQuestionWithScope } from "@/lib/rag/rag";
 import { buildRagDiagnosticDumpRecord, resolveLocalDiagnosticOutputPath } from "./eval-answer-quality";
-
-loadEnvConfig(process.cwd());
 
 export type EvalQualityProviderMode = "openai" | "offline";
 
@@ -170,7 +175,9 @@ export function deliveredGroundedAfterSourceGovernancePolicy(
   return answer.grounded;
 }
 
-const crossRegionRunnerLatencyContext = process.env.EVAL_LATENCY_CONTEXT === "cross-region-runner";
+function ordinaryCrossRegionRunner() {
+  return process.env.EVAL_LATENCY_CONTEXT === "cross-region-runner";
+}
 
 export function ragAnswerTimingDiagnostics(
   answer: Pick<RagAnswer, "latencyTimings" | "routingMode">,
@@ -184,7 +191,7 @@ export function ragAnswerTimingDiagnostics(
   const generationMs = latencyTimings?.generation_latency_ms ?? 0;
   const routeDeadlineExceeded = latencyTimings?.route_deadline_exceeded ?? false;
   const budgetExhaustedByRetrieval = latencyTimings?.route_budget_exhausted_by_retrieval ?? false;
-  const crossRegionRunner = options?.crossRegionRunner ?? crossRegionRunnerLatencyContext;
+  const crossRegionRunner = options?.crossRegionRunner ?? ordinaryCrossRegionRunner();
   // Cross-region carve-out (E-3b): when GitHub's US runner spends the whole route budget on
   // retrieval alone and the runtime then behaves optimally (zero generation), the ceiling is
   // runner geography, not a runtime regression. Requires ALL THREE: the sanctioned cross-region
@@ -208,7 +215,8 @@ export function ragAnswerTimingDiagnostics(
   };
 }
 
-const qualityThresholds = {
+export function evalQualityThresholds(crossRegionRunner: boolean) {
+  return {
   retrievalTopKHitRate: 0.8,
   retrievalDocumentRecallAt5: 0.8,
   retrievalContentRecallAt5: 0.8,
@@ -227,7 +235,7 @@ const qualityThresholds = {
   // EVAL_LATENCY_CONTEXT=cross-region-runner, so eval:quality:release keeps the
   // strict gate. User-facing latency is enforced separately by the answer SLO
   // deep probe, not this eval.
-  ragP95LatencyMs: crossRegionRunnerLatencyContext ? 60_000 : 25_000,
+  ragP95LatencyMs: crossRegionRunner ? 60_000 : 25_000,
   ragRouteP95LatencyMs: {
     // Refusals must stay fast — a slow refusal means the pipeline burned generation time
     // before giving up, which is exactly the waste mode #580 eliminated.
@@ -236,7 +244,7 @@ const qualityThresholds = {
     // longer land in this bucket (see "fallback" below), so the runner allowance only
     // needs cross-region RPC headroom — not the blanket 60s that pre-fallback-bucket
     // calibration required — and a no-model extraction slowdown stays visible.
-    extractive: crossRegionRunnerLatencyContext ? 35_000 : 12_000,
+    extractive: crossRegionRunner ? 35_000 : 12_000,
     fast: 25_000,
     // Generation-fallback chains (latencyRouteForAnswer buckets any answer whose routing
     // reason records a generation_fallback here): the failed generation spends up to
@@ -245,9 +253,10 @@ const qualityThresholds = {
     fallback: 50_000,
     // Strong may retry a truncated generation at a larger budget (self-heal) = up to two
     // sequential generations; near-region runs keep the strict single-generation gate.
-    strong: crossRegionRunnerLatencyContext ? 60_000 : 35_000,
+    strong: crossRegionRunner ? 60_000 : 35_000,
   } as Record<string, number>,
-};
+  };
+}
 
 export function parseEvalQualityArgs(argv: string[]): EvalQualityArgs {
   const args: EvalQualityArgs = {
@@ -642,7 +651,10 @@ export function buildEvalQualityReport(args: {
   ragResults: RagQualityResult[];
   sourceMetadataDebtAcceptance?: SourceMetadataDebtAcceptance;
   providerMode?: EvalQualityProviderMode;
+  runContext?: EvalQualityRunContext;
+  crossRegionRunner?: boolean;
 }) {
+  const qualityThresholds = evalQualityThresholds(args.crossRegionRunner ?? ordinaryCrossRegionRunner());
   const providerMode = args.providerMode ?? "openai";
   const retrievalSummary = summarizeGoldenRetrievalResults(args.retrievalResults);
   const ragSummary = summarizeRagQualityResults(args.ragResults, providerMode);
@@ -773,7 +785,7 @@ export function buildEvalQualityReport(args: {
 
   return {
     generated_at: args.generatedAt ?? new Date().toISOString(),
-    run_context: evalQualityRunContext(),
+    run_context: args.runContext ?? evalQualityRunContext(),
     provider: {
       ...providerEvidence,
       passed:
@@ -1070,7 +1082,62 @@ async function assertSafeToRunEvals(supabase: Awaited<ReturnType<typeof loadAdmi
   }
 }
 
-async function runRetrievalQualityCases(args: {
+export type EvalQualityCaseAddress = Readonly<{
+  kind: "retrieval" | "quality";
+  /** Zero-based index in the exact preselected array; IDs need not be unique. */
+  ordinal: number;
+  id: string;
+}>;
+
+export type EvalQualitySearchOutput = Awaited<ReturnType<typeof searchChunksWithTelemetry>>;
+export type EvalQualitySearch = (
+  input: Parameters<typeof searchChunksWithTelemetry>[0],
+  address: EvalQualityCaseAddress,
+) => Promise<EvalQualitySearchOutput>;
+export type EvalQualityAnswer = (
+  input: Parameters<typeof answerQuestionWithScope>[0],
+  address: EvalQualityCaseAddress,
+) => Promise<RagAnswer>;
+
+export type RetrievalQualityOccurrence = {
+  address: EvalQualityCaseAddress & { kind: "retrieval" };
+  testCase: GoldenRetrievalCase;
+  output: EvalQualitySearchOutput;
+  result: GoldenRetrievalResult;
+};
+
+export type RagQualityOccurrence = {
+  address: EvalQualityCaseAddress & { kind: "quality" };
+  testCase: RagEvalCase;
+  output: RagAnswer;
+  result: RagQualityResult;
+};
+
+export type EvalQualityCaseFailureStage = "provider" | "validation" | "scoring";
+
+export type EvalQualityRunnerEvent =
+  | { address: EvalQualityCaseAddress; event: ProviderBackoffEvent<EvalQualitySearchOutput | RagAnswer> }
+  | { address: EvalQualityCaseAddress; event: { type: "fallback"; answer: RagAnswer } }
+  | {
+      address: EvalQualityCaseAddress;
+      event: {
+        type: "case-complete";
+        occurrence: RetrievalQualityOccurrence | RagQualityOccurrence;
+      };
+    }
+  | {
+      address: EvalQualityCaseAddress;
+      event: {
+        type: "case-failed";
+        stage: EvalQualityCaseFailureStage;
+        error: unknown | null;
+        output: EvalQualitySearchOutput | RagAnswer | null;
+        occurrence: RetrievalQualityOccurrence | RagQualityOccurrence | null;
+        completedOccurrences: readonly (RetrievalQualityOccurrence | RagQualityOccurrence)[];
+      };
+    };
+
+async function runOrdinaryRetrievalQualityCases(args: {
   fixture: string;
   ownerId?: string;
   limit?: number;
@@ -1078,6 +1145,7 @@ async function runRetrievalQualityCases(args: {
   forceEmbedding?: boolean;
   providerMode: EvalQualityProviderMode;
   supabase: Awaited<ReturnType<typeof loadAdminClient>>;
+  evaluatorRetry: EvaluatorRetry;
 }) {
   const [{ searchChunksWithTelemetry }, capturedCases] = await Promise.all([
     import("@/lib/rag/rag"),
@@ -1095,47 +1163,112 @@ async function runRetrievalQualityCases(args: {
     ? allCases.filter((item) => item.id === args.query || item.query.toLowerCase().includes(args.query!.toLowerCase()))
     : allCases;
   const cases = filtered.slice(0, args.limit ?? filtered.length);
-  const results: GoldenRetrievalResult[] = [];
+  return runRetrievalQualityCases({
+    cases,
+    ownerId: args.ownerId,
+    forceEmbedding: args.forceEmbedding,
+    evaluatorRetry: args.evaluatorRetry,
+    search: searchChunksWithTelemetry,
+  });
+}
 
-  for (const testCase of cases) {
+/** Runner seam only: the session owner supplies immutable cases and admitted callbacks/settings. */
+export async function runRetrievalQualityCases(args: {
+  cases: readonly GoldenRetrievalCase[];
+  ownerId?: string;
+  forceEmbedding: boolean | undefined;
+  evaluatorRetry: EvaluatorRetry;
+  search: EvalQualitySearch;
+  observe?: (event: EvalQualityRunnerEvent) => void;
+}) {
+  const results: GoldenRetrievalResult[] = [];
+  const occurrences: RetrievalQualityOccurrence[] = [];
+
+  for (const [ordinal, testCase] of args.cases.entries()) {
+    const address: RetrievalQualityOccurrence["address"] = Object.freeze({ kind: "retrieval", ordinal, id: testCase.id });
     const startedAt = Date.now();
-    const search = await withProviderBackoff(`quality-retrieval:${testCase.id}`, () =>
-      searchChunksWithTelemetry({
-        query: testCase.query,
-        ownerId: args.ownerId,
-        // Fetch ≥10 ranked rows so content_mrr@10 is scored over a true top-10 in this path
-        // too (fixtures with topK<10 would otherwise silently degrade it to content_mrr@topK).
-        topK: retrievalLimitForGoldenCase(testCase),
-        minSimilarity: 0.12,
-        skipCache: true,
-        forceEmbedding: testCase.forceEmbedding || args.forceEmbedding,
-      }),
-    );
-    const latencyMs =
-      (search.telemetry.supabase_rpc_latency_ms ?? 0) +
-        (search.telemetry.embedding_latency_ms ?? 0) +
-        (search.telemetry.rerank_latency_ms ?? 0) || Date.now() - startedAt;
-    results.push(
-      evaluateGoldenRetrievalCase({
+    let search: EvalQualitySearchOutput;
+    try {
+      search = await withProviderBackoff(`quality-retrieval:${testCase.id}`, () =>
+        args.search({
+          query: testCase.query,
+          ownerId: args.ownerId,
+          // Fetch ≥10 ranked rows so content_mrr@10 is scored over a true top-10 in this path
+          // too (fixtures with topK<10 would otherwise silently degrade it to content_mrr@topK).
+          topK: retrievalLimitForGoldenCase(testCase),
+          minSimilarity: 0.12,
+          skipCache: true,
+          forceEmbedding: testCase.forceEmbedding || args.forceEmbedding,
+        }, address),
+        { ...args.evaluatorRetry, observe: (event) => args.observe?.({ address, event }) },
+      );
+    } catch (error) {
+      args.observe?.({
+        address,
+        event: {
+          type: "case-failed",
+          stage: "provider",
+          error,
+          output: null,
+          occurrence: null,
+          completedOccurrences: Object.freeze(occurrences.slice()),
+        },
+      });
+      throw error;
+    }
+
+    let result: GoldenRetrievalResult;
+    try {
+      const latencyMs =
+        (search.telemetry.supabase_rpc_latency_ms ?? 0) +
+          (search.telemetry.embedding_latency_ms ?? 0) +
+          (search.telemetry.rerank_latency_ms ?? 0) || Date.now() - startedAt;
+      result = evaluateGoldenRetrievalCase({
         testCase,
         globalForceEmbedding: args.forceEmbedding,
         results: search.results,
         telemetry: search.telemetry,
         latencyMs,
-      }),
-    );
+      });
+    } catch (error) {
+      args.observe?.({
+        address,
+        event: {
+          type: "case-failed",
+          stage: "scoring",
+          error,
+          output: search,
+          occurrence: null,
+          completedOccurrences: Object.freeze(occurrences.slice()),
+        },
+      });
+      throw error;
+    }
+
+    const occurrence = Object.freeze({ address, testCase, output: search, result });
+    results.push(result);
+    occurrences.push(occurrence);
+    if (result.failures.length > 0) {
+      args.observe?.({ address, event: { type: "case-failed", stage: "scoring", error: null,
+        output: search, occurrence, completedOccurrences: Object.freeze(occurrences.slice()) } });
+    } else {
+      args.observe?.({ address, event: { type: "case-complete", occurrence } });
+    }
   }
 
-  return results;
+  return { results, occurrences };
 }
 
-async function runRagQualityCases(args: {
+async function runOrdinaryRagQualityCases(args: {
   ownerId?: string;
   limit?: number;
   question?: string;
   captureDiagnostics?: boolean;
   providerMode: EvalQualityProviderMode;
   supabase: Awaited<ReturnType<typeof loadAdminClient>>;
+  evaluatorRetry: EvaluatorRetry;
+  costRates: EvalCostRates | null;
+  crossRegionRunner: boolean;
 }) {
   const [{ answerQuestionWithScope }, capturedCases] = await Promise.all([
     import("@/lib/rag/rag"),
@@ -1148,98 +1281,297 @@ async function runRagQualityCases(args: {
   const baseCases = selectRagQualityCasesForQuestion(args.question);
   const allCases = args.question ? baseCases : mergeRagEvalCases(baseCases, capturedCases);
   const cases = allCases.slice(0, args.limit ?? allCases.length);
+  return runRagQualityCases({
+    cases,
+    ownerId: args.ownerId,
+    captureDiagnostics: args.captureDiagnostics,
+    evaluatorRetry: args.evaluatorRetry,
+    costRates: args.costRates,
+    crossRegionRunner: args.crossRegionRunner,
+    answer: answerQuestionWithScope,
+  });
+}
+
+/** Uses the ordinary quality scorer once per ordered occurrence, retaining the complete answer. */
+export async function runRagQualityCases(args: {
+  cases: readonly RagEvalCase[];
+  ownerId?: string;
+  captureDiagnostics?: boolean;
+  evaluatorRetry: EvaluatorRetry;
+  costRates: EvalCostRates | null;
+  crossRegionRunner: boolean;
+  answer: EvalQualityAnswer;
+  observe?: (event: EvalQualityRunnerEvent) => void;
+}) {
   const results: RagQualityResult[] = [];
+  const occurrences: RagQualityOccurrence[] = [];
   const diagnosticCases: Array<ReturnType<typeof buildRagDiagnosticDumpRecord>> = [];
 
-  for (const testCase of cases) {
-    const answer = (await withProviderBackoff(`quality-rag:${testCase.id}`, () =>
-      answerQuestionWithScope({
-        query: testCase.question,
-        ownerId: args.ownerId,
-        logQuery: false,
-        skipCache: true,
-      }),
-    )) as RagAnswer;
-    if (args.captureDiagnostics) {
-      diagnosticCases.push(buildRagDiagnosticDumpRecord(testCase.id, testCase.question, answer));
-    }
-    const validation = validateRagAnswer(testCase, answer);
-    const failures = [...validation.failures];
-    const sourceWarnings = sourceWarningsForRagQualityAnswer(answer);
-    const sourceDangerWarningCount = sourceWarnings.filter((warning) => warning.severity === "danger").length;
-    const deliveredGrounded = deliveredGroundedAfterSourceGovernancePolicy(answer, sourceWarnings);
-    failures.push(
-      ...sourceGovernanceDangerFailuresForAnswer({
-        grounded: deliveredGrounded,
-        sourceDangerWarningCount,
-        expectsDangerWarning: testCase.expectsSourceDangerWarning,
-      }),
-    );
-    const { timings, routeCeilingExceeded } = ragAnswerTimingDiagnostics(answer);
-    if (routeCeilingExceeded) {
-      failures.push(
-        `route latency ceiling exceeded: ${timings.totalMs}ms total, ${timings.generationMs}ms generation, ${timings.routeBudgetMs}ms budget`,
+  for (const [ordinal, testCase] of args.cases.entries()) {
+    const address: RagQualityOccurrence["address"] = Object.freeze({ kind: "quality", ordinal, id: testCase.id });
+    let answer: RagAnswer;
+    try {
+      answer = await withProviderBackoff(`quality-rag:${testCase.id}`, () =>
+        args.answer({
+          query: testCase.question,
+          ownerId: args.ownerId,
+          logQuery: false,
+          skipCache: true,
+        }, address),
+        { ...args.evaluatorRetry, observe: (event) => args.observe?.({ address, event }) },
       );
+    } catch (error) {
+      args.observe?.({
+        address,
+        event: {
+          type: "case-failed",
+          stage: "provider",
+          error,
+          output: null,
+          occurrence: null,
+          completedOccurrences: Object.freeze(occurrences.slice()),
+        },
+      });
+      throw error;
     }
-    const openAIUsage = {
-      inputTokens: answer.openAIUsage?.input_tokens ?? 0,
-      cachedInputTokens: answer.openAIUsage?.cached_input_tokens ?? 0,
-      outputTokens: answer.openAIUsage?.output_tokens ?? 0,
-    };
-    const hasOpenAIUsage = openAIUsage.inputTokens + openAIUsage.cachedInputTokens + openAIUsage.outputTokens > 0;
-    const openAIRequestIds = answer.openAIRequestIds?.filter(Boolean) ?? [];
-    const generationLatencyMs = answer.latencyTimings?.generation_latency_ms ?? 0;
 
-    results.push({
-      id: testCase.id,
-      question: testCase.question,
-      category: testCase.category,
-      supported: testCase.supported,
-      expectedFiles: validation.expectedCoverage.expectedFiles,
-      matchedFiles: validation.expectedCoverage.matchedFiles,
-      missingFiles: validation.expectedCoverage.missingFiles,
-      topFiles: answer.sources.slice(0, 5).map((source) => source.file_name),
-      expectedHit: validation.expectedHit,
-      grounded: deliveredGrounded,
-      acceptSourceOnly: testCase.acceptSourceOnly,
-      latencyMs: answer.latencyTimings?.total_latency_ms ?? 0,
-      searchLatencyMs: answer.latencyTimings?.search_latency_ms,
-      generationLatencyMs: generationLatencyMs > 0 ? generationLatencyMs : undefined,
-      rpcLatencyMs: answer.latencyTimings?.supabase_rpc_latency_ms,
-      embeddingLatencyMs: answer.latencyTimings?.embedding_latency_ms,
-      route: answer.routingMode ?? "none",
-      latencyRoute: latencyRouteForAnswer(answer),
-      model: answer.modelUsed ?? null,
-      citations: answer.citations.length,
-      visualEvidence: answer.visualEvidence?.length ?? 0,
-      failures,
-      sourceWarningCount: sourceWarnings.length,
-      sourceDangerWarningCount,
-      unverifiedNumericTokenCount: answer.unverifiedNumericTokens?.length ?? 0,
-      hasFaithfulnessWarning: Boolean(answer.faithfulnessWarning),
-      routingReason: answer.routingReason,
-      timings,
-      routeCeilingExceeded,
-      executionType:
-        hasOpenAIUsage || openAIRequestIds.length > 0 || answer.modelUsed || generationLatencyMs > 0
-          ? "api"
-          : answer.routingMode === "unsupported"
-            ? "rule-based"
-            : "cached",
-      // A case that never touched the provider costs exactly $0.
-      // null stays reserved for "cannot estimate" — either
-      // rates unconfigured, or a provider call was attempted without usage metadata.
-      estimatedCostUsd: hasOpenAIUsage
-        ? estimateCostUsd(openAIUsage)
-        : openAIRequestIds.length > 0 || answer.modelUsed || generationLatencyMs > 0
-          ? null
-          : 0,
-      openAIRequestIds: openAIRequestIds.length > 0 ? openAIRequestIds : undefined,
-      openAIUsage: hasOpenAIUsage ? openAIUsage : undefined,
-    });
+    let failureStage: EvalQualityCaseFailureStage = "validation";
+    let result: RagQualityResult;
+    try {
+      if (
+        answer.fallbackReason ||
+        answer.degradedMode?.active ||
+        /(?:^|;\s*)[^;]*fallback/i.test(answer.routingReason ?? "")
+      ) {
+        args.observe?.({ address, event: { type: "fallback", answer } });
+      }
+      if (args.captureDiagnostics) {
+        diagnosticCases.push(buildRagDiagnosticDumpRecord(testCase.id, testCase.question, answer));
+      }
+      const validation = validateRagAnswer(testCase, answer);
+      const failures = [...validation.failures];
+      const sourceWarnings = sourceWarningsForRagQualityAnswer(answer);
+      const sourceDangerWarningCount = sourceWarnings.filter((warning) => warning.severity === "danger").length;
+      const deliveredGrounded = deliveredGroundedAfterSourceGovernancePolicy(answer, sourceWarnings);
+      failures.push(
+        ...sourceGovernanceDangerFailuresForAnswer({
+          grounded: deliveredGrounded,
+          sourceDangerWarningCount,
+          expectsDangerWarning: testCase.expectsSourceDangerWarning,
+        }),
+      );
+      const { timings, routeCeilingExceeded } = ragAnswerTimingDiagnostics(answer, {
+        crossRegionRunner: args.crossRegionRunner,
+      });
+      if (routeCeilingExceeded) {
+        failures.push(
+          `route latency ceiling exceeded: ${timings.totalMs}ms total, ${timings.generationMs}ms generation, ${timings.routeBudgetMs}ms budget`,
+        );
+      }
+      const openAIUsage = {
+        inputTokens: answer.openAIUsage?.input_tokens ?? 0,
+        cachedInputTokens: answer.openAIUsage?.cached_input_tokens ?? 0,
+        outputTokens: answer.openAIUsage?.output_tokens ?? 0,
+      };
+      const hasOpenAIUsage = openAIUsage.inputTokens + openAIUsage.cachedInputTokens + openAIUsage.outputTokens > 0;
+      const openAIRequestIds = answer.openAIRequestIds?.filter(Boolean) ?? [];
+      const generationLatencyMs = answer.latencyTimings?.generation_latency_ms ?? 0;
+
+      failureStage = "scoring";
+      result = {
+        id: testCase.id,
+        question: testCase.question,
+        category: testCase.category,
+        supported: testCase.supported,
+        expectedFiles: validation.expectedCoverage.expectedFiles,
+        matchedFiles: validation.expectedCoverage.matchedFiles,
+        missingFiles: validation.expectedCoverage.missingFiles,
+        topFiles: answer.sources.slice(0, 5).map((source) => source.file_name),
+        expectedHit: validation.expectedHit,
+        grounded: deliveredGrounded,
+        acceptSourceOnly: testCase.acceptSourceOnly,
+        latencyMs: answer.latencyTimings?.total_latency_ms ?? 0,
+        searchLatencyMs: answer.latencyTimings?.search_latency_ms,
+        generationLatencyMs: generationLatencyMs > 0 ? generationLatencyMs : undefined,
+        rpcLatencyMs: answer.latencyTimings?.supabase_rpc_latency_ms,
+        embeddingLatencyMs: answer.latencyTimings?.embedding_latency_ms,
+        route: answer.routingMode ?? "none",
+        latencyRoute: latencyRouteForAnswer(answer),
+        model: answer.modelUsed ?? null,
+        citations: answer.citations.length,
+        visualEvidence: answer.visualEvidence?.length ?? 0,
+        failures,
+        sourceWarningCount: sourceWarnings.length,
+        sourceDangerWarningCount,
+        unverifiedNumericTokenCount: answer.unverifiedNumericTokens?.length ?? 0,
+        hasFaithfulnessWarning: Boolean(answer.faithfulnessWarning),
+        routingReason: answer.routingReason,
+        timings,
+        routeCeilingExceeded,
+        executionType:
+          hasOpenAIUsage || openAIRequestIds.length > 0 || answer.modelUsed || generationLatencyMs > 0
+            ? "api"
+            : answer.routingMode === "unsupported"
+              ? "rule-based"
+              : "cached",
+        // A case that never touched the provider costs exactly $0.
+        // null stays reserved for "cannot estimate" — either
+        // rates unconfigured, or a provider call was attempted without usage metadata.
+        estimatedCostUsd: hasOpenAIUsage
+          ? estimateCostUsd(openAIUsage, args.costRates)
+          : openAIRequestIds.length > 0 || answer.modelUsed || generationLatencyMs > 0
+            ? null
+            : 0,
+        openAIRequestIds: openAIRequestIds.length > 0 ? openAIRequestIds : undefined,
+        openAIUsage: hasOpenAIUsage ? openAIUsage : undefined,
+      };
+    } catch (error) {
+      args.observe?.({
+        address,
+        event: {
+          type: "case-failed",
+          stage: failureStage,
+          error,
+          output: answer,
+          occurrence: null,
+          completedOccurrences: Object.freeze(occurrences.slice()),
+        },
+      });
+      throw error;
+    }
+
+    const occurrence = Object.freeze({ address, testCase, output: answer, result });
+    results.push(result);
+    occurrences.push(occurrence);
+    if (result.failures.length > 0) {
+      args.observe?.({ address, event: { type: "case-failed", stage: "validation", error: null,
+        output: answer, occurrence, completedOccurrences: Object.freeze(occurrences.slice()) } });
+    } else {
+      args.observe?.({ address, event: { type: "case-complete", occurrence } });
+    }
   }
 
-  return { results, diagnosticCases };
+  return { results, diagnosticCases, occurrences };
+}
+
+export type BoundEvalQualityWorkloadResult = Readonly<{
+  kind: "u04-bound-eval-quality-workload";
+  complete: boolean;
+  failureLatched: boolean;
+  error: unknown | null;
+  events: readonly EvalQualityRunnerEvent[];
+  retrieval: Readonly<{
+    results: readonly GoldenRetrievalResult[];
+    occurrences: readonly RetrievalQualityOccurrence[];
+  }>;
+  rag: Readonly<{
+    results: readonly RagQualityResult[];
+    occurrences: readonly RagQualityOccurrence[];
+  }>;
+  report: EvalQualityReport | null;
+}>;
+
+/**
+ * Exact bound workload used by the U04 session owner. It resolves no ambient
+ * defaults, loaders, provider mode, cases, report context or pricing.
+ */
+export async function runBoundEvalQualityWorkload(args: {
+  retrievalCases: readonly GoldenRetrievalCase[];
+  qualityCases: readonly RagEvalCase[];
+  ownerId?: string;
+  globalForceEmbedding: boolean;
+  evaluatorRetry: EvaluatorRetry;
+  costRates: EvalCostRates | null;
+  providerMode: EvalQualityProviderMode;
+  runContext: EvalQualityRunContext;
+  crossRegionRunner: boolean;
+  generatedAt: string;
+  search: EvalQualitySearch;
+  answer: EvalQualityAnswer;
+}): Promise<BoundEvalQualityWorkloadResult> {
+  const events: EvalQualityRunnerEvent[] = [];
+  const retrievalOccurrences = new Map<number, RetrievalQualityOccurrence>();
+  const ragOccurrences = new Map<number, RagQualityOccurrence>();
+  let failureLatched = false;
+  let retrievalRun: Awaited<ReturnType<typeof runRetrievalQualityCases>> | null = null;
+  let ragRun: Awaited<ReturnType<typeof runRagQualityCases>> | null = null;
+
+  const isRetrievalOccurrence = (occurrence: RetrievalQualityOccurrence | RagQualityOccurrence): occurrence is RetrievalQualityOccurrence =>
+    occurrence.address.kind === "retrieval";
+  const retainOccurrence = (occurrence: RetrievalQualityOccurrence | RagQualityOccurrence) => {
+    if (isRetrievalOccurrence(occurrence)) retrievalOccurrences.set(occurrence.address.ordinal, occurrence);
+    else ragOccurrences.set(occurrence.address.ordinal, occurrence);
+  };
+  const observe = (entry: EvalQualityRunnerEvent) => {
+    events.push(entry);
+    if (entry.event.type === "error" || entry.event.type === "fallback" || entry.event.type === "case-failed")
+      failureLatched = true;
+    if (entry.event.type === "case-complete") retainOccurrence(entry.event.occurrence);
+    if (entry.event.type === "case-failed") {
+      for (const occurrence of entry.event.completedOccurrences) retainOccurrence(occurrence);
+      if (entry.event.occurrence) retainOccurrence(entry.event.occurrence);
+    }
+  };
+  const ordered = <T extends RetrievalQualityOccurrence | RagQualityOccurrence>(values: Iterable<T>) =>
+    [...values].sort((left, right) => left.address.ordinal - right.address.ordinal);
+  const snapshot = (report: EvalQualityReport | null, error: unknown | null): BoundEvalQualityWorkloadResult => {
+    const retrieval = retrievalRun ?? (() => {
+      const occurrences = ordered(retrievalOccurrences.values());
+      return { occurrences, results: occurrences.map((occurrence) => occurrence.result) };
+    })();
+    const rag = ragRun ?? (() => {
+      const occurrences = ordered(ragOccurrences.values());
+      return { occurrences, results: occurrences.map((occurrence) => occurrence.result) };
+    })();
+    return Object.freeze({
+      kind: "u04-bound-eval-quality-workload" as const,
+      complete: error === null && !failureLatched,
+      failureLatched,
+      error,
+      events: Object.freeze(events.slice()),
+      retrieval: Object.freeze({
+        results: Object.freeze(retrieval.results.slice()),
+        occurrences: Object.freeze(retrieval.occurrences.slice()),
+      }),
+      rag: Object.freeze({
+        results: Object.freeze(rag.results.slice()),
+        occurrences: Object.freeze(rag.occurrences.slice()),
+      }),
+      report,
+    });
+  };
+
+  try {
+    retrievalRun = await runRetrievalQualityCases({
+      cases: args.retrievalCases,
+      ownerId: args.ownerId,
+      forceEmbedding: args.globalForceEmbedding,
+      evaluatorRetry: args.evaluatorRetry,
+      search: args.search,
+      observe,
+    });
+    ragRun = await runRagQualityCases({
+      cases: args.qualityCases,
+      ownerId: args.ownerId,
+      evaluatorRetry: args.evaluatorRetry,
+      costRates: args.costRates,
+      crossRegionRunner: args.crossRegionRunner,
+      answer: args.answer,
+      observe,
+    });
+    const report = buildEvalQualityReport({
+      generatedAt: args.generatedAt,
+      retrievalResults: retrievalRun.results,
+      ragResults: ragRun.results,
+      providerMode: args.providerMode,
+      runContext: args.runContext,
+      crossRegionRunner: args.crossRegionRunner,
+    });
+    return snapshot(report, null);
+  } catch (error) {
+    failureLatched = true;
+    return snapshot(null, error);
+  }
 }
 
 async function writeReports(report: EvalQualityReport, outputDir: string) {
@@ -1332,7 +1664,12 @@ async function loadSourceMetadataDebtAcceptance(path: string): Promise<SourceMet
 }
 
 async function main() {
+  loadEnvConfig(process.cwd());
   const args = parseEvalQualityArgs(process.argv.slice(2));
+  const evaluatorRetry = configuredEvaluatorRetry();
+  const costRates = configuredCostRates();
+  const runContext = evalQualityRunContext();
+  const crossRegionRunner = ordinaryCrossRegionRunner();
   if (args.providerMode === "offline" && args.forceEmbedding) {
     throw new Error("--force-embedding cannot be used with --provider-mode offline.");
   }
@@ -1353,13 +1690,18 @@ async function main() {
     : undefined;
 
   const ownerId = await resolveEvalOwnerId(supabase, args);
-  const retrievalResults = args.ragOnly ? [] : await runRetrievalQualityCases({ ...args, ownerId, supabase });
+  const retrievalResults = args.ragOnly
+    ? []
+    : (await runOrdinaryRetrievalQualityCases({ ...args, ownerId, supabase, evaluatorRetry })).results;
   const ragRun = args.retrievalOnly
     ? { results: [] as RagQualityResult[], diagnosticCases: [] }
-    : await runRagQualityCases({
+    : await runOrdinaryRagQualityCases({
         ...args,
         ownerId,
         supabase,
+        evaluatorRetry,
+        costRates,
+        crossRegionRunner,
         captureDiagnostics: Boolean(args.dumpRagCases),
       });
   const ragResults = ragRun.results;
@@ -1369,6 +1711,8 @@ async function main() {
     ragResults,
     sourceMetadataDebtAcceptance,
     providerMode: args.providerMode,
+    runContext,
+    crossRegionRunner,
   });
   const paths = await writeReports(report, args.outputDir);
   if (args.dumpRagCases) {

@@ -11,13 +11,23 @@ import {
   ragAnswerTimingDiagnostics,
   renderEvalQualityMarkdown,
   retrievalCasesForProviderMode,
+  runRagQualityCases,
+  runBoundEvalQualityWorkload,
+  runRetrievalQualityCases,
   selectRagQualityCasesForQuestion,
   sourceGovernanceResultsFromArtifact,
   sourceGovernanceDangerFailuresForAnswer,
   sourceWarningsForRagQualityAnswer,
+  type EvalQualityRunnerEvent,
+  type EvalQualitySearchOutput,
   type RagQualityResult,
 } from "../scripts/eval-quality";
-import { evaluateGoldenRetrievalCase, type GoldenRetrievalResult } from "../scripts/eval-retrieval";
+import {
+  evaluateGoldenRetrievalCase,
+  type GoldenRetrievalCase,
+  type GoldenRetrievalResult,
+} from "../scripts/eval-retrieval";
+import type { RagAnswer } from "../src/lib/types";
 
 describe("eval quality diagnostic arguments", () => {
   it("keeps provider execution behind the import-safe main guard", () => {
@@ -136,6 +146,57 @@ function retrievalResult(overrides: Partial<GoldenRetrievalResult> = {}): Golden
     ...overrides,
     retrievalPlan: overrides.retrievalPlan === undefined ? base.retrievalPlan : overrides.retrievalPlan,
   };
+}
+
+const evaluatorRetry = { maxAttempts: 1, initialDelayMs: 1, maxDelayMs: 1 };
+
+function runnerRetrievalCase(overrides: Partial<GoldenRetrievalCase> = {}): GoldenRetrievalCase {
+  return {
+    id: "runner-retrieval",
+    query: "runner retrieval question",
+    expectedQueryClass: "unsupported_or_general",
+    expectedDocumentSubstrings: [],
+    expectedContentTerms: [],
+    topK: 8,
+    expectTableEvidence: false,
+    ...overrides,
+  };
+}
+
+function runnerSearchOutput(): EvalQualitySearchOutput {
+  return {
+    results: [],
+    telemetry: {
+      query_class: "unsupported_or_general",
+      retrieval_strategy: "hybrid",
+      embedding_skipped: false,
+      search_cache_hit: false,
+      embedding_cache_hit: false,
+      text_fast_path_latency_ms: 0,
+      embedding_latency_ms: 2,
+      supabase_rpc_latency_ms: 3,
+      rerank_latency_ms: 1,
+      retrieval_layer_counts: {},
+      retrieval_layer_top_scores: {},
+      retrieval_layer_latencies_ms: {},
+    },
+  };
+}
+
+function runnerUnsupportedAnswer(overrides: Partial<RagAnswer> = {}): RagAnswer {
+  return {
+    answer: "No relevant clinical source was found.",
+    grounded: false,
+    confidence: "unsupported",
+    responseMode: "evidence_gap",
+    routingMode: "unsupported",
+    routingReason: "unsupported query",
+    queryClass: "unsupported_or_general",
+    citations: [],
+    sources: [],
+    latencyTimings: { total_latency_ms: 10, generation_latency_ms: 0 },
+    ...overrides,
+  } as unknown as RagAnswer;
 }
 
 function ragResult(overrides: Partial<RagQualityResult> = {}): RagQualityResult {
@@ -983,5 +1044,311 @@ describe("cross-region retrieval-exhausted carve-out (E-3b)", () => {
       ragAnswerTimingDiagnostics({ routingMode: "extractive", latencyTimings: exhaustedTimings }).timings
         .budgetExhaustedByRetrieval,
     ).toBe(true);
+  });
+});
+
+describe("addressed callable quality-runner lifecycle", () => {
+  it("retains completed retrieval output when a later duplicate-ID occurrence is cancelled", async () => {
+    const firstOutput = runnerSearchOutput();
+    const cancellation = Object.assign(new Error("evaluation cancelled"), { name: "AbortError" });
+    const events: EvalQualityRunnerEvent[] = [];
+    const cases = [runnerRetrievalCase(), runnerRetrievalCase()];
+
+    await expect(
+      runRetrievalQualityCases({
+        cases,
+        forceEmbedding: undefined,
+        evaluatorRetry,
+        search: async (_input, address) => {
+          if (address.ordinal === 0) return firstOutput;
+          throw cancellation;
+        },
+        observe: (event) => events.push(event),
+      }),
+    ).rejects.toBe(cancellation);
+
+    const terminalEvents = events.filter(
+      (entry) => entry.event.type === "case-complete" || entry.event.type === "case-failed",
+    );
+    expect(terminalEvents.map((entry) => [entry.address.ordinal, entry.event.type])).toEqual([
+      [0, "case-complete"],
+      [1, "case-failed"],
+    ]);
+    const completed = terminalEvents[0];
+    expect(completed.event.type).toBe("case-complete");
+    if (completed.event.type !== "case-complete") throw new Error("expected completed event");
+    expect(completed.event.occurrence.output).toBe(firstOutput);
+
+    const failed = terminalEvents[1];
+    expect(failed.event.type).toBe("case-failed");
+    if (failed.event.type !== "case-failed") throw new Error("expected failed event");
+    expect(failed.event).toMatchObject({ stage: "provider", error: cancellation, output: null, occurrence: null });
+    expect(failed.event.completedOccurrences).toHaveLength(1);
+    expect(failed.event.completedOccurrences[0].output).toBe(firstOutput);
+    expect(events.some((entry) => entry.address.ordinal === 1 && entry.event.type === "case-complete")).toBe(false);
+  });
+
+  it("emits a scored retrieval failure and continues with unchanged scorer output", async () => {
+    const failedCase = runnerRetrievalCase({ expectedQueryClass: "table_threshold" });
+    const passingCase = runnerRetrievalCase();
+    const outputs = [runnerSearchOutput(), runnerSearchOutput()];
+    const events: EvalQualityRunnerEvent[] = [];
+
+    const run = await runRetrievalQualityCases({
+      cases: [failedCase, passingCase],
+      forceEmbedding: undefined,
+      evaluatorRetry,
+      search: async (_input, address) => outputs[address.ordinal],
+      observe: (event) => events.push(event),
+    });
+    const unobservedRun = await runRetrievalQualityCases({
+      cases: [failedCase, passingCase],
+      forceEmbedding: undefined,
+      evaluatorRetry,
+      search: async (_input, address) => outputs[address.ordinal],
+    });
+
+    expect(unobservedRun).toEqual(run);
+    expect(run.results).toEqual([
+      evaluateGoldenRetrievalCase({
+        testCase: failedCase,
+        results: outputs[0].results,
+        telemetry: outputs[0].telemetry,
+        latencyMs: 6,
+      }),
+      evaluateGoldenRetrievalCase({
+        testCase: passingCase,
+        results: outputs[1].results,
+        telemetry: outputs[1].telemetry,
+        latencyMs: 6,
+      }),
+    ]);
+    const terminalEvents = events.filter(
+      (entry) => entry.event.type === "case-complete" || entry.event.type === "case-failed",
+    );
+    expect(terminalEvents.map((entry) => [entry.address.ordinal, entry.event.type])).toEqual([
+      [0, "case-failed"],
+      [1, "case-complete"],
+    ]);
+    const failed = terminalEvents[0];
+    if (failed.event.type !== "case-failed") throw new Error("expected failed event");
+    expect(failed.event).toMatchObject({ stage: "scoring", error: null, output: outputs[0] });
+    expect(failed.event.occurrence?.result).toBe(run.results[0]);
+    expect(Object.isFrozen(failed.event.completedOccurrences)).toBe(true);
+  });
+
+  it("emits validation failure and completion in case order while retaining each full answer", async () => {
+    const testCase = selectRagQualityCasesForQuestion("unsupported-coffee-machine")[0];
+    const failedAnswer = runnerUnsupportedAnswer({ grounded: true });
+    const passingAnswer = runnerUnsupportedAnswer();
+    const events: EvalQualityRunnerEvent[] = [];
+
+    const run = await runRagQualityCases({
+      cases: [testCase, testCase],
+      evaluatorRetry,
+      costRates: null,
+      crossRegionRunner: false,
+      answer: async (_input, address) => (address.ordinal === 0 ? failedAnswer : passingAnswer),
+      observe: (event) => events.push(event),
+    });
+
+    expect(run.results).toHaveLength(2);
+    expect(run.results[0].failures).toEqual(
+      expect.arrayContaining(["expected unsupported answer", "false-positive control produced grounded answer"]),
+    );
+    expect(run.results[1].failures).toEqual([]);
+    const terminalEvents = events.filter(
+      (entry) => entry.event.type === "case-complete" || entry.event.type === "case-failed",
+    );
+    expect(terminalEvents.map((entry) => [entry.address.ordinal, entry.event.type])).toEqual([
+      [0, "case-failed"],
+      [1, "case-complete"],
+    ]);
+    const failed = terminalEvents[0];
+    if (failed.event.type !== "case-failed") throw new Error("expected failed event");
+    expect(failed.event).toMatchObject({ stage: "validation", error: null, output: failedAnswer });
+    expect(failed.event.occurrence?.output).toBe(failedAnswer);
+    const completed = terminalEvents[1];
+    if (completed.event.type !== "case-complete") throw new Error("expected completed event");
+    expect(completed.event.occurrence.output).toBe(passingAnswer);
+  });
+
+  it("emits validation exception without fabricating case completion", async () => {
+    const testCase = selectRagQualityCasesForQuestion("unsupported-coffee-machine")[0];
+    const validationError = new Error("validation exploded");
+    const answer = new Proxy(runnerUnsupportedAnswer(), {
+      get(target, property, receiver) {
+        if (property === "sources") throw validationError;
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    const events: EvalQualityRunnerEvent[] = [];
+
+    await expect(
+      runRagQualityCases({
+        cases: [testCase],
+        evaluatorRetry,
+        costRates: null,
+        crossRegionRunner: false,
+        answer: async () => answer,
+        observe: (event) => events.push(event),
+      }),
+    ).rejects.toBe(validationError);
+
+    const failed = events.find((entry) => entry.event.type === "case-failed");
+    expect(failed?.address).toMatchObject({ kind: "quality", ordinal: 0, id: testCase.id });
+    if (!failed || failed.event.type !== "case-failed") throw new Error("expected failed event");
+    expect(failed.event).toMatchObject({ stage: "validation", error: validationError, occurrence: null });
+    expect(failed.event.output).toBe(answer);
+    expect(events.some((entry) => entry.event.type === "case-complete")).toBe(false);
+  });
+});
+
+describe("U04 bound quality workload", () => {
+  const generatedAt = "2026-09-13T02:03:04.000Z";
+  const runContext = {
+    git_sha: "synthetic-bound-sha",
+    github_run_id: null,
+    github_run_attempt: null,
+    latency_context: " cross-region-runner ",
+  };
+  const qualityCase = selectRagQualityCasesForQuestion("unsupported-coffee-machine")[0];
+
+  it("runs the exact retrieval then quality population with unchanged scorer and report output", async () => {
+    const retrievalCase = runnerRetrievalCase();
+    const searchOutput = runnerSearchOutput();
+    const answerOutput = runnerUnsupportedAnswer();
+    const ownerId = "bound-quality-owner";
+    const directRetrieval = await runRetrievalQualityCases({
+      cases: [retrievalCase], ownerId, forceEmbedding: false, evaluatorRetry,
+      search: async () => searchOutput,
+    });
+    const directRag = await runRagQualityCases({
+      cases: [qualityCase], ownerId, evaluatorRetry, costRates: null, crossRegionRunner: false,
+      answer: async () => answerOutput,
+    });
+    const expectedReport = buildEvalQualityReport({
+      generatedAt, retrievalResults: directRetrieval.results, ragResults: directRag.results,
+      providerMode: "offline", runContext, crossRegionRunner: false,
+    });
+
+    const search = vi.fn(async () => searchOutput);
+    const answer = vi.fn(async () => answerOutput);
+    const result = await runBoundEvalQualityWorkload({
+      retrievalCases: [retrievalCase], qualityCases: [qualityCase],
+      ownerId,
+      globalForceEmbedding: false, evaluatorRetry, costRates: null, providerMode: "offline",
+      runContext, crossRegionRunner: false, generatedAt, search, answer,
+    });
+
+    expect(search).toHaveBeenCalledOnce();
+    expect(search).toHaveBeenCalledWith({
+      query: retrievalCase.query,
+      ownerId,
+      topK: 10,
+      minSimilarity: 0.12,
+      skipCache: true,
+      forceEmbedding: false,
+    }, { kind: "retrieval", ordinal: 0, id: retrievalCase.id });
+    expect(answer).toHaveBeenCalledOnce();
+    expect(answer).toHaveBeenCalledWith({
+      query: qualityCase.question,
+      ownerId,
+      logQuery: false,
+      skipCache: true,
+    }, { kind: "quality", ordinal: 0, id: qualityCase.id });
+    expect(result).toMatchObject({ kind: "u04-bound-eval-quality-workload",
+      complete: true, failureLatched: false, error: null });
+    expect(result.retrieval.results).toEqual(directRetrieval.results);
+    expect(result.rag.results).toEqual(directRag.results);
+    expect(result.retrieval.occurrences[0]?.testCase).toBe(retrievalCase);
+    expect(result.rag.occurrences[0]?.testCase).toBe(qualityCase);
+    expect(result.retrieval.occurrences[0]?.output).toBe(searchOutput);
+    expect(result.rag.occurrences[0]?.output).toBe(answerOutput);
+    expect(result.report).toEqual(expectedReport);
+    expect(result.report?.run_context).toEqual(runContext);
+    expect(result.report?.thresholds.ragP95LatencyMs).toBe(25_000);
+    expect(result.events.map(event => `${event.address.kind}:${event.address.ordinal}:${event.event.type}`)).toEqual([
+      "retrieval:0:attempt",
+      "retrieval:0:success",
+      "retrieval:0:case-complete",
+      "quality:0:attempt",
+      "quality:0:success",
+      "quality:0:case-complete",
+    ]);
+  });
+
+  it("keeps a retried provider failure and fallback latched after both complete outputs return", async () => {
+    const searchOutput = runnerSearchOutput();
+    const answerOutput = runnerUnsupportedAnswer({ fallbackReason: "provider_timeout" });
+    const rateLimit = Object.assign(new Error("rate limited"), { status: 429 });
+    let attempts = 0;
+    const result = await runBoundEvalQualityWorkload({
+      retrievalCases: [runnerRetrievalCase()], qualityCases: [qualityCase],
+      globalForceEmbedding: false,
+      evaluatorRetry: { maxAttempts: 2, initialDelayMs: 1, maxDelayMs: 1 },
+      costRates: null, providerMode: "offline", runContext, crossRegionRunner: false, generatedAt,
+      search: async () => {
+        attempts += 1;
+        if (attempts === 1) throw rateLimit;
+        return searchOutput;
+      },
+      answer: async () => answerOutput,
+    });
+
+    expect(result).toMatchObject({ complete: false, failureLatched: true, error: null });
+    expect(result.report).not.toBeNull();
+    expect(result.retrieval.occurrences[0]?.output).toBe(searchOutput);
+    expect(result.rag.occurrences[0]?.output).toBe(answerOutput);
+    expect(result.events.some(event => event.event.type === "error")).toBe(true);
+    expect(result.events.some(event => event.event.type === "fallback")).toBe(true);
+    expect(result.events.filter(event => event.event.type === "case-complete")).toHaveLength(2);
+  });
+
+  it("retains completed retrieval and earlier quality outputs when a later quality call throws", async () => {
+    const retrievalOutput = runnerSearchOutput();
+    const firstAnswer = runnerUnsupportedAnswer();
+    const laterFailure = new Error("later bound quality provider failed");
+    const result = await runBoundEvalQualityWorkload({
+      retrievalCases: [runnerRetrievalCase()], qualityCases: [qualityCase, qualityCase],
+      globalForceEmbedding: false, evaluatorRetry, costRates: null, providerMode: "offline",
+      runContext, crossRegionRunner: false, generatedAt,
+      search: async () => retrievalOutput,
+      answer: async (_input, address) => {
+        if (address.ordinal === 0) return firstAnswer;
+        throw laterFailure;
+      },
+    });
+
+    expect(result).toMatchObject({ complete: false, failureLatched: true, error: laterFailure, report: null });
+    expect(result.retrieval.occurrences).toHaveLength(1);
+    expect(result.retrieval.occurrences[0]?.output).toBe(retrievalOutput);
+    expect(result.rag.occurrences).toHaveLength(1);
+    expect(result.rag.occurrences[0]?.output).toBe(firstAnswer);
+    expect(result.events.filter(event => event.event.type === "case-complete")
+      .map(event => [event.address.kind, event.address.ordinal])).toEqual([["retrieval", 0], ["quality", 0]]);
+    const failure = result.events.find(event =>
+      event.address.kind === "quality" && event.address.ordinal === 1 && event.event.type === "case-failed");
+    expect(failure?.event).toMatchObject({ type: "case-failed", stage: "provider", error: laterFailure });
+  });
+
+  it("returns unchanged report arithmetic but never marks a scored-failure workload complete", async () => {
+    const failingCase = runnerRetrievalCase({ expectedQueryClass: "table_threshold" });
+    const result = await runBoundEvalQualityWorkload({
+      retrievalCases: [failingCase], qualityCases: [qualityCase],
+      globalForceEmbedding: false, evaluatorRetry, costRates: null, providerMode: "offline",
+      runContext, crossRegionRunner: false, generatedAt,
+      search: async () => runnerSearchOutput(),
+      answer: async () => runnerUnsupportedAnswer(),
+    });
+
+    expect(result.report).not.toBeNull();
+    expect(result).toMatchObject({ complete: false, failureLatched: true, error: null });
+    expect(result.report).toEqual(buildEvalQualityReport({
+      generatedAt, retrievalResults: [...result.retrieval.results], ragResults: [...result.rag.results],
+      providerMode: "offline", runContext, crossRegionRunner: false,
+    }));
+    expect(result.events.some(event => event.event.type === "case-failed" &&
+      event.address.kind === "retrieval" && event.address.ordinal === 0)).toBe(true);
   });
 });

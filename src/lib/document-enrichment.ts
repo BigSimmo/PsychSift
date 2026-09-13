@@ -5,6 +5,12 @@ import {
   type IngestionFence,
 } from "../../supabase/functions/_shared/ingestion-attempt";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ShadowProducerPersistence } from "../../worker/types";
+import {
+  captureShadowProducerInputV1,
+  encodeShadowNodeJsonCanonicalPayload,
+  readShadowProducerInputV1,
+} from "../../scripts/lib/reindex-eval-session";
 import { classifyDocumentOrganization } from "@/lib/document-organization";
 import { env } from "@/lib/env";
 import {
@@ -803,22 +809,29 @@ export async function upsertDocumentEnrichment(args: {
   indexGenerationId: string;
   chunks: EnrichmentChunk[];
   images?: EnrichmentImage[];
+  shadow?: ShadowProducerPersistence;
 }) {
   const fence = parseIngestionFence(args.fence);
   args.signal?.throwIfAborted();
-  if (fence.document_id !== args.document.id || fence.expected_generation_id !== args.indexGenerationId) {
+  const binding = args.shadow?.binding;
+  if (fence.document_id !== args.document.id || (binding
+    ? binding.source.documentId !== args.document.id || binding.source.ownerId !== (args.document.owner_id ?? null) ||
+      binding.candidateGenerationId !== args.indexGenerationId || binding.source.baselineGenerationId !== fence.expected_generation_id ||
+      binding.jobId !== fence.job_id || binding.firstLeaseToken !== fence.lease_token || binding.source.authorityDigest !== fence.authority_digest ||
+      binding.candidateGenerationId === fence.expected_generation_id
+    : fence.expected_generation_id !== args.indexGenerationId)) {
     throw new IngestionAttemptError("ingestion_attempt_required");
   }
   const images = args.images ?? [];
   const indexGenerationId = assertSourceAnchoredSummaryPreflight({
-    documentMetadata: args.document.metadata,
+    documentMetadata: binding ? { ...args.document.metadata, index_generation_id: binding.candidateGenerationId } : args.document.metadata,
     indexGenerationId: args.indexGenerationId,
     chunks: args.chunks,
     images,
   });
   const authority = sourceAuthority({ documentId: args.document.id, indexGenerationId, chunks: args.chunks, images });
   const client = args.supabase as unknown as { from: (table: string) => any };
-  const existing = await client
+  const existing = binding ? { data: null, error: null } : await client
     .from("document_summaries")
     .select("*")
     .eq("document_id", args.document.id)
@@ -835,13 +848,31 @@ export async function upsertDocumentEnrichment(args: {
   }
   args.signal?.throwIfAborted();
   if (!payload || payload.summary_kind !== "structured") {
-    payload = await generateSourceAnchoredSummary({
-      document: args.document,
-      authority,
-      chunks: args.chunks,
-      images,
-      signal: args.signal,
-    });
+    try {
+      payload = await generateSourceAnchoredSummary({
+        document: args.document,
+        authority,
+        chunks: args.chunks,
+        images,
+        signal: args.signal,
+      });
+    } catch (error) {
+      if (!args.shadow || error instanceof IngestionAttemptError || args.signal?.aborted) throw error;
+      return args.shadow.recordFailure({
+        phase: "summary_generation",
+        code: "producer_failed",
+        artifactGenerationId: null,
+        input: {
+          fence,
+          document: args.document,
+          indexGenerationId: args.indexGenerationId,
+          chunks: args.chunks,
+          images,
+          authority,
+        },
+        partial: { existingPayload: payload },
+      });
+    }
   }
   args.signal?.throwIfAborted();
   const selected = selectCoverageAwarePromptChunks(args.chunks);
@@ -870,18 +901,44 @@ export async function upsertDocumentEnrichment(args: {
       [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
     },
   };
+  const labels = projectedLabelRows(payload, args.document.owner_id ?? null);
+  const enrichmentMetadata = {
+    rag_enrichment_version: ragEnrichmentVersion,
+    rag_indexing_version: ragEnrichmentVersion,
+    rag_memory_version: ragEnrichmentVersion,
+    rag_enrichment_updated_at: payload.generated_at,
+    generated_label_count: payload.labels.length,
+  };
+  const producerSnapshot = args.shadow
+    ? (readShadowProducerInputV1(
+        captureShadowProducerInputV1({ summary, labels, enrichmentMetadata }),
+      ).nativeInput as {
+        summary: typeof summary;
+        labels: typeof labels;
+        enrichmentMetadata: typeof enrichmentMetadata;
+      })
+    : { summary, labels, enrichmentMetadata };
+  // The original U02 payload and all native label fields precede effects. Label
+  // unit identity is its exact logical label/type; the actual server UUID is
+  // retained separately in the projection/ref after-image.
+  const outputManifestEnvelope = args.shadow ? await args.shadow.declareBatch({
+    groupKey: "enrichment", families: ["generated_labels", "summary"], artifactGenerationId: null,
+    producerVersion: ragEnrichmentVersion,
+    units: [
+      { family: "summary", key: "singleton", output: {
+        summary: producerSnapshot.summary, enrichment_metadata: producerSnapshot.enrichmentMetadata } },
+      ...producerSnapshot.labels.map(label => ({ family: "generated_labels" as const,
+        key: encodeShadowNodeJsonCanonicalPayload({ label: label.label, label_type: label.label_type }), output: label })),
+    ],
+  }) : null;
+  args.signal?.throwIfAborted();
   const result = await runIngestionPersistence(() =>
-    args.supabase.rpc("persist_ingestion_summary_projection", {
+    args.supabase.rpc(binding ? "persist_shadow_summary_projection" : "persist_ingestion_summary_projection", {
       p_fence: fence,
-      p_summary: summary,
-      p_labels: projectedLabelRows(payload, args.document.owner_id ?? null),
-      p_metadata: {
-        rag_enrichment_version: ragEnrichmentVersion,
-        rag_indexing_version: ragEnrichmentVersion,
-        rag_memory_version: ragEnrichmentVersion,
-        rag_enrichment_updated_at: payload.generated_at,
-        generated_label_count: payload.labels.length,
-      },
+      p_summary: producerSnapshot.summary,
+      p_labels: producerSnapshot.labels,
+      p_metadata: producerSnapshot.enrichmentMetadata,
+      ...(binding ? { p_generation: binding.candidateGenerationId, p_output_manifest: outputManifestEnvelope } : {}),
     }),
   );
   args.signal?.throwIfAborted();

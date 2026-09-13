@@ -166,11 +166,13 @@ describe("Supabase round-trip budgets on the offline search retrieval core", () 
 
     // Measured, not derived — this is what the path does today, pinned so a
     // change has to be deliberate. Update in the commit that moves it.
-    expect(counter.total(), `search round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(11);
+    expect(counter.total(), `search round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(14);
 
     // The shape matters as much as the total: a refactor that removed one probe
-    // and added an unrelated query would keep 11 while changing the traffic.
+    // and added an unrelated query would keep 14 while changing the traffic.
     expect(counter.breakdown(), "search round-trip shape changed").toEqual({
+      "rpc:public_source_serving_authority_stamp": 2,
+      "rpc:read_site_content_runtime_authority": 1,
       "from:rag_aliases": 1,
       "rpc:match_document_chunks_text_v2": 3,
       "rpc:match_document_table_facts_text_v2": 3,

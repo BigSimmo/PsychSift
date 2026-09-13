@@ -119,6 +119,9 @@ const claimedJobDocumentSchema = z.looseObject({
  */
 const claimedJobRowSchema = z
   .looseObject({
+    operation: z.enum(["standard", "shadow_reindex"]).optional(),
+    requested_generation_id: z.uuid().nullable().optional(),
+    shadow_plan_digest: z.string().regex(/^sha256:[0-9a-f]{64}$/).nullable().optional(),
     locked_by: z.string().refine((value) => value.trim().length > 0),
     lease_token: z.uuid(),
     lease_expected_generation_id: z.uuid().nullable(),
@@ -136,6 +139,14 @@ const claimedJobRowSchema = z
   .refine((row) => row.document_id === row.documents.id, {
     path: ["documents", "id"],
     message: "Claim document identity mismatch",
+  })
+  .refine((row) => row.operation === "shadow_reindex"
+    ? row.batch_id === null && row.attempt_count === 1 && row.max_attempts === 1 &&
+      row.requested_generation_id === row.lease_write_generation_id &&
+      row.requested_generation_id !== row.lease_expected_generation_id && typeof row.shadow_plan_digest === "string"
+    : row.requested_generation_id == null && row.shadow_plan_digest == null, {
+    path: ["operation"],
+    message: "Claim generation operation mismatch",
   });
 
 /**

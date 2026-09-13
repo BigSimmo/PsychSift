@@ -1,4 +1,4 @@
-import { rankingConfig } from "@/lib/ranking-config";
+import { rankingConfig, type RankingConfig } from "@/lib/ranking-config";
 import { visualEvidenceUnitTypes } from "@/lib/rag/rag-evidence-gates";
 import type { SearchTelemetry } from "@/lib/rag/rag-contracts";
 import type { RagQueryClass, SearchResult } from "@/lib/types";
@@ -61,7 +61,12 @@ function shouldUseSecondStageRerank(queryClass: RagQueryClass | undefined, resul
 }
 
 /** Second stage score. */
-function secondStageScore(result: SearchResult, queryClass: RagQueryClass | undefined, index: number) {
+function secondStageScore(
+  result: SearchResult,
+  queryClass: RagQueryClass | undefined,
+  index: number,
+  activeRankingConfig: Readonly<RankingConfig>,
+) {
   const baseRankScore =
     result.score_explanation?.rankScore ??
     result.score_explanation?.preClampFinalScore ??
@@ -81,7 +86,7 @@ function secondStageScore(result: SearchResult, queryClass: RagQueryClass | unde
     )
     .join(" ")}`;
   const hasDoseAmount = /\b\d+(?:\.\d+)?\s?(?:mg|mcg|microgram|micrograms)\b/i.test(doseAmountText);
-  const w = rankingConfig.secondStage;
+  const w = activeRankingConfig.secondStage;
   adjustment += Math.max(0, w.positionBase - index * w.positionStep);
   if (result.memory_cards?.length && (queryClass === "broad_summary" || queryClass === "comparison"))
     adjustment += w.memorySummaryBoost;
@@ -115,8 +120,10 @@ export function applySecondStageRerankIfNeeded(args: {
   results: SearchResult[];
   telemetry: SearchTelemetry;
   topK: number;
+  ranking?: Readonly<RankingConfig>;
 }) {
   if (!shouldUseSecondStageRerank(args.queryClass, args.results, args.topK)) return args.results;
+  const activeRankingConfig = args.ranking ?? rankingConfig;
   const startedAt = Date.now();
   // CI-16 document diversity: subtract a demotion from each EXTRA chunk of a document that
   // has already appeared higher up, so a single doc's sibling chunks can't crowd out other
@@ -125,7 +132,7 @@ export function applySecondStageRerankIfNeeded(args: {
   const seenPerDocument = new Map<string, number>();
   const reranked = args.results
     .map((result, index) => {
-      const secondStage = secondStageScore(result, args.queryClass, index);
+      const secondStage = secondStageScore(result, args.queryClass, index, activeRankingConfig);
       let rankScore = secondStage.rankScore;
       let confidenceAdjustment = secondStage.adjustment;
       const releasedHybridScore = result.hybrid_score ?? result.similarity ?? 0;
@@ -136,10 +143,10 @@ export function applySecondStageRerankIfNeeded(args: {
       );
       const priorOccurrences = seenPerDocument.get(result.document_id) ?? 0;
       seenPerDocument.set(result.document_id, priorOccurrences + 1);
-      if (rankingConfig.documentDiversityPenalty > 0 && priorOccurrences > 0) {
+      if (activeRankingConfig.documentDiversityPenalty > 0 && priorOccurrences > 0) {
         const diversityPenalty = Math.min(
-          rankingConfig.documentDiversityPenaltyCap,
-          rankingConfig.documentDiversityPenalty * priorOccurrences,
+          activeRankingConfig.documentDiversityPenaltyCap,
+          activeRankingConfig.documentDiversityPenalty * priorOccurrences,
         );
         rankScore -= diversityPenalty;
         confidenceAdjustment -= diversityPenalty;

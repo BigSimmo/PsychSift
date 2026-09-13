@@ -253,8 +253,10 @@ describe("Supabase round-trip budgets on the offline answer path", () => {
  * not derived from first principles — it is what the path does today. See the
  * file header before changing it.
  *
- * The 13 break down as:
+ * The 16 break down as:
  *
+ *   rpc:public_source_serving_authority_stamp  2
+ *   rpc:read_site_content_runtime_authority    1
  *   from:rag_aliases                        1
  *   rpc:match_document_chunks_text_v2       3
  *   rpc:get_related_document_metadata_v2    2
@@ -268,6 +270,12 @@ describe("Supabase round-trip budgets on the offline answer path", () => {
  * its own right — a constructed-and-abandoned builder — but harmless at runtime;
  * what mattered is that the original budget over-counted real traffic by one.
  *
+ * The three authority probes were added after this budget was first measured.
+ * They bind the request to fail-closed public-source lifecycle and site-content
+ * state. They are request-scoped rather than source-scoped, so the one-versus-
+ * five assertion above still rejects per-source growth while retaining the
+ * governed probes.
+ *
  * Two things in that breakdown are worth a reader's attention rather than being
  * silently encoded as "correct". Three calls to each of the text-chunk,
  * table-fact and image lookups for a single query is a repeated-triple shape,
@@ -276,4 +284,4 @@ describe("Supabase round-trip budgets on the offline answer path", () => {
  * elsewhere. This budget does not endorse the count; it stops it growing
  * unnoticed and gives `#101` a number to improve against.
  */
-const OFFLINE_SINGLE_SOURCE_ROUND_TRIPS = 13;
+const OFFLINE_SINGLE_SOURCE_ROUND_TRIPS = 16;

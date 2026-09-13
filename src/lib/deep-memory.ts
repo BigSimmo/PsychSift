@@ -5,6 +5,8 @@ import {
   type IngestionFence,
 } from "../../supabase/functions/_shared/ingestion-attempt";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ShadowProducerPersistence } from "../../worker/types";
+import { captureShadowProducerInputV1, readShadowProducerInputV1 } from "../../scripts/lib/reindex-eval-session";
 import { buildClinicalTextSearchQuery, classifyRagQuery, normalizedClinicalSearchTokens } from "@/lib/clinical-search";
 import { logger } from "@/lib/logger";
 import {
@@ -604,25 +606,73 @@ export async function upsertDocumentDeepMemory(args: {
   chunks: MemoryChunk[];
   images?: MemoryImage[];
   summary?: string | null;
+  shadow?: ShadowProducerPersistence;
 }) {
   const fence = parseIngestionFence(args.fence);
   args.signal?.throwIfAborted();
-  if (fence.document_id !== args.document.id || !fence.expected_generation_id)
+  const sourceGeneration = args.shadow?.binding.candidateGenerationId ?? fence.expected_generation_id;
+  if (fence.document_id !== args.document.id || !sourceGeneration)
     throw new IngestionAttemptError("ingestion_attempt_required");
-  if (args.chunks.some((chunk) => chunk.metadata?.index_generation_id !== fence.expected_generation_id))
+  if (args.shadow && (fence.job_kind !== "node" || args.shadow.binding.source.documentId !== args.document.id ||
+    args.shadow.binding.source.ownerId !== (args.document.owner_id ?? null) || args.shadow.binding.jobId !== fence.job_id ||
+    args.shadow.binding.firstLeaseToken !== fence.lease_token || args.shadow.binding.source.authorityDigest !== fence.authority_digest ||
+    args.shadow.binding.source.baselineGenerationId !== fence.expected_generation_id || sourceGeneration === fence.expected_generation_id))
     throw new IngestionAttemptError("ingestion_attempt_required");
+  if (args.chunks.some((chunk) => chunk.metadata?.index_generation_id !== sourceGeneration))
+    throw new IngestionAttemptError("ingestion_attempt_required");
+  const shadowArtifactGenerationId = args.shadow ? crypto.randomUUID() : null;
+  const shadowInput = {
+    fence,
+    document: args.document,
+    chunks: args.chunks,
+    images: args.images ?? [],
+    summary: args.summary ?? null,
+  };
   const mutate = async (name: string, payload: Record<string, unknown>) => {
     args.signal?.throwIfAborted();
     const result = await runIngestionPersistence(() => args.supabase.rpc(name, { ...payload, p_fence: fence }));
     args.signal?.throwIfAborted();
     return result;
   };
-  if (args.chunks.length === 0) throw new Error("Cannot build deep memory for a document with no chunks.");
+  if (args.chunks.length === 0) {
+    const error = new Error("Cannot build deep memory for a document with no chunks.");
+    if (args.shadow) {
+      return args.shadow.recordFailure({
+        phase: "deep_sections",
+        code: "producer_failed",
+        artifactGenerationId: shadowArtifactGenerationId,
+        input: shadowInput,
+        partial: {},
+      });
+    }
+    throw error;
+  }
 
-  await assertLocalDeepMemoryOwnership(args.supabase, args.document.id);
+  if (!args.shadow) await assertLocalDeepMemoryOwnership(args.supabase, args.document.id);
 
   args.signal?.throwIfAborted();
-  const sections = buildDocumentSections(args);
+  const failShadow = async (
+    phase: "deep_sections" | "deep_model_profile" | "deep_cards" | "deep_card_embeddings" |
+      "deep_index_units" | "deep_index_embeddings",
+    input: unknown,
+    partial: unknown,
+    error: unknown,
+  ): Promise<never> => {
+    if (!args.shadow || error instanceof IngestionAttemptError || args.signal?.aborted) throw error;
+    return args.shadow.recordFailure({
+      phase,
+      code: "producer_failed",
+      artifactGenerationId: shadowArtifactGenerationId,
+      input,
+      partial,
+    });
+  };
+  let sections: ReturnType<typeof buildDocumentSections>;
+  try {
+    sections = buildDocumentSections(args);
+  } catch (error) {
+    return failShadow("deep_sections", shadowInput, {}, error);
+  }
   let modelProfile: ModelIndexProfile | null = null;
   try {
     modelProfile = await generateModelIndexProfile({
@@ -632,6 +682,9 @@ export async function upsertDocumentDeepMemory(args: {
       images: args.images ?? [],
     });
   } catch (error) {
+    if (args.shadow) {
+      return failShadow("deep_model_profile", shadowInput, { sections }, error);
+    }
     // A failed model index profile degrades this document's memory cards to a
     // deterministic fallback. Surface it (mirroring hybrid_rpc_failed below)
     // rather than swallowing the error and silently shipping weaker retrieval.
@@ -644,8 +697,17 @@ export async function upsertDocumentDeepMemory(args: {
     modelProfile = fallbackModelIndexProfile();
   }
   args.signal?.throwIfAborted();
-  const cards = buildDocumentMemoryCards({ ...args, sections, modelProfile });
-  if (cards.length === 0) throw new Error("Deep memory generated no source-backed memory cards.");
+  let cards: ReturnType<typeof buildDocumentMemoryCards>;
+  try {
+    cards = buildDocumentMemoryCards({ ...args, sections, modelProfile });
+  } catch (error) {
+    return failShadow("deep_cards", shadowInput, { sections, modelProfile }, error);
+  }
+  if (cards.length === 0) {
+    const error = new Error("Deep memory generated no source-backed memory cards.");
+    if (args.shadow) return failShadow("deep_cards", shadowInput, { sections, modelProfile, cards }, error);
+    throw error;
+  }
 
   // Audit M11: compute everything that can fail on the network (memory-card
   // and index-unit embeddings) BEFORE deleting the existing memory rows. The
@@ -654,52 +716,68 @@ export async function upsertDocumentDeepMemory(args: {
   // degradation) while documents.metadata still advertised the prior
   // rag_memory_version. A failure between the delete and insert below is
   // still possible, but the exposure window no longer spans OpenAI calls.
-  const embeddings = await embedTexts(cards.map(embeddingText), { signal: args.signal });
-  if (embeddings.length !== cards.length) throw new Error("OpenAI returned an unexpected memory-card embedding count.");
+  let embeddings: number[][] = [];
+  try {
+    embeddings = await embedTexts(cards.map(embeddingText), { signal: args.signal });
+    if (embeddings.length !== cards.length) throw new Error("OpenAI returned an unexpected memory-card embedding count.");
+  } catch (error) {
+    return failShadow("deep_card_embeddings", shadowInput, { sections, modelProfile, cards, embeddings }, error);
+  }
 
   args.signal?.throwIfAborted();
-  const indexUnits = buildDocumentIndexUnitInputs({
-    document: args.document,
-    chunks: args.chunks,
-    sections,
-    modelProfile,
-    summary: args.summary ?? null,
-    images: (args.images ?? []).map((image) => {
-      const metadata = image.metadata ?? {};
-      return {
-        id: image.id,
-        caption: image.caption,
-        pageNumber: image.page_number,
-        imageType: image.image_type,
-        sourceKind: image.source_kind,
-        labels: image.labels,
-        tableLabel: typeof metadata.table_label === "string" ? metadata.table_label : null,
-        tableTitle: typeof metadata.table_title === "string" ? metadata.table_title : null,
-        tableTextSnippet:
-          typeof metadata.table_text_snippet === "string"
-            ? metadata.table_text_snippet
-            : typeof metadata.table_text === "string"
-              ? metadata.table_text
+  let indexUnits: ReturnType<typeof buildDocumentIndexUnitInputs>;
+  try {
+    indexUnits = buildDocumentIndexUnitInputs({
+      document: args.document,
+      chunks: args.chunks,
+      sections,
+      modelProfile,
+      summary: args.summary ?? null,
+      images: (args.images ?? []).map((image) => {
+        const metadata = image.metadata ?? {};
+        return {
+          id: image.id,
+          caption: image.caption,
+          pageNumber: image.page_number,
+          imageType: image.image_type,
+          sourceKind: image.source_kind,
+          labels: image.labels,
+          tableLabel: typeof metadata.table_label === "string" ? metadata.table_label : null,
+          tableTitle: typeof metadata.table_title === "string" ? metadata.table_title : null,
+          tableTextSnippet:
+            typeof metadata.table_text_snippet === "string"
+              ? metadata.table_text_snippet
+              : typeof metadata.table_text === "string"
+                ? metadata.table_text
+                : null,
+          tableRole: typeof metadata.table_role === "string" ? metadata.table_role : null,
+          accessibleTableMarkdown:
+            typeof metadata.accessible_table_markdown === "string" ? metadata.accessible_table_markdown : null,
+          tableRows: Array.isArray(metadata.table_rows) ? (metadata.table_rows as string[][]) : null,
+          tableColumns: Array.isArray(metadata.table_columns) ? (metadata.table_columns as string[]) : null,
+          structuredVisualProfile:
+            typeof metadata.structured_visual_profile === "object" && metadata.structured_visual_profile !== null
+              ? (metadata.structured_visual_profile as never)
               : null,
-        tableRole: typeof metadata.table_role === "string" ? metadata.table_role : null,
-        accessibleTableMarkdown:
-          typeof metadata.accessible_table_markdown === "string" ? metadata.accessible_table_markdown : null,
-        tableRows: Array.isArray(metadata.table_rows) ? (metadata.table_rows as string[][]) : null,
-        tableColumns: Array.isArray(metadata.table_columns) ? (metadata.table_columns as string[]) : null,
-        structuredVisualProfile:
-          typeof metadata.structured_visual_profile === "object" && metadata.structured_visual_profile !== null
-            ? (metadata.structured_visual_profile as never)
-            : null,
-        metadata,
-      };
-    }),
-  });
-  const indexUnitEmbeddings =
-    indexUnits.length > 0
-      ? await embedTexts(indexUnits.map(embeddingTextForDocumentIndexUnit), { signal: args.signal })
-      : [];
-  if (indexUnits.length > 0 && indexUnitEmbeddings.length !== indexUnits.length) {
-    throw new Error("OpenAI returned an unexpected index-unit embedding count.");
+          metadata,
+        };
+      }),
+    });
+  } catch (error) {
+    return failShadow("deep_index_units", shadowInput, { sections, modelProfile, cards, embeddings }, error);
+  }
+  let indexUnitEmbeddings: number[][] = [];
+  try {
+    indexUnitEmbeddings =
+      indexUnits.length > 0
+        ? await embedTexts(indexUnits.map(embeddingTextForDocumentIndexUnit), { signal: args.signal })
+        : [];
+    if (indexUnits.length > 0 && indexUnitEmbeddings.length !== indexUnits.length) {
+      throw new Error("OpenAI returned an unexpected index-unit embedding count.");
+    }
+  } catch (error) {
+    return failShadow("deep_index_embeddings", shadowInput,
+      { sections, modelProfile, cards, embeddings, indexUnits, indexUnitEmbeddings }, error);
   }
   args.signal?.throwIfAborted();
   const anchors = args.chunks
@@ -707,7 +785,7 @@ export async function upsertDocumentDeepMemory(args: {
     .map((chunk) => ({ id: chunk.id, anchor_id: derivedChunkAnchor(chunk) }));
   const indexUnitCountsByType = countDocumentIndexUnitsByType(indexUnits);
 
-  const artifactGenerationId = crypto.randomUUID();
+  const artifactGenerationId = shadowArtifactGenerationId ?? crypto.randomUUID();
   const stagedMetadata = (metadata: unknown) => ({
     ...metadataRecord(metadata),
     generated_by: localDeepMemoryProducer,
@@ -722,6 +800,59 @@ export async function upsertDocumentDeepMemory(args: {
     index_generation_id: artifactGenerationId,
     metadata: stagedMetadata(section.metadata),
   }));
+
+  if (args.shadow) {
+    // Retain the original whole producer batch before SQL chooses section/card
+    // identifiers. A card's original section_index presence is explicit; it is
+    // never replaced by a guessed future section_id in the declaration.
+    const aliases = (modelProfile?.aliases ?? []).filter(alias => alias.confidence >= 0.65).map(alias => ({
+      alias: alias.alias, canonical: alias.canonical, alias_type: alias.alias_type,
+      weight: Math.max(0.5, Math.min(1.5, alias.confidence + 0.25)), enabled: true,
+      metadata: { source: "model_index_profile", document_id: args.document.id, source_chunk_ids: alias.source_chunk_ids,
+        model_index_version: modelIndexExtractionVersion, generated_by: localDeepMemoryProducer, artifact_generation_id: artifactGenerationId },
+    }));
+    const request = { fence, artifact_generation: artifactGenerationId, rag_memory_version: ragDeepMemoryVersion,
+      document_intelligence_version: documentIntelligenceVersion, section_count: sections.length,
+      memory_card_count: cards.length, index_unit_counts_by_type: indexUnitCountsByType, anchors, aliases };
+    const plannedCards = cards.map((card, index) => {
+      const { section_index: sectionIndex, ...native } = card;
+      return { nativeInput: { ...native, producer: localDeepMemoryProducer, artifact_generation_id: artifactGenerationId,
+        index_generation_id: artifactGenerationId, metadata: stagedMetadata(native.metadata),
+        embedding: assertEmbeddingDim(embeddings[index], `document_memory_cards.${index}`) },
+        sectionAssociation: !Object.hasOwn(card, "section_index") ? { tag: "absent" as const }
+          : sectionIndex === undefined ? { tag: "own_undefined" as const } : { tag: "index" as const, index: sectionIndex } };
+    });
+    const plannedUnits = indexUnits.map((unit, index) => ({ nativeInput: { ...unit, producer: localDeepMemoryProducer,
+      artifact_generation_id: artifactGenerationId, index_generation_id: artifactGenerationId, metadata: stagedMetadata(unit.metadata),
+      embedding: assertEmbeddingDim(indexUnitEmbeddings[index], `document_index_units.${index}`) } }));
+    const producerSnapshot = readShadowProducerInputV1(captureShadowProducerInputV1({
+      stagedSections, plannedCards, plannedUnits, aliases, modelProfile, request,
+    })).nativeInput as {
+      stagedSections: typeof stagedSections;
+      plannedCards: typeof plannedCards;
+      plannedUnits: typeof plannedUnits;
+      aliases: typeof aliases;
+      modelProfile: typeof modelProfile;
+      request: typeof request;
+    };
+    const outputManifest = await args.shadow.declareBatch({ groupKey: "deep_memory",
+      families: ["index_units", "memory_cards", "producer_aliases", "sections"], artifactGenerationId,
+      producerVersion: ragDeepMemoryVersion,
+      units: [
+        ...producerSnapshot.stagedSections.map((nativeInput, index) => ({ family: "sections" as const, key: `deep:${index}`,
+          output: index === 0 ? { nativeInput, producerContext: {
+            modelProfile: producerSnapshot.modelProfile, request: producerSnapshot.request } } : { nativeInput } })),
+        ...producerSnapshot.plannedCards.map((output, index) => ({ family: "memory_cards" as const, key: `deep:${index}`, output })),
+        ...producerSnapshot.plannedUnits.map((output, index) => ({ family: "index_units" as const, key: `deep:${index}`, output })),
+        ...producerSnapshot.aliases.map((nativeInput, index) => ({ family: "producer_aliases" as const, key: `deep:${index}`, output: { nativeInput } })),
+      ],
+    });
+    args.signal?.throwIfAborted();
+    const result = await mutate("persist_shadow_deep_memory_projection", { p_generation: sourceGeneration,
+      p_artifact_generation: artifactGenerationId, p_output_manifest: outputManifest, p_request: producerSnapshot.request });
+    if (result.kind !== "deep_memory_projected" && result.kind !== "unchanged") throw new IngestionAttemptError("ingestion_rpc_invalid");
+    return { sections, memoryCards: cards, indexUnits, modelProfile };
+  }
 
   const cleanupStagedArtifacts = async () => {
     // Only a local pre-commit failure is eligible; cleanup uncertainty is fatal,

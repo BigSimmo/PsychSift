@@ -6,7 +6,7 @@ import {
   medicationAliasesForEntity,
   medicationSafetyEntitiesInText,
 } from "@/lib/medication-entities";
-import { freshnessDecayPenalty, rankingConfig } from "@/lib/ranking-config";
+import { freshnessDecayPenalty, rankingConfig, type RankingConfig } from "@/lib/ranking-config";
 import type {
   ClinicalQueryAnalysis,
   ClinicalQueryIntent,
@@ -612,12 +612,11 @@ function analysisConfidence(args: {
 }
 
 /** Parse date as years ago. */
-function parseDateAsYearsAgo(value?: string | null) {
+function parseDateAsYearsAgo(value: string | null | undefined, comparisonTimeMs: number) {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  const now = new Date();
-  return Math.max(0, (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24 * 365));
+  return Math.max(0, (comparisonTimeMs - date.getTime()) / (1000 * 60 * 60 * 24 * 365));
 }
 
 /** Clamp. */
@@ -1582,7 +1581,12 @@ function roundScore(value: number) {
 }
 
 /** Clinical rank explanation. */
-export function clinicalRankExplanation(query: string, result: SearchResult): SearchScoreExplanation {
+export function clinicalRankExplanation(
+  query: string,
+  result: SearchResult,
+  activeRankingConfig: Readonly<RankingConfig> = rankingConfig,
+  comparisonTimeMs: number = Date.now(),
+): SearchScoreExplanation {
   const analysis = analyzeClinicalQuery(query);
   const queryTokens = tokens(query);
   const correctedQueryText = correctedTokens(query).join(" ");
@@ -1616,10 +1620,10 @@ export function clinicalRankExplanation(query: string, result: SearchResult): Se
       : 0;
   const status = result.source_metadata?.document_status;
   const statusBoost = status === "outdated" ? -0.04 : 0;
-  const publicationYearsAgo = parseDateAsYearsAgo(result.source_metadata?.publication_date);
-  const reviewYearsAgo = parseDateAsYearsAgo(result.source_metadata?.review_date);
-  const freshnessBoost = freshnessDecayPenalty(publicationYearsAgo, "publication", rankingConfig.freshness);
-  const reviewBoost = freshnessDecayPenalty(reviewYearsAgo, "review", rankingConfig.freshness);
+  const publicationYearsAgo = parseDateAsYearsAgo(result.source_metadata?.publication_date, comparisonTimeMs);
+  const reviewYearsAgo = parseDateAsYearsAgo(result.source_metadata?.review_date, comparisonTimeMs);
+  const freshnessBoost = freshnessDecayPenalty(publicationYearsAgo, "publication", activeRankingConfig.freshness);
+  const reviewBoost = freshnessDecayPenalty(reviewYearsAgo, "review", activeRankingConfig.freshness);
   const imageBoost = imageEvidenceSignal(query, result);
   const sectionBoost = sectionMatchBoost(query, result);
   const sectionedLookupBoost = querySignal.sectionedLookup ? 0.02 : 0;
@@ -1922,7 +1926,7 @@ export function clinicalRankExplanation(query: string, result: SearchResult): Se
   const clinicalEvidence =
     clinicalSignalBoost - sectionBoost - sectionDepth - evidenceBoost - directAnswerBoost - comparisonCoverageBoost;
   const fixedMetadataAdjustment = metadataSignals - metadataBoost;
-  const weights = rankingConfig.featureFusion[queryClass];
+  const weights = activeRankingConfig.featureFusion[queryClass];
   const rankScore =
     clamp(base) * weights.hybridRelevance +
     lexicalCoverage * weights.lexicalCoverage +
@@ -1966,8 +1970,13 @@ export function clinicalRankExplanation(query: string, result: SearchResult): Se
 }
 
 /** Clinical rank score. */
-export function clinicalRankScore(query: string, result: SearchResult) {
-  return clinicalRankExplanation(query, result).finalScore;
+export function clinicalRankScore(
+  query: string,
+  result: SearchResult,
+  activeRankingConfig: Readonly<RankingConfig> = rankingConfig,
+  comparisonTimeMs: number = Date.now(),
+) {
+  return clinicalRankExplanation(query, result, activeRankingConfig, comparisonTimeMs).finalScore;
 }
 
 /** Ranking tie break score. */
@@ -2111,12 +2120,17 @@ function rankingTieBreakScore(query: string, result: SearchResult, explanation: 
 }
 
 /** Rank clinical results. */
-export function rankClinicalResults(query: string, results: SearchResult[]) {
+export function rankClinicalResults(
+  query: string,
+  results: SearchResult[],
+  activeRankingConfig: Readonly<RankingConfig> = rankingConfig,
+  comparisonTimeMs: number = Date.now(),
+) {
   const intent = classifyQueryIntent(query);
   const wantsImageEvidence = hasImageEvidenceNeed(query) || intent.imageEvidenceFocus;
   const ranked = [...results]
     .map((result) => {
-      const explanation = clinicalRankExplanation(query, result);
+      const explanation = clinicalRankExplanation(query, result, activeRankingConfig, comparisonTimeMs);
       const hasImageEvidence = (result.images ?? []).some((image) => isClinicalImageEvidence(image));
       const imageEvidencePenalty = wantsImageEvidence && !hasImageEvidence ? -0.04 : 0;
       const tieBreakScore = rankingTieBreakScore(query, result, explanation);

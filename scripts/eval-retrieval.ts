@@ -16,8 +16,6 @@ import {
 // candidates with the same sanctioned expansions this live eval's gates use.
 import { clinicalContentAliases, clinicalDocumentAliases } from "./lib/clinical-aliases";
 
-loadEnvConfig(process.cwd());
-
 const contentExpectationSchema = z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]);
 
 const goldenCaseSchema = z.object({
@@ -917,6 +915,7 @@ async function withCaseTimeout<T>(
 }
 
 async function main() {
+  loadEnvConfig(process.cwd());
   const args = parseArgs(process.argv.slice(2));
   const [{ requireOpenAIEnv, requireServerEnv }, { searchChunksWithTelemetry }, supabase] = await Promise.all([
     import("@/lib/env"),

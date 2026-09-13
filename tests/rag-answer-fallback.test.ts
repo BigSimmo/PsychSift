@@ -39,6 +39,8 @@ function source(overrides: Partial<SearchResult> = {}): SearchResult {
       document_status: "current",
       clinical_validation_status: "approved",
       extraction_quality: "good",
+      corpus_scope: "uploaded_local",
+      source_role: "local_guideline",
     },
     images: [],
     ...overrides,
@@ -58,6 +60,10 @@ class EmptyQuery implements PromiseLike<{ data: unknown[]; error: null }> {
     return this;
   }
 
+  or() {
+    return this;
+  }
+
   neq() {
     return this;
   }
@@ -67,7 +73,7 @@ class EmptyQuery implements PromiseLike<{ data: unknown[]; error: null }> {
   }
 
   limit() {
-    return Promise.resolve({ data: [], error: null });
+    return this;
   }
 
   then<TResult1 = { data: unknown[]; error: null }, TResult2 = never>(
@@ -1921,6 +1927,8 @@ describe("RAG structured-output fallback", () => {
           document_status: "outdated",
           clinical_validation_status: "approved",
           extraction_quality: "good",
+          corpus_scope: "uploaded_local",
+          source_role: "local_guideline",
         },
         table_facts: [
           {
@@ -3286,26 +3294,33 @@ describe("RAG structured-output fallback", () => {
 
     const sources = [source()];
     const rpc = vi.fn(async (name: string) => {
+      if (name === "public_source_serving_authority_stamp") return { data: "fixture-authority-v1", error: null };
       if (retrievalRpcBaseName(name) === "match_document_chunks_text") return { data: sources, error: null };
       if (retrievalRpcBaseName(name) === "get_related_document_metadata") return { data: [], error: null };
       return { data: [], error: null };
     });
-    const generateStructuredTextResult = vi.fn(async () => ({
-      text: JSON.stringify({
-        answer: "Use a stepwise agitation and arousal approach based on rating and route.",
-        grounded: true,
-        confidence: "high",
-        answerSections: [],
-        citations: [{ chunk_id: "agitation-chunk-1" }],
-        quoteCards: [],
-        conflictsOrGaps: [],
-      }),
-      model: "gpt-4.1-mini",
-      operation: "answer",
-      latencyMs: 12,
-      requestId: "req_independent",
-      usage: { input_tokens: 100, output_tokens: 120, total_tokens: 220 },
-    }));
+    const generationStarted = Promise.withResolvers<void>();
+    const releaseGeneration = Promise.withResolvers<void>();
+    const generateStructuredTextResult = vi.fn(async () => {
+      generationStarted.resolve();
+      await releaseGeneration.promise;
+      return {
+        text: JSON.stringify({
+          answer: "Use a stepwise agitation and arousal approach based on rating and route.",
+          grounded: true,
+          confidence: "high",
+          answerSections: [],
+          citations: [{ chunk_id: "agitation-chunk-1" }],
+          quoteCards: [],
+          conflictsOrGaps: [],
+        }),
+        model: "gpt-4.1-mini",
+        operation: "answer",
+        latencyMs: 12,
+        requestId: "req_independent",
+        usage: { input_tokens: 100, output_tokens: 120, total_tokens: 220 },
+      };
+    });
 
     vi.doMock("@/lib/supabase/admin", () => ({
       createAdminClient: () => ({ rpc, from: vi.fn(() => new EmptyQuery()) }),
@@ -3317,7 +3332,7 @@ describe("RAG structured-output fallback", () => {
 
     const { answerQuestionWithScope } = await import("../src/lib/rag/rag");
 
-    // Originating request aborts before it can produce an answer; its shared in-flight promise rejects.
+    // A pre-aborted caller must not prevent an independent caller from originating an answer.
     const controller = new AbortController();
     controller.abort();
     const first = answerQuestionWithScope({
@@ -3326,25 +3341,29 @@ describe("RAG structured-output fallback", () => {
       logQuery: false,
       signal: controller.signal,
     });
-    // Two identical waiters coalesce onto the (now-doomed) in-flight promise.
+    // Hold the independent generation open so the next caller actually overlaps it.
     const second = answerQuestionWithScope({
       query: "Summarize inpatient approach",
       ownerId: "owner-1",
       logQuery: false,
     });
+    await expect(first).rejects.toBeTruthy();
+    await generationStarted.promise;
     const third = answerQuestionWithScope({
+      onProgress: (progress) => {
+        if (progress.reason === "answer_inflight_coalesced") releaseGeneration.resolve();
+      },
       query: "Summarize inpatient approach",
       ownerId: "owner-1",
       logQuery: false,
     });
 
-    // The originator's failure stays with the originator...
-    await expect(first).rejects.toBeTruthy();
-    // ...and the coalesced caller still gets a real, independently generated answer rather than a 500.
+    // The still-connected callers share one independent answer; the abort stays with its caller.
     const [secondAnswer, thirdAnswer] = await Promise.all([second, third]);
     expect(secondAnswer.openAIRequestIds).toEqual(["req_independent"]);
     expect(thirdAnswer.openAIRequestIds).toEqual(["req_independent"]);
     expect(secondAnswer.routingReason ?? "").not.toContain("answer_inflight_coalesced");
+    expect(thirdAnswer.routingReason ?? "").toContain("answer_inflight_coalesced");
     // It ran its OWN pipeline (search + generation once) instead of cloning the failed one.
     expect(generateStructuredTextResult).toHaveBeenCalledTimes(1);
     expect(rpc.mock.calls.filter(([name]) => name === "match_document_chunks_text_v2")).toHaveLength(1);
@@ -3590,6 +3609,8 @@ describe("RAG structured-output fallback", () => {
           document_status: "current",
           clinical_validation_status: "locally_reviewed",
           extraction_quality: "good",
+          corpus_scope: "uploaded_local",
+          source_role: "local_guideline",
         },
       });
     const sources = [
@@ -3656,6 +3677,8 @@ describe("RAG structured-output fallback", () => {
           document_status: "current",
           clinical_validation_status: "unverified",
           extraction_quality: "good",
+          corpus_scope: "international_supplementary",
+          source_role: "clinical_reference",
         },
       }),
     ];
@@ -5051,6 +5074,8 @@ describe("budget-aware generation deadlines", () => {
           document_status: "current",
           clinical_validation_status: "locally_reviewed",
           extraction_quality: "good",
+          corpus_scope: "uploaded_local",
+          source_role: "local_guideline",
         },
       });
     const sources = [
@@ -5117,6 +5142,8 @@ describe("budget-aware generation deadlines", () => {
           document_status: "current",
           clinical_validation_status: "unverified",
           extraction_quality: "good",
+          corpus_scope: "international_supplementary",
+          source_role: "clinical_reference",
         },
       }),
     ];

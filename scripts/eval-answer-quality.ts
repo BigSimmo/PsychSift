@@ -21,8 +21,6 @@ import {
 import type { RagAnswer } from "@/lib/types";
 import { estimateCostUsd, loadAdminClient, resolveEvalOwnerId, withProviderBackoff } from "./eval-utils";
 
-loadEnvConfig(process.cwd());
-
 type Args = {
   ownerEmail?: string;
   ownerId?: string;
@@ -435,6 +433,7 @@ export function summarizeAnswerQuality(outcomes: AnswerQualityCaseOutcome[]) {
 }
 
 async function main() {
+  loadEnvConfig(process.cwd());
   const args = parseArgs(process.argv.slice(2));
   const cases = selectAnswerQualityCases(args);
   const extraCases = args.extraCases

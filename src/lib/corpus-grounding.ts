@@ -8,6 +8,11 @@ import {
   retrievalAccessScopeKey,
   type RetrievalAccessScope,
 } from "@/lib/owner-scope";
+import {
+  acceptRagEvaluationRead,
+  ragEvaluationReadScope,
+  type RagEvaluationContext,
+} from "@/lib/rag/rag-contracts";
 
 type AbortableQuery<T> = PromiseLike<T> & { abortSignal?: (signal: AbortSignal) => PromiseLike<T> };
 
@@ -132,16 +137,37 @@ export function classifyCorpusGroundingFromStats(stats: CorpusTopicTermStats[]):
 }
 
 export async function classifyCorpusGrounding(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   // The exact owner_filter retrieval will use (null = unscoped, zero-UUID = public docs only).
   ownerFilter: string | null;
   accessScope?: RetrievalAccessScope;
   signal?: AbortSignal;
+  evaluation?: RagEvaluationContext;
 }): Promise<CorpusGroundingResult> {
   if (args.signal?.aborted) throw abortReason(args.signal);
   const terms = corpusGroundingTerms(args.query);
   if (terms.length === 0) return { verdict: "inconclusive", anchorTerms: [], absentTerms: [] };
+  if (args.evaluation) {
+    const evaluation = args.evaluation;
+    const rows = await acceptRagEvaluationRead(evaluation, "corpus_terms", () =>
+      evaluation.readers.readCorpusTermStats({
+        ...ragEvaluationReadScope(evaluation),
+        terms,
+      }),
+    );
+    if (
+      rows.length !== terms.length ||
+      new Set(rows.map((row) => row.term)).size !== rows.length ||
+      rows.some((row) => !terms.includes(row.term))
+    ) {
+      evaluation.failures.record({ code: "malformed_result", operation: "corpus_terms" });
+      throw new Error("U04 corpus term read did not echo every requested term.");
+    }
+    return classifyCorpusGroundingFromStats(rows.map((row) => ({ ...row })));
+  }
+  const supabase = args.supabase;
+  if (!supabase) throw new Error("Supabase client is required outside U04 evaluation.");
 
   const accessScope =
     args.accessScope ??
@@ -165,7 +191,7 @@ export async function classifyCorpusGrounding(args: {
         flight = (async () => {
           const ownerFilter = accessScope.ownerId ?? PUBLIC_OWNER_FILTER_SENTINEL;
           const versioned = await resolveAbortableQuery(
-            args.supabase.rpc("corpus_topic_term_stats_v2", {
+            supabase.rpc("corpus_topic_term_stats_v2", {
               terms: missing,
               owner_filter: ownerFilter,
               include_public: accessScope.includePublic,
@@ -176,12 +202,12 @@ export async function classifyCorpusGrounding(args: {
             !versioned || isMissingRetrievalRpcError(versioned.error)
               ? await Promise.all([
                   resolveAbortableQuery(
-                    args.supabase.rpc("corpus_topic_term_stats", { terms: missing, owner_filter: ownerFilter }),
+                    supabase.rpc("corpus_topic_term_stats", { terms: missing, owner_filter: ownerFilter }),
                     args.signal,
                   ),
                   accessScope.ownerId && accessScope.includePublic
                     ? resolveAbortableQuery(
-                        args.supabase.rpc("corpus_topic_term_stats", {
+                        supabase.rpc("corpus_topic_term_stats", {
                           terms: missing,
                           owner_filter: PUBLIC_OWNER_FILTER_SENTINEL,
                         }),

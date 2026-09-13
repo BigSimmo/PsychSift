@@ -7,6 +7,12 @@ import { metadataText, safeRecord } from "@/lib/rag/rag-answer-text";
 import { compactContextText } from "@/lib/rag/rag-source-block";
 import type { RetrievalAccessScope } from "@/lib/owner-scope";
 import {
+  acceptRagEvaluationRead,
+  ragEvaluationReadScope,
+  type RagEvaluationContext,
+  type RagEvaluationStoredImageRow,
+} from "@/lib/rag/rag-contracts";
+import {
   applyMemoryBoostArtifacts,
   loadMemoryBoostArtifacts,
   type MemoryCardCache,
@@ -35,7 +41,7 @@ export function createDocumentRankingMetadataCache(): DocumentRankingMetadataCac
 
 /** Overlap independent metadata and memory reads, then merge them deterministically. */
 export async function hydrateCandidatesWithMetadataAndMemory(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   candidates: SearchResult[];
   queryEmbedding?: number[];
@@ -46,12 +52,13 @@ export async function hydrateCandidatesWithMetadataAndMemory(args: {
   metadataCache: DocumentRankingMetadataCache;
   cardCache: MemoryCardCache;
   measurePhase: <T>(phase: string, operation: () => Promise<T>) => Promise<T>;
+  evaluation?: RagEvaluationContext;
 }) {
   // Neither read consumes the other's result. Candidate assembly remains ordered because
   // memory boosts are applied only after both promises settle, preserving the serial output.
   const [metadataCandidates, memoryArtifacts] = await args.measurePhase("metadata_and_memory_hydration", () =>
     Promise.all([
-      attachDocumentRankingMetadata(args.supabase, args.candidates, args.ownerId, args.metadataCache),
+      attachDocumentRankingMetadata(args.supabase, args.candidates, args.ownerId, args.metadataCache, args.evaluation),
       loadMemoryBoostArtifacts({
         supabase: args.supabase,
         query: args.query,
@@ -61,6 +68,7 @@ export async function hydrateCandidatesWithMetadataAndMemory(args: {
         documentIds: args.documentIds,
         matchCount: args.matchCount,
         cardCache: args.cardCache,
+        evaluation: args.evaluation,
       }),
     ]),
   );
@@ -69,13 +77,49 @@ export async function hydrateCandidatesWithMetadataAndMemory(args: {
 
 /** Attach document ranking metadata. */
 export async function attachDocumentRankingMetadata(
-  supabase: ReturnType<typeof createAdminClient>,
+  supabase: ReturnType<typeof createAdminClient> | null,
   results: SearchResult[],
   ownerId?: string,
   cache = createDocumentRankingMetadataCache(),
+  evaluation?: RagEvaluationContext,
 ) {
   const documentIds = Array.from(new Set(results.map((result) => result.document_id)));
   if (documentIds.length === 0) return results;
+  if (evaluation) {
+    const metadataRows = await acceptRagEvaluationRead(evaluation, "ranking_metadata", () =>
+      evaluation.readers.readRankingMetadata({
+        ...ragEvaluationReadScope(evaluation),
+        document_ids: documentIds,
+      }),
+    );
+    const qualityRows = await acceptRagEvaluationRead(evaluation, "quality", () =>
+      evaluation.readers.readQuality({
+        ...ragEvaluationReadScope(evaluation),
+        document_ids: documentIds,
+      }),
+    );
+    const metadataByDocument = new Map(metadataRows.map((row) => [row.document_id, row] as const));
+    const qualityByDocument = new Map(
+      qualityRows.map((row) => [
+        row.document_id,
+        {
+          ...row,
+          metrics: safeRecord(row.metrics),
+          issues: [...row.issues],
+        } satisfies NonNullable<SearchResult["indexing_quality"]>,
+      ] as const),
+    );
+    return results.map((result) => {
+      const metadata = metadataByDocument.get(result.document_id);
+      return {
+        ...result,
+        document_labels: metadata?.labels ? [...metadata.labels] : result.document_labels,
+        document_summary: metadata?.summary ?? result.document_summary,
+        indexing_quality: qualityByDocument.get(result.document_id) ?? result.indexing_quality ?? null,
+      };
+    });
+  }
+  if (!supabase) throw new Error("Supabase client is required outside U04 evaluation.");
   const missingDocumentIds = documentIds.filter(
     (documentId) =>
       !cache.documentMetadata.has(documentId) &&
@@ -171,8 +215,9 @@ async function attachIndexQualityMetadata(
 
 /** Attach page visual evidence. */
 export async function attachPageVisualEvidence(
-  supabase: ReturnType<typeof createAdminClient>,
+  supabase: ReturnType<typeof createAdminClient> | null,
   results: SearchResult[],
+  evaluation?: RagEvaluationContext,
 ): Promise<SearchResult[]> {
   const documentIds = Array.from(new Set(results.map((result) => result.document_id)));
   const pageNumbers = Array.from(
@@ -189,34 +234,59 @@ export async function attachPageVisualEvidence(
     .filter((id): id is string => Boolean(id))
     .slice(0, 80);
   if (documentIds.length === 0 || (pageNumbers.length === 0 && sourceImageIds.length === 0)) return results;
+  let data: readonly RagEvaluationStoredImageRow[];
+  if (evaluation) {
+    const [pageImages, directImages] = await Promise.all([
+      pageNumbers.length
+        ? acceptRagEvaluationRead(evaluation, "images_by_pages", () =>
+            evaluation.readers.readImagesByPages({
+              ...ragEvaluationReadScope(evaluation),
+              document_ids: documentIds,
+              page_numbers: pageNumbers,
+            }),
+          )
+        : Promise.resolve([]),
+      sourceImageIds.length
+        ? acceptRagEvaluationRead(evaluation, "images_by_ids", () =>
+            evaluation.readers.readImagesByIds({
+              ...ragEvaluationReadScope(evaluation),
+              ids: sourceImageIds,
+            }),
+          )
+        : Promise.resolve([]),
+    ]);
+    data = [...pageImages, ...directImages];
+  } else {
+    if (!supabase) throw new Error("Supabase client is required outside U04 evaluation.");
 
-  const selectColumns =
-    "id,document_id,page_number,storage_path,caption,bbox,image_type,searchable,clinical_relevance_score,source_kind,width,height,labels,metadata";
-  const [pageData, directData] = await Promise.all([
-    pageNumbers.length > 0
-      ? supabase
-          .from("document_images")
-          .select(selectColumns)
-          .in("document_id", documentIds)
-          .in("page_number", pageNumbers)
-          .eq("searchable", true)
-          .neq("image_type", "logo_decorative")
-          .order("clinical_relevance_score", { ascending: false })
-          .limit(80)
-      : Promise.resolve({ data: [], error: null }),
-    sourceImageIds.length > 0
-      ? supabase
-          .from("document_images")
-          .select(selectColumns)
-          .in("id", sourceImageIds)
-          .eq("searchable", true)
-          .neq("image_type", "logo_decorative")
-          .limit(sourceImageIds.length)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
-
-  const data = [...(pageData.data ?? []), ...(directData.data ?? [])];
-  if ((pageData.error && directData.error) || data.length === 0) return results;
+    const selectColumns =
+      "id,document_id,page_number,storage_path,caption,bbox,image_type,searchable,clinical_relevance_score,source_kind,width,height,labels,metadata";
+    const [pageData, directData] = await Promise.all([
+      pageNumbers.length > 0
+        ? supabase
+            .from("document_images")
+            .select(selectColumns)
+            .in("document_id", documentIds)
+            .in("page_number", pageNumbers)
+            .eq("searchable", true)
+            .neq("image_type", "logo_decorative")
+            .order("clinical_relevance_score", { ascending: false })
+            .limit(80)
+        : Promise.resolve({ data: [], error: null }),
+      sourceImageIds.length > 0
+        ? supabase
+            .from("document_images")
+            .select(selectColumns)
+            .in("id", sourceImageIds)
+            .eq("searchable", true)
+            .neq("image_type", "logo_decorative")
+            .limit(sourceImageIds.length)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    data = [...(pageData.data ?? []), ...(directData.data ?? [])];
+    if (pageData.error && directData.error) return results;
+  }
+  if (data.length === 0) return results;
 
   const committedGenerationByDocument = new Map(
     results.map((result) => [result.document_id, committedIndexGeneration(result.source_metadata)] as const),
@@ -258,7 +328,7 @@ export async function attachPageVisualEvidence(
       tableRows: Array.isArray(metadata.table_rows) ? (metadata.table_rows as string[][]) : null,
       tableColumns: Array.isArray(metadata.table_columns) ? (metadata.table_columns as string[]) : null,
       tableTextSnippet: tableText ? compactContextText(tableText, 500) : null,
-      labels: Array.isArray(image.labels) ? image.labels : [],
+      labels: Array.isArray(image.labels) ? [...image.labels] : [],
       metadata,
     };
     imagesById.set(image.id, publicImage);

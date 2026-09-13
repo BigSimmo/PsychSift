@@ -70,10 +70,30 @@ export function isProviderRateLimitError(error: unknown) {
   return !isProviderQuotaError(error) && /\b(?:429|rate[_\s-]?limit(?:ed)?|too many requests)\b/i.test(message);
 }
 
+export type EvaluatorRetry = {
+  maxAttempts: number;
+  initialDelayMs: number;
+  maxDelayMs: number;
+};
+
+/** Resolve ordinary CLI defaults once; bound runners supply the admitted tuple. */
+export function configuredEvaluatorRetry(): EvaluatorRetry {
+  return {
+    maxAttempts: providerRetryNumber(process.env.RAG_EVAL_PROVIDER_RETRY_ATTEMPTS, 4),
+    initialDelayMs: providerRetryNumber(process.env.RAG_EVAL_PROVIDER_RETRY_INITIAL_MS, 5_000),
+    maxDelayMs: providerRetryNumber(process.env.RAG_EVAL_PROVIDER_RETRY_MAX_MS, 45_000),
+  };
+}
+
+export type ProviderBackoffEvent<T> =
+  | { type: "attempt"; attempt: number }
+  | { type: "error"; attempt: number; error: unknown; willRetry: boolean; delayMs: number }
+  | { type: "success"; attempt: number; result: T };
+
 export async function withProviderBackoff<T>(
   label: string,
   operation: () => Promise<T>,
-  options: { maxAttempts?: number; initialDelayMs?: number; maxDelayMs?: number } = {},
+  options: Partial<EvaluatorRetry> & { observe?: (event: ProviderBackoffEvent<T>) => void } = {},
 ) {
   const maxAttempts = options.maxAttempts ?? providerRetryNumber(process.env.RAG_EVAL_PROVIDER_RETRY_ATTEMPTS, 4);
   const initialDelayMs =
@@ -81,16 +101,25 @@ export async function withProviderBackoff<T>(
   const maxDelayMs = options.maxDelayMs ?? providerRetryNumber(process.env.RAG_EVAL_PROVIDER_RETRY_MAX_MS, 45_000);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    // Observers are outside the operation's retry boundary: they cannot turn their
+    // own failures into a provider retry or replace the operation's return value.
+    options.observe?.({ type: "attempt", attempt });
+    let result: T;
     try {
-      return await operation();
+      result = await operation();
     } catch (error) {
-      if (!isProviderRateLimitError(error) || attempt >= maxAttempts) throw error;
+      const willRetry = isProviderRateLimitError(error) && attempt < maxAttempts;
       const delayMs = Math.min(initialDelayMs * 2 ** (attempt - 1), maxDelayMs);
+      options.observe?.({ type: "error", attempt, error, willRetry, delayMs: willRetry ? delayMs : 0 });
+      if (!willRetry) throw error;
       console.warn(
         `[eval] Provider rate limit during ${label}; retrying attempt ${attempt + 1}/${maxAttempts} in ${delayMs}ms.`,
       );
       await sleep(delayMs);
+      continue;
     }
+    options.observe?.({ type: "success", attempt, result });
+    return result;
   }
 
   throw new Error(`Provider retry loop exhausted for ${label}.`);
@@ -300,7 +329,9 @@ export function validateRagAnswer(testCase: RagEvalCase, answer: RagAnswer) {
   return { expectedHit, expectedCoverage, failures };
 }
 
-export function configuredCostRates() {
+export type EvalCostRates = { input: number; cachedInput: number; output: number };
+
+export function configuredCostRates(): EvalCostRates | null {
   const input = Number(process.env.RAG_EVAL_INPUT_USD_PER_MILLION);
   const cachedInput = Number(process.env.RAG_EVAL_CACHED_INPUT_USD_PER_MILLION);
   const output = Number(process.env.RAG_EVAL_OUTPUT_USD_PER_MILLION);
@@ -313,8 +344,10 @@ export function configuredCostRates() {
   };
 }
 
-export function estimateCostUsd(result: { inputTokens: number; cachedInputTokens: number; outputTokens: number }) {
-  const rates = configuredCostRates();
+export function estimateCostUsd(
+  result: { inputTokens: number; cachedInputTokens: number; outputTokens: number },
+  rates: EvalCostRates | null = configuredCostRates(),
+) {
   if (!rates) return null;
 
   const uncachedInput = Math.max(result.inputTokens - result.cachedInputTokens, 0);

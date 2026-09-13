@@ -17,6 +17,7 @@ import {
 } from "../src/lib/clinical-search";
 import { queryForClinicalMode } from "../src/lib/clinical-query-mode";
 import { buildRagQueryPlan } from "../src/lib/rag/rag-query-plan";
+import { rankingConfig } from "../src/lib/ranking-config";
 import type { SearchResult } from "../src/lib/types";
 
 function result(overrides: Partial<SearchResult>): SearchResult {
@@ -36,6 +37,42 @@ function result(overrides: Partial<SearchResult>): SearchResult {
     ...overrides,
   };
 }
+
+describe("U04 captured ranking configuration", () => {
+  it("uses the captured comparison clock for evidence freshness", () => {
+    const candidate = result({ source_metadata: { publication_date: "2024-01-01", review_date: "2024-01-01" } });
+    const recent = rankClinicalResults("discharge guidance", [candidate], rankingConfig, Date.parse("2024-01-02T00:00:00.000Z"));
+    const old = rankClinicalResults("discharge guidance", [candidate], rankingConfig, Date.parse("2044-01-02T00:00:00.000Z"));
+    expect(recent[0]!.score_explanation!.freshnessRecencyBoost).toBeGreaterThan(old[0]!.score_explanation!.freshnessRecencyBoost);
+    expect(rankClinicalResults("discharge guidance", [candidate], rankingConfig, Date.parse("2024-01-02T00:00:00.000Z")))
+      .toEqual(recent);
+  });
+  it("uses the supplied feature-fusion weights without changing the ordinary singleton", () => {
+    const query = "Summarize the discharge guidance";
+    const candidate = result({
+      id: "captured-ranking",
+      title: "Mental Health Discharge Guidance",
+      hybrid_score: 0.8,
+      similarity: 0.8,
+    });
+    const captured = {
+      ...rankingConfig,
+      featureFusion: {
+        ...rankingConfig.featureFusion,
+        broad_summary: {
+          ...rankingConfig.featureFusion.broad_summary,
+          hybridRelevance: 0,
+        },
+      },
+    };
+
+    const ordinary = rankClinicalResults(query, [candidate]);
+    const evaluated = rankClinicalResults(query, [candidate], captured);
+
+    expect(evaluated[0].score_explanation?.rankScore).not.toBe(ordinary[0].score_explanation?.rankScore);
+    expect(rankingConfig.featureFusion.broad_summary.hybridRelevance).toBe(1);
+  });
+});
 
 describe("deterministic RAG query-plan routing", () => {
   it.each([

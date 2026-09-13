@@ -31,6 +31,56 @@ describe("strict embedding dimension guard", () => {
   });
 });
 
+describe("embedTexts malformed response evidence", () => {
+  it.each([
+    ["non-array", "not-a-vector", "openai_embedding_dimension_mismatch", "not-a-vector"],
+    ["non-finite", [Infinity], "openai_embedding_invalid_value",
+      [{ type: "unrepresentable_number", value: "Infinity" }]],
+    ["negative zero", [-0], "openai_embedding_invalid_value",
+      [{ type: "unrepresentable_number", value: "-0" }]],
+    ["unsafe integer", [Number.MAX_SAFE_INTEGER + 1], "openai_embedding_invalid_value",
+      [{ type: "unrepresentable_number", value: String(Number.MAX_SAFE_INTEGER + 1) }]],
+  ] as const)("rejects %s before reassembly and retains the complete native response",
+    async (_case, embedding, expectedCode, expectedEmbedding) => {
+      vi.resetModules();
+      vi.stubEnv("OPENAI_API_KEY", "test-key");
+      vi.stubEnv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small");
+      vi.stubEnv("OPENAI_QUERY_CACHE_SIZE", "0");
+      vi.stubEnv("EMBEDDING_DIMENSIONS", "1");
+      const nativeResponse = {
+        data: [{ index: 0, embedding }],
+        provider_extension: { retained: "complete" },
+      };
+      vi.doMock("openai", () => ({
+        default: class MockOpenAI {
+          embeddings = { create: vi.fn(async () => nativeResponse) };
+          responses = { create: vi.fn() };
+        },
+      }));
+
+      try {
+        const { clearOpenAICaches, embedTexts } = await import("../src/lib/openai");
+        clearOpenAICaches();
+        const error = await embedTexts(["only"]).then(
+          () => null,
+          (reason: unknown) => reason,
+        );
+
+        expect(error).toMatchObject({
+          details: { code: expectedCode },
+          nativeResponse: {
+            data: [{ index: 0, embedding: expectedEmbedding }],
+            provider_extension: { retained: "complete" },
+          },
+        });
+      } finally {
+        vi.doUnmock("openai");
+        vi.unstubAllEnvs();
+        vi.resetModules();
+      }
+    });
+});
+
 describe("schema vector dimension guard (IDX-C2 fail-fast)", () => {
   it("parses distinct vector(N) dimensions from schema SQL", async () => {
     const { parseSchemaVectorDimensions } = await import("../src/lib/embedding-dimensions");

@@ -16,7 +16,6 @@ import {
   SOURCE_ANCHORED_MAX_CHUNKS,
   SOURCE_ANCHORED_MAX_IMAGES,
   SOURCE_ANCHORED_SOURCE_PAGE_SIZE,
-  requireExactSourceAnchoredGeneration,
 } from "../supabase/functions/_shared/source-anchored-summary";
 import { ragDeepMemoryVersion, upsertDocumentDeepMemory } from "../src/lib/deep-memory";
 import { extractDocument } from "../src/lib/extractors/document";
@@ -66,7 +65,22 @@ import { runShadowExtraction } from "./shadow-extraction";
 import { buildTableFactRows } from "./table-facts";
 import {
   claimedJobFence,
+  prepareIngestionJob,
+  selectIngestionEnrichmentGeneration,
+  collectIngestionShadowCoreRows,
+  persistIngestionShadowCoreFamily,
+  persistIngestionQuality,
+  persistIngestionShadowWorkerProjection,
+  prepareIngestionImageStorage,
+  declareIngestionShadowProducer,
+  recordIngestionShadowProducerFailure,
+  declareIngestionShadowClaimControl,
+  retainIngestionShadowRepairDecision,
+  startIngestionShadowPipelineStage,
+  finishIngestionShadowPipelineStage,
+  stageIngestionShadowGeneration,
   runIngestionMutation,
+  writeIngestionCoreGeneration,
   persistIngestionImage,
   runIngestionPreparedWork,
   runIngestionEnrichmentStage,
@@ -75,7 +89,13 @@ import {
 } from "./behavior";
 import { WorkerRuntimeControl, WorkerAbortError } from "./runtime-control";
 import { runWorkerLoop } from "./run-loop";
-import type { JobRow } from "./types";
+import type { JobRow, ShadowWorkerReservation, ShadowProducerPersistence, ShadowCoreProducerRows } from "./types";
+import {
+  createShadowNodeJsonByteEnvelope,
+  shadowPrivateObjectIdentityV1,
+  captureShadowProducerInputV1,
+  readShadowProducerInputV1,
+} from "../scripts/lib/reindex-eval-session";
 
 const supabase = createAdminClient();
 // Dynamic fixed-operation transport is validated by the shared response parser and SQL payload guards.
@@ -350,17 +370,54 @@ async function commitDocumentIndexGeneration(args: {
   pages: ReturnType<typeof buildDocumentPageRows>;
   quality: ReturnType<typeof buildIndexQualityPayload>;
 }) {
-  await mutation(attemptForJob(args.jobId), "commit_document_index_generation", {
-    p_generation: args.indexGenerationId,
-    p_page_count: args.pageCount,
-    p_chunk_count: args.chunkCount,
-    p_image_count: args.imageCount,
-    p_metadata: sanitizeJsonbRecord(args.metadata),
-    p_pages: args.pages,
-    p_quality: sanitizeJsonbRecord(args.quality),
+  const job = activeJobs.get(args.jobId);
+  if (!job) throw new IngestionAttemptError("ingestion_attempt_required");
+  const shadow = activeShadowReservations.get(args.jobId);
+  await writeIngestionCoreGeneration({
+    job,
+    attempt: attemptForJob(args.jobId),
+    rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
+    generation: args.indexGenerationId,
+    pageCount: args.pageCount,
+    chunkCount: args.chunkCount,
+    imageCount: args.imageCount,
+    metadata: sanitizeJsonbRecord(args.metadata),
+    pages: args.pages,
+    quality: sanitizeJsonbRecord(args.quality),
+    shadowMember: shadow ? {
+      document_id: shadow.binding.source.documentId,
+      index_generation_id: shadow.binding.candidateGenerationId,
+      baseline_generation_id: shadow.binding.source.baselineGenerationId,
+      job_id: shadow.binding.jobId,
+      first_lease_token: shadow.binding.firstLeaseToken,
+      authority_digest: shadow.binding.source.authorityDigest,
+      shadow_reindex_waves: { candidate_generation_id: shadow.binding.candidateGenerationId, plan_digest: shadow.planEnvelope.digest },
+    } : undefined,
   });
 }
 const activeJobs = new Map<string, JobRow>();
+const activeShadowReservations = new Map<string, ShadowWorkerReservation>();
+const activeShadowCoreRows = new Map<string, ShadowCoreProducerRows>();
+function shadowProducerPersistence(job: JobRow): ShadowProducerPersistence | undefined {
+  const reservation = activeShadowReservations.get(job.id);
+  if (!reservation) return undefined;
+  const readControlRevision = async () => {
+      const { data, error } = await supabase.from("document_index_generations").select("control_revision")
+        .eq("document_id", job.document_id).eq("index_generation_id", job.lease_write_generation_id).eq("job_id", job.id).single();
+      if (error || !data) throw new Error("shadow_checkpoint_read_failed");
+      return data.control_revision;
+  };
+  return { binding: reservation.binding,
+    declareBatch: (batch) => declareIngestionShadowProducer({
+      attempt: attemptForJob(job.id), reservation, batch, readControlRevision,
+      rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
+    }),
+    recordFailure: (failure) => recordIngestionShadowProducerFailure({
+      attempt: attemptForJob(job.id), shadow: reservation, failure, readControlRevision,
+      rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
+    }),
+  };
+}
 async function writeBaseArtifacts(
   job: JobRow,
   rows: {
@@ -371,6 +428,15 @@ async function writeBaseArtifacts(
     indexUnits?: unknown[];
   },
 ) {
+  const pending = activeShadowCoreRows.get(job.id);
+  if (pending) {
+    if (rows.images?.length) throw new Error("shadow_image_publication_requires_own_declaration");
+    for (const [family, values] of [["chunks", rows.chunks], ["table_facts", rows.tableFacts],
+      ["embedding_fields", rows.embeddingFields], ["index_units", rows.indexUnits]] as const) {
+      if (values) collectIngestionShadowCoreRows(pending, family, values);
+    }
+    return;
+  }
   return mutation(attemptForJob(job.id), "write_ingestion_base_artifacts", {
     p_generation: job.lease_write_generation_id,
     p_chunks: rows.chunks ?? [],
@@ -379,6 +445,58 @@ async function writeBaseArtifacts(
     p_embedding_fields: rows.embeddingFields ?? [],
     p_index_units: rows.indexUnits ?? [],
   });
+}
+async function flushShadowCoreFamily(job: JobRow, family: keyof ShadowCoreProducerRows) {
+  const pending = activeShadowCoreRows.get(job.id); const shadow = shadowProducerPersistence(job);
+  if (!pending || !shadow) return;
+  return persistIngestionShadowCoreFamily({ attempt: attemptForJob(job.id), shadow, pending, family,
+    producerVersion: ragDeepMemoryVersion, rpc: (name, payload) => ingestionRpcClient.rpc(name, payload) });
+}
+
+async function retainShadowProducerFailure(
+  job: JobRow,
+  phase: "image_bytes" | "image_classification" | "chunk_embeddings" | "section_context" |
+    "table_facts" | "visual_index_units" | "supplemental_embedding_fields" | "document_embedding_fields",
+  input: unknown,
+  partial: unknown,
+  error: unknown,
+): Promise<never> {
+  const attempt = attemptForJob(job.id);
+  if (error instanceof IngestionAttemptError || attempt.signal.aborted) throw error;
+  const shadow = shadowProducerPersistence(job);
+  if (!shadow) throw error;
+  return shadow.recordFailure({
+    phase,
+    code: "producer_failed",
+    artifactGenerationId: null,
+    input,
+    partial,
+  });
+}
+
+function bindShadowProducerFailureValue(value: unknown) {
+  return readShadowProducerInputV1(captureShadowProducerInputV1(value)).nativeInput;
+}
+
+async function readImageBytesWithShadowFailureRetention(args: {
+  job: JobRow;
+  path: string;
+  input: unknown;
+  partial: unknown;
+}) {
+  if (!shadowProducerPersistence(args.job)) return readFile(args.path);
+  const input = bindShadowProducerFailureValue(args.input);
+  try {
+    return await readFile(args.path);
+  } catch (error) {
+    // The serial caller has not resumed, so its owned partial arrays are unchanged.
+    const partial = bindShadowProducerFailureValue(args.partial);
+    return retainShadowProducerFailure(args.job, "image_bytes", input, partial, error);
+  }
+}
+
+function shadowCoreFailurePartial(job: JobRow, family: keyof ShadowCoreProducerRows) {
+  return { rows: activeShadowCoreRows.get(job.id)?.[family] ?? [] };
 }
 
 function buildDocumentPageRows(documentId: string, extracted: ExtractedDocument) {
@@ -392,8 +510,12 @@ function buildDocumentPageRows(documentId: string, extracted: ExtractedDocument)
 }
 
 async function upsertIndexQuality(quality: ReturnType<typeof buildIndexQualityPayload>) {
-  await mutation(attemptForDocument(quality.document_id), "persist_ingestion_index_quality", {
-    p_quality: sanitizeJsonbRecord(quality),
+  const attempt = attemptForDocument(quality.document_id);
+  const job = activeJobs.get(attempt.fence.job_id);
+  if (!job) throw new IngestionAttemptError("ingestion_attempt_required");
+  const shadow = shadowProducerPersistence(job);
+  await persistIngestionQuality({ attempt, shadow, quality: sanitizeJsonbRecord(quality), producerVersion: ragDeepMemoryVersion,
+    rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
   });
 }
 
@@ -560,8 +682,17 @@ function nonClinicalTableClassification(args: {
   } satisfies ImageClassification;
 }
 
-async function getCachedImageClassification(ownerId: string | null, imageHash: string, contextHash: string) {
-  if (!ownerId) return null;
+type ImageClassificationCacheLookup =
+  | { kind: "hit"; classification: ImageClassification }
+  | { kind: "miss" }
+  | { kind: "failed" };
+
+async function getCachedImageClassification(
+  ownerId: string | null,
+  imageHash: string,
+  contextHash: string,
+): Promise<ImageClassificationCacheLookup> {
+  if (!ownerId) return { kind: "miss" };
 
   const { data, error } = await supabase
     .from("image_caption_cache")
@@ -573,9 +704,9 @@ async function getCachedImageClassification(ownerId: string | null, imageHash: s
 
   if (error) {
     console.warn("Image caption cache lookup failed", safeErrorLogDetails(error));
-    return null;
+    return { kind: "failed" };
   }
-  if (!data) return null;
+  if (!data) return { kind: "miss" };
 
   const metadata = cachedImageMetadata(data.metadata);
   if (
@@ -585,7 +716,7 @@ async function getCachedImageClassification(ownerId: string | null, imageHash: s
     metadata.vision_classification_prompt_version !== visionClassificationPromptVersion ||
     metadata.caption_context_hash !== contextHash
   ) {
-    return null;
+    return { kind: "miss" };
   }
   const imageType = imageEvidenceCategories.has(metadata.image_type as ImageEvidenceCategory)
     ? (metadata.image_type as ImageEvidenceCategory)
@@ -612,21 +743,24 @@ async function getCachedImageClassification(ownerId: string | null, imageHash: s
   );
 
   return {
-    image_type: imageType,
-    searchable: assessment.searchable && imageType !== "logo_decorative",
-    clinical_relevance_score: assessment.clinical_relevance_score,
-    labels,
-    caption: cachedCaption,
-    skip_reason:
-      typeof metadata.skip_reason === "string" && metadata.skip_reason.trim() ? metadata.skip_reason.trim() : null,
-    clinical_use_class: assessment.clinical_use_class,
-    clinical_use_reason: assessment.clinical_use_reason,
-    clinical_signal_score: assessment.clinical_signal_score,
-    admin_signal_score: assessment.admin_signal_score,
-    structured_visual_profile: structuredProfile,
-    structured_extraction_confidence:
-      metadataNumber(metadata, "structured_extraction_confidence") ?? structuredProfile.confidence,
-  } satisfies ImageClassification;
+    kind: "hit",
+    classification: {
+      image_type: imageType,
+      searchable: assessment.searchable && imageType !== "logo_decorative",
+      clinical_relevance_score: assessment.clinical_relevance_score,
+      labels,
+      caption: cachedCaption,
+      skip_reason:
+        typeof metadata.skip_reason === "string" && metadata.skip_reason.trim() ? metadata.skip_reason.trim() : null,
+      clinical_use_class: assessment.clinical_use_class,
+      clinical_use_reason: assessment.clinical_use_reason,
+      clinical_signal_score: assessment.clinical_signal_score,
+      admin_signal_score: assessment.admin_signal_score,
+      structured_visual_profile: structuredProfile,
+      structured_extraction_confidence:
+        metadataNumber(metadata, "structured_extraction_confidence") ?? structuredProfile.confidence,
+    },
+  };
 }
 
 async function setCachedImageClassification(args: {
@@ -639,6 +773,9 @@ async function setCachedImageClassification(args: {
 }) {
   const classification = redactImageClassification(args.classification);
   if (!args.ownerId || !classification.caption.trim()) return;
+  // Candidate cache/model inputs are retained in the declared cache family.
+  // The ordinary shared cache remains untouched by a shadow attempt.
+  if (activeShadowReservations.has(args.job.id)) return;
 
   await mutation(attemptForJob(args.job.id), "persist_ingestion_image_caption_cache", {
     p_cache: {
@@ -680,6 +817,10 @@ async function uploadAndCaptionImages(
   pagesByNumber: Map<number, string>,
   indexGenerationId: string,
 ) {
+  const shadow = shadowProducerPersistence(job);
+  const plannedImageUnits: { family: "images"; key: string; output: unknown }[] = [];
+  const plannedObjectUnits: { family: "private_objects"; key: string; output: unknown }[] = [];
+  const pendingUploads: (() => Promise<unknown>)[] = [];
   const insertedImages: Array<{
     id: string;
     caption: string;
@@ -711,8 +852,13 @@ async function uploadAndCaptionImages(
   // (hundreds of multi-MB page images) would multiply the worker's peak
   // memory. Disk I/O is the cheaper resource for this background pipeline.
   const preparedImages: Array<{ imageHash: string; bytesLength: number; perceptualHash: string }> = [];
-  for (const image of extracted.images) {
-    const bytes = await readFile(image.path);
+  for (const [imageIndex, image] of extracted.images.entries()) {
+    const bytes = await readImageBytesWithShadowFailureRetention({
+      job,
+      path: image.path,
+      input: { stage: "image_preparation", imageIndex, image },
+      partial: { preparedImages },
+    });
     preparedImages.push({
       imageHash: hashBytes(bytes),
       bytesLength: bytes.length,
@@ -891,19 +1037,77 @@ async function uploadAndCaptionImages(
       stage: `captioning images ${start + 1}-${start + batch.length}/${captionTasks.length}`,
       progress: Math.min(70, 35 + Math.round(((start + batch.length) / Math.max(captionTasks.length, 1)) * 25)),
     });
-    const batchResults = await Promise.all(
-      batch.map(async (task) => {
+    const shadowCacheLookups = shadow
+      ? await Promise.all(
+          batch.map((task) =>
+            task.presetClassification
+              ? Promise.resolve({ kind: "miss" } as const)
+              : getCachedImageClassification(job.documents.owner_id, task.imageHash, task.contextHash)
+                .catch(() => ({ kind: "failed" as const })),
+          ),
+        )
+      : null;
+    const failedCacheIndexes =
+      shadowCacheLookups?.flatMap((lookup, index) => (lookup.kind === "failed" ? [index] : [])) ?? [];
+    if (shadow && shadowCacheLookups && failedCacheIndexes.length > 0) {
+      return shadow.recordFailure({
+        phase: "cache_lookup",
+        code: "producer_failed",
+        artifactGenerationId: null,
+        input: {
+          ownerId: job.documents.owner_id,
+          model: env.OPENAI_VISION_MODEL,
+          tasks: batch,
+        },
+        partial: {
+          resolvedTasks,
+          lookups: shadowCacheLookups.map((lookup, index) => ({
+            index: batch[index]!.index,
+            kind: lookup.kind,
+            ...(lookup.kind === "hit" ? { classification: lookup.classification } : {}),
+          })),
+        },
+      });
+    }
+    const boundBatchInput = shadow
+      ? bindShadowProducerFailureValue({
+          ownerId: job.documents.owner_id,
+          model: env.OPENAI_VISION_MODEL,
+          tasks: batch,
+        })
+      : null;
+    const batchOutcomes = await Promise.all(
+      batch.map(async (task, index) => {
         let classification: ImageClassification | null = task.presetClassification;
         let classificationCacheHit = false;
-        if (!classification) {
-          classification = await getCachedImageClassification(job.documents.owner_id, task.imageHash, task.contextHash);
-          classificationCacheHit = Boolean(classification);
+        const cacheLookup =
+          shadowCacheLookups?.[index] ??
+          (task.presetClassification
+            ? ({ kind: "miss" } as const)
+            : await getCachedImageClassification(job.documents.owner_id, task.imageHash, task.contextHash));
+        if (!classification && cacheLookup.kind === "hit") {
+          classification = cacheLookup.classification;
+          classificationCacheHit = true;
         }
         if (!classification) {
-          const bytes = await readFile(task.image.path);
+          let bytes: Buffer;
+          try {
+            bytes = await readFile(task.image.path);
+          } catch (error) {
+            if (!shadow) throw error;
+            return {
+              kind: "failure" as const,
+              phase: "image_bytes" as const,
+              input: bindShadowProducerFailureValue({
+                stage: "image_classification",
+                task,
+              }),
+              partial: { failure: safeErrorLogDetails(error) },
+              error,
+            };
+          }
           attemptForJob(job.id).check();
-          classification = await classifyAndCaptionImageFromBase64({
-            signal: attemptForJob(job.id).signal,
+          const classificationInput = {
             base64: bytes.toString("base64"),
             mimeType: task.image.mimeType,
             nearbyText: task.nearbyText,
@@ -913,21 +1117,93 @@ async function uploadAndCaptionImages(
             tableTitle: task.tableMetadata.tableTitle,
             tableRole: task.tableMetadata.tableRole,
             tableText: task.tableMetadata.tableText,
-          });
-          attemptForJob(job.id).check();
-          await setCachedImageClassification({
-            job,
-            ownerId: job.documents.owner_id,
-            imageHash: task.imageHash,
-            contextHash: task.contextHash,
-            mimeType: task.image.mimeType,
-            classification,
-          });
+          };
+          const boundClassificationInput = shadow
+            ? bindShadowProducerFailureValue({
+                model: env.OPENAI_VISION_MODEL,
+                ...classificationInput,
+              })
+            : null;
+          try {
+            classification = await classifyAndCaptionImageFromBase64({
+              signal: attemptForJob(job.id).signal,
+              ...classificationInput,
+            });
+            attemptForJob(job.id).check();
+            await setCachedImageClassification({
+              job,
+              ownerId: job.documents.owner_id,
+              imageHash: task.imageHash,
+              contextHash: task.contextHash,
+              mimeType: task.image.mimeType,
+              classification,
+            });
+          } catch (error) {
+            if (!shadow || error instanceof IngestionAttemptError || attemptForJob(job.id).signal.aborted) throw error;
+            return {
+              kind: "failure" as const,
+              phase: "image_classification" as const,
+              input: boundClassificationInput,
+              partial: {
+                classification,
+                failure: safeErrorLogDetails(error),
+              },
+              error,
+            };
+          }
         }
-        return { task, classification, classificationCacheHit };
+        return {
+          kind: "success" as const,
+          value: { task, classification, classificationCacheHit },
+        };
       }),
     );
+    const firstFailure = batchOutcomes.find(
+      (outcome): outcome is Extract<(typeof batchOutcomes)[number], { kind: "failure" }> =>
+        outcome.kind === "failure",
+    );
+    if (firstFailure) {
+      const input = bindShadowProducerFailureValue({
+        batch: boundBatchInput,
+        failures: batchOutcomes.flatMap((outcome) =>
+          outcome.kind === "failure"
+            ? [{ phase: outcome.phase, input: outcome.input }]
+            : [],
+        ),
+      });
+      const partial = bindShadowProducerFailureValue({
+        resolvedTasks,
+        outcomes: batchOutcomes.map((outcome) =>
+          outcome.kind === "success"
+            ? outcome
+            : {
+                kind: outcome.kind,
+                phase: outcome.phase,
+                input: outcome.input,
+                partial: outcome.partial,
+              }),
+      });
+      return retainShadowProducerFailure(
+        job,
+        firstFailure.phase,
+        input,
+        partial,
+        firstFailure.error,
+      );
+    }
+    const batchResults = batchOutcomes.flatMap((outcome) =>
+      outcome.kind === "success" ? [outcome.value] : [],
+    );
     resolvedTasks.push(...batchResults);
+  }
+
+  if (shadow) {
+    await shadow.declareBatch({ groupKey: "cache", families: ["cache_inputs"], artifactGenerationId: null,
+      producerVersion: imageCaptionCacheVersion, units: resolvedTasks.map(resolved => ({ family: "cache_inputs",
+        key: String(resolved.task.index), output: createShadowNodeJsonByteEnvelope(captureShadowProducerInputV1({
+          task: resolved.task, classification: resolved.classification, classificationCacheHit: resolved.classificationCacheHit,
+          ownerId: job.documents.owner_id, model: env.OPENAI_VISION_MODEL,
+        }), "u04-retained-evidence-v1").envelope })) });
   }
 
   for (const resolved of resolvedTasks) {
@@ -1001,7 +1277,16 @@ async function uploadAndCaptionImages(
     }
 
     const ext = path.extname(image.path) || ".png";
-    const bytes = await readFile(image.path);
+    const bytes = await readImageBytesWithShadowFailureRetention({
+      job,
+      path: image.path,
+      input: {
+        stage: "image_publication",
+        task: resolved.task,
+        classification: resolved.classification,
+      },
+      partial: { insertedImages, plannedImageUnits, plannedObjectUnits },
+    });
     const imageRow = {
       id: randomUUID(),
       document_id: job.document_id,
@@ -1061,17 +1346,28 @@ async function uploadAndCaptionImages(
         skip_reason: retainAsAuditTable ? classifiedSkipReason : classification.skip_reason,
       }),
     };
-    const data = await persistIngestionImage({
+    const publication = {
       attempt: attemptForJob(job.id),
       generation: indexGenerationId,
       extension: ext.replace(/^\./, "").toLowerCase(),
       row: imageRow,
-      rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
-      upload: (storagePath, options) =>
+      rpc: (name: string, payload: Record<string, unknown>) => ingestionRpcClient.rpc(name, payload),
+      upload: (storagePath: string, options: { upsert: false }) =>
         supabase.storage
           .from(env.SUPABASE_IMAGE_BUCKET)
           .upload(storagePath, bytes, { contentType: image.mimeType, ...options }),
-    });
+    };
+    let data: typeof imageRow & { storage_path: string };
+    if (shadow) {
+      const storagePath = await prepareIngestionImageStorage(publication);
+      data = { ...imageRow, storage_path: storagePath };
+      const ref = { tag: "private_object" as const, bucket: env.SUPABASE_IMAGE_BUCKET, objectPath: storagePath,
+        objectVersion: null, sha256: `sha256:${hashBytes(bytes)}`, byteLength: bytes.length, mediaType: image.mimeType };
+      plannedImageUnits.push({ family: "images", key: imageRow.id, output: captureShadowProducerInputV1(data) });
+      plannedObjectUnits.push({ family: "private_objects", key: shadowPrivateObjectIdentityV1(ref),
+        output: { tag: "private_object", ref, bytes: { encoding: "base64", content: bytes.toString("base64") } } });
+      pendingUploads.push(() => persistIngestionImage({ ...publication, preparedStoragePath: storagePath }));
+    } else data = await persistIngestionImage(publication);
     if (image.sourceKind === "cover_page" && !coverImageId) {
       coverImageId = data.id;
     }
@@ -1103,6 +1399,13 @@ async function uploadAndCaptionImages(
     }
   }
 
+  if (shadow) {
+    await shadow.declareBatch({ groupKey: "worker_core", families: ["images"], artifactGenerationId: null,
+      producerVersion: ragDeepMemoryVersion, units: plannedImageUnits });
+    await shadow.declareBatch({ groupKey: "private_objects", families: ["private_objects"], artifactGenerationId: null,
+      producerVersion: ragDeepMemoryVersion, units: plannedObjectUnits });
+    for (const publish of pendingUploads) await publish();
+  }
   return {
     insertedImages,
     coverImageId,
@@ -1301,29 +1604,58 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
       progress: Math.min(94, 75 + Math.round((start / Math.max(chunks.length, 1)) * 18)),
     });
 
-    const embeddings = await embedTexts(
-      batch.map((chunk) => chunk.content),
-      { signal: attemptForJob(job.id).signal },
-    );
-    const rows = batch.map((chunk, index) => ({
-      id: randomUUID(),
-      document_id: chunk.document_id,
-      page_number: chunk.page_number,
-      chunk_index: chunk.chunk_index,
-      section_heading: chunk.section_heading ? cleanString(chunk.section_heading) : null,
-      section_path: Array.isArray(chunk.section_path) ? chunk.section_path.map(cleanString) : [],
-      heading_level: chunk.heading_level,
-      parent_heading: chunk.parent_heading ? cleanString(chunk.parent_heading) : null,
-      anchor_id: chunk.anchor_id ? cleanString(chunk.anchor_id) : null,
-      content: cleanString(chunk.content),
-      retrieval_synopsis: chunk.retrieval_synopsis ? cleanString(chunk.retrieval_synopsis) : undefined,
-      token_estimate: chunk.token_estimate,
-      image_ids: chunk.image_ids,
-      content_hash: hashText(`${chunk.section_heading ?? ""}\n${chunk.content}`),
-      index_generation_id: indexGenerationId,
-      embedding: assertEmbeddingDim(embeddings[index], `document_chunks.${chunk.chunk_index}`),
-      metadata: sanitizeJsonbRecord(chunk.metadata),
-    })) satisfies IndexedChunkRow[];
+    const embeddingInput = shadowProducerPersistence(job)
+      ? bindShadowProducerFailureValue({
+          model: env.OPENAI_EMBEDDING_MODEL,
+          chunks: batch,
+        })
+      : null;
+    let embeddings: number[][] = [];
+    let rows: IndexedChunkRow[];
+    try {
+      embeddings = await embedTexts(
+        batch.map((chunk) => chunk.content),
+        { signal: attemptForJob(job.id).signal },
+      );
+      attemptForJob(job.id).check();
+      rows = batch.map((chunk, index) => ({
+        id: randomUUID(),
+        document_id: chunk.document_id,
+        page_number: chunk.page_number,
+        chunk_index: chunk.chunk_index,
+        section_heading: chunk.section_heading ? cleanString(chunk.section_heading) : null,
+        section_path: Array.isArray(chunk.section_path) ? chunk.section_path.map(cleanString) : [],
+        heading_level: chunk.heading_level,
+        parent_heading: chunk.parent_heading ? cleanString(chunk.parent_heading) : null,
+        anchor_id: chunk.anchor_id ? cleanString(chunk.anchor_id) : null,
+        content: cleanString(chunk.content),
+        retrieval_synopsis: chunk.retrieval_synopsis ? cleanString(chunk.retrieval_synopsis) : undefined,
+        token_estimate: chunk.token_estimate,
+        image_ids: chunk.image_ids,
+        content_hash: hashText(`${chunk.section_heading ?? ""}\n${chunk.content}`),
+        index_generation_id: indexGenerationId,
+        embedding: assertEmbeddingDim(embeddings[index], `document_chunks.${chunk.chunk_index}`),
+        metadata: sanitizeJsonbRecord(chunk.metadata),
+      })) satisfies IndexedChunkRow[];
+    } catch (error) {
+      const failurePartial = shadowProducerPersistence(job)
+        ? bindShadowProducerFailureValue({
+            rows: shadowCoreFailurePartial(job, "chunks").rows,
+            embeddings,
+            nativeResponse: error instanceof Error
+              ? Object.getOwnPropertyDescriptor(error, "nativeResponse")?.value
+              : undefined,
+            failure: safeErrorLogDetails(error),
+          })
+        : null;
+      return retainShadowProducerFailure(
+        job,
+        "chunk_embeddings",
+        embeddingInput,
+        failurePartial,
+        error,
+      );
+    }
     indexedChunkRows.push(...rows);
 
     await writeBaseArtifacts(job, { chunks: rows });
@@ -1347,6 +1679,15 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
           await writeBaseArtifacts(job, { embeddingFields: batch });
         }
       } catch (error) {
+        if (shadowProducerPersistence(job)) {
+          await retainShadowProducerFailure(
+            job,
+            "section_context",
+            { fields: fieldInputs },
+            shadowCoreFailurePartial(job, "embedding_fields"),
+            error,
+          );
+        }
         optionalIndexWriteIssues.push(optionalIndexWriteWarning("section-context embedding field", error));
       }
     }
@@ -1367,6 +1708,15 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
         await writeBaseArtifacts(job, { tableFacts: tableFacts.slice(start, start + 100) });
       }
     } catch (error) {
+      if (shadowProducerPersistence(job)) {
+        await retainShadowProducerFailure(
+          job,
+          "table_facts",
+          { tableFacts },
+          shadowCoreFailurePartial(job, "table_facts"),
+          error,
+        );
+      }
       optionalIndexWriteIssues.push(optionalIndexWriteWarning("table fact", error));
     }
   }
@@ -1396,6 +1746,15 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
         await writeBaseArtifacts(job, { indexUnits: batch });
       }
     } catch (error) {
+      if (shadowProducerPersistence(job)) {
+        await retainShadowProducerFailure(
+          job,
+          "visual_index_units",
+          { indexUnits: visualIndexUnits },
+          shadowCoreFailurePartial(job, "index_units"),
+          error,
+        );
+      }
       optionalIndexWriteIssues.push(optionalIndexWriteWarning("visual index unit", error));
     }
   }
@@ -1428,10 +1787,22 @@ async function insertEmbeddedChunks(job: JobRow, extracted: ExtractedDocument) {
         await writeBaseArtifacts(job, { embeddingFields: batch });
       }
     } catch (error) {
+      if (shadowProducerPersistence(job)) {
+        await retainShadowProducerFailure(
+          job,
+          "supplemental_embedding_fields",
+          { fields: additionalFieldInputs },
+          shadowCoreFailurePartial(job, "embedding_fields"),
+          error,
+        );
+      }
       optionalIndexWriteIssues.push(optionalIndexWriteWarning("supplemental embedding field", error));
     }
   }
 
+  await flushShadowCoreFamily(job, "chunks");
+  await flushShadowCoreFamily(job, "table_facts");
+  await flushShadowCoreFamily(job, "index_units");
   return {
     chunks,
     indexedChunkRows,
@@ -1542,27 +1913,52 @@ async function loadLiveEnrichmentDocument(documentId: string) {
 async function processJob(job: JobRow) {
   activeJobs.set(job.id, job);
   const attempt = attemptForJob(job.id);
-  const leaseHeartbeat = setInterval(
-    () => {
-      mutation(attempt, "heartbeat_ingestion_job").catch(() => attempt.cancel());
-    },
-    Math.max(1000, Math.floor((job.lease_duration_seconds * 1000) / 3)),
-  );
+  let leaseHeartbeat: ReturnType<typeof setInterval> | undefined;
+  let shadowPipelineStageId: string | null = null;
   const atomicReindex = isAtomicReindexCandidate(job.documents);
   let extracted: ExtractedDocument | null = null;
 
   try {
+    const shadow = await prepareIngestionJob({
+      job, attempt, now: () => new Date().toISOString(),
+      loadShadowReservation: async () => {
+        const [member, wave, baseline] = await Promise.all([
+          supabase.from("document_index_generations").select("*").eq("document_id", job.document_id)
+            .eq("index_generation_id", job.lease_write_generation_id).eq("job_id", job.id).single(),
+          supabase.from("shadow_reindex_waves").select("*").eq("candidate_generation_id", job.lease_write_generation_id).single(),
+          supabase.from("document_generation_baselines").select("*").eq("document_id", job.document_id)
+            .eq("candidate_generation_id", job.lease_write_generation_id).single(),
+        ]);
+        if (member.error || wave.error || baseline.error) throw new Error("shadow_reservation_read_failed");
+        return { member: member.data, wave: wave.data, baseline: baseline.data, document: job.documents };
+      },
+    });
+    if (shadow) {
+      activeShadowReservations.set(job.id, shadow);
+      activeShadowCoreRows.set(job.id, { chunks: [], table_facts: [], embedding_fields: [], index_units: [] });
+      await declareIngestionShadowClaimControl({ attempt, shadow: shadowProducerPersistence(job)!,
+        controlSnapshot: shadow.controlSnapshot, producerVersion: ragDeepMemoryVersion });
+      shadowPipelineStageId = await startIngestionShadowPipelineStage({ attempt, shadow,
+        rpc: (name, payload) => ingestionRpcClient.rpc(name, payload) });
+    }
+    leaseHeartbeat = setInterval(
+      () => { mutation(attempt, "heartbeat_ingestion_job").catch(() => attempt.cancel()); },
+      Math.max(1000, Math.floor((job.lease_duration_seconds * 1000) / 3)),
+    );
     await updateJobProgress(job.id, {
       stage: "downloading",
       progress: 5,
     });
-    if (atomicReindex) {
+    if (shadow) {
+      // The live document and every retained G0 row stay unchanged. All fixed
+      // shadow writers independently recheck the persisted reservation/Fence.
+    } else if (atomicReindex) {
       await updateDocument(job.document_id, job.documents.owner_id, { error_message: null });
     } else {
       await updateDocument(job.document_id, job.documents.owner_id, { status: "processing", error_message: null });
     }
 
-    await resetDocumentIndex(job.document_id);
+    if (!shadow) await resetDocumentIndex(job.document_id);
     attempt.check();
     const buffer = await downloadDocument(job.documents.storage_path);
     attempt.check();
@@ -1597,6 +1993,27 @@ async function processJob(job: JobRow) {
 
     await updateJobProgress(job.id, { stage: "saving pages", progress: 32 });
     const pageRows = buildDocumentPageRows(job.document_id, extracted);
+    const producerPersistence = shadowProducerPersistence(job);
+    if (producerPersistence) {
+      const imageBytes: Array<{ path: string; encoding: "base64"; content: string }> = [];
+      for (const [imageIndex, image] of extracted.images.entries()) {
+        const bytes = await readImageBytesWithShadowFailureRetention({
+          job,
+          path: image.path,
+          input: { stage: "native_structure", imageIndex, image, extracted },
+          partial: { imageBytes },
+        });
+        imageBytes.push({ path: image.path, encoding: "base64", content: bytes.toString("base64") });
+      }
+      attempt.check();
+      const native = createShadowNodeJsonByteEnvelope(captureShadowProducerInputV1({ extracted, imageBytes }), "u04-retained-evidence-v1").envelope;
+      await producerPersistence.declareBatch({ groupKey: "worker_native", families: ["native_structure"],
+        artifactGenerationId: null, producerVersion: ragDeepMemoryVersion,
+        units: [{ family: "native_structure", key: "extracted-document", output: native }] });
+      await producerPersistence.declareBatch({ groupKey: "worker_core", families: ["pages"], artifactGenerationId: null,
+        producerVersion: ragDeepMemoryVersion, units: pageRows.map((input, index) => ({ family: "pages",
+          key: String(input.page_number), output: { input, extractedPage: extracted!.pages[index] } })) });
+    }
     const {
       chunks,
       indexedChunkRows,
@@ -1681,22 +2098,36 @@ async function processJob(job: JobRow) {
     let memoryCardCount = 0;
     let enrichmentUpdatedAt: string | null = null;
     let documentEmbeddingFieldTypes: string[] = [];
+    let shadowEnrichmentInput: unknown = {
+      documentId: job.document_id,
+      candidateGenerationId: indexGenerationId,
+      workerInlineEnrichment: env.WORKER_INLINE_ENRICHMENT,
+    };
+    let shadowEnrichmentPartial: unknown = {};
 
     if (env.WORKER_INLINE_ENRICHMENT) {
       await updateJobProgress(job.id, { stage: "enriching indexed document", progress: 96 });
       const enrichmentOutcome = await runIngestionEnrichmentStage(attempt, async () => {
         const enrichmentRows = await loadEnrichmentRows(job.document_id, indexGenerationId);
+        shadowEnrichmentInput = {
+          documentId: job.document_id,
+          indexGenerationId,
+          chunks: enrichmentRows.chunks,
+          images: enrichmentRows.images,
+        };
         const enrichmentDocument = await loadLiveEnrichmentDocument(job.document_id);
-        const liveIndexGenerationId = requireExactSourceAnchoredGeneration(
-          enrichmentDocument.index_generation_id,
-          enrichmentDocument.metadata,
-        );
-        if (liveIndexGenerationId !== indexGenerationId) {
-          throw new Error("source_anchored_summary_requires_active_generation");
-        }
-        assertSourceAnchoredSummaryPreflight({
+        const producerGenerationId = selectIngestionEnrichmentGeneration({ job, attempt, document: enrichmentDocument,
+          ...(shadow ? { shadow } : {}) });
+        shadowEnrichmentInput = {
+          fence: attempt.fence,
+          document: enrichmentDocument,
+          indexGenerationId: producerGenerationId,
+          chunks: enrichmentRows.chunks,
+          images: enrichmentRows.images,
+        };
+        if (!shadow) assertSourceAnchoredSummaryPreflight({
           documentMetadata: enrichmentDocument.metadata,
-          indexGenerationId: liveIndexGenerationId,
+          indexGenerationId: producerGenerationId,
           chunks: enrichmentRows.chunks,
           images: enrichmentRows.images,
         });
@@ -1705,15 +2136,32 @@ async function processJob(job: JobRow) {
           fence: attempt.fence,
           signal: attempt.signal,
           document: enrichmentDocument,
-          indexGenerationId: liveIndexGenerationId,
+          indexGenerationId: producerGenerationId,
+          shadow: shadowProducerPersistence(job),
           chunks: enrichmentRows.chunks,
           images: enrichmentRows.images,
         });
-        documentEmbeddingFieldTypes = await insertDocumentLevelEmbeddingFields({
-          job,
-          chunkRows: indexedChunkRows,
-          summary: enrichment.summary.summary,
-        });
+        shadowEnrichmentPartial = { enrichment };
+        try {
+          documentEmbeddingFieldTypes = await insertDocumentLevelEmbeddingFields({
+            job,
+            chunkRows: indexedChunkRows,
+            summary: enrichment.summary.summary,
+          });
+          shadowEnrichmentPartial = { enrichment, documentEmbeddingFieldTypes };
+        } catch (error) {
+          if (shadow) {
+            await retainShadowProducerFailure(
+              job,
+              "document_embedding_fields",
+              { chunkRows: indexedChunkRows, summary: enrichment.summary.summary },
+              { enrichment, rows: shadowCoreFailurePartial(job, "embedding_fields").rows },
+              error,
+            );
+          }
+          throw error;
+        }
+        await flushShadowCoreFamily(job, "embedding_fields");
         await updateJobProgress(job.id, { stage: "building structured memory", progress: 98 });
         const deepMemory = await upsertDocumentDeepMemory({
           supabase,
@@ -1723,6 +2171,7 @@ async function processJob(job: JobRow) {
           chunks: enrichmentRows.chunks,
           images: enrichmentRows.images,
           summary: enrichment.summary.summary,
+          shadow: shadowProducerPersistence(job),
         });
         sectionCount = deepMemory.sections.length;
         memoryCardCount = deepMemory.memoryCards.length;
@@ -1736,17 +2185,50 @@ async function processJob(job: JobRow) {
           documentEmbeddingFieldTypes,
           optionalIndexWriteIssues,
         });
-        await upsertIndexQuality(finalQuality);
+        if (!shadow) await upsertIndexQuality(finalQuality);
         enrichmentUpdatedAt = new Date().toISOString();
       });
       if (enrichmentOutcome.status === "failed") {
         const enrichmentError = enrichmentOutcome.error;
+        if (shadow) {
+          if (enrichmentError instanceof IngestionAttemptError || attempt.signal.aborted) throw enrichmentError;
+          await shadowProducerPersistence(job)!.recordFailure({
+            phase: "summary_generation",
+            code: "producer_failed",
+            artifactGenerationId: null,
+            input: shadowEnrichmentInput,
+            partial: shadowEnrichmentPartial,
+          });
+        }
         enrichmentStatus = "failed";
         enrichmentErrorMessage = enrichmentError instanceof Error ? enrichmentError.message : String(enrichmentError);
         console.warn("Optional document enrichment failed", safeErrorLogDetails(enrichmentError));
       }
     } else {
+      if (shadow) {
+        await shadowProducerPersistence(job)!.recordFailure({
+          phase: "enrichment_policy",
+          code: "producer_skipped",
+          artifactGenerationId: null,
+          input: {
+            workerInlineEnrichment: env.WORKER_INLINE_ENRICHMENT,
+            binding: shadow.binding,
+            executionProfileEnvelope: shadow.executionProfileEnvelope,
+            executionProfile: shadow.executionProfile,
+          },
+          partial: { coreRows: activeShadowCoreRows.get(job.id) ?? null },
+        });
+      }
       await updateJob(job.id, { stage: "core index complete; enrichment deferred", progress: 98 });
+      await flushShadowCoreFamily(job, "embedding_fields");
+    }
+
+    // Shadow quality is declared once, after the enrichment outcome is known,
+    // including preserved partial/failure output. The ordinary timing is unchanged.
+    if (shadow) {
+      finalQuality = buildIndexQualityPayload({ job, metrics, chunks, insertedImages, sectionCount, memoryCardCount,
+        documentEmbeddingFieldTypes, optionalIndexWriteIssues });
+      await upsertIndexQuality(finalQuality);
     }
 
     // Packet B4 — docling shadow extraction. Runs ONLY here: after the legacy generation is
@@ -1798,7 +2280,10 @@ async function processJob(job: JobRow) {
       }
     }
 
-    const repair = enrichmentRepairDecision({
+    const repair = shadow ? await retainIngestionShadowRepairDecision({ attempt,
+      shadow: shadowProducerPersistence(job)!, producerVersion: ragDeepMemoryVersion,
+      enrichmentStatus, enrichmentErrorMessage, optionalIndexWriteIssues,
+    }) : enrichmentRepairDecision({
       enrichmentStatus,
       enrichmentErrorMessage,
       optionalIssueCount: optionalIndexWriteIssues.length,
@@ -1844,6 +2329,28 @@ async function processJob(job: JobRow) {
       // legacy-mode run never touches an earlier shadow record on the row.
       ...(shadowExtraction ? { shadow_extraction: shadowExtraction } : {}),
     };
+
+    if (shadow) {
+      await persistIngestionShadowWorkerProjection({ attempt, shadow: shadowProducerPersistence(job)!,
+        producerVersion: ragDeepMemoryVersion, rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
+        metadata: sanitizeJsonbRecord({ ...committedCoreMetadata, ...finalMetadata }),
+        counts: { page_count: extracted.pages.length, chunk_count: chunks.length, image_count: imageCount,
+          status: "indexed", error_message: null },
+      });
+      if (shadowPipelineStageId === null) {
+        attempt.cancel();
+        throw new Error("shadow_pipeline_stage_unavailable");
+      }
+      await finishIngestionShadowPipelineStage({ attempt, shadow, stageId: shadowPipelineStageId,
+        counts: { page_count: extracted.pages.length, chunk_count: chunks.length, image_count: imageCount,
+          section_count: sectionCount, memory_card_count: memoryCardCount },
+        rpc: (name, payload) => ingestionRpcClient.rpc(name, payload) });
+      clearInterval(leaseHeartbeat);
+      leaseHeartbeat = undefined;
+      await stageIngestionShadowGeneration({ attempt, shadow,
+        rpc: (name, payload) => ingestionRpcClient.rpc(name, payload) });
+      return;
+    }
 
     await updateDocument(job.document_id, job.documents.owner_id, {
       metadata: finalMetadata,
@@ -1896,6 +2403,8 @@ async function processJob(job: JobRow) {
     // drop it so the module-level map does not grow for the worker's lifetime.
     progressUpdateState.delete(job.id);
     activeJobs.delete(job.id);
+    activeShadowReservations.delete(job.id);
+    activeShadowCoreRows.delete(job.id);
     attempts.delete(job.id);
     documentAttempts.delete(job.document_id);
   }

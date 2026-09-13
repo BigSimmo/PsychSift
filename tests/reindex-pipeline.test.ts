@@ -20,6 +20,9 @@ import {
   rollbackReceiptDigest,
 } from "../src/lib/recovery-readiness-evidence";
 
+const baselineGeneration = "11111111-1111-4111-8111-111111111111";
+const candidateGeneration = "22222222-2222-4222-8222-222222222222";
+
 describe("reindex pipeline queue state", () => {
   it("does not declare the queue clear while documents are still processing", () => {
     expect(
@@ -72,48 +75,48 @@ describe("reindex pipeline queue state", () => {
   });
 
   it("compares generated artifacts against the committed document generation", () => {
-    expect(committedIndexGeneration({ index_generation_id: "generation-a" })).toBe("generation-a");
-    expect(isCommittedGenerationMetadata({ rowMetadata: {}, committedGeneration: "generation-a" })).toBe(true);
+    expect(committedIndexGeneration({ index_generation_id: baselineGeneration })).toBe(baselineGeneration);
+    expect(isCommittedGenerationMetadata({ rowMetadata: {}, committedGeneration: baselineGeneration })).toBe(true);
     expect(
       isCommittedGenerationMetadata({
-        rowMetadata: { index_generation_id: "generation-b" },
-        committedGeneration: "generation-a",
+        rowMetadata: { index_generation_id: candidateGeneration },
+        committedGeneration: baselineGeneration,
       }),
     ).toBe(false);
     expect(
       isCommittedGenerationMetadata({
-        rowMetadata: { index_generation_id: "generation-a" },
-        committedGeneration: "generation-a",
+        rowMetadata: { index_generation_id: baselineGeneration },
+        committedGeneration: baselineGeneration,
       }),
     ).toBe(true);
     expect(
       isCommittedGenerationMetadata({
-        rowMetadata: { index_generation_id: "legacy-generation" },
+        rowMetadata: { index_generation_id: candidateGeneration },
         committedGeneration: null,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("identifies image rows that still need typed generation columns populated", () => {
     expect(
       imageRowNeedsGenerationRestamp({
         indexGenerationId: null,
-        metadata: { index_generation_id: "generation-a" },
-        committedGeneration: "generation-a",
+        metadata: { index_generation_id: baselineGeneration },
+        committedGeneration: baselineGeneration,
       }),
     ).toBe(true);
     expect(
       imageRowNeedsGenerationRestamp({
-        indexGenerationId: "generation-a",
-        metadata: { index_generation_id: "generation-a" },
-        committedGeneration: "generation-a",
+        indexGenerationId: baselineGeneration,
+        metadata: { index_generation_id: baselineGeneration },
+        committedGeneration: baselineGeneration,
       }),
     ).toBe(false);
     expect(
       imageRowNeedsGenerationRestamp({
-        indexGenerationId: "generation-b",
-        metadata: { index_generation_id: "generation-b" },
-        committedGeneration: "generation-a",
+        indexGenerationId: candidateGeneration,
+        metadata: { index_generation_id: candidateGeneration },
+        committedGeneration: baselineGeneration,
       }),
     ).toBe(true);
   });
@@ -121,20 +124,20 @@ describe("reindex pipeline queue state", () => {
   it("identifies abandoned staged generation rows without flagging legacy generationless rows", () => {
     expect(
       isAbandonedStagedGeneration({
-        rowGenerationId: "generation-b",
-        committedGeneration: "generation-a",
+        rowGenerationId: candidateGeneration,
+        committedGeneration: baselineGeneration,
       }),
     ).toBe(true);
     expect(
       isAbandonedStagedGeneration({
-        rowMetadata: { index_generation_id: "generation-a" },
-        committedGeneration: "generation-a",
+        rowMetadata: { index_generation_id: baselineGeneration },
+        committedGeneration: baselineGeneration,
       }),
     ).toBe(false);
     expect(
       isAbandonedStagedGeneration({
         rowMetadata: {},
-        committedGeneration: "generation-a",
+        committedGeneration: baselineGeneration,
       }),
     ).toBe(false);
   });
@@ -251,5 +254,205 @@ describe("reindex pipeline queue state", () => {
     });
 
     expect(() => assertDocumentGenerationReceiptPair(siteActivation, {})).toThrow(/document-generation/i);
+  });
+});
+
+describe("ordinary generation visibility during shadow reindex", () => {
+  it("does not expose tagged C when the live baseline is null", () => {
+    expect(
+      isCommittedGenerationMetadata({
+        rowMetadata: { index_generation_id: candidateGeneration },
+        committedGeneration: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("does not expose tagged C when the caller has no committed generation", () => {
+    expect(
+      isCommittedGenerationMetadata({ rowMetadata: { index_generation_id: candidateGeneration } }),
+    ).toBe(false);
+  });
+
+  it("retains exact G0 and excludes C under a valid committed pointer", () => {
+    expect(
+      isCommittedGenerationMetadata({
+        rowMetadata: { index_generation_id: baselineGeneration },
+        committedGeneration: baselineGeneration,
+      }),
+    ).toBe(true);
+    expect(
+      isCommittedGenerationMetadata({
+        rowMetadata: { index_generation_id: candidateGeneration },
+        committedGeneration: baselineGeneration,
+      }),
+    ).toBe(false);
+  });
+
+  const legacyRows: Array<[string, unknown]> = [
+    ["absent metadata", undefined],
+    ["null metadata", null],
+    ["absent generation marker", {}],
+    ["explicit null generation marker", { index_generation_id: null }],
+  ];
+
+  it.each(legacyRows)("retains supported untagged legacy rows with %s", (_name, rowMetadata) => {
+    expect(isCommittedGenerationMetadata({ rowMetadata, committedGeneration: null })).toBe(true);
+    expect(isCommittedGenerationMetadata({ rowMetadata, committedGeneration: baselineGeneration })).toBe(true);
+  });
+
+  const malformedMarkers: Array<[string, unknown]> = [
+    ["empty string", ""],
+    ["whitespace string", " \t "],
+    ["number", 0],
+    ["boolean", false],
+    ["object", { candidate: candidateGeneration }],
+    ["array", [candidateGeneration]],
+    ["non-UUID string", "generation-a"],
+    ["padded UUID", ` ${candidateGeneration} `],
+    ["newline-suffixed UUID", `${candidateGeneration}\n`],
+    ["present undefined", undefined],
+  ];
+
+  it.each(malformedMarkers)(
+    "refuses a present-invalid %s marker instead of admitting it as legacy",
+    (_name, marker) => {
+      const rowMetadata = { index_generation_id: marker };
+      expect.soft(isCommittedGenerationMetadata({ rowMetadata, committedGeneration: null })).toBe(false);
+      expect.soft(isCommittedGenerationMetadata({ rowMetadata, committedGeneration: baselineGeneration })).toBe(false);
+    },
+  );
+});
+
+describe("document generation marker authority", () => {
+  it.each([
+    ["absent metadata", undefined],
+    ["null metadata", null],
+    ["absent own marker", {}],
+  ] as const)("supports null G0 only for %s", (_name, metadata) => {
+    expect(committedIndexGeneration(metadata)).toBeNull();
+  });
+
+  it.each([
+    baselineGeneration,
+    "ABCDEFAB-CDEF-ABCD-EFAB-ABCDEFABCDEF",
+    "00000000-0000-0000-0000-000000000000",
+  ])("retains the exact valid UUID source spelling %s", (generation) => {
+    const metadata = Object.freeze({ index_generation_id: generation });
+    expect(committedIndexGeneration(metadata)).toBe(generation);
+    expect(metadata.index_generation_id).toBe(generation);
+  });
+
+  it.each([
+    ["explicit JSON null", null],
+    ["present undefined", undefined],
+  ] as const)("refuses a document marker containing %s", (_name, marker) => {
+    expect(() => committedIndexGeneration({ index_generation_id: marker })).toThrow(
+      "Invalid committed generation metadata.",
+    );
+  });
+
+  const malformedCommitted: Array<[string, unknown]> = [
+    ["empty string", ""],
+    ["whitespace", " \t "],
+    ["non-UUID string", "synthetic-sensitive-marker"],
+    ["padded UUID", ` ${baselineGeneration} `],
+    ["newline-suffixed UUID", `${baselineGeneration}\n`],
+    ["truncated UUID", baselineGeneration.slice(0, -1)],
+    ["number", 0],
+    ["boolean", false],
+    ["object", { generation: baselineGeneration }],
+    ["array", [baselineGeneration]],
+  ];
+
+  it.each(malformedCommitted)("refuses %s document identity without exposing its value", (_name, marker) => {
+    expect(() => committedIndexGeneration({ index_generation_id: marker })).toThrow(
+      new Error("Invalid committed generation metadata."),
+    );
+    // Direct callers cannot bypass the getter and admit legacy rows with an
+    // invalid non-null committed argument. This remains a nonthrowing filter.
+    expect(
+      isCommittedGenerationMetadata({ rowMetadata: {}, committedGeneration: marker as string }),
+    ).toBe(false);
+    expect(
+      isCommittedGenerationMetadata({
+        rowMetadata: { index_generation_id: null },
+        committedGeneration: marker as string,
+      }),
+    ).toBe(false);
+  });
+
+  it("compares UUID identity case-insensitively without rewriting metadata", () => {
+    const lower = "abcdefab-cdef-abcd-efab-abcdefabcdef";
+    const upper = lower.toUpperCase();
+    const rowMetadata = Object.freeze({ index_generation_id: upper });
+
+    expect(isCommittedGenerationMetadata({ rowMetadata, committedGeneration: lower })).toBe(true);
+    expect(
+      isCommittedGenerationMetadata({ rowMetadata: { index_generation_id: lower }, committedGeneration: upper }),
+    ).toBe(true);
+    expect(
+      imageRowNeedsGenerationRestamp({
+        indexGenerationId: lower,
+        metadata: rowMetadata,
+        committedGeneration: lower,
+      }),
+    ).toBe(false);
+    expect(isAbandonedStagedGeneration({ rowMetadata, committedGeneration: lower })).toBe(false);
+    expect(rowMetadata.index_generation_id).toBe(upper);
+  });
+
+  it.each([
+    ["undefined", undefined],
+    ["null", null],
+    ["absent marker", {}],
+    ["null marker", { index_generation_id: null }],
+  ] as const)("keeps artifact %s semantics separate from document authority", (_name, metadata) => {
+    expect(
+      imageRowNeedsGenerationRestamp({
+        indexGenerationId: baselineGeneration,
+        metadata,
+        committedGeneration: baselineGeneration,
+      }),
+    ).toBe(true);
+    expect(
+      isAbandonedStagedGeneration({ rowMetadata: metadata, committedGeneration: baselineGeneration }),
+    ).toBe(false);
+    expect(isAbandonedStagedGeneration({ rowMetadata: metadata, committedGeneration: null })).toBe(false);
+  });
+
+  it.each([
+    ["string", "malformed-metadata"],
+    ["number", 1],
+    ["boolean", false],
+    ["array", []],
+  ] as const)("refuses malformed outer %s metadata without treating it as absent", (_name, metadata) => {
+    expect(() => committedIndexGeneration(metadata)).toThrow("Invalid committed generation metadata.");
+    expect(isCommittedGenerationMetadata({ rowMetadata: metadata, committedGeneration: null })).toBe(false);
+  });
+
+  it("does not classify malformed row identity as abandoned", () => {
+    expect(
+      isAbandonedStagedGeneration({
+        rowGenerationId: "malformed-generation",
+        rowMetadata: { index_generation_id: candidateGeneration },
+        committedGeneration: baselineGeneration,
+      }),
+    ).toBe(false);
+    expect(
+      isAbandonedStagedGeneration({
+        rowMetadata: { index_generation_id: "malformed-generation" },
+        committedGeneration: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("does not classify a valid row as abandoned against malformed document identity", () => {
+    expect(
+      isAbandonedStagedGeneration({
+        rowGenerationId: candidateGeneration,
+        committedGeneration: "malformed-generation",
+      }),
+    ).toBe(false);
+    expect(isAbandonedStagedGeneration({ rowGenerationId: candidateGeneration, committedGeneration: null })).toBe(true);
   });
 });

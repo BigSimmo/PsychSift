@@ -39,6 +39,379 @@ export type Database = {
   };
   public: {
     Tables: {
+      document_generation_baselines: {
+        Row: {
+          baseline_generation_id: string | null;
+          bundle_digest: string;
+          bundle_payload: Json;
+          bundle_version: number;
+          candidate_generation_id: string;
+          captured_at: string;
+          document_id: string;
+          expected_state_digest: string;
+        };
+        Insert: {
+          baseline_generation_id?: string | null;
+          bundle_digest: string;
+          bundle_payload: Json;
+          bundle_version: number;
+          candidate_generation_id: string;
+          captured_at?: string;
+          document_id: string;
+          expected_state_digest: string;
+        };
+        Update: {
+          baseline_generation_id?: string | null;
+          bundle_digest?: string;
+          bundle_payload?: Json;
+          bundle_version?: number;
+          candidate_generation_id?: string;
+          captured_at?: string;
+          document_id?: string;
+          expected_state_digest?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_generation_baselines_member_fkey";
+            columns: ["document_id", "candidate_generation_id"];
+            isOneToOne: true;
+            referencedRelation: "document_index_generations";
+            referencedColumns: ["document_id", "index_generation_id"];
+          },
+        ];
+      };
+      document_generation_inventory: {
+        Row: {
+          artifact_generation_id: string | null;
+          artifact_ref: Json;
+          content_digest: string | null;
+          disposition: string;
+          document_id: string;
+          expected: boolean;
+          family: string;
+          index_generation_id: string;
+          lease_token: string;
+          limitations: Json;
+          producer: string;
+          reason_code: string | null;
+          relationships: Json;
+          representation_version: string | null;
+          required: boolean;
+          retained_evidence_text: string | null;
+          retained_native_payload: string | null;
+          source_binding: Json;
+          transform_version: string | null;
+          unit_key: string;
+        };
+        Insert: {
+          artifact_generation_id?: string | null;
+          artifact_ref?: Json;
+          content_digest?: string | null;
+          disposition: string;
+          document_id: string;
+          expected: boolean;
+          family: string;
+          index_generation_id: string;
+          lease_token: string;
+          limitations: Json;
+          producer: string;
+          reason_code?: string | null;
+          relationships: Json;
+          representation_version?: string | null;
+          required: boolean;
+          retained_evidence_text?: string | null;
+          retained_native_payload?: string | null;
+          source_binding: Json;
+          transform_version?: string | null;
+          unit_key: string;
+        };
+        Update: {
+          artifact_generation_id?: string | null;
+          artifact_ref?: Json;
+          content_digest?: string | null;
+          disposition?: string;
+          document_id?: string;
+          expected?: boolean;
+          family?: string;
+          index_generation_id?: string;
+          lease_token?: string;
+          limitations?: Json;
+          producer?: string;
+          reason_code?: string | null;
+          relationships?: Json;
+          representation_version?: string | null;
+          required?: boolean;
+          retained_evidence_text?: string | null;
+          retained_native_payload?: string | null;
+          source_binding?: Json;
+          transform_version?: string | null;
+          unit_key?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_generation_inventory_member_fkey";
+            columns: ["document_id", "index_generation_id"];
+            isOneToOne: false;
+            referencedRelation: "document_index_generations";
+            referencedColumns: ["document_id", "index_generation_id"];
+          },
+          {
+            foreignKeyName: "document_generation_inventory_attempt_fkey";
+            columns: ["document_id", "index_generation_id", "lease_token"];
+            isOneToOne: false;
+            referencedRelation: "document_index_generations";
+            referencedColumns: ["document_id", "index_generation_id", "first_lease_token"];
+          },
+        ];
+      };
+      document_generation_projections: {
+        Row: {
+          deep_memory_artifact_generation_id: string | null;
+          deep_memory_digest: string | null;
+          deep_memory_metadata: Json;
+          deep_memory_receipt: Json;
+          document_counts: Json;
+          document_id: string;
+          enrichment_metadata: Json;
+          generated_labels: Json;
+          index_generation_id: string;
+          lease_token: string;
+          owner_id: string | null;
+          producer_aliases: Json;
+          quality: Json;
+          quality_digest: string | null;
+          sealed_at: string | null;
+          summary: Json;
+          summary_digest: string | null;
+          summary_projection_complete: boolean | null;
+          worker_metadata: Json;
+          worker_state_digest: string | null;
+        };
+        Insert: {
+          deep_memory_artifact_generation_id?: string | null;
+          deep_memory_digest?: string | null;
+          deep_memory_metadata?: Json;
+          deep_memory_receipt?: Json;
+          document_counts?: Json;
+          document_id: string;
+          enrichment_metadata?: Json;
+          generated_labels?: Json;
+          index_generation_id: string;
+          lease_token: string;
+          owner_id?: string | null;
+          producer_aliases?: Json;
+          quality?: Json;
+          quality_digest?: string | null;
+          sealed_at?: string | null;
+          summary?: Json;
+          summary_digest?: string | null;
+          summary_projection_complete?: boolean | null;
+          worker_metadata?: Json;
+          worker_state_digest?: string | null;
+        };
+        Update: {
+          deep_memory_artifact_generation_id?: string | null;
+          deep_memory_digest?: string | null;
+          deep_memory_metadata?: Json;
+          deep_memory_receipt?: Json;
+          document_counts?: Json;
+          document_id?: string;
+          enrichment_metadata?: Json;
+          generated_labels?: Json;
+          index_generation_id?: string;
+          lease_token?: string;
+          owner_id?: string | null;
+          producer_aliases?: Json;
+          quality?: Json;
+          quality_digest?: string | null;
+          sealed_at?: string | null;
+          summary?: Json;
+          summary_digest?: string | null;
+          summary_projection_complete?: boolean | null;
+          worker_metadata?: Json;
+          worker_state_digest?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_generation_projections_member_fkey";
+            columns: ["document_id", "index_generation_id"];
+            isOneToOne: true;
+            referencedRelation: "document_index_generations";
+            referencedColumns: ["document_id", "index_generation_id"];
+          },
+          {
+            foreignKeyName: "document_generation_projections_attempt_fkey";
+            columns: ["document_id", "index_generation_id", "lease_token"];
+            isOneToOne: true;
+            referencedRelation: "document_index_generations";
+            referencedColumns: ["document_id", "index_generation_id", "first_lease_token"];
+          },
+        ];
+      };
+      document_index_generations: {
+        Row: {
+          authority_digest: string;
+          baseline_bundle_digest: string;
+          baseline_generation_id: string | null;
+          candidate_projection_digest: string | null;
+          claimed_at: string | null;
+          control_revision: number;
+          control_snapshot: Json;
+          document_id: string;
+          expected_inventory_digest: string | null;
+          expected_state_digest: string;
+          first_lease_token: string | null;
+          index_generation_id: string;
+          inventory_digest: string | null;
+          inventory_manifest: Json;
+          job_id: string;
+          original_origin_envelope: Json;
+          owner_id: string | null;
+          source_binding: Json;
+          stage_receipt: Json;
+          stage_receipt_digest: string | null;
+          staged_at: string | null;
+          state: string;
+        };
+        Insert: {
+          authority_digest: string;
+          baseline_bundle_digest: string;
+          baseline_generation_id?: string | null;
+          candidate_projection_digest?: string | null;
+          claimed_at?: string | null;
+          control_revision?: number;
+          control_snapshot: Json;
+          document_id: string;
+          expected_inventory_digest?: string | null;
+          expected_state_digest: string;
+          first_lease_token?: string | null;
+          index_generation_id: string;
+          inventory_digest?: string | null;
+          inventory_manifest: Json;
+          job_id: string;
+          original_origin_envelope: Json;
+          owner_id?: string | null;
+          source_binding: Json;
+          stage_receipt?: Json;
+          stage_receipt_digest?: string | null;
+          staged_at?: string | null;
+          state: string;
+        };
+        Update: {
+          authority_digest?: string;
+          baseline_bundle_digest?: string;
+          baseline_generation_id?: string | null;
+          candidate_projection_digest?: string | null;
+          claimed_at?: string | null;
+          control_revision?: number;
+          control_snapshot?: Json;
+          document_id?: string;
+          expected_inventory_digest?: string | null;
+          expected_state_digest?: string;
+          first_lease_token?: string | null;
+          index_generation_id?: string;
+          inventory_digest?: string | null;
+          inventory_manifest?: Json;
+          job_id?: string;
+          original_origin_envelope?: Json;
+          owner_id?: string | null;
+          source_binding?: Json;
+          stage_receipt?: Json;
+          stage_receipt_digest?: string | null;
+          staged_at?: string | null;
+          state?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "document_index_generations_document_id_fkey";
+            columns: ["document_id"];
+            isOneToOne: false;
+            referencedRelation: "documents";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "document_index_generations_document_id_fkey";
+            columns: ["document_id"];
+            isOneToOne: false;
+            referencedRelation: "document_strict_gate_status";
+            referencedColumns: ["document_id"];
+          },
+          {
+            foreignKeyName: "document_index_generations_index_generation_id_fkey";
+            columns: ["index_generation_id"];
+            isOneToOne: false;
+            referencedRelation: "shadow_reindex_waves";
+            referencedColumns: ["candidate_generation_id"];
+          },
+          {
+            foreignKeyName: "document_index_generations_job_id_fkey";
+            columns: ["job_id"];
+            isOneToOne: true;
+            referencedRelation: "ingestion_jobs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      shadow_reindex_waves: {
+        Row: {
+          audit_digest: string;
+          baseline_evaluation_digest: string;
+          baseline_report: Json;
+          baseline_report_digest: string;
+          candidate_generation_id: string;
+          case_set_digest: string;
+          created_at: string;
+          execution_profile_digest: string;
+          operation_manifest_digest: string;
+          plan_digest: string;
+          plan_payload: Json;
+          plan_version: number;
+          population_fingerprint: string;
+          prepared_origin_digest: string;
+          project_ref: string;
+          recovery_evidence_digest: string;
+          source_policy_version: string;
+        };
+        Insert: {
+          audit_digest: string;
+          baseline_evaluation_digest: string;
+          baseline_report: Json;
+          baseline_report_digest: string;
+          candidate_generation_id: string;
+          case_set_digest: string;
+          created_at?: string;
+          execution_profile_digest: string;
+          operation_manifest_digest: string;
+          plan_digest: string;
+          plan_payload: Json;
+          plan_version: number;
+          population_fingerprint: string;
+          prepared_origin_digest: string;
+          project_ref: string;
+          recovery_evidence_digest: string;
+          source_policy_version: string;
+        };
+        Update: {
+          audit_digest?: string;
+          baseline_evaluation_digest?: string;
+          baseline_report?: Json;
+          baseline_report_digest?: string;
+          candidate_generation_id?: string;
+          case_set_digest?: string;
+          created_at?: string;
+          execution_profile_digest?: string;
+          operation_manifest_digest?: string;
+          plan_digest?: string;
+          plan_payload?: Json;
+          plan_version?: number;
+          population_fingerprint?: string;
+          prepared_origin_digest?: string;
+          project_ref?: string;
+          recovery_evidence_digest?: string;
+          source_policy_version?: string;
+        };
+        Relationships: [];
+      };
       site_content_public_authority: {
         Row: { active_release_id: string | null; change_epoch: number; singleton: boolean; updated_at: string };
         Insert: { active_release_id?: string | null; change_epoch?: number; singleton?: boolean; updated_at?: string };
@@ -1083,6 +1456,7 @@ export type Database = {
           created_at: string;
           document_id: string;
           id: string;
+          index_generation_id: string | null;
           metadata: Json;
           ocr_used: boolean;
           page_number: number;
@@ -1092,6 +1466,7 @@ export type Database = {
           created_at?: string;
           document_id: string;
           id?: string;
+          index_generation_id?: string | null;
           metadata?: Json;
           ocr_used?: boolean;
           page_number: number;
@@ -1101,6 +1476,7 @@ export type Database = {
           created_at?: string;
           document_id?: string;
           id?: string;
+          index_generation_id?: string | null;
           metadata?: Json;
           ocr_used?: boolean;
           page_number?: number;
@@ -1893,6 +2269,9 @@ export type Database = {
       };
       ingestion_jobs: {
         Row: {
+          operation: string;
+          requested_generation_id: string | null;
+          shadow_plan_digest: string | null;
           lease_token: string | null;
           lease_expected_generation_id: string | null;
           lease_write_generation_id: string | null;
@@ -1910,7 +2289,7 @@ export type Database = {
           locked_at: string | null;
           locked_by: string | null;
           max_attempts: number;
-          next_run_at: string;
+          next_run_at: string | null;
           progress: number;
           stage: string;
           started_at: string | null;
@@ -1918,6 +2297,9 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          operation?: string;
+          requested_generation_id?: string | null;
+          shadow_plan_digest?: string | null;
           lease_token?: string | null;
           lease_expected_generation_id?: string | null;
           lease_write_generation_id?: string | null;
@@ -1935,7 +2317,7 @@ export type Database = {
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
-          next_run_at?: string;
+          next_run_at?: string | null;
           progress?: number;
           stage?: string;
           started_at?: string | null;
@@ -1943,6 +2325,9 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          operation?: string;
+          requested_generation_id?: string | null;
+          shadow_plan_digest?: string | null;
           lease_token?: string | null;
           lease_expected_generation_id?: string | null;
           lease_write_generation_id?: string | null;
@@ -1960,7 +2345,7 @@ export type Database = {
           locked_at?: string | null;
           locked_by?: string | null;
           max_attempts?: number;
-          next_run_at?: string;
+          next_run_at?: string | null;
           progress?: number;
           stage?: string;
           started_at?: string | null;
@@ -2713,6 +3098,104 @@ export type Database = {
       };
     };
     Functions: {
+      enqueue_shadow_reindex_generation: {
+        Args: {
+          p_plan: Json;
+          p_baseline_evaluation: Json;
+          p_recovery_evidence: Json;
+          p_operation_manifest: Json;
+        };
+        Returns: Json;
+      };
+      persist_shadow_summary_projection: {
+        Args: {
+          p_fence: Json;
+          p_generation: string;
+          p_summary: Json;
+          p_labels: Json;
+          p_metadata: Json;
+          p_output_manifest: Json;
+        };
+        Returns: Json;
+      };
+      persist_shadow_quality_projection: {
+        Args: {
+          p_fence: Json;
+          p_generation: string;
+          p_quality: Json;
+          p_output_manifest: Json;
+        };
+        Returns: Json;
+      };
+      persist_shadow_deep_memory_projection: {
+        Args: {
+          p_fence: Json;
+          p_generation: string;
+          p_artifact_generation: string;
+          p_output_manifest: Json;
+          p_request: Json;
+        };
+        Returns: Json;
+      };
+      persist_shadow_worker_projection: {
+        Args: {
+          p_fence: Json;
+          p_generation: string;
+          p_metadata: Json;
+          p_counts: Json;
+          p_output_manifest: Json;
+        };
+        Returns: Json;
+      };
+      get_shadow_generation_receipt: {
+        Args: {
+          p_plan_digest: string;
+          p_generation: string;
+          p_document_id: string;
+        };
+        Returns: Json;
+      };
+      record_shadow_producer_failure: {
+        Args: { p_fence: Json; p_generation: string; p_failure: Json };
+        Returns: Json;
+      };
+      stage_document_index_generation: {
+        Args: {
+          p_fence: Json;
+          p_generation: string;
+        };
+        Returns: Json;
+      };
+      write_shadow_generation_inventory: {
+        Args: {
+          p_fence: Json;
+          p_generation: string;
+          p_declarations: Json;
+          p_dispositions: Json;
+        };
+        Returns: Json;
+      };
+      write_shadow_generation_pages: {
+        Args: { p_fence: Json; p_generation: string; p_pages: Json };
+        Returns: Json;
+      };
+      validate_shadow_plan_v1: {
+        Args: { p_plan: Json };
+        Returns: Json;
+      };
+      validate_shadow_inventory_v1: {
+        Args: { p_declarations: Json; p_dispositions: Json };
+        Returns: undefined;
+      };
+      capture_shadow_reindex_origin: {
+        Args: {
+          p_document_ids: string[];
+          p_source_policy_version: string;
+          p_manual_alias_ids: string[];
+          p_execution_profile_envelope: Json;
+        };
+        Returns: Json;
+      };
       record_ingestion_repair_plan: {
         Args: {
           p_plan: Json;
@@ -3849,6 +4332,120 @@ export type Database = {
         Args: { p_document_id: string; p_version: string };
         Returns: undefined;
       };
+      u04_eval_adjacent_chunks_v1: {
+        Args: { p_context: Json; document_ids: string[]; chunk_indexes: number[] };
+        Returns: Json;
+      };
+      u04_eval_aliases_v1: { Args: { p_context: Json }; Returns: Json };
+      u04_eval_chunks_by_ids_v1: { Args: { p_context: Json; ids: string[] }; Returns: Json };
+      u04_eval_chunks_by_indexes_v1: {
+        Args: { p_context: Json; document_ids: string[]; indexes: number[]; match_count: number };
+        Returns: Json;
+      };
+      u04_eval_corpus_terms_v1: { Args: { p_context: Json; terms: string[] }; Returns: Json };
+      u04_eval_correct_terms_v1: {
+        Args: { p_context: Json; input_query: string; min_sim: number };
+        Returns: Json;
+      };
+      u04_eval_documents_v1: { Args: { p_context: Json; ids: string[] }; Returns: Json };
+      u04_eval_embedding_fields_v1: {
+        Args: {
+          p_context: Json;
+          query_embedding: Vector;
+          query_text: string;
+          match_count: number;
+          min_similarity: number;
+          document_filters: string[] | null;
+        };
+        Returns: Json;
+      };
+      u04_eval_hybrid_chunks_v1: {
+        Args: {
+          p_context: Json;
+          query_embedding: Vector;
+          query_text: string;
+          match_count: number;
+          min_similarity: number;
+          document_filters: string[] | null;
+        };
+        Returns: Json;
+      };
+      u04_eval_images_by_ids_v1: { Args: { p_context: Json; ids: string[] }; Returns: Json };
+      u04_eval_images_by_pages_v1: {
+        Args: { p_context: Json; document_ids: string[]; page_numbers: number[] };
+        Returns: Json;
+      };
+      u04_eval_index_units_v1: {
+        Args: {
+          p_context: Json;
+          query_embedding: Vector;
+          query_text: string;
+          match_count: number;
+          min_similarity: number;
+          document_filters: string[] | null;
+        };
+        Returns: Json;
+      };
+      u04_eval_lookup_chunk_prefix_v1: {
+        Args: { p_context: Json; document_filters: string[] | null; match_count: number };
+        Returns: Json;
+      };
+      u04_eval_lookup_chunk_terms_v1: {
+        Args: { p_context: Json; document_filters: string[] | null; terms: string[]; match_count: number };
+        Returns: Json;
+      };
+      u04_eval_lookup_chunks_v1: {
+        Args: { p_context: Json; query_text: string; document_filters: string[] | null; match_count: number };
+        Returns: Json;
+      };
+      u04_eval_lookup_document_terms_v1: { Args: { p_context: Json; terms: string[] }; Returns: Json };
+      u04_eval_lookup_documents_v1: {
+        Args: { p_context: Json; query_text: string; match_count: number };
+        Returns: Json;
+      };
+      u04_eval_memory_cards_hybrid_v1: {
+        Args: {
+          p_context: Json;
+          query_embedding: Vector;
+          query_text: string;
+          match_count: number;
+          min_similarity: number;
+          document_filters: string[] | null;
+        };
+        Returns: Json;
+      };
+      u04_eval_memory_cards_lexical_v1: {
+        Args: { p_context: Json; query_text: string; document_filters: string[] | null; match_count: number };
+        Returns: Json;
+      };
+      u04_eval_quality_v1: { Args: { p_context: Json; document_ids: string[] }; Returns: Json };
+      u04_eval_ranking_metadata_v1: {
+        Args: { p_context: Json; document_ids: string[] };
+        Returns: Json;
+      };
+      u04_eval_related_documents_v1: {
+        Args: { p_context: Json; document_ids: string[] };
+        Returns: Json;
+      };
+      u04_eval_table_facts_v1: {
+        Args: { p_context: Json; query_text: string; match_count: number; document_filters: string[] | null };
+        Returns: Json;
+      };
+      u04_eval_text_chunks_v1: {
+        Args: { p_context: Json; query_text: string; match_count: number; document_filters: string[] | null };
+        Returns: Json;
+      };
+      u04_eval_vector_chunks_v1: {
+        Args: {
+          p_context: Json;
+          query_embedding: Vector;
+          match_count: number;
+          min_similarity: number;
+          document_filter: string | null;
+        };
+        Returns: Json;
+      };
+      u04_eval_visual_rows_v1: { Args: { p_context: Json; document_ids: string[] }; Returns: Json };
     };
     Enums: {
       [_ in never]: never;

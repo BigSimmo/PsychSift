@@ -1,7 +1,10 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const schema = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8").replace(/\s+/g, " ");
+const schemaSource = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8");
+const schema = schemaSource.replace(/\s+/g, " ");
 const documentIndexUnitsMigration = readFileSync(
   new URL("../supabase/migrations/20260612006000_document_index_units.sql", import.meta.url),
   "utf8",
@@ -87,6 +90,24 @@ const auditLogsServiceRolePolicyMigration = readFileSync(
   "utf8",
 ).replace(/\s+/g, " ");
 const migrationDirectoryUrl = new URL("../supabase/migrations/", import.meta.url);
+
+function trackedMigrationFileNames() {
+  // Git failure is fatal. Never fall back to discovering unrelated untracked SQL.
+  const tracked = execFileSync("git", ["ls-files", "-z", "--", "supabase/migrations/*.sql"], {
+    cwd: fileURLToPath(new URL("../", import.meta.url)),
+    encoding: "utf8",
+    windowsHide: true,
+  })
+    .split("\0")
+    .filter(Boolean);
+  if (tracked.length === 0 || tracked.some((path) => !/^supabase\/migrations\/[^/]+\.sql$/.test(path))) {
+    throw new Error("Expected a complete tracked SQL migration inventory.");
+  }
+  const names = new Set(tracked.map((path) => path.slice("supabase/migrations/".length)));
+  const ownedMigration = "20260831102000_stage_shadow_document_generations.sql";
+  if (existsSync(new URL(ownedMigration, migrationDirectoryUrl))) names.add(ownedMigration);
+  return [...names].sort();
+}
 
 function parseMigrationStem(fileName: string) {
   const stem = fileName.match(/^\d+_(.+)\.sql$/)?.[1];
@@ -331,6 +352,399 @@ function extractIndexUnitHybridFunction(sql: string) {
   expect(end).toBeGreaterThan(start);
   return sql.slice(start, end);
 }
+
+describe("U04 shadow generation storage foundation (source contract only)", () => {
+  // Remove only full-line SQL comments. Tokens in quoted glob/regexp literals
+  // are data, so a generic block-comment or inline-comment regex is unsafe.
+  const sql = schemaSource
+    .replace(/^[ \t]*--[^\r\n]*/gm, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+  const privateTables = [
+    {
+      name: "shadow_reindex_waves",
+      columns: [
+        "candidate_generation_id uuid",
+        "plan_digest text",
+        "plan_version integer not null",
+        "project_ref text not null",
+        "source_policy_version text not null",
+        "audit_digest text not null",
+        "population_fingerprint text not null",
+        "recovery_evidence_digest text not null",
+        "baseline_evaluation_digest text not null",
+        "operation_manifest_digest text not null",
+        "plan_payload jsonb not null",
+        "created_at timestamptz not null",
+        "prepared_origin_digest text not null",
+        "execution_profile_digest text not null",
+        "case_set_digest text not null",
+        "baseline_report jsonb not null",
+        "baseline_report_digest text not null",
+      ],
+      key: "candidate_generation_id",
+      references: [],
+    },
+    {
+      name: "document_index_generations",
+      columns: [
+        "document_id uuid not null",
+        "index_generation_id uuid not null",
+        "owner_id uuid",
+        "baseline_generation_id uuid",
+        "expected_state_digest text not null",
+        "authority_digest text not null",
+        "source_binding jsonb not null",
+        "job_id uuid not null",
+        "first_lease_token uuid",
+        "claimed_at timestamptz",
+        "state text not null",
+        "expected_inventory_digest text",
+        "inventory_digest text",
+        "candidate_projection_digest text",
+        "baseline_bundle_digest text not null",
+        "stage_receipt jsonb",
+        "stage_receipt_digest text",
+        "staged_at timestamptz",
+        "control_revision bigint not null default 0",
+        "control_snapshot jsonb not null",
+        "original_origin_envelope jsonb not null",
+        "inventory_manifest jsonb not null",
+      ],
+      key: "document_id, index_generation_id",
+      references: ["documents(id)", "shadow_reindex_waves(candidate_generation_id)", "ingestion_jobs(id)"],
+    },
+    {
+      name: "document_generation_projections",
+      columns: [
+        "document_id uuid not null",
+        "index_generation_id uuid not null",
+        "lease_token uuid not null",
+        "owner_id uuid",
+        "summary jsonb",
+        "generated_labels jsonb",
+        "summary_projection_complete boolean",
+        "enrichment_metadata jsonb",
+        "quality jsonb",
+        "worker_metadata jsonb",
+        "document_counts jsonb",
+        "deep_memory_artifact_generation_id uuid",
+        "deep_memory_receipt jsonb",
+        "deep_memory_metadata jsonb",
+        "producer_aliases jsonb",
+        "summary_digest text",
+        "quality_digest text",
+        "deep_memory_digest text",
+        "worker_state_digest text",
+        "sealed_at timestamptz",
+      ],
+      key: "document_id, index_generation_id",
+      references: ["document_index_generations(document_id, index_generation_id)"],
+    },
+    {
+      name: "document_generation_inventory",
+      columns: [
+        "document_id uuid not null",
+        "index_generation_id uuid not null",
+        "family text not null",
+        "unit_key text not null",
+        "lease_token uuid not null",
+        "expected boolean not null",
+        "required boolean not null",
+        "disposition text not null",
+        "reason_code text",
+        "limitations jsonb not null",
+        "producer text not null",
+        "artifact_generation_id uuid",
+        "artifact_ref jsonb",
+        "content_digest text",
+        "source_binding jsonb not null",
+        "relationships jsonb not null",
+        "retained_evidence_text text",
+        "retained_native_payload text",
+        "representation_version text",
+        "transform_version text",
+      ],
+      key: "document_id, index_generation_id, family, unit_key",
+      references: ["document_index_generations(document_id, index_generation_id)"],
+    },
+    {
+      name: "document_generation_baselines",
+      columns: [
+        "document_id uuid not null",
+        "candidate_generation_id uuid not null",
+        "baseline_generation_id uuid",
+        "expected_state_digest text not null",
+        "bundle_version integer not null",
+        "bundle_payload jsonb not null",
+        "bundle_digest text not null",
+        "captured_at timestamptz not null",
+      ],
+      key: "document_id, candidate_generation_id",
+      references: ["document_index_generations(document_id, index_generation_id)"],
+    },
+  ];
+
+  function tableDefinition(name: string) {
+    const definition = sql.match(new RegExp(`create table (?:if not exists )?public\\.${name} \\([^;]+;`))?.[0];
+    // Missing future storage is an assertion failure against today's snapshot,
+    // not an import/ENOENT failure from reading an unauthored migration.
+    expect(definition, `Missing U04 table public.${name}`).toBeDefined();
+    return definition!;
+  }
+
+  function tableAlterations(name: string) {
+    return (sql.match(new RegExp(`alter table public\\.${name}\\b[^;]+;`, "g")) ?? []).join(" ");
+  }
+
+  it("addresses page ordinals by generation while preserving one explicit legacy set", () => {
+    const definition = tableDefinition("document_pages");
+    const alterations = tableAlterations("document_pages");
+    expect(`${definition} ${alterations}`).toMatch(/\bindex_generation_id uuid\b/);
+    const indexes = (sql.match(/create unique index [^;]+ on public\.document_pages\b[^;]+;/g) ?? []).join(" ");
+    expect(`${definition} ${alterations} ${indexes}`).toMatch(
+      /(?:unique\s*\(document_id, index_generation_id, page_number\)|on public\.document_pages\s*\(document_id, index_generation_id, page_number\))/,
+    );
+    expect(sql).toMatch(
+      /create unique index [^;]+ on public\.document_pages\s*\(document_id, page_number\) where \(?index_generation_id is null\)?;/,
+    );
+    if (definition.includes("unique (document_id, page_number)")) {
+      expect(alterations).toMatch(/drop constraint (?:if exists )?document_pages_document_id_page_number_key/);
+    }
+  });
+
+  it("persists a closed immutable standard/shadow job identity with no shadow batch", () => {
+    const jobs = `${tableDefinition("ingestion_jobs")} ${tableAlterations("ingestion_jobs")}`;
+    expect(jobs).toContain("operation text not null default 'standard'");
+    expect(jobs).toContain("requested_generation_id uuid");
+    expect(jobs).toContain("shadow_plan_digest text");
+    expect(jobs).toMatch(/operation in \('standard', 'shadow_reindex'\)/);
+    expect(jobs).toContain("operation = 'standard' and requested_generation_id is null and shadow_plan_digest is null");
+    expect(jobs).toContain(
+      "operation = 'shadow_reindex' and requested_generation_id is not null and shadow_plan_digest is not null and batch_id is null",
+    );
+    const guard = sqlFunctionBody(sql, "guard_shadow_generation_evidence_mutation");
+    for (const field of ["operation", "requested_generation_id", "shadow_plan_digest"]) {
+      expect(guard).toContain(`old.${field}`);
+      expect(guard).toContain(`new.${field}`);
+    }
+    expect(guard).toContain("is distinct from");
+    expect(guard).toContain("raise exception");
+    expect(sql).toMatch(
+      /create trigger [^;]+ before update\b[^;]* on public\.ingestion_jobs[^;]+ execute function public\.guard_shadow_generation_evidence_mutation\(\)/,
+    );
+  });
+
+  it.each(privateTables)(
+    "retains the complete private $name row and closes direct writes",
+    ({ name, columns, key, references }) => {
+      const table = tableDefinition(name);
+      for (const column of columns) expect(table, `${name}.${column}`).toContain(column);
+      if (key === "candidate_generation_id") {
+        expect(table).toMatch(/candidate_generation_id uuid (?:not null )?primary key/);
+      } else {
+        expect(table).toContain(`primary key (${key})`);
+      }
+      for (const target of references) expect(table).toContain(`references public.${target}`);
+      if (name.startsWith("document_generation_")) {
+        const memberKey =
+          name === "document_generation_baselines"
+            ? "document_id, candidate_generation_id"
+            : "document_id, index_generation_id";
+        expect(table).toContain(`foreign key (${memberKey}) references public.document_index_generations`);
+      }
+      expect(table).not.toMatch(/on (?:delete|update) (?:cascade|set null|set default)/);
+      expect(sql).toContain(`alter table public.${name} enable row level security`);
+      const reset = `revoke all on table public.${name} from public, anon, authenticated, service_role`;
+      const readGrant = `grant select on table public.${name} to service_role`;
+      expect(sql).toContain(reset);
+      expect(sql.indexOf(readGrant)).toBeGreaterThan(sql.lastIndexOf(reset));
+      const grants = (sql.match(/grant [^;]+;/g) ?? []).filter((grant) =>
+        new RegExp(`\\bpublic\\.${name}\\b`).test(grant),
+      );
+      expect(grants).toEqual([`${readGrant};`]);
+      const policies = sql.match(new RegExp(`create policy [^;]+ on public\\.${name}\\b[^;]+;`, "g")) ?? [];
+      for (const policy of policies) {
+        expect(policy).toMatch(/for select to service_role using \(/);
+      }
+    },
+  );
+
+  it("constrains wave, member, inventory and baseline identities without an active or abandoned state", () => {
+    const wave = tableDefinition("shadow_reindex_waves");
+    expect(wave).toMatch(/(?:plan_digest text[^,]*unique|unique \(plan_digest\))/);
+    expect(wave).toMatch(/plan_digest text[^,]*not null/);
+    expect(wave).toContain("plan_version = 1");
+    expect(wave).toContain("project_ref = 'sjrfecxgysukkwxsowpy'");
+    const member = tableDefinition("document_index_generations");
+    expect(member).toMatch(/(?:job_id uuid[^,]*unique|unique \(job_id\))/);
+    expect(member).toMatch(/(?:stage_receipt_digest text[^,]*unique|unique \(stage_receipt_digest\))/);
+    expect(member).toContain("state in ('reserved', 'building', 'staged')");
+    expect(member).not.toMatch(/'(?:active|promoted|abandoned)'/);
+    for (const field of ["first_lease_token", "claimed_at", "stage_receipt", "stage_receipt_digest", "staged_at"]) {
+      expect(member).toContain(`${field} is null`);
+      expect(member).toContain(`${field} is not null`);
+    }
+    const inventory = tableDefinition("document_generation_inventory");
+    expect(inventory).toContain(
+      "disposition in ('pending', 'retained', 'excluded', 'failed', 'skipped', 'not_required')",
+    );
+    expect(inventory).toContain("'retained'");
+    expect(inventory).toContain("artifact_ref is not null");
+    expect(inventory).toContain("content_digest is not null");
+    expect(tableDefinition("document_generation_baselines")).toContain("bundle_version = 1");
+  });
+
+  it("retains raw origin and baseline envelopes plus full control and producer manifests without empty defaults", () => {
+    const ledger = tableDefinition("document_index_generations");
+    const baseline = tableDefinition("document_generation_baselines");
+    for (const [table, column] of [
+      [ledger, "original_origin_envelope"],
+      [baseline, "bundle_payload"],
+    ]) {
+      expect(table).toContain(`${column} jsonb not null`);
+      expect(table).not.toMatch(new RegExp(`${column} jsonb[^,]*default`));
+      // The raw string is durable authority; parsed JSON alone loses precision.
+      expect(table).toContain(`jsonb_typeof(${column} -> 'canonicalpayload') = 'string'`);
+      for (const key of ["version", "domain", "encoding", "digest"]) {
+        expect(table).toContain(`${column} ->> '${key}'`);
+      }
+    }
+    for (const column of ["control_snapshot", "inventory_manifest"]) {
+      expect(ledger).toContain(`${column} jsonb not null`);
+      expect(ledger).not.toMatch(new RegExp(`${column} jsonb[^,]*default`));
+    }
+    expect(ledger).toContain("control_revision >= 0");
+    expect(ledger).toContain("jsonb_array_length(inventory_manifest -> 'families') = 18");
+    // Exact producer slots are durable, including both independent index-unit producers.
+    const familySlots: Record<string, string[]> = {
+      pages: ["worker_core"],
+      native_structure: ["worker_native"],
+      chunks: ["worker_core"],
+      images: ["worker_core"],
+      table_facts: ["worker_core"],
+      embedding_fields: ["worker_core"],
+      index_units: ["worker_core", "deep_memory"],
+      sections: ["deep_memory"],
+      memory_cards: ["deep_memory"],
+      summary: ["enrichment"],
+      generated_labels: ["enrichment"],
+      quality: ["worker_core"],
+      document_metadata: ["projection_aggregate"],
+      producer_aliases: ["deep_memory"],
+      private_objects: ["private_objects"],
+      attempt_control: ["control"],
+      cache_inputs: ["cache"],
+      repair_audit_inputs: ["repair"],
+    };
+    for (const [family, slots] of Object.entries(familySlots)) {
+      // CHECK containment binds family and slots in the same retained JSON entry;
+      // global token presence would not catch a swapped or lost producer slot.
+      const entry = JSON.stringify({ family, groups: slots.map((groupKey) => ({ groupKey })) }).toLowerCase();
+      expect(ledger.replace(/\s/g, "")).toContain(entry);
+    }
+  });
+});
+
+describe("U04 failed producer D retention source contracts", () => {
+  const failureRetentionMigration = readFileSync(
+    new URL("../supabase/migrations/20260831102000_stage_shadow_document_generations.sql", import.meta.url),
+    "utf8",
+  );
+  const failureRetentionSchema = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8");
+  function effectiveFailureRetention(source: string, name: string) {
+    const start = source.lastIndexOf("create or replace function public." + name + "(");
+    expect(start, "Missing effective function " + name).toBeGreaterThanOrEqual(0);
+    const plpgsqlEnd = source.indexOf("\nend $$;", start);
+    const sqlEnd = source.indexOf("\n$$;", start);
+    const end = [plpgsqlEnd, sqlEnd]
+      .filter((candidate) => candidate > start)
+      .sort((left, right) => left - right)[0];
+    const effectiveEnd = end ?? -1;
+    expect(effectiveEnd, "Missing end of " + name).toBeGreaterThan(start);
+    const suffix = source.startsWith("\nend $$;", effectiveEnd) ? "\nend $$;" : "\n$$;";
+    return source.slice(start, effectiveEnd + suffix.length);
+  }
+
+  it("keeps the strict failed-stage artifact extractor identical in migration and schema", () => {
+    const name = "shadow_failed_artifact_generation_v1";
+    const body = effectiveFailureRetention(failureRetentionMigration, name);
+    expect(effectiveFailureRetention(failureRetentionSchema, name)).toBe(body);
+    expect(body).toContain("not public.shadow_keys_v1(p_stage.metadata,array['u04_producer_failure_v1'])");
+    expect(body).toContain(
+      "v_payload->'binding' is distinct from pg_catalog.jsonb_build_object('tag','candidate','source',p_member.source_binding",
+    );
+    expect(body).toContain("p_stage.lease_token is distinct from p_member.first_lease_token");
+    expect(body).toContain("p_revision_offset is null");
+    expect(body).toContain("p_revision_offset=0 and p_member.state is distinct from 'building'");
+    expect(body).toContain("p_revision_offset=0 and v_revision<>p_member.control_revision");
+    expect(body).toContain("p_revision_offset=1 and v_revision+1>p_member.control_revision");
+    expect(body).toContain(
+      "public.shadow_node_payload_v1(v_payload->'inputEnvelope','u04-retained-evidence-v1')",
+    );
+    expect(body).toContain(
+      "public.shadow_node_payload_v1(v_payload->'partialEnvelope','u04-retained-evidence-v1')",
+    );
+    expect(body).toContain("exception when others then return null");
+    expect(failureRetentionMigration).toContain(
+      "revoke all on function public.shadow_failed_artifact_generation_v1",
+    );
+    expect(failureRetentionMigration).not.toContain(
+      "grant execute on function public.shadow_failed_artifact_generation_v1",
+    );
+  });
+
+  it("protects failed D from cleanup, row mutation and every generation reservation path", () => {
+    for (const name of [
+      "shadow_generation_retained_v1",
+      "shadow_artifact_retention_guard_v1",
+      "shadow_parent_retention_guard_v1",
+      "enqueue_shadow_reindex_generation",
+      "write_shadow_generation_inventory",
+      "shadow_reserve_producer_d_v1",
+      "shadow_state_rows_v1",
+    ]) {
+      expect(effectiveFailureRetention(failureRetentionSchema, name)).toBe(
+        effectiveFailureRetention(failureRetentionMigration, name),
+      );
+    }
+    const retained = effectiveFailureRetention(failureRetentionMigration, "shadow_generation_retained_v1");
+    const artifact = effectiveFailureRetention(failureRetentionMigration, "shadow_artifact_retention_guard_v1");
+    const parent = effectiveFailureRetention(failureRetentionMigration, "shadow_parent_retention_guard_v1");
+    const enqueue = effectiveFailureRetention(failureRetentionMigration, "enqueue_shadow_reindex_generation");
+    const stateRows = effectiveFailureRetention(failureRetentionMigration, "shadow_state_rows_v1");
+    const inventory = effectiveFailureRetention(failureRetentionMigration, "write_shadow_generation_inventory");
+    const reserve = effectiveFailureRetention(failureRetentionMigration, "shadow_reserve_producer_d_v1");
+    expect(retained).toContain("public.shadow_failed_artifact_generation_v1(s,g,1)=p_generation");
+    expect(artifact).toContain("public.shadow_failed_artifact_generation_v1(st,g,1)=v_lock::uuid");
+    expect(artifact).toContain("then raise exception 'shadow_retained_evidence'");
+    expect(parent).toContain("v_failed_artifact:=public.shadow_failed_artifact_generation_v1(new,v_member,0)");
+    expect(parent).toContain(
+      "pg_catalog.pg_try_advisory_xact_lock(pg_catalog.hashtextextended('u04-artifact-generation:'||v_failed_artifact::text,0))",
+    );
+    expect(parent).toContain("shadow_producer_generation_occupied");
+    expect(parent).toContain(
+      "v_row->'owner_id' is distinct from coalesce(pg_catalog.to_jsonb(v_member.owner_id),'null'::jsonb)",
+    );
+    expect(parent).toContain("v_row->>'index_generation_id' is distinct from v_failed_artifact::text");
+    expect(parent).toContain("v_row->'metadata'->>'generated_by' is distinct from 'local-worker'");
+    expect(parent).toContain("v_row->'metadata'->>'index_generation_id' is distinct from v_failed_artifact::text");
+    expect(enqueue).toContain("public.shadow_failed_artifact_generation_v1(st,g,1)=v_c");
+    expect(enqueue).toContain(
+      "public.shadow_failed_artifact_generation_v1(st,g,1)=(v_source->>'baselineGenerationId')::uuid",
+    );
+    expect(inventory).toContain("public.shadow_failed_artifact_generation_v1(st,g,1)=v_d");
+    expect(reserve).toContain("public.shadow_failed_artifact_generation_v1(st,g,1)=v_d");
+    expect(stateRows).toContain("v_table in ('document_index_units','document_sections','document_memory_cards')");
+    expect(stateRows).toContain("st.job_id=any(p_jobs)");
+    expect(stateRows).toContain("public.shadow_failed_artifact_generation_v1(st,g,1)::text=v_row->>'index_generation_id'");
+    expect(stateRows).toContain("v_row->>'producer'='local-worker'");
+    expect(stateRows).toContain("v_row->'owner_id' is not distinct from coalesce(pg_catalog.to_jsonb(g.owner_id),'null'::jsonb)");
+    expect(stateRows).toContain("v_row->'metadata'->>'generated_by'='local-worker'");
+    expect(stateRows).toContain("v_row->'metadata'->>'index_generation_id'=public.shadow_failed_artifact_generation_v1(st,g,1)::text");
+    expect(stateRows).toContain("v_row->'metadata'->>'ingestion_lease_token'=g.first_lease_token::text");
+  });
+});
 
 describe("Supabase schema Data API grants", () => {
   it("codifies custom plans for non-inlined retrieval functions", () => {
@@ -772,7 +1186,7 @@ describe("Supabase schema Data API grants", () => {
     ]);
     const stemCounts = new Map<string, number>();
 
-    for (const fileName of readdirSync(migrationDirectoryUrl)) {
+    for (const fileName of trackedMigrationFileNames()) {
       const stem = parseMigrationStem(fileName);
       if (!stem) continue;
       stemCounts.set(stem, (stemCounts.get(stem) ?? 0) + 1);
@@ -1769,7 +2183,7 @@ describe("Supabase Preview replay guards", () => {
       expect(sql).toContain("Unsafe postgres default privileges in schema public");
     }
 
-    const migrationFiles = readdirSync(migrationDirectoryUrl)
+    const migrationFiles = trackedMigrationFileNames()
       .filter((fileName) => /^\d+_.+\.sql$/.test(fileName))
       .sort();
     expect(migrationFiles).toContain("20260720170000_add_documents_owner_updated_at_indexed_idx.sql");
@@ -2251,6 +2665,1435 @@ describe("Clinical query-term corrector — tenant-safe vocabulary (F10)", () =>
       expect(view).toContain("l.metadata->>'index_generation_id' = d.index_generation_id::text");
       expect(view).toContain("u.index_generation_id = d.index_generation_id");
       expect(view).toContain("not (coalesce(d.metadata, '{}'::jsonb) ? 'index_generation_id')");
+    }
+  });
+});
+
+describe("U04 fixed origin capture and profile bindings (source only)",()=>{
+  const migration=readFileSync(new URL("../supabase/migrations/20260831102000_stage_shadow_document_generations.sql",import.meta.url),"utf8");
+  function routine(source:string,name:string){
+    const start=source.indexOf(`create or replace function public.${name}(`);
+    expect(start,`Missing fixed routine ${name}`).toBeGreaterThanOrEqual(0);
+    const end=source.indexOf("$$;",start);expect(end).toBeGreaterThan(start);
+    return source.slice(start,end+3);
+  }
+  const families=["documents","document_pages","document_chunks","document_images","document_table_facts","document_embedding_fields","document_index_units",
+    "document_sections","document_memory_cards","document_summaries","document_labels","document_index_quality","ingestion_jobs","indexing_v3_agent_jobs",
+    "ingestion_job_stages","import_batches","rag_aliases","document_title_words","public_source_versions","public_source_activation_events",
+    "public_source_serving_authority","document_publication_approvals","shadow_reindex_waves","document_index_generations","document_generation_projections",
+    "document_generation_inventory","document_generation_baselines"];
+  it("exposes only the corrected full-profile fixed read signature",()=>{
+    const capture=routine(migration,"capture_shadow_reindex_origin");
+    expect(capture).toContain("p_execution_profile_envelope jsonb");
+    expect(capture).not.toContain("p_execution_profile_digest text");
+    expect(capture).toContain("language sql stable security definer set search_path = ''");
+    expect(capture).toContain("select public.capture_shadow_reindex_origin_v1_impl(");
+    const persistenceStart=migration.indexOf("-- U04 fixed retention-safe persistence.");
+    expect(persistenceStart).toBeGreaterThanOrEqual(0);
+    expect(migration.slice(0,persistenceStart).match(/grant execute on function public\.[^;]+ to service_role;/g)).toEqual([
+      "grant execute on function public.capture_shadow_reindex_origin(uuid[],text,uuid[],jsonb) to service_role;",
+    ]);
+  });
+  it.each(["shadow_capture_rows_v1","shadow_capture_count_v1","shadow_capture_bytes_v1","read_shadow_document_authority_v1","capture_shadow_reindex_origin_v1_impl"])("keeps %s private and STABLE",(name)=>{
+    const body=routine(migration,name);
+    expect(body).toMatch(/language (?:sql|plpgsql) stable/);
+    expect(body).toContain("set search_path = ''");
+    expect(body).not.toMatch(/\b(?:insert into|update public\.|delete from|for update|pg_advisory|execute format)\b/i);
+    expect(migration).toMatch(new RegExp(`alter function public\\.${name}\\([^;]+\\) owner to postgres;`));
+    expect(migration).toMatch(new RegExp(`revoke all on function public\\.${name}\\([^;]+\\) from public, anon, authenticated, service_role;`));
+    expect(migration).not.toMatch(new RegExp(`grant execute on function public\\.${name}\\(`));
+  });
+  it("mirrors every frozen capture helper into the schema snapshot",()=>{
+    const marker="-- U04 read-only capture foundation. No mutation, claim or seal entrypoint is exposed.";
+    expect(schemaSource.slice(schemaSource.indexOf(marker))).toBe(migration.slice(migration.indexOf(marker)));
+  });
+  it("retains all 27 complete row populations in row/count/byte queries",()=>{
+    for(const name of ["shadow_capture_rows_v1","shadow_capture_count_v1","shadow_capture_bytes_v1"]){
+      const body=routine(migration,name);
+      for(const family of families)expect(body).toContain(`from public.${family} r where `);
+      expect(body).not.toMatch(/\blimit\b|\boffset\b|r\.status\s*=/i);
+    }
+    expect(routine(migration,"shadow_capture_rows_v1").match(/as row_payload/g)).toHaveLength(27);
+  });
+  it("counts membership and exact encoded bytes before constructing nonempty arrays",()=>{
+    const body=routine(migration,"capture_shadow_reindex_origin_v1_impl");
+    expect(body.indexOf("v_count := public.shadow_capture_count_v1")).toBeLessThan(body.indexOf("v_total_bytes := public.shadow_capture_bytes_v1"));
+    expect(body.indexOf("v_total_bytes := public.shadow_capture_bytes_v1")).toBeLessThan(body.indexOf("for v_row in select * from public.shadow_capture_rows_v1"));
+    expect(body).toContain("if v_count>v_max_rows then raise exception 'evidence_too_large'");
+    expect(body).toContain("if v_base_bytes+v_total_bytes>v_max_bytes then raise exception 'evidence_too_large'");
+    expect(body).toContain("if v_actual_count<>v_count then raise exception 'shadow_snapshot_incomplete'");
+    expect(body).toContain("pg_catalog.octet_length(pg_catalog.convert_to(v_origin::text,'UTF8'))>v_max_bytes");
+    expect(routine(migration,"shadow_capture_bytes_v1").match(/case when pg_catalog.count\(\*\)>0 then 2 else 0 end/g)).toHaveLength(27);
+  });
+  it("uses full original profile bytes and enforces hard and lowered ceilings",()=>{
+    const profile=routine(migration,"shadow_profile_capture_v1"),capture=routine(migration,"capture_shadow_reindex_origin_v1_impl");
+    expect(profile).toContain("public.shadow_node_json_text_v1(v_text::json) is distinct from v_text");
+    expect(profile).toContain("pg_catalog.octet_length(pg_catalog.convert_to(v_text,'UTF8'))::text");
+    expect(profile).toContain("(v_limits->>'maxMembers')::numeric<=8");
+    expect(profile).toContain("(v_limits->>'maxCapturedRows')::numeric<=250000");
+    expect(profile).toContain("(v_limits->>'maxOriginBundleBytes')::numeric<=268435456");
+    expect(capture).toContain("v_max_rows := (v_profile->'limits'->>'maxCapturedRows')::integer");
+    expect(capture).toContain("'executionProfileEnvelope',p_execution_profile_envelope");
+    expect(capture).toContain("pg_catalog.to_jsonb(p_document_ids)=v_profile->'documentIds'");
+    expect(capture).toContain("pg_catalog.to_jsonb(p_manual_alias_ids)=v_profile->'manualAliasIds'");
+  });
+  it("rejects ambiguous Node JSON before JSONB normalization",()=>{
+    const node=routine(migration,"shadow_node_json_text_v1");
+    expect(node).toContain("pg_catalog.json_each(p_value)");
+    expect(node).toContain("v_order <= v_prior");
+    expect(node).toContain("public.shadow_utf16_order_v1(v_item.key)");
+    expect(node).toContain("if v_number = 0 then return '0'");
+    expect(node).toContain("v_exponent >= -6 and v_exponent < 21");
+  });
+  it("retains native stored fields, arrays, search vectors and vector text",()=>{
+    const rows=routine(migration,"shadow_capture_rows_v1");
+    for(const field of ["description","file_size","metadata","created_at","updated_at","lease_expires_at","section_path","source_chunk_ids"])
+      expect(rows).toContain(`'${field}', r.${field}`);
+    expect(rows.match(/'embedding', r.embedding::text/g)).toHaveLength(4);
+    expect(rows).toContain("'search_tsv', r.search_tsv::text");
+    expect(rows).toContain("public.shadow_utf16_order_v1(r.word::text)");
+    expect(rows).not.toMatch(/date_trunc|to_char|substring|left\(/);
+  });
+  it("captures batch siblings, contradictory stages, all events and disabled exact manual aliases",()=>{
+    const rows=routine(migration,"shadow_capture_rows_v1");
+    expect(rows).toContain("r.document_id=any(p_w) or r.batch_id in (select id from batches)");
+    expect(rows).toContain("r.document_id=any(p_w) or r.job_id in (select id from jobs)");
+    expect(rows).toContain("r.source_catalogue_key in (select key from catalogue)");
+    expect(rows).toContain("r.metadata->>'document_id'=any(p_w::text[]) or r.id=any(p_m)");
+    expect(rows).not.toMatch(/where[^\n]*r\.enabled/);
+  });
+  it("mirrors U03 authority without invoking its locking helper",()=>{
+    const authority=routine(migration,"read_shadow_document_authority_v1");
+    expect(authority).toContain("order by source_sequence desc limit 1");
+    expect(authority).toContain("v_version.lifecycle not in ('shadow', 'approved')");
+    expect(authority).toContain("public.public_source_acquisition_identity_digest(v_version.id)");
+    expect(authority).toContain("Any public-source marker forbids");
+    expect(authority).not.toContain("lock_ingestion_document_authority");
+    expect(authority).not.toContain("for update");
+  });
+  it("requires full exact manual review membership and original row equality",()=>{
+    const profile=routine(migration,"shadow_profile_capture_v1"),review=routine(migration,"shadow_manual_alias_review_v1"),capture=routine(migration,"capture_shadow_reindex_origin_v1_impl");
+    expect(profile).toContain("pg_catalog.jsonb_array_length(v_profile->'manualAliasReviews')<>pg_catalog.jsonb_array_length(v_profile->'manualAliasIds')");
+    expect(review).toContain("'kind','evidenceMode','target','aliasId','ownerId','rowDigest','rowEnvelope','producerIdentity','reviewer','basis','reviewText'");
+    expect(review).toContain("pg_catalog.jsonb_array_length(v_review->'basis')>0");
+    expect(review).toContain("v_review->'reviewer'->>'identity'<>v_review->>'producerIdentity'");
+    expect(capture).toContain("v_document::text is distinct from v_policy->'rowEnvelope'->>'canonicalPayload'");
+    expect(capture).not.toContain("shadow_manual_lineage_unavailable");
+  });
+  it("amends only consumed Node scheduling nullability while retaining its default",()=>{
+    expect(migration).toContain("alter table public.ingestion_jobs alter column next_run_at drop not null;");
+    const preconditionEnd=migration.indexOf("$u04_pages$;");
+    const firstMutation=migration.search(/^(?:alter table|update public\.|create (?:table|unique index))/m);
+    expect(preconditionEnd).toBeGreaterThan(migration.indexOf("raise exception 'shadow_page_generation_provenance_ambiguous'"));
+    expect(firstMutation).toBeGreaterThan(preconditionEnd);
+    expect(firstMutation).toBe(migration.indexOf("alter table public.ingestion_jobs alter column next_run_at drop not null;"));
+    const start=schemaSource.indexOf("create table if not exists public.ingestion_jobs (");const end=schemaSource.indexOf(");",start);
+    expect(schemaSource.slice(start,end)).toContain("next_run_at timestamptz default now()");
+    expect(schemaSource.slice(start,end)).not.toContain("next_run_at timestamptz not null");
+  });
+  it("binds complete Node capture columns and controls to the actual stored plan digest",()=>{
+    const source=readFileSync(new URL("../scripts/lib/reindex-eval-session.ts",import.meta.url),"utf8");
+    const types=readFileSync(new URL("../src/lib/supabase/database.types.ts",import.meta.url),"utf8");
+    const descriptor=source.match(/ingestion_jobs:\s*\{([^}]+)\}/)?.[1];
+    const typedRow=types.match(/ingestion_jobs:\s*\{\s*Row:\s*\{([^}]+)\}/)?.[1];
+    expect(descriptor).toBeDefined();expect(typedRow).toBeDefined();
+    const descriptorColumns=Array.from((descriptor??"").matchAll(/"([a-z_]+)"\s*:/g),match=>match[1]).sort();
+    const typedColumns=Array.from((typedRow??"").matchAll(/\b([a-z_]+):/g),match=>match[1]).sort();
+    const rows=routine(migration,"shadow_capture_rows_v1");
+    const nodeStart=rows.indexOf("select 'ingestion_jobs'::text as table_name");
+    const nodeEnd=rows.indexOf("from public.ingestion_jobs r where",nodeStart);
+    expect(nodeStart).toBeGreaterThanOrEqual(0);expect(nodeEnd).toBeGreaterThan(nodeStart);
+    const sqlColumns=Array.from(rows.slice(nodeStart,nodeEnd).matchAll(/'([a-z_]+)', r\.([a-z_]+)/g),match=>{
+      expect(match[1]).toBe(match[2]);return match[1];
+    }).sort();
+    expect(descriptorColumns).toEqual(typedColumns);expect(sqlColumns).toEqual(typedColumns);
+    expect(typedRow).toContain("shadow_plan_digest: string | null");
+    expect(migration).toContain("add column shadow_plan_digest text");
+    expect(migration).toContain("shadow_plan_digest ~ '^sha256:[0-9a-f]{64}$'");
+    for(const body of [source,rows,routine(migration,"shadow_capture_bytes_v1")])expect(body).not.toMatch(/shadow_plan_id|shadowPlanId/);
+    expect(source).toMatch(/planDigest:\s*digestValue/);
+  });
+  it("does not return private JSON/numeric parser fragments through the capture entrypoint",()=>{
+    const body=routine(migration,"capture_shadow_reindex_origin_v1_impl");
+    expect(body).toContain("exception when others then");
+    expect(body).toContain("raise exception 'invalid_shadow_capture' using errcode='22023'");
+    expect(body).not.toMatch(/raise exception[^;]*%/);
+  });
+});
+
+describe("U04 retention-safe persistence contracts (source only; no SQL execution)", () => {
+  const migration = readFileSync(new URL("../supabase/migrations/20260831102000_stage_shadow_document_generations.sql", import.meta.url), "utf8");
+  const types = readFileSync(new URL("../src/lib/supabase/database.types.ts", import.meta.url), "utf8");
+  const persistence = migration.slice(migration.indexOf("-- U04 fixed retention-safe persistence."));
+  function effective(name: string) {
+    const start = migration.lastIndexOf(`create or replace function public.${name}(`);
+    expect(start, `Missing effective function ${name}`).toBeGreaterThanOrEqual(0);
+    const end = migration.indexOf("$$;", start);
+    expect(end).toBeGreaterThan(start);
+    return migration.slice(start, end + 3);
+  }
+  const artifacts = ["document_pages", "document_chunks", "document_images", "document_table_facts", "document_embedding_fields", "document_index_units", "document_sections", "document_memory_cards"];
+  const ledgers = ["shadow_reindex_waves", "document_index_generations", "document_generation_projections", "document_generation_inventory", "document_generation_baselines"];
+  const tables = [...artifacts, ...ledgers, "documents", "document_index_quality", "document_labels", "document_summaries", "document_title_words", "ingestion_jobs", "indexing_v3_agent_jobs", "ingestion_job_stages", "import_batches", "rag_aliases", "public_source_versions", "public_source_activation_events", "public_source_serving_authority", "document_publication_approvals"].sort();
+
+  it.each([
+    ["enqueue_shadow_reindex_generation", ["p_plan", "p_baseline_evaluation", "p_recovery_evidence", "p_operation_manifest"]],
+    ["write_shadow_generation_inventory", ["p_fence", "p_generation", "p_declarations", "p_dispositions"]],
+    ["write_shadow_generation_pages", ["p_fence", "p_generation", "p_pages"]],
+    ["persist_shadow_summary_projection", ["p_fence", "p_generation", "p_summary", "p_labels", "p_metadata", "p_output_manifest"]],
+    ["persist_shadow_quality_projection", ["p_fence", "p_generation", "p_quality", "p_output_manifest"]],
+    ["persist_shadow_deep_memory_projection", ["p_fence", "p_generation", "p_artifact_generation", "p_output_manifest", "p_request"]],
+    ["persist_shadow_worker_projection", ["p_fence", "p_generation", "p_metadata", "p_counts", "p_output_manifest"]],
+    ["validate_shadow_plan_v1", ["p_plan"]],
+    ["validate_shadow_inventory_v1", ["p_declarations", "p_dispositions"]],
+  ] as const)("binds %s to its actual fixed argument and generated type contract", (name, args) => {
+    const sqlArgs = effective(name).split("\n")[0]!.match(/\b(p_[a-z_]+)\s+(?:jsonb|uuid)\b/g)?.map((item) => item.split(" ")[0]);
+    expect(sqlArgs).toEqual([...args]);
+    const start = types.indexOf(`      ${name}: {`);
+    expect(start).toBeGreaterThanOrEqual(0);
+    const typed = types.slice(start, types.indexOf("Returns:", start));
+    expect(Array.from(typed.matchAll(/\b(p_[a-z_]+):/g), (match) => match[1])).toEqual([...args]);
+  });
+
+  it("keeps every new private helper ungranted and confined to fixed SQL", () => {
+    const names = [...new Set(Array.from(persistence.matchAll(/create or replace function public\.((?:shadow_[a-z_0-9]+|validate_shadow_[a-z_0-9]+))\(/g), (match) => match[1]!))];
+    expect(names.length).toBeGreaterThan(25);
+    for (const name of names) {
+      expect(effective(name)).toMatch(/set search_path\s*=\s*''/);
+      expect(persistence).toMatch(new RegExp(`alter function public\\.${name}\\([^;]*\\) owner to postgres;`));
+      expect(persistence).toMatch(new RegExp(`revoke all on function public\\.${name}\\([^;]*\\) from public,\\s*anon,\\s*authenticated,\\s*service_role;`));
+      expect(persistence).not.toMatch(new RegExp(`grant execute on function public\\.${name}\\(`));
+    }
+    expect(persistence).not.toMatch(/execute\s+format\s*\(|set_config\([^\n]*(?:role|shadow)/i);
+  });
+
+  it("grants only the seven completed shadow mutation entrypoints to service_role", () => {
+    const entrypoints = [
+      ["enqueue_shadow_reindex_generation", "jsonb,jsonb,jsonb,jsonb"],
+      ["write_shadow_generation_inventory", "jsonb,uuid,jsonb,jsonb"],
+      ["write_shadow_generation_pages", "jsonb,uuid,jsonb"],
+      ["persist_shadow_summary_projection", "jsonb,uuid,jsonb,jsonb,jsonb,jsonb"],
+      ["persist_shadow_quality_projection", "jsonb,uuid,jsonb,jsonb"],
+      ["persist_shadow_deep_memory_projection", "jsonb,uuid,uuid,jsonb,jsonb"],
+      ["persist_shadow_worker_projection", "jsonb,uuid,jsonb,jsonb,jsonb"],
+    ] as const;
+    expect(entrypoints).toHaveLength(7);
+    for (const [name, signature] of entrypoints) {
+      expect(effective(name)).toContain("security definer");
+      expect(effective(name)).toContain("set search_path = ''");
+      const revoke = `revoke all on function public.${name}(${signature}) from public,anon,authenticated,service_role;`;
+      const grant = `grant execute on function public.${name}(${signature}) to service_role;`;
+      expect(persistence.lastIndexOf(revoke)).toBeGreaterThanOrEqual(0);
+      expect(persistence.lastIndexOf(grant)).toBeGreaterThan(persistence.lastIndexOf(revoke));
+      const grants = (persistence.match(/grant execute on function public\.[^;]+;/g) ?? []).filter((item) =>
+        item.includes(`public.${name}(`),
+      );
+      expect(grants).toEqual([grant]);
+    }
+  });
+
+  it("keeps stamped C and D artifacts out of the effective legacy publication-state digest", () => {
+    const predicates = [
+      "from public.document_pages p where p.document_id = d.id and public.is_committed_document_generation(p.index_generation_id, d.index_generation_id)",
+      "from public.document_images i where i.document_id = d.id and public.is_committed_artifact_generation(i.metadata, d.metadata)",
+      "from public.document_memory_cards m where m.document_id = d.id and public.is_committed_artifact_generation(m.metadata, d.metadata)",
+      "from public.document_chunks c where c.document_id = d.id and (public.is_committed_document_generation(c.index_generation_id, d.index_generation_id) or public.is_committed_artifact_generation(c.metadata, d.metadata))",
+      "from public.document_table_facts f where f.document_id = d.id and public.is_committed_artifact_generation(f.metadata, d.metadata)",
+    ];
+    const bodies: string[] = [];
+    for (const source of [migration, schemaSource]) {
+      const start = source.lastIndexOf("create or replace function public.document_publication_state_digest(");
+      expect(start).toBeGreaterThanOrEqual(0);
+      const end = source.indexOf("$$;", start);
+      expect(end).toBeGreaterThan(start);
+      const body = source.slice(start, end + 3);
+      for (const predicate of predicates) expect(body).toContain(predicate);
+      expect(body).not.toContain(
+        "nullif(coalesce(d.metadata, '{}'::jsonb)->>'index_generation_id', '') is null or",
+      );
+      bodies.push(body);
+    }
+    expect(bodies[1]).toBe(bodies[0]);
+
+    const artifactHelperStart = schemaSource.lastIndexOf(
+      "create or replace function public.is_committed_artifact_generation(\n  artifact_metadata jsonb",
+    );
+    const artifactHelper = schemaSource.slice(artifactHelperStart, schemaSource.indexOf("$$;", artifactHelperStart));
+    expect(artifactHelper).toContain(
+      "select nullif(coalesce(artifact_metadata, '{}'::jsonb)->>'index_generation_id', '') is null",
+    );
+    const documentHelperStart = schemaSource.lastIndexOf(
+      "create or replace function public.is_committed_document_generation(\n  row_generation uuid,\n  document_generation uuid",
+    );
+    const documentHelper = schemaSource.slice(documentHelperStart, schemaSource.indexOf("$$;", documentHelperStart));
+    expect(documentHelper).toContain("select row_generation is null");
+
+    const baseWriter = effective("write_ingestion_base_artifacts");
+    expect(
+      baseWriter.match(
+        /jsonb_build_object\('index_generation_id',p_generation,'ingestion_lease_token',p_fence->>'lease_token'/g,
+      ),
+    ).toHaveLength(5);
+    const deepWriter = effective("persist_shadow_deep_memory_projection");
+    expect(deepWriter).toContain(
+      "update public.document_memory_cards set index_generation_id=p_generation,metadata=pg_catalog.jsonb_set(metadata,'{index_generation_id}',pg_catalog.to_jsonb(p_generation))",
+    );
+    expect(deepWriter).toContain("artifact_generation_id=p_artifact_generation");
+  });
+
+  it("keeps the producer-failure phase contract closed over every implemented failure point", () => {
+    const expectedPhases = [
+      "cache_lookup",
+      "image_bytes",
+      "image_classification",
+      "section_context",
+      "table_facts",
+      "visual_index_units",
+      "supplemental_embedding_fields",
+      "enrichment_policy",
+      "summary_generation",
+      "document_embedding_fields",
+      "chunk_embeddings",
+      "deep_sections",
+      "deep_model_profile",
+      "deep_cards",
+      "deep_card_embeddings",
+      "deep_index_units",
+      "deep_index_embeddings",
+      "deep_persistence",
+    ];
+    const bodies: string[] = [];
+    for (const source of [migration, schemaSource]) {
+      const start = source.lastIndexOf("create or replace function public.record_shadow_producer_failure(");
+      expect(start).toBeGreaterThanOrEqual(0);
+      const end = source.indexOf("end $$;", start);
+      expect(end).toBeGreaterThan(start);
+      const body = source.slice(start, end + "end $$;".length);
+      const phaseList = body.match(/v_payload->>'phase' in \(([^)]+)\)/);
+      expect(phaseList).not.toBeNull();
+      expect(Array.from(phaseList![1]!.matchAll(/'([^']+)'/g), (match) => match[1])).toEqual(expectedPhases);
+      bodies.push(body);
+    }
+    expect(bodies[1]).toBe(bodies[0]);
+  });
+
+  it("takes all 27 literal relation barriers before reservation reads and effects", () => {
+    const body = effective("enqueue_shadow_reindex_generation");
+    const barrier = body.match(/lock table ([\s\S]+?) in share row exclusive mode nowait;/);
+    expect(barrier).not.toBeNull();
+    expect(Array.from(barrier![1]!.matchAll(/public\.([a-z_][a-z_0-9]*)/g), (match) => match[1])).toEqual(tables);
+    const end = body.indexOf(" in share row exclusive mode nowait;");
+    expect(end).toBeLessThan(body.indexOf("v_payload:=public.validate_shadow_plan_v1"));
+    expect(end).toBeLessThan(body.indexOf("public.lock_ingestion_document_authority"));
+    expect(body).toContain("current_setting('transaction_isolation')<>'read committed'");
+    for (const name of ["write_shadow_generation_inventory", "write_shadow_generation_pages", "heartbeat_ingestion_job", "update_ingestion_job_progress"])
+      expect(effective(name)).not.toMatch(/\block table\b/i);
+  });
+
+  it("checks the profile's lower lock limit before row locks without setting a late deadline", () => {
+    const body = effective("enqueue_shadow_reindex_generation");
+    expect(body).toContain("current_setting('statement_timeout')::interval)*1000 not between 1 and 15000");
+    const limit = body.indexOf("(v_profile->'limits'->>'lockTimeoutMs')::numeric");
+    expect(limit).toBeGreaterThan(0);
+    expect(limit).toBeLessThan(body.indexOf("public.lock_ingestion_document_authority"));
+    expect(body).not.toMatch(/set_config|set local (?:lock|statement)_timeout/i);
+  });
+
+  it("requires original string timestamps and exact microseconds for audit observations", () => {
+    const parser = effective("shadow_audit_micros_v1"), enqueue = effective("enqueue_shadow_reindex_generation");
+    expect(parser).toContain("jsonb_typeof(p_value) is distinct from 'string'");
+    expect(parser).toContain("[0-9]{1,6}");
+    expect(parser).toContain("v_text ~ E'[\\n\\r]'");
+    expect(parser).toContain("pg_catalog.substr(v_zone,2,2)");
+    expect(parser).toContain("pg_catalog.substr(v_zone,4,2)");
+    expect(parser).not.toContain("substring");
+    for (const field of ["authorizedAt", "expiresAt"]) expect(enqueue).toContain(`shadow_audit_timestamp_v1(v_manifest->'${field}')`);
+    for (const field of ["auditPreparedAt", "baselineCompletedAt", "recoveryCheckedAt"]) expect(enqueue).toContain(`shadow_audit_timestamp_v1(v_observations->'${field}')`);
+    expect(effective("shadow_audit_timestamp_v1")).toContain("interval '1 microsecond'");
+    expect(parser).not.toContain("shadow_recovery_timestamp_ms_v1");
+  });
+
+  it("keeps native recovery millisecond, elapsed-duration, UUID and trim semantics distinct", () => {
+    const recovery = effective("shadow_validate_recovery_v1"), clock = effective("shadow_recovery_timestamp_ms_v1");
+    expect(recovery).toContain("if p_project is null");
+    expect(recovery).toContain("jsonb_typeof(v->'restoreDrill'->'targetProjectRef') is distinct from 'string'");
+    expect(recovery).toContain("00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff");
+    for (const duration of ["300000", "86400000", "604800000", "7776000000"]) expect(recovery).toContain(duration);
+    expect(recovery).not.toMatch(/interval\s+'(?:7|90) days'/);
+    expect(clock).toContain("pg_catalog.left(coalesce(v_match[9],''),3)");
+    for (const code of [9, 13, 160, 5760, 8232, 8233, 12288, 65279]) expect(effective("shadow_ecmascript_trim_v1")).toContain(`pg_catalog.chr(${code})`);
+  });
+
+  it("retains full PostgreSQL bundle text and all four independent original parameter envelopes", () => {
+    const body = effective("enqueue_shadow_reindex_generation"), bundle = effective("shadow_pg_bundle_v1");
+    expect(bundle).toContain("p_domain is null");
+    expect(bundle).toContain("p_payload::text");
+    expect(bundle).toContain("pg-jsonb-text-v1");
+    for (const parameter of ["p_plan", "p_baseline_evaluation", "p_recovery_evidence", "p_operation_manifest"]) expect(body).toContain(`'${parameter}',${parameter}`);
+    expect(body).toContain("v_recovery->'rawDigest' is distinct from v_manifest->'recoveryEvidenceSha256'");
+    expect(body).toContain("v_recovery->'evidence'->>'digest'");
+    expect(body).toContain("v_payload->'audit'->'p04ReportEnvelope'->'digest'");
+    expect(body).toContain("v_current-'capturedAt' is distinct from v_origin-'capturedAt'");
+  });
+
+  it("retains complete image bytes against captured worker hashes, not just self-consistent references", () => {
+    const original = effective("shadow_validate_original_objects_v1"), final = effective("shadow_reconcile_final_disposition_v1");
+    expect(original).toContain("image_hash");
+    expect(original).toContain("jsonb_typeof(v_entry->'representation') is distinct from 'string'");
+    expect(effective("shadow_candidate_image_attachment_v1")).toContain("v_row->'metadata'->'image_hash' is distinct from v_row->'image_hash'");
+    expect(effective("shadow_candidate_image_attachment_v1")).toContain("row_payload->'storage_path'=p_ref->'objectPath'");
+    expect(final).toContain("pg_catalog.octet_length(v_bytes)");
+    expect(final).toContain("public.shadow_node_value_text_v1(v_ref)");
+    expect(final).toContain("public.shadow_candidate_image_attachment_v1(p_member,v_ref)");
+  });
+
+  it("replays a complete reservation without resetting or recreating its member rows", () => {
+    const body = effective("enqueue_shadow_reindex_generation");
+    const replay = body.slice(body.indexOf("select * into v_existing"), body.indexOf("if exists(select 1 from public.shadow_reindex_waves where candidate_generation_id"));
+    expect(replay).toContain("bundle_payload=v_bundle");
+    expect(replay).toContain("v_existing.plan_payload is distinct from p_plan");
+    expect(replay).toContain("'kind','existing_reservation'");
+    expect(replay).not.toMatch(/\b(?:insert into|update public\.|delete from)\b/);
+    expect(body).toContain("insert into public.document_generation_baselines");
+    expect(body).toContain("public.shadow_pending_manifest_v1");
+  });
+
+  it("preserves standard claim randomness while permitting only the first reserved shadow claim", () => {
+    const body = effective("claim_ingestion_jobs");
+    expect(body).toContain("case when v_shadow then v_member.index_generation_id else gen_random_uuid() end");
+    expect(body).toContain("v_job.lease_token is not null");
+    expect(body).toContain("first_lease_token=v_job.lease_token");
+    expect(body).toContain("control_snapshot=public.shadow_control_snapshot_v1(v_job.id,v_member.control_revision+1)");
+    expect(body).toContain("state='reserved' and first_lease_token is null");
+  });
+
+  it("requires the caller revision and full checkpoint before any append effect", () => {
+    const parser = effective("validate_shadow_inventory_v1"), writer = effective("write_shadow_generation_inventory");
+    expect(parser).toContain("array['version','expectedControlRevision','groups','units']");
+    expect(parser).toContain("not between 0 and 9007199254740991");
+    expect(writer).toContain("shadow_assert_attempt_v1(p_fence,p_generation,(p_declarations->>'expectedControlRevision')::bigint)");
+    expect(writer.indexOf("shadow_assert_attempt_v1")).toBeLessThan(writer.indexOf("insert into public.document_generation_inventory"));
+    expect(effective("shadow_assert_attempt_v1")).toContain("p_revision is not null and v_member.control_revision<>p_revision");
+    expect(effective("shadow_assert_attempt_v1")).toContain("control_snapshot is distinct from public.shadow_control_snapshot_v1");
+  });
+
+  it("retains a complete output envelope and basis even for a zero-unit slot", () => {
+    const declaration = effective("shadow_validate_producer_declaration_v1"), batch = effective("shadow_validate_planned_batch_v1");
+    expect(declaration).toContain("array['firstLeaseToken','producer','artifactGenerationId','population','outputManifestEnvelope']");
+    expect(declaration).toContain("p_declaration->'producer'->>'outputManifestDigest' is distinct from p_declaration->'outputManifestEnvelope'->>'digest'");
+    expect(batch).toContain("array['producer','producerVersion','binding','units']");
+    expect(batch).toContain("v_payload->'binding' is distinct from p_source_binding");
+    expect(batch).toContain("pg_catalog.jsonb_array_length(p_declaration->'population'->'basis')=0");
+    expect(batch).toContain("shadow_partial_output_cannot_be_unavailable");
+    expect(effective("shadow_generation_manifest_shape")).toContain("outputManifestEnvelope");
+  });
+
+  it("keeps all 18 families and 19 fixed slots in canonical order", () => {
+    const shape = effective("shadow_generation_manifest_shape");
+    const text = shape.match(/v_slots constant jsonb := '([^']+)'::jsonb/)?.[1];
+    expect(text).toBeDefined();
+    const slots: { family: string; groups: { groupKey: string }[] }[] = JSON.parse(text!);
+    expect(slots).toHaveLength(18);
+    expect(slots.flatMap((family) => family.groups)).toHaveLength(19);
+    expect(slots.find((family) => family.family === "index_units")?.groups.map((group) => group.groupKey)).toEqual(["worker_core", "deep_memory"]);
+    expect(shape).toContain("order by public.shadow_utf16_order_v1(value->>'family') offset v_i limit 1");
+  });
+
+  it("rejects missing, duplicate or same-count substituted planned unit identities", () => {
+    const writer = effective("write_shadow_generation_inventory"), parser = effective("validate_shadow_inventory_v1");
+    expect(writer).toContain("v_expected is distinct from v_supplied");
+    expect(writer).toContain("shadow_ambiguous_unit_producer");
+    expect(parser).toContain("v_identity<=v_prior");
+    expect(writer).toContain("v_unit->'sourceBinding' is distinct from v_view");
+    expect(writer).toContain("v_unit->'required' is distinct from pg_catalog.to_jsonb(v_required)");
+  });
+
+  it("preflights all outcomes and append ceilings before any inventory insert", () => {
+    const body = effective("write_shadow_generation_inventory");
+    for (const check of ["v_count>least(2000", "v_bytes>least(16777216", "perform public.shadow_validate_final_disposition_v1"])
+      expect(body.indexOf(check)).toBeLessThan(body.indexOf("insert into public.document_generation_inventory"));
+    expect(body).toContain("maxAppendRows");
+    expect(body).toContain("maxAppendBytes");
+    expect(effective("validate_shadow_inventory_v1")).toContain("('retained','failed','skipped','excluded','not_required')");
+    expect(effective("validate_shadow_inventory_v1")).not.toContain("'pending'");
+  });
+
+  it("freezes the last-slot digest from persisted full declarations in the same manifest update", () => {
+    const body = effective("write_shadow_generation_inventory");
+    const insert = body.indexOf("insert into public.document_generation_inventory");
+    const digest = body.indexOf("v_digest:=public.shadow_pg_bundle_v1");
+    const update = body.indexOf("update public.document_index_generations set inventory_manifest");
+    expect(insert).toBeLessThan(digest); expect(digest).toBeLessThan(update);
+    expect(body.match(/update public\.document_index_generations set inventory_manifest/g)).toHaveLength(1);
+    expect(body).toContain("'manifest',v_manifest,'declarations',v_frozen");
+    expect(body).toContain("v_member.expected_inventory_digest is null");
+    expect(body).toContain("if v_changed then perform public.shadow_checkpoint_advance_v1");
+    expect(body).toContain("else 'unchanged' end");
+  });
+
+  it("finalizes only pending units and compares the complete finalized retransmission", () => {
+    const finalizer = effective("shadow_finalize_inventory_unit_v1"), ledger = effective("shadow_ledger_guard_v1");
+    expect(finalizer).toContain("public.shadow_inventory_outcome_v1(v_unit) is distinct from p_outcome");
+    expect(finalizer).toContain("and disposition='pending'");
+    expect(finalizer).toContain("return false");
+    expect(ledger).toContain("old.disposition<>'pending' or new.disposition='pending'");
+    expect(ledger).toContain("'reason_code','limitations','artifact_ref','content_digest','relationships'");
+  });
+
+  it("reconciles final candidate rows through fixed core and deep writer contracts", () => {
+    const body = effective("shadow_reconcile_final_disposition_v1");
+    const originalCheck = body.indexOf("v_native is distinct from v_planned");
+    const deepMatch = body.indexOf("public.shadow_deep_row_matches_v1(p_member,v_family,p_outcome->>'unitKey',v_row) is not true");
+    const coreMatch = body.indexOf("public.shadow_core_row_matches_v1(p_member,v_family,v_native,v_row) is not true");
+    expect(originalCheck).toBeGreaterThan(0);
+    expect(deepMatch).toBeGreaterThan(originalCheck); expect(coreMatch).toBeGreaterThan(originalCheck);
+    expect(body).toContain("when v_d is not null then public.shadow_deep_row_key_v1(p_member,v_family,v_row)");
+    expect(body).toContain("v_native is distinct from v_planned");
+    expect(body).not.toContain("v_native:=pg_catalog.jsonb_set");
+    expect(body).not.toContain("v_native is distinct from v_row");
+    expect(body).toContain("v_row->>'producer' is distinct from 'local-worker'");
+    expect(body).toContain("v_row->'metadata'->>'artifact_generation_id' is distinct from v_d::text");
+    expect(body).toContain("shadow_capture_envelope_v1(v_row)->>'digest'");
+    const deep = effective("shadow_deep_row_matches_v1"), native = effective("shadow_deep_native_v1");
+    expect(deep.indexOf("public.shadow_deep_native_v1(p_member,v_d,p_family,v_output)")).toBeLessThan(deep.indexOf("v_native:=v_native||"));
+    expect(native).toContain("v_native->>'index_generation_id' is distinct from p_artifact::text");
+    expect(native).toContain("v_native->'metadata'->>'index_generation_id' is distinct from p_artifact::text");
+    expect(deep).toContain("v_expected-'search_tsv'=p_row-'search_tsv'");
+    const key = effective("shadow_deep_row_key_v1");
+    expect(key).toContain("v_count<>1");
+    expect(key).toContain("shadow_deep_row_original_ambiguous");
+  });
+
+  it("preserves complete core after-images while allowing only fixed generated columns and declared anchor repair", () => {
+    const body = effective("shadow_core_row_matches_v1");
+    expect(body).toContain("v_input:=public.shadow_native_rpc_input_v1(p_output)");
+    expect(body).toContain("not public.shadow_keys_v1(p_row,v_all)");
+    expect(body).toContain("v_expected=p_row-v_generated");
+    expect(body).toContain("public.shadow_candidate_anchor_update_v1(p_member,v_expected,p_row)");
+    expect(body).toContain("exception when others then return false");
+    for (const family of ["chunks", "images", "table_facts", "embedding_fields", "index_units"])
+      expect(body).toContain(`when '${family}' then`);
+    expect(body).toContain("((v_value->>'embedding')::extensions.vector)::text");
+  });
+
+  it("resolves only exact producer-owned projection items against immutable component evidence", () => {
+    const body = effective("shadow_projection_disposition_v1");
+    expect(effective("shadow_reconcile_final_disposition_v1")).toContain("public.shadow_projection_disposition_v1(p_member,v_declaration,p_outcome)");
+    expect(body).toContain("v_original is distinct from v_planned");
+    expect(body).toContain("v_count<>1");
+    expect(body).toContain("v_row.owner_id is distinct from p_member.owner_id");
+    expect(body).toContain("v_row.lease_token is distinct from p_member.first_lease_token");
+    expect(body).toContain("v_row.sealed_at is not null");
+    expect(body).toContain("when 'document_metadata' then 'worker_metadata'");
+    expect(body).toContain("'deep:'||(v_ordinal-1)::text");
+    expect(body).toContain("pg_catalog.jsonb_build_object('label',v_payload->'label','label_type',v_payload->'label_type')");
+    expect(body).toContain("public.shadow_pg_bundle_v1(v_component,'projection')->>'digest' is distinct from v_component_digest");
+    expect(body).toContain("public.shadow_pg_bundle_v1(v_payload,'projection')->>'digest'");
+    expect(body).toContain("v_ref->>'payloadDigest' is distinct from v_digest");
+    expect(body).not.toMatch(/update public\.|insert into|delete from|stage_document_index_generation/);
+  });
+
+  it("retains exact relationship field positions and same-source declared targets without claiming seal", () => {
+    const body = effective("shadow_inventory_relationships_v1");
+    expect(body).toContain("pg_catalog.jsonb_build_array(v_index)");
+    expect(effective("shadow_validate_inventory_relationships_v1")).toContain("v_expected is distinct from v_actual");
+    expect(body).toContain("shadow_relationship_target_undeclared");
+    expect(body).toContain("'source',p_member.source_binding");
+    expect(body).toContain("'firstLeaseToken',p_member.first_lease_token");
+    expect(body).toContain("shadow_payload_relationship_semantics_unavailable");
+    expect(body).toContain("Seal must later resolve");
+    expect(body).toContain("in ('candidate_row','candidate_projection')");
+    expect(body).toContain('"path":["cover_image_id"],"tag":"source_image"');
+    expect(body).toContain('"path":["metadata","pages"],"tag":"page"');
+    expect(body).toContain(`v_spec->'path'='["metadata","pages"]'::jsonb and p_outcome->>'family'<>'generated_labels'`);
+    expect(body).toContain(`v_spec->'path'='["cover_image_id"]'::jsonb and p_outcome->>'family'<>'document_metadata'`);
+    expect(body).toContain("public.shadow_deep_row_key_v1(p_member,'sections',v_output)");
+    expect(body).toContain("shadow_section_relationship_unavailable");
+    expect(body).toContain("if p_outcome->>'family'='summary' then");
+    expect(body).toContain(`v_prefix:='["metadata","source_anchored_summary_v1"]'::jsonb`);
+    expect(body).toContain("pg_catalog.jsonb_build_array('clinical_specifics','profile',v_profile_key,v_claim_index)");
+    expect(body).toContain("for v_spec in select value from pg_catalog.jsonb_array_elements(v_specs)");
+    expect(body).toContain("'required_forms_documentation','not_covered','important_tables_images','best_questions','source_quality_notes'");
+  });
+
+  it("derives retained outcomes and forces complete fresh reconciliation before finalization", () => {
+    const builder=effective("shadow_finalize_retained_inventory_v1");
+    const reconcile=effective("shadow_reconcile_final_disposition_v1");
+    const replay=effective("shadow_validate_final_disposition_v1");
+    expect(builder).toContain("p_member.control_snapshot is distinct from public.shadow_control_snapshot_v1");
+    expect(builder).toContain("public.shadow_validate_projection_components_v1(p_member,v_projection)");
+    expect(builder).toContain("v_job.status<>'processing'");
+    expect(builder).toContain("v_job.lease_expires_at<=pg_catalog.clock_timestamp()");
+    expect(builder.indexOf("shadow_final_attempt_not_current")).toBeLessThan(builder.indexOf("if v_unit.disposition<>'pending' then"));
+    expect(builder).toContain("'disposition','retained'");
+    expect(builder).not.toContain("'disposition','skipped'");
+    expect(builder).not.toContain("'disposition','failed'");
+    expect(builder).toContain("shadow_final_candidate_population");
+    expect(builder).toContain("shadow_final_projection_population");
+    expect(builder).toContain("public.shadow_inventory_relationships_v1(p_member,p_member.inventory_manifest,v_outcome,v_payload)");
+    expect(builder.match(/perform public\.shadow_reconcile_final_disposition_v1/g)).toHaveLength(2);
+    expect(builder.lastIndexOf("perform public.shadow_reconcile_final_disposition_v1")).toBeLessThan(
+      builder.indexOf("perform public.shadow_finalize_inventory_unit_v1"));
+    expect(reconcile).not.toContain("v_unit.disposition<>'pending'");
+    expect(replay).toContain("public.shadow_inventory_outcome_v1(v_unit) is distinct from p_outcome");
+    expect(replay).toContain("perform public.shadow_reconcile_final_disposition_v1(p_member,p_manifest,p_outcome)");
+    const relationships=effective("shadow_inventory_relationships_v1");
+    expect(relationships).toContain("return v_sorted");
+    expect(effective("shadow_validate_inventory_relationships_v1")).toContain(
+      "v_expected:=public.shadow_inventory_relationships_v1(p_member,p_manifest,p_outcome,p_payload)");
+    expect(effective("shadow_pg_bundle_v1")).toContain(
+      "p_domain not in ('baseline','inventory','control','projection','member_receipt','wave_receipt','evaluation_report')",
+    );
+    for(const name of ["shadow_finalize_retained_inventory_v1","shadow_reconcile_final_disposition_v1","shadow_inventory_relationships_v1"]){
+      expect(schemaSource).toContain(`create or replace function public.${name}`);
+      expect(migration).toMatch(new RegExp(`revoke all on function public\\.${name}\\([^;]+from public,anon,authenticated,service_role;`));
+      expect(migration).not.toMatch(new RegExp(`grant execute on function public\\.${name}\\(`));
+    }
+  });
+
+  it("admits native and cache retained payloads only through their full producer contracts", () => {
+    const capture = effective("shadow_producer_capture_v1");
+    const native = effective("shadow_native_structure_payload_v1");
+    const cache = effective("shadow_cache_input_payload_v1");
+    const classification = effective("shadow_image_classification_v1");
+    const final = effective("shadow_reconcile_final_disposition_v1");
+    const relationships = effective("shadow_inventory_relationships_v1");
+
+    expect(capture).toContain("public.shadow_node_payload_v1(p_envelope,'u04-retained-evidence-v1')");
+    expect(capture).toContain("array['input','ownUndefinedPaths']");
+    expect(capture).toContain("v_current ? (v_component#>>'{}')");
+    expect(capture).toContain("v_current->(v_index::integer) is distinct from 'null'::jsonb");
+    expect(capture).toContain('(v_sort collate "C")<=(v_previous_sort collate "C")');
+
+    expect(native).toContain("v_native_batch->'units'->0->>'key'<>'extracted-document'");
+    expect(native).toContain("v_page_output->'extractedPage' is distinct from v_page");
+    expect(native).toContain("pg_catalog.jsonb_array_length(v_input->'imageBytes')<>pg_catalog.jsonb_array_length(v_extracted->'images')");
+    expect(native).toContain("v_bytes->'path' is distinct from v_image->'path'");
+    expect(native).toContain("pg_catalog.decode(v_bytes->>'content','base64')");
+    expect(native).toContain("not public.shadow_native_undefined_path_v1(a.value)");
+
+    expect(cache).toContain("array['task','classification','classificationCacheHit','ownerId','model']");
+    expect(cache).toContain("v_task->>'index' is distinct from p_unit_key");
+    expect(cache).toContain("v_candidate->'originalIndex' is distinct from v_task->'index'");
+    expect(cache).toContain("v_input->'ownerId' is distinct from coalesce(pg_catalog.to_jsonb(p_member.owner_id),'null'::jsonb)");
+    expect(cache).toContain("public.shadow_image_classification_v1(v_input->'classification')");
+    expect(cache).toContain("not public.shadow_cache_undefined_path_v1(a.value)");
+    expect(cache).toContain("(v_candidate ? 'nearbyText')=(v_task ? 'nearbyText')");
+    expect(cache).toContain("v_native_image:=v_native_capture->'input'->'extracted'->'images'->(v_index::integer)");
+    expect(cache).toContain("extensions.digest(pg_catalog.decode(v_native_bytes->>'content','base64'),'sha256')");
+    expect(cache).toContain("shadow_worker_metadata_string_v1(v_metadata,'table_text')");
+    expect(classification).toContain("(p_value->>'clinical_signal_score')::numeric between 0 and 10");
+    expect(classification).toContain("public.shadow_visual_profile_v1(p_value->'structured_visual_profile')");
+
+    expect(final).toContain("v_group<>'worker_native'");
+    expect(final).toContain("v_group<>'cache'");
+    expect(final).toContain("v_unit.source_binding is distinct from public.shadow_projection_binding_v1(p_member,null)");
+    expect(final).toContain("public.shadow_native_structure_payload_v1(p_member,p_manifest,v_declaration,v_planned)");
+    expect(final).toContain("public.shadow_cache_input_payload_v1(p_member,p_manifest,v_declaration,p_outcome->>'unitKey',v_planned)");
+    expect(final).toContain("shadow_required_cache_input_not_retained");
+
+    expect(relationships).toContain("p_outcome->>'family'='native_structure'");
+    expect(relationships).toContain("pg_catalog.jsonb_build_array('input','task','image','path')");
+    expect(relationships).toContain("pg_catalog.jsonb_build_object('family','native_structure','key','extracted-document')");
+    expect(relationships).toContain("v_target_group<>'worker_native'");
+    expect(relationships).toContain("Complete bytes alone do not grant semantics to an unimplemented owner");
+    for (const functionName of [
+      "shadow_producer_capture_v1",
+      "shadow_native_undefined_path_v1",
+      "shadow_visual_undefined_field_v1",
+      "shadow_cache_undefined_path_v1",
+      "shadow_native_structure_payload_v1",
+      "shadow_cache_input_payload_v1",
+      "shadow_worker_metadata_string_v1",
+      "shadow_worker_metadata_number_v1",
+      "shadow_visual_profile_v1",
+      "shadow_image_classification_v1",
+    ]) {
+      expect(schemaSource).toContain(`create or replace function public.${functionName}`);
+      expect(schemaSource).toContain(`revoke all on function public.${functionName}`);
+    }
+  });
+
+  it("binds control first-write and repair final semantics without enabling terminal acceptance", () => {
+    const initial = effective("shadow_initial_control_capture_v1");
+    const control = effective("shadow_attempt_control_payload_v1");
+    const repair = effective("shadow_repair_audit_payload_v1");
+    const writer = effective("write_shadow_generation_inventory");
+    const final = effective("shadow_reconcile_final_disposition_v1");
+    const relationships = effective("shadow_inventory_relationships_v1");
+
+    expect(initial).toContain("v_capture->'input' is distinct from p_member.control_snapshot");
+    expect(writer).toContain("if v_slot_changed then");
+    expect(writer).toContain("public.shadow_initial_control_capture_v1(v_member,v_declaration)");
+    expect(writer.indexOf("public.shadow_initial_control_capture_v1(v_member,v_declaration)")).toBeLessThan(
+      writer.indexOf("v_manifest:=pg_catalog.jsonb_set"),
+    );
+    expect(control).toContain("(v_checkpoint->>'controlRevision')::numeric>p_member.control_revision");
+    expect(control).toContain("v_initial_job-array['stage','progress','locked_at','lease_expires_at','updated_at']");
+    expect(control).toContain("v_stage->>'job_kind'<>'node'");
+    expect(control).toContain("v_stage->'index_generation_id' is distinct from coalesce(pg_catalog.to_jsonb(p_member.baseline_generation_id),'null'::jsonb)");
+
+    expect(repair).toContain("array['input','optionalIndexWriteIssues','decision']");
+    expect(repair).toContain("v_issue-array['stage','message','code']='{}'::jsonb");
+    expect(repair).toContain("v_input->'optionalIssueCount' is distinct from pg_catalog.to_jsonb(pg_catalog.jsonb_array_length(v_issues))");
+    expect(repair).toContain("v_decision is distinct from v_expected");
+    expect(repair).toContain("public.shadow_validate_projection_components_v1(p_member,v_projection)");
+    expect(repair).toContain("v_issues is distinct from v_quality->'metrics'->'optional_index_write_issues'");
+    expect(repair).toContain("v_issues is distinct from v_metadata->'optional_index_write_issues'");
+    expect(final).toContain("p_outcome->>'family' in ('attempt_control','repair_audit_inputs')");
+    expect(final).toContain("shadow_required_retained_input_not_retained");
+    expect(final).toContain("v_ref->>'representation'<>'control_checkpoint'");
+    expect(final).toContain("v_ref->>'representation'<>'repair_audit_input'");
+    expect(relationships).toContain("p_outcome->>'family' in ('attempt_control','repair_audit_inputs')");
+    expect(migration).not.toContain("v_ref->>'tag'='origin_row' and p_outcome->>'family'='attempt_control'");
+    for (const functionName of ["shadow_initial_control_capture_v1", "shadow_attempt_control_payload_v1", "shadow_repair_audit_payload_v1"]) {
+      expect(schemaSource).toContain(`create or replace function public.${functionName}`);
+      expect(schemaSource).toContain(`revoke all on function public.${functionName}`);
+    }
+    expect(migration).toContain("shadow_terminal_semantics_unavailable");
+  });
+
+  it("matches native page population and JavaScript cache normalization exactly", () => {
+    const native = effective("shadow_native_structure_payload_v1");
+    const cache = effective("shadow_cache_input_payload_v1");
+    const metadataString = effective("shadow_worker_metadata_string_v1");
+    const metadataNumber = effective("shadow_worker_metadata_number_v1");
+    const collapse = effective("shadow_ecmascript_collapse_v1");
+    const slice = effective("shadow_utf16_slice_v1");
+    const compact = effective("shadow_worker_compact_text_v1");
+
+    expect(native).toContain("count(distinct value->'pageNumber')");
+    expect(cache).toContain("v_image->'pageNumber'='null'::jsonb");
+    expect(cache).toContain("v_candidate->'nearbyText'='null'::jsonb and not(v_task?'nearbyText')");
+    expect(cache).toContain(`v_capture->'ownUndefinedPaths' @> '[["task","nearbyText"]]'::jsonb`);
+    expect(metadataString).toContain("public.shadow_ecmascript_trim_v1(p_metadata->>p_key)");
+    expect(metadataNumber).toContain("public.shadow_ecmascript_trim_v1(v_value#>>'{}')");
+    expect(collapse).toContain("pg_catalog.chr(65279)");
+    expect(collapse).toContain("pg_catalog.regexp_replace(p_text,'['||v_space||']+',' ','g')");
+    expect(slice).toContain("pg_catalog.octet_length(public.shadow_utf16_order_v1(v_character))/2");
+    expect(compact).toContain("public.shadow_utf16_slice_v1(v_compact,p_limit-3)");
+    expect(cache).toContain("public.shadow_worker_compact_text_v1(v_table_text,1200)");
+    for (const functionName of ["shadow_ecmascript_collapse_v1", "shadow_utf16_slice_v1", "shadow_worker_compact_text_v1"]) {
+      expect(schemaSource).toContain(`create or replace function public.${functionName}`);
+      expect(schemaSource).toContain(`revoke all on function public.${functionName}`);
+    }
+  });
+
+  it("preserves baseline-null page rows by captured identity and checks both candidate images", () => {
+    const body = effective("shadow_artifact_retention_guard_v1");
+    expect(body).toContain("(e->>'canonicalPayload')::jsonb->'id'=v_old->'id'");
+    expect(body).toContain("(e->>'canonicalPayload')::jsonb->'id'=v_new->'id'");
+    expect(body).toContain("(v_old->>'document_id')::uuid");
+    expect(body).toContain("v_row_id:=case when tg_table_name='document_pages' then v_new->>'page_number'");
+    expect(body).toContain(
+      "when tg_table_name in ('document_sections','document_memory_cards','document_index_units') and v_new->'artifact_generation_id'<>'null'::jsonb",
+    );
+    expect(body).toContain("then public.shadow_deep_row_key_v1(v_member,v_family,v_new) else v_new->>'id' end;");
+  });
+
+  it("checks the effective invoker before locking private SELECT-only rows", () => {
+    for (const name of ["shadow_artifact_retention_guard_v1", "shadow_parent_retention_guard_v1"]) {
+      const body = effective(name);
+      expect(body).not.toContain("security definer");
+      expect(body.indexOf("if current_user<>'postgres'")).toBeLessThan(body.indexOf("for update nowait"));
+    }
+    const stages = effective("shadow_parent_retention_guard_v1");
+    expect(stages).toContain("(v_old->>'job_kind'='node' and job_id=(v_old->>'job_id')::uuid) or (v_new->>'job_kind'='node' and job_id=(v_new->>'job_id')::uuid)");
+    expect(stages).toContain("v_old->'job_id' is distinct from v_new->'job_id'");
+  });
+
+  it("guards all eight artifact and five private-ledger row and TRUNCATE paths", () => {
+    for (const table of artifacts) {
+      expect(migration).toContain(`before insert or update or delete on public.${table} for each row execute function public.shadow_artifact_retention_guard_v1()`);
+      expect(migration).toContain(`before truncate on public.${table} for each statement execute function public.shadow_artifact_retention_guard_v1()`);
+    }
+    for (const table of ledgers) {
+      expect(migration).toContain(`before insert or update or delete on public.${table} for each row execute function public.shadow_ledger_guard_v1()`);
+      expect(migration).toContain(`before truncate on public.${table} for each statement execute function public.shadow_ledger_guard_v1()`);
+    }
+    const ledger = effective("shadow_ledger_guard_v1");
+    expect(ledger).toContain("shadow_terminal_semantics_unavailable");
+    expect(ledger).toContain("shadow_projection_attempt_invalid");
+    expect(ledger).toContain("shadow_projection_identity_immutable");
+    expect(ledger).toContain("shadow_projection_seal_invalid");
+    expect(ledger).toContain("shadow_projection_single_component_required");
+    expect(ledger).not.toContain("shadow_projection_semantics_unavailable");
+  });
+
+  it("excludes retained generations and exact original rows in every cleanup phase", () => {
+    const body = effective("cleanup_abandoned_document_index_generations");
+    expect(body.match(/not public\.shadow_generation_retained_v1\(/g)).toHaveLength(21);
+    expect(body.match(/original_origin_envelope/g)).toHaveLength(21);
+    expect(body).toMatch(/security\s+definer\s+set\s+search_path\s*=\s*''/);
+    const synchronization = body.indexOf("public.lock_ingestion_document_authority");
+    expect(synchronization).toBeGreaterThan(0);
+    expect(synchronization).toBeLessThan(body.indexOf("delete from public.document_"));
+    const deletion = effective("delete_document_if_idle");
+    expect(deletion.indexOf("retained_shadow_generation")).toBeLessThan(deletion.indexOf("insert into public.storage_cleanup_jobs"));
+  });
+
+  it("refuses ordinary live mutation for a persisted shadow operation before effects", () => {
+    for (const name of ["persist_ingestion_summary_projection", "patch_ingestion_document_state", "reset_ingestion_attempt_artifacts", "persist_ingestion_index_quality", "commit_document_index_generation", "persist_ingestion_image_caption_cache", "complete_ingestion_job", "complete_strict_enrichment_job", "cleanup_ingestion_deep_memory_staging", "commit_document_deep_memory_generation"]) {
+      const body = effective(name);
+      const guard = body.indexOf("perform public.shadow_assert_standard_job_v1(p_fence)");
+      const effect = body.search(/\b(?:insert into|update public\.|delete from)\b/);
+      expect(guard, name).toBeGreaterThanOrEqual(0); expect(guard, name).toBeLessThan(effect);
+    }
+    const pages = effective("commit_document_index_generation");
+    expect(pages).toContain("delete from public.document_pages where document_id=v_document_id and index_generation_id=p_generation;");
+    expect(pages).toContain("v_next := p_fence || jsonb_build_object('expected_generation_id',p_generation)");
+  });
+
+  it("fails shadow attempts without retry, clears locks, and preserves exact UTF-16 error bounds", () => {
+    const body = effective("fail_or_retry_ingestion_job");
+    const shadow = body.slice(body.indexOf("if public.shadow_control_before_v1"), body.indexOf("return jsonb_build_object('ok',true,'retry',false)") + 59);
+    expect(shadow).toContain("p_error_message is null or pg_catalog.length(p_error_message)=0");
+    expect(shadow).toContain("pg_catalog.octet_length(public.shadow_utf16_order_v1(p_error_message))/2>65536");
+    expect(shadow).toContain("locked_by=null,locked_at=null");
+    expect(shadow).toContain("next_run_at=null");
+    expect(shadow).toContain("p_retry is distinct from false");
+    const update = shadow.match(/update public\.ingestion_jobs\s+set\s+([\s\S]*?)\s+where\s+([^;]+);/);
+    expect(update).not.toBeNull();
+    expect(update![1]).not.toMatch(/\blease_token\s*=/);
+    expect(update![2]).toContain("lease_token=(p_fence->>'lease_token')::uuid");
+    expect(shadow.indexOf("invalid_shadow_error_message")).toBeLessThan(shadow.indexOf("update public.ingestion_jobs"));
+  });
+
+  it("writes only declared C page ordinals and cannot commit live or seal early", () => {
+    const body = effective("write_shadow_generation_pages");
+    expect(body).toContain("i.family='pages' and i.unit_key=v_page->>'page_number'");
+    expect(body).toContain("i.disposition='pending'");
+    expect(body).toContain("insert into public.document_pages(document_id,index_generation_id,page_number,text,ocr_used,metadata)");
+    expect(body).toContain("old.index_generation_id=p_generation");
+    expect(body).toContain("shadow_page_changed");
+    expect(body).not.toMatch(/delete from|update public\.documents|stage_document_index_generation|expected_generation_id.*p_generation/);
+  });
+
+  it("reconciles original worker page input and full ExtractedPage separately from the server row", () => {
+    const page = effective("shadow_page_producer_input_v1"), writer = effective("write_shadow_generation_pages"), final = effective("shadow_reconcile_final_disposition_v1");
+    expect(page).toContain("array['input','extractedPage']");
+    expect(page).toContain("array['document_id','page_number','text','ocr_used','metadata']");
+    expect(page).toContain("v_native-array['pageNumber','text','ocrUsed','needsOcr']<>'{}'::jsonb");
+    expect(page).toContain("v_native ? v_key and pg_catalog.jsonb_typeof(v_native->v_key) is distinct from 'boolean'");
+    expect(page).toContain("v_input->'ocr_used' is distinct from coalesce(v_native->'ocrUsed','false'::jsonb)");
+    expect(page).not.toMatch(/gen_random_uuid|clock_timestamp|jsonb_set\(v_native/);
+    expect(writer).toContain("shadow_page_producer_input_v1(v_output,v_member.document_id) is distinct from v_page");
+    expect(final).toContain("v_native is distinct from v_planned");
+    expect(final).toContain("v_row->'metadata' is distinct from v_page_input->'metadata'||pg_catalog.jsonb_build_object");
+    expect(final).toContain("shadow_capture_envelope_v1(v_row)->>'digest'");
+    expect(final).toContain("shadow_audit_timestamp_v1(v_row->'created_at')");
+  });
+
+  it("serializes D declaration and all OLD/NEW artifact writers in the same fixed namespace", () => {
+    const reserve = effective("shadow_reserve_producer_d_v1"), trigger = effective("shadow_artifact_retention_guard_v1");
+    const namespace = "pg_catalog.pg_try_advisory_xact_lock(pg_catalog.hashtextextended('u04-artifact-generation:'||";
+    expect(reserve).toContain(namespace); expect(trigger).toContain(namespace);
+    expect(trigger).toContain("v_old->'index_generation_id',v_old->'artifact_generation_id',v_new->'index_generation_id',v_new->'artifact_generation_id'");
+    expect(trigger).toContain("where value is not null order by value");
+    expect(trigger.indexOf(namespace)).toBeLessThan(trigger.indexOf("if not found then"));
+    expect(trigger).not.toContain("public.shadow_reserve_producer_d_v1");
+    expect(trigger).not.toContain("security definer");
+    expect(trigger).toContain("v_new->>'document_id' is distinct from v_d_owner.document_id::text");
+    expect(trigger).toContain("return new");
+    expect(reserve).not.toContain("lock table");
+  });
+
+  it("rejects historical/global occupied D and binds same-member sharing to one complete producer batch", () => {
+    const reserve = effective("shadow_reserve_producer_d_v1"), writer = effective("write_shadow_generation_inventory");
+    for (const table of artifacts) expect(reserve).toContain(`from public.${table} r where r.index_generation_id=v_d`);
+    expect(reserve).toContain("where index_generation_id=v_d or baseline_generation_id=v_d");
+    expect(reserve).toContain("v_existing->>'candidateGenerationId' is distinct from p_member.index_generation_id::text");
+    expect(reserve).toContain("v_existing->'declaration'->'outputManifestEnvelope' is distinct from p_declaration->'outputManifestEnvelope'");
+    expect(reserve).toContain("if not v_reuse or");
+    expect(writer).toContain("perform public.shadow_reserve_producer_d_v1(v_member,v_declaration)");
+    expect(writer).toContain("shadow_shared_batch_changed");
+    expect(writer).toContain("s->'declaration'->'outputManifestEnvelope' is distinct from v_declaration->'outputManifestEnvelope'");
+  });
+
+  it("resolves limitation bytes and paths plus non-retained relationships before either early return", () => {
+    const batch = effective("shadow_validate_planned_batch_v1"), final = effective("shadow_reconcile_final_disposition_v1"), pointer = effective("shadow_resolve_batch_pointer_v1");
+    const branch = batch.slice(batch.indexOf("if p_declaration->'population'->>'tag'<>'known'"), batch.indexOf("select coalesce(pg_catalog.jsonb_agg"));
+    expect(branch.indexOf("shadow_resolve_batch_pointer_v1")).toBeGreaterThan(0);
+    expect(branch.indexOf("shadow_resolve_batch_pointer_v1")).toBeLessThan(branch.indexOf("return;"));
+    expect(final.indexOf("shadow_resolve_batch_pointer_v1")).toBeLessThan(final.indexOf("if p_outcome->>'disposition'<>'retained'"));
+    const nonretained = final.slice(final.indexOf("if p_outcome->>'disposition'<>'retained'"), final.indexOf("if p_outcome->'reasonCode' is distinct"));
+    expect(nonretained).toContain("shadow_partial_evidence_required");
+    expect(nonretained).toContain("public.shadow_node_value_text_v1(v_planned) is distinct from p_outcome->>'retainedNativePayload'");
+    expect(nonretained).toContain("v_declaration->'artifactGenerationId'='null'::jsonb");
+    expect(nonretained).toContain("then public.shadow_native_rpc_input_v1(v_planned)");
+    expect(nonretained.indexOf("shadow_partial_evidence_required")).toBeLessThan(nonretained.indexOf("then public.shadow_native_rpc_input_v1(v_planned)"));
+    expect(nonretained.indexOf("shadow_validate_inventory_relationships_v1")).toBeLessThan(nonretained.indexOf("return;"));
+    expect(pointer).toContain("v_ref->'envelopeDigest' is distinct from p_envelope->'digest'");
+    expect(pointer).toContain("pg_catalog.octet_length(pg_catalog.convert_to(p_envelope->>'canonicalPayload','UTF8'))");
+    expect(pointer).toContain("if v_value is null then raise exception 'shadow_limitation_path_unavailable'");
+    expect(pointer).toContain("shadow_limitation_evidence_unavailable");
+  });
+
+  it("uses one exact C image attachment with typed and metadata provenance for both object directions", () => {
+    const attachment = effective("shadow_candidate_image_attachment_v1");
+    expect(attachment).toContain("v_count<>1");
+    expect(attachment).toContain("v_row->>'index_generation_id' is distinct from p_member.index_generation_id::text");
+    expect(attachment).toContain("v_row->'metadata'->>'ingestion_job_id' is distinct from p_member.job_id::text");
+    expect(attachment).toContain("v_row->'metadata'->>'ingestion_lease_token' is distinct from p_member.first_lease_token::text");
+    expect(attachment).toContain("v_row->'metadata'->>'extractor' is distinct from 'local-worker'");
+    expect(attachment).toContain("v_row->'metadata'->'image_hash' is distinct from v_row->'image_hash'");
+    expect(attachment).toContain("p_ref->'mediaType' is distinct from v_row->'mime_type'");
+    expect(attachment).toContain("i.unit_key=v_row->>'id'");
+    expect(effective("shadow_reconcile_final_disposition_v1")).toContain("public.shadow_candidate_image_attachment_v1(p_member,v_ref)");
+    expect(effective("shadow_inventory_relationships_v1")).toContain("public.shadow_candidate_image_attachment_v1(p_member,p_payload->'ref')");
+  });
+
+  it("locks document INSERT/UPDATE generation assignment using the actual generated metadata expression", () => {
+    const parent = effective("shadow_parent_retention_guard_v1");
+    expect(migration).toContain("create trigger documents_shadow_retention before insert or update or delete on public.documents");
+    expect(schemaSource).toContain("index_generation_id uuid generated always as (");
+    expect(parent).toContain("v_new_generation:=case when v_new->'metadata'->>'index_generation_id'");
+    expect(parent).toContain("then (v_new->'metadata'->>'index_generation_id')::uuid else null end");
+    expect(parent).toContain("array[v_old_generation,v_new_generation]");
+    expect(parent).toContain("tg_op='INSERT' or (tg_op='UPDATE' and v_old_generation is distinct from v_new_generation)");
+    expect(parent).toContain("pg_catalog.pg_try_advisory_xact_lock(pg_catalog.hashtextextended('u04-artifact-generation:'||v_lock,0))");
+    expect(parent).toContain("s->'declaration'->>'artifactGenerationId'=v_new_generation::text");
+    expect(parent).toContain("shadow_document_generation_reserved");
+    expect(parent).not.toContain("public.shadow_reserve_producer_d_v1");
+    expect(parent).not.toContain("security definer");
+  });
+
+  it("serializes C reservation and continuously owned G0 with the same D namespace", () => {
+    const enqueue = effective("enqueue_shadow_reindex_generation");
+    const cLock = enqueue.indexOf("'u04-artifact-generation:'||v_c::text");
+    const sourceLock = enqueue.indexOf("public.lock_ingestion_document_authority");
+    const g0Lock = enqueue.indexOf("'u04-artifact-generation:'||((v_source->>'baselineGenerationId')::uuid)::text");
+    const reserve = enqueue.indexOf("insert into public.shadow_reindex_waves");
+    expect(cLock).toBeGreaterThan(enqueue.indexOf("in share row exclusive mode nowait;"));
+    expect(cLock).toBeLessThan(sourceLock); expect(sourceLock).toBeLessThan(g0Lock); expect(g0Lock).toBeLessThan(reserve);
+    expect(enqueue).toContain("shadow_candidate_generation_reserved");
+    expect(enqueue).toContain("shadow_baseline_generation_reserved");
+    expect(enqueue).not.toContain("pg_advisory_unlock");
+    expect(schemaSource).toContain("create unique index if not exists ingestion_jobs_one_open_per_document_uidx");
+    const atomic = persistence.match(/do \$u04_restart_index\$([\s\S]+?)end \$u04_restart_index\$;/)?.[1];
+    expect(atomic).toBeDefined();
+    const guard = atomic!.indexOf("create trigger ingestion_jobs_shadow_scheduling");
+    const checkpoint = atomic!.indexOf("create constraint trigger ingestion_jobs_shadow_checkpoint_complete");
+    const replacement = atomic!.indexOf("drop index public.ingestion_jobs_one_open_per_document_uidx;");
+    expect(guard).toBeGreaterThan(atomic!.indexOf("perform public.shadow_queue_complete_v1(j.id)"));
+    expect(checkpoint).toBeGreaterThan(guard); expect(replacement).toBeGreaterThan(checkpoint);
+    expect(atomic!.indexOf("create unique index ingestion_jobs_one_open_per_document_uidx")).toBeGreaterThan(replacement);
+    expect(persistence.match(/drop index public\.ingestion_jobs_one_open_per_document_uidx;/g)).toHaveLength(1);
+  });
+
+  it("couples the exact NULL-safe structural index predicate to the atomic guard installation", () => {
+    const predicate = `where (status in ('pending', 'processing')) is not false
+      and not ((
+        operation = 'shadow_reindex'
+        and status = 'processing'
+        and batch_id is null
+        and requested_generation_id is not null
+        and shadow_plan_digest is not null
+        and shadow_plan_digest ~ '^sha256:[0-9a-f]{64}$'
+        and attempt_count = 1 and max_attempts = 1
+        and lease_token is not null
+        and lease_write_generation_id = requested_generation_id
+        and locked_by is not null and locked_by <> ''
+        and locked_at is not null
+        and lease_authority_digest is not null and lease_authority_digest <> ''
+        and lease_expires_at is not null
+        and lease_duration_seconds is not null and lease_duration_seconds > 0
+      ) is true);`;
+    const install = persistence.slice(persistence.indexOf("do $u04_restart_index$"));
+    const indexStart = install.indexOf("create unique index ingestion_jobs_one_open_per_document_uidx");
+    expect(indexStart).toBeGreaterThanOrEqual(0);
+    const indexEnd = install.indexOf(";", indexStart);
+    expect(indexEnd).toBeGreaterThan(indexStart);
+    const indexDefinition = install.slice(indexStart, indexEnd + 1);
+    expect(indexDefinition).toContain(predicate);
+    expect(indexDefinition).not.toMatch(/clock_timestamp|current_timestamp|select .*document_index_generations/i);
+    expect(install).toContain("in share row exclusive mode nowait;");
+    expect(install.indexOf("shadow_queue_complete_v1(j.id)")).toBeLessThan(install.indexOf("drop index"));
+  });
+
+  it("requires READ COMMITTED for INSERT and every NULL-safe scheduling or identity UPDATE", () => {
+    const guard = effective("shadow_queue_scheduling_guard_v1");
+    expect(guard).toContain("language plpgsql volatile security invoker set search_path = ''");
+    expect(guard).toContain("tg_op not in ('INSERT','UPDATE')");
+    expect(guard).toContain("v_old->k is distinct from v_new->k");
+    for (const field of ["id", "document_id", "batch_id", "operation", "requested_generation_id", "shadow_plan_digest", "status", "attempt_count", "max_attempts",
+      "next_run_at", "locked_by", "locked_at", "lease_token", "lease_expected_generation_id", "lease_write_generation_id", "lease_authority_digest", "lease_expires_at", "lease_duration_seconds"])
+      expect(guard.slice(guard.indexOf("v_columns text[]"), guard.indexOf("begin"))).toContain(`'${field}'`);
+    const isolation = guard.indexOf("current_setting('transaction_isolation') is distinct from 'read committed'");
+    expect(isolation).toBeGreaterThan(0); expect(isolation).toBeLessThan(guard.indexOf("from public.public_source_versions"));
+    expect(guard).toContain("shadow_queue_read_committed_required");
+  });
+
+  it("preserves invoker permission boundaries and fresh post-lock competing-row reads", () => {
+    const guard = effective("shadow_queue_scheduling_guard_v1");
+    expect(guard).toContain("current_user not in ('postgres','service_role')");
+    expect(guard).toContain("new.operation='shadow_reindex' and current_user<>'postgres'");
+    expect(guard).toContain("'public_source:'||v_key");
+    expect(guard).toContain("select * into strict v_document from public.documents where id=v_doc for update nowait;");
+    expect(guard).toContain("v_after_key is distinct from v_key or v_after_version is distinct from v_version");
+    expect(guard).not.toMatch(/from public\.public_source_(?:versions|activation_events)[^;]*for update/);
+    const lock = guard.indexOf("from public.indexing_v3_agent_jobs where document_id=v_doc order by id for update nowait;");
+    expect(lock).toBeGreaterThan(0); expect(guard.indexOf("if exists(select 1 from public.ingestion_jobs")).toBeGreaterThan(lock);
+    expect(guard.indexOf("v_now:=pg_catalog.clock_timestamp()")).toBeGreaterThan(lock);
+    expect(guard).toContain("id is distinct from new.id");
+    expect(guard).toContain("array[(v_old->>'document_id')::uuid,new.document_id]");
+    expect(guard).not.toContain("pg_advisory_unlock");
+  });
+
+  it("admits only complete finite expired predecessors already in the captured population", () => {
+    const history = effective("shadow_queue_history_v1");
+    expect(history).toContain("language plpgsql volatile");
+    expect(history).toContain("id is distinct from p_job");
+    expect(history).toContain("status in ('pending','processing') order by id for update nowait");
+    expect(history).toContain("j.operation is distinct from 'shadow_reindex'");
+    expect(history).toContain("j.lease_expires_at is null"); expect(history).toContain("not pg_catalog.isfinite(j.lease_expires_at)");
+    expect(history).toContain("j.lease_expires_at>v_now"); expect(history).toContain("g:=public.shadow_queue_complete_v1(j.id)");
+    expect(history).toContain("(x->>'canonicalPayload')::jsonb=pg_catalog.to_jsonb(j)");
+    expect(history).toContain("(x->>'canonicalPayload')::jsonb=pg_catalog.to_jsonb(g)");
+    expect(history).toContain("shadow_predecessor_not_admitted");
+    expect(history).not.toMatch(/\b(update public\.|delete from|insert into)\b/);
+  });
+
+  it("binds fresh reservation and later owned continuation to the same complete predecessor origin", () => {
+    const enqueue = effective("enqueue_shadow_reindex_generation");
+    expect(enqueue).toContain("perform public.shadow_queue_history_v1(v_document,null,v_origin)");
+    expect(enqueue.indexOf("shadow_queue_history_v1(v_document,null,v_origin)")).toBeLessThan(enqueue.indexOf("insert into public.shadow_reindex_waves"));
+    const origin = effective("shadow_assert_origin_unchanged_v1");
+    expect(origin).toContain("perform public.shadow_queue_history_v1(v_g.document_id,v_g.job_id,v_origin)");
+    expect(origin).toContain("v_g.original_origin_envelope is distinct from p_member.original_origin_envelope");
+    expect(origin).toContain("public.shadow_state_rows_v1(v_current->'rows'");
+    const guard = effective("shadow_queue_scheduling_guard_v1");
+    expect(guard).toContain("public.validate_shadow_plan_v1(w.plan_payload)");
+    expect(guard).toContain("w.baseline_report is distinct from p->'audit'->'input'->'caseResultsEnvelope'");
+    expect(guard).toContain("perform public.shadow_assert_origin_unchanged_v1(g)");
+    expect(guard).toContain("if new.operation is distinct from 'shadow_reindex' then return new");
+  });
+
+  it("preserves provisional first-claim ordering but demands complete OLD and exact NEW identity", () => {
+    const guard = effective("shadow_queue_scheduling_guard_v1");
+    expect(guard).toContain("g:=public.shadow_queue_complete_v1(old.id)");
+    expect(guard).toContain("g.first_lease_token is not null or g.claimed_at is not null or old.attempt_count is distinct from 0");
+    expect(guard).toContain("new.status is distinct from 'processing' or new.attempt_count is distinct from 1");
+    expect(guard).toContain("new.lease_expected_generation_id is distinct from g.baseline_generation_id");
+    expect(guard).toContain("new.lease_write_generation_id is distinct from g.index_generation_id");
+    expect(guard).toContain("new.lease_authority_digest is distinct from g.authority_digest");
+    expect(guard).toContain("shadow_queue_first_claim_required");
+    expect(guard).toContain("old.lease_expires_at<=v_now");
+    const claim = effective("claim_ingestion_jobs");
+    expect(claim.indexOf("update public.ingestion_jobs set status = 'processing'")).toBeLessThan(claim.indexOf("update public.document_index_generations set state='building'"));
+    expect(claim).toContain("control_snapshot=public.shadow_control_snapshot_v1(v_job.id,v_member.control_revision+1)");
+  });
+
+  it("defers latest-state consistency without granting scheduling authority or imposing later liveness", () => {
+    const checker = effective("shadow_queue_checkpoint_complete_v1");
+    expect(checker).toContain("volatile security definer set search_path = ''");
+    expect(checker).toContain("perform public.shadow_queue_complete_v1(new.id)");
+    expect(checker).not.toMatch(/clock_timestamp|for update|update public\.|insert into|delete from/);
+    expect(persistence).toContain("deferrable initially deferred for each row execute function public.shadow_queue_checkpoint_complete_v1()");
+    const complete = effective("shadow_queue_complete_v1");
+    expect(complete).toContain("select * into strict j from public.ingestion_jobs where id=p_job");
+    expect(complete).toContain("g.control_snapshot is distinct from public.shadow_control_snapshot_v1(j.id,g.control_revision)");
+    expect(complete).toContain("j.status='failed' and j.stage='shadow_failed'");
+    expect(complete).toContain("j.locked_by is null and j.locked_at is null");
+    expect(complete).not.toContain("clock_timestamp");
+    expect(complete).toContain("g.original_origin_envelope is distinct from p->'audit'->'input'->'originEnvelope'");
+    expect(complete).toContain("b.bundle_digest is distinct from g.baseline_bundle_digest");
+  });
+
+  it("retains the original expired-attempt refusal and all new restart helpers remain ungranted", () => {
+    const parent = effective("shadow_parent_retention_guard_v1");
+    expect(parent).toContain("then raise exception 'shadow_wave_restart_required'");
+    expect(parent).toContain("tg_op='DELETE' then raise exception 'shadow_retained_job'");
+    for (const name of ["shadow_queue_complete_v1", "shadow_queue_history_v1", "shadow_queue_scheduling_guard_v1", "shadow_queue_checkpoint_complete_v1"]) {
+      expect(persistence).toMatch(new RegExp(`revoke all on function public\\.${name}\\([^;]*\\) from public,anon,authenticated,service_role;`));
+      expect(persistence).not.toMatch(new RegExp(`grant execute on function public\\.${name}\\(`));
+    }
+  });
+});
+
+
+describe("U04 atomic terminal SQL contracts (source only)", () => {
+  const migration = readFileSync(new URL("../supabase/migrations/20260831102000_stage_shadow_document_generations.sql", import.meta.url), "utf8");
+  function effective(name: string) {
+    const start = migration.lastIndexOf(`create or replace function public.${name}(`);
+    expect(start, `Missing effective function ${name}`).toBeGreaterThanOrEqual(0);
+    const end = migration.indexOf("$$;", start);
+    expect(end).toBeGreaterThan(start);
+    return migration.slice(start, end + 3);
+  }
+
+  it("keeps the final shadow seal on the live two-argument Fence interface", () => {
+    const body = effective("stage_document_index_generation");
+    expect(migration).toContain("stage_document_index_generation(p_fence jsonb,p_generation uuid)");
+    expect(body).toContain("transaction_isolation");
+    expect(body).toContain("shadow_deadline_not_effective");
+    expect(body).toContain("in share row exclusive mode nowait");
+    expect(body).toContain("public.shadow_assert_attempt_v1(p_fence,p_generation,null)");
+    expect(body).toContain("public.shadow_finalize_retained_inventory_v1(v_member)");
+    expect(body).toContain("perform public.shadow_checkpoint_advance_v1(v_member.job_id)");
+    expect(body).toContain("public.shadow_assert_origin_unchanged_v1(v_member)");
+    expect(body).toContain("state='staged'");
+    expect(body).toContain("status='completed',stage='shadow_staged',progress=100");
+    expect(body).toContain("locked_by=null,locked_at=null,completed_at=v_sealed");
+    expect(body).toContain("public.shadow_queue_complete_v1(v_member.job_id)");
+    expect(body).toContain("p_fence->>'job_kind' is distinct from 'node'");
+    expect(body.indexOf("public.shadow_assert_origin_unchanged_v1(v_member)")).toBeLessThan(body.indexOf("public.shadow_queue_complete_v1(v_member.job_id)"));
+    expect(body).toContain("public.shadow_member_stage_response_v1(v_member)");
+    expect(body.indexOf("update public.ingestion_jobs set status='completed'")).toBeLessThan(
+      body.indexOf("update public.document_generation_projections set sealed_at=v_sealed"),
+    );
+    expect(body.indexOf("update public.document_generation_projections set sealed_at=v_sealed")).toBeLessThan(
+      body.indexOf("update public.document_index_generations set state='staged'"),
+    );
+    expect(body).not.toMatch(/update public\.documents|delete from|commit_document_index_generation|activate/);
+  });
+
+  it("returns the exact member receipt validation context on fresh seal and replay", () => {
+    const response = effective("shadow_member_stage_response_v1");
+    expect(response).toContain("'ok',true,'kind','shadow_staged'");
+    expect(response).toContain("'memberReceiptEnvelope',p_member.stage_receipt");
+    for (const key of ["memberRowEnvelope","profileEnvelope","inventoryRowEnvelopes","originalOriginEnvelope","planDigest"])
+      expect(response).toContain(`'${key}'`);
+    expect(response).toContain("public.shadow_capture_envelope_v1(pg_catalog.to_jsonb(p_member))");
+    expect(response).toContain("public.shadow_capture_envelope_v1(pg_catalog.to_jsonb(i))");
+    expect(response).toContain("shadow_member_response_too_large");
+  });
+
+  it("builds the acyclic final inventory before the member receipt", () => {
+    const final = effective("shadow_final_inventory_v1");
+    const stage = effective("stage_document_index_generation");
+    expect(final).toContain("'kind','u04-final-inventory-v1','version',1");
+    expect(final).toContain("'expectedInventoryEnvelope',v_expected");
+    expect(final).toContain("'finalDispositions',v_dispositions");
+    expect(final).toContain("'projectionEnvelope',v_projection_envelope");
+    expect(final).toContain("'preSealControlEnvelope'");
+    expect(final).toContain("public.shadow_final_candidate_rows_v1(p_member)");
+    expect(final).toContain("public.shadow_final_retained_evidence_v1(p_member)");
+    expect(final).toContain("disposition='pending' or required and disposition<>'retained'");
+    expect(final).not.toContain("'kind','u04-member-seal-receipt-v1'");
+    expect(final).not.toContain("'kind','u04-wave-seal-receipt-v1'");
+    expect(stage.indexOf("v_final:=public.shadow_final_inventory_v1")).toBeLessThan(stage.indexOf("'u04-member-seal-receipt-v1'"));
+    expect(stage).toContain("control_revision=control_revision+1");
+  });
+
+  it("captures only the eight closed candidate row owners and exact retained bytes", () => {
+    const rows = effective("shadow_final_candidate_rows_v1");
+    const retained = effective("shadow_final_retained_evidence_v1");
+    for (const table of ["document_pages","document_chunks","document_images","document_table_facts",
+      "document_embedding_fields","document_index_units","document_sections","document_memory_cards"]) {
+      expect(rows).toContain(`'${table}'`);
+    }
+    expect(rows).toContain("public.shadow_capture_envelope_v1(row_payload)->'digest'=v_unit.artifact_ref->'rowDigest'");
+    expect(rows).toContain("(value->'rowEnvelope'->>'canonicalPayload')::jsonb->>'id'");
+    expect(rows).toContain("shadow_candidate_row_not_unique");
+    expect(retained).toContain("'representation',v_representation");
+    for (const family of ["native_structure","cache_inputs","attempt_control","repair_audit_inputs"])
+      expect(retained).toContain(`'${family}'`);
+    for (const representation of ["producer_json","cache_input","control_checkpoint","repair_audit_input"])
+      expect(retained).toContain(`'${representation}'`);
+    expect(retained).toContain("'mediaType','application/json'");
+    expect(retained).toContain("pg_catalog.octet_length(pg_catalog.convert_to(v_envelope->>'canonicalPayload','UTF8'))");
+    expect(retained).toContain("v_unit->'output'");
+    expect(retained).not.toMatch(/fetch|storage\.objects|http|net\./);
+  });
+
+  it("returns a complete guarded wave readback from the accepted three-argument receipt RPC", () => {
+    const body = effective("get_shadow_generation_receipt");
+    expect(migration).toContain("get_shadow_generation_receipt(p_plan_digest text,p_generation uuid,p_document_id uuid)");
+    expect(body).toContain("candidate_generation_id=p_generation and plan_digest=p_plan_digest");
+    expect(body).toContain("document_id=p_document_id and index_generation_id=p_generation");
+    expect(body).toContain("state<>'staged' or stage_receipt is null");
+    expect(body).toContain("perform public.shadow_queue_complete_v1(v_job)");
+    expect(body).toContain("v_b is distinct from v_w");
+    expect(body).toContain("public.shadow_assert_origin_unchanged_v1(v_member)");
+    expect(body).toContain("public.capture_shadow_reindex_origin(v_w");
+    expect(body).toContain("'kind','u04-wave-seal-receipt-v1','version',1");
+    expect(body).toContain("'members',v_members");
+    expect(body).toContain("'baselineRows',v_baselines");
+    expect(body).toContain("'observedOriginEnvelope',v_current");
+    expect(body).toContain("max(staged_at)");
+    expect(body).not.toMatch(/lease_expires_at\s*>|update public\.|insert into|delete from|typed_absent/);
+  });
+
+  it("keeps terminal RPC privilege and deferred consistency boundaries closed", () => {
+    expect(migration).toContain("revoke all on function public.stage_document_index_generation(jsonb,uuid) from public,anon,authenticated,service_role");
+    expect(migration).toContain("grant execute on function public.stage_document_index_generation(jsonb,uuid) to service_role");
+    expect(migration).toContain("revoke all on function public.get_shadow_generation_receipt(text,uuid,uuid) from public,anon,authenticated,service_role");
+    expect(migration).toContain("grant execute on function public.get_shadow_generation_receipt(text,uuid,uuid) to service_role");
+    expect(migration).toContain("deferrable initially deferred for each row execute function public.shadow_terminal_consistency_v1()");
+    const marker="-- U04 read-only capture foundation. No mutation, claim or seal entrypoint is exposed.";
+    expect(schemaSource.slice(schemaSource.indexOf(marker))).toBe(migration.slice(migration.indexOf(marker)));
+  });
+
+  it("admits only the exact atomic job, projection and member terminal deltas", () => {
+    const parent = effective("shadow_parent_retention_guard_v1");
+    const scheduling = effective("shadow_queue_scheduling_guard_v1");
+    const ledger = effective("shadow_ledger_guard_v1");
+    expect(parent).toContain("v_old-array['status','stage','progress','locked_at','locked_by','completed_at','updated_at']");
+    expect(parent).toContain("v_member.state is distinct from 'building'");
+    expect(scheduling).toContain("elsif new.status='completed'");
+    expect(scheduling).toContain("shadow_queue_terminal_transition");
+    expect(ledger).toContain("v_old-'sealed_at' is distinct from v_new-'sealed_at'");
+    expect(ledger).toContain("v_job.completed_at is distinct from new.sealed_at");
+    expect(ledger).toContain("old.state='building' and new.state='staged'");
+    expect(ledger).toContain("v_receipt->'terminalControlEnvelope'");
+  });
+
+  it("revalidates the complete immutable staged receipt in every deferred proof", () => {
+    const complete = effective("shadow_queue_complete_v1");
+    expect(complete).toContain("elsif g.state='staged'");
+    expect(complete).toContain("public.shadow_keys_v1(r,array['kind','version','binding','planDigest'");
+    expect(complete).toContain("f->'finalDispositions'=v_dispositions");
+    expect(complete).toContain("public.shadow_inventory_envelope_payload_v1(f->'projectionEnvelope')=pg_catalog.to_jsonb(pr)");
+    expect(complete).toContain("v_preseal->'ownStages'=v_terminal->'ownStages'");
+    expect(complete).toContain("disposition='pending' or required and disposition<>'retained'");
+    expect(complete).toContain("st.stage_status<>'completed' or st.finished_at is null");
+    expect(effective("shadow_validate_projection_components_v1")).not.toContain("shadow_terminal_semantics_unavailable");
+  });
+});
+
+describe("U04 fixed evaluation SQL body source contracts", () => {
+  it("keeps evaluator reconciliation read-only and terminal-phase-specific", () => {
+    for (const name of ["shadow_eval_projection_disposition_v1", "shadow_eval_attempt_control_payload_v1",
+      "shadow_eval_reconcile_final_disposition_v1", "shadow_eval_guard_v1"]) {
+      const start = migration.lastIndexOf(`create or replace function public.${name}(`);
+      expect(start).toBeGreaterThanOrEqual(0);
+      const body = migration.slice(start, migration.indexOf("end $$;", start) + 7);
+      expect(schemaSource).toContain(body);
+      expect(body).toContain("stable security definer set search_path = ''");
+      const executable = body.replace(/--[^\n]*/g, "");
+      expect(executable).not.toMatch(/\bfor\s+(?:no\s+key\s+)?update\b|\b(?:insert\s+into|delete\s+from|update\s+public\.)|pg_advisory|shadow_assert_origin_unchanged_v1/i);
+      expect(executable).not.toMatch(/pg_catalog\.(?:coalesce|greatest|least|nullif|trim)\s*\(/i);
+    }
+    const start = migration.lastIndexOf("create or replace function public.shadow_eval_reconcile_final_disposition_v1(");
+    const reconcile = migration.slice(start, migration.indexOf("end $$;", start));
+    expect(reconcile).toContain("v_row->>'index_generation_id' is distinct from p_member.index_generation_id::text");
+    expect(reconcile).toContain("v_row->'metadata'->>'index_generation_id' is distinct from p_member.index_generation_id::text");
+    expect(reconcile).not.toContain("in (v_d::text,p_member.index_generation_id::text)");
+    expect(reconcile).toContain("public.shadow_eval_projection_disposition_v1(");
+    expect(reconcile).toContain("public.shadow_eval_attempt_control_payload_v1(");
+  });
+  const migration = readFileSync(
+    new URL("../supabase/migrations/20260831102000_stage_shadow_document_generations.sql", import.meta.url),
+    "utf8",
+  );
+  const generatedTypes = readFileSync(new URL("../src/lib/supabase/database.types.ts", import.meta.url), "utf8");
+  const operations = [
+    "adjacent_chunks",
+    "aliases",
+    "chunks_by_ids",
+    "chunks_by_indexes",
+    "corpus_terms",
+    "correct_terms",
+    "documents",
+    "embedding_fields",
+    "hybrid_chunks",
+    "images_by_ids",
+    "images_by_pages",
+    "index_units",
+    "lookup_chunk_prefix",
+    "lookup_chunk_terms",
+    "lookup_chunks",
+    "lookup_document_terms",
+    "lookup_documents",
+    "memory_cards_hybrid",
+    "memory_cards_lexical",
+    "quality",
+    "ranking_metadata",
+    "related_documents",
+    "table_facts",
+    "text_chunks",
+    "vector_chunks",
+    "visual_rows",
+  ] as const;
+  const sqlSignatures: Record<(typeof operations)[number], string> = {
+    adjacent_chunks: "jsonb,uuid[],integer[]",
+    aliases: "jsonb",
+    chunks_by_ids: "jsonb,uuid[]",
+    chunks_by_indexes: "jsonb,uuid[],integer[],integer",
+    corpus_terms: "jsonb,text[]",
+    correct_terms: "jsonb,text,real",
+    documents: "jsonb,uuid[]",
+    embedding_fields: "jsonb,extensions.vector,text,integer,double precision,uuid[]",
+    hybrid_chunks: "jsonb,extensions.vector,text,integer,double precision,uuid[]",
+    images_by_ids: "jsonb,uuid[]",
+    images_by_pages: "jsonb,uuid[],integer[]",
+    index_units: "jsonb,extensions.vector,text,integer,double precision,uuid[]",
+    lookup_chunk_prefix: "jsonb,uuid[],integer",
+    lookup_chunk_terms: "jsonb,uuid[],text[],integer",
+    lookup_chunks: "jsonb,text,uuid[],integer",
+    lookup_document_terms: "jsonb,text[]",
+    lookup_documents: "jsonb,text,integer",
+    memory_cards_hybrid: "jsonb,extensions.vector,text,integer,double precision,uuid[]",
+    memory_cards_lexical: "jsonb,text,uuid[],integer",
+    quality: "jsonb,uuid[]",
+    ranking_metadata: "jsonb,uuid[]",
+    related_documents: "jsonb,uuid[]",
+    table_facts: "jsonb,text,integer,uuid[]",
+    text_chunks: "jsonb,text,integer,uuid[]",
+    vector_chunks: "jsonb,extensions.vector,integer,double precision,uuid",
+    visual_rows: "jsonb,uuid[]",
+  };
+
+  function effectiveEvaluationBody(source: string, operation: (typeof operations)[number]) {
+    const name = `u04_eval_${operation}_v1`;
+    const start = source.lastIndexOf(`create or replace function public.${name}(`);
+    expect(start, `missing ${name}`).toBeGreaterThanOrEqual(0);
+    const end = source.indexOf("\nend $$;", start);
+    expect(end, `missing end of ${name}`).toBeGreaterThan(start);
+    return source.slice(start, end + "\nend $$;".length);
+  }
+
+  it("accepts the bound request domain and page-backed origin provenance", () => {
+    for (const sql of [migration, schemaSource]) {
+      const originStart = sql.lastIndexOf("create or replace function public.shadow_eval_result_origin_ref_v1(");
+      const origin = sql.slice(originStart, sql.indexOf("end $$;", originStart));
+      expect(origin).toContain("p_table not in ('documents','document_pages','document_chunks'");
+      expect(origin).toContain("p_owner not in ('document','page','chunk'");
+      const resultStart = sql.lastIndexOf("create or replace function public.shadow_eval_result_v1(");
+      const result = sql.slice(resultStart, sql.indexOf("end $$;", resultStart));
+      expect(result).toContain("p_guard->'requestEnvelope'->>'domain' is distinct from 'u04-evaluation-request-v1'");
+      expect(result).not.toContain("p_guard->'requestEnvelope'->>'domain' is distinct from 'plan'");
+    }
+  });
+
+  it("keeps exactly 26 literal service-only stable endpoints in migration, schema and generated RPC types", () => {
+    expect(new Set(operations).size).toBe(26);
+    for (const operation of operations) {
+      const name = `u04_eval_${operation}_v1`;
+      const body = effectiveEvaluationBody(migration, operation);
+      expect(effectiveEvaluationBody(schemaSource, operation)).toBe(body);
+      expect(body).toContain("returns jsonb language plpgsql stable security definer");
+      expect(body).toContain("set search_path = ''");
+      expect(body).toMatch(
+        new RegExp(`begin\\s+v_guard:=public\\.shadow_eval_guard_v1\\(p_context,'${operation}',`),
+      );
+      expect(body).toContain(operation === "correct_terms"
+        ? "return public.shadow_eval_result_v1(v_guard,pg_catalog.to_jsonb(v_result))"
+        : "return public.shadow_eval_result_v1(v_guard,v_result)");
+      expect(body).not.toMatch(/\bexecute\b/i);
+      expect(body).not.toContain("shadow_assert_origin_unchanged_v1");
+      expect(body).not.toContain("set_config(");
+      const signature = sqlSignatures[operation];
+      expect(migration).toContain(`alter function public.${name}(${signature}) owner to postgres;`);
+      expect(migration).toContain(
+        `revoke all on function public.${name}(${signature}) from public,anon,authenticated,service_role;`,
+      );
+      expect(migration).toContain(`grant execute on function public.${name}(${signature}) to service_role;`);
+      const typeStart = generatedTypes.indexOf(`      ${name}:`);
+      expect(typeStart, `missing generated type for ${name}`).toBeGreaterThanOrEqual(0);
+      const typeEnd = generatedTypes.indexOf("\n      u04_eval_", typeStart + 1);
+      const typeBlock = generatedTypes.slice(typeStart, typeEnd < 0 ? undefined : typeEnd);
+      expect(typeBlock).toContain("p_context: Json");
+      expect(typeBlock).toMatch(/Returns:\s*Json\s*[;}]/);
+    }
+    expect((migration.match(/^create or replace function public\.u04_eval_[a-z_]+_v1\(/gm) ?? []).length).toBe(26);
+    expect(migration).not.toContain("set_config('hnsw.ef_search'");
+  });
+
+  it("applies selected side and generation predicates before the preserved branch limits", () => {
+    const text = effectiveEvaluationBody(migration, "text_chunks");
+    expect(text).toContain("chunk_hits as");
+    expect(text).toContain("title_chunk_hits as");
+    expect(text).toContain("shadow_eval_generation_matches_v1(v_guard,c.document_id,c.index_generation_id,'chunks')");
+    expect(text).toContain("limit least(greatest(v_count*2,24),96)");
+    expect(text).toContain("least(0.5,0.18+(least(ranked.text_rank,1)*0.3))");
+    expect(text).toContain("least(0.99,0.4+(least(ranked.text_rank,1)*0.59))");
+    expect(text).toContain("shadow_eval_related_metadata_v1(v_guard,");
+    expect(text).toContain("'text_chunks'");
+    expect(text).toContain("shadow_eval_image_metadata_v1(v_guard,ranked.image_ids)");
+
+    const hybrid = effectiveEvaluationBody(migration, "hybrid_chunks");
+    expect(hybrid).toContain("shadow_eval_quality_v1(v_guard,array(select id from docs))");
+    expect(hybrid).toContain("limit greatest(match_count*6,48)");
+    expect(hybrid).toContain("(similarity*0.62)+(least(text_rank,1)*0.22)+(quality_score*0.10)");
+    expect(hybrid).toContain("doc_updated_at>v_clock-interval '90 days'");
+    for (const branch of ["hybrid_candidates", "vector_candidates", "text_candidates", "rrf_candidates"]) {
+      expect(hybrid).toContain(`${branch} as`);
+    }
+
+    const facts = effectiveEvaluationBody(migration, "table_facts");
+    for (const branch of ["fts_matches", "term_matches", "trgm_matches"]) expect(facts).toContain(`${branch} as`);
+    expect(facts).toContain("limit greatest(match_count*5,64)");
+    expect(facts).toContain("limit greatest(match_count*4,48)");
+    expect(facts).toContain("OPERATOR(extensions.%) q.normalized");
+    expect(facts).toContain("'{}'::jsonb metadata");
+
+    const fields = effectiveEvaluationBody(migration, "embedding_fields");
+    expect(fields).toContain("limit greatest(match_count*3,32)");
+    expect(fields).toContain("((similarity*0.7)+(least(text_rank,1)*0.3))");
+
+    const units = effectiveEvaluationBody(migration, "index_units");
+    expect(units).toContain("limit greatest(v_count*3,48)");
+    expect(units).toContain("(similarity*0.52)+(least(text_rank,1)*0.28)+(quality_score*0.12)");
+    expect(units).not.toContain("query_embedding)>=min_similarity");
+
+    const cards = effectiveEvaluationBody(migration, "memory_cards_hybrid");
+    expect(cards).toContain("limit greatest(match_count*6,96)");
+    expect(cards).toContain("(similarity*0.62)+(least(text_rank,1)*0.24)+(confidence*0.10)");
+  });
+
+  it("preserves owner and public inner candidate caps for the seven split-scope production readers", () => {
+    for (const operation of [
+      "embedding_fields",
+      "hybrid_chunks",
+      "lookup_chunks",
+      "lookup_documents",
+      "memory_cards_hybrid",
+      "table_facts",
+      "vector_chunks",
+    ] as const) {
+      const body = effectiveEvaluationBody(migration, operation);
+      expect(body).toContain("scopes(public_scope) as (values(false),(true))");
+      expect(body).toContain("cross join lateral");
+    }
+    for (const operation of [
+      "embedding_fields",
+      "hybrid_chunks",
+      "lookup_chunks",
+      "memory_cards_hybrid",
+      "vector_chunks",
+    ] as const) {
+      expect(effectiveEvaluationBody(migration, operation)).toContain(
+        "(d.owner_id is null)=s.public_scope",
+      );
+    }
+    expect(effectiveEvaluationBody(migration, "lookup_documents")).toContain(
+      "(owner_id is null)=s.public_scope",
+    );
+    expect(effectiveEvaluationBody(migration, "table_facts")).toContain(
+      "ds.public_scope=s.public_scope",
+    );
+  });
+
+  it("pins direct-reader caps, placeholders, metadata modes, fixed clock and vector-only HNSW configuration", () => {
+    expect(effectiveEvaluationBody(migration, "aliases")).toContain("order by a.weight desc limit 200");
+    expect(effectiveEvaluationBody(migration, "corpus_terms")).toContain("t.ord<=8");
+    expect(effectiveEvaluationBody(migration, "correct_terms")).toContain("limit 32");
+    expect(effectiveEvaluationBody(migration, "correct_terms")).toContain(
+      "select distinct d.id document_id,pg_catalog.lower(title_word) word",
+    );
+    expect(effectiveEvaluationBody(migration, "lookup_chunk_terms")).toContain("limit greatest(match_count*4,24)");
+    expect(effectiveEvaluationBody(migration, "lookup_chunk_prefix")).toContain("order by c.chunk_index asc limit match_count");
+    expect(effectiveEvaluationBody(migration, "lookup_document_terms")).toContain("limit 12");
+    expect(effectiveEvaluationBody(migration, "chunks_by_ids")).toContain("limit pg_catalog.cardinality(ids)");
+    expect(effectiveEvaluationBody(migration, "chunks_by_indexes")).toContain("order by c.chunk_index asc limit match_count");
+    expect(effectiveEvaluationBody(migration, "images_by_pages")).toContain(
+      "order by i.clinical_relevance_score desc limit 80",
+    );
+    expect(effectiveEvaluationBody(migration, "adjacent_chunks")).toContain("order by c.chunk_index asc limit 80");
+    const vector = effectiveEvaluationBody(migration, "vector_chunks");
+    expect(vector).toContain("set hnsw.ef_search = '100'");
+    expect(vector).toContain("'[]'::jsonb document_labels");
+    expect(vector).toContain("null::text document_summary");
+    expect(vector).toContain("'[]'::jsonb images");
+    for (const operation of operations.filter((value) => value !== "vector_chunks")) {
+      expect(effectiveEvaluationBody(migration, operation)).not.toContain("hnsw.ef_search");
+    }
+    for (const operation of ["ranking_metadata", "related_documents"] as const) {
+      expect(effectiveEvaluationBody(migration, operation)).toContain(
+        "shadow_eval_related_metadata_v1(v_guard,document_ids,'related_documents')",
+      );
     }
   });
 });

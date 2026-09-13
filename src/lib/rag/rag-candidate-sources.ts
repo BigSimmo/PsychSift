@@ -40,7 +40,12 @@ import {
   relaxVariantToOrQuery,
   shouldRelaxWeakTextMatches,
 } from "@/lib/rag/rag-retrieval-variants";
-import type { SearchTelemetry } from "@/lib/rag/rag-contracts";
+import {
+  acceptRagEvaluationRead,
+  ragEvaluationReadScope,
+  type RagEvaluationContext,
+  type SearchTelemetry,
+} from "@/lib/rag/rag-contracts";
 import { committedIndexGeneration } from "@/lib/reindex-pipeline";
 import { isMissingRetrievalRpcError } from "@/lib/retrieval-rpc-rollout";
 import { normalizeOptionalSourceMetadata, normalizeSourceMetadata } from "@/lib/source-metadata";
@@ -197,7 +202,7 @@ export function mergeSearchResults(primary: SearchResult[], secondary: SearchRes
  * @returns Matching document chunks, using corrected or relaxed queries when strict matching produces no candidates.
  */
 export async function searchTextChunkCandidates(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   queryVariants: string[];
   ownerId?: string;
   accessScope?: RetrievalAccessScope;
@@ -206,8 +211,23 @@ export async function searchTextChunkCandidates(args: {
   matchCount: number;
   telemetry?: SearchTelemetry;
   signal?: AbortSignal;
+  evaluation?: RagEvaluationContext;
 }) {
   const runChunkText = async (queryText: string, matchCount: number) => {
+    if (args.evaluation) {
+      const evaluation = args.evaluation;
+      return (
+        await acceptRagEvaluationRead(evaluation, "text_chunks", () =>
+          evaluation.readers.readTextChunks({
+            ...ragEvaluationReadScope(evaluation),
+            query_text: queryText,
+            match_count: matchCount,
+            document_filters: args.documentIds ?? null,
+          }),
+        )
+      ).map((row) => ({ ...row }));
+    }
+    if (!args.supabase) throw new Error("Supabase client is required outside U04 evaluation.");
     const accessScope = retrievalAccessScopeForArgs(args);
     const { data, error } = await callVersionedRetrievalRpc<SearchResult[]>(
       args.supabase,
@@ -255,7 +275,10 @@ export async function searchTextChunkCandidates(args: {
     // precise match (mergeSearchResults keeps primary/strict precedence). Trigram correction
     // is not run here — it exists to rescue *empty* strict retrieval (RC6), and correcting a
     // query that already matched would second-guess a working query.
-    if (env.RAG_TEXT_WEAK_OR_RELAXATION && shouldRelaxWeakTextMatches(merged)) {
+    if (
+      (args.evaluation?.configuration.retrieval.textWeakOrRelaxation ?? env.RAG_TEXT_WEAK_OR_RELAXATION) &&
+      shouldRelaxWeakTextMatches(merged)
+    ) {
       const weakRelaxed = relaxVariantToOrQuery(variants[0] ?? "");
       if (weakRelaxed) {
         const orResults = await runChunkText(weakRelaxed, Math.min(args.matchCount, 24));
@@ -278,10 +301,20 @@ export async function searchTextChunkCandidates(args: {
   const primary = variants[0] ?? "";
   let effectivePrimary = primary;
   if (primary) {
-    const { data: corrected } = await args.supabase.rpc("correct_clinical_query_terms", {
-      input_query: primary,
-      min_sim: 0.45,
-    });
+    const corrected = args.evaluation
+      ? await acceptRagEvaluationRead(args.evaluation, "correct_terms", () =>
+          args.evaluation!.readers.correctClinicalTerms({
+            ...ragEvaluationReadScope(args.evaluation!),
+            input_query: primary,
+            min_sim: 0.45,
+          }),
+        )
+      : (
+          await args.supabase!.rpc("correct_clinical_query_terms", {
+            input_query: primary,
+            min_sim: 0.45,
+          })
+        ).data;
     if (typeof corrected === "string" && corrected && corrected !== primary) {
       const correctedResults = await runChunkText(corrected, args.matchCount);
       if (correctedResults.length > 0) return correctedResults;
@@ -320,13 +353,13 @@ type DocumentLookupChunkRow = {
   page_number: number | null;
   chunk_index: number;
   section_heading: string | null;
-  section_path?: string[] | null;
+  section_path?: readonly string[] | null;
   heading_level?: number | null;
   parent_heading?: string | null;
   anchor_id?: string | null;
   content: string;
   retrieval_synopsis?: string | null;
-  image_ids: string[] | null;
+  image_ids: readonly string[] | null;
   text_rank?: number | null;
 };
 
@@ -391,7 +424,7 @@ function documentLookupChunkScore(chunk: DocumentLookupChunkRow, terms: string[]
 
 /** Fetch best document lookup chunks. */
 async function fetchBestDocumentLookupChunks(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   documentIds: string[];
   query: string;
   limit: number;
@@ -399,20 +432,33 @@ async function fetchBestDocumentLookupChunks(args: {
   accessScope?: RetrievalAccessScope;
   allowGlobalSearch?: boolean;
   signal?: AbortSignal;
+  evaluation?: RagEvaluationContext;
 }) {
   const terms = documentLookupChunkTerms(args.query);
-  const { data: rpcChunks, error: rpcError } = await callVersionedRetrievalRpc(
-    args.supabase,
-    "match_document_lookup_chunks_text_v2",
-    "match_document_lookup_chunks_text",
-    {
-      query_text: args.query,
-      document_filters: args.documentIds ?? undefined,
-      match_count: Math.max(args.limit * 3, 24),
-      ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
-    },
-    args.signal,
-  );
+  const { data: rpcChunks, error: rpcError } = args.evaluation
+    ? {
+        data: await acceptRagEvaluationRead(args.evaluation, "lookup_chunks", () =>
+          args.evaluation!.readers.readLookupChunks({
+            ...ragEvaluationReadScope(args.evaluation!),
+            query_text: args.query,
+            document_filters: args.documentIds,
+            match_count: Math.max(args.limit * 3, 24),
+          }),
+        ),
+        error: null,
+      }
+    : await callVersionedRetrievalRpc(
+        args.supabase!,
+        "match_document_lookup_chunks_text_v2",
+        "match_document_lookup_chunks_text",
+        {
+          query_text: args.query,
+          document_filters: args.documentIds ?? undefined,
+          match_count: Math.max(args.limit * 3, 24),
+          ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
+        },
+        args.signal,
+      );
   if (!rpcError && rpcChunks?.length) {
     const ranked = (rpcChunks as DocumentLookupChunkRow[])
       .map((chunk) => ({
@@ -425,6 +471,31 @@ async function fetchBestDocumentLookupChunks(args: {
     if (ranked.length) return { chunks: ranked.slice(0, args.limit), terms };
   }
 
+  if (args.evaluation) {
+    const matchedChunks = await acceptRagEvaluationRead(args.evaluation, "lookup_chunk_terms", () =>
+      args.evaluation!.readers.readLookupChunkTerms({
+        ...ragEvaluationReadScope(args.evaluation!),
+        document_filters: args.documentIds,
+        terms,
+        match_count: Math.max(args.limit * 4, 24),
+      }),
+    );
+    const ranked = matchedChunks
+      .map((chunk) => ({ chunk, score: documentLookupChunkScore(chunk, terms) }))
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score || a.chunk.chunk_index - b.chunk.chunk_index)
+      .map((item) => item.chunk);
+    if (ranked.length) return { chunks: ranked.slice(0, args.limit), terms };
+    const fallbackChunks = await acceptRagEvaluationRead(args.evaluation, "lookup_chunk_prefix", () =>
+      args.evaluation!.readers.readLookupChunkPrefix({
+        ...ragEvaluationReadScope(args.evaluation!),
+        document_filters: args.documentIds,
+        match_count: args.limit,
+      }),
+    );
+    return { chunks: fallbackChunks.map((row) => ({ ...row })), terms };
+  }
+  if (!args.supabase) throw new Error("Supabase client is required outside U04 evaluation.");
   const safeFilters = terms
     .map((term) => term.replace(/[%_,]/g, " ").trim())
     .filter(Boolean)
@@ -470,11 +541,12 @@ async function fetchBestDocumentLookupChunks(args: {
 
 /** Fetch document title alias rows. */
 async function fetchDocumentTitleAliasRows(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   ownerId?: string;
   accessScope?: RetrievalAccessScope;
   documentIds?: string[];
+  evaluation?: RagEvaluationContext;
 }) {
   const terms = analyzeClinicalQuery(args.query)
     .documentTitleTerms.map((term) => term.replace(/[%_,]/g, " ").replace(/\s+/g, " ").trim())
@@ -482,6 +554,20 @@ async function fetchDocumentTitleAliasRows(args: {
     .slice(0, 8);
   if (!terms.length) return [] as DocumentLookupRow[];
 
+  if (args.evaluation) {
+    const rows = await acceptRagEvaluationRead(args.evaluation, "lookup_document_terms", () =>
+      args.evaluation!.readers.readLookupDocumentTerms({
+        ...ragEvaluationReadScope(args.evaluation!),
+        terms,
+      }),
+    );
+    return rows.map((document) => ({
+      ...document,
+      text_rank: Math.max(Number(document.text_rank ?? 0), 0.34),
+      match_reason: document.match_reason ?? "title_alias",
+    }));
+  }
+  if (!args.supabase) throw new Error("Supabase client is required outside U04 evaluation.");
   const filters = terms.flatMap((term) => [`title.ilike.%${term}%`, `file_name.ilike.%${term}%`]).join(",");
   let query = args.supabase
     .from("documents")
@@ -515,7 +601,7 @@ async function fetchDocumentTitleAliasRows(args: {
  * @returns Ranked document lookup results, limited to `matchCount`.
  */
 export async function searchDocumentLookupFastPath(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   queryVariants?: string[];
   ownerId?: string;
@@ -524,24 +610,37 @@ export async function searchDocumentLookupFastPath(args: {
   matchCount: number;
   telemetry?: SearchTelemetry;
   signal?: AbortSignal;
+  evaluation?: RagEvaluationContext;
 }): Promise<SearchResult[]> {
   if (!args.ownerId) return [] as SearchResult[];
+  if (!args.evaluation && !args.supabase) throw new Error("Supabase client is required outside U04 evaluation.");
   const variants = (args.queryVariants?.length ? args.queryVariants : [buildClinicalTextSearchQuery(args.query)]).slice(
     0,
     maxTextRpcQueryVariants,
   );
   const runDocumentLookup = async (variant: string, matchCount: number) => {
-    const { data, error } = await callVersionedRetrievalRpc(
-      args.supabase,
-      "match_documents_for_query_v2",
-      "match_documents_for_query",
-      {
-        query_text: variant,
-        match_count: matchCount,
-        ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
-      },
-      args.signal,
-    );
+    const { data, error } = args.evaluation
+      ? {
+          data: await acceptRagEvaluationRead(args.evaluation, "lookup_documents", () =>
+            args.evaluation!.readers.readLookupDocuments({
+              ...ragEvaluationReadScope(args.evaluation!),
+              query_text: variant,
+              match_count: matchCount,
+            }),
+          ),
+          error: null,
+        }
+      : await callVersionedRetrievalRpc(
+          args.supabase!,
+          "match_documents_for_query_v2",
+          "match_documents_for_query",
+          {
+            query_text: variant,
+            match_count: matchCount,
+            ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
+          },
+          args.signal,
+        );
     if (error) recordHybridRpcError(args.telemetry, "match_documents_for_query", error);
     if (error || !data?.length) return [] as DocumentLookupRow[];
     return data as DocumentLookupRow[];
@@ -559,6 +658,7 @@ export async function searchDocumentLookupFastPath(args: {
     ownerId: args.ownerId,
     accessScope: args.accessScope,
     documentIds: args.documentIds,
+    evaluation: args.evaluation,
   });
   const documentsById = new Map<string, DocumentLookupRow>();
   for (const document of [...titleAliasDocuments, ...documentSets.flat()]) {
@@ -610,6 +710,7 @@ export async function searchDocumentLookupFastPath(args: {
     ownerId: args.ownerId,
     accessScope: args.accessScope,
     signal: args.signal,
+    evaluation: args.evaluation,
   });
 
   if (!chunks.length) return [];
@@ -631,13 +732,13 @@ export async function searchDocumentLookupFastPath(args: {
       page_number: chunk.page_number,
       chunk_index: chunk.chunk_index,
       section_heading: chunk.section_heading,
-      section_path: chunk.section_path ?? [],
+      section_path: [...(chunk.section_path ?? [])],
       heading_level: chunk.heading_level ?? null,
       parent_heading: chunk.parent_heading ?? null,
       anchor_id: chunk.anchor_id ?? null,
       content: chunk.content,
       retrieval_synopsis: chunk.retrieval_synopsis ?? null,
-      image_ids: chunk.image_ids ?? [],
+      image_ids: [...(chunk.image_ids ?? [])],
       source_metadata: normalizeOptionalSourceMetadata(document.metadata),
       similarity,
       text_rank: documentScore,
@@ -662,12 +763,70 @@ export function memoryCardChunkScore(card: DocumentMemoryCard) {
 
 /** Load chunks for memory cards. */
 export async function loadChunksForMemoryCards(
-  supabase: ReturnType<typeof createAdminClient>,
+  supabase: ReturnType<typeof createAdminClient> | null,
   cards: DocumentMemoryCard[],
   accessScope: RetrievalAccessScope,
-) {
+  evaluation?: RagEvaluationContext,
+): Promise<SearchResult[]> {
   const documentIds = Array.from(new Set(cards.map((card) => card.document_id))).slice(0, 80);
   if (documentIds.length === 0) return [] as SearchResult[];
+  if (evaluation) {
+    const chunkIds = Array.from(new Set(cards.flatMap((card) => card.source_chunk_ids ?? []))).slice(0, 80);
+    const [documents, chunks] = await Promise.all([
+      acceptRagEvaluationRead(evaluation, "documents", () =>
+        evaluation.readers.readDocumentSnapshots({
+          ...ragEvaluationReadScope(evaluation),
+          ids: documentIds,
+        }),
+      ),
+      acceptRagEvaluationRead(evaluation, "chunks_by_ids", () =>
+        evaluation.readers.readChunksByIds({
+          ...ragEvaluationReadScope(evaluation),
+          ids: chunkIds,
+        }),
+      ),
+    ]);
+    const documentById = new Map(documents.map((row) => [row.id, row] as const));
+    const bestCardByChunk = new Map<string, DocumentMemoryCard>();
+    for (const card of cards) {
+      for (const chunkId of card.source_chunk_ids ?? []) {
+        if (!chunkId) continue;
+        const existing = bestCardByChunk.get(chunkId);
+        if (!existing || memoryCardChunkScore(card) > memoryCardChunkScore(existing)) bestCardByChunk.set(chunkId, card);
+      }
+    }
+    return chunks
+      .map((chunk) => {
+        const document = documentById.get(chunk.document_id);
+        if (!document || document.status !== "indexed") return null;
+        const card = bestCardByChunk.get(chunk.id);
+        const similarity = Math.min(0.92, 0.58 + (card?.confidence ?? 0.5) * 0.28);
+        return {
+          id: chunk.id,
+          document_id: chunk.document_id,
+          title: document.title,
+          file_name: document.file_name,
+          page_number: chunk.page_number,
+          chunk_index: chunk.chunk_index,
+          section_heading: chunk.section_heading,
+          section_path: chunk.section_path.filter((entry): entry is string => entry !== null),
+          heading_level: chunk.heading_level,
+          parent_heading: chunk.parent_heading,
+          anchor_id: chunk.anchor_id,
+          content: chunk.content,
+          retrieval_synopsis: chunk.retrieval_synopsis,
+          image_ids: chunk.image_ids.filter((entry): entry is string => entry !== null),
+          source_metadata: normalizeOptionalSourceMetadata(document.metadata),
+          similarity_origin: "synthetic_text" as const,
+          similarity,
+          text_rank: card?.confidence ?? 0,
+          hybrid_score: Math.min(0.96, similarity + 0.03),
+          images: [],
+        } satisfies SearchResult;
+      })
+      .filter((row) => row !== null);
+  }
+  if (!supabase) throw new Error("Supabase client is required outside U04 evaluation.");
   let documentQuery = supabase
     .from("documents")
     .select("id,title,file_name,metadata,owner_id,status")
@@ -822,11 +981,12 @@ async function loadRowsWithCache<T extends { id: string }>(args: {
 
 /** Load chunks for signal matches. */
 export async function loadChunksForSignalMatches(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   matches: ChunkSignalMatch[];
   ownerId?: string;
   accessScope?: RetrievalAccessScope;
   cache?: ChunkLoadCache;
+  evaluation?: RagEvaluationContext;
 }) {
   const bestMatchByChunk = new Map<string, ChunkSignalMatch>();
   for (const match of args.matches) {
@@ -835,6 +995,53 @@ export async function loadChunksForSignalMatches(args: {
   }
   const chunkIds = Array.from(bestMatchByChunk.keys()).slice(0, 80);
   if (chunkIds.length === 0) return [] as SearchResult[];
+  if (args.evaluation) {
+    const evaluation = args.evaluation;
+    const [chunks, documents] = await Promise.all([
+      acceptRagEvaluationRead(evaluation, "chunks_by_ids", () =>
+        evaluation.readers.readChunksByIds({ ...ragEvaluationReadScope(evaluation), ids: chunkIds }),
+      ),
+      acceptRagEvaluationRead(evaluation, "documents", () =>
+        evaluation.readers.readDocumentSnapshots({
+          ...ragEvaluationReadScope(evaluation),
+          ids: evaluation.documentIds,
+        }),
+      ),
+    ]);
+    const documentById = new Map(documents.map((row) => [row.id, row] as const));
+    return chunks
+      .filter((row) => documentById.has(row.document_id) && bestMatchByChunk.has(row.id))
+      .map((row) => {
+        const match = bestMatchByChunk.get(row.id)!;
+        const document = documentById.get(row.document_id)!;
+        return {
+          id: row.id,
+          document_id: row.document_id,
+          title: document.title,
+          file_name: document.file_name,
+          page_number: row.page_number,
+          chunk_index: row.chunk_index,
+          section_heading: row.section_heading,
+          section_path: row.section_path.filter((entry): entry is string => entry !== null),
+          heading_level: row.heading_level,
+          parent_heading: row.parent_heading,
+          anchor_id: row.anchor_id,
+          content: row.content,
+          retrieval_synopsis: row.retrieval_synopsis,
+          image_ids: row.image_ids.filter((entry): entry is string => entry !== null),
+          source_metadata: normalizeOptionalSourceMetadata(document.metadata),
+          similarity_origin: "synthetic_text" as const,
+          similarity: match.similarity,
+          text_rank: match.textRank,
+          hybrid_score: match.hybridScore,
+          table_facts: match.tableFacts,
+          index_unit: match.indexUnit ?? null,
+          images: [],
+        };
+      });
+  }
+  const supabase = args.supabase;
+  if (!supabase) throw new Error("Supabase client is required outside U04 evaluation.");
 
   const cache = args.cache || createChunkLoadCache();
   const accessScope = retrievalAccessScopeForArgs(args);
@@ -845,7 +1052,7 @@ export async function loadChunksForSignalMatches(args: {
     ids: chunkIds,
     scopeKey: cacheScopeKey,
     fetchRows: async (missingChunkIds) => {
-      const { data, error } = await args.supabase
+      const { data, error } = await supabase
         .from("document_chunks")
         .select("id,document_id")
         .in("id", missingChunkIds)
@@ -862,7 +1069,7 @@ export async function loadChunksForSignalMatches(args: {
     ids: documentIds,
     scopeKey: cacheScopeKey,
     fetchRows: async (missingDocIds) => {
-      let documentQuery = args.supabase
+      let documentQuery = supabase
         .from("documents")
         .select("id,title,file_name,metadata,owner_id,status")
         .in("id", missingDocIds)
@@ -893,7 +1100,7 @@ export async function loadChunksForSignalMatches(args: {
     ids: allowedChunkIds,
     scopeKey: cacheScopeKey,
     fetchRows: async (missingAllowedChunkIds) => {
-      const { data, error } = await args.supabase
+      const { data, error } = await supabase
         .from("document_chunks")
         .select(
           "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,image_ids,index_generation_id",
@@ -964,7 +1171,7 @@ export async function loadChunksForSignalMatches(args: {
  * @returns Search results containing the highest-ranked table facts grouped by source chunk.
  */
 export async function searchTableFactCandidates(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   queryVariants?: string[];
   ownerId?: string;
@@ -975,12 +1182,27 @@ export async function searchTableFactCandidates(args: {
   telemetry?: SearchTelemetry;
   cache?: ChunkLoadCache;
   signal?: AbortSignal;
+  evaluation?: RagEvaluationContext;
 }) {
   const variants = (args.queryVariants?.length ? args.queryVariants : [buildClinicalTextSearchQuery(args.query)]).slice(
     0,
     maxTextRpcQueryVariants,
   );
   const runTableFacts = async (variant: string, matchCount: number) => {
+    if (args.evaluation) {
+      const evaluation = args.evaluation;
+      return (
+        await acceptRagEvaluationRead(evaluation, "table_facts", () =>
+          evaluation.readers.readTableFacts({
+            ...ragEvaluationReadScope(evaluation),
+            query_text: variant,
+            match_count: matchCount,
+            document_filters: args.documentIds ?? null,
+          }),
+        )
+      ).map((row) => ({ ...row }));
+    }
+    if (!args.supabase) throw new Error("Supabase client is required outside U04 evaluation.");
     const { data, error } = await callVersionedRetrievalRpc(
       args.supabase,
       "match_document_table_facts_text_v2",
@@ -1033,12 +1255,13 @@ export async function searchTableFactCandidates(args: {
     ownerId: args.ownerId,
     accessScope: args.accessScope,
     cache: args.cache,
+    evaluation: args.evaluation,
   });
 }
 
 /** Search embedding field candidates. */
 export async function searchEmbeddingFieldCandidates(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   queryEmbedding: number[];
   ownerId?: string;
@@ -1049,21 +1272,36 @@ export async function searchEmbeddingFieldCandidates(args: {
   telemetry?: SearchTelemetry;
   cache?: ChunkLoadCache;
   signal?: AbortSignal;
+  evaluation?: RagEvaluationContext;
 }) {
-  const { data, error } = await callVersionedRetrievalRpc(
-    args.supabase,
-    "match_document_embedding_fields_hybrid_v2",
-    "match_document_embedding_fields_hybrid",
-    {
-      query_embedding: args.queryEmbedding as unknown as string,
-      query_text: buildClinicalTextSearchQuery(args.query),
-      match_count: args.matchCount,
-      min_similarity: 0.12,
-      document_filters: args.documentIds ?? undefined,
-      ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
-    },
-    args.signal,
-  );
+  const { data, error } = args.evaluation
+    ? {
+        data: await acceptRagEvaluationRead(args.evaluation, "embedding_fields", () =>
+          args.evaluation!.readers.readEmbeddingFields({
+            ...ragEvaluationReadScope(args.evaluation!),
+            query_embedding: `[${args.queryEmbedding.join(",")}]`,
+            query_text: buildClinicalTextSearchQuery(args.query),
+            match_count: args.matchCount,
+            min_similarity: 0.12,
+            document_filters: args.documentIds ?? null,
+          }),
+        ),
+        error: null,
+      }
+    : await callVersionedRetrievalRpc(
+        args.supabase!,
+        "match_document_embedding_fields_hybrid_v2",
+        "match_document_embedding_fields_hybrid",
+        {
+          query_embedding: args.queryEmbedding as unknown as string,
+          query_text: buildClinicalTextSearchQuery(args.query),
+          match_count: args.matchCount,
+          min_similarity: 0.12,
+          document_filters: args.documentIds ?? undefined,
+          ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
+        },
+        args.signal,
+      );
   if (error) recordHybridRpcError(args.telemetry, "match_document_embedding_fields_hybrid", error);
   if (error || !data?.length) return [] as SearchResult[];
   try {
@@ -1088,12 +1326,13 @@ export async function searchEmbeddingFieldCandidates(args: {
     ownerId: args.ownerId,
     accessScope: args.accessScope,
     cache: args.cache,
+    evaluation: args.evaluation,
   });
 }
 
 /** Search index unit candidates. */
 export async function searchIndexUnitCandidates(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   queryEmbedding: number[];
   ownerId?: string;
@@ -1104,21 +1343,36 @@ export async function searchIndexUnitCandidates(args: {
   telemetry?: SearchTelemetry;
   cache?: ChunkLoadCache;
   signal?: AbortSignal;
+  evaluation?: RagEvaluationContext;
 }) {
-  const { data, error } = await callVersionedRetrievalRpc(
-    args.supabase,
-    "match_document_index_units_hybrid_v2",
-    "match_document_index_units_hybrid",
-    {
-      query_embedding: args.queryEmbedding as unknown as string,
-      query_text: buildClinicalTextSearchQuery(args.query),
-      match_count: args.matchCount,
-      min_similarity: 0.1,
-      document_filters: args.documentIds ?? undefined,
-      ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
-    },
-    args.signal,
-  );
+  const { data, error } = args.evaluation
+    ? {
+        data: await acceptRagEvaluationRead(args.evaluation, "index_units", () =>
+          args.evaluation!.readers.readIndexUnits({
+            ...ragEvaluationReadScope(args.evaluation!),
+            query_embedding: `[${args.queryEmbedding.join(",")}]`,
+            query_text: buildClinicalTextSearchQuery(args.query),
+            match_count: args.matchCount,
+            min_similarity: 0.1,
+            document_filters: args.documentIds ?? null,
+          }),
+        ),
+        error: null,
+      }
+    : await callVersionedRetrievalRpc(
+        args.supabase!,
+        "match_document_index_units_hybrid_v2",
+        "match_document_index_units_hybrid",
+        {
+          query_embedding: args.queryEmbedding as unknown as string,
+          query_text: buildClinicalTextSearchQuery(args.query),
+          match_count: args.matchCount,
+          min_similarity: 0.1,
+          document_filters: args.documentIds ?? undefined,
+          ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
+        },
+        args.signal,
+      );
   if (error) recordHybridRpcError(args.telemetry, "match_document_index_units_hybrid", error);
   if (error || !data?.length) return [] as SearchResult[];
   try {
@@ -1163,6 +1417,7 @@ export async function searchIndexUnitCandidates(args: {
     ownerId: args.ownerId,
     accessScope: args.accessScope,
     cache: args.cache,
+    evaluation: args.evaluation,
   });
 }
 
@@ -1175,7 +1430,7 @@ export type MemoryBoostArtifacts = {
 
 /** Load the memory evidence that is independent of the current candidate payload. */
 export async function loadMemoryBoostArtifacts(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   queryEmbedding?: number[];
   ownerId?: string;
@@ -1183,6 +1438,7 @@ export async function loadMemoryBoostArtifacts(args: {
   documentIds?: string[];
   matchCount: number;
   cardCache?: MemoryCardCache;
+  evaluation?: RagEvaluationContext;
 }): Promise<MemoryBoostArtifacts> {
   const effectiveMatchCount = Math.max(args.matchCount, 48);
   const documentScope = args.documentIds?.length ? [...args.documentIds].sort().join(",") : "all-documents";
@@ -1195,20 +1451,45 @@ export async function loadMemoryBoostArtifacts(args: {
   ].join("\0");
   let cardsPromise = args.cardCache?.get(cacheKey);
   if (!cardsPromise) {
-    cardsPromise = fetchMemoryCardsForQuery({
-      supabase: args.supabase,
-      query: args.query,
-      queryEmbedding: args.queryEmbedding,
-      ownerId: args.ownerId,
-      accessScope: args.accessScope,
-      documentIds: args.documentIds,
-      matchCount: effectiveMatchCount,
-    });
+    cardsPromise = args.evaluation
+      ? Promise.all([
+          acceptRagEvaluationRead(args.evaluation, "memory_cards_lexical", () =>
+            args.evaluation!.readers.readMemoryCardsLexical({
+              ...ragEvaluationReadScope(args.evaluation!),
+              query_text: args.query,
+              document_filters: args.documentIds ?? null,
+              match_count: effectiveMatchCount,
+            }),
+          ),
+          ...(args.queryEmbedding
+            ? [
+                acceptRagEvaluationRead(args.evaluation, "memory_cards_hybrid", () =>
+                  args.evaluation!.readers.readMemoryCardsHybrid({
+                    ...ragEvaluationReadScope(args.evaluation!),
+                    query_embedding: `[${args.queryEmbedding!.join(",")}]`,
+                    query_text: buildClinicalTextSearchQuery(args.query),
+                    match_count: effectiveMatchCount,
+                    min_similarity: 0.12,
+                    document_filters: args.documentIds ?? null,
+                  }),
+                ),
+              ]
+            : []),
+        ]).then((sets) => sets.flat().map((card) => ({ ...card })))
+      : fetchMemoryCardsForQuery({
+          supabase: args.supabase!,
+          query: args.query,
+          queryEmbedding: args.queryEmbedding,
+          ownerId: args.ownerId,
+          accessScope: args.accessScope,
+          documentIds: args.documentIds,
+          matchCount: effectiveMatchCount,
+        });
     args.cardCache?.set(cacheKey, cardsPromise);
   }
   const cards = await cardsPromise;
   const memoryChunkResults = cards.length
-    ? await loadChunksForMemoryCards(args.supabase, cards, retrievalAccessScopeForArgs(args))
+    ? await loadChunksForMemoryCards(args.supabase, cards, retrievalAccessScopeForArgs(args), args.evaluation)
     : [];
   return { cards, memoryChunkResults };
 }
@@ -1225,7 +1506,7 @@ export function applyMemoryBoostArtifacts(query: string, candidates: SearchResul
 
 /** With memory boosted candidates. */
 export async function withMemoryBoostedCandidates(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   candidates: SearchResult[];
   queryEmbedding?: number[];
@@ -1234,6 +1515,7 @@ export async function withMemoryBoostedCandidates(args: {
   documentIds?: string[];
   matchCount: number;
   cardCache?: MemoryCardCache;
+  evaluation?: RagEvaluationContext;
 }) {
   const artifacts = await loadMemoryBoostArtifacts(args);
   return applyMemoryBoostArtifacts(args.query, args.candidates, artifacts);

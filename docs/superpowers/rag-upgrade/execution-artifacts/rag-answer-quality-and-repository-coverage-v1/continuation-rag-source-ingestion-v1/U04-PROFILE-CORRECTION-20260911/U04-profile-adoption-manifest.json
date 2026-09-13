@@ -1,0 +1,207 @@
+{
+  "kind": "U04 reviewed execution-profile correction adoption",
+  "adoptedAtUtc": "2026-09-11T00:35:33.7098474Z",
+  "reviewedHead": "e502ecd9b18f4a8f22469f68c0ffa5976a33a619",
+  "taskBase": "e502ecd9b18f4a8f22469f68c0ffa5976a33a619",
+  "packageRawSha256": "97f65d8aefa230548480d2fa838b819b67cc1933a685e9e9bfaa71075eb69dbe",
+  "productAcceptance": false,
+  "connectedAcceptance": false,
+  "primaryCandidates": [
+    "U04-execution-profile-correction-candidate-2.md",
+    "U04-profile-config-and-case-schema-candidate-3.md",
+    "U04-sql-environment-schema-candidate-2.md",
+    "U04-deadline-configuration-contract-candidate-2.md"
+  ],
+  "reviewers": [
+    {
+      "agent": "/root/u04_profile_schema_review",
+      "session": "01a08dd2-8ae5-7ad3-b2ef-eae9015b1577",
+      "model": "gpt-6-astra",
+      "effort": "xhigh",
+      "evidence": "observed local session_meta/turn_context",
+      "report": "U04-profile-whole-schema-review-1.md",
+      "verdict": "Specification PASS / Quality PASS"
+    },
+    {
+      "agent": "/root/u04_pages_clinical_review",
+      "session": "01a08c75-8bea-7fb0-923a-037f6a5a28ce",
+      "model": "gpt-6-astra",
+      "effort": "xhigh",
+      "evidence": "observed local session_meta/turn_context",
+      "report": "U04-profile-whole-evidence-review-1.md",
+      "verdict": "Specification PASS / Quality PASS"
+    }
+  ],
+  "files": [
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-deadline-configuration-contract-candidate-2.md",
+      "originalSha256": "3a73988ada4d204342a13d761f3196edbe34191fc905a4f7425eee1c426b4470",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-deadline-configuration-contract-candidate-2.md",
+      "lfSha256": "b4ea3d0c7b2fb7651a6e099a0d5f1b6d5551efd63e0fce5a3e79ae12c66f3a8c",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-deadline-contract-independent-review-1.md",
+      "originalSha256": "31af1fa64658801f8b30c849b46478b1f5324101a3d8343b95da5ec6b7591c79",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-deadline-contract-independent-review-1.md",
+      "lfSha256": "31af1fa64658801f8b30c849b46478b1f5324101a3d8343b95da5ec6b7591c79",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-evaluation-sql-binding-1.md",
+      "originalSha256": "6ffbeb7351e0ad6b58ff293c2441017a671cc54a0315caa2dd7dce64ec45a8de",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-evaluation-sql-binding-1.md",
+      "lfSha256": "6ffbeb7351e0ad6b58ff293c2441017a671cc54a0315caa2dd7dce64ec45a8de",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-execution-profile-config-owner-map-1.md",
+      "originalSha256": "6f7803e549d03eef7c1ef1719c37d63577f6dcb7d313747e14ba55141c764b80",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-execution-profile-config-owner-map-1.md",
+      "lfSha256": "6f7803e549d03eef7c1ef1719c37d63577f6dcb7d313747e14ba55141c764b80",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-execution-profile-correction-candidate-1.md",
+      "originalSha256": "02fc6a85a6d7d4989615115a88f3796f7e4a55292e4ddf567865d0a79175ee6c",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-execution-profile-correction-candidate-1.md",
+      "lfSha256": "02fc6a85a6d7d4989615115a88f3796f7e4a55292e4ddf567865d0a79175ee6c",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-execution-profile-correction-candidate-2.md",
+      "originalSha256": "49ea672d4243125ba475e83a9acd90782a43ce1b401fed01ba4de4bd553cad63",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-execution-profile-correction-candidate-2.md",
+      "lfSha256": "b012a2dfafc79224e6ab48b89d636ff36ac22dc413f538b8c688c8d465602ae0",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-execution-profile-domain-assessment-1.md",
+      "originalSha256": "f6c74e9454f0437b02e31e9d6dfef6c845df22bd4b50b1aadfcbcd62aeb80033",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-execution-profile-domain-assessment-1.md",
+      "lfSha256": "f6c74e9454f0437b02e31e9d6dfef6c845df22bd4b50b1aadfcbcd62aeb80033",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-integrated-amendment-candidate-3.md",
+      "originalSha256": "f22d394f805f9eae44d1799fd652a43df5ff863056caa5b35761da3553c03acc",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-integrated-amendment-candidate-3.md",
+      "lfSha256": "4085ce1e383ff6bd53826cb766924682cd441ef2619d58c1e7966ea707d4589e",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-origin-transaction-contract-3.md",
+      "originalSha256": "60dfd0cdaa29dd717154cc90622a1c178bc6b0c00f66c16c2cf6323682f3c520",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-origin-transaction-contract-3.md",
+      "lfSha256": "60dfd0cdaa29dd717154cc90622a1c178bc6b0c00f66c16c2cf6323682f3c520",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-profile-config-and-case-schema-candidate-1.md",
+      "originalSha256": "c63e8c3bb44ac0d27b9b8d67c1442624b2ba59f2e1130b16972d669239c71473",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-profile-config-and-case-schema-candidate-1.md",
+      "lfSha256": "c63e8c3bb44ac0d27b9b8d67c1442624b2ba59f2e1130b16972d669239c71473",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-profile-config-and-case-schema-candidate-2.md",
+      "originalSha256": "17668e919283227ab8b3652dfcf9e1cebf55d657b8f63d3843e93020a8ae9b2d",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-profile-config-and-case-schema-candidate-2.md",
+      "lfSha256": "17668e919283227ab8b3652dfcf9e1cebf55d657b8f63d3843e93020a8ae9b2d",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-profile-config-and-case-schema-candidate-3.md",
+      "originalSha256": "2030fccfc5a612cdc5803cd90b99acd25e9f74df3a83f8b6333f7e292ff528bf",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-profile-config-and-case-schema-candidate-3.md",
+      "lfSha256": "2030fccfc5a612cdc5803cd90b99acd25e9f74df3a83f8b6333f7e292ff528bf",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-profile-config-case-review-1.md",
+      "originalSha256": "0d4e8eea3553fdabccdf5dac42171b107bb80aa55e7508c0a745465e503a6389",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-profile-config-case-review-1.md",
+      "lfSha256": "0d4e8eea3553fdabccdf5dac42171b107bb80aa55e7508c0a745465e503a6389",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-profile-config-case-review-2.md",
+      "originalSha256": "d7638bb83a4f8e36aad375a0d119b1c8a64a3090a6959d3742795900d9a35e96",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-profile-config-case-review-2.md",
+      "lfSha256": "d7638bb83a4f8e36aad375a0d119b1c8a64a3090a6959d3742795900d9a35e96",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-profile-sql-evidence-candidate-1.md",
+      "originalSha256": "d66bb8a819ee98318b58555e3f95bb41b89a6d6995b6c23df1a41d3c82f12014",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-profile-sql-evidence-candidate-1.md",
+      "lfSha256": "d66bb8a819ee98318b58555e3f95bb41b89a6d6995b6c23df1a41d3c82f12014",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-profile-whole-correction-review-package-1.json",
+      "originalSha256": "97f65d8aefa230548480d2fa838b819b67cc1933a685e9e9bfaa71075eb69dbe",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-profile-whole-correction-review-package-1.json",
+      "lfSha256": "c02c09becf3c5c6531e536fed20e307b83e226c64054d1f756fdd2588b9654b5",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-profile-whole-evidence-review-1.md",
+      "originalSha256": "6724343c65d7f7553a96be0adf7acd32e7c1f0e87e858cb87246a3eed7f40962",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-profile-whole-evidence-review-1.md",
+      "lfSha256": "6724343c65d7f7553a96be0adf7acd32e7c1f0e87e858cb87246a3eed7f40962",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-profile-whole-schema-review-1.md",
+      "originalSha256": "7e457287f37773f2c9198899c250d72f144d6a5dfd10d166f5f17b04c6fdc48c",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-profile-whole-schema-review-1.md",
+      "lfSha256": "7e457287f37773f2c9198899c250d72f144d6a5dfd10d166f5f17b04c6fdc48c",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-request-context-and-capture-contract-1.md",
+      "originalSha256": "236171701e986f98a9d643412417d0d1ddc3dff2babf29f0b6d9791da444e9cb",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-request-context-and-capture-contract-1.md",
+      "lfSha256": "236171701e986f98a9d643412417d0d1ddc3dff2babf29f0b6d9791da444e9cb",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-server-deadline-witness-contract-candidate-1.md",
+      "originalSha256": "69ee86ec8f5331e88a4871e6b91ba4fdf0964e325dbc5f3c7a45ca382333e94c",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-server-deadline-witness-contract-candidate-1.md",
+      "lfSha256": "69ee86ec8f5331e88a4871e6b91ba4fdf0964e325dbc5f3c7a45ca382333e94c",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-sql-environment-independent-review-1.md",
+      "originalSha256": "7e024c7980ed99057a4067cb937aa42166e573a33f8acdf563d77d1aca09fca7",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-sql-environment-independent-review-1.md",
+      "lfSha256": "7e024c7980ed99057a4067cb937aa42166e573a33f8acdf563d77d1aca09fca7",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-sql-environment-schema-candidate-1.md",
+      "originalSha256": "aca4db8b8cbf2b7f2b5fbbb52d19e1a56fe17aa421d9f64d8e3682a4876c7217",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-sql-environment-schema-candidate-1.md",
+      "lfSha256": "aca4db8b8cbf2b7f2b5fbbb52d19e1a56fe17aa421d9f64d8e3682a4876c7217",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-sql-environment-schema-candidate-2.md",
+      "originalSha256": "1a5b05d261bdc9907bd031f9100b08cdf8bdf9e6e08bd9fbbee25c65a422f496",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-sql-environment-schema-candidate-2.md",
+      "lfSha256": "64f7833380514ff1d0c55f62ef0d2179d51e65202dfbb3f1a66041d9a8678496",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    },
+    {
+      "originalPath": "C:\\Users\\joshs\\Codex-Handoffs\\Ingestion\\Execution\\20260907-continuation\\U04-sql-evidence-scope-calibration-1.md",
+      "originalSha256": "ccb165651adb59d090c1d7829bdd0a5e575b59d424126b89b7b7319f11d6261f",
+      "repositoryPath": "docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/U04-PROFILE-CORRECTION-20260911/U04-sql-evidence-scope-calibration-1.md",
+      "lfSha256": "ccb165651adb59d090c1d7829bdd0a5e575b59d424126b89b7b7319f11d6261f",
+      "normalization": "UTF-8 no BOM; CRLF to LF only"
+    }
+  ],
+  "scope": "Complete profile/config/case/SQL environment/deadline configuration format; local pure implementation permitted, actual collector/engine/connected proof remains pending",
+  "committed": false
+}

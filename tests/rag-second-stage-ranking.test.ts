@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applySecondStageRerankIfNeeded, stabilizeReleasedSearchOrder } from "../src/lib/rag/rag";
 import type { SearchTelemetry } from "../src/lib/rag/rag-contracts";
+import { rankingConfig } from "../src/lib/ranking-config";
 import type { SearchResult, SearchScoreExplanation } from "../src/lib/types";
 
 function explanation(rankScore: number): SearchScoreExplanation {
@@ -44,6 +45,32 @@ function result(overrides: Partial<SearchResult>): SearchResult {
     ...overrides,
   };
 }
+
+describe("U04 captured ranking configuration", () => {
+  it("uses the supplied second-stage weights without mutating the ordinary singleton", () => {
+    const captured = {
+      ...rankingConfig,
+      secondStage: {
+        ...rankingConfig.secondStage,
+        positionBase: 0.5,
+        positionStep: 0.5,
+      },
+    };
+    const ranked = applySecondStageRerankIfNeeded({
+      queryClass: "comparison",
+      results: [
+        result({ id: "first", score_explanation: explanation(0.8) }),
+        result({ id: "second", score_explanation: explanation(0.79) }),
+      ],
+      telemetry: {} as SearchTelemetry,
+      topK: 1,
+      ranking: captured,
+    });
+
+    expect(ranked.find((item) => item.id === "first")?.score_explanation?.rankScore).toBe(1.3);
+    expect(rankingConfig.secondStage.positionBase).toBe(0.09);
+  });
+});
 
 describe("second-stage rank score", () => {
   it("applies signed demotions to rankScore while preserving hybrid coverage scores", () => {

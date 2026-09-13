@@ -130,6 +130,7 @@ import {
   isSearchCacheLookupEnabled,
   packAdjacentSourceContext,
   packedContextCacheKey,
+  resolveEvaluationRagCacheContext,
   resolveRequestRagCacheContext,
   scopedAnswerInflightKey,
   setCachedAnswer,
@@ -192,6 +193,7 @@ import {
   isAnswerRouteDeadlineExceeded,
 } from "@/lib/rag/rag-route-budget";
 import { fetchRelatedDocuments } from "@/lib/document-enrichment";
+import { isClinicalImageEvidence } from "@/lib/image-filtering";
 import { boldHighYieldClinicalText, boldRagAnswerHighYieldText, rankAnswerEvidence } from "@/lib/answer-ranking";
 import { ragDeepMemoryVersion } from "@/lib/deep-memory";
 import {
@@ -216,12 +218,16 @@ export {
   scoreValue,
 } from "@/lib/rag/rag-answer-support";
 import {
+  acceptRagEvaluationRead,
+  ragEvaluationReadScope,
   retrievalPlanForQueryClass,
   type AnswerQuestionWithScopeArgs,
+  type RagEvaluationContext,
   type SearchChunksArgs,
   type SearchTelemetry,
 } from "@/lib/rag/rag-contracts";
 export {
+  type RagEvaluationContext,
   retrievalPlanForQueryClass,
   type AnswerProgressEvent,
   type SearchChunksArgs,
@@ -934,6 +940,27 @@ function uniqueTextValues(values: Array<string | null | undefined>, limit = 32) 
 }
 
 type ClassifierVerdict = z.infer<typeof queryClassifierVerdictSchema>;
+const queryClassifierInstructions =
+  "Classify this query for retrieval routing only. Do not answer the clinical question. Prefer unsupported when the query is not about indexed clinical document retrieval.";
+
+function queryClassifierInput(query: string, analysis: ClinicalQueryAnalysis) {
+  return [
+    {
+      role: "user",
+      content: [
+        {
+          type: "input_text",
+          text: [
+            `Query: ${query}`,
+            `Deterministic query class: ${analysis.queryClass}`,
+            `Deterministic confidence: ${analysis.confidence}`,
+            `Known expanded terms: ${analysis.expandedTerms.join(", ") || "none"}`,
+          ].join("\n"),
+        },
+      ],
+    },
+  ];
+}
 
 // Finding #11 interim fix (docs/process-hardening.md): the LLM classifier verdict flips
 // run-to-run for the same query, so the unsupported short-circuit downstream intermittently
@@ -986,29 +1013,13 @@ async function requestClassifierVerdict(
   ownerId?: string | null,
 ): Promise<ClassifierVerdict> {
   const result = await generateParsedTextResult(
-    [
-      {
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: [
-              `Query: ${query}`,
-              `Deterministic query class: ${analysis.queryClass}`,
-              `Deterministic confidence: ${analysis.confidence}`,
-              `Known expanded terms: ${analysis.expandedTerms.join(", ") || "none"}`,
-            ].join("\n"),
-          },
-        ],
-      },
-    ],
+    queryClassifierInput(query, analysis),
     queryClassifierParseSchema,
     {
       model: env.OPENAI_QUERY_CLASSIFIER_MODEL,
       maxOutputTokens: 220,
       operation: "text_generation",
-      instructions:
-        "Classify this query for retrieval routing only. Do not answer the clinical question. Prefer unsupported when the query is not about indexed clinical document retrieval.",
+      instructions: queryClassifierInstructions,
       reasoningEffort: "low",
       textVerbosity: "low",
       schemaName: "clinical_rag_query_classifier",
@@ -1055,9 +1066,10 @@ export async function analyzeQueryWithClassifierFallback(
     // Finding #11 corpus grounding: when provided, unsupported-soft-tail queries are checked
     // against the corpus BEFORE the nondeterministic LLM classifier. Scoped with the exact
     // owner_filter retrieval will use so grounding can never see documents retrieval cannot.
-    corpusGrounding?: { supabase: ReturnType<typeof createAdminClient>; ownerFilter: string | null };
+    corpusGrounding?: { supabase: ReturnType<typeof createAdminClient> | null; ownerFilter: string | null };
     ownerId?: string | null;
     signal?: AbortSignal;
+    evaluation?: RagEvaluationContext;
   },
 ) {
   if (
@@ -1086,6 +1098,7 @@ export async function analyzeQueryWithClassifierFallback(
       supabase: opts.corpusGrounding.supabase,
       query,
       ownerFilter: opts.corpusGrounding.ownerFilter,
+      evaluation: opts.evaluation,
     });
     if (grounding.verdict === "in_corpus_topic") {
       return {
@@ -1128,7 +1141,45 @@ export async function analyzeQueryWithClassifierFallback(
     } satisfies ClinicalQueryAnalysis;
   }
 
-  if (!analysis.needsClassifierFallback || !env.OPENAI_API_KEY) return analysis;
+  if (
+    !analysis.needsClassifierFallback ||
+    (opts?.evaluation ? !opts.evaluation.providerAvailable : !env.OPENAI_API_KEY)
+  ) {
+    return analysis;
+  }
+  if (opts?.evaluation) {
+    try {
+      const generated = await opts.evaluation.providers.generateClassifier(
+        queryClassifierInput(query, analysis),
+        queryClassifierParseSchema,
+        {
+          model: opts.evaluation.configuration.generation.classifierModel,
+          maxOutputTokens: 220,
+          operation: "text_generation",
+          instructions: queryClassifierInstructions,
+          reasoningEffort: "low",
+          textVerbosity: "low",
+          schemaName: "clinical_rag_query_classifier",
+          promptCacheKey: opts.evaluation.configuration.generation.classifierPromptVersion,
+          timeoutMs: Math.min(6_000, opts.evaluation.providerPolicy.requestTimeoutMs),
+          maxRetries: opts.evaluation.providerPolicy.generationMaxRetries,
+          promptCacheRetention: opts.evaluation.providerPolicy.promptCacheRetention,
+          promptCacheTtl: opts.evaluation.providerPolicy.promptCacheTtl,
+          storeResponses: opts.evaluation.providerPolicy.storeResponses,
+          signal: opts.signal,
+        },
+      );
+      const parsed = queryClassifierVerdictSchema.parse(generated.parsed);
+      return applyClassifierVerdict(analysis, {
+        ...parsed,
+        reasons: [...parsed.reasons],
+        expandedTerms: [...parsed.expandedTerms],
+      });
+    } catch (error) {
+      opts.evaluation.failures.record({ code: "provider_error", operation: "classify_query" });
+      throw error;
+    }
+  }
 
   const memoKey = classifierVerdictMemoKey(query, analysis);
   const memoized = classifierVerdictMemo.get(memoKey);
@@ -1364,11 +1415,13 @@ function selectRankedRetrievalResults(args: {
   topK: number;
   maxResultsPerDocument: number;
   telemetry?: SearchTelemetry;
+  ranking?: RagEvaluationContext["configuration"]["ranking"];
+  comparisonTimeMs?: number;
 }) {
   const selection = selectRetrievalEvidence({
     query: args.query,
     queryClass: args.queryClass,
-    results: rankClinicalResults(args.query, args.candidates),
+    results: rankClinicalResults(args.query, args.candidates, args.ranking, args.comparisonTimeMs),
     topK: args.topK,
     maxResultsPerDocument: args.maxResultsPerDocument,
   });
@@ -1380,7 +1433,7 @@ function selectRankedRetrievalResults(args: {
 
 /** Prepare coverage gate results. */
 async function prepareCoverageGateResults(args: {
-  supabase: ReturnType<typeof createAdminClient>;
+  supabase: ReturnType<typeof createAdminClient> | null;
   query: string;
   candidates: SearchResult[];
   ownerId?: string;
@@ -1390,10 +1443,17 @@ async function prepareCoverageGateResults(args: {
   telemetry: SearchTelemetry;
   metadataCache: DocumentRankingMetadataCache;
   timing: SearchTiming;
+  evaluation?: RagEvaluationContext;
 }) {
   const startedAt = Date.now();
   const candidates = await measureSearchPhase(args.timing, "metadata_hydration", () =>
-    attachDocumentRankingMetadata(args.supabase, args.candidates, args.ownerId, args.metadataCache),
+    attachDocumentRankingMetadata(
+      args.supabase,
+      args.candidates,
+      args.ownerId,
+      args.metadataCache,
+      args.evaluation,
+    ),
   );
   let results = await measureSearchPhase(args.timing, "visual_hydration", () =>
     attachPageVisualEvidence(
@@ -1405,7 +1465,10 @@ async function prepareCoverageGateResults(args: {
         topK: args.topK,
         maxResultsPerDocument: args.maxResultsPerDocument,
         telemetry: args.telemetry,
+        ranking: args.evaluation?.configuration.ranking,
+        comparisonTimeMs: args.evaluation ? Date.parse(args.evaluation.ragContextSnapshot.resolvedAt) : undefined,
       }),
+      args.evaluation,
     ),
   );
   results = applySecondStageRerankIfNeeded({
@@ -1413,6 +1476,7 @@ async function prepareCoverageGateResults(args: {
     results,
     telemetry: args.telemetry,
     topK: args.topK,
+    ranking: args.evaluation?.configuration.ranking,
   });
   args.telemetry.rerank_latency_ms += Date.now() - startedAt;
   return results;
@@ -1531,9 +1595,30 @@ function finishSearch<T extends { telemetry: SearchTelemetry }>(timing: SearchTi
 export async function searchChunksWithTelemetry(
   args: SearchChunksArgs,
 ): Promise<{ results: SearchResult[]; telemetry: SearchTelemetry }> {
-  const searchTiming: SearchTiming = { startedAt: Date.now(), phases: {} };
-  args = { ...args, accessScope: retrievalAccessScopeForArgs(args) };
-  assertGlobalSearchAllowed(args);
+  return searchChunksWithTelemetryInternal(args);
+}
+
+async function searchChunksWithTelemetryInternal(
+  args: SearchChunksArgs,
+  evaluation?: RagEvaluationContext,
+): Promise<{ results: SearchResult[]; telemetry: SearchTelemetry }> {
+  const evaluationGeneration = evaluation?.configuration.generation;
+  const evaluationRequestContext = evaluation ? resolveEvaluationRagCacheContext(args, evaluation) : null;
+  if (evaluationRequestContext) {
+    args = {
+      ...args,
+      documentIds: args.documentIds ?? (args.documentId ? undefined : [...evaluation!.documentIds]),
+      ...evaluationRequestContext,
+    };
+  }
+  const searchTiming: SearchTiming = { startedAt: evaluation?.now() ?? Date.now(), phases: {} };
+  args = {
+    ...args,
+    accessScope: evaluation
+      ? { ownerId: evaluation.ownerId ?? undefined, includePublic: evaluation.includePublic }
+      : retrievalAccessScopeForArgs(args),
+  };
+  if (!evaluation) assertGlobalSearchAllowed(args);
   throwIfAborted(args.signal);
   const retrievalQuery = queryForClinicalMode(args.query, args.queryMode ?? "auto");
   if (hasAdversarialManipulationIntent(retrievalQuery)) {
@@ -1548,18 +1633,17 @@ export async function searchChunksWithTelemetry(
     recordSearchScoreTelemetry(telemetry, []);
     return finishSearch(searchTiming, { results: [] as SearchResult[], telemetry });
   }
-  const requestContext = await resolveRequestRagCacheContext(
-    args,
-    args.ragContextSnapshot?.rolloutVersion ?? "legacy",
-    {
-      readDocumentIndexGeneration: cacheIndexingVersion,
-    },
-  );
+  const requestContext = evaluationRequestContext
+    ? evaluationRequestContext
+    : await resolveRequestRagCacheContext(args, args.ragContextSnapshot?.rolloutVersion ?? "legacy", {
+        readDocumentIndexGeneration: cacheIndexingVersion,
+      });
   args = { ...args, ...requestContext };
   const { cacheContext, ragContextSnapshot } = requestContext;
-  const supabase = createAdminClient();
+  if (!cacheContext) throw new Error("RAG request cache context is unavailable.");
+  const supabase = evaluation ? null : createAdminClient();
   // Source-only retrieval never calls OpenAI embeddings and uses the lexical fast path.
-  const sourceOnlyRetrieval = isSourceOnlyMode();
+  const sourceOnlyRetrieval = evaluation ? evaluation.sourceOnly : isSourceOnlyMode();
   if (args.forceEmbedding && sourceOnlyRetrieval) {
     throw new Error("forceEmbedding requires embedding-capable retrieval; source-only mode cannot exercise vectors.");
   }
@@ -1588,7 +1672,8 @@ export async function searchChunksWithTelemetry(
     }
   })();
   const indexingVersionPromise = isSearchCacheLookupEnabled(args)
-    ? (cacheContext.indexingVersionAtRequestStart ??= cacheIndexingVersion(args, { forceRefresh: true }))
+    ? (cacheContext.indexingVersionAtRequestStart ??=
+        evaluation?.indexingVersionAtRequestStart ?? cacheIndexingVersion(args, { forceRefresh: true }))
     : undefined;
   const indexingVersionAtRetrievalStartPromise = indexingVersionPromise
     ? measureSearchPhase(searchTiming, "index_version", () => indexingVersionPromise)
@@ -1598,10 +1683,11 @@ export async function searchChunksWithTelemetry(
       corpusGrounding: corpusGroundingScope,
       ownerId: args.ownerId,
       signal: args.signal,
+      evaluation,
     }),
   );
   const ragAliasesPromise = measureSearchPhase(searchTiming, "alias_load", () =>
-    fetchEnabledRagAliases(supabase, args.ownerId, args.accessScope, args.signal),
+    fetchEnabledRagAliases(supabase, args.ownerId, args.accessScope, args.signal, evaluation),
   );
   const [indexingVersionAtRetrievalStart, queryAnalysis, ragAliases] = await Promise.all([
     indexingVersionAtRetrievalStartPromise,
@@ -1636,16 +1722,52 @@ export async function searchChunksWithTelemetry(
   ) => {
     if (semanticRerankAttempted) return results;
     semanticRerankAttempted = true;
+    if (
+      evaluation &&
+      (options.providerAvailable === false ||
+        !evaluation.providerAvailable ||
+        (options.requestModeEligible ?? !args.lexicalOnly) === false)
+    ) {
+      telemetry.semantic_rerank_invoked = false;
+      telemetry.semantic_rerank_outcome = "not_invoked";
+      return results;
+    }
     const reranked = await semanticRerankIfAmbiguous({
       query: retrievalQuery,
       results,
       telemetry,
       signal: args.signal,
-      safetyIdentifier: env.OPENAI_SAFETY_IDENTIFIER_SECRET ? openAISafetyIdentifier(args.ownerId) : undefined,
-      providerAvailable: options.providerAvailable,
+      safetyIdentifier:
+        !evaluation && env.OPENAI_SAFETY_IDENTIFIER_SECRET ? openAISafetyIdentifier(args.ownerId) : undefined,
+      enabled: evaluationGeneration?.semanticRerankEnabled,
+      providerAvailable: evaluation ? evaluation.providerAvailable : options.providerAvailable,
       requestModeEligible: options.requestModeEligible ?? !args.lexicalOnly,
+      model: evaluationGeneration?.semanticRerankModel,
+      generate: evaluation
+        ? (input, schema, providerOptions) =>
+            evaluation.providers
+              .generateRerank(input, schema, providerOptions, {
+                promptCacheRetention: evaluation.providerPolicy.promptCacheRetention,
+                promptCacheTtl: evaluation.providerPolicy.promptCacheTtl,
+                storeResponses: evaluation.providerPolicy.storeResponses,
+              })
+              .catch((error) => {
+                evaluation.failures.record({ code: "provider_error", operation: "rerank" });
+                throw error;
+              })
+        : undefined,
     });
     telemetry.rerank_latency_ms += telemetry.semantic_rerank_latency_ms ?? 0;
+    if (
+      evaluation &&
+      telemetry.semantic_rerank_outcome === "fallback" &&
+      (telemetry.semantic_rerank_fallback_reason === "malformed_output" ||
+        telemetry.semantic_rerank_fallback_reason === "missing_candidate_id" ||
+        telemetry.semantic_rerank_fallback_reason === "duplicate_candidate_id" ||
+        telemetry.semantic_rerank_fallback_reason === "unknown_candidate_id")
+    ) {
+      evaluation.failures.record({ code: "malformed_result", operation: "rerank" });
+    }
     return reranked;
   };
   const ragAliasExpansions = selectRagAliasExpansions(retrievalQuery, ragAliases);
@@ -1653,14 +1775,16 @@ export async function searchChunksWithTelemetry(
   telemetry.rag_alias_expansion_count = ragAliasExpansions.length;
   const queryVariants = retrievalVariantPlan.servedVariants;
   telemetry.retrieval_query_variant_count = queryVariants.length;
-  const cached = await measureSearchPhase(searchTiming, "local_cache_lookup", () =>
-    getCachedSearch(args, queryClassification.queryClass, queryVariants, {
-      indexingVersionAtRequestStart: indexingVersionAtRetrievalStart,
-    }),
-  );
+  const cached = evaluation
+    ? null
+    : await measureSearchPhase(searchTiming, "local_cache_lookup", () =>
+        getCachedSearch(args, queryClassification.queryClass, queryVariants, {
+          indexingVersionAtRequestStart: indexingVersionAtRetrievalStart,
+        }),
+      );
   // Consult shared cache only after a local miss; count either layer as one request hit
   // (deep /api/health cache hit-rate — docs/observability-slos.md §4).
-  const sharedCached = cached
+  const sharedCached = evaluation || cached
     ? null
     : await measureSearchPhase(searchTiming, "shared_cache_lookup", () =>
         getSharedCachedSearch(args, queryClassification.queryClass, queryVariants, {
@@ -1688,17 +1812,30 @@ export async function searchChunksWithTelemetry(
     // RC6: before an unsupported exit, trigram-correct once so classification and every layer share
     // the corrected query. This cold path is recursion-bounded by `typoCorrected`.
     if (!args.typoCorrected && !sourceOnlyRetrieval) {
-      const { data: corrected } = await supabase.rpc("correct_clinical_query_terms", {
-        input_query: retrievalQuery,
-        min_sim: 0.45,
-      });
+      const corrected = evaluation
+        ? await acceptRagEvaluationRead(evaluation, "correct_terms", () =>
+            evaluation.readers.correctClinicalTerms({
+              ...ragEvaluationReadScope(evaluation),
+              input_query: retrievalQuery,
+              min_sim: 0.45,
+            }),
+          )
+        : (
+            await supabase!.rpc("correct_clinical_query_terms", {
+              input_query: retrievalQuery,
+              min_sim: 0.45,
+            })
+          ).data;
       if (typeof corrected === "string" && corrected && corrected.toLowerCase() !== retrievalQuery.toLowerCase()) {
-        const correctedSearch = await searchChunksWithTelemetry({
-          ...args,
-          cacheContext,
-          query: corrected,
-          typoCorrected: true,
-        });
+        const correctedSearch = await searchChunksWithTelemetryInternal(
+          {
+            ...args,
+            cacheContext,
+            query: corrected,
+            typoCorrected: true,
+          },
+          evaluation,
+        );
         for (const [phase, latency] of Object.entries(correctedSearch.telemetry.retrieval_phase_latencies_ms ?? {})) {
           searchTiming.phases[phase] = (searchTiming.phases[phase] ?? 0) + latency;
         }
@@ -1712,19 +1849,36 @@ export async function searchChunksWithTelemetry(
     // Skip only when a reachable classifier could have produced a nondeterministic soft-tail zero.
     if (
       !shouldSkipUnsupportedSoftTailCacheWrite(retrievalQuery, queryAnalysis, {
-        openAiApiKeyPresent: Boolean(env.OPENAI_API_KEY),
+        openAiApiKeyPresent: evaluation ? evaluation.providerAvailable : Boolean(env.OPENAI_API_KEY),
       })
     ) {
-      await setCachedSearch(args, [], telemetry, queryVariants, { indexingVersionAtRetrievalStart });
+      if (!evaluation) await setCachedSearch(args, [], telemetry, queryVariants, { indexingVersionAtRetrievalStart });
     }
     return finishSearch(searchTiming, { results: [] as SearchResult[], telemetry });
   }
 
   let expandedQuery = normalizeRetrievalVariant([expandClinicalQuery(retrievalQuery), ...ragAliasExpansions].join(" "));
+  const embedForRequest = (query: string, options?: { signal?: AbortSignal }) =>
+    evaluation
+      ? evaluation.providers
+          .embedQuery({
+            query,
+            model: evaluationGeneration!.embeddingModel,
+            dimensions: evaluationGeneration!.embeddingDimensions,
+            timeoutMs: evaluation.providerPolicy.requestTimeoutMs,
+            maxRetries: evaluation.providerPolicy.embeddingMaxRetries,
+            signal: options?.signal,
+          })
+          .then((result) => ({ embedding: [...result.embedding], cacheHit: result.cacheHit }))
+          .catch((error) => {
+            evaluation.failures.record({ code: "provider_error", operation: "embed_query" });
+            throw error;
+          })
+      : embedTextWithTelemetry(query, options);
   const { promise: prefetchedEmbedding, query: prefetchedEmbeddingQuery } = prefetchEmbedding(
     !(sourceOnlyRetrieval || args.lexicalOnly),
     expandedQuery,
-    (options) => embedTextWithTelemetry(expandedQuery, options),
+    (options) => embedForRequest(expandedQuery, options),
     { signal: args.signal },
   );
   if (prefetchedEmbedding) telemetry.embedding_prefetched = true;
@@ -1750,6 +1904,7 @@ export async function searchChunksWithTelemetry(
     matchCount: textCandidateCount,
     telemetry,
     signal: args.signal,
+    evaluation,
   });
   telemetry.text_candidate_count = textData.length;
   telemetry.text_fast_path_latency_ms = Date.now() - textRpcStartedAt;
@@ -1763,7 +1918,13 @@ export async function searchChunksWithTelemetry(
   if (textData.length) {
     const rerankStartedAt = Date.now();
     const textCandidates = await measureSearchPhase(searchTiming, "metadata_hydration", () =>
-      attachDocumentRankingMetadata(supabase, textData as SearchResult[], args.ownerId, documentRankingMetadataCache),
+      attachDocumentRankingMetadata(
+        supabase,
+        textData as SearchResult[],
+        args.ownerId,
+        documentRankingMetadataCache,
+        evaluation,
+      ),
     );
     expandedQuery = expandClinicalQueryWithCandidateMetadata(args.query, expandedQuery, textCandidates);
     const baseTextResults = selectRankedRetrievalResults({
@@ -1773,25 +1934,29 @@ export async function searchChunksWithTelemetry(
       topK: args.topK ?? 8,
       maxResultsPerDocument,
       telemetry,
+      ranking: evaluation?.configuration.ranking,
+      comparisonTimeMs: evaluation ? Date.parse(evaluation.ragContextSnapshot.resolvedAt) : undefined,
     });
 
     const baseTextFastPath = decideTextFastPath(args.query, baseTextResults, queryClassification.queryClass);
     if (!args.forceEmbedding && shouldReturnBeforeMemory(queryClassification.queryClass, baseTextFastPath)) {
       textFastResults = await measureSearchPhase(searchTiming, "visual_hydration", () =>
-        attachPageVisualEvidence(supabase, baseTextResults),
+        attachPageVisualEvidence(supabase, baseTextResults, evaluation),
       );
       textFastResults = applySecondStageRerankIfNeeded({
         queryClass: queryClassification.queryClass,
         results: textFastResults,
         telemetry,
         topK: args.topK ?? 8,
+        ranking: evaluation?.configuration.ranking,
       });
       telemetry.rerank_latency_ms += Date.now() - rerankStartedAt;
       markEmbeddingSkippedByTextFastPath(telemetry, baseTextFastPath.reason);
       telemetry.retrieval_strategy = "text_fast_path";
       textFastResults = await applySemanticRerankOnce(textFastResults);
       recordSearchScoreTelemetry(telemetry, textFastResults);
-      await setCachedSearch(args, textFastResults, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
+      if (!evaluation)
+        await setCachedSearch(args, textFastResults, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
       return finishSearch(searchTiming, { results: textFastResults, telemetry });
     }
 
@@ -1805,6 +1970,7 @@ export async function searchChunksWithTelemetry(
         documentIds: documentFilterList,
         matchCount: candidateCount,
         cardCache: memoryCardCache,
+        evaluation,
       }),
     );
     telemetry.memory_card_count = Math.max(telemetry.memory_card_count ?? 0, memoryBoost.cards.length);
@@ -1822,15 +1988,18 @@ export async function searchChunksWithTelemetry(
       topK: args.topK ?? 8,
       maxResultsPerDocument,
       telemetry,
+      ranking: evaluation?.configuration.ranking,
+      comparisonTimeMs: evaluation ? Date.parse(evaluation.ragContextSnapshot.resolvedAt) : undefined,
     });
     textFastResults = await measureSearchPhase(searchTiming, "visual_hydration", () =>
-      attachPageVisualEvidence(supabase, textFastResults),
+      attachPageVisualEvidence(supabase, textFastResults, evaluation),
     );
     textFastResults = applySecondStageRerankIfNeeded({
       queryClass: queryClassification.queryClass,
       results: textFastResults,
       telemetry,
       topK: args.topK ?? 8,
+      ranking: evaluation?.configuration.ranking,
     });
     telemetry.rerank_latency_ms += Date.now() - rerankStartedAt;
 
@@ -1840,7 +2009,8 @@ export async function searchChunksWithTelemetry(
       telemetry.retrieval_strategy = "text_fast_path";
       textFastResults = await applySemanticRerankOnce(textFastResults);
       recordSearchScoreTelemetry(telemetry, textFastResults);
-      await setCachedSearch(args, textFastResults, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
+      if (!evaluation)
+        await setCachedSearch(args, textFastResults, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
       return finishSearch(searchTiming, { results: textFastResults, telemetry });
     }
   }
@@ -1862,6 +2032,7 @@ export async function searchChunksWithTelemetry(
       telemetry,
       cache: chunkLoadCache,
       signal: args.signal,
+      evaluation,
     });
     throwIfAborted(args.signal);
     const tableFactLatencyMs = Date.now() - tableFactStartedAt;
@@ -1887,6 +2058,7 @@ export async function searchChunksWithTelemetry(
       matchCount: candidateCount,
       telemetry,
       signal: args.signal,
+      evaluation,
     });
     throwIfAborted(args.signal);
     const documentLookupLatencyMs = Date.now() - documentLookupStartedAt;
@@ -1909,6 +2081,7 @@ export async function searchChunksWithTelemetry(
         metadataCache: documentRankingMetadataCache,
         cardCache: memoryCardCache,
         measurePhase: (phase, operation) => measureSearchPhase(searchTiming, phase, operation),
+        evaluation,
       });
       const documentLookupCandidates = memoryBoost.metadataCandidates;
       expandedQuery = expandClinicalQueryWithCandidateMetadata(args.query, expandedQuery, documentLookupCandidates);
@@ -1935,7 +2108,10 @@ export async function searchChunksWithTelemetry(
             topK: args.topK ?? 8,
             maxResultsPerDocument,
             telemetry,
+            ranking: evaluation?.configuration.ranking,
+            comparisonTimeMs: evaluation ? Date.parse(evaluation.ragContextSnapshot.resolvedAt) : undefined,
           }),
+          evaluation,
         ),
       );
       documentLookupResults = applySecondStageRerankIfNeeded({
@@ -1943,6 +2119,7 @@ export async function searchChunksWithTelemetry(
         results: documentLookupResults,
         telemetry,
         topK: args.topK ?? 8,
+        ranking: evaluation?.configuration.ranking,
       });
       telemetry.rerank_latency_ms += Date.now() - rerankStartedAt;
 
@@ -1959,9 +2136,10 @@ export async function searchChunksWithTelemetry(
         telemetry.retrieval_strategy = "document_lookup_fast_path";
         documentLookupResults = await applySemanticRerankOnce(documentLookupResults);
         recordSearchScoreTelemetry(telemetry, documentLookupResults);
-        await setCachedSearch(args, documentLookupResults, telemetry, queryVariants, {
-          indexingVersionAtRetrievalStart,
-        });
+        if (!evaluation)
+          await setCachedSearch(args, documentLookupResults, telemetry, queryVariants, {
+            indexingVersionAtRetrievalStart,
+          });
         return finishSearch(searchTiming, { results: documentLookupResults, telemetry });
       }
       textFastResults = mergeSearchResults(documentLookupResults, textFastResults);
@@ -1980,6 +2158,7 @@ export async function searchChunksWithTelemetry(
       telemetry,
       metadataCache: documentRankingMetadataCache,
       timing: searchTiming,
+      evaluation,
     });
     const coverageGate = evaluateEvidenceCoverageGate(args.query, coverageGateResults, queryClassification.queryClass);
     applyCoverageGateTelemetry(telemetry, coverageGate, !args.forceEmbedding && coverageGate.accepted);
@@ -1987,7 +2166,8 @@ export async function searchChunksWithTelemetry(
       telemetry.retrieval_strategy = coverageGate.strategy;
       const semanticResults = await applySemanticRerankOnce(coverageGateResults);
       recordSearchScoreTelemetry(telemetry, semanticResults);
-      await setCachedSearch(args, semanticResults, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
+      if (!evaluation)
+        await setCachedSearch(args, semanticResults, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
       return finishSearch(searchTiming, { results: semanticResults, telemetry });
     }
     textFastResults = mergeSearchResults(coverageGateResults, textFastResults);
@@ -2014,13 +2194,13 @@ export async function searchChunksWithTelemetry(
   try {
     embeddingResult = await (prefetchedEmbeddingQuery === expandedQuery && prefetchedEmbedding
       ? prefetchedEmbedding
-      : embedTextWithTelemetry(expandedQuery, { signal: args.signal }));
+      : embedForRequest(expandedQuery, { signal: args.signal }));
     throwIfAborted(args.signal);
   } catch (error) {
     throwIfAborted(args.signal);
     // In auto mode a failed embedding call (e.g. quota exhausted) degrades to the lexical
     // results already gathered rather than failing the whole search. "openai" mode rethrows.
-    if (args.forceEmbedding || !allowsAutoDegrade()) throw error;
+    if (args.forceEmbedding || evaluation || !allowsAutoDegrade()) throw error;
     telemetry.embedding_skipped = true;
     telemetry.embedding_skip_reason = sourceOnlyReason(error);
     telemetry.vector_skipped_reason = classifyProviderFailure(error);
@@ -2065,6 +2245,7 @@ export async function searchChunksWithTelemetry(
         telemetry,
         cache: chunkLoadCache,
         signal: args.signal,
+        evaluation,
       });
       return { candidates, latencyMs: Date.now() - startedAt };
     })(),
@@ -2082,25 +2263,40 @@ export async function searchChunksWithTelemetry(
         telemetry,
         cache: chunkLoadCache,
         signal: args.signal,
+        evaluation,
       });
       return { candidates, latencyMs: Date.now() - startedAt };
     })(),
     (async () => {
       const startedAt = Date.now();
-      const { data, error } = await callVersionedRetrievalRpc(
-        supabase,
-        "match_document_chunks_hybrid_v2",
-        "match_document_chunks_hybrid",
-        {
-          query_embedding: embedding as unknown as string,
-          query_text: args.forceEmbedding ? "" : textSearchQuery,
-          match_count: candidateCount,
-          min_similarity: minSimilarity,
-          document_filters: documentFilterList ?? undefined,
-          ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
-        },
-        args.signal,
-      );
+      const { data, error } = evaluation
+        ? {
+            data: await acceptRagEvaluationRead(evaluation, "hybrid_chunks", () =>
+              evaluation.readers.readHybridChunks({
+                ...ragEvaluationReadScope(evaluation),
+                query_embedding: `[${embedding.join(",")}]`,
+                query_text: args.forceEmbedding ? "" : textSearchQuery,
+                match_count: candidateCount,
+                min_similarity: minSimilarity,
+                document_filters: documentFilterList ?? null,
+              }),
+            ),
+            error: null,
+          }
+        : await callVersionedRetrievalRpc(
+            supabase!,
+            "match_document_chunks_hybrid_v2",
+            "match_document_chunks_hybrid",
+            {
+              query_embedding: embedding as unknown as string,
+              query_text: args.forceEmbedding ? "" : textSearchQuery,
+              match_count: candidateCount,
+              min_similarity: minSimilarity,
+              document_filters: documentFilterList ?? undefined,
+              ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
+            },
+            args.signal,
+          );
       return { data, error, latencyMs: Date.now() - startedAt };
     })(),
   ]);
@@ -2162,6 +2358,7 @@ export async function searchChunksWithTelemetry(
       metadataCache: documentRankingMetadataCache,
       cardCache: memoryCardCache,
       measurePhase: (phase, operation) => measureSearchPhase(searchTiming, phase, operation),
+      evaluation,
     });
     telemetry.memory_card_count = Math.max(telemetry.memory_card_count ?? 0, memoryBoost.cards.length);
     telemetry.memory_top_score = Math.max(
@@ -2178,7 +2375,10 @@ export async function searchChunksWithTelemetry(
           topK: args.topK ?? 8,
           maxResultsPerDocument,
           telemetry,
+          ranking: evaluation?.configuration.ranking,
+          comparisonTimeMs: evaluation ? Date.parse(evaluation.ragContextSnapshot.resolvedAt) : undefined,
         }),
+        evaluation,
       ),
     );
     results = applySecondStageRerankIfNeeded({
@@ -2186,12 +2386,14 @@ export async function searchChunksWithTelemetry(
       results,
       telemetry,
       topK: args.topK ?? 8,
+      ranking: evaluation?.configuration.ranking,
     });
     telemetry.rerank_latency_ms += Date.now() - rerankStartedAt;
     telemetry.retrieval_strategy = "hybrid";
     results = await applySemanticRerankOnce(results);
     recordSearchScoreTelemetry(telemetry, results);
-    await setCachedSearch(args, results, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
+    if (!evaluation)
+      await setCachedSearch(args, results, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
     return finishSearch(searchTiming, { results, telemetry });
   }
 
@@ -2200,19 +2402,32 @@ export async function searchChunksWithTelemetry(
   const fallbackRpcStartedAt = Date.now();
   const resultSets = await Promise.all(
     vectorFilters.map(async (documentFilter) => {
-      const { data, error } = await callVersionedRetrievalRpc(
-        supabase,
-        "match_document_chunks_v2",
-        "match_document_chunks",
-        {
-          query_embedding: embedding as unknown as string,
-          match_count: candidateCount,
-          min_similarity: minSimilarity,
-          document_filter: documentFilter ?? undefined,
-          ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
-        },
-        args.signal,
-      );
+      const { data, error } = evaluation
+        ? {
+            data: await acceptRagEvaluationRead(evaluation, "vector_chunks", () =>
+              evaluation.readers.readVectorChunks({
+                ...ragEvaluationReadScope(evaluation),
+                query_embedding: `[${embedding.join(",")}]`,
+                match_count: candidateCount,
+                min_similarity: minSimilarity,
+                document_filter: documentFilter,
+              }),
+            ),
+            error: null,
+          }
+        : await callVersionedRetrievalRpc(
+            supabase!,
+            "match_document_chunks_v2",
+            "match_document_chunks",
+            {
+              query_embedding: embedding as unknown as string,
+              match_count: candidateCount,
+              min_similarity: minSimilarity,
+              document_filter: documentFilter ?? undefined,
+              ...retrievalRpcScopeArgs(retrievalAccessScopeForArgs(args)),
+            },
+            args.signal,
+          );
 
       if (error) throw new Error(error.message);
       const rows = data ?? [];
@@ -2251,6 +2466,7 @@ export async function searchChunksWithTelemetry(
     metadataCache: documentRankingMetadataCache,
     cardCache: memoryCardCache,
     measurePhase: (phase, operation) => measureSearchPhase(searchTiming, phase, operation),
+    evaluation,
   });
   telemetry.memory_card_count = Math.max(telemetry.memory_card_count ?? 0, memoryBoost.cards.length);
   telemetry.memory_top_score = Math.max(
@@ -2267,7 +2483,10 @@ export async function searchChunksWithTelemetry(
         topK: args.topK ?? 8,
         maxResultsPerDocument,
         telemetry,
+        ranking: evaluation?.configuration.ranking,
+        comparisonTimeMs: evaluation ? Date.parse(evaluation.ragContextSnapshot.resolvedAt) : undefined,
       }),
+      evaluation,
     ),
   );
   results = applySecondStageRerankIfNeeded({
@@ -2275,18 +2494,128 @@ export async function searchChunksWithTelemetry(
     results,
     telemetry,
     topK: args.topK ?? 8,
+    ranking: evaluation?.configuration.ranking,
   });
   telemetry.rerank_latency_ms += Date.now() - rerankStartedAt;
   telemetry.retrieval_strategy = "vector_fallback";
   results = await applySemanticRerankOnce(results);
   recordSearchScoreTelemetry(telemetry, results);
-  await setCachedSearch(args, results, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
+  if (!evaluation) await setCachedSearch(args, results, telemetry, queryVariants, { indexingVersionAtRetrievalStart });
   return finishSearch(searchTiming, { results, telemetry });
 }
 
 /** Build related documents safe. */
-async function buildRelatedDocumentsSafe(args: { query: string; results: SearchResult[]; ownerId?: string }) {
+function compactEvaluationRelatedSummary(summary?: string | null) {
+  if (!summary) return null;
+  const clean = cleanClinicalSummaryText(summary).replace(/\s+/g, " ").replace(/^[-*]\s*/g, "").trim();
+  if (!clean) return null;
+  return clean.length <= 220 ? clean : `${clean.slice(0, 217).trim()}...`;
+}
+
+async function buildRelatedDocumentsSafe(args: {
+  query: string;
+  results: SearchResult[];
+  ownerId?: string;
+  evaluation?: RagEvaluationContext;
+}) {
   try {
+    if (args.results.length === 0) return [];
+    if (args.evaluation) {
+      const evaluation = args.evaluation;
+      const sourceDocumentIds = Array.from(new Set(args.results.map((result) => result.document_id)));
+      const [metadataRows, visualRows] = await Promise.all([
+        acceptRagEvaluationRead(evaluation, "related_documents", () =>
+          evaluation.readers.readRelatedDocuments({
+            ...ragEvaluationReadScope(evaluation),
+            document_ids: sourceDocumentIds,
+          }),
+        ),
+        acceptRagEvaluationRead(evaluation, "visual_rows", () =>
+          evaluation.readers.readVisualCounts({
+            ...ragEvaluationReadScope(evaluation),
+            document_ids: sourceDocumentIds,
+          }),
+        ),
+      ]);
+      const metadataByDocument = new Map(metadataRows.map((row) => [row.document_id, row] as const));
+      const visualCounts = new Map<string, { imageCount: number; tableCount: number }>();
+      const coverImageIds = new Map<string, string>();
+      for (const documentId of sourceDocumentIds) visualCounts.set(documentId, { imageCount: 0, tableCount: 0 });
+      for (const row of visualRows) {
+        const current = visualCounts.get(row.document_id) ?? { imageCount: 0, tableCount: 0 };
+        if (row.source_kind === "cover_page") {
+          if (!coverImageIds.has(row.document_id)) coverImageIds.set(row.document_id, row.id);
+        } else if (isClinicalImageEvidence(row)) {
+          current.imageCount += 1;
+          if (row.source_kind === "table_crop") current.tableCount += 1;
+        }
+        visualCounts.set(row.document_id, current);
+      }
+      const grouped = new Map<
+        string,
+        {
+          document_id: string;
+          title: string;
+          file_name: string;
+          best_pages: number[];
+          best_chunk_ids: string[];
+          image_count: number;
+          score: number;
+        }
+      >();
+      for (const result of args.results) {
+        const existing = grouped.get(result.document_id);
+        const score = result.hybrid_score ?? result.similarity;
+        const page = result.page_number ?? null;
+        if (!existing) {
+          grouped.set(result.document_id, {
+            document_id: result.document_id,
+            title: result.title,
+            file_name: result.file_name,
+            best_pages: page ? [page] : [],
+            best_chunk_ids: [result.id],
+            image_count: result.images?.filter((image) => isClinicalImageEvidence(image)).length ?? 0,
+            score,
+          });
+          continue;
+        }
+        existing.score = Math.max(existing.score, score);
+        if (page && !existing.best_pages.includes(page)) existing.best_pages.push(page);
+        if (!existing.best_chunk_ids.includes(result.id)) existing.best_chunk_ids.push(result.id);
+        existing.image_count += result.images?.filter((image) => isClinicalImageEvidence(image)).length ?? 0;
+      }
+      const queryTokens = new Set(
+        args.query
+          .toLowerCase()
+          .split(/\W+/)
+          .filter((token) => token.length > 2),
+      );
+      return Array.from(grouped.values())
+        .map((document) => {
+          const metadata = metadataByDocument.get(document.document_id);
+          const labels = [...(metadata?.labels ?? [])];
+          const matchingLabel = labels.find((label) => queryTokens.has(label.label.toLowerCase()));
+          const counts = visualCounts.get(document.document_id);
+          return {
+            document_id: document.document_id,
+            title: document.title,
+            file_name: document.file_name,
+            labels: labels.sort((a, b) => b.confidence - a.confidence).slice(0, 8),
+            summary: compactEvaluationRelatedSummary(metadata?.summary),
+            best_pages: document.best_pages.slice(0, 5),
+            best_chunk_ids: document.best_chunk_ids.slice(0, 5),
+            image_count: Math.max(document.image_count, counts?.imageCount ?? 0),
+            table_count: counts?.tableCount ?? 0,
+            cover_image_id: coverImageIds.get(document.document_id) ?? null,
+            match_reason: matchingLabel
+              ? `Matched label: ${matchingLabel.label}`
+              : `Matched ${document.best_chunk_ids.length} indexed passage${document.best_chunk_ids.length === 1 ? "" : "s"}`,
+            score: document.score,
+          } satisfies RelatedDocument;
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 6);
+    }
     return await fetchRelatedDocuments({
       supabase: createAdminClient(),
       query: args.query,
@@ -2304,8 +2633,84 @@ export async function searchChunks(args: SearchChunksArgs) {
   return results;
 }
 
+export async function searchChunksForEvaluation(
+  args: SearchChunksArgs,
+  evaluation: RagEvaluationContext,
+): Promise<SearchResult[]> {
+  const search = await searchChunksWithTelemetryForEvaluation(args, evaluation);
+  return search.results;
+}
+
+export async function searchChunksWithTelemetryForEvaluation(
+  args: SearchChunksArgs,
+  evaluation: RagEvaluationContext,
+): Promise<{ results: SearchResult[]; telemetry: SearchTelemetry }> {
+  const search = await searchChunksWithTelemetryInternal(args, evaluation);
+  evaluation.failures.assertComplete();
+  return search;
+}
+
+/** Internal U04 provider seam. It preserves the ordinary answer schema and request options. */
+export function generateAnswerForEvaluation(
+  evaluation: RagEvaluationContext,
+  input: string,
+  contextResults: readonly SearchResult[],
+  options: Readonly<{
+    model: string;
+    queryClass: RagQueryClass;
+    useStrongReasoning: boolean;
+    maxOutputTokens: number;
+    timeoutMs: number;
+    signal?: AbortSignal;
+  }>,
+) {
+  resolveEvaluationRagCacheContext({ ownerId: evaluation.ownerId ?? undefined }, evaluation);
+  const generation = evaluation.configuration.generation;
+  const expectedModel = options.useStrongReasoning ? generation.strongModel : generation.fastModel;
+  const strongRetryMaxOutputTokens = Math.max(generation.maxOutputTokens * 2, 24_000);
+  if (
+    options.model !== expectedModel ||
+    (options.maxOutputTokens !== generation.maxOutputTokens &&
+      (!options.useStrongReasoning || options.maxOutputTokens !== strongRetryMaxOutputTokens)) ||
+    !Number.isInteger(options.timeoutMs) ||
+    options.timeoutMs < 1 ||
+    options.timeoutMs > evaluation.providerPolicy.answerTimeoutMs
+  ) {
+    evaluation.failures.record({ code: "context_mismatch", operation: "context" });
+    throw new Error("U04 evaluation generation request does not match its admitted configuration.");
+  }
+  return evaluation.providers.generateAnswer(input, answerJsonOutputSchemaForResults([...contextResults]), {
+    model: options.model,
+    maxOutputTokens: options.maxOutputTokens,
+    operation: "answer",
+    schemaName: "clinical_rag_answer",
+    instructions: answerInstructions,
+    promptCacheKey: generation.promptVersion,
+    timeoutMs: options.timeoutMs,
+    maxRetries: 0,
+    reasoningEffort: options.useStrongReasoning
+      ? strongReasoningEffortForQueryClass(options.queryClass, generation.strongReasoningEffort)
+      : generation.fastReasoningEffort,
+    textVerbosity: generation.answerVerbosity,
+    promptCacheRetention: evaluation.providerPolicy.promptCacheRetention,
+    promptCacheTtl: evaluation.providerPolicy.promptCacheTtl,
+    storeResponses: evaluation.providerPolicy.storeResponses,
+    signal: options.signal,
+  }).then((generated) => {
+    // Record the first incomplete provider response before an ordinary retry
+    // can replace it with a successful response.
+    if (generated.truncated) evaluation.failures.record({ code: "malformed_result", operation: "generate_answer" });
+    return generated;
+  });
+}
+
 /** Parse answer json. */
-export function parseAnswerJson(raw: string, results: SearchResult[], query?: string): RagAnswer {
+export function parseAnswerJson(
+  raw: string,
+  results: SearchResult[],
+  query?: string,
+  onMalformed?: () => void,
+): RagAnswer {
   try {
     const parsed = answerJsonSchema.parse(JSON.parse(raw));
     const { citations, modelCited, proposedCount, invalidCount } = sanitizeCitations(parsed.citations, results);
@@ -2351,6 +2756,7 @@ export function parseAnswerJson(raw: string, results: SearchResult[], query?: st
     });
     return enrichGroundedReviewCitations(applyNumericVerification(coherenceChecked), results, 2, query);
   } catch (error) {
+    onMalformed?.();
     console.warn("Failed to parse answer payload, falling back to safe text:", safeErrorLogDetails(error));
     return safeFallbackAnswer(raw, results, query);
   }
@@ -2398,16 +2804,31 @@ export async function answerQuestion(query: string, documentId?: string) {
 }
 /** Answer question with scope. */
 export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs): Promise<RagAnswer> {
-  const startedAt = Date.now();
+  return answerQuestionWithScopeInternal(args);
+}
+
+async function answerQuestionWithScopeInternal(
+  args: AnswerQuestionWithScopeArgs,
+  evaluation?: RagEvaluationContext,
+): Promise<RagAnswer> {
+  if (evaluation) {
+    args = {
+      ...args,
+      documentIds: args.documentIds ?? (args.documentId ? undefined : [...evaluation.documentIds]),
+      ...resolveEvaluationRagCacheContext(args, evaluation),
+    };
+  }
+  const startedAt = evaluation?.now() ?? Date.now();
   throwIfAborted(args.signal);
   const adversarialQuery = hasAdversarialManipulationIntent(queryForClinicalMode(args.query, args.queryMode ?? "auto"));
-  if (!adversarialQuery) {
+  if (!adversarialQuery && !evaluation) {
     const requestContext = await resolveRequestRagCacheContext(args, args.observationContext?.rolloutMode ?? "legacy", {
       readDocumentIndexGeneration: cacheIndexingVersion,
     });
     args = { ...args, ...requestContext };
   }
   const coalescingEnabled =
+    !evaluation &&
     !adversarialQuery &&
     answerCacheAllowedForOwner(args.ownerId) &&
     !args.skipCache &&
@@ -2457,7 +2878,7 @@ export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs)
   // that intentionally bypass cache/coalescing must not make a replica look
   // ineffective, and neither keys nor clinical content leave this function.
   if (inflightKey) recordAnswerOrigination();
-  const pending = answerQuestionWithScopeUncoalesced(args, startedAt).finally(() => {
+  const pending = answerQuestionWithScopeUncoalesced(args, startedAt, evaluation).finally(() => {
     if (inflightKey) {
       answerInflight.delete(inflightKey);
       recordAnswerOriginationFinished();
@@ -2466,24 +2887,44 @@ export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs)
   if (inflightKey) answerInflight.set(inflightKey, pending);
   return pending;
 }
+
+export async function answerQuestionWithScopeForEvaluation(
+  args: AnswerQuestionWithScopeArgs,
+  evaluation: RagEvaluationContext,
+): Promise<RagAnswer> {
+  const answer = await answerQuestionWithScopeInternal(args, evaluation);
+  evaluation.failures.assertComplete();
+  return answer;
+}
 /** Answer question with scope uncoalesced. */
 async function answerQuestionWithScopeUncoalesced(
   args: AnswerQuestionWithScopeArgs,
   startedAt: number,
+  evaluation?: RagEvaluationContext,
 ): Promise<RagAnswer> {
+  const evaluationGeneration = evaluation?.configuration.generation;
+  const fastAnswerModel = evaluationGeneration?.fastModel ?? env.OPENAI_FAST_ANSWER_MODEL;
+  const strongAnswerModel = evaluationGeneration?.strongModel ?? env.OPENAI_STRONG_ANSWER_MODEL;
+  const maxOutputTokens = evaluationGeneration?.maxOutputTokens ?? env.OPENAI_MAX_OUTPUT_TOKENS;
+  const answerTimeoutMs = evaluation?.providerPolicy.answerTimeoutMs ?? env.OPENAI_ANSWER_TIMEOUT_MS;
+  const recordMalformedEvaluationAnswer = evaluation
+    ? () => evaluation.failures.record({ code: "malformed_result", operation: "generate_answer" })
+    : undefined;
   throwIfAborted(args.signal);
+  const finishEvaluationAnswer = (answer: RagAnswer, _sources: readonly SearchResult[]) => answer;
   const programmeQueryFields = (
     answer: RagAnswer,
     sources: readonly Pick<SearchResult, "id">[],
     routingReason?: string,
   ) => finalRagQueryFields(answer, args.finalizeTelemetryAnswer, sources, args.observationContext, routingReason);
-  assertGlobalSearchAllowed({
-    query: args.query,
-    documentId: args.documentId,
-    documentIds: args.documentIds,
-    ownerId: args.ownerId,
-    allowGlobalSearch: args.allowGlobalSearch,
-  });
+  if (!evaluation)
+    assertGlobalSearchAllowed({
+      query: args.query,
+      documentId: args.documentId,
+      documentIds: args.documentIds,
+      ownerId: args.ownerId,
+      allowGlobalSearch: args.allowGlobalSearch,
+    });
   const answerFocusQuery = queryForClinicalMode(args.query, args.queryMode ?? "auto");
   // Never serve a cached answer for an adversarial-manipulation query: a poisoned
   // entry written before this guard existed (or a shared-cache hit under an
@@ -2493,12 +2934,16 @@ async function answerQuestionWithScopeUncoalesced(
   const cacheContext = args.cacheContext ?? {};
   if (args.ragContextSnapshot) cacheContext.ragContextSnapshot ??= args.ragContextSnapshot;
   const answerCacheLookupEnabled =
-    !adversarialQuery && answerCacheAllowedForOwner(args.ownerId) && !args.skipCache && env.RAG_ANSWER_CACHE_TTL_MS > 0;
+    !evaluation &&
+    !adversarialQuery &&
+    answerCacheAllowedForOwner(args.ownerId) &&
+    !args.skipCache &&
+    env.RAG_ANSWER_CACHE_TTL_MS > 0;
   const indexingVersionPromise = answerCacheLookupEnabled
     ? (cacheContext.indexingVersionAtRequestStart ??= cacheIndexingVersion(args, { forceRefresh: true }))
-    : undefined;
+    : evaluation?.indexingVersionAtRequestStart;
   const indexingVersionAtRetrievalStart = indexingVersionPromise ? await indexingVersionPromise : null;
-  const cachedAnswer = adversarialQuery
+  const cachedAnswer = adversarialQuery || evaluation
     ? null
     : await getCachedAnswer(args, startedAt, { indexingVersionAtRequestStart: indexingVersionAtRetrievalStart });
   if (cachedAnswer) {
@@ -2526,7 +2971,7 @@ async function answerQuestionWithScopeUncoalesced(
     });
     return logRagQueryOutcomeForAnswerArgs(args, answer, "cache");
   }
-  const sharedCachedAnswer = adversarialQuery
+  const sharedCachedAnswer = adversarialQuery || evaluation
     ? null
     : await getSharedCachedAnswer(args, startedAt, { indexingVersionAtRequestStart: indexingVersionAtRetrievalStart });
   if (sharedCachedAnswer) {
@@ -2565,25 +3010,29 @@ async function answerQuestionWithScopeUncoalesced(
     routeMode: "strong",
     callerSignal: args.signal,
     startedAt,
+    now: evaluation?.now,
   });
   let search: Awaited<ReturnType<typeof searchChunksWithTelemetry>>;
   try {
     search = await retrievalDeadline.race(
-      searchChunksWithTelemetry({
-        query: args.query,
-        documentId: args.documentId,
-        documentIds: args.documentIds,
-        ownerId: args.ownerId,
-        accessScope: args.accessScope,
-        allowGlobalSearch: args.allowGlobalSearch,
-        topK: 12,
-        minSimilarity: 0.12,
-        skipCache: args.skipCache,
-        queryMode: args.queryMode,
-        signal: retrievalDeadline.signal,
-        cacheContext,
-        ragContextSnapshot: args.ragContextSnapshot,
-      }),
+      searchChunksWithTelemetryInternal(
+        {
+          query: args.query,
+          documentId: args.documentId,
+          documentIds: args.documentIds,
+          ownerId: args.ownerId,
+          accessScope: args.accessScope,
+          allowGlobalSearch: args.allowGlobalSearch,
+          topK: 12,
+          minSimilarity: 0.12,
+          skipCache: args.skipCache,
+          queryMode: args.queryMode,
+          signal: retrievalDeadline.signal,
+          cacheContext,
+          ragContextSnapshot: args.ragContextSnapshot,
+        },
+        evaluation,
+      ),
     );
   } finally {
     retrievalDeadline.dispose();
@@ -2649,6 +3098,7 @@ async function answerQuestionWithScopeUncoalesced(
     query: answerFocusQuery,
     results,
     ownerId: args.ownerId,
+    evaluation,
   });
   const routingStartedAt = Date.now();
   const routeFromRouting = chooseAnswerRoute({
@@ -2656,8 +3106,8 @@ async function answerQuestionWithScopeUncoalesced(
     results: answerInputResults,
     queryClass,
     conflictsOrGaps,
-    fastModel: env.OPENAI_FAST_ANSWER_MODEL,
-    strongModel: env.OPENAI_STRONG_ANSWER_MODEL,
+    fastModel: fastAnswerModel,
+    strongModel: strongAnswerModel,
   });
   const explicitlySelectedComparisonDocuments = Array.from(
     new Set([...(args.documentIds ?? []), ...(args.documentId ? [args.documentId] : [])]),
@@ -2699,13 +3149,19 @@ async function answerQuestionWithScopeUncoalesced(
   // the deterministic extractive path when evidence is usable, but preserve the confidence gate's
   // "unsupported" decision so weak evidence still fails closed to a source-gap answer rather than
   // producing a low-confidence source-only answer that looks authoritative.
-  const sourceOnlyAnswer = isSourceOnlyMode();
+  const sourceOnlyAnswer = evaluation ? evaluation.sourceOnly : isSourceOnlyMode();
   const route =
     sourceOnlyAnswer && gatedRoute.route.mode !== "unsupported"
       ? {
           ...gatedRoute.route,
           mode: "extractive" as const,
-          reason: `${gatedRoute.route.reason}; ${sourceOnlyReason()}`,
+          reason: `${gatedRoute.route.reason}; ${
+            evaluation
+              ? evaluationGeneration!.providerMode === "offline"
+                ? "source_only_offline_mode"
+                : "source_only_no_api"
+              : sourceOnlyReason()
+          }`,
         }
       : gatedRoute.route;
   const retrievalDiagnostics: RetrievalDiagnostics = {
@@ -2809,6 +3265,7 @@ async function answerQuestionWithScopeUncoalesced(
     routeMode: route.mode,
     callerSignal: args.signal,
     startedAt,
+    now: evaluation?.now,
   });
   // True exactly when pre-answer work (dominated by retrieval) consumed the whole route
   // budget before generation could start. Additive telemetry; deadlineExceeded unchanged.
@@ -2958,13 +3415,13 @@ async function answerQuestionWithScopeUncoalesced(
         retrievalStrategy: search.telemetry.retrieval_strategy,
         query: answerFocusQuery,
         analysis: queryAnalysis,
-        openAiApiKeyPresent: Boolean(env.OPENAI_API_KEY),
+        openAiApiKeyPresent: evaluation ? evaluation.providerAvailable : Boolean(env.OPENAI_API_KEY),
         corpusGrounding: search.telemetry.corpus_grounding,
       })
     )
-      await setCachedAnswer(args, finalizedAnswer, { indexingVersionAtRetrievalStart });
+      if (!evaluation) await setCachedAnswer(args, finalizedAnswer, { indexingVersionAtRetrievalStart });
     routeDeadline.dispose();
-    return finalizedAnswer;
+    return finishEvaluationAnswer(finalizedAnswer, finalizedAnswer.sources ?? []);
   }
 
   if (route.mode === "extractive") {
@@ -3148,9 +3605,9 @@ async function answerQuestionWithScopeUncoalesced(
       });
 
     if (answerRouteResultCanBeCached(routeDeadline, finalizedAnswer))
-      await setCachedAnswer(args, finalizedAnswer, { indexingVersionAtRetrievalStart });
+      if (!evaluation) await setCachedAnswer(args, finalizedAnswer, { indexingVersionAtRetrievalStart });
     routeDeadline.dispose();
-    return finalizedAnswer;
+    return finishEvaluationAnswer(finalizedAnswer, finalizedAnswer.sources ?? []);
   }
   /** Build answer input. */
   function buildAnswerInput(contextResults: SearchResult[]) {
@@ -3245,7 +3702,13 @@ ${buildRagSourceBlock(contextResults, { query: answerFocusQuery, queryClass })}`
 
     const contextPackStartedAt = Date.now();
     const packed = await routeDeadline.race(
-      packAdjacentSourceContext(createAdminClient(), contextResults, queryClass, contextPackOptions),
+      packAdjacentSourceContext(
+        evaluation ? null : createAdminClient(),
+        contextResults,
+        queryClass,
+        contextPackOptions,
+        evaluation,
+      ),
     );
     contextPackLatencyMs += Date.now() - contextPackStartedAt;
     packedContextCache.set(cacheKey, packed);
@@ -3271,22 +3734,35 @@ ${qualityRetryInstruction}`
     const generationStartedAt = Date.now();
     try {
       const result = await routeDeadline.race(
-        generateStructuredTextResult(input, answerJsonOutputSchemaForResults(contextResults), {
-          model,
-          maxOutputTokens: options?.maxOutputTokensOverride ?? env.OPENAI_MAX_OUTPUT_TOKENS,
-          operation: "answer",
-          schemaName: "clinical_rag_answer",
-          instructions: answerInstructions,
-          promptCacheKey: ragAnswerPromptVersion,
-          // Reserve-aware: never spend the recovery path's share of the route budget.
-          timeoutMs: routeDeadline.generationRequestTimeoutMs(env.OPENAI_ANSWER_TIMEOUT_MS),
-          maxRetries: 0,
-          reasoningEffort: useStrongReasoning
-            ? strongReasoningEffortForQueryClass(queryClass, env.OPENAI_STRONG_REASONING_EFFORT)
-            : env.OPENAI_FAST_REASONING_EFFORT,
-          signal: routeDeadline.signal,
-          safetyIdentifier: env.OPENAI_SAFETY_IDENTIFIER_SECRET ? openAISafetyIdentifier(args.ownerId) : undefined,
-        }),
+        evaluation
+          ? generateAnswerForEvaluation(evaluation, input, contextResults, {
+                model,
+                maxOutputTokens: options?.maxOutputTokensOverride ?? maxOutputTokens,
+                queryClass,
+                useStrongReasoning,
+                timeoutMs: routeDeadline.generationRequestTimeoutMs(answerTimeoutMs),
+                signal: routeDeadline.signal,
+              })
+              .catch((error) => {
+                evaluation.failures.record({ code: "provider_error", operation: "generate_answer" });
+                throw error;
+              })
+          : generateStructuredTextResult(input, answerJsonOutputSchemaForResults(contextResults), {
+              model,
+              maxOutputTokens: options?.maxOutputTokensOverride ?? maxOutputTokens,
+              operation: "answer",
+              schemaName: "clinical_rag_answer",
+              instructions: answerInstructions,
+              promptCacheKey: ragAnswerPromptVersion,
+              // Reserve-aware: never spend the recovery path's share of the route budget.
+              timeoutMs: routeDeadline.generationRequestTimeoutMs(answerTimeoutMs),
+              maxRetries: 0,
+              reasoningEffort: useStrongReasoning
+                ? strongReasoningEffortForQueryClass(queryClass, env.OPENAI_STRONG_REASONING_EFFORT)
+                : env.OPENAI_FAST_REASONING_EFFORT,
+              signal: routeDeadline.signal,
+              safetyIdentifier: env.OPENAI_SAFETY_IDENTIFIER_SECRET ? openAISafetyIdentifier(args.ownerId) : undefined,
+            }),
       );
       openAIUsage = addOpenAIUsage(openAIUsage, result.usage);
       if (result.requestId) openAIRequestIds.push(result.requestId);
@@ -3301,12 +3777,12 @@ ${qualityRetryInstruction}`
   // reasoning than the first attempt, so they get a boosted cap — escalating to strong on
   // the SAME budget is what previously burned a second full generation and still fell
   // through to "unsupported". Billed per token actually used, so this is free unless hit.
-  const strongRetryMaxOutputTokens = Math.max(env.OPENAI_MAX_OUTPUT_TOKENS * 2, 24000);
+  const strongRetryMaxOutputTokens = Math.max(maxOutputTokens * 2, 24000);
   // Cap cumulative generation wall-clock so a fast -> strong -> quality-repair chain can't
   // stack three ~timeout-length calls into a ~90s tail. The quality-repair is a polish pass
   // over an already-valid, cited strong answer, so once this budget is spent we keep the
   // strong answer rather than risk a third generation (and a truncation -> unsupported tail).
-  const generationTotalBudgetMs = env.OPENAI_ANSWER_TIMEOUT_MS * 2;
+  const generationTotalBudgetMs = answerTimeoutMs * 2;
 
   /** Generation incomplete reason. */
   function generationIncompleteReason(result: OpenAITextResult) {
@@ -3515,7 +3991,7 @@ ${qualityRetryInstruction}`
       const retryReason = `${generationRetryReason(retryPrefix, generated)}_retry_strong`;
       answerRetryCount += 1;
       answerRetryReasons.push(retryReason);
-      modelUsed = env.OPENAI_STRONG_ANSWER_MODEL;
+      modelUsed = strongAnswerModel;
       routingReason = `${route.reason}; ${retryReason}`;
       retriedWithStrong = true;
       await args.onProgress?.({
@@ -3525,7 +4001,7 @@ ${qualityRetryInstruction}`
             ? "Fast answer hit the output limit, retrying with the strong model and a larger output budget."
             : "Answer hit the output limit, retrying with a larger output budget.",
         mode: "strong",
-        model: env.OPENAI_STRONG_ANSWER_MODEL,
+        model: strongAnswerModel,
         reason: routingReason,
       });
       // Widen the retry context from the trimmed fast set to the full result set, but keep the P9
@@ -3533,20 +4009,21 @@ ${qualityRetryInstruction}`
       packedContextResults = await packContextForGeneration(strongRetryContextResults);
       // Boost the cap: a max_output_tokens truncation retried on the SAME budget with MORE
       // reasoning (strong) just re-truncates. This is the truncation self-heal.
-      generated = await generateWithModel(env.OPENAI_STRONG_ANSWER_MODEL, packedContextResults, {
+      generated = await generateWithModel(strongAnswerModel, packedContextResults, {
         strong: true,
         maxOutputTokensOverride: strongRetryMaxOutputTokens,
       });
       retrievalDiagnostics.routeMode = "strong";
     }
     if (generated.truncated) {
+      recordMalformedEvaluationAnswer?.();
       const retryReason = generationRetryReason(retriedWithStrong ? "strong" : "generation", generated);
       answerRetryCount += 1;
       answerRetryReasons.push(...(generated.text.trim() ? ["partial_structure_not_served"] : []), retryReason);
       throw new Error(`OpenAI generation incomplete: ${generationIncompleteReason(generated)}`);
     }
     let answer = annotateAnswerWithDiagnostics(
-      parseAnswerJson(generated.text, packedContextResults, args.query),
+      parseAnswerJson(generated.text, packedContextResults, args.query, recordMalformedEvaluationAnswer),
       retrievalDiagnostics,
     );
     const fastAnswerHadInvalidEvidenceIds = route.mode === "fast" && hasInvalidModelEvidenceIds(answer);
@@ -3595,7 +4072,7 @@ ${qualityRetryInstruction}`
       }
       answerRetryCount += 1;
       answerRetryReasons.push(retryReason);
-      modelUsed = env.OPENAI_STRONG_ANSWER_MODEL;
+      modelUsed = strongAnswerModel;
       routingReason = `${route.reason}; ${retryReason}`;
       retriedWithStrong = true;
       await args.onProgress?.({
@@ -3615,26 +4092,27 @@ ${qualityRetryInstruction}`
                       ? "Fast answer over-expanded a simple question, retrying with the strong model."
                       : "Fast answer failed quality checks, retrying with the strong model.",
         mode: "strong",
-        model: env.OPENAI_STRONG_ANSWER_MODEL,
+        model: strongAnswerModel,
         reason: routingReason,
       });
       // Same as the truncation retry above: widen but keep the P9 per-document crowding cap.
       packedContextResults = await packContextForGeneration(strongRetryContextResults);
       // Strong spends more reasoning tokens than the fast attempt it is replacing, so it needs
       // the boosted cap to avoid truncating (and degrading to unsupported) on the escalation.
-      generated = await generateWithModel(env.OPENAI_STRONG_ANSWER_MODEL, packedContextResults, {
+      generated = await generateWithModel(strongAnswerModel, packedContextResults, {
         strong: true,
         maxOutputTokensOverride: strongRetryMaxOutputTokens,
       });
       retrievalDiagnostics.routeMode = "strong";
       if (generated.truncated) {
+        recordMalformedEvaluationAnswer?.();
         const truncatedReason = generationRetryReason("strong", generated);
         answerRetryCount += 1;
         answerRetryReasons.push(...(generated.text.trim() ? ["partial_structure_not_served"] : []), truncatedReason);
         throw new Error(`OpenAI generation incomplete: ${generationIncompleteReason(generated)}`);
       }
       answer = annotateAnswerWithDiagnostics(
-        parseAnswerJson(generated.text, packedContextResults, args.query),
+        parseAnswerJson(generated.text, packedContextResults, args.query, recordMalformedEvaluationAnswer),
         retrievalDiagnostics,
       );
     }
@@ -3680,23 +4158,24 @@ ${qualityRetryInstruction}`
         stage: "retrying",
         message: "Strong answer failed quality checks, retrying once with stricter synthesis instructions.",
         mode: "strong",
-        model: env.OPENAI_STRONG_ANSWER_MODEL,
+        model: strongAnswerModel,
         reason: routingReason,
       });
-      generated = await generateWithModel(env.OPENAI_STRONG_ANSWER_MODEL, packedContextResults, {
+      generated = await generateWithModel(strongAnswerModel, packedContextResults, {
         strong: true,
         maxOutputTokensOverride: strongRetryMaxOutputTokens,
         qualityRetryInstruction: `The previous answer failed deterministic validation (${strongQualityFailureReason}). Return schema-valid output only, with a complete natural clinical synthesis in the answer field. The first sentence must directly answer the question as a full sentence. Every clinical claim must be supported by valid retrieved citation_chunk_id values; do not invent citation IDs. Within one named scale and source, if differently labelled intervals overlap or a range is reversed, omit the entire affected band set; do not quote, repair, or infer any label or value. If a separate sentence or clause states a nonnumeric condition and action independent of the score, answer only with that independently supported condition and action, cite the smallest sufficient directly supporting chunk set, and add a conflict entry; otherwise return a source gap. Avoid template/source-inventory wording and do not include JSON fragments inside text fields. If the evidence cannot support the requested clinical answer, return a concise source-gap answer instead. If the question is a simple definition or direct fact question, answer only that question and return answerSections as an empty array unless a source-gap or safety caveat is essential.`,
       });
       retrievalDiagnostics.routeMode = "strong";
       if (generated.truncated) {
+        recordMalformedEvaluationAnswer?.();
         const truncatedReason = generationRetryReason("strong_quality_retry", generated);
         answerRetryCount += 1;
         answerRetryReasons.push(...(generated.text.trim() ? ["partial_structure_not_served"] : []), truncatedReason);
         throw new Error(`OpenAI generation incomplete: ${generationIncompleteReason(generated)}`);
       }
       answer = annotateAnswerWithDiagnostics(
-        parseAnswerJson(generated.text, packedContextResults, args.query),
+        parseAnswerJson(generated.text, packedContextResults, args.query, recordMalformedEvaluationAnswer),
         retrievalDiagnostics,
       );
     }
@@ -3841,14 +4320,15 @@ ${qualityRetryInstruction}`
           degraded: telemetryAnswer.degradedMode?.active ?? false,
           provider_generation_degraded: isProviderGenerationDegraded(telemetryAnswer.routingReason),
           model_used: modelUsed,
-          requested_fast_model: requestedOpenAIAnswerModels.fastAnswer,
-          requested_strong_model: requestedOpenAIAnswerModels.strongAnswer,
+          requested_fast_model: evaluationGeneration?.fastModel ?? requestedOpenAIAnswerModels.fastAnswer,
+          requested_strong_model: evaluationGeneration?.strongModel ?? requestedOpenAIAnswerModels.strongAnswer,
           answer_model_demoted:
-            requestedOpenAIAnswerModels.answer !== env.OPENAI_ANSWER_MODEL ||
-            requestedOpenAIAnswerModels.fastAnswer !== env.OPENAI_FAST_ANSWER_MODEL ||
-            requestedOpenAIAnswerModels.strongAnswer !== env.OPENAI_STRONG_ANSWER_MODEL,
-          fast_model: env.OPENAI_FAST_ANSWER_MODEL,
-          strong_model: env.OPENAI_STRONG_ANSWER_MODEL,
+            evaluation === undefined &&
+            (requestedOpenAIAnswerModels.answer !== env.OPENAI_ANSWER_MODEL ||
+              requestedOpenAIAnswerModels.fastAnswer !== env.OPENAI_FAST_ANSWER_MODEL ||
+              requestedOpenAIAnswerModels.strongAnswer !== env.OPENAI_STRONG_ANSWER_MODEL),
+          fast_model: fastAnswerModel,
+          strong_model: strongAnswerModel,
           retrieved_candidate_count: results.length,
           ...(answer.smartApiPlan ? smartApiLogMetadata(answer.smartApiPlan) : {}),
           ...answerRankMetadata,
@@ -3885,9 +4365,9 @@ ${qualityRetryInstruction}`
       });
 
     if (answerRouteResultCanBeCached(routeDeadline, answer))
-      await setCachedAnswer(args, answer, { indexingVersionAtRetrievalStart });
+      if (!evaluation) await setCachedAnswer(args, answer, { indexingVersionAtRetrievalStart });
     routeDeadline.dispose();
-    return answer;
+    return finishEvaluationAnswer(answer, answer.sources ?? []);
   } catch (error) {
     if (args.signal?.aborted) {
       routeDeadline.dispose();
@@ -4200,14 +4680,15 @@ ${qualityRetryInstruction}`
           degraded: telemetryAnswer.degradedMode?.active ?? false,
           provider_generation_degraded: isProviderGenerationDegraded(telemetryAnswer.routingReason),
           model_used: null,
-          requested_fast_model: requestedOpenAIAnswerModels.fastAnswer,
-          requested_strong_model: requestedOpenAIAnswerModels.strongAnswer,
+          requested_fast_model: evaluationGeneration?.fastModel ?? requestedOpenAIAnswerModels.fastAnswer,
+          requested_strong_model: evaluationGeneration?.strongModel ?? requestedOpenAIAnswerModels.strongAnswer,
           answer_model_demoted:
-            requestedOpenAIAnswerModels.answer !== env.OPENAI_ANSWER_MODEL ||
-            requestedOpenAIAnswerModels.fastAnswer !== env.OPENAI_FAST_ANSWER_MODEL ||
-            requestedOpenAIAnswerModels.strongAnswer !== env.OPENAI_STRONG_ANSWER_MODEL,
-          fast_model: env.OPENAI_FAST_ANSWER_MODEL,
-          strong_model: env.OPENAI_STRONG_ANSWER_MODEL,
+            evaluation === undefined &&
+            (requestedOpenAIAnswerModels.answer !== env.OPENAI_ANSWER_MODEL ||
+              requestedOpenAIAnswerModels.fastAnswer !== env.OPENAI_FAST_ANSWER_MODEL ||
+              requestedOpenAIAnswerModels.strongAnswer !== env.OPENAI_STRONG_ANSWER_MODEL),
+          fast_model: fastAnswerModel,
+          strong_model: strongAnswerModel,
           retrieved_candidate_count: results.length,
           ...(fallbackAnswer.smartApiPlan ? smartApiLogMetadata(fallbackAnswer.smartApiPlan) : {}),
           ...answerRankMetadata,
@@ -4254,10 +4735,10 @@ ${qualityRetryInstruction}`
       });
 
     if (answerRouteResultCanBeCached(routeDeadline, fallbackAnswer)) {
-      await setCachedAnswer(args, fallbackAnswer, { indexingVersionAtRetrievalStart });
+      if (!evaluation) await setCachedAnswer(args, fallbackAnswer, { indexingVersionAtRetrievalStart });
     }
     routeDeadline.dispose();
-    return fallbackAnswer;
+    return finishEvaluationAnswer(fallbackAnswer, fallbackAnswer.sources ?? []);
   }
 }
 

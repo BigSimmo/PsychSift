@@ -59,9 +59,34 @@ export function metadataRecord(metadata: unknown): Record<string, unknown> {
     : {};
 }
 
+type GenerationMarker = { kind: "absent" | "null" | "invalid" } | { kind: "valid"; value: string };
+
+function classifyGenerationValue(value: unknown): GenerationMarker {
+  if (value === null) return { kind: "null" };
+  if (
+    typeof value === "string" &&
+    value.length === 36 &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  ) {
+    return { kind: "valid", value };
+  }
+  return { kind: "invalid" };
+}
+
+function classifyGenerationMarker(metadata: unknown): GenerationMarker {
+  if (metadata == null) return { kind: "absent" };
+  if (typeof metadata !== "object" || Array.isArray(metadata)) return { kind: "invalid" };
+  if (!Object.hasOwn(metadata, "index_generation_id")) return { kind: "absent" };
+  return classifyGenerationValue((metadata as Record<string, unknown>).index_generation_id);
+}
+
 export function committedIndexGeneration(metadata: unknown) {
-  const generation = metadataRecord(metadata).index_generation_id;
-  return typeof generation === "string" && generation.trim() ? generation.trim() : null;
+  const marker = classifyGenerationMarker(metadata);
+  if (marker.kind === "absent") return null;
+  if (marker.kind === "valid") return marker.value;
+  // Document authority requires an absent raw key for null G0. Do not erase a
+  // present-invalid marker before callers apply visibility or sign artifacts.
+  throw new Error("Invalid committed generation metadata.");
 }
 
 export function isAtomicReindexCandidate(document: { status?: string | null; metadata?: unknown }) {
@@ -69,10 +94,16 @@ export function isAtomicReindexCandidate(document: { status?: string | null; met
 }
 
 export function isCommittedGenerationMetadata(args: { rowMetadata?: unknown; committedGeneration?: string | null }) {
-  const rowGeneration = committedIndexGeneration(args.rowMetadata);
-  if (!rowGeneration) return true;
-  if (!args.committedGeneration) return true;
-  return rowGeneration === args.committedGeneration;
+  const committed = classifyGenerationValue(args.committedGeneration ?? null);
+  if (committed.kind !== "valid" && committed.kind !== "null") return false;
+  const row = classifyGenerationMarker(args.rowMetadata);
+  // Existing ordinary artifact nulls remain legacy; document null markers do not.
+  if (row.kind === "absent" || row.kind === "null") return true;
+  return (
+    row.kind === "valid" &&
+    committed.kind === "valid" &&
+    row.value.toLowerCase() === committed.value.toLowerCase()
+  );
 }
 
 export function imageRowNeedsGenerationRestamp(args: {
@@ -80,8 +111,16 @@ export function imageRowNeedsGenerationRestamp(args: {
   metadata: unknown;
   committedGeneration: string;
 }) {
-  if (args.indexGenerationId !== args.committedGeneration) return true;
-  return committedIndexGeneration(args.metadata) !== args.committedGeneration;
+  const committed = classifyGenerationValue(args.committedGeneration);
+  const typed = classifyGenerationValue(args.indexGenerationId);
+  const metadata = classifyGenerationMarker(args.metadata);
+  return (
+    committed.kind !== "valid" ||
+    typed.kind !== "valid" ||
+    metadata.kind !== "valid" ||
+    typed.value.toLowerCase() !== committed.value.toLowerCase() ||
+    metadata.value.toLowerCase() !== committed.value.toLowerCase()
+  );
 }
 
 export function isAbandonedStagedGeneration(args: {
@@ -89,12 +128,13 @@ export function isAbandonedStagedGeneration(args: {
   rowGenerationId?: string | null;
   committedGeneration?: string | null;
 }) {
-  const rowGeneration =
-    typeof args.rowGenerationId === "string" && args.rowGenerationId.trim()
-      ? args.rowGenerationId.trim()
-      : committedIndexGeneration(args.rowMetadata);
-  if (!rowGeneration) return false;
-  return rowGeneration !== (args.committedGeneration ?? null);
+  const row =
+    args.rowGenerationId == null
+      ? classifyGenerationMarker(args.rowMetadata)
+      : classifyGenerationValue(args.rowGenerationId);
+  const committed = classifyGenerationValue(args.committedGeneration ?? null);
+  if (row.kind !== "valid" || (committed.kind !== "valid" && committed.kind !== "null")) return false;
+  return committed.kind !== "valid" || row.value.toLowerCase() !== committed.value.toLowerCase();
 }
 
 export function abandonedReindexGenerationTotal(counts: AbandonedReindexGenerationCounts) {

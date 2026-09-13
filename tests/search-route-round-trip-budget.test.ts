@@ -235,8 +235,10 @@ describe("Supabase round-trip budget on the /api/search route", () => {
       counter.countOf("match_document_chunks_text_v2") + counter.countOf("match_document_table_facts_text_v2");
     expect(retrievalRpcCount, "the route must issue retrieval RPCs, or the budget proves nothing").toBeGreaterThan(0);
 
-    // 16 total round trips:
+    // 19 total round trips:
     //   1  consume_api_subject_rate_limit (route rate limiting)
+    //   2  public_source_serving_authority_stamp (request cache/lifecycle authority)
+    //   1  read_site_content_runtime_authority (request-time site-content authority)
     //   1  rag_aliases (query classification)
     //   3  match_document_chunks_text_v2 (primary probe + 2 lexical query variants)
     //   3  match_document_table_facts_text_v2 (primary probe + 2 lexical query variants)
@@ -249,13 +251,15 @@ describe("Supabase round-trip budget on the /api/search route", () => {
     // Total pinned so a reviewer does not have to eyeball every PR: an added
     // change (in the preamble, retrieval core, enrichment, or telemetry write)
     // has to be deliberate. Update in the commit that moves it.
-    expect(counter.total(), `search route round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(16);
+    expect(counter.total(), `search route round trips changed — ${JSON.stringify(counter.breakdown())}`).toBe(19);
 
     // The shape matters as much as the total: a refactor that removed one probe
-    // and added an unrelated query would keep 16 while changing the traffic.
+    // and added an unrelated query would keep 19 while changing the traffic.
     // See the file header for why the two text-RPC surfaces below are ×3, not ×1.
     expect(counter.breakdown(), "search route round-trip shape changed").toEqual({
       "rpc:consume_api_subject_rate_limit": 1,
+      "rpc:public_source_serving_authority_stamp": 2,
+      "rpc:read_site_content_runtime_authority": 1,
       "from:rag_aliases": 1,
       "rpc:match_document_chunks_text_v2": 3,
       "rpc:match_document_table_facts_text_v2": 3,

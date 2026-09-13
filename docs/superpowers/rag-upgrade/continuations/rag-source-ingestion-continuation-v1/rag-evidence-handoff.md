@@ -54,6 +54,10 @@ Use existing content-free diagnostics for stage counts, versions and typed loss 
 
 Define the positive improvement criterion before evaluation: targeted weak cases must gain supported requested-part coverage or useful supported explanation, with no mandatory safety/privacy regression. Ties and longer generic prose do not close the goal. The RAG report's 15–20 reference expectations are a suggested reuse set, not a new ingestion suite or paid evaluation mandate. Deterministic/mocked completion proves wiring; later separately authorised model/blinded evaluation proves usefulness.
 
+## Current cross-programme coordination
+
+The user requested and the controller completed the bounded 11 September check with **RAG Main**. [Confirmed ownership, existing M2 evidence and the explicit P04/coverage integration boundary](programme-alignment-2026-09-11.md) supplement this handoff. Earlier statements about no contact describe the original adoption; the named coordination is now authorised and recorded. Clinical adjudication remains unassigned and integrated producer-to-Answer acceptance remains outstanding.
+
 ## Focused shared acceptance and decisions
 
 | Case                                              | Ingestion supplier proof                                                                   | Separate RAG consumer proof                                                                       |
@@ -71,3 +75,7 @@ These are variants over the existing source fixtures and the RAG reference case.
 Before the shared-contract freeze, review R1's mode semantics, R3's safe partial-result contract and R4's named governance owner. R2's clinical expectations need the appropriate reviewer before semantic acceptance. R5 needs acceptance ownership in the separate RAG programme; this document records the dependency without contacting or assigning that task. These decisions need not block the already bounded ING-F02 correction.
 
 Keep U02's accepted historical offline exception exactly: exit 1, four failed suites, 45 failed and 586 passed tests overall. It is not green and cannot automatically carry into this reconciliation, the correction, U03, C06 or the other RAG programme.
+
+## U04 supplier boundary — 13 September 2026
+
+[U04 is locally accepted](C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U04-local-acceptance-1.md) for isolated generation staging, complete retained evidence, exact candidate evaluation and conservative failure. Its 26-suite offline proof is fully covered through retained passing cases and corrections. This supplies local ingestion wiring evidence; the shared H1–H7 clinical/usefulness, connected source and producer-to-Answer acceptance remains with the previously recorded ingestion/RAG owners. No code was transferred or external task contacted for this checkpoint.

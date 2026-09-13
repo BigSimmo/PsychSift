@@ -15,13 +15,15 @@ import {
 } from "../src/lib/deep-memory";
 import type { DocumentMemoryCard, SearchResult } from "../src/lib/types";
 import { isCommittedGenerationMetadata } from "../src/lib/reindex-pipeline";
+import { fallbackModelIndexProfile } from "../src/lib/model-index-extraction";
+import { encodeShadowNodeJsonCanonicalPayload, prepareShadowProducerDeclarationV1 } from "../scripts/lib/reindex-eval-session";
 
 vi.mock("@/lib/openai", () => ({
   embedTexts: vi.fn(async (texts: string[]) => texts.map(() => Array.from({ length: 1536 }, () => 0.01))),
 }));
 
 const { generateModelIndexProfileMock } = vi.hoisted(() => ({
-  generateModelIndexProfileMock: vi.fn(async () => {
+  generateModelIndexProfileMock: vi.fn(async (): Promise<ReturnType<typeof fallbackModelIndexProfile>> => {
     throw new Error("model profile unavailable");
   }),
 }));
@@ -383,6 +385,7 @@ describe("deep RAG memory indexing", () => {
 
   it("scopes anonymous lexical memory-card reads and generation hydration to public rows", async () => {
     const scopeCalls: string[] = [];
+    let committedGeneration = FENCE.expected_generation_id;
     const publicCard = {
       id: "public-card",
       document_id: "public-doc",
@@ -396,7 +399,7 @@ describe("deep RAG memory indexing", () => {
       source_chunk_ids: ["public-chunk"],
       source_image_ids: [],
       confidence: 0.9,
-      metadata: { index_generation_id: "g1" },
+      metadata: { index_generation_id: FENCE.expected_generation_id },
     } satisfies DocumentMemoryCard;
     const foreignCard = {
       ...publicCard,
@@ -466,9 +469,9 @@ describe("deep RAG memory indexing", () => {
           this.table === "document_memory_cards"
             ? [publicCard, ownerCard, foreignCard, mismatchedPublicCard].filter((row) => matchesOwner(row.owner_id))
             : [
-                { id: "public-doc", owner_id: null, metadata: { index_generation_id: "g1" } },
-                { id: "owner-doc", owner_id: "owner-a", metadata: { index_generation_id: "g1" } },
-                { id: "foreign-doc", owner_id: "owner-b", metadata: { index_generation_id: "g1" } },
+                { id: "public-doc", owner_id: null, metadata: { index_generation_id: committedGeneration } },
+                { id: "owner-doc", owner_id: "owner-a", metadata: { index_generation_id: committedGeneration } },
+                { id: "foreign-doc", owner_id: "owner-b", metadata: { index_generation_id: committedGeneration } },
               ].filter((row) => matchesOwner(row.owner_id));
         return Promise.resolve({ data: rows, error: null }).then(onfulfilled, onrejected);
       }
@@ -488,6 +491,13 @@ describe("deep RAG memory indexing", () => {
       accessScope: { ownerId: "owner-a", includePublic: true },
     });
     expect(authenticated.map((card) => card.id).sort()).toEqual(["owner-card", "public-card"]);
+    // U04 requires an actual UUID for document generation authority. The old
+    // placeholder now correctly refuses; it cannot stand in for public G0.
+    committedGeneration = "g1";
+    await expect(fetchMemoryCardsForQuery({
+      supabase: { from: vi.fn((table: string) => new QueryStub(table)) } as never,
+      query: "monitoring", accessScope: { includePublic: true },
+    })).resolves.toEqual([]);
   });
 
   it.each(["42883", "PGRST202"])(
@@ -838,5 +848,166 @@ describe("review correction: actual deep-memory optional orchestration", () => {
     await runIngestionMutation(attempt, rpc, "update_ingestion_job_progress");
     expect(attempt.signal.aborted).toBe(false);
     expect(rpc).toHaveBeenCalledOnce();
+  });
+});
+
+describe("actual shadow deep-memory producer", () => {
+  type Args = Parameters<typeof upsertDocumentDeepMemory>[0];
+  function shadowDeepFixture(refuse: boolean, mutateDuringDeclaration = false) {
+    const candidate = "33333333-3333-4333-8333-333333333333";
+    const binding: NonNullable<Args["shadow"]>["binding"] = { tag: "candidate", source: { version: 1,
+      originDigest: `sha256:${"b".repeat(64)}`, executionProfileDigest: `sha256:${"c".repeat(64)}`,
+      documentId: FENCE.document_id, ownerId: null, contentHash: `sha256:${"d".repeat(64)}`,
+      authorityDigest: FENCE.authority_digest, sourcePolicyVersion: "synthetic-policy-v1", manualAliasIds: [],
+      baselineGenerationId: FENCE.expected_generation_id, source: { tag: "document_owned" } },
+      candidateGenerationId: candidate, jobId: FENCE.job_id, firstLeaseToken: FENCE.lease_token, artifactGenerationId: null };
+    const outputs: ReturnType<typeof prepareShadowProducerDeclarationV1>[] = [];
+    const events: string[] = [];
+    const mutationResults: boolean[] = [];
+    const failures: unknown[] = [];
+    const rpc = vi.fn(async (name: string, payload: Record<string, unknown>) => {
+      events.push(name);
+      expect(name).toBe("persist_shadow_deep_memory_projection");
+      expect(payload.p_fence).toEqual(FENCE);
+      expect(payload.p_generation).toBe(candidate);
+      expect(payload.p_output_manifest).toEqual(outputs[0]!.outputManifestEnvelope);
+      const declared = JSON.parse(outputs[0]!.outputManifestEnvelope.canonicalPayload);
+      const sectionOutput = declared.units.find(
+        (unit: { family: string; key: string }) => unit.family === "sections" && unit.key === "deep:0",
+      ).output;
+      expect(payload.p_request).toEqual(sectionOutput.producerContext.request);
+      return { data: { ok: true, kind: "deep_memory_projected" }, error: null };
+    });
+    const from = vi.fn(() => { throw new Error("ordinary deep-memory mutation or ownership scan forbidden"); });
+    const args: Args = { supabase: { rpc, from } as never, fence: FENCE,
+      document: { ...document, owner_id: null, metadata: { index_generation_id: FENCE.expected_generation_id } },
+      chunks: [{ ...chunk({ id: "88888888-8888-4888-8888-888888888888", content: "Document the review within 24 hours." }),
+        anchor_id: null, metadata: { index_generation_id: candidate } }], images: [], summary: "Review documentation.",
+      shadow: { binding, declareBatch: async batch => {
+        const prepared = prepareShadowProducerDeclarationV1(binding, 8, batch);
+        outputs.push(prepared); events.push("declare-full-deep-output");
+        if (mutateDuringDeclaration) {
+          const sectionOutput = batch.units.find(unit => unit.family === "sections" && unit.key === "deep:0")!.output as {
+            producerContext: { request: { aliases: Array<{ metadata: { source_chunk_ids: string[] } }> } };
+          };
+          mutationResults.push(Reflect.set(
+            sectionOutput.producerContext.request.aliases[0]!.metadata.source_chunk_ids,
+            0,
+            "99999999-9999-4999-8999-999999999999",
+          ));
+        }
+        if (refuse) throw new Error("synthetic deep declaration refused");
+        return prepared.outputManifestEnvelope;
+      }, recordFailure: async failure => {
+        failures.push(failure);
+        throw new Error("shadow producer failure retained");
+      } } };
+    return { args, candidate, outputs, events, mutationResults, failures, rpc, from };
+  }
+  it("retains full original D output and section associations before private finalization under C and unchanged G0", async () => {
+    const profile = fallbackModelIndexProfile();
+    generateModelIndexProfileMock.mockResolvedValueOnce(profile);
+    const fixture = shadowDeepFixture(false);
+    const before = encodeShadowNodeJsonCanonicalPayload({ document: fixture.args.document, chunks: fixture.args.chunks, fence: fixture.args.fence });
+    const result = await upsertDocumentDeepMemory(fixture.args);
+    expect(fixture.events).toEqual(["declare-full-deep-output", "persist_shadow_deep_memory_projection"]);
+    expect(fixture.from).not.toHaveBeenCalled();
+    expect(fixture.rpc).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(fixture.outputs[0]!.outputManifestEnvelope.canonicalPayload);
+    expect(payload.binding.artifactGenerationId).not.toBe(fixture.candidate);
+    expect(payload.binding.artifactGenerationId).not.toBe(FENCE.expected_generation_id);
+    expect(payload.units.find((unit: { family: string; key: string }) => unit.family === "sections" && unit.key === "deep:0").output.producerContext.modelProfile).toEqual(profile);
+    expect(fixture.outputs[0]!.declarations.groups).toHaveLength(4);
+    expect(result.sections.length).toBeGreaterThan(0);
+    expect(result.memoryCards.length).toBeGreaterThan(0);
+    const cards = payload.units.filter((unit: { family: string }) => unit.family === "memory_cards");
+    expect(cards).toHaveLength(result.memoryCards.length);
+    for (const card of cards) {
+      expect(card.output.nativeInput).not.toHaveProperty("id");
+      expect(card.output.nativeInput).not.toHaveProperty("created_at");
+      expect(card.output.nativeInput.section_id).toBeNull();
+      expect(card.output.nativeInput.index_generation_id).toBe(payload.binding.artifactGenerationId);
+      expect(card.output.nativeInput.metadata.index_generation_id).toBe(payload.binding.artifactGenerationId);
+      expect(card.output.nativeInput.embedding).toHaveLength(1536);
+      expect(["index", "own_undefined", "absent"]).toContain(card.output.sectionAssociation.tag);
+    }
+    expect(encodeShadowNodeJsonCanonicalPayload({ document: fixture.args.document, chunks: fixture.args.chunks, fence: fixture.args.fence })).toBe(before);
+  });
+  it("keeps a refused deep declaration from staging, committing, cleaning up or mutating ordinary memory", async () => {
+    generateModelIndexProfileMock.mockResolvedValueOnce(fallbackModelIndexProfile());
+    const fixture = shadowDeepFixture(true);
+    await expect(upsertDocumentDeepMemory(fixture.args)).rejects.toThrow("synthetic deep declaration refused");
+    expect(fixture.events).toEqual(["declare-full-deep-output"]);
+    expect(fixture.rpc).not.toHaveBeenCalled();
+    expect(fixture.from).not.toHaveBeenCalled();
+    expect(fixture.outputs).toHaveLength(1);
+    // This is available producer memory, not a false claim of durability after
+    // confirmed pre-commit refusal. No secondary retention writer is invoked.
+    expect(fixture.outputs[0]!.outputManifestEnvelope.canonicalPayload).toContain("producerContext");
+  });
+
+  it("uses one immutable deep-memory snapshot for declaration and private persistence", async () => {
+    const profile = { ...fallbackModelIndexProfile(), aliases: [{
+      alias: "review", canonical: "clinical review", alias_type: "clinical_term",
+      source_chunk_ids: ["88888888-8888-4888-8888-888888888888"], confidence: 0.9,
+    }] };
+    generateModelIndexProfileMock.mockResolvedValueOnce(profile);
+    const fixture = shadowDeepFixture(false, true);
+    await upsertDocumentDeepMemory(fixture.args);
+    expect(fixture.mutationResults).toEqual([false]);
+    expect(fixture.rpc).toHaveBeenCalledOnce();
+    const persisted = fixture.rpc.mock.calls[0]![1] as {
+      p_request: { aliases: Array<{ metadata: { source_chunk_ids: string[] } }> };
+    };
+    expect(persisted.p_request.aliases[0]!.metadata.source_chunk_ids)
+      .toEqual(["88888888-8888-4888-8888-888888888888"]);
+  });
+
+  describe("U04 shadow producer failure retention", () => {
+    it("retains the early D and exact sections when the shadow model profile fails instead of using fallback output", async () => {
+      generateModelIndexProfileMock.mockRejectedValueOnce(new Error("provider detail must not be retained"));
+      const fixture = shadowDeepFixture(false);
+      await expect(upsertDocumentDeepMemory(fixture.args)).rejects.toThrow("shadow producer failure retained");
+      expect(fixture.failures).toHaveLength(1);
+      const failure = fixture.failures[0] as {
+        phase: string;
+        code: string;
+        artifactGenerationId: string;
+        input: { document: { id: string } };
+        partial: { sections: unknown[] };
+      };
+      expect(failure).toMatchObject({
+        phase: "deep_model_profile",
+        code: "producer_failed",
+        input: { document: { id: FENCE.document_id } },
+      });
+      expect(failure.artifactGenerationId).not.toBe(fixture.candidate);
+      expect(failure.artifactGenerationId).not.toBe(FENCE.expected_generation_id);
+      expect(failure.partial.sections.length).toBeGreaterThan(0);
+      expect(JSON.stringify(failure)).not.toContain("provider detail must not be retained");
+      expect(fixture.outputs).toEqual([]);
+      expect(fixture.rpc).not.toHaveBeenCalled();
+    });
+
+    it("retains cards as partial evidence when shadow card embedding fails and never declares survivors", async () => {
+      generateModelIndexProfileMock.mockResolvedValueOnce(fallbackModelIndexProfile());
+      vi.mocked(embedTexts).mockRejectedValueOnce(new Error("embedding provider detail"));
+      const fixture = shadowDeepFixture(false);
+      await expect(upsertDocumentDeepMemory(fixture.args)).rejects.toThrow("shadow producer failure retained");
+      expect(fixture.failures).toHaveLength(1);
+      expect(fixture.failures[0]).toMatchObject({
+        phase: "deep_card_embeddings",
+        code: "producer_failed",
+        partial: {
+          sections: expect.any(Array),
+          modelProfile: expect.any(Object),
+          cards: expect.any(Array),
+          embeddings: [],
+        },
+      });
+      expect(JSON.stringify(fixture.failures[0])).not.toContain("embedding provider detail");
+      expect(fixture.outputs).toEqual([]);
+      expect(fixture.rpc).not.toHaveBeenCalled();
+    });
   });
 });

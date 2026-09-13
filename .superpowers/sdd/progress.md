@@ -1,5 +1,13 @@
 # RAG programme SDD progress
 
+## 13 September 2026 — U04 complete at the local implementation boundary
+
+Stage 4 / U04 is accepted locally against immutable task base `e502ecd9b18f4a8f22469f68c0ffa5976a33a619`. The complete shadow-stage/evaluation unit is implemented; U05–U13 remain unstarted and C01 remains incomplete. Current acceptance and the eventual local commit binding are recorded in [U04 local acceptance](C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U04-local-acceptance-1.md) and the sole controller-owned `U04-live-checkpoint.json` beside it. Earlier status entries below remain historical.
+
+Local evidence comprises 1,381 main-package test instances and 648 cases across the 26 offline suites, composed from retained passing cases plus focused corrections; the initial failed aggregate runs remain exit 1. The joined 31-root compiler has zero diagnostics; function-grant and protected-safe migration-role source guards pass. Independent ingestion, schema and RAG review partitions plus controller correction review are complete. No broad rerun or new audit is required for unchanged inputs.
+
+This is not SQL/runtime, real-document, provider, hosted, clinical-usefulness, activation or deployment acceptance. The historical U02 exception remains exit 1, four failed suites, 45 failed and 586 passed overall; it is not green and is not inherited. Signing's 159-pass/2-fail and production-readiness's exit-1 (2 pass/5 warn/2 fail) results remain separate unresolved, unwaived evidence. P08A remains superseded and the retrieval kernel default-off.
+
 - Programme: `rag-answer-quality-and-repository-coverage-v1`
 - Worktree: `C:\Users\joshs\.codex\worktrees\rag-local-build-20260822\Database`
 - Branch: `codex/rag-local-build-20260822`
@@ -93,3 +101,101 @@
 - Runner/host source review PASS; bounded host attempt3 PASS five scenarios/exit0/pin parity/environment restoration. Attempts1/2 remain FAIL. No actual U04 Vitest/product acceptance yet.
 - Next: pin U04 TASK_BASE at this adoption commit; fresh Astra/high implementer for bounded actual-orchestrator/pure-contract regressions, root-owned protected-safe focused admission/execution, then coherent implementation and full-range specialist review. No connected operations authorized.
 - U03 locally accepted; C01 unit evidence consolidated. U02 historical offline exit1/four failed suites/45 failed/586 passed remains not green with no inherited exception. P08A superseded; kernel default-off.
+
+## 2026-09-11 — full-core acceleration approved; optional follow-up recorded
+
+- User approved retaining full U01–U13/C01–C06 scope while reducing orchestration overhead. Governing post-core-deferred-work.md records PC01 additional page/artifact reuse, PC02 batching, PC03 concurrency tuning and PC04 additional content/request reuse. Full U11 UI, U12 kernel, required U13/F16 and supported-format/fidelity acceptance remain in core. Ordinary Answer and connected/clinical work remain distinct downstream obligations.
+- Original U04 TASK_BASE/HEAD e502ecd9b18f4a8f22469f68c0ffa5976a33a619 unchanged. Inventory source frozen8d7e4a01/test313b45dc;427 authored/expected cases, unrun. Independent combined source/input reviews active; manifest12 prepared with36 exact pins and proposal25 approved:false. No gate, commit or connected operation yet.
+- Deferral documentation saved locally and linked from plan, authority and acceleration register; no historical record, original handoff or acceptance result rewritten. Exact current state remains in the outside U04-live-checkpoint.json.
+
+### 2026-09-11 — RAG Main alignment checkpoint
+
+User-authorised direct coordination with RAG Main (01a07a25-5bf5-7ed2-aa07-6937704c64a9) confirmed no current U04/generation/admission/activation/recovery ownership overlap. Literal local comparison and the other controller confirm materially divergent P04/coverage APIs. Preserve this worktree's accepted P04 and record canonical-version reconciliation at later integration; no transfer or duplicate compatibility adapter. Shared M2 consumer tests complement, but do not replace, the existing R1–R5/H1–H7 ingestion-backed acceptance. Full details: docs/superpowers/rag-upgrade/continuations/rag-source-ingestion-continuation-v1/programme-alignment-2026-09-11.md. Nine local Markdown links validated; scoped git diff --check passed. No tests or connected operations for the documentation change. U04 consumer source is still frozen pending narrow representation review; 427 authored cases remain unrun at their combined source after coordinator contention. No unit acceptance or commit claimed.
+
+### 2026-09-11 — actual consumer and focused compiler preparation
+
+Same U04 writer continues the two-file complete consumer; actual P04 whole-wave wiring and reconciliation are authored per writer, with fixtures/final source freeze pending. Controller closed only the missing private-object identity and historical original-byte representations in linked U04-execution-contract appendices; these add no policy/operation authority and remain subject to source/tests. Original historical expectedStateDigest is opaque and unchanged.
+
+Existing U03 CompilerHost was adapted to explicit U04 roots without tracked/protected glob discovery or Next generation. Compiler candidate2 and fixed host5 launcher2 each received independent source Specification PASS / Quality PASS after their preserved failed first reviews. Both remain unexecuted; compiler UNBOUND and held input proposal2 has null moving-source hashes. Static PowerShell parsing: zero errors. No compiler, tests, native/SQL/provider action or U04 acceptance. Current exact resume evidence remains outside in U04-live-checkpoint.json.
+
+### 2026-09-11 — actual audit-consumer focused proof passed
+
+The current U04 actual consumer has fresh focused evidence at immutable TASK_BASE e502ecd9b18f4a8f22469f68c0ffa5976a33a619: actual-consumer-tests-3 passed all552 tests (535consumer,17unchangedP04),0failed0skipped,0framework/unhandled/close/discovery errors. actual-consumer-4 focused no-emit compiler passed with0diagnostics0I/Oviolations;1744 programfiles including82Node declarations. Both gates had normal cleanup, unchanged input pins and all four environment restoration checks true. Exact source3ef41ffb5df188195315c989cc9e832a3e4a549782d425b4397933c09e433ef2/test918146b59526ee9e33f70d8a08e2773104a5e0938a21d4376dcc71daf1578edb and all artifact hashes are recorded outside in C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U04-actual-consumer-passed-checkpoint-1.json.
+
+Independent correction review2 returned Specification PASS / Quality PASS after five substantive findings; root reviewed the subsequent one-line readonly argument copy and one-test fixture alias correction. Preserve earlier behavioural551passed1failed and blocked attempt2 zero-executed outcomes, and all prior compiler failures. This is source/mocked consumer proof, not full U04 or application/SQL/provider/native acceptance. No intermediate product acceptance or commit. Next original U04 slice is fixed origin capture and complete state/control guard; source remains frozen pending bounded dispatch binding. Historical U02 exit1/four failed suites/45failed586passed remains non-green and non-inheritable. Signing159passed2failed remains separate. U04 unaccepted; U05–U13 unstarted; connected and publishing boundaries unchanged.
+
+### U04 origin capture/state guard checkpoint — 11 September 2026
+
+The bounded origin/state guard increment now has independent production and correction review PASS. Fresh `U04-launch-focused-gate-2.ps1 -ManifestName U04-focused-green-manifest-20.json -Attempt U04-origin-guard-tests-2` passed **616 consumer tests**, zero failed/skipped/framework/unhandled/close/discovery errors, with complete teardown, natural zero-child cleanup, unchanged inputs and all four environment restorations. The **108 schema cases are reused** from `U04-origin-guard-tests-1`; their SQL/schema/types/test bytes and asserted Node descriptor/plan slices are unchanged and independently reviewed. They are not newly executed. The earlier run remains failed overall: 721 passed/2 failed, exit1, framework logger15 retained.
+
+Fresh `U04-launch-focused-typecheck-3.ps1 -Attempt origin-guard-2` passed with **0 diagnostics, 0 I/O violations**, 1741 program files, normal cleanup and verified pins/restoration. Earlier compiler1 remains failed with2diagnostics. Final session SHA256 `4cba1180c699fecee964953d6a80f1462f877893f53f496e1dde5fb79499f241`; consumer test `d3eb8c1d501cec648796d8d3bbbcf1b2c3660a923da4b13ff3c8cfe73f4fa28e`. Exact proof: outside `U04-origin-guard-passed-checkpoint-1.json`, SHA256 `9aa224a87b5131c38a90f625311e7c0b0dcf8a88f6588bd300042703e9751158`.
+
+Corrected actual stored plan-digest parity, fresh P04 identity, deep-memory C/D/producer binding, precondition ordering and the fully source-bound legacy-null baseline path. Null per-unit evidence and P04 generation_incomplete remain intact. Terminal seal/evaluate still refuses pending complete receipt validators. This is not whole U04 acceptance or SQL/native/connected proof. All changes remain local and uncommitted at original TASK_BASE e502ecd9b18f4a8f22469f68c0ffa5976a33a619. Remaining original U04 persistence, retention, producer/engine integration, full unit gates and specialist acceptance remain required. No post-core scope expansion or inherited U02 exception; signing159passed2failed remains unresolved/unwaived.
+
+Next preparation is `U04-next-persistence-readiness-1.md` (outside SHA256 `cd1749c47011a9f12367d01f65b16cc2b5ca3f1aa675bd35825e211641bfac75`), read-only, not implementation admission. Preserve all exact passed/failed evidence and the original unit commit boundary.
+
+### U04 persistence dispatch — 11 September 2026
+
+Adopted the reviewed six-owner persistence brief and exact enqueue/declaration transport in U04-execution-contract.md, with independent Specification PASS / Quality PASS (outside U04-persistence-dispatch-review-2.md, SHA256 7268c1359975f9ace85522650ddfd8dfe397b561aeac3f2e5748b68d3bb77884). The sole existing writer may now resume retention-safe reservation/control/durable declarations and complete recovery-byte preservation. Exact predecessor owner pins are in U04-persistence-input-pins-1.json (SHA256 e2778ede32edbb69babf0e638bce8302c0142149de007e6cfcc52619ed47f738). P04 report/coverage dependencies already belong to the admitted closure; unchanged successful origin checks are reused, not rerun.
+
+This dispatch has no new product execution evidence. Preserve prior 616 consumer passes, 108 reused schema passes and compiler zero diagnostics as predecessor proof only. New mutation grants and terminal success remain withheld; full U04 stays unaccepted/uncommitted at TASK_BASE e502ecd9b18f4a8f22469f68c0ffa5976a33a619. Signing159passed2failed remains unresolved/unwaived. The historical U02 exit1/four failed suites/45failed586passed exception remains non-green and non-inheritable. No SQL/providers/workers/connected/publishing operations or intermediate commit.
+
+### U04 zero-unit output retention adoption — 12 September 2026
+
+Adopted the independently reviewed required ProducerDeclaration.outputManifestEnvelope binding in U04-execution-contract.md and outside U04-slot-output-evidence-adoption-1.json. The same writer continues six-owner persistence and retention implementation; original TASK_BASE and whole-U04 commit boundary remain unchanged. Consumer freeze2 had source-review PASS and 664 authored cases, but its focused run was blocked before any test started by another worktree lease. No passing test claim or inherited exception. New declaration bytes require fresh review/admission; effective test/compiler admissions remain held. Recovery helper correction2 has bounded source-review PASS; later SQL integration remains under review. No SQL, provider or operational execution occurred.
+
+## U04 persistence consumer passed — 12 September 2026
+
+Fresh U04-persistence-consumer-tests-3 passed one suite,684 tests,0 failed/skipped/todo,0 framework/unhandled/close/discovery errors. Teardown complete; natural native cleanup confirmed with0active children; all221pins unchanged and all4environment settings restored. Exact source4 ddd24561d9391dc08a4c62528d79125ed5b36b13ae8f1f7eec20525bd0da29b5/test4 f34c5a7a321780b276453fabeeb761fdfa4e40eab064815d11b2e508a824eb5a, manifest22 3f0d69f63b4d6ca3023bac422e6fa1b7369d9896832a88e26ca360a527a7b5ad. Outside U04-persistence-consumer-passed-checkpoint-1.json binds full evidence. Earlier attempts1/2 remain blocked before start with0executed; their records are not rewritten.
+
+The consumer preserves complete raw recovery inputs and every slot output independently of per-unit bytes; requires source/job/token/planned-membership/basis bindings even for zero units; verifies original D before sanctioned D-to-C comparison; and keeps expired evidence readable as integrity-only. Unsupported semantic forms remain conservative refusals, with no terminal acceptance.
+
+Independent control review3 closes prior SQL control findings in exact ranges; root reservation review2 closes timestamp/profile-lock findings source-only. Inventory/disposition/final assembly, schema/mirror/type proof and original whole-U04 producer/receipt acceptance remain pending. Compiler and SQL runtime were not run. No active gate; effective admissions held. Reuse the passing consumer if unchanged; later schema selector excludes it. Same TASK_BASE, no intermediate commit, providers, migrations or operational execution.
+
+## U04 persistence namespace freeze — 12 September 2026
+
+Consumer proof remains 684 passed on unchanged source/test4. Inventory R1/R3/R4 closed in independent review2; final parent/D namespace correction passes independent review3 (633ec9ece28dd0121298cc9c0a1f0fca068993dd9b4c66e80e04afb86206b4ab). Root enqueue C/G0 delta review3 passes source inspection (471e7cee136971c3e47a636b6c21ddc7e7cd6c6e742f85ff988bc7ca492b4b3d). Complete mirrored SQL freeze3 is 447c3e100045c070279a02b52d8a9e98d7dcebf2423ebd6b2cc40e96c62232d2. No SQL, role or race execution is claimed.
+
+Required before whole-U04 acceptance: an expired retained processing Node job prevents a fresh-C restart under the existing one-open-job index. Preserve the index and immutable expired evidence while completing the remaining original-U04 restart contract. This is not a post-core deferral or accepted recovery. Whole U04 remains unaccepted/uncommitted.
+
+Final schema-only and five-root compiler input review is active. A source-proven stale capture-only grant assertion must be scoped to its original capture prefix, while persistence retains all-private new RPC/helper assertions. No diagnostic test run was spent on the known literal contradiction. Final corrected schema input hashes and actual gate outcomes must supersede authored/unrun counts before acceptance. All admissions remain held and no gate is active at this checkpoint.
+
+## U04 persistence local checks passed — 12 September 2026
+
+Fresh schema attempt2 passed145/145, zero framework/unhandled/close errors,433pins unchanged, complete teardown/natural cleanup and all4environment restorations. Fresh five-root compiler persistence-final-1 passed with0diagnostics,0I/O violations and1742sourcefiles;95pins/91projectfiles, no emit, natural cleanup and all4environment restorations. Unchanged consumer4 attempt3 PASS684 is reused with reviewed type-only delta and fresh compiler evidence.
+
+Immutable outside U04-persistence-local-passed-checkpoint-1.json (SHA256 a5e6bd57a01d35d29e8702f791c75ca4c3417ba5f9be7b484a9491d2950e72c9) binds source identities, reviews, executed admissions and full results. Earlier schema attempt1 remains142passed3failed with22framework diagnostic entries and0unhandled errors; the three matcher corrections were reviewed, and its evidence is retained. No failure is reclassified as passing.
+
+Whole U04 remains unaccepted/uncommitted. Required expired-wave restart proposal is unadopted and receiving bounded feasibility review; producer/projection/native/receipt/seal/evaluation integration and original whole-unit acceptance remain pending. SQL, roles/races/rollback, Storage/native/connected proof and production-readiness check were not run. No active gate; effective admissions held. Do not repeat unchanged passing checks. Same original TASK_BASE/full-unit commit boundary; no connected operation, migration application, publication or activation.
+
+
+## U04 restart design adopted — 12 September 2026
+
+Independent restart review2 PASS/READY and amendment4 are now adopted in U04-execution-contract.md. Outside U04-expired-wave-restart-adoption-1.json binds the before/after governing hashes, exact reviewed design and unchanged full-unit authority. The review explicitly closes transaction snapshot, provisional claim, latest-state deferred consistency and already-admitted predecessor continuity. Product restart implementation is UNSTARTED; next work is the bounded coupled guard/index and full actual C1-to-C2 fixture, followed by independent implementation review and focused checks. The passing persistence checkpoint remains unchanged:684 consumer reused,145 schema fresh, focused compiler0diagnostics/0I/O. No active gate or source writer, no intermediate commit or connected execution. Whole U04 is still unaccepted.
+
+
+## U04 restart implementation active — 12 September 2026
+
+The adopted correction is dispatched to the existing sole source writer under outside U04-restart-implementation-dispatch-1.json (f54c4ddca7d862daf96c3af0ddf447ea5b6074fae079636e52d710b11680a8f6). Independent fixture guidance is saved in U04-restart-focused-acceptance-routing-1.md: actual full C1-to-C2 preparation/comparison and byte preservation are local proof; predecessor scheduling eligibility/index/roles/isolation/races/deferred completion remain mandatory SQL-only evidence, unrun. No scheduler imitation, P04 waiver, repeated baseline, connected operation or intermediate commit is admitted. Freeze, independent implementation review and focused gates remain pending.
+
+## U04 restart local checks passed; producer integration active — 12 September 2026
+
+Restart consumer attempt4 passed704/704 with0failed/skipped/todo/framework/unhandled/close/discovery errors, complete teardown, natural cleanup,448unchanged pins and all4environment settings restored. Runtime786.19seconds. Schema153 from attempt1 is reused unchanged; that original combined attempt remains failed. Compiler restart3 has0diagnostics/0I/O; reuse is qualified by independent static review of the later registration/budget-only change, not fresh freeze5 compilation. Outside U04-restart-local-passed-checkpoint-1.json (83ac15fc1395f5dec33dca5bd6bb8f15908babce2bfbc835042b942e0db9cebc) binds all evidence and retained failures.
+
+The existing sole writer is dispatched for original-U04 actual producer/private projection/final inventory/late seal/member and wave receipt integration under U04-producer-terminal-dispatch-2.md and refreshed17owner pins2. Layout2 received independent PASS/READY after preserving declared prior controls separately from the latest pre-seal checkpoint and planned native output separately from persisted after-images. No active gate; admissions held. Efficiency lessons are adopted in acceleration-register.md and the next brief; unchanged checks and designs are reused.
+
+U04 remains unaccepted/uncommitted. Exact-generation full-engine evaluation and whole-unit local acceptance remain; SQL/roles/races/rollback/native/provider/connected proof is unrun. No intermediate commit or operational authority was introduced. Historical U02 exit1/four failed suites/45failed586passed and signing159passed2failed remain unwaived.
+
+## U04 early producer calibration passed — 12 September 2026
+
+The actual summary producer/declaration calibration passed all38 document-enrichment cases (36preserved,2new) in4.23seconds, with447ms in test bodies. There were0failed/skipped/todo/framework/unhandled/close/discovery errors,319unchanged pins, natural cleanup and all4environment settings restored. U04-producer-summary-calibration-passed-checkpoint-1.json (fc517e5558c6e2fe64f691c2cbd5fd07394d153475115e0e9b8f018ea2cc83f9) binds the exact source, reviews, admission and results. This is actual U02 generation/normalization/label projection and declaration serialization with mocked provider/transport; it does not prove durable failure retention, persisted after-images or SQL/terminal readiness.
+
+TS hold is released and the existing writer continues the joined17owner producer/terminal increment. Actual declaration transport failure/cancellation/retention regressions remain required. The source-only U04-summary-normalization-ownership-assessment-1.md (3fca7b3b01f5a1a1ef0f5b00d220792ae8f72bdd4505713a73f8d4a627d6637b) preserves unchanged Node U02 semantic validation in both producer and candidate receipt consumer, alongside independent SQL byte/schema/source/Fence/projection checks. No PostgreSQL Unicode-equivalence port or caller certificate is authorised or needed by the inspected contract.
+
+Evaluation integration boundary1 is prepared outside repository, not implemented. U04 remains unaccepted/uncommitted; no active gate, all admissions held, and connected/SQL/native/provider operations remain unrun. Early calibration and parallel SQL authoring implement the existing acceleration policy without dropping full-unit acceptance.
+
+## 12 September 2026 — adversarial acceleration and compact resumption
+
+The user requested larger low-impact savings and a final coding-detective pass in the main chat. Completed bounded Sol/High verification and sequencing reviews plus Astra/xhigh architecture review, then root examined the hidden preparation, snapshot and fixture costs without launching further agents. Findings and ordered tradeoffs: C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U04-adversarial-acceleration-review-20260912.md. A01–A08 process cuts are adopted in the acceleration register/authority; I01–I06 reuse directions and the immutable producer effect-snapshot correction remain product work. D01 representation change and S01–S03 smaller-scope options are proposed only; full original core remains retained.
+
+The live checkpoint now contains concise current state and pointers; its full 65,300-byte predecessor is preserved byte-for-byte and SHA-256 verified. Resume from C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation/U04-live-checkpoint.json, not historical agent states. Dependency restore attempt2 completed exit0 with installed-lock parity PASS; no product tests ran in this review. Documentation diff check passed. Existing U04 source edits and prior failed evidence are preserved, whole U04 remains unaccepted/uncommitted, and no gate or implementation agent is active at this review completion. Next is the existing disjoint producer/terminal and evaluator completion under the amended execution cadence. No SQL/provider/native/connected operation, publication or activation occurred.

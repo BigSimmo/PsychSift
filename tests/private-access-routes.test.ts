@@ -6,6 +6,8 @@ const otherUserId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const documentId = "11111111-1111-4111-8111-111111111111";
 const otherDocumentId = "22222222-2222-4222-8222-222222222222";
 const imageId = "33333333-3333-4333-8333-333333333333";
+const committedImageGeneration = "55555555-5555-4555-8555-555555555555";
+const candidateImageGeneration = "66666666-6666-4666-8666-666666666666";
 const token = "valid-token";
 
 function expectFeedbackTokenBoundToAnswer(payload: Record<string, unknown>) {
@@ -228,6 +230,9 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
     data: paths.map((path) => ({ path, signedUrl: `https://signed.local/${path}`, error: null })),
     error: null,
   }));
+  const getPublicUrl = vi.fn((path: string) => ({
+    data: { publicUrl: `https://public.local/${path}` },
+  }));
   const remove = vi.fn(
     async (
       ...args: [string[]]
@@ -239,7 +244,7 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       return { data: [], error: null };
     },
   );
-  const storageFrom = vi.fn(() => ({ upload, createSignedUrl, createSignedUrls, remove }));
+  const storageFrom = vi.fn(() => ({ upload, createSignedUrl, createSignedUrls, getPublicUrl, remove }));
   const getUser = vi.fn(async (receivedToken?: string) =>
     receivedToken === token
       ? { data: { user: { id: userId, app_metadata: { site_role: "administrator" } } }, error: null }
@@ -358,7 +363,7 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
     }),
     rpc,
     storage: { from: storageFrom },
-    storageMocks: { upload, createSignedUrl, createSignedUrls, remove, storageFrom },
+    storageMocks: { upload, createSignedUrl, createSignedUrls, getPublicUrl, remove, storageFrom },
   };
 
   return client;
@@ -773,7 +778,7 @@ describe("private document API access", () => {
           source_path: "/import/guideline.pdf",
           import_batch_id: "batch-99",
           error_message: "internal stage error",
-          metadata: { index_generation_id: "generation-a", extraction_quality: "good" },
+          metadata: { index_generation_id: committedImageGeneration, extraction_quality: "good" },
         });
       }
       if (call.table === "document_summaries") {
@@ -843,7 +848,7 @@ describe("private document API access", () => {
           chunk_count: 1,
           storage_path: `${userId}/documents/guideline.pdf`,
           content_hash: "sha256:owned-hash",
-          metadata: { index_generation_id: "generation-a", extraction_quality: "good" },
+          metadata: { index_generation_id: committedImageGeneration, extraction_quality: "good" },
         });
       }
       if (["document_pages", "document_images", "document_chunks", "document_table_facts"].includes(call.table)) {
@@ -881,7 +886,7 @@ describe("private document API access", () => {
           file_type: "application/pdf",
           page_count: 2,
           chunk_count: 1,
-          metadata: { index_generation_id: "generation-a" },
+          metadata: { index_generation_id: committedImageGeneration },
         });
       }
       if (["document_pages", "document_images", "document_chunks", "document_table_facts"].includes(call.table)) {
@@ -1103,11 +1108,11 @@ describe("private document API access", () => {
           storage_path: `${userId}/images/${imageId}.png`,
           mime_type: "image/png",
           caption: "Owned image",
-          metadata: { index_generation_id: "generation-a" },
+          metadata: { index_generation_id: committedImageGeneration },
         });
       }
       if (call.table === "documents" && matchesOwnerReadScope(call, userId)) {
-        return ok({ id: documentId, metadata: { index_generation_id: "generation-a" } });
+        return ok({ id: documentId, metadata: { index_generation_id: committedImageGeneration } });
       }
       return ok(null);
     });
@@ -1132,11 +1137,11 @@ describe("private document API access", () => {
           storage_path: `public/images/${imageId}.png`,
           mime_type: "image/png",
           caption: "Public image",
-          metadata: { index_generation_id: "generation-a" },
+          metadata: { index_generation_id: committedImageGeneration },
         });
       }
       if (call.table === "documents" && matchesOwnerReadScope(call)) {
-        return ok({ id: documentId, metadata: { index_generation_id: "generation-a" } });
+        return ok({ id: documentId, metadata: { index_generation_id: committedImageGeneration } });
       }
       return ok(null);
     });
@@ -1162,7 +1167,7 @@ describe("private document API access", () => {
           storage_path: `${userId}/images/${imageId}.png`,
           mime_type: "image/png",
           caption: "Legacy indexed image",
-          metadata: { index_generation_id: "generation-a" },
+          metadata: {},
         });
       }
       if (call.table === "documents" && matchesOwnerReadScope(call, userId)) {
@@ -1191,11 +1196,11 @@ describe("private document API access", () => {
           storage_path: `${userId}/images/${imageId}.png`,
           mime_type: "image/png",
           caption: "Replacement image",
-          metadata: { index_generation_id: "generation-new" },
+          metadata: { index_generation_id: candidateImageGeneration },
         });
       }
       if (call.table === "documents" && matchesOwnerReadScope(call, userId)) {
-        return ok({ id: documentId, metadata: { index_generation_id: "generation-old" } });
+        return ok({ id: documentId, metadata: { index_generation_id: committedImageGeneration } });
       }
       return ok(null);
     });
@@ -1207,7 +1212,10 @@ describe("private document API access", () => {
     });
 
     expect(response.status).toBe(404);
+    expect(await payload(response)).toEqual({ error: "Image not found." });
     expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
+    expect(client.storageMocks.createSignedUrls).not.toHaveBeenCalled();
+    expect(client.storageMocks.getPublicUrl).not.toHaveBeenCalled();
   });
 
   it("rejects image signed URLs when the parent document belongs to another user", async () => {
@@ -1257,8 +1265,8 @@ describe("private document API access", () => {
 
   /** Two images on two documents with different owners, plus owner-scoped document reads. */
   function createBatchImageMock(options: { imageGeneration?: string; documentGeneration?: string } = {}) {
-    const imageGeneration = options.imageGeneration ?? "generation-a";
-    const documentGeneration = options.documentGeneration ?? "generation-a";
+    const imageGeneration = options.imageGeneration ?? committedImageGeneration;
+    const documentGeneration = options.documentGeneration ?? committedImageGeneration;
     return createSupabaseMock((call) => {
       if (call.table === "document_images") {
         const requested = call.inFilters.find((filter) => filter.column === "id")?.values ?? [];
@@ -1290,6 +1298,173 @@ describe("private document API access", () => {
       return ok([]);
     });
   }
+
+  function createImageGenerationVisibilityMock(options: {
+    documentMetadata: Record<string, unknown>;
+    imageMetadata: Record<string, unknown>;
+    publicParent?: boolean;
+  }) {
+    return createSupabaseMock((call) => {
+      if (call.table === "document_images") {
+        const image = {
+          id: imageId,
+          document_id: documentId,
+          storage_path: `${options.publicParent ? "public" : userId}/images/${imageId}.png`,
+          mime_type: "image/png",
+          caption: "Synthetic visibility fixture",
+          metadata: options.imageMetadata,
+        };
+        return ok(call.maybeSingle ? image : [image]);
+      }
+      if (call.table === "documents" && matchesOwnerReadScope(call, userId)) {
+        const document = {
+          id: documentId,
+          owner_id: options.publicParent ? null : userId,
+          metadata: options.documentMetadata,
+        };
+        return ok(call.maybeSingle ? document : [document]);
+      }
+      return ok(call.maybeSingle ? null : []);
+    });
+  }
+
+  const generationRefusals = [
+    {
+      name: "C under an absent document marker",
+      documentMetadata: {},
+      imageMetadata: { index_generation_id: candidateImageGeneration },
+      publicParent: true,
+      singleStatus: 404,
+      batchStatus: 200,
+    },
+    {
+      name: "C under an explicit-null document marker",
+      documentMetadata: { index_generation_id: null },
+      imageMetadata: { index_generation_id: candidateImageGeneration },
+      publicParent: true,
+      singleStatus: 500,
+      batchStatus: 500,
+    },
+    {
+      name: "C under a malformed document marker",
+      documentMetadata: { index_generation_id: "synthetic-invalid-generation" },
+      imageMetadata: { index_generation_id: candidateImageGeneration },
+      publicParent: true,
+      singleStatus: 500,
+      batchStatus: 500,
+    },
+    {
+      name: "retained G0 under an explicit-null document marker",
+      documentMetadata: { index_generation_id: null },
+      imageMetadata: { index_generation_id: committedImageGeneration },
+      publicParent: true,
+      singleStatus: 500,
+      batchStatus: 500,
+    },
+    {
+      name: "legacy artifact under an explicit-null document marker",
+      documentMetadata: { index_generation_id: null },
+      imageMetadata: {},
+      publicParent: false,
+      singleStatus: 500,
+      batchStatus: 500,
+    },
+    {
+      name: "retained G0 under a malformed document marker",
+      documentMetadata: { index_generation_id: "synthetic-invalid-generation" },
+      imageMetadata: { index_generation_id: committedImageGeneration },
+      publicParent: true,
+      singleStatus: 500,
+      batchStatus: 500,
+    },
+    {
+      name: "legacy artifact under a malformed document marker",
+      documentMetadata: { index_generation_id: "synthetic-invalid-generation" },
+      imageMetadata: { index_generation_id: null },
+      publicParent: false,
+      singleStatus: 500,
+      batchStatus: 500,
+    },
+  ];
+
+  it.each(generationRefusals)("single-image signing refuses $name without a URL", async (fixture) => {
+    const client = createImageGenerationVisibilityMock(fixture);
+    mockRuntime(client);
+    const { GET } = await import("../src/app/api/images/[id]/signed-url/route");
+
+    const response = await GET(authenticatedRequest(`/api/images/${imageId}/signed-url`), {
+      params: Promise.resolve({ id: imageId }),
+    });
+    const body = await payload(response);
+
+    expect(response.status).toBe(fixture.singleStatus);
+    expect(body).not.toHaveProperty("url");
+    expect(body).not.toHaveProperty("urls");
+    expect(body.error).toBe(fixture.singleStatus === 404 ? "Image not found." : "Request failed.");
+    expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
+    expect(client.storageMocks.createSignedUrls).not.toHaveBeenCalled();
+    expect(client.storageMocks.getPublicUrl).not.toHaveBeenCalled();
+    expect(client.storageMocks.storageFrom).not.toHaveBeenCalled();
+  });
+
+  it.each(generationRefusals)("batch-image signing refuses $name without a URL", async (fixture) => {
+    const client = createImageGenerationVisibilityMock(fixture);
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/images/signed-urls/route");
+
+    const response = await POST(signedUrlsRequest([imageId]));
+    const body = await payload(response);
+
+    expect(response.status).toBe(fixture.batchStatus);
+    expect(body).not.toHaveProperty("url");
+    if (fixture.batchStatus === 200) {
+      expect(body).toEqual({ urls: {} });
+    } else {
+      expect(body).not.toHaveProperty("urls");
+      expect(body.error).toBe("Request failed.");
+    }
+    expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
+    expect(client.storageMocks.createSignedUrls).not.toHaveBeenCalled();
+    expect(client.storageMocks.getPublicUrl).not.toHaveBeenCalled();
+    expect(client.storageMocks.storageFrom).not.toHaveBeenCalled();
+  });
+
+  it("signs an untagged legacy batch when the document marker is absent", async () => {
+    const client = createImageGenerationVisibilityMock({ documentMetadata: {}, imageMetadata: {} });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/images/signed-urls/route");
+
+    const response = await POST(signedUrlsRequest([imageId]));
+    const body = await payload(response);
+
+    expect(response.status).toBe(200);
+    expect(body.urls).toMatchObject({
+      [imageId]: { url: `https://signed.local/${userId}/images/${imageId}.png`, mimeType: "image/png" },
+    });
+    expect(client.storageMocks.createSignedUrls).toHaveBeenCalledWith([`${userId}/images/${imageId}.png`], 600);
+    expect(client.storageMocks.getPublicUrl).not.toHaveBeenCalled();
+  });
+
+  it("returns the public URL for a retained G0 batch on an accessible public document", async () => {
+    const client = createImageGenerationVisibilityMock({
+      documentMetadata: { index_generation_id: committedImageGeneration },
+      imageMetadata: { index_generation_id: committedImageGeneration },
+      publicParent: true,
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/images/signed-urls/route");
+
+    const response = await POST(signedUrlsRequest([imageId]));
+    const body = await payload(response);
+
+    expect(response.status).toBe(200);
+    expect(body.urls).toMatchObject({
+      [imageId]: { url: `https://public.local/public/images/${imageId}.png`, mimeType: "image/png" },
+    });
+    expect(client.storageMocks.getPublicUrl).toHaveBeenCalledWith(`public/images/${imageId}.png`);
+    expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
+    expect(client.storageMocks.createSignedUrls).not.toHaveBeenCalled();
+  });
 
   it("signs a batch of images whose parent documents are owned", async () => {
     const client = createBatchImageMock();
@@ -1356,7 +1531,7 @@ describe("private document API access", () => {
             storage_path: `${userId}/images/${imageId}.png`,
             mime_type: "image/png",
             caption: "Owned image",
-            metadata: { index_generation_id: "generation-a" },
+            metadata: { index_generation_id: committedImageGeneration },
           },
         ]);
       }
@@ -1375,7 +1550,10 @@ describe("private document API access", () => {
   });
 
   it("omits batch images from an uncommitted replacement generation", async () => {
-    const client = createBatchImageMock({ imageGeneration: "generation-new", documentGeneration: "generation-old" });
+    const client = createBatchImageMock({
+      imageGeneration: candidateImageGeneration,
+      documentGeneration: committedImageGeneration,
+    });
     mockRuntime(client);
     const { POST } = await import("../src/app/api/images/signed-urls/route");
 
@@ -1383,7 +1561,9 @@ describe("private document API access", () => {
 
     expect(response.status).toBe(200);
     expect(await payload(response)).toEqual({ urls: {} });
+    expect(client.storageMocks.createSignedUrl).not.toHaveBeenCalled();
     expect(client.storageMocks.createSignedUrls).not.toHaveBeenCalled();
+    expect(client.storageMocks.getPublicUrl).not.toHaveBeenCalled();
   });
 
   it("returns an empty map for an empty batch without touching storage", async () => {

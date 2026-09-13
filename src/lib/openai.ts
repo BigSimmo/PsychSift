@@ -19,7 +19,7 @@ type OpenAIOperation =
 
 export type OpenAIReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
 type OpenAITextVerbosity = "low" | "medium" | "high";
-type OpenAIResponseInput = string | Array<Record<string, unknown>>;
+export type OpenAIResponseInput = string | Array<Record<string, unknown>>;
 
 type TextGenerationOptions = {
   model?: string;
@@ -39,6 +39,25 @@ type TextGenerationOptions = {
 type ResolvedTextGenerationOptions = Required<Pick<TextGenerationOptions, "model" | "maxOutputTokens">> &
   Omit<TextGenerationOptions, "model" | "maxOutputTokens">;
 
+export type OpenAIEvaluationClient = Readonly<{
+  responses: Readonly<Pick<OpenAI["responses"], "create" | "parse">>;
+  embeddings: Readonly<Pick<OpenAI["embeddings"], "create">>;
+}>;
+export type OpenAIEvaluationSdkPolicy = Readonly<{
+  promptCacheRetention: "off" | "in_memory" | "24h";
+  promptCacheTtl: "off" | "30m" | null;
+  storeResponses: boolean;
+}>;
+export type OpenAIEvaluationTextOptions = Readonly<
+  Required<Pick<TextGenerationOptions, "model" | "maxOutputTokens" | "operation" | "timeoutMs" | "maxRetries">> &
+    Omit<TextGenerationOptions, "model" | "maxOutputTokens" | "operation" | "timeoutMs" | "maxRetries">
+>;
+type OpenAIEvaluationExecution = Readonly<{
+  client: OpenAIEvaluationClient;
+  policy: OpenAIEvaluationSdkPolicy;
+  now: () => number;
+}>;
+
 type APIPromiseLike<T> = Promise<T> & {
   withResponse?: () => Promise<{ data: T; response?: Response; request_id?: string | null }>;
 };
@@ -56,6 +75,8 @@ export type OpenAITextResult = {
   truncated?: boolean;
   /** Reason supplied in incomplete_details (e.g. "max_output_tokens", "content_filter"). */
   incompleteReason?: string;
+  /** Present only for explicitly configured evaluation calls; never added to ordinary results. */
+  nativeResponse?: unknown;
 };
 
 export type OpenAIParsedTextResult<T> = OpenAITextResult & { parsed: T };
@@ -192,6 +213,20 @@ function openAIModelCapabilities(model: string) {
   };
 }
 
+export function assertOpenAIEvaluationSdkPolicyCompatible(
+  model: string,
+  policy: OpenAIEvaluationSdkPolicy,
+) {
+  const requiredRetention = openAIModelCapabilities(model).requiredPromptCacheRetention;
+  if (requiredRetention && policy.promptCacheRetention !== requiredRetention) {
+    throw new PublicApiError(
+      `OpenAI model ${model} requires prompt cache retention ${requiredRetention}; the admitted evaluation policy requires ${policy.promptCacheRetention}.`,
+      500,
+      { code: "openai_invalid_request" },
+    );
+  }
+}
+
 function defaultReasoningEffort(operation: OpenAIOperation, model: string): OpenAIReasoningEffort {
   if (!openAIModelCapabilities(model).supportsReasoning) return "none";
   switch (operation) {
@@ -243,19 +278,27 @@ function responseBody(
   input: OpenAIResponseInput,
   resolved: ResolvedTextGenerationOptions,
   format?: Record<string, unknown>,
+  evaluationPolicy?: OpenAIEvaluationSdkPolicy,
 ) {
   const operation = resolved.operation ?? "text_generation";
   const reasoningEffort = resolved.reasoningEffort ?? defaultReasoningEffort(operation, resolved.model);
   const resolvedReasoningEffort = resolveReasoningEffort(resolved.model, reasoningEffort);
   const capabilities = openAIModelCapabilities(resolved.model);
+  if (evaluationPolicy) assertOpenAIEvaluationSdkPolicyCompatible(resolved.model, evaluationPolicy);
   const textConfig: Record<string, unknown> = {};
   const configuredPromptCacheRetention =
-    env.OPENAI_PROMPT_CACHE_RETENTION === "off" ? undefined : env.OPENAI_PROMPT_CACHE_RETENTION;
+    (evaluationPolicy?.promptCacheRetention ?? env.OPENAI_PROMPT_CACHE_RETENTION) === "off"
+      ? undefined
+      : (evaluationPolicy?.promptCacheRetention ?? env.OPENAI_PROMPT_CACHE_RETENTION);
   const promptCacheRetention = capabilities.requiredPromptCacheRetention ?? configuredPromptCacheRetention;
-  const promptCacheTtl =
-    capabilities.usesPromptCacheOptions &&
-    env.OPENAI_PROMPT_CACHE_TTL !== "off" &&
-    !(env.OPENAI_PROMPT_CACHE_TTL === undefined && env.OPENAI_PROMPT_CACHE_RETENTION === "off")
+  const promptCacheTtl = evaluationPolicy
+    ? capabilities.usesPromptCacheOptions && evaluationPolicy.promptCacheTtl !== "off" &&
+        !(evaluationPolicy.promptCacheTtl === null && evaluationPolicy.promptCacheRetention === "off")
+      ? (evaluationPolicy.promptCacheTtl ?? "30m")
+      : undefined
+    : capabilities.usesPromptCacheOptions &&
+        env.OPENAI_PROMPT_CACHE_TTL !== "off" &&
+        !(env.OPENAI_PROMPT_CACHE_TTL === undefined && env.OPENAI_PROMPT_CACHE_RETENTION === "off")
       ? (env.OPENAI_PROMPT_CACHE_TTL ?? "30m")
       : undefined;
 
@@ -269,7 +312,7 @@ function responseBody(
     input,
     ...(resolved.instructions ? { instructions: resolved.instructions } : {}),
     max_output_tokens: Math.max(resolved.maxOutputTokens, reasoningHeadroomFloor(resolvedReasoningEffort)),
-    store: env.OPENAI_STORE_RESPONSES,
+    store: evaluationPolicy?.storeResponses ?? env.OPENAI_STORE_RESPONSES,
     prompt_cache_key: resolved.promptCacheKey ?? promptCacheKeyFor(operation),
     ...(capabilities.usesPromptCacheOptions
       ? promptCacheTtl
@@ -457,20 +500,90 @@ export function mapOpenAIError(error: unknown, operation: OpenAIOperation) {
   });
 }
 
+function nativeErrorEvidence(value: unknown, ancestors = new Set<object>()): unknown {
+  if (typeof value === "number") return Number.isFinite(value) && !Object.is(value, -0) &&
+    (!Number.isInteger(value) || Number.isSafeInteger(value)) ? value
+    : { type: "unrepresentable_number", value: Object.is(value, -0) ? "-0" : String(value) };
+  if (value === null || typeof value === "string" || typeof value === "boolean")
+    return value;
+  if (value === undefined) return { type: "undefined" };
+  if (typeof value === "bigint") return { type: "bigint", value: value.toString() };
+  if (typeof value === "symbol") return { type: "symbol", value: value.description ?? null };
+  if (typeof value === "function") return { type: "function", name: value.name || null };
+  if (ancestors.has(value)) return { type: "circular" };
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) return value.map((entry) => nativeErrorEvidence(entry, ancestors));
+    const properties: Record<string, unknown> = {};
+    for (const key of Reflect.ownKeys(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      const retainedKey = typeof key === "string" ? key : `[symbol:${key.description ?? ""}]`;
+      properties[retainedKey] = descriptor && "value" in descriptor
+        ? nativeErrorEvidence(descriptor.value, ancestors)
+        : { type: "accessor" };
+    }
+    if (value instanceof Error) {
+      properties.name = value.name;
+      properties.message = value.message;
+      properties.stack = value.stack ?? null;
+    }
+    return properties;
+  } finally {
+    ancestors.delete(value);
+  }
+}
+
+function malformedEmbeddingResponse(
+  message: string,
+  code: string,
+  nativeResponse: unknown,
+) {
+  const error = new PublicApiError(message, 502, { code });
+  Object.defineProperty(error, "nativeResponse", {
+    value: nativeErrorEvidence(nativeResponse),
+    enumerable: true,
+    writable: false,
+    configurable: false,
+  });
+  return error;
+}
+
+function mappedEvaluationError(error: unknown, operation: OpenAIOperation, nativeResponse?: unknown) {
+  const mapped = mapOpenAIError(error, operation);
+  Object.defineProperty(mapped, "nativeError", {
+    value: nativeErrorEvidence(error),
+    enumerable: true,
+    writable: false,
+    configurable: false,
+  });
+  if (nativeResponse !== undefined) {
+    Object.defineProperty(mapped, "nativeResponse", {
+      value: nativeErrorEvidence(nativeResponse),
+      enumerable: true,
+      writable: false,
+      configurable: false,
+    });
+  }
+  return mapped;
+}
+
 async function createTextResult(
   input: OpenAIResponseInput,
   options: ResolvedTextGenerationOptions,
   format?: Record<string, unknown>,
   parseResponse = false,
+  evaluation?: OpenAIEvaluationExecution,
 ): Promise<OpenAITextResult & { parsed?: unknown }> {
   const operation = options.operation ?? "text_generation";
-  const startedAt = Date.now();
+  const now = evaluation?.now ?? Date.now;
+  const startedAt = now();
   let responseRequestId: string | null = null;
+  let nativeResponse: unknown;
 
   // Buffered (non-streaming) request — the baseline behaviour. The `responses.create` overloads are
   // incompatible with our generic call-site; the double-cast works around the SDK type mismatch.
-  async function requestBuffered(client: ReturnType<typeof createOpenAIClient>): Promise<unknown> {
-    const body = responseBody(input, options, format) as never;
+  async function requestBuffered(client: OpenAIEvaluationClient): Promise<unknown> {
+    const body = responseBody(input, options, format, evaluation?.policy) as never;
     const request = parseResponse
       ? client.responses.parse(body, requestOptions(options))
       : client.responses.create(body, requestOptions(options));
@@ -482,8 +595,9 @@ async function createTextResult(
   }
 
   try {
-    const client = createOpenAIClient();
+    const client = evaluation?.client ?? createOpenAIClient();
     const data = await requestBuffered(client);
+    nativeResponse = data;
     const completion = extractCompletionStatus(data);
     const outputText = extractOutputText(data);
     const parsed = parseResponse ? (data as { output_parsed?: unknown }).output_parsed : undefined;
@@ -519,19 +633,20 @@ async function createTextResult(
       text: outputText,
       model: options.model,
       operation,
-      latencyMs: Date.now() - startedAt,
+      latencyMs: now() - startedAt,
       requestId,
       usage: extractUsage(data),
       status: completion.status,
       truncated: completion.truncated,
       incompleteReason: completion.incompleteReason,
       ...(parseResponse ? { parsed } : {}),
+      ...(evaluation ? { nativeResponse: data } : {}),
     };
   } catch (error) {
     if (options.signal?.aborted) {
       throw options.signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
     }
-    throw mapOpenAIError(error, operation);
+    throw evaluation ? mappedEvaluationError(error, operation, nativeResponse) : mapOpenAIError(error, operation);
   }
 }
 
@@ -625,11 +740,11 @@ export async function embedTexts(texts: string[], options?: { signal?: AbortSign
           );
 
           // IDX-C2: a short response means some inputs silently produced no embedding.
-          if (response.data.length !== task.batch.length) {
-            throw new PublicApiError(
-              `OpenAI returned ${response.data.length} embeddings for ${task.batch.length} inputs.`,
-              502,
-              { code: "openai_embedding_count_mismatch" },
+          if (!Array.isArray(response.data) || response.data.length !== task.batch.length) {
+            throw malformedEmbeddingResponse(
+              `OpenAI returned ${Array.isArray(response.data) ? response.data.length : 0} embeddings for ${task.batch.length} inputs.`,
+              "openai_embedding_count_mismatch",
+              response,
             );
           }
 
@@ -638,17 +753,27 @@ export async function embedTexts(texts: string[], options?: { signal?: AbortSign
           // (offset to the global position) so embeddings are never mismatched to chunks.
           for (const item of response.data) {
             if (item.index < 0 || item.index >= task.batch.length) {
-              throw new PublicApiError(`OpenAI returned an out-of-range embedding index ${item.index}.`, 502, {
-                code: "openai_embedding_index_range",
-              });
+              throw malformedEmbeddingResponse(
+                `OpenAI returned an out-of-range embedding index ${item.index}.`,
+                "openai_embedding_index_range",
+                response,
+              );
             }
             // IDX-C2: guard against a model whose dimension does not match the schema.
-            if (item.embedding.length !== env.EMBEDDING_DIMENSIONS) {
-              throw new PublicApiError(
-                `OpenAI embedding has ${item.embedding.length} dimensions; expected ${env.EMBEDDING_DIMENSIONS}. ` +
+            if (!Array.isArray(item.embedding) || item.embedding.length !== env.EMBEDDING_DIMENSIONS) {
+              throw malformedEmbeddingResponse(
+                `OpenAI embedding has ${Array.isArray(item.embedding) ? item.embedding.length : 0} dimensions; expected ${env.EMBEDDING_DIMENSIONS}. ` +
                   `Check OPENAI_EMBEDDING_MODEL and EMBEDDING_DIMENSIONS match supabase/schema.sql.`,
-                502,
-                { code: "openai_embedding_dimension_mismatch" },
+                "openai_embedding_dimension_mismatch",
+                response,
+              );
+            }
+            if (!item.embedding.every((entry) => typeof entry === "number" && Number.isFinite(entry) &&
+              !Object.is(entry, -0) && (!Number.isInteger(entry) || Number.isSafeInteger(entry)))) {
+              throw malformedEmbeddingResponse(
+                "OpenAI embedding contains a non-finite, non-numeric, or non-canonical value.",
+                "openai_embedding_invalid_value",
+                response,
               );
             }
             byIndex[task.offset + item.index] = item.embedding;
@@ -768,6 +893,80 @@ export async function embedTextWithTelemetry(text: string, options?: { signal?: 
   return { embedding: await awaitInflightEmbedding(key, inflight, options?.signal), cacheHit };
 }
 
+export type OpenAIEvaluationEmbeddingRequest = Readonly<{
+  query: string;
+  model: string;
+  dimensions: number;
+  timeoutMs: number;
+  maxRetries: number;
+  signal?: AbortSignal;
+}>;
+
+/** Explicit-client, cache-isolated embedding path used only by an admitted U04 evaluation session. */
+export async function embedTextWithEvaluationClient(
+  client: OpenAIEvaluationClient,
+  request: OpenAIEvaluationEmbeddingRequest,
+  now: () => number = Date.now,
+) {
+  request.signal?.throwIfAborted();
+  const startedAt = now();
+  let retainedNativeResponse: unknown;
+  try {
+    const pending = client.embeddings.create(
+      { model: request.model, input: [request.query], dimensions: request.dimensions },
+      requestOptions({
+        operation: "embedding",
+        timeoutMs: request.timeoutMs,
+        maxRetries: request.maxRetries,
+        signal: request.signal,
+      }),
+    );
+    const { data: nativeResponse, request_id } = await unwrapOpenAIResponse(
+      pending as unknown as APIPromiseLike<unknown>,
+    );
+    retainedNativeResponse = nativeResponse;
+    const rows = (nativeResponse as { data?: unknown }).data;
+    if (!Array.isArray(rows) || rows.length !== 1) {
+      throw new PublicApiError(
+        `OpenAI returned ${Array.isArray(rows) ? rows.length : 0} embeddings for 1 input.`,
+        502,
+        { code: "openai_embedding_count_mismatch" },
+      );
+    }
+    const row = rows[0] as { index?: unknown; embedding?: unknown };
+    if (row.index !== 0) {
+      throw new PublicApiError(`OpenAI returned an out-of-range embedding index ${String(row.index)}.`, 502, {
+        code: "openai_embedding_index_range",
+      });
+    }
+    if (!Array.isArray(row.embedding) || row.embedding.length !== request.dimensions) {
+      throw new PublicApiError(
+        `OpenAI embedding has ${Array.isArray(row.embedding) ? row.embedding.length : 0} dimensions; expected ${request.dimensions}.`,
+        502,
+        { code: "openai_embedding_dimension_mismatch" },
+      );
+    }
+    if (!row.embedding.every((entry) => typeof entry === "number" && Number.isFinite(entry) &&
+      !Object.is(entry, -0) && (!Number.isInteger(entry) || Number.isSafeInteger(entry)))) {
+      throw new PublicApiError("OpenAI embedding contains a non-finite or non-numeric value.", 502, {
+        code: "openai_embedding_invalid_value",
+      });
+    }
+    return {
+      embedding: row.embedding as number[],
+      cacheHit: false as const,
+      latencyMs: now() - startedAt,
+      requestId: request_id ?? getRequestId(nativeResponse),
+      nativeResponse,
+    };
+  } catch (error) {
+    if (request.signal?.aborted) {
+      throw request.signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
+    }
+    throw mappedEvaluationError(error, "embedding", retainedNativeResponse);
+  }
+}
+
 export async function generateTextResult(
   input: OpenAIResponseInput,
   options: string | TextGenerationOptions = env.OPENAI_ANSWER_MODEL,
@@ -818,6 +1017,54 @@ export async function generateParsedTextResult<T>(
     unknown
   >;
   const result = await createTextResult(input, resolved, format, true);
+  return { ...result, parsed: result.parsed as T };
+}
+
+function evaluationTextOptions(options: OpenAIEvaluationTextOptions): ResolvedTextGenerationOptions {
+  return {
+    ...options,
+    model: options.model,
+    maxOutputTokens: options.maxOutputTokens,
+    operation: options.operation,
+    timeoutMs: options.timeoutMs,
+    maxRetries: options.maxRetries,
+  };
+}
+
+/** Explicit-client structured generation that never resolves ambient model, retry, timeout or SDK policy. */
+export async function generateStructuredTextResultWithEvaluationClient(
+  client: OpenAIEvaluationClient,
+  input: OpenAIResponseInput,
+  schema: Record<string, unknown>,
+  options: OpenAIEvaluationTextOptions,
+  policy: OpenAIEvaluationSdkPolicy,
+  now: () => number = Date.now,
+) {
+  const resolved = evaluationTextOptions(options);
+  return createTextResult(
+    input,
+    resolved,
+    { type: "json_schema", name: resolved.schemaName ?? "clinical_rag_answer", strict: true, schema },
+    false,
+    { client, policy, now },
+  );
+}
+
+/** Explicit-client parsed generation preserving the ordinary Zod response format and parse behavior. */
+export async function generateParsedTextResultWithEvaluationClient<T>(
+  client: OpenAIEvaluationClient,
+  input: OpenAIResponseInput,
+  schema: ZodType<T>,
+  options: OpenAIEvaluationTextOptions,
+  policy: OpenAIEvaluationSdkPolicy,
+  now: () => number = Date.now,
+): Promise<OpenAIParsedTextResult<T>> {
+  const resolved = evaluationTextOptions(options);
+  const format = zodTextFormat(schema, resolved.schemaName ?? "structured_output") as unknown as Record<
+    string,
+    unknown
+  >;
+  const result = await createTextResult(input, resolved, format, true, { client, policy, now });
   return { ...result, parsed: result.parsed as T };
 }
 

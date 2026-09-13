@@ -62,7 +62,7 @@ describe("document detail loading contract", () => {
     const loader = source("src/lib/document-detail.ts");
     const abortAttachments = loader.match(/\.abortSignal\(args\.request\.signal\)/g) ?? [];
 
-    expect(abortAttachments).toHaveLength(8);
+    expect(abortAttachments).toHaveLength(9);
     expect(loader).toContain("args.request.signal.throwIfAborted()");
     expect(loader).not.toContain('.select("*")');
     expect(loader).toContain("documentDetailProjection");

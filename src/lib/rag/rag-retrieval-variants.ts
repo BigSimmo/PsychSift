@@ -8,7 +8,12 @@ import {
 } from "@/lib/owner-scope";
 import { buildClinicalTextSearchQuery, normalizedClinicalSearchTokens, queriedZoneColour } from "@/lib/clinical-search";
 import { isDemoMode, isLocalNoAuthMode } from "@/lib/env";
-import type { SearchChunksArgs } from "@/lib/rag/rag-contracts";
+import {
+  acceptRagEvaluationRead,
+  ragEvaluationReadScope,
+  type RagEvaluationContext,
+  type SearchChunksArgs,
+} from "@/lib/rag/rag-contracts";
 import { shouldShortCircuitUnsupportedSearch } from "@/lib/rag/rag-query-guard";
 import type { ClinicalQueryAnalysis, RagProgrammeMode, RagQueryClass, RagQueryPlan, SearchResult } from "@/lib/types";
 
@@ -132,20 +137,41 @@ export async function warmEnabledRagAliasCache(
 
 /** Fetch enabled rag aliases. */
 export async function fetchEnabledRagAliases(
-  supabase: ReturnType<typeof createAdminClient>,
+  supabase: ReturnType<typeof createAdminClient> | null,
   ownerId?: string,
   accessScope?: RetrievalAccessScope,
   signal?: AbortSignal,
+  evaluation?: RagEvaluationContext,
 ): Promise<RagAliasInput[]> {
   throwIfAborted(signal);
   const scope = retrievalAccessScopeForArgs({ ownerId, accessScope });
+  if (evaluation) {
+    const rows = await acceptRagEvaluationRead(evaluation, "aliases", () =>
+      evaluation.readers.readAliases({
+        ...ragEvaluationReadScope(evaluation),
+      }),
+    );
+    throwIfAborted(signal);
+    const merged: RagAliasInput[] = [];
+    const seen = new Set<string>();
+    for (const alias of [...rows.ownerRows, ...rows.publicRows]) {
+      const key = `${normalizeAliasLookup(alias.alias)}||${normalizeAliasLookup(alias.canonical)}`;
+      if (!alias.alias.trim() || !alias.canonical.trim() || seen.has(key)) continue;
+      seen.add(key);
+      merged.push({ ...alias });
+      if (merged.length >= maxRagAliasesPerScope) break;
+    }
+    return merged;
+  }
+  const admittedSupabase = supabase;
+  if (!admittedSupabase) throw new Error("Supabase client is required outside U04 evaluation.");
   const cacheKey = retrievalAccessScopeKey(scope);
   const cached = readExpiringCacheEntry(ragAliasCache, cacheKey);
   if (cached) return cached.aliases;
 
   /** Read scope. */
-  async function readScope(scopeOwnerId: string | null) {
-    let query = supabase
+  const readScope = async (scopeOwnerId: string | null) => {
+    let query = admittedSupabase
       .from("rag_aliases")
       .select("alias,canonical,alias_type,weight,owner_id")
       .eq("enabled", true)
@@ -157,7 +183,7 @@ export async function fetchEnabledRagAliases(
     throwIfAborted(signal);
     if (error) throw error;
     return (data ?? []) as RagAliasInput[];
-  }
+  };
 
   try {
     const [globalAliases, ownerAliases] = await Promise.all([

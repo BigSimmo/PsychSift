@@ -3,6 +3,8 @@ import { loadChunksForMemoryCards, loadChunksForSignalMatches } from "../src/lib
 import { createChunkLoadCache } from "../src/lib/rag/rag-candidate-sources";
 import type { DocumentMemoryCard } from "../src/lib/types";
 
+const generation = "11111111-1111-4111-8111-111111111111";
+
 const chunks = [
   {
     id: "public-chunk",
@@ -18,7 +20,7 @@ const chunks = [
     content: "Public evidence",
     retrieval_synopsis: null,
     image_ids: [],
-    index_generation_id: "g1",
+    index_generation_id: generation,
   },
   {
     id: "owner-chunk",
@@ -34,7 +36,7 @@ const chunks = [
     content: "Owner evidence",
     retrieval_synopsis: null,
     image_ids: [],
-    index_generation_id: "g1",
+    index_generation_id: generation,
   },
   {
     id: "foreign-chunk",
@@ -50,7 +52,7 @@ const chunks = [
     content: "Foreign evidence",
     retrieval_synopsis: null,
     image_ids: [],
-    index_generation_id: "g1",
+    index_generation_id: generation,
   },
 ];
 const documents = [
@@ -59,7 +61,7 @@ const documents = [
     owner_id: null,
     title: "Public",
     file_name: "public.pdf",
-    metadata: { index_generation_id: "g1" },
+    metadata: { index_generation_id: generation },
     status: "indexed",
   },
   {
@@ -67,7 +69,7 @@ const documents = [
     owner_id: "owner-a",
     title: "Owner",
     file_name: "owner.pdf",
-    metadata: { index_generation_id: "g1" },
+    metadata: { index_generation_id: generation },
     status: "indexed",
   },
   {
@@ -75,7 +77,7 @@ const documents = [
     owner_id: "owner-b",
     title: "Foreign",
     file_name: "foreign.pdf",
-    metadata: { index_generation_id: "g1" },
+    metadata: { index_generation_id: generation },
     status: "indexed",
   },
 ];
@@ -143,7 +145,7 @@ function card(id: string, documentId: string, chunkId: string, ownerId: string |
     source_chunk_ids: [chunkId],
     source_image_ids: [],
     confidence: 0.8,
-    metadata: { index_generation_id: "g1" },
+    metadata: { index_generation_id: generation },
   };
 }
 

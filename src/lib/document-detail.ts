@@ -199,7 +199,7 @@ function committedRows<T extends { metadata?: unknown }>(document: { metadata?: 
 
 function committedGenerationFilter(document: { metadata?: unknown }) {
   const committedGeneration = committedIndexGeneration(document.metadata);
-  if (!committedGeneration || !uuidPattern.test(committedGeneration)) return null;
+  if (committedGeneration === null) return "metadata->>index_generation_id.is.null";
   return `metadata->>index_generation_id.is.null,metadata->>index_generation_id.eq.${committedGeneration}`;
 }
 
@@ -417,14 +417,37 @@ export async function loadAuthorizedDocumentDetail(args: {
   const preservedImageIds = selectedImageIds(selectedChunk);
   const generationFilter = committedGenerationFilter(document);
 
-  const pagesRequest = supabase
-    .from("document_pages")
-    .select("id,page_number,text,ocr_used,metadata")
-    .eq("document_id", id)
-    .gte("page_number", pageRange.from)
-    .lte("page_number", pageRange.to)
-    .order("page_number", { ascending: true })
-    .abortSignal(args.request.signal);
+  const pagesRequest = (async () => {
+    let pageGeneration = committedIndexGeneration(document.metadata);
+    if (pageGeneration !== null) {
+      // Decide fallback against the whole document, never the requested window.
+      // Only this page branch waits; the independent detail reads still overlap.
+      const activePages = await supabase
+        .from("document_pages")
+        .select("id")
+        .eq("document_id", id)
+        .eq("index_generation_id", pageGeneration)
+        .limit(1)
+        .abortSignal(args.request.signal);
+      if (activePages.error) throw new Error(activePages.error.message);
+      args.request.signal.throwIfAborted();
+      if (!activePages.data?.length) pageGeneration = null;
+    }
+
+    const pageQuery = supabase
+      .from("document_pages")
+      .select("id,page_number,text,ocr_used,metadata")
+      .eq("document_id", id);
+    const selectedPageSet =
+      pageGeneration === null
+        ? pageQuery.is("index_generation_id", null)
+        : pageQuery.eq("index_generation_id", pageGeneration);
+    return selectedPageSet
+      .gte("page_number", pageRange.from)
+      .lte("page_number", pageRange.to)
+      .order("page_number", { ascending: true })
+      .abortSignal(args.request.signal);
+  })();
 
   const chunkQuery = supabase
     .from("document_chunks")

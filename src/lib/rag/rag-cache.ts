@@ -19,7 +19,20 @@ import { australianSourcePolicyVersion } from "@/lib/australian-source-catalogue
 import { collectSiteContentHealthInput } from "@/lib/site-content/site-content-health-authority";
 import { classifySiteContentHealth } from "@/lib/health-response";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
-import { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
+import {
+  answerRouteBudgetMs,
+  generationRecoveryReserveMs,
+  minimumGenerationRetryMs,
+} from "@/lib/rag/rag-route-budget";
+import {
+  acceptRagEvaluationRead,
+  ragEvaluationReadScope,
+  retrievalPlanForQueryClass,
+  type RagEvaluationAdjacentChunkRow,
+  type RagEvaluationContext,
+  type SearchChunksArgs,
+  type SearchTelemetry,
+} from "@/lib/rag/rag-contracts";
 import type { Json } from "@/lib/supabase/database.types";
 import type { RagAnswer, RagProgrammeMode, RagQueryClass, SearchResult } from "@/lib/types";
 import {
@@ -606,6 +619,60 @@ export async function resolveRequestRagCacheContext(
   return { cacheContext, ragContextSnapshot };
 }
 
+export function resolveEvaluationRagCacheContext(
+  args: Pick<
+    SearchChunksArgs,
+    "documentId" | "documentIds" | "ownerId" | "accessScope" | "ragContextSnapshot" | "cacheContext"
+  >,
+  evaluation: RagEvaluationContext,
+): Pick<SearchChunksArgs, "ragContextSnapshot" | "cacheContext"> {
+  const generation = evaluation.configuration.generation;
+  const policy = evaluation.providerPolicy;
+  const providerConfigurationMatches =
+    generation.promptVersion === ragAnswerPromptVersion &&
+    generation.schemaVersion === ragAnswerSchemaVersion &&
+    generation.classifierPromptVersion === ragQueryClassifierPromptVersion &&
+    generation.retrievalVersion === ragDeepMemoryVersion &&
+    generation.indexingPromptVersion === ragIndexingPromptVersion &&
+    (generation.providerMode === "offline"
+      ? evaluation.sourceOnly && !evaluation.providerAvailable
+      : !evaluation.sourceOnly && evaluation.providerAvailable);
+  const fixedPolicyMatches =
+    JSON.stringify(policy.routeBudgetMs) === JSON.stringify(answerRouteBudgetMs) &&
+    policy.generationRecoveryReserveMs === generationRecoveryReserveMs &&
+    policy.minimumGenerationRetryMs === minimumGenerationRetryMs;
+  const hasExplicitDocumentScope = args.documentIds !== undefined || args.documentId !== undefined;
+  const requestedDocumentIds = args.documentIds ?? (args.documentId ? [args.documentId] : []);
+  const sameDocuments =
+    !hasExplicitDocumentScope ||
+    (requestedDocumentIds.length === evaluation.documentIds.length &&
+      requestedDocumentIds.every((documentId, index) => documentId === evaluation.documentIds[index]));
+  if (
+    !providerConfigurationMatches ||
+    !fixedPolicyMatches ||
+    (args.ownerId ?? null) !== evaluation.ownerId ||
+    (args.accessScope !== undefined &&
+      ((args.accessScope.ownerId ?? null) !== evaluation.ownerId ||
+        args.accessScope.includePublic !== evaluation.includePublic)) ||
+    !sameDocuments ||
+    (args.ragContextSnapshot !== undefined && args.ragContextSnapshot !== evaluation.ragContextSnapshot) ||
+    (args.cacheContext?.ragContextSnapshot !== undefined &&
+      args.cacheContext.ragContextSnapshot !== evaluation.ragContextSnapshot) ||
+    (args.cacheContext?.indexingVersionAtRequestStart !== undefined &&
+      args.cacheContext.indexingVersionAtRequestStart !== evaluation.indexingVersionAtRequestStart)
+  ) {
+    evaluation.failures.record({ code: "context_mismatch", operation: "context" });
+    throw new Error("U04 evaluation request context does not match its admitted session.");
+  }
+  return {
+    ragContextSnapshot: evaluation.ragContextSnapshot,
+    cacheContext: {
+      ragContextSnapshot: evaluation.ragContextSnapshot,
+      indexingVersionAtRequestStart: evaluation.indexingVersionAtRequestStart,
+    },
+  };
+}
+
 function cacheIndexingVersionForSnapshot(
   snapshot: NonNullable<SearchChunksArgs["ragContextSnapshot"]>,
   legacyIndexingVersion: string,
@@ -1065,10 +1132,11 @@ export function packedContextCacheKey(
 }
 
 export async function packAdjacentSourceContext(
-  supabase: ReturnType<typeof createAdminClient>,
+  supabase: ReturnType<typeof createAdminClient> | null,
   results: SearchResult[],
   queryClass: RagQueryClass,
   options: { crossDocument?: boolean } = {},
+  evaluation?: RagEvaluationContext,
 ) {
   const contextLimit = sourceContextPackLimit(queryClass, options);
   const targetResults = results.slice(0, contextLimit);
@@ -1081,6 +1149,33 @@ export async function packAdjacentSourceContext(
   if (documentIds.length === 0 || chunkIndexes.length === 0) return results;
 
   try {
+    if (evaluation) {
+      const adjacentRows = await acceptRagEvaluationRead(evaluation, "adjacent_chunks", () =>
+        evaluation.readers.readAdjacentChunks({
+          ...ragEvaluationReadScope(evaluation),
+          document_ids: documentIds,
+          chunk_indexes: chunkIndexes,
+        }),
+      );
+      const adjacentByDocumentAndIndex = new Map(
+        adjacentRows.map((chunk) => [`${chunk.document_id}:${chunk.chunk_index}`, chunk] as const),
+      );
+      const targetIds = new Set(targetResults.map((result) => result.id));
+      return results.map((result) => {
+        if (!targetIds.has(result.id)) return result;
+        const adjacent = [result.chunk_index - 1, result.chunk_index + 1]
+          .map((index) => adjacentByDocumentAndIndex.get(`${result.document_id}:${index}`))
+          .filter((chunk): chunk is RagEvaluationAdjacentChunkRow =>
+            Boolean(chunk && chunk.id !== result.id && chunk.content.trim()),
+          )
+          .map((chunk) => {
+            const heading = chunk.section_heading ? `${chunk.section_heading}: ` : "";
+            return compactContextText(`${heading}${chunk.retrieval_synopsis || chunk.content}`, 520);
+          });
+        return adjacent.length === 0 ? result : { ...result, adjacent_context: adjacent.join(" ") };
+      });
+    }
+    if (!supabase) throw new Error("Supabase client is required outside U04 evaluation.");
     const { data, error } = await supabase
       .from("document_chunks")
       .select("id,document_id,page_number,chunk_index,section_heading,content,retrieval_synopsis,index_generation_id")

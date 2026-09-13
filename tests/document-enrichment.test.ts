@@ -25,6 +25,8 @@ vi.mock("@/lib/openai", () => ({
 }));
 
 import { generateDocumentEnrichment, ragEnrichmentVersion, upsertDocumentEnrichment } from "@/lib/document-enrichment";
+import { prepareShadowProducerDeclarationV1, encodeShadowNodeJsonCanonicalPayload,
+  type ShadowProducerBatchV1 } from "../scripts/lib/reindex-eval-session";
 
 const DOCUMENT_ID = "11111111-1111-4111-8111-111111111111";
 const GENERATION_ID = "22222222-2222-4222-8222-222222222222";
@@ -399,6 +401,130 @@ describe("document enrichment", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  function shadowSummaryFixture(refuseDeclaration: boolean, mutateDuringDeclaration = false) {
+    const baseline = "88888888-8888-4888-8888-888888888888";
+    const fence = { ...TEST_FENCE, expected_generation_id: baseline };
+    const binding = { tag: "candidate" as const, source: { version: 1 as const,
+      originDigest: `sha256:${"b".repeat(64)}`, executionProfileDigest: `sha256:${"c".repeat(64)}`,
+      documentId: DOCUMENT_ID, ownerId: null, contentHash: `sha256:${"d".repeat(64)}`,
+      authorityDigest: fence.authority_digest, sourcePolicyVersion: "synthetic-policy-v1", manualAliasIds: [],
+      baselineGenerationId: baseline, source: { tag: "document_owned" as const } }, candidateGenerationId: GENERATION_ID,
+      jobId: fence.job_id, firstLeaseToken: fence.lease_token, artifactGenerationId: null };
+    const events: string[] = [];
+    const mutationResults: boolean[] = [];
+    const declarations: ReturnType<typeof prepareShadowProducerDeclarationV1>[] = [];
+    const failures: unknown[] = [];
+    const rpc = vi.fn(async (name: string, payload: Record<string, unknown>) => {
+      events.push(name);
+      expect(name).toBe("persist_shadow_summary_projection");
+      expect(payload.p_fence).toEqual(fence);
+      expect(payload.p_generation).toBe(GENERATION_ID);
+      expect(payload.p_output_manifest).toEqual(declarations[0]!.outputManifestEnvelope);
+      const declared = JSON.parse(declarations[0]!.outputManifestEnvelope.canonicalPayload);
+      const summaryOutput = declared.units.find((unit: { family: string }) => unit.family === "summary").output;
+      expect(payload.p_summary).toEqual(summaryOutput.summary);
+      expect(payload.p_metadata).toEqual(summaryOutput.enrichment_metadata);
+      expect(payload.p_labels).toEqual(declared.units
+        .filter((unit: { family: string }) => unit.family === "generated_labels")
+        .map((unit: { output: unknown }) => unit.output));
+      return { data: { ok: true, summary: payload.p_summary }, error: null };
+    });
+    const from = vi.fn(() => { throw new Error("ordinary summary read/write forbidden"); });
+    const args: Parameters<typeof upsertDocumentEnrichment>[0] = {
+      supabase: { rpc, from } as never, fence,
+      document: { id: DOCUMENT_ID, owner_id: null, title: "Clozapine monitoring", file_name: "clozapine.pdf",
+        source_path: null, metadata: { index_generation_id: baseline } }, indexGenerationId: GENERATION_ID,
+      chunks: sourceAuthority().selectedChunks.map((chunk, chunk_index) => ({ ...chunk, index_generation_id: GENERATION_ID,
+        chunk_index, section_heading: null, content: chunk.id === LATE_CHUNK_ID ? "Check ANC before clozapine review." : "Clozapine protocol." })),
+      images: sourceAuthority().selectedImages.map(image => ({ ...image, index_generation_id: GENERATION_ID, caption: "Clozapine monitoring table" })),
+      shadow: { binding, declareBatch: async (batch: ShadowProducerBatchV1) => {
+        declarations.push(prepareShadowProducerDeclarationV1(binding, 4, batch)); events.push("declare-complete-output");
+        if (mutateDuringDeclaration) {
+          const summaryOutput = batch.units.find(unit => unit.family === "summary")!.output as {
+            summary: { summary: string; metadata: { source_anchored_summary_v1: { source_chunk_ids: string[] } } };
+          };
+          mutationResults.push(Reflect.set(summaryOutput.summary, "summary", "changed during declaration"));
+          mutationResults.push(Reflect.set(
+            summaryOutput.summary.metadata.source_anchored_summary_v1.source_chunk_ids,
+            0,
+            "99999999-9999-4999-8999-999999999999",
+          ));
+        }
+        if (refuseDeclaration) throw new Error("synthetic declaration refusal");
+        return declarations[0]!.outputManifestEnvelope;
+      }, recordFailure: async failure => {
+        failures.push(failure);
+        throw new Error("shadow producer failure retained");
+      } },
+    };
+    return { args, events, mutationResults, declarations, failures, rpc, from };
+  }
+
+  it("shadow summary retains actual complete U02 output before private persistence without changing G0", async () => {
+    const fixture = shadowSummaryFixture(false);
+    const original = encodeShadowNodeJsonCanonicalPayload({ document: fixture.args.document, fence: fixture.args.fence,
+      chunks: fixture.args.chunks, images: fixture.args.images });
+    const result = await upsertDocumentEnrichment(fixture.args);
+    expect(fixture.events).toEqual(["declare-complete-output", "persist_shadow_summary_projection"]);
+    expect(fixture.from).not.toHaveBeenCalled();
+    expect(fixture.rpc).toHaveBeenCalledTimes(1);
+    expect(result.summary.metadata).toHaveProperty("source_anchored_summary_v1.clinical_specifics.profile.key_clinical_actions.0.pages", [52]);
+    const declared = JSON.parse(fixture.declarations[0]!.outputManifestEnvelope.canonicalPayload);
+    expect(declared.units.find((unit: { family: string }) => unit.family === "summary").output.summary).toEqual(result.summary);
+    expect(declared.units.find((unit: { family: string }) => unit.family === "generated_labels").output.metadata).toMatchObject({
+      index_generation_id: GENERATION_ID, source_chunk_ids: [LATE_CHUNK_ID], pages: [52],
+    });
+    expect(encodeShadowNodeJsonCanonicalPayload({ document: fixture.args.document, fence: fixture.args.fence,
+      chunks: fixture.args.chunks, images: fixture.args.images })).toBe(original);
+  });
+
+  it("shadow summary declaration refusal retains full generated output and prevents every persistence call", async () => {
+    const fixture = shadowSummaryFixture(true);
+    await expect(upsertDocumentEnrichment(fixture.args)).rejects.toThrow("synthetic declaration refusal");
+    expect(fixture.events).toEqual(["declare-complete-output"]);
+    expect(fixture.rpc).not.toHaveBeenCalled();
+    expect(fixture.from).not.toHaveBeenCalled();
+    const declared = JSON.parse(fixture.declarations[0]!.outputManifestEnvelope.canonicalPayload);
+    expect(declared.units.find((unit: { family: string }) => unit.family === "summary").output.summary.metadata.source_anchored_summary_v1)
+      .toMatchObject({ source_chunk_ids: [CHUNK_ID, LATE_CHUNK_ID], source_image_ids: [IMAGE_ID], heuristic_fallback: false });
+  });
+
+  it("uses one immutable summary snapshot for declaration and private persistence", async () => {
+    const fixture = shadowSummaryFixture(false, true);
+    await upsertDocumentEnrichment(fixture.args);
+    expect(fixture.mutationResults).toEqual([false, false]);
+    expect(fixture.rpc).toHaveBeenCalledOnce();
+    const persisted = fixture.rpc.mock.calls[0]![1] as Record<string, unknown>;
+    expect(persisted.p_summary).toMatchObject({
+      summary: "- Check ANC before clozapine review.",
+      source_chunk_ids: [CHUNK_ID, LATE_CHUNK_ID],
+    });
+  });
+
+  describe("U04 shadow producer failure retention", () => {
+    it("retains a shadow summary generation failure without leaking the provider error or declaring success", async () => {
+      mocks.generateStructuredTextResponse.mockRejectedValueOnce(new Error("provider payload must not be retained"));
+      const fixture = shadowSummaryFixture(false);
+      await expect(upsertDocumentEnrichment(fixture.args)).rejects.toThrow("shadow producer failure retained");
+      expect(fixture.failures).toHaveLength(1);
+      expect(fixture.failures[0]).toMatchObject({
+        phase: "summary_generation",
+        code: "producer_failed",
+        artifactGenerationId: null,
+        input: {
+          document: { id: DOCUMENT_ID },
+          indexGenerationId: GENERATION_ID,
+          authority: { documentId: DOCUMENT_ID, indexGenerationId: GENERATION_ID },
+        },
+        partial: { existingPayload: null },
+      });
+      expect(JSON.stringify(fixture.failures[0])).not.toContain("provider payload must not be retained");
+      expect(fixture.declarations).toEqual([]);
+      expect(fixture.rpc).not.toHaveBeenCalled();
+      expect(fixture.from).not.toHaveBeenCalled();
+    });
   });
 
   it.each(["returned", "rejected"])(
