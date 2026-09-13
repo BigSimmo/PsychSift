@@ -345,14 +345,12 @@ export type DocumentGenerationRollbackManifestV1 = Readonly<{
   authorization: Readonly<{
     version: 1;
     operation: "rollback";
+    targetProjectRef: string;
     promotionOperationId: string;
     promotionReceiptDigest: LifecycleDigest;
     candidateGenerationId: string;
-    transitions: readonly Readonly<{
-      documentId: string;
-      fromGenerationId: string;
-      toGenerationId: string | null;
-    }>[];
+    expectedDocumentIds: readonly string[];
+    expectedDocumentCount: number;
     reasonCode: string;
     authorizedAt: string;
     expiresAt: string;
@@ -437,12 +435,14 @@ export function readDocumentGenerationRollbackManifestV1(
   lifecycleDriverKeys(
     authorization,
     [
-      "version", "operation", "promotionOperationId", "promotionReceiptDigest", "candidateGenerationId", "transitions",
-      "reasonCode", "authorizedAt", "expiresAt", "retainedUntil", "confirmationSha256",
+      "version", "operation", "targetProjectRef", "promotionOperationId", "promotionReceiptDigest",
+      "candidateGenerationId", "expectedDocumentIds", "expectedDocumentCount", "retainedUntil", "reasonCode",
+      "authorizedAt", "expiresAt", "confirmationSha256",
     ],
     "Rollback authorization payload",
   );
   if (authorization.version !== 1 || authorization.operation !== "rollback") throw new Error("Rollback manifest kind is invalid.");
+  lifecycleDriverString(authorization.targetProjectRef, /^[a-z]{20}$/, "Rollback target project");
   lifecycleDriverString(authorization.promotionOperationId, lifecycleUuid, "Promotion operation ID");
   lifecycleDriverString(authorization.promotionReceiptDigest, lifecycleSha, "Promotion receipt digest");
   const candidateGenerationId = lifecycleDriverString(
@@ -450,34 +450,27 @@ export function readDocumentGenerationRollbackManifestV1(
     lifecycleUuid,
     "Rollback candidate generation",
   );
-  if (!Array.isArray(authorization.transitions) || authorization.transitions.length === 0) {
-    throw new Error("Rollback manifest transitions are empty.");
+  if (!Array.isArray(authorization.expectedDocumentIds) || authorization.expectedDocumentIds.length === 0) {
+    throw new Error("Rollback manifest document population is empty.");
   }
-  const ids: string[] = [];
-  for (const value of authorization.transitions) {
-    const transition = lifecycleDriverRecord(value, "Rollback manifest transition");
-    lifecycleDriverKeys(transition, ["documentId", "fromGenerationId", "toGenerationId"], "Rollback manifest transition");
-    ids.push(lifecycleDriverString(transition.documentId, lifecycleUuid, "Rollback document ID"));
-    if (lifecycleDriverString(transition.fromGenerationId, lifecycleUuid, "Rollback source generation") !== candidateGenerationId) {
-      throw new Error("Rollback manifest source generation mismatch.");
-    }
-    if (transition.toGenerationId !== null) {
-      lifecycleDriverString(transition.toGenerationId, lifecycleUuid, "Rollback target generation");
-    }
-  }
+  const ids = authorization.expectedDocumentIds.map((value) =>
+    lifecycleDriverString(value, lifecycleUuid, "Rollback document ID"));
   if ([...ids].sort().join("|") !== ids.join("|") || new Set(ids).size !== ids.length) {
-    throw new Error("Rollback manifest transitions must be sorted and unique.");
+    throw new Error("Rollback manifest document IDs must be sorted and unique.");
+  }
+  if (!Number.isSafeInteger(authorization.expectedDocumentCount) || authorization.expectedDocumentCount !== ids.length) {
+    throw new Error("Rollback manifest document count mismatch.");
   }
   lifecycleDriverString(authorization.reasonCode, /^[a-z0-9][a-z0-9_-]{0,119}$/, "Rollback reason code");
   const trustedNow = lifecycleDriverTimestamp(trustedNowValue, "Rollback trusted clock");
   const authorizedAt = lifecycleDriverTimestamp(authorization.authorizedAt, "Rollback authorization time");
   const expiresAt = lifecycleDriverTimestamp(authorization.expiresAt, "Rollback authorization expiry");
   const retainedUntil = lifecycleDriverTimestamp(authorization.retainedUntil, "Rollback retention deadline");
-  if (Date.parse(authorizedAt) > Date.parse(trustedNow) || Date.parse(trustedNow) >= Date.parse(expiresAt)) {
-    throw new Error("Rollback authorization is not current.");
+  if (Date.parse(authorizedAt) > Date.parse(trustedNow)) {
+    throw new Error("Rollback authorization is future-issued.");
   }
-  if (Date.parse(retainedUntil) <= Date.parse(trustedNow)) {
-    throw new Error("Rollback retention deadline must be after the operation clock.");
+  if (Date.parse(expiresAt) <= Date.parse(authorizedAt) || Date.parse(retainedUntil) <= Date.parse(authorizedAt)) {
+    throw new Error("Rollback authorization time bounds are invalid.");
   }
   lifecycleDriverString(authorization.confirmationSha256, lifecycleSha, "Rollback confirmation digest");
   const supplied = lifecycleDriverString(manifest.rollbackManifestDigest, lifecycleSha, "Rollback manifest digest");
@@ -617,38 +610,44 @@ export async function promoteShadowDocumentGenerationV1(
 /** Rollback consumes the immutable promotion receipt and does not recheck recovery freshness. */
 export async function rollbackDocumentIndexGenerationV1(
   input: Readonly<{ promotionReceipt: unknown; rollbackManifest: unknown; trustedNow: string }>,
-  client: DocumentGenerationLifecycleRpc,
+  connection: Readonly<{ projectRef: string; client: DocumentGenerationLifecycleRpc }>,
 ) {
   const promotionReceipt = assertDocumentGenerationPromotionReceipt(input.promotionReceipt);
+  if (connection.projectRef !== promotionReceipt.projectRef) throw new Error("Rollback client targets a different project.");
   const rollbackManifest = readDocumentGenerationRollbackManifestV1(input.rollbackManifest, input.trustedNow);
+  const promotedDocumentIds = promotionReceipt.transitions.map((transition) => transition.documentId);
   if (
+    rollbackManifest.authorization.targetProjectRef !== promotionReceipt.projectRef ||
     rollbackManifest.authorization.promotionOperationId !== promotionReceipt.operationId ||
     rollbackManifest.authorization.promotionReceiptDigest !== promotionReceipt.receiptDigest ||
     rollbackManifest.authorization.candidateGenerationId !== promotionReceipt.candidateGenerationId ||
-    rollbackManifest.authorization.transitions.length !== promotionReceipt.transitions.length
+    rollbackManifest.authorization.expectedDocumentCount !== promotionReceipt.transitions.length ||
+    encodeShadowNodeJsonCanonicalPayload(rollbackManifest.authorization.expectedDocumentIds) !==
+      encodeShadowNodeJsonCanonicalPayload(promotedDocumentIds)
   ) {
     throw new Error("Rollback manifest is not bound to the exact promotion receipt.");
   }
-  for (const [index, transition] of rollbackManifest.authorization.transitions.entries()) {
-    const promoted = promotionReceipt.transitions[index]!;
-    if (
-      transition.documentId !== promoted.documentId ||
-      transition.fromGenerationId !== promoted.toGenerationId ||
-      transition.toGenerationId !== promoted.fromGenerationId
-    ) {
-      throw new Error("Rollback manifest does not reverse the exact promotion transitions.");
-    }
-  }
-  const data = await lifecycleRpc(client, "rollback_document_index_generation", {
+  const expectedInverseTransitions = promotionReceipt.transitions.map((transition) => ({
+    documentId: transition.documentId,
+    fromGenerationId: transition.toGenerationId,
+    toGenerationId: transition.fromGenerationId,
+    retainedUntil: rollbackManifest.authorization.retainedUntil,
+  }));
+  const data = await lifecycleRpc(connection.client, "rollback_document_index_generation", {
     p_promotion_receipt: promotionReceipt,
     p_rollback_manifest: rollbackManifest,
   });
   const rollbackReceipt = assertDocumentGenerationLifecycleRollbackReceipt(data);
-  if (Date.parse(rollbackReceipt.rolledBackAt) < Date.parse(input.trustedNow)) {
-    throw new Error("Rollback receipt time precedes the trusted operation clock.");
+  if (Date.parse(rollbackReceipt.rolledBackAt) < Date.parse(rollbackManifest.authorization.authorizedAt)) {
+    throw new Error("Rollback receipt time precedes its authorization.");
+  }
+  if (Date.parse(rollbackReceipt.rolledBackAt) >= Date.parse(rollbackManifest.authorization.expiresAt)) {
+    throw new Error("Rollback receipt time is outside its authorization window.");
   }
   if (
     rollbackReceipt.rollbackManifestDigest !== rollbackManifest.rollbackManifestDigest ||
+    encodeShadowNodeJsonCanonicalPayload(rollbackReceipt.transitions) !==
+      encodeShadowNodeJsonCanonicalPayload(expectedInverseTransitions) ||
     rollbackReceipt.transitions.some((transition) => transition.retainedUntil !== rollbackManifest.authorization.retainedUntil)
   ) {
     throw new Error("Rollback receipt changed the authorized manifest or retention deadline.");

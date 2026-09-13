@@ -3022,6 +3022,7 @@ describe("U04 retention-safe persistence contracts (source only; no SQL executio
 
   it("keeps native recovery millisecond, elapsed-duration, UUID and trim semantics distinct", () => {
     const recovery = effective("shadow_validate_recovery_v1"), clock = effective("shadow_recovery_timestamp_ms_v1");
+    expect(migration).not.toMatch(/(?:is distinct from|>)\s*case\b/i);
     expect(recovery).toContain("if p_project is null");
     expect(recovery).toContain("jsonb_typeof(v->'restoreDrill'->'targetProjectRef') is distinct from 'string'");
     expect(recovery).toContain("00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff");
@@ -4208,6 +4209,11 @@ describe("U05 exact generation lifecycle SQL source contracts", () => {
       "document_generation_first_publication_forbidden",
     );
     expect(promote).toContain("is distinct from 'GO'");
+    const populationGuard = "v_evaluation->>'populationFingerprint' is distinct from v_plan->>'populationFingerprint'";
+    expect(promote).toContain(populationGuard);
+    expect(promote.indexOf(populationGuard)).toBeLessThan(
+      promote.indexOf("public.require_document_generation_technical_gate_v1"),
+    );
     expect(promote).not.toMatch(/p_go\b|p_eligible\b|coalesce\([^)]*decision/i);
     expect(promote.indexOf("public.apply_document_generation_projection_v1")).toBeLessThan(
       promote.indexOf("public.transition_document_index_generation_core"),

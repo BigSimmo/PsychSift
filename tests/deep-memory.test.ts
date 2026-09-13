@@ -1,4 +1,5 @@
 import { embedTexts } from "../src/lib/openai";
+import { createHash } from "node:crypto";
 import { IngestionAttempt } from "../supabase/functions/_shared/ingestion-attempt";
 import { runIngestionEnrichmentStage, runIngestionMutation } from "../worker/behavior";
 import { describe, expect, it, vi } from "vitest";
@@ -42,6 +43,18 @@ const FENCE = {
   expected_generation_id: "22222222-2222-4222-8222-222222222222",
   authority_digest: `sha256:${"a".repeat(64)}`,
 };
+
+function pgProjectionEnvelope(payload: unknown, domain: "baseline" | "projection") {
+  const canonicalPayload = JSON.stringify(payload);
+  const header = `U04-SHADOW/1\n${domain}\npg-jsonb-text-v1\n${Buffer.byteLength(canonicalPayload, "utf8")}\n`;
+  return {
+    version: 1,
+    domain,
+    encoding: "pg-jsonb-text-v1",
+    canonicalPayload,
+    digest: `sha256:${createHash("sha256").update(header, "utf8").update(canonicalPayload, "utf8").digest("hex")}`,
+  };
+}
 function memoryRpcHarness(
   options: { failStage?: string; failCleanup?: boolean; commitError?: string; lostResponse?: boolean } = {},
 ) {
@@ -853,7 +866,11 @@ describe("review correction: actual deep-memory optional orchestration", () => {
 
 describe("actual shadow deep-memory producer", () => {
   type Args = Parameters<typeof upsertDocumentDeepMemory>[0];
-  function shadowDeepFixture(refuse: boolean, mutateDuringDeclaration = false) {
+  function shadowDeepFixture(
+    refuse: boolean,
+    mutateDuringDeclaration = false,
+    acknowledgement: (valid: Record<string, unknown>) => unknown = valid => valid,
+  ) {
     const candidate = "33333333-3333-4333-8333-333333333333";
     const binding: NonNullable<Args["shadow"]>["binding"] = { tag: "candidate", source: { version: 1,
       originDigest: `sha256:${"b".repeat(64)}`, executionProfileDigest: `sha256:${"c".repeat(64)}`,
@@ -876,7 +893,69 @@ describe("actual shadow deep-memory producer", () => {
         (unit: { family: string; key: string }) => unit.family === "sections" && unit.key === "deep:0",
       ).output;
       expect(payload.p_request).toEqual(sectionOutput.producerContext.request);
-      return { data: { ok: true, kind: "deep_memory_projected" }, error: null };
+      const request = payload.p_request as Record<string, unknown>;
+      const sqlCreatedAt = "2026-09-13T01:02:03.000000Z";
+      const sqlUpdatedAt = "2026-09-13T01:02:03.000001Z";
+      const sqlFinalizedAt = "2026-09-13T01:02:03.000002+00:00";
+      const sqlId = (family: number, index: number) =>
+        `${family}0000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`;
+      const units = declared.units as Array<{
+        family: "sections" | "memory_cards" | "index_units" | "producer_aliases";
+        key: string;
+        output: { nativeInput: Record<string, unknown>; sectionAssociation?: { tag: string; index?: number } };
+      }>;
+      const sectionUnits = units.filter(unit => unit.family === "sections");
+      const sectionIds = sectionUnits.map((_unit, index) => sqlId(1, index));
+      const storedRow = (unit: (typeof units)[number], family: number, index: number) => {
+        const native = unit.output.nativeInput;
+        const row: Record<string, unknown> = {
+          ...native,
+          id: sqlId(family, index),
+          created_at: sqlCreatedAt,
+          updated_at: sqlUpdatedAt,
+          metadata: {
+            ...(native.metadata as Record<string, unknown>),
+            index_generation_id: candidate,
+            ingestion_job_kind: "node",
+            ingestion_job_id: FENCE.job_id,
+            ingestion_lease_token: FENCE.lease_token,
+          },
+        };
+        if (unit.family === "producer_aliases") row.owner_id = null;
+        else row.index_generation_id = candidate;
+        if (unit.family === "memory_cards") {
+          const association = unit.output.sectionAssociation!;
+          row.section_id = association.tag === "index" ? sectionIds[association.index!] : null;
+          row.embedding = `[${(native.embedding as number[]).join(",")}]`;
+          row.search_tsv = "'review':1";
+        }
+        if (unit.family === "index_units") {
+          row.embedding = `[${(native.embedding as number[]).join(",")}]`;
+          row.search_tsv = "'review':1";
+        }
+        return pgProjectionEnvelope(row, "baseline");
+      };
+      const rows = {
+        sections: sectionUnits.map((unit, index) => storedRow(unit, 1, index)),
+        cards: units.filter(unit => unit.family === "memory_cards").map((unit, index) => storedRow(unit, 2, index)),
+        units: units.filter(unit => unit.family === "index_units").map((unit, index) => storedRow(unit, 3, index)),
+        aliases: units.filter(unit => unit.family === "producer_aliases").map((unit, index) => storedRow(unit, 4, index)),
+      };
+      const receipt = pgProjectionEnvelope({
+        kind: "u04-deep-memory-receipt-v1",
+        binding: declared.binding,
+        producer: "local-worker",
+        outputManifestEnvelope: payload.p_output_manifest,
+        request,
+        rows,
+        finalizedAt: sqlFinalizedAt,
+      }, "projection");
+      return { data: acknowledgement({
+        ok: true,
+        kind: "deep_memory_projected",
+        projection_digest: `sha256:${"e".repeat(64)}`,
+        receipt,
+      }), error: null };
     });
     const from = vi.fn(() => { throw new Error("ordinary deep-memory mutation or ownership scan forbidden"); });
     const args: Args = { supabase: { rpc, from } as never, fence: FENCE,
@@ -932,6 +1011,59 @@ describe("actual shadow deep-memory producer", () => {
       expect(["index", "own_undefined", "absent"]).toContain(card.output.sectionAssociation.tag);
     }
     expect(encodeShadowNodeJsonCanonicalPayload({ document: fixture.args.document, chunks: fixture.args.chunks, fence: fixture.args.fence })).toBe(before);
+  });
+
+  it.each([
+    ["missing receipt", (valid: Record<string, unknown>) => {
+      const { receipt: _receipt, ...malformed } = valid; return malformed;
+    }],
+    ["wrong kind", (valid: Record<string, unknown>) => ({ ...valid, kind: "summary_projected" })],
+    ["missing digest", (valid: Record<string, unknown>) => {
+      const { projection_digest: _digest, ...malformed } = valid; return malformed;
+    }],
+    ["extra response key", (valid: Record<string, unknown>) => ({ ...valid, stale: true })],
+    ["wrong receipt request", (valid: Record<string, unknown>) => {
+      const envelope = valid.receipt as { canonicalPayload: string };
+      const receipt = JSON.parse(envelope.canonicalPayload) as Record<string, unknown>;
+      return { ...valid, receipt: pgProjectionEnvelope({ ...receipt, request: {
+        ...(receipt.request as Record<string, unknown>), section_count: 999,
+      } }, "projection") };
+    }],
+    ["invalid finalized-at timestamp", (valid: Record<string, unknown>) => {
+      const envelope = valid.receipt as { canonicalPayload: string };
+      const receipt = JSON.parse(envelope.canonicalPayload) as Record<string, unknown>;
+      return { ...valid, receipt: pgProjectionEnvelope({ ...receipt, finalizedAt: "2026-09-13T25:02:03+00:00" }, "projection") };
+    }],
+    ["digest-valid substituted card content", (valid: Record<string, unknown>) => {
+      const envelope = valid.receipt as { canonicalPayload: string };
+      const receipt = JSON.parse(envelope.canonicalPayload) as Record<string, unknown>;
+      const rows = structuredClone(receipt.rows) as Record<string, Array<{ canonicalPayload: string }>>;
+      const row = JSON.parse(rows.cards[0]!.canonicalPayload) as Record<string, unknown>;
+      rows.cards[0] = pgProjectionEnvelope({ ...row, content: "Substituted clinical content." }, "baseline");
+      return { ...valid, receipt: pgProjectionEnvelope({ ...receipt, rows }, "projection") };
+    }],
+    ["digest-valid incomplete card row", (valid: Record<string, unknown>) => {
+      const envelope = valid.receipt as { canonicalPayload: string };
+      const receipt = JSON.parse(envelope.canonicalPayload) as Record<string, unknown>;
+      const rows = structuredClone(receipt.rows) as Record<string, Array<{ canonicalPayload: string }>>;
+      const row = JSON.parse(rows.cards[0]!.canonicalPayload) as Record<string, unknown>;
+      const { content: _content, ...incomplete } = row;
+      rows.cards[0] = pgProjectionEnvelope(incomplete, "baseline");
+      return { ...valid, receipt: pgProjectionEnvelope({ ...receipt, rows }, "projection") };
+    }],
+  ] as const)("rejects a shadow deep-memory %s acknowledgement before later persistence", async (_fault, acknowledgement) => {
+    generateModelIndexProfileMock.mockResolvedValueOnce(fallbackModelIndexProfile());
+    const fixture = shadowDeepFixture(false, false, acknowledgement);
+    const laterPersistence = vi.fn();
+    const process = async () => {
+      await upsertDocumentDeepMemory(fixture.args);
+      await laterPersistence();
+    };
+    await expect(process()).rejects.toMatchObject({ code: "ingestion_rpc_invalid" });
+    expect(fixture.rpc).toHaveBeenCalledOnce();
+    expect(fixture.failures).toEqual([]);
+    expect(fixture.from).not.toHaveBeenCalled();
+    expect(laterPersistence).not.toHaveBeenCalled();
   });
   it("keeps a refused deep declaration from staging, committing, cleaning up or mutating ordinary memory", async () => {
     generateModelIndexProfileMock.mockResolvedValueOnce(fallbackModelIndexProfile());

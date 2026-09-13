@@ -65,6 +65,7 @@ import { normalizeOptionalSourceMetadata } from "../src/lib/source-metadata";
 import {
   evaluateShadowReindexV1,
   promoteShadowDocumentGenerationV1,
+  rollbackDocumentIndexGenerationV1,
   readShadowReindexStageV1,
 } from "../scripts/reindex-shadow";
 
@@ -85,6 +86,184 @@ const pgBaseline = {
     '{"value": 9007199254740993, "timestamp": "2026-09-11T02:00:00.123456+00:00", "embedding": [0.12345678901234567890]}',
   digest: "sha256:241cd6e4b776836144a9a1aa028ca396ba431384cc8c8ef0c06439df35bc1fc4",
 } as const;
+
+describe("C02 rollback SQL manifest compatibility", () => {
+  const projectRef = "sjrfecxgysukkwxsowpy";
+  const candidateGenerationId = "55555555-5555-4555-8555-555555555555";
+  const documentIds = [
+    "11111111-1111-4111-8111-111111111111",
+    "22222222-2222-4222-8222-222222222222",
+  ] as const;
+  const promotionPayload = {
+    version: 1 as const,
+    kind: "document-generation-promotion-v1" as const,
+    operationId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    projectRef,
+    candidateGenerationId,
+    planDigest: `sha256:${"a".repeat(64)}`,
+    stageReceiptDigest: `sha256:${"b".repeat(64)}`,
+    evaluationReportDigest: `sha256:${"c".repeat(64)}`,
+    recoveryEvidenceDigest: `sha256:${"d".repeat(64)}`,
+    stageAuthorizationDigest: `sha256:${"e".repeat(64)}`,
+    promoteAuthorizationDigest: `sha256:${"f".repeat(64)}`,
+    technicalEvidenceReceiptDigests: [`sha256:${"1".repeat(64)}`, `sha256:${"2".repeat(64)}`],
+    transitions: documentIds.map((documentId, index) => ({
+      documentId,
+      fromGenerationId: index === 0 ? null : "33333333-3333-4333-8333-333333333333",
+      toGenerationId: candidateGenerationId,
+      previousServingSnapshotDigest: `sha256:${"3".repeat(64)}`,
+      candidateServingSnapshotDigest: `sha256:${"4".repeat(64)}`,
+      retainedUntil: "2026-10-13T01:00:00.000Z",
+    })),
+    promotedAt: "2026-09-13T01:05:00.000Z",
+  };
+  const promotionReceipt = {
+    ...promotionPayload,
+    receiptDigest: `sha256:${createHash("sha256")
+      .update(encodeShadowNodeJsonCanonicalPayload(promotionPayload))
+      .digest("hex")}`,
+  };
+  const authorization = {
+    version: 1 as const,
+    operation: "rollback" as const,
+    targetProjectRef: projectRef,
+    promotionOperationId: promotionReceipt.operationId,
+    promotionReceiptDigest: promotionReceipt.receiptDigest,
+    candidateGenerationId,
+    expectedDocumentIds: [...documentIds],
+    expectedDocumentCount: documentIds.length,
+    retainedUntil: "2027-01-13T01:00:00.000Z",
+    reasonCode: "post_promotion_observation_failed",
+    authorizedAt: "2026-12-13T01:00:00.000Z",
+    expiresAt: "2026-12-13T01:10:00.000Z",
+    confirmationSha256: `sha256:${"5".repeat(64)}`,
+  };
+  const rollbackManifest = {
+    authorization,
+    rollbackManifestDigest: `sha256:${createHash("sha256")
+      .update(encodeShadowNodeJsonCanonicalPayload(authorization))
+      .digest("hex")}`,
+  };
+  const rollbackPayload = {
+    version: 1 as const,
+    kind: "document-generation-rollback-v1" as const,
+    operationId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    promotionOperationId: promotionReceipt.operationId,
+    promotionReceiptDigest: promotionReceipt.receiptDigest,
+    rollbackManifestDigest: rollbackManifest.rollbackManifestDigest,
+    candidateGenerationId,
+    transitions: promotionReceipt.transitions.map((transition) => ({
+      documentId: transition.documentId,
+      fromGenerationId: transition.toGenerationId,
+      toGenerationId: transition.fromGenerationId,
+      retainedUntil: authorization.retainedUntil,
+    })),
+    rolledBackAt: "2026-12-13T01:05:00.000Z",
+  };
+  const rollbackReceipt = {
+    ...rollbackPayload,
+    receiptDigest: `sha256:${createHash("sha256")
+      .update(encodeShadowNodeJsonCanonicalPayload(rollbackPayload))
+      .digest("hex")}`,
+  };
+
+  it("C02 rollback exact keys: sends the SQL-compatible authorization and derives inverse receipt transitions", async () => {
+    const rpc = vi.fn(async () => ({ data: rollbackReceipt, error: null }));
+
+    await expect(
+      rollbackDocumentIndexGenerationV1(
+        { promotionReceipt, rollbackManifest, trustedNow: rollbackPayload.rolledBackAt },
+        { projectRef, client: { rpc } },
+      ),
+    ).resolves.toEqual(rollbackReceipt);
+    expect(Object.keys(authorization).sort()).toEqual([
+      "authorizedAt", "candidateGenerationId", "confirmationSha256", "expectedDocumentCount",
+      "expectedDocumentIds", "expiresAt", "operation", "promotionOperationId", "promotionReceiptDigest",
+      "reasonCode", "retainedUntil", "targetProjectRef", "version",
+    ]);
+    expect(rpc).toHaveBeenCalledWith("rollback_document_index_generation", {
+      p_promotion_receipt: promotionReceipt,
+      p_rollback_manifest: rollbackManifest,
+    });
+  });
+
+  it("C02 rollback pre-RPC refusal: rejects a wrong destination or exact-population mismatch", async () => {
+    const rpc = vi.fn(async () => ({ data: rollbackReceipt, error: null }));
+    await expect(
+      rollbackDocumentIndexGenerationV1(
+        { promotionReceipt, rollbackManifest, trustedNow: rollbackPayload.rolledBackAt },
+        { projectRef: "abcdefghijklmnopqrst", client: { rpc } },
+      ),
+    ).rejects.toThrow(/different project/i);
+    expect(rpc).not.toHaveBeenCalled();
+
+    const substitutedAuthorization = {
+      ...authorization,
+      expectedDocumentIds: [documentIds[0]],
+      expectedDocumentCount: 1,
+    };
+    const substitutedManifest = {
+      authorization: substitutedAuthorization,
+      rollbackManifestDigest: `sha256:${createHash("sha256")
+        .update(encodeShadowNodeJsonCanonicalPayload(substitutedAuthorization))
+        .digest("hex")}`,
+    };
+    await expect(
+      rollbackDocumentIndexGenerationV1(
+        { promotionReceipt, rollbackManifest: substitutedManifest, trustedNow: rollbackPayload.rolledBackAt },
+        { projectRef, client: { rpc } },
+      ),
+    ).rejects.toThrow(/exact promotion receipt/i);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("C02 rollback receipt window: rejects a correctly digested receipt created at authorization expiry", async () => {
+    const latePayload = { ...rollbackPayload, rolledBackAt: authorization.expiresAt };
+    const lateReceipt = {
+      ...latePayload,
+      receiptDigest: `sha256:${createHash("sha256")
+        .update(encodeShadowNodeJsonCanonicalPayload(latePayload))
+        .digest("hex")}`,
+    };
+    const rpc = vi.fn(async () => ({ data: lateReceipt, error: null }));
+    await expect(
+      rollbackDocumentIndexGenerationV1(
+        { promotionReceipt, rollbackManifest, trustedNow: authorization.expiresAt },
+        { projectRef, client: { rpc } },
+      ),
+    ).rejects.toThrow("Rollback receipt time is outside its authorization window.");
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("C02 rollback expired replay: recovers an existing receipt while SQL refuses a first execution", async () => {
+    const retryClock = "2027-02-13T01:05:00.000Z";
+    const existingReceiptRpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+      expect(name).toBe("rollback_document_index_generation");
+      expect(args).toEqual({ p_promotion_receipt: promotionReceipt, p_rollback_manifest: rollbackManifest });
+      return { data: rollbackReceipt, error: null };
+    });
+    await expect(
+      rollbackDocumentIndexGenerationV1(
+        { promotionReceipt, rollbackManifest, trustedNow: retryClock },
+        { projectRef, client: { rpc: existingReceiptRpc } },
+      ),
+    ).resolves.toEqual(rollbackReceipt);
+    expect(existingReceiptRpc).toHaveBeenCalledTimes(1);
+
+    const firstExecutionRpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+      expect(name).toBe("rollback_document_index_generation");
+      expect(args).toEqual({ p_promotion_receipt: promotionReceipt, p_rollback_manifest: rollbackManifest });
+      return { data: null, error: { message: "document_generation_rollback_authorization_expired" } };
+    });
+    await expect(
+      rollbackDocumentIndexGenerationV1(
+        { promotionReceipt, rollbackManifest, trustedNow: retryClock },
+        { projectRef, client: { rpc: firstExecutionRpc } },
+      ),
+    ).rejects.toThrow("document_generation_rollback_authorization_expired");
+    expect(firstExecutionRpc).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("U04 complete native producer input", () => {
   it("retains actual RPC bytes and reconstructs absent, null and own undefined fields", () => {

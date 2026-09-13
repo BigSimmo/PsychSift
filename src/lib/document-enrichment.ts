@@ -9,6 +9,7 @@ import type { ShadowProducerPersistence } from "../../worker/types";
 import {
   captureShadowProducerInputV1,
   encodeShadowNodeJsonCanonicalPayload,
+  parseShadowSqlTimestampV1,
   readShadowProducerInputV1,
 } from "../../scripts/lib/reindex-eval-session";
 import { classifyDocumentOrganization } from "@/lib/document-organization";
@@ -799,6 +800,75 @@ function projectedLabelRows(payload: SourceAnchoredSummaryPayload, ownerId: stri
   }));
 }
 
+const shadowProjectionDigestPattern = /^sha256:[0-9a-f]{64}$/;
+const shadowProjectionUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+function hasExactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function hasSameJsonValue(left: unknown, right: unknown) {
+  try {
+    return encodeShadowNodeJsonCanonicalPayload(left) === encodeShadowNodeJsonCanonicalPayload(right);
+  } catch {
+    return false;
+  }
+}
+
+function requireShadowSummaryProjectionAcknowledgement(
+  result: Record<string, unknown> & { ok: true },
+  expectedSummary: Record<string, unknown>,
+  binding: NonNullable<ShadowProducerPersistence["binding"]>,
+) {
+  if (
+    !hasExactKeys(result, ["ok", "kind", "summary", "projection_digest"]) ||
+    (result.kind !== "summary_projected" && result.kind !== "unchanged") ||
+    typeof result.projection_digest !== "string" ||
+    !shadowProjectionDigestPattern.test(result.projection_digest) ||
+    !hasExactKeys(result.summary, [
+      "id", "document_id", "owner_id", "summary", "clinical_specifics", "source_chunk_ids", "source_image_ids",
+      "model", "metadata", "generated_at", "created_at", "updated_at",
+    ])
+  ) throw new IngestionAttemptError("ingestion_rpc_invalid");
+  const stored = result.summary;
+  const expectedMetadata = {
+    ...(expectedSummary.metadata as Record<string, unknown>),
+    index_generation_id: binding.candidateGenerationId,
+    ingestion_job_kind: "node",
+    ingestion_job_id: binding.jobId,
+    ingestion_lease_token: binding.firstLeaseToken,
+  };
+  let storedGeneratedAt: ReturnType<typeof parseShadowSqlTimestampV1>;
+  let expectedGeneratedAt: ReturnType<typeof parseShadowSqlTimestampV1>;
+  try {
+    storedGeneratedAt = parseShadowSqlTimestampV1(stored.generated_at);
+    expectedGeneratedAt = parseShadowSqlTimestampV1(expectedSummary.generated_at);
+    parseShadowSqlTimestampV1(stored.created_at);
+    parseShadowSqlTimestampV1(stored.updated_at);
+  } catch {
+    throw new IngestionAttemptError("ingestion_rpc_invalid");
+  }
+  const nativeFields = [
+    "document_id",
+    "owner_id",
+    "summary",
+    "clinical_specifics",
+    "source_chunk_ids",
+    "source_image_ids",
+    "model",
+  ] as const;
+  if (
+    typeof stored.id !== "string" || !shadowProjectionUuidPattern.test(stored.id) ||
+    nativeFields.some(field => !hasSameJsonValue(stored[field], expectedSummary[field])) ||
+    storedGeneratedAt.microsecondsSinceUnixEpoch !== expectedGeneratedAt.microsecondsSinceUnixEpoch ||
+    !hasSameJsonValue(stored.metadata, expectedMetadata)
+  ) throw new IngestionAttemptError("ingestion_rpc_invalid");
+  return stored as DocumentSummary;
+}
+
 export async function upsertDocumentEnrichment(args: {
   supabase: SupabaseClient;
   fence: IngestionFence;
@@ -942,6 +1012,12 @@ export async function upsertDocumentEnrichment(args: {
     }),
   );
   args.signal?.throwIfAborted();
+  if (binding) {
+    return {
+      summary: requireShadowSummaryProjectionAcknowledgement(result, producerSnapshot.summary, binding),
+      labels: payload.labels,
+    };
+  }
   if (!result.summary || typeof result.summary !== "object" || Array.isArray(result.summary))
     throw new IngestionAttemptError("ingestion_rpc_invalid");
   return { summary: result.summary as DocumentSummary, labels: payload.labels };

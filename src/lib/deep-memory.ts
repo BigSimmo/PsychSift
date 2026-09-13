@@ -6,7 +6,11 @@ import {
 } from "../../supabase/functions/_shared/ingestion-attempt";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ShadowProducerPersistence } from "../../worker/types";
-import { captureShadowProducerInputV1, readShadowProducerInputV1 } from "../../scripts/lib/reindex-eval-session";
+import {
+  captureShadowProducerInputV1,
+  readShadowProducerInputV1,
+  validateShadowDeepMemoryProjectionReceiptV1,
+} from "../../scripts/lib/reindex-eval-session";
 import { buildClinicalTextSearchQuery, classifyRagQuery, normalizedClinicalSearchTokens } from "@/lib/clinical-search";
 import { logger } from "@/lib/logger";
 import {
@@ -43,6 +47,43 @@ import type {
 } from "@/lib/types";
 
 type AbortableQuery<T> = PromiseLike<T> & { abortSignal?: (signal: AbortSignal) => PromiseLike<T> };
+
+const shadowProjectionDigestPattern = /^sha256:[0-9a-f]{64}$/;
+
+function hasExactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function requireShadowDeepMemoryProjectionAcknowledgement(args: {
+  result: Record<string, unknown> & { ok: true };
+  binding: NonNullable<ShadowProducerPersistence["binding"]>;
+  artifactGenerationId: string;
+  outputManifestEnvelope: unknown;
+  request: Record<string, unknown>;
+  sourceIds: { chunks: string[]; images: string[] };
+}) {
+  const { result } = args;
+  if (
+    !hasExactKeys(result, ["ok", "kind", "projection_digest", "receipt"]) ||
+    (result.kind !== "deep_memory_projected" && result.kind !== "unchanged") ||
+    typeof result.projection_digest !== "string" ||
+    !shadowProjectionDigestPattern.test(result.projection_digest)
+  ) throw new IngestionAttemptError("ingestion_rpc_invalid");
+  try {
+    validateShadowDeepMemoryProjectionReceiptV1({
+      receiptEnvelope: result.receipt,
+      binding: { ...args.binding, artifactGenerationId: args.artifactGenerationId },
+      outputManifestEnvelope: args.outputManifestEnvelope,
+      expectedRequest: args.request,
+      sourceIds: args.sourceIds,
+    });
+  } catch {
+    throw new IngestionAttemptError("ingestion_rpc_invalid");
+  }
+}
 
 function abortReason(signal: AbortSignal): Error {
   return signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted.", "AbortError");
@@ -850,7 +891,9 @@ export async function upsertDocumentDeepMemory(args: {
     args.signal?.throwIfAborted();
     const result = await mutate("persist_shadow_deep_memory_projection", { p_generation: sourceGeneration,
       p_artifact_generation: artifactGenerationId, p_output_manifest: outputManifest, p_request: producerSnapshot.request });
-    if (result.kind !== "deep_memory_projected" && result.kind !== "unchanged") throw new IngestionAttemptError("ingestion_rpc_invalid");
+    requireShadowDeepMemoryProjectionAcknowledgement({ result, binding: args.shadow.binding, artifactGenerationId,
+      outputManifestEnvelope: outputManifest, request: producerSnapshot.request,
+      sourceIds: { chunks: args.chunks.map(chunk => chunk.id), images: (args.images ?? []).map(image => image.id) } });
     return { sections, memoryCards: cards, indexUnits, modelProfile };
   }
 

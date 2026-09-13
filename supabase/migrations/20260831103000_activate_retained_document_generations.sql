@@ -163,7 +163,7 @@ create trigger document_index_generations_lifecycle_update
 create or replace function public.is_committed_document_generation(row_generation uuid,document_metadata jsonb)
 returns boolean language sql stable set search_path = public,extensions,pg_temp as $$
   select row_generation is not distinct from
-    nullif(pg_catalog.coalesce(document_metadata,'{}'::jsonb)->>'index_generation_id','')::uuid
+    nullif(coalesce(document_metadata,'{}'::jsonb)->>'index_generation_id','')::uuid
 $$;
 create or replace function public.is_committed_document_generation(row_generation uuid,document_generation uuid)
 returns boolean language sql stable set search_path = public,extensions,pg_temp as $$
@@ -171,14 +171,14 @@ returns boolean language sql stable set search_path = public,extensions,pg_temp 
 $$;
 create or replace function public.is_committed_artifact_generation(artifact_metadata jsonb,document_metadata jsonb)
 returns boolean language sql stable set search_path = public,extensions,pg_temp as $$
-  select nullif(pg_catalog.coalesce(artifact_metadata,'{}'::jsonb)->>'index_generation_id','')::uuid
+  select nullif(coalesce(artifact_metadata,'{}'::jsonb)->>'index_generation_id','')::uuid
     is not distinct from
-    nullif(pg_catalog.coalesce(document_metadata,'{}'::jsonb)->>'index_generation_id','')::uuid
+    nullif(coalesce(document_metadata,'{}'::jsonb)->>'index_generation_id','')::uuid
 $$;
 create or replace function public.is_committed_artifact_generation(artifact_generation_id uuid,document_metadata jsonb)
 returns boolean language sql stable set search_path = public,extensions,pg_temp as $$
   select artifact_generation_id is not distinct from
-    nullif(pg_catalog.coalesce(document_metadata,'{}'::jsonb)->>'index_generation_id','')::uuid
+    nullif(coalesce(document_metadata,'{}'::jsonb)->>'index_generation_id','')::uuid
 $$;
 
 create or replace function public.document_generation_serving_snapshot_v1(p_document_id uuid)
@@ -193,13 +193,13 @@ begin
   select * into strict v_document from public.documents where id=p_document_id;
   select pg_catalog.to_jsonb(s) into v_summary
     from public.document_summaries s where s.document_id=p_document_id;
-  select pg_catalog.coalesce(pg_catalog.jsonb_agg(pg_catalog.to_jsonb(l)
+  select coalesce(pg_catalog.jsonb_agg(pg_catalog.to_jsonb(l)
       order by public.shadow_utf16_order_v1(l.id::text)),'[]'::jsonb)
     into v_labels
     from public.document_labels l where l.document_id=p_document_id and l.source='generated';
   select pg_catalog.to_jsonb(q) into v_quality
     from public.document_index_quality q where q.document_id=p_document_id;
-  select pg_catalog.coalesce(pg_catalog.jsonb_agg(pg_catalog.to_jsonb(a)
+  select coalesce(pg_catalog.jsonb_agg(pg_catalog.to_jsonb(a)
       order by public.shadow_utf16_order_v1(a.id::text)),'[]'::jsonb)
     into v_aliases from public.rag_aliases a
     where a.metadata->>'document_id'=p_document_id::text
@@ -214,9 +214,9 @@ begin
       'error_message',v_document.error_message,
       'metadata',v_document.metadata
     ),
-    'summary',pg_catalog.coalesce(v_summary,'null'::jsonb),
+    'summary',coalesce(v_summary,'null'::jsonb),
     'generatedLabels',v_labels,
-    'quality',pg_catalog.coalesce(v_quality,'null'::jsonb),
+    'quality',coalesce(v_quality,'null'::jsonb),
     'producerAliases',v_aliases
   );
 end $$;
@@ -246,7 +246,7 @@ begin
     error_message=p_projection.document_counts->>'error_message',
     metadata=v_document.metadata
       || (p_projection.worker_metadata-'index_generation_id')
-      || pg_catalog.coalesce(p_projection.deep_memory_metadata,'{}'::jsonb),
+      || coalesce(p_projection.deep_memory_metadata,'{}'::jsonb),
     updated_at=pg_catalog.clock_timestamp()
   where id=p_member.document_id;
 
@@ -292,7 +292,7 @@ begin
   delete from public.rag_aliases a where a.metadata->>'document_id'=p_member.document_id::text
     and a.metadata->>'generated_by'='local-worker';
   for v_alias in select * from pg_catalog.jsonb_populate_recordset(
-    null::public.rag_aliases,pg_catalog.coalesce(p_projection.producer_aliases,'[]'::jsonb)
+    null::public.rag_aliases,coalesce(p_projection.producer_aliases,'[]'::jsonb)
   ) loop
     if v_alias.metadata->>'document_id' is distinct from p_member.document_id::text
       or v_alias.metadata->>'generated_by' is distinct from 'local-worker'
@@ -434,7 +434,7 @@ returns boolean language sql stable security definer set search_path = '' as $$
     select value from promotion p cross join lateral pg_catalog.jsonb_array_elements(p.receipt->'transitions')
     where value->>'documentId'=p_document_id::text
   )
-  select pg_catalog.coalesce(
+  select coalesce(
     (select pg_catalog.count(*)=1
       and pg_catalog.bool_and((s.value->>'snapshotDigest') is not distinct from
         public.document_generation_local_digest_v1(s.value->'previousServingSnapshot'))
@@ -617,7 +617,7 @@ begin
       into v_count;
     v_total:=v_total+v_count;
   end loop;
-  select pg_catalog.coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+  select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
       'documentId',i.document_id,'generationId',i.index_generation_id,'family',i.family,
       'unitKey',i.unit_key,'artifactRef',i.artifact_ref,'contentDigest',i.content_digest)
       order by public.shadow_utf16_order_v1(i.document_id::text),
@@ -653,7 +653,7 @@ begin
   if v_operation.receipt->'targets' is distinct from p_targets
     then raise exception 'document_generation_cleanup_not_authorized'; end if;
 
-  select pg_catalog.coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+  select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
       'documentId',i.document_id,'generationId',i.index_generation_id,'family',i.family,
       'unitKey',i.unit_key,'artifactRef',i.artifact_ref,'contentDigest',i.content_digest)
       order by public.shadow_utf16_order_v1(i.document_id::text),
@@ -792,6 +792,7 @@ begin
     or v_stage->>'planDigest' is distinct from p_plan->>'digest'
     or v_evaluation->>'candidateGenerationId' is distinct from v_candidate::text
     or v_evaluation->>'planDigest' is distinct from p_plan->>'digest'
+    or v_evaluation->>'populationFingerprint' is distinct from v_plan->>'populationFingerprint'
     or v_evaluation->>'stageReceiptDigest' is distinct from p_stage_receipt->>'digest'
     or v_evaluation->>'recoveryEvidenceDigest' is distinct from v_stage->>'recoveryEvidenceDigest'
     or not public.shadow_keys_v1(v_evaluation,array[
@@ -953,7 +954,7 @@ begin
     or p_rollback_manifest->>'rollbackManifestDigest'
       is distinct from public.document_generation_local_digest_v1(v_authorization)
     or v_authorization->>'confirmationSha256' !~ '^sha256:[0-9a-f]{64}$'
-    or pg_catalog.coalesce(pg_catalog.btrim(v_authorization->>'reasonCode'),'')=''
+    or coalesce(pg_catalog.btrim(v_authorization->>'reasonCode'),'')=''
   then raise exception 'invalid_document_generation_rollback_manifest'; end if;
   v_retained_until:=public.shadow_audit_timestamp_v1(v_authorization->'retainedUntil');
   select * into strict v_promotion from public.document_index_generation_operations
@@ -1020,7 +1021,7 @@ begin
   ) values (
     v_operation_id,'rollback',v_promotion.candidate_generation_id,v_promotion.id,
     p_rollback_manifest->>'rollbackManifestDigest',v_receipt->>'receiptDigest',v_receipt,
-    (select pg_catalog.coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
+    (select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(
       'documentId',value->'documentId','snapshot',public.document_generation_serving_snapshot_v1((value->>'documentId')::uuid),
       'snapshotDigest',public.document_generation_local_digest_v1(
         public.document_generation_serving_snapshot_v1((value->>'documentId')::uuid)))

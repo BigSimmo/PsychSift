@@ -1,14 +1,14 @@
 {
-  "generated_at": "2026-08-28T19:13:28.635Z",
+  "generated_at": "2026-09-13T05:09:20.897Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "e76358de646e9ee16ad8bf820f1b73ea83b4669b466fcfea5655afaa6fe2023a",
-  "replay_seconds": 15,
+  "schema_sha256": "06b5a76d6fba585777a431ee251536d4778e3c44a158711a5cf52bc4cb1a7216",
+  "replay_seconds": 17,
   "snapshot": {
     "views": [
       {
         "name": "document_strict_gate_status",
-        "def_hash": "9f21fc372b45ddfdd32ceb65007d1ba3"
+        "def_hash": "e84a20e6869ef15381afc21ce006c2b8"
       }
     ],
     "tables": [
@@ -935,6 +935,426 @@
       {
         "acl": [
           "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "document_generation_baselines",
+        "columns": [
+          {
+            "name": "baseline_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "bundle_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "bundle_payload",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "bundle_version",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "candidate_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "captured_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expected_state_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "document_generation_inventory",
+        "columns": [
+          {
+            "name": "artifact_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "artifact_ref",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "content_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "disposition",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expected",
+            "type": "boolean",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "family",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "limitations",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "producer",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "reason_code",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "relationships",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "representation_version",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "required",
+            "type": "boolean",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "retained_evidence_text",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "retained_native_payload",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "source_binding",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "transform_version",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "unit_key",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "document_generation_projections",
+        "columns": [
+          {
+            "name": "deep_memory_artifact_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "deep_memory_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "deep_memory_metadata",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "deep_memory_receipt",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "document_counts",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "enrichment_metadata",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "generated_labels",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "owner_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "producer_aliases",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "quality",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "quality_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "sealed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "summary",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "summary_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "summary_projection_complete",
+            "type": "boolean",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "worker_metadata",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "worker_state_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
         "name": "document_images",
@@ -1162,6 +1582,318 @@
           "autovacuum_vacuum_scale_factor=0.05",
           "autovacuum_vacuum_threshold=1000"
         ],
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "document_index_generation_operations",
+        "columns": [
+          {
+            "name": "candidate_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "clock_timestamp()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "manifest_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "operation_kind",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "promotion_operation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "receipt",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "receipt_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "rollback_state",
+            "type": "jsonb",
+            "default": "'[]'::jsonb",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "document_index_generations",
+        "columns": [
+          {
+            "name": "activated_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "activation_operation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "authority_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "baseline_bundle_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "baseline_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "candidate_projection_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "claimed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "cleaned_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "control_revision",
+            "type": "bigint",
+            "default": "0",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "control_snapshot",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "expected_inventory_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "expected_state_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "first_lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "inventory_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "inventory_manifest",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "job_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "last_operation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "original_origin_envelope",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "owner_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "retained_until",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "source_binding",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "stage_receipt",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "stage_receipt_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "staged_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "state",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
         "rls_forced": false,
         "rls_enabled": true
       },
@@ -1778,6 +2510,14 @@
             "generated": ""
           },
           {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "metadata",
             "type": "jsonb",
             "default": "'{}'::jsonb",
@@ -1899,7 +2639,31 @@
             "generated": ""
           },
           {
+            "name": "reviewed_index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "reviewed_state_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "source_catalogue_key",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "source_policy_version",
             "type": "text",
             "default": null,
             "identity": "",
@@ -2808,6 +3572,54 @@
             "generated": ""
           },
           {
+            "name": "lease_authority_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_duration_seconds",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_expected_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_write_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "locked_at",
             "type": "timestamp with time zone",
             "default": null,
@@ -2940,11 +3752,35 @@
             "generated": ""
           },
           {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "job_id",
             "type": "uuid",
             "default": null,
             "identity": "",
             "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "job_kind",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
             "generated": ""
           },
           {
@@ -3056,6 +3892,54 @@
             "generated": ""
           },
           {
+            "name": "lease_authority_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_duration_seconds",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_expected_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_write_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "locked_at",
             "type": "timestamp with time zone",
             "default": null,
@@ -3084,6 +3968,14 @@
             "type": "timestamp with time zone",
             "default": "now()",
             "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "operation",
+            "type": "text",
+            "default": "'standard'::text",
+            "identity": "",
             "not_null": true,
             "generated": ""
           },
@@ -3093,6 +3985,22 @@
             "default": "0",
             "identity": "",
             "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "requested_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "shadow_plan_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
             "generated": ""
           },
           {
@@ -3123,6 +4031,58 @@
             "name": "updated_at",
             "type": "timestamp with time zone",
             "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "ingestion_repair_plan_audit",
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "clock_timestamp()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "outcome",
+            "type": "text",
+            "default": "'planned'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "plan",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "plan_digest",
+            "type": "text",
+            "default": null,
             "identity": "",
             "not_null": true,
             "generated": ""
@@ -3287,6 +4247,346 @@
             "name": "validation_status",
             "type": "text",
             "default": "'unverified'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "public_source_activation_events",
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "decision",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "evidence_references",
+            "type": "text[]",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "operator_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "reason",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_catalogue_key",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_policy_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_policy_version",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_sequence",
+            "type": "bigint",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "public_source_serving_authority",
+        "columns": [
+          {
+            "name": "lifecycle_epoch",
+            "type": "bigint",
+            "default": "1",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "singleton",
+            "type": "boolean",
+            "default": "true",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "public_source_versions",
+        "columns": [
+          {
+            "name": "acquisition_identity_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "activation_event_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "content_hash",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "exact_canonical_url",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "exact_version",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "exact_version_url",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "extraction_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "licence_evidence_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "lifecycle",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "publication_approval_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "publication_manifest_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "publication_reviewed_index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "publication_reviewed_state_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "retrieved_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_catalogue_key",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_policy_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_policy_version",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "staged_content_hash",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "staging_document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "staging_owner_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "supersedes_version_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
             "identity": "",
             "not_null": true,
             "generated": ""
@@ -4310,6 +5610,154 @@
           {
             "name": "top_hit",
             "type": "boolean",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=r/postgres"
+        ],
+        "name": "shadow_reindex_waves",
+        "columns": [
+          {
+            "name": "audit_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "baseline_evaluation_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "baseline_report",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "baseline_report_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "candidate_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "case_set_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "execution_profile_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "operation_manifest_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "plan_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "plan_payload",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "plan_version",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "population_fingerprint",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "prepared_origin_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "project_ref",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "recovery_evidence_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_policy_version",
+            "type": "text",
             "default": null,
             "identity": "",
             "not_null": true,
@@ -5968,6 +7416,30 @@
         "def_hash": "7224a35b50c37a7394210ca930e4e99f"
       },
       {
+        "def": "CREATE UNIQUE INDEX document_generation_baselines_pkey ON public.document_generation_baselines USING btree (document_id, candidate_generation_id)",
+        "name": "document_generation_baselines_pkey",
+        "table": "document_generation_baselines",
+        "def_hash": "1661d77b189a868099ad7e97684ed7b6"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_generation_inventory_pkey ON public.document_generation_inventory USING btree (document_id, index_generation_id, family, unit_key)",
+        "name": "document_generation_inventory_pkey",
+        "table": "document_generation_inventory",
+        "def_hash": "c5854f3e38a7fcf2710c62aad330d764"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_generation_projectio_deep_memory_artifact_generati_key ON public.document_generation_projections USING btree (deep_memory_artifact_generation_id)",
+        "name": "document_generation_projectio_deep_memory_artifact_generati_key",
+        "table": "document_generation_projections",
+        "def_hash": "5b97ee3685f40f35584731bf01a4eb8f"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_generation_projections_pkey ON public.document_generation_projections USING btree (document_id, index_generation_id)",
+        "name": "document_generation_projections_pkey",
+        "table": "document_generation_projections",
+        "def_hash": "807efcc8c206d9e49628d9391093d441"
+      },
+      {
         "def": "CREATE INDEX document_images_created_at_idx ON public.document_images USING btree (created_at)",
         "name": "document_images_created_at_idx",
         "table": "document_images",
@@ -6050,6 +7522,54 @@
         "name": "document_images_visual_intelligence_version_idx",
         "table": "document_images",
         "def_hash": "064a542af2b97dc915fcc29e9a76e6c3"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_index_generation_operations_manifest_digest_key ON public.document_index_generation_operations USING btree (manifest_digest)",
+        "name": "document_index_generation_operations_manifest_digest_key",
+        "table": "document_index_generation_operations",
+        "def_hash": "db6aa80a4a72b3cee7a39d436daac4af"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_index_generation_operations_pkey ON public.document_index_generation_operations USING btree (id)",
+        "name": "document_index_generation_operations_pkey",
+        "table": "document_index_generation_operations",
+        "def_hash": "438fd5c9ec894ad8b0777bbd5a26b954"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_index_generation_operations_receipt_digest_key ON public.document_index_generation_operations USING btree (receipt_digest)",
+        "name": "document_index_generation_operations_receipt_digest_key",
+        "table": "document_index_generation_operations",
+        "def_hash": "61dd0f2742e175e55ad751056ab11d8d"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_index_generations_first_attempt_key ON public.document_index_generations USING btree (document_id, index_generation_id, first_lease_token)",
+        "name": "document_index_generations_first_attempt_key",
+        "table": "document_index_generations",
+        "def_hash": "392f5a24f96622f70654277153e294b6"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_index_generations_job_id_key ON public.document_index_generations USING btree (job_id)",
+        "name": "document_index_generations_job_id_key",
+        "table": "document_index_generations",
+        "def_hash": "30d75f1d6be768c07b1aba93e3111cab"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_index_generations_one_active_per_document_uidx ON public.document_index_generations USING btree (document_id) WHERE (state = 'active'::text)",
+        "name": "document_index_generations_one_active_per_document_uidx",
+        "table": "document_index_generations",
+        "def_hash": "2345d5308ac60a7b09ba2ef9568957d2"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_index_generations_pkey ON public.document_index_generations USING btree (document_id, index_generation_id)",
+        "name": "document_index_generations_pkey",
+        "table": "document_index_generations",
+        "def_hash": "c3f7190a23b4ec641467fa0bd250542d"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_index_generations_stage_receipt_digest_key ON public.document_index_generations USING btree (stage_receipt_digest)",
+        "name": "document_index_generations_stage_receipt_digest_key",
+        "table": "document_index_generations",
+        "def_hash": "595cae7e55409d618c6f2d074d345427"
       },
       {
         "def": "CREATE INDEX document_index_quality_document_id_idx ON public.document_index_quality USING btree (document_id)",
@@ -6268,16 +7788,22 @@
         "def_hash": "a9823a094fa75f73873a28b83611c715"
       },
       {
-        "def": "CREATE UNIQUE INDEX document_pages_document_id_page_number_key ON public.document_pages USING btree (document_id, page_number)",
-        "name": "document_pages_document_id_page_number_key",
-        "table": "document_pages",
-        "def_hash": "c90188cffdaedb69077ee5a4a78391bd"
-      },
-      {
         "def": "CREATE INDEX document_pages_document_idx ON public.document_pages USING btree (document_id, page_number)",
         "name": "document_pages_document_idx",
         "table": "document_pages",
         "def_hash": "df247583a4c786241b9ba10919079743"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_pages_generation_ordinal_key ON public.document_pages USING btree (document_id, index_generation_id, page_number)",
+        "name": "document_pages_generation_ordinal_key",
+        "table": "document_pages",
+        "def_hash": "9f1a616e4f2b1461951741ee71cb3f9b"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_pages_legacy_ordinal_key ON public.document_pages USING btree (document_id, page_number) WHERE (index_generation_id IS NULL)",
+        "name": "document_pages_legacy_ordinal_key",
+        "table": "document_pages",
+        "def_hash": "f7d6401d5efc43d6d68a40e7c5b40476"
       },
       {
         "def": "CREATE UNIQUE INDEX document_pages_pkey ON public.document_pages USING btree (id)",
@@ -6652,10 +8178,10 @@
         "def_hash": "a59d61034f2cb9337c13283574b698d9"
       },
       {
-        "def": "CREATE UNIQUE INDEX ingestion_jobs_one_open_per_document_uidx ON public.ingestion_jobs USING btree (document_id) WHERE (status = ANY (ARRAY['pending'::text, 'processing'::text]))",
+        "def": "CREATE UNIQUE INDEX ingestion_jobs_one_open_per_document_uidx ON public.ingestion_jobs USING btree (document_id) WHERE (((status = ANY (ARRAY['pending'::text, 'processing'::text])) IS NOT FALSE) AND (NOT (((operation = 'shadow_reindex'::text) AND (status = 'processing'::text) AND (batch_id IS NULL) AND (requested_generation_id IS NOT NULL) AND (shadow_plan_digest IS NOT NULL) AND (shadow_plan_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (attempt_count = 1) AND (max_attempts = 1) AND (lease_token IS NOT NULL) AND (lease_write_generation_id = requested_generation_id) AND (locked_by IS NOT NULL) AND (locked_by <> ''::text) AND (locked_at IS NOT NULL) AND (lease_authority_digest IS NOT NULL) AND (lease_authority_digest <> ''::text) AND (lease_expires_at IS NOT NULL) AND (lease_duration_seconds IS NOT NULL) AND (lease_duration_seconds > 0)) IS TRUE)))",
         "name": "ingestion_jobs_one_open_per_document_uidx",
         "table": "ingestion_jobs",
-        "def_hash": "2bf0e17b1b46c2b2b225128eaf6dbf0e"
+        "def_hash": "9efbb426685736cb78755b8a62ce6671"
       },
       {
         "def": "CREATE UNIQUE INDEX ingestion_jobs_pkey ON public.ingestion_jobs USING btree (id)",
@@ -6680,6 +8206,12 @@
         "name": "ingestion_jobs_updated_at_idx",
         "table": "ingestion_jobs",
         "def_hash": "ba5fbf2ba8979b11dafb08b4dc339be5"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX ingestion_repair_plan_audit_pkey ON public.ingestion_repair_plan_audit USING btree (id)",
+        "name": "ingestion_repair_plan_audit_pkey",
+        "table": "ingestion_repair_plan_audit",
+        "def_hash": "2dfb151f903682dc3cbeaa08a87d45e1"
       },
       {
         "def": "CREATE INDEX medication_records_owner_category_idx ON public.medication_records USING btree (owner_id, category)",
@@ -6710,6 +8242,66 @@
         "name": "medication_records_pkey",
         "table": "medication_records",
         "def_hash": "834158198dd0ccb889275cfe43b7ca09"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX public_source_activation_events_pkey ON public.public_source_activation_events USING btree (id)",
+        "name": "public_source_activation_events_pkey",
+        "table": "public_source_activation_events",
+        "def_hash": "216ea1d127eee8c931c8982a4d102fe4"
+      },
+      {
+        "def": "CREATE INDEX public_source_activation_events_source_created_idx ON public.public_source_activation_events USING btree (source_catalogue_key, created_at DESC, id DESC)",
+        "name": "public_source_activation_events_source_created_idx",
+        "table": "public_source_activation_events",
+        "def_hash": "905fa6385581d16fd2d8b9f4b8a96f93"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX public_source_activation_events_source_sequence_key ON public.public_source_activation_events USING btree (source_catalogue_key, source_sequence)",
+        "name": "public_source_activation_events_source_sequence_key",
+        "table": "public_source_activation_events",
+        "def_hash": "1955ead810a6e2cee5a1a25d5138cf1f"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX public_source_serving_authority_pkey ON public.public_source_serving_authority USING btree (singleton)",
+        "name": "public_source_serving_authority_pkey",
+        "table": "public_source_serving_authority",
+        "def_hash": "f634e41edc631ccf61cd6a4cbd015e65"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX public_source_versions_one_active_per_source_idx ON public.public_source_versions USING btree (source_catalogue_key) WHERE (lifecycle = 'active'::text)",
+        "name": "public_source_versions_one_active_per_source_idx",
+        "table": "public_source_versions",
+        "def_hash": "27bb8ee933f6ca2afa6d16eded2e1540"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX public_source_versions_pkey ON public.public_source_versions USING btree (id)",
+        "name": "public_source_versions_pkey",
+        "table": "public_source_versions",
+        "def_hash": "96ed488262f568ca060e74e3966387ab"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX public_source_versions_source_catalogue_key_exact_version_u_key ON public.public_source_versions USING btree (source_catalogue_key, exact_version_url, content_hash)",
+        "name": "public_source_versions_source_catalogue_key_exact_version_u_key",
+        "table": "public_source_versions",
+        "def_hash": "32a461d251a94776b6ad6068fdeaeb17"
+      },
+      {
+        "def": "CREATE INDEX public_source_versions_source_lifecycle_idx ON public.public_source_versions USING btree (source_catalogue_key, lifecycle, retrieved_at DESC, id DESC)",
+        "name": "public_source_versions_source_lifecycle_idx",
+        "table": "public_source_versions",
+        "def_hash": "6021fae4090a3407288b09866372a3b5"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX public_source_versions_staging_document_id_key ON public.public_source_versions USING btree (staging_document_id)",
+        "name": "public_source_versions_staging_document_id_key",
+        "table": "public_source_versions",
+        "def_hash": "7e4be16a3ea7291a23a212de98ef9b62"
+      },
+      {
+        "def": "CREATE INDEX public_source_versions_staging_document_idx ON public.public_source_versions USING btree (staging_document_id)",
+        "name": "public_source_versions_staging_document_idx",
+        "table": "public_source_versions",
+        "def_hash": "53a8663f54dab1898cf657c6b4fe0393"
       },
       {
         "def": "CREATE INDEX rag_aliases_alias_trgm_idx ON public.rag_aliases USING gin (lower(alias) extensions.gin_trgm_ops)",
@@ -6926,6 +8518,18 @@
         "name": "rag_visual_eval_runs_pkey",
         "table": "rag_visual_eval_runs",
         "def_hash": "6d913e54f17c817a9863443d02b8935c"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX shadow_reindex_waves_pkey ON public.shadow_reindex_waves USING btree (candidate_generation_id)",
+        "name": "shadow_reindex_waves_pkey",
+        "table": "shadow_reindex_waves",
+        "def_hash": "d881d88d6ebb41e51e948c0f882fa002"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX shadow_reindex_waves_plan_digest_key ON public.shadow_reindex_waves USING btree (plan_digest)",
+        "name": "shadow_reindex_waves_plan_digest_key",
+        "table": "shadow_reindex_waves",
+        "def_hash": "96d651fa0be1eee8937f477f4072889d"
       },
       {
         "def": "CREATE UNIQUE INDEX site_content_public_authority_pkey ON public.site_content_public_authority USING btree (singleton)",
@@ -7648,9 +9252,164 @@
         "table": "differential_records"
       },
       {
+        "def": "CREATE TRIGGER document_chunks_shadow_retention BEFORE INSERT OR UPDATE ON public.document_chunks FOR EACH ROW EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_chunks_shadow_retention",
+        "table": "document_chunks"
+      },
+      {
+        "def": "CREATE TRIGGER document_chunks_shadow_truncate BEFORE TRUNCATE ON public.document_chunks FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_chunks_shadow_truncate",
+        "table": "document_chunks"
+      },
+      {
+        "def": "CREATE TRIGGER document_chunks_u05_cleanup_delete BEFORE DELETE ON public.document_chunks FOR EACH ROW WHEN (public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id)) EXECUTE FUNCTION public.guard_document_generation_cleanup_delete_v1()",
+        "name": "document_chunks_u05_cleanup_delete",
+        "table": "document_chunks"
+      },
+      {
+        "def": "CREATE TRIGGER document_chunks_u05_retained_delete BEFORE DELETE ON public.document_chunks FOR EACH ROW WHEN ((NOT public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id))) EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_chunks_u05_retained_delete",
+        "table": "document_chunks"
+      },
+      {
+        "def": "CREATE TRIGGER document_embedding_fields_shadow_retention BEFORE INSERT OR UPDATE ON public.document_embedding_fields FOR EACH ROW EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_embedding_fields_shadow_retention",
+        "table": "document_embedding_fields"
+      },
+      {
+        "def": "CREATE TRIGGER document_embedding_fields_shadow_truncate BEFORE TRUNCATE ON public.document_embedding_fields FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_embedding_fields_shadow_truncate",
+        "table": "document_embedding_fields"
+      },
+      {
+        "def": "CREATE TRIGGER document_embedding_fields_u05_cleanup_delete BEFORE DELETE ON public.document_embedding_fields FOR EACH ROW WHEN (public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id)) EXECUTE FUNCTION public.guard_document_generation_cleanup_delete_v1()",
+        "name": "document_embedding_fields_u05_cleanup_delete",
+        "table": "document_embedding_fields"
+      },
+      {
+        "def": "CREATE TRIGGER document_embedding_fields_u05_retained_delete BEFORE DELETE ON public.document_embedding_fields FOR EACH ROW WHEN ((NOT public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id))) EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_embedding_fields_u05_retained_delete",
+        "table": "document_embedding_fields"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER public_source_document_embedding_fields_require_active_version AFTER INSERT OR UPDATE ON public.document_embedding_fields DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.require_active_public_source_artifact_for_publication()",
+        "name": "public_source_document_embedding_fields_require_active_version",
+        "table": "document_embedding_fields"
+      },
+      {
         "def": "CREATE TRIGGER set_document_embedding_field_content_hash BEFORE INSERT OR UPDATE ON public.document_embedding_fields FOR EACH ROW EXECUTE FUNCTION public.set_document_embedding_field_content_hash()",
         "name": "set_document_embedding_field_content_hash",
         "table": "document_embedding_fields"
+      },
+      {
+        "def": "CREATE TRIGGER document_generation_baselines_immutability BEFORE INSERT OR DELETE OR UPDATE ON public.document_generation_baselines FOR EACH ROW EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "document_generation_baselines_immutability",
+        "table": "document_generation_baselines"
+      },
+      {
+        "def": "CREATE TRIGGER document_generation_baselines_no_truncate BEFORE TRUNCATE ON public.document_generation_baselines FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "document_generation_baselines_no_truncate",
+        "table": "document_generation_baselines"
+      },
+      {
+        "def": "CREATE TRIGGER document_generation_inventory_immutability BEFORE INSERT OR DELETE OR UPDATE ON public.document_generation_inventory FOR EACH ROW EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "document_generation_inventory_immutability",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CREATE TRIGGER document_generation_inventory_no_truncate BEFORE TRUNCATE ON public.document_generation_inventory FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "document_generation_inventory_no_truncate",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CREATE TRIGGER document_generation_projections_immutability BEFORE INSERT OR DELETE OR UPDATE ON public.document_generation_projections FOR EACH ROW EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "document_generation_projections_immutability",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CREATE TRIGGER document_generation_projections_no_truncate BEFORE TRUNCATE ON public.document_generation_projections FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "document_generation_projections_no_truncate",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER document_generation_projections_shadow_terminal_complete AFTER INSERT OR UPDATE ON public.document_generation_projections DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.shadow_terminal_consistency_v1()",
+        "name": "document_generation_projections_shadow_terminal_complete",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_shadow_retention BEFORE INSERT OR UPDATE ON public.document_images FOR EACH ROW EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_images_shadow_retention",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_shadow_truncate BEFORE TRUNCATE ON public.document_images FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_images_shadow_truncate",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_u05_cleanup_delete BEFORE DELETE ON public.document_images FOR EACH ROW WHEN (public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id)) EXECUTE FUNCTION public.guard_document_generation_cleanup_delete_v1()",
+        "name": "document_images_u05_cleanup_delete",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_images_u05_retained_delete BEFORE DELETE ON public.document_images FOR EACH ROW WHEN ((NOT public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id))) EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_images_u05_retained_delete",
+        "table": "document_images"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_generation_operations_append_only BEFORE DELETE OR UPDATE OR TRUNCATE ON public.document_index_generation_operations FOR EACH STATEMENT EXECUTE FUNCTION public.guard_document_index_generation_operations_append_only()",
+        "name": "document_index_generation_operations_append_only",
+        "table": "document_index_generation_operations"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_generations_immutability_insert_delete BEFORE INSERT OR DELETE ON public.document_index_generations FOR EACH ROW EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "document_index_generations_immutability_insert_delete",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_generations_immutability_update BEFORE UPDATE ON public.document_index_generations FOR EACH ROW WHEN ((NOT public.document_generation_lifecycle_update_authorized_v1(old.*, new.*))) EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "document_index_generations_immutability_update",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_generations_lifecycle_update BEFORE UPDATE ON public.document_index_generations FOR EACH ROW WHEN (public.document_generation_lifecycle_update_authorized_v1(old.*, new.*)) EXECUTE FUNCTION public.guard_document_generation_lifecycle_update_v1()",
+        "name": "document_index_generations_lifecycle_update",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_generations_no_truncate BEFORE TRUNCATE ON public.document_index_generations FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "document_index_generations_no_truncate",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER document_index_generations_shadow_terminal_complete AFTER INSERT OR UPDATE ON public.document_index_generations DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.shadow_terminal_consistency_v1()",
+        "name": "document_index_generations_shadow_terminal_complete",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER public_source_document_index_quality_require_active_version AFTER INSERT OR UPDATE ON public.document_index_quality DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.require_active_public_source_artifact_for_publication()",
+        "name": "public_source_document_index_quality_require_active_version",
+        "table": "document_index_quality"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_units_shadow_retention BEFORE INSERT OR UPDATE ON public.document_index_units FOR EACH ROW EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_index_units_shadow_retention",
+        "table": "document_index_units"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_units_shadow_truncate BEFORE TRUNCATE ON public.document_index_units FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_index_units_shadow_truncate",
+        "table": "document_index_units"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_units_u05_cleanup_delete BEFORE DELETE ON public.document_index_units FOR EACH ROW WHEN (public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id)) EXECUTE FUNCTION public.guard_document_generation_cleanup_delete_v1()",
+        "name": "document_index_units_u05_cleanup_delete",
+        "table": "document_index_units"
+      },
+      {
+        "def": "CREATE TRIGGER document_index_units_u05_retained_delete BEFORE DELETE ON public.document_index_units FOR EACH ROW WHEN ((NOT public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id))) EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_index_units_u05_retained_delete",
+        "table": "document_index_units"
       },
       {
         "def": "CREATE TRIGGER document_index_units_updated_at BEFORE UPDATE ON public.document_index_units FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
@@ -7658,9 +9417,64 @@
         "table": "document_index_units"
       },
       {
+        "def": "CREATE CONSTRAINT TRIGGER public_source_document_index_units_require_active_version AFTER INSERT OR UPDATE ON public.document_index_units DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.require_active_public_source_artifact_for_publication()",
+        "name": "public_source_document_index_units_require_active_version",
+        "table": "document_index_units"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER public_source_document_labels_require_active_version AFTER INSERT OR UPDATE ON public.document_labels DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.require_active_public_source_artifact_for_publication()",
+        "name": "public_source_document_labels_require_active_version",
+        "table": "document_labels"
+      },
+      {
+        "def": "CREATE TRIGGER document_memory_cards_shadow_retention BEFORE INSERT OR UPDATE ON public.document_memory_cards FOR EACH ROW EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_memory_cards_shadow_retention",
+        "table": "document_memory_cards"
+      },
+      {
+        "def": "CREATE TRIGGER document_memory_cards_shadow_truncate BEFORE TRUNCATE ON public.document_memory_cards FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_memory_cards_shadow_truncate",
+        "table": "document_memory_cards"
+      },
+      {
+        "def": "CREATE TRIGGER document_memory_cards_u05_cleanup_delete BEFORE DELETE ON public.document_memory_cards FOR EACH ROW WHEN (public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id)) EXECUTE FUNCTION public.guard_document_generation_cleanup_delete_v1()",
+        "name": "document_memory_cards_u05_cleanup_delete",
+        "table": "document_memory_cards"
+      },
+      {
+        "def": "CREATE TRIGGER document_memory_cards_u05_retained_delete BEFORE DELETE ON public.document_memory_cards FOR EACH ROW WHEN ((NOT public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id))) EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_memory_cards_u05_retained_delete",
+        "table": "document_memory_cards"
+      },
+      {
         "def": "CREATE TRIGGER document_memory_cards_updated_at BEFORE UPDATE ON public.document_memory_cards FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "document_memory_cards_updated_at",
         "table": "document_memory_cards"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER public_source_document_memory_cards_require_active_version AFTER INSERT OR UPDATE ON public.document_memory_cards DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.require_active_public_source_artifact_for_publication()",
+        "name": "public_source_document_memory_cards_require_active_version",
+        "table": "document_memory_cards"
+      },
+      {
+        "def": "CREATE TRIGGER document_pages_shadow_retention BEFORE INSERT OR UPDATE ON public.document_pages FOR EACH ROW EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_pages_shadow_retention",
+        "table": "document_pages"
+      },
+      {
+        "def": "CREATE TRIGGER document_pages_shadow_truncate BEFORE TRUNCATE ON public.document_pages FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_pages_shadow_truncate",
+        "table": "document_pages"
+      },
+      {
+        "def": "CREATE TRIGGER document_pages_u05_cleanup_delete BEFORE DELETE ON public.document_pages FOR EACH ROW WHEN (public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id)) EXECUTE FUNCTION public.guard_document_generation_cleanup_delete_v1()",
+        "name": "document_pages_u05_cleanup_delete",
+        "table": "document_pages"
+      },
+      {
+        "def": "CREATE TRIGGER document_pages_u05_retained_delete BEFORE DELETE ON public.document_pages FOR EACH ROW WHEN ((NOT public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id))) EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_pages_u05_retained_delete",
+        "table": "document_pages"
       },
       {
         "def": "CREATE TRIGGER document_publication_approvals_immutable BEFORE DELETE OR UPDATE ON public.document_publication_approvals FOR EACH ROW EXECUTE FUNCTION public.prevent_document_publication_approval_mutation()",
@@ -7673,9 +9487,64 @@
         "table": "document_publication_approvals"
       },
       {
+        "def": "CREATE TRIGGER document_sections_shadow_retention BEFORE INSERT OR UPDATE ON public.document_sections FOR EACH ROW EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_sections_shadow_retention",
+        "table": "document_sections"
+      },
+      {
+        "def": "CREATE TRIGGER document_sections_shadow_truncate BEFORE TRUNCATE ON public.document_sections FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_sections_shadow_truncate",
+        "table": "document_sections"
+      },
+      {
+        "def": "CREATE TRIGGER document_sections_u05_cleanup_delete BEFORE DELETE ON public.document_sections FOR EACH ROW WHEN (public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id)) EXECUTE FUNCTION public.guard_document_generation_cleanup_delete_v1()",
+        "name": "document_sections_u05_cleanup_delete",
+        "table": "document_sections"
+      },
+      {
+        "def": "CREATE TRIGGER document_sections_u05_retained_delete BEFORE DELETE ON public.document_sections FOR EACH ROW WHEN ((NOT public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id))) EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_sections_u05_retained_delete",
+        "table": "document_sections"
+      },
+      {
         "def": "CREATE TRIGGER document_sections_updated_at BEFORE UPDATE ON public.document_sections FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "document_sections_updated_at",
         "table": "document_sections"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER public_source_document_sections_require_active_version AFTER INSERT OR UPDATE ON public.document_sections DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.require_active_public_source_artifact_for_publication()",
+        "name": "public_source_document_sections_require_active_version",
+        "table": "document_sections"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER public_source_document_summaries_require_active_version AFTER INSERT OR UPDATE ON public.document_summaries DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.require_active_public_source_artifact_for_publication()",
+        "name": "public_source_document_summaries_require_active_version",
+        "table": "document_summaries"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_shadow_retention BEFORE INSERT OR UPDATE ON public.document_table_facts FOR EACH ROW EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_table_facts_shadow_retention",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_shadow_truncate BEFORE TRUNCATE ON public.document_table_facts FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_table_facts_shadow_truncate",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_u05_cleanup_delete BEFORE DELETE ON public.document_table_facts FOR EACH ROW WHEN (public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id)) EXECUTE FUNCTION public.guard_document_generation_cleanup_delete_v1()",
+        "name": "document_table_facts_u05_cleanup_delete",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE TRIGGER document_table_facts_u05_retained_delete BEFORE DELETE ON public.document_table_facts FOR EACH ROW WHEN ((NOT public.document_generation_cleanup_delete_authorized_v1(old.document_id, old.index_generation_id))) EXECUTE FUNCTION public.shadow_artifact_retention_guard_v1()",
+        "name": "document_table_facts_u05_retained_delete",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER public_source_document_table_facts_require_active_version AFTER INSERT OR UPDATE ON public.document_table_facts DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.require_active_public_source_artifact_for_publication()",
+        "name": "public_source_document_table_facts_require_active_version",
+        "table": "document_table_facts"
       },
       {
         "def": "CREATE TRIGGER document_title_words_enforce_public_scope BEFORE INSERT OR UPDATE ON public.document_title_words FOR EACH ROW EXECUTE FUNCTION public.enforce_document_title_word_scope()",
@@ -7693,6 +9562,16 @@
         "table": "documents"
       },
       {
+        "def": "CREATE TRIGGER documents_shadow_retention BEFORE INSERT OR DELETE OR UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION public.shadow_parent_retention_guard_v1()",
+        "name": "documents_shadow_retention",
+        "table": "documents"
+      },
+      {
+        "def": "CREATE TRIGGER documents_shadow_truncate BEFORE TRUNCATE ON public.documents FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_parent_retention_guard_v1()",
+        "name": "documents_shadow_truncate",
+        "table": "documents"
+      },
+      {
         "def": "CREATE TRIGGER documents_sync_title_words AFTER INSERT OR DELETE OR UPDATE OF title, status, owner_id ON public.documents FOR EACH ROW EXECUTE FUNCTION public.sync_document_title_words()",
         "name": "documents_sync_title_words",
         "table": "documents"
@@ -7700,6 +9579,11 @@
       {
         "def": "CREATE TRIGGER documents_updated_at BEFORE UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "documents_updated_at",
+        "table": "documents"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER public_source_documents_require_active_version AFTER INSERT OR UPDATE ON public.documents DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION public.require_active_public_source_version_for_publication()",
+        "name": "public_source_documents_require_active_version",
         "table": "documents"
       },
       {
@@ -7713,9 +9597,54 @@
         "table": "import_batches"
       },
       {
+        "def": "CREATE TRIGGER ingestion_job_stages_shadow_retention BEFORE INSERT OR DELETE OR UPDATE ON public.ingestion_job_stages FOR EACH ROW EXECUTE FUNCTION public.shadow_parent_retention_guard_v1()",
+        "name": "ingestion_job_stages_shadow_retention",
+        "table": "ingestion_job_stages"
+      },
+      {
+        "def": "CREATE TRIGGER ingestion_job_stages_shadow_truncate BEFORE TRUNCATE ON public.ingestion_job_stages FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_parent_retention_guard_v1()",
+        "name": "ingestion_job_stages_shadow_truncate",
+        "table": "ingestion_job_stages"
+      },
+      {
+        "def": "CREATE CONSTRAINT TRIGGER ingestion_jobs_shadow_checkpoint_complete AFTER INSERT OR UPDATE ON public.ingestion_jobs DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.shadow_queue_checkpoint_complete_v1()",
+        "name": "ingestion_jobs_shadow_checkpoint_complete",
+        "table": "ingestion_jobs"
+      },
+      {
+        "def": "CREATE TRIGGER ingestion_jobs_shadow_identity_immutable BEFORE UPDATE ON public.ingestion_jobs FOR EACH ROW EXECUTE FUNCTION public.guard_shadow_generation_evidence_mutation()",
+        "name": "ingestion_jobs_shadow_identity_immutable",
+        "table": "ingestion_jobs"
+      },
+      {
+        "def": "CREATE TRIGGER ingestion_jobs_shadow_retention BEFORE DELETE OR UPDATE ON public.ingestion_jobs FOR EACH ROW EXECUTE FUNCTION public.shadow_parent_retention_guard_v1()",
+        "name": "ingestion_jobs_shadow_retention",
+        "table": "ingestion_jobs"
+      },
+      {
+        "def": "CREATE TRIGGER ingestion_jobs_shadow_scheduling BEFORE INSERT OR UPDATE ON public.ingestion_jobs FOR EACH ROW EXECUTE FUNCTION public.shadow_queue_scheduling_guard_v1()",
+        "name": "ingestion_jobs_shadow_scheduling",
+        "table": "ingestion_jobs"
+      },
+      {
+        "def": "CREATE TRIGGER ingestion_jobs_shadow_truncate BEFORE TRUNCATE ON public.ingestion_jobs FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_parent_retention_guard_v1()",
+        "name": "ingestion_jobs_shadow_truncate",
+        "table": "ingestion_jobs"
+      },
+      {
         "def": "CREATE TRIGGER ingestion_jobs_updated_at BEFORE UPDATE ON public.ingestion_jobs FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "ingestion_jobs_updated_at",
         "table": "ingestion_jobs"
+      },
+      {
+        "def": "CREATE TRIGGER ingestion_repair_plan_audit_no_row_change BEFORE DELETE OR UPDATE ON public.ingestion_repair_plan_audit FOR EACH ROW EXECUTE FUNCTION public.reject_ingestion_repair_audit_mutation()",
+        "name": "ingestion_repair_plan_audit_no_row_change",
+        "table": "ingestion_repair_plan_audit"
+      },
+      {
+        "def": "CREATE TRIGGER ingestion_repair_plan_audit_no_truncate BEFORE TRUNCATE ON public.ingestion_repair_plan_audit FOR EACH STATEMENT EXECUTE FUNCTION public.reject_ingestion_repair_audit_mutation()",
+        "name": "ingestion_repair_plan_audit_no_truncate",
+        "table": "ingestion_repair_plan_audit"
       },
       {
         "def": "CREATE TRIGGER medication_records_delete_cleanup AFTER DELETE ON public.medication_records FOR EACH ROW EXECUTE FUNCTION public.cleanup_registry_corpus_document()",
@@ -7726,6 +9655,16 @@
         "def": "CREATE TRIGGER medication_records_updated_at BEFORE UPDATE ON public.medication_records FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "medication_records_updated_at",
         "table": "medication_records"
+      },
+      {
+        "def": "CREATE TRIGGER public_source_activation_events_immutable BEFORE DELETE OR UPDATE ON public.public_source_activation_events FOR EACH ROW EXECUTE FUNCTION public.reject_public_source_activation_event_mutation()",
+        "name": "public_source_activation_events_immutable",
+        "table": "public_source_activation_events"
+      },
+      {
+        "def": "CREATE TRIGGER public_source_versions_identity_immutable BEFORE UPDATE ON public.public_source_versions FOR EACH ROW EXECUTE FUNCTION public.guard_public_source_version_identity()",
+        "name": "public_source_versions_identity_immutable",
+        "table": "public_source_versions"
       },
       {
         "def": "CREATE TRIGGER rag_aliases_updated_at BEFORE UPDATE ON public.rag_aliases FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
@@ -7746,6 +9685,16 @@
         "def": "CREATE TRIGGER rag_response_cache_updated_at BEFORE UPDATE ON public.rag_response_cache FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "rag_response_cache_updated_at",
         "table": "rag_response_cache"
+      },
+      {
+        "def": "CREATE TRIGGER shadow_reindex_waves_immutability BEFORE INSERT OR DELETE OR UPDATE ON public.shadow_reindex_waves FOR EACH ROW EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "shadow_reindex_waves_immutability",
+        "table": "shadow_reindex_waves"
+      },
+      {
+        "def": "CREATE TRIGGER shadow_reindex_waves_no_truncate BEFORE TRUNCATE ON public.shadow_reindex_waves FOR EACH STATEMENT EXECUTE FUNCTION public.shadow_ledger_guard_v1()",
+        "name": "shadow_reindex_waves_no_truncate",
+        "table": "shadow_reindex_waves"
       },
       {
         "def": "CREATE TRIGGER site_content_release_governance_guard BEFORE UPDATE OF governance_verified, state ON public.site_content_releases FOR EACH ROW EXECUTE FUNCTION public.guard_site_content_release_governance()",
@@ -7792,11 +9741,46 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "6ff0f08d0914db12655a8d744aba369f",
+        "signature": "public.apply_document_generation_projection_v1(public.document_index_generations,public.document_generation_projections)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "9ba96ddcbd16ef99f45f355d77342d3f",
+        "signature": "public.apply_document_generation_snapshot_v1(uuid,jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
         "def_hash": "91318c428667d073d12d42e2f7bf5505",
         "signature": "public.apply_document_metadata_patch(uuid,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "2b70a6cd72c01fad41aecb0490d4b0b9",
+        "signature": "public.assert_current_ingestion_attempt(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "1ae2e92a978e8c4584d06df39fd897b9",
+        "signature": "public.assert_document_generation_rights_current_v1(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8a7d6e18de07fad9ea10e2e9cdf90d69",
+        "signature": "public.assert_ingestion_artifact_sources(jsonb,uuid,uuid,uuid)"
       },
       {
         "acl": [
@@ -7817,6 +9801,28 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "d0d1ba2dd45aff471205e063af7652a3",
+        "signature": "public.bump_public_source_serving_authority()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "90d3b3427231d6be3f1dfa410ac65655",
+        "signature": "public.capture_shadow_reindex_origin_v1_impl(uuid[],text,uuid[],jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "555f439f406c0d078c0569a05f34db18",
+        "signature": "public.capture_shadow_reindex_origin(uuid[],text,uuid[],jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -7828,7 +9834,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d061668633026acc816e1d63403765d1",
+        "def_hash": "0d1f396d2b8eabcfd5902f0c326b6559",
         "signature": "public.claim_indexing_v3_agent_jobs(text,integer,integer)"
       },
       {
@@ -7836,7 +9842,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d15147f6f3763c5642b6c4af63d50c67",
+        "def_hash": "31b86020298a47c52f57d4b05112023e",
         "signature": "public.claim_ingestion_jobs(text,integer,integer)"
       },
       {
@@ -7849,11 +9855,34 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "98387ad0b5b22b6ee982aff0e3ec1283",
+        "signature": "public.cleanup_abandoned_document_index_generations_legacy_u05(uuid,integer,boolean)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "4ee148dcab28d6bbe10cfa542213f0f6",
+        "def_hash": "9c6d51d0b736d9378c4189543f038a48",
         "signature": "public.cleanup_abandoned_document_index_generations(uuid,integer,boolean)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "47e143c378483e5acfab055597bc7fca",
+        "signature": "public.cleanup_document_index_generations(jsonb,boolean)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "211a5da1f6c35fee260734cca6f485a0",
+        "signature": "public.cleanup_ingestion_deep_memory_staging(jsonb,uuid)"
       },
       {
         "acl": [
@@ -7867,13 +9896,34 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "692b87190000bec05669b1694256feb1",
+        "signature": "public.commit_document_deep_memory_generation(jsonb,uuid,text,text,integer,integer,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
         "def_hash": "8a74ffa93e5a548ff2ebda575b82a37a",
         "signature": "public.commit_document_deep_memory_generation(uuid,text,uuid,text,text,integer,integer,jsonb,integer)"
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "2ca66c8960aa0fb78c43cfe1311d9d32",
+        "signature": "public.commit_document_index_generation_legacy_u05(jsonb,uuid,integer,integer,integer,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
+        ],
+        "def_hash": "9c363be43205aba3d6f7e053e65750f2",
+        "signature": "public.commit_document_index_generation(jsonb,uuid,integer,integer,integer,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
         ],
         "def_hash": "eb9926823dccb2d5d91c01a664f049d7",
         "signature": "public.commit_document_index_generation(uuid,text,uuid,uuid,text,integer,integer,integer,jsonb,jsonb,jsonb)"
@@ -7890,6 +9940,13 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "6d4f3f4be5dcdf58dce13cb8ed2964ec",
+        "signature": "public.complete_ingestion_job(jsonb,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
         "def_hash": "6406ade971963fa9b6d952765a697bd9",
         "signature": "public.complete_ingestion_job(uuid,uuid,uuid,text,text)"
       },
@@ -7905,6 +9962,13 @@
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
+        ],
+        "def_hash": "196b6acc70d43628895489c2ba4a8d6e",
+        "signature": "public.complete_strict_enrichment_job(jsonb,text,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
         ],
         "def_hash": "48a83471e1ce7a272cb81cfe6137b3ca",
         "signature": "public.complete_strict_enrichment_job(uuid,uuid,text,text,text)"
@@ -7978,8 +10042,15 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "cf81c12782a5f977f4cddee4bd918b84",
+        "def_hash": "97ed42c0eac986a119ecafb3f7e927ca",
         "signature": "public.delete_document_if_idle(uuid,uuid,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "07a4fe794d2b75f2925ec9c59689fcaf",
+        "signature": "public.delete_document_index_generations_core(jsonb,uuid)"
       },
       {
         "acl": [
@@ -7999,6 +10070,48 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "c0e5432847d9e40045ee9ca59e6961a1",
+        "signature": "public.document_generation_cleanup_delete_authorized_v1(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "9bf061120bba16817353344f90ae7fb8",
+        "signature": "public.document_generation_cleanup_preview_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "4395a276c83d39e0b1bb41a407823b6b",
+        "signature": "public.document_generation_legacy_baseline_proven_v1(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "1d7c842813de53d3543f5422925df233",
+        "signature": "public.document_generation_lifecycle_update_authorized_v1(public.document_index_generations,public.document_index_generations)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f221197fdc92ff8a33fe1eecf580992b",
+        "signature": "public.document_generation_local_digest_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "0879f393f948a03026ce97a821fb89f5",
+        "signature": "public.document_generation_serving_snapshot_v1(uuid)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -8010,7 +10123,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "e5ae9b56178a6a13e5528ead1ae0339a",
+        "def_hash": "925685ea68585b29666e95b9aedc604e",
         "signature": "public.document_publication_state_digest(uuid,uuid)"
       },
       {
@@ -8033,6 +10146,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "e8a416ca081161087d8af36907806552",
+        "signature": "public.enqueue_shadow_reindex_generation(jsonb,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "c22bbe7ec1655a2c623b43b3e74cb23b",
         "signature": "public.explain_retrieval_rpc(text,text,integer,uuid,uuid[],boolean)"
       },
@@ -8040,6 +10161,13 @@
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
+        ],
+        "def_hash": "749751da3fcec942fd10006f36e347ac",
+        "signature": "public.fail_or_retry_ingestion_job(jsonb,uuid,boolean,text,text,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
         ],
         "def_hash": "0bbcb829db375283a92627aba610e6df",
         "signature": "public.fail_or_retry_ingestion_job(uuid,uuid,uuid,boolean,text,text,text,timestamp with time zone,text)"
@@ -8051,6 +10179,14 @@
         ],
         "def_hash": "17e136ef594004b6a56b9ba99c77023f",
         "signature": "public.fail_site_content_sync_event(uuid,uuid,uuid,uuid,integer,text,boolean,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "2d14b817d04c16573a929d0d1b9d870d",
+        "signature": "public.finish_ingestion_job_stage(jsonb,uuid,boolean,jsonb,text)"
       },
       {
         "acl": [
@@ -8073,16 +10209,58 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "107d6e5eb6d846971b48102c258ab2eb",
-        "signature": "public.get_visual_evidence_cards(uuid,integer)"
+        "def_hash": "3b5612aa1c6a901777203984509a8888",
+        "signature": "public.get_shadow_generation_receipt(text,uuid,uuid)"
       },
       {
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "248e7a470031632101db7d22b1dbd006",
+        "def_hash": "107d6e5eb6d846971b48102c258ab2eb",
+        "signature": "public.get_visual_evidence_cards(uuid,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "9ec4457956f5adbe680135d102f9be6f",
+        "signature": "public.guard_document_generation_cleanup_delete_v1()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "532196e6a750bedcd3c6bebe40f4ed4b",
+        "signature": "public.guard_document_generation_lifecycle_update_v1()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "c598e5d5adad4d96c48698065f9fe60e",
+        "signature": "public.guard_document_index_generation_operations_append_only()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "c32ed94245357d2130d3b4967dc8094a",
         "signature": "public.guard_document_publication_transition()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "c8b250782480dc29c693d27cf0b1b5ac",
+        "signature": "public.guard_public_source_version_identity()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b8307f170c882091a9bebf234d891320",
+        "signature": "public.guard_shadow_generation_evidence_mutation()"
       },
       {
         "acl": [
@@ -8090,6 +10268,22 @@
         ],
         "def_hash": "280764207e8c97ff259ec990293d191f",
         "signature": "public.guard_site_content_release_governance()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "3b1e0d01cbe092ff8be3526290679ce9",
+        "signature": "public.heartbeat_indexing_v3_agent_job(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "764cca7d85f60a9754b9b2254b44fdc5",
+        "signature": "public.heartbeat_ingestion_job(jsonb)"
       },
       {
         "acl": [
@@ -8112,15 +10306,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "066ef1277bc11fa8092086fc66352d15",
-        "signature": "public.invoke_ingestion_worker(integer)"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
-        ],
-        "def_hash": "7607823e2b292756cf7295e2136dea6e",
+        "def_hash": "5ba53565ab0131964b33a5dc5c96c421",
         "signature": "public.is_committed_artifact_generation(jsonb,jsonb)"
       },
       {
@@ -8128,7 +10314,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "755e8ba3a7f52efcef604074d0832dde",
+        "def_hash": "aa23cfe5836036d0038544b73ce1cb58",
         "signature": "public.is_committed_artifact_generation(uuid,jsonb)"
       },
       {
@@ -8136,7 +10322,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d4913081cb28b11030c854deaa55c816",
+        "def_hash": "a86372d6469bf918d49e0519c6f8bfee",
         "signature": "public.is_committed_document_generation(uuid,jsonb)"
       },
       {
@@ -8144,7 +10330,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "57b0231b092f381b8ef93f5646817295",
+        "def_hash": "0a03320084975530e1dcd3848f5c7ff5",
         "signature": "public.is_committed_document_generation(uuid,uuid)"
       },
       {
@@ -8154,6 +10340,27 @@
         ],
         "def_hash": "69c0b6affcaeb9a0e23a8673d4bbe7c0",
         "signature": "public.jsonb_merge_deep(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "941db8fe5cb3b16ccdc7452e3be2b7a8",
+        "signature": "public.lock_ingestion_document_authority(uuid,boolean)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "0d4455ac3c450e20120eda48e78a50f7",
+        "signature": "public.make_public_source_version_ineligible(uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "1d427950a73a207010fa2b5bcc54e52a",
+        "signature": "public.make_public_source_version_ineligible(uuid)"
       },
       {
         "acl": [
@@ -8352,6 +10559,78 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "0f911cfd2ac10d96b23c3bfa804582e9",
+        "signature": "public.patch_ingestion_document_state(jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "7dc1978208e61d5f6817433853986fd0",
+        "signature": "public.persist_ingestion_image_caption_cache(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "eb2f87382a82d65609d3b55568e5f7cd",
+        "signature": "public.persist_ingestion_index_quality(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "3705eef85a4857a71bec82bc1540b0f8",
+        "signature": "public.persist_ingestion_summary_projection(jsonb,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "5747ad019fba0b6a28731e72cda840f2",
+        "signature": "public.persist_shadow_deep_memory_projection(jsonb,uuid,uuid,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "76098533f71f6767a6af3f2fac394e3d",
+        "signature": "public.persist_shadow_quality_projection(jsonb,uuid,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "c6665d3ef1d9a2478409efd7711d9c56",
+        "signature": "public.persist_shadow_summary_projection(jsonb,uuid,jsonb,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "81b366a41f3583d28ae3ed49aa419ddc",
+        "signature": "public.persist_shadow_worker_projection(jsonb,uuid,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "a609d87af4c2f2ff020615645894732b",
+        "signature": "public.prepare_ingestion_image_upload(jsonb,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "b0947f8a0d37d0d8dda4185008c0d51a",
         "signature": "public.prevent_document_publication_approval_mutation()"
       },
@@ -8362,6 +10641,14 @@
         ],
         "def_hash": "3c5d2fe027c7be638f4ade47eca4abd8",
         "signature": "public.prevent_source_review_event_mutation()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "ea1eef3eb48fcd8c2a7f980a55d4f0e8",
+        "signature": "public.promote_shadow_document_generation(jsonb,jsonb,jsonb,jsonb)"
       },
       {
         "acl": [
@@ -8386,6 +10673,20 @@
         ],
         "def_hash": "3ea9f07627d13a80c6fe5448f60abfc1",
         "signature": "public.provision_site_content_validation_secret(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "43931d5a0443f5430bf2a20f2a06dbfd",
+        "signature": "public.public_source_acquisition_identity_digest(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "4eae5cbf1d8c6cf09265427f6252b2ff",
+        "signature": "public.public_source_document_is_serving_eligible(uuid)"
       },
       {
         "acl": [
@@ -8446,6 +10747,13 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "10bad752a25dd18f503489ec2d698eb5",
+        "signature": "public.read_shadow_document_authority_v1(uuid)"
+      },
+      {
+        "acl": [
           "authenticated=X/postgres",
           "postgres=X/postgres",
           "service_role=X/postgres"
@@ -8482,6 +10790,30 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "db7c3e89843253c1ce4aa545811e4e22",
+        "signature": "public.record_ingestion_repair_plan(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "2ee46156e4bc1e2e5b8a16c6167db39d",
+        "signature": "public.record_public_source_activation_event(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "ec1a397633d9abbecb31d5f5d35e589d",
+        "signature": "public.record_shadow_producer_failure(jsonb,uuid,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "8e4a449e69b8b70f723b11723f0ee07a",
         "signature": "public.record_site_content_synchronizer_heartbeat(uuid,uuid,text)"
       },
@@ -8511,6 +10843,20 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b41a78220d33ece3843e909f5a3ee4c6",
+        "signature": "public.reject_ingestion_repair_audit_mutation()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "d9c22f331e8de76cd18a46e1e0e2ddca",
+        "signature": "public.reject_public_source_activation_event_mutation()"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -8519,11 +10865,42 @@
       },
       {
         "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
+          "postgres=X/postgres"
         ],
         "def_hash": "62892dfd90b840b55e07e3bdfc988339",
         "signature": "public.repair_strict_enrichment_gate_batch(integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "1520c6bbd33e559b378af3cd20b8029c",
+        "signature": "public.replace_indexing_v3_core_embeddings(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fe3db9d4fc695ace6b224ee7130dd2b6",
+        "signature": "public.replace_indexing_v3_memory_cards(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8c5cf2b7235c27151af099e850d8fe85",
+        "signature": "public.replace_indexing_v3_sections(jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f6e7d1155ad1f2d8824fffe0b0aad48e",
+        "signature": "public.replace_indexing_v3_visual_artifacts(jsonb,jsonb,jsonb,jsonb)"
       },
       {
         "acl": [
@@ -8543,10 +10920,30 @@
       },
       {
         "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
+          "postgres=X/postgres"
         ],
-        "def_hash": "a574c83b93f318a8ca10867dfc86941c",
+        "def_hash": "037e284caddbf95828b09ca2531ce88b",
+        "signature": "public.require_active_public_source_artifact_for_publication()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ba90865a4b8eed989dd5bdde16a40520",
+        "signature": "public.require_active_public_source_version_for_publication()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "e6166853a07dd0369606cce4b2295d4b",
+        "signature": "public.require_document_generation_technical_gate_v1(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "fe8980c377f7696435ecd8ca3a810afe",
         "signature": "public.require_document_publication_approval_state_digest()"
       },
       {
@@ -8556,6 +10953,14 @@
         ],
         "def_hash": "243f3960a32db0192d1cce2ebd050004",
         "signature": "public.reset_document_index(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "4ff822755fb8f2ce5e44c9d79f9d4444",
+        "signature": "public.reset_ingestion_attempt_artifacts(jsonb,uuid)"
       },
       {
         "acl": [
@@ -8580,6 +10985,14 @@
         ],
         "def_hash": "39b1d8de34c4ac584dee044282e7481b",
         "signature": "public.retry_ingestion_job_if_idle(uuid,uuid,timestamp with time zone,integer,timestamp with time zone,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "d114b055fff131c6e2f4442e38a2eb32",
+        "signature": "public.rollback_document_index_generation(jsonb,jsonb)"
       },
       {
         "acl": [
@@ -8653,6 +11066,811 @@
         ],
         "def_hash": "ed100a39682201102314634bc4ad2246",
         "signature": "public.set_updated_at()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "7480e753d2902d737fef3c2b15bafd9c",
+        "signature": "public.shadow_artifact_retention_guard_v1()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ffa53f8caa33c0969707c5ad495562b8",
+        "signature": "public.shadow_assert_attempt_v1(jsonb,uuid,bigint)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b47d49417cc6d0e33c6447dda6b1cce9",
+        "signature": "public.shadow_assert_origin_unchanged_v1(public.document_index_generations)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b550ed402941d11856fd1eecfa1ed2ee",
+        "signature": "public.shadow_assert_standard_job_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ed7faf58670e3ec52caf06d14b21999e",
+        "signature": "public.shadow_attempt_control_payload_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "689b6452f570f0729893b9e66a5e2d9c",
+        "signature": "public.shadow_audit_micros_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8f3be6096a48e0a0da51e7e9098c57a2",
+        "signature": "public.shadow_audit_timestamp_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "07812e6e9f31b0c584cf573ee64b39af",
+        "signature": "public.shadow_cache_input_payload_v1(public.document_index_generations,jsonb,jsonb,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "5afadfcff615d051e2e9d0a717eae1c5",
+        "signature": "public.shadow_cache_undefined_path_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "dd5aa70823965e446c254a4ecac8ce52",
+        "signature": "public.shadow_candidate_anchor_update_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f722d96dd761d4ecc620fe3f9eb875fb",
+        "signature": "public.shadow_candidate_image_attachment_v1(public.document_index_generations,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "51447c37c393ad77cbf110d26d55e2e6",
+        "signature": "public.shadow_capture_bytes_v1(uuid[],uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "de1002e481983100fe3f14b6f080f9d9",
+        "signature": "public.shadow_capture_count_v1(uuid[],uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "48ea639310391a4fb6b7372105b12cc8",
+        "signature": "public.shadow_capture_envelope_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "0b9fdcc9e1a3fd9a9827a63e6fe5e780",
+        "signature": "public.shadow_capture_raw_envelope_valid_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ca2ec496bff5386c49ec3768b8a5555a",
+        "signature": "public.shadow_capture_rows_v1(uuid[],uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "0cfd9302d3a4c2d9d84df22336814e9a",
+        "signature": "public.shadow_checkpoint_advance_v1(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "5b8c2e51c95dcfb18ab61f7b5db16a53",
+        "signature": "public.shadow_control_before_v1(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "87e983b1e1a4edf658762456352af86b",
+        "signature": "public.shadow_control_snapshot_v1(uuid,bigint)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "a942ceb42f14f153f7bb89453fa58d5a",
+        "signature": "public.shadow_core_row_matches_v1(public.document_index_generations,text,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ff527c4758d2322874c76786b01fcd97",
+        "signature": "public.shadow_deep_batch_v1(public.document_index_generations,uuid,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b51e4aef5f6ca84e51ef86b3bc67f836",
+        "signature": "public.shadow_deep_native_v1(public.document_index_generations,uuid,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "0f5d16bd3d98e794f3294a9789dfa609",
+        "signature": "public.shadow_deep_row_key_v1(public.document_index_generations,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8305b299435c650db55f24c60f0e9dc9",
+        "signature": "public.shadow_deep_row_matches_v1(public.document_index_generations,text,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ea06dc143c98d5b01b6c1637e66fde04",
+        "signature": "public.shadow_ecmascript_collapse_v1(text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "a2d502cab7cd5ced4b7565b40cd34fb4",
+        "signature": "public.shadow_ecmascript_trim_v1(text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "429c5694d782e0bb6f5bff75699b6eaa",
+        "signature": "public.shadow_eval_aliases_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ed2d103568a6f6b4f06039df20226596",
+        "signature": "public.shadow_eval_attempt_control_payload_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "4a45f7d39daa0a1b398ce9f179330af6",
+        "signature": "public.shadow_eval_documents_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "39ec5c587cb25a58f8d11c6ccd90cb70",
+        "signature": "public.shadow_eval_generation_matches_v1(jsonb,uuid,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b7f5dce8e0b37933069efa5babc39f47",
+        "signature": "public.shadow_eval_guard_v1(jsonb,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ba1ee74a34acf12dee39002462db80d7",
+        "signature": "public.shadow_eval_image_metadata_v1(jsonb,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "70479c6528b17117095f824968a6f4d9",
+        "signature": "public.shadow_eval_projection_disposition_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "29b817573e3b612084aee981a6788305",
+        "signature": "public.shadow_eval_quality_v1(jsonb,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "a446579c498f086bf4d999567067cf7b",
+        "signature": "public.shadow_eval_reconcile_final_disposition_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "52d6d60e18af7f617f011dd033c3aa1e",
+        "signature": "public.shadow_eval_related_metadata_v1(jsonb,uuid[],text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b0a9522f890f479165815395c1be2e1a",
+        "signature": "public.shadow_eval_result_aggregate_refs_v1(jsonb,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "50d1732139b191702caf9be2230f7ffd",
+        "signature": "public.shadow_eval_result_binding_v1(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "24e88a08f42355436ece5b33ee85d282",
+        "signature": "public.shadow_eval_result_candidate_unit_v1(jsonb,uuid,text,uuid,text,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b5970a0e6503639f52562d163a69261c",
+        "signature": "public.shadow_eval_result_occurrence_v1(jsonb,text,text,integer,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "4509641b178e94f725bfea02c13d45fe",
+        "signature": "public.shadow_eval_result_origin_graph_v1(jsonb,uuid,text,text,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b0852129ae208da2399233b92315b53f",
+        "signature": "public.shadow_eval_result_origin_ref_v1(jsonb,text,text,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "d801080578c0661e0c2465ddc54390cc",
+        "signature": "public.shadow_eval_result_origin_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "2fdc6170b8a777fcf532fb11c82edc63",
+        "signature": "public.shadow_eval_result_projection_ref_v1(jsonb,uuid,text,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "760aa2cc3c10f8aed59d5bc52feffecf",
+        "signature": "public.shadow_eval_result_v1(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b3ef6f508ed15c3500e79763478299d2",
+        "signature": "public.shadow_failed_artifact_generation_v1(public.ingestion_job_stages,public.document_index_generations,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "53b82665766b121e4c7aa5efd1836590",
+        "signature": "public.shadow_final_candidate_rows_v1(public.document_index_generations)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ae6b8f5210c34b40ac8b67d108356076",
+        "signature": "public.shadow_final_inventory_v1(public.document_index_generations,timestamp with time zone,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f7bf28de1febe56c77e00b5773016ef7",
+        "signature": "public.shadow_final_retained_evidence_v1(public.document_index_generations)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "bed3d96320c3dc2d56ef8fe42ca135c9",
+        "signature": "public.shadow_finalize_inventory_unit_v1(public.document_index_generations,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "77f5caf0fad907399c2d9b3fb2721f23",
+        "signature": "public.shadow_finalize_retained_inventory_v1(public.document_index_generations)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "45c0fc1907a753535858d6b7ba3e04a5",
+        "signature": "public.shadow_generation_envelope_valid(jsonb,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8880bd182fe85186be74a80010c7ca28",
+        "signature": "public.shadow_generation_manifest_shape(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "72e117d2c11d32233f28210a009c3e7c",
+        "signature": "public.shadow_generation_retained_v1(uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "59f5d8f090522ce428bdb71d1fe42c2c",
+        "signature": "public.shadow_image_classification_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b9122b91c04cf46dc3d01a3660c0ca0f",
+        "signature": "public.shadow_initial_control_capture_v1(public.document_index_generations,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "86971fee2df66239132aa95967456f96",
+        "signature": "public.shadow_inventory_envelope_payload_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "2007ea761586c115188ff4cb757e1f0e",
+        "signature": "public.shadow_inventory_limitation_v1(jsonb,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "eefbfec51254110069a4f93f99d1168c",
+        "signature": "public.shadow_inventory_outcome_v1(public.document_generation_inventory)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "a384dab85de443d4c4094cb56d34ac24",
+        "signature": "public.shadow_inventory_pointer_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "6870a1954ae47fc24b3142b519be5cde",
+        "signature": "public.shadow_inventory_ref_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "cd81c2b783edbe2b916210bfbcd75ec8",
+        "signature": "public.shadow_inventory_relationships_v1(public.document_index_generations,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "0251dac1c05c82fd3317b5253dc1703e",
+        "signature": "public.shadow_json_string_array_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ee1dbedfb57747c34a17ff3f5f084194",
+        "signature": "public.shadow_keys_v1(jsonb,text[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "421dba9535206e4b056f59590bb7ba91",
+        "signature": "public.shadow_ledger_guard_v1()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "a34add7373761015a2ebfee8a6ac95cb",
+        "signature": "public.shadow_manual_alias_review_v1(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "106708182745c9ef54f640437cac0043",
+        "signature": "public.shadow_member_stage_response_v1(public.document_index_generations)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "55925cb25a626141ed9be5e50300fc7c",
+        "signature": "public.shadow_native_rpc_input_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "26a5d87125c0d2d66e10091f3098b4a6",
+        "signature": "public.shadow_native_structure_payload_v1(public.document_index_generations,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f34cd00651c58e7c91d9cd6113457768",
+        "signature": "public.shadow_native_undefined_path_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "ddf16bc93e7139eb19a974a8a3fe1590",
+        "signature": "public.shadow_node_json_text_v1(json)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "818c5bbe26266addda9be0de9ed177b1",
+        "signature": "public.shadow_node_payload_v1(jsonb,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "705280c8f6630730e9f34e6d458153fe",
+        "signature": "public.shadow_node_value_text_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "a07cbf3a3cb2d6b88d4f4130d1026135",
+        "signature": "public.shadow_original_file_v1(jsonb,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "478652a5b36b88c9cbb7034e48544078",
+        "signature": "public.shadow_page_producer_input_v1(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "bdba85110413bd042bccb54308c6a505",
+        "signature": "public.shadow_parent_retention_guard_v1()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f97e0ca8decf2a1859dcf780db1f3e7b",
+        "signature": "public.shadow_pending_manifest_v1(uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "7e756c22d65087bb0c506535a3f7fb3f",
+        "signature": "public.shadow_pg_bundle_v1(jsonb,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f6a346415111f024aa939c997686f3ff",
+        "signature": "public.shadow_producer_capture_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "27c4fe3243c1bbe0cf54d6553c8fe2a1",
+        "signature": "public.shadow_profile_capture_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "e2a977a5ea961be394dbd950853088a6",
+        "signature": "public.shadow_projection_batch_v1(public.document_index_generations,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "64485c5a804fd5de642439a884452a86",
+        "signature": "public.shadow_projection_binding_v1(public.document_index_generations,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "cacd26864407ad2b1b2d4cf5a762fc0c",
+        "signature": "public.shadow_projection_disposition_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "dfde4b4bcbcc8da3f9c70f573b53f15e",
+        "signature": "public.shadow_projection_planned_unit_v1(jsonb,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "fbec56b0766b6cb59e0eff448c226636",
+        "signature": "public.shadow_quality_input_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "07aeed5b6d8f231396247baf82f9ce9a",
+        "signature": "public.shadow_queue_checkpoint_complete_v1()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "0ef4ec3c6a774773a8fc5b63a39cef1e",
+        "signature": "public.shadow_queue_complete_v1(uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "16a19f8270a9de6bc80603511262898e",
+        "signature": "public.shadow_queue_history_v1(uuid,uuid,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "68554036794b8330252ad8901b0f3389",
+        "signature": "public.shadow_queue_scheduling_guard_v1()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "3f9b72663a498a1bc793eec12fff8535",
+        "signature": "public.shadow_reconcile_final_disposition_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8e3b45db5a77486482b2f94ba4d5e701",
+        "signature": "public.shadow_recovery_native_text_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8aac6e5d5740317d9e59d86a3287cd10",
+        "signature": "public.shadow_recovery_timestamp_ms_v1(text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "1f433ca4cc177a2e9ddfa9b74116d302",
+        "signature": "public.shadow_repair_audit_payload_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "7e00f7c2755f787e347e4ed4694dd59b",
+        "signature": "public.shadow_reserve_producer_d_v1(public.document_index_generations,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "b4f6d3c7a1fde57080077e8c6eb1ec79",
+        "signature": "public.shadow_resolve_batch_pointer_v1(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "1f89d585fa5d4a73cb8fadc16a5c1625",
+        "signature": "public.shadow_state_rows_v1(jsonb,uuid,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "02fcd949bf4abc0f638c9cc890666969",
+        "signature": "public.shadow_strict_original_json_v1(json)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "912e353b3b65c58698ccf15d38fddb50",
+        "signature": "public.shadow_summary_input_v1(public.document_index_generations,jsonb,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "9735cee9b6b459c5cb89fdeba5e19694",
+        "signature": "public.shadow_terminal_consistency_v1()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "c4109d56b7796e2af80ede3c17389940",
+        "signature": "public.shadow_utf16_order_v1(text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f557028549e4fbceb2b299bf4a50f469",
+        "signature": "public.shadow_utf16_slice_v1(text,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "7e67e30998301027bd0fdfacc07ca6b0",
+        "signature": "public.shadow_validate_final_disposition_v1(public.document_index_generations,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8dcdd87e7957ee1e70e8389014882fd7",
+        "signature": "public.shadow_validate_inventory_relationships_v1(public.document_index_generations,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "d38dce8c54df6e6c1cfe7bb3a184e7a5",
+        "signature": "public.shadow_validate_original_objects_v1(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "5aaf158a8bd22446654d0b27e83abbdd",
+        "signature": "public.shadow_validate_planned_batch_v1(jsonb,text,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "82b7df3a892c5fdc8c6f3d79a4c1f731",
+        "signature": "public.shadow_validate_producer_declaration_v1(jsonb,text,text,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "1558ec095876778c4ec2897b0b1e5134",
+        "signature": "public.shadow_validate_projection_components_v1(public.document_index_generations,public.document_generation_projections)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "70ad0117a96d39b316f410ba633a5cad",
+        "signature": "public.shadow_validate_recovery_v1(jsonb,text,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "40c6f6cc1e9434af3a29e57bac449cb6",
+        "signature": "public.shadow_visual_profile_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "d865f277e24315856612d1cb33350af7",
+        "signature": "public.shadow_visual_undefined_field_v1(text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "f87643c9c3c316fb4ec5f72a57b4c23a",
+        "signature": "public.shadow_worker_compact_text_v1(text,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "aa3ebe5fba929f2bde1000590c04c209",
+        "signature": "public.shadow_worker_extraction_metadata_v1(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "d80cff5bb84636707b2dfa0dc5c9bdab",
+        "signature": "public.shadow_worker_metadata_number_v1(jsonb,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8fe3a19cefc61c26a7b66ede0a392203",
+        "signature": "public.shadow_worker_metadata_string_v1(jsonb,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "bd89cb274c85deabe63e505195f818db",
+        "signature": "public.shadow_worker_projection_input_v1(public.document_index_generations,jsonb,jsonb,jsonb)"
       },
       {
         "acl": [
@@ -8738,6 +11956,22 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "508ee5850e3b798e127bf31640fbb00d",
+        "signature": "public.stage_document_index_generation(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "e0be3bc6396a69d765eab3e821405a39",
+        "signature": "public.stage_ingestion_deep_memory(jsonb,uuid,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "f9b1465e72361faa9763b9b19afad73c",
         "signature": "public.stage_site_content_candidate_operation(uuid,uuid,uuid,uuid,integer,uuid)"
       },
@@ -8759,6 +11993,14 @@
       },
       {
         "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "5a030c99df73c92413d5ca5045dcae20",
+        "signature": "public.start_ingestion_job_stage(jsonb,text,jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres"
         ],
         "def_hash": "6b51ece12494d136b39977d8532c013c",
@@ -8766,11 +12008,263 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8b4a6299c00cff1fcec807f0afb96e50",
+        "signature": "public.transition_document_index_generation_core(uuid,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "20e01f3c40e4ce1fe94a001bd120b153",
+        "signature": "public.transition_public_source_version(uuid,text,text,text,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "05d1d0dfb72c50c5e153f6015beae9ed",
+        "signature": "public.u04_eval_adjacent_chunks_v1(jsonb,uuid[],integer[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "c097a86e59cea38a0b1e651ef6c4a292",
+        "signature": "public.u04_eval_aliases_v1(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "c966d55b75a053bf3fa12737fb1f7e6f",
+        "signature": "public.u04_eval_chunks_by_ids_v1(jsonb,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "55e4d45a2bbb07de7a096bcda6454fec",
+        "signature": "public.u04_eval_chunks_by_indexes_v1(jsonb,uuid[],integer[],integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "45c7274cbde20244b63b0e68f3cb7944",
+        "signature": "public.u04_eval_corpus_terms_v1(jsonb,text[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "7f756b92034cee8466777d9f4317ba08",
+        "signature": "public.u04_eval_correct_terms_v1(jsonb,text,real)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f432310bf931fa960cef9e1e42ec4bfb",
+        "signature": "public.u04_eval_documents_v1(jsonb,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "49fb058a50c1f27c19cc175caec65aec",
+        "signature": "public.u04_eval_embedding_fields_v1(jsonb,extensions.vector,text,integer,double precision,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "aa82fa07e7dc5320a70272420f1a6181",
+        "signature": "public.u04_eval_hybrid_chunks_v1(jsonb,extensions.vector,text,integer,double precision,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "ef00a5cdcc6d5268c91ce251fa47de4d",
+        "signature": "public.u04_eval_images_by_ids_v1(jsonb,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "0454dc95688828cc1f807b1a9f767032",
+        "signature": "public.u04_eval_images_by_pages_v1(jsonb,uuid[],integer[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "40ab79b30fc54c0e6298f78c58e0aa72",
+        "signature": "public.u04_eval_index_units_v1(jsonb,extensions.vector,text,integer,double precision,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f056cc2f6e7da59fbd660a498d61d697",
+        "signature": "public.u04_eval_lookup_chunk_prefix_v1(jsonb,uuid[],integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "a4f8646665afad15d0f5b6f221996393",
+        "signature": "public.u04_eval_lookup_chunk_terms_v1(jsonb,uuid[],text[],integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "367c948ac792edd1931a4dbceab203c5",
+        "signature": "public.u04_eval_lookup_chunks_v1(jsonb,text,uuid[],integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "a75594b7d1926ead71f84d90c01c2685",
+        "signature": "public.u04_eval_lookup_document_terms_v1(jsonb,text[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "7f347a92d761498d5b43e7247ba2d021",
+        "signature": "public.u04_eval_lookup_documents_v1(jsonb,text,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "1136a098842e5e3d379779ada8ed60d0",
+        "signature": "public.u04_eval_memory_cards_hybrid_v1(jsonb,extensions.vector,text,integer,double precision,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "88d909dde6f4aa599bfc458a42984552",
+        "signature": "public.u04_eval_memory_cards_lexical_v1(jsonb,text,uuid[],integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "9e209e93a8491f3a6ab0c621b068e264",
+        "signature": "public.u04_eval_quality_v1(jsonb,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "dbcc1e5be4ebf88ff0f5f5452234dc1c",
+        "signature": "public.u04_eval_ranking_metadata_v1(jsonb,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "c0149f9b4673f634585cd4564b7cbe5e",
+        "signature": "public.u04_eval_related_documents_v1(jsonb,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "16457b932e2d289087c3793d792d8197",
+        "signature": "public.u04_eval_table_facts_v1(jsonb,text,integer,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "6ba12a57a622c13925183d1b501719d7",
+        "signature": "public.u04_eval_text_chunks_v1(jsonb,text,integer,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "0aa07588e6c116bc8dcc83691fe1bb49",
+        "signature": "public.u04_eval_vector_chunks_v1(jsonb,extensions.vector,integer,double precision,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "ce5adb22f0846c125f0cfef8d534f9ee",
+        "signature": "public.u04_eval_visual_rows_v1(jsonb,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "eac36d1ea73ad162d4926fcdddffffb1",
+        "signature": "public.update_indexing_v3_agent_job_status(jsonb,text,text,timestamp with time zone,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
         "def_hash": "c5fafb6bc7cc303cb1199895b777d6a6",
         "signature": "public.update_indexing_v3_agent_job_status(uuid,text,text,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8090c0ca902e08e600700b2d3f9b50f0",
+        "signature": "public.update_ingestion_job_progress(jsonb,text,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "fa5b53b0ba3d0e88a33cd229fe672930",
+        "signature": "public.validate_shadow_inventory_v1(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "eb1da880b68bf9aaffacec545eb65cda",
+        "signature": "public.validate_shadow_plan_v1(jsonb)"
       },
       {
         "acl": [
@@ -8780,6 +12274,30 @@
         ],
         "def_hash": "174576116ac483b22d161aeb0c56d5c2",
         "signature": "public.verify_site_content_candidate_release(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fbbfa605a62c0e3c3dc09b9bb7c97bdd",
+        "signature": "public.write_ingestion_base_artifacts(jsonb,uuid,jsonb,jsonb,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "3513c7cdb5e502ee389ef916fde12c32",
+        "signature": "public.write_shadow_generation_inventory(jsonb,uuid,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f6c68108fb5c4d5715437b6be2737390",
+        "signature": "public.write_shadow_generation_pages(jsonb,uuid,jsonb)"
       }
     ],
     "extensions": [
@@ -9020,6 +12538,201 @@
         "table": "document_embedding_fields"
       },
       {
+        "def": "TRIGGER DEFERRABLE",
+        "name": "public_source_document_embedding_fields_require_active_version",
+        "table": "document_embedding_fields"
+      },
+      {
+        "def": "CHECK ((bundle_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "document_generation_baselines_digests",
+        "table": "document_generation_baselines"
+      },
+      {
+        "def": "CHECK (COALESCE(((jsonb_typeof((bundle_payload -> 'canonicalPayload'::text)) = 'string'::text) AND ((bundle_payload ->> 'version'::text) = '1'::text) AND ((bundle_payload ->> 'domain'::text) = 'baseline'::text) AND ((bundle_payload ->> 'encoding'::text) = 'pg-jsonb-text-v1'::text) AND ((bundle_payload ->> 'digest'::text) = bundle_digest) AND public.shadow_generation_envelope_valid(bundle_payload, 'baseline'::text, 'pg-jsonb-text-v1'::text)), false))",
+        "name": "document_generation_baselines_envelope",
+        "table": "document_generation_baselines"
+      },
+      {
+        "def": "CHECK ((expected_state_digest ~ '^[0-9a-f]{64}$'::text))",
+        "name": "document_generation_baselines_expected_state",
+        "table": "document_generation_baselines"
+      },
+      {
+        "def": "CHECK (((baseline_generation_id IS NULL) OR (baseline_generation_id <> candidate_generation_id)))",
+        "name": "document_generation_baselines_generation",
+        "table": "document_generation_baselines"
+      },
+      {
+        "def": "FOREIGN KEY (document_id, candidate_generation_id) REFERENCES public.document_index_generations(document_id, index_generation_id) ON DELETE RESTRICT",
+        "name": "document_generation_baselines_member_fkey",
+        "table": "document_generation_baselines"
+      },
+      {
+        "def": "PRIMARY KEY (document_id, candidate_generation_id)",
+        "name": "document_generation_baselines_pkey",
+        "table": "document_generation_baselines"
+      },
+      {
+        "def": "CHECK ((bundle_version = 1))",
+        "name": "document_generation_baselines_version",
+        "table": "document_generation_baselines"
+      },
+      {
+        "def": "FOREIGN KEY (document_id, index_generation_id, lease_token) REFERENCES public.document_index_generations(document_id, index_generation_id, first_lease_token) ON DELETE RESTRICT",
+        "name": "document_generation_inventory_attempt_fkey",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CHECK (((artifact_generation_id IS NULL) OR (artifact_generation_id <> index_generation_id)))",
+        "name": "document_generation_inventory_d_distinct",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CHECK (((content_digest IS NULL) OR (content_digest ~ '^sha256:[0-9a-f]{64}$'::text)))",
+        "name": "document_generation_inventory_digests",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CHECK ((disposition = ANY (ARRAY['pending'::text, 'retained'::text, 'excluded'::text, 'failed'::text, 'skipped'::text, 'not_required'::text])))",
+        "name": "document_generation_inventory_disposition",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CHECK ((family = ANY (ARRAY['pages'::text, 'native_structure'::text, 'chunks'::text, 'images'::text, 'table_facts'::text, 'embedding_fields'::text, 'index_units'::text, 'sections'::text, 'memory_cards'::text, 'summary'::text, 'generated_labels'::text, 'quality'::text, 'document_metadata'::text, 'producer_aliases'::text, 'private_objects'::text, 'attempt_control'::text, 'cache_inputs'::text, 'repair_audit_inputs'::text])))",
+        "name": "document_generation_inventory_family",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CHECK (((btrim(unit_key) <> ''::text) AND (btrim(producer) <> ''::text) AND ((NOT required) OR expected)))",
+        "name": "document_generation_inventory_identity",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CHECK (COALESCE(((jsonb_typeof(limitations) = 'array'::text) AND (jsonb_typeof(relationships) = 'array'::text) AND (jsonb_typeof(source_binding) = 'object'::text) AND (source_binding <> '{}'::jsonb) AND ((artifact_ref IS NULL) OR ((jsonb_typeof(artifact_ref) = 'object'::text) AND (artifact_ref <> '{}'::jsonb)))), false))",
+        "name": "document_generation_inventory_json",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "FOREIGN KEY (document_id, index_generation_id) REFERENCES public.document_index_generations(document_id, index_generation_id) ON DELETE RESTRICT",
+        "name": "document_generation_inventory_member_fkey",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CHECK ((((disposition = 'pending'::text) AND (reason_code IS NULL)) OR ((disposition = 'retained'::text) AND (artifact_ref IS NOT NULL) AND (content_digest IS NOT NULL) AND (reason_code IS NULL)) OR ((disposition = ANY (ARRAY['excluded'::text, 'failed'::text, 'skipped'::text])) AND (reason_code IS NOT NULL) AND (btrim(reason_code) <> ''::text)) OR ((disposition = 'not_required'::text) AND (NOT expected) AND (NOT required) AND (reason_code IS NOT NULL) AND (btrim(reason_code) <> ''::text))))",
+        "name": "document_generation_inventory_outcome",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "PRIMARY KEY (document_id, index_generation_id, family, unit_key)",
+        "name": "document_generation_inventory_pkey",
+        "table": "document_generation_inventory"
+      },
+      {
+        "def": "CHECK (((deep_memory_metadata IS NULL) OR COALESCE(((jsonb_typeof(deep_memory_metadata) = 'object'::text) AND (deep_memory_metadata <> '{}'::jsonb)), false)))",
+        "name": "dgp_deep_memory_metadata_shape",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((deep_memory_receipt IS NULL) OR COALESCE(((jsonb_typeof(deep_memory_receipt) = 'object'::text) AND (deep_memory_receipt <> '{}'::jsonb)), false)))",
+        "name": "dgp_deep_memory_receipt_shape",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((document_counts IS NULL) OR COALESCE(((jsonb_typeof(document_counts) = 'object'::text) AND (document_counts <> '{}'::jsonb)), false)))",
+        "name": "dgp_document_counts_shape",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((enrichment_metadata IS NULL) OR COALESCE(((jsonb_typeof(enrichment_metadata) = 'object'::text) AND (enrichment_metadata <> '{}'::jsonb)), false)))",
+        "name": "dgp_enrichment_metadata_shape",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((generated_labels IS NULL) OR COALESCE((jsonb_typeof(generated_labels) = 'array'::text), false)))",
+        "name": "dgp_generated_labels_shape",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((producer_aliases IS NULL) OR COALESCE((jsonb_typeof(producer_aliases) = 'array'::text), false)))",
+        "name": "dgp_producer_aliases_shape",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((quality IS NULL) OR COALESCE(((jsonb_typeof(quality) = 'object'::text) AND (quality <> '{}'::jsonb)), false)))",
+        "name": "dgp_quality_shape",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((summary IS NULL) OR COALESCE(((jsonb_typeof(summary) = 'object'::text) AND (summary <> '{}'::jsonb)), false)))",
+        "name": "dgp_summary_shape",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((worker_metadata IS NULL) OR COALESCE(((jsonb_typeof(worker_metadata) = 'object'::text) AND (worker_metadata <> '{}'::jsonb)), false)))",
+        "name": "dgp_worker_metadata_shape",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "UNIQUE (deep_memory_artifact_generation_id)",
+        "name": "document_generation_projectio_deep_memory_artifact_generati_key",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "FOREIGN KEY (document_id, index_generation_id, lease_token) REFERENCES public.document_index_generations(document_id, index_generation_id, first_lease_token) ON DELETE RESTRICT",
+        "name": "document_generation_projections_attempt_fkey",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((document_counts IS NULL) OR COALESCE(((document_counts ?& ARRAY['page_count'::text, 'chunk_count'::text, 'image_count'::text, 'status'::text, 'error_message'::text]) AND ((document_counts - ARRAY['page_count'::text, 'chunk_count'::text, 'image_count'::text, 'status'::text, 'error_message'::text]) = '{}'::jsonb) AND (jsonb_typeof((document_counts -> 'page_count'::text)) = 'number'::text) AND (jsonb_typeof((document_counts -> 'chunk_count'::text)) = 'number'::text) AND (jsonb_typeof((document_counts -> 'image_count'::text)) = 'number'::text) AND (jsonb_typeof((document_counts -> 'status'::text)) = 'string'::text) AND (jsonb_typeof((document_counts -> 'error_message'::text)) = ANY (ARRAY['string'::text, 'null'::text]))), false)))",
+        "name": "document_generation_projections_counts",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((deep_memory_artifact_generation_id IS NULL) OR (deep_memory_artifact_generation_id <> index_generation_id)))",
+        "name": "document_generation_projections_d_distinct",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK ((((deep_memory_digest IS NULL) AND (deep_memory_artifact_generation_id IS NULL) AND (deep_memory_receipt IS NULL) AND (deep_memory_metadata IS NULL) AND (producer_aliases IS NULL)) OR ((deep_memory_digest IS NOT NULL) AND (deep_memory_artifact_generation_id IS NOT NULL) AND (deep_memory_receipt IS NOT NULL) AND (deep_memory_metadata IS NOT NULL) AND (producer_aliases IS NOT NULL))))",
+        "name": "document_generation_projections_deep_memory_tuple",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK ((((summary_digest IS NULL) OR (summary_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND ((quality_digest IS NULL) OR (quality_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND ((deep_memory_digest IS NULL) OR (deep_memory_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND ((worker_state_digest IS NULL) OR (worker_state_digest ~ '^sha256:[0-9a-f]{64}$'::text))))",
+        "name": "document_generation_projections_digests",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "FOREIGN KEY (document_id, index_generation_id) REFERENCES public.document_index_generations(document_id, index_generation_id) ON DELETE RESTRICT",
+        "name": "document_generation_projections_member_fkey",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "PRIMARY KEY (document_id, index_generation_id)",
+        "name": "document_generation_projections_pkey",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK (((quality IS NULL) = (quality_digest IS NULL)))",
+        "name": "document_generation_projections_quality_tuple",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "TRIGGER DEFERRABLE INITIALLY DEFERRED",
+        "name": "document_generation_projections_shadow_terminal_complete",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK ((((summary_digest IS NULL) AND (summary IS NULL) AND (generated_labels IS NULL) AND (summary_projection_complete IS NULL) AND (enrichment_metadata IS NULL)) OR ((summary_digest IS NOT NULL) AND (summary IS NOT NULL) AND (generated_labels IS NOT NULL) AND (summary_projection_complete IS NOT NULL) AND (enrichment_metadata IS NOT NULL))))",
+        "name": "document_generation_projections_summary_tuple",
+        "table": "document_generation_projections"
+      },
+      {
+        "def": "CHECK ((((worker_state_digest IS NULL) AND (worker_metadata IS NULL) AND (document_counts IS NULL)) OR ((worker_state_digest IS NOT NULL) AND (worker_metadata IS NOT NULL) AND (document_counts IS NOT NULL))))",
+        "name": "document_generation_projections_worker_tuple",
+        "table": "document_generation_projections"
+      },
+      {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
         "name": "document_images_document_id_fkey",
         "table": "document_images"
@@ -9033,6 +12746,136 @@
         "def": "PRIMARY KEY (id)",
         "name": "document_images_pkey",
         "table": "document_images"
+      },
+      {
+        "def": "CHECK (((manifest_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (receipt_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND ((receipt ->> 'receiptDigest'::text) = receipt_digest)))",
+        "name": "document_index_generation_operations_digests",
+        "table": "document_index_generation_operations"
+      },
+      {
+        "def": "UNIQUE (manifest_digest)",
+        "name": "document_index_generation_operations_manifest_digest_key",
+        "table": "document_index_generation_operations"
+      },
+      {
+        "def": "CHECK ((operation_kind = ANY (ARRAY['promote'::text, 'rollback'::text, 'cleanup'::text])))",
+        "name": "document_index_generation_operations_operation_kind_check",
+        "table": "document_index_generation_operations"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "document_index_generation_operations_pkey",
+        "table": "document_index_generation_operations"
+      },
+      {
+        "def": "UNIQUE (receipt_digest)",
+        "name": "document_index_generation_operations_receipt_digest_key",
+        "table": "document_index_generation_operations"
+      },
+      {
+        "def": "CHECK (((jsonb_typeof(receipt) = 'object'::text) AND (jsonb_typeof(rollback_state) = 'array'::text)))",
+        "name": "document_index_generation_operations_shapes",
+        "table": "document_index_generation_operations"
+      },
+      {
+        "def": "CHECK (((baseline_generation_id IS NULL) OR (baseline_generation_id <> index_generation_id)))",
+        "name": "document_index_generations_baseline_distinct",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK (((cleaned_at IS NULL) OR (state = ANY (ARRAY['retained'::text, 'abandoned'::text]))))",
+        "name": "document_index_generations_cleanup_state",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK ((control_revision >= 0))",
+        "name": "document_index_generations_control_revision",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK (COALESCE(((jsonb_typeof(control_snapshot) = 'object'::text) AND (control_snapshot ?& ARRAY['controlRevision'::text, 'ownNodeJobs'::text, 'ownStages'::text]) AND ((control_snapshot - ARRAY['controlRevision'::text, 'ownNodeJobs'::text, 'ownStages'::text]) = '{}'::jsonb) AND ((control_snapshot -> 'controlRevision'::text) = to_jsonb(control_revision)) AND (jsonb_typeof((control_snapshot -> 'ownNodeJobs'::text)) = 'array'::text) AND (jsonb_typeof((control_snapshot -> 'ownStages'::text)) = 'array'::text) AND\nCASE\n    WHEN (jsonb_typeof((control_snapshot -> 'ownNodeJobs'::text)) = 'array'::text) THEN (jsonb_array_length((control_snapshot -> 'ownNodeJobs'::text)) = 1)\n    ELSE false\nEND AND ((((control_snapshot -> 'ownNodeJobs'::text) -> 0) ->> 'id'::text) = (job_id)::text) AND ((((control_snapshot -> 'ownNodeJobs'::text) -> 0) ->> 'document_id'::text) = (document_id)::text)), false))",
+        "name": "document_index_generations_control_shape",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK (((authority_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND ((expected_inventory_digest IS NULL) OR (expected_inventory_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND ((inventory_digest IS NULL) OR (inventory_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND ((candidate_projection_digest IS NULL) OR (candidate_projection_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND (baseline_bundle_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND ((stage_receipt_digest IS NULL) OR (stage_receipt_digest ~ '^sha256:[0-9a-f]{64}$'::text))))",
+        "name": "document_index_generations_digests",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE RESTRICT",
+        "name": "document_index_generations_document_id_fkey",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK ((expected_state_digest ~ '^[0-9a-f]{64}$'::text))",
+        "name": "document_index_generations_expected_state",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "UNIQUE (document_id, index_generation_id, first_lease_token)",
+        "name": "document_index_generations_first_attempt_key",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "FOREIGN KEY (index_generation_id) REFERENCES public.shadow_reindex_waves(candidate_generation_id) ON DELETE RESTRICT",
+        "name": "document_index_generations_index_generation_id_fkey",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "FOREIGN KEY (job_id) REFERENCES public.ingestion_jobs(id) ON DELETE RESTRICT",
+        "name": "document_index_generations_job_id_fkey",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "UNIQUE (job_id)",
+        "name": "document_index_generations_job_id_key",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK ((((state = 'reserved'::text) AND (first_lease_token IS NULL) AND (claimed_at IS NULL) AND (stage_receipt IS NULL) AND (stage_receipt_digest IS NULL) AND (staged_at IS NULL) AND (inventory_digest IS NULL) AND (candidate_projection_digest IS NULL) AND (activated_at IS NULL) AND (retained_until IS NULL) AND (cleaned_at IS NULL)) OR ((state = 'building'::text) AND (first_lease_token IS NOT NULL) AND (claimed_at IS NOT NULL) AND (stage_receipt IS NULL) AND (stage_receipt_digest IS NULL) AND (staged_at IS NULL) AND (inventory_digest IS NULL) AND (candidate_projection_digest IS NULL) AND (activated_at IS NULL) AND (retained_until IS NULL) AND (cleaned_at IS NULL)) OR ((state = 'staged'::text) AND (first_lease_token IS NOT NULL) AND (claimed_at IS NOT NULL) AND (stage_receipt IS NOT NULL) AND (stage_receipt_digest IS NOT NULL) AND (staged_at IS NOT NULL) AND (expected_inventory_digest IS NOT NULL) AND (inventory_digest IS NOT NULL) AND (candidate_projection_digest IS NOT NULL) AND (activated_at IS NULL) AND (retained_until IS NULL) AND (cleaned_at IS NULL)) OR ((state = 'active'::text) AND (stage_receipt IS NOT NULL) AND (stage_receipt_digest IS NOT NULL) AND (staged_at IS NOT NULL) AND (activated_at IS NOT NULL) AND (retained_until IS NULL) AND (cleaned_at IS NULL)) OR ((state = 'retained'::text) AND (stage_receipt IS NOT NULL) AND (stage_receipt_digest IS NOT NULL) AND (staged_at IS NOT NULL) AND (activated_at IS NOT NULL) AND (retained_until IS NOT NULL)) OR (state = 'abandoned'::text)))",
+        "name": "document_index_generations_lifecycle",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK (COALESCE((public.shadow_generation_manifest_shape(inventory_manifest, first_lease_token) AND (jsonb_typeof((inventory_manifest -> 'documentId'::text)) = 'string'::text) AND (jsonb_typeof((inventory_manifest -> 'candidateGenerationId'::text)) = 'string'::text) AND (jsonb_typeof((inventory_manifest -> 'jobId'::text)) = 'string'::text) AND ((inventory_manifest ->> 'documentId'::text) = (document_id)::text) AND ((inventory_manifest ->> 'candidateGenerationId'::text) = (index_generation_id)::text) AND ((inventory_manifest ->> 'jobId'::text) = (job_id)::text) AND\nCASE\n    WHEN (jsonb_typeof((inventory_manifest -> 'families'::text)) = 'array'::text) THEN (jsonb_array_length((inventory_manifest -> 'families'::text)) = 18)\n    ELSE false\nEND AND ((inventory_manifest -> 'families'::text) @> '[{\"family\": \"pages\", \"groups\": [{\"groupKey\": \"worker_core\"}]}, {\"family\": \"native_structure\", \"groups\": [{\"groupKey\": \"worker_native\"}]}, {\"family\": \"chunks\", \"groups\": [{\"groupKey\": \"worker_core\"}]}, {\"family\": \"images\", \"groups\": [{\"groupKey\": \"worker_core\"}]}, {\"family\": \"table_facts\", \"groups\": [{\"groupKey\": \"worker_core\"}]}, {\"family\": \"embedding_fields\", \"groups\": [{\"groupKey\": \"worker_core\"}]}, {\"family\": \"index_units\", \"groups\": [{\"groupKey\": \"worker_core\"}, {\"groupKey\": \"deep_memory\"}]}, {\"family\": \"sections\", \"groups\": [{\"groupKey\": \"deep_memory\"}]}, {\"family\": \"memory_cards\", \"groups\": [{\"groupKey\": \"deep_memory\"}]}, {\"family\": \"summary\", \"groups\": [{\"groupKey\": \"enrichment\"}]}, {\"family\": \"generated_labels\", \"groups\": [{\"groupKey\": \"enrichment\"}]}, {\"family\": \"quality\", \"groups\": [{\"groupKey\": \"worker_core\"}]}, {\"family\": \"document_metadata\", \"groups\": [{\"groupKey\": \"projection_aggregate\"}]}, {\"family\": \"producer_aliases\", \"groups\": [{\"groupKey\": \"deep_memory\"}]}, {\"family\": \"private_objects\", \"groups\": [{\"groupKey\": \"private_objects\"}]}, {\"family\": \"attempt_control\", \"groups\": [{\"groupKey\": \"control\"}]}, {\"family\": \"cache_inputs\", \"groups\": [{\"groupKey\": \"cache\"}]}, {\"family\": \"repair_audit_inputs\", \"groups\": [{\"groupKey\": \"repair\"}]}]'::jsonb) AND ((expected_inventory_digest IS NOT NULL) = (NOT jsonb_path_exists(inventory_manifest, '$.\"families\"[*].\"groups\"[*]?(@.\"state\" == \"pending\")'::jsonpath)))), false))",
+        "name": "document_index_generations_manifest",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK (COALESCE(((jsonb_typeof((original_origin_envelope -> 'canonicalPayload'::text)) = 'string'::text) AND ((original_origin_envelope ->> 'version'::text) = '1'::text) AND ((original_origin_envelope ->> 'domain'::text) = 'baseline'::text) AND ((original_origin_envelope ->> 'encoding'::text) = 'pg-jsonb-text-v1'::text) AND ((original_origin_envelope ->> 'digest'::text) = ('sha256:'::text || expected_state_digest)) AND public.shadow_generation_envelope_valid(original_origin_envelope, 'baseline'::text, 'pg-jsonb-text-v1'::text)), false))",
+        "name": "document_index_generations_origin_envelope",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "PRIMARY KEY (document_id, index_generation_id)",
+        "name": "document_index_generations_pkey",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK (((stage_receipt IS NULL) OR COALESCE((public.shadow_generation_envelope_valid(stage_receipt, 'member_receipt'::text, 'pg-jsonb-text-v1'::text) AND ((stage_receipt ->> 'digest'::text) = stage_receipt_digest)), false)))",
+        "name": "document_index_generations_receipt",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "TRIGGER DEFERRABLE INITIALLY DEFERRED",
+        "name": "document_index_generations_shadow_terminal_complete",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK (COALESCE(((jsonb_typeof(source_binding) = 'object'::text) AND (source_binding ?& ARRAY['version'::text, 'originDigest'::text, 'executionProfileDigest'::text, 'documentId'::text, 'ownerId'::text, 'contentHash'::text, 'authorityDigest'::text, 'sourcePolicyVersion'::text, 'manualAliasIds'::text, 'source'::text, 'baselineGenerationId'::text]) AND ((source_binding - ARRAY['version'::text, 'originDigest'::text, 'executionProfileDigest'::text, 'documentId'::text, 'ownerId'::text, 'contentHash'::text, 'authorityDigest'::text, 'sourcePolicyVersion'::text, 'manualAliasIds'::text, 'source'::text, 'baselineGenerationId'::text]) = '{}'::jsonb) AND ((source_binding -> 'version'::text) = '1'::jsonb) AND ((source_binding ->> 'documentId'::text) = (document_id)::text) AND ((source_binding -> 'ownerId'::text) = COALESCE(to_jsonb(owner_id), 'null'::jsonb)) AND ((source_binding -> 'baselineGenerationId'::text) = COALESCE(to_jsonb(baseline_generation_id), 'null'::jsonb)) AND ((source_binding ->> 'authorityDigest'::text) = authority_digest) AND ((source_binding ->> 'originDigest'::text) = (original_origin_envelope ->> 'digest'::text)) AND (jsonb_typeof((source_binding -> 'executionProfileDigest'::text)) = 'string'::text) AND ((source_binding ->> 'executionProfileDigest'::text) ~ '^sha256:[0-9a-f]{64}$'::text) AND (jsonb_typeof((source_binding -> 'contentHash'::text)) = 'string'::text) AND ((source_binding ->> 'contentHash'::text) ~ '^sha256:[0-9a-f]{64}$'::text) AND (jsonb_typeof((source_binding -> 'sourcePolicyVersion'::text)) = 'string'::text) AND (btrim((source_binding ->> 'sourcePolicyVersion'::text)) <> ''::text) AND (jsonb_typeof((source_binding -> 'manualAliasIds'::text)) = 'array'::text) AND (jsonb_typeof((source_binding -> 'source'::text)) = 'object'::text)), false))",
+        "name": "document_index_generations_source_binding",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "UNIQUE (stage_receipt_digest)",
+        "name": "document_index_generations_stage_receipt_digest_key",
+        "table": "document_index_generations"
+      },
+      {
+        "def": "CHECK ((state = ANY (ARRAY['reserved'::text, 'building'::text, 'staged'::text, 'active'::text, 'retained'::text, 'abandoned'::text])))",
+        "name": "document_index_generations_state",
+        "table": "document_index_generations"
       },
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
@@ -9057,6 +12900,11 @@
       {
         "def": "CHECK (((quality_score >= (0)::double precision) AND (quality_score <= (1)::double precision)))",
         "name": "document_index_quality_quality_score_check",
+        "table": "document_index_quality"
+      },
+      {
+        "def": "TRIGGER DEFERRABLE",
+        "name": "public_source_document_index_quality_require_active_version",
         "table": "document_index_quality"
       },
       {
@@ -9105,6 +12953,11 @@
         "table": "document_index_units"
       },
       {
+        "def": "TRIGGER DEFERRABLE",
+        "name": "public_source_document_index_units_require_active_version",
+        "table": "document_index_units"
+      },
+      {
         "def": "CHECK (((confidence >= (0)::double precision) AND (confidence <= (1)::double precision)))",
         "name": "document_labels_confidence_check",
         "table": "document_labels"
@@ -9140,6 +12993,11 @@
         "table": "document_labels"
       },
       {
+        "def": "TRIGGER DEFERRABLE",
+        "name": "public_source_document_labels_require_active_version",
+        "table": "document_labels"
+      },
+      {
         "def": "CHECK ((card_type = ANY (ARRAY['section_summary'::text, 'askable_question'::text, 'table_row'::text, 'threshold'::text, 'medication'::text, 'risk'::text, 'workflow'::text, 'definition'::text, 'citation_anchor'::text])))",
         "name": "document_memory_cards_card_type_check",
         "table": "document_memory_cards"
@@ -9170,13 +13028,23 @@
         "table": "document_memory_cards"
       },
       {
+        "def": "TRIGGER DEFERRABLE",
+        "name": "public_source_document_memory_cards_require_active_version",
+        "table": "document_memory_cards"
+      },
+      {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
         "name": "document_pages_document_id_fkey",
         "table": "document_pages"
       },
       {
-        "def": "UNIQUE (document_id, page_number)",
-        "name": "document_pages_document_id_page_number_key",
+        "def": "UNIQUE (document_id, index_generation_id, page_number)",
+        "name": "document_pages_generation_ordinal_key",
+        "table": "document_pages"
+      },
+      {
+        "def": "CHECK (COALESCE(((jsonb_typeof(metadata) = 'object'::text) AND (((index_generation_id IS NULL) AND (NOT (metadata ? 'index_generation_id'::text))) OR ((index_generation_id IS NOT NULL) AND\nCASE\n    WHEN ((jsonb_typeof((metadata -> 'index_generation_id'::text)) = 'string'::text) AND (length((metadata ->> 'index_generation_id'::text)) = 36) AND ((metadata ->> 'index_generation_id'::text) ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'::text)) THEN (index_generation_id = ((metadata ->> 'index_generation_id'::text))::uuid)\n    ELSE false\nEND))), false))",
+        "name": "document_pages_generation_provenance",
         "table": "document_pages"
       },
       {
@@ -9220,6 +13088,11 @@
         "table": "document_publication_approvals"
       },
       {
+        "def": "CHECK ((((source_catalogue_key IS NULL) AND (source_policy_version IS NULL) AND (reviewed_index_generation_id IS NULL)) OR ((source_catalogue_key IS NOT NULL) AND (source_policy_version IS NOT NULL) AND (reviewed_index_generation_id IS NOT NULL))))",
+        "name": "document_publication_approvals_v2_evidence_complete",
+        "table": "document_publication_approvals"
+      },
+      {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
         "name": "document_sections_document_id_fkey",
         "table": "document_sections"
@@ -9240,6 +13113,11 @@
         "table": "document_sections"
       },
       {
+        "def": "TRIGGER DEFERRABLE",
+        "name": "public_source_document_sections_require_active_version",
+        "table": "document_sections"
+      },
+      {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
         "name": "document_summaries_document_id_fkey",
         "table": "document_summaries"
@@ -9257,6 +13135,11 @@
       {
         "def": "PRIMARY KEY (id)",
         "name": "document_summaries_pkey",
+        "table": "document_summaries"
+      },
+      {
+        "def": "TRIGGER DEFERRABLE",
+        "name": "public_source_document_summaries_require_active_version",
         "table": "document_summaries"
       },
       {
@@ -9282,6 +13165,11 @@
       {
         "def": "FOREIGN KEY (source_image_id) REFERENCES public.document_images(id) ON DELETE SET NULL",
         "name": "document_table_facts_source_image_id_fkey",
+        "table": "document_table_facts"
+      },
+      {
+        "def": "TRIGGER DEFERRABLE",
+        "name": "public_source_document_table_facts_require_active_version",
         "table": "document_table_facts"
       },
       {
@@ -9325,6 +13213,11 @@
         "table": "documents"
       },
       {
+        "def": "TRIGGER DEFERRABLE",
+        "name": "public_source_documents_require_active_version",
+        "table": "documents"
+      },
+      {
         "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
         "name": "image_caption_cache_owner_id_fkey",
         "table": "image_caption_cache"
@@ -9365,6 +13258,11 @@
         "table": "indexing_v3_agent_jobs"
       },
       {
+        "def": "CHECK ((((lease_authority_digest IS NULL) OR (lease_authority_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND ((lease_duration_seconds IS NULL) OR ((lease_duration_seconds >= 60) AND (lease_duration_seconds <= 86400))) AND ((status <> 'processing'::text) OR ((lease_token IS NOT NULL) AND (locked_by IS NOT NULL) AND (btrim(locked_by) <> ''::text) AND (lease_expected_generation_id IS NOT NULL) AND (lease_write_generation_id IS NOT NULL) AND (lease_authority_digest IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (lease_duration_seconds IS NOT NULL)))))",
+        "name": "indexing_v3_agent_jobs_lease_tuple",
+        "table": "indexing_v3_agent_jobs"
+      },
+      {
         "def": "PRIMARY KEY (id)",
         "name": "indexing_v3_agent_jobs_pkey",
         "table": "indexing_v3_agent_jobs"
@@ -9377,6 +13275,11 @@
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
         "name": "ingestion_job_stages_document_id_fkey",
+        "table": "ingestion_job_stages"
+      },
+      {
+        "def": "CHECK ((job_kind = ANY (ARRAY['node'::text, 'indexing_v3'::text])))",
+        "name": "ingestion_job_stages_job_kind_check",
         "table": "ingestion_job_stages"
       },
       {
@@ -9400,6 +13303,16 @@
         "table": "ingestion_jobs"
       },
       {
+        "def": "CHECK ((((lease_authority_digest IS NULL) OR (lease_authority_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND ((lease_duration_seconds IS NULL) OR ((lease_duration_seconds >= 60) AND (lease_duration_seconds <= 86400))) AND ((status <> 'processing'::text) OR ((lease_token IS NOT NULL) AND (locked_by IS NOT NULL) AND (btrim(locked_by) <> ''::text) AND (lease_write_generation_id IS NOT NULL) AND (lease_authority_digest IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (lease_duration_seconds IS NOT NULL)))))",
+        "name": "ingestion_jobs_lease_tuple",
+        "table": "ingestion_jobs"
+      },
+      {
+        "def": "CHECK ((operation = ANY (ARRAY['standard'::text, 'shadow_reindex'::text])))",
+        "name": "ingestion_jobs_operation_kind",
+        "table": "ingestion_jobs"
+      },
+      {
         "def": "PRIMARY KEY (id)",
         "name": "ingestion_jobs_pkey",
         "table": "ingestion_jobs"
@@ -9410,9 +13323,34 @@
         "table": "ingestion_jobs"
       },
       {
+        "def": "TRIGGER DEFERRABLE INITIALLY DEFERRED",
+        "name": "ingestion_jobs_shadow_checkpoint_complete",
+        "table": "ingestion_jobs"
+      },
+      {
+        "def": "CHECK ((((operation = 'standard'::text) AND (requested_generation_id IS NULL) AND (shadow_plan_digest IS NULL)) OR ((operation = 'shadow_reindex'::text) AND (requested_generation_id IS NOT NULL) AND (shadow_plan_digest IS NOT NULL) AND (batch_id IS NULL) AND (shadow_plan_digest ~ '^sha256:[0-9a-f]{64}$'::text))))",
+        "name": "ingestion_jobs_shadow_identity",
+        "table": "ingestion_jobs"
+      },
+      {
         "def": "CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text])))",
         "name": "ingestion_jobs_status_check",
         "table": "ingestion_jobs"
+      },
+      {
+        "def": "CHECK ((outcome = 'planned'::text))",
+        "name": "ingestion_repair_plan_audit_outcome_check",
+        "table": "ingestion_repair_plan_audit"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "ingestion_repair_plan_audit_pkey",
+        "table": "ingestion_repair_plan_audit"
+      },
+      {
+        "def": "CHECK ((plan_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "ingestion_repair_plan_audit_plan_digest_check",
+        "table": "ingestion_repair_plan_audit"
       },
       {
         "def": "CHECK ((btrim(name) <> ''::text))",
@@ -9448,6 +13386,166 @@
         "def": "CHECK ((validation_status = ANY (ARRAY['unverified'::text, 'locally_reviewed'::text, 'approved'::text])))",
         "name": "medication_records_validation_status_check",
         "table": "medication_records"
+      },
+      {
+        "def": "CHECK ((decision = ANY (ARRAY['activate'::text, 'quarantine'::text, 'retire'::text])))",
+        "name": "public_source_activation_events_decision_check",
+        "table": "public_source_activation_events"
+      },
+      {
+        "def": "CHECK ((((cardinality(evidence_references) >= 1) AND (cardinality(evidence_references) <= 50)) AND (array_position(evidence_references, ''::text) IS NULL)))",
+        "name": "public_source_activation_events_evidence_references_check",
+        "table": "public_source_activation_events"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "public_source_activation_events_pkey",
+        "table": "public_source_activation_events"
+      },
+      {
+        "def": "CHECK (((btrim(reason) <> ''::text) AND (length(reason) <= 1000)))",
+        "name": "public_source_activation_events_reason_check",
+        "table": "public_source_activation_events"
+      },
+      {
+        "def": "CHECK ((btrim(source_catalogue_key) <> ''::text))",
+        "name": "public_source_activation_events_source_catalogue_key_check",
+        "table": "public_source_activation_events"
+      },
+      {
+        "def": "CHECK ((source_policy_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "public_source_activation_events_source_policy_digest_check",
+        "table": "public_source_activation_events"
+      },
+      {
+        "def": "CHECK ((btrim(source_policy_version) <> ''::text))",
+        "name": "public_source_activation_events_source_policy_version_check",
+        "table": "public_source_activation_events"
+      },
+      {
+        "def": "UNIQUE (source_catalogue_key, source_sequence)",
+        "name": "public_source_activation_events_source_sequence_key",
+        "table": "public_source_activation_events"
+      },
+      {
+        "def": "CHECK ((lifecycle_epoch > 0))",
+        "name": "public_source_serving_authority_lifecycle_epoch_check",
+        "table": "public_source_serving_authority"
+      },
+      {
+        "def": "PRIMARY KEY (singleton)",
+        "name": "public_source_serving_authority_pkey",
+        "table": "public_source_serving_authority"
+      },
+      {
+        "def": "CHECK (singleton)",
+        "name": "public_source_serving_authority_singleton_check",
+        "table": "public_source_serving_authority"
+      },
+      {
+        "def": "CHECK (((acquisition_identity_digest IS NULL) OR (acquisition_identity_digest ~ '^sha256:[0-9a-f]{64}$'::text)))",
+        "name": "public_source_versions_acquisition_identity_digest_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "FOREIGN KEY (activation_event_id) REFERENCES public.public_source_activation_events(id) ON DELETE RESTRICT",
+        "name": "public_source_versions_activation_event_id_fkey",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK (((supersedes_version_id IS NULL) OR (supersedes_version_id <> id)))",
+        "name": "public_source_versions_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((content_hash ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "public_source_versions_content_hash_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((exact_canonical_url ~ '^https://'::text))",
+        "name": "public_source_versions_exact_canonical_url_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((btrim(exact_version) <> ''::text))",
+        "name": "public_source_versions_exact_version_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((exact_version_url ~ '^https://'::text))",
+        "name": "public_source_versions_exact_version_url_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((licence_evidence_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "public_source_versions_licence_evidence_digest_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((lifecycle = ANY (ARRAY['discovered'::text, 'shadow'::text, 'approved'::text, 'active'::text, 'superseded'::text, 'quarantined'::text, 'tombstoned'::text])))",
+        "name": "public_source_versions_lifecycle_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "public_source_versions_pkey",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "FOREIGN KEY (publication_approval_id) REFERENCES public.document_publication_approvals(id) ON DELETE RESTRICT",
+        "name": "public_source_versions_publication_approval_id_fkey",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK (((publication_manifest_digest IS NULL) OR (publication_manifest_digest ~ '^[0-9a-f]{64}$'::text)))",
+        "name": "public_source_versions_publication_manifest_digest_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK (((publication_reviewed_state_digest IS NULL) OR (publication_reviewed_state_digest ~ '^[0-9a-f]{64}$'::text)))",
+        "name": "public_source_versions_publication_reviewed_state_digest_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((btrim(source_catalogue_key) <> ''::text))",
+        "name": "public_source_versions_source_catalogue_key_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "UNIQUE (source_catalogue_key, exact_version_url, content_hash)",
+        "name": "public_source_versions_source_catalogue_key_exact_version_u_key",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((source_policy_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "public_source_versions_source_policy_digest_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((btrim(source_policy_version) <> ''::text))",
+        "name": "public_source_versions_source_policy_version_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "CHECK ((staged_content_hash ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "public_source_versions_staged_content_hash_check",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "FOREIGN KEY (staging_document_id) REFERENCES public.documents(id) ON DELETE RESTRICT",
+        "name": "public_source_versions_staging_document_id_fkey",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "UNIQUE (staging_document_id)",
+        "name": "public_source_versions_staging_document_id_key",
+        "table": "public_source_versions"
+      },
+      {
+        "def": "FOREIGN KEY (supersedes_version_id) REFERENCES public.public_source_versions(id) ON DELETE RESTRICT",
+        "name": "public_source_versions_supersedes_version_id_fkey",
+        "table": "public_source_versions"
       },
       {
         "def": "CHECK ((btrim(alias) <> ''::text))",
@@ -9583,6 +13681,41 @@
         "def": "PRIMARY KEY (id)",
         "name": "rag_visual_eval_runs_pkey",
         "table": "rag_visual_eval_runs"
+      },
+      {
+        "def": "CHECK (((plan_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (audit_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (population_fingerprint ~ '^sha256:[0-9a-f]{64}$'::text) AND (recovery_evidence_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (baseline_evaluation_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (operation_manifest_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (prepared_origin_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (execution_profile_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (case_set_digest ~ '^sha256:[0-9a-f]{64}$'::text) AND (baseline_report_digest ~ '^sha256:[0-9a-f]{64}$'::text)))",
+        "name": "shadow_reindex_waves_digests",
+        "table": "shadow_reindex_waves"
+      },
+      {
+        "def": "CHECK (COALESCE((public.shadow_generation_envelope_valid(plan_payload, 'plan'::text, 'node-json-v1'::text) AND ((plan_payload ->> 'digest'::text) = plan_digest) AND public.shadow_generation_envelope_valid(baseline_report, 'evaluation_report'::text, 'node-json-v1'::text) AND ((baseline_report ->> 'digest'::text) = baseline_report_digest)), false))",
+        "name": "shadow_reindex_waves_payloads",
+        "table": "shadow_reindex_waves"
+      },
+      {
+        "def": "PRIMARY KEY (candidate_generation_id)",
+        "name": "shadow_reindex_waves_pkey",
+        "table": "shadow_reindex_waves"
+      },
+      {
+        "def": "UNIQUE (plan_digest)",
+        "name": "shadow_reindex_waves_plan_digest_key",
+        "table": "shadow_reindex_waves"
+      },
+      {
+        "def": "CHECK ((btrim(source_policy_version) <> ''::text))",
+        "name": "shadow_reindex_waves_policy",
+        "table": "shadow_reindex_waves"
+      },
+      {
+        "def": "CHECK ((project_ref = 'sjrfecxgysukkwxsowpy'::text))",
+        "name": "shadow_reindex_waves_project",
+        "table": "shadow_reindex_waves"
+      },
+      {
+        "def": "CHECK ((plan_version = 1))",
+        "name": "shadow_reindex_waves_version",
+        "table": "shadow_reindex_waves"
       },
       {
         "def": "FOREIGN KEY (active_release_id) REFERENCES public.site_content_releases(id)",

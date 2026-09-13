@@ -1586,6 +1586,12 @@ function auditSqlTimestamp(value: unknown) {
   if (!/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(text) || /\n|\r/.test(text)) invalidComparison();
   return text; // Never truncate a stored timestamp through Date.
 }
+
+/** Validates SQL timestamptz text while retaining its exact spelling for returned evidence. */
+export function parseShadowSqlTimestampV1(value: unknown) {
+  const text = auditSqlTimestamp(value);
+  return { text, microsecondsSinceUnixEpoch: shadowMicros(text) } as const;
+}
 function auditStoredRowSchema(table: AuditTable) {
   const shape: Shape = {};
   for (const [key, description] of Object.entries(auditStoredColumns[table])) {
@@ -3394,24 +3400,33 @@ const shadowDeepRequest = record({ fence: record({ job_kind: choice("node"), job
       if (value !== true) invalidComparison(); return true as const;
     }, metadata: auditObject })) });
 
-/** Reconciles complete native D output with the final C rows; this is not a member seal. */
-export function validateShadowCandidateDeepProjectionV1(envelopeValue: unknown, bindingValue: unknown,
-  sourceRowsValue: unknown) {
-  const binding = shadowCandidateView(bindingValue);
+/** Validates the SQL receipt returned directly to the deep-memory producer.
+ * This reuses the same closed stored-row schemas and native-output reconciliation
+ * as the later complete component validator; it grants no member or terminal authority.
+ */
+export function validateShadowDeepMemoryProjectionReceiptV1(args: {
+  receiptEnvelope: unknown;
+  binding: unknown;
+  outputManifestEnvelope: unknown;
+  expectedRequest?: unknown;
+  sourceIds: { chunks: unknown; images: unknown };
+}) {
+  const binding = shadowCandidateView(args.binding);
   const d = binding.artifactGenerationId;
   if (d === null || d === binding.candidateGenerationId || d === binding.source.baselineGenerationId) invalidComparison();
-  const component = auditEnvelope(envelopeValue, "projection", record({ kind: choice("u04-deep-projection-v1"),
-    binding: shadowCandidateView, outputManifestEnvelope: auditAnyEnvelope, deep_memory_receipt: auditAnyEnvelope,
-    deep_memory_metadata: auditObject, producer_aliases: list(auditStoredRowSchema("rag_aliases")) }), "pg-jsonb-text-v1");
-  auditEqual(component.payload.binding, binding);
-  const receipt = auditEnvelope(component.payload.deep_memory_receipt, "projection", record({
+  const receiptParsed = auditEnvelope(args.receiptEnvelope, "projection", record({
     kind: choice("u04-deep-memory-receipt-v1"), binding: shadowCandidateView, producer: choice("local-worker"),
     outputManifestEnvelope: auditAnyEnvelope, request: shadowDeepRequest,
     rows: record({ sections: list(value => auditStoredRow("document_sections", value)),
       cards: list(value => auditStoredRow("document_memory_cards", value)),
       units: list(value => auditStoredRow("document_index_units", value)), aliases: list(value => auditStoredRow("rag_aliases", value)) }),
-    finalizedAt: auditSqlTimestamp }), "pg-jsonb-text-v1").payload;
-  auditEqual(receipt.binding, binding); auditEqual(receipt.outputManifestEnvelope, component.payload.outputManifestEnvelope);
+    finalizedAt: auditSqlTimestamp }), "pg-jsonb-text-v1");
+  const receipt = receiptParsed.payload;
+  parseShadowSqlTimestampV1(receipt.finalizedAt);
+  auditEqual(receipt.binding, binding);
+  const expectedOutputManifest = auditAnyEnvelope(args.outputManifestEnvelope);
+  auditEqual(receipt.outputManifestEnvelope, expectedOutputManifest);
+  if (args.expectedRequest !== undefined) auditEqual(receipt.request, shadowDeepRequest(args.expectedRequest));
   const batch = auditEnvelope(receipt.outputManifestEnvelope, "u04-retained-evidence-v1", record({ producer: choice("local-worker"),
     producerVersion: choice("rag-deep-memory-v1"), binding: shadowCandidateView,
     units: list(record({ family: choice("sections", "memory_cards", "index_units", "producer_aliases"), key: nonemptyString,
@@ -3423,22 +3438,18 @@ export function validateShadowCandidateDeepProjectionV1(envelopeValue: unknown, 
     request.fence.job_id !== binding.jobId || request.fence.lease_token !== binding.firstLeaseToken ||
     request.fence.expected_generation_id !== binding.source.baselineGenerationId ||
     request.fence.authority_digest !== binding.source.authorityDigest) invalidComparison();
-  const sources = record({ chunks: list(value => auditStoredRow("document_chunks", value)),
-    images: list(value => auditStoredRow("document_images", value)) })(sourceRowsValue);
-  for (const rows of [sources.chunks, sources.images]) {
-    if (new Set(rows.map(row => row.row.id)).size !== rows.length) invalidComparison();
-    for (const row of rows) if (row.row.document_id !== binding.source.documentId || auditGeneration(row) !== binding.candidateGenerationId ||
-      auditObject(row.row.metadata).ingestion_lease_token !== binding.firstLeaseToken) invalidComparison();
-  }
-  const sourceIds = (value: unknown, rows: AuditRow[]) => {
-    const ids = list(uuidValue)(value);
-    if (new Set(ids).size !== ids.length || ids.some(id => !rows.some(row => row.row.id === id))) invalidComparison();
+  const sourceIds = record({ chunks: list(uuidValue), images: list(uuidValue) })(args.sourceIds);
+  if (new Set(sourceIds.chunks).size !== sourceIds.chunks.length || new Set(sourceIds.images).size !== sourceIds.images.length)
+    invalidComparison();
+  const sourceIdsFor = (value: unknown, ids: readonly string[]) => {
+    const actual = list(uuidValue)(value);
+    if (new Set(actual).size !== actual.length || actual.some(id => !ids.includes(id))) invalidComparison();
   };
   const checkSources = (native: Record<string, unknown>) => {
-    for (const key of ["source_chunk_ids", "chunk_ids"]) if (Object.hasOwn(native, key)) sourceIds(native[key], sources.chunks);
-    if (Object.hasOwn(native, "source_image_ids")) sourceIds(native.source_image_ids, sources.images);
-    for (const [key, rows] of [["source_chunk_id", sources.chunks], ["source_image_id", sources.images]] as const)
-      if (Object.hasOwn(native, key) && native[key] !== null && !rows.some(row => row.row.id === native[key])) invalidComparison();
+    for (const key of ["source_chunk_ids", "chunk_ids"]) if (Object.hasOwn(native, key)) sourceIdsFor(native[key], sourceIds.chunks);
+    if (Object.hasOwn(native, "source_image_ids")) sourceIdsFor(native.source_image_ids, sourceIds.images);
+    for (const [key, ids] of [["source_chunk_id", sourceIds.chunks], ["source_image_id", sourceIds.images]] as const)
+      if (Object.hasOwn(native, key) && native[key] !== null && !ids.includes(uuidValue(native[key]))) invalidComparison();
   };
   const plannedSections = batch.units.filter(unit => unit.family === "sections");
   const context = plannedSections.find(unit => unit.key === "deep:0")?.output.producerContext;
@@ -3498,7 +3509,6 @@ export function validateShadowCandidateDeepProjectionV1(envelopeValue: unknown, 
           if (!shadowSame(vector, storedVector.map(Math.fround))) return false;
           expected.embedding = row.row.embedding; expected.search_tsv = row.row.search_tsv;
         }
-        // The closed stored schema rejects any absent, extra or incorrectly typed native field.
         const parsed = auditStoredRowSchema(table)(expected);
         return shadowSame(parsed, row.row);
       });
@@ -3513,7 +3523,38 @@ export function validateShadowCandidateDeepProjectionV1(envelopeValue: unknown, 
   }
   if (receipt.rows.sections.length !== request.section_count || receipt.rows.cards.length !== request.memory_card_count) invalidComparison();
   auditEqual(request.index_unit_counts_by_type, counts);
-  if(component.payload.producer_aliases.length!==receipt.rows.aliases.length)invalidComparison();
+  if (new Set(request.anchors.map(anchor => anchor.id)).size !== request.anchors.length ||
+    request.anchors.some(anchor => !sourceIds.chunks.includes(anchor.id))) invalidComparison();
+  return freezeTree({ kind: "shadow-deep-memory-receipt-validated" as const, envelope: receiptParsed.envelope,
+    binding, outputManifestEnvelope: receipt.outputManifestEnvelope, request, rows: receipt.rows,
+    finalizedAt: receipt.finalizedAt, counts, mapping });
+}
+
+/** Reconciles complete native D output with the final C rows; this is not a member seal. */
+export function validateShadowCandidateDeepProjectionV1(envelopeValue: unknown, bindingValue: unknown,
+  sourceRowsValue: unknown) {
+  const binding = shadowCandidateView(bindingValue);
+  const d = binding.artifactGenerationId;
+  if (d === null || d === binding.candidateGenerationId || d === binding.source.baselineGenerationId) invalidComparison();
+  const component = auditEnvelope(envelopeValue, "projection", record({ kind: choice("u04-deep-projection-v1"),
+    binding: shadowCandidateView, outputManifestEnvelope: auditAnyEnvelope, deep_memory_receipt: auditAnyEnvelope,
+    deep_memory_metadata: auditObject, producer_aliases: list(auditStoredRowSchema("rag_aliases")) }), "pg-jsonb-text-v1");
+  auditEqual(component.payload.binding, binding);
+  const sources = record({ chunks: list(value => auditStoredRow("document_chunks", value)),
+    images: list(value => auditStoredRow("document_images", value)) })(sourceRowsValue);
+  for (const rows of [sources.chunks, sources.images]) {
+    if (new Set(rows.map(row => row.row.id)).size !== rows.length) invalidComparison();
+    for (const row of rows) if (row.row.document_id !== binding.source.documentId || auditGeneration(row) !== binding.candidateGenerationId ||
+      auditObject(row.row.metadata).ingestion_lease_token !== binding.firstLeaseToken) invalidComparison();
+  }
+  const receipt = validateShadowDeepMemoryProjectionReceiptV1({
+    receiptEnvelope: component.payload.deep_memory_receipt,
+    binding,
+    outputManifestEnvelope: component.payload.outputManifestEnvelope,
+    sourceIds: { chunks: sources.chunks.map(row => row.row.id), images: sources.images.map(row => row.row.id) },
+  });
+  const { request, rows, finalizedAt, counts, mapping } = receipt;
+  if(component.payload.producer_aliases.length!==rows.aliases.length)invalidComparison();
   for(let index=0;index<component.payload.producer_aliases.length;index++){
     const retained=mapping.filter(value=>value.family==="producer_aliases"&&value.unitKey===`deep:${index}`);
     if(retained.length!==1||shadowStoredEvidence("rag_aliases",component.payload.producer_aliases[index]!).envelope.digest!==
@@ -3528,16 +3569,16 @@ export function validateShadowCandidateDeepProjectionV1(envelopeValue: unknown, 
   }
   const result = { document_id: binding.source.documentId, producer: "local-worker", artifact_generation_id: d,
     index_generation_id: binding.candidateGenerationId, section_count: request.section_count,
-    memory_card_count: request.memory_card_count, index_unit_count: receipt.rows.units.length };
+    memory_card_count: request.memory_card_count, index_unit_count: rows.units.length };
   auditEqual(component.payload.deep_memory_metadata, { rag_indexing_version: request.rag_memory_version,
-    rag_memory_version: request.rag_memory_version, rag_memory_updated_at: receipt.finalizedAt,
-    document_intelligence_version: request.document_intelligence_version, document_intelligence_updated_at: receipt.finalizedAt,
-    section_count: request.section_count, memory_card_count: request.memory_card_count, index_unit_count: receipt.rows.units.length,
+    rag_memory_version: request.rag_memory_version, rag_memory_updated_at: finalizedAt,
+    document_intelligence_version: request.document_intelligence_version, document_intelligence_updated_at: finalizedAt,
+    section_count: request.section_count, memory_card_count: request.memory_card_count, index_unit_count: rows.units.length,
     index_unit_counts_by_type: counts, repaired_anchor_count: request.anchors.length,
     deep_memory_generations: { "local-worker": d }, deep_memory_commit_receipts: { "local-worker": { request, result } } });
   return freezeTree({ kind: "shadow-candidate-deep-projection-validated" as const, envelope: component.envelope,
     binding, outputManifestEnvelope: component.payload.outputManifestEnvelope,
-    receipt: component.payload.deep_memory_receipt, request, rows: receipt.rows, mapping });
+    receipt: component.payload.deep_memory_receipt, request, rows, mapping });
 }
 
 function shadowProjectionComponentEnvelope(value: unknown): ShadowRawEnvelope {

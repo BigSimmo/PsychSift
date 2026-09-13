@@ -403,7 +403,11 @@ describe("document enrichment", () => {
     vi.clearAllMocks();
   });
 
-  function shadowSummaryFixture(refuseDeclaration: boolean, mutateDuringDeclaration = false) {
+  function shadowSummaryFixture(
+    refuseDeclaration: boolean,
+    mutateDuringDeclaration = false,
+    acknowledgement: (valid: Record<string, unknown>) => unknown = valid => valid,
+  ) {
     const baseline = "88888888-8888-4888-8888-888888888888";
     const fence = { ...TEST_FENCE, expected_generation_id: baseline };
     const binding = { tag: "candidate" as const, source: { version: 1 as const,
@@ -429,7 +433,26 @@ describe("document enrichment", () => {
       expect(payload.p_labels).toEqual(declared.units
         .filter((unit: { family: string }) => unit.family === "generated_labels")
         .map((unit: { output: unknown }) => unit.output));
-      return { data: { ok: true, summary: payload.p_summary }, error: null };
+      const requested = payload.p_summary as Record<string, unknown>;
+      const stored = {
+        id: "99999999-9999-4999-8999-999999999999",
+        ...requested,
+        metadata: {
+          ...(requested.metadata as Record<string, unknown>),
+          index_generation_id: GENERATION_ID,
+          ingestion_job_kind: "node",
+          ingestion_job_id: fence.job_id,
+          ingestion_lease_token: fence.lease_token,
+        },
+        created_at: "2026-09-13T01:02:03.000Z",
+        updated_at: "2026-09-13T01:02:03.000Z",
+      };
+      return { data: acknowledgement({
+        ok: true,
+        kind: "summary_projected",
+        summary: stored,
+        projection_digest: `sha256:${"e".repeat(64)}`,
+      }), error: null };
     });
     const from = vi.fn(() => { throw new Error("ordinary summary read/write forbidden"); });
     const args: Parameters<typeof upsertDocumentEnrichment>[0] = {
@@ -472,12 +495,64 @@ describe("document enrichment", () => {
     expect(fixture.rpc).toHaveBeenCalledTimes(1);
     expect(result.summary.metadata).toHaveProperty("source_anchored_summary_v1.clinical_specifics.profile.key_clinical_actions.0.pages", [52]);
     const declared = JSON.parse(fixture.declarations[0]!.outputManifestEnvelope.canonicalPayload);
-    expect(declared.units.find((unit: { family: string }) => unit.family === "summary").output.summary).toEqual(result.summary);
+    const nativeSummary = declared.units.find((unit: { family: string }) => unit.family === "summary").output.summary;
+    const { updated_at: _nativeUpdatedAt, ...expectedNativeFields } = nativeSummary;
+    expect(result.summary).toMatchObject(expectedNativeFields);
+    expect(result.summary.created_at).toBe("2026-09-13T01:02:03.000Z");
+    expect(result.summary.updated_at).toBe("2026-09-13T01:02:03.000Z");
     expect(declared.units.find((unit: { family: string }) => unit.family === "generated_labels").output.metadata).toMatchObject({
       index_generation_id: GENERATION_ID, source_chunk_ids: [LATE_CHUNK_ID], pages: [52],
     });
     expect(encodeShadowNodeJsonCanonicalPayload({ document: fixture.args.document, fence: fixture.args.fence,
       chunks: fixture.args.chunks, images: fixture.args.images })).toBe(original);
+  });
+
+  it("accepts the SQL spelling of the generated-at instant and returns its original bytes", async () => {
+    const sqlGeneratedAt = "2026-09-01T00:00:00+00:00";
+    const fixture = shadowSummaryFixture(false, false, valid => ({
+      ...valid,
+      summary: { ...(valid.summary as Record<string, unknown>), generated_at: sqlGeneratedAt },
+    }));
+    const result = await upsertDocumentEnrichment(fixture.args);
+    expect(result.summary.generated_at).toBe(sqlGeneratedAt);
+  });
+
+  it.each([
+    ["missing kind", (valid: Record<string, unknown>) => {
+      const { kind: _kind, ...malformed } = valid; return malformed;
+    }],
+    ["wrong digest", (valid: Record<string, unknown>) => ({ ...valid, projection_digest: "sha256:short" })],
+    ["missing summary", (valid: Record<string, unknown>) => {
+      const { summary: _summary, ...malformed } = valid; return malformed;
+    }],
+    ["extra response key", (valid: Record<string, unknown>) => ({ ...valid, stale: true })],
+    ["wrong stored summary identity", (valid: Record<string, unknown>) => ({ ...valid,
+      summary: { ...(valid.summary as Record<string, unknown>), document_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" } })],
+    ["substituted summary text", (valid: Record<string, unknown>) => ({ ...valid,
+      summary: { ...(valid.summary as Record<string, unknown>), summary: "Substituted clinical summary." } })],
+    ["substituted clinical specifics", (valid: Record<string, unknown>) => ({ ...valid,
+      summary: { ...(valid.summary as Record<string, unknown>), clinical_specifics: { actions: ["Substituted action"] } } })],
+    ["substituted source chunks", (valid: Record<string, unknown>) => ({ ...valid,
+      summary: { ...(valid.summary as Record<string, unknown>), source_chunk_ids: [] } })],
+    ["substituted source images", (valid: Record<string, unknown>) => ({ ...valid,
+      summary: { ...(valid.summary as Record<string, unknown>), source_image_ids: [] } })],
+    ["substituted model", (valid: Record<string, unknown>) => ({ ...valid,
+      summary: { ...(valid.summary as Record<string, unknown>), model: "substituted-model" } })],
+    ["invalid generated-at timestamp", (valid: Record<string, unknown>) => ({ ...valid,
+      summary: { ...(valid.summary as Record<string, unknown>), generated_at: "2026-09-01T25:00:00+00:00" } })],
+    ["different generated-at microsecond", (valid: Record<string, unknown>) => ({ ...valid,
+      summary: { ...(valid.summary as Record<string, unknown>), generated_at: "2026-09-01T00:00:00.000001Z" } })],
+  ] as const)("rejects a shadow summary %s acknowledgement before later persistence", async (_fault, acknowledgement) => {
+    const fixture = shadowSummaryFixture(false, false, acknowledgement);
+    const laterPersistence = vi.fn();
+    const process = async () => {
+      await upsertDocumentEnrichment(fixture.args);
+      await laterPersistence();
+    };
+    await expect(process()).rejects.toMatchObject({ code: "ingestion_rpc_invalid" });
+    expect(fixture.rpc).toHaveBeenCalledOnce();
+    expect(fixture.from).not.toHaveBeenCalled();
+    expect(laterPersistence).not.toHaveBeenCalled();
   });
 
   it("shadow summary declaration refusal retains full generated output and prevents every persistence call", async () => {

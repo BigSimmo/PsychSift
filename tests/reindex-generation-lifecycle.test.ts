@@ -436,14 +436,12 @@ describe("receipt-bound retained generation rollback", () => {
     const authorization = {
       version: 1 as const,
       operation: "rollback" as const,
+      targetProjectRef: projectRef,
       promotionOperationId: promotion.operationId,
       promotionReceiptDigest: promotion.receiptDigest,
       candidateGenerationId: candidate,
-      transitions: promotion.transitions.map(transition => ({
-        documentId: transition.documentId,
-        fromGenerationId: transition.toGenerationId,
-        toGenerationId: transition.fromGenerationId,
-      })),
+      expectedDocumentIds: promotion.transitions.map(transition => transition.documentId),
+      expectedDocumentCount: promotion.transitions.length,
       reasonCode: "post_promotion_observation_failed",
       authorizedAt: "2026-12-13T01:00:00.000Z",
       expiresAt: "2026-12-13T01:10:00.000Z",
@@ -459,8 +457,10 @@ describe("receipt-bound retained generation rollback", () => {
       promotionReceiptDigest: promotion.receiptDigest,
       rollbackManifestDigest,
       candidateGenerationId: candidate,
-      transitions: authorization.transitions.map(transition => ({
-        ...transition,
+      transitions: promotion.transitions.map(transition => ({
+        documentId: transition.documentId,
+        fromGenerationId: transition.toGenerationId,
+        toGenerationId: transition.fromGenerationId,
         retainedUntil: authorization.retainedUntil,
       })),
       rolledBackAt: "2026-12-13T01:05:00.000Z",
@@ -477,9 +477,12 @@ describe("receipt-bound retained generation rollback", () => {
           trustedNow: "2026-12-13T01:05:00.000Z",
         },
         {
-          rpc: async (name, args) => {
-            calls.push({ name, args });
-            return { data: rollback, error: null };
+          projectRef,
+          client: {
+            rpc: async (name, args) => {
+              calls.push({ name, args });
+              return { data: rollback, error: null };
+            },
           },
         },
       ),
@@ -502,7 +505,7 @@ describe("receipt-bound retained generation rollback", () => {
           rollbackManifest: { authorization, rollbackManifestDigest },
           trustedNow: "2026-12-13T01:05:00.000Z",
         },
-        { rpc: async () => ({ data: staleRollback, error: null }) },
+        { projectRef, client: { rpc: async () => ({ data: staleRollback, error: null }) } },
       ),
     ).rejects.toThrow(/clock|time|promotion/i);
   });

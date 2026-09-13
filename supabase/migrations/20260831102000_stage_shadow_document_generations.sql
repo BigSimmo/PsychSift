@@ -2287,7 +2287,7 @@ begin
   foreach v_layer in array array['databaseBackup','pitr','storageRecovery','restoreDrill'] loop
     v_field:=case when v_layer='restoreDrill' then 'completedAt' else 'verifiedAt' end; v_time:=public.shadow_recovery_timestamp_ms_v1(v->v_layer->>v_field);
     if v_time-v_now>300000 or v_time-v_verified>300000
-      or v_now-v_time>case when v_layer='restoreDrill' then 7776000000 when v_layer='storageRecovery' then 604800000 else 86400000 end then raise exception 'invalid_shadow_recovery_freshness'; end if;
+      or v_now-v_time>(case when v_layer='restoreDrill' then 7776000000 when v_layer='storageRecovery' then 604800000 else 86400000 end) then raise exception 'invalid_shadow_recovery_freshness'; end if;
   end loop;
   if v->'restoreDrill'->>'outcome' is distinct from 'passed' or v->'restoreDrill'->>'target' is distinct from 'isolated-project'
     or v->'restoreDrill'->'databaseBackupDigest' is distinct from v->'databaseBackup'->'digest'
@@ -4887,8 +4887,8 @@ declare v_row public.document_generation_projections%rowtype;v_ref jsonb;v_famil
 begin
   v_ref:=p_outcome->'artifactRef';v_family:=p_outcome->>'family';v_slot:=v_ref->>'slot';
   if v_ref->>'tag' is distinct from 'candidate_projection'
-    or v_slot is distinct from case v_family when 'summary' then 'summary' when 'generated_labels' then 'generated_labels'
-      when 'quality' then 'quality' when 'document_metadata' then 'worker_metadata' when 'producer_aliases' then 'producer_aliases' end
+    or v_slot is distinct from (case v_family when 'summary' then 'summary' when 'generated_labels' then 'generated_labels'
+      when 'quality' then 'quality' when 'document_metadata' then 'worker_metadata' when 'producer_aliases' then 'producer_aliases' end)
     then raise exception 'shadow_projection_reference_family'; end if;
   select * into v_row from public.document_generation_projections where document_id=p_member.document_id and index_generation_id=p_member.index_generation_id;
   if not found or v_row.owner_id is distinct from p_member.owner_id or v_row.lease_token is distinct from p_member.first_lease_token
@@ -5116,8 +5116,8 @@ begin
     or v_metadata->'enrichment_status' is distinct from v_expected->'enrichmentStatus'
     or v_metadata->'enrichment_error' is distinct from v_expected->'enrichmentErrorMessage'
     or v_metadata->'indexing_v3_agent_status' is distinct from pg_catalog.to_jsonb(case when v_required then 'pending' else 'completed' end)
-    or v_metadata->'indexing_v3_agent_last_error' is distinct from case when v_required then v_expected->'repairMessage' else 'null'::jsonb end
-    or v_metadata->'indexing_v3_agent_repair_reason' is distinct from case when v_required then v_expected->'repairReason' else 'null'::jsonb end
+    or v_metadata->'indexing_v3_agent_last_error' is distinct from (case when v_required then v_expected->'repairMessage' else 'null'::jsonb end)
+    or v_metadata->'indexing_v3_agent_repair_reason' is distinct from (case when v_required then v_expected->'repairReason' else 'null'::jsonb end)
     then raise exception 'shadow_repair_projection_changed'; end if;
   return v_capture;
 exception when others then raise exception 'invalid_shadow_repair_audit' using errcode='22023';
@@ -5520,13 +5520,13 @@ begin
     or v_table->'tableRole' is distinct from public.shadow_worker_metadata_string_v1(v_metadata,'table_role')
     or v_table->'tableConfidence' is distinct from public.shadow_worker_metadata_number_v1(v_metadata,'table_confidence')
     or v_table->'tableText' is distinct from public.shadow_worker_metadata_string_v1(v_metadata,'table_text')
-    or v_table->'tableRows' is distinct from case when pg_catalog.jsonb_typeof(v_metadata->'table_rows')='array' then v_metadata->'table_rows' else 'null'::jsonb end
-    or v_table->'tableColumns' is distinct from case when pg_catalog.jsonb_typeof(v_metadata->'table_columns')='array' then v_metadata->'table_columns' else 'null'::jsonb end
+    or v_table->'tableRows' is distinct from (case when pg_catalog.jsonb_typeof(v_metadata->'table_rows')='array' then v_metadata->'table_rows' else 'null'::jsonb end)
+    or v_table->'tableColumns' is distinct from (case when pg_catalog.jsonb_typeof(v_metadata->'table_columns')='array' then v_metadata->'table_columns' else 'null'::jsonb end)
     then raise exception 'shadow_cache_table_metadata_changed'; end if;
   v_table_text:=case when v_table->'tableText'='null'::jsonb then null else v_table->>'tableText' end;
   if v_table->'tableTextSnippet' is distinct from public.shadow_worker_compact_text_v1(v_table_text,1200)
-    or v_table->'accessibleTableMarkdown' is distinct from case when public.shadow_worker_metadata_string_v1(v_metadata,'accessible_table_markdown')<>'null'::jsonb
-      then public.shadow_worker_metadata_string_v1(v_metadata,'accessible_table_markdown') else v_table->'tableText' end
+    or v_table->'accessibleTableMarkdown' is distinct from (case when public.shadow_worker_metadata_string_v1(v_metadata,'accessible_table_markdown')<>'null'::jsonb
+      then public.shadow_worker_metadata_string_v1(v_metadata,'accessible_table_markdown') else v_table->'tableText' end)
     then raise exception 'shadow_cache_table_metadata_changed'; end if;
   return v_capture;
 exception when others then
@@ -6560,7 +6560,7 @@ begin
   v_profile:=v_payload->'clinical_specifics'->'profile';v_claims:='[]'::jsonb;v_projection:='[]'::jsonb;
   foreach v_key in array v_profile_keys loop
     if pg_catalog.jsonb_typeof(v_profile->v_key) is distinct from 'array'
-      or pg_catalog.jsonb_array_length(v_profile->v_key)>case when v_key='best_questions' then 8 else 6 end then raise exception 'shadow_summary_profile_invalid'; end if;
+      or pg_catalog.jsonb_array_length(v_profile->v_key)>(case when v_key='best_questions' then 8 else 6 end) then raise exception 'shadow_summary_profile_invalid'; end if;
     for v_claim in select value from pg_catalog.jsonb_array_elements(v_profile->v_key) loop
       if not public.shadow_keys_v1(v_claim,array['text','source_chunk_ids','source_image_ids','pages','evidence_type','support'])
         or pg_catalog.jsonb_typeof(v_claim->'text') is distinct from 'string' or pg_catalog.length(v_claim->>'text')=0
@@ -6845,7 +6845,7 @@ begin
   foreach v_key in array array['confidence','quality_score','weight'] loop
     if not(v_native?v_key) then continue; end if;
     if pg_catalog.jsonb_typeof(v_native->v_key) is distinct from 'number' or (v_native->>v_key)::numeric<0
-      or (v_native->>v_key)::numeric>case when v_key='weight' then 1.5 else 1 end then raise exception 'shadow_deep_native_score'; end if;
+      or (v_native->>v_key)::numeric>(case when v_key='weight' then 1.5 else 1 end) then raise exception 'shadow_deep_native_score'; end if;
   end loop;
   if p_family in ('memory_cards','index_units') then
     if pg_catalog.jsonb_typeof(v_native->'embedding') is distinct from 'array' or pg_catalog.jsonb_array_length(v_native->'embedding')<>1536
@@ -6883,7 +6883,7 @@ begin
     or v_fence->>'authority_digest' is distinct from p_member.authority_digest then raise exception 'shadow_deep_request_fence'; end if;
   foreach v_family in array array['sections','memory_cards','index_units','producer_aliases'] loop
     select count(*) into v_count from pg_catalog.jsonb_array_elements(v_batch->'units') x where x->>'family'=v_family;
-    if v_family in ('sections','memory_cards') and (v_count=0 or p_request->case when v_family='sections' then 'section_count' else 'memory_card_count' end is distinct from pg_catalog.to_jsonb(v_count))
+    if v_family in ('sections','memory_cards') and (v_count=0 or p_request->(case when v_family='sections' then 'section_count' else 'memory_card_count' end) is distinct from pg_catalog.to_jsonb(v_count))
       then raise exception 'shadow_deep_request_population'; end if;
     for v_i in 0..v_count-1 loop
       select value into v_unit from pg_catalog.jsonb_array_elements(v_batch->'units') where value->>'family'=v_family and value->>'key'='deep:'||v_i::text;
@@ -7789,7 +7789,7 @@ begin
     where document_id=(p_fence->>'document_id')::uuid and index_generation_id=p_generation;
   v_profile:=public.shadow_profile_capture_v1((v_member.original_origin_envelope->>'canonicalPayload')::jsonb->'executionProfileEnvelope');
   perform pg_catalog.set_config('lock_timeout',(v_profile->'limits'->>'lockTimeoutMs')||'ms',true);
-  v_deadline:=pg_catalog.extract(epoch from pg_catalog.current_setting('statement_timeout')::interval)*1000;
+  v_deadline:=extract(epoch from pg_catalog.current_setting('statement_timeout')::interval)*1000;
   if v_deadline<=0 or v_deadline>(v_profile->'limits'->>'serverRequestDeadlineMs')::bigint then raise exception 'shadow_deadline_not_effective'; end if;
   if pg_catalog.octet_length(pg_catalog.convert_to(p_failure::text,'UTF8'))>least(16777216,(v_profile->'limits'->>'maxAppendBytes')::bigint)
     then raise exception 'shadow_append_too_large'; end if;
@@ -9279,8 +9279,8 @@ declare v_row public.document_generation_projections%rowtype;v_ref jsonb;v_famil
 begin
   v_ref:=p_outcome->'artifactRef';v_family:=p_outcome->>'family';v_slot:=v_ref->>'slot';
   if v_ref->>'tag' is distinct from 'candidate_projection'
-    or v_slot is distinct from case v_family when 'summary' then 'summary' when 'generated_labels' then 'generated_labels'
-      when 'quality' then 'quality' when 'document_metadata' then 'worker_metadata' when 'producer_aliases' then 'producer_aliases' end
+    or v_slot is distinct from (case v_family when 'summary' then 'summary' when 'generated_labels' then 'generated_labels'
+      when 'quality' then 'quality' when 'document_metadata' then 'worker_metadata' when 'producer_aliases' then 'producer_aliases' end)
     then raise exception 'shadow_projection_reference_family'; end if;
   select * into v_row from public.document_generation_projections where document_id=p_member.document_id and index_generation_id=p_member.index_generation_id;
   if not found or v_row.owner_id is distinct from p_member.owner_id or v_row.lease_token is distinct from p_member.first_lease_token
