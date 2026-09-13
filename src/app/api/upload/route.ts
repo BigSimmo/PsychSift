@@ -13,10 +13,13 @@ import { probeSupabaseHealth } from "@/lib/supabase/health";
 import { createSupabaseBearerServerClient, createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   assertTrustedAdministratorAssurance,
+  assertTrustedDocumentStoragePath,
   createTrustedDocumentAdmission,
   dispatchTrustedDocumentAdmission,
   TrustedDocumentAdmissionDispatchError,
+  TrustedDocumentStorageUploadError,
   trustedAdmissionDocumentId,
+  uploadTrustedDocumentBytes,
   type TrustedAdmissionAuthority,
   type TrustedDocumentAdmission,
 } from "@/lib/trusted-document-admission";
@@ -268,7 +271,7 @@ export async function POST(request: Request) {
 
     const { data: persistedDocument, error: persistedDocumentError } = await adminSupabase
       .from("documents")
-      .select("id,title,description,file_name,metadata")
+      .select("id,title,description,file_name,storage_path,metadata")
       .eq("owner_id", uploadOwnerId)
       .eq("id", documentId)
       .maybeSingle();
@@ -290,6 +293,10 @@ export async function POST(request: Request) {
         requestedTitle: uploadMetadata.title,
         contentHash,
       }));
+    let admissionStoragePath =
+      persistedDocument && typeof persistedDocument.storage_path === "string"
+        ? assertTrustedDocumentStoragePath(uploadOwnerId, documentId, persistedDocument.storage_path)
+        : storagePath;
     const title = namePlan.title;
     const description = uploadMetadata.description;
     // Upload filename/title/storage-path identity is user-controlled and must not mint
@@ -297,7 +304,7 @@ export async function POST(request: Request) {
     // the admission contract and retained without inferring authority from the filename.
 
     assertUploadNotAborted(request);
-    const documentPayload = {
+    let documentPayload = {
       id: documentId,
       owner_id: uploadOwnerId,
       title,
@@ -305,7 +312,7 @@ export async function POST(request: Request) {
       file_name: file.name,
       file_type: file.type,
       file_size: file.size,
-      storage_path: storagePath,
+      storage_path: admissionStoragePath,
       content_hash: contentHash,
       max_attempts: env.WORKER_MAX_ATTEMPTS,
       metadata: {
@@ -345,7 +352,7 @@ export async function POST(request: Request) {
         documentId,
         stagingOwnerId: uploadOwnerId,
         contentSha256: `sha256:${contentHash}`,
-        storagePath,
+        storagePath: admissionStoragePath,
         originalFileName: file.name,
         mimeType: file.type,
         byteCount: file.size,
@@ -387,12 +394,44 @@ export async function POST(request: Request) {
     if (!health.ok) return NextResponse.json({ error: `Upload is paused. ${health.message}` }, { status: 503 });
 
     assertUploadNotAborted(request);
-    const upload = await adminSupabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).upload(storagePath, buffer, {
-      contentType: file.type,
-      upsert: false,
-    });
-    if (upload.error) throw new Error(upload.error.message);
-    uploadedPath = storagePath;
+    let storageUpload;
+    try {
+      storageUpload = await uploadTrustedDocumentBytes({
+        storage: adminSupabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET),
+        ownerId: uploadOwnerId,
+        documentId,
+        intendedStoragePath: admissionStoragePath,
+        bytes: buffer,
+        byteCount: file.size,
+        contentSha256: contentHash,
+        contentType: file.type,
+      });
+    } catch (storageError) {
+      if (storageError instanceof TrustedDocumentStorageUploadError && storageError.kind === "outcome_unknown") {
+        uploadedPath = storageError.storagePath;
+        preserveUploadedArtifact = true;
+      }
+      throw storageError;
+    }
+    uploadedPath = storageUpload.storagePath;
+    if (storageUpload.storagePath !== admissionStoragePath) {
+      admissionStoragePath = storageUpload.storagePath;
+      documentPayload = { ...documentPayload, storage_path: admissionStoragePath };
+      trustedAdmission = createTrustedDocumentAdmission({
+        actor: { kind: "administrator", administratorId: uploadOwnerId },
+        sourceChannel: "admin_api",
+        documentId,
+        stagingOwnerId: uploadOwnerId,
+        contentSha256: `sha256:${contentHash}`,
+        storagePath: admissionStoragePath,
+        originalFileName: file.name,
+        mimeType: file.type,
+        byteCount: file.size,
+        correlationId,
+        admissionPolicyVersion: "trusted-document-admission-v1",
+        authority,
+      });
+    }
 
     assertUploadNotAborted(request);
     let uploadRecord;
@@ -416,6 +455,86 @@ export async function POST(request: Request) {
           // An ambiguous commit must retain the exact object for replay recovery.
         }
         preserveUploadedArtifact = true;
+      }
+      if (
+        dispatchError instanceof TrustedDocumentAdmissionDispatchError &&
+        dispatchError.kind === "rejected" &&
+        dispatchError.message === "admission_replay_conflict" &&
+        uploadedPath
+      ) {
+        const { data: winnerDocument, error: winnerError } = await adminSupabase
+          .from("documents")
+          .select("id,title,description,file_name,storage_path,metadata")
+          .eq("owner_id", uploadOwnerId)
+          .eq("id", documentId)
+          .maybeSingle();
+        if (winnerError) throw new Error(winnerError.message);
+        const winnerNamePlan = persistedNamePlan(winnerDocument, {
+          documentId,
+          fileName: file.name,
+          requestedTitle: uploadMetadata.title,
+          description: uploadMetadata.description,
+        });
+        if (winnerNamePlan && typeof winnerDocument?.storage_path === "string") {
+          const winnerStoragePath = assertTrustedDocumentStoragePath(
+            uploadOwnerId,
+            documentId,
+            winnerDocument.storage_path,
+          );
+          const winnerPayload = {
+            ...documentPayload,
+            title: winnerNamePlan.title,
+            storage_path: winnerStoragePath,
+            metadata: {
+              ...documentPayload.metadata,
+              source_title: winnerNamePlan.title,
+              original_file_name: winnerNamePlan.originalFileName,
+              original_title: winnerNamePlan.originalTitle,
+              smart_title_base: winnerNamePlan.baseTitle,
+              smart_title_group_key: winnerNamePlan.duplicateGroupKey,
+              smart_title_duplicate_index: winnerNamePlan.duplicateIndex,
+              smart_title_duplicate_reason: winnerNamePlan.duplicateReason,
+            },
+          };
+          const winnerAdmission = createTrustedDocumentAdmission({
+            actor: { kind: "administrator", administratorId: uploadOwnerId },
+            sourceChannel: "admin_api",
+            documentId,
+            stagingOwnerId: uploadOwnerId,
+            contentSha256: `sha256:${contentHash}`,
+            storagePath: winnerStoragePath,
+            originalFileName: file.name,
+            mimeType: file.type,
+            byteCount: file.size,
+            correlationId,
+            admissionPolicyVersion: "trusted-document-admission-v1",
+            authority,
+          });
+          const winnerReplay = await dispatchTrustedDocumentAdmission(
+            { admission: winnerAdmission, document: winnerPayload, replayOnly: true },
+            userSupabase,
+          );
+          if (winnerReplay.outcome !== "not_found") {
+            const attemptOwnedPath = uploadedPath;
+            const { error: removeError } = await adminSupabase.storage
+              .from(env.SUPABASE_DOCUMENT_BUCKET)
+              .remove([attemptOwnedPath]);
+            if (removeError) {
+              const { error: ledgerError } = await adminSupabase.from("storage_cleanup_jobs").insert({
+                document_bucket: env.SUPABASE_DOCUMENT_BUCKET,
+                document_paths: [attemptOwnedPath],
+                owner_id: uploadOwnerId,
+                status: "pending",
+                image_bucket: env.SUPABASE_IMAGE_BUCKET,
+                image_paths: [],
+              });
+              if (ledgerError) throw new Error(`Upload cleanup ledger insert failed: ${ledgerError.message}`);
+            }
+            uploadedPath = null;
+            durableAdmission = true;
+            return NextResponse.json({ document: winnerReplay.document, job: winnerReplay.job });
+          }
+        }
       }
       if (isContentHashDuplicateError(dispatchError)) {
         // The duplicate response helper exclusively owns exact-path compensation

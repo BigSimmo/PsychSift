@@ -99,6 +99,14 @@ describe("trusted backend import admission", () => {
     expect(exactLookup).toBeGreaterThan(-1);
     expect(exactLookup).toBeLessThan(retainedPlan);
     expect(importer).toContain("title: metadata.source_title");
+    expect(importer).toContain('.select("id,title,file_name,storage_path,content_hash,metadata")');
+    expect(importer).toContain("assertTrustedDocumentStoragePath(ownerId, documentId, retainedDocument.storage_path)");
+    expect(importer).toContain("uploadTrustedDocumentBytes({");
+    expect(importer).toContain("contentSha256: file.contentHash");
+    const positiveWinnerReplay = importer.indexOf('if (winnerReplay.outcome !== "not_found")');
+    expect(positiveWinnerReplay).toBeGreaterThan(-1);
+    expect(importer.indexOf("namePlan = winnerNamePlan;", positiveWinnerReplay)).toBeGreaterThan(positiveWinnerReplay);
+    expect(importer.indexOf("wasReplay = true;", positiveWinnerReplay)).toBeGreaterThan(positiveWinnerReplay);
     expect(importer).not.toContain("existingDocsForPlanning.find((document) => document.id === documentId)");
   });
 });

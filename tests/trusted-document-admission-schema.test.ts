@@ -139,6 +139,65 @@ describe("trusted document admission schema source contract", () => {
     expect(normalizedHelper).toContain("sql also enforces its authoritative jsonb text");
   });
 
+  it("filters direct-RPC metadata to naming fields and establishes governance defaults in SQL", () => {
+    const core = functionDefinition(migration, "trusted_document_admission_core");
+    expect(functionDefinition(schema, "trusted_document_admission_core")).toBe(core);
+    expect(core).not.toContain("v_metadata := p_document->'metadata' ||");
+    expect(core).toContain("select coalesce(pg_catalog.jsonb_object_agg(item.key, item.value), '{}'::jsonb)");
+    expect(core).toContain("into v_metadata");
+    expect(core).toContain("from pg_catalog.jsonb_each(p_document->'metadata') as item(key, value)");
+
+    const whitelist = core.match(/where item\.key = any\(array\[(.*?)\]\)/)?.[1];
+    expect(whitelist).toBeTruthy();
+    const retainedKeys = [...(whitelist ?? "").matchAll(/'([^']+)'/g)].map((match) => match[1]).toSorted();
+    expect(retainedKeys).toEqual(
+      [
+        "original_file_name",
+        "original_title",
+        "smart_title_base",
+        "smart_title_group_key",
+        "smart_title_duplicate_index",
+        "smart_title_duplicate_reason",
+        "version",
+        "max_upload_mb",
+        "queue_batch_size",
+      ].toSorted(),
+    );
+    for (const forgedKey of [
+      "clinical_validation_status",
+      "clinical_validation_evidence",
+      "extraction_quality",
+      "publisher_code",
+      "indexed_at",
+      "governance_disposition",
+      "governance_updated_at",
+      "governance_updated_by",
+      "source_catalogue_key",
+      "source_policy_version",
+    ]) {
+      expect(retainedKeys).not.toContain(forgedKey);
+    }
+
+    for (const retainedServerField of [
+      "'source_title', p_document->>'title'",
+      "'uploaded_by', v_staging_owner_id",
+      "'source_path', case when p_document ? 'source_path' then p_document->'source_path' else 'null'::jsonb end",
+      "'import_batch_id', v_import_batch_id",
+      "'admission_max_attempts', v_max_attempts",
+      "'content_hash', v_content_hex",
+      "'authority', v_authority",
+      "'publisher', v_authority->>'publisher'",
+      "'publication_date', v_authority->'publicationdate'",
+    ]) {
+      expect(core).toContain(retainedServerField);
+    }
+    expect(core).toContain("'clinical_validation_status', 'unverified'");
+    expect(core).toContain("'extraction_quality', 'unknown'");
+    expect(core).toContain("'publisher_code', null");
+    expect(core).toContain("'indexed_at', null");
+    expect(core).toContain("pg_catalog.convert_to(p_document::text, 'utf8')");
+  });
+
   it("serializes replay and content admission and returns stable exact-replay identities", () => {
     const core = functionDefinition(migration, "trusted_document_admission_core");
     const replayLock = core.indexOf("trusted-document-admission:replay:");

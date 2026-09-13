@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import type { SourceLicencePolicy } from "@/lib/australian-source-catalogue";
 import type { ClinicalSourceRole } from "@/lib/types";
@@ -178,6 +178,169 @@ export class TrustedDocumentAdmissionDispatchError extends Error {
     this.name = "TrustedDocumentAdmissionDispatchError";
     this.kind = kind;
   }
+}
+
+export class TrustedDocumentStorageUploadError extends Error {
+  readonly kind: "collision_mismatch" | "outcome_unknown";
+  readonly storagePath: string | null;
+
+  constructor(kind: "collision_mismatch" | "outcome_unknown", message: string, storagePath: string | null) {
+    super(message);
+    this.name = "TrustedDocumentStorageUploadError";
+    this.kind = kind;
+    this.storagePath = storagePath;
+  }
+}
+
+type TrustedDocumentStorageError = Readonly<{
+  message?: unknown;
+  status?: unknown;
+  statusCode?: unknown;
+  code?: unknown;
+}>;
+
+export type TrustedDocumentStorageClient = Readonly<{
+  upload(
+    path: string,
+    body: Uint8Array,
+    options: Readonly<{ contentType: string; upsert: false }>,
+  ): PromiseLike<{ data: unknown; error: TrustedDocumentStorageError | null }>;
+  download(path: string): PromiseLike<{ data: Blob | null; error: TrustedDocumentStorageError | null }>;
+}>;
+
+function documentStoragePrefix(ownerId: string, documentId: string) {
+  return `${canonicalUuid(ownerId, "storage ownerId")}/documents/${canonicalUuid(documentId, "storage documentId")}/`;
+}
+
+export function assertTrustedDocumentStoragePath(ownerId: string, documentId: string, storagePath: string) {
+  const path = boundedString(storagePath, "storagePath", 1_024);
+  if (!path.startsWith(documentStoragePrefix(ownerId, documentId)) || path.includes("\\")) {
+    throw new Error("Trusted document storage path is outside its owner/document scope.");
+  }
+  const relative = path.slice(documentStoragePrefix(ownerId, documentId).length);
+  if (
+    !relative ||
+    relative.startsWith("/") ||
+    relative.split("/").some((segment) => !segment || segment === "." || segment === "..")
+  ) {
+    throw new Error("Trusted document storage path is not canonical.");
+  }
+  return path;
+}
+
+function isConfirmedExistingObjectError(error: TrustedDocumentStorageError | null) {
+  if (!error || Number(error.status) !== 409) return false;
+  return error.code === "ResourceAlreadyExists" || error.statusCode === "409";
+}
+
+function contentDigest(bytes: Uint8Array) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+export async function uploadTrustedDocumentBytes(
+  args: Readonly<{
+    storage: TrustedDocumentStorageClient;
+    ownerId: string;
+    documentId: string;
+    intendedStoragePath: string;
+    bytes: Uint8Array;
+    byteCount: number;
+    contentSha256: string;
+    contentType: string;
+    createRecoveryId?: () => string;
+  }>,
+) {
+  const intendedStoragePath = assertTrustedDocumentStoragePath(args.ownerId, args.documentId, args.intendedStoragePath);
+  if (
+    !Number.isSafeInteger(args.byteCount) ||
+    args.byteCount < 1 ||
+    args.bytes.byteLength !== args.byteCount ||
+    !bareSha256Pattern.test(args.contentSha256) ||
+    contentDigest(args.bytes) !== args.contentSha256
+  ) {
+    throw new TrustedDocumentStorageUploadError(
+      "collision_mismatch",
+      "Current document bytes do not match the validated content digest.",
+      null,
+    );
+  }
+
+  let initial: Awaited<ReturnType<TrustedDocumentStorageClient["upload"]>>;
+  try {
+    initial = await args.storage.upload(intendedStoragePath, args.bytes, {
+      contentType: args.contentType,
+      upsert: false,
+    });
+  } catch {
+    throw new TrustedDocumentStorageUploadError(
+      "outcome_unknown",
+      "Document Storage upload outcome is unknown; retain the attempted path for reconciliation.",
+      intendedStoragePath,
+    );
+  }
+  if (!initial.error) return Object.freeze({ storagePath: intendedStoragePath, collisionRecovered: false });
+  if (!isConfirmedExistingObjectError(initial.error)) {
+    throw new TrustedDocumentStorageUploadError(
+      "outcome_unknown",
+      "Document Storage upload outcome is unknown; retain the attempted path for reconciliation.",
+      intendedStoragePath,
+    );
+  }
+
+  let existing: Awaited<ReturnType<TrustedDocumentStorageClient["download"]>>;
+  try {
+    existing = await args.storage.download(intendedStoragePath);
+  } catch {
+    throw new TrustedDocumentStorageUploadError(
+      "collision_mismatch",
+      "Existing document Storage bytes could not be verified.",
+      null,
+    );
+  }
+  if (existing.error || !existing.data) {
+    throw new TrustedDocumentStorageUploadError(
+      "collision_mismatch",
+      "Existing document Storage bytes could not be verified.",
+      null,
+    );
+  }
+  const existingBytes = new Uint8Array(await existing.data.arrayBuffer());
+  if (existingBytes.byteLength !== args.bytes.byteLength || contentDigest(existingBytes) !== args.contentSha256) {
+    throw new TrustedDocumentStorageUploadError(
+      "collision_mismatch",
+      "Existing document Storage bytes do not match this admission request.",
+      null,
+    );
+  }
+
+  const originalName = intendedStoragePath.slice(intendedStoragePath.lastIndexOf("/") + 1);
+  const recoveryId = canonicalUuid((args.createRecoveryId ?? randomUUID)(), "recovery storage UUID");
+  const recoveryPath = assertTrustedDocumentStoragePath(
+    args.ownerId,
+    args.documentId,
+    `${documentStoragePrefix(args.ownerId, args.documentId)}recovery-${recoveryId}-${originalName}`,
+  );
+  let recovery: Awaited<ReturnType<TrustedDocumentStorageClient["upload"]>>;
+  try {
+    recovery = await args.storage.upload(recoveryPath, args.bytes, {
+      contentType: args.contentType,
+      upsert: false,
+    });
+  } catch {
+    throw new TrustedDocumentStorageUploadError(
+      "outcome_unknown",
+      "Recovery document Storage upload outcome is unknown; retain the attempted path for reconciliation.",
+      recoveryPath,
+    );
+  }
+  if (recovery.error) {
+    throw new TrustedDocumentStorageUploadError(
+      "outcome_unknown",
+      "Recovery document Storage upload outcome is unknown; retain the attempted path for reconciliation.",
+      recoveryPath,
+    );
+  }
+  return Object.freeze({ storagePath: recoveryPath, collisionRecovered: true });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

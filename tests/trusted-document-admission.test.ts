@@ -7,7 +7,9 @@ import {
   dispatchTrustedDocumentAdmission,
   toTrustedDocumentAdmissionRpcPayload,
   TrustedDocumentAdmissionDispatchError,
+  TrustedDocumentStorageUploadError,
   trustedAdmissionDocumentId,
+  uploadTrustedDocumentBytes,
   type TrustedAdmissionAuthority,
   type TrustedAdmissionDocumentInput,
   type TrustedAdmissionInput,
@@ -398,5 +400,100 @@ describe("trusted document admission", () => {
   it("exposes a typed dispatch error without leaking backend capability material", () => {
     const error = new TrustedDocumentAdmissionDispatchError("outcome_unknown", "reconcile request");
     expect(error).toMatchObject({ name: "TrustedDocumentAdmissionDispatchError", kind: "outcome_unknown" });
+  });
+});
+
+describe("trusted document Storage upload recovery", () => {
+  const bytes = new TextEncoder().encode("current validated document bytes");
+  const contentSha256 = createHash("sha256").update(bytes).digest("hex");
+  const intendedStoragePath = `${administratorId}/documents/${documentId}/guideline.pdf`;
+  const recoveryId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+  it("moves a confirmed identical collision to a fresh attempt-owned sibling without overwriting", async () => {
+    const upload = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          name: "StorageApiError",
+          message: "The resource already exists",
+          status: 409,
+          statusCode: "409",
+          code: "ResourceAlreadyExists",
+        },
+      })
+      .mockResolvedValueOnce({ data: { path: "created" }, error: null });
+    const download = vi.fn(async () => ({ data: new Blob([bytes]), error: null }));
+
+    await expect(
+      uploadTrustedDocumentBytes({
+        storage: { upload, download },
+        ownerId: administratorId,
+        documentId,
+        intendedStoragePath,
+        bytes,
+        byteCount: bytes.byteLength,
+        contentSha256,
+        contentType: "application/pdf",
+        createRecoveryId: () => recoveryId,
+      }),
+    ).resolves.toEqual({
+      storagePath: `${administratorId}/documents/${documentId}/recovery-${recoveryId}-guideline.pdf`,
+      collisionRecovered: true,
+    });
+    expect(upload).toHaveBeenNthCalledWith(1, intendedStoragePath, bytes, {
+      contentType: "application/pdf",
+      upsert: false,
+    });
+    expect(upload).toHaveBeenNthCalledWith(
+      2,
+      `${administratorId}/documents/${documentId}/recovery-${recoveryId}-guideline.pdf`,
+      bytes,
+      { contentType: "application/pdf", upsert: false },
+    );
+    expect(download).toHaveBeenCalledWith(intendedStoragePath);
+  });
+
+  it("refuses a collided path whose complete bytes do not match", async () => {
+    const upload = vi.fn(async () => ({
+      data: null,
+      error: { status: 409, statusCode: "409", code: "ResourceAlreadyExists" },
+    }));
+    const download = vi.fn(async () => ({ data: new Blob(["different bytes"]), error: null }));
+
+    await expect(
+      uploadTrustedDocumentBytes({
+        storage: { upload, download },
+        ownerId: administratorId,
+        documentId,
+        intendedStoragePath,
+        bytes,
+        byteCount: bytes.byteLength,
+        contentSha256,
+        contentType: "application/pdf",
+        createRecoveryId: () => recoveryId,
+      }),
+    ).rejects.toMatchObject({ kind: "collision_mismatch", storagePath: null });
+    expect(upload).toHaveBeenCalledOnce();
+  });
+
+  it("retains an ambiguously attempted path without speculative download or retry", async () => {
+    const upload = vi.fn(async () => ({ data: null, error: { status: 503, statusCode: "503" } }));
+    const download = vi.fn();
+    const result = await uploadTrustedDocumentBytes({
+      storage: { upload, download },
+      ownerId: administratorId,
+      documentId,
+      intendedStoragePath,
+      bytes,
+      byteCount: bytes.byteLength,
+      contentSha256,
+      contentType: "application/pdf",
+    }).catch((error: unknown) => error);
+
+    expect(result).toBeInstanceOf(TrustedDocumentStorageUploadError);
+    expect(result).toMatchObject({ kind: "outcome_unknown", storagePath: intendedStoragePath });
+    expect(upload).toHaveBeenCalledOnce();
+    expect(download).not.toHaveBeenCalled();
   });
 });

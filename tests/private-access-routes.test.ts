@@ -212,12 +212,21 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       error: QueryError | null;
     }> => ({ data: { users: [], nextPage: 0 }, error: null }),
   );
-  const upload = vi.fn(async (...args: [string, unknown, Record<string, unknown>]) => {
+  type StorageMockError = QueryError & { status?: number; statusCode?: string };
+  const upload = vi.fn(
+    async (
+      ...args: [string, unknown, Record<string, unknown>]
+    ): Promise<{ data: { path: string } | null; error: StorageMockError | null }> => {
+      void args;
+      return {
+        data: { path: "uploaded" },
+        error: null,
+      };
+    },
+  );
+  const download = vi.fn(async (...args: [string]): Promise<{ data: Blob | null; error: StorageMockError | null }> => {
     void args;
-    return {
-      data: { path: "uploaded" },
-      error: null,
-    };
+    return { data: new Blob([]), error: null };
   });
   const createSignedUrl = vi.fn(async (path: string) => ({
     data: { signedUrl: `https://signed.local/${path}` },
@@ -244,7 +253,7 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       return { data: [], error: null };
     },
   );
-  const storageFrom = vi.fn(() => ({ upload, createSignedUrl, createSignedUrls, getPublicUrl, remove }));
+  const storageFrom = vi.fn(() => ({ upload, download, createSignedUrl, createSignedUrls, getPublicUrl, remove }));
   const getUser = vi.fn(async (receivedToken?: string) =>
     receivedToken === token
       ? { data: { user: { id: userId, app_metadata: { site_role: "administrator" } } }, error: null }
@@ -381,7 +390,7 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
     }),
     rpc,
     storage: { from: storageFrom },
-    storageMocks: { upload, createSignedUrl, createSignedUrls, getPublicUrl, remove, storageFrom },
+    storageMocks: { upload, download, createSignedUrl, createSignedUrls, getPublicUrl, remove, storageFrom },
   };
 
   return client;
@@ -2274,6 +2283,200 @@ describe("private document API access", () => {
     expect(client.storageMocks.remove).not.toHaveBeenCalled();
   });
 
+  it("recovers a retained identical upload onto a fresh owned path after an unknown non-commit", async () => {
+    const sourceBytes = "%PDF-1.7\n%%EOF";
+    const client = createSupabaseMock(() => ok([]));
+    let admissionCall = 0;
+    client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
+      if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") return ok([rateLimitRow()]);
+      if (name !== "admit_administrator_document") return ok([]);
+      admissionCall += 1;
+      const document = args?.p_document as Record<string, unknown>;
+      if (admissionCall === 1 || admissionCall === 3 || admissionCall === 4) {
+        return ok({ outcome: "not_found" });
+      }
+      if (admissionCall === 2) return fail("gateway unavailable");
+      return ok({
+        outcome: "created",
+        admission_event_id: "77777777-7777-4777-8777-777777777777",
+        document,
+        job: {
+          id: "88888888-8888-4888-8888-888888888888",
+          document_id: document.id,
+          status: "pending",
+        },
+      });
+    });
+    let storageCall = 0;
+    client.storageMocks.upload.mockImplementation(async (path: string) => {
+      storageCall += 1;
+      if (storageCall === 2) {
+        return {
+          data: null,
+          error: { status: 409, statusCode: "409", code: "ResourceAlreadyExists", message: "exists" },
+        };
+      }
+      return { data: { path }, error: null };
+    });
+    client.storageMocks.download.mockResolvedValue({ data: new Blob([sourceBytes]), error: null });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const correlation = "99999999-9999-4999-8999-999999999999";
+    const upload = () => {
+      const form = new FormData();
+      form.set("file", new File([sourceBytes], "guideline.pdf", { type: "application/pdf" }));
+      return POST(
+        authenticatedRequest("/api/upload", {
+          method: "POST",
+          headers: { "Idempotency-Key": correlation },
+          body: form,
+        }),
+      );
+    };
+
+    expect((await upload()).status).toBe(500);
+    const secondResponse = await upload();
+    expect(secondResponse.status).toBe(201);
+    expect(client.storageMocks.upload).toHaveBeenCalledTimes(3);
+    const retainedPath = client.storageMocks.upload.mock.calls[0]![0];
+    const recoveryPath = client.storageMocks.upload.mock.calls[2]![0];
+    expect(client.storageMocks.download).toHaveBeenCalledWith(retainedPath);
+    expect(recoveryPath).toMatch(new RegExp(`^${userId}/documents/[0-9a-f-]+/recovery-[0-9a-f-]+-guideline\\.pdf$`));
+    expect(recoveryPath).not.toBe(retainedPath);
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
+    const finalCreate = client.rpc.mock.calls
+      .filter(([name, args]) => name === "admit_administrator_document" && args?.p_replay_only === false)
+      .at(-1);
+    expect((finalCreate?.[1]?.p_document as Record<string, unknown>).storage_path).toBe(recoveryPath);
+  });
+
+  it("replays a concurrent winner path and compensates only this attempt-owned upload", async () => {
+    const capture: { winnerDocument: Record<string, unknown> | null; winnerReplayDocument?: Record<string, unknown> } =
+      { winnerDocument: null };
+    const client = createSupabaseMock((call) => {
+      if (
+        call.table === "documents" &&
+        call.selected === "id,title,description,file_name,storage_path,metadata" &&
+        capture.winnerDocument
+      ) {
+        return ok(capture.winnerDocument);
+      }
+      return ok([]);
+    });
+    let admissionCall = 0;
+    client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
+      if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") return ok([rateLimitRow()]);
+      if (name !== "admit_administrator_document") return ok([]);
+      admissionCall += 1;
+      const document = args?.p_document as Record<string, unknown>;
+      if (admissionCall === 1) return ok({ outcome: "not_found" });
+      if (admissionCall === 2) {
+        const originalPath = document.storage_path as string;
+        capture.winnerDocument = {
+          ...structuredClone(document),
+          storage_path: originalPath.replace(
+            "/guideline.pdf",
+            "/recovery-bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb-guideline.pdf",
+          ),
+        };
+        return fail("admission_replay_conflict");
+      }
+      return ok({
+        outcome: "replayed",
+        admission_event_id: "77777777-7777-4777-8777-777777777777",
+        document,
+        job: {
+          id: "88888888-8888-4888-8888-888888888888",
+          document_id: document.id,
+          status: "pending",
+        },
+      });
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const form = new FormData();
+    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+
+    const response = await POST(authenticatedRequest("/api/upload", { method: "POST", body: form }));
+    const attemptPath = client.storageMocks.upload.mock.calls[0]![0];
+    const winnerPath = (() => {
+      if (!capture.winnerDocument) throw new Error("Concurrent winner fixture was not created.");
+      return capture.winnerDocument.storage_path as string;
+    })();
+
+    expect(response.status).toBe(200);
+    expect(admissionCall).toBe(3);
+    expect(client.storageMocks.remove).toHaveBeenCalledOnce();
+    expect(client.storageMocks.remove).toHaveBeenCalledWith([attemptPath]);
+    expect(client.storageMocks.remove).not.toHaveBeenCalledWith([winnerPath]);
+    const winnerReplay = client.rpc.mock.calls.at(-1)?.[1] as Record<string, unknown>;
+    expect((winnerReplay.p_document as Record<string, unknown>).storage_path).toBe(winnerPath);
+  });
+
+  it("keeps current authority and retry budget when a concurrent winner reload still conflicts", async () => {
+    const capture: { winnerDocument: Record<string, unknown> | null; winnerReplayDocument?: Record<string, unknown> } =
+      { winnerDocument: null };
+    const client = createSupabaseMock((call) => {
+      if (
+        call.table === "documents" &&
+        call.selected === "id,title,description,file_name,storage_path,metadata" &&
+        capture.winnerDocument
+      ) {
+        return ok(capture.winnerDocument);
+      }
+      return ok([]);
+    });
+    let admissionCall = 0;
+    client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
+      if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") return ok([rateLimitRow()]);
+      if (name !== "admit_administrator_document") return ok([]);
+      admissionCall += 1;
+      const document = args?.p_document as Record<string, unknown>;
+      if (admissionCall === 1) return ok({ outcome: "not_found" });
+      if (admissionCall === 2) {
+        const metadata = structuredClone(document.metadata) as Record<string, unknown>;
+        metadata.authority = {
+          ...(metadata.authority as Record<string, unknown>),
+          publisher: "Stale stored authority",
+        };
+        capture.winnerDocument = {
+          ...structuredClone(document),
+          max_attempts: 77,
+          metadata,
+          storage_path: String(document.storage_path).replace(
+            "/guideline.pdf",
+            "/recovery-cccccccc-cccc-4ccc-8ccc-cccccccccccc-guideline.pdf",
+          ),
+        };
+        return fail("admission_replay_conflict");
+      }
+      capture.winnerReplayDocument = structuredClone(document);
+      return fail("admission_replay_conflict");
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const form = new FormData();
+    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+
+    const response = await POST(authenticatedRequest("/api/upload", { method: "POST", body: form }));
+    const { replayedMetadata, winnerPath } = (() => {
+      if (!capture.winnerReplayDocument || !capture.winnerDocument)
+        throw new Error("Concurrent winner replay fixture was not reached.");
+      return {
+        replayedMetadata: capture.winnerReplayDocument.metadata as Record<string, unknown>,
+        winnerPath: capture.winnerDocument.storage_path,
+      };
+    })();
+
+    expect(response.status).toBe(409);
+    expect(admissionCall).toBe(3);
+    expect(capture.winnerReplayDocument).toMatchObject({ max_attempts: 3 });
+    expect(replayedMetadata.authority).toEqual(JSON.parse(administratorAuthorityJson));
+    expect(replayedMetadata.authority).not.toMatchObject({ publisher: "Stale stored authority" });
+    expect(client.storageMocks.remove).toHaveBeenCalledWith([client.storageMocks.upload.mock.calls[0]![0]]);
+    expect(client.storageMocks.remove).not.toHaveBeenCalledWith([winnerPath]);
+  });
+
   it("reuses the admitted smart name after a display rename and another same-name document appears", async () => {
     let retained: Record<string, unknown> | null = null;
     let persistedTitle: string | null = null;
@@ -2281,7 +2484,7 @@ describe("private document API access", () => {
     let replayDocument: Record<string, unknown> | null = null;
     const client = createSupabaseMock((call) => {
       if (call.table !== "documents" || call.operation !== "select") return ok([]);
-      if (call.selected === "id,title,description,file_name,metadata") {
+      if (call.selected === "id,title,description,file_name,storage_path,metadata") {
         return ok(retained && persistedTitle ? { ...retained, title: persistedTitle } : retained);
       }
       if (call.selected === "id,title,file_name,content_hash,metadata") {
@@ -2345,7 +2548,7 @@ describe("private document API access", () => {
   it("refuses changed upload metadata under the same Idempotency-Key without another Storage write", async () => {
     let retainedDocument: Record<string, unknown> | null = null;
     const client = createSupabaseMock((call) =>
-      call.table === "documents" && call.selected === "id,title,description,file_name,metadata"
+      call.table === "documents" && call.selected === "id,title,description,file_name,storage_path,metadata"
         ? ok(retainedDocument)
         : ok([]),
     );

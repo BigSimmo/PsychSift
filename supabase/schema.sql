@@ -25629,7 +25629,32 @@ begin
     raise exception 'document_identity_conflict';
   end if;
 
-  v_metadata := p_document->'metadata' || pg_catalog.jsonb_build_object(
+  -- Retain only caller metadata used for source naming, provenance, and admission diagnostics.
+  -- Clinical review, extraction, catalogue, and indexing authority is established
+  -- by their owning server workflows rather than by either public admission RPC.
+  select coalesce(pg_catalog.jsonb_object_agg(item.key, item.value), '{}'::jsonb)
+  into v_metadata
+  from pg_catalog.jsonb_each(p_document->'metadata') as item(key, value)
+  where item.key = any(array[
+    'original_file_name',
+    'original_title',
+    'smart_title_base',
+    'smart_title_group_key',
+    'smart_title_duplicate_index',
+    'smart_title_duplicate_reason',
+    'version',
+    'max_upload_mb',
+    'queue_batch_size'
+  ]);
+
+  v_metadata := v_metadata || pg_catalog.jsonb_build_object(
+    'source_title', p_document->>'title',
+    'uploaded_by', v_staging_owner_id,
+    'source_path', case when p_document ? 'source_path' then p_document->'source_path' else 'null'::jsonb end,
+    'import_batch_id', v_import_batch_id,
+    'admission_max_attempts', v_max_attempts,
+    'confidentiality_scope', 'guidelines-only',
+    'content_hash', v_content_hex,
     'uploaded_at', v_now,
     'admission_event_id', v_event_id,
     'admission_policy_version', 'trusted-document-admission-v1',
@@ -25646,7 +25671,11 @@ begin
     'effective_date', v_authority->'effectiveDate',
     'review_date', v_authority->'reviewDate',
     'expiry_date', v_authority->'expiryDate',
+    'publisher_code', null,
+    'indexed_at', null,
     'document_status', v_authority->>'currentness',
+    'clinical_validation_status', 'unverified',
+    'extraction_quality', 'unknown',
     'supersedes_document_id', v_authority->'supersedesDocumentId',
     'purpose', 'clinical_retrieval',
     'supported_features', v_authority->'supportedFeatures',

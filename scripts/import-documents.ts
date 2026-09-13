@@ -15,10 +15,12 @@ import {
 import { planDocumentName, type DocumentNamePlan } from "@/lib/document-naming";
 import { assertSupabaseHealthy, probeSupabaseHealth } from "@/lib/supabase/health";
 import {
+  assertTrustedDocumentStoragePath,
   createTrustedDocumentAdmission,
   dispatchTrustedDocumentAdmission,
   TrustedDocumentAdmissionDispatchError,
   trustedAdmissionDocumentId,
+  uploadTrustedDocumentBytes,
   type TrustedAdmissionAuthority,
 } from "@/lib/trusted-document-admission";
 
@@ -368,14 +370,14 @@ export async function main() {
         const duplicate = existing.get(file.contentHash);
         const correlationId = deterministicUuid(`${batch.id}\n${file.relativePath}\n${file.contentHash}`);
         const documentId = trustedAdmissionDocumentId(`trusted_backend:${backend.principal}`, correlationId);
-        const storagePath = buildImportStoragePath(ownerId, documentId, file.fileName);
+        let storagePath = buildImportStoragePath(ownerId, documentId, file.fileName);
         const fileType = importMimeType(file.fileName);
         // The bounded name-planning snapshot is only a first-admission cache. An
         // exact replay must recover its immutable admitted name even when the row
         // falls outside that snapshot or its mutable display title was renamed.
         const { data: retainedDocument, error: retainedDocumentError } = await supabase
           .from("documents")
-          .select("id,title,file_name,content_hash,metadata")
+          .select("id,title,file_name,storage_path,content_hash,metadata")
           .eq("owner_id", ownerId)
           .eq("id", documentId)
           .maybeSingle();
@@ -383,7 +385,13 @@ export async function main() {
         if (retainedDocument?.file_name !== undefined && retainedDocument.file_name !== file.fileName) {
           throw new Error("Import correlation was already admitted with a different filename.");
         }
-        const namePlan = retainedDocument
+        if (retainedDocument) {
+          if (typeof retainedDocument.storage_path !== "string") {
+            throw new Error("Admitted import has no valid retained Storage path.");
+          }
+          storagePath = assertTrustedDocumentStoragePath(ownerId, documentId, retainedDocument.storage_path);
+        }
+        let namePlan = retainedDocument
           ? retainedImportNamePlan(retainedDocument)
           : await planDocumentName({
               ownerId,
@@ -392,7 +400,7 @@ export async function main() {
               contentHash: file.contentHash,
               existingDocs: existingDocsForPlanning,
             });
-        const document = {
+        let document = {
           id: documentId,
           owner_id: ownerId,
           title: namePlan.title,
@@ -434,7 +442,7 @@ export async function main() {
             admission_max_attempts: env.WORKER_MAX_ATTEMPTS,
           },
         };
-        const admission = createTrustedDocumentAdmission({
+        let admission = createTrustedDocumentAdmission({
           actor: { kind: "trusted_backend", principal: backend.principal },
           sourceChannel: "backend_import",
           documentId,
@@ -448,23 +456,53 @@ export async function main() {
           admissionPolicyVersion: "trusted-document-admission-v1",
           authority: backend.authority,
         });
-        const dispatchInput = {
+        let dispatchInput = {
           admission,
           document,
           backend: { principal: backend.principal, capability: backend.capability },
         } as const;
         const replay = await dispatchTrustedDocumentAdmission({ ...dispatchInput, replayOnly: true }, supabase);
-        const wasReplay = replay.outcome !== "not_found";
+        let wasReplay = replay.outcome !== "not_found";
         if (replay.outcome === "not_found") {
           if (duplicate) {
             skipped += 1;
             console.log(formatExactDuplicateSkip(file, duplicate));
             continue;
           }
-          const upload = await supabase.storage
-            .from(env.SUPABASE_DOCUMENT_BUCKET)
-            .upload(storagePath, await readFile(file.absolutePath), { contentType: fileType, upsert: false });
-          if (upload.error) throw new Error(upload.error.message);
+          const currentBytes = await readFile(file.absolutePath);
+          const upload = await uploadTrustedDocumentBytes({
+            storage: supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET),
+            ownerId,
+            documentId,
+            intendedStoragePath: storagePath,
+            bytes: currentBytes,
+            byteCount: file.size,
+            contentSha256: file.contentHash,
+            contentType: fileType,
+          });
+          if (upload.storagePath !== storagePath) {
+            storagePath = upload.storagePath;
+            document = { ...document, storage_path: storagePath };
+            admission = createTrustedDocumentAdmission({
+              actor: { kind: "trusted_backend", principal: backend.principal },
+              sourceChannel: "backend_import",
+              documentId,
+              stagingOwnerId: ownerId,
+              contentSha256: `sha256:${file.contentHash}`,
+              storagePath,
+              originalFileName: file.fileName,
+              mimeType: fileType,
+              byteCount: file.size,
+              correlationId,
+              admissionPolicyVersion: "trusted-document-admission-v1",
+              authority: backend.authority,
+            });
+            dispatchInput = {
+              admission,
+              document,
+              backend: { principal: backend.principal, capability: backend.capability },
+            } as const;
+          }
           let admitted = false;
           try {
             await dispatchTrustedDocumentAdmission({ ...dispatchInput, replayOnly: false }, supabase);
@@ -485,13 +523,83 @@ export async function main() {
               }
             }
             if (dispatchError instanceof TrustedDocumentAdmissionDispatchError && dispatchError.kind === "rejected") {
-              await compensateImportUpload({
-                supabase,
-                ownerId,
-                bucket: env.SUPABASE_DOCUMENT_BUCKET,
-                imageBucket: env.SUPABASE_IMAGE_BUCKET,
-                storagePath,
-              });
+              if (dispatchError.message === "admission_replay_conflict") {
+                const { data: winnerDocument, error: winnerError } = await supabase
+                  .from("documents")
+                  .select("id,title,file_name,storage_path,content_hash,metadata")
+                  .eq("owner_id", ownerId)
+                  .eq("id", documentId)
+                  .maybeSingle();
+                if (winnerError) throw new Error(winnerError.message);
+                if (winnerDocument?.file_name === file.fileName && typeof winnerDocument.storage_path === "string") {
+                  const winnerNamePlan = retainedImportNamePlan(winnerDocument);
+                  const winnerStoragePath = assertTrustedDocumentStoragePath(
+                    ownerId,
+                    documentId,
+                    winnerDocument.storage_path,
+                  );
+                  const winnerDocumentPayload = {
+                    ...document,
+                    title: winnerNamePlan.title,
+                    storage_path: winnerStoragePath,
+                    metadata: {
+                      ...document.metadata,
+                      source_title: winnerNamePlan.title,
+                      original_file_name: winnerNamePlan.originalFileName,
+                      original_title: winnerNamePlan.originalTitle,
+                      smart_title_base: winnerNamePlan.baseTitle,
+                      smart_title_group_key: winnerNamePlan.duplicateGroupKey,
+                      smart_title_duplicate_index: winnerNamePlan.duplicateIndex,
+                      smart_title_duplicate_reason: winnerNamePlan.duplicateReason,
+                    },
+                  };
+                  const winnerAdmission = createTrustedDocumentAdmission({
+                    actor: { kind: "trusted_backend", principal: backend.principal },
+                    sourceChannel: "backend_import",
+                    documentId,
+                    stagingOwnerId: ownerId,
+                    contentSha256: `sha256:${file.contentHash}`,
+                    storagePath: winnerStoragePath,
+                    originalFileName: file.fileName,
+                    mimeType: fileType,
+                    byteCount: file.size,
+                    correlationId,
+                    admissionPolicyVersion: "trusted-document-admission-v1",
+                    authority: backend.authority,
+                  });
+                  const winnerReplay = await dispatchTrustedDocumentAdmission(
+                    {
+                      admission: winnerAdmission,
+                      document: winnerDocumentPayload,
+                      replayOnly: true,
+                      backend: { principal: backend.principal, capability: backend.capability },
+                    },
+                    supabase,
+                  );
+                  if (winnerReplay.outcome !== "not_found") {
+                    await compensateImportUpload({
+                      supabase,
+                      ownerId,
+                      bucket: env.SUPABASE_DOCUMENT_BUCKET,
+                      imageBucket: env.SUPABASE_IMAGE_BUCKET,
+                      storagePath,
+                    });
+                    storagePath = winnerStoragePath;
+                    namePlan = winnerNamePlan;
+                    wasReplay = true;
+                    admitted = true;
+                  }
+                }
+              }
+              if (!admitted) {
+                await compensateImportUpload({
+                  supabase,
+                  ownerId,
+                  bucket: env.SUPABASE_DOCUMENT_BUCKET,
+                  imageBucket: env.SUPABASE_IMAGE_BUCKET,
+                  storagePath,
+                });
+              }
               if (dispatchError.message === "duplicate_content") {
                 const racedDuplicates = await existingDocumentsByHash(supabase, ownerId, [file.contentHash]);
                 const racedDuplicate = racedDuplicates.get(file.contentHash);
