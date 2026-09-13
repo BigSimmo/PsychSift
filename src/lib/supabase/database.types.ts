@@ -39,6 +39,75 @@ export type Database = {
   };
   public: {
     Tables: {
+      document_admission_events: {
+        Row: {
+          actor_kind: string;
+          administrator_id: string | null;
+          admission_digest: string;
+          admission_policy_version: string;
+          authority: Json;
+          backend_principal: string | null;
+          byte_count: number;
+          content_sha256: string;
+          correlation_id: string;
+          created_at: string;
+          document_id: string;
+          document_input_digest: string;
+          file_name_sha256: string;
+          id: string;
+          ingestion_job_id: string;
+          mime_type: string;
+          request_digest: string;
+          source_channel: string;
+          staging_owner_id: string;
+          storage_path_sha256: string;
+        };
+        Insert: {
+          actor_kind: string;
+          administrator_id?: string | null;
+          admission_digest: string;
+          admission_policy_version: string;
+          authority: Json;
+          backend_principal?: string | null;
+          byte_count: number;
+          content_sha256: string;
+          correlation_id: string;
+          created_at?: string;
+          document_id: string;
+          document_input_digest: string;
+          file_name_sha256: string;
+          id?: string;
+          ingestion_job_id: string;
+          mime_type: string;
+          request_digest: string;
+          source_channel: string;
+          staging_owner_id: string;
+          storage_path_sha256: string;
+        };
+        Update: {
+          actor_kind?: string;
+          administrator_id?: string | null;
+          admission_digest?: string;
+          admission_policy_version?: string;
+          authority?: Json;
+          backend_principal?: string | null;
+          byte_count?: number;
+          content_sha256?: string;
+          correlation_id?: string;
+          created_at?: string;
+          document_id?: string;
+          document_input_digest?: string;
+          file_name_sha256?: string;
+          id?: string;
+          ingestion_job_id?: string;
+          mime_type?: string;
+          request_digest?: string;
+          source_channel?: string;
+          staging_owner_id?: string;
+          storage_path_sha256?: string;
+        };
+        Relationships: [];
+      };
       document_generation_baselines: {
         Row: {
           baseline_generation_id: string | null;
@@ -3083,6 +3152,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      trusted_ingestion_backend_principals: {
+        Row: {
+          capability_sha256: string;
+          created_at: string;
+          enabled: boolean;
+          principal: string;
+          staging_owner_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          capability_sha256: string;
+          created_at?: string;
+          enabled?: boolean;
+          principal: string;
+          staging_owner_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          capability_sha256?: string;
+          created_at?: string;
+          enabled?: boolean;
+          principal?: string;
+          staging_owner_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       user_favourites: {
         Row: {
           content_key: string;
@@ -3149,6 +3245,20 @@ export type Database = {
       };
     };
     Functions: {
+      admit_administrator_document: {
+        Args: { p_admission: Json; p_document: Json; p_replay_only?: boolean };
+        Returns: Json;
+      };
+      admit_backend_document: {
+        Args: {
+          p_admission: Json;
+          p_capability: string;
+          p_document: Json;
+          p_principal: string;
+          p_replay_only?: boolean;
+        };
+        Returns: Json;
+      };
       enqueue_shadow_reindex_generation: {
         Args: {
           p_plan: Json;
@@ -3684,6 +3794,17 @@ export type Database = {
           p_stale_after_minutes?: number;
         };
         Returns: Json[];
+      };
+      trusted_document_admission_core: {
+        Args: {
+          p_actor_kind: string;
+          p_administrator_id: string | null;
+          p_admission: Json;
+          p_backend_principal: string | null;
+          p_document: Json;
+          p_replay_only: boolean;
+        };
+        Returns: Json;
       };
       cleanup_abandoned_document_index_generations: {
         Args: { p_document_id?: string | null; p_dry_run?: boolean; p_limit?: number };

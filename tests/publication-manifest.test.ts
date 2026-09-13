@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   assertPublicationApplyConfirmation,
   approvedPublicationManifestV2Documents,
+  buildTrustedAdmissionPublicationManifest,
   parsePublicationCommandArgs,
   parsePublicationManifest,
   parsePublicationManifestV2,
   publicationManifestDigest,
   publicationManifestV2StateDigest,
 } from "@/lib/publication-manifest";
+import { createTrustedDocumentAdmission } from "@/lib/trusted-document-admission";
 import { runPublicationPromotion } from "../scripts/promote-public-documents-batch";
 
 const promotionScriptSource = readFileSync(
@@ -564,5 +566,101 @@ describe("publication manifests", () => {
     ).rejects.toThrow(/active change state/i);
     expect(fixture.approvalInserts).toEqual([]);
     expect(fixture.rpcCalls.map((call) => call.name)).toEqual(["document_publication_state_digest"]);
+  });
+
+  it("builds immutable admission evidence that remains pending for U10 technical eligibility", () => {
+    const admissionEventId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+    const admission = createTrustedDocumentAdmission({
+      actor: { kind: "administrator", administratorId: manifest.documents[0].expectedOwnerId },
+      sourceChannel: "admin_api",
+      documentId: manifest.documents[0].documentId,
+      stagingOwnerId: manifest.documents[0].expectedOwnerId,
+      contentSha256: `sha256:${"f".repeat(64)}`,
+      storagePath: `${manifest.documents[0].expectedOwnerId}/documents/${manifest.documents[0].documentId}/source.pdf`,
+      originalFileName: "source.pdf",
+      mimeType: "application/pdf",
+      byteCount: 1,
+      correlationId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      admissionPolicyVersion: "trusted-document-admission-v1",
+      authority: {
+        version: 1,
+        sourceRole: "clinical_guideline",
+        authorityBasis: "administrator_template",
+        licencePolicy: "review_required",
+        rightsEvidenceRef: "registry:clinical-source",
+        publisher: "WA Health",
+        jurisdiction: "Australia",
+        publicationDate: null,
+        effectiveDate: null,
+        reviewDate: null,
+        expiryDate: null,
+        currentness: "unknown",
+        supersedesDocumentId: null,
+        purpose: "clinical_retrieval",
+        supportedFeatures: ["text"],
+        providerProcessing: "forbidden",
+      },
+    });
+
+    const pending = buildTrustedAdmissionPublicationManifest({ admissionEventId, admission });
+    expect(pending).toEqual({
+      version: "trusted-admission-publication-v1",
+      publicationStatus: "pending",
+      technicalEligibilityRequired: true,
+      admissionEventId,
+      admissionPolicyVersion: "trusted-document-admission-v1",
+      sourceChannel: "admin_api",
+      documentId: manifest.documents[0].documentId,
+      expectedOwnerId: manifest.documents[0].expectedOwnerId,
+      originalContentSha256: `sha256:${"f".repeat(64)}`,
+      reason: `Trusted admission ${admissionEventId} is pending generation-bound technical eligibility.`,
+      evidenceReferences: [`admission-event:${admissionEventId}`, `original-content:sha256:${"f".repeat(64)}`],
+      grantsPublicApproval: false,
+      grantsClinicalApproval: false,
+    });
+    expect(Object.isFrozen(pending)).toBe(true);
+    expect(Object.isFrozen(pending.evidenceReferences)).toBe(true);
+    expect(() => parsePublicationManifest(JSON.stringify(pending))).toThrow();
+  });
+
+  it("refuses a noncanonical admission-event identity before deriving publication evidence", () => {
+    const admission = createTrustedDocumentAdmission({
+      actor: { kind: "administrator", administratorId: manifest.documents[0].expectedOwnerId },
+      sourceChannel: "admin_api",
+      documentId: manifest.documents[0].documentId,
+      stagingOwnerId: manifest.documents[0].expectedOwnerId,
+      contentSha256: `sha256:${"f".repeat(64)}`,
+      storagePath: `${manifest.documents[0].expectedOwnerId}/documents/${manifest.documents[0].documentId}/source.txt`,
+      originalFileName: "source.txt",
+      mimeType: "text/plain",
+      byteCount: 1,
+      correlationId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+      admissionPolicyVersion: "trusted-document-admission-v1",
+      authority: {
+        version: 1,
+        sourceRole: "local_guideline",
+        authorityBasis: "administrator_template",
+        licencePolicy: "public_index_permitted",
+        rightsEvidenceRef: "registry:local-source",
+        publisher: "Local service",
+        jurisdiction: "Australia",
+        publicationDate: null,
+        effectiveDate: null,
+        reviewDate: null,
+        expiryDate: null,
+        currentness: "current",
+        supersedesDocumentId: null,
+        purpose: "clinical_retrieval",
+        supportedFeatures: ["text"],
+        providerProcessing: "permitted",
+      },
+    });
+
+    expect(() =>
+      buildTrustedAdmissionPublicationManifest({
+        admissionEventId: "EEEEEEEE-EEEE-4EEE-8EEE-EEEEEEEEEEEE",
+        admission,
+      }),
+    ).toThrow();
   });
 });

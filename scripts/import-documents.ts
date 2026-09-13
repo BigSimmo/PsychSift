@@ -1,22 +1,101 @@
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { loadEnvConfig } from "@next/env";
 import {
   buildImportStoragePath,
   chunkImportFiles,
-  createDocumentId,
   formatExactDuplicateSkip,
   importMimeType,
   type ExistingImportDocument,
   parseImportCliArgs,
   scanImportFiles,
 } from "@/lib/bulk-import";
-import { planDocumentName } from "@/lib/document-naming";
+import { planDocumentName, type DocumentNamePlan } from "@/lib/document-naming";
 import { assertSupabaseHealthy, probeSupabaseHealth } from "@/lib/supabase/health";
-
-loadEnvConfig(process.cwd());
+import {
+  createTrustedDocumentAdmission,
+  dispatchTrustedDocumentAdmission,
+  TrustedDocumentAdmissionDispatchError,
+  trustedAdmissionDocumentId,
+  type TrustedAdmissionAuthority,
+} from "@/lib/trusted-document-admission";
 
 type SupabaseAdmin = Awaited<ReturnType<typeof loadAdminClient>>;
+
+type TrustedBackendConfig = Readonly<{
+  principal: string;
+  capability: string;
+  authority: TrustedAdmissionAuthority;
+}>;
+
+function deterministicUuid(value: string) {
+  const bytes = createHash("sha256").update(value).digest("hex").slice(0, 32).split("");
+  bytes[12] = "4";
+  bytes[16] = ((Number.parseInt(bytes[16]!, 16) & 0x3) | 0x8).toString(16);
+  const hex = bytes.join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function retainedImportNamePlan(row: { id: string; title: string; file_name: string | null; metadata?: unknown }) {
+  const metadata =
+    row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : null;
+  if (
+    !metadata ||
+    typeof metadata.source_title !== "string" ||
+    typeof metadata.smart_title_base !== "string" ||
+    typeof metadata.smart_title_group_key !== "string" ||
+    !Number.isSafeInteger(metadata.smart_title_duplicate_index) ||
+    (metadata.smart_title_duplicate_reason !== "none" &&
+      metadata.smart_title_duplicate_reason !== "same_title_or_filename")
+  ) {
+    throw new Error(`Admitted import ${row.id} has invalid retained naming metadata.`);
+  }
+  return {
+    title: metadata.source_title,
+    baseTitle: metadata.smart_title_base,
+    originalTitle: null,
+    originalFileName: row.file_name ?? "",
+    duplicateIndex: metadata.smart_title_duplicate_index as number,
+    duplicateGroupKey: metadata.smart_title_group_key,
+    duplicateReason: metadata.smart_title_duplicate_reason,
+  } satisfies DocumentNamePlan;
+}
+
+export function loadTrustedBackendConfig(environment: NodeJS.ProcessEnv = process.env): TrustedBackendConfig {
+  const principal = environment.TRUSTED_INGESTION_BACKEND_PRINCIPAL?.trim() ?? "";
+  const capability = environment.TRUSTED_INGESTION_BACKEND_CAPABILITY ?? "";
+  const rawAuthority = environment.TRUSTED_INGESTION_AUTHORITY_JSON;
+  if (!principal || principal.length > 200) throw new Error("TRUSTED_INGESTION_BACKEND_PRINCIPAL is required.");
+  if (!/^[0-9a-f]{64}$/.test(capability)) {
+    throw new Error("TRUSTED_INGESTION_BACKEND_CAPABILITY must be exactly 64 lowercase hexadecimal characters.");
+  }
+  if (!rawAuthority) throw new Error("TRUSTED_INGESTION_AUTHORITY_JSON is required.");
+  let authority: TrustedAdmissionAuthority;
+  try {
+    authority = JSON.parse(rawAuthority) as TrustedAdmissionAuthority;
+  } catch {
+    throw new Error("TRUSTED_INGESTION_AUTHORITY_JSON must be valid JSON.");
+  }
+  const validated = createTrustedDocumentAdmission({
+    actor: { kind: "trusted_backend", principal },
+    sourceChannel: "backend_import",
+    documentId: "00000000-0000-4000-8000-000000000001",
+    stagingOwnerId: "00000000-0000-4000-8000-000000000002",
+    contentSha256: `sha256:${"0".repeat(64)}`,
+    storagePath: "validation/documents/validation/document.pdf",
+    originalFileName: "document.pdf",
+    mimeType: "application/pdf",
+    byteCount: 1,
+    correlationId: "00000000-0000-4000-8000-000000000003",
+    admissionPolicyVersion: "trusted-document-admission-v1",
+    authority,
+  });
+  return { principal, capability, authority: validated.authority };
+}
 
 async function loadAdminClient() {
   const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -111,16 +190,42 @@ async function loadOrCreateBatch(args: {
   return data;
 }
 
-async function main() {
+async function compensateImportUpload(args: {
+  supabase: SupabaseAdmin;
+  ownerId: string;
+  bucket: string;
+  imageBucket: string;
+  storagePath: string;
+}) {
+  const { error: removeError } = await args.supabase.storage.from(args.bucket).remove([args.storagePath]);
+  if (!removeError) return;
+  const { error: ledgerError } = await args.supabase.from("storage_cleanup_jobs").insert({
+    document_bucket: args.bucket,
+    document_paths: [args.storagePath],
+    owner_id: args.ownerId,
+    status: "pending",
+    image_bucket: args.imageBucket,
+    image_paths: [],
+  });
+  if (ledgerError) {
+    throw new Error(`Import cleanup failed: ${removeError.message}; cleanup ledger failed: ${ledgerError.message}`);
+  }
+}
+
+export async function main() {
   const args = parseImportCliArgs(process.argv.slice(2));
+  if (args.force) {
+    throw new Error("--force cannot bypass trusted admission; use an explicitly authorised reprocessing operation.");
+  }
+  const backend = loadTrustedBackendConfig();
+  const [{ env, requireServerEnv }, supabase] = args.dryRun
+    ? [await import("@/lib/env"), null as SupabaseAdmin | null]
+    : await Promise.all([import("@/lib/env"), loadAdminClient()]);
+  requireServerEnv();
   const root = path.resolve(args.path);
   const files = await scanImportFiles(root, args.include, args.limit);
   const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
   const batchName = args.batchName ?? `Clinical guideline import ${new Date().toISOString().slice(0, 10)}`;
-  const [{ env, requireServerEnv }, supabase] = args.dryRun
-    ? [await import("@/lib/env"), null as SupabaseAdmin | null]
-    : await Promise.all([import("@/lib/env"), loadAdminClient()]);
-
   console.log(`Scanned ${files.length} file(s), ${(totalBytes / 1024 / 1024).toFixed(1)} MB total.`);
 
   if (!files.length) return;
@@ -142,7 +247,6 @@ async function main() {
     const dryRunOwnerId = args.ownerId ?? process.env.LOCAL_NO_AUTH_OWNER_ID;
     if (dryRunOwnerId) {
       const supabase = await loadAdminClient();
-      requireServerEnv();
       assertSupabaseHealthy(await probeSupabaseHealth(supabase), "Import dry-run duplicate check");
       existing = await existingDocumentsByHash(
         supabase,
@@ -151,7 +255,6 @@ async function main() {
       );
     } else if (args.ownerEmail) {
       const supabase = await loadAdminClient();
-      requireServerEnv();
       assertSupabaseHealthy(await probeSupabaseHealth(supabase), "Import dry-run duplicate check");
       const ownerId = await findOwnerIdByEmail(supabase, args.ownerEmail);
       existing = await existingDocumentsByHash(
@@ -182,7 +285,6 @@ async function main() {
     return;
   }
 
-  requireServerEnv();
   if (!supabase) throw new Error("Supabase admin client is unavailable.");
   assertSupabaseHealthy(await probeSupabaseHealth(supabase), "Document import");
   const configuredOwnerId = args.ownerId ?? process.env.LOCAL_NO_AUTH_OWNER_ID;
@@ -249,6 +351,7 @@ async function main() {
   }
 
   let queued = 0;
+  let replayed = 0;
   let skipped = 0;
   let failed = 0;
   const importBatches = chunkImportFiles(files, args.queueBatchSize);
@@ -263,59 +366,33 @@ async function main() {
     for (const file of fileBatch) {
       try {
         const duplicate = existing.get(file.contentHash);
-        if (duplicate && !args.force) {
-          skipped += 1;
-          console.log(formatExactDuplicateSkip(file, duplicate));
-          continue;
-        }
-
-        if (duplicate && args.force) {
-          await supabase.rpc("reset_document_index", { p_document_id: duplicate.id });
-          await supabase
-            .from("documents")
-            .update({
-              status: "queued",
-              error_message: null,
-              page_count: 0,
-              chunk_count: 0,
-              image_count: 0,
-              source_path: file.absolutePath,
-              import_batch_id: batch.id,
-            })
-            .eq("id", duplicate.id);
-          const { error: jobError } = await supabase.from("ingestion_jobs").insert({
-            document_id: duplicate.id,
-            batch_id: batch.id,
-            status: "pending",
-            stage: "queued",
-            progress: 0,
-            max_attempts: env.WORKER_MAX_ATTEMPTS,
-          });
-          if (jobError) throw new Error(jobError.message);
-          queued += 1;
-          console.log(`REQUEUE ${file.relativePath}`);
-          continue;
-        }
-
-        const documentId = createDocumentId();
+        const correlationId = deterministicUuid(`${batch.id}\n${file.relativePath}\n${file.contentHash}`);
+        const documentId = trustedAdmissionDocumentId(`trusted_backend:${backend.principal}`, correlationId);
         const storagePath = buildImportStoragePath(ownerId, documentId, file.fileName);
         const fileType = importMimeType(file.fileName);
-        const namePlan = await planDocumentName({
-          ownerId,
-          fileName: file.fileName,
-          requestedTitle: null,
-          contentHash: file.contentHash,
-          existingDocs: existingDocsForPlanning,
-        });
-        const upload = await supabase.storage
-          .from(env.SUPABASE_DOCUMENT_BUCKET)
-          .upload(storagePath, await readFile(file.absolutePath), {
-            contentType: fileType,
-            upsert: false,
-          });
-        if (upload.error) throw new Error(upload.error.message);
-
-        const { error: documentError } = await supabase.from("documents").insert({
+        // The bounded name-planning snapshot is only a first-admission cache. An
+        // exact replay must recover its immutable admitted name even when the row
+        // falls outside that snapshot or its mutable display title was renamed.
+        const { data: retainedDocument, error: retainedDocumentError } = await supabase
+          .from("documents")
+          .select("id,title,file_name,content_hash,metadata")
+          .eq("owner_id", ownerId)
+          .eq("id", documentId)
+          .maybeSingle();
+        if (retainedDocumentError) throw new Error(retainedDocumentError.message);
+        if (retainedDocument?.file_name !== undefined && retainedDocument.file_name !== file.fileName) {
+          throw new Error("Import correlation was already admitted with a different filename.");
+        }
+        const namePlan = retainedDocument
+          ? retainedImportNamePlan(retainedDocument)
+          : await planDocumentName({
+              ownerId,
+              fileName: file.fileName,
+              requestedTitle: null,
+              contentHash: file.contentHash,
+              existingDocs: existingDocsForPlanning,
+            });
+        const document = {
           id: documentId,
           owner_id: ownerId,
           title: namePlan.title,
@@ -327,7 +404,7 @@ async function main() {
           content_hash: file.contentHash,
           source_path: file.absolutePath,
           import_batch_id: batch.id,
-          status: "queued",
+          max_attempts: env.WORKER_MAX_ATTEMPTS,
           metadata: {
             source_title: namePlan.title,
             publisher: null,
@@ -335,7 +412,6 @@ async function main() {
             version: null,
             publication_date: null,
             review_date: null,
-            uploaded_at: new Date().toISOString(),
             indexed_at: null,
             uploaded_by: ownerId,
             original_file_name: namePlan.originalFileName,
@@ -348,23 +424,89 @@ async function main() {
             clinical_validation_status: "unverified",
             extraction_quality: "unknown",
             confidentiality_scope: "guidelines-only",
+            corpus_scope: "uploaded_local",
+            content_mode: "indexed_content",
+            authority: backend.authority,
             source_path: file.absolutePath,
             content_hash: file.contentHash,
             import_batch_id: batch.id,
             queue_batch_size: args.queueBatchSize,
+            admission_max_attempts: env.WORKER_MAX_ATTEMPTS,
           },
+        };
+        const admission = createTrustedDocumentAdmission({
+          actor: { kind: "trusted_backend", principal: backend.principal },
+          sourceChannel: "backend_import",
+          documentId,
+          stagingOwnerId: ownerId,
+          contentSha256: `sha256:${file.contentHash}`,
+          storagePath,
+          originalFileName: file.fileName,
+          mimeType: fileType,
+          byteCount: file.size,
+          correlationId,
+          admissionPolicyVersion: "trusted-document-admission-v1",
+          authority: backend.authority,
         });
-        if (documentError) throw new Error(documentError.message);
+        const dispatchInput = {
+          admission,
+          document,
+          backend: { principal: backend.principal, capability: backend.capability },
+        } as const;
+        const replay = await dispatchTrustedDocumentAdmission({ ...dispatchInput, replayOnly: true }, supabase);
+        const wasReplay = replay.outcome !== "not_found";
+        if (replay.outcome === "not_found") {
+          if (duplicate) {
+            skipped += 1;
+            console.log(formatExactDuplicateSkip(file, duplicate));
+            continue;
+          }
+          const upload = await supabase.storage
+            .from(env.SUPABASE_DOCUMENT_BUCKET)
+            .upload(storagePath, await readFile(file.absolutePath), { contentType: fileType, upsert: false });
+          if (upload.error) throw new Error(upload.error.message);
+          let admitted = false;
+          try {
+            await dispatchTrustedDocumentAdmission({ ...dispatchInput, replayOnly: false }, supabase);
+            admitted = true;
+          } catch (dispatchError) {
+            if (
+              dispatchError instanceof TrustedDocumentAdmissionDispatchError &&
+              dispatchError.kind === "outcome_unknown"
+            ) {
+              try {
+                const recovered = await dispatchTrustedDocumentAdmission(
+                  { ...dispatchInput, replayOnly: true },
+                  supabase,
+                );
+                admitted = recovered.outcome !== "not_found";
+              } catch {
+                // Preserve an ambiguously committed object for exact-key replay recovery.
+              }
+            }
+            if (dispatchError instanceof TrustedDocumentAdmissionDispatchError && dispatchError.kind === "rejected") {
+              await compensateImportUpload({
+                supabase,
+                ownerId,
+                bucket: env.SUPABASE_DOCUMENT_BUCKET,
+                imageBucket: env.SUPABASE_IMAGE_BUCKET,
+                storagePath,
+              });
+              if (dispatchError.message === "duplicate_content") {
+                const racedDuplicates = await existingDocumentsByHash(supabase, ownerId, [file.contentHash]);
+                const racedDuplicate = racedDuplicates.get(file.contentHash);
+                if (!racedDuplicate) throw dispatchError;
+                existing.set(file.contentHash, racedDuplicate);
+                skipped += 1;
+                console.log(formatExactDuplicateSkip(file, racedDuplicate));
+                continue;
+              }
+            }
+            if (!admitted) throw dispatchError;
+          }
+        }
 
-        const { error: jobError } = await supabase.from("ingestion_jobs").insert({
-          document_id: documentId,
-          batch_id: batch.id,
-          status: "pending",
-          stage: "queued",
-          progress: 0,
-          max_attempts: env.WORKER_MAX_ATTEMPTS,
-        });
-        if (jobError) throw new Error(jobError.message);
+        if (wasReplay) replayed += 1;
 
         existingDocsForPlanning.push({
           id: documentId,
@@ -384,7 +526,7 @@ async function main() {
           content_hash: file.contentHash,
         });
         queued += 1;
-        console.log(`QUEUE ${file.relativePath}`);
+        console.log(`${wasReplay ? "REPLAY" : "QUEUE"} ${file.relativePath}`);
       } catch (error) {
         failed += 1;
         console.error(`FAIL ${file.relativePath}`, error instanceof Error ? error.message : String(error));
@@ -414,14 +556,17 @@ async function main() {
     .eq("id", batch.id);
 
   console.log(
-    `Import batch ${batch.id}: queued=${queued}, exact_copies_skipped=${skipped}, failed=${failed}, total=${files.length}`,
+    `Import batch ${batch.id}: queued=${queued}, replayed=${replayed}, exact_copies_skipped=${skipped}, failed=${failed}, total=${files.length}`,
   );
   console.log(
     "Indexing quality path unchanged: run npm run worker until jobs complete, then npm run check:indexing to verify detailed chunks, embeddings, summaries, labels, memory, index units, and quality rows.",
   );
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  loadEnvConfig(process.cwd());
+  void main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

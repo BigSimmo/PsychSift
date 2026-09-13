@@ -6,12 +6,17 @@ import {
   australianSourceByKey,
   australianSourcePolicyVersion,
 } from "@/lib/australian-source-catalogue";
+import type { TrustedDocumentAdmission } from "@/lib/trusted-document-admission";
 
 const publicationDecisionSchema = z.enum(["approved", "keep_private", "quarantine"]);
 const canonicalUuidSchema = z
   .string()
   .uuid()
   .transform((value) => value.toLowerCase());
+const strictCanonicalUuidSchema = z
+  .string()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+const sha256Schema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 
 const publicationManifestV1Schema = z
   .object({
@@ -104,6 +109,27 @@ export type PublicationManifestV1 = z.infer<typeof publicationManifestV1Schema>;
 export type PublicationManifestV2 = z.infer<typeof publicationManifestV2Schema>;
 export type PublicationManifest = PublicationManifestV1 | PublicationManifestV2;
 
+/**
+ * Admission-derived evidence is deliberately not part of the V1/V2 apply union.
+ * U10 must replace this pending intent with generation-bound technical evidence
+ * before any public activation path can consume it.
+ */
+export type TrustedAdmissionPublicationManifestV1 = Readonly<{
+  version: "trusted-admission-publication-v1";
+  publicationStatus: "pending";
+  technicalEligibilityRequired: true;
+  admissionEventId: string;
+  admissionPolicyVersion: "trusted-document-admission-v1";
+  sourceChannel: "admin_api" | "backend_import";
+  documentId: string;
+  expectedOwnerId: string;
+  originalContentSha256: `sha256:${string}`;
+  reason: string;
+  evidenceReferences: readonly [string, string];
+  grantsPublicApproval: false;
+  grantsClinicalApproval: false;
+}>;
+
 export type PublicationCommandArgs = {
   manifestPath: string;
   apply: boolean;
@@ -121,6 +147,43 @@ export function parsePublicationManifest(raw: string): PublicationManifest {
 
 export function parsePublicationManifestV2(input: unknown): PublicationManifestV2 {
   return publicationManifestV2Schema.parse(input);
+}
+
+export function buildTrustedAdmissionPublicationManifest(
+  input: Readonly<{
+    admissionEventId: string;
+    admission: TrustedDocumentAdmission;
+  }>,
+): TrustedAdmissionPublicationManifestV1 {
+  const admissionEventId = strictCanonicalUuidSchema.parse(input.admissionEventId);
+  const documentId = strictCanonicalUuidSchema.parse(input.admission.documentId);
+  const expectedOwnerId = strictCanonicalUuidSchema.parse(input.admission.stagingOwnerId);
+  const originalContentSha256 = sha256Schema.parse(input.admission.contentSha256) as `sha256:${string}`;
+  if (input.admission.admissionPolicyVersion !== "trusted-document-admission-v1") {
+    throw new Error("Admission-derived publication evidence requires trusted-document-admission-v1.");
+  }
+  if (input.admission.sourceChannel !== "admin_api" && input.admission.sourceChannel !== "backend_import") {
+    throw new Error("Admission-derived publication evidence has an invalid source channel.");
+  }
+
+  return Object.freeze({
+    version: "trusted-admission-publication-v1",
+    publicationStatus: "pending",
+    technicalEligibilityRequired: true,
+    admissionEventId,
+    admissionPolicyVersion: "trusted-document-admission-v1",
+    sourceChannel: input.admission.sourceChannel,
+    documentId,
+    expectedOwnerId,
+    originalContentSha256,
+    reason: `Trusted admission ${admissionEventId} is pending generation-bound technical eligibility.`,
+    evidenceReferences: Object.freeze([
+      `admission-event:${admissionEventId}`,
+      `original-content:${originalContentSha256}`,
+    ]) as readonly [string, string],
+    grantsPublicApproval: false,
+    grantsClinicalApproval: false,
+  });
 }
 
 export function publicationManifestDigest(raw: string | Buffer) {

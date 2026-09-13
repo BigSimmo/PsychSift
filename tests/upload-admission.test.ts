@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
+import { loadTrustedBackendConfig } from "../scripts/import-documents";
 import {
   acquireUploadAdmission,
   parseUploadContentLength,
@@ -39,5 +41,64 @@ describe("upload admission", () => {
       first.release();
     }
     expect(acquireUploadAdmission({ bytes: 100, maxConcurrent: 2, maxBytes: 100 }).ok).toBe(true);
+  });
+});
+
+describe("trusted backend import admission", () => {
+  const authority = {
+    version: 1,
+    sourceRole: "local_guideline",
+    authorityBasis: "backend_manifest",
+    licencePolicy: "public_index_permitted",
+    rightsEvidenceRef: "test-fixture:rights-review",
+    publisher: "Test Health Service",
+    jurisdiction: "Australia",
+    publicationDate: "2026-01-01",
+    effectiveDate: null,
+    reviewDate: null,
+    expiryDate: null,
+    currentness: "current",
+    supersedesDocumentId: null,
+    purpose: "clinical_retrieval",
+    supportedFeatures: ["text"],
+    providerProcessing: "permitted",
+  };
+
+  it("validates strict backend authority and capability without exposing the capability", () => {
+    const capability = "a".repeat(64);
+    expect(
+      loadTrustedBackendConfig({
+        NODE_ENV: "test",
+        TRUSTED_INGESTION_BACKEND_PRINCIPAL: "fixture-importer",
+        TRUSTED_INGESTION_BACKEND_CAPABILITY: capability,
+        TRUSTED_INGESTION_AUTHORITY_JSON: JSON.stringify(authority),
+      }),
+    ).toEqual({ principal: "fixture-importer", capability, authority });
+    expect(() =>
+      loadTrustedBackendConfig({
+        NODE_ENV: "test",
+        TRUSTED_INGESTION_BACKEND_PRINCIPAL: "fixture-importer",
+        TRUSTED_INGESTION_BACKEND_CAPABILITY: "SECRET-CAPABILITY",
+        TRUSTED_INGESTION_AUTHORITY_JSON: JSON.stringify(authority),
+      }),
+    ).toThrow("must be exactly 64 lowercase hexadecimal characters");
+  });
+
+  it("guards import execution and refuses force before scanning", () => {
+    const importer = readFileSync(new URL("../scripts/import-documents.ts", import.meta.url), "utf8");
+    expect(importer).toContain("import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href");
+    expect(importer.indexOf("if (args.force)")).toBeLessThan(importer.indexOf("scanImportFiles("));
+    expect(importer.indexOf("loadTrustedBackendConfig()")).toBeLessThan(importer.indexOf("scanImportFiles("));
+    expect(importer).not.toContain("reset_document_index");
+  });
+
+  it("looks up the deterministic admission row directly and reuses immutable source_title for replay naming", () => {
+    const importer = readFileSync(new URL("../scripts/import-documents.ts", import.meta.url), "utf8");
+    const exactLookup = importer.indexOf('.eq("id", documentId)');
+    const retainedPlan = importer.indexOf("retainedImportNamePlan(retainedDocument)");
+    expect(exactLookup).toBeGreaterThan(-1);
+    expect(exactLookup).toBeLessThan(retainedPlan);
+    expect(importer).toContain("title: metadata.source_title");
+    expect(importer).not.toContain("existingDocsForPlanning.find((document) => document.id === documentId)");
   });
 });

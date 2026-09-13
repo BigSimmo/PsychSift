@@ -250,6 +250,18 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       ? { data: { user: { id: userId, app_metadata: { site_role: "administrator" } } }, error: null }
       : { data: { user: null }, error: { message: "Invalid token" } },
   );
+  const getClaims = vi.fn(async () => ({
+    data: {
+      claims: {
+        sub: userId,
+        role: "authenticated",
+        aal: "aal2",
+        app_metadata: { site_role: "administrator" },
+        amr: [{ method: "totp", timestamp: Math.floor(Date.now() / 1000) }],
+      },
+    },
+    error: null,
+  }));
   const subjectRateLimitCounts = new Map<string, number>();
   const rpc = vi.fn(async (name: string, args?: Record<string, unknown>) => {
     if (name === "consume_api_rate_limit") {
@@ -281,8 +293,9 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
         error: null,
       };
     }
-    if (name === "create_uploaded_document_with_ingestion_job") {
+    if (name === "admit_administrator_document") {
       const document = (args?.p_document ?? {}) as Record<string, unknown>;
+      if (args?.p_replay_only === true) return ok({ outcome: "not_found" });
       const documentCall: QueryCall = {
         table: "documents",
         operation: "insert",
@@ -299,8 +312,11 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       if (documentResult.error) return documentResult;
 
       const insertedDocument = {
-        ...document,
         ...(typeof documentResult.data === "object" && documentResult.data ? documentResult.data : {}),
+        // The SQL wrapper returns the admitted identity. Legacy route fixtures
+        // may return partial insert rows with placeholder IDs; those rows prove
+        // the insert boundary but must not fabricate a malformed RPC receipt.
+        ...document,
         status: "queued",
         page_count: 0,
         chunk_count: 0,
@@ -313,7 +329,7 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
         status: "pending",
         stage: "queued",
         progress: 0,
-        max_attempts: args?.p_max_attempts,
+        max_attempts: document.max_attempts,
       };
       const jobCall: QueryCall = {
         table: "ingestion_jobs",
@@ -331,11 +347,13 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       if (jobResult.error) return jobResult;
 
       return ok({
+        outcome: "created",
+        admission_event_id: "77777777-7777-4777-8777-777777777777",
         document: insertedDocument,
         job: {
-          id: "job-1",
-          ...jobPayload,
           ...(typeof jobResult.data === "object" && jobResult.data ? jobResult.data : {}),
+          id: "88888888-8888-4888-8888-888888888888",
+          ...jobPayload,
         },
       });
     }
@@ -345,7 +363,7 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
     return ok([]);
   });
   const client = {
-    auth: { getUser, admin: { listUsers } },
+    auth: { getUser, getClaims, admin: { listUsers } },
     calls,
     from: vi.fn((table: string) => {
       const call: QueryCall = {
@@ -430,6 +448,10 @@ function mockRuntime(
   vi.doMock("@/lib/supabase/admin", () => ({
     createAdminClient: () => client,
   }));
+  vi.doMock("@/lib/supabase/server", () => ({
+    createSupabaseBearerServerClient: () => client,
+    createSupabaseServerClient: async () => client,
+  }));
   if (ragMock) {
     vi.doMock("@/lib/rag/rag", () => ragMock);
   }
@@ -453,6 +475,9 @@ function matchesOwnerReadScope(call: QueryCall, ownerId?: string | null) {
 }
 
 function authenticatedRequest(path: string, init?: RequestInit) {
+  if (path === "/api/upload" && init?.body instanceof FormData && !init.body.has("authority")) {
+    init.body.set("authority", administratorAuthorityJson);
+  }
   return request(path, {
     ...init,
     headers: {
@@ -461,6 +486,25 @@ function authenticatedRequest(path: string, init?: RequestInit) {
     },
   });
 }
+
+const administratorAuthorityJson = JSON.stringify({
+  version: 1,
+  sourceRole: "local_guideline",
+  authorityBasis: "administrator_template",
+  licencePolicy: "public_index_permitted",
+  rightsEvidenceRef: "test-fixture:rights-review",
+  publisher: "Test Health Service",
+  jurisdiction: "Australia",
+  publicationDate: "2026-01-01",
+  effectiveDate: null,
+  reviewDate: null,
+  expiryDate: null,
+  currentness: "current",
+  supersedesDocumentId: null,
+  purpose: "clinical_retrieval",
+  supportedFeatures: ["text"],
+  providerProcessing: "permitted",
+});
 
 function authenticatedCookieRequest(path: string, init?: RequestInit) {
   return request(path, {
@@ -1647,6 +1691,52 @@ describe("private document API access", () => {
     expect(client.storageMocks.upload).not.toHaveBeenCalled();
   });
 
+  it("rejects an administrator without recent aal2 assurance before multipart or storage", async () => {
+    const client = createSupabaseMock();
+    client.auth.getClaims.mockResolvedValueOnce({
+      data: {
+        claims: {
+          sub: userId,
+          role: "authenticated",
+          aal: "aal1",
+          app_metadata: { site_role: "administrator" },
+          amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) }],
+        },
+      },
+      error: null,
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const uploadRequest = authenticatedRequest("/api/upload", { method: "POST", body: new FormData() });
+    const formData = vi.spyOn(uploadRequest, "formData");
+
+    const response = await POST(uploadRequest);
+
+    expect(response.status).toBe(403);
+    expect(await payload(response)).toMatchObject({ code: "administrator_assurance_required" });
+    expect(formData).not.toHaveBeenCalled();
+    expect(client.storageMocks.upload).not.toHaveBeenCalled();
+  });
+
+  it("requires explicit authority metadata before Storage", async () => {
+    const client = createSupabaseMock();
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const form = new FormData();
+    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+
+    const response = await POST(
+      request("/api/upload", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: form,
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(client.storageMocks.upload).not.toHaveBeenCalled();
+  });
+
   it("fails closed for administrator uploads when the durable limiter is unavailable", async () => {
     const client = createSupabaseMock();
     client.rpc.mockImplementation(async (name: string) =>
@@ -1775,6 +1865,7 @@ describe("private document API access", () => {
     });
     const form = new FormData();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    form.set("authority", administratorAuthorityJson);
     vi.spyOn(uploadRequest, "formData").mockImplementation(async () => {
       controller.abort();
       return form;
@@ -1846,6 +1937,7 @@ describe("private document API access", () => {
 
     const form = new FormData();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    form.set("authority", administratorAuthorityJson);
     resolveForm(form);
     expect((await firstResponsePromise).status).toBe(201);
 
@@ -1888,7 +1980,7 @@ describe("private document API access", () => {
     expect(client.storageMocks.upload).toHaveBeenCalledTimes(1);
   });
 
-  it("cleans up document and storage when aborted after the atomic upload enqueue", async () => {
+  it("retains the admitted document and storage when the client aborts after atomic commit", async () => {
     const controller = new AbortController();
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
@@ -1907,11 +1999,27 @@ describe("private document API access", () => {
       authenticatedRequest("/api/upload", { method: "POST", body: form, signal: controller.signal }),
     );
 
-    expect(response.status).toBe(499);
+    expect(response.status).toBe(201);
     expect(client.calls.filter((call) => call.table === "documents" && call.operation === "insert")).toHaveLength(1);
     expect(client.calls.some((call) => call.table === "ingestion_jobs" && call.operation === "insert")).toBe(true);
-    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "delete")).toHaveLength(1);
-    expect(client.storageMocks.remove).toHaveBeenCalledTimes(1);
+    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "delete")).toHaveLength(0);
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
+  });
+
+  it("retains an admitted document and Storage when later operational audit logging fails", async () => {
+    const client = createSupabaseMock((call) =>
+      call.table === "audit_logs" && call.operation === "insert" ? fail("audit unavailable") : ok([]),
+    );
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const form = new FormData();
+    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+
+    const response = await POST(authenticatedRequest("/api/upload", { method: "POST", body: form }));
+
+    expect(response.status).toBe(201);
+    expect(client.calls.some((call) => call.table === "documents" && call.operation === "insert")).toBe(true);
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
   });
 
   it("stores uploaded documents with owner_id and a user-scoped storage path", async () => {
@@ -2061,6 +2169,246 @@ describe("private document API access", () => {
     expect(client.calls[0].filters).toContainEqual({ column: "owner_id", value: userId });
     expect(client.storageMocks.upload).not.toHaveBeenCalled();
     expect(client.calls.some((call) => call.table === "ingestion_jobs" && call.operation === "insert")).toBe(false);
+  });
+
+  it("returns an exact admission replay before Storage even when the content row already exists", async () => {
+    const client = createSupabaseMock(() =>
+      ok({ id: documentId, title: "Existing guideline", content_hash: "f".repeat(64) }),
+    );
+    client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
+      if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") return ok([rateLimitRow()]);
+      if (name === "admit_administrator_document") {
+        const document = args?.p_document as Record<string, unknown>;
+        return ok({
+          outcome: "replayed",
+          admission_event_id: "77777777-7777-4777-8777-777777777777",
+          document,
+          job: {
+            id: "88888888-8888-4888-8888-888888888888",
+            document_id: document.id,
+            status: "completed",
+          },
+        });
+      }
+      return ok([]);
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const form = new FormData();
+    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+
+    const response = await POST(
+      authenticatedRequest("/api/upload", {
+        method: "POST",
+        headers: { "Idempotency-Key": "99999999-9999-4999-8999-999999999999" },
+        body: form,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(client.storageMocks.upload).not.toHaveBeenCalled();
+    expect(client.auth.getClaims).toHaveBeenCalledWith(token);
+    expect(client.rpc).toHaveBeenCalledWith(
+      "admit_administrator_document",
+      expect.objectContaining({ p_replay_only: true }),
+    );
+  });
+
+  it("reconciles a committed admission whose final RPC response was lost without deleting Storage", async () => {
+    const client = createSupabaseMock(() => ok([]));
+    let admissionCall = 0;
+    client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
+      if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") return ok([rateLimitRow()]);
+      if (name === "admit_administrator_document") {
+        admissionCall += 1;
+        const document = args?.p_document as Record<string, unknown>;
+        if (admissionCall === 1) return ok({ outcome: "not_found" });
+        if (admissionCall === 2) return fail("gateway response lost");
+        return ok({
+          outcome: "replayed",
+          admission_event_id: "77777777-7777-4777-8777-777777777777",
+          document,
+          job: {
+            id: "88888888-8888-4888-8888-888888888888",
+            document_id: document.id,
+            status: "pending",
+          },
+        });
+      }
+      return ok([]);
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const form = new FormData();
+    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+
+    const response = await POST(authenticatedRequest("/api/upload", { method: "POST", body: form }));
+
+    expect(response.status).toBe(201);
+    expect(admissionCall).toBe(3);
+    expect(client.storageMocks.upload).toHaveBeenCalledOnce();
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
+  });
+
+  it("preserves Storage when an ambiguous admission cannot yet be reconciled", async () => {
+    const client = createSupabaseMock(() => ok([]));
+    let admissionCall = 0;
+    client.rpc.mockImplementation(async (name: string) => {
+      if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") return ok([rateLimitRow()]);
+      if (name === "admit_administrator_document") {
+        admissionCall += 1;
+        return admissionCall === 1 ? ok({ outcome: "not_found" }) : fail("gateway unavailable");
+      }
+      return ok([]);
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const form = new FormData();
+    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+
+    const response = await POST(authenticatedRequest("/api/upload", { method: "POST", body: form }));
+
+    expect(response.status).toBe(500);
+    expect(admissionCall).toBe(3);
+    expect(client.storageMocks.upload).toHaveBeenCalledOnce();
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
+  });
+
+  it("reuses the admitted smart name after a display rename and another same-name document appears", async () => {
+    let retained: Record<string, unknown> | null = null;
+    let persistedTitle: string | null = null;
+    let competingCount = 1;
+    let replayDocument: Record<string, unknown> | null = null;
+    const client = createSupabaseMock((call) => {
+      if (call.table !== "documents" || call.operation !== "select") return ok([]);
+      if (call.selected === "id,title,description,file_name,metadata") {
+        return ok(retained && persistedTitle ? { ...retained, title: persistedTitle } : retained);
+      }
+      if (call.selected === "id,title,file_name,content_hash,metadata") {
+        return ok(
+          Array.from({ length: competingCount }, (_, index) => ({
+            id: `existing-${index}`,
+            title: index === 0 ? "Guideline" : "Guideline (Copy 3)",
+            file_name: "guideline.pdf",
+            content_hash: `other-${index}`,
+            metadata: { smart_title_group_key: "guideline" },
+          })),
+        );
+      }
+      return ok(null);
+    });
+    client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
+      if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") return ok([rateLimitRow()]);
+      if (name !== "admit_administrator_document") return ok([]);
+      const document = args?.p_document as Record<string, unknown>;
+      if (args?.p_replay_only === true && !retained) return ok({ outcome: "not_found" });
+      if (args?.p_replay_only === false) retained = structuredClone(document);
+      if (args?.p_replay_only === true) replayDocument = structuredClone(document);
+      return ok({
+        outcome: args?.p_replay_only === true ? "replayed" : "created",
+        admission_event_id: "77777777-7777-4777-8777-777777777777",
+        document: retained && persistedTitle ? { ...retained, title: persistedTitle } : (retained ?? document),
+        job: {
+          id: "88888888-8888-4888-8888-888888888888",
+          document_id: document.id,
+          status: args?.p_replay_only === true ? "processing" : "pending",
+        },
+      });
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const correlation = "99999999-9999-4999-8999-999999999999";
+    const upload = () => {
+      const form = new FormData();
+      form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+      return POST(
+        authenticatedRequest("/api/upload", {
+          method: "POST",
+          headers: { "Idempotency-Key": correlation },
+          body: form,
+        }),
+      );
+    };
+
+    expect((await upload()).status).toBe(201);
+    expect((retained as Record<string, unknown> | null)?.title).toBe("Guideline (Copy 2)");
+    persistedTitle = "Renamed clinical guideline";
+    competingCount = 2;
+    const replayResponse = await upload();
+    expect(replayResponse.status).toBe(200);
+    await expect(replayResponse.json()).resolves.toMatchObject({ document: { title: "Renamed clinical guideline" } });
+    expect((retained as Record<string, unknown> | null)?.title).toBe("Guideline (Copy 2)");
+    expect((replayDocument as Record<string, unknown> | null)?.title).toBe("Guideline (Copy 2)");
+    expect(client.storageMocks.upload).toHaveBeenCalledOnce();
+  });
+
+  it("refuses changed upload metadata under the same Idempotency-Key without another Storage write", async () => {
+    let retainedDocument: Record<string, unknown> | null = null;
+    const client = createSupabaseMock((call) =>
+      call.table === "documents" && call.selected === "id,title,description,file_name,metadata"
+        ? ok(retainedDocument)
+        : ok([]),
+    );
+    client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
+      if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") return ok([rateLimitRow()]);
+      if (name !== "admit_administrator_document") return ok([]);
+      const document = args?.p_document as Record<string, unknown>;
+      if (args?.p_replay_only === true) {
+        if (!retainedDocument) return ok({ outcome: "not_found" });
+        if (JSON.stringify(document) !== JSON.stringify(retainedDocument)) return fail("admission_replay_conflict");
+        return ok({
+          outcome: "replayed",
+          admission_event_id: "77777777-7777-4777-8777-777777777777",
+          document: retainedDocument,
+          job: {
+            id: "88888888-8888-4888-8888-888888888888",
+            document_id: retainedDocument.id,
+            status: "processing",
+          },
+        });
+      }
+      retainedDocument = structuredClone(document);
+      return ok({
+        outcome: "created",
+        admission_event_id: "77777777-7777-4777-8777-777777777777",
+        document,
+        job: {
+          id: "88888888-8888-4888-8888-888888888888",
+          document_id: document.id,
+          status: "pending",
+        },
+      });
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const correlation = "99999999-9999-4999-8999-999999999999";
+    const first = new FormData();
+    first.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    first.set("title", "Original title");
+    const firstResponse = await POST(
+      authenticatedRequest("/api/upload", {
+        method: "POST",
+        headers: { "Idempotency-Key": correlation },
+        body: first,
+      }),
+    );
+    const changed = new FormData();
+    changed.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    changed.set("title", "Changed title");
+    const changedResponse = await POST(
+      authenticatedRequest("/api/upload", {
+        method: "POST",
+        headers: { "Idempotency-Key": correlation },
+        body: changed,
+      }),
+    );
+
+    expect(firstResponse.status).toBe(201);
+    expect(changedResponse.status).toBe(409);
+    expect(client.storageMocks.upload).toHaveBeenCalledOnce();
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
+    const retainedMetadata = (retainedDocument as { metadata: Record<string, unknown> } | null)?.metadata;
+    expect(retainedMetadata?.uploaded_at).toBeUndefined();
   });
 
   it("returns first-class document matches for document-focused search", async () => {
@@ -3291,7 +3639,7 @@ describe("private document API access", () => {
 
   it("cleans up uploaded storage when document insert fails", async () => {
     const client = createSupabaseMock((call) =>
-      call.table === "documents" && call.operation === "insert" ? fail("document insert failed") : ok([]),
+      call.table === "documents" && call.operation === "insert" ? fail("invalid_trusted_document_input_keys") : ok([]),
     );
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
@@ -3313,14 +3661,17 @@ describe("private document API access", () => {
   it("cleans up uploaded storage when job insert fails", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "insert") {
-        return fail("job insert failed");
+        return fail("invalid_trusted_document_input_keys");
       }
       return ok([]);
     });
     mockRuntime(client);
     client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
-      if (name === "create_uploaded_document_with_ingestion_job") {
-        return fail("job insert failed");
+      if (name === "admit_administrator_document" && args?.p_replay_only === true) {
+        return ok({ outcome: "not_found" });
+      }
+      if (name === "admit_administrator_document" && args?.p_replay_only === false) {
+        return fail("invalid_trusted_document_input_keys");
       }
       if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") {
         return {
@@ -3353,7 +3704,7 @@ describe("private document API access", () => {
     expect(client.calls.some((call) => call.table === "documents" && call.operation === "delete")).toBe(false);
   });
 
-  it("still runs catch cleanup when post-enqueue cleanup calls return non-throwing errors", async () => {
+  it("does not run catch cleanup after a committed admission", async () => {
     const controller = new AbortController();
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "insert") {
@@ -3387,9 +3738,9 @@ describe("private document API access", () => {
     const uploadPath = client.storageMocks.upload.mock.calls[0]?.[0] as string;
     const documentDeletes = client.calls.filter((call) => call.table === "documents" && call.operation === "delete");
 
-    expect(response.status).toBe(499);
-    expect(documentDeletes).toHaveLength(1);
-    expect(client.storageMocks.remove).toHaveBeenCalledWith([uploadPath]);
+    expect(response.status).toBe(201);
+    expect(documentDeletes).toHaveLength(0);
+    expect(client.storageMocks.remove).not.toHaveBeenCalledWith([uploadPath]);
   });
 
   it("does not return document details for an unowned document", async () => {
@@ -5216,6 +5567,11 @@ describe("private document API access", () => {
       feedbackToken: expect.any(String),
     });
     expect(summarizeDocument).toHaveBeenCalledWith(documentId, userId, {
+      finalizeTelemetryAnswer: expect.any(Function),
+      observationContext: {
+        interactionId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+        rolloutMode: "legacy",
+      },
       signal: expect.any(AbortSignal),
     });
     expect(client.rpc).toHaveBeenCalledTimes(1);
@@ -5804,6 +6160,11 @@ describe("private document API access", () => {
     expect(response.status).toBe(404);
     expect(await payload(response)).toMatchObject({ error: "Document not found." });
     expect(summarizeDocument).toHaveBeenCalledWith(otherDocumentId, userId, {
+      finalizeTelemetryAnswer: expect.any(Function),
+      observationContext: {
+        interactionId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+        rolloutMode: "legacy",
+      },
       signal: expect.any(AbortSignal),
     });
   });

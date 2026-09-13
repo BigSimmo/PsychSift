@@ -19,12 +19,16 @@ describe("public content and account authorization model", () => {
   it("requires administrator authorization before any upload work", () => {
     const uploadRoute = source("src/app/api/upload/route.ts");
     const authCheck = uploadRoute.indexOf("requireAuthenticatedUser(request, adminSupabase, { administrator: true })");
+    const assuranceCheck = uploadRoute.indexOf("assertTrustedAdministratorAssurance(claimsData.claims, uploadOwnerId)");
     const formRead = uploadRoute.indexOf("request.formData()");
     const storageWrite = uploadRoute.indexOf(".upload(storagePath, buffer");
 
     expect(authCheck).toBeGreaterThan(-1);
     expect(authCheck).toBeLessThan(formRead);
     expect(authCheck).toBeLessThan(storageWrite);
+    expect(assuranceCheck).toBeGreaterThan(authCheck);
+    expect(assuranceCheck).toBeLessThan(formRead);
+    expect(assuranceCheck).toBeLessThan(storageWrite);
     expect(uploadRoute).not.toContain("publicUploadsEnabled");
     expect(uploadRoute).not.toContain("PUBLIC_WORKSPACE_OWNER_ID");
   });

@@ -148,4 +148,36 @@ describe("check:function-grants", () => {
     expect(result.out).toContain("OK");
     expect(result.code).toBe(0);
   });
+
+  it("keeps trusted admission authority behind only the intended wrappers", () => {
+    const schema = readFileSync("supabase/schema.sql", "utf8").replace(/\s+/g, " ").toLowerCase();
+    const migration = readFileSync("supabase/migrations/20260831104000_create_document_admission_events.sql", "utf8")
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+
+    for (const sql of [schema, migration]) {
+      expect(sql).toContain(
+        "revoke all on function public.trusted_document_admission_core(jsonb, jsonb, boolean, text, uuid, text) from public, anon, authenticated, service_role",
+      );
+      expect(sql).toContain(
+        "grant execute on function public.admit_administrator_document(jsonb, jsonb, boolean) to authenticated",
+      );
+      expect(sql).toContain(
+        "grant execute on function public.admit_backend_document(jsonb, jsonb, text, text, boolean) to service_role",
+      );
+      expect(sql).toContain(
+        "revoke all on table public.trusted_ingestion_backend_principals from public, anon, authenticated, service_role",
+      );
+      expect(sql).toContain(
+        "revoke all on table public.document_admission_events from public, anon, authenticated, service_role",
+      );
+      expect(sql).toContain(
+        "revoke all on function public.create_uploaded_document_with_ingestion_job(jsonb, integer) from public, anon, authenticated, service_role",
+      );
+      expect(sql).not.toContain(
+        "grant execute on function public.trusted_document_admission_core(jsonb, jsonb, boolean, text, uuid, text)",
+      );
+      expect(sql).not.toContain("grant select on table public.trusted_ingestion_backend_principals");
+    }
+  });
 });
