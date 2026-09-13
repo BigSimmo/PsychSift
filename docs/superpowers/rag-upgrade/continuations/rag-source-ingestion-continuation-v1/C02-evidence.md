@@ -10,7 +10,7 @@ C01-through-C02 is accepted at the local source, focused offline-test and canoni
 - Correction base / accepted U06: `d3412a667ed1485029be99d7b0b4089e3e211d5e`.
 - Accepted product: `b107d5916118308d0b4e16a36afe9e0798f8afaf`.
 - Outside evidence directory, abbreviated O below: `C:/Users/joshs/Codex-Handoffs/Ingestion/Execution/20260907-continuation`.
-- `O/C02-local-acceptance-manifest-1.json` binds 14 product files, 29 evidence records and the complete original-range review package. SHA-256: `88e25ec28af83e74581fdfe0093e370c4208968ed81f7a362acce07e82af7c51`.
+- `O/C02-local-acceptance-manifest-2.json` binds 14 product files, 30 evidence records and the complete original-range review package. SHA-256: `0d530a37e09ec8b8fcd53580a2184166b5645cbd199cd0b63b541b26412cc576`.
 - Canonical package: `docs/superpowers/rag-upgrade/execution-artifacts/rag-answer-quality-and-repository-coverage-v1/continuation-rag-source-ingestion-v1/C02/C02-final-original-range-review-1.diff`. SHA-256: `12a62e60d4013407922a122375c9bf3df7bb3258400db65e7c62166418e0aaed`. This known local artifact remains outside the staged product scope.
 
 The immutable initial review package and every failed review/run remain preserved. `O/C02-evidence-map-1.md` records the initial evidence qualification at U06; its pending statements are historical and are superseded by this acceptance and the final review reports. Retained C01/U04/U05/U06 ancestry and original evidence hashes were checked rather than rediscovered or rerun indiscriminately.
@@ -28,7 +28,7 @@ The independent reviewers used Sol High with bounded ownership and retained orig
 
 - `O/C02-ingestion-review-3.md`: Specification SOURCE PASS / Quality SOURCE PASS. Its addendum independently checks the final two test corrections and covers the clinical/provenance questions from the earlier projection review.
 - `O/C02-schema-review-2.md`: Specification PASS at the full-original-range local source boundary / Quality PASS at local source and successful canonical-schema replay boundary.
-- `O/C02-rag-review-2.md`: Specification SOURCE PASS / Quality SOURCE PASS for the RAG partition.
+- `O/C02-rag-review-3.md`: Specification SOURCE PASS / Quality SOURCE PASS for the RAG partition, including the final shared-validator extraction; review 2 remains retained evidence.
 
 The Astra controller integrated the separate tranche verdicts, qualified evidence and owned every gate. Sol Medium handled bounded rollback/projection work; the projection correction escalated to Sol High after concrete shared-validator and timestamp gaps. A separate clinical-reviewer reuse attempt hit the session agent-thread limit; the independent ingestion reviewer assessed the same three evidence questions explicitly. No other agent's verdict is attributed to that reviewer.
 
