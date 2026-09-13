@@ -104,8 +104,12 @@ function trackedMigrationFileNames() {
     throw new Error("Expected a complete tracked SQL migration inventory.");
   }
   const names = new Set(tracked.map((path) => path.slice("supabase/migrations/".length)));
-  const ownedMigration = "20260831102000_stage_shadow_document_generations.sql";
-  if (existsSync(new URL(ownedMigration, migrationDirectoryUrl))) names.add(ownedMigration);
+  for (const ownedMigration of [
+    "20260831102000_stage_shadow_document_generations.sql",
+    "20260831103000_activate_retained_document_generations.sql",
+  ]) {
+    if (existsSync(new URL(ownedMigration, migrationDirectoryUrl))) names.add(ownedMigration);
+  }
   return [...names].sort();
 }
 
@@ -2705,7 +2709,10 @@ describe("U04 fixed origin capture and profile bindings (source only)",()=>{
   });
   it("mirrors every frozen capture helper into the schema snapshot",()=>{
     const marker="-- U04 read-only capture foundation. No mutation, claim or seal entrypoint is exposed.";
-    expect(schemaSource.slice(schemaSource.indexOf(marker))).toBe(migration.slice(migration.indexOf(marker)));
+    const nextMarker = "-- U05 exact document-generation lifecycle. Source-only; no operation is performed here.";
+    expect(schemaSource.slice(schemaSource.indexOf(marker), schemaSource.indexOf(nextMarker))).toBe(
+      migration.slice(migration.indexOf(marker)),
+    );
   });
   it("retains all 27 complete row populations in row/count/byte queries",()=>{
     for(const name of ["shadow_capture_rows_v1","shadow_capture_count_v1","shadow_capture_bytes_v1"]){
@@ -3822,7 +3829,10 @@ describe("U04 atomic terminal SQL contracts (source only)", () => {
     expect(migration).toContain("grant execute on function public.get_shadow_generation_receipt(text,uuid,uuid) to service_role");
     expect(migration).toContain("deferrable initially deferred for each row execute function public.shadow_terminal_consistency_v1()");
     const marker="-- U04 read-only capture foundation. No mutation, claim or seal entrypoint is exposed.";
-    expect(schemaSource.slice(schemaSource.indexOf(marker))).toBe(migration.slice(migration.indexOf(marker)));
+    const nextMarker = "-- U05 exact document-generation lifecycle. Source-only; no operation is performed here.";
+    expect(schemaSource.slice(schemaSource.indexOf(marker), schemaSource.indexOf(nextMarker))).toBe(
+      migration.slice(migration.indexOf(marker)),
+    );
   });
 
   it("admits only the exact atomic job, projection and member terminal deltas", () => {
@@ -4094,6 +4104,265 @@ describe("U04 fixed evaluation SQL body source contracts", () => {
       expect(effectiveEvaluationBody(migration, operation)).toContain(
         "shadow_eval_related_metadata_v1(v_guard,document_ids,'related_documents')",
       );
+    }
+  });
+});
+
+describe("U05 exact generation lifecycle SQL source contracts", () => {
+  const migrationUrl = new URL(
+    "../supabase/migrations/20260831103000_activate_retained_document_generations.sql",
+    import.meta.url,
+  );
+  const migration = existsSync(migrationUrl) ? readFileSync(migrationUrl, "utf8") : "";
+  const generatedTypes = readFileSync(new URL("../src/lib/supabase/database.types.ts", import.meta.url), "utf8");
+  const marker = "-- U05 exact document-generation lifecycle. Source-only; no operation is performed here.";
+
+  function effective(name: string) {
+    const start = migration.lastIndexOf(`create or replace function public.${name}(`);
+    expect(start, `Missing effective U05 function ${name}`).toBeGreaterThanOrEqual(0);
+    const end = migration.indexOf("$$;", start);
+    expect(end).toBeGreaterThan(start);
+    return migration.slice(start, end + 3);
+  }
+
+  it("keeps the migration and canonical schema byte-identical at the U05 boundary", () => {
+    expect(migration.startsWith(marker)).toBe(true);
+    const schemaStart = schemaSource.indexOf(marker);
+    expect(schemaStart).toBeGreaterThanOrEqual(0);
+    expect(schemaSource.slice(schemaStart)).toBe(migration);
+  });
+
+  it("adds an append-only receipt ledger without turning identity references into live artifact references", () => {
+    expect(migration).toContain("create table public.document_index_generation_operations");
+    expect(migration).toMatch(/operation_kind text not null[\s\S]*check \(operation_kind in \('promote','rollback','cleanup'\)\)/);
+    expect(migration).toMatch(/manifest_digest text not null unique/);
+    expect(migration).toMatch(/receipt_digest text not null unique/);
+    expect(migration).toMatch(/receipt jsonb not null/);
+    expect(migration).not.toMatch(
+      /document_index_generation_operations[\s\S]{0,1800}references public\.document_index_generations/i,
+    );
+    const guard = effective("guard_document_index_generation_operations_append_only");
+    expect(guard).toContain("tg_op not in ('INSERT')");
+    expect(guard).toContain("document_generation_operation_append_only");
+    expect(migration).toContain(
+      "before update or delete or truncate on public.document_index_generation_operations",
+    );
+    expect(migration).toContain(
+      "revoke all on table public.document_index_generation_operations from public,anon,authenticated,service_role",
+    );
+    expect(migration).toContain("grant select on table public.document_index_generation_operations to service_role");
+  });
+
+  it("extends the staged ledger with one active generation and explicit retention state", () => {
+    expect(migration).toContain("drop constraint document_index_generations_state");
+    expect(migration).toMatch(
+      /add constraint document_index_generations_state check \(state in \('reserved','building','staged','active','retained','abandoned'\)\)/,
+    );
+    expect(migration).toContain("add column activated_at timestamptz");
+    expect(migration).toContain("add column retained_until timestamptz");
+    expect(migration).toContain("add column cleaned_at timestamptz");
+    expect(migration).toContain("create unique index document_index_generations_one_active_per_document_uidx");
+    expect(migration).toContain("on public.document_index_generations(document_id) where state='active'");
+  });
+
+  it("keeps the transition and deletion cores private and disjoint", () => {
+    const transition = effective("transition_document_index_generation_core");
+    expect(transition).toContain("security definer set search_path = ''");
+    expect(transition).toContain("is distinct from p_expected_generation_id");
+    expect(transition).toContain("update public.documents");
+    expect(transition).toContain("update public.document_index_generations");
+    expect(transition).not.toMatch(/delete from|document_generation_projections|document_summaries|document_labels|document_index_quality/i);
+    expect(transition).toContain("document_generation_first_publication_forbidden");
+
+    const deletion = effective("delete_document_index_generations_core");
+    expect(deletion).toContain("security definer set search_path = ''");
+    expect(deletion).toMatch(/delete from public\.document_(pages|chunks|images)/);
+    expect(deletion).not.toMatch(/update public\.documents|update public\.document_index_generations|delete from public\.document_index_generations/i);
+    expect(deletion).toContain("document_generation_cleanup_active_forbidden");
+
+    for (const signature of [
+      "transition_document_index_generation_core(uuid,uuid,uuid,uuid)",
+      "delete_document_index_generations_core(jsonb,uuid)",
+    ]) {
+      expect(migration).toContain(
+        `revoke all on function public.${signature} from public,anon,authenticated,service_role`,
+      );
+      expect(migration).not.toContain(`grant execute on function public.${signature}`);
+    }
+  });
+
+  it("promotes only a complete staged wave through semantic, rights and future U10 gates", () => {
+    const promote = effective("promote_shadow_document_generation");
+    expect(migration).toMatch(
+      /promote_shadow_document_generation\(\s*p_plan jsonb\s*,\s*p_stage_receipt jsonb\s*,\s*p_evaluation_report jsonb\s*,\s*p_authorization_manifest jsonb\s*\)/,
+    );
+    expect(promote).toContain("public.shadow_node_payload_v1(p_plan,'plan')");
+    expect(promote).toContain("public.shadow_inventory_envelope_payload_v1(p_stage_receipt)");
+    expect(promote).toContain("public.shadow_node_payload_v1(p_evaluation_report,'evaluation_report')");
+    expect(promote).toContain("public.document_generation_local_digest_v1");
+    expect(promote).toContain("public.shadow_assert_origin_unchanged_v1");
+    expect(promote).toContain("public.lock_ingestion_document_authority");
+    expect(promote).toContain("public.require_document_generation_technical_gate_v1");
+    expect(promote).toContain("v_current->'document'->>'status' is distinct from 'indexed'");
+    expect(effective("transition_document_index_generation_core")).toContain(
+      "document_generation_first_publication_forbidden",
+    );
+    expect(promote).toContain("is distinct from 'GO'");
+    expect(promote).not.toMatch(/p_go\b|p_eligible\b|coalesce\([^)]*decision/i);
+    expect(promote.indexOf("public.apply_document_generation_projection_v1")).toBeLessThan(
+      promote.indexOf("public.transition_document_index_generation_core"),
+    );
+    const projection = effective("apply_document_generation_projection_v1");
+    expect(projection).toContain("delete from public.document_summaries");
+    expect(projection).toContain("delete from public.document_labels");
+    expect(projection).toContain("delete from public.document_index_quality");
+    expect(promote).toContain("deep_memory_artifact_generation_id");
+    expect(promote).toContain("stageAuthorizationDigest");
+    expect(promote).toContain("expectedTechnicalEvidenceReceiptDigests");
+    expect(promote).toContain("v_retained_until<=v_now");
+    expect(promote.indexOf("document_generation_promotion_evidence_mismatch")).toBeLessThan(
+      promote.indexOf("select * into v_existing"),
+    );
+    expect(promote.indexOf("public.require_document_generation_technical_gate_v1")).toBeLessThan(
+      promote.indexOf("select * into v_existing"),
+    );
+  });
+
+  it("leaves the U10 technical gate fail-closed until its receipt table replaces the seam", () => {
+    const gate = effective("require_document_generation_technical_gate_v1");
+    expect(gate).toContain("document_generation_technical_gate_unavailable");
+    expect(gate).not.toMatch(/return\s+(true|p_)|verdict\s*=\s*'activate'/i);
+    expect(migration).toContain(
+      "revoke all on function public.require_document_generation_technical_gate_v1(jsonb,jsonb) from public,anon,authenticated,service_role",
+    );
+    expect(migration).not.toContain(
+      "grant execute on function public.require_document_generation_technical_gate_v1(jsonb,jsonb)",
+    );
+  });
+
+  it("makes rollback receipt-bound, legacy-null aware and independent of expired recovery freshness", () => {
+    const rollback = effective("rollback_document_index_generation");
+    expect(migration).toMatch(
+      /rollback_document_index_generation\(\s*p_promotion_receipt jsonb\s*,\s*p_rollback_manifest jsonb\s*\)/,
+    );
+    expect(rollback).toContain("document-generation-promotion-v1");
+    expect(rollback).toContain("promotionReceiptDigest");
+    expect(rollback).toContain("is distinct from");
+    expect(rollback).toContain("public.lock_ingestion_document_authority");
+    expect(rollback).toContain("public.assert_document_generation_rights_current_v1");
+    expect(effective("assert_document_generation_rights_current_v1")).toContain(
+      "public_source_document_is_serving_eligible",
+    );
+    expect(rollback).toContain("public.transition_document_index_generation_core");
+    expect(rollback).toContain("previousServingSnapshot");
+    expect(rollback).toContain("v_retained_until<=v_now");
+    expect(rollback).not.toContain("shadow_validate_recovery_v1");
+    expect(rollback).not.toMatch(/recovery.*expires|expires.*recovery/i);
+  });
+
+  it("cleans only exact authorized pairs and preserves private evidence for later object disposal", () => {
+    const cleanup = effective("cleanup_document_index_generations");
+    expect(migration).toMatch(
+      /cleanup_document_index_generations\(\s*p_manifest jsonb\s*,\s*p_apply boolean default false\s*\)/,
+    );
+    expect(cleanup).toContain("expectedCount");
+    expect(cleanup).toContain("manifestDigest");
+    expect(cleanup).toContain("p_apply is not true");
+    expect(cleanup).toContain("retained_until");
+    expect(cleanup).toContain("cleaned_at");
+    expect(cleanup).toContain("public.delete_document_index_generations_core");
+    expect(cleanup).toContain("privateObjectReferenceInventory");
+    expect(cleanup).toContain("physicalDeletionAuthorized");
+    expect(cleanup).toContain("'ok',true");
+    expect(cleanup).toContain("'applied',false");
+    expect(cleanup).toContain("'applied',true");
+    expect(cleanup).toContain("document_generation_cleanup_manifest_mismatch");
+    expect(cleanup).not.toMatch(/where\s+state\s+in\s*\([^)]*\)\s+limit|all[_ ]eligible/i);
+
+    const deletion = effective("delete_document_index_generations_core");
+    expect(deletion).not.toMatch(/delete from public\.document_generation_inventory/i);
+    expect(deletion).not.toMatch(/delete from public\.document_index_generation_operations/i);
+    expect(deletion).toContain("privateObjectReferenceInventory");
+    expect(deletion).toContain("'physicalDeletionAuthorized' is distinct from 'false'::jsonb");
+    expect(migration).not.toContain("privateObjectDeletionCandidates");
+  });
+
+  it("prevents legacy mutators from deleting or replacing U04/U05 governed evidence", () => {
+    const commit = effective("commit_document_index_generation");
+    const abandoned = effective("cleanup_abandoned_document_index_generations");
+    expect(commit).toContain("document_index_generations");
+    expect(commit).toContain("governed_document_generation_commit_forbidden");
+    expect(abandoned).toContain("document_index_generations");
+    expect(abandoned).toContain("governed_document_generation_cleanup_forbidden");
+    expect(abandoned).not.toMatch(/state\s+in\s*\('retained'|'staged'/i);
+    expect(migration).toMatch(
+      /revoke all on function public\.cleanup_abandoned_document_index_generations_legacy_u05\(\s*uuid,integer,boolean\s*\) from public,anon,authenticated,service_role/,
+    );
+    expect(migration).toMatch(
+      /revoke all on function public\.commit_document_index_generation\(\s*uuid,text,uuid,uuid,text,integer,integer,integer,jsonb,jsonb,jsonb\s*\) from public,anon,authenticated,service_role/,
+    );
+  });
+
+  it("requires exact retained baseline proof while preserving evidence-backed legacy and null G0", () => {
+    const transition = effective("transition_document_index_generation_core");
+    const legacy = effective("document_generation_legacy_baseline_proven_v1");
+    expect(transition).toContain("document_generation_baseline_proof_missing");
+    expect(transition).toContain("document_generation_rollback_target_unavailable");
+    expect(transition).toContain("p_expected_generation_id is not null");
+    expect(transition).toContain("p_operation_id,p_document_id,null,p_next_generation_id");
+    expect(legacy).toContain("public.document_generation_baselines");
+    expect(legacy).toContain("b.bundle_digest=g.baseline_bundle_digest");
+    expect(legacy).toContain("previousServingSnapshotDigest");
+    expect(legacy).toContain("public.shadow_reindex_waves");
+  });
+
+  it("captures, applies and restores the exact local-worker producer alias projection", () => {
+    const snapshot = effective("document_generation_serving_snapshot_v1");
+    const applyProjection = effective("apply_document_generation_projection_v1");
+    const applySnapshot = effective("apply_document_generation_snapshot_v1");
+    expect(snapshot).toContain("'producerAliases',v_aliases");
+    expect(snapshot).toContain("a.metadata->>'generated_by'='local-worker'");
+    expect(applyProjection).toContain("p_projection.producer_aliases");
+    expect(applyProjection).toContain("document_generation_alias_projection_mismatch");
+    expect(applySnapshot).toContain("p_snapshot->'producerAliases'");
+    for (const body of [applyProjection, applySnapshot]) {
+      expect(body).toContain("delete from public.rag_aliases");
+      expect(body).toContain("insert into public.rag_aliases");
+    }
+  });
+
+  it("makes every effective serving-generation predicate exact and NULL-safe", () => {
+    for (const signature of [
+      "is_committed_document_generation(row_generation uuid,document_metadata jsonb)",
+      "is_committed_document_generation(row_generation uuid,document_generation uuid)",
+      "is_committed_artifact_generation(artifact_metadata jsonb,document_metadata jsonb)",
+      "is_committed_artifact_generation(artifact_generation_id uuid,document_metadata jsonb)",
+    ]) {
+      const start = migration.lastIndexOf(`create or replace function public.${signature}`);
+      expect(start, `Missing U05 exact predicate ${signature}`).toBeGreaterThanOrEqual(0);
+      const body = migration.slice(start, migration.indexOf("$$;", start));
+      expect(body).toContain("is not distinct from");
+      expect(body).not.toMatch(/\bis null\s+or\b/i);
+    }
+  });
+
+  it("grants only the three narrow wrappers and exposes their generated RPC types", () => {
+    const rpcSignatures = {
+      promote_shadow_document_generation: "jsonb,jsonb,jsonb,jsonb",
+      rollback_document_index_generation: "jsonb,jsonb",
+      cleanup_document_index_generations: "jsonb,boolean",
+    } as const;
+    for (const [name, signature] of Object.entries(rpcSignatures)) {
+      expect(migration).toContain(
+        `revoke all on function public.${name}(${signature}) from public,anon,authenticated,service_role`,
+      );
+      expect(migration).toContain(`grant execute on function public.${name}(${signature}) to service_role`);
+      const start = generatedTypes.indexOf(`      ${name}:`);
+      expect(start, `Missing generated RPC type for ${name}`).toBeGreaterThanOrEqual(0);
+      const end = generatedTypes.indexOf("\n      };", start);
+      expect(end, `Missing generated RPC type terminator for ${name}`).toBeGreaterThan(start);
+      const block = generatedTypes.slice(start, end + "\n      };".length);
+      expect(block).toMatch(/Returns:\s*Json/);
     }
   });
 });

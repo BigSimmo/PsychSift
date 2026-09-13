@@ -666,6 +666,8 @@ Provide one shared coherent package to these specialists, partitioned by their a
 
 **Audit acceptance requirements (under current authority and unit gates):** F09: this unit owns the sole atomic publication/rollback mechanism, consuming U10's exact generation-bound gate verdict. Switch the complete artifact set. Retain permitted prior evidence for governed rollback; withdrawal excludes immediately and cannot be undone by rollback. Cleanup may remove only unreferenced, deletion-authorised artifacts, never active/retained/newly referenced objects; test activation/cleanup and rollback/cleanup races later with actual SQL.
 
+The [U05 execution contract](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U05-execution-contract.md) records the reviewed implementation decisions and local evidence boundary. Existing typed legacy generations and null G0 require exact immutable baseline/operation/snapshot proof; they must not be fabricated as shadow-wave members. U05 keeps the private U10 technical-receipt gate refusing until Task 10 supplies authoritative lookup. Local completion is not operational activation.
+
 **Files:**
 
 - Create: `supabase/migrations/20260831103000_activate_retained_document_generations.sql`
@@ -767,6 +769,8 @@ Reviewers: `supabase-schema-guardian` and `ingestion-worker-reviewer`. Suggested
 ## Task 6: Replace operator guidance with the exact dry-run lifecycle
 
 **Audit acceptance requirements (under current authority and unit gates):** F11/F15: define admitted, processing, extracted, indexed, technically eligible, active, kernel evidence available and available to Answer as distinct states. An inferred recent view cannot claim queue emptiness. Document actionable failure/repair reasons and policy-bound retention. Keep the C02 runbook gate; defer only final UI-specific wording until U11 behaviour is known, with a recorded owner.
+
+Document U05's `privateObjectReferenceInventory` as non-authoritative, with `physicalDeletionAuthorized: false`. Its cleanup receipt covers exact SQL artifact rows only. Physical storage disposal requires a separate manifest revalidating current rights and live/shared/new references at deletion time; U13 owns the recovery/cleanup proof. Explain the U10 gate dependency and manifest-bound retention deadlines without inventing a fixed retention policy.
 
 **Files:**
 
@@ -1197,6 +1201,8 @@ Reviewer: `ingestion-worker-reviewer`. Suggested local checkpoint message: `feat
 ## Task 10: Evaluate hard gates and atomically activate or queue the exact generation
 
 **Audit acceptance requirements (under current authority and unit gates):** F03/F06/F08/F09: consume generation-bound completeness, safety, source/permission, support/limitation and fencing verdicts. Unknown or critically incomplete evidence cannot pass its relevant hard gate. Optional unsupported enrichment is withheld without deleting usable originals. Pass one immutable verdict to U05's activation mechanism or create the durable U11 task; no competing switch or clinical-approval inference. Test incomplete/capped/conflicted/stale artifacts and all-writer atomicity, with actual SQL proof separately authorised.
+
+Replace U05's private, always-refusing `require_document_generation_technical_gate_v1` with authoritative immutable technical-receipt resolution for every exact document/generation and expected digest. Caller-supplied `GO`, scalar digests, or historical promotion receipts are insufficient. Preserve validation before replay, private grants, the single pointer core, and refusal of absent, stale, mismatched, withdrawn or superseded evidence. Add focused producer/consumer proof and separately authorised SQL race/role proof before claiming activation works.
 
 R3 keeps typed extraction/provider cause, capability/completeness, authority and support distinct through finalisation. Optional enrichment failure preserves sound originals; no partial path bypasses a hard gate.
 

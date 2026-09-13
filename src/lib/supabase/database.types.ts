@@ -248,13 +248,52 @@ export type Database = {
           },
         ];
       };
+      document_index_generation_operations: {
+        Row: {
+          candidate_generation_id: string | null;
+          created_at: string;
+          id: string;
+          manifest_digest: string;
+          operation_kind: string;
+          promotion_operation_id: string | null;
+          receipt: Json;
+          receipt_digest: string;
+          rollback_state: Json;
+        };
+        Insert: {
+          candidate_generation_id?: string | null;
+          created_at?: string;
+          id?: string;
+          manifest_digest: string;
+          operation_kind: string;
+          promotion_operation_id?: string | null;
+          receipt: Json;
+          receipt_digest: string;
+          rollback_state?: Json;
+        };
+        Update: {
+          candidate_generation_id?: string | null;
+          created_at?: string;
+          id?: string;
+          manifest_digest?: string;
+          operation_kind?: string;
+          promotion_operation_id?: string | null;
+          receipt?: Json;
+          receipt_digest?: string;
+          rollback_state?: Json;
+        };
+        Relationships: [];
+      };
       document_index_generations: {
         Row: {
+          activated_at: string | null;
+          activation_operation_id: string | null;
           authority_digest: string;
           baseline_bundle_digest: string;
           baseline_generation_id: string | null;
           candidate_projection_digest: string | null;
           claimed_at: string | null;
+          cleaned_at: string | null;
           control_revision: number;
           control_snapshot: Json;
           document_id: string;
@@ -265,8 +304,10 @@ export type Database = {
           inventory_digest: string | null;
           inventory_manifest: Json;
           job_id: string;
+          last_operation_id: string | null;
           original_origin_envelope: Json;
           owner_id: string | null;
+          retained_until: string | null;
           source_binding: Json;
           stage_receipt: Json;
           stage_receipt_digest: string | null;
@@ -274,11 +315,14 @@ export type Database = {
           state: string;
         };
         Insert: {
+          activated_at?: string | null;
+          activation_operation_id?: string | null;
           authority_digest: string;
           baseline_bundle_digest: string;
           baseline_generation_id?: string | null;
           candidate_projection_digest?: string | null;
           claimed_at?: string | null;
+          cleaned_at?: string | null;
           control_revision?: number;
           control_snapshot: Json;
           document_id: string;
@@ -289,8 +333,10 @@ export type Database = {
           inventory_digest?: string | null;
           inventory_manifest: Json;
           job_id: string;
+          last_operation_id?: string | null;
           original_origin_envelope: Json;
           owner_id?: string | null;
+          retained_until?: string | null;
           source_binding: Json;
           stage_receipt?: Json;
           stage_receipt_digest?: string | null;
@@ -298,11 +344,14 @@ export type Database = {
           state: string;
         };
         Update: {
+          activated_at?: string | null;
+          activation_operation_id?: string | null;
           authority_digest?: string;
           baseline_bundle_digest?: string;
           baseline_generation_id?: string | null;
           candidate_projection_digest?: string | null;
           claimed_at?: string | null;
+          cleaned_at?: string | null;
           control_revision?: number;
           control_snapshot?: Json;
           document_id?: string;
@@ -313,8 +362,10 @@ export type Database = {
           inventory_digest?: string | null;
           inventory_manifest?: Json;
           job_id?: string;
+          last_operation_id?: string | null;
           original_origin_envelope?: Json;
           owner_id?: string | null;
+          retained_until?: string | null;
           source_binding?: Json;
           stage_receipt?: Json;
           stage_receipt_digest?: string | null;
@@ -3638,6 +3689,10 @@ export type Database = {
         Args: { p_document_id?: string | null; p_dry_run?: boolean; p_limit?: number };
         Returns: Json;
       };
+      cleanup_document_index_generations: {
+        Args: { p_manifest: Json; p_apply?: boolean };
+        Returns: Json;
+      };
       commit_document_deep_memory_generation: {
         Args: {
           p_fence: Json;
@@ -3663,6 +3718,19 @@ export type Database = {
           p_pages: Json;
           p_quality: Json;
         };
+        Returns: Json;
+      };
+      promote_shadow_document_generation: {
+        Args: {
+          p_plan: Json;
+          p_stage_receipt: Json;
+          p_evaluation_report: Json;
+          p_authorization_manifest: Json;
+        };
+        Returns: Json;
+      };
+      rollback_document_index_generation: {
+        Args: { p_promotion_receipt: Json; p_rollback_manifest: Json };
         Returns: Json;
       };
       complete_ingestion_job: {

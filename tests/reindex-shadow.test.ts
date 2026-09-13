@@ -62,6 +62,11 @@ import { recoveryReadinessDigest } from "../src/lib/recovery-readiness-evidence"
 import type { ExpectedSourceCoverageRegistry } from "../src/lib/source-coverage-registry";
 import { australianSourceByKey, australianSourcePolicyVersion } from "../src/lib/australian-source-catalogue";
 import { normalizeOptionalSourceMetadata } from "../src/lib/source-metadata";
+import {
+  evaluateShadowReindexV1,
+  promoteShadowDocumentGenerationV1,
+  readShadowReindexStageV1,
+} from "../scripts/reindex-shadow";
 
 // Literal independent Python hashlib vectors, copied from the reviewed input.
 // Neither expectation is computed with the implementation under test.
@@ -3669,9 +3674,9 @@ function finalProjectionItemsFixture(binding: AuditFixtureObject, chunk: AuditFi
 
 function finalReceiptFixture(baselineNull = false, includeCoreRows = false, includeProjectionItems = false,
   includePrivateImage = false, includeNativeCache = false, includeControlRepair = false,
-  duplicateNativePagePopulation = false) {
+  duplicateNativePagePopulation = false, quality = false) {
   const identityUuid = auditFixtureV4Uuid;
-  const persistence = persistenceFixture({ baselineNull, identityUuid });
+  const persistence = persistenceFixture({ baselineNull, identityUuid, quality });
   const prepared = prepareShadowPersistenceV1(persistence.parameters, persistence.admission, persistence.now);
   const bundleEnvelope = fixtureEnvelope(prepared.bundlePayload, "baseline", "pg-jsonb-text-v1");
   const profileEnvelope = fixtureEnvelope(persistence.fixture.profile, "u04-execution-profile-v1");
@@ -5144,8 +5149,8 @@ describe("U04 full retained C1 to fresh C2 pure preparation continuity", () => {
 });
 
 
-function terminalStateFixture(phase: "before_seal" | "after_seal" | "evaluate" = "evaluate") {
-  const f=finalReceiptFixture(false,true,true,true,true);
+function terminalStateFixture(phase: "before_seal" | "after_seal" | "evaluate" = "evaluate", quality = false) {
+  const f=finalReceiptFixture(false,true,true,true,true,false,false,quality);
   const origin=JSON.parse(f.persistence.fixture.input.originEnvelope.canonicalPayload) as AuditFixtureObject;
   const observed=structuredClone(f.observed);
   const beforeMembers=f.members.map(member=>{
@@ -6340,9 +6345,9 @@ describe("U04 candidate case report semantic consumer", () => {
   // Reuse the unchanged complete sealed source; each test gets fresh report/observation objects.
   let sealedSource: ReturnType<typeof terminalStateFixture> | undefined;
   let admittedSource: ReturnType<typeof u04EvaluationAuthorityFixture> | undefined;
-  function fixture() {
-    const terminal = sealedSource ??= terminalStateFixture("evaluate");
-    const f = admittedSource ??= u04EvaluationAuthorityFixture("candidate", terminal.f);
+  function fixture(quality = false) {
+    const terminal = quality ? terminalStateFixture("evaluate", true) : sealedSource ??= terminalStateFixture("evaluate");
+    const f = quality ? u04EvaluationAuthorityFixture("candidate", terminal.f) : admittedSource ??= u04EvaluationAuthorityFixture("candidate", terminal.f);
     const generatedAt = f.now, startedAt = "2024-03-01T00:00:02.000000Z";
     const finishedAt = "2024-03-01T00:00:03.000000Z";
     const profile = parseShadowExecutionProfileEnvelope(f.context.executionProfileEnvelope);
@@ -6386,6 +6391,10 @@ describe("U04 candidate case report semantic consumer", () => {
           metadata: unit.metadata! } } : {}) };
     });
     fixtureSet(report, ["executions", 0, "searchResults"], JSON.parse(JSON.stringify(searchResults)) as AuditFixtureJson);
+    if ((report.executions as AuditFixtureObject[]).length > 1) {
+      fixtureSet(report, ["executions", 1, "searchResults"], JSON.parse(JSON.stringify(searchResults)) as AuditFixtureJson);
+      fixtureSet(report, ["executions", 1, "answer", "sources"], JSON.parse(JSON.stringify(searchResults)) as AuditFixtureJson);
+    }
     fixtureSet(report, ["report", "retrieval", "results", 0, "resultCount"], searchResults.length);
     fixtureSet(report, ["report", "retrieval", "results", 0, "topResults"], searchResults.map((result, index) => ({
       rank: index + 1, title: result.title, file_name: result.file_name, chunk_id: result.id, page_number: result.page_number,
@@ -6413,6 +6422,166 @@ describe("U04 candidate case report semantic consumer", () => {
     expect(result.plan.envelope).toEqual(v.f.persistence.parameters.p_plan);
     expect(result.waveReceipt.envelope).toEqual(v.terminal.f.waveReceiptEnvelope);
     expect(result.request.envelope).toEqual(v.f.requestEnvelope);
+  });
+
+  it("dispatches promotion only from the full validated U04 stage and evaluation identities", async () => {
+    const v = fixture(true);
+    const reportEnvelope = fixtureEnvelope(v.report, "evaluation_report");
+    const stage = readShadowReindexStageV1(v.terminal.f.readback, v.terminal.f.context);
+    const evaluation = evaluateShadowReindexV1(
+      reportEnvelope,
+      v.f.requestEnvelope,
+      v.f.authorityEnvelope,
+      v.f.context,
+      v.observation,
+      "documents",
+      v.startedAt,
+      v.finishedAt,
+      v.candidateEvidence,
+    );
+    expect(evaluation.decision.decision, evaluation.decision.failures.join("\n")).toBe("GO");
+    const plan = evaluation.evidence.plan;
+    const wave = evaluation.evidence.waveReceipt;
+    const technicalEvidence = plan.payload.plan.documents.map((document, index) => ({
+      receiptId: auditFixtureV4Uuid(900 + index),
+      version: "document-generation-technical-evidence-v1" as const,
+      jobId: auditFixtureV4Uuid(920 + index),
+      documentId: document.documentId,
+      generationId: plan.payload.plan.candidateGenerationId,
+      admissionEventId: auditFixtureV4Uuid(940 + index),
+      policyVersion: plan.payload.plan.sourcePolicyVersion,
+      stateDigest: `sha256:${document.expectedStateDigest}`,
+      evidenceDigest: fixtureSha(`technical evidence ${index}`),
+      verdict: "activate" as const,
+      codes: [] as const,
+      receiptDigest: fixtureSha(`technical receipt ${index}`),
+    }));
+    const authorization = {
+      version: 1 as const,
+      operation: "promote" as const,
+      targetProjectRef: plan.payload.plan.targetProjectRef,
+      candidateGenerationId: plan.payload.plan.candidateGenerationId,
+      planDigest: plan.envelope.digest,
+      stageReceiptDigest: wave.envelope.digest,
+      evaluationReportDigest: evaluation.report.digest,
+      recoveryEvidenceDigest: wave.payload.recoveryEvidenceDigest,
+      stageAuthorizationDigest: wave.payload.operationManifestDigest,
+      expectedDocumentIds: plan.payload.plan.documents.map(document => document.documentId),
+      expectedDocumentCount: plan.payload.plan.documents.length,
+      expectedTechnicalEvidenceReceiptDigests: technicalEvidence.map(receipt => receipt.receiptDigest),
+      authorizedAt: "2024-03-01T00:00:04.000Z",
+      expiresAt: "2024-03-01T00:10:00.000Z",
+      retainedUntil: "2024-04-01T00:00:00.000Z",
+      confirmationSha256: fixtureSha("independent promote confirmation"),
+    };
+    const promoteAuthorizationDigest = fixtureSha(encodeShadowNodeJsonCanonicalPayload(authorization));
+    const readiness = {
+      version: 1 as const,
+      projectRef: plan.payload.plan.targetProjectRef,
+      candidateGenerationId: plan.payload.plan.candidateGenerationId,
+      planDigest: plan.envelope.digest,
+      stageReceiptDigest: wave.envelope.digest,
+      evaluationReportDigest: evaluation.report.digest,
+      recoveryEvidenceDigest: wave.payload.recoveryEvidenceDigest,
+      stageAuthorizationDigest: wave.payload.operationManifestDigest,
+      decision: "GO" as const,
+      documents: plan.payload.plan.documents.map((document, index) => ({
+        ...(() => {
+          const memberReceipt = JSON.parse(
+            wave.payload.members[index]!.memberReceiptEnvelope.canonicalPayload,
+          ) as AuditFixtureObject;
+          const authorityDigest = fixtureGet(memberReceipt, ["binding", "source", "authorityDigest"]) as string;
+          return { stageAuthorityDigest: authorityDigest, actualAuthorityDigest: authorityDigest };
+        })(),
+        documentId: document.documentId,
+        baselineGenerationId: document.baselineGenerationId,
+        currentDocumentStatus: "indexed" as const,
+        currentGenerationId: document.baselineGenerationId,
+        expectedStateDigest: document.expectedStateDigest,
+        actualStateDigest: document.expectedStateDigest,
+        stageMemberReceiptDigest: wave.payload.members[index]!.memberReceiptEnvelope.digest,
+      })),
+      technicalEvidence,
+      authorization,
+      promoteAuthorizationDigest,
+      trustedNow: "2024-03-01T00:05:00.000Z",
+    };
+    const promotionPayload = {
+      version: 1 as const,
+      kind: "document-generation-promotion-v1" as const,
+      operationId: auditFixtureV4Uuid(980),
+      projectRef: readiness.projectRef,
+      candidateGenerationId: readiness.candidateGenerationId,
+      planDigest: readiness.planDigest,
+      stageReceiptDigest: readiness.stageReceiptDigest,
+      evaluationReportDigest: readiness.evaluationReportDigest,
+      recoveryEvidenceDigest: readiness.recoveryEvidenceDigest,
+      stageAuthorizationDigest: readiness.stageAuthorizationDigest,
+      promoteAuthorizationDigest,
+      technicalEvidenceReceiptDigests: technicalEvidence.map(receipt => receipt.receiptDigest),
+      transitions: readiness.documents.map((document, index) => ({
+        documentId: document.documentId,
+        fromGenerationId: document.baselineGenerationId,
+        toGenerationId: readiness.candidateGenerationId,
+        previousServingSnapshotDigest: fixtureSha(`previous snapshot ${index}`),
+        candidateServingSnapshotDigest: fixtureSha(`candidate snapshot ${index}`),
+        retainedUntil: authorization.retainedUntil,
+      })),
+      promotedAt: readiness.trustedNow,
+    };
+    const promotionReceipt = {
+      ...promotionPayload,
+      receiptDigest: fixtureSha(encodeShadowNodeJsonCanonicalPayload(promotionPayload)),
+    };
+    const rpc = vi.fn(async () => ({ data: promotionReceipt, error: null }));
+
+    await expect(
+      promoteShadowDocumentGenerationV1(
+        {
+          readiness,
+          validatedStage: stage,
+          validatedEvaluation: evaluation,
+          authorizationManifest: { authorization, promoteAuthorizationDigest },
+        },
+        { projectRef: readiness.projectRef, client: { rpc } },
+      ),
+    ).resolves.toEqual(promotionReceipt);
+    expect(rpc).toHaveBeenCalledWith("promote_shadow_document_generation", {
+      p_plan: plan.envelope,
+      p_stage_receipt: wave.envelope,
+      p_evaluation_report: evaluation.report,
+      p_authorization_manifest: { authorization, promoteAuthorizationDigest },
+    });
+    const stalePromotionPayload = { ...promotionPayload, promotedAt: "2024-03-01T00:04:59.000Z" };
+    rpc.mockResolvedValueOnce({
+      data: {
+        ...stalePromotionPayload,
+        receiptDigest: fixtureSha(encodeShadowNodeJsonCanonicalPayload(stalePromotionPayload)),
+      },
+      error: null,
+    });
+    await expect(
+      promoteShadowDocumentGenerationV1(
+        {
+          readiness,
+          validatedStage: stage,
+          validatedEvaluation: evaluation,
+          authorizationManifest: { authorization, promoteAuthorizationDigest },
+        },
+        { projectRef: readiness.projectRef, client: { rpc } },
+      ),
+    ).rejects.toThrow(/clock|time/i);
+    await expect(
+      promoteShadowDocumentGenerationV1(
+        {
+          readiness,
+          validatedStage: { ...stage },
+          validatedEvaluation: evaluation,
+          authorizationManifest: { authorization, promoteAuthorizationDigest },
+        },
+        { projectRef: readiness.projectRef, client: { rpc } },
+      ),
+    ).rejects.toThrow(/full validated U04/i);
   });
 
   it("closes zero-read admission for both phases", () => {

@@ -76,7 +76,8 @@ describe("reindex pipeline queue state", () => {
 
   it("compares generated artifacts against the committed document generation", () => {
     expect(committedIndexGeneration({ index_generation_id: baselineGeneration })).toBe(baselineGeneration);
-    expect(isCommittedGenerationMetadata({ rowMetadata: {}, committedGeneration: baselineGeneration })).toBe(true);
+    expect(isCommittedGenerationMetadata({ rowMetadata: {}, committedGeneration: baselineGeneration })).toBe(false);
+    expect(isCommittedGenerationMetadata({ rowMetadata: {}, committedGeneration: null })).toBe(true);
     expect(
       isCommittedGenerationMetadata({
         rowMetadata: { index_generation_id: candidateGeneration },
@@ -297,7 +298,7 @@ describe("ordinary generation visibility during shadow reindex", () => {
 
   it.each(legacyRows)("retains supported untagged legacy rows with %s", (_name, rowMetadata) => {
     expect(isCommittedGenerationMetadata({ rowMetadata, committedGeneration: null })).toBe(true);
-    expect(isCommittedGenerationMetadata({ rowMetadata, committedGeneration: baselineGeneration })).toBe(true);
+    expect(isCommittedGenerationMetadata({ rowMetadata, committedGeneration: baselineGeneration })).toBe(false);
   });
 
   const malformedMarkers: Array<[string, unknown]> = [

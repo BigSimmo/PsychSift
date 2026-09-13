@@ -1,4 +1,16 @@
+import { createHash } from "node:crypto";
+
 import { decideReindexGate, type RetrievalGateSummary, type QualityGateSummary } from "../src/lib/reindex-eval-gate";
+import {
+  assertDocumentGenerationLifecycleRollbackPair,
+  assertDocumentGenerationLifecycleRollbackReceipt,
+  assertDocumentGenerationPromotionReceipt,
+  assertPromotableShadowGeneration,
+  type DocumentGenerationLifecycleRollbackReceiptV1,
+  type DocumentGenerationPromotionReceiptV1,
+  type PromotableShadowGenerationV1,
+  type ShadowGenerationPromotionAuthorizationV1,
+} from "../src/lib/reindex-pipeline";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "../src/lib/supabase/database.types";
 import type { ShadowEvaluationSqlDependenciesV1, ShadowEvaluationRuntimeResultV1 } from "./lib/reindex-eval-runtime";
@@ -20,6 +32,8 @@ import {
 
 type EvaluationSqlContext = Parameters<ShadowEvaluationSqlDependenciesV1["readAliases"]>[0];
 type EvaluationClient = Pick<SupabaseClient<Database>, "rpc">;
+const validatedShadowStagesV1 = new WeakSet<object>();
+const validatedShadowEvaluationsV1 = new WeakSet<object>();
 
 /** No client construction, environment loading, SQL or provider calls occur on import. */
 export function createShadowEvaluationSqlDependenciesV1(client: EvaluationClient): ShadowEvaluationSqlDependenciesV1 {
@@ -153,8 +167,10 @@ export function evaluateShadowReindexV1(...input: Parameters<typeof readShadowCa
     candidateGenerationId: validated.waveReceipt.payload.candidateGenerationId,
     baseline, candidate, decision,
   };
-  return Object.freeze({ report: createShadowNodeJsonByteEnvelope(payload, "evaluation_report").envelope,
+  const result = Object.freeze({ report: createShadowNodeJsonByteEnvelope(payload, "evaluation_report").envelope,
     decision, evidence: validated });
+  validatedShadowEvaluationsV1.add(result);
+  return result;
 }
 
 
@@ -206,7 +222,9 @@ export async function stageShadowReindexV1(
 
 /** Complete immutable readback validation; this function never promotes or starts a worker. */
 export function readShadowReindexStageV1(...input: Parameters<typeof readShadowWaveReadbackV1>) {
-  return readShadowWaveReadbackV1(...input);
+  const result = readShadowWaveReadbackV1(...input);
+  validatedShadowStagesV1.add(result);
+  return result;
 }
 
 
@@ -314,4 +332,327 @@ export async function runShadowReindexEvaluationV1(
     Object.defineProperty(error, "retainedEvidence", { value: built?.evidence ?? retainedRuntime(), enumerable: true });
     throw error;
   }
+}
+
+type LifecycleDigest = `sha256:${string}`;
+
+export type ShadowPromotionAuthorizationManifestV1 = Readonly<{
+  authorization: ShadowGenerationPromotionAuthorizationV1;
+  promoteAuthorizationDigest: LifecycleDigest;
+}>;
+
+export type DocumentGenerationRollbackManifestV1 = Readonly<{
+  authorization: Readonly<{
+    version: 1;
+    operation: "rollback";
+    promotionOperationId: string;
+    promotionReceiptDigest: LifecycleDigest;
+    candidateGenerationId: string;
+    transitions: readonly Readonly<{
+      documentId: string;
+      fromGenerationId: string;
+      toGenerationId: string | null;
+    }>[];
+    reasonCode: string;
+    authorizedAt: string;
+    expiresAt: string;
+    retainedUntil: string;
+    confirmationSha256: LifecycleDigest;
+  }>;
+  rollbackManifestDigest: LifecycleDigest;
+}>;
+
+type LifecycleRpcResult = { data: unknown; error: { message: string } | null };
+type LifecycleRpcQuery = PromiseLike<LifecycleRpcResult> & {
+  abortSignal?(signal: AbortSignal): PromiseLike<LifecycleRpcResult>;
+};
+export type DocumentGenerationLifecycleRpc = Readonly<{
+  rpc(name: string, args: Record<string, unknown>): LifecycleRpcQuery;
+}>;
+
+const lifecycleUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const lifecycleSha = /^sha256:[0-9a-f]{64}$/;
+
+function lifecycleDriverRecord(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${label} must be an object.`);
+  return value as Record<string, unknown>;
+}
+
+function lifecycleDriverKeys(value: Record<string, unknown>, expected: readonly string[], label: string) {
+  if (Object.keys(value).sort().join("|") !== [...expected].sort().join("|")) {
+    throw new Error(`${label} contains missing or unexpected fields.`);
+  }
+}
+
+function lifecycleDriverString(value: unknown, pattern: RegExp, label: string) {
+  if (typeof value !== "string" || !pattern.test(value)) throw new Error(`${label} is invalid.`);
+  return value;
+}
+
+function lifecycleDriverTimestamp(value: unknown, label: string) {
+  if (typeof value !== "string" || !Number.isFinite(Date.parse(value)) || !/(?:Z|[+-]\d{2}:\d{2})$/.test(value)) {
+    throw new Error(`${label} is invalid.`);
+  }
+  return value;
+}
+
+function lifecycleNodeDigest(value: unknown): LifecycleDigest {
+  return `sha256:${createHash("sha256").update(encodeShadowNodeJsonCanonicalPayload(value), "utf8").digest("hex")}`;
+}
+
+function freezeLifecycleDriver<T>(value: T): T {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const nested of Object.values(value as Record<string, unknown>)) freezeLifecycleDriver(nested);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+export function readShadowPromotionAuthorizationManifestV1(input: unknown): ShadowPromotionAuthorizationManifestV1 {
+  const manifest = lifecycleDriverRecord(input, "Promote authorization manifest");
+  lifecycleDriverKeys(manifest, ["authorization", "promoteAuthorizationDigest"], "Promote authorization manifest");
+  const authorization = lifecycleDriverRecord(manifest.authorization, "Promote authorization payload");
+  lifecycleDriverKeys(authorization, [
+    "version", "operation", "targetProjectRef", "candidateGenerationId", "planDigest", "stageReceiptDigest",
+    "evaluationReportDigest", "recoveryEvidenceDigest", "stageAuthorizationDigest", "expectedDocumentIds",
+    "expectedDocumentCount", "expectedTechnicalEvidenceReceiptDigests", "authorizedAt", "expiresAt", "retainedUntil",
+    "confirmationSha256",
+  ], "Promote authorization payload");
+  const supplied = lifecycleDriverString(
+    manifest.promoteAuthorizationDigest,
+    lifecycleSha,
+    "Promote authorization digest",
+  ) as LifecycleDigest;
+  if (lifecycleNodeDigest(authorization) !== supplied) throw new Error("Promote authorization digest mismatch.");
+  return freezeLifecycleDriver(manifest as ShadowPromotionAuthorizationManifestV1);
+}
+
+export function readDocumentGenerationRollbackManifestV1(
+  input: unknown,
+  trustedNowValue: unknown,
+): DocumentGenerationRollbackManifestV1 {
+  const manifest = lifecycleDriverRecord(input, "Rollback manifest");
+  lifecycleDriverKeys(manifest, ["authorization", "rollbackManifestDigest"], "Rollback manifest");
+  const authorization = lifecycleDriverRecord(manifest.authorization, "Rollback authorization payload");
+  lifecycleDriverKeys(
+    authorization,
+    [
+      "version", "operation", "promotionOperationId", "promotionReceiptDigest", "candidateGenerationId", "transitions",
+      "reasonCode", "authorizedAt", "expiresAt", "retainedUntil", "confirmationSha256",
+    ],
+    "Rollback authorization payload",
+  );
+  if (authorization.version !== 1 || authorization.operation !== "rollback") throw new Error("Rollback manifest kind is invalid.");
+  lifecycleDriverString(authorization.promotionOperationId, lifecycleUuid, "Promotion operation ID");
+  lifecycleDriverString(authorization.promotionReceiptDigest, lifecycleSha, "Promotion receipt digest");
+  const candidateGenerationId = lifecycleDriverString(
+    authorization.candidateGenerationId,
+    lifecycleUuid,
+    "Rollback candidate generation",
+  );
+  if (!Array.isArray(authorization.transitions) || authorization.transitions.length === 0) {
+    throw new Error("Rollback manifest transitions are empty.");
+  }
+  const ids: string[] = [];
+  for (const value of authorization.transitions) {
+    const transition = lifecycleDriverRecord(value, "Rollback manifest transition");
+    lifecycleDriverKeys(transition, ["documentId", "fromGenerationId", "toGenerationId"], "Rollback manifest transition");
+    ids.push(lifecycleDriverString(transition.documentId, lifecycleUuid, "Rollback document ID"));
+    if (lifecycleDriverString(transition.fromGenerationId, lifecycleUuid, "Rollback source generation") !== candidateGenerationId) {
+      throw new Error("Rollback manifest source generation mismatch.");
+    }
+    if (transition.toGenerationId !== null) {
+      lifecycleDriverString(transition.toGenerationId, lifecycleUuid, "Rollback target generation");
+    }
+  }
+  if ([...ids].sort().join("|") !== ids.join("|") || new Set(ids).size !== ids.length) {
+    throw new Error("Rollback manifest transitions must be sorted and unique.");
+  }
+  lifecycleDriverString(authorization.reasonCode, /^[a-z0-9][a-z0-9_-]{0,119}$/, "Rollback reason code");
+  const trustedNow = lifecycleDriverTimestamp(trustedNowValue, "Rollback trusted clock");
+  const authorizedAt = lifecycleDriverTimestamp(authorization.authorizedAt, "Rollback authorization time");
+  const expiresAt = lifecycleDriverTimestamp(authorization.expiresAt, "Rollback authorization expiry");
+  const retainedUntil = lifecycleDriverTimestamp(authorization.retainedUntil, "Rollback retention deadline");
+  if (Date.parse(authorizedAt) > Date.parse(trustedNow) || Date.parse(trustedNow) >= Date.parse(expiresAt)) {
+    throw new Error("Rollback authorization is not current.");
+  }
+  if (Date.parse(retainedUntil) <= Date.parse(trustedNow)) {
+    throw new Error("Rollback retention deadline must be after the operation clock.");
+  }
+  lifecycleDriverString(authorization.confirmationSha256, lifecycleSha, "Rollback confirmation digest");
+  const supplied = lifecycleDriverString(manifest.rollbackManifestDigest, lifecycleSha, "Rollback manifest digest");
+  if (lifecycleNodeDigest(authorization) !== supplied) throw new Error("Rollback manifest digest mismatch.");
+  return freezeLifecycleDriver(manifest as DocumentGenerationRollbackManifestV1);
+}
+
+async function lifecycleRpc(
+  client: DocumentGenerationLifecycleRpc,
+  name: string,
+  args: Record<string, unknown>,
+): Promise<unknown> {
+  const query = client.rpc(name, args);
+  const result = query.abortSignal
+    ? await query.abortSignal(AbortSignal.timeout(20_000))
+    : await query;
+  if (result.error) throw new Error(result.error.message);
+  return result.data;
+}
+
+function assertPromotionReceiptMatchesReadiness(
+  receipt: DocumentGenerationPromotionReceiptV1,
+  readiness: PromotableShadowGenerationV1,
+) {
+  if (Date.parse(receipt.promotedAt) < Date.parse(readiness.trustedNow)) {
+    throw new Error("Promotion receipt time precedes the trusted operation clock.");
+  }
+  if (
+    receipt.projectRef !== readiness.projectRef ||
+    receipt.candidateGenerationId !== readiness.candidateGenerationId ||
+    receipt.planDigest !== readiness.planDigest ||
+    receipt.stageReceiptDigest !== readiness.stageReceiptDigest ||
+    receipt.evaluationReportDigest !== readiness.evaluationReportDigest ||
+    receipt.recoveryEvidenceDigest !== readiness.recoveryEvidenceDigest ||
+    receipt.stageAuthorizationDigest !== readiness.stageAuthorizationDigest ||
+    receipt.promoteAuthorizationDigest !== readiness.promoteAuthorizationDigest ||
+    encodeShadowNodeJsonCanonicalPayload(receipt.technicalEvidenceReceiptDigests) !==
+      encodeShadowNodeJsonCanonicalPayload(readiness.technicalEvidence.map((value) => value.receiptDigest)) ||
+    receipt.transitions.length !== readiness.documents.length
+  ) {
+    throw new Error("Promotion receipt is not bound to the exact validated readiness evidence.");
+  }
+  for (const [index, transition] of receipt.transitions.entries()) {
+    const document = readiness.documents[index]!;
+    if (
+      transition.documentId !== document.documentId ||
+      transition.fromGenerationId !== document.baselineGenerationId ||
+      transition.toGenerationId !== readiness.candidateGenerationId ||
+      transition.retainedUntil !== readiness.authorization.retainedUntil
+    ) {
+      throw new Error("Promotion receipt changed an authorized pointer or retention deadline.");
+    }
+  }
+}
+
+/** Calls only the injected U05 promotion RPC after exact U04 scalar and byte binding. */
+export async function promoteShadowDocumentGenerationV1(
+  input: Readonly<{
+    readiness: unknown;
+    validatedStage: unknown;
+    validatedEvaluation: unknown;
+    authorizationManifest: unknown;
+  }>,
+  connection: Readonly<{ projectRef: string; client: DocumentGenerationLifecycleRpc }>,
+) {
+  const readiness = assertPromotableShadowGeneration(input.readiness);
+  if (connection.projectRef !== readiness.projectRef) throw new Error("Promotion client targets a different project.");
+  if (
+    !input.validatedStage || typeof input.validatedStage !== "object" ||
+    !validatedShadowStagesV1.has(input.validatedStage) ||
+    !input.validatedEvaluation || typeof input.validatedEvaluation !== "object" ||
+    !validatedShadowEvaluationsV1.has(input.validatedEvaluation)
+  ) {
+    throw new Error("Promotion requires the full validated U04 stage and evaluation results.");
+  }
+  const stage = input.validatedStage as ReturnType<typeof readShadowReindexStageV1>;
+  const evaluation = input.validatedEvaluation as ReturnType<typeof evaluateShadowReindexV1>;
+  const plan = validateShadowEnvelopeBytes(evaluation.evidence.plan.envelope, "plan", "node-json-v1").envelope;
+  const stageReceipt = validateShadowEnvelopeBytes(stage.waveReceipt, "wave_receipt", "pg-jsonb-text-v1").envelope;
+  const evaluationWaveReceipt = validateShadowEnvelopeBytes(
+    evaluation.evidence.waveReceipt.envelope,
+    "wave_receipt",
+    "pg-jsonb-text-v1",
+  ).envelope;
+  const evaluationReport = validateShadowEnvelopeBytes(evaluation.report, "evaluation_report", "node-json-v1").envelope;
+  const authorizationManifest = readShadowPromotionAuthorizationManifestV1(input.authorizationManifest);
+  const planCore = evaluation.evidence.plan.payload.plan;
+  const wavePayload = evaluation.evidence.waveReceipt.payload;
+  if (
+    plan.digest !== readiness.planDigest ||
+    stageReceipt.digest !== readiness.stageReceiptDigest ||
+    evaluationWaveReceipt.digest !== stageReceipt.digest ||
+    evaluationReport.digest !== readiness.evaluationReportDigest ||
+    evaluation.decision.decision !== "GO" ||
+    planCore.targetProjectRef !== readiness.projectRef ||
+    planCore.candidateGenerationId !== readiness.candidateGenerationId ||
+    wavePayload.candidateGenerationId !== readiness.candidateGenerationId ||
+    wavePayload.planDigest !== readiness.planDigest ||
+    wavePayload.recoveryEvidenceDigest !== readiness.recoveryEvidenceDigest ||
+    wavePayload.operationManifestDigest !== readiness.stageAuthorizationDigest ||
+    planCore.documents.length !== readiness.documents.length ||
+    wavePayload.members.length !== readiness.documents.length ||
+    authorizationManifest.promoteAuthorizationDigest !== readiness.promoteAuthorizationDigest ||
+    encodeShadowNodeJsonCanonicalPayload(authorizationManifest.authorization) !==
+      encodeShadowNodeJsonCanonicalPayload(readiness.authorization)
+  ) {
+    throw new Error("Promotion driver inputs do not match the validated lifecycle evidence.");
+  }
+  for (const [index, document] of readiness.documents.entries()) {
+    const planned = planCore.documents[index]!;
+    const staged = wavePayload.members[index]!;
+    const memberReceiptPayload = JSON.parse(staged.memberReceiptEnvelope.canonicalPayload) as {
+      binding?: { source?: { authorityDigest?: unknown } };
+    };
+    if (
+      planned.documentId !== document.documentId ||
+      planned.baselineGenerationId !== document.baselineGenerationId ||
+      planned.expectedStateDigest !== document.expectedStateDigest ||
+      staged.documentId !== document.documentId ||
+      staged.memberReceiptEnvelope.digest !== document.stageMemberReceiptDigest ||
+      memberReceiptPayload.binding?.source?.authorityDigest !== document.stageAuthorityDigest
+    ) {
+      throw new Error("Promotion driver document population differs from the validated U04 wave.");
+    }
+  }
+  const data = await lifecycleRpc(connection.client, "promote_shadow_document_generation", {
+    p_plan: plan,
+    p_stage_receipt: stageReceipt,
+    p_evaluation_report: evaluationReport,
+    p_authorization_manifest: authorizationManifest,
+  });
+  const receipt = assertDocumentGenerationPromotionReceipt(data);
+  assertPromotionReceiptMatchesReadiness(receipt, readiness);
+  return receipt;
+}
+
+/** Rollback consumes the immutable promotion receipt and does not recheck recovery freshness. */
+export async function rollbackDocumentIndexGenerationV1(
+  input: Readonly<{ promotionReceipt: unknown; rollbackManifest: unknown; trustedNow: string }>,
+  client: DocumentGenerationLifecycleRpc,
+) {
+  const promotionReceipt = assertDocumentGenerationPromotionReceipt(input.promotionReceipt);
+  const rollbackManifest = readDocumentGenerationRollbackManifestV1(input.rollbackManifest, input.trustedNow);
+  if (
+    rollbackManifest.authorization.promotionOperationId !== promotionReceipt.operationId ||
+    rollbackManifest.authorization.promotionReceiptDigest !== promotionReceipt.receiptDigest ||
+    rollbackManifest.authorization.candidateGenerationId !== promotionReceipt.candidateGenerationId ||
+    rollbackManifest.authorization.transitions.length !== promotionReceipt.transitions.length
+  ) {
+    throw new Error("Rollback manifest is not bound to the exact promotion receipt.");
+  }
+  for (const [index, transition] of rollbackManifest.authorization.transitions.entries()) {
+    const promoted = promotionReceipt.transitions[index]!;
+    if (
+      transition.documentId !== promoted.documentId ||
+      transition.fromGenerationId !== promoted.toGenerationId ||
+      transition.toGenerationId !== promoted.fromGenerationId
+    ) {
+      throw new Error("Rollback manifest does not reverse the exact promotion transitions.");
+    }
+  }
+  const data = await lifecycleRpc(client, "rollback_document_index_generation", {
+    p_promotion_receipt: promotionReceipt,
+    p_rollback_manifest: rollbackManifest,
+  });
+  const rollbackReceipt = assertDocumentGenerationLifecycleRollbackReceipt(data);
+  if (Date.parse(rollbackReceipt.rolledBackAt) < Date.parse(input.trustedNow)) {
+    throw new Error("Rollback receipt time precedes the trusted operation clock.");
+  }
+  if (
+    rollbackReceipt.rollbackManifestDigest !== rollbackManifest.rollbackManifestDigest ||
+    rollbackReceipt.transitions.some((transition) => transition.retainedUntil !== rollbackManifest.authorization.retainedUntil)
+  ) {
+    throw new Error("Rollback receipt changed the authorized manifest or retention deadline.");
+  }
+  assertDocumentGenerationLifecycleRollbackPair(promotionReceipt, rollbackReceipt);
+  return rollbackReceipt as DocumentGenerationLifecycleRollbackReceiptV1;
 }
