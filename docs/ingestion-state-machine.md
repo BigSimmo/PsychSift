@@ -20,6 +20,18 @@ The reviewed P05 prerequisite closure restores the final approval guard and acti
 
 These are source contracts with static/mocked evidence. SQL replay, roles and concurrent schedules, real extraction, physical Storage cancellation, providers and deployment remain separately authorised and unrun here.
 
+## Governed shadow-generation overlay
+
+The ordinary worker lifecycle above and the governed shadow lifecycle are related but distinct. The canonical U04/U05 sequence and vocabulary are maintained in the [reindex runbook](reindex-runbook.md#governed-generation-lifecycle): audit → local plan → authorized stage → exact-generation evaluate → authorized promote → observation → receipt-bound rollback if required → delayed manifest cleanup.
+
+An admitted job is not processing; processing is not extracted; extracted is not indexed; indexed is not technically eligible; technically eligible is not active; kernel evidence available is not available to Answer. A bounded recent-job query cannot establish global queue emptiness. U11 owns final UI-specific labels and wording.
+
+Staging writes a complete candidate generation while the serving pointer remains unchanged. The current ordinary worker may reach token-fenced `indexed`, but that does not establish technical eligibility, activation or trusted-task completion. The no-completed gap across artifact writes and receipt-bound activation or trusted-task creation is a **required future U10 trusted-admission finalizer contract**, not a guarantee of today's worker. Under that future contract, finalizer failure must commit neither trusted completion nor activation/task creation, and death after atomic activation leaves the immutable receipt authoritative. See [crash and recovery truth](reindex-runbook.md#crash-and-recovery-truth) for the current and future boundaries.
+
+Promotion cannot first-publish a staging document. It requires an already-indexed document and an exact admitted baseline. Intentional null G0 is supported by immutable U04 legacy baseline/member proof; the server authors and validates the transition and rollback snapshot within the same authorized initial promotion, so no earlier promotion receipt is required. Non-null governed baselines require exact generation rows. Promotion is the forward activation transition; receipt-bound rollback is the reverse atomic pointer transition through the same private core. U10's immutable generation-bound technical verdict is mandatory and its lookup currently refuses, so evaluation `GO` is not enough to activate. Retention deadlines are policy-bound manifest fields. Promotion retains the old generation and rollback retains the failed candidate.
+
+Delayed U05 cleanup deletes only the exact authorized SQL artifact rows. `privateObjectReferenceInventory` is evidence inventory with `physicalDeletionAuthorized: false`; U13 must separately revalidate rights and live, shared and new references before any Storage disposal.
+
 ## Historical July 2026 race inventory
 
 Phase-1 deliverable of the ingestion-concurrency/scale review (2026-07-07, branch

@@ -17,6 +17,14 @@ The desired experience is:
 
 ## Current Implementation Status Through Phase 7b
 
+### Governed ingestion availability boundary
+
+Search and Answer must distinguish indexed data from data they can actually use. The canonical definitions of admitted, processing, extracted, indexed, technically eligible, active, kernel evidence available and available to Answer are in the [governed reindex lifecycle](reindex-runbook.md#state-vocabulary). These states cannot be collapsed, and a bounded recent-job view cannot prove queue emptiness.
+
+The settled sequence is audit → local plan → authorized stage → exact-generation evaluate → authorized promote → observation → receipt-bound rollback if required → delayed manifest cleanup. Promotion is not first publication, evaluation `GO` is not operation authority, and U10's immutable generation-bound technical gate is mandatory and currently refuses. U11 owns final UI-specific wording for these states; this context does not pre-implement that presentation.
+
+For a generation to be available to Answer, the Answer path must be able to retrieve only its active, permitted artifacts under separate runtime and source-governance gates. This U06 documentation does not establish that the current Answer path implements or consumed a newly governed generation. Kernel evidence availability never proves Answer consumption; the kernel remains default-off and later U12/Answer integration evidence is separate. Intentional null G0 requires immutable legacy proof, and retained baselines and failed candidates remain governed by policy-bound manifest deadlines. The operational details, crash windows and exact cleanup boundary are in the [reindex runbook](reindex-runbook.md#governed-generation-lifecycle).
+
 Phase 7 performance hardening is implemented:
 
 - `OPENAI_ANSWER_TIMEOUT_MS` is the answer-generation timeout budget. Phase 7 introduced it at 12000ms; the current default is **30000ms** — a deliberate product decision to favour natural, model-written answers over fast degradation to stitched extractive prose (see the rationale comment at `src/lib/env.ts` next to `OPENAI_ANSWER_TIMEOUT_MS`).

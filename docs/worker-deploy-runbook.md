@@ -562,7 +562,18 @@ The second Gate B caveat is already load-bearing above: docling's eager-mode lat
 
 ---
 
-## Rollback
+## Rollback boundaries
+
+Worker-image rollback and document-generation rollback solve different failures:
+
+- **Worker-image rollback** redeploys the previous container image. It changes which processor code runs. It does not change a document serving pointer, reverse a completed promotion, delete candidate artifacts or prove a queue is empty.
+- **Document-generation rollback** consumes the exact immutable promotion receipt and a current rollback authorization. It restores the retained prior pointer and retains the failed candidate. It may remain valid after the promotion recovery evidence has expired because the transition proof is receipt-bound.
+
+The complete governed lifecycle and crash windows are in the [reindex runbook](reindex-runbook.md#governed-generation-lifecycle). The current ordinary worker may complete a token-fenced `indexed` transition, but it cannot thereby establish technical eligibility, activation or trusted-task completion. The no-completed gap between candidate artifact writes and receipt-bound activation or trusted-task creation is a **required future U10 trusted-admission finalizer contract**, not a current worker guarantee. U10 technical eligibility is mandatory and currently refuses promotion; neither a worker deployment nor evaluation `GO` supplies that authority. U11 separately owns final queue and UI behavior.
+
+The cleanup CLI covers exact SQL artifact rows only. Its `privateObjectReferenceInventory` has `physicalDeletionAuthorized: false`; U13 owns any later Storage-disposal manifest and current-reference revalidation.
+
+## Worker image rollback
 
 This section is the **image** rollback. To turn off docling shadow extraction without
 changing the image, use the two-step flag rollback in §3.7 instead.

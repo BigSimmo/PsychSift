@@ -6,6 +6,12 @@ throughout).
 
 ## What a recovery is made of
 
+Generation lifecycle recovery is governed separately from platform restore. Use the canonical [governed reindex lifecycle and crash windows](reindex-runbook.md#governed-generation-lifecycle) for audit, local plan, authorized staging, exact evaluation, authorized promotion, observation, receipt-bound rollback and delayed manifest cleanup.
+
+An immutable promotion receipt, retained baseline and policy-bound deadline support exact document-generation rollback; a worker-image rollback does not restore a document pointer. Receipt-bound rollback may remain available after the promotion's recovery-evidence freshness expires, but it still requires its own current authorization. Promotion cannot first-publish a document, and U10's authoritative technical gate currently refuses activation.
+
+Database PITR and Storage restore are separate evidence streams. A database restore can recover generation pointers and receipts without recovering object bytes; a Storage restore can recover bytes without proving current row ownership or serving state. U05 cleanup therefore retains `privateObjectReferenceInventory` with `physicalDeletionAuthorized: false` and deletes exact SQL rows only. U13 owns the separate disposal proof, which must revalidate current rights and live, shared and newly introduced references at deletion time. Cleanup interruption replays only the same immutable manifest and never authorizes a broader sweep.
+
 A full recovery of this system has four independent layers. **Only the first
 is covered by the repo**; the rest are Supabase-platform or operator state:
 
