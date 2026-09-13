@@ -826,6 +826,8 @@ Expected: the retired function/config/invoker remain absent; the sole processor,
 
 ## Task 7: Unify administrator and backend admission under one durable event
 
+**Local completion — 13 September 2026:** product `9918841ee520c4d82287ce229b07a5e14b208171`; 265 composed focused passes, clean focused compilation and independent clinical/schema review. [U07 evidence](../rag-upgrade/continuations/rag-source-ingestion-continuation-v1/U07-evidence.md) preserves failed attempts and the separate SQL-runtime, hosted, provider and production acceptance boundaries. The steps below remain the retained implementation contract.
+
 **Audit acceptance requirements (under current authority and unit gates):** F10/F01: admission records explicit source role/authority, rights/currentness, owner/staging identity, policy/purpose and supported features; never derive authority from document prose. Preserve the distinct backend capability and human administrator/MFA/recent-reauth requirement. Establish where assurance is enforced before duplicating controls. Prove idempotent event creation, invalid-template/insufficient-assurance/user denial and trusted-service cases offline. Hosted enforcement remains separate.
 
 R1 distinguishes primary preference from restriction and requires passage readiness. RAG owns request resolution; admission owns source/access/policy authority. H1/H2/H7 do not enable international sources or treat link-only catalogue entries as factual evidence.
