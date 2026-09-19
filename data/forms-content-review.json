@@ -7,30 +7,30 @@
   "forms": [
     {
       "code": "1A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["26", "36", "40", "41", "42", "43", "44"],
       "contextualSections": ["25", "31", "37", "39", "45", "46", "547"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 26, s 36, s 40, s 41, s 42, s 43, s 44 with s 25, s 31, s 37, s 39, s 45, s 46, s 547 as context, and from the approved Form 1A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "1A attachment",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["41", "42"],
       "contextualSections": ["26", "36"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 41, s 42 with s 26, s 36 as context, and from the approved Form 1A attachment as listed on the Office of the Chief Psychiatrist register. Section basis: The attachment carries referral information given in confidence by someone other than the person. s 41(c) and (d) require the referral to set out the information the suspicion rests on and to distinguish its source; s 42(2) is the exception that keeps information supplied on condition of non-disclosure from the person.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "1B",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["45", "46"],
       "contextualSections": ["26", "41", "44"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 45, s 46 with s 26, s 41, s 44 as context, and from the approved Form 1B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "2",
@@ -43,12 +43,12 @@
     },
     {
       "code": "3A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["28", "62"],
       "contextualSections": ["26", "61"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 28, s 62 with s 26, s 61 as context, and from the approved Form 3A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "3B",
@@ -70,66 +70,66 @@
     },
     {
       "code": "3D",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["61"],
       "contextualSections": ["62", "63", "69"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 61 with s 62, s 63, s 69 as context, and from the approved Form 3D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "3E",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["55", "56", "61", "72"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 61, s 72, and from the approved Form 3E as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "4A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["29", "63", "67", "92", "112", "129", "133", "148", "150", "154"],
       "contextualSections": ["152", "153"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 29, s 63, s 67, s 92, s 112, s 129, s 133, s 148, s 150, s 154 with s 152, s 153 as context, and from the approved Form 4A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "4B",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["152"],
       "contextualSections": ["148", "150"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 152 with s 148, s 150 as context, and from the approved Form 4B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "4C",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["66", "91"],
       "contextualSections": ["67", "92"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 66, s 91 with s 67, s 92 as context, and from the approved Form 4C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "4D",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["555"],
       "contextualSections": ["551"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 555 with s 551 as context, and from the approved Form 4D as listed on the Office of the Chief Psychiatrist register. Section basis: s 555 is the interstate transfer order: the person in charge of a hospital, with the Chief Psychiatrist's written approval, may order a State inpatient's transfer to an interstate mental health service.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "4E",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["557"],
       "contextualSections": ["551"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 557 with s 551 as context, and from the approved Form 4E as listed on the Office of the Chief Psychiatrist register. Section basis: s 557 creates the transfer approval order, by which the person in charge of a hospital, with the Chief Psychiatrist's written consent, approves an interstate inpatient's transfer to that hospital.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "5A",
@@ -142,75 +142,75 @@
     },
     {
       "code": "5B",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["121"],
       "contextualSections": ["118", "120"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 121 with s 118, s 120 as context, and from the approved Form 5B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "5C",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["122"],
       "contextualSections": ["115", "135", "137"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 122 with s 115, s 135, s 137 as context, and from the approved Form 5C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "5D",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["118", "119"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 118, s 119, and from the approved Form 5D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "5E",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["127"],
       "contextualSections": ["126"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 127 with s 126 as context, and from the approved Form 5E as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "5F",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["128"],
       "contextualSections": ["127", "129"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 128 with s 127, s 129 as context, and from the approved Form 5F as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "6A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["55", "56", "72", "87"],
       "contextualSections": ["25", "89", "90", "120", "123", "131"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 72, s 87 with s 25, s 89, s 90, s 120, s 123, s 131 as context, and from the approved Form 6A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "6B",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["61", "87"],
       "contextualSections": ["65", "66", "68", "89", "90", "131"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 61, s 87 with s 65, s 66, s 68, s 89, s 90, s 131 as context, and from the approved Form 6B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "6B attachment",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["65"],
       "contextualSections": ["61", "87", "89"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 65 with s 61, s 87, s 89 as context, and from the approved Form 6B attachment as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "6C",
@@ -223,93 +223,93 @@
     },
     {
       "code": "6D",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["68", "124"],
       "contextualSections": ["61", "66", "120", "123"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 68, s 124 with s 61, s 66, s 120, s 123 as context, and from the approved Form 6D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "7A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["105"],
       "contextualSections": ["90"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 105 with s 90 as context, and from the approved Form 7A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "7B",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["106"],
       "contextualSections": ["105", "110"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 106 with s 105, s 110 as context, and from the approved Form 7B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "7C",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["110"],
       "contextualSections": ["112"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 110 with s 112 as context, and from the approved Form 7C as listed on the Office of the Chief Psychiatrist register. Section basis: s 110 is the cancelling-leave power: where a psychiatrist reasonably believes it is inappropriate for an involuntary inpatient to remain away on leave, they may order the leave cancelled.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "7D",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["98", "101"],
       "contextualSections": ["97", "99", "100"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 98, s 101 with s 97, s 99, s 100 as context, and from the approved Form 7D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "8A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["165"],
       "contextualSections": ["159", "162", "166"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 165 with s 159, s 162, s 166 as context, and from the approved Form 8A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "8B",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["167"],
       "contextualSections": ["162", "166"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 167 with s 162, s 166 as context, and from the approved Form 8B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "9A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["204"],
       "contextualSections": ["202", "203"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 204 with s 202, s 203 as context, and from the approved Form 9A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "9B",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["242"],
       "contextualSections": ["240", "241"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 242 with s 240, s 241 as context, and from the approved Form 9B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "10A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["230"],
       "contextualSections": ["232"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 230 with s 232 as context, and from the approved Form 10A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "10B",
@@ -322,21 +322,21 @@
     },
     {
       "code": "10C",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["230", "231", "233"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 230, s 231, s 233, and from the approved Form 10C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "10D",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["238"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 238, and from the approved Form 10D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "10E",
@@ -349,48 +349,48 @@
     },
     {
       "code": "10F",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["234"],
       "contextualSections": ["238"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 234 with s 238 as context, and from the approved Form 10F as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "10G",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["235", "237"],
       "contextualSections": ["239"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 235, s 237 with s 239 as context, and from the approved Form 10G as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "10H",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["238"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 238, and from the approved Form 10H as listed on the Office of the Chief Psychiatrist register. Section basis: s 238(5) requires a psychiatrist to review the use of bodily restraint once a person has been restrained for more than 6 hours, and to record the date, time and results.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "10I",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["239"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 239, and from the approved Form 10I as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "11A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["214"],
       "contextualSections": ["216"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 214 with s 216 as context, and from the approved Form 11A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "11B",
@@ -403,21 +403,21 @@
     },
     {
       "code": "11C",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["214", "215", "217"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 214, s 215, s 217, and from the approved Form 11C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "11D",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["222"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 222, and from the approved Form 11D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "11E",
@@ -430,39 +430,39 @@
     },
     {
       "code": "11F",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["219", "221"],
       "contextualSections": ["223"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 219, s 221 with s 223 as context, and from the approved Form 11F as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "11G",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["223"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 223, and from the approved Form 11G as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "12A",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["275"],
       "contextualSections": ["263", "266", "273", "274", "276", "277", "278"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 275 with s 263, s 266, s 273, s 274, s 276, s 277, s 278 as context, and from the approved Form 12A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "12B",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["248", "249"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 248, s 249, and from the approved Form 12B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     },
     {
       "code": "12C",
@@ -484,12 +484,12 @@
     },
     {
       "code": "13",
-      "status": "drafted",
+      "status": "reviewed",
       "sections": ["201"],
       "contextualSections": ["199"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 201 with s 199 as context, and from the approved Form 13 as listed on the Office of the Chief Psychiatrist register. Section basis: s 201 is the ECT statistics duty: the person in charge of a mental health service where ECT is performed must report monthly to the Chief Psychiatrist.",
-      "reviewedBy": null,
-      "reviewedAt": null
+      "reviewedBy": "Dr Josh, Consultant Psychiatrist",
+      "reviewedAt": "2026-09-19"
     }
   ]
 }
