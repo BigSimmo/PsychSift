@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "6c2219e7-9415-4dba-94b5-61128a503d57",
+  "createdOn": "2026-09-19",
+  "action": "update",
+  "payload": {
+    "id": "#7VQ5RC",
+    "detail": "CLINICAL GOVERNANCE DECISION 2026-09-19 (Dr Josh, Consultant Psychiatrist). Confirmed document error on p16 of Clozapine Therapy - Initiation, Continuation and Ceasing Policy and Procedure (RKPG).pdf (stating WBC < 1.5 instead of ANC < 1.5). Clinical notification letter prepared for Rockingham Peel Group Clinical Governance. Document suppressed in knowledge base in favour of consistent WA Health, NMHS, and AKG clozapine policies.",
+    "baseRowFingerprint": "41484ec4570de1d71d11313c20476f93a92a6c257e74d41d5a4579371f5fde92"
+  }
+}

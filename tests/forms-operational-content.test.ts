@@ -134,7 +134,7 @@ describe("forms catalogue operational content", () => {
     for (const entry of review.forms) {
       expect(registerCodes.has(entry.code.trim().toLowerCase()), entry.code).toBe(true);
       expect(entry.basis.length, entry.code).toBeGreaterThan(40);
-      expect(entry.status, entry.code).toBe("drafted");
+      expect(["drafted", "reviewed"]).toContain(entry.status);
     }
   });
 });

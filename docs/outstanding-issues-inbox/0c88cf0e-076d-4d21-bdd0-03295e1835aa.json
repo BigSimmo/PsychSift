@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "0c88cf0e-076d-4d21-bdd0-03295e1835aa",
+  "createdOn": "2026-09-19",
+  "action": "update",
+  "payload": {
+    "id": "#A6WAES",
+    "detail": "CLINICAL SIGN-OFF PROGRESS 2026-09-19 (Dr Josh, Consultant Psychiatrist). First 11 high-consequence statutory forms reviewed and signed off: 3C (detention ceiling), 10B & 10E (restraint), 11B & 11E (seclusion), 6C (inpatient order continuation), 12C & 12C attachment (communication restriction), 5A (CTO), 2 (voluntary assessment hold), 3B (detention continuation). Remaining 43 forms remain drafted pending review of remaining administrative/transport forms. Package hold H01 partially cleared.",
+    "baseRowFingerprint": "032ba41d526cf2d2dc2c93ef5a7cc4b7999fa43766290028591dcfd6113f7162"
+  }
+}
