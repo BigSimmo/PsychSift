@@ -4,13 +4,13 @@
     "committed_at": "2026-09-27"
   },
   "counts": {
-    "open": 157,
+    "open": 152,
     "p1": 20,
-    "p2": 69,
-    "p3": 68,
+    "p2": 73,
+    "p3": 59,
     "queued": 6,
     "pending": 0,
-    "resolved": 680
+    "resolved": 693
   },
   "queue": [
     {
@@ -338,7 +338,7 @@
       "priority": "P3",
       "type": "issue",
       "summary": "ui-tools differentials compare queue navigation is intermittently slow enough to time out inside the full Production UI shard 3",
-      "detail": "CAUSE FOUND AND PROVEN 2026-09-20; NO LONGER PARKED. This is not a flaky test — it catches a real phone defect that also hits clinicians. The Differentials mode-nav row (49px) paints IN page flow, then ModeNavHeaderPortal moves it into the fixed phone header at ~315ms; content loses that height and every element rises 49px. usePhoneOverlayChromeReserve only republishes the measured 121px at ~423ms, so for ~110ms the whole page sits 49px too high. A press that straddles that correction lands on one control and releases on another: recorded trace shows pointerdown on the compare-open link at y 492-540, pointerup at the identical y hitting \"Edit selection\" because the link had moved to 443-491, and the browser retargeting the click to their common ancestor. The link never activates — no error, no navigation. scrollY is 0 throughout, so this is layout, not scrolling, and Playwright hit-target checks cannot see it because press and release were each individually on a real element. EVIDENCE: 0/41 reproductions through the repo runner (10x alone, 10x under 4 busy loops, 20x under 12, plus a full shard) — shard load is not the right kind of slowness. Under Chrome DevTools renderer throttling: 0/10 at 4x, 10/10 at 10x, 9/10 at 20x, and 0/10 at 10x when the phone chrome is allowed to settle first. That last row is the control. TWO CORRECTIONS TO THIS ROW. (1) It is the PHONE click that fails, not the desktop one. tests/ui-tools.spec.ts:2928 is the test declaration; the test contains two compare-open clicks, and the URL CI recorded has no q=Pain, which matches the 390x844 phone block. Above the phone breakpoint the reserve publishes 0px and no addon row mounts, so desktop is not exposed. (2) The TO-UNBLOCK suggestion in this row does not work and is refuted: the destination \"Loading presentation\" role=status skeleton cannot be the settle signal, because it lives inside the destination route and only renders AFTER the URL commits. Proven by holding the destination response 20s — urlChangedAfterMs 20130, loadingSkeletonSeenAfterMs null. The \"racing an unhydrated link\" hypothesis is the right family but the wrong mechanism: the link is a plain next/link anchor from a Server Component, so a pre-hydration click would still navigate natively. The race is hydration-driven LAYOUT, not handlers. STILL OPEN AFTER PR #2929 — READ THIS BEFORE CLOSING THE ROW. PR #2929 (publishPhoneOverlayChromeReserveNow, called from both portals) closes this only for IN-SESSION navigation, and NOT for the cold page.goto the trace above was taken on, which is the path CI fails on. The publisher refuses to act until the reserve hook has settled a value at least once — it must, because before that responsive layout can still report the wide 200px stack (#147) and publishing that would move content twice. React runs layout effects children-first and the hook belongs to the shell, so on a cold load a portal effect ALWAYS runs before the hook has settled and the immediate publish is suppressed, every time. Established by adversarial review of #2929 and independently reproduced; pinned as failing-when-fixed cases in tests/phone-overlay-reserve-portal-wiring.dom.test.tsx, which is also the only coverage of the portals wiring at all — every case in tests/phone-overlay-chrome-reserve.dom.test.ts calls the publisher directly and would pass with both useLayoutEffect blocks deleted. A second gap: unmounting a portal does not shrink the reserve, so content sits 49px too LOW instead; a cleanup cannot simply publish, because React runs layout-effect destroys before it detaches portal children. THE WAY OUT, not yet built or verified: have the portal publish its OWN height as a delta to the reserve currently in force instead of re-measuring the whole stack. That removes the #147 exposure, and with it the settle precondition, and it gives the shrink direction naturally via the effect cleanup. It is a real change to shared phone chrome on every route and needs its own browser evidence — verify:phone-chrome plus the Playwright settle assertion docs/search-chrome-behaviour.md mandates, which was not added and is still required. OWNER DECISION PENDING on whether to do that work. MERGE VERIFICATION, carried over from the refuted request a13b357d so it is not lost: #2929 merged 2026-09-20 as commit 80cf3df6c69a, and publishPhoneOverlayChromeReserveNow is present on origin/main in globals.css, phone-header-collapse-portal.tsx and use-phone-overlay-chrome-reserve.ts. That request read presence as proof the defect was fixed and told future sessions it MUST NOT BE REDONE; presence is not execution, and the scope limit above is why. It was cancelled with that reasoning recorded.",
+      "detail": "UPDATE 2026-09-27: FIX BUILT on branch claude/repo-review-design-fixes-ao0dqw (PR #3145), NOT YET MERGED — close this row only after it lands. The 'way out' below was built: claimPhoneOverlayAddonReserve (use-phone-overlay-chrome-reserve.ts) is called by both portals and writes --phone-overlay-chrome-h inline as calc(<value in force> + <row>px) before settle, re-measures after settle, and subtracts the row on release. A production-build trace found a second cause: under reduced motion every element gets a 0.01ms transition and transition-property defaults to all, so the pad painted the stale padding-top for one frame; globals.css now sets transition-property: none on mobile-composer-reserve-pad at phone width. The required Playwright settle assertion was added (#CHPC5C test in tests/ui-phone-scroll.spec.ts): 10/10 pass on a production build, fails on the pre-fix portals. verify:full green (20027 tests); the full verify:phone-chrome run was stopped by the owner at ~342/687 and is left to CI. PREVIOUS: CAUSE FOUND AND PROVEN 2026-09-20; NO LONGER PARKED. This is not a flaky test — it catches a real phone defect that also hits clinicians. The Differentials mode-nav row (49px) paints IN page flow, then ModeNavHeaderPortal moves it into the fixed phone header at ~315ms; content loses that height and every element rises 49px. usePhoneOverlayChromeReserve only republishes the measured 121px at ~423ms, so for ~110ms the whole page sits 49px too high. A press that straddles that correction lands on one control and releases on another: recorded trace shows pointerdown on the compare-open link at y 492-540, pointerup at the identical y hitting \"Edit selection\" because the link had moved to 443-491, and the browser retargeting the click to their common ancestor. The link never activates — no error, no navigation. scrollY is 0 throughout, so this is layout, not scrolling, and Playwright hit-target checks cannot see it because press and release were each individually on a real element. EVIDENCE: 0/41 reproductions through the repo runner (10x alone, 10x under 4 busy loops, 20x under 12, plus a full shard) — shard load is not the right kind of slowness. Under Chrome DevTools renderer throttling: 0/10 at 4x, 10/10 at 10x, 9/10 at 20x, and 0/10 at 10x when the phone chrome is allowed to settle first. That last row is the control. TWO CORRECTIONS TO THIS ROW. (1) It is the PHONE click that fails, not the desktop one. tests/ui-tools.spec.ts:2928 is the test declaration; the test contains two compare-open clicks, and the URL CI recorded has no q=Pain, which matches the 390x844 phone block. Above the phone breakpoint the reserve publishes 0px and no addon row mounts, so desktop is not exposed. (2) The TO-UNBLOCK suggestion in this row does not work and is refuted: the destination \"Loading presentation\" role=status skeleton cannot be the settle signal, because it lives inside the destination route and only renders AFTER the URL commits. Proven by holding the destination response 20s — urlChangedAfterMs 20130, loadingSkeletonSeenAfterMs null. The \"racing an unhydrated link\" hypothesis is the right family but the wrong mechanism: the link is a plain next/link anchor from a Server Component, so a pre-hydration click would still navigate natively. The race is hydration-driven LAYOUT, not handlers. STILL OPEN AFTER PR #2929 — READ THIS BEFORE CLOSING THE ROW. PR #2929 (publishPhoneOverlayChromeReserveNow, called from both portals) closes this only for IN-SESSION navigation, and NOT for the cold page.goto the trace above was taken on, which is the path CI fails on. The publisher refuses to act until the reserve hook has settled a value at least once — it must, because before that responsive layout can still report the wide 200px stack (#147) and publishing that would move content twice. React runs layout effects children-first and the hook belongs to the shell, so on a cold load a portal effect ALWAYS runs before the hook has settled and the immediate publish is suppressed, every time. Established by adversarial review of #2929 and independently reproduced; pinned as failing-when-fixed cases in tests/phone-overlay-reserve-portal-wiring.dom.test.tsx, which is also the only coverage of the portals wiring at all — every case in tests/phone-overlay-chrome-reserve.dom.test.ts calls the publisher directly and would pass with both useLayoutEffect blocks deleted. A second gap: unmounting a portal does not shrink the reserve, so content sits 49px too LOW instead; a cleanup cannot simply publish, because React runs layout-effect destroys before it detaches portal children. THE WAY OUT, not yet built or verified: have the portal publish its OWN height as a delta to the reserve currently in force instead of re-measuring the whole stack. That removes the #147 exposure, and with it the settle precondition, and it gives the shrink direction naturally via the effect cleanup. It is a real change to shared phone chrome on every route and needs its own browser evidence — verify:phone-chrome plus the Playwright settle assertion docs/search-chrome-behaviour.md mandates, which was not added and is still required. OWNER DECISION PENDING on whether to do that work. MERGE VERIFICATION, carried over from the refuted request a13b357d so it is not lost: #2929 merged 2026-09-20 as commit 80cf3df6c69a, and publishPhoneOverlayChromeReserveNow is present on origin/main in globals.css, phone-header-collapse-portal.tsx and use-phone-overlay-chrome-reserve.ts. That request read presence as proof the defect was fixed and told future sessions it MUST NOT BE REDONE; presence is not execution, and the scope limit above is why. It was cancelled with that reasoning recorded.",
       "source": "Claude Code session 2026-09-20 (session_01VE1C4eJidBwMdfHV4nUJgL); reissued against the current row after fbc169da applied; scope limit reproduced in tests/phone-overlay-reserve-portal-wiring.dom.test.tsx (PR #2938)",
       "added": "2026-09-07"
     },
@@ -397,29 +397,11 @@
       "added": "2026-09-16"
     },
     {
-      "id": "#JHT39N",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Four dictionary sources record a publisher that is a description, not an agency",
-      "detail": "UPDATE 2026-09-26 (owner decisions relayed via the coordinator, 'yes to all five'; offline, no provider access; PR #3067): Mental Health Advocacy Service registered (catalogue identity only, code MHASWA). With the new last-updated date model, WA-MHAS and WA-MHERL are admitted as unverified ledger candidates on their own update stamps. WA-AHLO stays held (host not governed, version unknown); 4AT stays held (no agency, no date). PRIOR DETAIL: UPDATE 2026-09-26 (owner-approved page reads from the cloud session, no provider access): All four pages read. WA-AHLO is published by the Fiona Stanley Fremantle Hospitals Group (registered, code FSFHG) and states 'Last Updated: 20/02/2026'; WA-MHERL by the Mental Health Commission (registered, MHCWA), 'Page last updated 1 May 2025'; WA-MHAS by the Mental Health Advocacy Service (NOT in the authority register), 'Last updated: 7 November 2025'; 4AT's site names no agency ('© 2026 the4AT', credited to Prof Alasdair MacLullich, University of Edinburgh) and shows no date or version. Publisher fields corrected in dictionary-source-candidates.json and findings recorded in dictionary-source-dispositions.json. All four stay held: three give only a last-updated stamp (the register has no update event, same rule as the AIHW pages), MHAS needs an owner decision to register it (a retrieval-ranking surface), and 4AT needs a dated document. The registry comment contradiction (Government of Western Australia registered vs 'deliberately not registered') is unchanged because the registry was not edited. NEXT: owner decisions on the update-stamp event and on registering the Mental Health Advocacy Service. PRIOR DETAIL: WA-MHAS records 'Government of Western Australia', WA-AHLO records 'WA Health service providers', WA-MHERL records 'Mental Health Commission / WA Health' (two publishers in one field), and 4AT-OFFICIAL records '4AT developers'. None was registered in src/lib/source-authority-registry.ts on purpose: a catch-all entry for the Crown would resolve every WA government document to a single authority, which is worse than leaving the records held. Establish the actual publishing agency for each and correct the publisher field, then re-run npm run check:source-acquisitions. PARKED 2026-09-18 on the research, with two findings recorded that did not need it. The four canonical pages cannot be read from this environment: the network egress proxy answers 403 to CONNECT for wa.gov.au, fsfhg.health.wa.gov.au, mhc.wa.gov.au and the4at.com, verified directly by curl, so no publisher was established and all four stay held. WHAT WAS FOUND WITHOUT THE PAGES, now an open assurance decision (DICTIONARY-PUBLISHER-AGENCIES in docs/clinical-hazard-controls.json, visible in the developer hub): (1) source-authority-registry.ts:509 registers 'Government of Western Australia' as catalogue-identity-only, added 2026-09-16 by commit 255b9c1fe, while the comment at 558-564 still states that exact string was deliberately not registered - one of the two is wrong and the comment misleads the next reader; (2) correcting any publisher only clears the acquisition gate if the new name resolves in that register, which is a protected retrieval-ranking surface, so a metadata correction is also a retrieval change. Note tests/dictionary-sense-drafts.test.ts requires at least three of the four to keep the blocker, so at most one could ever be cleared alone. TO UNBLOCK: read the four page footers from an unrestricted network, or have the owner paste them.",
-      "source": "Claude session 2026-09-16",
-      "added": "2026-09-16"
-    },
-    {
       "id": "#WY625D",
       "priority": "P2",
       "type": "task",
       "summary": "Twenty-one dictionary sources need a publication date",
       "detail": "UPDATE 2026-09-26 (owner decisions relayed via the coordinator, 'yes to all five'; offline, no provider access; PR #3067): Owner approved recording a publisher's 'last updated' stamp as its own date (lastUpdatedDate, dateModel last_updated), never as a publication or review date. Five more sources admitted as unverified candidates on their own stamps: AIHW-NASS-2026, AIHW-SUICIDE-2026, WA-MHAS, WA-MHERL, WA-OCP-MHA. Counts now 26 admitted, 32 held. RCH-MSE-2024 stays held (rch.org.au not governed; jurisdiction not in register form). Moved documents: WA-MHC-FORM-LIST found at a new MHC address (undated), health-mental-rights found as the November 2012 statement; nsw-mse-handbook is no longer hosted and is recommended for retirement. PRIOR DETAIL: UPDATE 2026-09-26 (owner-approved page reads from the cloud session, no provider access): All 21 date-needing sources plus the two held for unreadable pages were read. Three now have a stated date and are admitted as unverified candidates: NSW-ACI-SCI ('Publication date 2021-08-30', 'Version: 1'), nsw-mental-assessment ('Published: December 2023') and APA-BIPOLAR (physician review 'April 2024', continuously updated). Held 40 -> 37. Four now have a date but stay held on GOVERNED_SOURCE_HOSTS, which the owner declined to widen: AADPA-ADHD (First Edition, released October 2022), ACSQHC-MED-2024 (Publication Year 2024), WA-HSP-ACRONYMS-2026 (published September 2023), WA-AHD-2026 (last reviewed 01-08-2022). WA-PSOLIS-HSS gives only an update stamp. Three URLs no longer serve the document (WA-MHC-FORM-LIST-2022, health-mental-rights, nsw-mse-handbook). WA-ABORIGINAL-TITLES-2026 states two conflicting 'as at' dates. AMHOCN, Columbia, DIVA, the three NACCHO pages, ASSIST Plus and COPE state no visible date (metadata timestamps were not used). Per-source findings are in dictionary-source-dispositions.json. NEXT: owner decisions on host policy and an update-date event; find current URLs for the three moved documents. PRIOR DETAIL: RECHECKED 2026-09-25: no dates added. The cloud session's network egress refuses every publisher host (wa.gov.au, mhc.wa.gov.au, aihw.gov.au, ruah.org.au, youthfocus.com.au, passages.org.au, healthdirect.gov.au and others all returned connect_rejected on 2026-09-25), and the sources skill forbids taking a publisher, date or contact detail from anywhere but the publisher's own page, so this cannot be done from a cloud session. TO UNBLOCK: run it from an unrestricted network, for example a Remote Control session on the owner's PC, or have the owner approve each page fetch. Never infer a date from a search summary. PRIOR DETAIL: REVIEW 2026-09-25 (offline audit of current main; no provider access): Dispositions now show 40 held and 18 admitted (row said 41 held). The 'publisher registered, date still required' blocker applies to 12 sources, not 17. The AIHW premise is stale: PR #2819 (8cdadc445) read the AIHW pages; AIHW-OAT-2026 is admitted, and AOD, NASS and SUICIDE are held because the publisher gives only an update stamp or undated page, not because of a 403. The count of 21 needing a date is correct. PRIOR DETAIL: After the 2026-09-16 register work, 41 of the 58 dictionary-handover sources remain held and the binding constraint is now a date rather than governance. None of the 41 carries a publication or review date in the handover. Seventeen have a publisher that is now registered and need only a date read from the publisher's own page. Four AIHW pages (alcohol and other drug treatment glossary, suicide and self-harm monitoring glossary, ambulance attendances, opioid agonist therapy in the prisons report) returned HTTP 403 to automated fetch; AIHW is registered and ledger-eligible, so a release date is the only thing missing for all four. A WA Health PDF and the national recovery framework also need a browser read. Per-source blockers and next actions are in src/data/dictionary-source-dispositions.json.",
-      "source": "Claude session 2026-09-16",
-      "added": "2026-09-16"
-    },
-    {
-      "id": "#F5GHS1",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "GOVERNED_SOURCE_HOSTS: 17 dictionary sources blocked, including AIHW's METEOR registry",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): src/data/dictionary-source-dispositions.json records 17 sources with host_not_in_inspected_governed_url_policy, not 19 (19 is the version_unknown count). The three METEOR records and the missing meteor host are confirmed. PRIOR DETAIL: Nineteen sources from the 2026-09 dictionary handover are held because their canonical URL host is not in GOVERNED_SOURCE_HOSTS in src/lib/sources/source-url-policy.ts. Among them are three National Outcomes and Casemix Collection metadata records on meteor.aihw.gov.au, which is AIHW's own metadata registry and carries stable content identifiers. The owner declined to widen host policy when asked on 2026-09-16, so this is recorded rather than actioned. Widening the list also requires updating the pinned host count. PARKED 2026-09-18: the owner declined to widen GOVERNED_SOURCE_HOSTS when asked on 2026-09-16, so this is a decision already made, not outstanding work. It is kept only so the nineteen held sources, including the three AIHW METEOR records, stay visible. TO UNBLOCK: an owner decision to add the specific hosts, which also requires updating the pinned host count.",
       "source": "Claude session 2026-09-16",
       "added": "2026-09-16"
     },
@@ -775,15 +757,6 @@
       "added": "2026-09-20"
     },
     {
-      "id": "#T3ZQGK",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Assess src/lib/on-call/entry-chips.ts as a dead-code candidate under the deletion protocol",
-      "detail": "onCallEntryDetailChips appears to have no production caller left: the only import is its own test (tests/on-call-entry-chips.test.ts), plus a module-path string in tests/on-call-root-bundle-isolation.test.ts. Its docblock still describes consumers that no longer exist -- a Recent row and a section tile. It also holds a loaded copy of the section-keyed bug class, switching on entry.section to choose chip labels, so while it sits there it is a template a future consumer could copy. THIS IS A CANDIDATE, NOT A DELETE INSTRUCTION. This repository has a strict protocol for removing code believed dead: follow docs/agents/dead-code-deletion.md in full, including check:dead-code-candidate and its refusal list, before removing anything. NEXT ACTION: run that check and decide keep-or-delete. If the answer is keep, it needs a real consumer and its section switch must be re-keyed to the view alongside the On Call view refactor. Do not delete on the strength of this row alone.",
-      "source": "Session 2026-09-20, On Call Compliance page clinical-governance review",
-      "added": "2026-09-20"
-    },
-    {
       "id": "#33346A",
       "priority": "P2",
       "type": "issue",
@@ -806,7 +779,7 @@
       "priority": "P3",
       "type": "rec",
       "summary": "Copy and naming inconsistencies that undercut the product's own safety vocabulary",
-      "detail": "UPDATE 2026-09-25: the prescribing mode is now titled 'Medication Reference' (c6b74fb93, pinned by tests/ui-copy.test.ts, tests/shared-home-empty-state.dom.test.tsx and the /?mode=prescribing heading in tests/ui-tools.spec.ts). STILL OPEN: (1) 'Cited documents' -> 'Documents searched' on refusals is approved wording but NOT done: the client payload carries no refusal flag, and the candidate triggers (grounded === false, answerState kind 'no_answer' or 'ungrounded', fallbackReasonCode such as coverage_gap/no_candidates/low_signal) each cover different answers, so which answers count as a refusal needs an owner decision before the source-rail heading (answer-source-rail.tsx) can switch. (2) The Differentials subtitle 'Match your catalogue to your library.' (ui-copy.ts) says nothing about differential diagnosis. (3) A 'Do now' card numbers teaching observations as if they were actions. (4) 86 of 374 multi-item diagnosis sections (1,200 sections total) have a summary that is a space-join of their items with no punctuation. Items 2-4 are clinical wording for a human.",
+      "detail": "UPDATE 2026-09-28 (PR #3142): DONE - the Differentials subtitle (ui-copy.ts) now describes differential diagnosis, and uncurated 'Do now' teaching observations render as unnumbered bullets. DONE - refusal framing on the source rail: owner approval 2026-09-28 set the most conservative refusal definition, the UNION of grounded === false, an answerState of 'ungrounded' or 'no_answer', and fallbackReasonCode coverage_gap/no_candidates/low_signal (answerIsRefusal in answer-copy-payload.ts). Both the live (answer-result-surface.tsx) and historical (answer-thread-turn.tsx) answer surfaces pass it to NaturalLanguageAnswer, which drops the in-prose source marks and has AnswerSourceRail title the rows 'Documents searched', show every card with the uncited badge and no Direct/Partial grade, and use the same wording on the compact chip. STILL OPEN: (4) 86 of 374 multi-item diagnosis sections (1,200 sections total) have a summary that is a space-join of their items with no punctuation - clinical wording for a human.",
       "source": "docs/audit/2026-09-20-visual-ux-audit.md (PR #2939)",
       "added": "2026-09-20"
     },
@@ -844,15 +817,6 @@
       "summary": "Three blocked hostnames stop any cloud session running Firefox/WebKit or reading a CI trace, so browser failures can only be reasoned about from logs",
       "detail": "Add cdn.playwright.dev, playwright.download.prss.microsoft.com and *.blob.core.windows.net to the Claude Cloud environment's egress allowlist; owner action in the environment settings, no repo change. THE THREE, each verified by a real request, not inferred: the first two are the ONLY mirrors in playwright-core 1.63.0's PLAYWRIGHT_CDN_MIRRORS (the old *.azureedge.net entries were removed in this version, so allowlisting those achieves nothing) and both return 403 request blocked; the third serves GitHub Actions artifacts, and an artifact download redirects there and returns CONNECT tunnel failed 403, which is why a retained Playwright trace cannot be fetched. ALSO CHECKED AND DEAD: ftp/archive/download.mozilla.org, snapcraft, flathub, the mozillateam PPA, codeload, and the npm @playwright/browser-firefox package (a 15KB stub that downloads from the same blocked CDN). A stock apt/tarball Firefox is NOT a substitute at any version - Playwright launches with -juggler-pipe and waits for \"Juggler listening to the pipe\", which only its own patched build emits - and there is no channel: firefox and no PLAYWRIGHT_FIREFOX_EXECUTABLE_PATH; the repo's PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH is its own invention and Chromium-only. Why: This is the constraint that shaped the whole 2026-09-20 triage. Four Firefox failures were fixed without a single Firefox run, and the dark-mode one was nearly written up as a broken app for every Firefox and Safari user before a cross-check refuted it; the two that remain are stuck precisely because the trace that would settle them is behind the third hostname. Context: Also worth knowing separately - the preinstalled Chromium is 141 (revision 1194) where playwright-core 1.63.0 pins revision 1243 / Chrome 153, so even local Chromium proof is twelve majors behind CI. Owner: Josh - environment settings. Confidence: high; every claim above was checked by running the request or reading node_modules/playwright-core. Depends on: nothing.",
       "source": "session 2026-09-20; agent investigation of browser provisioning; proxy README /root/.ccr/README.md",
-      "added": "2026-09-20"
-    },
-    {
-      "id": "#N8REV9",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "summariseOnCallFreshness counts staleness by stored section, so compliance is not merely miscounted but inexpressible",
-      "detail": "REVIEW 2026-09-25 (offline audit of current main; no provider access): Still accurate. src/lib/on-call/notifications.ts:104 is now a second consumer of summariseOnCallFreshness (reads only .stale), so the problem remains dormant. PRIOR DETAIL: src/lib/on-call/freshness-summary.ts keys its per-section stale counts off entry.section, so a compliance requirement is counted under Admin (logistics). DORMANT TODAY: the only consumer, src/components/developer-area/hub/on-call-freshness-panel.tsx, reads staleCount, neverVerifiedCount and stale, and never touches bySection or sections. It is still worth a row because bySection is typed ReadonlyMap<OnCallSection, number> and sections is readonly OnCallSection[] -- compliance is not a value either type can hold, so a future caller cannot repair the count at the call site and would have to change this module anyway. BLOCKED ON the On Call view refactor (moving onCallViewForEntry into src/lib/on-call/view.ts): this module is section-keyed only because tests/lib-layering.test.ts stops src/lib importing the helper from src/components. Close it inside that refactor by re-keying bySection and sections to OnCallPageView. NEXT ACTION: none until the view refactor lands; do not patch it in isolation.",
-      "source": "Session 2026-09-20, On Call Compliance page clinical-governance review",
       "added": "2026-09-20"
     },
     {
@@ -946,15 +910,6 @@
       "added": "2026-09-21"
     },
     {
-      "id": "#FNPHYN",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "On Call Teaching: the 'Next' pill prints a stale relative phrase beside the calculated date, and undated rows sort by new Date(freeText)",
-      "detail": "Reworded on review 2026-09-25: only the demo data was fixed in PR #2997. on-call-education-section.tsx:78 still joins the computed date with the owner's free text, deliberately (a Codex P2 review on PR #2806 kept it because it carries the time). Fix: show the computed date plus the time only, or drop a stale relative phrase such as 'Later this month'. Undated rows still sort by new Date(freeText) (line 55), which entry-model.ts forbids.",
-      "source": "On Call + CME audit 2026-09-24; reworded by ledger review 2026-09-25",
-      "added": "2026-09-25"
-    },
-    {
       "id": "#GQG3NV",
       "priority": "P2",
       "type": "issue",
@@ -971,15 +926,6 @@
       "detail": "Cron invokes every minute with Vault indexing_v3_agent_secret. Harden so JWT and secret are dual-gated after Codex PR2/PR3 land. Operational context: docs/supabase-remediation-closeout-notes.md §1.2 (PR #2959).",
       "source": "PR #2959 docs closeout review 2026-09-21 — queue deferred security/DB work into canonical ledger",
       "added": "2026-09-21"
-    },
-    {
-      "id": "#VKE5R3",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "On Call/CME smaller items left after the 2026-09-24 audit",
-      "detail": "(1) Contact rows have ragged right columns and ~150px stale rows (on-call-contacts-section.tsx ContactRow). (2) Three date styles across the modes (formatClinicalDate 14/08/2026, compliance '12 Mar 2027', CME '12 March 2026'). (3) Both modes use the mode-home loading skeleton for every sub-route and have no error.tsx. (4) CME entry dates are not checked against the year or today, so a future-dated entry counts toward totals. (5) CME dashboard module order is per device (localStorage), not per account, and not cleared on account switch. (6) On Call lastVerifiedAt is accepted from the client on POST/PATCH, so a direct API call can set a future date; editing a number does not refresh it. (7) No browser test for /on-call/card or /cme/log/[id]; On Call is missing from the phone scroll-hide sweep. (8) Two college extras in the CME preset (10 h formal peer review; one activity per practice domain) should be checked against the current RANZCP handbook.",
-      "source": "On Call + CME audit 2026-09-24, round 2 (branch claude/on-call-cme-audit-gltczi)",
-      "added": "2026-09-24"
     },
     {
       "id": "#D2M0NW",
@@ -1000,15 +946,6 @@
       "added": "2026-09-21"
     },
     {
-      "id": "#BSFZ23",
-      "priority": "P3",
-      "type": "task",
-      "summary": "CME adoption contract still cites shared evidence for dark, forced-colours and print although CME-specific tests now exist",
-      "detail": "Narrowed on review 2026-09-25: tests/ui-cme-phone.spec.ts (13a1f2eee) now has CME-specific dark, forced-colours and print checks, but docs/design-system/adoption-contract.json still cites only the shared evidence files for the CME routes (now 12 CME routes, plus 15 On Call routes in the same group). Remaining: a manifest edit pointing at the CME captures, noting the forced-colours check covers /cme/setup only.",
-      "source": "PR #2902 task-16 report 2026-09-20; narrowed by ledger review 2026-09-25",
-      "added": "2026-09-25"
-    },
-    {
       "id": "#Z84GK3",
       "priority": "P3",
       "type": "issue",
@@ -1025,15 +962,6 @@
       "detail": "Second occurrence of the Railway deploy-rollback failure mode first seen 2026-09-11..09-14 (24 consecutive rollbacks, documented in scripts/check-live-deployment-freshness.mjs and docs/deployment-architecture.md 'Readiness: what /api/health/ready may and may not ask'). Measured 2026-09-22 from GitHub deployment statuses: the Database service in the production environment last landed a deploy at 2026-09-21T05:59Z (3a43f808d) and did not land another until 2026-09-22T09:15Z (76bf29ffa, PR #2978). In between, four production deployments were created for ef257fa5c, f44ae5397, 56b123509 and 373046b76 and every one went in_progress -> inactive without ever reaching success. All four built cleanly in the Docker image build workflow, live-drift was green on the 2026-09-21 migrations, and Railway built PR preview environments normally throughout, so the integration, the image and the database are all ruled out. That leaves Railway-side deploy/start/healthcheck rejection, which is the documented mechanism: each healthcheck attempt gets ~10s against /api/health/ready and a container that cannot answer inside the window is discarded and rolled back, leaving the previous deploy serving. Confirming which of the four failed and why needs the Railway deployment logs for the production environment, which no agent session has had access to. Production recovered on its own and no fix was applied, so the trigger is unknown and can recur. Separately confirmed NOT a fault: nine main commits in the same window got a staging deploy but no production deploy at all - all nine touched no path matched by watchPatterns in railway.app.json, which is correct filtering. Alerting clarification (rewrites a false claim in the original draft of this request): live-domain-monitor.yml already has monitor-routing (issues: write + actions/github-script) as of #2884 / ledger #TN512M, and it DID fire during this stall — pinned issue #2973 ('Live domain monitor failing', label live-monitor-failure) was opened 2026-09-21T12:40Z, updated on later red runs including the deployment-freshness failure at 2026-09-22T06:47Z, and closed on the next green run at 2026-09-22T12:41Z. So 'nothing routes a red monitor run' is false. What remains unverified for human delivery: despite #2973 being open and repeatedly commented for ~24 hours of the stall, the gap was still found only because a human inspected GitHub deployment statuses, not because anyone acted on the pinned issue. That matches the #TN512M residual ('Close once a genuine outage has produced a notification someone acted on') and the workflow comment that owner failure emails arrive unread. Durable next actions: (1) pull Railway production deployment logs for the four inactive deploys and record the reject reason; (2) treat this stall as the missing #TN512M real-outage evidence that GitHub-issue routing alone is insufficient delivery, and decide a human-reachable path (page/Slack/owner push) before adding more probes. Pairs with #HYSWAF (Railway deploys every main push without waiting for required checks) and #TN512M.",
       "source": "Claude session 2026-09-22; GitHub deployment statuses for Database/production; live-domain-monitor runs 35639421619/35696377977/35728663173 and issue #2973 routing evidence; Codex review on PR #2982",
       "added": "2026-09-22"
-    },
-    {
-      "id": "#1TKG71",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "On Call Playbook shows a guideline's updated_at date, not its review date",
-      "detail": "Narrowed on review 2026-09-25: PR #2997 fixed the repeated 'No local guideline linked' panels and the loading flash (playbook-section.tsx, linked-documents.ts loading flag). Still open: the date shown is updated_at, not the guideline's review date (linked-documents.ts:65, playbook-section.tsx:140).",
-      "source": "On Call + CME audit 2026-09-24; narrowed by ledger review 2026-09-25",
-      "added": "2026-09-25"
     },
     {
       "id": "#TCT5ZM",
@@ -1077,15 +1005,6 @@
       "type": "task",
       "summary": "Owner sign-off: 109 drafted MHA Act-section summaries and 9 drafted timeline deadlines, after the 54 form guides",
       "detail": "Tool: npm run clinical:review -- --write --walk --kind section / --kind timeframe (guide docs/clinical-sign-off-how-to.md; sign on a dated clinical-signoff-<date> branch cut from main, main is protected). After signing any timeframe: npm run offline:build, bump CACHE_VERSION in public/sw.js, update the offline.html hash pin in tests/pwa-manifest.test.ts. Only the owner may sign.",
-      "source": "Session 2026-09-25 WA psychiatry build (PR #3019)",
-      "added": "2026-09-25"
-    },
-    {
-      "id": "#KRB96T",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "Three places still describe hand-editing sign-off fields now that the sign-off tool enforces content pins",
-      "detail": "The note inside data/forms-content-review.json, the developer-area sign-off queue page text, and the MHA section review sheet header still tell a reviewer to set reviewedBy/reviewedAt by hand. A hand edit now fails the --check pin gates, so nothing slips through, but the wording should point at npm run clinical:review.",
       "source": "Session 2026-09-25 WA psychiatry build (PR #3019)",
       "added": "2026-09-25"
     },
@@ -1207,15 +1126,6 @@
       "added": "2026-09-25"
     },
     {
-      "id": "#HEN4EX",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "MHA s 357 drafted summary refers to paragraphs (g) to (j) without saying who they cover",
-      "detail": "data/mha-2014-sections.json s 357 summary (drafted). Reviewer confirmed the rest is faithful to the pinned text. Next action: rewrite that clause strictly from the section text before the owner signs it.",
-      "source": "Session 2026-09-25 WA psychiatry build (PR #3019)",
-      "added": "2026-09-25"
-    },
-    {
       "id": "#X98D7J",
       "priority": "P2",
       "type": "rec",
@@ -1333,24 +1243,6 @@
       "added": "2026-09-26"
     },
     {
-      "id": "#TN4PMR",
-      "priority": "P3",
-      "type": "issue",
-      "summary": "Olfactory reference disorder is the one inconsistent entry in the specifier catalogue's DSM/ICD-11 pairing",
-      "detail": "MEASURED 2026-09-18, offline traversal of data/specifiers-content.json. All ten disorders in category '20. ICD-11 Specifics' also appear under their clinical category, accounting for all 19 of its items. This is NOT duplication and collapsing it would delete real content: catatonia's schizophrenia-spectrum entry carries the DSM three-way context (associated with another mental disorder / catatonic disorder due to another medical condition / unspecified catatonia) while the category-20 entry carries ICD-11's (associated with another mental disorder / induced by psychoactive substances including medications / secondary to a medical condition not classified elsewhere). Two manuals, two structures, one diagnosis — deliberate. The exception is olfactory reference disorder, which appears twice with the SAME icd11Context sentence verbatim and differs only in one insight label: 'With absent insight/delusional beliefs' under Obsessive-Compulsive against 'With absent insight' under category 20. Whether that is the DSM wording paired against the ICD-11 wording, or an artefact of how the file was assembled, is a clinical judgement and was deliberately not guessed. NEXT ACTION, clinician: decide whether the two insight labels are a real distinction; if not, align them. Low consequence — both entries are clinician-review-pending and neither is displayed as reviewed. Recorded in docs/specifier-definition-worklist-2026-09-18.md.",
-      "source": "Specifier worklist preparation, 2026-09-18",
-      "added": "2026-09-25"
-    },
-    {
-      "id": "#X1SPWB",
-      "priority": "P3",
-      "type": "rec",
-      "summary": "No clinical hazard register entry covers services crisis routing",
-      "detail": "docs/clinical-hazard-analysis.md registers H1-H7 (numbers, stale sources, stripped caveats, misattribution, untrusted answers, adversarial content, MHA timeline); none covers the services navigator's crisis routing: a crisis, self-harm or suicidal query that fails to pin or show the right crisis line (000, CAMHS Crisis Connect, MHERL, 13YARN, 1800RESPECT, SARC, Alcohol and Drug Support Line, Rurallink, aftercare, postvention), or a record wrongly carrying a crisis chip (see the Fiona Stanley MBU issue). The controls exist in code (src/lib/service-urgent-routing.ts, tests/services-safety-routing.test.ts, tests/services-safety-regressions.test.ts) but are not traced to a hazard, severity or residual risk. NEXT: add a named hazard (e.g. H8 services crisis routing) with its controls, tests and residual risk (national lines not pinned for youth; availability-unverified records), and refresh the hazard snapshot per the register's own procedure.",
-      "source": "PR C review 2026-09-25",
-      "added": "2026-09-25"
-    },
-    {
       "id": "#46VNY9",
       "priority": "P1",
       "type": "task",
@@ -1408,8 +1300,8 @@
       "id": "#HPPMXH",
       "priority": "P3",
       "type": "task",
-      "summary": "Playwright: six assertions read a count once instead of retrying",
-      "detail": "tests/ui-formulation-result-cards.spec.ts:52, tests/ui-smoke.spec.ts:3211 and 3212, tests/ui-on-call-boards.spec.ts:563, 690 and 771 use expect(await locator.count()) which never retries, so a slow render fails the test. Next action: switch each to expect.poll(() => locator.count()) with the same matcher, or toHaveCount where the count is exact.",
+      "summary": "Playwright: eleven assertions read a count once instead of retrying",
+      "detail": "CORRECTED 2026-09-27 (Codex review on PR 3128; the first count missed multi-line expect calls and On Call lines had drifted): 11 assertions use expect(await locator.count()), which never retries, on main 7f8312f2c: tests/answer-progress-ui-smoke.spec.ts:631, tests/ui-accessibility.spec.ts:343, tests/ui-dictionary.spec.ts:377, tests/ui-formulation-result-cards.spec.ts:52, tests/ui-on-call-boards.spec.ts:535, 544, 662 and 743, tests/ui-smoke.spec.ts:2258, 3211 and 3212. Next action: switch each to expect.poll(() => locator.count()) with the same matcher, or toHaveCount where the count is exact. Re-derive locations before editing, since line numbers drift.",
       "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
       "added": "2026-09-27"
     },
@@ -1418,7 +1310,7 @@
       "priority": "P3",
       "type": "issue",
       "summary": "On Call handbook: unsaved entry edits are likely lost on tab close or refresh",
-      "detail": "src/components/on-call/service-page.tsx:386 canLeaveEditor() and service-entry-editor.tsx:101 confirm before in-app entry switches only; neither registers beforeunload. Confidence: likely, not every exit path traced. Next action: confirm the exit paths, then add a beforeunload guard while an entry is being edited (same pattern as src/components/cme/cme-entry-form.tsx:324).",
+      "detail": "LOCATIONS CORRECTED 2026-09-27 for main 7f8312f2c. src/components/on-call/service-page.tsx:282 canLeaveEditor() and service-entry-editor.tsx:130 confirm before in-app entry switches only; neither registers beforeunload. Confidence: likely, not every exit path traced. Next action: confirm the exit paths, then add a beforeunload guard while an entry is being edited (same pattern as src/components/cme/cme-entry-form.tsx:342).",
       "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
       "added": "2026-09-27"
     },
@@ -1441,20 +1333,11 @@
       "added": "2026-09-27"
     },
     {
-      "id": "#AHSHSY",
-      "priority": "P3",
-      "type": "task",
-      "summary": "Playwright: one click uses force: true, bypassing actionability checks",
-      "detail": "tests/ui-care-plan-mockup.spec.ts:1867, inside the optional CARE_PLAN_CAPTURE_EVIDENCE evidence-capture test, so risk is low. force can hide a genuinely unclickable control. Next action: remove force and wait for the control to be actionable, or document why force is required.",
-      "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
-      "added": "2026-09-27"
-    },
-    {
       "id": "#5K1788",
       "priority": "P3",
       "type": "issue",
       "summary": "On Call dates are formatted without a time zone and may show the previous day near midnight (unconfirmed)",
-      "detail": "src/components/on-call/service-admin-panel.tsx:66 and 317, service-handbook.tsx:147 and service-governance-panel.tsx:186 call toLocaleDateString(\"en-AU\") with no timeZone. These client components still server-render, where the process runs in UTC, so a timestamp near Perth midnight can render as the prior day on the server and a different day in the browser (hydration mismatch). Unconfirmed. Next action: pass timeZone Australia/Perth as src/components/developer-area/hub/freshness-stamp.tsx:31 already does, or share one date formatter.",
+      "detail": "LOCATIONS CORRECTED 2026-09-27 for main 7f8312f2c. src/components/on-call/service-admin-panel.tsx:66 and 329, service-handbook.tsx:153 and service-governance-panel.tsx:186 call toLocaleDateString(\"en-AU\") with no timeZone. These client components still server-render, where the process runs in UTC, so a timestamp near Perth midnight can render as the prior day on the server and a different day in the browser (hydration mismatch). Unconfirmed. Next action: pass timeZone Australia/Perth as src/components/developer-area/hub/freshness-stamp.tsx already does, or share one date formatter.",
       "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
       "added": "2026-09-27"
     },
@@ -1471,8 +1354,8 @@
       "id": "#PVVAPA",
       "priority": "P3",
       "type": "task",
-      "summary": "Playwright: five navigations wait on networkidle, which Playwright advises against",
-      "detail": "tests/ui-specifiers.spec.ts:24, tests/ui-hydration.spec.ts:61, tests/ui-style-contract.spec.ts:165, 184 and 227 use waitForLoadState or goto with networkidle, which is unreliable when a page keeps a connection open. Next action: wait for the specific element or state each test needs instead.",
+      "summary": "Playwright: one hydration test still waits on networkidle, which Playwright advises against",
+      "detail": "CORRECTED 2026-09-27 (Codex review on PR 3128): only one executable networkidle wait remains, tests/ui-hydration.spec.ts:61 await page.waitForLoadState(\"networkidle\"). The other four originally cited lines (ui-specifiers.spec.ts:24, ui-style-contract.spec.ts:165, 184, 227) are comments recording that networkidle was deliberately avoided, so they need no change. Next action: replace the one call with a wait on the specific hydrated element or state the test needs.",
       "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
       "added": "2026-09-27"
     },
@@ -1481,7 +1364,7 @@
       "priority": "P2",
       "type": "issue",
       "summary": "Safety Plan: a half-written plan is lost without warning on tab close, refresh or phone swipe-back",
-      "detail": "The plan is deliberately browser-tab only and never persisted (src/components/patient-safety-plan.tsx:545 isDirty). isDirty guards only the in-app header back control; there is no beforeunload guard anywhere in the Safety Plan route, so closing the tab, reloading, or an OS back gesture discards an in-progress plan silently, potentially mid-consultation. Next action: add a beforeunload warning while isDirty is true, copying the existing pattern in src/components/cme/cme-entry-form.tsx:324, plus a unit or Playwright assertion that the listener is registered only while dirty. Must not persist plan content anywhere (privacy contract, see archived #060).",
+      "detail": "LOCATIONS CORRECTED 2026-09-27 for main 7f8312f2c (lines drifted after the review). The plan is deliberately browser-tab only and never persisted (src/components/patient-safety-plan.tsx:548 isDirty). isDirty guards only the in-app header back control; there is no beforeunload guard anywhere in the Safety Plan route, so closing the tab, reloading, or an OS back gesture discards an in-progress plan silently, potentially mid-consultation. Next action: add a beforeunload warning while isDirty is true, copying the existing pattern in src/components/cme/cme-entry-form.tsx:342, plus a unit or Playwright assertion that the listener is registered only while dirty. Must not persist plan content anywhere (privacy contract, see archived #060).",
       "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
       "added": "2026-09-27"
     },
@@ -1490,8 +1373,80 @@
       "priority": "P3",
       "type": "task",
       "summary": "UI copy uses three full stops instead of an ellipsis character in 14 places",
-      "detail": "Vercel Web Interface Guidelines: use the single ellipsis character, and loading states end with it. Instances: formulation/formulation-builder-page.tsx:357, 532, 594; ClinicalDashboard.tsx:2064, 2065, 3294; DocumentViewer.tsx:1682; applications-launcher-page.tsx:99; therapy-compass/screens/sheets-screen.tsx:358; tools/tool-local-search.tsx:55; clinical-dashboard/signed-image.tsx:240; clinical-dashboard/image-lightbox.tsx:363; clinical-dashboard/master-search-header.tsx:254; forms/form-detail-page.tsx:857 (all under src/components). Cosmetic. Next action: replace in one pass and update any tests that assert the old strings.",
+      "detail": "LOCATIONS CORRECTED 2026-09-27 for main 7f8312f2c. Vercel Web Interface Guidelines: use the single ellipsis character, and loading states end with it. Instances: formulation/formulation-builder-page.tsx:357, 532, 594; ClinicalDashboard.tsx:2064, 2065, 3294; DocumentViewer.tsx:1682; applications-launcher-page.tsx:99; therapy-compass/screens/sheets-screen.tsx:358; tools/tool-local-search.tsx:55; clinical-dashboard/signed-image.tsx:240; clinical-dashboard/image-lightbox.tsx:363; clinical-dashboard/master-search-header.tsx:272; forms/form-detail-page.tsx:857 (all under src/components). Cosmetic. Next action: replace in one pass and update any tests that assert the old strings.",
       "source": "Design, front-end and test review 2026-09-27 (Claude Code session: web-design-guidelines, frontend-checklist-global, playwright-best-practices, codebase-design skills), re-verified on main a3fee8d1a",
+      "added": "2026-09-27"
+    },
+    {
+      "id": "#23Q709",
+      "priority": "P3",
+      "type": "issue",
+      "summary": "scripts/stamp-service-worker.mjs runs in the production build but is missing from Railway's app watch patterns, so a change to it alone never redeploys the site",
+      "detail": "package.json build:internal runs node scripts/stamp-service-worker.mjs, which rewrites public/sw.js per release (see the Dockerfile runner-stage comment). railway.app.json watchPatterns lists the other build scripts individually (guard-next-build.mjs, check-client-bundle-secrets.mjs, check-upload-limit-parity.mjs, run-heavy.mjs) but not this one. Next action: add /scripts/stamp-service-worker.mjs to railway.app.json watchPatterns, and consider a static test that every script the build:internal chain invokes is watched.",
+      "source": "Latency, network, Railway and wiring review 2026-09-27 (Claude Code session claude/repo-latency-network-review-zcqd5c), offline code read against main 7f8312f2c; no provider access",
+      "added": "2026-09-27"
+    },
+    {
+      "id": "#H69FNZ",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "The search 'rerank' timing is mostly database time, so the 4.1 s blamed on re-ranking in #T9PRB9 is really database round trips",
+      "detail": "src/lib/rag/rag.ts starts rerankStartedAt at line 1453 and adds the elapsed time at 1484 and 1531, and src/lib/rag/rag-hydration.ts:137 does the same. Those windows include metadata hydration, memory-card hydration and visual-evidence hydration, which are Supabase round trips (Singapore to Sydney). The deterministic second-stage rerank itself is in-process arithmetic, and the semantic reranker is off by default (RAG_SEMANTIC_RERANK_ENABLED=false). So in the #T9PRB9 probe (search 9.2 s = rpc 4.2 s + rerank 4.1 s), nearly all search time is database work. Consequence: #CWWH2E (27 to 45 round trips per search, currently P3) is the first latency lever, not reranking. Also note: the 1.4 s rate-limit figure in #T9PRB9 predates 5c1ac4f87 (2026-09-26, one-round-trip anonymous rate limit), which has not been re-measured live. Next action: split rerank_latency_ms so hydration round trips are timed separately from ranking. This is RAG telemetry on a protected surface: flag before editing and write a RAG impact line (no ordering change expected). Then re-run scripts/probe-answer-timing.mjs from Perth (provider-backed, owner approval) to confirm.",
+      "source": "Latency, network, Railway and wiring review 2026-09-27 (Claude Code session claude/repo-latency-network-review-zcqd5c), offline code read against main 7f8312f2c; no provider access",
+      "added": "2026-09-27"
+    },
+    {
+      "id": "#J7RV8Q",
+      "priority": "P3",
+      "type": "rec",
+      "summary": "Medication pages show the maximum dose three times because the same content renders in three sections",
+      "detail": "Found in the 2026-09-27 phone-first design review (PR #3145 session). The same max-dose text appears in three sections of a medication page, which lengthens the page on a phone and risks the copies drifting apart. Clinical content decision for the owner: which section should own the max dose, and whether the others link to it. Not changed by that PR.",
+      "source": "Claude Code session 2026-09-27 phone-first design review (PR #3145)",
+      "added": "2026-09-27"
+    },
+    {
+      "id": "#H9WAQN",
+      "priority": "P3",
+      "type": "task",
+      "summary": "Split the largest front-end files (ClinicalDashboard ~4,000 lines, MasterSearchHeader ~3,200, globals.css ~6,000) into smaller owned modules",
+      "detail": "Found in the 2026-09-27 design review (PR #3145 session). Their size makes every UI change fragile and slow to review. Owner chose not to rebuild them in that pass. Do one file per careful PR, behaviour-neutral, with verify:phone-chrome and the full browser suite; globals.css splits must preserve cascade order (unlayered component CSS by design).",
+      "source": "Claude Code session 2026-09-27 phone-first design review (PR #3145)",
+      "added": "2026-09-27"
+    },
+    {
+      "id": "#J4RF41",
+      "priority": "P3",
+      "type": "issue",
+      "summary": "The worker's crash-alert webhook has no timeout, so a stalled alert endpoint delays the worker's exit and Railway restart by up to about five minutes",
+      "detail": "worker/main.ts:2141 awaits fetch(env.WORKER_FAILURE_WEBHOOK_URL, ...) in the fatal main().catch handler with no signal, before flushWorkerErrorTracking() and process.exit. If the webhook host accepts the connection but never answers, the process waits on undici's default timeouts (about 300 s) and Railway's ALWAYS restart policy cannot act. src/lib/webhooks/chat-notify.ts already uses AbortSignal.timeout(CHAT_POST_TIMEOUT_MS) for the same kind of call. Next action: add signal: AbortSignal.timeout(<a few seconds>) to this fetch.",
+      "source": "Latency, network, Railway and wiring review 2026-09-27 (Claude Code session claude/repo-latency-network-review-zcqd5c), offline code read against main 7f8312f2c; no provider access",
+      "added": "2026-09-27"
+    },
+    {
+      "id": "#FZP7VW",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Live search's query embedding can wait 45 s and retry twice, the same 45 s the browser allows, so a slow OpenAI reply fails the search instead of falling back to keyword results",
+      "detail": "embedTextWithTelemetry (src/lib/openai.ts) uses requestOptions with no per-call timeout, so it takes OPENAI_REQUEST_TIMEOUT_MS (45000, src/lib/env.ts:172) and OPENAI_MAX_RETRIES (2) via defaultMaxRetries (openai.ts:189). Callers on the interactive path (src/lib/rag/rag.ts around 1364 and 1703, rag-governed-search.ts:120) pass only the request signal. The browser search budget is searchRequestTimeoutMs = 45_000 (src/components/clinical-dashboard/search-utils.ts:423), so one slow embedding call always exhausts the user's whole budget. Next action: give the interactive query embedding its own short deadline (a few seconds, no retry) and let search continue on the lexical/text path when it expires, with telemetry. The caller side is a RAG-protected surface: flag before editing; a fallback-path change may need a canary pair.",
+      "source": "Latency, network, Railway and wiring review 2026-09-27 (Claude Code session claude/repo-latency-network-review-zcqd5c), offline code read against main 7f8312f2c; no provider access",
+      "added": "2026-09-27"
+    },
+    {
+      "id": "#1DYJJQ",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "Most server-side Supabase calls have no deadline, so a stalled database request can hang for minutes on the single app replica",
+      "detail": "The service-role client (src/lib/supabase/admin.ts:16) is created without a global fetch timeout, and only 14 non-test files in src/ apply .abortSignal() to queries (the readiness probe in src/lib/supabase/health.ts does). Everything else relies on undici's default header/body timeouts (about 300 s). That includes the durable rate-limit RPCs every answer passes through (src/lib/api-rate-limit.ts:300, 360, 424). Search is bounded only by the client disconnecting at 45 s; other routes have no bound. Next action: add a default per-request deadline for server Supabase calls (for example a global fetch wrapper with AbortSignal.timeout, overridable for known long operations such as ingestion and exports), classify the expiry as unavailable, and cover it with a unit test. Check the ingestion worker's long jobs are exempt before rollout.",
+      "source": "Latency, network, Railway and wiring review 2026-09-27 (Claude Code session claude/repo-latency-network-review-zcqd5c), offline code read against main 7f8312f2c; no provider access",
+      "added": "2026-09-27"
+    },
+    {
+      "id": "#F06YE4",
+      "priority": "P2",
+      "type": "issue",
+      "summary": "CME phone customise screen renders two cme-module-order lists, failing the ui-cme-phone reorder-controls browser test",
+      "detail": "Seen 2026-09-27 in a local full verify:phone-chrome run on PR #3145's branch (which does not touch CME): tests/ui-cme-phone.spec.ts:109 failed with a strict-mode violation, getByTestId('cme-module-order') resolved to 2 elements (one inside mobile-composer-reserve-pad, one elsewhere). Either the customise list is rendered twice on a phone (a real duplicate-controls defect) or the test needs scoping. Not yet diagnosed; check whether it reproduces on origin/main first.",
+      "source": "Claude Code session 2026-09-27, local verify:phone-chrome (PR #3145 branch)",
       "added": "2026-09-27"
     }
   ],
