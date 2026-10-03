@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { useCmeMyDaySource } from "@/components/my-day/sources/cme";
 import { useEntriesMyDaySources } from "@/components/my-day/sources/entries";
@@ -8,6 +8,7 @@ import { useRosterMyDaySource } from "@/components/my-day/sources/roster";
 import { useTeachingMyDaySource } from "@/components/my-day/sources/teaching";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
 import type { MyDaySourceResult, MyDayState } from "@/lib/my-day/model";
+import { useAuthSession } from "@/lib/supabase/client";
 
 /**
  * The one My Day read, shared by the `/my-day` page and the home card.
@@ -35,6 +36,17 @@ export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; rea
         )
       : all;
   }, [enabled, entries.onCall, entries.admin, roster.result, cme.result, teaching.result]);
+  // Every source answering 401 while auth still says signed in means the session lapsed
+  // server-side: hand it to auth so the sign-in flow shows, instead of an error Retry cannot fix.
+  const { markSessionExpired } = useAuthSession();
+  const sessionRejected =
+    enabled &&
+    entries.onCall.status === "signed-out" &&
+    entries.admin.status === "signed-out" &&
+    [roster.result, cme.result, teaching.result].every((source) => source.status === "signed-out");
+  useEffect(() => {
+    if (sessionRejected) markSessionExpired();
+  }, [sessionRejected, markSessionExpired]);
   const items = useMemo(() => mergeMyDayItems(sources.map((source) => source.items)), [sources]);
 
   const retryEntries = entries.retry;

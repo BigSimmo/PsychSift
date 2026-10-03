@@ -81,7 +81,10 @@ import { LibraryHealthStrip } from "@/components/clinical-dashboard/library-heal
 import { GuideTrigger, UtilityDrawer } from "@/components/clinical-dashboard/dashboard-shell";
 import { LazyGuideDialog, loadGuideDialog } from "@/components/clinical-dashboard/lazy-guide-dialog";
 import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboard/dashboard-notices";
-import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
+import {
+  resolveModeHomeCanvasClass,
+  topAlignSharedHomeForAuth,
+} from "@/components/clinical-dashboard/mode-home-canvas";
 import { sanitizeAnswerDisplayText } from "@/components/clinical-dashboard/display-text";
 import { AnswerCancelledNotice } from "@/components/clinical-dashboard/answer-cancelled-notice";
 import { isPreformattedGroundedAnswer } from "@/components/clinical-dashboard/answer-content";
@@ -3479,7 +3482,7 @@ function ClinicalDashboardContent({
                   compactMobileModeHome,
                   hasAnswer: Boolean(answer),
                   showSharedHome,
-                  topAlignSharedHome: authStatus === "authenticated",
+                  topAlignSharedHome: topAlignSharedHomeForAuth(authStatus),
                 })}
               >
                 <h2 data-testid="answer-section-heading" className="sr-only">

@@ -58,6 +58,14 @@ describe("adminMyDayItems", () => {
     });
   });
 
+  it("keeps the not-recorded reminder when three passed dates push its row off the card", () => {
+    const passed = ["A", "B", "C"].map((name) =>
+      complianceFixture(name, { category: "Registration", expiresOn: "2026-08-01" }),
+    );
+    expect(selectNeedsYou(passed, NOW)?.notRecordedCount).toBeGreaterThan(0);
+    expect(adminMyDayItems(passed, NOW).some((item) => item.id === "my-work:not-recorded")).toBe(true);
+  });
+
   it("treats a future date inside its renewal window as soon, and one before it as later", () => {
     const inWindow = complianceFixture("Indemnity", { category: "Registration", expiresOn: "2026-10-20" });
     const beforeWindow = complianceFixture("Working with children", {

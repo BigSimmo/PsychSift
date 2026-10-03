@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
+import {
+  resolveModeHomeCanvasClass,
+  topAlignSharedHomeForAuth,
+} from "@/components/clinical-dashboard/mode-home-canvas";
 
 describe("resolveModeHomeCanvasClass", () => {
   it("centres compact shared homes without a nested mobile viewport floor", () => {
@@ -58,5 +61,13 @@ describe("resolveModeHomeCanvasClass", () => {
         }),
       ).toContain("max-w-6xl");
     }
+  });
+});
+
+describe("topAlignSharedHomeForAuth", () => {
+  it("top-aligns while auth resolves so the first and signed-in paints agree", () => {
+    expect(topAlignSharedHomeForAuth("loading")).toBe(true);
+    expect(topAlignSharedHomeForAuth("authenticated")).toBe(true);
+    expect(topAlignSharedHomeForAuth("signed_out")).toBe(false);
   });
 });

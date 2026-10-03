@@ -41,7 +41,9 @@ export function MyDayHomeCard({ now: nowProp }: { now?: Date } = {}) {
   const enabled = myDayEnabledForAuth(authStatus);
   const now = useMyDayNow(nowProp);
   const state = useMyDayItems({ enabled, now });
-  const [seed] = useState(() => freshCache(authEpoch));
+  // Remembered items belong to the sign-in they were read under: a different auth epoch discards them.
+  const [remembered] = useState(() => ({ epoch: authEpoch, items: freshCache(authEpoch) }));
+  const seed = remembered.epoch === authEpoch ? remembered.items : null;
 
   const ready = state.status === "ready" && !state.demoMode;
   useEffect(() => {

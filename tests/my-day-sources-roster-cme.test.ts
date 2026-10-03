@@ -96,7 +96,7 @@ describe("rosterMyDayItems", () => {
         title: "2 waiting in Manage",
         due: null,
         severity: "info",
-        href: "/roster/manage",
+        href: `/roster/manage?team=${SERVICE}`,
       },
     ]);
     expect(rosterMyDayItems(rosterInput({ manage }), NOW)).toEqual([]);

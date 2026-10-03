@@ -25,6 +25,9 @@ vi.mock("@/components/my-day/sources/teaching", () => ({
   useTeachingMyDaySource: () => ({ result: mocks.teaching, retry }),
 }));
 
+const expire = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => ({ markSessionExpired: expire }) }));
+
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 
 const NOW = new Date("2026-09-26T01:00:00Z");
@@ -73,6 +76,19 @@ describe("useMyDayItems", () => {
     const { result } = renderHook(() => useMyDayItems({ enabled: true, now: NOW }));
     expect(result.current.status).toBe("ready");
     expect(result.current.sources.find((source) => source.mode === "teaching")?.status).toBe("failed");
+  });
+
+  it("marks the session expired only when every source rejects it while enabled", () => {
+    expire.mockClear();
+    renderHook(() => useMyDayItems({ enabled: true, now: NOW }));
+    expect(expire).not.toHaveBeenCalled();
+    const so = (mode: MyDaySourceResult["mode"]): MyDaySourceResult => ({ mode, status: "signed-out", items: [] });
+    mocks.entries = { onCall: so("on-call"), admin: so("my-work") };
+    mocks.roster = so("roster");
+    mocks.cme = so("cme");
+    mocks.teaching = so("teaching");
+    renderHook(() => useMyDayItems({ enabled: true, now: NOW }));
+    expect(expire).toHaveBeenCalledTimes(1);
   });
 
   it("is signed out, with no items, when not enabled", () => {

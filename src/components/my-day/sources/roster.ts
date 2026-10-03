@@ -60,7 +60,7 @@ export function rosterMyDayItems(input: RosterMyDayInput, now: Date): MyDayItem[
         title: `${waiting} waiting in Manage`,
         due: null,
         severity: "info",
-        href: "/roster/manage",
+        href: `/roster/manage?team=${encodeURIComponent(team.serviceId)}`,
       });
     }
     const cutoff = overview?.nextCutoffOn;

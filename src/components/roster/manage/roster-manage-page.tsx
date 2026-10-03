@@ -96,7 +96,9 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
 
 export function RosterManagePage() {
   const teams = useRosterTeams();
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState(() =>
+    typeof window === "undefined" ? "" : (new URLSearchParams(window.location.search).get("team") ?? ""),
+  );
   const available = teams.data?.teams.filter((team) => team.enabled && team.role === "manager") ?? [];
   const team = available.find((item) => item.serviceId === selected) ?? available[0];
   return (

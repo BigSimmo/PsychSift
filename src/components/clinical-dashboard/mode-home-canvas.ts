@@ -33,6 +33,15 @@ type ModeHomeCanvasClassInput = {
  * scroll. `grow` + `shrink-0` mirrors the phone treatment below: grow into free
  * space, never compress, so a tall page still scrolls normally.
  */
+/**
+ * The shared home top-aligns for a signed-in reader. While the session is still
+ * resolving (cold load) it already top-aligns, so the first paint and the
+ * signed-in paint agree and the composer does not jump.
+ */
+export function topAlignSharedHomeForAuth(status: string): boolean {
+  return status === "authenticated" || status === "loading";
+}
+
 export function resolveModeHomeCanvasClass({
   activeModeResultKind,
   centeredModeHome,

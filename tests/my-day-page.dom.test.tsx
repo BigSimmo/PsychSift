@@ -237,6 +237,19 @@ describe("MyDayHomeCard", () => {
     expect(container.innerHTML).toBe("");
   });
 
+  it("drops remembered items when the auth epoch changes without unmounting", () => {
+    setState({ items: [item("a", "overdue")] });
+    render(<MyDayHomeCard now={NOW} />);
+    cleanup();
+
+    setState({ status: "loading", items: [] });
+    const view = render(<MyDayHomeCard now={NOW} />);
+    expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
+    auth.authEpoch = 2;
+    view.rerender(<MyDayHomeCard now={NOW} />);
+    expect(screen.queryByTestId("my-day-item-a")).toBeNull();
+  });
+
   it("shows the remembered items at once on return, for the same sign-in and under two minutes", () => {
     setState({ items: [item("a", "overdue")] });
     render(<MyDayHomeCard now={NOW} />);
