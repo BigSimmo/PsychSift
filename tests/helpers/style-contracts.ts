@@ -329,6 +329,20 @@ export const STYLE_EFFECT_CONTRACTS: readonly StyleEffectContract[] = [
     nonInert: ["color"],
     colorToken: { property: "color", token: "--text-heading" },
   },
+  {
+    className: "dash-surface",
+    description: "My Day dashboard surface defines its own ink and palette (TOKENS.md 7.2)",
+    route: "/my-day",
+    selector: ".dash-surface:visible",
+    // The wrapper's whole job is to define the `--dash-*` palette that every
+    // dashboard-kit recipe reads, and to set the ink colour from it. If this
+    // unlayered rule is moved into a layer, or loses to a utility on the same
+    // element, the tokens stay undefined and every card renders without colour
+    // while still carrying every class. Literal ink value (not a token probe):
+    // a probe of `var(--dash-ink)` resolves inside the element, so it would fall
+    // back to the inherited colour and agree with an inert rule.
+    computed: { color: "rgb(14, 23, 38)" },
+  },
 ];
 
 /**

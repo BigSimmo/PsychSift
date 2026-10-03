@@ -1510,6 +1510,8 @@ test.describe("PsychSift UI smoke coverage", () => {
           links.map((link) => ({ name: link.getAttribute("aria-label"), href: link.getAttribute("href") })),
         ),
     ).toEqual([
+      // Design review 2026-10-03, item 4: My Day leads the default shortcuts.
+      { name: "My Day", href: "/my-day" },
       { name: "Answer", href: "/?mode=answer" },
       { name: "Documents", href: "/?mode=documents" },
       { name: "Services", href: "/?mode=services" },
@@ -1542,7 +1544,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await moreModesSheet.getByRole("button", { name: "Close more modes" }).click();
     expect(
       await navigation.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("aria-label"))),
-    ).toEqual(["Answer", "Documents", "Services", "Medication", "Factsheets", "Forms", "Tools"]);
+    ).toEqual(["My Day", "Answer", "Documents", "Services", "Medication", "Factsheets", "Forms", "Tools"]);
     await expect(rail.getByTestId("sidebar-more-modes")).toBeVisible();
     await expect(rail.getByTestId("sidebar-more-modes")).toBeFocused();
 
