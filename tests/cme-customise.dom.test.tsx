@@ -61,55 +61,49 @@ describe("Customise", () => {
     }
   });
 
+  const itemAt = (index: number) =>
+    within(screen.getByTestId("cme-module-order")).getAllByRole("listitem")[index]?.textContent;
+
   it("moves a module up and down the shown list from a pointer click", async () => {
     const user = userEvent.setup();
     render(<CmeCustomisePage />);
-    const list = screen.getByTestId("cme-module-order");
-    const firstBefore = within(list).getAllByRole("listitem")[0]?.textContent;
-    expect(firstBefore).toContain(cmeDashboardModuleLabels.requirements);
+    expect(itemAt(2)).toContain(cmeDashboardModuleLabels["audited-today"]);
 
-    await user.click(screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels.requirements} down` }));
+    await user.click(screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels["audited-today"]} down` }));
+    expect(itemAt(2)).toContain(cmeDashboardModuleLabels["year-dates"]);
+    expect(itemAt(3)).toContain(cmeDashboardModuleLabels["audited-today"]);
 
-    const firstAfterDown = within(screen.getByTestId("cme-module-order")).getAllByRole("listitem")[0]?.textContent;
-    expect(firstAfterDown).toContain(cmeDashboardModuleLabels["routines-due"]);
+    await user.click(screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels["audited-today"]} up` }));
+    expect(itemAt(2)).toContain(cmeDashboardModuleLabels["audited-today"]);
+  });
 
-    await user.click(screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels.requirements} up` }));
-
-    const firstAfterUp = within(screen.getByTestId("cme-module-order")).getAllByRole("listitem")[0]?.textContent;
-    expect(firstAfterUp).toContain(cmeDashboardModuleLabels.requirements);
+  it("offers a move only past a module in the same part of Today", () => {
+    render(<CmeCustomisePage />);
+    // "What's left" and "Routines due" render in different Today sections, so swapping them would change nothing.
+    expect(screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels.requirements} down` })).toBeDisabled();
+    expect(screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels["routines-due"]} up` })).toBeDisabled();
+    expect(screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels["audited-today"]} up` })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels["audited-today"]} down` }),
+    ).toBeEnabled();
   });
 
   it("reorders a module from the keyboard alone — reordering is never drag-only", async () => {
     const user = userEvent.setup();
     render(<CmeCustomisePage />);
-    const list = screen.getByTestId("cme-module-order");
-    const firstLabelBefore = within(list).getAllByRole("listitem")[0]?.textContent;
-    expect(firstLabelBefore).toContain(cmeDashboardModuleLabels.requirements);
-
-    const moveDown = screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels.requirements} down` });
-    // Tab focus, not a click — this is the behaviour under test: the control
-    // must be reachable and operable purely from the keyboard.
+    const moveDown = screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels["audited-today"]} down` });
+    // Tab focus, not a click: the control must be reachable and operable purely from the keyboard.
     moveDown.focus();
     expect(moveDown).toHaveFocus();
     await user.keyboard("{Enter}");
+    expect(itemAt(2)).toContain(cmeDashboardModuleLabels["year-dates"]);
 
-    const firstLabelAfter = within(screen.getByTestId("cme-module-order")).getAllByRole("listitem")[0]?.textContent;
-    expect(firstLabelAfter).toContain(cmeDashboardModuleLabels["routines-due"]);
-    expect(firstLabelAfter).not.toBe(firstLabelBefore);
-
-    // The Space key must work too, not only Enter — both are how a native
-    // button responds to the keyboard, and a control that only wired one
-    // would still read as "keyboard operable" to a shallow check. Requirement
-    // progress now sits second (routines due moved to first), so its own
-    // "up" control — not the (now-disabled) first row's — is the one to press.
-    const moveUp = screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels.requirements} up` });
+    // Space must work too, not only Enter.
+    const moveUp = screen.getByRole("button", { name: `Move ${cmeDashboardModuleLabels["audited-today"]} up` });
     moveUp.focus();
     await user.keyboard(" ");
-    const firstLabelAfterSpace = within(screen.getByTestId("cme-module-order")).getAllByRole("listitem")[0]
-      ?.textContent;
-    expect(firstLabelAfterSpace).toContain(cmeDashboardModuleLabels.requirements);
+    expect(itemAt(2)).toContain(cmeDashboardModuleLabels["audited-today"]);
   });
-
   it("disables the top row's up control and the bottom row's down control, rather than letting them no-op silently", () => {
     render(<CmeCustomisePage />);
     const list = screen.getByTestId("cme-module-order");

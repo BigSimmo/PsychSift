@@ -54,3 +54,15 @@ describe("CME dashboard module order", () => {
     expect(restored).toEqual([...withoutProvenance, "provenance"]);
   });
 });
+
+describe("canMoveModuleId", () => {
+  it("allows a move only past a neighbour in the same Today section", async () => {
+    const { canMoveModuleId } = await import("@/lib/cme/module-order");
+    const order = ["requirements", "routines-due", "audited-today", "year-dates", "provenance"] as const;
+    expect(canMoveModuleId(order, "requirements", 1)).toBe(false);
+    expect(canMoveModuleId(order, "routines-due", -1)).toBe(false);
+    expect(canMoveModuleId(order, "routines-due", 1)).toBe(false);
+    expect(canMoveModuleId(order, "audited-today", 1)).toBe(true);
+    expect(canMoveModuleId(order, "provenance", 1)).toBe(false);
+  });
+});

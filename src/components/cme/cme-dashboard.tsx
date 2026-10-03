@@ -25,7 +25,6 @@ import { CmeTodayShortcuts } from "@/components/cme/cme-dashboard-shortcuts";
 import { CmeWhatsLeft } from "@/components/cme/cme-dashboard-whats-left";
 import { CmeHeroSummary } from "@/components/cme/cme-hero-summary";
 import { CmePaceChart } from "@/components/cme/cme-progress-visuals";
-import { CmeYearInWeeks } from "@/components/cme/cme-year-in-weeks";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
 import { Button } from "@/components/ui/button";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
@@ -473,7 +472,6 @@ export function CmeDashboard({
 
   const atAGlance = (
     <>
-      <CmeYearInWeeks entries={entries} year={set.year} now={now} />
       {renderModules(["audited-today", "year-dates", "provenance"])}
       {pace && entries.length > 0 ? (
         <section className={cn(cardSurface, "p-4")} aria-label={`Hours against an even pace, ${set.year}`}>

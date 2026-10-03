@@ -29,7 +29,7 @@ import {
 import { modeDisplayNumberText, modeNumberText } from "@/components/mode-kit/type";
 import { Button } from "@/components/ui/button";
 import { cn, eyebrowText } from "@/components/ui-primitives";
-import { isWorkedKind, SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
+import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { summariseToday, type TodaySummary } from "@/lib/roster/today";
@@ -42,7 +42,6 @@ import { RosterTodayTeam } from "./team/roster-today-team";
 import { formatDateSpan, formatDuration, kindOf, shiftTimes, useRosterNow } from "./roster-format";
 import { RosterImportFlow } from "./roster-import-flow";
 import { RosterNightDial } from "./roster-night-dial";
-import { RosterFatigueRestRing } from "./roster-fatigue-rest-ring";
 import { RosterIdentityTile, RosterPageHeader, RosterSection, RosterStat, RosterStats } from "./roster-ui";
 import { RosterWeekStrip } from "./roster-week-strip";
 import { hasFreshLink, refreshDueRosterLinks, useRosterLinks } from "./use-roster-links";
@@ -351,15 +350,6 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
         .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0],
     [shifts.shifts, now],
   );
-  // Recovery maths counts worked shifts only: leave and on-call-from-home are not duty hours.
-  const workedShifts = useMemo(() => shifts.shifts.filter((shift) => isWorkedKind(kindOf(shift))), [shifts.shifts]);
-  // The rest ring judges the next worked shift by that team's own minimum break, not a fixed 10 h.
-  const minRestHours = useMemo(() => {
-    const next = [...workedShifts]
-      .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))
-      .find((shift) => Date.parse(shift.startsAt) > now.getTime());
-    return (next?.serviceId ? rulesByTeam.get(next.serviceId)?.minBreakHours : undefined) ?? undefined;
-  }, [workedShifts, rulesByTeam, now]);
   const workplaces = useMemo(
     () => [...new Set(shifts.shifts.flatMap((shift) => (shift.workplace ? [shift.workplace] : [])))],
     [shifts.shifts],
@@ -531,10 +521,6 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
       </>
     ) : null;
 
-  const atAGlance = ready ? (
-    <RosterFatigueRestRing shifts={workedShifts} now={now} sample={shifts.sample} minRestHours={minRestHours} />
-  ) : null;
-
   return (
     <InformationPageShell testId="roster-today-main" width="narrow">
       <TodayShell
@@ -565,7 +551,6 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
         nowSurface="own"
         needsYouNode={needsYouNode}
         comingUp={comingUp}
-        atAGlance={atAGlance}
         state={!importing && shifts.status === "loading" ? { kind: "loading" } : null}
         loadingFallback={<ModeModuleSkeleton rows={4} testId="roster-today-loading" />}
         blocking={blocking}

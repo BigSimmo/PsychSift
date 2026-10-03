@@ -18,6 +18,9 @@ describe("AdminCredentialsWallet", () => {
     expect(screen.getByText("Credentials Wallet")).toBeTruthy();
     expect(screen.getByText("Ahpra Registration")).toBeTruthy();
     expect(screen.getByText("Prescriber Number")).toBeTruthy();
+    expect(
+      screen.getByText("Stored on this device only. Use it on your own phone, not a shared ward computer."),
+    ).toBeTruthy();
   });
 
   it("copies credential to clipboard and shows copied feedback pill", async () => {

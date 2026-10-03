@@ -32,6 +32,29 @@ export const cmeDashboardModuleLabels: Record<CmeDashboardModuleId, string> = {
   provenance: "Where these targets came from",
 };
 
+/**
+ * The Today section each module renders in. Order only has a visible effect
+ * between modules in the same section, so Customise offers a move only past a
+ * neighbour that shares the module's section.
+ */
+export const cmeDashboardModuleSlots: Record<CmeDashboardModuleId, "needs-you" | "coming-up" | "at-a-glance"> = {
+  requirements: "needs-you",
+  "routines-due": "coming-up",
+  "audited-today": "at-a-glance",
+  "year-dates": "at-a-glance",
+  provenance: "at-a-glance",
+};
+
+/** True when moving `moduleId` one step would swap it with a module in the same Today section. */
+export function canMoveModuleId(
+  order: readonly CmeDashboardModuleId[],
+  moduleId: CmeDashboardModuleId,
+  direction: -1 | 1,
+): boolean {
+  const neighbour = order[order.indexOf(moduleId) + direction];
+  return neighbour !== undefined && cmeDashboardModuleSlots[neighbour] === cmeDashboardModuleSlots[moduleId];
+}
+
 const allModuleIds = new Set<CmeDashboardModuleId>(cmeDashboardModuleIds);
 
 /** Every module, visible, in the product default order — used whenever there is no stored preference to read. */
