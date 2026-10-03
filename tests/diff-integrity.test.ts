@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -329,6 +330,59 @@ describe("parseArguments", () => {
 });
 
 describe("resolveBase", () => {
+  it("uses local main only when the remote-tracking ref is absent, preserving failure boundaries", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "diff-integrity-base-"));
+    const git = (args: string[]) =>
+      execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+    try {
+      git(["init", "-b", "main"]);
+      git([
+        "-c",
+        "user.name=Fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+        "commit",
+        "--allow-empty",
+        "-m",
+        "base",
+      ]);
+      const base = git(["rev-parse", "HEAD"]);
+      git(["checkout", "-b", "feature"]);
+      git([
+        "-c",
+        "user.name=Fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+        "commit",
+        "--allow-empty",
+        "-m",
+        "feature",
+      ]);
+      expect(resolveBase({ env: {}, git })).toBe(base);
+      expect(() => resolveBase({ requested: "missing", env: {}, git })).toThrow(/cannot resolve --base/);
+      git(["update-ref", "-d", "refs/heads/main"]);
+      expect(() => resolveBase({ env: {}, git })).toThrow(/cannot resolve a comparison base/);
+      git(["update-ref", "refs/heads/main", base]);
+      const tree = git(["rev-parse", "HEAD^{tree}"]);
+      const unrelated = git([
+        "-c",
+        "user.name=Fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+        "commit-tree",
+        tree,
+        "-m",
+        "unrelated",
+      ]);
+      git(["update-ref", "refs/remotes/origin/main", unrelated]);
+      expect(() => resolveBase({ env: {}, git })).toThrow(/cannot resolve a comparison base/);
+      git(["update-ref", "refs/remotes/origin/main", "HEAD"]);
+      expect(resolveBase({ env: {}, git })).toBe(git(["rev-parse", "HEAD"]));
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("fails closed when no base can be resolved, naming the shallow-clone remedy", () => {
     const git = () => {
       throw new Error("no merge base");
@@ -343,7 +397,7 @@ describe("resolveBase", () => {
       return "a".repeat(40);
     };
     resolveBase({ env: { DIFF_INTEGRITY_BASE_SHA: "0".repeat(40) }, git });
-    expect(calls[0]).toEqual(["merge-base", "HEAD", "refs/remotes/origin/main"]);
+    expect(calls.at(-1)).toEqual(["merge-base", "HEAD", "refs/remotes/origin/main"]);
   });
 
   it("prefers an explicit base, then the environment, then the merge base", () => {
@@ -359,7 +413,7 @@ describe("resolveBase", () => {
     expect(calls[0].join(" ")).toContain("envsha");
     calls.length = 0;
     resolveBase({ env: {}, git });
-    expect(calls[0]).toEqual(["merge-base", "HEAD", "refs/remotes/origin/main"]);
+    expect(calls.at(-1)).toEqual(["merge-base", "HEAD", "refs/remotes/origin/main"]);
   });
 });
 
