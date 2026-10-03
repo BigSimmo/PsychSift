@@ -66,6 +66,13 @@ export const MY_DAY_SNOOZED_ITEMS_STORAGE_KEY = "psychsift:my-day:snoozed-v1";
  * here"; it is cleared at sign-out, session expiry and account switch.
  */
 export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
+/**
+ * localStorage — the Psychiatry hub's recently opened records: path, the page's
+ * own title (a diagnosis, therapy or form name), section and time.
+ * Reference records only, never patient detail; kept 90 days, recorded only
+ * while "Save recent searches" is on, cleared with recent searches.
+ */
+export const PSYCHIATRY_VISITS_STORAGE_KEY = "psychsift:psychiatry:visits-v1";
 
 function removeQuietly(storage: () => Storage, key: string): void {
   try {
@@ -110,6 +117,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_HIDDEN_CARDS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_SNOOZED_ITEMS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
 
