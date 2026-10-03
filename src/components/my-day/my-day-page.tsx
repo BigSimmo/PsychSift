@@ -1,8 +1,9 @@
 "use client";
 
 import { ChevronLeft, LogIn, Sunrise } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -28,12 +29,30 @@ import { MY_DAY_PAGE_LABELS, myDayPageIds, parseMyDayPage, type MyDayPageId } fr
 import type { RenewalRow } from "@/lib/my-day/figures";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { focusRing } from "@/components/card-recipes";
+import { DashTag } from "@/components/dashboard-kit/icon-chip";
 import { dashSurface } from "@/components/dashboard-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
 import { useAuthSession } from "@/lib/supabase/client";
+
+/**
+ * The signed-out sample: invented data, downloaded only when a signed-out
+ * visitor opens My Day, so it never counts towards anyone's first load.
+ */
+const MyDaySampleDashboard = dynamic(
+  () => import("@/components/my-day/my-day-sample").then((module) => module.MyDaySampleDashboard),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid gap-3" data-testid="my-day-sample-loading" aria-hidden="true">
+        <ModeModuleSkeleton rows={2} twoLine eyebrow />
+        <ModeModuleSkeleton rows={3} twoLine eyebrow />
+      </div>
+    ),
+  },
+);
 
 const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 sm:gap-6 lg:max-w-5xl";
 
@@ -236,6 +255,49 @@ function MyDayTabs({ page, onChange }: { readonly page: MyDayPageId; readonly on
   );
 }
 
+/** The tab panel; a sideways swipe on it moves to the next or previous tab. */
+function MyDaySwipePanel({
+  page,
+  onChange,
+  children,
+}: {
+  readonly page: MyDayPageId;
+  readonly onChange: (page: MyDayPageId) => void;
+  readonly children: ReactNode;
+}) {
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeRef = useRef<HTMLDivElement>(null);
+  return (
+    <div
+      ref={swipeRef}
+      id="my-day-panel"
+      role="tabpanel"
+      aria-labelledby={`my-day-tab-${page}`}
+      onTouchStart={(event) => {
+        const touch = event.touches[0];
+        touchStart.current =
+          touch && swipeRef.current && !insideHorizontalScroller(event.target, swipeRef.current)
+            ? { x: touch.clientX, y: touch.clientY }
+            : null;
+      }}
+      onTouchEnd={(event) => {
+        const start = touchStart.current;
+        const touch = event.changedTouches[0];
+        touchStart.current = null;
+        if (!start || !touch) return;
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+        if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+        const index = myDayPageIds.indexOf(page);
+        const next = myDayPageIds[index + (dx < 0 ? 1 : -1)];
+        if (next) onChange(next);
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const { status: authStatus, authEpoch } = useAuthSession();
   const enabled = myDayEnabledForAuth(authStatus);
@@ -249,8 +311,6 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
   const page = parseMyDayPage(searchParams?.get("page"));
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const swipeRef = useRef<HTMLDivElement>(null);
   const changePage = (next: MyDayPageId) => {
     if (next !== page) showPage(next);
   };
@@ -284,6 +344,15 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   // Roster's "unavailable" is its team data (swaps); the others are whole modes not offered yet.
   const notYet = [...(rosterUnavailable ? ["Roster swaps"] : []), ...otherUnavailable];
   const ready = enabled && state.status === "ready";
+  // Signed out: My Day shows a sample day of invented examples, with a sign-in prompt above it.
+  const sampleView = myDayNeedsSignIn(authStatus);
+  const showAll = () => {
+    setEditing(false);
+    openFullList();
+  };
+  const fullList = (shown: readonly MyDayItem[], shownChecked: readonly string[]) => (
+    <MyDayFullList items={shown} now={now} checked={shownChecked} onBack={closeFullList} onRetry={state.retry} />
+  );
 
   return (
     <InformationPageShell testId="my-day-main">
@@ -310,7 +379,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
             </button>
           ) : null}
         </header>
-        {ready && view === "dashboard" ? <MyDayTabs page={page} onChange={changePage} /> : null}
+        {(ready || sampleView) && view === "dashboard" ? <MyDayTabs page={page} onChange={changePage} /> : null}
 
         {authStatus === "loading" || (enabled && state.status === "loading") ? (
           <>
@@ -341,19 +410,50 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
           </div>
         ) : null}
 
-        {myDayNeedsSignIn(authStatus) ? (
-          <div className="grid gap-3" data-testid="my-day-signed-out">
-            <EmptyState
-              icon={LogIn}
-              title="Sign in to see your day"
-              body="My Day gathers your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared."
-              actions={
-                <Button variant="primary" onClick={() => setSignInOpen(true)}>
+        {sampleView ? (
+          <div className="grid gap-5" data-testid="my-day-sample">
+            <div
+              className="grid gap-3 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-card)] p-4 forced-colors:border"
+              data-testid="my-day-signed-out"
+            >
+              <div className="grid gap-1">
+                <p>
+                  <DashTag tint="amber">Sample</DashTag>
+                </p>
+                <h2 className="font-dash-title text-lg text-[color:var(--dash-ink)]">Sign in to see your day</h2>
+                <p className="text-sm text-[color:var(--dash-muted)]" data-testid="my-day-sample-notice">
+                  Below is a sample day made of invented examples, so you can see how My Day works. Signed in, it
+                  gathers your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared.
+                </p>
+              </div>
+              <div>
+                <Button variant="primary" icon={LogIn} onClick={() => setSignInOpen(true)}>
                   Sign in
                 </Button>
-              }
-            />
-            <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
+              </div>
+              <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
+            </div>
+            {view === "all" ? (
+              <MyDaySampleDashboard
+                now={now}
+                today={today}
+                page={page}
+                view="all"
+                onShowAll={showAll}
+                renderFullList={fullList}
+              />
+            ) : (
+              <MyDaySwipePanel page={page} onChange={changePage}>
+                <MyDaySampleDashboard
+                  now={now}
+                  today={today}
+                  page={page}
+                  view="dashboard"
+                  onShowAll={showAll}
+                  renderFullList={fullList}
+                />
+              </MyDaySwipePanel>
+            )}
           </div>
         ) : null}
 
@@ -372,33 +472,9 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
               </div>
             ) : null}
             {view === "all" ? (
-              <MyDayFullList items={items} now={now} checked={checked} onBack={closeFullList} onRetry={state.retry} />
+              fullList(items, checked)
             ) : (
-              <div
-                ref={swipeRef}
-                id="my-day-panel"
-                role="tabpanel"
-                aria-labelledby={`my-day-tab-${page}`}
-                onTouchStart={(event) => {
-                  const touch = event.touches[0];
-                  touchStart.current =
-                    touch && swipeRef.current && !insideHorizontalScroller(event.target, swipeRef.current)
-                      ? { x: touch.clientX, y: touch.clientY }
-                      : null;
-                }}
-                onTouchEnd={(event) => {
-                  const start = touchStart.current;
-                  const touch = event.changedTouches[0];
-                  touchStart.current = null;
-                  if (!start || !touch) return;
-                  const dx = touch.clientX - start.x;
-                  const dy = touch.clientY - start.y;
-                  if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
-                  const index = myDayPageIds.indexOf(page);
-                  const next = myDayPageIds[index + (dx < 0 ? 1 : -1)];
-                  if (next) changePage(next);
-                }}
-              >
+              <MyDaySwipePanel page={page} onChange={changePage}>
                 <MyDayDashboardView
                   key={authEpoch}
                   allowSample={allowSample}
@@ -410,13 +486,10 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                   checked={checked}
                   editing={editing}
                   page={page}
-                  onShowAll={() => {
-                    setEditing(false);
-                    openFullList();
-                  }}
+                  onShowAll={showAll}
                   onRetry={state.retry}
                 />
-              </div>
+              </MyDaySwipePanel>
             )}
 
             {/* One notice at the top at most; the quieter context is one line of small print here. */}
