@@ -130,9 +130,19 @@ describe("Now: the safety order", () => {
   });
 
   it("pins nothing when no qualifying row is recorded, and never invents 000 for the hospital", () => {
-    handbook.state = readyHandbook(handbookItems([{ id: "sw", title: "Switchboard", phone: "9000 0000" }]));
+    handbook.state = readyHandbook(handbookItems([{ id: "sw", title: "Switchboard", phone: "9000 0000" }]), {
+      services: [{ id: "svc", name: "Synthetic Hospital Service", role: "editor", clinicalReviewer: false, sites: [] }],
+    });
     const { container } = render(<OnCallHome now={IN_HOURS} />);
     expect(screen.queryByTestId("on-call-now-emergency")).toBeNull();
+    // It says so instead, with a way to set it up and no number to dial.
+    const notSetUp = screen.getByTestId("on-call-now-emergency-not-set-up");
+    expect(notSetUp).toHaveTextContent("Emergency number not set up for this hospital");
+    expect(screen.getByTestId("on-call-now-emergency-set-up-link")).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/on-call\/service\?service=svc&site=/),
+    );
+    expect(notSetUp.querySelector('a[href^="tel:"]')).toBeNull();
     // The hospital's numbers are on screen, so the public crisis lines step back too.
     expect(container.querySelector('a[href="tel:000"]')).toBeNull();
   });
@@ -167,10 +177,30 @@ describe("Now: the safety order", () => {
     expect(screen.getByTestId("on-call-now-right-now-outline")).toBeInTheDocument();
   });
 
-  it("reserves nothing for an emergency row this hospital has never had", () => {
+  it("keeps the space of the not-set-up row for a hospital loaded before without a pin", () => {
     handbook.state = readyHandbook([], { status: "loading", emergencyPinExpected: false });
+    const { rerender } = render(<OnCallHome now={IN_HOURS} />);
+    expect(screen.getByTestId("on-call-now-emergency-outlines")).toBeInTheDocument();
+    handbook.state = readyHandbook([]);
+    rerender(<OnCallHome now={IN_HOURS} />);
+    expect(screen.queryByTestId("on-call-now-emergency-outlines")).toBeNull();
+    expect(screen.getByTestId("on-call-now-emergency-not-set-up")).toBeInTheDocument();
+  });
+
+  it("reserves nothing for a hospital that has never loaded on this device", () => {
+    handbook.state = readyHandbook([], { status: "loading", emergencyPinExpected: null });
     render(<OnCallHome now={IN_HOURS} />);
     expect(screen.queryByTestId("on-call-now-emergency-outlines")).toBeNull();
+  });
+
+  it("tells a read-only member to ask an editor, with no link", () => {
+    handbook.state = readyHandbook([], {
+      services: [{ id: "svc", name: "Synthetic Hospital Service", role: "member", clinicalReviewer: false, sites: [] }],
+    });
+    render(<OnCallHome now={IN_HOURS} />);
+    const row = screen.getByTestId("on-call-now-emergency-not-set-up");
+    expect(row).toHaveTextContent("Ask a service editor to add it");
+    expect(row.querySelector("a")).toBeNull();
   });
 
   it("holds Your usual as outlines while a hospital row in it is still arriving", () => {

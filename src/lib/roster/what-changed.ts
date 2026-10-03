@@ -1,6 +1,7 @@
 import type { OnCallShiftChange, OnCallShiftImportSummary, OnCallShiftSnapshot } from "@/lib/roster/shifts/model";
-import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAssignment } from "@/lib/roster/team/model";
+import type { TodayItem } from "@/lib/today/today-item";
 
 /**
  * Roster "what changed": one line per change to the user's own shifts, for the
@@ -26,7 +27,10 @@ export type RosterChangeNotice = {
   /** Stable within one source, for React keys and test ids. */
   readonly id: string;
   readonly source: RosterChangeNoticeSource;
-  /** The Perth date the change is about, `YYYY-MM-DD`. Sorted on. */
+  /**
+   * The latest Perth day the change touches, `YYYY-MM-DD`: for a shift moved
+   * back into the past, its old (coming) day. Filtered and sorted on.
+   */
   readonly date: string;
   /** "Mon 6 Oct: moved", "Tue 7 Oct: added". */
   readonly title: string;
@@ -53,10 +57,23 @@ function importChangeDate(change: OnCallShiftChange): string {
   return perthDateOf(change.kind === "removed" ? change.before.startsAt : change.after.startsAt);
 }
 
+/** The latest day a change touches: a shift moved back into the past still frees its old, coming day. */
+function importRelevantDate(change: OnCallShiftChange): string {
+  const date = importChangeDate(change);
+  if (change.kind !== "moved") return date;
+  const before = perthDateOf(change.before.startsAt);
+  return before > date ? before : date;
+}
+
 function importNotice(change: OnCallShiftChange, index: number): RosterChangeNotice {
   const date = importChangeDate(change);
   const day = formatPerthDay(date);
-  const base = { id: `import-${index}`, source: "import" as const, date, href: SHIFTS_HREF };
+  const base = {
+    id: `import-${index}`,
+    source: "import" as const,
+    date: importRelevantDate(change),
+    href: SHIFTS_HREF,
+  };
   if (change.kind === "added") return { ...base, title: `${day}: added`, detail: describeSnapshot(change.after) };
   if (change.kind === "removed") return { ...base, title: `${day}: removed`, detail: describeSnapshot(change.before) };
   const movedDay = perthDateOf(change.before.startsAt) !== date;
@@ -80,15 +97,13 @@ export function importChangeNotices(
   today: string,
 ): RosterChangeNotice[] {
   if (!summary || summary.seenAt) return [];
-  return summary.changes
-    .map((change, index) => ({ change, notice: importNotice(change, index) }))
-    .filter(({ change, notice }) => {
-      if (notice.date >= today) return true;
-      // A shift moved from a coming day into the past still frees that coming day, so it stays.
-      return change.kind === "moved" && perthDateOf(change.before.startsAt) >= today;
-    })
-    .map(({ notice }) => notice)
-    .sort((a, b) => a.date.localeCompare(b.date));
+  return (
+    summary.changes
+      .map(importNotice)
+      // A shift moved from a coming day into the past keeps its old day as `date`, so it stays.
+      .filter((notice) => notice.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date))
+  );
 }
 
 /** One day's own duties before and after a republish, as `personalRosterChanges` returns them. */
@@ -112,14 +127,19 @@ function describeDuties(rows: TeamDayChange["before"]): string {
  * line per changed day, worded from the user's point of view: a day that gains
  * duties reads "added", a day that loses them all reads "now off".
  */
-export function teamChangeNotices(changes: readonly TeamDayChange[], today: string): RosterChangeNotice[] {
+export function teamChangeNotices(
+  changes: readonly TeamDayChange[],
+  today: string,
+  /** The team the publication belongs to, so two teams changing the same day give two ids. */
+  serviceId: string,
+): RosterChangeNotice[] {
   return changes
     .filter((change) => change.date >= today)
     .map((change) => {
       const day = formatPerthDay(change.date);
       const verb = change.before.length === 0 ? "added" : change.after.length === 0 ? "now off" : "changed";
       return {
-        id: `team-${change.date}`,
+        id: `team-${serviceId}-${change.date}`,
         source: "team" as const,
         date: change.date,
         title: `${day}: ${verb}`,
@@ -131,4 +151,22 @@ export function teamChangeNotices(changes: readonly TeamDayChange[], today: stri
       };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * The same lines as shared Today items, for My Day and any mode's Today page.
+ * A change to today or tomorrow is due soon; a later one is for information.
+ * Dismissing stays with the caller's "Got it", exactly as for the rows.
+ */
+export function rosterChangeTodayItems(notices: readonly RosterChangeNotice[], today: string): TodayItem[] {
+  const tomorrow = addDaysToDate(today, 1);
+  return notices.map((notice) => ({
+    id: `roster:change:${notice.id}`,
+    mode: "roster",
+    title: `Your roster changed · ${notice.title}`,
+    detail: notice.detail,
+    due: notice.date,
+    severity: notice.date <= tomorrow ? "soon" : "info",
+    href: notice.href,
+  }));
 }

@@ -11,23 +11,30 @@ export type DoctorCredentials = {
   readonly prescriberNumber: string;
   readonly providerNumbers: readonly SiteProviderNumber[];
   readonly wwccNumber: string;
-  readonly radiationLicense: string;
 };
 
 export const DEFAULT_CREDENTIALS: DoctorCredentials = {
   ahpraNumber: "",
   prescriberNumber: "",
-  providerNumbers: [
-    { id: "p1", site: "Royal Perth Hospital", number: "" },
-    { id: "p2", site: "Sir Charles Gairdner", number: "" },
-  ],
+  providerNumbers: [],
   wwccNumber: "",
-  radiationLicense: "",
 };
 
 import { DOCTOR_CREDENTIALS_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 
 export const CREDENTIALS_STORAGE_KEY = DOCTOR_CREDENTIALS_STORAGE_KEY;
+
+// Earlier versions pre-filled two blank hospital rows. Drop exactly those untouched rows on read so they
+// stop reappearing; any row with a number the user entered is kept.
+const LEGACY_DEFAULT_SITES: Readonly<Record<string, string>> = {
+  p1: "Royal Perth Hospital",
+  p2: "Sir Charles Gairdner",
+};
+
+function isUntouchedLegacyDefaultRow(row: Partial<SiteProviderNumber> | null | undefined): boolean {
+  if (!row || typeof row.id !== "string") return false;
+  return LEGACY_DEFAULT_SITES[row.id] === row.site && (row.number ?? "").trim() === "";
+}
 
 export function loadDoctorCredentials(): DoctorCredentials {
   if (typeof window === "undefined") return DEFAULT_CREDENTIALS;
@@ -42,10 +49,9 @@ export function loadDoctorCredentials(): DoctorCredentials {
       ahpraNumber: parsed.ahpraNumber ?? "",
       prescriberNumber: parsed.prescriberNumber ?? "",
       providerNumbers: Array.isArray(parsed.providerNumbers)
-        ? parsed.providerNumbers
+        ? parsed.providerNumbers.filter((row) => !isUntouchedLegacyDefaultRow(row))
         : DEFAULT_CREDENTIALS.providerNumbers,
       wwccNumber: parsed.wwccNumber ?? "",
-      radiationLicense: parsed.radiationLicense ?? "",
     };
   } catch {
     return DEFAULT_CREDENTIALS;

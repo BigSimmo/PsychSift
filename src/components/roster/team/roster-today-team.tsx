@@ -94,7 +94,7 @@ function TeamSummary({
     unseen && myChanges.status === "ready" && myChanges.data
       ? personalRosterChanges(myChanges.data.before, myChanges.data.after)
       : [];
-  const changeNotices = teamChangeNotices(changed, today);
+  const changeNotices = teamChangeNotices(changed, today, team.serviceId);
   // When the change details could not be read, still say a new version is out rather than nothing.
   const genericNotice = unseen && publication && myChanges.status !== "loading" && changeNotices.length === 0;
   const detailsMissing = myChanges.status !== "ready";

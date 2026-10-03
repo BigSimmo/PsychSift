@@ -5,6 +5,7 @@ import { formatPerthDay } from "@/lib/roster/shifts/perth-time";
 import {
   formatSnapshotTimes,
   importChangeNotices,
+  rosterChangeTodayItems,
   teamChangeNotices,
   type TeamDayChange,
 } from "@/lib/roster/what-changed";
@@ -148,30 +149,30 @@ describe("teamChangeNotices", () => {
 
   it("reads a day that gains duties as added", () => {
     const changes: TeamDayChange[] = [{ date: "2026-10-06", before: [], after: [am] }];
-    const [notice] = teamChangeNotices(changes, TODAY);
+    const [notice] = teamChangeNotices(changes, TODAY, "svc-1");
     expect(notice.title).toBe(`${day("2026-10-06")}: added`);
     expect(notice.detail).toBe("AM · 08:00–17:00 · Site A");
-    expect(notice.id).toBe("team-2026-10-06");
+    expect(notice.id).toBe("team-svc-1-2026-10-06");
     expect(notice.source).toBe("team");
     expect(notice.href).toBe("/roster/shifts");
   });
 
   it("reads a day that loses all duties as now off", () => {
-    const [notice] = teamChangeNotices([{ date: "2026-10-06", before: [am], after: [] }], TODAY);
+    const [notice] = teamChangeNotices([{ date: "2026-10-06", before: [am], after: [] }], TODAY, "svc-1");
     expect(notice.title).toBe(`${day("2026-10-06")}: now off`);
     expect(notice.detail).toBe("Was AM · 08:00–17:00 · Site A. Now off");
   });
 
   it("reads a changed day as changed", () => {
     const pm = duty("2026-10-06T13:00:00+08:00", "2026-10-06T22:00:00+08:00", "PM", null);
-    const [notice] = teamChangeNotices([{ date: "2026-10-06", before: [am], after: [pm] }], TODAY);
+    const [notice] = teamChangeNotices([{ date: "2026-10-06", before: [am], after: [pm] }], TODAY, "svc-1");
     expect(notice.title).toBe(`${day("2026-10-06")}: changed`);
     expect(notice.detail).toBe("Was AM · 08:00–17:00 · Site A. Now PM · 13:00–22:00");
   });
 
   it("joins several duties with commas", () => {
     const pm = duty("2026-10-06T18:00:00+08:00", "2026-10-07T02:00:00+08:00", "NT", "Site B");
-    const [notice] = teamChangeNotices([{ date: "2026-10-06", before: [], after: [am, pm] }], TODAY);
+    const [notice] = teamChangeNotices([{ date: "2026-10-06", before: [], after: [am, pm] }], TODAY, "svc-1");
     expect(notice.detail).toBe("AM · 08:00–17:00 · Site A, NT · 18:00–02:00 +1 · Site B");
   });
 
@@ -183,7 +184,68 @@ describe("teamChangeNotices", () => {
         { date: "2026-10-06", before: [am], after: [] },
       ],
       TODAY,
+      "svc-1",
     );
     expect(notices.map((n) => n.date)).toEqual(["2026-10-06", "2026-10-09"]);
+  });
+});
+
+describe("rosterChangeTodayItems", () => {
+  const notice = (date: string, id = `team-${date}`) => ({
+    id,
+    source: "team" as const,
+    date,
+    title: `${day(date)}: changed`,
+    detail: "Was A. Now B",
+    href: "/roster/shifts",
+  });
+
+  it("maps each line onto the shared Today shape", () => {
+    expect(rosterChangeTodayItems([notice("2026-10-08")], TODAY)).toEqual([
+      {
+        id: "roster:change:team-2026-10-08",
+        mode: "roster",
+        title: `Your roster changed · ${day("2026-10-08")}: changed`,
+        detail: "Was A. Now B",
+        due: "2026-10-08",
+        severity: "info",
+        href: "/roster/shifts",
+      },
+    ]);
+  });
+
+  it("marks changes to today and tomorrow as due soon", () => {
+    const items = rosterChangeTodayItems([notice("2026-10-05"), notice("2026-10-06"), notice("2026-10-07")], TODAY);
+    expect(items.map((item) => item.severity)).toEqual(["soon", "soon", "info"]);
+  });
+
+  it("returns nothing when there are no lines", () => {
+    expect(rosterChangeTodayItems([], TODAY)).toEqual([]);
+  });
+
+  it("dates a shift moved back into the past by the coming day it freed, so it is never due in the past", () => {
+    const before = snap("2026-10-06T08:00:00+08:00", "2026-10-06T17:00:00+08:00");
+    const after = snap("2026-10-03T08:00:00+08:00", "2026-10-03T17:00:00+08:00");
+    const [item] = rosterChangeTodayItems(
+      importChangeNotices(summary([{ kind: "moved", before, after }]), TODAY),
+      TODAY,
+    );
+    expect(item.due).toBe("2026-10-06");
+    expect(item.severity).toBe("soon");
+  });
+
+  it("gives two teams changing the same day two different ids", () => {
+    const am = {
+      startsAt: "2026-10-08T08:00:00+08:00",
+      endsAt: "2026-10-08T12:00:00+08:00",
+      shiftCode: "AM",
+      siteName: null,
+    };
+    const change = [{ date: "2026-10-08", before: [], after: [am] }];
+    const ids = rosterChangeTodayItems(
+      [...teamChangeNotices(change, TODAY, "svc-a"), ...teamChangeNotices(change, TODAY, "svc-b")],
+      TODAY,
+    ).map((item) => item.id);
+    expect(new Set(ids).size).toBe(2);
   });
 });

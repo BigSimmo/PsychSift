@@ -65,13 +65,18 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
   );
 
   const handleSave = () => {
-    const ok = saveDoctorCredentials(draft);
+    const cleaned: DoctorCredentials = {
+      ...draft,
+      providerNumbers: draft.providerNumbers.filter((p) => p.site.trim() || p.number.trim()),
+    };
+    const ok = saveDoctorCredentials(cleaned);
     if (!ok) {
       setSaveError("Failed to save credentials to local device storage.");
       return;
     }
     setSaveError(null);
-    setCreds(draft);
+    setCreds(cleaned);
+    setDraft(cleaned);
     setEditing(false);
   };
 
@@ -136,6 +141,9 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
           </button>
         </div>
       </div>
+      <p className="text-xs text-[color:var(--text-muted)]">
+        Stored on this device only. Use it on your own phone, not a shared ward computer.
+      </p>
 
       {/* Grid of Micro-Passcards */}
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="list">
@@ -266,6 +274,18 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
                 />
               </div>
             ))}
+            <Button
+              variant="secondary"
+              onClick={() =>
+                setDraft({
+                  ...draft,
+                  providerNumbers: [...draft.providerNumbers, { id: `site-${Date.now()}`, site: "", number: "" }],
+                })
+              }
+              testId={`${testId}-add-site-button`}
+            >
+              Add a site
+            </Button>
           </div>
 
           <TextField

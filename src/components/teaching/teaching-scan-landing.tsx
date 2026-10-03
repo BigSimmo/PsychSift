@@ -1,6 +1,5 @@
 "use client";
 
-import { withUnit } from "./teaching-number";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -9,8 +8,7 @@ import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { perthDateKey, perthTime, shortDayLabel } from "@/components/teaching/teaching-dates";
-import { defaultCpdHours } from "@/components/teaching/log-to-cpd-sheet";
-import { TeachingCpdBridgeSheet } from "@/components/teaching/teaching-cpd-bridge-sheet";
+import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
@@ -83,10 +81,6 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
 
   const sessionStartsAt = sessionDetail.data?.startsAt ?? state.opened?.startsAt;
   const sessionEndsAt = sessionDetail.data?.endsAt;
-  const cpdHours =
-    sessionStartsAt && sessionEndsAt
-      ? Number(defaultCpdHours({ startsAt: sessionStartsAt, endsAt: sessionEndsAt }))
-      : 1.0;
   const hasEnded = Boolean(sessionEndsAt && now && new Date(sessionEndsAt).getTime() <= now.getTime());
 
   const run = useCallback(
@@ -190,7 +184,7 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               onClick={() => setCpdBridgeOpen(true)}
               data-testid="teaching-scan-cpd-bridge-open"
             >
-              {hasEnded ? `Log ${withUnit(cpdHours.toFixed(1), "h")} to CPD` : "Available once session ends"}
+              {hasEnded ? "Log to CPD" : "Available once session ends"}
             </Button>
             <Link
               href={`/teaching/session/${state.mark.occurrenceId}`}
@@ -199,13 +193,15 @@ export function TeachingScanLanding({ token }: { token: string | null }) {
               Open the session
             </Link>
             {todayLink}
-            <TeachingCpdBridgeSheet
-              open={cpdBridgeOpen}
-              onClose={() => setCpdBridgeOpen(false)}
-              occurrenceId={state.mark.occurrenceId}
-              title={opened?.title ?? sessionDetail.data?.title ?? "Teaching Session"}
-              hours={cpdHours}
-            />
+            {hasEnded && sessionStartsAt && sessionEndsAt ? (
+              <LogToCpdSheet
+                open={cpdBridgeOpen}
+                onClose={() => setCpdBridgeOpen(false)}
+                occurrenceId={state.mark.occurrenceId}
+                startsAt={sessionStartsAt}
+                endsAt={sessionEndsAt}
+              />
+            ) : null}
           </>
         ) : null}
 

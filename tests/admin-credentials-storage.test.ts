@@ -33,6 +33,32 @@ describe("doctor credentials storage", () => {
     expect(loadDoctorCredentials().ahpraNumber).toBe("MED0000000000");
   });
 
+  it("ignores a removed radiation licence value and ships no hard-coded sites", () => {
+    stubWindow({
+      getItem: () => JSON.stringify({ ahpraNumber: "MED1", radiationLicense: "RL-9", providerNumbers: [] }),
+      setItem: () => undefined,
+    });
+    const loaded = loadDoctorCredentials();
+    expect(loaded.ahpraNumber).toBe("MED1");
+    expect("radiationLicense" in loaded).toBe(false);
+    expect(DEFAULT_CREDENTIALS.providerNumbers).toEqual([]);
+  });
+
+  it("drops untouched legacy default site rows on load but keeps rows with a number", () => {
+    stubWindow({
+      getItem: () =>
+        JSON.stringify({
+          providerNumbers: [
+            { id: "p1", site: "Royal Perth Hospital", number: "" },
+            { id: "p2", site: "Sir Charles Gairdner", number: "123456AB" },
+            { id: "x1", site: "My clinic", number: "" },
+          ],
+        }),
+      setItem: () => undefined,
+    });
+    expect(loadDoctorCredentials().providerNumbers.map((row) => row.id)).toEqual(["p2", "x1"]);
+  });
+
   it("falls back when the localStorage getter throws", () => {
     blockedGetterWindow();
     expect(loadDoctorCredentials()).toEqual(DEFAULT_CREDENTIALS);
