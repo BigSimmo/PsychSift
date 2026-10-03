@@ -3,7 +3,8 @@ import { access, readFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { constants } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { loadEnvConfig } from "@next/env";
 
 import { resolveDeveloperAccessKey } from "../src/lib/developer-area/link-access";
@@ -699,7 +700,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     result.failures.push(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

@@ -27,6 +27,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { format as prettierFormat, resolveConfig as resolvePrettierConfig } from "prettier";
 
 import type { SourceAcquisitionRecord } from "../src/lib/sources/acquisition-ledger";
@@ -382,7 +383,7 @@ async function main() {
   process.exitCode = 1;
 }
 
-const isMainModule = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isMainModule = isDirectEntrypoint(import.meta.url);
 if (isMainModule) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));

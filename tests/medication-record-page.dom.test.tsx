@@ -158,3 +158,55 @@ describe("MedicationRecordPage source link (#05WXHX)", () => {
     expect(screen.queryByRole("link", { name: /TGA Product Information/ })).not.toBeInTheDocument();
   });
 });
+
+describe("MedicationRecordPage confirmed source links (#05WXHX step 2)", () => {
+  const confirmedLink = {
+    id: "fixture-clozapine-pi",
+    title: "Australian Product Information: clozapine",
+    publisher: "Therapeutic Goods Administration",
+    href: "https://www.ebs.tga.gov.au/ebs/picmi/picmirepository.nsf/PICMI?OpenForm&q=clozapine&t=pi",
+  };
+
+  async function openAdditionalTab() {
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole("button", { name: /Additional/ })[0]);
+  }
+
+  it("renders no Sources list when no link is confirmed", async () => {
+    mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} />);
+    await openAdditionalTab();
+    expect(screen.queryByTestId("medication-source-links")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Sources" })).not.toBeInTheDocument();
+  });
+
+  it("renders a confirmed link on the Additional tab only, opening the source outside the app", async () => {
+    mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} sourceLinks={[confirmedLink]} />);
+    expect(screen.queryByTestId("medication-source-links")).not.toBeInTheDocument();
+
+    await openAdditionalTab();
+    const list = screen.getByTestId("medication-source-links");
+    expect(within(list).getByRole("heading", { name: "Sources" })).toBeInTheDocument();
+    const link = within(list).getByRole("link", { name: /Australian Product Information: clozapine/ });
+    expect(link).toHaveAttribute("href", confirmedLink.href);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link.getAttribute("rel")?.split(" ")).toEqual(expect.arrayContaining(["noreferrer", "noopener"]));
+    expect(within(list).getByText("Therapeutic Goods Administration")).toBeInTheDocument();
+  });
+
+  it("keeps the no-sources footer and TGA fallback search when no link is confirmed", () => {
+    mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} />);
+    expect(screen.getByText(/does not yet link to its own sources/)).toBeInTheDocument();
+    expect(screen.queryByText(/linked sources/)).not.toBeInTheDocument();
+  });
+
+  it("points the footer at the linked sources instead of the fallback search when a link is confirmed", () => {
+    mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} sourceLinks={[confirmedLink]} />);
+    expect(screen.queryByText(/does not yet link to its own sources/)).not.toBeInTheDocument();
+    expect(screen.getByText(/against this record’s linked sources/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Search the TGA Product Information/ })).not.toBeInTheDocument();
+  });
+});

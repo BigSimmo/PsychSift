@@ -4,6 +4,8 @@ import { existsSync, readFileSync, readdirSync, renameSync, rmSync, statSync, wr
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+
 export const criticalInstalledPackages = ["next", "react", "react-dom", "eslint", "playwright", "typescript", "vitest"];
 export const installedTreeStampName = ".codex-installed-tree.json";
 
@@ -331,7 +333,7 @@ function parseArgs(args) {
 }
 
 function isDirectExecution() {
-  return process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  return isDirectEntrypoint(import.meta.url);
 }
 
 if (isDirectExecution()) {

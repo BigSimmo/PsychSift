@@ -69,6 +69,13 @@ const reviewedActionPins = new Map([
       // version bumps in action.yml/run.ts/package.json/bun.lock — no change
       // to permissions, secrets handling, or the action's trust boundary.
       ["4036a180cf690f49529f5d8c79c998855287f590", "v1.0.230"],
+      // Reviewed 2026-09-28 for PR #3170 (Dependabot github-actions group):
+      // annotated tag v1.0.235 peels to this commit. Diff v1.0.230...v1.0.235
+      // is only Claude Code (2.1.277->2.1.283) and Agent SDK (0.3.277->0.3.283)
+      // version bumps in action.yml/run.ts/package.json/bun.lock, plus the
+      // upstream repo's own integration-test model pin — no change to
+      // permissions, secrets handling, or the action's trust boundary.
+      ["756cc22e19660d20e8cc9496b4f242475a7f7790", "v1.0.235"],
     ]),
   ],
   ["actions/cache", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],
@@ -77,7 +84,20 @@ const reviewedActionPins = new Map([
   ["actions/upload-artifact", new Map([["043fb46d1a93c77aae656e7c1c64a875d1fc6a0a", "v7"]])],
   ["actions/download-artifact", new Map([["3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c", "v8.0.1"]])],
   ["denoland/setup-deno", new Map([["22d081ff2d3a40755e97629de92e3bcbfa7cf2ed", "v2.0.5"]])],
-  ["supabase/setup-cli", new Map([["46f7f98c7f948ad727d22c1e67fab04c223a0520", "v3"]])],
+  [
+    "supabase/setup-cli",
+    new Map([
+      ["46f7f98c7f948ad727d22c1e67fab04c223a0520", "v3"],
+      // Reviewed 2026-09-28 for PR #3170 (Dependabot github-actions group):
+      // tags v3.0.1 and moving v3 both resolve to this commit (workflow comment
+      // stays # v3). Diff v3.0.0...v3.0.1 only stops forcing the GHCR image
+      // registry for CLI >= 2.108.0 (letting the CLI's own registry fallback
+      // apply) and keeps an explicit caller registry, plus dev-tool bumps — no
+      // change to permissions, secrets handling, or the action's trust boundary.
+      // The Migration replay image cache already matches both registries.
+      ["45a513f8c64c0bc8e0e3dfe572b5c95be85f6359", "v3"],
+    ]),
+  ],
   ["gitleaks/gitleaks-action", new Map([["e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e", "v3"]])],
   [
     "actions/ai-inference",

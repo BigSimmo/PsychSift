@@ -49,7 +49,9 @@
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = join(root, "data", "forms-pdf-manifest.json");
@@ -279,9 +281,7 @@ async function run({ checkOnly }) {
   );
 }
 
-// `file://${process.argv[1]}` is not a valid comparison on Windows; use the same
-// cross-platform conversion as this repository's other directly invoked scripts.
-const isEntrypoint = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const isEntrypoint = isDirectEntrypoint(import.meta.url);
 if (isEntrypoint) {
   await run({ checkOnly: process.argv.includes("--check") });
 }

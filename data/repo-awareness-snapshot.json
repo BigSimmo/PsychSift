@@ -226,6 +226,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/new-job/pack",
+        "file": "src/app/(search-app)/admin/new-job/pack/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/roster/team",
         "file": "src/app/(search-app)/roster/team/page.tsx",
         "area": "product"
@@ -3711,6 +3716,11 @@
       {
         "path": "docs/redesign/clinical-white-aegean-master-implementation-plan.md",
         "section": "redesign",
+        "catalogued": true
+      },
+      {
+        "path": "docs/agents/task-efficiency.md",
+        "section": "agents",
         "catalogued": true
       },
       {
@@ -7532,6 +7542,14 @@
         "checks": "Focused calculators Vitest 18/18; npm run format; git diff --check."
       },
       {
+        "date": "2026-10-02",
+        "ref": "codex/psychsift-efficiency-resumed-20261002",
+        "head": "1e2b49e08a8da8d5dc475648f21866d7da07eed6",
+        "scope": "local base inheritance and canonical issues snapshot repair",
+        "outcome": "Independent narrow review: no high-confidence findings. Base navigator inheritance and canonical snapshot correction accepted; full integration blocked by excluded inherited security workflow pinning.",
+        "checks": "Exact two-file SHA-256 values preserved privately. Ordinary local merge3cdf has11ca/main59 parents; guide matches main59. Canonical producer default removes only four pending preview rows; immutable inbox unchanged. Existing snapshot guard red to green. Required49-gate run at1e2b:16 completed,check:github-actions fails19 inherited violations,32 not reached. No full lint/units/build/RAG acceptance. Reviewer executed no checks or providers; observed model/effort unknown. Prior14/5 reviews reused for unchanged bytes."
+      },
+      {
         "date": "2026-08-15",
         "ref": "codex/calculators-mode",
         "head": "1e3d9278fbddda7d36d12e5645429b33d2a374ce",
@@ -7994,6 +8012,14 @@
         "scope": "Packet S5 (B1+B2): telemetry gap assessment + offline adversarial harness + routing",
         "outcome": "PR #2056 open; offline gates green; 3 divergences pinned in KNOWN_DIVERGENCES; 44/44 denominator reconciled",
         "checks": "verify:pr-local heavy chain (lint, typecheck, test, build, eval:rag:offline, eval:rag:adversarial:offline) failed:(none) not-reached:(none); check:rag:adversarial-fixtures 24/8/6; maintainability rag.ts 4359/4362"
+      },
+      {
+        "date": "2026-10-02",
+        "ref": "codex/psychsift-efficiency-resumed-20261002",
+        "head": "254bd0dcdece209564082ac532d9ac6a8cd113a8",
+        "scope": "offline worker health and inherited gate blocker repair",
+        "outcome": "Independent five-file review: no high-confidence findings. Focused correctness accepted; full current-main integration remains blocked.",
+        "checks": "Exact five-file SHA-256 values in private independent-five-file-review.md. Red 5 failed/7 passed to green12/12; scoped lint0 errors/1 inherited warning; formatting, instruction-policy and codebase-index guards pass; diff-integrity23/23 self-tests and45->53 cases. Typecheck exit75 admission busy: compiler did not run. Existing14-path review remains distinct. Requested Sol/high, observed route unknown. Current main59f8e0e not reconciled; automatic review rejected merge under original no-merge instruction. Full49 gates/units/build/RAG/release/hosted proof pending; no gate waived."
       },
       {
         "date": "2026-08-12",
@@ -9354,6 +9380,14 @@
         "scope": "Correction: universal Query Ribbon implementation and responsive search-heading review",
         "outcome": "SUPERSEDES the earlier row that named non-existent pre-amend SHA `16ce57d9615708528e7924b41837210a24414722`. This resolvable reviewed tip contains functional commit `0b67944b0d2973d612833422fb4074aeacdb6c8c`, current-main syncs, and the append-only ledger correction. The prior APPROVE outcome and residual-risk statement are unchanged; no P0-P2 finding remains.",
         "checks": "Query Ribbon DOM 4/4 after each main sync; exact-head hosted policy, static checks, unit coverage, build, advisory UI, Production UI, safety/config, Semgrep, Gitleaks, GitGuardian, and `PR required` passed before the final docs-only correction. No OpenAI, Supabase, Railway, deployment, production-data, or clinical provider workflow ran."
+      },
+      {
+        "date": "2026-10-03",
+        "ref": "codex/psychsift-efficiency-draft-20261003",
+        "head": "37db07cccf12e9a441e37eee9225a33b7c47dae4",
+        "scope": "fresh-current-main efficiency draft complete scope",
+        "outcome": "Independent complete-scope standards and specification review: no high-confidence findings. Local acceptance pending focused checks/typecheck as recorded in task evidence.",
+        "checks": "Exact18 SHA256 inputs privately retained. Current-base resolver RED/GREEN; full npmformat exit0 and normal docs hooks pass. Eleven source static checks pass; exact base/head instruction gate passes with unchanged AGENTS12-byte baseline warning. All2762 base snapshot rows preserved and173 protected current-base files unchanged. Focused unit first attempt admissionbusy75 ran none; normal check owner supplies subsequent scoped lint/unit/typecheck evidence. Current rollout-owner worker-health scope excluded; no Docker/policy-budget/runner/receipt-system changes or obsolete workflow restoration. Requested Sol/High, actual route unknown; reviewer ran no commands/providers and changed no source."
       },
       {
         "date": "2026-08-22",
@@ -12138,6 +12172,14 @@
         "scope": "Deep review and bug hunt across Phase 1 & Phase 2 audit remediation changes, git conflict resolutions, RAG UI governance fail-closed checks, privacy routing mocks, and offline RAG evaluation suites.",
         "outcome": "Discovered and remediated a fail-closed governance defect in `src/components/clinical-dashboard/evidence-panels.tsx`, where a loose `isSourceBacked !== false` check allowed untrusted answers with missing relevance evaluations to pass through, and where `ClinicalNotesChecklistPanel` and `clinicalNotesDisplayCountForAnswer` were not trust-gating visual evidence before rendering tables or calculating tab counts. Replaced with explicit `=== true` check and wired `trustGatedAnswerForClinicalNotes` into the components and helpers. Also confirmed merge conflict resolutions in `service-catalog-mapper.ts` and `api/answer/route.ts` are spotless, and `privacy-ui.test.ts` static Next router mocks are functioning correctly.",
         "checks": "`npx vitest run tests/visual-evidence-tabs.dom.test.tsx` (6/6 passed); `npm run eval:rag:offline` (21/21 suites passed, 308 tests passed). No provider-backed checks run."
+      },
+      {
+        "date": "2026-10-02",
+        "ref": "claude/teaching-mode-review-fixes",
+        "head": "59a0d50806dba17dea030223e55ba8c3293a4b2f",
+        "scope": "Teaching browser CI timing repair",
+        "outcome": "Independent review accepted the same midweek clock repair; production behavior and assertions preserved.",
+        "checks": "Whole-tree format and source typecheck passed; Teaching Chromium 10 passed; same-input focused lint reused from PR3203. Mocked projector QR black/white in actual light/dark themes fits 1280x600; two visible-label readiness changes remain checked and enabled in demo."
       },
       {
         "date": "2026-07-13",
@@ -16604,6 +16646,14 @@
         "checks": "Provider-backed GitHub PR inventory via MCP (400 PRs #264-#674, all merged=false); local read-only git: rewritten-main-aware cherry-pick + two-dot tree + branch-only-file novelty sweep vs origin/main e75fad90; adversarial re-check. Remote `git push --delete` attempted (provider-backed write) and DENIED with HTTP 403. No OpenAI/Supabase/live-eval checks."
       },
       {
+        "date": "2026-10-02",
+        "ref": "codex/psychsift-efficiency-integration-20261002",
+        "head": "8a8c937ba5e8310d5d0e1ab527788bb148665dce",
+        "scope": "efficiency documentation integration on local main",
+        "outcome": "Independent complete six-file committed documentation review: no high-confidence findings. Preparation only; pending portability files excluded.",
+        "checks": "Fresh scoped format, 488 document references, 837 npm references, instruction checks/budgets, inventory and gate mappings passed. Full docs links FAILED five inherited anchors; awareness snapshot WITHHELD for PR3143. Proof in .local/workflow-evidence/efficiency-integration-20261002. No new-base unit or typecheck claim."
+      },
+      {
         "date": "2026-07-13",
         "ref": "codex/rag-canary-completion",
         "head": "8aa9f92e6f02870e164515778a591414dff2dce1",
@@ -18604,6 +18654,14 @@
         "checks": "npm run check:medication-lexicon-report; npx vitest run tests/medication-interaction-lexicon-coverage.test.ts; npm run typecheck:internal; npm run lint:internal; npm run format"
       },
       {
+        "date": "2026-10-02",
+        "ref": "claude/teaching-mode-followup",
+        "head": "a32146d424c716f12c5eb769d7e596c37c4cbe13",
+        "scope": "Teaching browser CI timing repair",
+        "outcome": "Independent review found no defect in the midweek clock fix; production behavior and assertions preserved.",
+        "checks": "Whole-tree format, focused ESLint, source typecheck, and Chromium Teaching suite: 10 passed. Paid/provider tests not run."
+      },
+      {
         "date": "2026-08-13",
         "ref": "codex/performance-css-delivery",
         "head": "a324e067d2055fa3e32dd7a039c5e66a62bef3b9",
@@ -19170,6 +19228,14 @@
         "scope": "PR #1451 reopen readiness",
         "outcome": "clean; merge conflict resolved; bugbot none; NOTES attribution fixed; keep closed",
         "checks": "check:outstanding-issues; design-token-contract 31/31; merge-tree clean; pr-bugbot no comments"
+      },
+      {
+        "date": "2026-10-02",
+        "ref": "codex/psychsift-efficiency-resumed-20261002",
+        "head": "aa5018f13a47f0258d6894b34c01c04583c78b8c",
+        "scope": "efficiency documentation continuation after restart",
+        "outcome": "Independent complete seven-file committed documentation review: no high-confidence findings. Preparation only; five pending portability paths excluded.",
+        "checks": "Fresh format9, scoped links488, npm refs837, inventory tolerance, scoped retired rules and gate mapping44/41 passed. Full docs links FAILED5 inherited anchors, index FAILED .docker, AGENTS budget FAILED24792/24000. Snapshot refresh and new-base portability proof pending. Evidence .local/workflow-evidence/efficiency-resumed-20261002. Requested Sol/high; observed unknown."
       },
       {
         "date": "2026-09-13",
@@ -20658,6 +20724,14 @@
         "scope": "Targeted review of search bar/header/footer chrome behaviour after the edge-to-edge phone dock fix, plus durable repo rules for page-adaptive search chrome.",
         "outcome": "No new P0/P1 search chrome defect found in the static review. Fixed one regression hazard: a stale ClinicalDashboard comment still instructed a 0.75rem hidden dock pad despite the implementation/tests requiring 0rem. Added durable search chrome behaviour rules in AGENTS.md and docs/search-chrome-behaviour.md, with a static guard tying the remembered rules to the hidden-reserve contract.",
         "checks": "dependency shortcut section count; git diff --check; targeted rg for stale 0.75rem hidden-pad source wording (only negative test assertions remain); targeted Vitest command attempted but blocked by missing node_modules/vitest under Node 20.20.2 in this container. No provider-backed checks run."
+      },
+      {
+        "date": "2026-10-02",
+        "ref": "codex/psychsift-efficiency-resumed-20261002",
+        "head": "bcfba8428ff595ce8497e3e16f1cea09a1ce823a",
+        "scope": "complete efficiency and Windows repair integration preparation",
+        "outcome": "Independent review of complete 14-path committed delta: no high-confidence findings. Suitable for local preparation and owner handoff; integration gates remain blocked.",
+        "checks": "Base d941deb6; current repaired cases 41/41, complete focused run 44/45 inherited Docker failure; changed-file lint and snapshot freshness pass; typecheck and three documentation guards fail in baseline-identical files. Evidence .local/workflow-evidence/efficiency-resumed-20261002/checks.json, owner-attribution.json and complete-independent-review.md. Reviewer reused gate evidence; one read-only diff check clean. Requested Sol/high, observed route unknown. Historical 22338 tests at e06b8a1e on 2026-10-01 are not current-base proof. No fresh full unit/build/RAG/release/hosted proof; no gate waived."
       },
       {
         "date": "2026-08-07",
@@ -23804,6 +23878,14 @@
         "checks": "npx vitest run tests/mobile-composer-reserve.test.ts PASS (9/9). No provider-backed checks run."
       },
       {
+        "date": "2026-10-01",
+        "ref": "codex/psychsift-unit-gate-repair-20261001",
+        "head": "e06b8a1e56ffb04eb5df5b56e6518ae8337591b7",
+        "scope": "unit gate portability repairs",
+        "outcome": "Independent complete four-file review: no high-confidence findings; assertions, timeouts and thresholds preserved.",
+        "checks": "Fresh full npm test: 1434 files and 22338 tests passed; focused suites: 45 plus 25 tests passed; coordinated four-file ESLint and npm run typecheck passed. Primary proof: .local/unit-gate-repair-20261001/checks.json and independent-review.md. Offline native tests used approved per-command escalation."
+      },
+      {
         "date": "2026-08-18",
         "ref": "claude/rag-eval-scope-detection-23b6a2",
         "head": "e077c75cf46dddefcc21c5cbfeff4bbb2078fd48",
@@ -24250,6 +24332,14 @@
         "scope": "branch-cleanup",
         "outcome": "Redundant: exact source HEAD was squash-merged by PR #499; eligible for deletion when unreferenced.",
         "checks": "GitHub merged-PR source HEAD matched exactly."
+      },
+      {
+        "date": "2026-10-02",
+        "ref": "codex/psychsift-efficiency-current-base-20261002",
+        "head": "e7b9bd51adc502df5ab05cc486b45e71497eae6c",
+        "scope": "current-base efficiency reconstruction complete scope",
+        "outcome": "Independent complete-scope review: no high-confidence findings; standards and specification pass. Local check acceptance pending corrected scoped lint and typecheck.",
+        "checks": "Exact18 SHA256 inputs privately retained. Exact-base resolver RED/GREEN;4 focused Vitest files/45 tests pass. Instructions/docs links/npm refs/inventory/gate manifest/format and1860 protected files pass; all2761 prior snapshot review rows preserved. First unit attempt was admission busy. Initial nonexistent lint:target ran no lint; corrected lint running and typecheck pending at review. Normal hooks passed. No full/build/RAG/provider/merge/newer-main claim. Requested Sol/High; observed routing unknown. Reviewer ran no checks/providers and changed no state."
       },
       {
         "date": "2026-07-25",
@@ -26106,6 +26196,14 @@
         "scope": "PR #1442 documentation synchronization automation",
         "outcome": "approved after current-main conflict resolution, generated inventory refresh, and dirty-output preservation review",
         "checks": "docs inventory 194/209; focused 5/5; index, links 1417, scripts 405, issues, ledger, format, diff pass; pre-commit executed successfully"
+      },
+      {
+        "date": "2026-10-01",
+        "ref": "codex/psychsift-task-efficiency-20261001",
+        "head": "fbbec7d878b944d70ebe4685562b5a19723dfa3a",
+        "scope": "efficiency handoff local documentation; candidate diff SHA256 082270cbdbb4002c0a1e4b996ee956c04cff185131a3227811834beeef9f8832",
+        "outcome": "Independent full six-file acceptance review: no high-confidence findings. Local documentation completion; PR, release and hosted readiness unverified.",
+        "checks": "Fresh docs links 4576, script refs 834, docs index 80, scoped instructions, budgets, gate manifest 44/41, organisation, Prettier, installed-lock parity, snapshot stale-before/current-after generation and diff check passed. Reviewer reused this evidence and checked candidate hashes. Broad PR-local dry-run selected heavy proof for data snapshot; lint/typecheck/full units/build/RAG fixtures were not run. No provider calls."
       },
       {
         "date": "2026-09-17",

@@ -29,6 +29,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+
 const DEFAULT_CONTAINER_ROOT = "/opt/pw-browsers";
 
 // Mirrors playwright-core's `EXECUTABLE_PATHS["chromium-headless-shell"]`
@@ -374,7 +376,7 @@ function parseArgs(args) {
 }
 
 function isDirectRun() {
-  return process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  return isDirectEntrypoint(import.meta.url);
 }
 
 if (isDirectRun()) {

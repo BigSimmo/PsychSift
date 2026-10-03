@@ -121,6 +121,7 @@
         "src/app/(display)/teaching/display/[token]/page.tsx",
         "src/app/(search-app)/admin/help/page.tsx",
         "src/app/(search-app)/admin/new-job/page.tsx",
+        "src/app/(search-app)/admin/new-job/pack/page.tsx",
         "src/app/(search-app)/admin/new-job/records/page.tsx",
         "src/app/(search-app)/admin/page.tsx",
         "src/app/(search-app)/admin/renewals/page.tsx",

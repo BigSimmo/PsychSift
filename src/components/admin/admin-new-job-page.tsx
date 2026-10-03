@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Copy } from "lucide-react";
+import { ChevronRight, Copy, FileDown } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { useAccountData } from "@/components/account-data-provider";
@@ -288,6 +288,33 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
               </div>
             </section>
 
+            <section
+              id="admin-new-job-credential-pack"
+              aria-labelledby="admin-new-job-credential-pack-heading"
+              className={cn(inPageAnchor, "grid gap-3")}
+            >
+              <h2 id="admin-new-job-credential-pack-heading" className={eyebrowText}>
+                For your new employer
+              </h2>
+              <Link
+                href="/admin/new-job/pack"
+                data-testid="admin-new-job-credential-pack-link"
+                className={cn(
+                  cardSurface,
+                  focusRing,
+                  "flex min-h-12 items-center gap-2 px-3 py-2.5 no-underline text-[color:var(--text-heading)]",
+                )}
+              >
+                <FileDown aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+                <span className="grid min-w-0 flex-1 gap-0.5">
+                  <span className="text-sm font-medium">Credential pack</span>
+                  <span className={cn(textMuted, "text-xs")}>
+                    Registration numbers and renewal dates as one PDF, made on this device
+                  </span>
+                </span>
+                <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+              </Link>
+            </section>
             <section
               id="admin-new-job-leaving"
               aria-labelledby="admin-new-job-leaving-heading"

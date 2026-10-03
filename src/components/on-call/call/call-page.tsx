@@ -14,6 +14,7 @@ import { OnCallCrisisLines, OnCallExternalLineRows } from "@/components/on-call/
 import { onCallExternalLines, searchExternalLines } from "@/components/on-call/call/external-lines";
 import { OnCallHospitalPhoneSwitch } from "@/components/on-call/call/hospital-phone-switch";
 import { OnCallIsobarCard } from "@/components/on-call/call/isobar-card";
+import { OnCallCallLogCard, OnCallHandoverBuilder } from "@/components/on-call/handover/call-log";
 import { OnCallDialRow, toHandbookDial } from "@/components/on-call/kit/dial-row";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
 import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
@@ -445,6 +446,12 @@ export function OnCallCallPage() {
           </li>
         </OnCallGroupedList>
       )}
+
+      {/* Hidden, not unmounted, while searching, so a half-typed call note survives a quick search. */}
+      <div className={cn("grid min-w-0 gap-5", searching && "hidden")} data-testid="on-call-call-handover">
+        <OnCallCallLogCard />
+        <OnCallHandoverBuilder />
+      </div>
     </OnCallHubPageFrame>
   );
 }

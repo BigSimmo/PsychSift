@@ -456,7 +456,8 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
   }
   if (modeId === "my-work") {
     if (pathname === "/admin/renewals") return "renewals";
-    if (pathname === "/admin/new-job" || pathname === "/admin/new-job/records") return "new-job";
+    if (pathname === "/admin/new-job" || pathname === "/admin/new-job/records" || pathname === "/admin/new-job/pack")
+      return "new-job";
     if (pathname === "/admin/help") return "help";
     if (pathname === "/admin") return "admin-today";
     return null;

@@ -367,12 +367,12 @@ product exclusions; the only route-only dispositions are the documented legacy-r
 surfaces. Shared shell/component roots carry their own explicit `shared-shell` disposition.
 
 Registered public components: 55
-Declared product roots: 157
+Declared product roots: 158
 Roots with a literal `.ckb-v2` opt-in: 1
-Roots inheriting `.ckb-v2` from the global `<html>`: 156
+Roots inheriting `.ckb-v2` from the global `<html>`: 157
 Production surfaces observed under v2: 14/14
 Dynamic `ckb-v2` constructions: 0
-Declared production page routes: 149/149
+Declared production page routes: 150/150
 
 Source observation and contract declaration are independent. A literal `ckb-v2` on the global `<html>` makes every production surface inherit v2, but it does not approve that adoption.
 The Proof column summarizes each surface's dark, forced-colours, 320px, print and browser declarations; exact statuses and evidence paths live in the manifest.
@@ -381,7 +381,7 @@ Observed v2 under a compatibility declaration fails closed. A declared v2 shell 
 | Surface                            | Disposition     | Routes | Roots | Declared shell | Observed shell (mount)     | Proof          | Baseline       |
 | ---------------------------------- | --------------- | -----: | ----: | -------------- | -------------------------- | -------------- | -------------- |
 | `root-shell-and-settings`          | shared-shell    |      3 |     6 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
-| `catalogues-forms-and-info`        | owned           |    106 |   106 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
+| `catalogues-forms-and-info`        | owned           |    107 |   107 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
 | `differentials`                    | owned           |      7 |     7 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
 | `formulation`                      | owned           |      6 |     6 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
 | `specifiers`                       | owned           |      6 |     6 | v2             | v2 (inherited-global-root) | passed         | not-committed  |

@@ -3,7 +3,8 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const RESERVED_HOSTED_ROLE = ["supabase", "admin"].join("_");
 export const IMMUTABLE_HISTORICAL_MIGRATION = [
@@ -459,5 +460,4 @@ export function runMigrationRoleGuard({
   return 0;
 }
 
-const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
-if (invokedPath === fileURLToPath(import.meta.url)) process.exitCode = runMigrationRoleGuard();
+if (isDirectEntrypoint(import.meta.url)) process.exitCode = runMigrationRoleGuard();

@@ -394,8 +394,28 @@ function stableAnchorFilename(frames: { filename?: string }[] | undefined): stri
   return "unknown";
 }
 
+/**
+ * The shared scrubber accepts and returns only the SDK fields it actually uses.
+ * Node and Next may carry different Sentry versions; their private span/scope
+ * types are not part of this privacy boundary and must not couple the two SDKs.
+ */
+type ScrubbedErrorEvent = Pick<
+  ErrorEvent,
+  | "type"
+  | "event_id"
+  | "timestamp"
+  | "platform"
+  | "level"
+  | "release"
+  | "environment"
+  | "message"
+  | "exception"
+  | "fingerprint"
+  | "tags"
+>;
+
 /** Keep code locations while removing all free-form/request data before export. */
-export function privacySafeErrorEvent(event: ErrorEvent): ErrorEvent {
+export function privacySafeErrorEvent(event: ErrorEvent | ScrubbedErrorEvent): ScrubbedErrorEvent {
   const exceptions = event.exception?.values?.map((exception) => ({
     // Error.name is mutable and can contain request or clinical text. Retain
     // only fixed JavaScript runtime types; custom/provider names collapse to a

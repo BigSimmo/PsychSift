@@ -1861,8 +1861,8 @@ describe("public source acquisition", () => {
   it("keeps plan and change CLI imports behind direct-entry guards", () => {
     for (const file of ["scripts/plan-public-source-acquisition.ts", "scripts/check-public-source-changes.ts"]) {
       const source = readFileSync(file, "utf8");
-      expect(source).toContain('import { pathToFileURL } from "node:url"');
-      expect(source).toContain("import.meta.url === pathToFileURL(process.argv[1]).href");
+      expect(source).toMatch(/isDirectEntrypoint|import \{ pathToFileURL \} from "node:url"/);
+      expect(source).toMatch(/isDirectEntrypoint|import\.meta\.url === pathToFileURL\(process\.argv\[1\]\)\.href/);
     }
   });
 

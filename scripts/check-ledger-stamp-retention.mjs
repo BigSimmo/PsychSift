@@ -26,6 +26,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+
 import { canonicalLegacyIssueId, parseIssueIdCell } from "./issue-id.mjs";
 
 export const ISSUES_PATH = "docs/outstanding-issues.md";
@@ -308,7 +310,7 @@ function parseArgs(args) {
   return options;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isDirectEntrypoint(import.meta.url)) {
   const options = parseArgs(process.argv.slice(2));
   const result = checkLedgerStampRetention(options);
 

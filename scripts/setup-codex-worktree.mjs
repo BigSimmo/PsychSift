@@ -5,7 +5,8 @@ import { createHash } from "node:crypto";
 import { cpSync, existsSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 import {
   installedMetadataMatches as fullInstalledMetadataMatches,
@@ -242,7 +243,7 @@ export function main(projectRoot = process.cwd(), options = {}) {
   log(`PASS: worktree dependencies in ${root} match package-lock.json.`);
 }
 
-const isDirectExecution = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isDirectExecution = isDirectEntrypoint(import.meta.url);
 if (isDirectExecution) {
   const args = process.argv.slice(2);
   if (args.some((arg) => arg !== "--dry-run")) fail(`Unknown option: ${args.find((arg) => arg !== "--dry-run")}`);

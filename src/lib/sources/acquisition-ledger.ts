@@ -7,6 +7,7 @@ import type {
   SourceCatalogueWarning,
   SourceContentMode,
   SourceGeographyScope,
+  SourceUsage,
 } from "@/lib/sources/catalogue-types";
 import { strictSourceDate } from "@/lib/sources/source-date-policy";
 import acquisitionLedger from "@/data/source-acquisitions.json";
@@ -192,7 +193,21 @@ const idPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const sourceAcquisitionRecords = acquisitionLedger as readonly SourceAcquisitionRecord[];
 
-function acquisitionReference(record: SourceAcquisitionRecord): ClinicalSourceReferenceInput {
+/**
+ * The catalogue reference for one ledger record. `usage` defaults to the
+ * ledger's own row; a content surface that shows the record (a medication page)
+ * passes its own usage so the catalogue traces where the source is used, while
+ * every metadata field stays identical and the two merge into one entry.
+ */
+export function acquisitionReference(
+  record: SourceAcquisitionRecord,
+  usage: SourceUsage = {
+    modeId: "sources",
+    recordId: record.id,
+    recordLabel: record.title,
+    field: "acquisition_ledger",
+  },
+): ClinicalSourceReferenceInput {
   return {
     // Left null so a captured source shares catalogue identity with any content
     // reference to the same URL, rather than splitting into a second entry.
@@ -219,12 +234,7 @@ function acquisitionReference(record: SourceAcquisitionRecord): ClinicalSourceRe
     supersedes: [],
     supersededBy: record.supersededBy,
     topics: record.topics,
-    usage: {
-      modeId: "sources",
-      recordId: record.id,
-      recordLabel: record.title,
-      field: "acquisition_ledger",
-    },
+    usage,
     referenceText: null,
   };
 }
@@ -232,7 +242,7 @@ function acquisitionReference(record: SourceAcquisitionRecord): ClinicalSourceRe
 export function acquisitionSourceReferences(
   records: readonly SourceAcquisitionRecord[] = sourceAcquisitionRecords,
 ): ClinicalSourceReferenceInput[] {
-  return records.map(acquisitionReference);
+  return records.map((record) => acquisitionReference(record));
 }
 
 /** The warnings the real catalogue pipeline raises for one record on its own. */

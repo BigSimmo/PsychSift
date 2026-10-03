@@ -20,6 +20,7 @@ const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV
 const sentryDsn = process.env.SENTRY_DSN?.trim();
 const tracesSampleRate = resolveTracesSampleRate();
 const sentryRelease = resolveSentryRelease();
+const sentryLogsEnabled = isSentryLoggingEnabled();
 
 // Sentry applies `ignoreErrors` before `beforeSend`: a string entry is a
 // substring match and a RegExp is `.test()`, each tried against the exception
@@ -95,7 +96,11 @@ try {
     // Performance tracing for DB query dashboards. Override with SENTRY_TRACES_SAMPLE_RATE
     // (0 disables). Query filters/bodies stay redacted — see docs/error-tracking.md.
     tracesSampleRate,
-    sendDefaultPii: false,
+    // Sentry 11 removed `sendDefaultPii`; with `dataCollection` set it was
+    // already ignored in v10, so collection is unchanged. v11 also streams spans
+    // by default, which skips `beforeSendTransaction`: keep the static lifecycle
+    // so every transaction still passes privacySafeTransactionEvent.
+    traceLifecycle: "static",
     dataCollection: {
       databaseQueryData: false,
       // Defense in depth for AI agent monitoring: the OpenAI wrap in
@@ -106,7 +111,7 @@ try {
     includeLocalVariables: false,
     // Structured Sentry Logs (opt out with SENTRY_ENABLE_LOGS=false). Console
     // capture stays off — only allowlisted messages/attributes pass beforeSendLog.
-    enableLogs: isSentryLoggingEnabled(),
+    // Sentry 11 removed `enableLogs`, so the opt-out gate now lives in beforeSendLog.
     attachStacktrace: true,
     maxBreadcrumbs: 0,
     ignoreErrors: ignoredServerErrors,
@@ -121,10 +126,11 @@ try {
       return privacySafeTransactionEvent(event) as typeof event;
     },
     beforeSendLog(log) {
+      if (!sentryLogsEnabled) return null;
       return privacySafeLog(log as Parameters<typeof privacySafeLog>[0]) as typeof log | null;
     },
   });
-  if (isSentryLoggingEnabled()) {
+  if (sentryLogsEnabled) {
     registerSentryLogForwarder(forwardAppLogToSentry);
     // Opt-in wizard verify sample only — never hardcoded DSN, never console capture.
     sendSentryTestLog();

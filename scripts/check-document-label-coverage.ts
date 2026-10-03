@@ -1,7 +1,8 @@
 import * as nextEnv from "@next/env";
 import { promises as fs } from "node:fs";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { reviewDocumentTagQuality } from "@/lib/document-tags";
 import type { DocumentLabel } from "@/lib/types";
 import { isRegistryProjectionDocument } from "./lib/registry-projection-document";
@@ -425,7 +426,7 @@ async function main() {
   if (!report.passed) process.exitCode = 1;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 import {
   classifyPublicSourceChange,
@@ -129,7 +130,7 @@ async function main() {
   console.log("[public-sources:changes] no source version was activated, published, or automatically superseded.");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : "Public source change detection failed.");
     process.exit(1);

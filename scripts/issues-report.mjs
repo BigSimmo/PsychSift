@@ -2,7 +2,9 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 import { parseIssues } from "./check-outstanding-issues.mjs";
 import { issueIdCitations } from "./issue-id.mjs";
@@ -366,10 +368,7 @@ function main() {
   else render(report, options.winsOnly);
 }
 
-const isDirectRun =
-  process.argv[1] &&
-  (fileURLToPath(import.meta.url) === path.resolve(process.argv[1]) ||
-    import.meta.url === pathToFileURL(process.argv[1]).href);
+const isDirectRun = isDirectEntrypoint(import.meta.url);
 
 if (isDirectRun) {
   try {

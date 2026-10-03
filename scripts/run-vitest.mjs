@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { childProcessExitCode } from "./child-process-result.mjs";
 import { consultGateReceipt, recordGateReceipt } from "./gate-receipts.mjs";
 import { offlineTestEnvironment } from "./test-environment.mjs";
@@ -190,7 +192,7 @@ export async function main() {
   process.exit(exitCode);
 }
 
-const isEntrypoint = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+const isEntrypoint = isDirectEntrypoint(import.meta.url);
 if (isEntrypoint) {
   await main();
 }

@@ -7,7 +7,7 @@
   },
   "extractorVersions": {
     "legacy": "src/lib/extractors/document.ts + worker/python/extract_pdf_assets.py (pymupdf==1.28.2, worker/python/requirements.txt)",
-    "docling": "docling==2.128.0 (eval/docling/requirements.txt)"
+    "docling": "docling==2.130.0 (eval/docling/requirements.txt)"
   },
   "sandbox": {
     "cpus": 2,

@@ -1489,9 +1489,9 @@ describe("design-system adoption manifest", () => {
     // and Roster's Today (`/roster`), `/roster/shifts` and `/roster/settings` added — net plus two.
     // 122 -> 127: Admin Today, Renewals, New job, its Records page and Help.
     // 127 -> 144: the 17 Teaching routes; 144 -> 148: Roster Team, Requests, Manage and Join.
-    // 148 -> 149: Roster Swaps.
+    // 148 -> 149: Roster Swaps. 149 -> 150: Admin's credential pack (`/admin/new-job/pack`).
     // The owner-only developer panel remains outside production route coverage.
-    expect(manifest.routeCoverage.discovered).toHaveLength(149);
+    expect(manifest.routeCoverage.discovered).toHaveLength(150);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { format } from "prettier";
 
 import { appModeDefinitions, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
@@ -926,7 +926,7 @@ async function main() {
   console.log(`Updated ${toPosixPath(path.relative(process.cwd(), siteMapPath))}`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   void main().catch((error: unknown) => {
     console.error(error);
     process.exitCode = 1;

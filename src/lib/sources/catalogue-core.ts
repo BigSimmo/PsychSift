@@ -193,6 +193,16 @@ function effectiveLifecycleStatus(input: ClinicalSourceReferenceInput): SourceLi
   return hasIdentifiedReplacement(input) ? "excluded" : input.lifecycleStatus;
 }
 
+/**
+ * True only when the catalogue itself would treat the reference as current and
+ * in use: documentStatus `current` after the expiry-date override, and not
+ * excluded or superseded. Surfaces that show a source as unqualified guidance
+ * use this so they never disagree with the catalogue's own currency verdict.
+ */
+export function isCurrentActiveSourceReference(input: ClinicalSourceReferenceInput): boolean {
+  return effectiveDocumentStatus(input) === "current" && effectiveLifecycleStatus(input) === "active";
+}
+
 function sourceWarnings(input: ClinicalSourceReferenceInput): SourceCatalogueWarning[] {
   const authority = authorityFor(input);
   const warnings: SourceCatalogueWarning[] = [];

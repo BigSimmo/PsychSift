@@ -43,9 +43,9 @@ export function resolveTsxCli(projectRoot, moduleResolve = (specifier) => import
   try {
     return fileURLToPath(moduleResolve("tsx/cli"));
   } catch {
-    const roots = new Set();
-    addAncestors(roots, projectRoot);
-    for (const root of worktreeRoots(projectRoot)) addAncestors(roots, root);
+    // Prefer this checkout and its Git worktrees before unrelated ancestor installs.
+    const roots = new Set([resolve(projectRoot), ...worktreeRoots(projectRoot)]);
+    for (const root of [...roots]) addAncestors(roots, root);
     for (const root of roots) {
       const candidate = join(root, "node_modules", "tsx", "dist", "cli.mjs");
       if (existsSync(candidate)) return candidate;

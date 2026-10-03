@@ -13,9 +13,10 @@
  */
 import { readdirSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+
 import { spawnSync } from "node:child_process";
 import { childProcessExitCode } from "./child-process-result.mjs";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 /** Same matcher as playwright.config.ts `productionSpecPattern` (keep in sync). */
 export const productionSpecFilePattern =
@@ -446,7 +447,7 @@ function parseArgs(args) {
 }
 
 function isDirectRun() {
-  return process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  return isDirectEntrypoint(import.meta.url);
 }
 
 if (isDirectRun()) {

@@ -52,6 +52,8 @@ import { RosterRestChip } from "./roster-rest-chip";
 import { RosterWhoCanCover } from "./roster-who-can-cover";
 import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
 import { restCuesByTeam, type RestCue } from "@/lib/roster/rest-cues";
+import { importChangeNotices } from "@/lib/roster/what-changed";
+import { RosterChangeRows } from "./roster-change-rows";
 
 /**
  * Roster Today: where am I working, when, answered with no taps. The lead
@@ -373,6 +375,11 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
   const shownNextNight = nextNight && nextNight.id !== leadIsNight?.id ? nextNight : null;
   const canEdit = shifts.status === "ready" && !shifts.demoMode;
+  // "What changed" after a re-imported roster: one line per change to a shift from today on.
+  const importNotices = useMemo(
+    () => (shifts.demoMode ? [] : importChangeNotices(shifts.latestImport, today)),
+    [shifts.demoMode, shifts.latestImport, today],
+  );
   const greeting = greetingFor(now);
 
   return (
@@ -455,6 +462,15 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
                 onAddShift={() => setAddView("shift")}
                 cues={cues}
               />
+              {importNotices.length > 0 ? (
+                <ModeGroupedList eyebrow="Needs you" mode="roster" testId="roster-today-changes">
+                  <RosterChangeRows
+                    notices={importNotices}
+                    onDismiss={() => void shifts.dismissChanges()}
+                    testId="roster-today-change"
+                  />
+                </ModeGroupedList>
+              ) : null}
               <RosterFatigueRestRing
                 shifts={workedShifts}
                 now={now}

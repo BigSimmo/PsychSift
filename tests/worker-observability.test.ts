@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { privacySafeErrorEvent } from "@/lib/observability/error-tracking";
+import type { init } from "@sentry/node";
+
+const sentry = vi.hoisted(() => ({ init: vi.fn<typeof init>() }));
+vi.mock("@sentry/node", () => sentry);
 
 describe("worker error tracking", () => {
   afterEach(() => {
+    vi.clearAllMocks();
     vi.unstubAllEnvs();
     vi.resetModules();
   });
@@ -17,6 +22,45 @@ describe("worker error tracking", () => {
       captureWorkerException(new Error("storage path /docs/patient-notes.pdf failed"), "process"),
     ).not.toThrow();
     await expect(flushWorkerErrorTracking()).resolves.toBeUndefined();
+    expect(sentry.init).not.toHaveBeenCalled();
+  });
+
+  it("keeps Sentry 11 traces scrubbed and rejects worker log and sensitive-data collection", async () => {
+    vi.stubEnv("SENTRY_DSN", "https://synthetic@example.test/1");
+    const { initWorkerErrorTracking } = await import("../worker/observability");
+
+    expect(initWorkerErrorTracking()).toBe(true);
+    const options = sentry.init.mock.calls[0]?.[0];
+    expect(options).toBeDefined();
+    if (!options) throw new Error("Worker did not initialize Sentry");
+    expect(options.traceLifecycle).toBe("static");
+    expect(options.dataCollection).toEqual({
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: false, response: false },
+      httpBodies: [],
+      urlQueryParams: false,
+      databaseQueryData: false,
+      genAI: { inputs: false, outputs: false },
+      queues: false,
+      graphQL: { document: false, variables: false },
+      stackFrameVariables: false,
+      frameContextLines: 0,
+    });
+    expect(options.beforeSendLog?.({ level: "info", message: "clinical text", severityNumber: 9 })).toBeNull();
+    const transaction = options.beforeSendTransaction?.(
+      {
+        type: "transaction",
+        transaction: "worker/process?document=patient-identifier",
+        request: { data: "private body" },
+        user: { id: "patient-identifier" },
+        spans: [],
+      },
+      {},
+    );
+    expect(transaction).not.toHaveProperty("request");
+    expect(transaction).not.toHaveProperty("user");
+    expect(JSON.stringify(transaction)).not.toMatch(/private body|patient-identifier/);
   });
 });
 

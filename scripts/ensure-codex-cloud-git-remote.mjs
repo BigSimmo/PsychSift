@@ -3,6 +3,7 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const CODEX_CLOUD_REPOSITORY = "BigSimmo/PsychSift";
 export const CODEX_CLOUD_ORIGIN_URL = `https://github.com/${CODEX_CLOUD_REPOSITORY}.git`;
@@ -107,7 +108,7 @@ function main() {
   console.log(`[Codex Cloud Git] github_cli_helper_configured=${helperConfigured}`);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isDirectEntrypoint(import.meta.url)) {
   try {
     main();
   } catch (error) {

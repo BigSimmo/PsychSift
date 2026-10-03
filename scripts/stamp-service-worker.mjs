@@ -29,6 +29,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const serviceWorkerPath = path.join(repoRoot, "public", "sw.js");
@@ -70,4 +71,4 @@ function main() {
   console.log(`[stamp-service-worker] CACHE_VERSION = ${result.version}`);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (isDirectEntrypoint(import.meta.url)) main();

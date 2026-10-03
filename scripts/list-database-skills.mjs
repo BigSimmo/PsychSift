@@ -1,6 +1,9 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 export const repositoryRoot = path.resolve(scriptDirectory, "..");
@@ -49,10 +52,101 @@ function readFrontmatter(skillFile) {
   return values;
 }
 
+const ignoredEntryCache = new Map();
+let batchIgnoredInitialized = false;
+
+function initIgnoredCache() {
+  if (batchIgnoredInitialized) return;
+  batchIgnoredInitialized = true;
+  try {
+    const dirs = [];
+    const collectDirs = (dir) => {
+      const resolved = path.resolve(dir);
+      if (!fs.existsSync(resolved)) return;
+      if (!ignoredEntryCache.has(resolved)) {
+        ignoredEntryCache.set(resolved, new Set());
+      }
+      try {
+        for (const entry of fs.readdirSync(resolved, { withFileTypes: true })) {
+          if (entry.isDirectory() && entry.name !== ".git" && entry.name !== "node_modules") {
+            const full = path.join(resolved, entry.name);
+            dirs.push(path.relative(repositoryRoot, full).replaceAll(path.sep, "/"));
+            collectDirs(full);
+          }
+        }
+      } catch {}
+    };
+
+    for (const surface of repositorySkillSurfaces) {
+      collectDirs(surface.root);
+    }
+
+    if (dirs.length > 0) {
+      const result = spawnSync("git", ["check-ignore", "-z", "--stdin"], {
+        cwd: repositoryRoot,
+        input: dirs.join("\0") + "\0",
+        encoding: "utf8",
+      });
+      if (result.stdout) {
+        const ignoredPaths = result.stdout.split("\0").filter(Boolean);
+        for (const p of ignoredPaths) {
+          const parent = path.resolve(repositoryRoot, path.dirname(p));
+          const name = path.basename(p);
+          if (!ignoredEntryCache.has(parent)) {
+            ignoredEntryCache.set(parent, new Set());
+          }
+          ignoredEntryCache.get(parent).add(name);
+        }
+      }
+    }
+  } catch {}
+}
+
+function getIgnoredEntryNames(root) {
+  initIgnoredCache();
+  const resolvedRoot = path.resolve(root);
+  if (ignoredEntryCache.has(resolvedRoot)) {
+    return ignoredEntryCache.get(resolvedRoot);
+  }
+  const relRoot = path.relative(repositoryRoot, resolvedRoot);
+  if (relRoot.startsWith("..") || path.isAbsolute(relRoot)) {
+    const empty = new Set();
+    ignoredEntryCache.set(resolvedRoot, empty);
+    return empty;
+  }
+  try {
+    const entries = fs.readdirSync(resolvedRoot, { withFileTypes: true }).filter((e) => e.isDirectory());
+    const ignored = new Set();
+    if (entries.length > 0) {
+      const relPaths = entries.map((entry) =>
+        path.relative(repositoryRoot, path.join(resolvedRoot, entry.name)).replaceAll(path.sep, "/"),
+      );
+      const result = spawnSync("git", ["check-ignore", "-z", "--stdin"], {
+        cwd: repositoryRoot,
+        input: relPaths.join("\0") + "\0",
+        encoding: "utf8",
+      });
+      if (result.stdout) {
+        for (const p of result.stdout.split("\0")) {
+          if (p) ignored.add(path.basename(p));
+        }
+      }
+    }
+    ignoredEntryCache.set(resolvedRoot, ignored);
+    return ignored;
+  } catch {
+    const empty = new Set();
+    ignoredEntryCache.set(resolvedRoot, empty);
+    return empty;
+  }
+}
+
 function walkSkillFiles(root) {
   if (!fs.existsSync(root)) return [];
   const files = [];
+  const ignored = getIgnoredEntryNames(root);
   for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    if (ignored.has(entry.name)) continue;
     const absolute = path.join(root, entry.name);
     if (entry.isDirectory()) files.push(...walkSkillFiles(absolute));
     else if (entry.isFile() && entry.name === "SKILL.md") files.push(absolute);
@@ -222,9 +316,10 @@ export function loadSkillCatalog(file = catalogPath) {
 }
 
 export function discoverSkillDefinitions(root = skillsRoot) {
+  const ignored = getIgnoredEntryNames(root);
   return fs
     .readdirSync(root, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && !ignored.has(entry.name))
     .map((entry) => {
       const skillFile = path.join(root, entry.name, "SKILL.md");
       if (!fs.existsSync(skillFile)) return null;
@@ -506,9 +601,4 @@ function run(argv = process.argv.slice(2)) {
   console.log(renderSkillCatalog(catalog));
 }
 
-const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
-if (invokedPath) {
-  try {
-    if (fs.realpathSync(invokedPath) === fs.realpathSync(fileURLToPath(import.meta.url))) run();
-  } catch {}
-}
+if (isDirectEntrypoint(import.meta.url)) run();

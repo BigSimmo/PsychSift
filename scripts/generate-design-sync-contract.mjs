@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import { pathToFileURL } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 import ts from "@typescript/typescript6";
 import prettier from "prettier";
@@ -220,7 +221,7 @@ async function main() {
   process.stdout.write(`design-sync props ${write ? "updated" : "checked"}: ${count} visual components\n`);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
     process.exitCode = 1;

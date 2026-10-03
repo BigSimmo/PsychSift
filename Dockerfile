@@ -18,7 +18,7 @@
 # NEVER baked into the image — inject them at run time from the host's
 # secret store.
 
-FROM node:24-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS node-base
+FROM node:24-bookworm-slim@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6 AS node-base
 
 FROM node-base AS deps
 WORKDIR /app
@@ -29,6 +29,7 @@ COPY package.json package-lock.json .npmrc ./
 COPY scripts/check-node-engine.cjs scripts/check-node-engine.cjs
 COPY scripts/install-git-hooks.mjs scripts/install-git-hooks.mjs
 COPY scripts/check-installed-lock-parity.mjs scripts/check-installed-lock-parity.mjs
+COPY scripts/lib/is-entrypoint.mjs scripts/lib/is-entrypoint.mjs
 # Registry blips (ECONNRESET) have failed CI app-image builds mid-install; retry
 # the whole `npm ci` rather than relying only on per-request fetch retries.
 RUN for attempt in 1 2 3; do \

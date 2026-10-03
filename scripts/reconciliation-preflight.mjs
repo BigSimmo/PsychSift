@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { listRepoNodeProcesses } from "./run-eval-safe.mjs";
 import { shallowCloneRefusal } from "./sweep-branch-ledger.mjs";
 
@@ -334,7 +335,7 @@ function main() {
   if (options.strict && result.blocking) process.exitCode = 2;
 }
 
-const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) {
   try {
     main();

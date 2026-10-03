@@ -3,6 +3,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const isWindows = process.platform === "win32";
@@ -218,7 +219,7 @@ function runEvalScript() {
   });
 }
 
-const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+const isMain = isDirectEntrypoint(import.meta.url);
 if (isMain) {
   runEvalScript();
 }

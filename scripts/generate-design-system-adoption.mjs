@@ -3,7 +3,8 @@ import path from "node:path";
 import process from "node:process";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { pathToFileURL } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { inflateSync } from "node:zlib";
 import ts from "@typescript/typescript6";
 import prettier from "prettier";
@@ -2024,7 +2025,7 @@ async function main() {
   );
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     throw error;
   });

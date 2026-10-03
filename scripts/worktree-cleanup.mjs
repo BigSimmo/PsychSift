@@ -18,7 +18,8 @@ import { spawnSync } from "node:child_process";
 import { lstatSync, readdirSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import {
   classifyLiveness,
   inspectReparsePoint,
@@ -906,5 +907,5 @@ function main() {
   }
 }
 
-const isDirectRun = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+const isDirectRun = isDirectEntrypoint(import.meta.url);
 if (isDirectRun) main();

@@ -2,6 +2,8 @@ import privacyRegisterJson from "../../../docs/governance/privacy-readiness.v1.j
 
 import { loadHazardSnapshot, unmitigatedHazards } from "./hazard-register";
 import type { LedgerOpenItem, LedgerSnapshot } from "./ledger-snapshot";
+import { loadSignOffQueue } from "./sign-off-queue";
+import { pickSignOffToday, type SignOffToday } from "./sign-off-today";
 
 /**
  * The owner panel's "Today" facts: what is waiting on the owner, read only from
@@ -75,6 +77,7 @@ export type OwnerToday = {
   decisions: LedgerOpenItem[];
   privacy: OpenPrivacyItem[];
   uncontrolledHazards: number;
+  signOff: SignOffToday;
 };
 
 export function resolveOwnerToday(ledger: LedgerSnapshot): OwnerToday {
@@ -82,5 +85,6 @@ export function resolveOwnerToday(ledger: LedgerSnapshot): OwnerToday {
     decisions: ownerDecisionItems(ledger.open),
     privacy: openPrivacyItems(),
     uncontrolledHazards: unmitigatedHazards(loadHazardSnapshot()).length,
+    signOff: pickSignOffToday(loadSignOffQueue()),
   };
 }

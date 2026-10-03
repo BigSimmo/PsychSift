@@ -36,13 +36,23 @@ export function initWorkerErrorTracking(): boolean {
       release: resolveSentryRelease(),
       environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development",
       tracesSampleRate: resolveTracesSampleRate(),
-      sendDefaultPii: false,
+      // v11 streams spans by default, bypassing beforeSendTransaction.
+      // Keep all worker traces behind the shared privacy scrubber.
+      traceLifecycle: "static",
       dataCollection: {
+        userInfo: false,
+        cookies: false,
+        httpHeaders: { request: false, response: false },
+        httpBodies: [],
+        urlQueryParams: false,
         databaseQueryData: false,
         genAI: { inputs: false, outputs: false },
+        queues: false,
+        graphQL: { document: false, variables: false },
+        stackFrameVariables: false,
+        frameContextLines: 0,
       },
       includeLocalVariables: false,
-      enableLogs: false,
       attachStacktrace: true,
       maxBreadcrumbs: 0,
       beforeSend(event) {
@@ -51,6 +61,10 @@ export function initWorkerErrorTracking(): boolean {
       beforeSendTransaction(event) {
         // Local scrubber shape is structural; cast back to the SDK type.
         return privacySafeTransactionEvent(event as never) as typeof event;
+      },
+      // v11 removed enableLogs; fail closed even if a logging integration is added.
+      beforeSendLog() {
+        return null;
       },
     });
     initialized = true;

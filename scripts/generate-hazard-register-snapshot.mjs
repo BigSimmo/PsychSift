@@ -24,6 +24,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 export const HAZARD_SNAPSHOT_VERSION = "hazard-register-snapshot-v1";
@@ -213,7 +215,7 @@ export function buildHazardSnapshot(now = new Date()) {
   };
 }
 
-const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) {
   const snapshot = buildHazardSnapshot();
   const target = join(repoRoot, "data/hazard-register-snapshot.json");

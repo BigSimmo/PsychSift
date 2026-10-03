@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { execFileSync } from "node:child_process";
 import { redactSensitiveText } from "./sensitive-text.mjs";
 import { reconciliationPreflightInternals } from "./reconciliation-preflight.mjs";
@@ -386,7 +387,7 @@ function main() {
   if (!inspection.writeAllowed) process.exitCode = 2;
 }
 
-const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) {
   try {
     main();

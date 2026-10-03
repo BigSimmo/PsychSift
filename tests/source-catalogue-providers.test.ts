@@ -39,7 +39,7 @@ const expectedProviders = {
     "src/lib/form-register.ts",
   ],
   mha: ["data/mha-2014-sections.source.json"],
-  medications: ["data/medications-snapshot.json"],
+  medications: ["data/medications-snapshot.json", "src/data/medication-source-links.json"],
   services: ["data/services-snapshot.json"],
   dsm: ["src/data/dsm-clinical-content.json"],
   calculators: ["data/calculators/evidence.json", "src/lib/calculators/calculator-fixtures.ts"],
@@ -370,22 +370,27 @@ describe("repository source providers", () => {
     expect(JSON.stringify(issues)).not.toContain(secret);
   });
 
-  it("accepts only the two current benign provider query forms", () => {
+  it("accepts only the three current benign provider query forms", () => {
     const baseReference = provider("dictionary").references()[0];
+    const tgaSearch = "https://www.ebs.tga.gov.au/ebs/picmi/picmirepository.nsf/PICMI";
     const allowed = [
       { ...baseReference, canonicalUrl: "https://www.health.gov.au/resource?language=en" },
       { ...baseReference, canonicalUrl: "https://www.legislation.wa.gov.au/act?OpenElement" },
+      { ...baseReference, canonicalUrl: `${tgaSearch}?OpenForm&q=clozapine&t=pi` },
     ];
     const rejected = [
       { ...baseReference, canonicalUrl: "https://www.ranzcp.org/guidance?view=summary" },
       { ...baseReference, canonicalUrl: "https://www.health.gov.au/resource?language=en&view=summary" },
+      // The TGA host carries only its PI search: no CMI search, no extra keys, no other path.
+      { ...baseReference, canonicalUrl: `${tgaSearch}?OpenForm&q=clozapine&t=cmi` },
+      { ...baseReference, canonicalUrl: `${tgaSearch}?OpenForm&q=clozapine&t=pi&view=summary` },
+      { ...baseReference, canonicalUrl: "https://www.ebs.tga.gov.au/ebs/picmi/picmirepository.nsf/pdf?OpenAgent" },
     ];
 
     expect(repositorySourceReferenceIssues("allowed-query-fixture", allowed)).toEqual([]);
-    expect(repositorySourceReferenceIssues("rejected-query-fixture", rejected)).toEqual([
-      "Provider rejected-query-fixture returned unsafe structured URL",
-      "Provider rejected-query-fixture returned unsafe structured URL",
-    ]);
+    expect(repositorySourceReferenceIssues("rejected-query-fixture", rejected)).toEqual(
+      rejected.map(() => "Provider rejected-query-fixture returned unsafe structured URL"),
+    );
   });
 
   it("reports malformed structured dates without echoing their raw values", () => {

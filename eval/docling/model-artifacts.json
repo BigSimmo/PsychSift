@@ -20,7 +20,7 @@
     "  3. Replace this file's contents with that block and commit it.",
     "From that commit on, any change to the upstream weights fails the image build."
   ],
-  "doclingVersion": "2.128.0",
+  "doclingVersion": "2.130.0",
   "recordedAt": null,
   "treeDigest": null,
   "files": {}

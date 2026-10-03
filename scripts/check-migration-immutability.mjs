@@ -37,6 +37,8 @@ import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MIGRATIONS_DIR = path.join(PROJECT_ROOT, "supabase", "migrations");
 const MANIFEST_PATH = path.join(PROJECT_ROOT, "supabase", "applied-migration-hashes.json");
@@ -202,8 +204,7 @@ export function runMigrationImmutabilityGuard() {
   return 1;
 }
 
-const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
-if (invokedPath === fileURLToPath(import.meta.url)) {
+if (isDirectEntrypoint(import.meta.url)) {
   if (process.argv.includes("--write")) {
     process.exitCode = seal();
   } else {

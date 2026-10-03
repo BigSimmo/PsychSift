@@ -24,7 +24,9 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 import { reviewProblems } from "./lib/clinical-record-review-contract.mjs";
 
@@ -455,7 +457,7 @@ function check() {
 // `file://${process.argv[1]}` is not a valid comparison on Windows because argv
 // carries backslashes and the URL has an extra leading slash. Use the same
 // cross-platform conversion as the repository's other directly invoked scripts.
-const isEntrypoint = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const isEntrypoint = isDirectEntrypoint(import.meta.url);
 if (isEntrypoint) {
   if (process.argv.includes("--refresh")) await refresh();
   else if (process.argv.includes("--draft")) draft();

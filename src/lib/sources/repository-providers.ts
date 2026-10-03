@@ -25,6 +25,7 @@ import { linkableEvidence, publishedFormulationConcepts, publishedFormulationGui
 import { officialFormsRegisterUrl } from "@/lib/form-catalog";
 import { normalizeCode, officialForms } from "@/lib/form-register";
 import { loadMedicationSnapshot } from "@/lib/medication-snapshot";
+import { medicationSourceLinkReferences } from "@/lib/medication-source-links";
 import { mhaActMetadata } from "@/lib/mha-act-sections";
 import { loadServicesSnapshot } from "@/lib/service-catalog";
 import { authoritativeSources, loadSpecifiersContent, type AuthoritativeSource } from "@/lib/specifiers-content";
@@ -514,9 +515,9 @@ function medicationSourceRows() {
 
 const medicationProvider: ClinicalSourceProvider = {
   id: "medications",
-  sourcePaths: ["data/medications-snapshot.json"],
-  references: () =>
-    medicationSourceRows().map(({ medication, section, row }) =>
+  sourcePaths: ["data/medications-snapshot.json", "src/data/medication-source-links.json"],
+  references: () => [
+    ...medicationSourceRows().map(({ medication, section, row }) =>
       reference(
         {
           modeId: "prescribing",
@@ -532,6 +533,9 @@ const medicationProvider: ClinicalSourceProvider = {
         },
       ),
     ),
+    // Owner-confirmed source links the medication pages render (ledger #05WXHX step 2).
+    ...medicationSourceLinkReferences(loadMedicationSnapshot()),
+  ],
 };
 
 const servicesProvider: ClinicalSourceProvider = {

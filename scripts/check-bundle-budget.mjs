@@ -59,7 +59,8 @@ import { gzipSync } from "node:zlib";
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 // `BUNDLE_BUDGET_ROOT` lets tests point at a disposable fixture tree without
 // mutating the repo checkout's `.next` (and without relying on `process.cwd()`,
@@ -805,13 +806,7 @@ export function exitProcess(code, options = {}) {
 }
 
 function isMainModule() {
-  const entry = process.argv[1];
-  if (!entry) return false;
-  try {
-    return path.resolve(entry) === fileURLToPath(import.meta.url);
-  } catch {
-    return import.meta.url === pathToFileURL(entry).href;
-  }
+  return isDirectEntrypoint(import.meta.url);
 }
 
 export function selfTest() {

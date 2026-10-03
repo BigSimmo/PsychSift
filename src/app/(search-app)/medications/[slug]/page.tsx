@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { MedicationRecordPage } from "@/components/clinical-dashboard/medication-record-page";
 import { deriveMedicationSourceGovernance } from "@/lib/medication-records";
+import { medicationSourceLinks } from "@/lib/medication-source-links";
 import { getMedicationRecord, loadMedicationSnapshot } from "@/lib/medication-snapshot";
 
 type MedicationPageProps = {
@@ -53,5 +54,13 @@ export default async function MedicationPage({ params }: MedicationPageProps) {
       })()
     : undefined;
 
-  return <MedicationRecordPage slug={slug} fallbackRecord={record} fallbackGovernance={fallbackGovernance} />;
+  // Only owner-confirmed source links reach the page; until a record is signed off this is empty.
+  return (
+    <MedicationRecordPage
+      slug={slug}
+      fallbackRecord={record}
+      fallbackGovernance={fallbackGovernance}
+      sourceLinks={medicationSourceLinks(slug)}
+    />
+  );
 }

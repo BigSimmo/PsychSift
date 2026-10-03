@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
@@ -60,7 +60,7 @@ async function runQueueCheck({
     info: () => undefined,
   };
   const previousWorkspace = process.env.GITHUB_WORKSPACE;
-  process.env.GITHUB_WORKSPACE = path.resolve(new URL("..", import.meta.url).pathname);
+  process.env.GITHUB_WORKSPACE = fileURLToPath(new URL("..", import.meta.url));
   try {
     // A Function-constructor body cannot use dynamic import() under Vitest, so the script's one
     // import is routed through an injected loader that resolves the same module URL.

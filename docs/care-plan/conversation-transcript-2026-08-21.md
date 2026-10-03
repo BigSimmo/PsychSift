@@ -25,6 +25,7 @@ Here is the project I want... A simple interface that is used for identifying fr
 
 Please utilise all superpowers skills relevant to brainstorm this for me.&#x20;
 
+<!-- prettier-ignore -->
 [$superpowers](C:\Users\joshs\\.codex\skills\20-superpowers\SKILL.md) [$brainstorming](C:\Users\joshs.codex\skills\20-superpowers\brainstorming\SKILL.md) [$grill-me](C:\Users\joshs\\.codex\skills\grill-me\SKILL.md) [$grill-with-docs](C:\Users\joshs.agents\skills\grill-with-docs\SKILL.md) [$superpowers:subagent-driven-development](C:\Users\joshs\\.codex\plugins\cache\openai-curated-remote\superpowers\6.3.0\skills\subagent-driven-development\SKILL.md) [$superpowers:writing-plans](C:\Users\joshs.codex\plugins\cache\openai-curated-remote\superpowers\6.3.0\skills\writing-plans\SKILL.md)&#x20;
 
 ### Assistant commentary

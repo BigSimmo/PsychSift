@@ -2,7 +2,8 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const allowed = new Set(["run", "status", "verify", "deps", "clean-state", "export", "handoff"]);
 
@@ -54,7 +55,7 @@ function main() {
   process.exit(result.status ?? 1);
 }
 
-if (path.resolve(process.argv[1] || "") === path.resolve(fileURLToPath(import.meta.url))) {
+if (isDirectEntrypoint(import.meta.url)) {
   try {
     main();
   } catch (error) {

@@ -25,7 +25,8 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dsSyncDir = path.join(projectRoot, ".ds-sync");
@@ -226,5 +227,5 @@ this repo — see .design-sync/NOTES.md.`);
   return 0;
 }
 
-const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) process.exit(main());

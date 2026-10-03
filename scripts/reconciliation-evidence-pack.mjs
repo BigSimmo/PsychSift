@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import { createReadStream, existsSync, mkdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { execFileSync } from "node:child_process";
 import { redactSensitiveText } from "./sensitive-text.mjs";
 import { collectReconciliationState, reconciliationPreflightInternals } from "./reconciliation-preflight.mjs";
@@ -266,7 +267,7 @@ async function main() {
   }
 }
 
-const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) {
   main().catch((error) => {
     console.error(`[reconciliation-evidence-pack] ${error instanceof Error ? error.message : String(error)}`);

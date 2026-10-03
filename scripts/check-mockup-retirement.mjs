@@ -36,7 +36,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { posix as posixPath, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const CLI_USAGE = [
   "Usage:",
@@ -993,5 +993,5 @@ export function main(
   return 0;
 }
 
-const invokedAsScript = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+const invokedAsScript = isDirectEntrypoint(import.meta.url);
 if (invokedAsScript) process.exitCode = main();

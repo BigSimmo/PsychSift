@@ -467,7 +467,7 @@ describe("the report runner", () => {
   it("shows 'section failed' for a section that throws, and keeps the rest", async () => {
     const sectionsDir = tempDir("organisation-sections-");
     write(sectionsDir, {
-      "throws.mjs": `export async function section() { throw new Error("no data at ${sectionsDir}/x.json"); }`,
+      "throws.mjs": `export async function section() { throw new Error(${JSON.stringify(`no data at ${sectionsDir}/x.json`)}); }`,
       "fine.mjs": 'export async function section() { return { title: "Fine", markdown: "still here" }; }',
     });
     const { markdown } = await buildWeeklyReport({

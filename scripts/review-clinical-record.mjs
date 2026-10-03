@@ -473,7 +473,7 @@ export function loadKindDocument(kind, { root = DEFAULT_ROOT } = {}) {
   return { status: "ok", path, raw, document: JSON.parse(raw) };
 }
 
-async function loadContext(kind, root) {
+export async function loadContext(kind, root) {
   for (const kindModule of signOffKindModules) {
     if (Object.hasOwn(kindModule.kinds, kind)) return (await kindModule.loadContext?.(kind, root)) ?? {};
   }

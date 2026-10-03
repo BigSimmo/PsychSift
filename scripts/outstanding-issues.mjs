@@ -48,7 +48,8 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 import { ISSUES_PATH, checkIssues, parseIssues } from "./check-outstanding-issues.mjs";
 import {
@@ -798,8 +799,5 @@ function main() {
   console.log(`${ISSUES_PATH} updated: ${open} open, ${archived} archived, collision-free id allocation enabled.`);
 }
 
-const invokedDirectly =
-  process.argv[1] &&
-  (import.meta.url === pathToFileURL(process.argv[1]).href ||
-    fileURLToPath(import.meta.url) === path.resolve(process.argv[1]));
+const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) main();

@@ -1,5 +1,7 @@
 # Verification Gates
 
+_Updated 2026-10-01 - distinguish scoped CI selection from completed verification; Documentation owns._
+
 <!-- BEGIN:verification-gates -->
 
 ## Gate selection
@@ -38,10 +40,10 @@
 
 ## Do not pay twice for the verdict GitHub is about to reach
 
-`check:gate-manifest` enforces a one-way invariant: CI never runs LESS of the local
-`verify:full` static set than the local chain does (it reads `verify:full:internal`, not
-`verify:cheap:internal`). Read that the other way and it says something uncomfortable —
-**every local run of a gate in that chain is work GitHub is about to repeat.**
+`check:gate-manifest` checks that each local `verify:full` gate has a declared CI command
+(or an explicit mapping); it reads `verify:full:internal`, not `verify:cheap:internal`.
+It does not evaluate event, draft or scope conditions, observe job results, or prove that a
+particular run repeats local verification. Inspect the selected workflow jobs separately.
 `gate-receipts.mjs` closes the local-versus-local half of that: it memoises `lint`,
 `typecheck`, and non-coverage Vitest against a content signature, so an identical re-run
 on unchanged content exits 0 immediately instead of repeating the work.
@@ -64,10 +66,14 @@ gate is right.
 
 ### The default for an ordinary PR push
 
-**Run the narrowest gate that covers the diff, plus `npm run format`. Let CI run the heavy jobs,
-and say in the PR body which ones you left to it.** CI is risk-scoped and runs them anyway on
-every push; a local repeat buys a verdict GitHub is about to reach, while holding the repository
-lock that other worktrees are queued behind.
+**Run the narrowest gate that covers the diff, plus `npm run format`. Identify the heavy jobs
+expected in CI and any policy-authorised local deferrals in the PR body.** CI is event- and
+risk-scoped: `push` covers `main` and `release/**`; PR and merge-group base/head classify paths,
+and individual jobs also apply draft and event conditions. Scheduled/manual runs with no
+resolvable base conservatively select full scope; a Lighthouse-refresh dispatch has its own
+focused scope. Selected or deferred checks remain pending until their completion is observed.
+Skipped, missing or failed jobs are not passing evidence. Do not defer required local proof
+on a claim that CI will repeat it when the job conditions do not establish that coverage.
 
 This is not a licence to push unverified work. The narrow gate still has to cover the diff's
 plausible failure classes — a two-file script change needs its own suites and `typecheck`, and a
@@ -78,7 +84,7 @@ Three traps, all observed in one session on 2026-09-25:
 
 - **`verify:cheap` ran four times for changes of one script plus one test file.** Each run is
   ~8 minutes and 23,000 tests over 1,500 files; the diff never exceeded two files, and CI repeated
-  the same suite on every push regardless. `npm run test:focused -- --files <the two suites>` plus
+  the same suite for those pushes at the time. `npm run test:focused -- --files <the two suites>` plus
   `npm run typecheck` was the gate that covered it, and takes seconds.
 - **Two of those four runs were spent re-running after `npm ci`.** The installed-lock-parity guard
   fails whenever `main`'s lockfile has moved, which is a dependency state to repair, not a reason
@@ -91,20 +97,24 @@ In the PR body, name the focused gate and paste its decisive line, then list wha
 locally:
 
 ```
-Left to CI: Unit coverage, Build, Production UI, Container images.
+Expected in CI for this event/scope: <selected check groups and conditions>.
+Deferred locally under existing policy: <checks and reason>.
+Completed passing evidence: <exact revision, checks and evidence paths>.
+Pending, skipped, failed or unobserved: <checks and status>.
 ```
 
-That line is the point. It tells a reviewer what was deliberately deferred to the authoritative
-gate, which is different from — and much more useful than — silence about it.
+Report only the groups applicable to this event and scope. The distinction lets a reviewer
+see deliberate deferral without mistaking it for completed passing verification.
 
 <!-- END:verification-gates -->
 
 ## The browser gate is narrowed, not deferred
 
-`npm run verify:ui` is the most expensive run here — 646 Chromium tests, ~25 minutes —
-and CI repeats it wholesale: `Production UI critical` and the three `Production UI`
-shards are guarded on `ui_changed`, so any change touching a browser surface gets the
-full suite on GitHub whether or not it ran locally first.
+`npm run verify:ui` is the most expensive run here - 646 Chromium tests, ~25 minutes.
+Eligible non-draft CI runs select production browser jobs when `ui_changed` is true.
+Each lane also requires its event conditions and successful prerequisites; drafts or
+blocked prerequisites can leave browser scope unrun. Selected browser proof remains
+pending until successful execution is observed, even when local focused proof passed.
 
 Deferring it wholesale is not a safe lever — pushing a UI change with **no** browser
 evidence is not a bet this repository takes. The lever here is a different one: run the

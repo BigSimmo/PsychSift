@@ -1,5 +1,7 @@
 # PsychSift Documentation Index
 
+_Updated 2026-10-01 - index the on-demand focused-task workflow; Documentation owns._
+
 Categorised map of every tracked Markdown document under `docs/`: the load-bearing docs lead
 each category, and an "Also catalogued" list completes it (the immutable
 `branch-review-records/` and `outstanding-issues-inbox/` files are indexed by their own
@@ -246,6 +248,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/repository-skills-and-issues.md](agents/repository-skills-and-issues.md) — Repository Skills and Outstanding-Work Memory — Select repo-local skills under `.agents/skills/` when their descriptions match the actual task and their use materially helps; read an explicitly named skill before acting.
 - [agents/test-deletion-guard.md](agents/test-deletion-guard.md) — Deleting tests, or letting a tool delete them for you — On 2026-08-31 a commit on PR #2481 titled "test(ui):
 - [agents/smart-agent-allocation.md](agents/smart-agent-allocation.md) — Default model/effort selection, independent ownership and review, evidence reuse, and portable Codex Cloud delivery.
+- [agents/task-efficiency.md](agents/task-efficiency.md) - On-demand task brief, one continuation record and private measurement using existing workflows.
 - [agents/upload-shortcut.md](agents/upload-shortcut.md) — Upload Shortcut — When the user types exactly:
 - [agents/verification-gates.md](agents/verification-gates.md) — Verification Gates — the verification pyramid, gate receipts, and the browser-gate planner
 - [agents/wiring-and-bundle-budget.md](agents/wiring-and-bundle-budget.md) — Page Wiring and Bundle Budget — Interactive controls and routes follow conventions the codebase already holds to.

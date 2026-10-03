@@ -16,6 +16,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const GLOBALS = fileURLToPath(new URL("../src/app/globals.css", import.meta.url));
 const V2 = fileURLToPath(new URL("../src/app/ckb-v2-tokens.css", import.meta.url));
@@ -279,7 +280,7 @@ export function diffAgainstPin(divergences = computeDivergences(), pin = readPin
   return problems;
 }
 
-const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) {
   const divergences = computeDivergences();
   const counts = Object.entries(divergences)

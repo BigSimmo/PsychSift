@@ -211,16 +211,16 @@ describe("installedLockParity", () => {
     ) => string[];
 
     expect(packageJson.overrides).toMatchObject({
-      "brace-expansion@1": "^1.1.18",
+      "brace-expansion@1": "^1.1.21",
       "brace-expansion@2": "^2.1.4",
-      "brace-expansion@5": "^5.0.9",
+      "brace-expansion@5": "^5.0.12",
     });
-    expect(lock.packages["node_modules/brace-expansion"]?.version).toBe("1.1.18");
+    expect(lock.packages["node_modules/brace-expansion"]?.version).toBe("1.1.21");
     expect(
       Object.entries(lock.packages)
         .filter(([name]) => name.endsWith("node_modules/brace-expansion"))
         .map(([, entry]) => entry.version),
-    ).toEqual(expect.arrayContaining(["1.1.18", "5.0.9"]));
+    ).toEqual(expect.arrayContaining(["1.1.21", "5.0.12"]));
 
     const maxLength = 40_000;
     const adversarial = expand("{a,b}".repeat(100), { max: 100_000, maxLength });

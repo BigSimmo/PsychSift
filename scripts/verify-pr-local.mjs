@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { childProcessExitCode } from "./child-process-result.mjs";
 import { DEV_SERVER_BUILD_REFUSED_EXIT_CODE, findRunningProjectServer } from "./guard-next-build.mjs";
 
@@ -398,7 +398,7 @@ if (process.argv.includes("--self-test")) {
 }
 
 function isDirectRun() {
-  return process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  return isDirectEntrypoint(import.meta.url);
 }
 
 if (isDirectRun()) {

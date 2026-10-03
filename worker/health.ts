@@ -183,15 +183,3 @@ export function startWorkerHealthServerIfConfigured() {
 
   return server;
 }
-
-// Direct CLI invocation fallback
-if (import.meta.main) {
-  const server = startWorkerHealthServerIfConfigured();
-  if (server) {
-    process.on("SIGTERM", () => {
-      console.log("SIGTERM received, shutting down health check server");
-      server.close();
-      process.exit(0);
-    });
-  }
-}

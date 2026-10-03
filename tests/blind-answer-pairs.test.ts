@@ -138,7 +138,7 @@ const buildInput = {
 describe("blind-answer-pairs argument parsing and paths", () => {
   it("is import-safe and never touches src/ or provider env", () => {
     const source = readFileSync(new URL("../scripts/blind-answer-pairs.ts", import.meta.url), "utf8");
-    expect(source).toContain("import.meta.url === pathToFileURL(process.argv[1]).href");
+    expect(source).toMatch(/isDirectEntrypoint|import\.meta\.url === pathToFileURL\(process\.argv\[1\]\)\.href/);
     // Every import must be a node: builtin — no src/, no sibling scripts, no @next/env, so the
     // script can never pull provider env or clients.
     expect(source).not.toMatch(/from "(?!node:)/);

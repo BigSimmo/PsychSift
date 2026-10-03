@@ -23,7 +23,7 @@ import {
 describe("eval-answer-quality argument parsing", () => {
   it("is import-safe and validates exact selection before loading provider clients", () => {
     const source = readFileSync(new URL("../scripts/eval-answer-quality.ts", import.meta.url), "utf8");
-    expect(source).toContain("import.meta.url === pathToFileURL(process.argv[1]).href");
+    expect(source).toMatch(/isDirectEntrypoint|import\.meta\.url === pathToFileURL\(process\.argv\[1\]\)\.href/);
     expect(source.indexOf("selectAnswerQualityCases(args)")).toBeLessThan(source.indexOf("loadAdminClient()"));
     expect(typeof parseArgs).toBe("function");
   });

@@ -24,7 +24,7 @@ import { evaluateGoldenRetrievalCase, type GoldenRetrievalResult } from "../scri
 describe("eval quality diagnostic arguments", () => {
   it("keeps provider execution behind the import-safe main guard", () => {
     const source = readFileSync(new URL("../scripts/eval-quality.ts", import.meta.url), "utf8");
-    expect(source).toContain("import.meta.url === pathToFileURL(process.argv[1]).href");
+    expect(source).toMatch(/isDirectEntrypoint|import\.meta\.url === pathToFileURL\(process\.argv\[1\]\)\.href/);
     expect(typeof parseEvalQualityArgs).toBe("function");
   });
 

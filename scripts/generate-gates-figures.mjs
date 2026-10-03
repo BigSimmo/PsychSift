@@ -13,6 +13,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const BASELINE_PATH = fileURLToPath(new URL("../scripts/design-system-contract-baseline.json", import.meta.url));
 const GATES_PATH = fileURLToPath(new URL("../docs/design-system/GATES.md", import.meta.url));
@@ -118,7 +119,7 @@ export function generate({ write }) {
   return { changed: stale };
 }
 
-const invokedDirectly = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) {
   const write = process.argv.includes("--write");
   const { changed } = generate({ write });

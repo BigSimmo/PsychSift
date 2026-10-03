@@ -196,6 +196,11 @@ On Call is world-readable. `is_personal` rows are the only private ones.
 - Escalation ladders are administrative fact — who to call, when, and a number. That is allowed.
 - Handover and orientation entries stay process-only. Nothing in this mode may become a patient
   list or identifiable clinical handover.
+- Owner exception (3 Oct 2026, PR #3220): the quick call log on Call may hold patient identifiers
+  the registrar types. They stay in the private on-device patient-label store only, are wiped at
+  the end of the shift and at sign-out, and are never sent to a provider, a log, analytics or a URL.
+  The log is a private working note, not a patient list: only the notes still open leave the device,
+  and only when the reader copies the handover. Everything else in this mode stays process-only.
 
 ---
 

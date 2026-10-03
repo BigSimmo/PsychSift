@@ -367,7 +367,8 @@ test.describe("CME phone design", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/cme");
     await expect(page.getByTestId("cme-hero-summary").filter({ visible: true })).toBeVisible();
-    await page.getByTestId("cme-quick-log-button").click();
+    const logButton = await expectSingleSettledOwner(page.getByTestId("cme-quick-log-button"));
+    await logButton.click();
     const sheet = page.getByTestId("cme-quick-log-sheet");
     await expect(sheet.getByLabel("What was it", { exact: false })).toBeVisible();
     await sheet.getByLabel("What was it", { exact: false }).fill("Synthetic grand round");

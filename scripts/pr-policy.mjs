@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const requiredClinicalGovernanceItems = [
   "Source-backed claims still require linked source verification before clinical use",
@@ -2313,7 +2313,7 @@ function requiredCheckForgerySelfTest(completeBody) {
   assert.equal(mergeGroupPullRequestNumber(undefined), null);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   if (process.argv.includes("--self-test")) selfTest();
   else {
     console.error("usage: pr-policy.mjs --self-test");

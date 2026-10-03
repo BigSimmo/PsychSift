@@ -24,6 +24,7 @@ export const GOVERNED_SOURCE_HOSTS = [
   "www.cci.health.wa.gov.au",
   "www.chiefpsychiatrist.wa.gov.au",
   "www.columbiapsychiatry.org",
+  "www.ebs.tga.gov.au",
   "www.entrypointperth.com.au",
   "www.gamblinghelponline.org.au",
   "www.health.gov.au",
@@ -63,10 +64,31 @@ export const GOVERNED_SOURCE_HOSTS = [
 
 const governedSourceHosts = new Set<string>(GOVERNED_SOURCE_HOSTS);
 
+/**
+ * The TGA's Product Information search, the only form of the eBS host the
+ * register links to: `PICMI?OpenForm&q=<name>&t=pi`. Individual PI documents are
+ * served from the same host under ids that could not be read for capture, so a
+ * record links the search for its generic name instead.
+ */
+function isTgaProductInformationSearch(url: URL, entries: [string, string][]) {
+  if (url.pathname !== "/ebs/picmi/picmirepository.nsf/PICMI") return false;
+  const params = new Map(entries);
+  return (
+    entries.length === 3 &&
+    params.size === 3 &&
+    params.get("OpenForm") === "" &&
+    params.get("t") === "pi" &&
+    /^[a-z]+(?: [a-z]+)*$/.test(params.get("q") ?? "")
+  );
+}
+
 function hasGovernedQuery(url: URL) {
+  // The TGA host is governed for the PI search form only, so a query-less URL
+  // there (an individual PI document path) must not slip through the shortcut below.
+  const entries = [...url.searchParams.entries()];
+  if (url.hostname === "www.ebs.tga.gov.au") return isTgaProductInformationSearch(url, entries);
   if (!url.search) return true;
 
-  const entries = [...url.searchParams.entries()];
   if (entries.length !== 1) return false;
 
   const [[key, value]] = entries;

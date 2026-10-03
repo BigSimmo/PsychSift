@@ -43,7 +43,9 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 // Reuse the repo's own corpus reader rather than adding a third parser. In
 // particular `parseLedgerRows` splits on CELL_SPLIT (`/(?<!\\)\|/`), not on a
@@ -322,6 +324,6 @@ function main(argv) {
 // scripts/generate-outstanding-issues-snapshot.mjs): a hand-built `file://` string
 // never matches import.meta.url on Windows, so the guard would silently never
 // fire. Importing this module for tests must never write the file.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   process.exitCode = main(process.argv.slice(2));
 }

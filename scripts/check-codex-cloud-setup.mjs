@@ -13,6 +13,7 @@ import {
 } from "./ensure-codex-cloud-git-remote.mjs";
 import { redactSensitiveText } from "./sensitive-text.mjs";
 import { providerEnvironmentKeys } from "./test-environment.mjs";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -1232,7 +1233,7 @@ export async function validateCodexCloudRuntime(env = process.env) {
   return errors;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isDirectEntrypoint(import.meta.url)) {
   const errors = validateCodexCloudSetup();
   const commandArguments = process.argv.slice(2);
   const hostedAppArgumentErrors = validateHostedAppInventoryArguments(commandArguments);

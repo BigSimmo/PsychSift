@@ -7,8 +7,8 @@
  * reports on merge queue entries instead of stalling the queue.
  */
 import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { yamlBlock } from "./yaml-contract.mjs";
 
 const workflowPath = ".github/workflows/pr-mergeability.yml";
@@ -227,7 +227,7 @@ export function checkPrMergeabilityWorkflow(workflow) {
   return failures;
 }
 
-const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) {
   const failures = checkPrMergeabilityWorkflow(fs.readFileSync(workflowPath, "utf8"));
   if (failures.length > 0) {

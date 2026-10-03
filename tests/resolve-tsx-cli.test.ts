@@ -22,6 +22,9 @@ describe("resolveTsxCli", () => {
     mkdirSync(secondaryGitDir, { recursive: true });
     mkdirSync(secondary, { recursive: true });
     mkdirSync(join(main, "node_modules", "tsx", "dist"), { recursive: true });
+    // An ancestor install must not shadow the dependency belonging to the Git checkout.
+    mkdirSync(join(root, "node_modules", "tsx", "dist"), { recursive: true });
+    writeFileSync(join(root, "node_modules", "tsx", "dist", "cli.mjs"), "");
     writeFileSync(cli, "");
     writeFileSync(join(secondary, ".git"), `gitdir: ${secondaryGitDir}`);
     writeFileSync(join(secondaryGitDir, "gitdir"), join(secondary, ".git"));

@@ -2,6 +2,7 @@ import {
   BookOpen,
   CircleDashed,
   ClipboardList,
+  FileDown,
   FolderOpen,
   LifeBuoy,
   LogOut,
@@ -22,6 +23,7 @@ export const ADMIN_PAGE_HREFS = {
 /** One word per tab (spec), drawn by the `wordmark-five` rail. The ids are the DOM anchors. */
 export const ADMIN_NEW_JOB_SECTIONS: readonly PageSection[] = [
   { id: "admin-new-job-before", label: "Before", icon: ClipboardList },
+  { id: "admin-new-job-credential-pack", label: "Pack", icon: FileDown },
   { id: "admin-new-job-leaving", label: "Leaving", icon: LogOut },
 ];
 

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { discoverSkillDefinitions, catalogPath, loadSkillCatalog, skillsRoot } from "./list-database-skills.mjs";
 
 function escapeYamlDoubleQuoted(value) {
@@ -69,7 +70,6 @@ function syncSkills() {
   }
 }
 
-const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : "";
-if (invokedPath === fileURLToPath(import.meta.url)) {
+if (isDirectEntrypoint(import.meta.url)) {
   syncSkills();
 }

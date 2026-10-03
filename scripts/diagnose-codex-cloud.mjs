@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 import { lockPythonVersion, workerPythonLockTargets } from "./worker-python-lock-config.mjs";
 
@@ -125,4 +126,4 @@ export function main() {
   return issues.length === 0 ? 0 : 1;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = main();
+if (isDirectEntrypoint(import.meta.url)) process.exitCode = main();
