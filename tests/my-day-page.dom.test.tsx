@@ -19,7 +19,12 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 vi.mock("@/components/my-day/modules/my-day-modules", () => ({
-  MyDayModules: () => <div data-testid="my-day-modules" />,
+  MyDayModules: ({ children }: { children?: unknown }) => (
+    <>
+      <div data-testid="my-day-modules" />
+      {children as never}
+    </>
+  ),
 }));
 
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
@@ -185,6 +190,44 @@ describe("MyDayPage", () => {
     expect(screen.getByTestId("my-day-item-a").querySelector('[class*="--warning"]')).toBeTruthy();
     expect(screen.getByTestId("my-day-item-t").querySelector('[class*="--warning"]')).toBeNull();
     expect(screen.getByTestId("my-day-item-a").textContent).not.toMatch(/Expired/);
+  });
+
+  it("filters the list by mode with local pills and says so when a mode has nothing", () => {
+    setState({
+      items: [
+        item("a", "overdue"),
+        item("o", "overdue", { mode: "cme" }),
+        item("t", "soon", { mode: "teaching" }),
+        item("r", "info", { mode: "roster" }),
+      ],
+    });
+    render(<MyDayPage now={NOW} />);
+    const group = screen.getByRole("group", { name: "Filter by mode" });
+    expect(
+      within(group)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["All", "On Call", "Roster", "CPD", "Teaching", "Admin"]);
+    expect(screen.getByRole("button", { name: "All" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "All 4" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "CPD" }));
+    expect(screen.getByRole("button", { name: "CPD" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("my-day-item-o")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-item-a")).toBeNull();
+    expect(screen.queryByTestId("my-day-item-t")).toBeNull();
+    // A group with nothing left in it disappears.
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "Needs you now",
+    ]);
+
+    fireEvent.click(screen.getByRole("button", { name: "On Call" }));
+    expect(screen.getByTestId("my-day-filter-empty").textContent).toBe("Nothing from On Call needs you.");
+
+    fireEvent.click(screen.getByRole("button", { name: "All 4" }));
+    expect(screen.getByRole("button", { name: "All" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
+    expect(screen.getByTestId("my-day-item-r")).toBeTruthy();
   });
 
   it("names failed sources, keeps the rest, and retries on click", () => {

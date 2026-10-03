@@ -1,20 +1,19 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
-import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
-import { modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
+import { modeRaisedCard } from "@/components/mode-kit/recipes";
+import { modeSecondaryText } from "@/components/mode-kit/type";
 import type { RosterShiftsState } from "@/components/roster/use-roster-shifts";
-import { cn, eyebrowText } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 import { describeNextShift } from "@/lib/roster/shifts/next-shift";
 import { perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 /** An upcoming shift's ring fills over the 12 hours before it starts. */
 const RING_LEAD_MS = 12 * 60 * 60 * 1000;
-const RING_SIZE = 56;
-const RING_STROKE = 5;
+const RING_SIZE = 112;
+const RING_STROKE = 9;
 const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
@@ -36,13 +35,23 @@ export function shiftRingFraction(startsAt: string, endsAt: string, now: Date): 
   return Math.min(1, Math.max(0, Number.isFinite(fraction) ? fraction : 0));
 }
 
-function CountdownRing({ fraction, figure, label }: { fraction: number; figure: string; label: string }) {
+function CountdownRing({
+  fraction,
+  figure,
+  caption,
+  label,
+}: {
+  fraction: number;
+  figure: string;
+  caption: string;
+  label: string;
+}) {
   return (
     <span
       role="img"
       aria-label={label}
       data-testid="my-day-next-shift-ring"
-      className="relative grid size-14 shrink-0 place-items-center"
+      className="relative grid size-28 shrink-0 place-items-center"
     >
       <svg viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`} className="absolute inset-0 -rotate-90" aria-hidden="true">
         <circle
@@ -65,8 +74,9 @@ function CountdownRing({ fraction, figure, label }: { fraction: number; figure: 
           strokeDashoffset={RING_CIRCUMFERENCE * (1 - fraction)}
         />
       </svg>
-      <span aria-hidden="true" className={cn(modeNumberText, "text-xs text-[color:var(--text-heading)]")}>
-        {figure}
+      <span aria-hidden="true" className="relative grid justify-items-center">
+        <span className="font-mono text-2xl font-semibold nums text-[color:var(--text-heading)]">{figure}</span>
+        <span className="text-2xs text-[color:var(--text-muted)]">{caption}</span>
       </span>
     </span>
   );
@@ -93,23 +103,31 @@ export function MyDayNextShift({ state, now }: { readonly state: RosterShiftsSta
   const figure = formatHoursMinutes(
     next.onNow ? Date.parse(shift.endsAt) - now.getTime() : Date.parse(shift.startsAt) - now.getTime(),
   );
-  const ringLabel = next.onNow ? `${figure} left on shift` : `${figure} to on call`;
+  const caption = next.onNow ? "left on shift" : "to on call";
+  const ringLabel = `${figure} ${caption}`;
   return (
-    <ModeFeaturedModule mode="my-day" testId="my-day-module-next-shift">
-      <Link href="/roster" className={cn(focusRing, "flex min-h-12 items-center gap-3 rounded-sm p-3")}>
+    <div data-testid="my-day-module-next-shift" className={cn(modeRaisedCard, "rounded-xl")}>
+      <Link
+        href="/roster"
+        className={cn(
+          focusRing,
+          "grid min-h-12 grid-cols-[7rem_1fr] items-center gap-3.5 rounded-xl p-3.5 no-underline",
+        )}
+      >
         <CountdownRing
           fraction={shiftRingFraction(shift.startsAt, shift.endsAt, now)}
           figure={figure}
+          caption={caption}
           label={ringLabel}
         />
-        <span className="grid min-w-0 flex-1 gap-0.5">
-          <span className={eyebrowText}>Next shift</span>
-          <span className="break-words text-base-minus font-medium text-[color:var(--text-heading)]">{headline}</span>
+        <span className="grid min-w-0 gap-1">
+          <span className="break-words text-lg font-semibold leading-tight text-[color:var(--text-heading)]">
+            {headline}
+          </span>
           {next.onNow ? <span className={cn(modeSecondaryText, "break-words")}>{when}</span> : null}
           {place ? <span className={cn(modeSecondaryText, "break-words")}>{place}</span> : null}
         </span>
-        <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
       </Link>
-    </ModeFeaturedModule>
+    </div>
   );
 }

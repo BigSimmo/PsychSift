@@ -1,12 +1,10 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { formatCmeHours } from "@/components/cme/cme-dashboard-next-step";
-import { ModeFactTile } from "@/components/mode-kit/fact-tile";
 import { cn } from "@/components/ui-primitives";
 import { cpdYearOf } from "@/lib/cme/cpd-year";
 import { evaluateYear } from "@/lib/cme/evaluate";
@@ -57,18 +55,34 @@ export function MyDayCpdPace({ now }: { readonly now: Date }) {
 
   // Another account's (or year's) numbers are never shown.
   if (!loaded || loaded.epoch !== authEpoch || loaded.year !== year) return null;
+  const fraction = Math.min(1, Math.max(0, loaded.logged / loaded.target));
+  const logged = formatCmeHours(loaded.logged);
+  const target = formatCmeHours(loaded.target);
   return (
-    <Link href="/cme" className={cn(focusRing, "block min-h-12 rounded-md no-underline")}>
-      <ModeFactTile
-        testId="my-day-module-cpd"
-        label="CPD this year"
-        value={
-          <span className="flex items-center justify-between gap-2">
-            <span>{`CPD: ${formatCmeHours(loaded.logged)} of ${formatCmeHours(loaded.target)} h this year`}</span>
-            <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
-          </span>
-        }
-      />
+    <Link
+      href="/cme"
+      data-testid="my-day-module-cpd"
+      className={cn(
+        focusRing,
+        "grid min-h-12 min-w-0 content-start gap-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2.5 no-underline",
+      )}
+    >
+      <span className="sr-only">{`CPD: ${logged} of ${target} h this year`}</span>
+      <span
+        aria-hidden="true"
+        className="font-mono text-xl font-semibold nums leading-tight text-[color:var(--text-heading)]"
+      >
+        {`${logged} of ${target} h`}
+      </span>
+      <span aria-hidden="true" className="text-sm-minus text-[color:var(--text-muted)]">
+        CPD this year
+      </span>
+      <span aria-hidden="true" className="mt-1 h-1.5 overflow-hidden rounded-full bg-[color:var(--border)]">
+        <span
+          className="block h-full rounded-full bg-[color:var(--mode-identity)]"
+          style={{ width: `${Math.round(fraction * 100)}%` }}
+        />
+      </span>
     </Link>
   );
 }

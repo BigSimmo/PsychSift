@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
@@ -30,20 +29,27 @@ export function MyDayPriorityFlag({ items, now }: { readonly items: readonly MyD
       data-testid="my-day-module-priority"
       className={cn(
         focusRing,
-        "flex min-h-12 items-center gap-3 rounded-md border border-[color:var(--success-border)] bg-[color:var(--success-soft)] p-3 no-underline",
+        "flex min-h-18 items-center gap-3.5 rounded-2xl border border-[color:var(--success-border)] bg-[color:var(--success-soft)] py-4 pl-4.5 pr-3.5 no-underline",
       )}
     >
       <span
         aria-hidden="true"
-        className="grid h-6 min-w-8 shrink-0 place-items-center rounded-sm px-1 text-3xs font-semibold tracking-wide text-[color:var(--success)]"
+        className="w-8 shrink-0 font-mono text-sm-minus font-semibold text-[color:var(--success)]"
       >
         {MODE_BADGE[item.mode]}
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
-        <span className="break-words text-base-minus font-semibold text-[color:var(--text-heading)]">{item.title}</span>
-        <span className={cn(modeSecondaryText, "break-words")}>{second}</span>
+        <span className="break-words text-base font-semibold leading-tight text-[color:var(--text-heading)]">
+          {item.title}
+        </span>
+        <span className={cn(modeSecondaryText, "break-words text-sm-minus")}>{second}</span>
       </span>
-      <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+      <span
+        aria-hidden="true"
+        className="grid min-h-10 shrink-0 place-items-center rounded-full bg-[color:var(--text-heading)] px-4.5 text-sm-minus font-semibold text-[color:var(--surface)]"
+      >
+        Open
+      </span>
     </Link>
   );
 }

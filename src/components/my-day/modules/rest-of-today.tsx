@@ -3,7 +3,6 @@
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
-import { modeNumberText } from "@/components/mode-kit/type";
 import type { RosterShiftsState } from "@/components/roster/use-roster-shifts";
 import type { SessionSummaryRead } from "@/components/teaching/teaching-reads";
 import { sessionHref } from "@/components/teaching/teaching-view-model";
@@ -75,17 +74,17 @@ export function MyDayRestOfToday({ chips }: { readonly chips: readonly RestOfTod
               data-next={index === 0 ? "true" : undefined}
               className={cn(
                 focusRing,
-                "grid min-h-12 min-w-24 max-w-48 content-center gap-0.5 rounded-md border px-3 py-1 no-underline",
+                "grid min-h-12 min-w-28 max-w-48 content-center gap-0.5 rounded-lg border px-3 py-2 no-underline",
                 index === 0
                   ? "border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)]"
-                  : "border-[color:var(--border)] bg-[color:var(--surface-raised)]",
+                  : "border-[color:var(--border)] bg-[color:var(--surface)]",
               )}
             >
-              <span className={cn(modeNumberText, "text-sm-minus font-medium text-[color:var(--text-heading)]")}>
+              <span className="font-mono text-sm-minus font-medium nums text-[color:var(--text-heading)]">
                 {perthTimeOf(new Date(chip.at))}
                 {index === 0 ? <span className="sr-only"> (next)</span> : null}
               </span>
-              <span className="break-words text-xs text-[color:var(--text-muted)]">{chip.label}</span>
+              <span className="break-words text-sm-minus text-[color:var(--text-muted)]">{chip.label}</span>
             </Link>
           </li>
         ))}

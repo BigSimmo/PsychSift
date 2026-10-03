@@ -149,7 +149,8 @@ describe("MyDayNextTeaching", () => {
     const link = screen.getByRole("link");
     expect(link.getAttribute("href")).toBe("/teaching/session/occ-1");
     expect(link.textContent).toContain("Grand rounds");
-    expect(link.textContent).toContain("Tue 29 Sep · 09:00 · Room 4");
+    expect(link.textContent).toContain("Tue 29 Sep · 09:00");
+    expect(link.textContent).toContain("Room 4");
   });
 
   it.each([
@@ -255,7 +256,7 @@ describe("MyDayNextShift ring", () => {
 });
 
 describe("MyDayQuickActions", () => {
-  it("links the four quick actions", () => {
+  it("links the five quick actions", () => {
     render(<MyDayQuickActions />);
     const links = screen.getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
@@ -263,8 +264,15 @@ describe("MyDayQuickActions", () => {
       "/on-call/call#on-call-handover-heading",
       "/on-call/whos-on",
       "/cme/new",
+      "/admin/help",
     ]);
-    expect(links.map((link) => link.textContent)).toEqual(["Log a call", "Handover", "Who\u2019s on", "Log CPD"]);
+    expect(links.map((link) => link.textContent)).toEqual([
+      "Log a callCall log",
+      "HandoverISBAR builder",
+      "Who’s onTonight’s team",
+      "Log CPDNew entry",
+      "NumbersPinned",
+    ]);
   });
 });
 
