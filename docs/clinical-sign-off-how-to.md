@@ -154,6 +154,35 @@ npm run clinical:review -- --write --walk --kind timeframe --reviewed-by "Dr <yo
 After you sign off a deadline, tell Claude: the offline page (the one the app shows with no
 internet) keeps its own copy of signed-off deadlines, and Claude must rebuild it.
 
+## Signing off the Today rule engines
+
+Three Today-page features stay switched off until you sign them: roster fatigue warnings, CPD
+category coaching and the Mental Health Act countdowns. One guided command does all three.
+
+1. See where things stand (this changes nothing):
+
+   ```bash
+   npm run rules:sign
+   ```
+
+2. Start the guided sign-off:
+
+   ```bash
+   npm run rules:sign -- --write
+   ```
+
+3. The first time, it adds you as the approved signer. It prints where to find your account ID
+   in the Supabase dashboard (Authentication, then Users, then the UID column on your row); paste
+   it, then type your given name and surname, then type `ADD`.
+4. For each feature it shows every quoted rule and its source. Answer the three questions, type
+   the sign-off code it shows, then choose whether to switch it on now.
+5. The countdowns also ask for the date you re-checked the medical-device ruling and where that
+   decision is written down. A countdown runs only for a deadline that a named clinician signed.
+6. Re-reviewing a feature that is already signed: answering No to any question revokes its
+   sign-off and switches it off. Skipping the review or mistyping the code changes nothing.
+7. It saves `src/lib/admin/today-rule-sign-offs.json`. Tell Claude it is signed so the file can
+   be committed.
+
 ## Signing off the differential overlays
 
 Ten differentials carry assessment steps, safety facts and "how to tell it apart" rows that

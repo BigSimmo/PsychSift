@@ -1,3 +1,4 @@
+import signOffStore from "@/lib/admin/today-rule-sign-offs.json";
 import { sha256Hex } from "@/lib/mha-timeline";
 
 /**
@@ -148,10 +149,29 @@ export function isUtcIsoTimestamp(value: unknown): value is string {
 export type ApprovedRuleSigner = { readonly userId: string; readonly name: string };
 
 /**
- * Verified identities allowed to sign rule sets. Ships EMPTY: agents never add entries. The owner adds
- * the auth user id of an administrator-role user (see `isAdministratorUser`) and that clinician's name.
+ * Verified identities allowed to sign rule sets, read from `today-rule-sign-offs.json`. Ships EMPTY:
+ * agents never add entries. The owner adds their own auth user id (an administrator-role user, see
+ * `isAdministratorUser`) and name with `npm run rules:sign`.
  */
-export const APPROVED_RULE_SIGNERS: readonly ApprovedRuleSigner[] = Object.freeze([]);
+export const APPROVED_RULE_SIGNERS: readonly ApprovedRuleSigner[] = Object.freeze([
+  ...(signOffStore as TodayRuleSignOffStore).approvedSigners,
+]);
+
+/**
+ * Every Today rule sign-off, in `today-rule-sign-offs.json`. Only `npm run rules:sign`, run by the owner
+ * at a real terminal, writes that file; it ships with no signers and every rule set unsigned and off.
+ */
+export type TodayRuleSignOffStore = {
+  readonly approvedSigners: readonly ApprovedRuleSigner[];
+  readonly fatigue: RuleSignOff;
+  readonly cpd: RuleSignOff;
+  readonly mhaTimerSwitch: {
+    readonly medicalDeviceRuling: { readonly confirmedOn: string; readonly record: string } | null;
+    readonly signOff: RuleSignOff;
+  };
+};
+
+export const TODAY_RULE_SIGN_OFFS = signOffStore as TodayRuleSignOffStore;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

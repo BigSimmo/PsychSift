@@ -1,4 +1,4 @@
-import { UNSIGNED, type RuleSignOff } from "@/lib/admin/rule-sign-off";
+import { TODAY_RULE_SIGN_OFFS, type RuleSignOff } from "@/lib/admin/rule-sign-off";
 
 /**
  * The Medical Board of Australia's CPD hour rules, each quoted verbatim. Checked 3 October 2026
@@ -13,7 +13,7 @@ import { UNSIGNED, type RuleSignOff } from "@/lib/admin/rule-sign-off";
  * preset (`createAustralianRanzcpPreset`) carries exactly these numbers.
  *
  * Shipped unsigned and off. A named clinician compares every quote with the standard, then fills in
- * `CPD_CATEGORY_RULES_SIGN_OFF` with `ruleContentSha256(CPD_CATEGORY_RULE_SET)`.
+ * `CPD_CATEGORY_RULES_SIGN_OFF` (stored in `src/lib/admin/today-rule-sign-offs.json`, written by `npm run rules:sign`) with `ruleContentSha256(CPD_CATEGORY_RULE_SET)`.
  */
 
 export const CPD_CATEGORY_RULE_SET = {
@@ -53,5 +53,5 @@ export const CPD_CATEGORY_RULE_SET = {
   },
 } as const;
 
-/** Shipped unsigned and off. Only a named clinician fills this in; agents never do. */
-export const CPD_CATEGORY_RULES_SIGN_OFF: RuleSignOff = UNSIGNED;
+/** Shipped unsigned and off. Only the owner, with `npm run rules:sign`, fills this in; agents never do. */
+export const CPD_CATEGORY_RULES_SIGN_OFF: RuleSignOff = TODAY_RULE_SIGN_OFFS.cpd;

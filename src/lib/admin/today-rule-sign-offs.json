@@ -1,0 +1,27 @@
+{
+  "approvedSigners": [],
+  "fatigue": {
+    "enabled": false,
+    "signedBy": null,
+    "signedByUserId": null,
+    "signedAt": null,
+    "signedContentSha256": null
+  },
+  "cpd": {
+    "enabled": false,
+    "signedBy": null,
+    "signedByUserId": null,
+    "signedAt": null,
+    "signedContentSha256": null
+  },
+  "mhaTimerSwitch": {
+    "medicalDeviceRuling": null,
+    "signOff": {
+      "enabled": false,
+      "signedBy": null,
+      "signedByUserId": null,
+      "signedAt": null,
+      "signedContentSha256": null
+    }
+  }
+}

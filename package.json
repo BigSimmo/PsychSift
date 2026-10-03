@@ -142,6 +142,7 @@
     "brand:check": "node scripts/run-tsx.mjs scripts/generate-brand-assets.ts --check",
     "therapy:review": "node scripts/review-therapy.mjs",
     "clinical:review": "node scripts/review-clinical-record.mjs",
+    "rules:sign": "node scripts/run-tsx.mjs scripts/sign-today-rules.ts",
     "dictionary:apply-rewrites": "node scripts/run-tsx.mjs scripts/apply-dictionary-rewrites.ts",
     "check:therapy-data-index": "node scripts/build-therapies-index.mjs --check",
     "check:cross-mode-index": "node scripts/build-cross-mode-differentials-index.mjs --check",

@@ -3,6 +3,7 @@ import {
   isNamedPerson,
   ruleContentSha256,
   ruleGate,
+  TODAY_RULE_SIGN_OFFS,
   type ApprovedRuleSigner,
   type RuleGate,
   type RuleSignOff,
@@ -82,21 +83,32 @@ export function currentMhaTimerSwitchContent(
   };
 }
 
-/** Shipped OFF and unsigned. Only a named clinician fills in `signOff`; agents never do. */
+/** Read from `src/lib/admin/today-rule-sign-offs.json`; shipped OFF and unsigned. Only `npm run rules:sign` writes it. */
 export const MHA_TIMER_SWITCH: MhaTimerSwitch = {
-  content: currentMhaTimerSwitchContent(),
-  signOff: { enabled: false, signedBy: null, signedByUserId: null, signedAt: null, signedContentSha256: null },
+  content: currentMhaTimerSwitchContent(shippedEntries, TODAY_RULE_SIGN_OFFS.mhaTimerSwitch.medicalDeviceRuling),
+  signOff: TODAY_RULE_SIGN_OFFS.mhaTimerSwitch.signOff,
 };
 
 export type MhaTimerGate =
   RuleGate | { readonly on: false; readonly reason: "medical-device-ruling-pending" | "stale-switch" };
 
-/** A real YYYY-MM-DD date and a non-blank record of where the decision is written. */
-function isRecordedRuling(ruling: MhaTimerSwitchContent["medicalDeviceRuling"]): boolean {
+const PERTH_OFFSET_MS = 8 * 3_600_000;
+
+/**
+ * A real YYYY-MM-DD date, not after the Perth day the switch was signed (a ruling cannot have been
+ * re-checked in the future), and a non-blank record of where the decision is written.
+ */
+export function isRecordedRuling(
+  ruling: MhaTimerSwitchContent["medicalDeviceRuling"],
+  signedAt: string | null,
+): boolean {
   if (ruling === null || typeof ruling.record !== "string" || ruling.record.trim() === "") return false;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ruling.confirmedOn)) return false;
   const date = new Date(`${ruling.confirmedOn}T00:00:00.000Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(ruling.confirmedOn);
+  if (Number.isNaN(date.getTime()) || !date.toISOString().startsWith(ruling.confirmedOn)) return false;
+  const signedMs = signedAt === null ? Number.NaN : Date.parse(signedAt);
+  if (Number.isNaN(signedMs)) return false;
+  return ruling.confirmedOn <= new Date(signedMs + PERTH_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 /** Whether countdowns may run at all. Fails closed. */
@@ -107,7 +119,7 @@ export function mhaTimerGate(
 ): MhaTimerGate {
   const signed = ruleGate(timerSwitch.signOff, timerSwitch.content, approvedSigners);
   if (!signed.on) return signed;
-  if (!isRecordedRuling(timerSwitch.content.medicalDeviceRuling)) {
+  if (!isRecordedRuling(timerSwitch.content.medicalDeviceRuling, timerSwitch.signOff.signedAt)) {
     return { on: false, reason: "medical-device-ruling-pending" };
   }
   // The switch must cover today's entries, signers and logic: a re-signed or added timeframe, or

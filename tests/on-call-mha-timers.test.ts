@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { ruleContentSha256, type ApprovedRuleSigner } from "@/lib/admin/rule-sign-off";
+import mhaTimeframesFile from "../data/mha-timeframes.json";
+import { ruleContentSha256, UNSIGNED, type ApprovedRuleSigner } from "@/lib/admin/rule-sign-off";
 import { timeframeContentSha256, type MhaTimeframeEntry } from "@/lib/mha-timeline";
-import {
-  currentMhaTimerSwitchContent,
-  MHA_TIMER_SWITCH,
-  mhaTimerGate,
-  mhaTimers,
-  type MhaTimerSwitch,
-} from "@/lib/on-call/mha-timers";
+import { currentMhaTimerSwitchContent, mhaTimerGate, mhaTimers, type MhaTimerSwitch } from "@/lib/on-call/mha-timers";
 
 /**
  * Gating and countdown arithmetic only. The fixtures use invented quotes and an invented form
@@ -49,7 +44,7 @@ const SIGNER_ID = "11111111-1111-4111-8111-111111111111";
 const SIGNERS: readonly ApprovedRuleSigner[] = [{ userId: SIGNER_ID, name: "Dr Jane Example" }];
 
 function onSwitch(entries: readonly MhaTimeframeEntry[]): MhaTimerSwitch {
-  const content = currentMhaTimerSwitchContent(entries, { confirmedOn: "2026-10-04", record: "invented record" });
+  const content = currentMhaTimerSwitchContent(entries, { confirmedOn: "2026-10-01", record: "invented record" });
   return {
     content,
     signOff: {
@@ -66,16 +61,19 @@ const madeAt = new Date("2026-10-04T00:00:00.000Z");
 const now = new Date("2026-10-04T05:00:00.000Z");
 
 describe("mhaTimers", () => {
-  it("ships off: the shipped switch is unsigned, so nothing counts down", () => {
-    expect(mhaTimerGate()).toEqual({ on: false, reason: "unsigned" });
-    expect(MHA_TIMER_SWITCH.signOff.enabled).toBe(false);
-    const result = mhaTimers([{ timerId: "t1", formCode: "2", madeAt }], now);
+  it("stays off while the switch is unsigned, so nothing counts down", () => {
+    const unsigned: MhaTimerSwitch = { content: currentMhaTimerSwitchContent(), signOff: UNSIGNED };
+    expect(mhaTimerGate(unsigned)).toEqual({ on: false, reason: "unsigned" });
+    const result = mhaTimers([{ timerId: "t1", formCode: "2", madeAt }], now, { timerSwitch: unsigned });
     expect(result.items.length).toBeGreaterThan(0);
     expect(result.items.every((item) => item.kind === "quote-only")).toBe(true);
   });
 
   it("treats the shipped 'PsychSift' sign-offs as awaiting a named clinician", () => {
-    const result = mhaTimers([{ timerId: "t1", formCode: "2", madeAt }], now);
+    const result = mhaTimers([{ timerId: "t1", formCode: "2", madeAt }], now, {
+      timerSwitch: onSwitch(mhaTimeframesFile.entries as unknown as MhaTimeframeEntry[]),
+      approvedSigners: SIGNERS,
+    });
     const reasons = result.items.map((item) => (item.kind === "quote-only" ? item.reason : "countdown"));
     expect(reasons).toContain("awaiting-named-sign-off");
     expect(reasons).not.toContain("countdown");
@@ -171,6 +169,8 @@ describe("mhaTimers", () => {
       { confirmedOn: "", record: "" },
       { confirmedOn: "2026-10-04", record: "  " },
       { confirmedOn: "2026-02-30", record: "invented record" },
+      { confirmedOn: "9999-01-01", record: "invented record" },
+      { confirmedOn: "2026-10-04", record: "invented record" },
     ]) {
       const content = currentMhaTimerSwitchContent(named, ruling);
       const timerSwitch: MhaTimerSwitch = {
