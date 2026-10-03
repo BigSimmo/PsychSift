@@ -234,7 +234,15 @@ export const modeSecondaryNavigationRegistry = {
   ],
   // My Day is one page: the merged list is itself the navigation, and each row
   // links into the mode that owns the item, so it registers no destinations.
-  "my-day": [],
+  // My Day's pages, registered so the mode pill's section sheet can open them.
+  // Like Roster, it is absent from `MODE_NAV_ADOPTED_MODES` and its pages carry
+  // no in-page navigation header: the section sheet is how a reader moves
+  // between them. Ids are prefixed so they stay unique across modes.
+  "my-day": [
+    { id: "my-day-today", label: "Today", href: "/my-day" },
+    { id: "my-day-week", label: "Week", href: "/my-day/week" },
+    { id: "my-day-hours", label: "Hours", href: "/my-day/hours" },
+  ],
 } as const satisfies Record<AppModeId, readonly ModeSecondaryNavigationEntry[]>;
 
 type RegistryEntry = (typeof modeSecondaryNavigationRegistry)[AppModeId][number];
@@ -465,6 +473,14 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/admin") return "admin-today";
     return null;
   }
+  if (modeId === "my-day") {
+    // Exact matches only, for the same reason Roster's are: a prefix test would
+    // mark Today current on every My Day route as well as its own.
+    if (pathname === "/my-day/week") return "my-day-week";
+    if (pathname === "/my-day/hours") return "my-day-hours";
+    if (pathname === "/my-day") return "my-day-today";
+    return null;
+  }
   if (modeId === "roster") {
     if (pathname === "/roster/shifts") return "shifts";
     if (pathname === "/roster/team") return "team";
@@ -535,6 +551,7 @@ export function isModeSecondaryNavigationRoute(params: {
   if (modeId === "sources") {
     return ["/sources/search", "/sources/topics", "/sources/publishers", SOURCE_METHOD_ROUTE].includes(pathname);
   }
+  if (modeId === "my-day") return pathname === "/my-day/week" || pathname === "/my-day/hours";
   if (modeId === "roster") {
     return ["/roster/shifts", "/roster/team", "/roster/swaps", "/roster/requests", "/roster/settings"].includes(
       pathname,

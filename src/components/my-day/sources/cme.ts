@@ -18,6 +18,35 @@ import { useAuthSession } from "@/lib/supabase/client";
  * reader. Routine titles are the reader's own labels, already on the CPD page;
  * draft titles and reflections are never read here.
  */
+function routineItem(routine: CmeRoutine, now: Date): MyDayItem {
+  return {
+    id: `cme:routine:${routine.id}`,
+    mode: "cme",
+    title: routine.title,
+    detail: "Routine due",
+    due: routine.nextDue,
+    severity: myDaySeverityForDue(routine.nextDue, now),
+    href: cmeRoutineLogHref(routineLogPrefill(routine, now)),
+  };
+}
+
+/**
+ * Routines falling due on or before `endDate` (a Perth date), for the Week
+ * page, which looks past today. Same row, same id and same reminder gate as
+ * `cmeMyDayItems`, so the two merge without repeating a routine.
+ */
+export function cmeRoutineItemsThrough(
+  routines: readonly CmeRoutine[],
+  endDate: string,
+  now: Date,
+  reminders: ReminderSettings,
+): MyDayItem[] {
+  if (!showsReminderInApp(reminders, "cpd-routines", perthDateKey(now))) return [];
+  return routines
+    .filter((routine) => routine.archivedAt === null && routine.nextDue !== null && routine.nextDue <= endDate)
+    .map((routine) => routineItem(routine, now));
+}
+
 export function cmeMyDayItems(
   input: { routines: readonly CmeRoutine[]; drafts: readonly CmeDraft[]; year: number | string },
   now: Date,
@@ -26,15 +55,7 @@ export function cmeMyDayItems(
   const items: MyDayItem[] = [];
   if (showsReminderInApp(reminders, "cpd-routines", perthDateKey(now))) {
     for (const routine of routinesDueOn(input.routines, now)) {
-      items.push({
-        id: `cme:routine:${routine.id}`,
-        mode: "cme",
-        title: routine.title,
-        detail: "Routine due",
-        due: routine.nextDue,
-        severity: myDaySeverityForDue(routine.nextDue, now),
-        href: cmeRoutineLogHref(routineLogPrefill(routine, now)),
-      });
+      items.push(routineItem(routine, now));
     }
   }
   const waiting = groupDrafts(input.drafts).nextAction.length;
@@ -85,9 +106,13 @@ async function loadCme(signal: AbortSignal): Promise<Loaded | null> {
   return { status: "ready", routines: routines.data, drafts: drafts.data, sample: routines.demo || drafts.demo };
 }
 
+const noRoutines: readonly CmeRoutine[] = [];
+
 export function useCmeMyDaySource({ enabled, now }: { enabled: boolean; now: Date }): {
   result: MyDaySourceResult;
   retry: () => void;
+  /** The reader's routines once loaded (for the Week page); empty until then. */
+  routines: readonly CmeRoutine[];
 } {
   const reminders = useAppPreferences().preferences.reminders;
   const { authEpoch } = useAuthSession();
@@ -104,11 +129,12 @@ export function useCmeMyDaySource({ enabled, now }: { enabled: boolean; now: Dat
     return () => controller.abort();
   }, [enabled, generation, authEpoch]);
 
-  if (!enabled) return { result: signedOut, retry };
+  if (!enabled) return { result: signedOut, retry, routines: noRoutines };
   // Data from another account (a different auth epoch) is never shown.
-  if (!stored || stored.epoch !== authEpoch) return { result: loading, retry };
+  if (!stored || stored.epoch !== authEpoch) return { result: loading, retry, routines: noRoutines };
   const loaded = stored.loaded;
-  if (loaded.status !== "ready") return { result: { mode: "cme", status: loaded.status, items: [] }, retry };
+  if (loaded.status !== "ready")
+    return { result: { mode: "cme", status: loaded.status, items: [] }, retry, routines: noRoutines };
   return {
     result: {
       mode: "cme",
@@ -117,5 +143,6 @@ export function useCmeMyDaySource({ enabled, now }: { enabled: boolean; now: Dat
       ...(loaded.sample ? { sample: true } : {}),
     },
     retry,
+    routines: loaded.routines,
   };
 }

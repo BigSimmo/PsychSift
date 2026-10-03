@@ -328,7 +328,10 @@
         "src/components/cme/cme-year-close-panel.tsx",
         "src/components/developer-area/hub/roster-teams-panel.tsx",
         "src/components/dsm/dsm-diagnosis-note-builder.tsx",
+        "src/components/my-day/my-day-frame.tsx",
+        "src/components/my-day/my-day-hours-page.tsx",
         "src/components/my-day/my-day-page.tsx",
+        "src/components/my-day/my-day-week-page.tsx",
         "src/components/on-call/call/didnt-connect.tsx",
         "src/components/on-call/handover/call-log.tsx",
         "src/components/on-call/kit/handbook-state.tsx",
@@ -462,7 +465,10 @@
         "src/components/cme/cme-training-page.tsx",
         "src/components/cme/cme-year-close-panel.tsx",
         "src/components/dsm/dsm-diagnosis-note-builder.tsx",
+        "src/components/my-day/my-day-frame.tsx",
+        "src/components/my-day/my-day-hours-page.tsx",
         "src/components/my-day/my-day-page.tsx",
+        "src/components/my-day/my-day-week-page.tsx",
         "src/components/on-call/call/didnt-connect.tsx",
         "src/components/on-call/handover/call-log.tsx",
         "src/components/on-call/kit/handbook-state.tsx",
@@ -3180,7 +3186,9 @@
         "src/app/(search-app)/forms/page.tsx",
         "src/app/(search-app)/forms/search/page.tsx",
         "src/app/(search-app)/medications/[slug]/page.tsx",
+        "src/app/(search-app)/my-day/hours/page.tsx",
         "src/app/(search-app)/my-day/page.tsx",
+        "src/app/(search-app)/my-day/week/page.tsx",
         "src/app/(search-app)/my-work/page.tsx",
         "src/app/(search-app)/on-call/call/page.tsx",
         "src/app/(search-app)/on-call/card/page.tsx",
@@ -3805,7 +3813,27 @@
           "sanctionedPatternsPresent": []
         },
         {
+          "file": "src/app/(search-app)/my-day/hours/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
           "file": "src/app/(search-app)/my-day/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/my-day/week/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5486,7 +5514,9 @@
       "src/app/(search-app)/formulation/search/page.tsx",
       "src/app/(search-app)/medications/[slug]/page.tsx",
       "src/app/(search-app)/medications/page.tsx",
+      "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
+      "src/app/(search-app)/my-day/week/page.tsx",
       "src/app/(search-app)/my-work/page.tsx",
       "src/app/(search-app)/on-call/call/page.tsx",
       "src/app/(search-app)/on-call/card/page.tsx",
@@ -5639,7 +5669,9 @@
       "src/app/(search-app)/formulation/search/page.tsx",
       "src/app/(search-app)/medications/[slug]/page.tsx",
       "src/app/(search-app)/medications/page.tsx",
+      "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
+      "src/app/(search-app)/my-day/week/page.tsx",
       "src/app/(search-app)/my-work/page.tsx",
       "src/app/(search-app)/on-call/call/page.tsx",
       "src/app/(search-app)/on-call/card/page.tsx",
@@ -5722,7 +5754,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 158,
+    "inheritedCkbV2RootCount": 160,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -5731,8 +5763,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 46,
-    "rootCount": 159,
-    "productionRouteCount": 151,
-    "nextUiEntryCount": 243
+    "rootCount": 161,
+    "productionRouteCount": 153,
+    "nextUiEntryCount": 245
   }
 }

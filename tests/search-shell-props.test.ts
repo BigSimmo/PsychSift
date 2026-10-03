@@ -10,6 +10,12 @@ describe("searchShellPropsForPathname", () => {
     }
   });
 
+  it("gives every My Day page the my-day mode and no shared composer", () => {
+    for (const path of ["/my-day", "/my-day/week", "/my-day/hours"]) {
+      expect(searchShellPropsForPathname(path)).toMatchObject({ initialMode: "my-day", searchComposerVisible: false });
+    }
+  });
+
   it("keeps documents composer visible only on the search route", () => {
     expect(searchShellPropsForPathname("/documents/search")).toMatchObject({
       initialMode: "documents",

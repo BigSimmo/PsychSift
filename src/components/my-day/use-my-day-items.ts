@@ -6,6 +6,7 @@ import { useCmeMyDaySource } from "@/components/my-day/sources/cme";
 import { useEntriesMyDaySources } from "@/components/my-day/sources/entries";
 import { useRosterMyDaySource } from "@/components/my-day/sources/roster";
 import { useTeachingMyDaySource } from "@/components/my-day/sources/teaching";
+import type { CmeRoutine } from "@/lib/cme/routines";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
 import type { MyDaySourceResult, MyDayState } from "@/lib/my-day/model";
 
@@ -20,7 +21,10 @@ import type { MyDaySourceResult, MyDayState } from "@/lib/my-day/model";
  * entries; reading them once keeps a single network request and lets Admin
  * own the compliance-date rows without On Call repeating them.
  */
-export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; readonly now: Date }): MyDayState {
+/** The My Day state plus the CPD routines it already read, so the Week page need not read them again. */
+export type MyDayItemsRead = MyDayState & { readonly cmeRoutines: readonly CmeRoutine[] };
+
+export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; readonly now: Date }): MyDayItemsRead {
   const entries = useEntriesMyDaySources({ enabled, now });
   const roster = useRosterMyDaySource({ enabled, now });
   const cme = useCmeMyDaySource({ enabled, now });
@@ -57,5 +61,6 @@ export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; rea
     // Only a source that actually loaded sample data makes the view "demo".
     demoMode: sources.some((source) => source.status === "ready" && source.sample === true),
     retry,
+    cmeRoutines: cme.routines,
   };
 }

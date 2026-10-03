@@ -16,6 +16,12 @@ describe("information pages and the search composer", () => {
     expect(isInformationPage("/medications/lithium")).toBe(true);
   });
 
+  it("treats the whole My Day namespace as information pages, with no composer", () => {
+    for (const path of ["/my-day", "/my-day/week", "/my-day/hours"]) {
+      expect(isInformationPage(path)).toBe(true);
+    }
+  });
+
   it("leaves catalogue result docks out, so a submitted search keeps its composer", () => {
     expect(isInformationPage("/services/search")).toBe(false);
     expect(isInformationPage("/forms/search")).toBe(false);

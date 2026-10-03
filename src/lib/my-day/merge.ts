@@ -40,7 +40,7 @@ function dueInstant(due: string | null): number | null {
 }
 
 /** The Perth calendar date a due value falls on, or `null` when unreadable. */
-function duePerthDate(due: string | null): string | null {
+export function duePerthDate(due: string | null): string | null {
   if (due === null) return null;
   if (DATE_ONLY.test(due)) return Number.isFinite(Date.parse(`${due}T00:00:00Z`)) ? due : null;
   const ms = Date.parse(due);
