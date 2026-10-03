@@ -78,6 +78,7 @@
     "worktrees:inventory": "node scripts/worktree-inventory.mjs",
     "clean:worktree": "npm run worktrees:report",
     "verify:preflight": "npm run check:installed-lock-parity && npm run typecheck && npm run verify:full && npm run worktrees:report -- --self-test",
+    "verify:core": "npm run check:installed-lock-parity && npm run check:diff-integrity && npm run lint && npm run typecheck && npm run test",
     "verify:cheap": "npm run verify:cheap:internal",
     "verify:cheap:internal": "npm run check:installed-lock-parity && npm run lint && npm run typecheck && npm run test",
     "verify:full": "npm run verify:full:internal",
