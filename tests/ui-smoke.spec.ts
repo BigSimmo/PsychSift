@@ -91,6 +91,13 @@ async function expectDocumentOwnerFillsFrame(page: Page, owner: Locator) {
 }
 
 async function revealPhoneHeaderControl(page: Page, control: Locator) {
+  // A sheet that just closed returns focus in a frame callback, and PhoneFocusClearance
+  // re-checks the restored control one frame after that, scrolling it back into view if it
+  // is off screen. WebKit can run those frames up to a second late, so a scroll made before
+  // them is undone. Two frames queued now run after both, whatever the frame rate.
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+  );
   const { scrollTop } = await readPrimaryScrollGeometry(page);
   // Exercise the same upward scroll that reveals the phone header to a reader.
   // Programmatic scrollTop=0 can briefly report zero in WebKit, then snap back
@@ -5852,6 +5859,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(prioritiesSheet).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(prioritiesSheet).toHaveCount(0);
+    // The sheet hands focus back to its trigger; WebKit can do so up to a second
+    // after the sheet unmounts (see revealPhoneHeaderControl).
+    await expect(clinicalSummary.getByTestId("open-clinical-priorities")).toBeFocused();
     const indexedText = page.locator("#source-text");
     const summary = page.getByTestId("high-yield-summary");
     const images = page.locator("#source-images");
@@ -5897,6 +5907,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(indexedText).toHaveJSProperty("open", false);
     await page.keyboard.press("Escape");
     await expect(densitySheet).toHaveCount(0);
+    await expect(sectionTrigger).toBeFocused();
     for (const disclosure of [summary, images, indexingDetails]) {
       await expect(disclosure).toHaveJSProperty("open", false);
     }
