@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { WaitingOnControls, type WaitingOnValue } from "@/components/cme/cme-drafts-section";
+import { useCmeSample } from "@/components/cme/cme-sample-context";
 import { CmeEntryForm, type CmeEntryDraft } from "@/components/cme/cme-entry-form";
 import { cn, eyebrowText, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { CME_NEW_ENTRY_DRAFT_KEY } from "@/lib/account-scoped-browser-state";
@@ -79,6 +80,7 @@ export function CmeNewEntryRoute({
   readonly missedSessionId?: string | null;
 }) {
   const router = useRouter();
+  const sample = useCmeSample();
   const [requestId] = useState(() => crypto.randomUUID());
   const [waiting, setWaiting] = useState<WaitingOnValue>({
     waitingOn: resumeDraft?.waitingOn ?? null,
@@ -243,7 +245,7 @@ export function CmeNewEntryRoute({
           initialStatedHours={routine ? null : undefined}
           availableDomains={domains}
           // A continued account draft is not also mirrored to this tab's storage.
-          draftStorageKey={resumeDraft ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
+          draftStorageKey={resumeDraft || sample ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
           initialDraft={resumeDraft?.payload}
           onSaveDraft={demoMode ? undefined : saveDraft}
           draftControls={

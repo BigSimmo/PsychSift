@@ -10,7 +10,7 @@ import {
   cacheOnCallEntries,
   clearOnCallEntryCache,
   readCachedOnCallEntries,
-  useOnCallEntries,
+  useStoredOnCallEntries as useOnCallEntries,
 } from "@/lib/on-call/entry-store";
 
 const contact: OnCallEntry = {

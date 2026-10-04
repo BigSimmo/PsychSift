@@ -12,6 +12,7 @@ import { displayPhoneNumber } from "@/lib/admin/phone-display";
 import { formatUpdatedMonth } from "@/lib/admin/renewal-dates";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
+import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
 
 /** "Yours", "Shared by another doctor" or "Statewide", each with its own date or "No date recorded". */
 function provenanceLine(source: AdminHelpItem["source"], updatedOn: string | null): string {
@@ -40,7 +41,11 @@ export function AdminHelpItemRow({ item, onEdit }: { item: AdminHelpItem; onEdit
       <div className="grid min-w-0 flex-1 gap-0.5 self-center">
         <span className="break-words text-sm font-medium text-[color:var(--text-heading)]">{item.title}</span>
         {item.detail ? <span className={cn(textMuted, "break-words text-sm")}>{item.detail}</span> : null}
-        {item.phone ? (
+        {item.phone && isOnCallPlaceholderNumber(item.phone) ? (
+          <span className="nums inline w-fit break-words text-sm text-[color:var(--text)]">
+            {displayPhoneNumber(item.phone, "own-list")}
+          </span>
+        ) : item.phone ? (
           <a
             href={telHref ?? `tel:${item.phone}`}
             className={cn(focusRing, "nums inline w-fit break-words rounded-sm text-sm text-[color:var(--text)]")}

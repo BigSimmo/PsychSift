@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { DashTag } from "@/components/dashboard-kit/icon-chip";
+import { dashSurface } from "@/components/dashboard-kit/recipes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 
@@ -33,7 +34,9 @@ export function SignedOutSampleNotice({
   const [signInOpen, setSignInOpen] = useState(false);
   return (
     <div
+      // Carries its own token scope: the `--dash-*` colours exist only inside `.dash-surface`.
       className={cn(
+        dashSurface,
         "grid gap-3 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-card)] p-4 forced-colors:border",
         className,
       )}
