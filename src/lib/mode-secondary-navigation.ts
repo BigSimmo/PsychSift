@@ -6,7 +6,7 @@ import {
   type AppModeId,
 } from "@/lib/app-modes";
 import { consolidatedModeSearchPath } from "@/lib/consolidated-mode-home-redirect";
-import { ON_CALL_ADMIN_ROWS_HREF, ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/feature-flags";
+import { ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/feature-flags";
 import { SOURCE_METHOD_ROUTE } from "@/lib/sources/rating-method";
 import { therapyWorkspaceNavigationEntries } from "@/lib/therapy-compass-navigation";
 
@@ -128,9 +128,8 @@ export const modeSecondaryNavigationRegistry = {
   //
   // The six shift pages lead (kit 1.7): Now is the mode home and the page a
   // shift opens; Who's on, Call, Playbook, Refer and Find follow in the order a
-  // night uses them. Two tools sit under their own heading, and the pages that
-  // are moving out to their own modes sit under More until each sibling mode's
-  // build removes its row with a redirect.
+  // night uses them. Two tools sit under their own heading. More keeps Who's
+  // who and Orientation. Compliance, Admin and Teaching are their own modes.
   //
   // No `count` on any entry, deliberately. `ModeNavItem.count` is documented as
   // "state, not size" — a fill like 3/4, never a catalogue total.
@@ -149,16 +148,10 @@ export const modeSecondaryNavigationRegistry = {
     { id: "card", label: "Pocket card", href: "/on-call/card", group: "tools" },
     // The invited multi-clinician service handbook, shown to editors only (F24).
     { id: "service", label: "Manage service", href: "/on-call/service", group: "tools", audience: "editors" },
-    // Moving out: each sibling mode's build removes its own row with a redirect.
-    // Compliance is a VIEW over the `logistics` section, discriminated by
-    // `details.kind` (src/lib/on-call/compliance.ts). "Admin" and "Teaching" are
-    // labels only: the stored section ids and database check constraints stay
-    // `logistics` and `education`. More goes straight to Admin / Teaching homes;
-    // `/on-call/compliance`, `/on-call/logistics` and `/on-call/education` stay
-    // as bookmarks (compliance/logistics redirect; education page is retained).
-    { id: "compliance", label: "Compliance", href: "/admin/renewals", group: "more" },
-    { id: "logistics", label: "Admin", href: ON_CALL_ADMIN_ROWS_HREF, group: "more" },
-    { id: "teaching", label: "Teaching", href: "/teaching", group: "more" },
+    // Compliance, Admin and Teaching have their own modes (`/admin/renewals`,
+    // `/admin/help`, `/teaching`). Stored section ids stay `logistics` and
+    // `education`. The old addresses remain bookmarks: compliance and logistics
+    // redirect, and the education page is retained. They are not menu rows.
     { id: "whoswho", label: "Who's who", href: "/on-call/who-is-who", group: "more" },
     { id: "orientation", label: "Orientation checklists", href: "/on-call/orientation", group: "more" },
   ],
@@ -280,7 +273,7 @@ export const MODE_NAV_ADOPTED_MODES = [
   "therapy-compass",
   "dictionary",
   "sources",
-  // On Call is deliberately absent. Its thirteen destinations stay registered
+  // On Call is deliberately absent. Its destinations stay registered
   // below — the mode pill's section level reads them — but no page mounts the
   // shared bar, because the pill already opens exactly those pages and a rail
   // repeating them was two controls doing one job. The section pages carry the
@@ -314,14 +307,8 @@ const ON_CALL_ACTIVE_IDS: Readonly<Record<string, string>> = {
   "/on-call/find": "find",
   "/on-call/card": "card",
   "/on-call/service": "service",
-  // Bookmark paths (proxy/page redirects still serve these) plus the direct
-  // Admin/Teaching homes More now opens.
-  "/on-call/compliance": "compliance",
-  "/admin/renewals": "compliance",
-  "/on-call/logistics": "logistics",
-  "/admin/help": "logistics",
-  "/on-call/education": "teaching",
-  "/teaching": "teaching",
+  // Who's who and Orientation are the More rows. Admin, Teaching and the old
+  // bookmark paths belong to those modes, so they do not light an On Call pill.
   "/on-call/who-is-who": "whoswho",
   "/on-call/orientation": "orientation",
 };

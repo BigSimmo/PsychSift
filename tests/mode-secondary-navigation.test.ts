@@ -33,9 +33,8 @@ const expectedLabels: Record<AppModeId, string[]> = {
   factsheets: ["Search", "Topics"],
   dictionary: ["Terms", "Topics", "Compare", "Sources"],
   sources: ["Catalogue", "Topics", "Publishers", "Method"],
-  // Six shift pages, two tools, then the pages moving out to their own modes
-  // (kit 1.7). "Teaching" and "Admin" stay label-only: their ids, route
-  // segments and check constraints stay "education" and "logistics".
+  // Six shift pages, two tools, then Who's who and Orientation. Compliance,
+  // Admin and Teaching live in their own modes and are not On Call menu rows.
   "on-call": [
     "Now",
     "Who's on",
@@ -45,9 +44,6 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Find",
     "Pocket card",
     "Manage service",
-    "Compliance",
-    "Admin",
-    "Teaching",
     "Who's who",
     "Orientation checklists",
   ],
@@ -518,17 +514,11 @@ describe("mode secondary navigation registry", () => {
     expect(MODE_NAV_ADOPTED_MODES).not.toContain("on-call");
   });
 
-  it("groups On Call into six shift pages, two tools and the pages moving out", () => {
+  it("groups On Call into six shift pages, two tools and two More pages", () => {
     const { main, tools, more } = groupModeSecondaryNavigationEntries(modeSecondaryNavigationRegistry["on-call"]);
     expect(main.map((entry) => entry.label)).toEqual(["Now", "Who's on", "Call", "Playbook", "Refer", "Find"]);
     expect(tools.map((entry) => entry.label)).toEqual(["Pocket card", "Manage service"]);
-    expect(more.map((entry) => entry.label)).toEqual([
-      "Compliance",
-      "Admin",
-      "Teaching",
-      "Who's who",
-      "Orientation checklists",
-    ]);
+    expect(more.map((entry) => entry.label)).toEqual(["Who's who", "Orientation checklists"]);
   });
 
   it("leaves every other mode ungrouped", () => {
@@ -568,12 +558,12 @@ describe("mode secondary navigation registry", () => {
       "/on-call/find": "find",
       "/on-call/card": "card",
       "/on-call/service": "service",
-      "/on-call/compliance": "compliance",
-      "/admin/renewals": "compliance",
-      "/on-call/logistics": "logistics",
-      "/admin/help": "logistics",
-      "/on-call/education": "teaching",
-      "/teaching": "teaching",
+      "/on-call/compliance": null,
+      "/admin/renewals": null,
+      "/on-call/logistics": null,
+      "/admin/help": null,
+      "/on-call/education": null,
+      "/teaching": null,
       "/on-call/who-is-who": "whoswho",
       "/on-call/orientation": "orientation",
       "/on-call/check": null,
@@ -585,15 +575,23 @@ describe("mode secondary navigation registry", () => {
     }
   });
 
-  it("sends More Compliance, Admin and Teaching straight to their mode homes", () => {
-    const more = Object.fromEntries(
-      modeSecondaryNavigationEntries("on-call")
-        .filter((entry) => entry.group === "more")
-        .map((entry) => [entry.id, entry.href]),
-    );
-    expect(more.compliance).toBe("/admin/renewals");
-    expect(more.logistics).toBe("/admin/help");
-    expect(more.teaching).toBe("/teaching");
+  it("keeps On Call More to Who's who and Orientation", () => {
+    const more = modeSecondaryNavigationEntries("on-call").filter((entry) => entry.group === "more");
+    expect(more.map((entry) => [entry.id, entry.href])).toEqual([
+      ["whoswho", "/on-call/who-is-who"],
+      ["orientation", "/on-call/orientation"],
+    ]);
+  });
+
+  it("does not grow the mode menus past their current pages", () => {
+    const visible = (modeId: AppModeId) =>
+      modeSecondaryNavigationEntries(modeId).filter((entry) => entry.href && !entry.hidden);
+    expect(visible("teaching")).toHaveLength(8);
+    expect(visible("my-work")).toHaveLength(3);
+    expect(visible("roster")).toHaveLength(6);
+    expect(visible("first-nations")).toHaveLength(9);
+    expect(visible("my-day")).toHaveLength(3);
+    expect(visible("on-call").filter((entry) => entry.group === "more")).toHaveLength(2);
   });
 
   it("does not mark Find/Search current on record routes that match no destination", () => {

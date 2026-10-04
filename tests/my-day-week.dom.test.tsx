@@ -234,7 +234,7 @@ describe("MyDayWeekPage", () => {
     expect(row.getAttribute("href")).toBe("/teaching/session/s1");
   });
 
-  it("links a relocated session to its On Call entry", () => {
+  it("links a relocated session to the teaching week list", () => {
     setTeaching([], {
       week: {
         sessions: [],
@@ -250,7 +250,7 @@ describe("MyDayWeekPage", () => {
     });
     render(<MyDayWeekPage now={NOW} />);
     const row = screen.getByTestId("my-day-week-session-entry1@2026-10-05");
-    expect(row.getAttribute("href")).toBe("/on-call/education#on-call-entry-entry1");
+    expect(row.getAttribute("href")).toBe("/teaching/week#teaching-relocated");
   });
 
   it("warns when relocated teaching entries or team shifts could not be read", () => {

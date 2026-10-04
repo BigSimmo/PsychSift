@@ -201,6 +201,8 @@ const routeDescriptions: Record<string, string> = {
     "My Day: one time-ordered list of what needs you across On Call, Roster, CPD, Teaching and Admin — overdue first, then due soon, then the rest — each row linking to the page that resolves it. My Day has no search results surface.",
   "/on-call/compliance": "Compatibility redirect to `/admin/renewals`, carrying the query string.",
   "/on-call/logistics": "Compatibility redirect to `/admin/help`, carrying the query string.",
+  "/on-call/education":
+    "Retained bookmark for the On Call teaching list. The teaching home is `/teaching` (Today) and `/teaching/week` (the list, edited there). This page is not the Teaching mode home.",
   "/first-nations":
     "First Nations Bedside page: the Aboriginal liaison figure for the chosen hospital, the crisis strip (000 and 13YARN), what to do first and links to the eight section pages. A dashboard, not a redirect to the shared search home — First Nations has no search results surface.",
   "/first-nations/contacts":
@@ -684,7 +686,7 @@ function renderModePageIndex() {
       home: appModeHomeHref("on-call"),
       search: appModeHomeHref("on-call"),
       detail:
-        'No results page — `resultsSurface: "none"`. `/on-call` is a shift dashboard; section pages include `/on-call/now`, `/on-call/call`, `/on-call/refer`, `/on-call/find`, `/on-call/whos-on`, `/on-call/compliance`, `/on-call/contacts`, and `/on-call/who-is-who`.',
+        'No results page — `resultsSurface: "none"`. `/on-call` is the Now dashboard. Its pages are `/on-call/call`, `/on-call/refer`, `/on-call/find`, `/on-call/whos-on`, `/on-call/playbook`, `/on-call/contacts`, `/on-call/who-is-who` and `/on-call/orientation`. `/on-call/compliance` redirects to `/admin/renewals` and `/on-call/logistics` redirects to `/admin/help`. Teaching lives at `/teaching`; `/on-call/education` is only the retained On Call teaching-list bookmark.',
     },
     {
       mode: "CPD",

@@ -15,8 +15,7 @@ import { formatShiftRange, kindOf } from "@/components/roster/roster-format";
 import { useRosterShifts, type MyShift } from "@/components/roster/use-roster-shifts";
 import { perthDateKey, timeRange } from "@/components/teaching/teaching-dates";
 import type { SessionSummaryRead } from "@/components/teaching/teaching-reads";
-import { relocatedEntryId, sessionHref } from "@/components/teaching/teaching-view-model";
-import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
+import { sessionHref } from "@/components/teaching/teaching-view-model";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
 import { Button } from "@/components/ui/button";
 import { appModeDefinition } from "@/lib/app-modes";
@@ -81,7 +80,7 @@ function teachingRow(session: SessionSummaryRead) {
       key={`teaching:${session.occurrenceId}`}
       title={session.title}
       subtitle={subtitle}
-      href={sessionHref(session) ?? `/on-call/education#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`}
+      href={sessionHref(session) ?? "/teaching/week#teaching-relocated"}
       testId={`my-day-week-session-${session.occurrenceId}`}
     />
   );
