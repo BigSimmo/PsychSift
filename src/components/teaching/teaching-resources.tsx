@@ -31,6 +31,11 @@ import { TextField } from "@/components/ui/text-field";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
 import { teachingPost } from "@/lib/teaching/client";
 import type { ResourcesForWeek, TeamSummary } from "@/lib/teaching/model";
+import {
+  useSignedOutSampleRead,
+  useTeachingDemoMode,
+  useTeachingSignedOut,
+} from "@/components/teaching/use-teaching-sample";
 
 type WeekItem = ResourcesForWeek["forThisWeek"][number];
 
@@ -42,12 +47,26 @@ const itemCount = (n: number) => withUnit(n, n === 1 ? "item" : "items");
  * directory, which lives there and is never copied here. The filter box looks only through what is
  * already on screen: no request, no search, no AI, no mic (standard §13).
  */
-export function TeachingResources({ demoMode, sampleData }: { demoMode: boolean; sampleData?: ResourcesForWeek }) {
+export function TeachingResources({
+  demoMode: serverDemoMode,
+  sampleData: serverSample,
+}: {
+  demoMode: boolean;
+  sampleData?: ResourcesForWeek;
+}) {
+  const demoMode = useTeachingDemoMode(serverDemoMode);
+  const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const monday = now ? mondayOf(perthDateKey(now)) : null;
+  // Signed out with no server sample: build the made-up resources here, and ask the API for nothing.
+  const built = useSignedOutSampleRead<ResourcesForWeek>(signedOut && !serverSample, monday, async () => {
+    const { demoTeachingResources } = await import("@/lib/teaching/demo-resources");
+    return demoTeachingResources({ action: "resources.read", weekStart: monday! }, new Date()) as ResourcesForWeek;
+  });
+  const sampleData = serverSample ?? built;
   // Demo mode reads too: the server answers with the made-up collections (master plan R8).
   const read = useTeachingResource<ResourcesForWeek>(
-    monday ? `/api/teaching/resources?action=resources.read&weekStart=${monday}` : null,
+    monday && !(signedOut && !sampleData) ? `/api/teaching/resources?action=resources.read&weekStart=${monday}` : null,
     sampleData,
   );
   const week = useTeachingWeek(monday ? { from: monday, to: addDays(monday, 6) } : null, { demoMode }, now);

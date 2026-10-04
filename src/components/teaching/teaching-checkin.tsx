@@ -28,6 +28,7 @@ import { cn, textMuted } from "@/components/ui-primitives";
 import { checkinScanPath } from "@/lib/teaching/checkin-token";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
 import type { CheckinCode, CheckinStream } from "@/lib/teaching/model";
+import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 
 /*
  * The presenter's code screen (spec §9, review focus 3): the QR and its six
@@ -40,7 +41,14 @@ const MINUTE = 60_000;
 
 type SharedScreen = { token: string; path: string; expiresAt: string };
 
-export function TeachingCheckinScreen({ occurrenceId, demoMode }: { occurrenceId: string; demoMode: boolean }) {
+export function TeachingCheckinScreen({
+  occurrenceId,
+  demoMode: serverDemoMode,
+}: {
+  occurrenceId: string;
+  demoMode: boolean;
+}) {
+  const demoMode = useTeachingDemoMode(serverDemoMode);
   const now = useCheckinClock();
   const valid = isOccurrenceId(occurrenceId);
   const resource = useSessionDetail(valid && !demoMode ? occurrenceId : null, false, now);
