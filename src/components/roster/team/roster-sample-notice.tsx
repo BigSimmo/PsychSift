@@ -1,11 +1,16 @@
+"use client";
+
 import { ModeNotice } from "@/components/mode-kit/notice";
+import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 
 /**
  * Shown while the real-staff team release is held and the server answers with
  * the invented sample team, so a sample is never mistaken for a real roster.
  */
 export function RosterSampleNotice({ sample }: { readonly sample: boolean | undefined }) {
-  if (!sample) return null;
+  // The signed-out sample has its own Sample box at the top of the page.
+  const signedOutSample = useRosterSignedOutSample();
+  if (!sample || signedOutSample) return null;
   return (
     <ModeNotice testId="roster-sample-notice">
       Example team. Every name and shift here is made up so you can see how it works. Team rosters aren&apos;t switched

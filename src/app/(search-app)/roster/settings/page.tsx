@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { RosterSettingsPage } from "@/components/roster/roster-settings-page";
+import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export const metadata: Metadata = {
   title: "Settings | Roster | PsychSift",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function RosterSettingsRoute() {
-  return <RosterSettingsPage />;
+  return (
+    <RosterSampleGate title="Sign in to see your Roster settings" records="Roster settings">
+      <RosterSettingsPage />
+    </RosterSampleGate>
+  );
 }

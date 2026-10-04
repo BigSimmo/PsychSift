@@ -29,7 +29,13 @@ import { FormField } from "@/components/ui/form-field";
 import { TextField } from "@/components/ui/text-field";
 import { EmptyState, InlineNotice, cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
-import { DEMO_SERVICE_ID, DEMO_SITE_ID, demoServiceDetail, demoServiceSummary } from "@/lib/on-call/service-demo";
+import {
+  DEMO_SERVICE_ID,
+  DEMO_SITE_ID,
+  demoServiceDetail,
+  demoServiceSummary,
+  sampleServiceDetail,
+} from "@/lib/on-call/service-demo";
 import {
   type ServiceAction,
   type ServiceDetail,
@@ -79,8 +85,11 @@ export function ServicePage({
   readonly initialSiteId?: string | null;
   readonly initialRotation?: string;
 }) {
-  const demoMode = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
   const auth = useAuthSession();
+  // Signed out, the page shows the invented sample service, read-only, the same
+  // synthetic one the local demo build serves.
+  const envDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const demoMode = envDemo || auth.status === "signed_out" || auth.status === "expired";
   const [state, setState] = useState<LoadState>("loading");
   const [ownedServices, setOwnedServices] = useState<OwnedServices | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(initialServiceId);
@@ -109,7 +118,13 @@ export function ServicePage({
     () => (demoMode ? [demoServiceSummary] : ownedServices?.authEpoch === auth.authEpoch ? ownedServices.items : []),
     [auth.authEpoch, demoMode, ownedServices],
   );
-  const detail = demoMode ? demoServiceDetail : ownedDetail?.contextKey === contextKey ? ownedDetail.value : null;
+  const detail = demoMode
+    ? envDemo
+      ? demoServiceDetail
+      : sampleServiceDetail
+    : ownedDetail?.contextKey === contextKey
+      ? ownedDetail.value
+      : null;
   const effectiveState: LoadState = demoMode
     ? "ready"
     : auth.status === "loading"

@@ -142,9 +142,25 @@ export function onCallDialableNumber(raw: string | undefined | null): string | u
   return /^\+?\d+$/.test(compact) ? compact : undefined;
 }
 
+/**
+ * The invented numbers the sample content uses: a run starting "0000", which is
+ * not a valid Australian number. They are shown as text and never offered to a
+ * dialler, so a sample row can never ring a real phone.
+ */
+function isPlaceholderNumber(compact: string): boolean {
+  return compact.startsWith("0000");
+}
+
+/** True for an invented sample number, which must be shown as text and never linked to a dialler. */
+export function isOnCallPlaceholderNumber(raw: string | undefined | null): boolean {
+  const compact = onCallDialableNumber(raw);
+  return Boolean(compact && isPlaceholderNumber(compact));
+}
+
 /** `tel:` target for a number, or undefined when there is nothing dialable. */
 export function onCallTelHref(raw: string | undefined | null): string | undefined {
   const compact = onCallDialableNumber(raw);
+  if (compact && isPlaceholderNumber(compact)) return undefined;
   // Short extensions and pager IDs must not be handed to an external dialler.
   return compact && /^(?:\+\d{8,15}|\d{8,15}|13\d{4}|000|112|106)$/.test(compact) ? `tel:${compact}` : undefined;
 }
@@ -212,7 +228,7 @@ export function formatOnCallNumber(raw: string, scope: OnCallNumberScope): strin
  */
 function handbookTel(raw: string): string | null {
   const digits = nationalDigits(raw);
-  if (!digits) return null;
+  if (!digits || isPlaceholderNumber(digits)) return null;
   if (isWaLocal(digits)) return `tel:08${digits}`;
   return onCallTelHref(raw.trim()) ?? null;
 }

@@ -108,17 +108,25 @@ afterEach(() => {
 });
 
 describe("useHospitalHandbook", () => {
-  it("is signed-out without a request when there is no session", () => {
+  it("serves the in-memory sample hospital, with no request and nothing to dial, when there is no session", () => {
     auth.state = { status: "signed_out", authEpoch: 1 };
     const { result } = renderHook(() => useHospitalHandbook());
-    expect(result.current.status).toBe("signed-out");
+    expect(result.current.status).toBe("ready");
+    expect(result.current.demo).toBe(true);
+    expect(result.current.items.length).toBeGreaterThan(0);
+    for (const item of result.current.items) {
+      expect(item.dial.tel).toBeNull();
+      expect(item.mobileDial?.tel ?? null).toBeNull();
+    }
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
-  it("says the session expired, not that the reader is signed out", () => {
+  it("serves the same sample when the session has expired", () => {
     auth.state = { status: "expired", authEpoch: 1 };
     const { result } = renderHook(() => useHospitalHandbook());
-    expect(result.current.status).toBe("expired");
+    expect(result.current.status).toBe("ready");
+    expect(result.current.demo).toBe(true);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
   it("treats a 401 from a session that looked live as expired", async () => {
