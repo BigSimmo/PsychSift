@@ -43,7 +43,11 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
       </button>
       <LazyWorkSearchSheet
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false);
+          // The sheet unmounts on close, so focus is put back here rather than left to it.
+          requestAnimationFrame(() => buttonRef.current?.focus({ preventScroll: true }));
+        }}
         currentArea={isWorkSearchArea(modeId) ? modeId : null}
         returnFocusRef={buttonRef}
       />

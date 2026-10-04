@@ -195,7 +195,15 @@ function AnswerCard({ answer, onOpen, onDismiss }: { answer: WorkAnswer; onOpen:
         {answer.headline}
       </p>
       {answer.sub ? <p className="mt-1 text-sm text-[color:var(--text)]">{answer.sub}</p> : null}
-      {answer.meta.length > 0 ? (
+      {answer.meta.some((line) => line.length > 28) ? (
+        <ul className="mt-3 divide-y divide-[color:var(--border)] border-y border-[color:var(--border)]">
+          {answer.meta.map((line) => (
+            <li key={line} className="py-2 text-sm text-[color:var(--text)]">
+              {line}
+            </li>
+          ))}
+        </ul>
+      ) : answer.meta.length > 0 ? (
         <ul className="mt-3 flex flex-wrap gap-1.5">
           {answer.meta.map((line) => (
             <li
@@ -272,18 +280,19 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   );
   const counts = useMemo(() => workSearchCounts(hits), [hits]);
   const shown = filter === "all" ? hits : hits.filter((hit) => hit.item.area === filter);
-  const comingUp = useMemo(
-    () => workComingUp([...records.items, ...records.entries.map(({ item }) => item)], today),
-    [records.items, records.entries, today],
+  const allItems = useMemo(
+    () => [...records.items, ...records.entries.map(({ item }) => item)],
+    [records.items, records.entries],
   );
+  const comingUp = useMemo(() => workComingUp(allItems, today), [allItems, today]);
   const loading = records.areas.some((area) => area.status === "loading");
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
   const answer = useMemo(
     () =>
       dismissedFor === query
         ? null
-        : answerWorkQuestion(query, { items: records.items, areas: records.areas, today, cpd: records.cpd }),
-    [query, dismissedFor, records.items, records.areas, records.cpd, today],
+        : answerWorkQuestion(query, { items: allItems, areas: records.areas, today, cpd: records.cpd }),
+    [query, dismissedFor, allItems, records.areas, records.cpd, today],
   );
   const typed = query.trim().length > 0;
 
@@ -327,6 +336,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
       mobileSize="viewport"
       mobileHeaderSafeArea="padding"
       testId="work-search-sheet"
+      contentClassName="lg:max-w-2xl"
       headerBottom={
         <div className="w-full px-4 sm:px-5" data-work-search-root="">
           <form
