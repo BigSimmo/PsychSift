@@ -1477,6 +1477,14 @@ export function DocumentViewer({
             ) : null}
 
             <div className="min-w-0 space-y-4 max-sm:order-2 sm:space-y-5 lg:w-full">
+              {/* The passage the reader came for leads, above the page it is on. */}
+              <PinnedSourceEvidence
+                loading={effectiveLoadingDocument && Boolean(activeChunkId)}
+                chunk={selectedChunk}
+                compact
+                sectionId="source-evidence"
+                onInspectIndexedText={inspectIndexedTextSection}
+              />
               <div
                 id="pdf-preview-section"
                 className={cn(panel, "scroll-mt-[var(--document-anchor-offset,6rem)] overflow-hidden")}
@@ -1571,13 +1579,6 @@ export function DocumentViewer({
                   an implicit `auto` column is sized by its items' min-content, and this
                   column now carries the wide table crops. */}
               <div className="grid min-w-0 grid-cols-1 gap-4 sm:gap-5">
-                <PinnedSourceEvidence
-                  loading={effectiveLoadingDocument}
-                  chunk={selectedChunk}
-                  compact
-                  sectionId="source-evidence"
-                  onInspectIndexedText={inspectIndexedTextSection}
-                />
                 {readyDocument ? (
                   <div id="source-summary-card" className="min-w-0 scroll-mt-[var(--document-anchor-offset,6rem)]">
                     <DocumentClinicalSummary

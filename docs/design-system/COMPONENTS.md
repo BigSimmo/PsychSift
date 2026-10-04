@@ -1098,7 +1098,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               7 |
 | `SourceDesignationBadge` | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `SourceProvenance`       | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
-| `SourceStatusBadge`      | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
+| `SourceStatusBadge`      | source   | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `StageList`              | feedback | yes   | yes                | no                    | yes            | no                 |               0 |
 | `StatusMark`             | source   | yes   | yes                | inherited-global-root | yes            | no                 |               6 |
 | `Tabs`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |               4 |

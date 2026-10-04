@@ -29,8 +29,8 @@ describe("buildDocumentSectionIndex", () => {
   it("lists the full document in reading order", () => {
     expect(buildDocumentSectionIndex(input()).map((section) => section.id)).toEqual([
       documentOverviewSectionId,
-      "pdf-preview-section",
       "source-evidence",
+      "pdf-preview-section",
       "source-summary",
       "source-text",
       "source-images",
@@ -45,8 +45,8 @@ describe("buildDocumentSectionIndex", () => {
 
     expect(sections.map((section) => section.id)).toEqual([
       documentOverviewSectionId,
-      "pdf-preview-section",
       "source-evidence",
+      "pdf-preview-section",
       "source-text",
     ]);
   });
@@ -77,14 +77,13 @@ describe("buildDocumentSectionIndex", () => {
     expect(sparse.reduce((sum, section) => sum + section.weight, 0)).toBeCloseTo(1, 10);
   });
 
-  it("names the pinned evidence page, or says nothing is pinned", () => {
+  it("names the pinned passage page, and leaves the row out when nothing is pinned", () => {
     expect(buildDocumentSectionIndex(input()).find((section) => section.id === "source-evidence")?.detail).toBe(
       "Page 12",
     );
     expect(
-      buildDocumentSectionIndex(input({ pinnedPage: null })).find((section) => section.id === "source-evidence")
-        ?.detail,
-    ).toBe("No passage pinned");
+      buildDocumentSectionIndex(input({ pinnedPage: null })).some((section) => section.id === "source-evidence"),
+    ).toBe(false);
   });
 
   it("marks only the accordion sections collapsible", () => {

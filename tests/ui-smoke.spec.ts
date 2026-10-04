@@ -5576,7 +5576,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     };
 
     await expect(evidence).toBeVisible();
-    await expect(evidence.getByText("Highlighted source passage")).toBeVisible();
+    await expect(evidence.getByRole("heading", { name: "Matching passage" })).toBeVisible();
     await expect(page.locator("#source-text")).toBeVisible();
     await expect(page.locator("#source-text")).toHaveJSProperty("open", false);
     await expect(page.getByTestId("inspect-indexed-text")).toBeVisible();
@@ -5584,9 +5584,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await revealPhoneHeaderControl(page, sectionTrigger);
     await sectionTrigger.click();
     const sectionSheet = page.getByTestId("document-section-sheet");
-    await expect(sectionSheet.getByRole("button", { name: /Cited excerpt/ })).toBeVisible();
+    await expect(sectionSheet.getByRole("button", { name: /Matching passage/ })).toBeVisible();
     await expect(sectionSheet.getByRole("button", { name: /PDF preview/ })).toBeVisible();
-    await expect(sectionSheet.getByRole("button", { name: /Indexed source text/ })).toBeVisible();
+    await expect(sectionSheet.getByRole("button", { name: /Page text/ })).toBeVisible();
     const mobileDensityToggle = sectionSheet.getByTestId("document-view-density-toggle");
     await expect(mobileDensityToggle).toHaveAttribute("aria-pressed", "true");
     await expect(mobileDensityToggle).toHaveAccessibleName("Show full document content");
@@ -5618,7 +5618,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     const previewBox = await preview.boundingBox();
     const indexedTextHeading = page
       .getByTestId("source-chunk-indexed-text-panel")
-      .getByRole("heading", { name: "Indexed source text", exact: true });
+      .getByRole("heading", { name: "Page text", exact: true });
     const indexedTextBox = await indexedTextHeading.boundingBox();
     const imagesBox = await page.getByRole("heading", { name: "Tables and diagrams" }).boundingBox();
 
@@ -5638,7 +5638,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     // while Firefox is calculating pointer coordinates, but a focused native
     // button must keep its expand/collapse behavior through that layout shift.
     await activateFocusedControl(page, passageToggle);
-    await expect(passageToggle).toHaveText("Collapse");
+    await expect(passageToggle).toHaveText("Show less");
     await expect(passageToggle).toHaveAttribute("aria-expanded", "true");
     const expandedEvidenceBox = await evidence.boundingBox();
     expect(expandedEvidenceBox?.height ?? 0).toBeGreaterThan(evidenceBox!.height);
@@ -5649,7 +5649,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     expect(collapsedEvidenceBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThan(expandedEvidenceBox!.height);
     await openSection(/PDF preview/);
     await expect(preview).toBeInViewport();
-    await openSection(/Indexed source text/);
+    await openSection(/Page text/);
     await expect(indexedTextHeading).toBeInViewport();
     await expect(page.locator("#source-text")).toHaveJSProperty("open", true);
     await expect(
@@ -5801,7 +5801,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     const indexingDetails = page.getByTestId("indexing-details");
     await expect(indexingDetails).toBeVisible();
     await expect(indexingDetails.getByText("rag-deep-memory-v1")).toBeHidden();
-    await indexingDetails.getByText("Indexing details", { exact: true }).click();
+    await indexingDetails.getByText("About this file", { exact: true }).click();
     await expect(indexingDetails.getByText("rag-deep-memory-v1")).toBeVisible();
 
     await expectDomIntegrity(page);
@@ -5936,7 +5936,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(passages.nth(0)).toHaveJSProperty("open", false);
     await expect(passages.nth(1)).toHaveJSProperty("open", false);
 
-    await clickSectionNav(/Indexed source text/);
+    await clickSectionNav(/Page text/);
     await expect(indexedText).toBeInViewport();
     await expect(indexedText).toHaveJSProperty("open", true);
     await expect(images).toHaveJSProperty("open", false);
@@ -5959,7 +5959,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(images).toHaveJSProperty("open", true);
     await expect(summary).toHaveJSProperty("open", false);
 
-    await indexingDetails.getByText("Indexing details", { exact: true }).click();
+    await indexingDetails.getByText("About this file", { exact: true }).click();
     await expect(indexingDetails).toHaveJSProperty("open", true);
     await expect(images).toHaveJSProperty("open", false);
 

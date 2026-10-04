@@ -46,6 +46,11 @@ export function DocumentVisualsPanel({
   activePage: number;
   onSelectPage: (page: number) => void;
 }) {
+  // Hidden when there is nothing to show, instead of a card announcing
+  // "0 indexed tables". The section index omits it on the same condition.
+  const hasTableTools = canUseAdministrativeApis && tableFacts.length > 0;
+  if (!loading && clinicalImages.length === 0 && auditImages.length === 0 && !hasTableTools) return null;
+
   return (
     <details
       id="source-images"

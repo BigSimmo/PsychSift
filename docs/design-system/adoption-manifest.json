@@ -2583,12 +2583,14 @@
       "directImportFiles": [
         "src/components/answer/AnswerFooter.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
+        "src/components/document-viewer/document-overview-landing.tsx",
         "src/components/therapy-compass/record/source-provenance.tsx",
         "src/components/ui/dose-line.tsx"
       ],
       "productImportFiles": [
         "src/components/answer/AnswerFooter.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
+        "src/components/document-viewer/document-overview-landing.tsx",
         "src/components/therapy-compass/record/source-provenance.tsx",
         "src/components/ui/dose-line.tsx"
       ],

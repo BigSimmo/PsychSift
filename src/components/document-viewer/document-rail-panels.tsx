@@ -209,7 +209,7 @@ export function DocumentViewerRail({
           )}
         >
           <summary className="flex min-h-[56px] cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
-            <span className={eyebrowText}>Indexing details</span>
+            <span className={eyebrowText}>About this file</span>
             <ChevronDown
               aria-hidden="true"
               className="h-4 w-4 shrink-0 text-[color:var(--text-muted)] transition group-open:rotate-180"

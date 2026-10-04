@@ -75,7 +75,7 @@ describe("DocumentSectionIndexCard", () => {
     expect(screen.getAllByRole("button")).toHaveLength(sections.length + 1);
     expect(screen.getByText("312 chunks")).toBeTruthy();
 
-    const active = screen.getByRole("button", { name: /Cited excerpt/ });
+    const active = screen.getByRole("button", { name: /Matching passage/ });
     expect(active.getAttribute("aria-current")).toBe("true");
   });
 
@@ -109,7 +109,7 @@ describe("DocumentSectionIndexCard", () => {
 
     const density = screen.getByTestId("document-view-density-toggle");
     expect(density).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: /Indexed source text/ })).toBeVisible();
+    expect(screen.getByRole("button", { name: /Page text/ })).toBeVisible();
     fireEvent.click(density);
     expect(onCompactChange).toHaveBeenCalledWith(false);
   });

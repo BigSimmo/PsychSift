@@ -3,15 +3,14 @@
 // source-text search panel. Extracted from DocumentViewer.tsx (maturity X3) as a
 // pure move — the DocumentViewer container composes these leaf components.
 import {
+  ArrowDown,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
   FileImage,
   FileText,
   Loader2,
   Quote,
-  Target,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -32,7 +31,6 @@ import { SafeBoldText } from "@/components/SafeBoldText";
 import {
   clinicalDivider,
   cn,
-  codeText,
   eyebrowText,
   floatingControl,
   LoadingPanel,
@@ -700,27 +698,12 @@ export function PinnedSourceEvidence({
   const expanded = !compact || (chunk?.id ? expandedChunkId === chunk.id : false);
   const showingPreview = compact && isLong && !expanded;
   const visibleContent = showingPreview ? `${displayContent.slice(0, previewLimit).trimEnd()}…` : displayContent;
-  const chunkMeta = chunk
-    ? [`Page ${chunk.page_number ?? "n/a"}`, `chunk ${chunk.chunk_index}`].filter(Boolean).join(" · ")
-    : "";
+  // Readers navigate by page and section; the internal chunk number is not shown.
+  const chunkMeta = chunk?.page_number ? `Page ${chunk.page_number}` : "";
 
-  if (!loading && !chunk) {
-    // Nothing is pinned (e.g. a direct visit, not arrived-at via a citation), so
-    // this stays a quiet one-line hint rather than a full card taking prime space.
-    return (
-      <p
-        id={sectionId}
-        data-testid="pinned-source-evidence"
-        className={cn(
-          "scroll-mt-[var(--document-anchor-offset,6rem)] flex items-center gap-2 text-xs leading-5",
-          textMuted,
-        )}
-      >
-        <Quote aria-hidden="true" className="h-3.5 w-3.5 shrink-0 opacity-70" />
-        Open a cited answer passage to pin its exact excerpt here.
-      </p>
-    );
-  }
+  // Nothing is pinned (a direct visit, not arrived at from a citation or a
+  // search result), so the card renders nothing rather than a hint line.
+  if (!loading && !chunk) return null;
 
   return (
     <section
@@ -728,69 +711,63 @@ export function PinnedSourceEvidence({
       data-testid="pinned-source-evidence"
       className={cn(panel, "scroll-mt-[var(--document-anchor-offset,6rem)]", compact ? "p-3" : "p-4")}
     >
-      <PanelHeading icon={Quote} title="Cited excerpt" />
+      <div className="flex items-center justify-between gap-3">
+        <PanelHeading icon={Quote} title="Matching passage" />
+        {chunkMeta ? (
+          <p className="nums shrink-0 text-xs font-semibold text-[color:var(--text-muted)]">{chunkMeta}</p>
+        ) : null}
+      </div>
       {loading ? (
-        <LoadingPanel label="Loading cited excerpt" />
+        <LoadingPanel label="Loading matching passage" />
       ) : chunk ? (
         <div
           data-testid="highlighted-source-passage"
           className={cn("mt-2.5", compact ? "text-sm leading-6" : "text-base-minus leading-7")}
         >
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-            <p className="inline-flex min-h-6 items-center gap-1.5 rounded-md bg-[color:var(--clinical-accent-soft)] px-2 text-xs font-semibold text-[color:var(--clinical-accent)]">
-              <Target aria-hidden="true" className="h-3.5 w-3.5" />
-              Highlighted source passage
-            </p>
-            {chunkMeta ? <p className={cn("text-2xs text-[color:var(--text-muted)]", codeText)}>{chunkMeta}</p> : null}
-          </div>
           {chunk.section_heading && (
-            <p className="mt-2 text-sm font-semibold text-[color:var(--text)]">{chunk.section_heading}</p>
+            <p className="text-sm font-semibold text-[color:var(--text)]">{chunk.section_heading}</p>
           )}
           <blockquote
             id={chunk.id ? `cited-passage-${chunk.id}` : undefined}
             className={cn(
               "mt-2 rounded-lg bg-[color:var(--surface-inset)] px-3 py-2 text-[color:var(--text)]",
-              showingPreview ? "line-clamp-2 whitespace-normal" : "whitespace-pre-line",
+              showingPreview ? "whitespace-normal" : "whitespace-pre-line",
             )}
           >
-            {visibleContent || "No displayable clinical text was available for this indexed passage."}
+            {/* The clamp sits on an inner span: on the padded quote itself, a third
+                line showed half-cut through the bottom padding. */}
+            <span className={showingPreview ? "line-clamp-2" : undefined}>
+              {visibleContent || "No displayable clinical text was available for this indexed passage."}
+            </span>
           </blockquote>
-          <div className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2">
+          {compact && isLong ? (
+            <button
+              type="button"
+              onClick={() => setExpandedChunkId((current) => (current === chunk.id ? null : chunk.id))}
+              className="mt-0.5 inline-flex min-h-tap items-center border-0 bg-transparent px-0 text-xs font-semibold text-[color:var(--clinical-accent)] transition hover:text-[color:var(--clinical-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+              data-testid="toggle-full-passage"
+              aria-expanded={expanded}
+              aria-controls={chunk.id ? `cited-passage-${chunk.id}` : undefined}
+            >
+              {expanded ? "Show less" : "Full passage"}
+            </button>
+          ) : null}
+          <div className={cn("grid grid-cols-2 gap-2", compact && isLong ? "mt-1" : "mt-3")}>
             <a
               href="#pdf-preview-section"
-              className={cn(primaryButton, "min-w-0 justify-center px-1.5 text-center text-2xs sm:px-3 sm:text-xs")}
+              className={cn(primaryButton, "min-w-0 justify-center px-2 text-center text-xs")}
             >
-              <ExternalLink aria-hidden="true" className="h-4 w-4" />
-              <span>View PDF</span>
+              <ArrowDown aria-hidden="true" className="h-4 w-4" />
+              <span>Show on page</span>
             </a>
-            {compact && isLong ? (
-              <button
-                type="button"
-                onClick={() => setExpandedChunkId((current) => (current === chunk.id ? null : chunk.id))}
-                className={cn(
-                  secondaryButton,
-                  "min-w-0 justify-center px-1.5 text-center text-2xs sm:min-h-compact-meta sm:px-3 sm:text-xs",
-                )}
-                data-testid="toggle-full-passage"
-                aria-expanded={expanded}
-                aria-controls={chunk.id ? `cited-passage-${chunk.id}` : undefined}
-              >
-                {expanded ? "Collapse" : "Full passage"}
-              </button>
-            ) : (
-              <span aria-hidden="true" />
-            )}
             {onInspectIndexedText ? (
               <button
                 type="button"
                 onClick={onInspectIndexedText}
-                className={cn(
-                  secondaryButton,
-                  "min-w-0 justify-center px-1.5 text-center text-2xs sm:min-h-compact-meta sm:px-3 sm:text-xs",
-                )}
+                className={cn(secondaryButton, "min-w-0 justify-center px-2 text-center text-xs")}
                 data-testid="inspect-indexed-text"
               >
-                Indexed text
+                Page text
               </button>
             ) : null}
           </div>
@@ -1147,19 +1124,21 @@ export const IndexedTextPanel = memo(function IndexedTextPanel({
     >
       <DocumentSectionSummary
         icon={FileText}
-        title="Indexed source text"
+        title="Page text"
         // Search / explicit inspect force the panel open; citation deep-links do
         // not — keep the summary interactive so readers can still open it.
         interactive={compact && !forceReveal}
         description={
           loading
-            ? "Loading extracted source text."
-            : `Extracted text for page ${selectedPage?.page_number ?? "n/a"} with searchable source passages.`
+            ? "Loading the text of each page."
+            : selectedPage?.page_number
+              ? `The searchable text of page ${selectedPage.page_number}.`
+              : "The searchable text of each page."
         }
       />
       <div className={cn(clinicalDivider, "px-4 pb-4 pt-3 sm:p-5 sm:pt-4")}>
         {loading ? (
-          <LoadingPanel label="Loading indexed source text" />
+          <LoadingPanel label="Loading page text" />
         ) : (
           <div className="grid gap-2.5">
             <details
@@ -1303,7 +1282,7 @@ export const IndexedTextPanel = memo(function IndexedTextPanel({
                           {status}
                         </span>
                         <span className={cn("mt-1.5 block", eyebrowText)}>
-                          Page {chunk.page_number ?? "n/a"} · chunk {chunk.chunk_index}
+                          {chunk.page_number ? `Page ${chunk.page_number}` : "Passage"}
                           {chunk.serverRanked ? " · full-document search" : ""}
                         </span>
                         {chunk.section_heading ? (

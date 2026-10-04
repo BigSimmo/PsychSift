@@ -89,21 +89,26 @@ export function buildDocumentSectionIndex(input: DocumentSectionIndexInput): Doc
       detail: input.pageCount > 0 ? plural(input.pageCount, "page") : "Document",
       collapsible: false,
     },
-    {
-      id: "pdf-preview-section",
-      label: "PDF preview",
-      icon: FileText,
-      detail: input.pageCount > 0 ? plural(input.pageCount, "page") : "Preview",
-      collapsible: false,
-    },
-    {
-      id: "source-evidence",
-      label: "Cited excerpt",
-      icon: Quote,
-      detail: input.pinnedPage ? `Page ${input.pinnedPage}` : "No passage pinned",
-      collapsible: false,
-    },
   ];
+
+  // The matching passage sits above the page and only exists when one is pinned.
+  if (input.pinnedPage) {
+    present.push({
+      id: "source-evidence",
+      label: "Matching passage",
+      icon: Quote,
+      detail: `Page ${input.pinnedPage}`,
+      collapsible: false,
+    });
+  }
+
+  present.push({
+    id: "pdf-preview-section",
+    label: "PDF preview",
+    icon: FileText,
+    detail: input.pageCount > 0 ? plural(input.pageCount, "page") : "Preview",
+    collapsible: false,
+  });
 
   if (input.hasStoredSummary) {
     present.push({
@@ -117,7 +122,7 @@ export function buildDocumentSectionIndex(input: DocumentSectionIndexInput): Doc
 
   present.push({
     id: "source-text",
-    label: "Indexed source text",
+    label: "Page text",
     icon: FileSearch,
     detail: input.loading ? "Indexing" : plural(input.chunkCount, "chunk"),
     // Condensed view renders IndexedTextPanel as a disclosure; full view keeps
@@ -142,7 +147,7 @@ export function buildDocumentSectionIndex(input: DocumentSectionIndexInput): Doc
   if (input.hasIndexHealth) {
     present.push({
       id: documentIndexingSectionId,
-      label: "Indexing details",
+      label: "About this file",
       icon: ShieldCheck,
       detail: "Provenance",
       collapsible: true,

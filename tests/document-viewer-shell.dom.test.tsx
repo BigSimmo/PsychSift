@@ -149,7 +149,7 @@ describe("DocumentViewer — shell states", () => {
     );
     expect(document.getElementById("document-viewer-main")).toHaveAttribute("data-route-recovery", "true");
     expect(screen.queryByTestId("document-viewer-content")).toBeNull();
-    expect(screen.queryByText("Indexed source text")).toBeNull();
+    expect(screen.queryByText("Page text")).toBeNull();
     expect(screen.queryByText("Tables and diagrams")).toBeNull();
     expect(screen.queryByRole("button", { name: "Answer from this" })).toBeNull();
     expect(screen.queryByText("Sign in required")).toBeNull();
@@ -404,7 +404,7 @@ describe("DocumentViewer — shell states", () => {
     );
     expect(screen.queryByTestId("document-viewer-content")).toBeNull();
     expect(screen.queryByTestId("pdf-preview")).toBeNull();
-    expect(screen.queryByText("Indexed source text")).toBeNull();
+    expect(screen.queryByText("Page text")).toBeNull();
     expect(screen.queryByText("Tables and diagrams")).toBeNull();
   });
 

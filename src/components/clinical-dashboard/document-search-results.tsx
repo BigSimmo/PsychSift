@@ -1,5 +1,6 @@
 "use client";
 
+import { isPdfDocument } from "@/lib/pdf-documents";
 import {
   memo,
   useCallback,
@@ -204,11 +205,6 @@ function resultTypeTabs(matches: ClientDocumentMatch[]) {
     { key: "all" as const, label: "All", count: matches.length },
     { key: "tables" as const, label: "Tables", count: matches.filter((match) => match.tableCount > 0).length },
     { key: "images" as const, label: "Images", count: matches.filter((match) => match.imageCount > 0).length },
-    {
-      key: "pdfs" as const,
-      label: "PDFs",
-      count: matches.filter((match) => match.file_name.toLowerCase().endsWith(".pdf")).length,
-    },
   ];
 
   return tabs.filter((tab) => tab.key === "all" || tab.count > 0);
@@ -800,7 +796,7 @@ function RecordRegistryNotice({ status, mode }: { status: RegistryRequestStatus;
 }
 
 function DocumentSearchResultsPanelImpl({
-  matches,
+  matches: retrievedMatches,
   recordMatches = [],
   recordMode = "services",
   recordStatus = "ready",
@@ -875,6 +871,8 @@ function DocumentSearchResultsPanelImpl({
   showHome?: boolean;
   desktopComposerSlotId?: string;
 }) {
+  // Only PDFs are listed as documents; other sources still reach answers.
+  const matches = useMemo(() => retrievedMatches.filter(isPdfDocument), [retrievedMatches]);
   void _facets;
   const [sortValue, setSortValue] = useResultSort();
   const searchParams = useSearchParams();

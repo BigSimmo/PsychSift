@@ -463,11 +463,10 @@ export function DocumentClinicalSummary({
                   className="h-4 w-4 shrink-0 text-[color:var(--clinical-accent)]"
                   strokeWidth={2}
                 />
-                <span className="text-sm font-bold text-[color:var(--text-heading)]">Clinical priorities</span>
-                <span className="nums grid h-5 min-w-5 place-items-center rounded-full bg-[color:var(--clinical-accent-soft)] px-1.5 text-2xs font-bold text-[color:var(--clinical-accent)]">
-                  {model.priorities.length}
+                {/* The card is already titled "Clinical priorities"; this row only opens the list. */}
+                <span className="text-sm font-semibold text-[color:var(--clinical-accent)]">
+                  {prioritiesLabel(model.priorities.length)}
                 </span>
-                <span className="text-xs font-medium text-[color:var(--text-muted)]">Expanded clinical context</span>
               </span>
               {prioritiesExpanded ? (
                 <ChevronUp aria-hidden="true" className="h-4 w-4 text-[color:var(--clinical-accent)]" strokeWidth={2} />
@@ -494,11 +493,8 @@ export function DocumentClinicalSummary({
                   className="h-4 w-4 shrink-0 text-[color:var(--clinical-accent)]"
                   strokeWidth={2}
                 />
-                <span className="whitespace-nowrap text-sm font-bold text-[color:var(--text-heading)]">
-                  Clinical priorities
-                </span>
-                <span className="nums grid h-5 min-w-5 place-items-center rounded-full bg-[color:var(--clinical-accent-soft)] px-1.5 text-2xs font-bold text-[color:var(--clinical-accent)]">
-                  {model.priorities.length}
+                <span className="whitespace-nowrap text-sm font-semibold text-[color:var(--clinical-accent)]">
+                  {prioritiesLabel(model.priorities.length)}
                 </span>
               </span>
               <ChevronDown aria-hidden="true" className="h-4 w-4 text-[color:var(--clinical-accent)]" strokeWidth={2} />
@@ -555,4 +551,8 @@ export function DocumentClinicalSummary({
       </Sheet>
     </>
   );
+}
+
+function prioritiesLabel(count: number) {
+  return count === 1 ? "See the priority" : `See all ${count} priorities`;
 }

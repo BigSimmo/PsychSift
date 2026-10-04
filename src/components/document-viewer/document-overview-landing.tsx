@@ -12,7 +12,7 @@ import {
   documentFileKind,
   documentTileTone,
 } from "@/components/clinical-dashboard/document-ui";
-import { cn, panel, floatingControl, primaryControl } from "@/components/ui-primitives";
+import { cn, panel, floatingControl, primaryControl, SourceStatusBadge } from "@/components/ui-primitives";
 import type { ClinicalDocument } from "@/lib/types";
 import type { PageRow } from "./types";
 
@@ -88,7 +88,11 @@ export function DocumentOverviewLanding({
             </h2>
             <DocumentMetaRow
               className="mt-1"
-              items={[documentType, pageCountLabel(document.page_count ?? (pages.length || null))]}
+              items={[
+                documentType,
+                pageCountLabel(document.page_count ?? (pages.length || null)),
+                <SourceStatusBadge key="status" metadata={document.metadata} className="min-h-6 px-1.5 text-2xs" />,
+              ]}
             />
             {/* Search relevance badges are rendered in document search results; the viewer has no ranking context. */}
           </div>
@@ -96,13 +100,16 @@ export function DocumentOverviewLanding({
         {/* Search and grounded answering are the document-page tasks. Opening or
             downloading the raw file remains available without competing with
             the embedded reader for the first phone viewport. */}
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:hidden">
+        {/* One row on a phone: the two document tasks plus a compact ⋯ menu for
+            opening or downloading the raw file. The menu used to be a full-width
+            third row of its own. */}
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_3rem] gap-2 sm:hidden">
           <DocumentActionButton
             onClick={onSearchDocument}
             icon={Search}
             aria-expanded={searchOpen}
             aria-controls={searchOpen ? "document-viewer-search" : undefined}
-            className={cn(primaryButton, "w-full min-h-12 px-2 text-xs")}
+            className={cn(primaryButton, "w-full min-h-12 whitespace-nowrap px-2 text-xs")}
           >
             Search document
           </DocumentActionButton>
@@ -115,45 +122,48 @@ export function DocumentOverviewLanding({
           >
             {answerLabel}
           </DocumentActionButton>
-        </div>
-        <details className="group mt-2 sm:hidden" data-testid="document-overview-more-actions">
-          <summary
-            className={cn(
-              secondaryButton,
-              "w-full min-h-12 cursor-pointer list-none justify-center gap-2 px-2 text-xs [&::-webkit-details-marker]:hidden",
-            )}
-          >
-            <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
-            More actions
-          </summary>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {signedUrl ? (
-              <DocumentActionAnchor
-                href={signedUrl}
-                target="_blank"
-                rel="noreferrer"
-                className={cn(secondaryButton, "w-full min-h-12 px-2 text-xs")}
-              >
-                Open source
-              </DocumentActionAnchor>
-            ) : (
-              <DocumentActionAnchor
-                href="#pdf-preview-section"
-                className={cn(secondaryButton, "w-full min-h-12 px-2 text-xs")}
-              >
-                Open preview
-              </DocumentActionAnchor>
-            )}
-            <DocumentActionButton
-              onClick={onDownload}
-              disabled={downloading}
-              icon={downloading ? Loader2 : Download}
-              className={cn(secondaryButton, "w-full min-h-12 px-2 text-xs")}
+          <details className="group relative" data-testid="document-overview-more-actions">
+            <summary
+              aria-label="More actions"
+              title="More actions"
+              className={cn(
+                secondaryButton,
+                "h-12 w-12 min-h-12 cursor-pointer list-none justify-center p-0 [&::-webkit-details-marker]:hidden",
+              )}
             >
-              {downloading ? "Preparing" : "Download"}
-            </DocumentActionButton>
-          </div>
-        </details>
+              <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
+            </summary>
+            <div
+              className={cn(panel, "absolute right-0 top-full z-20 mt-2 grid w-48 gap-1.5 p-1.5 shadow-[var(--e2)]")}
+            >
+              {signedUrl ? (
+                <DocumentActionAnchor
+                  href={signedUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={cn(secondaryButton, "w-full min-h-12 justify-start px-3 text-xs")}
+                >
+                  Open source
+                </DocumentActionAnchor>
+              ) : (
+                <DocumentActionAnchor
+                  href="#pdf-preview-section"
+                  className={cn(secondaryButton, "w-full min-h-12 justify-start px-3 text-xs")}
+                >
+                  Open preview
+                </DocumentActionAnchor>
+              )}
+              <DocumentActionButton
+                onClick={onDownload}
+                disabled={downloading}
+                icon={downloading ? Loader2 : Download}
+                className={cn(secondaryButton, "w-full min-h-12 justify-start px-3 text-xs")}
+              >
+                {downloading ? "Preparing" : "Download"}
+              </DocumentActionButton>
+            </div>
+          </details>
+        </div>
         <div className="mt-3 hidden flex-wrap gap-2 border-t border-[color:var(--border)] pt-3 sm:flex">
           <DocumentActionButton
             onClick={onSearchDocument}

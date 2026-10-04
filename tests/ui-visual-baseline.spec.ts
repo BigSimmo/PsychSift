@@ -145,7 +145,7 @@ const targets: readonly BaselineTarget[] = [
     mask: ["[data-document-sticky-header]"],
     prepare: async (page) => {
       const sectionIndex = page.getByTestId("document-section-index");
-      const sourceText = sectionIndex.getByRole("button", { name: /Indexed source text/ });
+      const sourceText = sectionIndex.getByRole("button", { name: /Page text/ });
       await expect(sourceText).toBeVisible();
       await sourceText.click();
       await expect(sourceText).toHaveAttribute("aria-current", "true");
