@@ -1,20 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { qrModulePath } from "@/components/teaching/checkin-qr";
 import { cn } from "@/components/ui-primitives";
 
+const subscribe = () => () => undefined;
+
+function useLiveCardUrl(): string | null {
+  return useSyncExternalStore(
+    subscribe,
+    () => `${window.location.origin}/on-call/card`,
+    () => null,
+  );
+}
+
 /**
- * Pocket-card QR that points at this browser's live `/on-call/card`. Drawn after
- * hydration so the origin is real. Uses the Teaching QR tokens (light quiet zone,
+ * Pocket-card QR that points at this browser's live `/on-call/card`. Client-only
+ * origin via useSyncExternalStore. Uses the Teaching QR tokens (light quiet zone,
  * dark modules) so cameras can read it in every theme and on paper.
  */
 export function OnCallCardQr({ className }: { readonly className?: string }) {
-  const [value, setValue] = useState<string | null>(null);
-  useEffect(() => {
-    setValue(`${window.location.origin}/on-call/card`);
-  }, []);
+  const value = useLiveCardUrl();
   if (!value)
     return <div className={cn("size-20", className)} aria-hidden="true" data-testid="on-call-card-qr-pending" />;
   const drawn = qrModulePath(value);
