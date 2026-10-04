@@ -10,11 +10,11 @@ auto-merge was armed; only an unrelated merge conflict stopped it, and the branc
 merge of `main` silently restored the file, so the squash landed clean. Nothing was lost, by
 luck rather than by any gate (`#Y30AXB`).
 
-`npm run check:diff-integrity` is that gate. It runs in `verify:full` and
+`npm run check:diff-integrity` is that gate. It runs in `verify:cheap`, `verify:full` and
 `verify:pr-local`, and in CI's `static-pr` job, comparing against the merge base with
-`origin/main` — never the previous commit, so removing tests across several small commits is
-still measured as the whole drop. It is **not** part of `verify:cheap` (cheap is lock parity +
-lint + typecheck + test only). Two rules:
+`origin/main` (or local `main` when the remote-tracking ref is absent) — never the previous commit, so removing tests across several small commits is
+still measured as the whole drop. In `verify:cheap` it follows lock parity and precedes
+lint, typecheck and tests. An unresolvable comparison base still fails closed. Two rules:
 
 - **Test-case floor.** Test cases are counted from the TypeScript AST, not by grepping for
   `test(`: a grep counts `/re/.test(x)` and, far worse, keeps counting a block of tests after
