@@ -3601,6 +3601,7 @@ function ClinicalDashboardContent({
                         active={loading}
                         onStop={stopSearch}
                         evidencePreview={loading ? answerEvidencePreview : null}
+                        question={loading ? (answerLifecycle.query ?? latestAnswerQuery) : null}
                       />
                     ) : null
                   ) : loading && answerProgress ? (
