@@ -128,27 +128,15 @@ test.describe("CME on a phone", () => {
 });
 
 test.describe("CME core screens at phone widths", () => {
-  test("a due routine prefills an activity without recording attendance", async ({ page }) => {
+  test("a due Log N h tap tries one-tap save and never records from attendance alone", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/cme/routines");
+    await expect(page).toHaveURL(/\/cme\/routines/);
     await page.getByRole("button", { name: "Log 1.0 h for Demo journal club", exact: true }).click();
-    await expect(page).toHaveURL(/\/cme\/new\?routine=/);
-    await expect(page.getByLabel("What was it", { exact: false })).toHaveValue("Demo journal club");
-    // The routine's usual hours are shown, not assumed: the doctor chooses the hours actually spent.
-    await expect(page.getByText("This routine usually takes 1 h.")).toBeVisible();
-    const oneHour = page.getByRole("group", { name: "Hours" }).getByRole("button", { name: "1", exact: true });
-    await expect(oneHour).toHaveAttribute("aria-pressed", "false");
-    await oneHour.click();
-    await expect(oneHour).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("button", { name: "Educational", exact: true })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await expect(page.getByRole("button", { name: "Save entry", exact: true })).not.toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
-    await expect(page.getByTestId("cme-entry-demo-notice")).toContainText("Saving is available only");
+    // Demo mode is read-only: the tap is handled as a one-tap log attempt, not a silent form open.
+    await expect(page.getByTestId("cme-one-tap-log-error")).toContainText("Demo mode is read-only");
+    await expect(page).toHaveURL(/\/cme\/routines/);
+    await expect(page.getByLabel("What was it", { exact: false })).toHaveCount(0);
   });
 
   test("year navigation returns to the current year's visible records", async ({ page }) => {

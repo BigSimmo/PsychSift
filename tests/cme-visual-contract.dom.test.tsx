@@ -170,6 +170,7 @@ function cmeScreens() {
           <CmeRoutinesPage
             routines={[dueRoutine, notYetDueRoutine]}
             now={DEMO_CME_INSTANT}
+            onLogDueRoutine={vi.fn()}
             onLogRoutine={vi.fn()}
             onNewRoutine={vi.fn()}
           />,
@@ -178,7 +179,15 @@ function cmeScreens() {
     {
       name: "routines — none added yet",
       render: () =>
-        render(<CmeRoutinesPage routines={[]} now={DEMO_CME_INSTANT} onLogRoutine={vi.fn()} onNewRoutine={vi.fn()} />),
+        render(
+          <CmeRoutinesPage
+            routines={[]}
+            now={DEMO_CME_INSTANT}
+            onLogDueRoutine={vi.fn()}
+            onLogRoutine={vi.fn()}
+            onNewRoutine={vi.fn()}
+          />,
+        ),
     },
     {
       name: "programme",
