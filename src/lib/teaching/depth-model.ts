@@ -107,7 +107,7 @@ export const CPD_REVIEW_MAX_ROWS = 20;
  * patient-shaped stay ignored.
  */
 export const IMPORT_FORBIDDEN_HEADER_PATTERNS: readonly RegExp[] = [
-  /\bpatient\b/,
+  /\bpatient(?:s)?(?:_|\b|$)/,
   /\bmrn\b/,
   /\bumrn\b/,
   /\bmedicare\b/,
