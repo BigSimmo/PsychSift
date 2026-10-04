@@ -76,6 +76,13 @@ describe("AdminRecordsPage", () => {
     expect(screen.getByRole("link", { name: /New job/ })).toBeTruthy();
   });
 
+  it("says what to take for a site or job change, and what is not included", () => {
+    render(<AdminRecordsPage now={NOW} />);
+    expect(screen.getByTestId("admin-records-take-with-you")).toHaveTextContent(
+      /registration numbers and renewal dates.*contacts and logins.*New job ticks.*Hospital files, patient information/i,
+    );
+  });
+
   it("shows only the reader's own records, grouped into Renewals, Admin and Contacts", () => {
     render(<AdminRecordsPage now={NOW} />);
     expect(screen.getByText(registration.title)).toBeTruthy();

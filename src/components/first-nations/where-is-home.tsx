@@ -8,10 +8,12 @@ import {
   ModeDialRow,
   ModeGroupedList,
   ModeRow,
+  ModeStateLabel,
   ModeUpdatedLine,
 } from "@/components/first-nations/kit";
 import { FnModule, ModuleHeader } from "@/components/first-nations/module-header";
 import { dialNumber } from "@/lib/first-nations/contact-format";
+import { isOverdue } from "@/lib/first-nations/hours";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
@@ -55,6 +57,11 @@ function DialRow({ contact }: { contact: ContactView }) {
       number={dialNumber(contact)}
       source={{ label: contact.source.title, url: contact.source.url }}
       checkedAt={contact.checkedAt}
+      meta={
+        isOverdue(contact.checkedAt, new Date()) ? (
+          <ModeStateLabel tone="warning">Due for a check</ModeStateLabel>
+        ) : undefined
+      }
       testId={`fn-home-${contact.id}`}
       sheetFooter={<ContactActions contact={contact} />}
     />

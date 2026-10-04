@@ -74,4 +74,14 @@ describe("SituationModule", () => {
     expect(within(situation()).getByRole("button", { name: "Wants to leave", pressed: true })).toBeTruthy();
     expect(screen.getByText("2 of 6")).toBeTruthy();
   });
+
+  it("jumps to a dial control when a situation chip is chosen", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderModule();
+    fireEvent.click(within(situation()).getByRole("button", { name: "Wants to leave" }));
+    const dial = screen.getByTestId("fn-situation-dial");
+    expect(within(dial).getByRole("link", { name: /Call/ })).toBeTruthy();
+    await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+  });
 });

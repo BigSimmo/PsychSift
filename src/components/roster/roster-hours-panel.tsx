@@ -195,6 +195,23 @@ export function RosterHoursPanel({
         </div>
       </section>
 
+      <ModeGroupedList eyebrow="Each day" testId="roster-hours-ledger">
+        {summary.days.map((day) => (
+          <ModeRow
+            key={day.date}
+            title={formatPerthDay(day.date)}
+            subtitle={
+              day.extraHours
+                ? `${formatHours(day.hours)} rostered · ${formatHours(day.extraHours)} extra`
+                : day.hours
+                  ? `${formatHours(day.hours)} rostered`
+                  : "No rostered hours"
+            }
+            testId={`roster-hours-day-${day.date}`}
+          />
+        ))}
+      </ModeGroupedList>
+
       <ModeFactTiles testId="roster-hours-facts">
         <ModeFactTile
           label="Shortest break"
