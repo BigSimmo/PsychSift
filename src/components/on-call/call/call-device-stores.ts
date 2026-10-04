@@ -2,6 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 
+import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
+
 import {
   onCallDeviceStateChangedEvent,
   onCallDeviceStoreChangedEvent,
@@ -155,5 +157,8 @@ export function useOnCallDidntConnectAt(entryId: string): string | null {
 
 /** Whether this reader said this phone is a hospital phone. Off until they say so. */
 export function useOnCallHospitalPhone(): boolean {
-  return useSyncExternalStore(subscribe, readOnCallHospitalPhone, () => false);
+  const stored = useSyncExternalStore(subscribe, readOnCallHospitalPhone, () => false);
+  // The signed-out sample's numbers never dial, whatever this phone was set to before.
+  const sample = useSignedOutSample();
+  return stored && !sample;
 }

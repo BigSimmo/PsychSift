@@ -129,11 +129,12 @@ describe("Service handbook lifecycle isolation", () => {
     auth.state.session = null;
     view.rerender(<ServicePage initialServiceId={serviceId} initialSiteId={siteId} />);
 
-    expect(screen.getByTestId("service-page-signed-out")).toBeVisible();
+    // Signed out now shows the invented sample service, never the previous owner's.
+    expect(screen.getByText(/Synthetic demonstration only/)).toBeVisible();
     expect(screen.queryByText("Synthetic private service")).toBeNull();
 
     releaseDetail?.(json(detail));
-    await waitFor(() => expect(screen.getByTestId("service-page-signed-out")).toBeVisible());
+    await waitFor(() => expect(screen.getByText(/Synthetic demonstration only/)).toBeVisible());
     expect(screen.queryByText("Synthetic private service")).toBeNull();
   });
 });

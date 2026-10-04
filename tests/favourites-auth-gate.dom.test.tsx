@@ -190,15 +190,16 @@ describe("favourites auth gate DOM", () => {
     ).not.toContain("favourites");
   });
 
-  it("gates the favourites library and opens signup with save-favourites copy when signed out", () => {
+  it("shows a signed-out visitor the sample library instead of the signup gate", async () => {
     authSession.status = "signed_out";
     render(<FavouritesCommandLibraryPage query="" demoMode={false} />);
 
     expect(screen.getByRole("heading", { name: "Favourites" })).toBeVisible();
-    expect(screen.getByText(/Sign up to save favourites and access them across devices/i)).toBeVisible();
-    expect(screen.getByTestId("favourites-open-account-setup")).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Sign up to save favourites" })).toBeVisible();
+    expect(screen.getByTestId("favourites-signed-out-sample")).toBeVisible();
+    expect(screen.getByText("Sign in to see your favourites")).toBeVisible();
+    expect(screen.queryByTestId("favourites-open-account-setup")).toBeNull();
     expect(screen.getByTestId("favourites-command-library")).toBeInTheDocument();
+    expect((await screen.findAllByText("Major depressive disorder", {}, { timeout: 15000 })).length).toBeGreaterThan(0);
   });
 
   it("keeps the interactive library available in demo mode without the signup gate", () => {

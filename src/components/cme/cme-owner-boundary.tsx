@@ -1,8 +1,18 @@
 "use client";
 import { Fragment, type ReactNode, useEffect, useRef, useSyncExternalStore } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CmeOfflineBanner } from "@/components/cme/cme-offline-banner";
 import { useAuthSession } from "@/lib/supabase/client";
+
+/**
+ * The signed-out sample: the real CPD screens filled with invented data, downloaded
+ * only when a signed-out visitor opens CPD, so it never counts toward anyone's first load.
+ */
+const CmeSignedOutSample = dynamic(
+  () => import("@/components/cme/cme-signed-out-sample").then((module) => module.CmeSignedOutSample),
+  { ssr: false, loading: () => <div data-testid="cme-sample-loading" aria-hidden="true" className="min-h-48" /> },
+);
 
 function subscribeConnectivity(onStoreChange: () => void) {
   window.addEventListener("online", onStoreChange);
@@ -60,6 +70,9 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
   }, [clientOwnerId, demoMode, resolved, router, serverAuthVerified, serverOwnerId]);
 
   if (demoMode) return <Fragment key="synthetic-demo">{children}</Fragment>;
+  const signedOut = auth.status === "signed_out" || auth.status === "expired";
+  // A signed-out visitor sees the sample, never server children, so no private record can show.
+  if (signedOut) return <CmeSignedOutSample />;
   if (serverAuthVerified && resolved && clientOwnerId === serverOwnerId) {
     // The key comes from the verified SERVER identity, never a new client owner
     // applied to old children. Unmounting also discards the previous owner's drafts.
@@ -71,18 +84,15 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
     );
   }
 
-  const signedOut = auth.status === "signed_out" || auth.status === "expired";
   const unavailable = !serverAuthVerified || auth.status === "error" || auth.status === "unconfigured";
   return (
     <section className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-owner-boundary">
       <p role="status">
-        {signedOut
-          ? "Your private CPD record is hidden. Sign in to continue."
-          : isOffline
-            ? "You are offline. Connect to view or update your private CPD record."
-            : unavailable
-              ? "Your session could not be verified. Your private CPD record is hidden."
-              : "Checking your CPD session…"}
+        {isOffline
+          ? "You are offline. Connect to view or update your private CPD record."
+          : unavailable
+            ? "Your session could not be verified. Your private CPD record is hidden."
+            : "Checking your CPD session…"}
       </p>
       {isOffline || unavailable ? (
         <button type="button" className="mt-3 min-h-tap underline" onClick={() => window.location.reload()}>

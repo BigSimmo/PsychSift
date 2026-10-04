@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { RosterTodayPage } from "@/components/roster/roster-today-page";
+import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export const metadata: Metadata = {
   title: "Today | Roster | PsychSift",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function RosterTodayRoute() {
-  return <RosterTodayPage />;
+  return (
+    <RosterSampleGate>
+      <RosterTodayPage />
+    </RosterSampleGate>
+  );
 }

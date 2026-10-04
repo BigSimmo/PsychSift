@@ -1,17 +1,25 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 import { ModeFactTile, ModeFactTiles } from "@/components/mode-kit/fact-tile";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { formatDateSpan, formatHours, kindOf } from "@/components/roster/roster-format";
-import { useRosterShifts } from "@/components/roster/use-roster-shifts";
+import { useRosterShifts, type MyShift } from "@/components/roster/use-roster-shifts";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
 import { fortnightFor, summariseHours } from "@/lib/roster/hours";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { summariseToday } from "@/lib/roster/today";
+
+/** The signed-out sample, downloaded only when a signed-out visitor opens this page. */
+const MyDayHoursSample = dynamic(
+  () => import("@/components/my-day/my-day-sample-subpages").then((module) => module.MyDaySubpageSampleView),
+  { ssr: false },
+);
 
 /**
  * My Day, Hours: the reader's rostered hours this week and this fortnight, and
@@ -22,7 +30,23 @@ import { summariseToday } from "@/lib/roster/today";
  */
 export function MyDayHoursPage({ now }: { now?: Date } = {}) {
   return (
-    <MyDayFrame title="Hours" testId="my-day-hours" now={now} subtitle={() => "Your rostered hours, not pay"}>
+    <MyDayFrame
+      title="Hours"
+      testId="my-day-hours"
+      now={now}
+      subtitle={() => "Your rostered hours, not pay"}
+      signedOutSample={{
+        notice:
+          "Below is a sample made of invented examples, so you can see how My Day's Hours works. Signed in, it shows your own rostered hours. Nothing is shared.",
+        render: (at) => (
+          <MyDayHoursSample now={at} testId="my-day-hours-ready">
+            {(sample) => (
+              <MyDayHoursFigures now={at} shifts={sample.sources.roster.shifts} anchor={null} settingsFailed={false} />
+            )}
+          </MyDayHoursSample>
+        ),
+      }}
+    >
       {(at) => <MyDayHoursBody now={at} />}
     </MyDayFrame>
   );
@@ -36,7 +60,6 @@ function MyDayHoursBody({ now }: { now: Date }) {
   const overview = useRosterRead(oneTeamId, "overview");
   const anchor = overview.status === "ready" ? (overview.data?.settings?.payFortnightAnchor ?? null) : null;
 
-  const today = perthDateOf(now);
   const settingsLoading = oneTeamId !== null && overview.status === "loading";
   const settingsFailed = oneTeamId !== null && (overview.status === "error" || overview.status === "unavailable");
   const loading = shifts.status === "loading" || shifts.teamLoading || settingsLoading;
@@ -111,25 +134,6 @@ function MyDayHoursBody({ now }: { now: Date }) {
     );
   }
 
-  const hoursShifts = shifts.shifts.map((shift) => ({
-    startsAt: shift.startsAt,
-    endsAt: shift.endsAt,
-    kind: kindOf(shift),
-  }));
-  const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
-  const monday = addDaysToDate(today, -weekday);
-  const week = summariseHours(hoursShifts, [], { start: monday, end: addDaysToDate(monday, 6) });
-  const fortnight = summariseHours(hoursShifts, [], fortnightFor(today, anchor));
-  const leave = summariseToday(
-    shifts.shifts.map((shift) => ({
-      id: shift.id,
-      startsAt: shift.startsAt,
-      endsAt: shift.endsAt,
-      kind: kindOf(shift),
-    })),
-    now,
-  ).nextLeave;
-
   return (
     <div className="grid gap-5" data-testid="my-day-hours-ready">
       {shifts.demoMode ? (
@@ -140,6 +144,46 @@ function MyDayHoursBody({ now }: { now: Date }) {
           Your team&apos;s pay fortnight settings couldn&apos;t be loaded, so this fortnight isn&apos;t shown.
         </ModeNotice>
       ) : null}
+      <MyDayHoursFigures now={now} shifts={shifts.shifts} anchor={anchor} settingsFailed={settingsFailed} />
+      {link}
+    </div>
+  );
+}
+
+/** The week and fortnight tiles, next leave and footer, from whatever shifts they are given. */
+export function MyDayHoursFigures({
+  now,
+  shifts,
+  anchor,
+  settingsFailed,
+}: {
+  readonly now: Date;
+  readonly shifts: readonly MyShift[];
+  readonly anchor: string | null;
+  readonly settingsFailed: boolean;
+}) {
+  const today = perthDateOf(now);
+  const hoursShifts = shifts.map((shift) => ({
+    startsAt: shift.startsAt,
+    endsAt: shift.endsAt,
+    kind: kindOf(shift),
+  }));
+  const weekday = (new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7;
+  const monday = addDaysToDate(today, -weekday);
+  const week = summariseHours(hoursShifts, [], { start: monday, end: addDaysToDate(monday, 6) });
+  const fortnight = summariseHours(hoursShifts, [], fortnightFor(today, anchor));
+  const leave = summariseToday(
+    shifts.map((shift) => ({
+      id: shift.id,
+      startsAt: shift.startsAt,
+      endsAt: shift.endsAt,
+      kind: kindOf(shift),
+    })),
+    now,
+  ).nextLeave;
+
+  return (
+    <>
       <ModeFactTiles testId="my-day-hours-facts">
         <ModeFactTile
           label={`This week · ${formatDateSpan(week.start, week.end)}`}
@@ -164,7 +208,6 @@ function MyDayHoursBody({ now }: { now: Date }) {
       <p className="px-3 text-sm text-[color:var(--text-muted)]" data-testid="my-day-hours-footer">
         Worked shifts only. On call from home and leave are not counted. Rostered hours, not pay.
       </p>
-      {link}
-    </div>
+    </>
   );
 }

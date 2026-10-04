@@ -331,14 +331,22 @@ describe("MyDayWeekPage", () => {
     expect(retryTeaching).toHaveBeenCalledTimes(1);
   });
 
-  it("asks a signed-out reader to sign in and reads nothing", () => {
+  it("shows a signed-out reader the sample week, reads nothing and keeps nothing", async () => {
     auth.status = "signed_out";
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
     render(<MyDayWeekPage now={NOW} />);
     const panel = screen.getByTestId("my-day-week-signed-out");
     expect(within(panel).getByText("Sign in to see your day")).toBeTruthy();
-    expect(screen.queryByTestId("my-day-week-ready")).toBeNull();
+    expect(await screen.findByTestId("my-day-week-ready")).toBeTruthy();
+    expect(screen.getByTestId("my-day-week-footer")).toBeTruthy();
+    expect(screen.getByText("Registrar teaching: agitation")).toBeTruthy();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
     fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
     expect(screen.getByTestId("account-dialog")).toBeTruthy();
+    fetchSpy.mockRestore();
+    setItem.mockRestore();
   });
 
   it("shows the skeleton while the sign-in is being checked", () => {
