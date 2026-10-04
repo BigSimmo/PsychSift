@@ -101,9 +101,19 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   refer: ON_CALL_HUB_PAGE_ICONS.refer,
   find: ON_CALL_HUB_PAGE_ICONS.find,
   orientation: ON_CALL_SECTION_ICONS.orientation,
-  // Who's who is a view over a stored section, so its glyph lives in
-  // `ON_CALL_VIEW_ICONS`. Compliance, Admin and Teaching are no longer On Call
-  // menu rows; Admin's Renewals slot below still uses the compliance view glyph.
+  // The registry id and the stored section id genuinely differ here, and this
+  // is the only place the two vocabularies meet: the rail slot is `teaching`
+  // (what the reader is shown) and the section is `education` (route segment,
+  // database check constraint). Same pair as `whoswho` / `who-is-who` below.
+  teaching: ON_CALL_SECTION_ICONS.education,
+  logistics: ON_CALL_SECTION_ICONS.logistics,
+  // Compliance and Who's who are VIEWS over a stored section, not sections, so
+  // neither has an entry in `ON_CALL_SECTION_ICONS` — their glyphs live in
+  // `ON_CALL_VIEW_ICONS`, which is where these read them from. A rail slot and
+  // the page it opens must wear the same mark. Compliance is not a shield with
+  // a tick, and not by accident: `ON_CALL_VIEW_ICONS` carries the reasoning,
+  // which is that the page may never render a verdict on anything it lists.
+  compliance: ON_CALL_VIEW_ICONS.compliance,
   whoswho: ON_CALL_VIEW_ICONS["who-is-who"],
   service: Building2,
   card: Printer,

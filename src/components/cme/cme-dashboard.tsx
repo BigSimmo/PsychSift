@@ -133,12 +133,14 @@ export type CmeDashboardProps = {
   /** Every routine the owner has, active or archived. Defaults to none. */
   readonly routines?: readonly CmeRoutine[];
   /**
-   * Called when the owner taps "Log" on a routine that is due, with
-   * everything the entry form needs pre-filled. Defaults to a no-op: nothing
-   * on this screen logs an entry by itself, the same guarantee
-   * `CmeRoutinesPage` makes.
+   * Called when the owner taps "Log N h" on a due routine. The route may save
+   * immediately (with Undo) when the routine already has a usual category
+   * split, or open the entry form when it does not. The labelled tap is the
+   * explicit log — this screen never logs from attendance, timers, or search.
    */
   readonly onLogRoutine?: (prefill: CmeRoutineLogPrefill) => void;
+  /** True while a one-tap due log is in flight — disables the due Log buttons. */
+  readonly loggingDue?: boolean;
   /**
    * Called when the owner taps "Customise". Defaults to a no-op so this
    * screen still renders sensibly wherever it is not yet wired to a route.
@@ -183,6 +185,7 @@ export function CmeDashboard({
   now,
   routines = [],
   onLogRoutine = () => {},
+  loggingDue = false,
   onOpenCustomise = () => {},
   reportingReminder = null,
   reminders = DEFAULT_REMINDER_SETTINGS,
@@ -292,7 +295,13 @@ export function CmeDashboard({
                   {cmeRoutineCadenceLabels[routine.cadence]} · usually {formatRoutineHours(routine.usualHours)} h
                 </p>
               </div>
-              <Button variant="secondary" size="sm" onClick={() => handleLogRoutine(routine)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                busy={loggingDue}
+                busyLabel="Saving…"
+                onClick={() => handleLogRoutine(routine)}
+              >
                 {`Log ${formatRoutineHours(routine.usualHours)} h`}
               </Button>
             </li>

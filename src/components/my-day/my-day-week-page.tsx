@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarRange } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useMemo } from "react";
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
@@ -15,10 +16,13 @@ import { formatShiftRange, kindOf } from "@/components/roster/roster-format";
 import { useRosterShifts, type MyShift } from "@/components/roster/use-roster-shifts";
 import { perthDateKey, timeRange } from "@/components/teaching/teaching-dates";
 import type { SessionSummaryRead } from "@/components/teaching/teaching-reads";
-import { sessionHref } from "@/components/teaching/teaching-view-model";
+import { relocatedEntryId, sessionHref } from "@/components/teaching/teaching-view-model";
+import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
 import { Button } from "@/components/ui/button";
 import { appModeDefinition } from "@/lib/app-modes";
+import type { CmeRoutine } from "@/lib/cme/routines";
+import type { MyDayItem } from "@/lib/my-day/model";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
 import {
   groupByPerthDay,
@@ -27,8 +31,15 @@ import {
   myDayWeekDates,
   myDayWeekDayLabel,
 } from "@/lib/my-day/week";
+import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
 import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+
+/** The signed-out sample, downloaded only when a signed-out visitor opens this page. */
+const MyDayWeekSample = dynamic(
+  () => import("@/components/my-day/my-day-sample-subpages").then((module) => module.MyDaySubpageSampleView),
+  { ssr: false },
+);
 
 /**
  * My Day, Week: the next seven Perth days, one list per day, gathering the
@@ -43,6 +54,24 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
       title="Week"
       testId="my-day-week"
       now={now}
+      signedOutSample={{
+        notice:
+          "Below is a sample week made of invented examples, so you can see how My Day's Week works. Signed in, it gathers your own roster shifts, teaching sessions and dated items. Nothing is shared.",
+        render: (at) => (
+          <MyDayWeekSample now={at} testId="my-day-week-ready">
+            {(sample) => (
+              <MyDayWeekDays
+                now={at}
+                shifts={sample.sources.roster.shifts}
+                sessions={sample.sources.teaching.ahead ?? []}
+                items={sample.items}
+                cmeRoutines={[]}
+                reminders={DEFAULT_REMINDER_SETTINGS}
+              />
+            )}
+          </MyDayWeekSample>
+        ),
+      }}
       subtitle={(at) => {
         const today = perthDateOf(at);
         return `${formatPerthDay(today)} to ${formatPerthDay(addDaysToDate(today, MY_DAY_WEEK_DAYS - 1))}`;
@@ -80,7 +109,7 @@ function teachingRow(session: SessionSummaryRead) {
       key={`teaching:${session.occurrenceId}`}
       title={session.title}
       subtitle={subtitle}
-      href={sessionHref(session) ?? "/teaching/week#teaching-relocated"}
+      href={sessionHref(session) ?? `/teaching/week#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`}
       testId={`my-day-week-session-${session.occurrenceId}`}
     />
   );
@@ -118,23 +147,6 @@ function MyDayWeekBody({ now }: { now: Date }) {
   // Example shifts belong to a sample doctor, never to the reader: leave them out unless this is a demo.
   const showShifts = shifts.status === "ready" && (!shifts.sample || shifts.demoMode);
   const sampleOmitted = shifts.status === "ready" && shifts.sample && !shifts.demoMode;
-
-  const myShifts = shifts.shifts;
-  const sessions = teaching.week;
-  const myDayItems = items.items;
-  const cmeRoutines = items.cmeRoutines;
-  const byDay = useMemo(() => {
-    const dayShifts = groupByPerthDay(showShifts ? myShifts : [], dates, (shift) => perthDateOf(shift.startsAt));
-    const all = sessions ? [...sessions.sessions, ...sessions.relocated] : [];
-    const daySessions = groupByPerthDay(
-      all.sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title)),
-      dates,
-      (session) => perthDateKey(session.startsAt),
-    );
-    const merged = mergeMyDayItems([myDayItems, cmeRoutineItemsThrough(cmeRoutines, lastDate, now, reminders)]);
-    const dayItems = groupByPerthDay(merged, dates, (item) => myDayItemWeekDate(item, today, lastDate));
-    return { dayShifts, daySessions, dayItems };
-  }, [showShifts, myShifts, sessions, myDayItems, cmeRoutines, dates, today, lastDate, now, reminders]);
 
   if (loading) {
     return (
@@ -182,6 +194,54 @@ function MyDayWeekBody({ now }: { now: Date }) {
         </ModeNotice>
       ) : null}
 
+      <MyDayWeekDays
+        now={now}
+        shifts={showShifts ? shifts.shifts : []}
+        sessions={teaching.week ? [...teaching.week.sessions, ...teaching.week.relocated] : []}
+        items={items.items}
+        cmeRoutines={items.cmeRoutines}
+        reminders={reminders}
+      />
+    </div>
+  );
+}
+
+/**
+ * The seven day lists and the read-only footer, drawn from whatever shifts,
+ * sessions and items they are given: the reader's own, or the signed-out sample.
+ */
+export function MyDayWeekDays({
+  now,
+  shifts,
+  sessions,
+  items,
+  cmeRoutines,
+  reminders,
+}: {
+  readonly now: Date;
+  readonly shifts: readonly MyShift[];
+  readonly sessions: readonly SessionSummaryRead[];
+  readonly items: readonly MyDayItem[];
+  readonly cmeRoutines: readonly CmeRoutine[];
+  readonly reminders: ReminderSettings;
+}) {
+  const today = perthDateOf(now);
+  const dates = useMemo(() => myDayWeekDates(today), [today]);
+  const lastDate = dates[dates.length - 1]!;
+  const byDay = useMemo(() => {
+    const dayShifts = groupByPerthDay(shifts, dates, (shift) => perthDateOf(shift.startsAt));
+    const daySessions = groupByPerthDay(
+      [...sessions].sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title)),
+      dates,
+      (session) => perthDateKey(session.startsAt),
+    );
+    const merged = mergeMyDayItems([items, cmeRoutineItemsThrough(cmeRoutines, lastDate, now, reminders)]);
+    const dayItems = groupByPerthDay(merged, dates, (item) => myDayItemWeekDate(item, today, lastDate));
+    return { dayShifts, daySessions, dayItems };
+  }, [shifts, sessions, items, cmeRoutines, dates, today, lastDate, now, reminders]);
+
+  return (
+    <>
       {dates.map((date) => {
         const rows = [
           ...(byDay.dayShifts.get(date) ?? []).map(shiftRow),
@@ -204,6 +264,6 @@ function MyDayWeekBody({ now }: { now: Date }) {
       <p className="px-3 text-sm text-[color:var(--text-muted)]" data-testid="my-day-week-footer">
         Read-only. Open an item to act on it in its own mode.
       </p>
-    </div>
+    </>
   );
 }

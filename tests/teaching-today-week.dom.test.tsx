@@ -404,7 +404,8 @@ describe("Today", () => {
     await waitFor(() => expect(screen.getByTestId("roles")).toHaveTextContent("organiser"));
     view.unmount();
 
-    authState.status = "signed_out";
+    // The API refusing a read the browser thought was signed in (the reader's status is signed out is the sample, below).
+    authState.status = "authenticated";
     serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? apiError(401, "teaching_signed_out") : null));
     render(
       <>
@@ -416,8 +417,8 @@ describe("Today", () => {
     await waitFor(() => expect(screen.getByTestId("roles")).toBeEmptyDOMElement());
   });
 
-  it("signed out: the sign-in module, and Open the demo enters the whole-mode Teaching sample", async () => {
-    authState.status = "signed_out";
+  it("a refused read: the sign-in module, and Open the demo enters the whole-mode Teaching sample", async () => {
+    authState.status = "authenticated";
     serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? apiError(401, "teaching_signed_out") : null));
     render(<TeachingToday demoMode={false} />);
     const moduleEl = await screen.findByTestId("teaching-state-signed-out");
@@ -530,11 +531,13 @@ describe("Week", () => {
     );
     render(<TeachingWeekScreen demoMode={false} />);
     expect(await screen.findByText("No more sessions this week.")).toBeInTheDocument();
+    expect(screen.getByTestId("teaching-week-whats-on")).toHaveAttribute("href", "/teaching/whats-on");
     const nav = byId("teaching-week-nav");
     expect(within(nav).getByRole("button", { name: "Previous week" })).toHaveTextContent("");
     expect(within(nav).queryByRole("button", { name: "This week" })).toBeNull();
     fireEvent.click(within(nav).getByRole("button", { name: "Previous week" }));
     expect(await screen.findByText("No sessions this week.")).toBeInTheDocument();
+    expect(screen.getByTestId("teaching-week-whats-on")).toHaveAttribute("href", "/teaching/whats-on");
     expect(byId("teaching-week-nav")).toHaveTextContent("Mon 21 Sep – Sun 27 Sep");
     fireEvent.click(within(byId("teaching-week-nav")).getByRole("button", { name: "This week" }));
     expect(await screen.findByText("No more sessions this week.")).toBeInTheDocument();
@@ -560,6 +563,7 @@ describe("Week", () => {
     );
     render(<TeachingWeekScreen demoMode={false} />);
     expect(await screen.findByTestId("teaching-state-no-team")).toBeInTheDocument();
+    expect(screen.getByTestId("teaching-week-whats-on")).toHaveAttribute("href", "/teaching/whats-on");
   });
 
   it("adds a service to the calendar, and says In sync once part 2 reports it", async () => {

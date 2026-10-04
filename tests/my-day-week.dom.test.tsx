@@ -234,7 +234,7 @@ describe("MyDayWeekPage", () => {
     expect(row.getAttribute("href")).toBe("/teaching/session/s1");
   });
 
-  it("links a relocated session to the teaching week list", () => {
+  it("links a relocated session to its On Call entry", () => {
     setTeaching([], {
       week: {
         sessions: [],
@@ -250,7 +250,7 @@ describe("MyDayWeekPage", () => {
     });
     render(<MyDayWeekPage now={NOW} />);
     const row = screen.getByTestId("my-day-week-session-entry1@2026-10-05");
-    expect(row.getAttribute("href")).toBe("/teaching/week#teaching-relocated");
+    expect(row.getAttribute("href")).toBe("/teaching/week#on-call-entry-entry1");
   });
 
   it("warns when relocated teaching entries or team shifts could not be read", () => {
@@ -331,14 +331,22 @@ describe("MyDayWeekPage", () => {
     expect(retryTeaching).toHaveBeenCalledTimes(1);
   });
 
-  it("asks a signed-out reader to sign in and reads nothing", () => {
+  it("shows a signed-out reader the sample week, reads nothing and keeps nothing", async () => {
     auth.status = "signed_out";
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
     render(<MyDayWeekPage now={NOW} />);
     const panel = screen.getByTestId("my-day-week-signed-out");
     expect(within(panel).getByText("Sign in to see your day")).toBeTruthy();
-    expect(screen.queryByTestId("my-day-week-ready")).toBeNull();
+    expect(await screen.findByTestId("my-day-week-ready")).toBeTruthy();
+    expect(screen.getByTestId("my-day-week-footer")).toBeTruthy();
+    expect(screen.getByText("Registrar teaching: agitation")).toBeTruthy();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
     fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
     expect(screen.getByTestId("account-dialog")).toBeTruthy();
+    fetchSpy.mockRestore();
+    setItem.mockRestore();
   });
 
   it("shows the skeleton while the sign-in is being checked", () => {

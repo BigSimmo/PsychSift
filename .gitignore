@@ -72,7 +72,7 @@
 !/.agents/skills/security/
 !/.agents/skills/session-lifecycle/
 !/.agents/skills/skills/
-!/.agents/skills/sources/
+!/.agents/skills/source-governance/
 !/.agents/skills/task/
 !/.agents/skills/test/
 !/.agents/skills/ui/

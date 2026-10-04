@@ -94,7 +94,7 @@ describe("OnCallSearchBox — results", () => {
     render(<OnCallSearchBox entries={ENTRIES} />);
     type("teaching");
     const row = screen.getByTestId("on-call-search-row-ward-teaching");
-    expect(row).toHaveAttribute("href", "/on-call/education#on-call-entry-ward-teaching");
+    expect(row).toHaveAttribute("href", "/teaching/week#on-call-entry-ward-teaching");
   });
 
   it("never prints a personal number, and links to the section instead", () => {

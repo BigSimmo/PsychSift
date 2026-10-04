@@ -82,10 +82,10 @@ describe("Teaching mode registration", () => {
     ]);
   });
 
-  it("keeps the On Call teaching list off the menu while Teaching's week page stays selected", () => {
-    expect(modeSecondaryNavigationRegistry["on-call"].map((entry) => entry.id)).not.toContain("teaching");
-    expect(activeModeSecondaryNavigationId("on-call", "/on-call/education")).toBeNull();
-    expect(activeModeSecondaryNavigationId("teaching", "/teaching/week")).toBe("week");
+  it("maps the legacy education bookmark path to Teaching while More opens /teaching", () => {
+    expect(modeSecondaryNavigationRegistry["on-call"].map((entry) => entry.id)).toContain("teaching");
+    expect(modeSecondaryNavigationRegistry["on-call"].find((entry) => entry.id === "teaching")?.href).toBe("/teaching");
+    expect(activeModeSecondaryNavigationId("on-call", "/on-call/education")).toBe("teaching");
   });
 
   it("shows Organise only to an organiser or admin, and holds roles in memory only", () => {
@@ -94,6 +94,10 @@ describe("Teaching mode registration", () => {
     expect(modePageVisible("teaching", "organise", ["doctor", "organiser"])).toBe(true);
     expect(modePageVisible("teaching", "week", [])).toBe(true);
     expect(modePageVisible("cme", "organise", [])).toBe(true);
+    expect(modePageVisible("roster", "team", [], null)).toBe(false);
+    expect(modePageVisible("roster", "swaps", [], false)).toBe(false);
+    expect(modePageVisible("roster", "team", [], true)).toBe(true);
+    expect(modePageVisible("roster", "shifts", [], null)).toBe(true);
     const { result } = renderHook(() => useTeachingRoles());
     expect(result.current).toEqual([]);
     act(() => setTeachingRoles(["admin", "doctor", "admin"]));

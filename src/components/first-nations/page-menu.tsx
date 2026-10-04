@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { UniversalHeaderTrailingPortal } from "@/components/clinical-dashboard/universal-header-trailing-portal";
 import { PRIMER_EVENT } from "@/components/first-nations/primer";
+import { openReadingTrustSheet } from "@/components/first-nations/reading-trust-sheet";
 import { inPageActionRowClass } from "@/components/in-page-nav/in-page-nav-classes";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
@@ -40,6 +41,16 @@ export function FirstNationsMenuActions({ pageTitle, href, reportHref, training,
           {training.label}
         </a>
       ) : null}
+      <button
+        type="button"
+        className={inPageActionRowClass}
+        onClick={() => {
+          onNavigate?.();
+          openReadingTrustSheet();
+        }}
+      >
+        What am I reading?
+      </button>
       <button
         type="button"
         className={inPageActionRowClass}

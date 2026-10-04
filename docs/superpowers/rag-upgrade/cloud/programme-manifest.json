@@ -257,10 +257,10 @@
   "skillProfiles": {
     "core-sdd": ["rag-cloud-sdd", "plan", "test", "review", "handover"],
     "evaluation": ["rag", "clinical", "privacy", "performance", "test"],
-    "sources": ["rag", "sources", "clinical", "privacy", "documents"],
-    "repository": ["rag", "sources", "documents", "data", "privacy"],
+    "sources": ["rag", "source-governance", "clinical", "privacy", "documents"],
+    "repository": ["rag", "source-governance", "documents", "data", "privacy"],
     "ingestion": ["rag", "ingest", "reindex", "recovery", "data", "security", "privacy"],
-    "retrieval": ["rag", "clinical", "sources", "performance", "test"],
+    "retrieval": ["rag", "clinical", "source-governance", "performance", "test"],
     "delivery": ["rag", "api", "ui", "clinical", "privacy", "test"],
     "trusted-ingestion": ["rag", "ingest", "documents", "access", "security", "privacy", "recovery"],
     "local-operations": ["handover", "rag", "operations", "recovery", "security", "privacy", "release"]
@@ -739,7 +739,7 @@
       "environment": "connected-read-only",
       "authority": "explicit-source-metadata-verification-approval",
       "requiredOperationClasses": ["official-source-verification"],
-      "skills": ["sources", "clinical", "rag", "privacy"],
+      "skills": ["source-governance", "clinical", "rag", "privacy"],
       "closesGate": "official-source-and-licence-verification"
     },
     {

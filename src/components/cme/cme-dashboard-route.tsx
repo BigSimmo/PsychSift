@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 
 import { CmeDashboard, type CmeReportingReminder } from "@/components/cme/cme-dashboard";
+import { useCmeOneTapRoutineLog } from "@/components/cme/cme-one-tap-routine-log";
 import { CmeQuickLog } from "@/components/cme/cme-quick-log";
 import { cmeRoutineLogHref } from "@/components/cme/cme-route-navigation";
 import { CmeTeachingPrompt } from "@/components/cme/cme-teaching-prompt";
@@ -57,6 +58,7 @@ export function CmeDashboardRoute({
   const router = useRouter();
   const { preferences, setPreference } = useAppPreferences();
   const now = new Date(nowIso);
+  const oneTap = useCmeOneTapRoutineLog({ demoMode });
 
   return (
     <>
@@ -66,7 +68,12 @@ export function CmeDashboardRoute({
         now={now}
         demoMode={demoMode}
         routines={routines}
-        onLogRoutine={(prefill) => router.push(cmeRoutineLogHref(prefill))}
+        loggingDue={oneTap.logging}
+        onLogRoutine={(prefill) => {
+          void oneTap.logDueRoutine(prefill).then((result) => {
+            if (result === "form") router.push(cmeRoutineLogHref(prefill));
+          });
+        }}
         onOpenCustomise={() => router.push("/cme/customise")}
         reportingReminder={reportingReminder}
         reminders={preferences.reminders}
@@ -80,6 +87,7 @@ export function CmeDashboardRoute({
         nextYearGoals={nextYearGoals}
       />
       {!demoMode ? <CmeTeachingPrompt /> : null}
+      {oneTap.notice}
       <CmeQuickLog set={set} entries={entries} routines={routines} nowIso={nowIso} demoMode={demoMode} />
     </>
   );

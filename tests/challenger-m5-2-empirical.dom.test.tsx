@@ -79,7 +79,7 @@ describe("Challenger M5-2: Empirical Verification & Hardening Harness", () => {
   });
 
   /* ========================================================================
-   * 3. First Nations Design Standards v13.1 (All 33 Components)
+   * 3. First Nations Design Standards v13.1 (All 34 Components)
    * ======================================================================== */
   describe("3. First Nations Design Standards v13.1 Exhaustive Audit", () => {
     const FN_DIR = "src/components/first-nations";
@@ -92,8 +92,8 @@ describe("Challenger M5-2: Empirical Verification & Hardening Harness", () => {
       { f: "error.tsx", text: readFileSync(join(APP_DIR, "error.tsx"), "utf8") },
     ];
 
-    it("confirms exactly 33 First Nations components and files are audited", () => {
-      expect(files.length).toBe(33);
+    it("confirms exactly 34 First Nations components and files are audited", () => {
+      expect(files.length).toBe(34);
     });
 
     it("enforces no font weights heavier than semibold (font-bold/extrabold/black/700+)", () => {

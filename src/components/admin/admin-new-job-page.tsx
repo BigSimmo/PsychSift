@@ -30,6 +30,7 @@ import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { onCallEntrySchema, type OnCallEntry, type OnCallSection } from "@/lib/on-call/entry-model";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
+import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
 
 type UndoState = { id: number; entryId: string; restore: unknown; label: string };
 
@@ -60,7 +61,11 @@ function ContactRow({ entry }: { entry: OnCallEntry }) {
     >
       <span className="break-words text-sm font-medium text-[color:var(--text-heading)]">{entry.title}</span>
       {entry.subtitle ? <span className={cn(textMuted, "text-sm")}>{entry.subtitle}</span> : null}
-      {phone ? (
+      {phone && isOnCallPlaceholderNumber(phone) ? (
+        <span className="nums inline w-fit text-sm text-[color:var(--text)]">
+          {displayPhoneNumber(phone, "own-list")}
+        </span>
+      ) : phone ? (
         <a href={telHref ?? `tel:${phone}`} className="nums inline w-fit text-sm text-[color:var(--text)]">
           {displayPhoneNumber(phone, "own-list")}
         </a>
@@ -336,10 +341,31 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                 <Copy aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
                 <span className="grid min-w-0 flex-1 gap-0.5">
                   <span className="text-sm text-[color:var(--text)]" data-testid="admin-new-job-leaving-notice">
-                    When you leave, your records go with you. Open Your Admin records to copy or print them.
+                    Changing site or starting a new job? Take these with you from PsychSift:
                   </span>
                   <span className="text-sm font-medium">Your Admin records</span>
-                  <span className={cn(textMuted, "text-xs")}>Renewals, history and New job ticks</span>
+                  <span className={cn(textMuted, "text-xs")} data-testid="admin-new-job-leaving-checklist">
+                    Registration numbers and renewal dates · Contacts and logins you saved · New job ticks. Not
+                    included: hospital files, patient information, or anything you did not type here.
+                  </span>
+                </span>
+                <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+              </Link>
+              <Link
+                href="/admin/new-job/pack"
+                data-testid="admin-new-job-leaving-pack-link"
+                className={cn(
+                  cardSurface,
+                  focusRing,
+                  "flex min-h-12 items-center gap-2 px-3 py-2.5 no-underline text-[color:var(--text-heading)]",
+                )}
+              >
+                <FileDown aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+                <span className="grid min-w-0 flex-1 gap-0.5">
+                  <span className="text-sm font-medium">Credential pack</span>
+                  <span className={cn(textMuted, "text-xs")}>
+                    Registration numbers and renewal dates as one PDF for your next employer
+                  </span>
                 </span>
                 <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
               </Link>

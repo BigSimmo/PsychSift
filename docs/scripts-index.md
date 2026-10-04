@@ -58,7 +58,7 @@ migration has shipped (see `docs/maturity-backlog-workorders.md` L1).
 (`npm run design-system:baselines:adopt`), `check-function-grants.mjs`,
 `check-owner-scope-api.mjs`, `check-client-bundle-secrets.mjs`, `verify-pr-local.mjs`,
 `verify-release-offline.mjs`, `check-codex-cloud-setup.mjs`. `check-gate-manifest.mjs` cross-checks that every gate in the
-`verify:cheap:internal` chain also runs in CI's `static-pr` job, so the two lists can't drift.
+`verify:full:internal` chain also runs in CI's `static-pr` job, so the two lists can't drift.
 
 Also in the gate set: `check-assets.mjs`, `check-branch-review-ledger.mjs`,
 `check-hosted-migration-role.mjs` (`check:migration-role` — pins the immutable applied migration and

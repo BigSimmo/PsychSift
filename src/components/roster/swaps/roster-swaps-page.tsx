@@ -292,13 +292,17 @@ export function RosterSwapsPage() {
         actions={
           <RosterNewButton
             entries={[
-              {
-                id: "swap",
-                label: "Swap or give away",
-                description: "Pick the shift on the Team calendar",
-                icon: ArrowLeftRight,
-                href: "/roster/team?view=week",
-              },
+              ...(enabled.length > 0
+                ? [
+                    {
+                      id: "swap",
+                      label: "Swap or give away",
+                      description: "Pick the shift on the Team calendar",
+                      icon: ArrowLeftRight,
+                      href: "/roster/team?view=week",
+                    } as const,
+                  ]
+                : []),
               { id: "leave", label: "Plan leave", icon: Plane, href: "/roster/requests?start=leave" },
               { id: "dates", label: "Dates I can't work", icon: CalendarOff, href: "/roster/requests?start=dates" },
             ]}

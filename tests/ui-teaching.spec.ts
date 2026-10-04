@@ -74,9 +74,9 @@ test("a session opened from Week says where and when, and fits at 200% text", as
   await expectNoSidewaysScroll(page, "Session at 200%");
 });
 
-test("On Call's existing teaching records keep their own page", async ({ page }) => {
+test("On Call's legacy teaching calendar redirects to Teaching Week", async ({ page }) => {
   await page.goto("/on-call/education");
-  await expect(page).toHaveURL(/\/on-call\/education$/);
+  await expect(page).toHaveURL(/\/teaching\/week$/);
 });
 
 test("Teaching page menu reaches Resources and What's on", async ({ page }) => {

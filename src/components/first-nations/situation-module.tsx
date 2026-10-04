@@ -1,7 +1,8 @@
 "use client";
 import { ArrowLeft, ArrowRight, ChevronRight, Clipboard, Phone } from "lucide-react";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { FnButton, ModeActionButton, ModeNotice, ModeUpdatedLine } from "@/components/first-nations/kit";
+import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import { ModuleHeader } from "@/components/first-nations/module-header";
 import { TickList, toggleIn } from "@/components/first-nations/tick-list";
 import { SpokenWords } from "@/components/first-nations/voice";
@@ -122,9 +123,24 @@ function PhraseStepper({ phrases }: { phrases: readonly PhraseView[] }) {
 }
 
 export function SituationModule() {
-  const { situations, index, select } = useSituation();
+  const { situations, index, select, liaison } = useSituation();
   const situation = situations[index];
   const [planOpen, setPlanOpen] = useState(false);
+  const dialRef = useRef<HTMLDivElement>(null);
+  const call = situation.plan.find((p) => p.contact)?.contact ?? liaison;
+  const callHref = call ? telHref(call.number) : undefined;
+
+  function chooseSituation(i: number) {
+    select(i);
+    window.requestAnimationFrame(() => {
+      const target = dialRef.current;
+      if (!target) return;
+      target.scrollIntoView({ block: "nearest", behavior: resolveScrollBehavior() });
+      const focusable = target.querySelector<HTMLElement>("a[href^='tel:'], button");
+      focusable?.focus({ preventScroll: true });
+    });
+  }
+
   return (
     <section
       aria-labelledby="fn-situation-title"
@@ -153,7 +169,7 @@ export function SituationModule() {
             key={s.id}
             type="button"
             aria-pressed={i === index}
-            onClick={() => select(i)}
+            onClick={() => chooseSituation(i)}
             className={cn(
               "relative h-9 rounded-full border px-3 text-sm-minus after:absolute after:inset-x-0 after:-inset-y-1.5",
               i === index
@@ -179,6 +195,13 @@ export function SituationModule() {
             {situation.firstStep.title}
           </span>
         </div>
+        {call && callHref ? (
+          <div ref={dialRef} id="fn-situation-dial" data-testid="fn-situation-dial" className="pt-1">
+            <FnButton icon={Phone} filled href={callHref} label={`Call ${call === liaison ? "liaison" : call.name}`} />
+          </div>
+        ) : (
+          <div ref={dialRef} id="fn-situation-dial" data-testid="fn-situation-dial" className="sr-only" />
+        )}
       </div>
       <Sheet
         open={planOpen}

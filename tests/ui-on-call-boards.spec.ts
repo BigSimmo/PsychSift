@@ -71,7 +71,9 @@ const ROUTES = {
   playbook: "/on-call/playbook",
   referrals: "/on-call/referrals",
   orientation: "/on-call/orientation",
-  teaching: "/on-call/education",
+  // On Call's parallel teaching calendar redirects to Teaching Week; Teaching
+  // boards live in ui-teaching.spec.ts. Do not keep a ROUTES.teaching entry here
+  // — the chrome loop would open a non-On-Call mode under On Call's board suite.
   // On Call's Admin (`logistics`) rows and Compliance moved to the Admin mode on
   // 2026-09-26 (Admin update 1): Admin > Help and Admin > Renewals. The keys keep
   // their old names so every board that opens them still does.
@@ -92,7 +94,6 @@ const SECTION_LIST_TEST_IDS: Record<string, string> = {
   [ROUTES.playbook]: "on-call-playbook-section",
   [ROUTES.referrals]: "on-call-referrals-section",
   [ROUTES.orientation]: "on-call-orientation-section",
-  [ROUTES.teaching]: "on-call-education-section",
   [ROUTES.logistics]: "admin-help-main",
   [ROUTES.compliance]: "admin-renewals-main",
   [ROUTES.whoIsWho]: "on-call-who-is-who-section",
@@ -312,18 +313,10 @@ test.describe("01 Home", () => {
 });
 
 test.describe("Coming up — moved off Home to Teaching (plan C25)", () => {
-  test("dates the next teaching session with a weekday, as drawn", async ({ page }) => {
-    // Now (v6) drops the tile grid and, with it, the Coming up module: teaching
-    // sessions now surface only on the Teaching page (`/on-call/education`),
-    // which is where this same corpus and the same weekday assertion now live.
-    await openBoard(page, ROUTES.teaching);
-    // The row became a date-card strip when recurring sessions landed, so the
-    // card test id moved from `on-call-home-upcoming-` to `on-call-home-teaching-`.
-    // The module id around it is unchanged, and so is what this test is really
-    // asserting: a date a reader can check against a roster, never a countdown.
-    const card = page.getByTestId("on-call-home-upcoming").locator('[data-testid^="on-call-home-teaching-"]').first();
-    await expect(card).toBeVisible();
-    await expect(card).toContainText(/Mon|Tue|Wed|Thu|Fri|Sat|Sun/);
+  test("legacy /on-call/education hard-redirects to Teaching Week", async ({ page }) => {
+    await page.goto("/on-call/education", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/teaching\/week/);
+    await expect(visibleByTestId(page, "teaching-week")).toBeVisible({ timeout: 20_000 });
   });
 });
 
@@ -531,20 +524,6 @@ test.describe("02 More — the second row is about the page you are on", () => {
     await expect(page.getByRole("button", { name: "Start a new chat" })).toHaveCount(0);
   });
 
-  test("renders no header at all on a page with nothing to move between", async ({ page }) => {
-    // Teaching has no facet to file by — its sessions are dated, not tagged —
-    // so it is one flat list. One group is a heading, not navigation, and with
-    // the title and the actions both gone there is nothing left for a header
-    // to hold. It is absent rather than drawn as an empty 48px band.
-    // `/on-call/education` is the retained bookmark only: Teaching is its own
-    // mode, so the On Call pill names the mode and does not claim a Teaching page.
-    await openBoard(page, ROUTES.teaching);
-    await expect(page.getByTestId("on-call-section-detail-header")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Mode On Call, page Teaching" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Mode On Call" })).toBeVisible();
-    await expect(page.getByTestId("on-call-page-menu-trigger")).toBeVisible();
-  });
-
   test("gives a page that lost its chips real groups instead", async ({ page }) => {
     await openBoard(page, ROUTES.referrals);
     await expect(page.getByTestId("on-call-referrals-filters")).toHaveCount(0);
@@ -646,12 +625,15 @@ test.describe("06 Contacts", () => {
     await expect(page.getByTestId("on-call-contact-row-demo-interpreter-line")).toHaveCount(1);
   });
 
-  test("rings the number from anywhere on the row, and shows the call disc", async ({ page }) => {
+  test("never offers an invented 0000 number to the dialler, and keeps the row one target", async ({ page }) => {
+    // Every example number starts "0000", and a phone keying "000…" can reach
+    // Triple Zero, so example rows show their number as text with no call link.
     await openBoard(page, ROUTES.contacts);
     const row = page.getByTestId("on-call-contact-row-demo-nurse-manager");
-    await expect(row).toHaveAttribute("href", /^tel:/);
+    await expect(row).toContainText("0000 000 001");
+    await expect(row.locator('a[href^="tel:"]')).toHaveCount(0);
+    expect((await row.getAttribute("href")) ?? "").not.toMatch(/^tel:/);
     await expectTapFloor(row, "contact row");
-    // The disc is decoration inside the link: one target for one action.
     await expect(row.locator("button")).toHaveCount(0);
   });
 
