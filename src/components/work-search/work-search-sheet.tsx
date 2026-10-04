@@ -178,7 +178,7 @@ function AnswerCard({ answer, onOpen, onDismiss }: { answer: WorkAnswer; onOpen:
       aria-label={answer.label}
       data-mode-identity={identity}
       data-testid="work-search-answer"
-      className="mb-4 rounded-2xl border border-[color:var(--mode-identity-border)] bg-[color:var(--surface)] p-4 shadow-[var(--shadow-card)]"
+      className="mb-4 rounded-2xl border border-[color:var(--mode-identity-border)] bg-[color:var(--surface)] p-4"
     >
       <div className="flex items-center gap-2">
         {identity ? <AreaTile area={identity} small /> : null}
