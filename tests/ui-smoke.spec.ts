@@ -5540,7 +5540,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("document viewer puts the PDF preview first with pinned evidence after it on mobile", async ({ page }) => {
+  test("document viewer puts the matching passage above the PDF preview on mobile", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 720 });
     // iOS Safari cannot fullscreen a plain document element, so production
     // takes the fixed in-app fallback there. Exercise that exact path instead
@@ -5620,16 +5620,16 @@ test.describe("PsychSift UI smoke coverage", () => {
       .getByTestId("source-chunk-indexed-text-panel")
       .getByRole("heading", { name: "Page text", exact: true });
     const indexedTextBox = await indexedTextHeading.boundingBox();
-    const imagesBox = await page.getByRole("heading", { name: "Tables and diagrams" }).boundingBox();
+    // This demo document has no extracted tables or diagrams, so that section is left out entirely.
+    await expect(page.getByRole("heading", { name: "Tables and diagrams" })).toHaveCount(0);
 
     expect(evidenceBox).not.toBeNull();
     expect(previewBox).not.toBeNull();
     expect(indexedTextBox).not.toBeNull();
-    expect(imagesBox).not.toBeNull();
-    expect(previewBox!.y).toBeLessThan(evidenceBox!.y);
+    // The passage the reader came for sits directly above the page it is on.
+    expect(evidenceBox!.y).toBeLessThan(previewBox!.y);
     expect(evidenceBox!.height).toBeLessThan(640);
     expect(previewBox!.y).toBeLessThan(indexedTextBox!.y);
-    expect(indexedTextBox!.y).toBeLessThan(imagesBox!.y);
 
     const passageToggle = page.getByTestId("toggle-full-passage").first();
     await expect(passageToggle).toHaveText("Full passage");
@@ -5774,7 +5774,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     const clinicalSummary = page.getByTestId("mobile-composer-reserve-pad").getByTestId("document-clinical-summary");
     await expect(clinicalSummary).toBeVisible();
     await expect(clinicalSummary.getByRole("heading", { name: "Clinical priorities" })).toBeVisible();
-    const clinicalPriorities = clinicalSummary.getByRole("button", { name: /Clinical priorities/ });
+    const clinicalPriorities = clinicalSummary.getByRole("button", { name: /^See (all \d+ priorities|the priority)/ });
     await expect(clinicalPriorities).toHaveAttribute("aria-expanded", "false");
     const densityToggle = page.getByTestId("document-section-index").getByTestId("document-view-density-toggle");
     await expect(densityToggle).toHaveAttribute("aria-pressed", "true");
@@ -5884,12 +5884,11 @@ test.describe("PsychSift UI smoke coverage", () => {
       await activateFocusedControl(page, row);
       await expect(sheet).toHaveCount(0);
     };
-    // Demo docs with no extracted visuals omit Images from the section sheet;
-    // open that disclosure from its own summary so exclusivity still covers
-    // the always-present #source-images details.
-    const openImagesDisclosure = async () => {
-      await images.locator("summary").click();
-      await expect(images).toHaveJSProperty("open", true);
+    // Demo docs with no extracted visuals leave the Tables and diagrams
+    // section out entirely, so exclusivity is proven with the file details.
+    const openIndexingDisclosure = async () => {
+      await indexingDetails.getByText("About this file", { exact: true }).click();
+      await expect(indexingDetails).toHaveJSProperty("open", true);
     };
 
     await expect(indexedText).toBeVisible();
@@ -5913,13 +5912,14 @@ test.describe("PsychSift UI smoke coverage", () => {
     await page.keyboard.press("Escape");
     await expect(densitySheet).toHaveCount(0);
     await expect(sectionTrigger).toBeFocused();
-    for (const disclosure of [summary, images, indexingDetails]) {
+    await expect(images).toHaveCount(0);
+    for (const disclosure of [summary, indexingDetails]) {
       await expect(disclosure).toHaveJSProperty("open", false);
     }
 
     const summaryContent = summary.getByTestId("formatted-high-yield-summary");
     await expect(summaryContent).toBeHidden();
-    await openImagesDisclosure();
+    await openIndexingDisclosure();
     await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
     await expect(indexedText).toHaveJSProperty("open", true);
     await expect(pageText).toHaveJSProperty("open", true);
@@ -5930,7 +5930,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await page.emulateMedia({ media: "screen" });
     await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
     await expect(summaryContent).toBeHidden();
-    await expect(images).toHaveJSProperty("open", true);
+    await expect(indexingDetails).toHaveJSProperty("open", true);
     await expect(indexedText).toHaveJSProperty("open", false);
     await expect(pageText).toHaveJSProperty("open", false);
     await expect(passages.nth(0)).toHaveJSProperty("open", false);
@@ -5939,7 +5939,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await clickSectionNav(/Page text/);
     await expect(indexedText).toBeInViewport();
     await expect(indexedText).toHaveJSProperty("open", true);
-    await expect(images).toHaveJSProperty("open", false);
+    await expect(indexingDetails).toHaveJSProperty("open", false);
     await passages.nth(0).locator("summary").click();
     await expect(passages.nth(0)).toHaveJSProperty("open", true);
     await passages.nth(1).locator("summary").click();
@@ -5955,13 +5955,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(summary).toHaveJSProperty("open", false);
     await expect(indexedText).toHaveJSProperty("open", false);
 
-    await openImagesDisclosure();
-    await expect(images).toHaveJSProperty("open", true);
+    await openIndexingDisclosure();
     await expect(summary).toHaveJSProperty("open", false);
-
-    await indexingDetails.getByText("About this file", { exact: true }).click();
-    await expect(indexingDetails).toHaveJSProperty("open", true);
-    await expect(images).toHaveJSProperty("open", false);
+    await expect(indexedText).toHaveJSProperty("open", false);
 
     await expectDomIntegrity(page);
     await expectNoPageHorizontalOverflow(page);
