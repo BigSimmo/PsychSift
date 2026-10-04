@@ -82,9 +82,10 @@ describe("Teaching mode registration", () => {
     ]);
   });
 
-  it("preserves the legacy teaching list until a service approves transfer", () => {
-    expect(modeSecondaryNavigationRegistry["on-call"].map((entry) => entry.id)).toContain("teaching");
-    expect(activeModeSecondaryNavigationId("on-call", "/on-call/education")).toBe("teaching");
+  it("keeps the On Call teaching list off the menu while Teaching's week page stays selected", () => {
+    expect(modeSecondaryNavigationRegistry["on-call"].map((entry) => entry.id)).not.toContain("teaching");
+    expect(activeModeSecondaryNavigationId("on-call", "/on-call/education")).toBeNull();
+    expect(activeModeSecondaryNavigationId("teaching", "/teaching/week")).toBe("week");
   });
 
   it("shows Organise only to an organiser or admin, and holds roles in memory only", () => {
