@@ -6727,10 +6727,15 @@ test.describe("PROBE diagnostics", () => {
       await expect(
         page.getByRole("heading", { level: 1, name: /Synthetic clozapine monitoring protocol/i }),
       ).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByLabel("Next page").first()).toBeVisible({ timeout: 30_000 });
       if (mode === "sametask") {
         await page.evaluate(() => {
-          (document.querySelector('[aria-label="Next page"]') as HTMLElement).click();
-          (document.querySelector('[aria-label="Back to documents"]') as HTMLElement).click();
+          const pick = (label: string) =>
+            [...document.querySelectorAll<HTMLElement>(`[aria-label="${label}"]`)].find(
+              (element) => element.getClientRects().length > 0,
+            );
+          pick("Next page")?.click();
+          pick("Back to documents")?.click();
         });
       } else {
         await page.getByLabel("Next page").first().click();
