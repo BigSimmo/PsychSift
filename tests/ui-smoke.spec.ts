@@ -1825,7 +1825,14 @@ test.describe("PsychSift UI smoke coverage", () => {
     const setupScrollPort = setup.locator(".polished-scroll");
     // WebKit scrolls the dialog to the focused email field on open. Prove the
     // autofocus first, then reset that scroll before checking top safe-area layout.
+    // A bare blur() does not stick: for its first seconds an open sheet hands focus
+    // back to its autofocus field whenever focus drops to the page, and only a real
+    // key press or tap ends that. WebKit then keeps the refocused field in view on
+    // every resize, so the body sat 224px down and the workspace mark at -140
+    // (CI 2026-10-04, recorded at the failure). Press a key first, as a reader would.
+    await page.keyboard.press("Shift");
     await setup.getByLabel("Email address").blur();
+    await expect(setup.getByLabel("Email address")).not.toBeFocused();
     await setupScrollPort.evaluate((element) => {
       element.scrollTop = 0;
     });
@@ -5780,11 +5787,20 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(documentActions).toBeVisible();
     const composerBox = await composer.boundingBox();
     expect(composerBox).not.toBeNull();
-    const sheetOwnsComposerPoint = await documentActions.evaluate(
-      (dialog, point) => dialog.contains(document.elementFromPoint(point.x, point.y)),
-      { x: composerBox!.x + composerBox!.width / 2, y: composerBox!.y + composerBox!.height / 2 },
-    );
-    expect(sheetOwnsComposerPoint).toBe(true);
+    // Polled, not read once: the sheet slides up as it opens, so a single read
+    // straight after it turns visible can land before it covers the composer
+    // (Production UI on #3270, 2026-10-04).
+    const composerPoint = { x: composerBox!.x + composerBox!.width / 2, y: composerBox!.y + composerBox!.height / 2 };
+    await expect
+      .poll(
+        () =>
+          documentActions.evaluate(
+            (dialog, point) => dialog.contains(document.elementFromPoint(point.x, point.y)),
+            composerPoint,
+          ),
+        { message: "the open actions sheet must cover the composer", timeout: 5_000 },
+      )
+      .toBe(true);
     await tapOutsideActiveSurface(page);
     await expect(documentActions).toHaveCount(0);
     await expectNoPageHorizontalOverflow(page);

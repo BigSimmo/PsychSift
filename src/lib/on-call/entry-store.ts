@@ -247,6 +247,10 @@ export type OnCallEntriesState = {
    *  database. Nothing in this mode can be written, so a control that offers to
    *  is a control that can only fail. */
   demoMode: boolean;
+  /** True while a signed-out visitor is shown the invented sample. The rows live
+   *  in memory only (never in the entry cache or on the device), and `demoMode`
+   *  is also true so every control that writes stays off. */
+  sample: boolean;
 };
 
 /**
@@ -256,7 +260,7 @@ export type OnCallEntriesState = {
  * in try/catch, so a browser blocking site data degrades to "no cached
  * entries" rather than throwing into render.
  */
-export function useOnCallEntries(): OnCallEntriesState {
+export function useStoredOnCallEntries(): OnCallEntriesState {
   const cacheSnapshot = useOnCallEntryCacheSnapshot();
   const cached = useMemo(() => parseCachedPayload(cacheSnapshot || null), [cacheSnapshot]);
   const [loading, setLoading] = useState(true);
@@ -387,5 +391,48 @@ export function useOnCallEntries(): OnCallEntriesState {
     retry,
     signedOut,
     demoMode,
+    sample: false,
+  };
+}
+
+/**
+ * What every On Call and Admin screen reads. For a signed-in reader this is
+ * exactly `useStoredOnCallEntries`. For a signed-out visitor, whom the server
+ * answers with no entries, it swaps in the invented sample so the real screens
+ * can be seen in use.
+ *
+ * The sample is loaded on demand (so it never counts towards anyone's first
+ * load) and held in this component's memory only: it is never written to the
+ * entry cache or the device, it asks the server for nothing, and `demoMode` is
+ * true so every control that writes stays off. While it arrives the page keeps
+ * its loading state rather than showing a sign-in dead end.
+ */
+export function useOnCallEntries(): OnCallEntriesState {
+  const stored = useStoredOnCallEntries();
+  const [sampleEntries, setSampleEntries] = useState<OnCallEntry[] | null>(null);
+  const { signedOut, loading, isOffline } = stored;
+  const sampling = signedOut && !loading && !isOffline;
+
+  useEffect(() => {
+    if (!sampling) return;
+    let cancelled = false;
+    void import("@/lib/on-call/demo-entries").then((module) => {
+      if (!cancelled) setSampleEntries([...module.DEMO_ON_CALL_ENTRIES]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sampling]);
+
+  if (!sampling) return stored;
+  return {
+    ...stored,
+    entries: sampleEntries ?? [],
+    cachedAt: null,
+    loading: sampleEntries === null,
+    loadError: null,
+    signedOut: false,
+    demoMode: true,
+    sample: true,
   };
 }

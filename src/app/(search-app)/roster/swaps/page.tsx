@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { RosterSwapsPage } from "@/components/roster/swaps/roster-swaps-page";
+import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export const metadata: Metadata = {
   title: "Swaps | Roster | PsychSift",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function RosterSwapsRoute() {
-  return <RosterSwapsPage />;
+  return (
+    <RosterSampleGate title="Sign in to see your swaps" records="swaps and open shifts">
+      <RosterSwapsPage />
+    </RosterSampleGate>
+  );
 }

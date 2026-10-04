@@ -38,6 +38,8 @@ export function onCallMobileRoute(dial: HandbookDial, mobileDial?: HandbookDial 
  */
 export function onCallExtensionRoute(dial: HandbookDial): HandbookDial | null {
   if (dial.kind !== "extension") return null;
+  // "000…" is the sample's placeholder range, and keying it can reach Triple Zero: never a call link.
+  if (/^000/.test(dial.extension)) return null;
   return { kind: "direct", display: dial.display, tel: `tel:${dial.extension}`, copy: dial.copy, route: "any-phone" };
 }
 

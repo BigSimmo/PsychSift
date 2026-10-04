@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
+import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { useMyDayNow } from "@/components/my-day/my-day-page-parts";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
@@ -25,6 +26,7 @@ export function MyDayFrame({
   subtitle,
   testId,
   now: nowProp,
+  signedOutSample,
   children,
 }: {
   readonly title: string;
@@ -32,6 +34,12 @@ export function MyDayFrame({
   /** Prefix for the frame's test ids, e.g. `my-day-week`. */
   readonly testId: string;
   readonly now?: Date;
+  /**
+   * What a signed-out visitor sees instead of the sign-in prompt: the shared
+   * Sample notice (with this body) above the page's real content built from
+   * invented data. The sample reads and keeps nothing.
+   */
+  readonly signedOutSample?: { readonly notice: ReactNode; readonly render: (now: Date) => ReactNode };
   readonly children: (now: Date) => ReactNode;
 }) {
   const { status: authStatus } = useAuthSession();
@@ -69,7 +77,20 @@ export function MyDayFrame({
           </div>
         ) : null}
 
-        {myDayNeedsSignIn(authStatus) ? (
+        {myDayNeedsSignIn(authStatus) && signedOutSample ? (
+          <div className="grid gap-5" data-testid={`${testId}-signed-out-sample`}>
+            <SignedOutSampleNotice
+              title="Sign in to see your day"
+              testId={`${testId}-signed-out`}
+              noticeTestId={`${testId}-sample-notice`}
+            >
+              {signedOutSample.notice}
+            </SignedOutSampleNotice>
+            {signedOutSample.render(now)}
+          </div>
+        ) : null}
+
+        {myDayNeedsSignIn(authStatus) && !signedOutSample ? (
           <div className="grid gap-3" data-testid={`${testId}-signed-out`}>
             <EmptyState
               icon={LogIn}

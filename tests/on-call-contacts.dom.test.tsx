@@ -284,4 +284,48 @@ describe("OnCallContactsSection", () => {
     render(<OnCallContactsSection entries={[PERSONAL_CONSULTANT]} now={WEEKDAY_NIGHT} />);
     expect(screen.queryByRole("button", { name: /copy/i })).toBeNull();
   });
+
+  it("puts the role full width and the phone on the line below it", () => {
+    render(<OnCallContactsSection entries={[FRESH_ED_REGISTRAR]} now={NOW} />);
+    const row = screen.getByTestId("on-call-contact-row-ed-registrar");
+    const number = row.querySelector("[data-contact-row-number]");
+    expect(number).not.toBeNull();
+    expect(number).toHaveTextContent("0412 345 678");
+    // Title and number both live in the row's text column; dial/copy sit in the
+    // sibling actions column (outside the tel: link), matching OnCallDialRow.
+    expect(within(row).getByText("ED registrar")).toBeInTheDocument();
+    expect(row.contains(number as HTMLElement)).toBe(true);
+    const actions = row.closest("[id^='on-call-entry-']")?.querySelector("[data-contact-row-actions]");
+    expect(actions).not.toBeNull();
+    expect(row.contains(actions as HTMLElement)).toBe(false);
+    expect(row).toHaveTextContent(/24\/7/);
+  });
+
+  it("keeps a fixed dial/copy column when a shared row has no number, so the trailing edge does not jog", () => {
+    const noNumber = contact({
+      id: "77777777-7777-7777-7777-777777777777",
+      slug: "no-number-role",
+      title: "Duty pharmacist",
+      tags: ["Pharmacy"],
+      details: { role: "Duty pharmacist", availability: "In hours" },
+      lastVerifiedAt: new Date("2026-06-01T00:00:00.000Z").toISOString(),
+    });
+    render(<OnCallContactsSection entries={[FRESH_ED_REGISTRAR, noNumber]} now={NOW} />);
+    const withNumber = screen.getByTestId("on-call-contact-row-ed-registrar").closest("[id^='on-call-entry-']");
+    const withoutNumber = screen.getByTestId("on-call-contact-row-no-number-role").closest("[id^='on-call-entry-']");
+    expect(withNumber?.querySelector("[data-contact-row-actions]")).not.toBeNull();
+    expect(withoutNumber?.querySelector("[data-contact-row-actions]")).not.toBeNull();
+    expect(withoutNumber?.querySelector("[data-contact-row-disc-spacer]")).not.toBeNull();
+    expect(withoutNumber?.querySelector("[data-contact-row-copy-spacer]")).not.toBeNull();
+    expect(screen.getByText("No number on file")).toBeInTheDocument();
+  });
+
+  it("keeps personal rows digit-free in a shared list and omits the dial/copy column", () => {
+    render(<OnCallContactsSection entries={[FRESH_ED_REGISTRAR, PERSONAL_CONSULTANT]} now={WEEKDAY_NIGHT} />);
+    const personal = screen.getByTestId("on-call-contact-row-consultant-mobile");
+    expect(personal.querySelector("[data-contact-row-number]")).toBeNull();
+    expect(personal).not.toHaveTextContent(/0400 111 222/);
+    expect(screen.getByTestId("on-call-private-flag")).toHaveTextContent("Private · only you");
+    expect(personal.closest("[id^='on-call-entry-']")?.querySelector("[data-contact-row-actions]")).toBeNull();
+  });
 });
