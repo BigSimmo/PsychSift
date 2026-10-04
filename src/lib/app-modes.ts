@@ -28,6 +28,7 @@ export const appModeIds = [
   "roster",
   "first-nations",
   "my-day",
+  "medicines",
 ] as const;
 
 export type AppModeId = (typeof appModeIds)[number];
@@ -618,6 +619,33 @@ export const appModeDefinitions = [
     },
   },
   {
+    id: "medicines",
+    label: "Medicines & tools",
+    description: "Medication, calculators, clinical tools, factsheets and the dictionary in one place",
+    href: "/medicines",
+    search: {
+      // Like Psychiatry, a landing page that gathers existing modes, each of
+      // which keeps its own search; it borrows the benign "tools" kind.
+      kind: "tools",
+      placeholder: "Open a medicines or tools section...",
+      inputAriaLabel: "Open a medicines or tools section",
+      submitIdleLabel: "Medicines",
+      submitBusyLabel: "Medicines",
+      submitAriaLabel: "Open a medicines or tools section",
+      emptyTitle: "Choose a section",
+      readyTitle: "Medication, calculators, tools and reference",
+      progressLabel: "Opening the section.",
+      resultKind: "tools",
+      resultHeading: "Medicines & tools",
+      // No results page. `/medicines` is a dashboard of links to the sections
+      // it gathers, as `/psychiatry` is.
+      resultsSurface: "none",
+      statusLabel: "Medicines",
+      nextStep: "Open a section",
+      badgeLabel: null,
+    },
+  },
+  {
     id: "my-work",
     label: "Admin",
     description: "The paperwork around hospital work: renewals, starting and leaving a job, and where to get help",
@@ -774,6 +802,7 @@ const namespaceIsolatedModes = new Set<AppModeId>([
   "roster",
   "first-nations",
   "my-day",
+  "medicines",
 ]);
 
 export function appModeHomeHref(modeId: AppModeId, options: SearchNavigationOptions = {}) {
