@@ -91,7 +91,6 @@ import { modeSectionIcon } from "@/components/mode-nav/mode-nav-icons";
 import {
   modePagesCheckClass,
   modePagesGroupHeadingClass,
-  modePagesGroupHintClass,
   modePagesIconClass,
   modePagesIconStroke,
   modePagesLabelClass,
@@ -1485,16 +1484,12 @@ export function MasterSearchHeader({
           <section
             role="group"
             aria-labelledby="app-mode-section-more-heading"
-            aria-describedby="app-mode-section-more-hint"
             data-testid="app-mode-section-group-more"
             className="mt-1.5 grid gap-1 border-t border-[color:var(--border)] pt-2"
           >
             <h3 id="app-mode-section-more-heading" className={modePagesGroupHeadingClass}>
               More
             </h3>
-            <p id="app-mode-section-more-hint" className={modePagesGroupHintClass}>
-              Moving to their own modes
-            </p>
             <div className="grid">{more.map((entry) => renderModeSectionOption(entry))}</div>
           </section>
         ) : null}
