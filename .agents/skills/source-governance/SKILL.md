@@ -1,9 +1,9 @@
 ---
-name: sources
+name: source-governance
 description: Audit PsychSift source metadata, citations, approvals, labels, provenance, rendering, and release-governance coverage. Use for citation defects, source-governance changes, document labels, public promotion, or clinical evidence traceability.
 ---
 
-# Sources
+# Source governance
 
 1. Trace source identity from ingestion metadata through retrieval, answer citations, and UI rendering.
 2. Check provenance, approval state, labels, dates, ownership, public visibility, and missing-metadata behavior.

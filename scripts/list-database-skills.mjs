@@ -22,6 +22,12 @@ export const expectedRepositorySkillSurfaceCounts = {
   "PsychSift plugin": 1,
 };
 
+/** Same frontmatter `name` across Claude/Codex/Cursor/plugin is allowed only for
+ *  intentional twins. Today that is `ledger` (Codex thin-pointer → Claude procedure).
+ *  Opposite jobs under one name (the old Claude acquisition vs Codex governance
+ *  `sources` collision) must fail closed. */
+export const CROSS_SURFACE_NAME_TWINS = new Set(["ledger"]);
+
 function wordCount(value) {
   return String(value || "")
     .trim()
@@ -308,6 +314,32 @@ export function validateRepositorySkillPolicies(
       errors.push(`Repository skill inventory mismatch for ${surface}: expected ${expected}, found ${actual}`);
     }
   }
+
+  const byName = new Map();
+  for (const skill of files) {
+    let frontmatter;
+    try {
+      frontmatter = readFrontmatter(skill.file);
+    } catch {
+      continue;
+    }
+    const name = frontmatter.name?.trim();
+    if (!name) continue;
+    if (!byName.has(name)) byName.set(name, []);
+    byName.get(name).push(skill);
+  }
+  for (const [name, occurrences] of byName) {
+    const surfaces = [...new Set(occurrences.map((skill) => skill.surface))];
+    if (surfaces.length < 2) continue;
+    if (CROSS_SURFACE_NAME_TWINS.has(name)) continue;
+    errors.push(
+      `Cross-surface skill name collision for "${name}" on ${surfaces.join(", ")} ` +
+        `(${occurrences.map((skill) => skill.relative).join(", ")}). ` +
+        `Rename one surface, or add an intentional twin to CROSS_SURFACE_NAME_TWINS ` +
+        `in scripts/list-database-skills.mjs (ledger is the only reviewed twin today).`,
+    );
+  }
+
   return { errors, files, surfaceCounts };
 }
 
