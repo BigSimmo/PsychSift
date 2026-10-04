@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
 import { adminLoadState } from "@/lib/admin/own-entries";
-import type { CmeEntry } from "@/lib/cme/types";
+import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { myDayEnabledForAuth } from "@/lib/my-day/model";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -43,7 +43,11 @@ type Fetched = {
   readonly roster: { status: WorkAreaStatus; sample: boolean; items: WorkItem[] };
   readonly teaching: { status: WorkAreaStatus; sample: boolean; items: WorkItem[] };
   readonly cme: { status: WorkAreaStatus; sample: boolean; items: WorkItem[] };
+  readonly cpd: WorkSearchCpd | null;
 };
+
+/** The confirmed CPD targets and the activities they are measured against, for the built-in answer. */
+export type WorkSearchCpd = { readonly set: CmeRequirementSet | null; readonly entries: readonly CmeEntry[] };
 
 const FRESH_FOR_MS = 2 * 60 * 1000;
 let memory: Fetched | null = null;
@@ -69,12 +73,15 @@ function worst(...statuses: WorkAreaStatus[]): WorkAreaStatus {
 async function fetchRecords(epoch: number, now: Date, signal: AbortSignal): Promise<Fetched> {
   const today = perthDateOf(now);
   const weekQuery = new URLSearchParams({ view: "week", from: today, to: addDaysToDate(today, 41) });
-  const [shifts, leave, week, cme] = await Promise.all([
+  const [shifts, leave, week, cme, year] = await Promise.all([
     readJson<{ shifts: OnCallShift[] }>("/api/roster/shifts", signal),
     readJson<{ leave: RosterLeave[] }>("/api/roster/leave", signal),
     readJson<TeachingWeekResponse>(`/api/teaching?${weekQuery.toString()}`, signal),
-    readJson<{ entries: CmeEntry[] }>("/api/cme/entries", signal),
+    readJson<{ entries: CmeEntry[]; year?: number }>("/api/cme/entries", signal),
+    readJson<{ requirementSet?: CmeRequirementSet | null }>("/api/cme/year", signal),
   ]);
+  const set = year.status === "ready" ? (year.body.requirementSet ?? null) : null;
+  const cmeEntries = cme.status === "ready" ? (cme.body.entries ?? []) : [];
   return {
     epoch,
     at: Date.now(),
@@ -95,10 +102,17 @@ async function fetchRecords(epoch: number, now: Date, signal: AbortSignal): Prom
           : [],
     },
     cme: {
-      status: cme.status,
+      status: worst(cme.status, year.status),
       sample: cme.status === "ready" && cme.sample,
-      items: cme.status === "ready" ? cmeActivityWorkItems(cme.body.entries ?? []) : [],
+      items: cmeActivityWorkItems(cmeEntries),
     },
+    // Activities from another year are never measured against this year's targets.
+    cpd:
+      cme.status === "ready" && year.status === "ready"
+        ? set && cme.body.year === set.year
+          ? { set, entries: cmeEntries }
+          : { set: null, entries: [] }
+        : null,
   };
 }
 
@@ -110,6 +124,7 @@ export interface WorkSearchRecords {
   readonly items: readonly WorkItem[];
   readonly entries: readonly WorkSearchEntry[];
   readonly areas: readonly WorkAreaRead[];
+  readonly cpd: WorkSearchCpd | null;
   /** True while a signed-out visitor searches the invented sample. */
   readonly sample: boolean;
   readonly retry: () => void;
@@ -123,7 +138,11 @@ export function useWorkSearchRecords(now: Date): WorkSearchRecords {
   const [fetched, setFetched] = useState<Fetched | null>(() =>
     memory && memory.epoch === authEpoch && Date.now() - memory.at < FRESH_FOR_MS ? memory : null,
   );
-  const [sample, setSample] = useState<{ items: WorkItem[]; entries: readonly OnCallEntry[] } | null>(null);
+  const [sample, setSample] = useState<{
+    items: WorkItem[];
+    entries: readonly OnCallEntry[];
+    cpd: WorkSearchCpd;
+  } | null>(null);
   const [generation, setGeneration] = useState(0);
   const retryOnCall = onCall.retry;
   const retry = useCallback(() => {
@@ -176,6 +195,7 @@ export function useWorkSearchRecords(now: Date): WorkSearchRecords {
           status: ready,
           sample: true,
         })),
+        cpd: sample?.cpd ?? null,
         sample: true,
         retry,
       };
@@ -192,6 +212,7 @@ export function useWorkSearchRecords(now: Date): WorkSearchRecords {
         { area: "my-work", status: entryStatus, sample: onCall.demoMode },
         { area: "on-call", status: entryStatus, sample: onCall.demoMode },
       ],
+      cpd: current?.cpd ?? null,
       sample: false,
       retry,
     };

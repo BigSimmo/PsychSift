@@ -46,7 +46,11 @@ export interface WorkItem {
   readonly detail: string | null;
   /** Perth calendar date `YYYY-MM-DD` the record falls on or is due, or null when undated. */
   readonly date: string | null;
+  /** The last day, `YYYY-MM-DD`, for a record that spans days (leave). */
+  readonly until?: string;
   readonly href: string;
+  /** A fact the built-in answers filter on: a shift's kind ("night"), or "presenting" on a session. */
+  readonly facet?: string;
   /** Text matched with the title's weight: names, kinds and synonyms the reader might type. */
   readonly tags: readonly string[];
   /** Text matched with the lowest weight: places, notes and reflections. */

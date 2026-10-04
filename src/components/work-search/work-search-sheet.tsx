@@ -5,6 +5,8 @@ import {
   CalendarDays,
   ChevronRight,
   Clock,
+  Database,
+  MessageCircleQuestion,
   Folder,
   GraduationCap,
   Phone,
@@ -28,7 +30,14 @@ import {
   type WorkItem,
   type WorkSearchArea,
 } from "@/lib/work-search/model";
+import { answerWorkQuestion, type WorkAnswer } from "@/lib/work-search/answers";
 import { searchWork, workComingUp, workSearchCounts, type WorkSearchHit } from "@/lib/work-search/search";
+
+const TRY_ASKING = [
+  "When am I next on nights?",
+  "What's due this month?",
+  "How many CPD hours do I still need?",
+] as const;
 
 const AREA_ICONS: Readonly<Record<WorkSearchArea, LucideIcon>> = {
   roster: CalendarDays,
@@ -162,6 +171,84 @@ function AreaNotices({ areas, onRetry }: { areas: readonly WorkAreaRead[]; onRet
   );
 }
 
+function AnswerCard({ answer, onOpen, onDismiss }: { answer: WorkAnswer; onOpen: () => void; onDismiss: () => void }) {
+  const identity = answer.area === "all" ? undefined : answer.area;
+  return (
+    <section
+      aria-label={answer.label}
+      data-mode-identity={identity}
+      data-testid="work-search-answer"
+      className="mb-4 rounded-2xl border border-[color:var(--mode-identity-border)] bg-[color:var(--surface)] p-4 shadow-[var(--shadow-card)]"
+    >
+      <div className="flex items-center gap-2">
+        {identity ? <AreaTile area={identity} small /> : null}
+        <span className="text-xs font-semibold uppercase tracking-wide text-[color:var(--mode-identity)]">
+          {answer.label}
+        </span>
+      </div>
+      <p
+        className={cn(
+          "mt-3 font-semibold text-[color:var(--text-heading)]",
+          answer.unavailable ? "text-base" : "text-xl leading-tight",
+        )}
+      >
+        {answer.headline}
+      </p>
+      {answer.sub ? <p className="mt-1 text-sm text-[color:var(--text)]">{answer.sub}</p> : null}
+      {answer.meta.length > 0 ? (
+        <ul className="mt-3 flex flex-wrap gap-1.5">
+          {answer.meta.map((line) => (
+            <li
+              key={line}
+              className="rounded-full bg-[color:var(--surface-subtle)] px-2.5 py-1 text-xs font-semibold text-[color:var(--text)]"
+            >
+              {line}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {answer.action ? (
+        <Link
+          href={answer.action.href}
+          onClick={onOpen}
+          className={cn(
+            "mt-4 inline-flex min-h-12 items-center rounded-full bg-[color:var(--mode-identity)] px-5 text-sm font-semibold text-[color:var(--mode-identity-contrast)]",
+            focusRing,
+          )}
+        >
+          {answer.action.label}
+        </Link>
+      ) : null}
+      {answer.items.length > 0 ? (
+        <ul className="-mx-2 mt-3 space-y-0.5 border-t border-[color:var(--border)] pt-2">
+          {answer.items.map((item) => (
+            <ResultRow key={item.id} item={item} showArea={answer.area === "all"} onOpen={onOpen} />
+          ))}
+        </ul>
+      ) : null}
+      {answer.source ? (
+        <p className="mt-3 flex items-start gap-1.5 text-xs text-[color:var(--text-muted)]">
+          <Database aria-hidden="true" className="mt-0.5 size-icon-xs shrink-0" />
+          {answer.source}
+        </p>
+      ) : null}
+      <p className="mt-2 flex flex-wrap items-center gap-x-1 text-xs text-[color:var(--text-muted)]">
+        {answer.understood}.
+        <button
+          type="button"
+          onClick={onDismiss}
+          className={cn(
+            "min-h-12 font-semibold text-[color:var(--text-heading)] underline-offset-2 hover:underline",
+            focusRing,
+          )}
+        >
+          Not what you meant? Show word matches
+        </button>
+      </p>
+    </section>
+  );
+}
+
 export interface WorkSearchSheetProps {
   readonly open: boolean;
   readonly onClose: () => void;
@@ -190,6 +277,14 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
     [records.items, records.entries, today],
   );
   const loading = records.areas.some((area) => area.status === "loading");
+  const [dismissedFor, setDismissedFor] = useState<string | null>(null);
+  const answer = useMemo(
+    () =>
+      dismissedFor === query
+        ? null
+        : answerWorkQuestion(query, { items: records.items, areas: records.areas, today, cpd: records.cpd }),
+    [query, dismissedFor, records.items, records.areas, records.cpd, today],
+  );
   const typed = query.trim().length > 0;
 
   const openResult = () => {
@@ -312,7 +407,13 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
     >
       <div data-work-search-root="" className="pb-6">
         <p className="sr-only" aria-live="polite">
-          {typed ? (loading ? "Searching." : `${shown.length} ${shown.length === 1 ? "result" : "results"}.`) : ""}
+          {typed
+            ? answer
+              ? `${answer.label}: ${answer.headline}.`
+              : loading
+                ? "Searching."
+                : `${shown.length} ${shown.length === 1 ? "result" : "results"}.`
+            : ""}
         </p>
         {records.sample ? (
           <p className="mb-3 rounded-xl bg-[color:var(--surface-subtle)] p-3 text-sm text-[color:var(--text-muted)]">
@@ -348,6 +449,28 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                     <AreaTile area={area} />
                     {workSearchAreaLabels[area]}
                   </Link>
+                </li>
+              ))}
+            </ul>
+            <SectionHeading>Try asking</SectionHeading>
+            <ul className="space-y-0.5">
+              {TRY_ASKING.map((value) => (
+                <li key={value}>
+                  <button
+                    type="button"
+                    onClick={() => runRecent(value)}
+                    className={cn(
+                      "flex min-h-12 w-full items-center gap-3 rounded-xl px-2 text-left text-sm text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
+                      focusRing,
+                    )}
+                  >
+                    <MessageCircleQuestion
+                      aria-hidden="true"
+                      className="size-icon-sm shrink-0 text-[color:var(--text-muted)]"
+                    />
+                    <span className="min-w-0 flex-1 truncate">{value}</span>
+                    <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -392,6 +515,16 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               </>
             ) : null}
           </>
+        ) : answer ? (
+          <>
+            <AnswerCard answer={answer} onOpen={openResult} onDismiss={() => setDismissedFor(query)} />
+            {shown.length > 0 ? (
+              <>
+                <SectionHeading>Word matches</SectionHeading>
+                {resultList(shown.slice(0, 8), true)}
+              </>
+            ) : null}
+          </>
         ) : shown.length > 0 ? (
           grouped ? (
             grouped.map((group) => (
@@ -431,7 +564,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
         )}
 
         <p className="mt-6 text-center text-xs text-[color:var(--text-muted)]">
-          Searched on this device. Call notes, handover drafts and MHA timers are never searched.
+          Searched and answered on this device; nothing is sent anywhere. Call notes, handover drafts and MHA timers are
+          never searched.
         </p>
       </div>
     </Sheet>

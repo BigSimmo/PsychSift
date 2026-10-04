@@ -36,7 +36,8 @@ export function shiftWorkItems(shifts: readonly ShiftLike[]): WorkItem[] {
   return shifts.map((shift) => {
     const date = perthDateOf(shift.startsAt);
     // An older import may carry no kind; Roster infers it from the times the same way.
-    const kindLabel = SHIFT_KIND_LABEL[shift.kind ?? inferShiftKind(shift)];
+    const kind = shift.kind ?? inferShiftKind(shift);
+    const kindLabel = SHIFT_KIND_LABEL[kind];
     return {
       id: `roster:shift:${shift.id}`,
       area: "roster",
@@ -49,6 +50,7 @@ export function shiftWorkItems(shifts: readonly ShiftLike[]): WorkItem[] {
       ]),
       date,
       href: ROSTER_SHIFTS_HREF,
+      facet: kind,
       // "nights" and "on call" are what people type; the kind label carries both.
       tags: [kindLabel, `${kindLabel}s`, "shift", "shifts"],
       text: [shift.location ?? "", shift.workplace ?? ""],
@@ -80,6 +82,7 @@ export function leaveWorkItems(leave: readonly RosterLeave[]): WorkItem[] {
       LEAVE_STATUS_LABEL[row.status],
     ]),
     date: row.startsOn,
+    until: row.endsOn,
     href: ROSTER_LEAVE_HREF,
     tags: ["leave", "holiday", row.kind === "pd_leave" ? "study leave" : "annual"],
     text: [LEAVE_STATUS_LABEL[row.status]],
@@ -104,6 +107,7 @@ export function sessionWorkItems(sessions: readonly SessionSummary[]): WorkItem[
         ]),
         date,
         href: session.source === "teaching" ? `/teaching/session/${session.occurrenceId}` : "/teaching/week",
+        ...(session.isPresenter ? { facet: "presenting" } : {}),
         tags: ["teaching", "session", ...(session.isPresenter ? ["presenting", "presenter", "my talk"] : [])],
         text: [session.venue ?? ""],
       } satisfies WorkItem;
