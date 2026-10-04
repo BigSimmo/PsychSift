@@ -5,7 +5,9 @@ import { ruleContentSha256, UNSIGNED, type ApprovedRuleSigner } from "@/lib/admi
 import { timeframeContentSha256, type MhaTimeframeEntry } from "@/lib/mha-timeline";
 import {
   currentMhaTimerSwitchContent,
+  isRecurringReviewEntry,
   isTimeframeSignedByNamedClinician,
+  MHA_RECURRING_DISPLAY_COUNT,
   mhaTimerGate,
   OWNER_CONFIRMED_TIMEFRAMES,
   mhaTimers,
@@ -242,5 +244,59 @@ describe("mhaTimers", () => {
       approvedSigners: SIGNERS,
     });
     expect(result.items.every((item) => item.kind === "quote-only" && item.reason === "invalid-start")).toBe(true);
+  });
+
+  describe("recurring 'each N-hour period' review", () => {
+    const recurring = [
+      signedBy(
+        entry("review", 24, {
+          quote: "before the end of each 24-hour period that an order is in force, review it",
+        }),
+        "Dr Jane Example",
+      ),
+    ];
+    const run = (at: Date, entries = recurring, start = madeAt) =>
+      mhaTimers([{ timerId: "t1", formCode: "ZZ", madeAt: start }], at, {
+        entries,
+        timerSwitch: onSwitch(entries),
+        approvedSigners: SIGNERS,
+      });
+    const deadlines = (r: ReturnType<typeof run>) =>
+      r.items.map((i) =>
+        i.kind === "countdown" ? [i.occurrence, i.deadline.toISOString(), i.repeatsEveryHours] : null,
+      );
+
+    it("recognises the repeating wording only", () => {
+      expect(isRecurringReviewEntry(recurring[0]!)).toBe(true);
+      expect(isRecurringReviewEntry(named[0]!)).toBe(false);
+    });
+
+    it("shows every further 24-hour deadline up to the display bound", () => {
+      const r = run(now);
+      expect(r.items).toHaveLength(MHA_RECURRING_DISPLAY_COUNT);
+      expect(deadlines(r).slice(0, 3)).toEqual([
+        [1, "2026-10-05T00:00:00.000Z", 24],
+        [2, "2026-10-06T00:00:00.000Z", 24],
+        [3, "2026-10-07T00:00:00.000Z", 24],
+      ]);
+    });
+
+    it("slides to the next upcoming deadline once earlier ones have passed", () => {
+      const r = run(new Date("2026-10-06T12:00:00.000Z"));
+      expect(deadlines(r)[0]).toEqual([3, "2026-10-07T00:00:00.000Z", 24]);
+      expect(r.items).toHaveLength(MHA_RECURRING_DISPLAY_COUNT);
+    });
+
+    it("keeps a deadline that is exactly due, and every fail-closed lock", () => {
+      const r = run(new Date("2026-10-05T00:00:00.000Z"));
+      expect(deadlines(r)[0]).toEqual([1, "2026-10-05T00:00:00.000Z", 24]);
+      const future = run(new Date("2026-10-03T00:00:00.000Z"));
+      expect(future.items).toEqual([expect.objectContaining({ kind: "quote-only", reason: "future-start" })]);
+      const unsigned = mhaTimers([{ timerId: "t1", formCode: "ZZ", madeAt }], now, {
+        entries: recurring,
+        timerSwitch: { content: currentMhaTimerSwitchContent(recurring), signOff: UNSIGNED },
+      });
+      expect(unsigned.items.every((i) => i.kind === "quote-only")).toBe(true);
+    });
   });
 });

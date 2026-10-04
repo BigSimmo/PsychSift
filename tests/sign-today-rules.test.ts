@@ -203,7 +203,7 @@ describe("rules:sign", () => {
     ]);
     await runSigning(run.io, store, timeframes, now);
     const text = run.printed.join("\n");
-    expect(text).toContain("Countdown interpretation you are signing: mha-timers v1");
+    expect(text).toContain("Countdown interpretation you are signing: mha-timers v2");
     const first = timeframes.entries[0]!;
     expect(text).toContain(`quote: "${first.quote}"`);
     expect(text).toContain(`source text SHA-256 ${first.sourceTextSha256}`);

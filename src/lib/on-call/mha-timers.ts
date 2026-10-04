@@ -156,7 +156,24 @@ export type MhaTimerSwitchTimeframe = {
 };
 
 export const MHA_TIMER_INTERPRETATION =
-  "mha-timers v1: elapsed hours from the order time; quote-only unless named sign-off";
+  "mha-timers v2: elapsed hours from the order time; a 'before the end of each N-hour period' review repeats every N hours while in force; quote-only unless named sign-off";
+
+/**
+ * How many review deadlines a recurring entry shows at once: the next upcoming one plus the
+ * following ones, up to this many in total. This is a DISPLAY bound only, to keep Today readable
+ * (seven 24-hour reviews is one week ahead). It is not a legal maximum: the Act, not this
+ * countdown, decides how long an order stays in force, and the window slides forward as each
+ * deadline passes, so the next deadline is always shown however long the order runs.
+ */
+export const MHA_RECURRING_DISPLAY_COUNT = 7;
+
+/** Matches Act wording of the form "before the end of each 24-hour period that an order ... is in force". */
+const RECURRING_PERIOD_PATTERN = /\beach\s+\d+-hour\s+period\b.*\bis in force\b/is;
+
+/** Whether the entry's own quote says the duty repeats for each period while the order is in force. */
+export function isRecurringReviewEntry(entry: MhaTimeframeEntry): boolean {
+  return entry.duration.unit === "hours" && RECURRING_PERIOD_PATTERN.test(entry.quote);
+}
 
 export type MhaTimerSwitch = { readonly content: MhaTimerSwitchContent; readonly signOff: RuleSignOff };
 
@@ -254,6 +271,10 @@ export type MhaTimerItem =
       /** Milliseconds from `now` to the deadline; negative once it has passed. */
       readonly remainingMs: number;
       readonly expired: boolean;
+      /** 1 for the first (or only) deadline; 2, 3... for later reviews of a recurring duty. */
+      readonly occurrence: number;
+      /** Set for a recurring duty: the deadline repeats every this many hours while the order is in force. */
+      readonly repeatsEveryHours: number | null;
     }
   | {
       readonly kind: "quote-only";
@@ -305,15 +326,32 @@ export function mhaTimers(
       } else if (startMs > nowMs) {
         quote("future-start");
       } else {
-        const remainingMs = item.deadline.getTime() - nowMs;
-        countdowns.push({
-          kind: "countdown",
-          timerId: input.timerId,
-          entry,
-          deadline: item.deadline,
-          remainingMs,
-          expired: remainingMs <= 0,
-        });
+        const firstMs = item.deadline.getTime();
+        const periodMs = entry.duration.value * 3_600_000;
+        const recurring = isRecurringReviewEntry(entry);
+        const push = (occurrence: number) => {
+          const deadline = new Date(startMs + occurrence * periodMs);
+          const remainingMs = deadline.getTime() - nowMs;
+          countdowns.push({
+            kind: "countdown",
+            timerId: input.timerId,
+            entry,
+            deadline,
+            remainingMs,
+            expired: remainingMs <= 0,
+            occurrence,
+            repeatsEveryHours: recurring ? entry.duration.value : null,
+          });
+        };
+        if (!recurring) {
+          push(1);
+        } else {
+          // The next deadline not yet passed (a deadline exactly due now still shows, as expired), then the
+          // following ones. Earlier, already-passed reviews are not shown: this module cannot
+          // know whether they were done.
+          const firstUpcoming = nowMs <= firstMs ? 1 : Math.ceil((nowMs - startMs) / periodMs);
+          for (let k = 0; k < MHA_RECURRING_DISPLAY_COUNT; k += 1) push(firstUpcoming + k);
+        }
       }
     }
   }
