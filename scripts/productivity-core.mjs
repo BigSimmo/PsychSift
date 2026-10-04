@@ -222,7 +222,7 @@ export function buildWorkflowPlan(workflow, files = [], options = {}) {
         "Run focused retrieval and answer contract tests.",
       ),
       check("npm run eval:rag:offline", "Run the provider-free golden RAG preflight."),
-      check("npm run verify:cheap", "Catch cross-cutting static and unit regressions."),
+      check("npm run verify:cheap", "Catch cross-cutting lint, typecheck, and unit regressions."),
     ];
     approvalRequired = uniqueBy(
       [

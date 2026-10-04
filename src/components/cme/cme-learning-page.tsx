@@ -97,7 +97,7 @@ function LearningItemCard({
           <ExternalLink aria-hidden="true" className="h-4 w-4" />
           <span className="sr-only">(opens the organiser&apos;s page in a new tab)</span>
         </a>
-        {phase === "past" ? (
+        {phase === "past" || phase === "upcoming" ? (
           <Link
             href={learningItemLogHref(item)}
             className="inline-flex min-h-tap items-center text-sm font-semibold text-[color:var(--clinical-accent)]"

@@ -12,6 +12,7 @@ import { onCallEntryGroups } from "@/components/on-call/on-call-entry-groups";
 import { OnCallFreshnessBadge } from "@/components/on-call/on-call-freshness-badge";
 import { OnCallGroupSection } from "@/components/on-call/on-call-group-section";
 import { OnCallVerifyButton } from "@/components/on-call/on-call-entry-editor";
+import { WhoCoversThis } from "@/components/on-call/who-covers-this";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { ExternalTextLink } from "@/components/ui/link";
 import { Disclosure } from "@/components/ui/disclosure";
@@ -162,7 +163,8 @@ export function OnCallReferralsSection({
   );
 
   return (
-    <div data-testid={testId} className="grid grid-cols-[minmax(0,1fr)] gap-2">
+    <div data-testid={testId} className="grid grid-cols-[minmax(0,1fr)] gap-3">
+      <WhoCoversThis entries={sorted} now={now} />
       {groups.length === 0
         ? sorted.map(disclosureFor)
         : groups.map((group) => (

@@ -1,4 +1,5 @@
 import {
+  IMPORT_FORBIDDEN_HEADER_PATTERNS,
   IMPORT_MAX_ROWS,
   IMPORT_TEMPLATE_HEADERS,
   importSeriesSchema,
@@ -21,6 +22,13 @@ import { plainTeachingIssue, type GroupRow, type SeriesInput } from "@/lib/teach
  */
 export type { SheetRow };
 type Header = (typeof IMPORT_TEMPLATE_HEADERS)[number];
+
+function patientShapedHeaders(headers: readonly string[]): string[] {
+  return headers.filter((header) => {
+    const normalised = header.trim().toLowerCase().replace(/[-]+/g, "_");
+    return IMPORT_FORBIDDEN_HEADER_PATTERNS.some((pattern) => pattern.test(normalised));
+  });
+}
 const COLUMN: Record<string, Header> = {
   title: "title",
   kind: "kind",
@@ -43,6 +51,11 @@ export function previewRows(table: readonly SheetRow[], groups: readonly GroupRo
     ready: null,
   });
   if (!head || missing.length > 0) return refuse(`The first row must name these columns: ${missing.join(", ")}.`);
+  const forbidden = patientShapedHeaders(headers);
+  if (forbidden.length > 0)
+    return refuse(
+      `This file looks like it contains patient details (column${forbidden.length === 1 ? "" : "s"}: ${forbidden.join(", ")}). Teaching imports only accept session columns.`,
+    );
   if (body.length === 0) return refuse("Add at least one session under the headings.");
   if (body.length > IMPORT_MAX_ROWS) return refuse(`Import at most ${IMPORT_MAX_ROWS} rows at a time.`);
 

@@ -247,7 +247,7 @@ statutory text it was written from. If the Act is amended and re-extracted, that
 stops matching and `check:mha-act-sections` fails, forcing a rewrite and re-review rather
 than leaving a stale clinical claim on the page. Validate with
 `node scripts/build-mha-act-sections.mjs --check` (`check:mha-act-sections`, in
-`verify:cheap`). `--refresh` is the repo's only network-fetching build mode and is
+`verify:full`). `--refresh` is the repo's only network-fetching build mode and is
 manual; never wire it into CI.
 
 ## Mockups are exempt
@@ -259,12 +259,12 @@ both wiring gates skip them.
 
 ## The gates
 
-| Gate                                       | Catches                                                                                          | Runs in                             |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------- |
-| `eslint-rules/require-button-wiring.mjs`   | `<button type="button">` with no handler / disabled state; `disabled` + `aria-disabled` together | `npm run lint` → `verify:cheap`, CI |
-| `tests/route-reachability.test.ts`         | static production page routes with no inbound nav link                                           | `npm run test` → `verify:cheap`, CI |
-| `tests/site-map.test.ts` / `sitemap:check` | routes / nav hrefs missing from `docs/site-map.md`                                               | `npm run test`, `verify:cheap`, CI  |
-| `npm run check:knip`                       | dead exports / orphan modules (e.g. unused href builders)                                        | `verify:cheap`, CI                  |
+| Gate                                       | Catches                                                                                          | Runs in                                               |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| `eslint-rules/require-button-wiring.mjs`   | `<button type="button">` with no handler / disabled state; `disabled` + `aria-disabled` together | `npm run lint` → `verify:cheap`, CI                   |
+| `tests/route-reachability.test.ts`         | static production page routes with no inbound nav link                                           | `npm run test` → `verify:cheap`, CI                   |
+| `tests/site-map.test.ts` / `sitemap:check` | routes / nav hrefs missing from `docs/site-map.md`                                               | `npm run test`, `sitemap:check` via `verify:full`, CI |
+| `npm run check:knip`                       | dead exports / orphan modules (e.g. unused href builders)                                        | `verify:full`, CI                                     |
 
 Intentional exceptions are documented, not silenced:
 

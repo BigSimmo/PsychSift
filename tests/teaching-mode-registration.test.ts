@@ -94,6 +94,10 @@ describe("Teaching mode registration", () => {
     expect(modePageVisible("teaching", "organise", ["doctor", "organiser"])).toBe(true);
     expect(modePageVisible("teaching", "week", [])).toBe(true);
     expect(modePageVisible("cme", "organise", [])).toBe(true);
+    expect(modePageVisible("roster", "team", [], null)).toBe(false);
+    expect(modePageVisible("roster", "swaps", [], false)).toBe(false);
+    expect(modePageVisible("roster", "team", [], true)).toBe(true);
+    expect(modePageVisible("roster", "shifts", [], null)).toBe(true);
     const { result } = renderHook(() => useTeachingRoles());
     expect(result.current).toEqual([]);
     act(() => setTeachingRoles(["admin", "doctor", "admin"]));

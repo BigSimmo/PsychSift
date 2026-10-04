@@ -33,6 +33,7 @@ vi.mock("@/components/roster/ask/use-roster-ask-context", () => ({
       selectedTeamId: "22222222-2222-4222-8222-222222222222",
       selectTeam: vi.fn(),
       loading: false,
+      teamLoading: false,
     };
   },
 }));
