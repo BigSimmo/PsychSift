@@ -116,7 +116,9 @@ export function WhoCoversThis({
           />
         </label>
         <label className="grid gap-0.5">
-          <span className="text-3xs font-semibold uppercase tracking-kicker text-[color:var(--text-muted)]">Suburb</span>
+          <span className="text-3xs font-semibold uppercase tracking-kicker text-[color:var(--text-muted)]">
+            Suburb
+          </span>
           <input
             type="text"
             value={suburb}
@@ -149,7 +151,9 @@ export function WhoCoversThis({
               data-verdict={match.verdict}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 text-sm font-semibold leading-5 text-[color:var(--text-heading)]">{entry.title}</p>
+                <p className="min-w-0 text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
+                  {entry.title}
+                </p>
                 <span
                   className={cn(
                     "shrink-0 rounded-sm border px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-kicker",
