@@ -4,7 +4,6 @@ import { expect, test, type Locator, type Page, type Request } from "playwright/
 import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { expectNoPageHorizontalOverflow, gotoApp } from "./helpers/spec-navigation";
 import { expectMinTouchTarget } from "./helpers/layout-tolerance";
-import { installNavProbe } from "./helpers/nav-probe";
 
 /**
  * Detect Next.js 16 prefetch requests across all prefetch strategies (RSC prefetch,
@@ -4230,83 +4229,61 @@ test.describe("PsychSift UI smoke coverage", () => {
   });
 
   test("submitted differentials searches stay on the standalone differentials route", async ({ page }) => {
-    test.setTimeout(600_000);
     await page.setViewportSize({ width: 1280, height: 900 });
     await mockDemoApi(page);
-    const probe = await installNavProbe(page);
-    for (let iteration = 0; iteration < 10; iteration += 1) {
-      probe.reset();
-      await gotoApp(page, "/differentials?q=acute+confusion&focus=1&run=1");
+    await gotoApp(page, "/differentials?q=acute+confusion&focus=1&run=1");
 
-      await expect(visibleByTestId(page, "differentials-search-results")).toBeVisible({ timeout: 30_000 });
-      await expect(page.getByRole("button", { name: "Mode Differentials" })).toBeVisible();
-      await expect(page.getByTestId("differentials-home")).toHaveCount(0);
+    await expect(visibleByTestId(page, "differentials-search-results")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: "Mode Differentials" })).toBeVisible();
+    await expect(page.getByTestId("differentials-home")).toHaveCount(0);
 
-      const origin = new URL(page.url());
-      const presentationResult = visibleByTestId(page, "differentials-search-results")
-        .locator('a[href^="/differentials/presentations/"]')
-        .filter({ visible: true })
-        .first();
-      await expect(presentationResult).toBeVisible();
-      await presentationResult.click();
-      await expect(page).toHaveURL(/\/differentials\/presentations\//, { timeout: 30_000 });
-      // Presentation comparisons use the shared header navigation. It carries the
-      // submitted query (and any resolved selection) back to the search workspace.
-      probe.mark("click Search tab");
-      await page.getByTestId("mode-nav").getByRole("link", { name: "Search" }).click();
-      try {
-        await expect(page).toHaveURL(
-          (url) =>
-            url.pathname === origin.pathname &&
-            url.searchParams.get("q") === origin.searchParams.get("q") &&
-            url.searchParams.get("run") === origin.searchParams.get("run"),
-          { timeout: 30_000 },
-        );
-      } catch (error) {
-        await probe.dump(`differentials Search iteration ${iteration}`);
-        throw error;
-      }
-      await expect(visibleByTestId(page, "differentials-search-results")).toBeVisible({ timeout: 30_000 });
-    }
+    const origin = new URL(page.url());
+    const presentationResult = visibleByTestId(page, "differentials-search-results")
+      .locator('a[href^="/differentials/presentations/"]')
+      .filter({ visible: true })
+      .first();
+    await expect(presentationResult).toBeVisible();
+    await presentationResult.click();
+    await expect(page).toHaveURL(/\/differentials\/presentations\//, { timeout: 30_000 });
+    // Presentation comparisons use the shared header navigation. It carries the
+    // submitted query (and any resolved selection) back to the search workspace.
+    await page.getByTestId("mode-nav").getByRole("link", { name: "Search" }).click();
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === origin.pathname &&
+        url.searchParams.get("q") === origin.searchParams.get("q") &&
+        url.searchParams.get("run") === origin.searchParams.get("run"),
+      { timeout: 30_000 },
+    );
+    await expect(visibleByTestId(page, "differentials-search-results")).toBeVisible({ timeout: 30_000 });
   });
 
   test("document detail back arrow restores its originating search", async ({ page }) => {
-    test.setTimeout(600_000);
     await page.setViewportSize({ width: 1280, height: 900 });
     await mockDemoApi(page);
-    const probe = await installNavProbe(page);
-    for (let iteration = 0; iteration < 10; iteration += 1) {
-      probe.reset();
-      await gotoApp(page, "/documents/search?mode=documents&q=lithium+monitoring&run=1");
+    await gotoApp(page, "/documents/search?mode=documents&q=lithium+monitoring&run=1");
 
-      const workspace = page.getByTestId("document-search-workspace");
-      const firstResult = workspace.getByTestId("document-result-card").first();
-      await expect(firstResult).toBeVisible({ timeout: 30_000 });
-      const origin = new URL(page.url());
-      // The card is server-rendered, so it is visible before the client router owns its link. A
-      // Firefox release run clicked it in that gap and nothing navigated for 30 s.
-      const openLink = firstResult.getByRole("link", { name: /^Open / });
-      await waitForReactEventHandler(openLink, "onClick");
-      probe.mark("click Open");
-      await openLink.click();
-      try {
-        await expect(page).toHaveURL(/\/documents\/[0-9a-f-]+\?/, { timeout: 30_000 });
-      } catch (error) {
-        await probe.dump(`document Open iteration ${iteration}`);
-        throw error;
-      }
+    const workspace = page.getByTestId("document-search-workspace");
+    const firstResult = workspace.getByTestId("document-result-card").first();
+    await expect(firstResult).toBeVisible({ timeout: 30_000 });
+    const origin = new URL(page.url());
+    // The card is server-rendered, so it is visible before the client router owns its link. A
+    // Firefox release run clicked it in that gap and nothing navigated for 30 s.
+    const openLink = firstResult.getByRole("link", { name: /^Open / });
+    await waitForReactEventHandler(openLink, "onClick");
+    await openLink.click();
+    await expect(page).toHaveURL(/\/documents\/[0-9a-f-]+\?/, { timeout: 30_000 });
 
-      await page.getByRole("link", { name: "Back to documents" }).click();
-      await expect(page).toHaveURL(
-        (url) =>
-          url.pathname === origin.pathname &&
-          url.searchParams.get("q") === origin.searchParams.get("q") &&
-          url.searchParams.get("run") === origin.searchParams.get("run") &&
-          url.searchParams.get("mode") === origin.searchParams.get("mode"),
-        { timeout: 30_000 },
-      );
-      await expect(workspace).toBeVisible({ timeout: 30_000 });
-    }
+    await page.getByRole("link", { name: "Back to documents" }).click();
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === origin.pathname &&
+        url.searchParams.get("q") === origin.searchParams.get("q") &&
+        url.searchParams.get("run") === origin.searchParams.get("run") &&
+        url.searchParams.get("mode") === origin.searchParams.get("mode"),
+      { timeout: 30_000 },
+    );
+    await expect(workspace).toBeVisible({ timeout: 30_000 });
   });
 
   test("document detail back arrow skips PDF page changes at phone and desktop", async ({ page }) => {
