@@ -9,6 +9,7 @@ import { cn, textMuted, toolbarButton } from "@/components/ui-primitives";
 import { displayPhoneNumber } from "@/lib/admin/phone-display";
 import { formatUpdatedMonth } from "@/lib/admin/renewal-dates";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
+import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 
 function detailString(entry: OnCallEntry, key: "phone" | "url"): string | null {
@@ -72,7 +73,11 @@ export function AdminNewJobStepRow({
       <div className={cn("grid min-w-0 flex-1 gap-0.5 self-center py-1", onToggle ? "px-1" : "px-2")}>
         <span className="break-words text-sm font-medium text-[color:var(--text-heading)]">{entry.title}</span>
         {entry.subtitle ? <span className={cn(textMuted, "break-words text-sm")}>{entry.subtitle}</span> : null}
-        {phone ? (
+        {phone && isOnCallPlaceholderNumber(phone) ? (
+          <span className="nums inline w-fit break-words text-sm text-[color:var(--text)]">
+            {displayPhoneNumber(phone, "own-list")}
+          </span>
+        ) : phone ? (
           <a
             href={telHref ?? `tel:${phone}`}
             className="nums inline w-fit break-words text-sm text-[color:var(--text)]"

@@ -8,7 +8,7 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { mondayOf, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
+import { addDays, mondayOf, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
 import { DayRail, SessionTimeline, TeachingModule, TeachingSwitch } from "@/components/teaching/teaching-modules";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
@@ -27,6 +27,11 @@ import { buttonFaceClass } from "@/components/ui/button";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
 import type { HealthServiceCode } from "@/lib/teaching/model";
+import {
+  useSignedOutSampleRead,
+  useTeachingDemoMode,
+  useTeachingSignedOut,
+} from "@/components/teaching/use-teaching-sample";
 
 /*
  * What's on (spec §5a): the reader's health service's week, "On now" first
@@ -42,12 +47,29 @@ import type { HealthServiceCode } from "@/lib/teaching/model";
 type WhatsOnRead = { healthServices: HealthServiceCode[]; sessions: WhatsOnRowRead[] };
 const CONTEXT = { teams: [], attendance: [], showTeam: false } as const;
 
-export function TeachingWhatsOn({ demoMode, sampleData }: { demoMode: boolean; sampleData?: WhatsOnRead }) {
+export function TeachingWhatsOn({
+  demoMode: serverDemoMode,
+  sampleData: serverSample,
+}: {
+  demoMode: boolean;
+  sampleData?: WhatsOnRead;
+}) {
+  const demoMode = useTeachingDemoMode(serverDemoMode);
+  const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const monday = today ? mondayOf(today) : null;
+  // Signed out with no server sample: build the made-up week here, and ask the API for nothing.
+  const built = useSignedOutSampleRead<WhatsOnRead>(signedOut && !serverSample, monday, async () => {
+    const { demoWhatsOnSessions } = await import("@/lib/teaching/demo-programme");
+    return {
+      healthServices: ["demo"],
+      sessions: demoWhatsOnSessions({ from: monday!, to: addDays(monday!, 6) }, new Date()),
+    };
+  });
+  const sampleData = serverSample ?? built;
   const read = useTeachingResource<WhatsOnRead>(
-    monday ? `/api/teaching/whats-on?weekStart=${monday}` : null,
+    monday && !(signedOut && !sampleData) ? `/api/teaching/whats-on?weekStart=${monday}` : null,
     sampleData,
   );
   const [day, setDay] = useState<string | null>(null);

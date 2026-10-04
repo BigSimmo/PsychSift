@@ -176,10 +176,17 @@ describe("MyDayHoursPage", () => {
     expect(screen.getByTestId("my-day-hours-shifts-link")).toBeTruthy();
   });
 
-  it("asks a signed-out reader to sign in and shows no figures", () => {
+  it("shows a signed-out reader sample hours, reads nothing and keeps nothing", async () => {
     auth.status = "signed_out";
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
     render(<MyDayHoursPage now={NOW} />);
     expect(screen.getByTestId("my-day-hours-signed-out")).toBeTruthy();
-    expect(screen.queryByTestId("my-day-hours-ready")).toBeNull();
+    expect(await screen.findByTestId("my-day-hours-ready")).toBeTruthy();
+    expect(screen.getByTestId("my-day-hours-week")).toBeTruthy();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+    setItem.mockRestore();
   });
 });
