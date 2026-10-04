@@ -7,7 +7,8 @@ import { cn } from "@/components/ui-primitives";
 
 /**
  * Pocket-card QR that points at this browser's live `/on-call/card`. Drawn after
- * hydration so the origin is real; print-safe light paper and dark modules.
+ * hydration so the origin is real. Uses the Teaching QR tokens (light quiet zone,
+ * dark modules) so cameras can read it in every theme and on paper.
  */
 export function OnCallCardQr({ className }: { readonly className?: string }) {
   const [value, setValue] = useState<string | null>(null);
@@ -24,11 +25,12 @@ export function OnCallCardQr({ className }: { readonly className?: string }) {
       viewBox={`0 0 ${drawn.size} ${drawn.size}`}
       shapeRendering="crispEdges"
       data-testid="on-call-card-qr"
+      data-mode-identity="teaching"
       data-qr-value={value}
       className={cn("block size-20 forced-color-adjust-none print:size-16", className)}
     >
-      <rect width={drawn.size} height={drawn.size} fill="#ffffff" />
-      <path d={drawn.path} fill="#000000" />
+      <rect width={drawn.size} height={drawn.size} className="fill-[color:var(--teaching-qr-light)]" />
+      <path d={drawn.path} className="fill-[color:var(--teaching-qr-dark)]" />
     </svg>
   );
 }
