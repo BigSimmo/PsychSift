@@ -104,6 +104,13 @@ export const FORBIDDEN_VERDICTS: readonly VerdictPattern[] = [
     why: "a verdict on the reader's standing",
   },
   { pattern: /\bcurrent\s+(to|until|through)\b/i, why: "a verdict with an expiry attached" },
+  // A bare label is the verdict. Case-sensitive, so an internal token such as
+  // the sign-off denylist entry "reviewed" is not the chip. "Reviewed by a
+  // second editor, 12 Aug 2026" names a person and a date. "Met" as a
+  // clinician's own DSM tick lives outside these surfaces.
+  { pattern: /^\s*Reviewed\s*$/, why: "a bare review verdict; name who checked it and when" },
+  { pattern: /^\s*Met\s*$/, why: "a bare status word; a recorded date is not a requirement being met" },
+  { pattern: /\brequirements?\s+met\b/i, why: "a verdict that this app has not checked with anyone" },
 ];
 
 /** A string the parser saw, and where it saw it. */
