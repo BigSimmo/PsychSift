@@ -90,8 +90,8 @@ describe("ruleGate", () => {
     expect(ruleGate(signed({ enabled: false }), content, approved)).toEqual({ on: false, reason: "switched-off" });
   });
 
-  it("ships with no approved signers, so nothing can be switched on by default", () => {
-    expect(APPROVED_RULE_SIGNERS).toEqual([]);
+  it("by default trusts only the committed signer list, which the owner writes with rules:sign", () => {
+    expect(APPROVED_RULE_SIGNERS.some((signer) => signer.userId === SIGNER_ID)).toBe(false);
     expect(ruleGate(signed(), content)).toEqual({ on: false, reason: "signer-not-approved" });
   });
 
