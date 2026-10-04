@@ -56,11 +56,13 @@ export const phoneModeGroups = [
       "first-nations",
     ],
   },
+  // Medicines & tools, like Psychiatry, is a dashboard (`/medicines`) that
+  // gathers these sections and leads its group (modes review, phase 3).
   {
     id: "care",
     label: "Medicines & tools",
     hint: "Medication, calculators, reference",
-    modeIds: ["prescribing", "calculators", "tools", "factsheets", "dictionary"],
+    modeIds: ["medicines", "prescribing", "calculators", "tools", "factsheets", "dictionary"],
   },
 ] as const satisfies ReadonlyArray<{
   id: string;

@@ -163,6 +163,11 @@ export const sharedHomePresentation = {
     // Section words only: nothing personal is ever suggested into a search.
     suggestions: ["overdue", "due soon", "coming up"],
   },
+  medicines: {
+    title: "Medicines & tools",
+    subtitle: "Medication, calculators, clinical tools, factsheets and the dictionary.",
+    suggestions: ["lithium monitoring", "clozapine", "valproate"],
+  },
 } as const satisfies Record<AppModeId, SharedHomePresentation>;
 
 /** Browser/assistive-technology title for the mode selected on the shared home. */

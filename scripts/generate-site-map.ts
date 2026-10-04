@@ -183,6 +183,8 @@ const routeDescriptions: Record<string, string> = {
   "/on-call/who-is-who": "What each on-call role does, when to call them, and the acronyms this service uses.",
   "/psychiatry":
     "Psychiatry dashboard: one card each for DSM-5 Diagnosis, Differentials, Specifiers, Formulation, Therapy and Forms, linking to those modes at their own addresses. A dashboard, not a redirect to the shared search home — Psychiatry has no search results surface.",
+  "/medicines":
+    "Medicines & tools dashboard: one card each for Medication, Calculators, Tools, Factsheets and Dictionary, linking to those modes at their own addresses. A dashboard, not a redirect to the shared search home — it has no search results surface.",
   "/admin":
     "Admin Today: the next renewal to act on, what needs you, statewide requirements recorded and new-job progress. Admin has no search results surface.",
   "/admin/renewals":
@@ -350,6 +352,7 @@ const routeOwnershipRows = [
   ["On Call", "src/app/(search-app)/on-call, src/components/on-call"],
   ["CPD", "src/app/(search-app)/cme, src/components/cme"],
   ["Psychiatry", "src/app/(search-app)/psychiatry, src/components/psychiatry"],
+  ["Medicines & tools", "src/app/(search-app)/medicines, src/components/medicines"],
   ["Admin", "src/app/(search-app)/admin, src/components/admin, src/lib/admin"],
   ["First Nations", "src/app/(search-app)/first-nations, src/components/first-nations, src/lib/first-nations"],
   ["Teaching", "src/app/(search-app)/teaching, src/app/(display)/teaching, src/components/teaching"],
@@ -542,6 +545,7 @@ function renderModeRoutes() {
     "first-nations": appModeHomeHref("first-nations"),
     teaching: appModeHomeHref("teaching"),
     "my-day": appModeHomeHref("my-day"),
+    medicines: appModeHomeHref("medicines"),
   };
 
   return appModeDefinitions.map((mode) => {
@@ -695,6 +699,13 @@ function renderModePageIndex() {
       search: appModeHomeHref("psychiatry"),
       detail:
         'No results page — `resultsSurface: "none"`, like On Call and CPD. `/psychiatry` is a dashboard of links; the six modes it gathers keep their own routes and searches.',
+    },
+    {
+      mode: "Medicines & tools",
+      home: appModeHomeHref("medicines"),
+      search: appModeHomeHref("medicines"),
+      detail:
+        'No results page — `resultsSurface: "none"`, like Psychiatry. `/medicines` is a dashboard of links; the five modes it gathers keep their own routes and searches.',
     },
     {
       mode: "Admin",

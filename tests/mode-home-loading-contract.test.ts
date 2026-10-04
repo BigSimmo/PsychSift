@@ -32,6 +32,8 @@ const MODE_HOME_LOADING_ROUTES = [
   "cme",
   // Psychiatry's dashboard, a standalone mode home for the same reason.
   "psychiatry",
+  // The Medicines & tools dashboard, Psychiatry's twin.
+  "medicines",
   // Admin's Today (mode id `my-work`), likewise.
   "admin",
   // Roster's dashboard, a standalone mode home for the same reason.
