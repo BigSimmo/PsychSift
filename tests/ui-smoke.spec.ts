@@ -6716,7 +6716,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 // TEMPORARY PROBES (diagnostic only, removed before merge).
 test.describe("PROBE diagnostics", () => {
   test("PROBE firefox document back race", async ({ page, browserName }) => {
-    test.skip(browserName !== "firefox" && browserName !== "chromium", "probe targets firefox");
+    test.skip(browserName !== "firefox", "probe targets firefox");
     await mockDemoApi(page);
     const documentId = "22222222-2222-4222-8222-222222222222";
     const results: string[] = [`navigationApi=${await page.evaluate(() => "navigation" in window)}`];
