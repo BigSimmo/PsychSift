@@ -12,8 +12,12 @@ import {
   buildFavouritesSample,
   FAVOURITES_SAMPLE_SET,
   SAMPLE_DIFFERENTIAL_SLUGS,
+  SAMPLE_DIFFERENTIALS,
+  SAMPLE_THERAPIES,
   SAMPLE_THERAPY_SLUGS,
 } from "@/components/clinical-dashboard/favourites-sample-data";
+import { getDifferentialRecord } from "@/lib/differentials";
+import { findTherapyRecord } from "@/lib/therapies";
 
 const auth = vi.hoisted(() => ({
   status: "signed_out" as string,
@@ -55,6 +59,17 @@ describe("favourites sample data", () => {
     }
     expect(sample.items.some((item) => item.set === FAVOURITES_SAMPLE_SET)).toBe(true);
     for (const id of sample.pinnedIds) expect(sample.items.some((item) => item.id === id)).toBe(true);
+  });
+
+  it("uses each entry's own catalogue title, and only reviewed therapies", () => {
+    for (const slug of SAMPLE_DIFFERENTIAL_SLUGS) {
+      expect(getDifferentialRecord(slug)?.title).toBe(SAMPLE_DIFFERENTIALS[slug]);
+    }
+    for (const slug of SAMPLE_THERAPY_SLUGS) {
+      const therapy = findTherapyRecord(slug);
+      expect(therapy?.name).toBe(SAMPLE_THERAPIES[slug]);
+      expect(therapy?.reviewStatus).toBe("reviewed");
+    }
   });
 });
 
