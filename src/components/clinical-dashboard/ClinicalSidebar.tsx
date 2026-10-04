@@ -117,6 +117,7 @@ const sidebarMoreModeIds = [
   "roster",
   "first-nations",
   "my-day",
+  "medicines",
 ] as const satisfies readonly AppModeId[];
 
 const sidebarModeItems = [

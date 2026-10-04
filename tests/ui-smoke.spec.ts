@@ -2000,16 +2000,16 @@ test.describe("PsychSift UI smoke coverage", () => {
     ]);
 
     // The full catalogue remains in one radio menu, but the phone presentation
-    // now groups it into the three clinical jobs clinicians scan for first, then
-    // On Call and CPD as areas of their own.
+    // now groups it into five doors: My Day (with the work areas), On Call,
+    // then the three clinical doors (modes review, phase 1).
     const modeOptions = appModeMenu.getByRole("menuitemradio");
     const modeCount = await modeOptions.count();
     expect(modeCount).toBeGreaterThanOrEqual(10);
-    await expect(appModeMenu.getByRole("heading", { name: "Find" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Care" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "CPD" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
     // Sources reached the desktop menu (built from `appModeDefinitions`) but not
@@ -2017,7 +2017,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     // `tests/phone-mode-groups.test.ts` guards the constant; this is the rendered proof.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ })).toBeAttached();
     // My Day leads the list (design review 2026-10-03, item 4), so the first
-    // option is My Day and the active Answer option is checked under Find.
+    // option is My Day and the active Answer option is checked under Search.
     await expect(modeOptions.first()).toBeInViewport();
     await expect(modeOptions.first()).toContainText("My Day");
     const answerOption = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
@@ -4596,26 +4596,26 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(modeDialog).toBeVisible();
     await expect(appModeMenu).toBeVisible();
     await expect(modeSearch).toBeFocused();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(24);
-    await expect(appModeMenu.getByRole("heading", { name: "Find" })).toBeAttached();
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(25);
+    await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Care" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Admin" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "First Nations" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "CPD and teaching", exact: true })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading")).toHaveCount(5);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toBeAttached();
 
     await modeSearch.fill("d");
-    await expect(modeDialog.getByRole("status")).toHaveText("8 matches");
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(8);
+    await expect(modeDialog.getByRole("status")).toHaveText("9 matches");
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(9);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Differentials\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^DSM-5 Diagnosis\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
+    // "Medicines & tools", the hub that leads its group, carries a "d" too.
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines & tools\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     // "CPD" carries a "d" too (the mode's label was "CME" before the RANZCP rename).
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toBeAttached();
@@ -4623,14 +4623,14 @@ test.describe("PsychSift UI smoke coverage", () => {
     // "My Day" carries a "d" too.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
     await modeDialog.getByRole("button", { name: "Clear mode search" }).click();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(24);
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(25);
 
     const answerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
     await answerMode.focus();
     await expect(answerMode).toBeFocused();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Evidence\b/ })).toHaveCount(0);
-    // Arrow Down follows the drawn order, group by group: the end of Find
-    // steps into Psychiatry, and the end of Psychiatry steps into Care.
+    // Arrow Down follows the drawn order, group by group: the end of Search
+    // steps into Psychiatry, and the end of Psychiatry steps into Medicines & tools.
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
@@ -4653,6 +4653,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Therapy\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Forms\b/ })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^First Nations\b/ })).toBeFocused();
+    // Medicines & tools is led by its hub, as Psychiatry is.
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines & tools\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeFocused();
     await page.keyboard.press("Escape");

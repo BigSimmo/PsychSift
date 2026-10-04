@@ -62,6 +62,10 @@ export interface MyDayDashboardSources {
     readonly categoryTargets: Readonly<Record<CmeCategory, number | null>>;
     /** Hours per month of the CPD year, January first. */
     readonly byMonth: readonly number[];
+    /** This year's activities, for the CPD hours card's weekly bars. */
+    readonly entries?: readonly CmeEntry[];
+    /** The year has been closed: the hours card shows no pace line. */
+    readonly closed?: boolean;
     readonly sample: boolean;
   };
   /** Colleagues on now on the reader's confirmed team; absent in older callers and tests. */
@@ -79,6 +83,8 @@ type CpdLoaded =
       byCategory: CpdByCategory;
       categoryTargets: Readonly<Record<CmeCategory, number | null>>;
       byMonth: readonly number[];
+      entries: readonly CmeEntry[];
+      closed: boolean;
       sample: boolean;
     }
   | { status: "unavailable" | "failed" };
@@ -110,6 +116,8 @@ async function loadCpd(signal: AbortSignal): Promise<CpdLoaded | null> {
       byCategory: cpdHoursByCategory(entries.entries as CmeEntry[]),
       categoryTargets: cpdCategoryTargets(set.requirements ?? []),
       byMonth: cpdHoursByMonth(entries.entries as CmeEntry[], set.year),
+      entries: entries.entries as CmeEntry[],
+      closed: Boolean(set.closedAt),
       sample: year.demoMode === true || entries.demoMode === true,
     };
   } catch {
@@ -161,6 +169,8 @@ const NO_CPD = {
   byCategory: { educational: 0, reviewing: 0, measuring: 0 },
   categoryTargets: { educational: null, reviewing: null, measuring: null },
   byMonth: [] as readonly number[],
+  entries: [] as readonly CmeEntry[],
+  closed: false,
   sample: false,
 } as const;
 

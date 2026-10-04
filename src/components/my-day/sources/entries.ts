@@ -177,6 +177,8 @@ const STATUS_BY_LOAD: Record<AdminLoadState, MyDaySourceStatus> = {
   ready: "ready",
 };
 
+const NO_ENTRIES: readonly OnCallEntry[] = [];
+
 export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now: Date }): {
   admin: MyDaySourceResult;
   onCall: MyDaySourceResult;
@@ -186,6 +188,8 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
   renewals: readonly RenewalRow[];
   /** Admin's Help items (the reader's own and shared numbers), for pinned numbers; empty until ready. */
   helpItems: readonly AdminHelpItem[];
+  /** The reader's own Admin entries, for Renew next and the renewals timeline; empty until ready. */
+  adminEntries: readonly OnCallEntry[];
   retry: () => void;
 } {
   // `useOnCallEntries` fetches unconditionally and cannot be disabled; it is
@@ -230,5 +234,6 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
         : NO_HELP_ITEMS,
     [ready, own, entries, demoMode],
   );
-  return { admin, onCall, nextRenewal, renewals, helpItems, retry };
+  const adminEntries = ready ? own : NO_ENTRIES;
+  return { admin, onCall, nextRenewal, renewals, helpItems, adminEntries, retry };
 }

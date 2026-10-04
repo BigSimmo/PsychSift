@@ -14,6 +14,7 @@
 
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import type { RenewalRow } from "@/lib/my-day/figures";
+import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import type { TodayItem } from "@/lib/today/today-item";
 import { todaySeverities, type TodaySeverity } from "@/lib/today/today-item";
 
@@ -92,4 +93,6 @@ export interface MyDayState {
   readonly renewals?: readonly RenewalRow[];
   /** Admin's Help items, for the pinned numbers card. */
   readonly helpItems?: readonly AdminHelpItem[];
+  /** The reader's own Admin entries, for Renew next and the renewals timeline. */
+  readonly adminEntries?: readonly OnCallEntry[];
 }

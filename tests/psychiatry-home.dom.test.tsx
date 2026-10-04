@@ -43,7 +43,15 @@ describe("PsychiatryHome", () => {
 
     const group = phoneModeGroups.find((candidate) => candidate.id === "psychiatry");
     const sections = (group?.modeIds ?? []).filter((modeId: AppModeId) => modeId !== "psychiatry");
-    expect(sections).toEqual(["dsm", "differentials", "specifiers", "formulation", "therapy-compass", "forms"]);
+    expect(sections).toEqual([
+      "dsm",
+      "differentials",
+      "specifiers",
+      "formulation",
+      "therapy-compass",
+      "forms",
+      "first-nations",
+    ]);
 
     const list = screen.getByRole("list", { name: "Psychiatry sections" });
     const links = within(list).getAllByRole("link");
