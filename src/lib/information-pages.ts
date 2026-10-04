@@ -28,6 +28,7 @@ export type InformationPageMode =
   | "roster"
   | "first-nations"
   | "my-day"
+  | "medicines"
   | "teaching";
 
 // Reserved route suffixes, not record slugs. `search` is here because home
@@ -98,6 +99,8 @@ export function isInformationPage(pathname: string): boolean {
   // surface, so its home must not wear a composer. The sections it links to
   // keep their own routes and their own composers.
   if (pathname === "/psychiatry") return true;
+  // The Medicines & tools dashboard, Psychiatry's twin, on the same reasoning.
+  if (pathname === "/medicines") return true;
   // Every Admin page owns its in-page navigation and has no search composer.
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
   // Every Roster route, the mode home included, for On Call's reason exactly:
@@ -170,4 +173,5 @@ export const informationPageShellModes = [
   "first-nations",
   "teaching",
   "my-day",
+  "medicines",
 ] as const satisfies readonly InformationPageMode[];

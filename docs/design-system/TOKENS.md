@@ -170,7 +170,7 @@ they will diverge when the legacy notches retire. **Do not mix `text-sm` and
 | Space/type/radius                                                             | Semantic tokens in markup                                                               | Raw scale values or literals in components; `--measure` on non-prose                                        |
 | Quantity/spine/status-mark                                                    | Their named components only                                                             | Reuse as generic decoration                                                                                 |
 | Mode identity (`--mode-identity*`)                                            | A mode's OWN chrome — its switcher pill, its in-page bar — via `data-mode-identity`     | Page content; clinical state; a semantic hue; a mode without a §7.1 row                                     |
-| Dashboard style (`--dash-*`, `font-dash-*`)                                   | Inside `.dash-surface` only — the personal My Day dashboard, per §7.2                   | Clinical pages; source or clinical state; any surface outside `.dash-surface`                               |
+| Dashboard style (`--dash-*`, `font-dash-*`)                                   | Inside `.dash-surface` only — My Day and the Psychiatry hub, per §7.2                   | Clinical pages; source or clinical state; any surface outside `.dash-surface`                               |
 
 ### 7.1 · Mode identity — the owner decision, 2026-09-13
 
@@ -237,6 +237,14 @@ What it never allows:
 Components live in `src/components/dashboard-kit/` (hero/flag/default card, icon chip, stat
 tile, progress ring and ring stack, item row, pill, segmented switch, week tiles, quick
 actions). A second page wanting this style is a new owner decision, not a reuse of this one.
+
+**Second owner decision, 2026-10-03: the Psychiatry hub (`/psychiatry`).** The owner rejected a
+plain clinical hub ("the psych hub is poorly designed… I want it where possible designed like the
+personal hub") and approved the v2 mock-up in this style. The hub is a front door of links into
+the psychiatry sections, not clinical content, so it may use `.dash-surface` with these limits:
+blues and neutrals only (no `--dash-green*` or `--dash-amber*`, because on clinical pages those
+hues read as source status); every figure real or absent; and the sections it links to keep the
+mode kit. Any other page still needs its own owner decision.
 
 ## 8 · Naming rules going forward
 

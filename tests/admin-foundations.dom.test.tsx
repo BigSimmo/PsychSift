@@ -62,7 +62,7 @@ describe("adminLoadState", () => {
 
 describe("the old page files stay as redirect backstops (spec review 8)", () => {
   it.each([
-    ["@/app/(search-app)/my-work/page", "/admin"],
+    ["@/app/(search-app)/my-work/page", "/admin/renewals"],
     ["@/app/(search-app)/on-call/compliance/page", "/admin/renewals"],
     ["@/app/(search-app)/on-call/logistics/page", "/admin/help"],
   ])("%s redirects to %s", async (modulePath, target) => {

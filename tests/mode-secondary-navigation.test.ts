@@ -51,10 +51,11 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Who's who",
     "Orientation checklists",
   ],
-  cme: ["Today", "Log", "Plan", "Learning", "Set up"],
+  cme: ["Year", "Log", "Plan", "Learning", "Set up"],
   teaching: ["Today", "Week", "What's on", "Resources", "Logbook", "Teach", "Supervision", "Organise"],
   psychiatry: [],
-  "my-work": ["Today", "Renewals", "New job", "Help"],
+  medicines: [],
+  "my-work": ["Renewals", "New job", "Help"],
   roster: ["Today", "Shifts", "Team", "Swaps", "Requests", "Settings"],
   "first-nations": [
     "Bedside",
@@ -91,7 +92,8 @@ const cleanLandingPath: Record<AppModeId, string> = {
   cme: "/cme",
   teaching: "/teaching",
   psychiatry: "/psychiatry",
-  "my-work": "/admin",
+  medicines: "/medicines",
+  "my-work": "/admin/renewals",
   roster: "/roster",
   "first-nations": "/first-nations",
   "my-day": "/my-day",
@@ -124,12 +126,13 @@ const emptyRegistryModes = [
   "tools",
   "calculators",
   "psychiatry",
+  "medicines",
 ] as const satisfies readonly AppModeId[];
 
 describe("mode secondary navigation registry", () => {
-  it("covers all 24 modes with the approved destinations and no Home item", () => {
+  it("covers all 25 modes with the approved destinations and no Home item", () => {
     expect(Object.keys(modeSecondaryNavigationRegistry).sort()).toEqual([...appModeIds].sort());
-    expect(appModeIds).toHaveLength(24);
+    expect(appModeIds).toHaveLength(25);
 
     for (const modeId of appModeIds) {
       const labels = modeSecondaryNavigationRegistry[modeId].map((item) => item.label);
@@ -158,7 +161,7 @@ describe("mode secondary navigation registry", () => {
 
   it("keeps every older CPD address under one of the five current pages", () => {
     expect(modeSecondaryNavigationRegistry.cme.map(({ label }) => label)).toEqual([
-      "Today",
+      "Year",
       "Log",
       "Plan",
       "Learning",

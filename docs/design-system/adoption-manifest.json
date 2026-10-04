@@ -1731,7 +1731,6 @@
         "src/components/dsm/dsm-page-header.tsx",
         "src/components/factsheets/factsheets-topics-page.tsx",
         "src/components/information-page-shell.tsx",
-        "src/components/psychiatry/psychiatry-home.tsx",
         "src/components/specifiers/specifier-compare-page.tsx",
         "src/components/specifiers/specifier-map-page.tsx",
         "src/components/therapy-compass/screens/brief-screen.tsx",
@@ -1750,7 +1749,6 @@
         "src/components/dsm/dsm-page-header.tsx",
         "src/components/factsheets/factsheets-topics-page.tsx",
         "src/components/information-page-shell.tsx",
-        "src/components/psychiatry/psychiatry-home.tsx",
         "src/components/specifiers/specifier-compare-page.tsx",
         "src/components/specifiers/specifier-map-page.tsx",
         "src/components/therapy-compass/screens/brief-screen.tsx",
@@ -3188,6 +3186,7 @@
         "src/app/(search-app)/forms/page.tsx",
         "src/app/(search-app)/forms/search/page.tsx",
         "src/app/(search-app)/medications/[slug]/page.tsx",
+        "src/app/(search-app)/medicines/page.tsx",
         "src/app/(search-app)/my-day/hours/page.tsx",
         "src/app/(search-app)/my-day/page.tsx",
         "src/app/(search-app)/my-day/week/page.tsx",
@@ -3806,6 +3805,16 @@
         },
         {
           "file": "src/app/(search-app)/medications/[slug]/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/medicines/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5516,6 +5525,7 @@
       "src/app/(search-app)/formulation/search/page.tsx",
       "src/app/(search-app)/medications/[slug]/page.tsx",
       "src/app/(search-app)/medications/page.tsx",
+      "src/app/(search-app)/medicines/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
@@ -5671,6 +5681,7 @@
       "src/app/(search-app)/formulation/search/page.tsx",
       "src/app/(search-app)/medications/[slug]/page.tsx",
       "src/app/(search-app)/medications/page.tsx",
+      "src/app/(search-app)/medicines/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
@@ -5756,7 +5767,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 160,
+    "inheritedCkbV2RootCount": 161,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -5765,8 +5776,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 46,
-    "rootCount": 161,
-    "productionRouteCount": 153,
-    "nextUiEntryCount": 245
+    "rootCount": 162,
+    "productionRouteCount": 154,
+    "nextUiEntryCount": 248
   }
 }

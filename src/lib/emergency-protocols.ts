@@ -300,7 +300,7 @@ export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] 
     caveat:
       "Tachycardia alone is common and often benign with clozapine, but persistent tachycardia with fever, dyspnoea, or elevated biomarkers mandates immediate cessation and investigation.",
     evidenceSource:
-      "Ronaldson et al., Australian & New Zealand Journal of Psychiatry (Clozapine myocarditis monitoring protocol); Therapeutic Guidelines: Psychotropic; RANZCP Guidelines.",
+      "WA Department of Health, Guidelines for the Safe and Quality Use of Clozapine Therapy in the WA health system (Version 2, June 2024; cardiologist advice on rechallenge after myocarditis); Ronaldson et al., Australian & New Zealand Journal of Psychiatry (Clozapine myocarditis monitoring protocol); Therapeutic Guidelines: Psychotropic; RANZCP Guidelines.",
   },
   {
     id: "EMERG-MALIGNANT-CATATONIA",
@@ -323,10 +323,15 @@ export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] 
     urgentInvestigations: [
       "Serum CK (Creatine Kinase): assess muscle breakdown and rhabdomyolysis",
       "EUC, FBC, Electrolytes, Coagulation profile, Blood gas",
-      // Reviewer-suggested (PR #3230 thread); source to be added: the repo holds no source for these items.
-      "Neuroimaging (CT/MRI brain) and septic screen evaluate structural and infective mimics; imaging does not exclude anti-NMDA receptor encephalitis",
-      // Reviewer-suggested (PR #3230 thread); source to be added.
-      "EEG, lumbar puncture and CSF antibody testing, under neurology guidance",
+      // Owner decision (PR #3230 follow-up): the lines below say only what the BAP catatonia
+      // guideline supports (Rogers et al., J Psychopharmacol 2023, PMC10101189). No Australian
+      // equivalent found, rung 5 (international). Not in the source register: the publisher (BAP) is
+      // unregistered and registering it moves retrieval tiering, which needs an owner decision.
+      // Source: https://pmc.ncbi.nlm.nih.gov/articles/PMC10101189/
+      "Investigations, such as blood tests, urine drug screen, lumbar puncture, EEG and neuroimaging, should be considered based on history and examination findings",
+      "First episode of catatonia, or underlying diagnosis unclear: consider a CT or MRI scan of the brain",
+      "Consider assessing for NMDA receptor antibodies and other relevant autoantibodies in serum and CSF",
+      "Risk factors for seizures, possible evidence of a seizure or possible encephalitis: consider an EEG",
     ],
     immediateManagement: [
       {
@@ -354,7 +359,7 @@ export const EMERGENCY_CLINICAL_PROTOCOLS: readonly EmergencyClinicalProtocol[] 
     caveat:
       "Dopamine antagonists (antipsychotics) must be avoided in acute catatonia as they can precipitate or aggravate neuroleptic malignant syndrome.",
     evidenceSource:
-      "Bush-Francis Catatonia Rating Scale guidelines; Maudsley Prescribing Guidelines (14th ed); Fink & Taylor, Catatonia: A Clinician's Guide to Diagnosis and Treatment.",
+      "Rogers et al., British Association for Psychopharmacology evidence-based consensus guidelines for the management of catatonia, J Psychopharmacol 2023 (investigations; no Australian equivalent found); Bush-Francis Catatonia Rating Scale guidelines; Maudsley Prescribing Guidelines (14th ed); Fink & Taylor, Catatonia: A Clinician's Guide to Diagnosis and Treatment.",
   },
 ] as const;
 

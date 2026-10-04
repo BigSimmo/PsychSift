@@ -168,6 +168,8 @@ describe("threshold contract: doses and thresholds defer to local protocol", () 
     /\(Version 8\)/g,
     /\b14th ed\b/g,
     /QJM 2003/g,
+    /\bJ Psychopharmacol 2023\b/g,
+    /\(Version 2, June 2024;/g,
   ];
   function strings(value: unknown): string[] {
     if (typeof value === "string") return [value];
@@ -184,7 +186,7 @@ describe("threshold contract: doses and thresholds defer to local protocol", () 
   });
 });
 
-describe("reviewer-suggested wording (source pending)", () => {
+describe("sourced wording (owner decision)", () => {
   const byId = (id: string) => EMERGENCY_CLINICAL_PROTOCOLS.find((p) => p.id === id)!;
 
   it("clozapine card requires specialist review for re-challenge and never states an absolute ban", () => {
@@ -194,11 +196,23 @@ describe("reviewer-suggested wording (source pending)", () => {
     expect(text).not.toMatch(/absolute contraindication|Permanent contraindication/i);
   });
 
-  it("catatonia card says imaging does not exclude anti-NMDAR encephalitis and names EEG, LP and CSF antibodies", () => {
+  it("catatonia card investigations say only what the BAP guideline supports", () => {
     const investigations = byId("EMERG-MALIGNANT-CATATONIA").urgentInvestigations.join(" | ");
-    expect(investigations).toContain("imaging does not exclude anti-NMDA receptor encephalitis");
-    expect(investigations).toContain("EEG, lumbar puncture and CSF antibody testing, under neurology guidance");
+    expect(investigations).toContain("should be considered based on history and examination findings");
+    expect(investigations).toContain("consider a CT or MRI scan of the brain");
+    expect(investigations).toContain("NMDA receptor antibodies and other relevant autoantibodies in serum and CSF");
+    expect(investigations).toContain("consider an EEG");
+    expect(investigations).toContain("lumbar puncture");
+    // Owner decision: unsourced phrases removed.
+    expect(investigations).not.toMatch(/does not exclude|septic screen|neurology guidance/i);
     expect(investigations).not.toMatch(/to exclude intracranial/i);
+  });
+
+  it("cards cite their sources", () => {
+    expect(byId("EMERG-MALIGNANT-CATATONIA").evidenceSource).toContain("British Association for Psychopharmacology");
+    expect(byId("EMERG-CLOZAPINE-MYOCARDITIS").evidenceSource).toContain(
+      "Guidelines for the Safe and Quality Use of Clozapine Therapy in the WA health system",
+    );
   });
 });
 

@@ -29,9 +29,18 @@ export const MY_DAY_PAGE_LABELS: Readonly<Record<MyDayPageId, string>> = {
 };
 
 export const MY_DAY_PAGE_CARDS = {
-  today: ["up-next", "flag", "quick-actions", "this-week", "needs-you", "cpd", "renewals"],
+  today: ["up-next", "next-up", "flag", "quick-actions", "this-week", "needs-you", "cpd", "renewals"],
   work: ["calls", "pinned-numbers", "whos-on", "next-talk"],
-  me: ["hours", "month-glance", "credentials", "cpd-month", "quick-note"],
+  me: [
+    "cpd-hours",
+    "renew-next",
+    "renewals-timeline",
+    "hours",
+    "month-glance",
+    "credentials",
+    "cpd-month",
+    "quick-note",
+  ],
 } as const satisfies Readonly<Record<MyDayPageId, readonly string[]>>;
 
 export const myDayCardIds = [...MY_DAY_PAGE_CARDS.today, ...MY_DAY_PAGE_CARDS.work, ...MY_DAY_PAGE_CARDS.me] as const;
@@ -39,6 +48,7 @@ export type MyDayCardId = (typeof myDayCardIds)[number];
 
 export const MY_DAY_CARD_LABELS: Readonly<Record<MyDayCardId, string>> = {
   "up-next": "Up next",
+  "next-up": "Next teaching",
   flag: "Most important now",
   "quick-actions": "Quick actions",
   "this-week": "This week",
@@ -49,6 +59,9 @@ export const MY_DAY_CARD_LABELS: Readonly<Record<MyDayCardId, string>> = {
   "pinned-numbers": "Pinned numbers",
   "whos-on": "Who's on now",
   "next-talk": "Next talk",
+  "cpd-hours": "CPD hours",
+  "renew-next": "Renew next",
+  "renewals-timeline": "Renewals timeline",
   hours: "Hours worked",
   "month-glance": "Month at a glance",
   credentials: "Credentials wallet",

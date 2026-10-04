@@ -18,8 +18,10 @@ import { isReviewedTimeframe, timelineFor, type MhaTimeframeEntry, type MhaTimef
  * each entry to the verbatim Act text. This module adds only the per-order countdown and two
  * extra locks, because a live countdown for a real patient is a step beyond the form-page Timeline:
  *
- * 1. Each entry must be signed off by a NAMED clinician. The nine shipped entries are marked
- *    reviewed by "PsychSift", which `isNamedPerson` rejects, so today every entry is quote-only.
+ * 1. Each entry must be signed off by a NAMED clinician: a reviewer name that `isNamedPerson`
+ *    accepts, or one of the exact sign-offs (id, reviewer, time and pin) the owner confirmed in
+ *    writing as his own, in `OWNER_CONFIRMED_TIMEFRAMES`. The nine shipped entries carry
+ *    "PsychSift" and are all listed there.
  * 2. The countdown switch (`MHA_TIMER_SWITCH`) must be signed by a named clinician over the exact
  *    entries, pins, signers and sign-off times it covers, and this module's logic version, and must record that the medical-device ruling was re-checked
  *    for per-patient countdowns (the Today plan, "Safety, privacy and clinical sign-off").
@@ -34,12 +36,105 @@ import { isReviewedTimeframe, timelineFor, type MhaTimeframeEntry, type MhaTimef
 
 const shippedEntries = (mhaTimeframes as MhaTimeframesFile).entries;
 
+export type OwnerConfirmedTimeframe = {
+  readonly id: string;
+  readonly reviewedBy: string;
+  readonly reviewedAt: string;
+  readonly reviewedContentSha256: string;
+};
+
+/**
+ * Timeframe sign-offs the clinical owner confirmed, in writing, as his own named sign-off even though
+ * their public attribution ("PsychSift") is not a personal name. Matched by EXACT id, reviewer,
+ * sign-off time and content pin: a new or re-signed timeframe labelled "PsychSift" does not count
+ * until the owner confirms it too. Evidence: docs/evidence/mha-timeframes-owner-attribution.md
+ * (confirmed 3 October 2026). This list is inside the countdown switch's signed content, so changing
+ * it turns the switch off until it is signed again. Only the owner's own confirmation adds a row.
+ */
+export const OWNER_CONFIRMED_TIMEFRAMES: readonly OwnerConfirmedTimeframe[] = Object.freeze([
+  {
+    id: "form-2-assessment-detention",
+    reviewedBy: "PsychSift",
+    reviewedAt: "2026-09-26T17:21:45.126Z",
+    reviewedContentSha256: "2546503dffaa244251da8993cc6939328e482c9b2fdaeafb8b26e5b1bac1bd01",
+  },
+  {
+    id: "form-3a-detention-to-take-person",
+    reviewedBy: "PsychSift",
+    reviewedAt: "2026-09-26T17:21:45.126Z",
+    reviewedContentSha256: "680e8103b1f2fea5eafdcfd239589161903b8f8ee1933842a4660b1fcf28d89a",
+  },
+  {
+    id: "form-3a-continuous-limit-metropolitan",
+    reviewedBy: "PsychSift",
+    reviewedAt: "2026-09-26T17:21:45.126Z",
+    reviewedContentSha256: "3647c51e79fe687a578d6f0e04b08b4c29247a37de267c9699b1cb84678e4cd3",
+  },
+  {
+    id: "form-3a-continuous-limit-non-metropolitan",
+    reviewedBy: "PsychSift",
+    reviewedAt: "2026-09-26T17:21:45.126Z",
+    reviewedContentSha256: "0754e9b0755e5fc276900fe6a99f9860d2246b6fe7e7d4d2cc88669ec5e9f0c1",
+  },
+  {
+    id: "form-3d-6b-detention-to-take-person",
+    reviewedBy: "PsychSift",
+    reviewedAt: "2026-09-26T17:21:45.126Z",
+    reviewedContentSha256: "d718789024f2d1da792bc2d9e3bd553cd970ca88b84272890b79dcd9f1e5c409",
+  },
+  {
+    id: "form-3d-6b-continuous-limit",
+    reviewedBy: "PsychSift",
+    reviewedAt: "2026-09-26T17:21:45.126Z",
+    reviewedContentSha256: "a787648e03fa281f244d36f5e4fe2b9a71b8b427f0f086b2a20a1d5f58a68793",
+  },
+  {
+    id: "form-5a-confirmation",
+    reviewedBy: "PsychSift",
+    reviewedAt: "2026-09-26T17:21:45.126Z",
+    reviewedContentSha256: "98b774a1659ddc6889563b93a3b1adb546fed59fd293adf902e80e730e462fb1",
+  },
+  {
+    id: "form-12c-advise-chief-mental-health-advocate",
+    reviewedBy: "PsychSift",
+    reviewedAt: "2026-09-26T17:21:45.126Z",
+    reviewedContentSha256: "f8a962c50dc874965b9f98076524e10b85f675c2273554101950fb0d8d555c7a",
+  },
+  {
+    id: "form-12c-first-review",
+    reviewedBy: "PsychSift",
+    reviewedAt: "2026-09-26T17:21:45.126Z",
+    reviewedContentSha256: "43e9898ebf069d3f332a3b005a66cc3cc56ffe19f289ba22a79edcb786412b8f",
+  },
+]);
+
+function isOwnerConfirmed(entry: MhaTimeframeEntry, confirmed: readonly OwnerConfirmedTimeframe[]): boolean {
+  return confirmed.some(
+    (row) =>
+      row.id === entry.id &&
+      row.reviewedBy === entry.reviewedBy &&
+      row.reviewedAt === entry.reviewedAt &&
+      row.reviewedContentSha256 === entry.reviewedContentSha256,
+  );
+}
+
+/** Signed off, with its pin intact, by a named clinician or as an exact owner-confirmed sign-off. */
+export function isTimeframeSignedByNamedClinician(
+  entry: MhaTimeframeEntry,
+  confirmed: readonly OwnerConfirmedTimeframe[] = OWNER_CONFIRMED_TIMEFRAMES,
+): boolean {
+  if (!isReviewedTimeframe(entry)) return false;
+  return isNamedPerson(entry.reviewedBy) || isOwnerConfirmed(entry, confirmed);
+}
+
 /** What the countdown switch is signed over. Changing any of it needs a fresh sign-off. */
 export type MhaTimerSwitchContent = {
   /** Every timeframe the switch covers, with the sign-off pin it was checked against. */
   readonly timeframes: readonly MhaTimerSwitchTimeframe[];
   /** Bump when this module's countdown logic changes, so a logic change also needs a fresh sign-off. */
   readonly interpretation: typeof MHA_TIMER_INTERPRETATION;
+  /** The owner-confirmed sign-offs in force when the switch was signed; changing them needs re-signing. */
+  readonly ownerConfirmedTimeframes: readonly OwnerConfirmedTimeframe[];
   /**
    * The date (YYYY-MM-DD) the owner confirmed or revised the medical-device ruling for per-patient
    * countdowns, and where that decision is written down. Null until then, which keeps the switch off.
@@ -86,6 +181,7 @@ export type MhaTimerSwitch = { readonly content: MhaTimerSwitchContent; readonly
 export function currentMhaTimerSwitchContent(
   entries: readonly MhaTimeframeEntry[] = shippedEntries,
   medicalDeviceRuling: MhaTimerSwitchContent["medicalDeviceRuling"] = null,
+  ownerConfirmedTimeframes: readonly OwnerConfirmedTimeframe[] = OWNER_CONFIRMED_TIMEFRAMES,
 ): MhaTimerSwitchContent {
   return {
     timeframes: entries.map((entry) => ({
@@ -96,6 +192,7 @@ export function currentMhaTimerSwitchContent(
       reviewedContentSha256: entry.reviewedContentSha256,
     })),
     interpretation: MHA_TIMER_INTERPRETATION,
+    ownerConfirmedTimeframes,
     medicalDeviceRuling,
   };
 }
@@ -220,7 +317,7 @@ export function mhaTimers(
         quoteOnly.push({ kind: "quote-only", timerId: input.timerId, entry, reason });
       if (item.quoteOnly) {
         quote(item.reason === "not-calculable" ? "not-calculable" : "awaiting-review");
-      } else if (!isReviewedTimeframe(entry) || !isNamedPerson(entry.reviewedBy)) {
+      } else if (!isTimeframeSignedByNamedClinician(entry)) {
         quote("awaiting-named-sign-off");
       } else if (!gate.on) {
         quote("switched-off");

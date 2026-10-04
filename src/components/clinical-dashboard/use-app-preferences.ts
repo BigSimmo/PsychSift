@@ -204,6 +204,15 @@ export function readAppPreferences(): AppPreferences {
 }
 
 /**
+ * Subscribes to stored-preference changes without mounting `useAppPreferences`
+ * (and its account bootstrap) again. Pair with `readAppPreferences` in a
+ * `useSyncExternalStore` for a read-only live value.
+ */
+export function subscribeAppPreferences(onChange: () => void): () => void {
+  return subscribe(onChange);
+}
+
+/**
  * Whether it is safe to write a recent query right now. Returns false while an
  * authenticated account preference bootstrap has not settled, and false when
  * the resolved preference opts out. Callers that only need this gate should

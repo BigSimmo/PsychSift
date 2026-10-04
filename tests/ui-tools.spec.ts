@@ -2958,11 +2958,12 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     const queue = await expectSingleSettledOwner(page.getByTestId("differential-compare-queue"), { timeout: 30_000 });
     await expect(page.getByRole("heading", { level: 1, name: "1 diagnosis selected" })).toBeVisible();
     await expect(queue.getByRole("link", { name: "Wernicke encephalopathy", exact: true })).toBeVisible();
-    await page.getByTestId("differential-compare-edit-selection").click();
-    await expect(page.getByTestId("differential-compare-picker")).toBeVisible();
-    await expect(page.getByTestId("differential-compare-open")).toBeVisible();
+    // The hidden streamed twin (#093) can return after the queue settles, so act on the visible copy.
+    await visibleByTestId(page, "differential-compare-edit-selection").click();
+    await expect(visibleByTestId(page, "differential-compare-picker")).toBeVisible();
+    await expect(visibleByTestId(page, "differential-compare-open")).toBeVisible();
 
-    const desktopOpen = page.getByTestId("differential-compare-open");
+    const desktopOpen = visibleByTestId(page, "differential-compare-open");
     await expect(desktopOpen).toHaveAttribute("href", /\/differentials\/presentations\/acute-confusion-encephalopathy/);
     await desktopOpen.scrollIntoViewIfNeeded();
     await Promise.all([

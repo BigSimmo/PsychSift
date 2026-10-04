@@ -63,6 +63,7 @@ import {
   type PreferenceSyncState,
 } from "@/components/clinical-dashboard/use-app-preferences";
 import { useScrollHideReporter } from "@/components/clinical-dashboard/use-hide-on-scroll";
+import { clearPsychiatryVisits, countPsychiatryVisits } from "@/lib/psychiatry-hub/visits";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { cn, floatingControl, InlineNotice, primaryControl, toggleThumbSurface } from "@/components/ui-primitives";
 import { ProviderBrandMark, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
@@ -172,7 +173,8 @@ type PinnedSection = { id: SettingsSectionId; offset: number; distance: number; 
 
 function readRecentQueryCount(): number {
   if (typeof window === "undefined") return 0;
-  return countRecentQueries();
+  // The Psychiatry hub's recently opened records ride on the same switch and the same Clear.
+  return countRecentQueries() + countPsychiatryVisits();
 }
 
 /**
@@ -609,6 +611,7 @@ export function SettingsDialog({
 
   function handleClearRecent() {
     clearRecentQueries();
+    clearPsychiatryVisits();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches cleared.");
   }
@@ -626,6 +629,7 @@ export function SettingsDialog({
       return;
     }
     clearRecentQueries();
+    clearPsychiatryVisits();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches turned off and existing ones cleared.");
   }
@@ -1276,7 +1280,7 @@ export function SettingsDialog({
                   <SettingsToggleField
                     icon={History}
                     label="Save recent searches"
-                    description="Off stops this device recording your questions at all. Use it on a shared computer."
+                    description="Off stops this device recording your questions, and what you open in Psychiatry, at all. Use it on a shared computer."
                     checked={preferences.saveRecentSearches}
                     onChange={handleSaveRecentSearches}
                   />

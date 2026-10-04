@@ -30,10 +30,12 @@ async function gotoPhone(page: Page, path: string) {
 }
 
 test.describe("Admin mode — redirects, pill identity and shared chrome", () => {
-  test("/my-work lands on /admin, and the pill names Admin's Today page", async ({ page }) => {
+  // Admin opens on Renewals now (modes review, phase 2b: My Day is the one
+  // Today). `/admin` still serves the old Today page for bookmarks, with no tab.
+  test("/my-work lands on /admin/renewals, and the pill names Admin without a Today page", async ({ page }) => {
     await page.goto("/my-work");
-    await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole("button", { name: "Mode Admin, page Today" })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/renewals$/);
+    await expect(page.getByRole("button", { name: "Mode Admin, page Renewals", exact: true })).toBeVisible();
   });
 
   test("/on-call/compliance lands on /admin/renewals, keeping the checklist's own groups", async ({ page }) => {

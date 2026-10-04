@@ -26,6 +26,7 @@ const routeOwnedSubmittedSearchModes = new Set<AppModeId>([
   "roster",
   "first-nations",
   "my-day",
+  "medicines",
 ]);
 
 /**
@@ -59,8 +60,12 @@ export const standaloneModeHomePaths = [
   "/cme",
   // Psychiatry's dashboard of section links, for the same reason again.
   "/psychiatry",
-  // Admin's Today page, for the same reason again.
+  // The Medicines & tools dashboard, Psychiatry's twin, for the same reason.
+  "/medicines",
+  // Admin's Today page (kept for bookmarks) and Renewals, where Admin now
+  // opens, for the same reason again.
   "/admin",
+  "/admin/renewals",
   // Roster's dashboard (Today), for the same reason: it declares no search
   // surface, so without it the mode pill would retarget a composer Roster has
   // nowhere to send.
@@ -127,9 +132,13 @@ export function standaloneModeHomeHref(mode: AppModeId): string | null {
     // page of links to the sections it gathers, with no results surface.
     case "psychiatry":
       return "/psychiatry";
-    // Admin's Today page has no search results surface.
+    // The Medicines & tools dashboard, Psychiatry's twin.
+    case "medicines":
+      return "/medicines";
+    // Admin opens on Renewals, its working page (modes review, phase 2b); it
+    // has no search results surface.
     case "my-work":
-      return "/admin";
+      return "/admin/renewals";
     // The Roster dashboard (Today) at `/roster`, on the same reasoning as On
     // Call above: no results surface, so a retargeted composer would accept a
     // query and land the reader on a page that ignores it.
@@ -211,6 +220,7 @@ const alwaysStandaloneShellPathPrefixes = [
   "/on-call",
   "/cme",
   "/psychiatry",
+  "/medicines",
   "/admin",
   "/roster",
   "/first-nations",

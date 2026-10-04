@@ -173,7 +173,9 @@ export const modeSecondaryNavigationRegistry = {
   // Year check, Routines, Calendar, Training and Programme are tabs reached
   // from their parent pages. Customise and the annual summary stay secondary.
   cme: [
-    { id: "year", label: "Today", href: "/cme" },
+    // The year overview, named Year rather than Today: My Day is the one Today
+    // (modes review, phase 2b).
+    { id: "year", label: "Year", href: "/cme" },
     { id: "log", label: "Log", href: "/cme/log" },
     { id: "plan", label: "Plan", href: "/cme/plan" },
     { id: "learning", label: "Learning", href: "/cme/learning" },
@@ -196,9 +198,10 @@ export const modeSecondaryNavigationRegistry = {
   // Psychiatry's home is itself the list of sections it gathers, and each
   // section keeps its own navigation, so the hub registers no destinations.
   psychiatry: [],
+  medicines: [],
   // Admin keeps the internal mode id for existing preferences and links.
   "my-work": [
-    { id: "admin-today", label: "Today", href: "/admin" },
+    // No Today tab: My Day is the one Today (modes review, phase 2b).
     { id: "renewals", label: "Renewals", href: "/admin/renewals" },
     { id: "new-job", label: "New job", href: "/admin/new-job" },
     { id: "help", label: "Help", href: "/admin/help" },
@@ -446,7 +449,7 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/cme/learning") return "learning";
     if (pathname === "/cme/programme" || pathname === "/cme/setup") return "setup";
     // Exact match only, for the same reason On Call's home is: a prefix test
-    // here would mark Today current on every CPD route as well as its own.
+    // here would mark Year current on every CPD route as well as its own.
     if (pathname === "/cme") return "year";
     return null;
   }
@@ -470,7 +473,6 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/admin/new-job" || pathname === "/admin/new-job/records" || pathname === "/admin/new-job/pack")
       return "new-job";
     if (pathname === "/admin/help") return "help";
-    if (pathname === "/admin") return "admin-today";
     return null;
   }
   if (modeId === "my-day") {

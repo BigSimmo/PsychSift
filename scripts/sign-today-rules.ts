@@ -30,10 +30,11 @@ import {
   UNSIGNED,
 } from "@/lib/admin/rule-sign-off";
 import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
-import { isReviewedTimeframe, type MhaTimeframesFile } from "@/lib/mha-timeline";
+import type { MhaTimeframesFile } from "@/lib/mha-timeline";
 import {
   currentMhaTimerSwitchContent,
   isRecordedRuling,
+  isTimeframeSignedByNamedClinician,
   MHA_TIMER_INTERPRETATION,
   mhaTimerGate,
   type MhaTimerSwitchContent,
@@ -138,7 +139,7 @@ function showMha(io: Io, timeframes: MhaTimeframesFile): void {
   io.print("named clinician; the rest stay quote-only whatever the switch says.");
   io.print(`Countdown interpretation you are signing: ${MHA_TIMER_INTERPRETATION}`);
   for (const entry of timeframes.entries) {
-    const countable = isReviewedTimeframe(entry) && isNamedPerson(entry.reviewedBy) && entry.computeAllowed !== false;
+    const countable = isTimeframeSignedByNamedClinician(entry) && entry.computeAllowed !== false;
     io.print(
       `  - Form ${entry.formCodes.join("/")}, s ${entry.section}, ${entry.duration.value} ${entry.duration.unit}: ` +
         `signed by ${entry.reviewedBy ?? "nobody"}${countable ? "" : " (will stay quote-only)"}`,

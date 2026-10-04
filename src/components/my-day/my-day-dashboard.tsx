@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Fragment, useMemo, useState, type ReactNode } from "react";
 
 import { pinnedHelpItems } from "@/components/admin/admin-pinned-numbers";
@@ -44,6 +45,7 @@ import { cn } from "@/components/ui-primitives";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { displayPhoneNumber } from "@/lib/admin/phone-display";
 import { useAdminPins } from "@/lib/admin/pins";
+import { selectRenewNext } from "@/lib/admin/today-selectors";
 import {
   dueCountsByDate,
   isSnoozed,
@@ -55,6 +57,7 @@ import {
   weekOf,
   type MyDayCardId,
   type MyDayPageId,
+  type MyDaySnoozes,
   type MyDayTimedEvent,
 } from "@/lib/my-day/dashboard";
 import {
@@ -70,6 +73,9 @@ import {
 } from "@/lib/my-day/figures";
 import { duePerthDate } from "@/lib/my-day/merge";
 import type { MyDayItem } from "@/lib/my-day/model";
+import { nextTeachingSession } from "@/lib/my-day/next-teaching";
+import type { OnCallEntry } from "@/lib/on-call/entry-model";
+import type { CmeEntry } from "@/lib/cme/types";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import type { ShiftKind } from "@/lib/roster/shift-kind";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -94,6 +100,20 @@ import type { SessionSummary } from "@/lib/teaching/model";
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
 const NO_SESSIONS: readonly SessionSummary[] = [];
+const NO_ENTRIES: readonly OnCallEntry[] = [];
+const NO_CPD_ENTRIES: readonly CmeEntry[] = [];
+
+// The cards that moved here from CPD, Admin and Teaching load only when drawn.
+const MyDayNextUpCard = dynamic(() => import("@/components/my-day/my-day-moved-cards").then((m) => m.MyDayNextUpCard));
+const MyDayCpdHoursCard = dynamic(() =>
+  import("@/components/my-day/my-day-moved-cards").then((m) => m.MyDayCpdHoursCard),
+);
+const MyDayRenewNextCard = dynamic(() =>
+  import("@/components/my-day/my-day-moved-cards").then((m) => m.MyDayRenewNextCard),
+);
+const MyDayRenewalsTimelineCard = dynamic(() =>
+  import("@/components/my-day/my-day-moved-cards").then((m) => m.MyDayRenewalsTimelineCard),
+);
 
 export interface MyDayDashboardProps {
   readonly now: Date;
@@ -104,6 +124,8 @@ export interface MyDayDashboardProps {
   readonly renewals?: readonly RenewalRow[];
   /** Admin's Help items, for pinned numbers. */
   readonly helpItems?: readonly AdminHelpItem[];
+  /** The reader's own Admin entries, for Renew next and the renewals timeline. */
+  readonly adminEntries?: readonly OnCallEntry[];
   readonly sources: MyDayDashboardSources;
   /** Names of the My Day sources that were checked, for the empty "Needs you" line. */
   readonly checked: readonly string[];
@@ -112,6 +134,18 @@ export interface MyDayDashboardProps {
   readonly page?: MyDayPageId;
   readonly onShowAll: () => void;
   readonly onRetry: () => void;
+  /**
+   * The signed-out sample only: invented call counts and pinned numbers in
+   * place of this device's call log and pins, so a visitor sees those cards
+   * filled. Never set for a signed-in reader.
+   */
+  readonly sample?: MyDaySampleExtras;
+}
+
+export interface MyDaySampleExtras {
+  /** Counts only: the sample never invents call notes or patient labels. */
+  readonly calls: { readonly total: number; readonly open: number };
+  readonly pinnedNumbers: readonly PinnedNumber[];
 }
 
 function shiftEvent(shift: RosterDisplayShift): MyDayTimedEvent {
@@ -155,14 +189,27 @@ export function MyDayDashboard({
   items,
   renewals = NO_RENEWALS,
   helpItems = NO_HELP,
+  adminEntries = NO_ENTRIES,
   sources,
   checked,
   editing,
   page = "today",
   onShowAll,
   onRetry,
+  sample,
 }: MyDayDashboardProps) {
-  const device = useMyDayDeviceState(today);
+  const stored = useMyDayDeviceState(today);
+  // The signed-out sample keeps "Later" for this page only, so nothing one visitor does is kept for the next.
+  const [sampleSnoozes, setSampleSnoozes] = useState<MyDaySnoozes>({});
+  const device = sample
+    ? {
+        ...stored,
+        snoozes: sampleSnoozes,
+        snooze: (itemId: string, until: string) => setSampleSnoozes((current) => ({ ...current, [itemId]: until })),
+        unsnooze: (itemId: string) =>
+          setSampleSnoozes((current) => Object.fromEntries(Object.entries(current).filter(([id]) => id !== itemId))),
+      }
+    : stored;
   const onHide = (id: MyDayCardId) => (editing ? () => device.setHidden(id, true) : undefined);
   const [undo, setUndo] = useState<{ readonly id: string; readonly title: string } | null>(null);
 
@@ -322,9 +369,12 @@ export function MyDayDashboard({
   // ---------------------------------------------------------------- work
   const callLog = useOnCallCallLog();
   const callEntries = callLog?.entries ?? [];
+  const callTotal = sample ? sample.calls.total : callEntries.length;
+  const callOpen = sample ? sample.calls.open : callEntries.filter((entry) => !entry.done).length;
   const pins = useAdminPins();
-  const pinnedNumbers = useMemo<PinnedNumber[]>(
+  const pinnedNumbers = useMemo<readonly PinnedNumber[]>(
     () =>
+      sample?.pinnedNumbers ??
       // Pins with a phone number lead (it is a numbers card); four fit, the rest are on Help.
       [...pinnedHelpItems(pins, helpItems)]
         .sort((a, b) => Number(Boolean(b.phone)) - Number(Boolean(a.phone)))
@@ -336,7 +386,7 @@ export function MyDayDashboard({
           tel: onCallTelHref(help.phone ?? undefined) ?? null,
           href: `${ADMIN_PAGE_HREFS.help}#${onCallEntryAnchorId(help.entry?.id ?? help.key)}`,
         })),
-    [pins, helpItems],
+    [sample, pins, helpItems],
   );
   const whosOn = sources.whosOn;
   const nextTalk = sources.teaching.nextTalk ?? null;
@@ -358,23 +408,35 @@ export function MyDayDashboard({
   const cpd = sources.cpd;
   const cpdReady = cpd.status === "ready" && cpd.targetHours > 0;
 
+  // ---------------------------------------------------------------- moved cards
+  // Teaching's "Next up": the next session that is not already Up next in the hero.
+  const allSessions = useMemo(() => [...teachingSessions, ...ahead], [teachingSessions, ahead]);
+  const nextSession = useMemo(() => nextTeachingSession(allSessions, now), [allSessions, now]);
+  const nextUp = nextSession && upNext?.event.id !== `teaching:${nextSession.occurrenceId}` ? nextSession : null;
+  const renewNext = useMemo(() => selectRenewNext(adminEntries, undefined, now), [adminEntries, now]);
+
   const visible: Record<MyDayCardId, boolean> = {
     "up-next": upNext !== null || leadShift !== null,
+    "next-up": nextUp !== null,
     flag: flagItems.length > 0,
     "quick-actions": true,
     "this-week": rosterReady || agenda.length > 0 || weekHasDue,
     "needs-you": true,
     cpd: cpdReady,
     renewals: runway.length > 0,
-    calls: callEntries.length > 0,
+    calls: callTotal > 0,
     "pinned-numbers": pinnedNumbers.length > 0,
     "whos-on": whosOn?.status === "ready" && whosOn.colleagues.length > 0,
     "next-talk": nextTalk !== null,
+    "cpd-hours": cpdReady && cpd.year !== null,
+    "renew-next": renewNext !== null,
+    "renewals-timeline": adminEntries.length > 0,
     hours: rosterReady && (weekHours.totalHours > 0 || fortnightHours.totalHours > 0),
     "month-glance": rosterReady && glance.totalHours > 0,
     credentials: renewals.length > 0,
     "cpd-month": cpdReady,
-    "quick-note": true,
+    // The note is kept on this device; a signed-out sample must not keep one visitor's note for the next.
+    "quick-note": !sample,
   };
 
   const partial = [
@@ -402,6 +464,10 @@ export function MyDayDashboard({
         onHide={onHide("up-next")}
       />
     ),
+    "next-up": () =>
+      nextUp ? (
+        <MyDayNextUpCard session={nextUp} sessions={allSessions} now={now} today={today} onHide={onHide("next-up")} />
+      ) : null,
     flag: () => <FlagCard items={flagItems} onHide={onHide("flag")} />,
     "quick-actions": () => <QuickActionsCard onHide={onHide("quick-actions")} />,
     "this-week": () => (
@@ -444,9 +510,9 @@ export function MyDayDashboard({
     renewals: () => <RenewalsRunwayCard points={runway} onHide={onHide("renewals")} />,
     calls: () => (
       <CallsCard
-        total={callEntries.length}
-        open={callEntries.filter((entry) => !entry.done).length}
-        clearsAt={callLog?.expiresAt ?? null}
+        total={callTotal}
+        open={callOpen}
+        clearsAt={sample ? null : (callLog?.expiresAt ?? null)}
         handoverAt={handoverAt}
         onHide={onHide("calls")}
       />
@@ -455,6 +521,24 @@ export function MyDayDashboard({
     "whos-on": () => <WhosOnCard colleagues={whosOn?.colleagues ?? []} onHide={onHide("whos-on")} />,
     "next-talk": () =>
       nextTalk ? <NextTalkCard session={nextTalk} today={today} onHide={onHide("next-talk")} /> : null,
+    "cpd-hours": () =>
+      cpd.year !== null ? (
+        <MyDayCpdHoursCard
+          year={cpd.year}
+          today={today}
+          loggedHours={cpd.loggedHours}
+          targetHours={cpd.targetHours}
+          entries={cpd.entries ?? NO_CPD_ENTRIES}
+          closed={cpd.closed === true}
+          onHide={onHide("cpd-hours")}
+        />
+      ) : null,
+    "renew-next": () => (
+      <MyDayRenewNextCard entries={adminEntries} now={now} today={today} onHide={onHide("renew-next")} />
+    ),
+    "renewals-timeline": () => (
+      <MyDayRenewalsTimelineCard entries={adminEntries} now={now} onHide={onHide("renewals-timeline")} />
+    ),
     hours: () => <HoursCard week={weekHours} fortnight={fortnightHours} onHide={onHide("hours")} />,
     "month-glance": () => <MonthGlanceCard glance={glance} today={today} onHide={onHide("month-glance")} />,
     credentials: () => <CredentialsCard rows={renewals} today={today} onHide={onHide("credentials")} />,

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page, type TestInfo } from "playwright/test";
-import { clickWhenSettled, expectSingleSettledOwner, visibleByText } from "./playwright-settlement";
+import { clickWhenSettled, expectSingleSettledOwner, visibleByTestId, visibleByText } from "./playwright-settlement";
 
 const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const axeBlockingImpacts = new Set(["critical", "serious"]);
@@ -148,8 +148,11 @@ test("searches clinical language without provenance fields and carries a result 
   // Chromium reveals before this line; WebKit loses the race (#093).
   await expect(visibleByText(page, "Top match", { exact: true })).toBeVisible();
   // Below the sm breakpoint the results band swaps the desktop trigger for its phone twin.
+  // `visibleByTestId` for the same hidden streamed twin as the badge above (#093): the
+  // trigger renders in both copies, and WebKit can still hold the parked one here.
   const phoneWidth = (page.viewportSize()?.width ?? 1280) < 640;
-  const filterTrigger = page.getByTestId(
+  const filterTrigger = visibleByTestId(
+    page,
     phoneWidth ? "specifier-filter-trigger-phone" : "specifier-filter-trigger-desktop",
   );
   await filterTrigger.click();

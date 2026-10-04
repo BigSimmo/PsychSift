@@ -146,6 +146,38 @@ describe("MyDayPage", () => {
     expect(screen.getByTestId("account-dialog")).toBeTruthy();
   });
 
+  it("shows a signed-out visitor a sample day, labelled as invented, under the sign-in prompt", async () => {
+    auth.status = "signed_out";
+    setState({ status: "signed-out" });
+    render(<MyDayPage now={NOW} />);
+    expect(screen.getByTestId("my-day-sample-notice").textContent).toContain("invented examples");
+    expect(within(screen.getByTestId("my-day-signed-out")).getByText("Sample")).toBeTruthy();
+    expect(screen.getByTestId("my-day-tabs")).toBeTruthy();
+    const dashboard = await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
+    expect(within(dashboard).getAllByText("Demo journal club").length).toBeGreaterThan(0);
+    // "Later" on a sample row lasts only while the page is open, and stores nothing.
+    const before = window.localStorage.length;
+    fireEvent.click(within(dashboard).getAllByRole("button", { name: /Later/ })[0]!);
+    expect(window.localStorage.length).toBe(before);
+    // Signed in, nothing of the sample shows.
+    cleanup();
+    auth.status = "authenticated";
+    setState({});
+    render(<MyDayPage now={NOW} />);
+    expect(screen.queryByTestId("my-day-sample")).toBeNull();
+    expect(screen.queryByText("Demo journal club")).toBeNull();
+  });
+
+  it("leaves the device-only quick note out of the signed-out sample", async () => {
+    auth.status = "signed_out";
+    setState({ status: "signed-out" });
+    window.history.replaceState(null, "", "/my-day?page=me");
+    render(<MyDayPage now={NOW} />);
+    const dashboard = await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
+    expect(dashboard.getAttribute("data-page")).toBe("me");
+    expect(screen.queryByTestId("my-day-card-quick-note")).toBeNull();
+  });
+
   it("treats an expired session as signed out", () => {
     auth.status = "expired";
     setState({ status: "signed-out" });

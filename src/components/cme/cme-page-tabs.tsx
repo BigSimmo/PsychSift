@@ -19,7 +19,7 @@ export function CmePageTabs() {
   let label: string;
   let tabs: CmeTab[];
   if (pathname === "/cme" || pathname === "/cme/check") {
-    label = "Today";
+    label = "Year";
     tabs = [
       { label: "Overview", href: withYear("/cme"), active: pathname === "/cme" },
       { label: "Year check", href: withYear("/cme/check"), active: pathname === "/cme/check" },

@@ -22,6 +22,7 @@ import {
   main,
   parseRecentDays,
   planIsHistory,
+  reexportedNames,
   removedDeclarationsInDiff,
 } from "../scripts/check-dead-code-candidate.mjs";
 
@@ -474,6 +475,121 @@ describe("dead-code candidate diff parsing", () => {
     for (const sentinel of sentinels) {
       expect(fileReads.get(resolve(root, sentinel)), sentinel).toBe(1);
     }
+  });
+});
+
+describe("dead-code candidate re-export deletions", () => {
+  function diffRemoving(removedLines: string[], addedLines: string[] = []) {
+    const root = createFixture();
+    const diff = [
+      "diff --git a/src/index.ts b/src/index.ts",
+      "--- a/src/index.ts",
+      "+++ b/src/index.ts",
+      "@@ -1,3 +1,0 @@",
+      ...removedLines.map((line) => `-${line}`),
+      ...addedLines.map((line) => `+${line}`),
+      "",
+    ].join("\n");
+    const runGit: GitRunner = (args) => {
+      if (args[0] === "rev-parse" && args[1] === "--verify") return `${"a".repeat(40)}\n`;
+      if (args[0] === "diff") return diff;
+      if (args[0] === "rev-parse") return "false\n";
+      if (args[0] === "log") return "2026-01-01\n";
+      throw new Error(`unexpected git call: ${args.join(" ")}`);
+    };
+    return { root, runGit };
+  }
+
+  it("parses every re-export form", () => {
+    expect(reexportedNames('export { a, b as c } from "./x";')).toEqual(["a", "c"]);
+    expect(reexportedNames('export type { T } from "./x";')).toEqual(["T"]);
+    expect(reexportedNames('export { type U, default as D } from "./x";')).toEqual(["U", "D"]);
+    expect(reexportedNames('export * as ns from "./x";')).toEqual(["ns"]);
+    expect(reexportedNames('export * from "./x";')).toEqual(["* from ./x"]);
+    expect(reexportedNames("export const a = 1;")).toEqual([]);
+  });
+
+  it("detects removed re-exports, including multi-line ones", () => {
+    const { root, runGit } = diffRemoving([
+      'export { a as b } from "./x";',
+      'export type { T } from "./y";',
+      "export {",
+      "  m,",
+      "  n,",
+      '} from "./z";',
+    ]);
+    expect(removedDeclarationsInDiff("base", { root, runGit }).map((c) => c.symbol)).toEqual(["b", "T", "m", "n"]);
+  });
+
+  it("detects one member deleted from a retained multi-line re-export", () => {
+    const { root, runGit: baseGit } = diffRemoving(["  protectedName,"]);
+    writeFileSync(join(root, "src", "index.ts"), 'export {\n  retained,\n} from "./x";\n', "utf8");
+    const runGit: GitRunner = (args) =>
+      args[0] === "show" ? 'export {\n  protectedName,\n  retained,\n} from "./x";\n' : baseGit(args, root);
+    expect(removedDeclarationsInDiff("base", { root, runGit }).map((c) => c.symbol)).toEqual(["protectedName"]);
+    writeFileSync(join(root, "tests", "uses.test.ts"), 'import { protectedName } from "../src";\n', "utf8");
+    const output: string[] = [];
+    const code = main(["--diff", "base"], {
+      root,
+      runGit,
+      stdout: (l: string) => output.push(l),
+      stderr: () => undefined,
+    });
+    expect(code).toBe(1);
+    expect(output.join("\n")).toContain("REFUSE  protectedName  (src/index.ts)");
+  });
+
+  it("does not treat a re-export that is still published as a deletion", () => {
+    const { root, runGit } = diffRemoving(['export { a } from "./x";'], ['export { a, b } from "./x";']);
+    expect(removedDeclarationsInDiff("base", { root, runGit })).toEqual([]);
+  });
+
+  it("refuses deleting a re-exported symbol that a test pins", () => {
+    const { root, runGit } = diffRemoving(['export { shared } from "./x";']);
+    writeFileSync(join(root, "tests", "uses.test.ts"), 'import { shared } from "../src";\n', "utf8");
+    const output: string[] = [];
+    const code = main(["--diff", "base"], {
+      root,
+      runGit,
+      stdout: (l: string) => output.push(l),
+      stderr: () => undefined,
+    });
+    expect(code).toBe(1);
+    expect(output.join("\n")).toContain("REFUSE  shared  (src/index.ts)");
+    expect(output.join("\n")).toContain("pinned by committed test");
+  });
+
+  it("always refuses a removed star re-export", () => {
+    const { root, runGit } = diffRemoving(['export * from "./x";']);
+    const output: string[] = [];
+    const code = main(["--diff", "base"], {
+      root,
+      runGit,
+      stdout: (l: string) => output.push(l),
+      stderr: () => undefined,
+    });
+    expect(code).toBe(1);
+    expect(output.join("\n")).toContain("unknown set of names");
+  });
+
+  it("follows the existing rules for a re-export with no importers", () => {
+    const { root, runGit } = diffRemoving(['export { orphan } from "./x";']);
+    const output: string[] = [];
+    const code = main(["--diff", "base"], {
+      root,
+      runGit,
+      stdout: (l: string) => output.push(l),
+      stderr: () => undefined,
+    });
+    expect(code).toBe(0);
+    expect(output.join("\n")).toContain("CLEAR   orphan");
+  });
+
+  it("lists a sibling re-export when assessing a file", () => {
+    const root = createFixture();
+    writeFileSync(join(root, "src", "candidate.ts"), 'export { keep } from "./k";\n', "utf8");
+    const result = assessFixture(root, "gone", completeHistory());
+    expect(result.warnings.join("\n")).toContain("still exports 1 other symbol");
   });
 });
 
