@@ -16,6 +16,7 @@ import {
 } from "../scripts/build-forms-pdf-manifest.mjs";
 
 import { formDetailsClipboardText } from "@/components/forms/form-detail-page";
+import { readerFacingStrings, verdictsIn } from "./helpers/reader-facing-strings";
 import { formCatalogDetails } from "@/lib/form-catalog";
 import { defaultFormSlug, formRecords, formStaticParams, getFormRecord, searchFormRecords } from "@/lib/forms";
 import { buildDefaultFormRows } from "@/lib/registry-fixtures";
@@ -81,6 +82,13 @@ describe("psychiatry form records", () => {
     expect(form?.summaryCards?.some((card) => card.id === "source")).toBe(false);
     // Source status remains on the rail / overview, not in the priority-fact grid.
     expect(form?.source?.status).toBe("Source checked");
+    expect(
+      verdictsIn(readerFacingStrings("src/components/forms/form-detail-page.tsx"), [
+        { pattern: /^\s*Reviewed\s*$/, why: "a bare review verdict" },
+        { pattern: /^\s*Met\s*$/, why: "a bare status word" },
+        { pattern: /\brequirements?\s+met\b/i, why: "a verdict this app has not checked" },
+      ]),
+    ).toEqual([]);
     // Draft section summaries and supplemental form mappings remain staged for
     // Every other form reaches the same card from its own section cue, or from the
     // supplemental map for the seven the archive never indexed.

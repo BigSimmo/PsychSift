@@ -89,7 +89,7 @@ Also catalogued (2026-09-02), gate and CI helpers:
 - `check-repo-awareness-snapshot.ts` (`check:repo-awareness-snapshot`) + `generate-repo-awareness-snapshot.ts` (`snapshot:repo-awareness`) — `data/repo-awareness-snapshot.json` (routes, documentation catalogue coverage, review state) freshness and generation.
 - `check-privacy-readiness.mjs` (`check:privacy-readiness`, `check:privacy-readiness:release`) — validates `docs/governance/privacy-readiness.v1.json` required ids and release-blocking states.
 - `check-source-catalogue.ts` (`check:source-catalogue`) — repository source references, providers and coverage issues from `src/lib/sources/repository-providers`.
-- `check-stale-docs.mjs` (`check:stale-docs`) — advisory report of Markdown docs untouched for `--days` and linked from nowhere; refuses shallow clones.
+- `check-stale-docs.mjs` (`check:stale-docs`) — reports Markdown docs untouched for `--days` and linked from nowhere, and exits 1 when it finds any. Refuses shallow clones. Local only; it does not delete docs.
 - `check-playwright-browser-revision.mjs` (`check:playwright-browser-revision`) — fails closed unless the pinned Chromium revision has a launchable binary on disk (`#312`).
 - `playwright-pr-shards.mjs` (`check:playwright-pr-shards`) — duration-aware shard groups for the required Chromium PR journeys.
 - `browser-test-plan.mjs` (`plan:browser`, `check:browser-test-plan`) — chooses the smallest browser gate that still covers a change.

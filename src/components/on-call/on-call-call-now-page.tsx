@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { cardSurface } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
+import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
 import { OnCallCopyNumber } from "@/components/on-call/on-call-copy-number";
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
@@ -80,6 +81,8 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
         <OnCallToolNavHeader title="Who to call now" testIdPrefix="on-call-now" />
         <InformationPageShell testId="on-call-now-main" width="narrow">
           <p role="status">Loading current on-call context…</p>
+          {/* Public lines do not depend on the historical hydration anchor. */}
+          <OnCallCrisisLines />
         </InformationPageShell>
       </>
     );
@@ -106,12 +109,15 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
         {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
 
         {loading && entries.length === 0 ? (
-          <EmptyState
-            icon={Phone}
-            title="Loading your playbook"
-            body="Fetching your escalation steps."
-            testId="on-call-now-loading"
-          />
+          <>
+            <OnCallCrisisLines />
+            <EmptyState
+              icon={Phone}
+              title="Loading your playbook"
+              body="Fetching your escalation steps."
+              testId="on-call-now-loading"
+            />
+          </>
         ) : isOffline && entries.length === 0 ? (
           <OnCallLoadFailed reason={loadError} onRetry={retry} />
         ) : signedOut && entries.length === 0 ? (

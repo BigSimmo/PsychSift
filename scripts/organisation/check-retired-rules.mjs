@@ -140,22 +140,35 @@ export function textLines(file, text) {
   return text.split(/\r?\n/).map((line, index) => ({ file, line: index + 1, text: line }));
 }
 
+/**
+ * Sentences on one line. An excuse in a later sentence must not pardon a
+ * restatement of the retired rule in an earlier sentence on that same line.
+ */
+export function lineSentences(line) {
+  const sentences = String(line)
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+  return sentences.length > 0 ? sentences : [String(line)];
+}
+
 /** Every line that states a retired rule as current. */
 export function findRetiredRuleHits(lines, rules) {
   const hits = [];
   for (const entry of lines) {
+    const sentences = lineSentences(entry.text);
     for (const rule of rules) {
-      if (rule.regex.test(entry.text) && !rule.allowed.test(entry.text)) {
-        const trimmed = entry.text.trim();
-        hits.push({
-          file: entry.file,
-          line: entry.line,
-          ruleId: rule.id,
-          summary: rule.summary,
-          retired: rule.retired,
-          excerpt: trimmed.length > EXCERPT_MAX ? `${trimmed.slice(0, EXCERPT_MAX - 1)}…` : trimmed,
-        });
-      }
+      const hit = sentences.some((sentence) => rule.regex.test(sentence) && !rule.allowed.test(sentence));
+      if (!hit) continue;
+      const trimmed = entry.text.trim();
+      hits.push({
+        file: entry.file,
+        line: entry.line,
+        ruleId: rule.id,
+        summary: rule.summary,
+        retired: rule.retired,
+        excerpt: trimmed.length > EXCERPT_MAX ? `${trimmed.slice(0, EXCERPT_MAX - 1)}…` : trimmed,
+      });
     }
   }
   return hits;

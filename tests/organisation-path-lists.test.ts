@@ -172,6 +172,29 @@ describe("coverageLossFindings: copies", () => {
     });
     expect(findings[0].message).toContain("copied from `lib/scoring.ts`");
   });
+
+  it("flags loudly an exact copy when the source file itself did not change", () => {
+    const root = repo({ "lib/scoring.ts": BODY });
+    write(root, { "lib/util/scoring-copy.ts": BODY });
+    commit(root);
+
+    const findings = coverageLossFindings({ root, base: "HEAD~1", head: "HEAD", classify });
+    expect(findings).toHaveLength(1);
+    expect(findings[0]).toMatchObject({
+      loud: true,
+      key: "coverage-lost:lib/util/scoring-copy.ts",
+      about: "lib/scoring.ts",
+    });
+    expect(findings[0].message).toContain("copied from `lib/scoring.ts`");
+  });
+
+  it("stays quiet when an exact copy keeps every list", () => {
+    const root = repo({ "lib/rank/order.ts": BODY });
+    write(root, { "lib/rank/order-copy.ts": BODY });
+    commit(root);
+
+    expect(coverageLossFindings({ root, base: "HEAD~1", head: "HEAD", classify })).toEqual([]);
+  });
 });
 
 describe("coverageLossFindings: judged against the base lists", () => {

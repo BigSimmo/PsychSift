@@ -76,6 +76,19 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("AdminTodayPage", () => {
+  it("says when the dates on screen are the example corpus", () => {
+    state.demoMode = true;
+    render(<AdminTodayPage now={NOW} />);
+    expect(screen.getByTestId("admin-today-demo-notice")).toHaveTextContent(
+      "Example records. These dates are made up, and nothing here is your own.",
+    );
+  });
+
+  it("does not call the reader's own dates an example", () => {
+    render(<AdminTodayPage now={NOW} />);
+    expect(screen.queryByTestId("admin-today-demo-notice")).toBeNull();
+  });
+
   it("refreshes the displayed date when left open overnight", () => {
     vi.useFakeTimers();
     try {
