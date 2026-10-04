@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -49,18 +49,20 @@ const archivedRoutine: CmeRoutine = {
 };
 
 function renderPage(overrides: Partial<CmeRoutinesPageProps> = {}) {
+  const onLogDueRoutine = vi.fn();
   const onLogRoutine = vi.fn();
   const onNewRoutine = vi.fn();
   const utils = render(
     <CmeRoutinesPage
       routines={[dueRoutine, notYetDueRoutine, archivedRoutine]}
       now={NOW}
+      onLogDueRoutine={onLogDueRoutine}
       onLogRoutine={onLogRoutine}
       onNewRoutine={onNewRoutine}
       {...overrides}
     />,
   );
-  return { ...utils, onLogRoutine, onNewRoutine };
+  return { ...utils, onLogDueRoutine, onLogRoutine, onNewRoutine };
 }
 
 /** Every button or link painted with the dark command fill — the "one primary per screen" check (spec §5). */
@@ -71,21 +73,57 @@ function commandFilled(root: ParentNode): HTMLElement[] {
 }
 
 describe("Routines", () => {
-  it("saves a routine, then routes its Log action to the pre-filled entry form", async () => {
+  it("saves a routine, then one-tap logs a due routine with Undo", async () => {
     const user = userEvent.setup();
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ routine: dueRoutine }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url === "/api/cme/routines" && init?.method === "POST") {
+        return new Response(JSON.stringify({ routine: dueRoutine }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url === "/api/cme/entries" && init?.method === "POST") {
+        return new Response(JSON.stringify({ entry: { id: "entry-one-tap" } }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url === "/api/cme/entries/entry-one-tap" && init?.method === "DELETE") {
+        return new Response(null, { status: 204 });
+      }
+      return new Response("unexpected", { status: 500 });
+    });
     render(<CmeRoutinesRoute nowIso={NOW.toISOString()} initialRoutines={[]} demoMode={false} />);
     await user.click(screen.getByRole("button", { name: /new routine/i }));
     await user.type(screen.getByLabelText(/routine name/i), "Supervision");
     await user.click(screen.getByRole("button", { name: /save routine/i }));
-    expect(globalThis.fetch).toHaveBeenCalledWith("/api/cme/routines", expect.objectContaining({ method: "POST" }));
+    expect(fetchMock).toHaveBeenCalledWith("/api/cme/routines", expect.objectContaining({ method: "POST" }));
+    await user.click(screen.getByRole("button", { name: /^log 1\.0 h for supervision$/i }));
+    expect(navigation.push).not.toHaveBeenCalled();
+    await screen.findByTestId("cme-quick-log-saved");
+    expect(screen.getByTestId("cme-quick-log-saved")).toHaveTextContent("Saved to your log.");
+    const entryBody = JSON.parse(
+      String(fetchMock.mock.calls.find(([url]) => String(url) === "/api/cme/entries")?.[1]?.body),
+    );
+    expect(entryBody).toMatchObject({
+      title: "Supervision",
+      routineId: "r1",
+      allocations: [{ category: "reviewing", hours: 1 }],
+    });
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/cme/entries/entry-one-tap", { method: "DELETE" }));
+    expect(navigation.refresh).toHaveBeenCalled();
+  });
+
+  it("opens the form when a due routine has no usual category split", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const noSplit: CmeRoutine = { ...dueRoutine, usualAllocations: [] };
+    render(<CmeRoutinesRoute nowIso={NOW.toISOString()} initialRoutines={[noSplit]} demoMode={false} />);
     await user.click(screen.getByRole("button", { name: /^log 1\.0 h for supervision$/i }));
     expect(navigation.push).toHaveBeenCalledWith("/cme/new?routine=r1");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("keeps the editor open with an error when a save returns an empty 2xx body", async () => {
@@ -165,24 +203,31 @@ describe("Routines", () => {
     expect(screen.queryByRole("heading", { level: 2, name: "Due now" })).toBeNull();
   });
 
-  it("never logs on its own — tapping Log only hands the owner a pre-filled draft to confirm", async () => {
+  it("hands a due Log N h tap to onLogDueRoutine — the route saves; the page does not fetch", async () => {
     const user = userEvent.setup();
-    const { onLogRoutine } = renderPage();
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const { onLogDueRoutine, onLogRoutine } = renderPage();
     await user.click(screen.getByRole("button", { name: "Log 1.0 h for Supervision" }));
-    expect(onLogRoutine).toHaveBeenCalledTimes(1);
-    expect(onLogRoutine).toHaveBeenCalledWith({
+    expect(onLogDueRoutine).toHaveBeenCalledTimes(1);
+    expect(onLogDueRoutine).toHaveBeenCalledWith({
       routineId: "r1",
       date: "2026-09-28",
       title: "Supervision",
       hours: 1,
       allocations: [{ category: "reviewing", hours: 1 }],
     });
+    expect(onLogRoutine).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("says in plain words that a routine never logs itself, behind How this works", () => {
+  it("says in plain words that due Log saves with Undo, behind How this works", () => {
     renderPage();
     expect(screen.getByTestId("cme-routines-confirmation-note")).toHaveTextContent(
-      /never|nothing is recorded until you confirm/i,
+      /saves that activity straight away/i,
+    );
+    expect(screen.getByTestId("cme-routines-confirmation-note")).toHaveTextContent(/Undo/i);
+    expect(screen.getByTestId("cme-routines-confirmation-note")).toHaveTextContent(
+      /nothing is recorded from attendance/i,
     );
     const how = screen.getByTestId("cme-routines-how");
     expect(how.tagName).toBe("DETAILS");
@@ -199,7 +244,7 @@ describe("Routines", () => {
 
   it("lets the owner log a routine that is not yet due, from the general list", async () => {
     const user = userEvent.setup();
-    const { onLogRoutine } = renderPage();
+    const { onLogRoutine, onLogDueRoutine } = renderPage();
     await user.click(screen.getByRole("button", { name: "Log now for Journal club" }));
     expect(onLogRoutine).toHaveBeenCalledWith({
       routineId: "r2",
@@ -208,6 +253,7 @@ describe("Routines", () => {
       hours: 1.5,
       allocations: [],
     });
+    expect(onLogDueRoutine).not.toHaveBeenCalled();
   });
 
   it("gives two due routines with identical usual hours distinct accessible names", () => {

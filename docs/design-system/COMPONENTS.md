@@ -1078,7 +1078,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `FieldHint`              | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `FormField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              16 |
 | `IconButton`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
-| `InlineNotice`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              34 |
+| `InlineNotice`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              35 |
 | `LinkAction`             | controls | yes   | yes                | no                    | yes            | no                 |               0 |
 | `LoadingPanel`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              11 |
 | `MissingValue`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              11 |
