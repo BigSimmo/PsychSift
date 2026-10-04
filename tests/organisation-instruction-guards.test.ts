@@ -106,6 +106,12 @@ describe("retired rules: negation handling", () => {
     ]);
   });
 
+  it("still fires when a later sentence on the same line records a different retirement", () => {
+    expect(hitsFor("The `owner-approved` label gate still blocks merge. There is no longer a paper form.")).toEqual([
+      "owner-approved-label-gate",
+    ]);
+  });
+
   it("leaves ordinary uses of 'owner-approved' as an adjective alone", () => {
     expect(hitsFor("shadow cohort percent (owner-approved 2), bounded to one process")).toEqual([]);
   });
