@@ -22,8 +22,9 @@ Default to running **only** offline-safe gates. For any provider-touching comman
 **Offline-safe — may run without confirmation:**
 
 - `lint`, `typecheck`, `test`
-- `verify:cheap` (runtime, action-pin, sitemap, brand, type/icon scale, lint, typecheck, unit tests)
-- `verify:pr-local` (format + verify:cheap, conditional build/client-bundle scan + offline RAG tests); inspect selection with `verify:pr-local -- --dry-run --files <paths>`
+- `verify:cheap` (lock parity + diff-integrity + lint + typecheck + unit tests — nothing else)
+- `verify:full` (41 static/consistency gates, then lint + typecheck + test; does not invoke cheap)
+- `verify:pr-local` (risk-routed PR mirror: focused docs/workflow contracts for light scope; fail-closed lint/typecheck/full unit plus applicable build/domain checks for executable or unknown scope); inspect selection with `verify:pr-local -- --dry-run --files <paths>`
 - `eval:rag:offline`, `ensure`, `verify:ui` (Chromium, local dev server / demo mode)
 
 **Provider-touching — confirmation-required (report and ask):**

@@ -113,6 +113,12 @@ const documentedCounts = [
     describes: "static/consistency gates in the verify:full chain (excludes lint/typecheck/test)",
   },
   {
+    file: "README.md",
+    pattern: /(\d+) static\/consistency gates/,
+    expected: staticGateCount,
+    describes: "static/consistency gates in the verify:full chain (excludes lint/typecheck/test)",
+  },
+  {
     file: ".claude/skills/gates/SKILL.md",
     pattern: /check \d+ of (\d+)/,
     expected: localGates.length,
@@ -136,13 +142,162 @@ for (const { file, pattern, expected, describes } of documentedCounts) {
   }
 }
 
+// High-traffic operating docs that still re-taught "verify:cheap = the static set" after
+// the 2026-09-17 split. Count pins above catch bare numbers; these forbidden phrases catch
+// membership lies. Historical audit/ledger/superpowers notes are intentionally outside this
+// list — rewrite them only when they become living operating guidance again.
+const COMPOSITION_GUARD_FILES = [
+  "README.md",
+  "CLAUDE.md",
+  "docs/agents/verification-gates.md",
+  "docs/agents/cursor-cloud.md",
+  "docs/testing.md",
+  "docs/process-hardening.md",
+  "docs/scripts-index.md",
+  "docs/wiring-conventions.md",
+  ".claude/skills/gates/SKILL.md",
+  ".claude/agents/verification-router.md",
+  "docs/agents/test-deletion-guard.md",
+  "docs/design-system/GATES.md",
+  "docs/design-system.md",
+];
+
+// Named static hygiene gates agents most often mis-attribute to verify:cheap.
+// Omit check:gate-manifest itself — operating docs often mention it beside cheap
+// when explaining the pin, which is tip-true.
+const STATIC_MEMBERSHIP_GATES = [
+  "check:runtime",
+  "sitemap:check",
+  "check:knip",
+  "brand:check",
+  "check:type-scale",
+  "check:icon-scale",
+  "check:github-actions",
+  "check:ci-scope",
+  "check:outstanding-issues",
+  "check:mha-act-sections",
+  "check:assets",
+  "check:pr-policy",
+];
+
+const STATIC_GATE_ALTERNATION = STATIC_MEMBERSHIP_GATES.map((gate) => gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(
+  "|",
+);
+
+const COMPOSITION_FORBIDDEN = [
+  {
+    id: "cheap-static-set",
+    pattern: /verify:cheap\s+static\s+set/i,
+    remediation: 'Do not call verify:cheap a "static set"; static hygiene lives in verify:full.',
+  },
+  {
+    id: "gate-manifest-reads-cheap",
+    pattern: /check-gate-manifest[\s\S]{0,160}verify:cheap:internal|reads?\s+[`']?verify:cheap:internal/i,
+    remediation: "check-gate-manifest reads verify:full:internal, never verify:cheap:internal.",
+  },
+  {
+    id: "router-cheap-membership",
+    pattern: /verify:cheap`?\s*\(\s*runtime,\s*action-pin,\s*sitemap/i,
+    remediation: "verify:cheap is lock parity + diff-integrity + lint + typecheck + test only.",
+  },
+  {
+    id: "full-invokes-cheap",
+    pattern:
+      /verify:full[\s\S]{0,80}(?:invokes?|runs?|includes?|equals?)\s+(?:npm\s+run\s+)?`?verify:cheap(?![\s\S]{0,40}does not invoke)/i,
+    remediation: "verify:full does not invoke the verify:cheap script; say so explicitly if both are mentioned.",
+  },
+];
+
+const CHEAP_MEMBERSHIP_CLAIM = /(?:wired into|runs?\s+in|inside|part of)\s+(?:npm\s+run\s+)?`?verify:cheap\b/i;
+const STATIC_GATE_MENTION = new RegExp(`\\b(?:${STATIC_GATE_ALTERNATION})\\b`, "i");
+const CHEAP_NEGATION =
+  /\b(?:not|never|no longer|does not|do not|don't|without|must not)\b[\s\S]{0,40}(?:npm\s+run\s+)?`?verify:cheap\b|\bdoes not invoke\b[\s\S]{0,40}`?verify:cheap\b/i;
+const PRE_SPLIT_HISTORY =
+  /pre-split[\s\S]{0,40}verify:cheap|verify:cheap[\s\S]{0,40}pre-split|had grown to \d+ chained commands/i;
+
+/** Reviewed exceptions for dated historical sentences that remain inside operating docs. */
+const COMPOSITION_ALLOWLIST = [
+  {
+    file: "docs/design-system/GATES.md",
+    pattern: /previously lived in the pre-split\s+`verify:cheap` chain/,
+    reason: "dated 2026-09-17 split history; current sentence names verify:full",
+  },
+  {
+    file: "docs/process-hardening.md",
+    pattern: /had grown to 41 chained commands[\s\S]{0,240}38 at the split/,
+    reason: "dated split narrative; live count is pinned elsewhere via check:gate-manifest",
+  },
+];
+
+function stripAllowlisted(file, text) {
+  let next = text;
+  for (const entry of COMPOSITION_ALLOWLIST) {
+    if (entry.file !== file) continue;
+    next = next.replace(entry.pattern, "");
+  }
+  return next;
+}
+
+function sentences(text) {
+  return text
+    .split(/(?:\r?\n|\.(?:\s|$))/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function claimsCheapHostsStaticGate(text) {
+  for (const sentence of sentences(text)) {
+    if (!CHEAP_MEMBERSHIP_CLAIM.test(sentence)) continue;
+    if (!STATIC_GATE_MENTION.test(sentence)) continue;
+    if (CHEAP_NEGATION.test(sentence) || PRE_SPLIT_HISTORY.test(sentence)) continue;
+    return true;
+  }
+  // Table rows often omit verbs: "| `sitemap:check` | … | `verify:cheap`, CI |"
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.includes("|")) continue;
+    if (!STATIC_GATE_MENTION.test(line) || !/\bverify:cheap\b/.test(line)) continue;
+    if (CHEAP_NEGATION.test(line) || PRE_SPLIT_HISTORY.test(line)) continue;
+    // Tip-true when the static gate's host cell already names verify:full.
+    if (new RegExp(`(?:${STATIC_GATE_ALTERNATION})[\\s\\S]{0,120}\\bverify:full\\b`, "i").test(line)) continue;
+    // Only treat a compact "Runs in" style row as a membership claim — long narrative
+    // table cells that merely mention cheap (e.g. "must not be added to verify:cheap")
+    // are covered by CHEAP_NEGATION above.
+    const cells = line
+      .split("|")
+      .map((cell) => cell.trim())
+      .filter(Boolean);
+    const hostCell = cells.find((cell) => /\bverify:cheap\b/.test(cell));
+    if (!hostCell || hostCell.length > 80) continue;
+    if (/\bverify:full\b/.test(hostCell)) continue;
+    return true;
+  }
+  return false;
+}
+
+for (const file of COMPOSITION_GUARD_FILES) {
+  const text = stripAllowlisted(file, readFileSync(file, "utf8"));
+  for (const rule of COMPOSITION_FORBIDDEN) {
+    if (rule.pattern.test(text)) {
+      failures.push(`${file}: composition lie (${rule.id}) — ${rule.remediation}`);
+    }
+  }
+  if (claimsCheapHostsStaticGate(text)) {
+    failures.push(
+      `${file}: composition lie (cheap-hosts-static-gate) — Static gates (runtime, sitemap, knip, brand, type/icon scale, …) belong to verify:full / CI, not verify:cheap.`,
+    );
+  }
+}
+
 if (failures.length > 0) {
-  console.error("Gate-manifest drift — a local verify:full gate is not enforced in CI:");
+  console.error(
+    "Gate-manifest drift — a local verify:full gate is not enforced in CI, or operating docs mis-state gate composition:",
+  );
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
 console.log(
   `Gate-manifest OK: all ${localGates.length} verify:full gates are enforced in CI (static-pr + mapped jobs), ` +
-    `and the ${staticGateCount} static gates are documented consistently.`,
+    `the ${staticGateCount} static gates are documented consistently, ` +
+    `and ${COMPOSITION_GUARD_FILES.length} operating docs pass the cheap≠static composition pin.`,
 );
