@@ -101,7 +101,7 @@ describe("Database skill catalog", () => {
 
   it("keeps cross-surface skill names collision-free except intentional twins", () => {
     const files = discoverRepositorySkillFiles();
-    const byName = new Map();
+    const byName = new Map<string, typeof files>();
     for (const skill of files) {
       const content = fs.readFileSync(skill.file, "utf8");
       const name = content
@@ -109,8 +109,9 @@ describe("Database skill catalog", () => {
         ?.match(/^name:\s*(.+)$/m)?.[1]
         ?.trim();
       if (!name) continue;
-      if (!byName.has(name)) byName.set(name, []);
-      byName.get(name).push(skill);
+      const group = byName.get(name) ?? [];
+      group.push(skill);
+      byName.set(name, group);
     }
 
     expect(CROSS_SURFACE_NAME_TWINS).toEqual(new Set(["ledger"]));
