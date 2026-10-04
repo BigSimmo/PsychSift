@@ -16,7 +16,10 @@ export const ON_CALL_SECTION_HREFS: Record<OnCallSection, string> = {
   playbook: "/on-call/playbook",
   referrals: "/on-call/referrals",
   orientation: "/on-call/orientation",
-  education: "/on-call/education",
+  // The section id stays `education`, but its page now lives in Teaching Week;
+  // `/on-call/education` redirects there. Teaching owns the programme; On Call
+  // never auto-creates CPD from attendance.
+  education: "/teaching/week",
   // The section id stays `logistics`, but its page now lives in Admin: On Call's
   // admin rows moved to Admin > Help on 2026-09-26 (Admin update 1), and
   // `/on-call/logistics` redirects there. Every On Call link to those rows reads

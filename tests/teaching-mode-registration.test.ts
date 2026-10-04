@@ -82,8 +82,9 @@ describe("Teaching mode registration", () => {
     ]);
   });
 
-  it("preserves the legacy teaching list until a service approves transfer", () => {
+  it("maps the legacy education bookmark path to Teaching while More opens /teaching", () => {
     expect(modeSecondaryNavigationRegistry["on-call"].map((entry) => entry.id)).toContain("teaching");
+    expect(modeSecondaryNavigationRegistry["on-call"].find((entry) => entry.id === "teaching")?.href).toBe("/teaching");
     expect(activeModeSecondaryNavigationId("on-call", "/on-call/education")).toBe("teaching");
   });
 

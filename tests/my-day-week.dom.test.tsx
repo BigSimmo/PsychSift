@@ -250,7 +250,7 @@ describe("MyDayWeekPage", () => {
     });
     render(<MyDayWeekPage now={NOW} />);
     const row = screen.getByTestId("my-day-week-session-entry1@2026-10-05");
-    expect(row.getAttribute("href")).toBe("/on-call/education#on-call-entry-entry1");
+    expect(row.getAttribute("href")).toBe("/teaching/week#on-call-entry-entry1");
   });
 
   it("warns when relocated teaching entries or team shifts could not be read", () => {

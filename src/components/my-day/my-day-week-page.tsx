@@ -81,7 +81,7 @@ function teachingRow(session: SessionSummaryRead) {
       key={`teaching:${session.occurrenceId}`}
       title={session.title}
       subtitle={subtitle}
-      href={sessionHref(session) ?? `/on-call/education#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`}
+      href={sessionHref(session) ?? `/teaching/week#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`}
       testId={`my-day-week-session-${session.occurrenceId}`}
     />
   );

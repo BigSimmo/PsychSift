@@ -79,7 +79,7 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
   ],
   [
     "/on-call/education",
-    "Retained On Call Teaching page until the Education → Teaching transfer is approved. More › Teaching and product CTAs now open /teaching directly; this route stays reachable for bookmarks and the relocation backstop (no hard redirect in this tranche).",
+    "Retired On Call teaching calendar. It redirects to /teaching/week (proxy fast path plus a page backstop), so in-app navigation links Teaching Week directly; the page stays only for existing bookmarks.",
   ],
 ]);
 
