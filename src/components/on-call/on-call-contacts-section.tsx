@@ -16,6 +16,7 @@ import {
   onCallGroupAnchorId,
   onCallEntryAnchorId,
 } from "@/components/on-call/on-call-page-anchors";
+import { modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { eyebrowText, metadataPillDensity, toolbarButton } from "@/components/ui-primitives";
 import { cn } from "@/components/ui-primitives";
@@ -162,37 +163,48 @@ function ContactRow({
       : [];
 
   const showVerify = freshness.state === "stale" && Boolean(onVerified);
+  const numberLabel = primary
+    ? `${primary.label === "Ext" ? "Ext " : primary.label === "Pager" ? "Pager " : ""}${primary.value}`
+    : null;
+  // Availability / contact name sit under the phone line (or under the role
+  // when there is no number). Personal rows stay digit-free in a shared list.
+  const secondaryLine = entry.isPersonal ? null : (details?.availability ?? details?.contactName ?? null);
+  // Shared rows always keep the dial/copy column, even with no number — same
+  // idea as OnCallDialRow's disc spacer — so a missing number cannot jog the
+  // trailing edge of the list. Personal rows only grow the column when edit
+  // or verify actually has something to put there.
+  const showTrailingColumn = !entry.isPersonal || Boolean(onEdit) || showVerify;
 
   return (
     <div className="flex items-stretch gap-2" id={onCallEntryAnchorId(entry.id)} tabIndex={-1}>
       <div className="min-w-0 flex-1">
         <OnCallEntryRow
           title={entry.title}
-          stackOnPhone={Boolean(href)}
-          // Board 06 puts the availability under the role — "Always on",
-          // "From 17:00" — because that is what decides whether to ring now.
-          subtitle={entry.isPersonal ? undefined : (details?.availability ?? details?.contactName)}
+          // Role takes the full width of the text column; the phone sits on the
+          // line below (in children), not beside the title in a trailing slot.
           icon={href ? Phone : undefined}
           href={href}
           onActivate={() => recordOnCallRecent({ id: entry.id, title: entry.title })}
           trailing={
-            primary || href ? (
-              <span className="flex items-center gap-2">
-                {/* The number itself, right-aligned as drawn, rather than a
-                    pill under the title. A pill per datum turned a contact
-                    list into five rows a screen; the board shows twelve. */}
-                {primary ? (
-                  <span className="font-normal nums tracking-wide text-sm">
-                    {primary.label === "Ext" ? "Ext " : primary.label === "Pager" ? "Pager " : ""}
-                    {primary.value}
-                  </span>
-                ) : null}
-                {href ? <OnCallCallDisc /> : null}
-              </span>
+            href ? (
+              <OnCallCallDisc />
+            ) : !entry.isPersonal ? (
+              // Holds the disc's place so dial/copy stay lined up when a row
+              // has no tel: target (extension-only, pager, or no number).
+              <span aria-hidden="true" data-contact-row-disc-spacer="" className="size-9 shrink-0" />
             ) : undefined
           }
           testId={`on-call-contact-row-${entry.slug}`}
         >
+          {numberLabel ? (
+            <span
+              data-contact-row-number=""
+              className={cn(modeNumberText, "w-full break-words text-sm text-[color:var(--text)]")}
+            >
+              {numberLabel}
+            </span>
+          ) : null}
+          {secondaryLine ? <span className={cn(modeSecondaryText, "w-full break-words")}>{secondaryLine}</span> : null}
           {entry.isPersonal || primary ? null : (
             <span className={cn(metadataPillDensity.standard, "rounded-full")}>No number on file</span>
           )}
@@ -218,8 +230,11 @@ function ContactRow({
           the same reason — it is a real `<button>` and the row is a real `<a>`.
           A personal entry gets no copy control at all: the page withholds those
           digits from the room, and a control that copies them hands them out. */}
-      {onEdit || showVerify || primary ? (
-        <div className="flex shrink-0 items-center justify-end gap-1.5 self-center">
+      {showTrailingColumn ? (
+        <div
+          data-contact-row-actions=""
+          className="flex w-12 shrink-0 flex-col items-center justify-center gap-1.5 self-stretch"
+        >
           {primary ? (
             <OnCallCopyNumber
               value={primary.value}
@@ -228,6 +243,8 @@ function ContactRow({
               label={`Copy ${primary.label === "Ext" ? "extension" : primary.label + " number"} for ${entry.title}`}
               testId={`on-call-contact-copy-${entry.slug}`}
             />
+          ) : !entry.isPersonal ? (
+            <span aria-hidden="true" data-contact-row-copy-spacer="" className="min-h-12 w-12 shrink-0" />
           ) : null}
           {showVerify && onVerified ? <OnCallVerifyButton entry={entry} onVerified={onVerified} /> : null}
           {onEdit ? (
