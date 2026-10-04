@@ -101,6 +101,24 @@ export const IMPORT_MAX_ROWS = 200;
 export const IMPORT_MAX_FILE_BYTES = 1_048_576;
 export const CPD_REVIEW_MAX_ROWS = 20;
 
+/**
+ * Headers that look like patient identifiers. Matching any of these refuses the
+ * whole import before a row is accepted. Ordinary extra columns that are not
+ * patient-shaped stay ignored.
+ */
+export const IMPORT_FORBIDDEN_HEADER_PATTERNS: readonly RegExp[] = [
+  /\bpatient(?:s)?(?:_|\b|$)/,
+  /\bmrn\b/,
+  /\bumrn\b/,
+  /\bmedicare\b/,
+  /\bdob\b/,
+  /\bdate[_\s-]?of[_\s-]?birth\b/,
+  /\bsurname\b/,
+  /\bfirst[_\s-]?name\b/,
+  /\blast[_\s-]?name\b/,
+  /\bgiven[_\s-]?name\b/,
+];
+
 export const teachingDepthActions = [
   "pairing.save",
   "pairing.reassign",

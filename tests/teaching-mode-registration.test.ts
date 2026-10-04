@@ -82,8 +82,9 @@ describe("Teaching mode registration", () => {
     ]);
   });
 
-  it("preserves the legacy teaching list until a service approves transfer", () => {
+  it("maps the legacy education bookmark path to Teaching while More opens /teaching", () => {
     expect(modeSecondaryNavigationRegistry["on-call"].map((entry) => entry.id)).toContain("teaching");
+    expect(modeSecondaryNavigationRegistry["on-call"].find((entry) => entry.id === "teaching")?.href).toBe("/teaching");
     expect(activeModeSecondaryNavigationId("on-call", "/on-call/education")).toBe("teaching");
   });
 
@@ -93,6 +94,10 @@ describe("Teaching mode registration", () => {
     expect(modePageVisible("teaching", "organise", ["doctor", "organiser"])).toBe(true);
     expect(modePageVisible("teaching", "week", [])).toBe(true);
     expect(modePageVisible("cme", "organise", [])).toBe(true);
+    expect(modePageVisible("roster", "team", [], null)).toBe(false);
+    expect(modePageVisible("roster", "swaps", [], false)).toBe(false);
+    expect(modePageVisible("roster", "team", [], true)).toBe(true);
+    expect(modePageVisible("roster", "shifts", [], null)).toBe(true);
     const { result } = renderHook(() => useTeachingRoles());
     expect(result.current).toEqual([]);
     act(() => setTeachingRoles(["admin", "doctor", "admin"]));

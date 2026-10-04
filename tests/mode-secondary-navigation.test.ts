@@ -596,6 +596,17 @@ describe("mode secondary navigation registry", () => {
     expect(more.teaching).toBe("/teaching");
   });
 
+  it("does not grow the mode menus past their current pages", () => {
+    const visible = (modeId: AppModeId) =>
+      modeSecondaryNavigationEntries(modeId).filter((entry) => entry.href && !entry.hidden);
+    expect(visible("teaching")).toHaveLength(8);
+    expect(visible("my-work")).toHaveLength(3);
+    expect(visible("roster")).toHaveLength(6);
+    expect(visible("first-nations")).toHaveLength(9);
+    expect(visible("my-day")).toHaveLength(3);
+    expect(visible("on-call").filter((entry) => entry.group === "more")).toHaveLength(5);
+  });
+
   it("does not mark Find/Search current on record routes that match no destination", () => {
     expect(activeModeSecondaryNavigationId("specifiers", "/specifiers/with-anxious-distress")).toBeNull();
     expect(activeModeSecondaryNavigationId("formulation", "/formulation/avoidance")).toBeNull();

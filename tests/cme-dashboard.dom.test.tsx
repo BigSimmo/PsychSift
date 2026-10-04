@@ -130,7 +130,7 @@ describe("the dashboard", () => {
     expect(screen.getByTestId("cme-training-position-link")).toHaveTextContent("Stage 2 · rotation 3 of 4");
     expect(screen.getByTestId("cme-training-position-link")).toHaveAttribute("href", "/cme/training");
   });
-  it("opens an overdue routine as a pre-filled activity from the Routines due module", async () => {
+  it("offers one-tap Log N h from the Routines due module", async () => {
     const user = userEvent.setup();
     const onLogRoutine = vi.fn();
     const routine: CmeRoutine = {
@@ -153,7 +153,7 @@ describe("the dashboard", () => {
     );
     // Changed 2026-09-24: a due routine no longer takes the single Next slot,
     // which hid the requirement gap and the year-end reminder. It is logged
-    // from its own row in the Routines due module.
+    // from its own row in the Routines due module. The route one-tap saves.
     expect(screen.getByTestId("cme-next-action")).not.toHaveTextContent(/peer review group/i);
     const due = screen.getByTestId("cme-routines-due");
     const log = within(due).getByRole("button", { name: /log/i });

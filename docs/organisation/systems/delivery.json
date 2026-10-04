@@ -165,6 +165,7 @@
     "src/lib/local-project-identity.ts",
     "src/lib/local-server-utils.mjs",
     "src/lib/webhooks/chat-notify.ts",
+    "tests/agents-marker-contract.test.ts",
     "tests/architecture-boundaries.test.ts",
     "tests/audit-remediation-tooling.test.ts",
     "tests/authenticated-live-workflow.test.ts",

@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  CROSS_SURFACE_NAME_TWINS,
   validatePluginProductName,
   userFacingPluginMetadata,
   userFacingProductSurfaces,
@@ -96,6 +97,39 @@ describe("Database skill catalog", () => {
       Cursor: 15,
       "PsychSift plugin": 1,
     });
+  });
+
+  it("keeps cross-surface skill names collision-free except intentional twins", () => {
+    const files = discoverRepositorySkillFiles();
+    const byName = new Map<string, typeof files>();
+    for (const skill of files) {
+      const content = fs.readFileSync(skill.file, "utf8");
+      const name = content
+        .match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1]
+        ?.match(/^name:\s*(.+)$/m)?.[1]
+        ?.trim();
+      if (!name) continue;
+      const group = byName.get(name) ?? [];
+      group.push(skill);
+      byName.set(name, group);
+    }
+
+    expect(CROSS_SURFACE_NAME_TWINS).toEqual(new Set(["ledger"]));
+    expect(
+      byName
+        .get("ledger")
+        ?.map((skill) => skill.surface)
+        .sort(),
+    ).toEqual(["Claude", "Codex"]);
+    expect(byName.has("source-governance")).toBe(true);
+    expect(byName.get("source-governance")?.every((skill) => skill.surface === "Codex")).toBe(true);
+    expect(byName.get("sources")?.every((skill) => skill.surface === "Claude")).toBe(true);
+    expect(byName.get("sources")?.some((skill) => skill.surface === "Codex")).toBeFalsy();
+    expect(fs.existsSync(path.join(skillsRoot, "sources"))).toBe(false);
+    expect(fs.existsSync(path.join(skillsRoot, "source-governance", "SKILL.md"))).toBe(true);
+
+    const result = validateRepositorySkillPolicies(files);
+    expect(result.errors.filter((error) => error.includes("Cross-surface skill name collision"))).toEqual([]);
   });
 
   it("keeps prompt-perfector execution authorization and repository isolation fail-closed", () => {

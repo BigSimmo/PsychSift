@@ -106,7 +106,7 @@ describe("OnCallTeachingStrip", () => {
     render(<OnCallTeachingStrip sessions={[GRAND_ROUNDS]} />);
     const card = screen.getByTestId("on-call-home-teaching-grand-rounds");
     const link = within(card).getByRole("link", { name: /grand rounds/i });
-    expect(link).toHaveAttribute("href", "/on-call/education");
+    expect(link).toHaveAttribute("href", "/teaching/week");
   });
 
   it("gives the day number tabular figures and hides every glyph from assistive tech", () => {

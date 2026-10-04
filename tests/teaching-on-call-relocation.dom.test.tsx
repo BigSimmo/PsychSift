@@ -77,12 +77,16 @@ afterEach(() => {
   nav.redirect.mockReset();
 });
 
-describe("Teaching preserves On Call until approved transfer", () => {
-  it("retains the original teaching route until a service approves transfer", async () => {
-    const response = await proxy(new NextRequest(new URL("http://localhost/on-call/education")));
-    expect(response.headers.get("location")).toBeNull();
-    expect(OnCallEducationRoute().props.view).toBe("education");
-    expect(nav.redirect).not.toHaveBeenCalled();
+describe("Teaching owns the programme; On Call education hard-redirects", () => {
+  it("hard-redirects /on-call/education to Teaching Week (proxy + page backstop)", async () => {
+    const response = await proxy(new NextRequest(new URL("http://localhost/on-call/education?from=bookmark")));
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/teaching/week");
+    expect(location.searchParams.get("from")).toBe("bookmark");
+
+    OnCallEducationRoute();
+    expect(nav.redirect).toHaveBeenCalledWith("/teaching/week");
   });
 
   it("retains teaching selected for the pocket card", () => {

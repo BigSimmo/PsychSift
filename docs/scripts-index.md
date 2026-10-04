@@ -58,7 +58,7 @@ migration has shipped (see `docs/maturity-backlog-workorders.md` L1).
 (`npm run design-system:baselines:adopt`), `check-function-grants.mjs`,
 `check-owner-scope-api.mjs`, `check-client-bundle-secrets.mjs`, `verify-pr-local.mjs`,
 `verify-release-offline.mjs`, `check-codex-cloud-setup.mjs`. `check-gate-manifest.mjs` cross-checks that every gate in the
-`verify:cheap:internal` chain also runs in CI's `static-pr` job, so the two lists can't drift.
+`verify:full:internal` chain also runs in CI's `static-pr` job, so the two lists can't drift.
 
 Also in the gate set: `check-assets.mjs`, `check-branch-review-ledger.mjs`,
 `check-hosted-migration-role.mjs` (`check:migration-role` — pins the immutable applied migration and
@@ -89,7 +89,7 @@ Also catalogued (2026-09-02), gate and CI helpers:
 - `check-repo-awareness-snapshot.ts` (`check:repo-awareness-snapshot`) + `generate-repo-awareness-snapshot.ts` (`snapshot:repo-awareness`) — `data/repo-awareness-snapshot.json` (routes, documentation catalogue coverage, review state) freshness and generation.
 - `check-privacy-readiness.mjs` (`check:privacy-readiness`, `check:privacy-readiness:release`) — validates `docs/governance/privacy-readiness.v1.json` required ids and release-blocking states.
 - `check-source-catalogue.ts` (`check:source-catalogue`) — repository source references, providers and coverage issues from `src/lib/sources/repository-providers`.
-- `check-stale-docs.mjs` (`check:stale-docs`) — advisory report of Markdown docs untouched for `--days` and linked from nowhere; refuses shallow clones.
+- `check-stale-docs.mjs` (`check:stale-docs`) — reports Markdown docs untouched for `--days` and linked from nowhere, and exits 1 when it finds any. Refuses shallow clones. Local only; it does not delete docs.
 - `check-playwright-browser-revision.mjs` (`check:playwright-browser-revision`) — fails closed unless the pinned Chromium revision has a launchable binary on disk (`#312`).
 - `playwright-pr-shards.mjs` (`check:playwright-pr-shards`) — duration-aware shard groups for the required Chromium PR journeys.
 - `browser-test-plan.mjs` (`plan:browser`, `check:browser-test-plan`) — chooses the smallest browser gate that still covers a change.

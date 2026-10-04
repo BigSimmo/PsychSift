@@ -11,6 +11,7 @@ import {
   type RosterRules,
   type RosterTeam,
 } from "@/lib/roster/team/model";
+import { setRosterHasEnabledTeam } from "@/lib/teaching/page-visibility";
 
 /**
  * The team client every Roster screen reads through. Answers live in React
@@ -105,7 +106,13 @@ export type RosterTeamsPayload = { teams: RosterTeam[]; actorId?: string; sample
 
 /** The teams I belong to. */
 export function useRosterTeams(): RosterReadState<RosterTeamsPayload> {
-  return useLoaded<RosterTeamsPayload>("/api/roster/team", "teams");
+  const state = useLoaded<RosterTeamsPayload>("/api/roster/team", "teams");
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    const enabled = Array.isArray(state.data?.teams) ? state.data.teams.some((team) => team.enabled) : false;
+    setRosterHasEnabledTeam(enabled);
+  }, [state.status, state.data]);
+  return state;
 }
 
 /** Rules remain scoped to their team; changing membership discards the previous answers. */

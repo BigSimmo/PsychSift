@@ -155,7 +155,7 @@ export const modeSecondaryNavigationRegistry = {
     // labels only: the stored section ids and database check constraints stay
     // `logistics` and `education`. More goes straight to Admin / Teaching homes;
     // `/on-call/compliance`, `/on-call/logistics` and `/on-call/education` stay
-    // as bookmarks (compliance/logistics redirect; education page is retained).
+    // as bookmarks that hard-redirect (Admin Renewals / Help, Teaching Week).
     { id: "compliance", label: "Compliance", href: "/admin/renewals", group: "more" },
     { id: "logistics", label: "Admin", href: ON_CALL_ADMIN_ROWS_HREF, group: "more" },
     { id: "teaching", label: "Teaching", href: "/teaching", group: "more" },

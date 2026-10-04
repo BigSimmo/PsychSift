@@ -10,6 +10,7 @@ import { TodayShell } from "@/components/mode-kit/today/today-shell";
 import { ReviewStamp } from "@/components/first-nations/review-stamp";
 import { OfflineState } from "@/components/first-nations/offline-state";
 import { FirstNationsHomeMenu } from "@/components/first-nations/page-menu";
+import { openReadingTrustSheet } from "@/components/first-nations/reading-trust-sheet";
 import { SituationModule, SituationProvider, SituationSidePanel } from "@/components/first-nations/situation-module";
 import { StateModule } from "@/components/first-nations/state-module";
 import { AcknowledgementText } from "@/components/first-nations/voice";
@@ -21,14 +22,24 @@ export const EXAMPLE_LINE = "Example only · wording awaiting approval";
 
 export type Training = { label: string; href: string } | null;
 
+/** Tappable cue into the reading-trust sheet; keeps the same visible wording. */
 export function ExampleLine({ className }: { className?: string }) {
   return (
-    <p
+    <button
+      type="button"
       data-fn-part="example"
-      className={cn("px-1 text-2xs text-[color:var(--text-muted)] [text-wrap:balance]", className)}
+      onClick={() => openReadingTrustSheet()}
+      aria-haspopup="dialog"
+      aria-label={`What am I reading? ${EXAMPLE_LINE}`}
+      className={cn(
+        "px-1 text-left text-2xs text-[color:var(--text-muted)] underline-offset-2 [text-wrap:balance]",
+        "hover:underline",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+        className,
+      )}
     >
       {EXAMPLE_LINE}
-    </p>
+    </button>
   );
 }
 

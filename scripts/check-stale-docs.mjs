@@ -2,12 +2,11 @@
 /**
  * check-stale-docs — report Markdown docs nobody has touched or linked to in a long time.
  *
- * Advisory only: it never deletes anything and never fails CI on its own. It exists because
- * a 2026-08-31 productivity review found the docs/ tree had grown to 1,121 files with no
- * process to notice when one goes stale, and a naive "last commit per file" count is
- * meaningless on a shallow clone — this script refuses to run on one rather than reporting
- * a false "everything was touched once" picture (the same trap scripts/check-dead-code-
- * candidate.mjs was written to avoid for code).
+ * It never deletes anything. It exists because a 2026-08-31 productivity review found the
+ * docs/ tree had grown to 1,121 files with no process to notice when one goes stale, and a
+ * naive "last commit per file" count is meaningless on a shallow clone — this script refuses
+ * to run on one rather than reporting a false "everything was touched once" picture (the same
+ * trap scripts/check-dead-code-candidate.mjs was written to avoid for code).
  *
  * A doc is flagged only when BOTH hold:
  *   - its last commit is older than --days (default 180), and
@@ -15,15 +14,16 @@
  *     (so nothing links to it, mentions it, or names it in a script/test/workflow).
  *
  * Flagged means "worth a human look" — it may be a deliberately stable reference doc, not
- * dead weight. This script does not know the difference; a person does.
+ * dead weight. This script does not know the difference; a person does. It still exits 1
+ * when it finds any, so a stale unreferenced doc cannot pass unnoticed.
  *
  * Usage:
  *   node scripts/check-stale-docs.mjs                 # human-readable report
  *   node scripts/check-stale-docs.mjs --json           # machine-readable report
  *   node scripts/check-stale-docs.mjs --days 90
  *
- * Exit 0 always (advisory). Exit 1 only on a hard failure to inspect the repo (shallow
- * clone, git not runnable) — never on finding stale docs.
+ * Exit 1 when any stale doc is found, and on a hard failure to inspect the repo (shallow
+ * clone, git not runnable). Exit 0 when every scanned doc was touched recently or is referenced.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -181,6 +181,11 @@ export function findStaleDocs({ days = 180, now = new Date() } = {}) {
   return { totalDocsScanned: docs.length, stale };
 }
 
+/** 1 when the report lists any stale doc. A printed list is not a pass. */
+export function exitStatusForStaleReport(result) {
+  return result?.stale?.length > 0 ? 1 : 0;
+}
+
 function main() {
   const argv = process.argv.slice(2);
   const days = parseDaysArg(argv);
@@ -196,22 +201,20 @@ function main() {
 
   if (json) {
     console.log(JSON.stringify(result, null, 2));
-    return;
-  }
-
-  if (result.stale.length === 0) {
+  } else if (result.stale.length === 0) {
     console.log(
       `check-stale-docs: none of ${result.totalDocsScanned} scanned docs are both untouched for ${days}+ days and unreferenced elsewhere.`,
     );
-    return;
+  } else {
+    console.log(
+      `check-stale-docs: ${result.stale.length} of ${result.totalDocsScanned} docs are untouched for ${days}+ days AND not referenced by anything else in the repo. Worth a human look, not an automatic delete:\n`,
+    );
+    for (const { path, lastTouched } of result.stale) {
+      console.log(`  ${lastTouched}  ${path}`);
+    }
   }
-
-  console.log(
-    `check-stale-docs: ${result.stale.length} of ${result.totalDocsScanned} docs are untouched for ${days}+ days AND not referenced by anything else in the repo. Worth a human look, not an automatic delete:\n`,
-  );
-  for (const { path, lastTouched } of result.stale) {
-    console.log(`  ${lastTouched}  ${path}`);
-  }
+  const status = exitStatusForStaleReport(result);
+  if (status !== 0) process.exit(status);
 }
 
 if (isDirectEntrypoint(import.meta.url)) {

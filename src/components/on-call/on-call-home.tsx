@@ -238,6 +238,8 @@ export function OnCallHome({ now: pinnedNow }: { now?: Date } = {}) {
       <InformationPageShell testId="on-call-home-main">
         <h1 className="sr-only">Now</h1>
         <p role="status">Loading current on-call context…</p>
+        {/* Public lines do not depend on the historical hydration anchor. */}
+        <NowCrisisLines />
       </InformationPageShell>
     );
   }

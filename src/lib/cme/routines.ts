@@ -20,11 +20,10 @@ export const cmeRoutineCadenceLabels: Record<CmeRoutineCadence, string> = {
  * A recurring activity the owner does every month or term — supervision, a
  * journal club, a peer-review meeting.
  *
- * A routine is a reminder to log something, never a log of it. Nothing in
- * this module writes a `CmeEntry`, and nothing here should ever be extended
- * to do so: only the owner knows whether he was actually there. See
- * `routinesDueOn` (what is due) and `routineLogPrefill` (what a "Log" tap
- * hands to the entry form) below.
+ * A routine is a reminder to log something. Nothing in this module writes a
+ * `CmeEntry` — due "Log N h" saves in the route UI when the owner taps it.
+ * See `routinesDueOn` (what is due) and `routineLogPrefill` (the payload a
+ * Log tap builds) below.
  */
 export type CmeRoutine = {
   readonly id: string;
@@ -48,12 +47,10 @@ export type CmeRoutine = {
 };
 
 /**
- * Everything the entry form needs to open pre-filled for one routine, as of
- * `instant`. This is a plain value, not a submission: building it here once
- * is what stops the "Due now" button and the general list's "Log" button
- * (`cme-routines-page.tsx`) from quietly drifting on which fields a routine
- * carries forward. Nothing consumes this without the owner looking at the
- * entry form and pressing Save — see `CmeRoutinesPage`'s own doc comment.
+ * The payload a Log tap builds for one routine, as of `instant`. Building it
+ * here once keeps due "Log N h" and not-yet-due "Log now" aligned on which
+ * fields a routine carries forward. The UI either saves this immediately
+ * (due + usual split, with Undo) or opens the entry form with it.
  */
 export type CmeRoutineLogPrefill = {
   readonly routineId: string;

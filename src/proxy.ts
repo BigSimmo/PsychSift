@@ -66,7 +66,6 @@ const staticRouteRedirects: Record<string, string> = {
   // sentence) all name this route by hand, so `sitemap:check` cannot notice the entry
   // going away. Retiring it means moving all four together.
   "/mockups/document-search-command": "/documents/search",
-  // Keep the existing On Call teaching records reachable until a service approves transfer.
   // Admin mode, update 1 (2026-09-26). My Work became Admin and its home moved to
   // `/admin`; the two On Call pages Admin received moved with it. The query string
   // travels, and the browser keeps a `#on-call-entry-<id>` fragment across the 307,
@@ -75,6 +74,10 @@ const staticRouteRedirects: Record<string, string> = {
   "/my-work": "/admin/renewals",
   "/on-call/compliance": "/admin/renewals",
   "/on-call/logistics": "/admin/help",
+  // On Call's parallel teaching calendar retires to Teaching Week. The section id
+  // stays `education` in the database; Teaching owns the programme. Fragments and
+  // query strings travel with the 307 so bookmarks keep their anchors.
+  "/on-call/education": "/teaching/week",
 };
 
 /**
