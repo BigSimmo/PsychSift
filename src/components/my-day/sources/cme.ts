@@ -9,6 +9,8 @@ import { groupDrafts, type CmeDraft } from "@/lib/cme/drafts";
 import { routineLogPrefill, routinesDueOn, type CmeRoutine } from "@/lib/cme/routines";
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceResult } from "@/lib/my-day/model";
+import { cpdCoachingMyDayItems, ruleEnginesOn } from "@/lib/my-day/rule-items";
+import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { perthDateKey, showsReminderInApp, type ReminderSettings } from "@/lib/reminders/settings";
 import { useAuthSession } from "@/lib/supabase/client";
 
@@ -75,8 +77,11 @@ export function cmeMyDayItems(
 const signedOut: MyDaySourceResult = { mode: "cme", status: "signed-out", items: [] };
 const loading: MyDaySourceResult = { mode: "cme", status: "loading", items: [] };
 
+/** The confirmed year and its activities, read only while the signed CPD coaching is switched on. */
+type Coaching = { set: CmeRequirementSet | null; entries: CmeEntry[] };
+
 type Loaded =
-  | { status: "ready"; routines: CmeRoutine[]; drafts: CmeDraft[]; sample: boolean }
+  | { status: "ready"; routines: CmeRoutine[]; drafts: CmeDraft[]; sample: boolean; coaching?: Coaching }
   | { status: "signed-out" | "failed" };
 
 type Read<T> = { ok: true; data: T; demo: boolean } | { ok: false; unauthorized: boolean } | null;
@@ -95,15 +100,53 @@ async function readList<T>(url: string, key: "routines" | "drafts", signal: Abor
   }
 }
 
-async function loadCme(signal: AbortSignal): Promise<Loaded | null> {
-  const [routines, drafts] = await Promise.all([
+/**
+ * The year's confirmed targets and activities, the reads the CPD hours card makes. A failed read
+ * fails the CPD source, so a missing coaching line never passes for a year that is on track.
+ */
+async function loadCoaching(signal: AbortSignal): Promise<Coaching | "failed" | "sample"> {
+  try {
+    const [year, entries] = await Promise.all([
+      fetch("/api/cme/year", { cache: "no-store", signal }),
+      fetch("/api/cme/entries", { cache: "no-store", signal }),
+    ]);
+    if (!year.ok || !entries.ok) return "failed";
+    const yearBody = (await year.json().catch(() => null)) as {
+      requirementSet?: CmeRequirementSet | null;
+      demoMode?: boolean;
+    } | null;
+    const entriesBody = (await entries.json().catch(() => null)) as {
+      entries?: unknown;
+      year?: number;
+      demoMode?: boolean;
+    } | null;
+    if (!yearBody || !entriesBody || !Array.isArray(entriesBody.entries)) return "failed";
+    if (yearBody.demoMode || entriesBody.demoMode) return "sample";
+    const set = yearBody.requirementSet ?? null;
+    // Activities from another year are never measured against this year's targets.
+    if (!set || entriesBody.year !== set.year) return { set: null, entries: [] };
+    return { set, entries: entriesBody.entries as CmeEntry[] };
+  } catch {
+    return "failed";
+  }
+}
+
+async function loadCme(signal: AbortSignal, withCoaching: boolean): Promise<Loaded | null> {
+  const [routines, drafts, coaching] = await Promise.all([
     readList<CmeRoutine>("/api/cme/routines", "routines", signal),
     readList<CmeDraft>("/api/cme/drafts", "drafts", signal),
+    withCoaching ? loadCoaching(signal) : Promise.resolve(undefined),
   ]);
   if (signal.aborted || !routines || !drafts) return null;
   if ((!routines.ok && routines.unauthorized) || (!drafts.ok && drafts.unauthorized)) return { status: "signed-out" };
-  if (!routines.ok || !drafts.ok) return { status: "failed" };
-  return { status: "ready", routines: routines.data, drafts: drafts.data, sample: routines.demo || drafts.demo };
+  if (!routines.ok || !drafts.ok || coaching === "failed") return { status: "failed" };
+  return {
+    status: "ready",
+    routines: routines.data,
+    drafts: drafts.data,
+    sample: routines.demo || drafts.demo,
+    ...(coaching && coaching !== "sample" ? { coaching } : {}),
+  };
 }
 
 const noRoutines: readonly CmeRoutine[] = [];
@@ -123,7 +166,7 @@ export function useCmeMyDaySource({ enabled, now }: { enabled: boolean; now: Dat
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
-    void loadCme(controller.signal).then((next) => {
+    void loadCme(controller.signal, ruleEnginesOn(new Date()).cpd).then((next) => {
       if (next && !controller.signal.aborted) setStored({ epoch: authEpoch, loaded: next });
     });
     return () => controller.abort();
@@ -139,7 +182,12 @@ export function useCmeMyDaySource({ enabled, now }: { enabled: boolean; now: Dat
     result: {
       mode: "cme",
       status: "ready",
-      items: cmeMyDayItems({ routines: loaded.routines, drafts: loaded.drafts, year: cpdYearOf(now) }, now, reminders),
+      items: [
+        ...cmeMyDayItems({ routines: loaded.routines, drafts: loaded.drafts, year: cpdYearOf(now) }, now, reminders),
+        ...(loaded.coaching && !loaded.sample
+          ? cpdCoachingMyDayItems(loaded.coaching.set, loaded.coaching.entries, now)
+          : []),
+      ],
       ...(loaded.sample ? { sample: true } : {}),
     },
     retry,

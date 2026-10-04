@@ -1,5 +1,5 @@
-import type { TodayItem } from "@/lib/admin/today-rule-items";
 import type { CpdCoachingResult } from "@/lib/cme/category-coaching";
+import type { TodayItem } from "@/lib/today/today-item";
 
 /**
  * CPD category coaching as Today items. Nothing while the rule set is switched off; `info` severity,
