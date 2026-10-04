@@ -199,7 +199,7 @@ export const modeSecondaryNavigationRegistry = {
   medicines: [],
   // Admin keeps the internal mode id for existing preferences and links.
   "my-work": [
-    { id: "admin-today", label: "Today", href: "/admin" },
+    // No Today tab: My Day is the one Today (modes review, phase 2b).
     { id: "renewals", label: "Renewals", href: "/admin/renewals" },
     { id: "new-job", label: "New job", href: "/admin/new-job" },
     { id: "help", label: "Help", href: "/admin/help" },
@@ -471,7 +471,6 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/admin/new-job" || pathname === "/admin/new-job/records" || pathname === "/admin/new-job/pack")
       return "new-job";
     if (pathname === "/admin/help") return "help";
-    if (pathname === "/admin") return "admin-today";
     return null;
   }
   if (modeId === "my-day") {

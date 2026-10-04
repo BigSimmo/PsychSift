@@ -36,6 +36,8 @@ const MODE_HOME_LOADING_ROUTES = [
   "medicines",
   // Admin's Today (mode id `my-work`), likewise.
   "admin",
+  // Renewals, where Admin now opens (modes review, phase 2b).
+  "admin/renewals",
   // Roster's dashboard, a standalone mode home for the same reason.
   "roster",
   // First Nations' home: static skeleton plus the real crisis strip (spec §5),

@@ -127,7 +127,6 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   learning: Presentation,
   setup: ListChecks,
   // Admin's page destinations in the mode picker.
-  "admin-today": Sunrise,
   renewals: ON_CALL_VIEW_ICONS.compliance,
   "new-job": BriefcaseBusiness,
   help: LifeBuoy,
