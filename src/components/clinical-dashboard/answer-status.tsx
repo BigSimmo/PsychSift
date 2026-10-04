@@ -367,7 +367,7 @@ function AnswerProgressSteps({ current }: { current: number }) {
               "flex items-start gap-2 text-xs leading-5",
               state === "done" && "text-[color:var(--text-muted)]",
               state === "current" && "font-semibold text-[color:var(--text-heading)]",
-              state === "upcoming" && "text-[color:var(--text-soft)]",
+              state === "upcoming" && "text-[color:var(--text-muted)] opacity-80",
             )}
           >
             <span
@@ -512,7 +512,7 @@ export function AnswerProgress({
             {question ? (
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-3xs font-bold tracking-[0.1em] text-[color:var(--text-muted)] uppercase">
+                  <p className="text-3xs font-bold tracking-eyebrow text-[color:var(--text-muted)] uppercase">
                     Your question
                   </p>
                   <p
@@ -556,13 +556,13 @@ export function AnswerProgress({
             data-slot="answer-progress-answer"
             className="grid gap-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3.5 py-3"
           >
-            <p className="text-3xs font-bold tracking-[0.1em] text-[color:var(--text-muted)] uppercase">Answer</p>
+            <p className="text-3xs font-bold tracking-eyebrow text-[color:var(--text-muted)] uppercase">Answer</p>
             <p className="text-xs text-[color:var(--text-muted)]">Your cited answer will appear here.</p>
             <AnswerProseSkeleton />
           </div>
 
           <div data-slot="answer-progress-sources" className="grid gap-1.5">
-            <p className="flex items-baseline justify-between text-3xs font-bold tracking-[0.1em] text-[color:var(--text-muted)] uppercase">
+            <p className="flex items-baseline justify-between text-3xs font-bold tracking-eyebrow text-[color:var(--text-muted)] uppercase">
               <span>Sources</span>
               <span className="nums text-2xs font-semibold tracking-normal normal-case">
                 {revealedSourceCount > 0 ? `${revealedSourceCount} found` : "None chosen yet"}
