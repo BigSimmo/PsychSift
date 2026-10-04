@@ -20,7 +20,7 @@ import { useWorkSearchRecords } from "@/components/work-search/use-work-search-r
 import { Sheet } from "@/components/ui/sheet";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { perthDateOf } from "@/lib/perth-time";
-import { cn } from "@/lib/utils";
+import { cn } from "@/components/ui-primitives";
 import {
   workSearchAreaLabels,
   workSearchAreas,
@@ -56,7 +56,7 @@ function rememberQuery(query: string) {
 }
 
 /** Forget recent searches, e.g. when the account changes. */
-export function clearWorkSearchRecents() {
+function clearWorkSearchRecents() {
   recentQueries = [];
 }
 

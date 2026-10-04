@@ -16,7 +16,7 @@ export interface WorkSearchEntry {
   readonly item: WorkItem;
 }
 
-export const WORK_SEARCH_RESULT_LIMIT = 60;
+const WORK_SEARCH_RESULT_LIMIT = 60;
 
 function rankItem(item: WorkItem, terms: readonly string[]): WorkSearchRank | null {
   const tiers: readonly (readonly string[])[] = [[item.title], [...item.tags, item.detail ?? ""], item.text];

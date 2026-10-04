@@ -8,10 +8,10 @@ import type { ComponentProps } from "react";
  * focused, via `prefetchWorkSearchSheet`), so the header that every page loads
  * carries one icon and this wrapper, never the search or any area's code.
  */
-export const loadWorkSearchSheet = () =>
+const loadWorkSearchSheet = () =>
   import("@/components/work-search/work-search-sheet").then((module) => module.WorkSearchSheet);
 
-export const WorkSearchSheet = dynamic(loadWorkSearchSheet, { ssr: false });
+const WorkSearchSheet = dynamic(loadWorkSearchSheet, { ssr: false });
 
 export function prefetchWorkSearchSheet() {
   void loadWorkSearchSheet();

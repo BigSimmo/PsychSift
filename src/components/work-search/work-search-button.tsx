@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 
 import { LazyWorkSearchSheet, prefetchWorkSearchSheet } from "@/components/work-search/lazy-work-search-sheet";
 import type { AppModeId } from "@/lib/app-modes";
-import { cn } from "@/lib/utils";
+import { cn } from "@/components/ui-primitives";
 import { isWorkSearchArea } from "@/lib/work-search/model";
 
 /**
