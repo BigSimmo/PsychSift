@@ -379,7 +379,7 @@ describe("resolveBase", () => {
       git(["update-ref", "refs/remotes/origin/main", "HEAD"]);
       expect(resolveBase({ env: {}, git })).toBe(git(["rev-parse", "HEAD"]));
     } finally {
-      rmSync(cwd, { recursive: true, force: true });
+      rmSync(cwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 
