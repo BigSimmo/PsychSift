@@ -51,11 +51,11 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Who's who",
     "Orientation checklists",
   ],
-  cme: ["Today", "Log", "Plan", "Learning", "Set up"],
+  cme: ["Year", "Log", "Plan", "Learning", "Set up"],
   teaching: ["Today", "Week", "What's on", "Resources", "Logbook", "Teach", "Supervision", "Organise"],
   psychiatry: [],
   medicines: [],
-  "my-work": ["Today", "Renewals", "New job", "Help"],
+  "my-work": ["Renewals", "New job", "Help"],
   roster: ["Today", "Shifts", "Team", "Swaps", "Requests", "Settings"],
   "first-nations": [
     "Bedside",
@@ -93,7 +93,7 @@ const cleanLandingPath: Record<AppModeId, string> = {
   teaching: "/teaching",
   psychiatry: "/psychiatry",
   medicines: "/medicines",
-  "my-work": "/admin",
+  "my-work": "/admin/renewals",
   roster: "/roster",
   "first-nations": "/first-nations",
   "my-day": "/my-day",
@@ -161,7 +161,7 @@ describe("mode secondary navigation registry", () => {
 
   it("keeps every older CPD address under one of the five current pages", () => {
     expect(modeSecondaryNavigationRegistry.cme.map(({ label }) => label)).toEqual([
-      "Today",
+      "Year",
       "Log",
       "Plan",
       "Learning",
