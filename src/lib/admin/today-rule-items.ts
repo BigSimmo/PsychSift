@@ -1,14 +1,11 @@
-import type { AppModeId } from "@/lib/app-modes";
 import { formatPerthDateTime } from "@/lib/mha-timeline";
 import type { MhaTimersResult } from "@/lib/on-call/mha-timers";
 import type { FatigueResult } from "@/lib/roster/fatigue-rules";
+import type { TodayItem } from "@/lib/today/today-item";
 
 /**
  * The Mental Health Act timer and roster fatigue results as Today items, for My Day and each mode's
  * Today page. The CPD adapter is `src/lib/cme/coaching-today-items.ts`, because Admin reads no CPD data.
- *
- * `TodayItem` below mirrors `src/lib/today/today-item.ts` from the Today layout branch (PR #3224),
- * field for field. Once that lands on main, delete this copy and import the shared type instead.
  *
  * Every adapter returns NOTHING while its engine is switched off: an unsigned rule set produces no
  * item, rather than an item saying it is unsigned. Severity bands use no invented threshold:
@@ -17,18 +14,6 @@ import type { FatigueResult } from "@/lib/roster/fatigue-rules";
  * - fatigue warnings and CPD lines are `info`, because they are neutral memory aids, not deadlines.
  * Items carry no patient identifiers: a countdown names the form and the limit, never the person.
  */
-
-export type TodaySeverity = "overdue" | "soon" | "info";
-
-export interface TodayItem {
-  readonly id: string;
-  readonly mode: AppModeId;
-  readonly title: string;
-  readonly detail?: string;
-  readonly due: string | null;
-  readonly severity: TodaySeverity;
-  readonly href: string;
-}
 
 /** Countdowns only; quote-only entries stay on the form page's Timeline, not in Today. */
 export function mhaTimerTodayItems(result: MhaTimersResult): TodayItem[] {

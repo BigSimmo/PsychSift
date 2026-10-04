@@ -6,6 +6,7 @@ import { managerWaiting } from "@/components/roster/manage/roster-manage-waiting
 import { fetchRosterRead, type RosterTeamsPayload } from "@/components/roster/use-roster-team";
 import { myDaySeverityForDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceResult } from "@/lib/my-day/model";
+import { fatigueMyDayItems, ruleEnginesOn, type MyDayRuleShift } from "@/lib/my-day/rule-items";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterManage, RosterOverview, RosterRequests, RosterTeam } from "@/lib/roster/team/model";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
@@ -25,6 +26,8 @@ export interface RosterMyDayInput {
   /** Invented demo / held-release data: never shown as the reader's own work. */
   readonly sample?: boolean;
   readonly teams: readonly RosterMyDayTeamInput[];
+  /** The reader's own shifts, read only while the signed fatigue warnings are switched on. */
+  readonly ownShifts?: readonly MyDayRuleShift[];
 }
 
 /**
@@ -75,6 +78,7 @@ export function rosterMyDayItems(input: RosterMyDayInput, now: Date): MyDayItem[
       });
     }
   }
+  if (input.ownShifts) items.push(...fatigueMyDayItems(input.ownShifts, now));
   return items;
 }
 
@@ -83,7 +87,43 @@ const loading: MyDaySourceResult = { mode: "roster", status: "loading", items: [
 
 type Loaded = { status: "ready"; input: RosterMyDayInput } | { status: "signed-out" | "failed" | "unavailable" };
 
-async function loadRoster(signal: AbortSignal): Promise<Loaded | null> {
+type OwnShifts = { ok: true; shifts: MyDayRuleShift[] | undefined } | { ok: false };
+
+/**
+ * The reader's own shifts for the fatigue warnings (the read Roster Today makes), or undefined when
+ * they are example data. A failed read fails the Roster source: a missing warning must never pass
+ * for a roster with nothing to warn about.
+ */
+async function loadOwnShifts(signal: AbortSignal): Promise<OwnShifts> {
+  try {
+    const response = await fetch("/api/roster/shifts", { cache: "no-store", signal });
+    if (!response.ok) return { ok: false };
+    const body = (await response.json().catch(() => null)) as {
+      shifts?: unknown;
+      demoMode?: boolean;
+      sample?: boolean;
+    } | null;
+    if (!body || !Array.isArray(body.shifts)) return { ok: false };
+    if (body.demoMode || body.sample) return { ok: true, shifts: undefined };
+    return { ok: true, shifts: body.shifts as MyDayRuleShift[] };
+  } catch {
+    return { ok: false };
+  }
+}
+
+async function loadRoster(signal: AbortSignal, withOwnShifts: boolean): Promise<Loaded | null> {
+  const ownShiftsRead = withOwnShifts
+    ? loadOwnShifts(signal)
+    : Promise.resolve<OwnShifts>({ ok: true, shifts: undefined });
+  const loaded = await loadRosterTeams(signal);
+  const own = await ownShiftsRead;
+  if (!loaded || signal.aborted) return null;
+  if (loaded.status !== "ready") return loaded;
+  if (!own.ok) return { status: "failed" };
+  return own.shifts ? { status: "ready", input: { ...loaded.input, ownShifts: own.shifts } } : loaded;
+}
+
+async function loadRosterTeams(signal: AbortSignal): Promise<Loaded | null> {
   let response: Response;
   try {
     response = await fetch("/api/roster/team", { cache: "no-store", signal });
@@ -138,7 +178,7 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
   useEffect(() => {
     if (!enabled) return;
     const controller = new AbortController();
-    void loadRoster(controller.signal).then((next) => {
+    void loadRoster(controller.signal, ruleEnginesOn(new Date()).fatigue).then((next) => {
       if (next && !controller.signal.aborted) setStored({ epoch: authEpoch, loaded: next });
     });
     return () => controller.abort();

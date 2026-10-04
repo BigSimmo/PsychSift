@@ -18,6 +18,20 @@ import { useRosterMyDaySource } from "@/components/my-day/sources/roster";
 
 const NOW = new Date("2026-10-05T02:00:00Z");
 const json = (body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+/** The reader's own shifts, read for the signed fatigue warnings: none, so no warning. */
+const rosterReads = (teams: unknown) => (url: string) =>
+  json(url.includes("/api/roster/shifts") ? { shifts: [] } : teams);
+/** The CPD reads, including the year and activities the signed CPD coaching reads. */
+const cmeReads = (url: string) =>
+  json(
+    url.includes("routines")
+      ? { routines: [] }
+      : url.includes("drafts")
+        ? { drafts: [] }
+        : url.includes("/api/cme/year")
+          ? { requirementSet: null }
+          : { entries: [], year: 2026 },
+  );
 
 beforeEach(() => {
   auth.authEpoch = 1;
@@ -34,24 +48,27 @@ describe("useRosterMyDaySource", () => {
   });
 
   it("goes back to loading when the account changes, until the new account's data arrives", async () => {
-    vi.stubGlobal("fetch", () => json({ actorId: "a", teams: [] }));
+    vi.stubGlobal("fetch", rosterReads({ actorId: "a", teams: [] }));
     const { result, rerender } = renderHook(() => useRosterMyDaySource({ enabled: true, now: NOW }));
     await waitFor(() => expect(result.current.result.status).toBe("ready"));
 
-    let release: (response: Response) => void = () => {};
-    vi.stubGlobal("fetch", () => new Promise<Response>((resolve) => (release = resolve)));
+    const held: { url: string; resolve: (response: Response) => void }[] = [];
+    vi.stubGlobal("fetch", (url: string) => new Promise<Response>((resolve) => held.push({ url, resolve })));
     auth.authEpoch = 2;
     rerender();
     expect(result.current.result.status).toBe("loading");
 
-    release(new Response(JSON.stringify({ actorId: "b", teams: [] }), { status: 200 }));
+    for (const { url, resolve } of held) {
+      const body = url.includes("/api/roster/shifts") ? { shifts: [] } : { actorId: "b", teams: [] };
+      resolve(new Response(JSON.stringify(body), { status: 200 }));
+    }
     await waitFor(() => expect(result.current.result.status).toBe("ready"));
   });
 });
 
 describe("useCmeMyDaySource", () => {
   it("goes back to loading when the account changes", async () => {
-    vi.stubGlobal("fetch", (url: string) => json(url.includes("routines") ? { routines: [] } : { drafts: [] }));
+    vi.stubGlobal("fetch", cmeReads);
     const { result, rerender } = renderHook(() => useCmeMyDaySource({ enabled: true, now: NOW }));
     await waitFor(() => expect(result.current.result.status).toBe("ready"));
 
