@@ -1417,7 +1417,7 @@
       {
         "path": "/my-work",
         "file": "src/app/(search-app)/my-work/page.tsx",
-        "target": "/admin"
+        "target": "/admin/renewals"
       },
       {
         "path": "/calculators",

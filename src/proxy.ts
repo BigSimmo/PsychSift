@@ -72,7 +72,7 @@ const staticRouteRedirects: Record<string, string> = {
   // travels, and the browser keeps a `#on-call-entry-<id>` fragment across the 307,
   // so a bookmarked row still lands on its anchor. Admin adds redirects only for
   // the pages it received (spec); Roster's PR adds its own beside these.
-  "/my-work": "/admin",
+  "/my-work": "/admin/renewals",
   "/on-call/compliance": "/admin/renewals",
   "/on-call/logistics": "/admin/help",
 };
