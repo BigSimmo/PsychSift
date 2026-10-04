@@ -193,19 +193,48 @@ describe("Roster Today", () => {
     mockLinks([link("2026-10-12T22:00:00Z")]);
     const { unmount } = renderToday("2026-10-13T02:00:00Z");
     expect(await screen.findByTestId("roster-fresh")).toHaveTextContent("Up to date");
+    expect(screen.queryByTestId("roster-stale")).toBeNull();
     unmount();
     mockLinks([link("2026-10-12T10:00:00Z")]);
     renderToday("2026-10-13T02:00:00Z");
     await screen.findByText(/Thu 15 Oct/);
     expect(screen.queryByTestId("roster-fresh")).toBeNull();
+    const stale = await screen.findByTestId("roster-stale");
+    expect(stale).toHaveTextContent("May be out of date");
+    expect(screen.getByRole("button", { name: "Refresh calendar.example.org/…" })).toBeInTheDocument();
   });
 
-  it("is not Up to date when the last refresh failed", async () => {
+  it("is not Up to date when the last refresh failed, and offers Refresh", async () => {
     mockShifts([night("2026-10-15")]);
     mockLinks([link("2026-10-12T22:00:00Z", "unreachable")]);
     renderToday("2026-10-13T02:00:00Z");
     await screen.findByText(/Thu 15 Oct/);
     expect(screen.queryByTestId("roster-fresh")).toBeNull();
+    expect(await screen.findByTestId("roster-stale")).toHaveTextContent("May be out of date");
+    expect(screen.getByRole("button", { name: "Refresh calendar.example.org/…" })).toBeInTheDocument();
+  });
+
+  it("refreshes a stale calendar link from Today with the same action Settings uses", async () => {
+    mockShifts([night("2026-10-15")]);
+    mockLinks([link("2026-10-12T10:00:00Z")]);
+    routes.set("POST /api/roster/links/refresh", (init) => {
+      const body = JSON.parse(String(init?.body ?? "{}")) as { id?: string };
+      if (body.id === "l1") {
+        mockLinks([link("2026-10-13T01:59:00Z")]);
+        return Response.json({ results: [{ id: "l1", ok: true }] });
+      }
+      return Response.json({ results: [] });
+    });
+    renderToday("2026-10-13T02:00:00Z");
+    expect(await screen.findByTestId("roster-stale")).toHaveTextContent("May be out of date");
+    fireEvent.click(screen.getByRole("button", { name: "Refresh calendar.example.org/…" }));
+    expect(await screen.findByTestId("roster-fresh")).toHaveTextContent("Up to date");
+    expect(screen.queryByTestId("roster-stale")).toBeNull();
+    expect(screen.getByText("Refreshed")).toBeInTheDocument();
+    const manual = fetchMock.mock.calls.filter(
+      ([input, init]) => String(input) === "/api/roster/links/refresh" && init?.method === "POST",
+    );
+    expect(manual.some(([, init]) => JSON.parse(String(init?.body))?.id === "l1")).toBe(true);
   });
 
   it("asks the server once, on opening, to refresh whichever links are due, then reads the new shifts", async () => {
