@@ -11,11 +11,13 @@ import {
   MoonStar,
   Plane,
   Plus,
+  RefreshCw,
   Sun,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
+import { ModeActionButton } from "@/components/mode-kit/action-button";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
@@ -44,7 +46,13 @@ import { RosterImportFlow } from "./roster-import-flow";
 import { RosterNightDial } from "./roster-night-dial";
 import { RosterIdentityTile, RosterPageHeader, RosterSection, RosterStat, RosterStats } from "./roster-ui";
 import { RosterWeekStrip } from "./roster-week-strip";
-import { hasFreshLink, refreshDueRosterLinks, useRosterLinks } from "./use-roster-links";
+import {
+  hasFreshLink,
+  refreshDueRosterLinks,
+  staleRosterLink,
+  useRosterLinks,
+  type RosterCalendarLink,
+} from "./use-roster-links";
 import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
 import { useRosterTeamRules, useRosterTeams } from "./use-roster-team";
@@ -70,11 +78,23 @@ function NoneYet({ children }: { readonly children: string }) {
 }
 
 /**
- * "Up to date": a 6px green dot and the words, shown only while a calendar
- * link refreshed in the last six hours. One 600ms pulse when it changes to
- * fresh while the page is open, never on first load, never with reduced motion.
+ * Calendar-link freshness on Today. Green "Up to date" while any link
+ * refreshed in the last six hours (one 600ms pulse when it turns fresh while
+ * the page is open — never on first load, never with reduced motion). When a
+ * link exists but none are fresh, a clear stale cue and the same one-tap
+ * Refresh Settings already uses (`Refresh ${hostPreview}`).
  */
-function RosterFreshness({ fresh }: { readonly fresh: boolean }) {
+function RosterFreshness({
+  fresh,
+  staleLink,
+  refreshing,
+  onRefresh,
+}: {
+  readonly fresh: boolean;
+  readonly staleLink: RosterCalendarLink | null;
+  readonly refreshing: boolean;
+  readonly onRefresh: (id: string) => void;
+}) {
   const dot = useRef<HTMLSpanElement>(null);
   const previous = useRef<boolean | null>(null);
   useEffect(() => {
@@ -90,12 +110,30 @@ function RosterFreshness({ fresh }: { readonly fresh: boolean }) {
       { duration: 600, easing: "ease-out", iterations: 1 },
     );
   }, [fresh]);
-  if (!fresh) return null;
+  if (fresh) {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-[color:var(--text-muted)]" data-testid="roster-fresh">
+        <span ref={dot} aria-hidden="true" className={cn(modeDot, "bg-[color:var(--success)]")} />
+        Up to date
+      </p>
+    );
+  }
+  if (!staleLink) return null;
   return (
-    <p className="flex items-center gap-1.5 text-xs text-[color:var(--text-muted)]" data-testid="roster-fresh">
-      <span ref={dot} aria-hidden="true" className={cn(modeDot, "bg-[color:var(--success)]")} />
-      Up to date
-    </p>
+    <div
+      className="flex min-w-0 items-center gap-1.5 text-xs text-[color:var(--text-muted)]"
+      data-testid="roster-stale"
+    >
+      <span aria-hidden="true" className={cn(modeDot, "bg-[color:var(--warning)]")} />
+      <span className="min-w-0">May be out of date</span>
+      <ModeActionButton
+        icon={RefreshCw}
+        label={`Refresh ${staleLink.hostPreview}`}
+        onClick={() => onRefresh(staleLink.id)}
+        disabled={refreshing}
+        testId="roster-stale-refresh"
+      />
+    </div>
   );
 }
 
@@ -298,11 +336,13 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const [importing, setImporting] = useState(false);
   const [addView, setAddView] = useState<RosterAddView | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [refreshingLink, setRefreshingLink] = useState(false);
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
 
   // Opening Today refreshes any calendar link that is due (the server decides which). Once per visit, never retried.
   const refreshStarted = useRef(false);
   const { reload: reloadShifts } = shifts;
-  const { reload: reloadLinks } = links;
+  const { reload: reloadLinks, refresh: refreshLink } = links;
   useEffect(() => {
     if (refreshStarted.current) return;
     refreshStarted.current = true;
@@ -312,6 +352,19 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
       if (results.some((result) => result.ok)) void reloadShifts();
     });
   }, [reloadLinks, reloadShifts]);
+
+  async function refreshStaleLink(id: string) {
+    setRefreshingLink(true);
+    setRefreshWarning(null);
+    const failure = await refreshLink(id);
+    setRefreshingLink(false);
+    if (failure) {
+      setRefreshWarning(failure);
+      return;
+    }
+    void reloadShifts();
+    setSaved("Refreshed");
+  }
 
   const today = perthDateOf(now);
   const byId = useMemo(() => new Map(shifts.shifts.map((shift) => [shift.id, shift])), [shifts.shifts]);
@@ -373,6 +426,8 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
     [shifts.demoMode, shifts.latestImport, today],
   );
   const greeting = greetingFor(now);
+  const fresh = hasFreshLink(links.links, now);
+  const staleLink = staleRosterLink(links.links, now);
 
   const header = (
     <RosterPageHeader
@@ -382,7 +437,12 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
       subtitle={
         <div className="grid gap-0.5">
           <span>{greeting.text}</span>
-          <RosterFreshness fresh={hasFreshLink(links.links, now)} />
+          <RosterFreshness
+            fresh={fresh}
+            staleLink={staleLink}
+            refreshing={refreshingLink}
+            onRefresh={(id) => void refreshStaleLink(id)}
+          />
         </div>
       }
       actions={
@@ -537,6 +597,11 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
             {ready && shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
             {ready ? <RosterSampleShiftsNotice sample={shifts.sample} /> : null}
             {ready && saved ? <ModeNotice>{saved}</ModeNotice> : null}
+            {ready && refreshWarning ? (
+              <ModeNotice tone="warning" testId="roster-today-refresh-warning">
+                {refreshWarning}
+              </ModeNotice>
+            ) : null}
             {ready && shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
           </>
         }
