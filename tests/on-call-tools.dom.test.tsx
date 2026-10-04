@@ -65,6 +65,10 @@ const LADDER = entry({
 
 beforeEach(() => {
   state.entries = [];
+  state.loading = false;
+  state.isOffline = false;
+  state.loadError = null;
+  state.signedOut = false;
   state.demoMode = false;
   cacheOnCallEntries.mockReset();
 });
@@ -80,6 +84,18 @@ describe("who to call now", () => {
     expect(markup).toContain("Loading current on-call context");
     expect(markup).not.toContain("Working hours: working-hours steps are listed first.");
     expect(markup).not.toContain("tel:0890000001");
+    expect(markup).toContain('href="tel:000"');
+    expect(markup).toContain('href="tel:1300555788"');
+  });
+
+  it("keeps the public crisis lines on screen while the playbook is still loading", () => {
+    state.loading = true;
+    state.entries = [];
+    render(<OnCallCallNowPage />);
+    const crisis = screen.getByTestId("on-call-crisis-lines");
+    expect(screen.getByTestId("on-call-now-loading")).toBeInTheDocument();
+    expect(within(crisis).getByRole("link", { name: /^call emergency services/i })).toHaveAttribute("href", "tel:000");
+    expect(within(crisis).getByRole("link", { name: /mherl/i })).toHaveAttribute("href", "tel:1300555788");
   });
 
   it("puts the after-hours steps first at night, with a call button, and keeps the rest below", () => {

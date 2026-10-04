@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -145,6 +146,15 @@ describe("Now: the safety order", () => {
     expect(notSetUp.querySelector('a[href^="tel:"]')).toBeNull();
     // The hospital's numbers are on screen, so the public crisis lines step back too.
     expect(container.querySelector('a[href="tel:000"]')).toBeNull();
+  });
+
+  it("keeps public crisis numbers in the loading placeholder", () => {
+    const markup = renderToString(<OnCallHome />);
+    expect(markup).toContain("Loading current on-call context");
+    expect(markup).toContain('href="tel:000"');
+    expect(markup).toContain('href="tel:1300555788"');
+    expect(markup).not.toContain("tel:0890000001");
+    expect(markup).not.toContain("Working hours");
   });
 
   it("shows the public crisis lines, 000 first, while the hospital's numbers load or cannot be shown", () => {
