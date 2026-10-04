@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { CmeOwnerBoundary } from "@/components/cme/cme-owner-boundary";
@@ -9,6 +9,10 @@ const auth = vi.hoisted(() => ({ status: "loading", session: null as { user: { i
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
+// The signed-out sample loads on demand; its own behaviour is covered in cme-signed-out-sample.dom.test.tsx.
+vi.mock("@/components/cme/cme-signed-out-sample", () => ({
+  CmeSignedOutSample: () => <div data-testid="cme-sample-stub">CPD sample</div>,
+}));
 
 function asOwner(id: string) {
   auth.status = "authenticated";
@@ -41,7 +45,7 @@ describe("CME server-owner boundary", () => {
     expect(router.refresh).not.toHaveBeenCalled();
   });
 
-  it("immediately unmounts private records on sign-out before the server refresh returns", () => {
+  it("immediately unmounts private records on sign-out before the server refresh returns", async () => {
     asOwner("owner-a");
     const view = render(
       <CmeOwnerBoundary serverAuthVerified serverOwnerId="owner-a" demoMode={false}>
@@ -62,7 +66,9 @@ describe("CME server-owner boundary", () => {
         Sign in to CME
       </CmeOwnerBoundary>,
     );
-    expect(screen.getByText("Sign in to CME")).toBeTruthy();
+    // Signed out now shows the sample, never the server's children.
+    await waitFor(() => expect(screen.getByTestId("cme-sample-stub")).toBeTruthy());
+    expect(screen.queryByText("Sign in to CME")).toBeNull();
     expect(router.refresh).toHaveBeenCalledTimes(1);
   });
 

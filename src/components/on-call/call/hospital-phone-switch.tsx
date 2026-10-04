@@ -1,5 +1,6 @@
 "use client";
 
+import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
 import { setOnCallHospitalPhone } from "@/components/on-call/call/call-device-stores";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
 import { modeInsetHairline, modeRowHeight } from "@/components/mode-kit/recipes";
@@ -21,6 +22,9 @@ export function OnCallHospitalPhoneSwitch({
   readonly on: boolean;
   readonly testId?: string;
 }) {
+  // The signed-out sample keeps nothing on this phone and its numbers never dial, so it has no switch.
+  const sample = useSignedOutSample();
+  if (sample) return null;
   return (
     <OnCallGroupedList testId={testId}>
       <li className={cn(modeInsetHairline, modeRowHeight.double, "flex min-w-0 items-center gap-3 pl-3 pr-1")}>

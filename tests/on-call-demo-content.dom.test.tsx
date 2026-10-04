@@ -95,48 +95,21 @@ function Harness({ signedOut, demoMode }: { signedOut: boolean; demoMode: boolea
 }
 
 describe("the example-content control", () => {
-  it("offers a signed-out reader the preview, and still asks the server nothing", () => {
-    // Changed 2026-09-22 (owner request): this used to render nothing at all.
-    // The preview writes only to this device's cache, so it needs no account —
-    // and withholding it meant most readers saw an empty hub with no way to
-    // see the design. What it must NOT do is offer the account controls, which
-    // could only 401.
+  it("offers a signed-out reader no control, writes nothing and asks the server nothing", () => {
+    // Changed 2026-10-04: signed out, the pages now fill themselves from an
+    // invented sample held in memory (see `useOnCallEntries`), so the old
+    // "Preview with example content" control, which wrote the corpus into this
+    // device's cache, is gone. Nor may the account controls appear: they could
+    // only 401.
     const fetchMock = mockFetch(0);
     render(<Harness signedOut demoMode={false} />);
 
-    expect(screen.getByTestId("on-call-demo-preview-start")).toBeVisible();
+    expect(screen.queryByTestId("on-call-demo-preview-start")).toBeNull();
+    expect(screen.queryByTestId("on-call-demo-preview-clear")).toBeNull();
     expect(screen.queryByTestId("on-call-demo-content-load")).toBeNull();
+    expect(cacheEntriesMock).not.toHaveBeenCalled();
+    expect(setPreviewMock).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("fills this device's cache on preview, and empties it again, without touching the server", () => {
-    const fetchMock = mockFetch(0);
-    const { unmount } = render(<Harness signedOut demoMode={false} />);
-
-    fireEvent.click(screen.getByTestId("on-call-demo-preview-start"));
-    expect(setPreviewMock).toHaveBeenCalledWith(true);
-    expect(cacheEntriesMock).toHaveBeenCalledTimes(1);
-    expect(cacheEntriesMock.mock.calls[0][0]).toHaveLength(DEMO_ON_CALL_ENTRIES.length);
-    expect(fetchMock, "a preview must never reach the server").not.toHaveBeenCalled();
-    unmount();
-
-    previewFlag.active = true;
-    render(<Harness signedOut demoMode={false} />);
-    fireEvent.click(screen.getByTestId("on-call-demo-preview-clear"));
-    expect(setPreviewMock).toHaveBeenLastCalledWith(false);
-    expect(clearCacheMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("tells a signed-out reader the preview stays on their device", () => {
-    // The signed-in load publishes most of the corpus to every visitor, and
-    // this control says so. The preview publishes nothing, and saying so is
-    // what stops a reader assuming it carries the same consequence.
-    mockFetch(0);
-    render(<Harness signedOut demoMode={false} />);
-
-    expect(screen.getByText(/stays on this device/i)).toBeVisible();
-    expect(screen.getByText(/nothing is saved to the site/i)).toBeVisible();
   });
 
   it("offers nothing in demo mode", () => {

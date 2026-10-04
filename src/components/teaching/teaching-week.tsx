@@ -37,6 +37,7 @@ import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingWeek, type TeachingWeekState } from "@/components/teaching/use-teaching-week";
 import { Button } from "@/components/ui/button";
 import { onCallEntryIsEditable, type OnCallEntry } from "@/lib/on-call/entry-model";
+import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 
 /*
  * Week: the day rail, Whole service / Presenting, every remaining day grouped
@@ -57,7 +58,14 @@ export type WeekSidePanel = (panel: {
   close: () => void;
 }) => ReactNode;
 
-export function TeachingWeekScreen({ demoMode, sidePanel }: { demoMode: boolean; sidePanel?: WeekSidePanel }) {
+export function TeachingWeekScreen({
+  demoMode: serverDemoMode,
+  sidePanel,
+}: {
+  demoMode: boolean;
+  sidePanel?: WeekSidePanel;
+}) {
+  const demoMode = useTeachingDemoMode(serverDemoMode);
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const [chosenMonday, setChosenMonday] = useState<string | null>(null);
