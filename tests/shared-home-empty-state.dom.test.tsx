@@ -160,7 +160,7 @@ const expectedPresentations = [
     modeId: "medicines",
     title: "Medicines & tools",
     subtitle: "Medication, calculators, clinical tools, factsheets and the dictionary.",
-    iconClass: "lucide-pill",
+    iconClass: "lucide-pill-bottle",
   },
 ] as const satisfies ReadonlyArray<{
   modeId: AppModeId;

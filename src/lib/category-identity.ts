@@ -102,6 +102,7 @@ export const CATEGORY_ICON_KEYS = [
   "presentation",
   "calendarRange",
   "sunrise",
+  "pillBottle",
 ] as const;
 
 export type CategoryIconKey = (typeof CATEGORY_ICON_KEYS)[number];
@@ -136,7 +137,8 @@ export const APP_MODE_ICON: Record<AppModeId, CategoryIconKey> = {
   roster: "calendarRange",
   "first-nations": "users",
   "my-day": "sunrise",
-  medicines: "pill",
+  // A pill bottle, not Medication's pill: every mode wears a glyph of its own.
+  medicines: "pillBottle",
 };
 
 /**

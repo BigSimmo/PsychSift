@@ -7,6 +7,7 @@ import {
   Calculator,
   CalendarRange,
   Sunrise,
+  PillBottle,
   ClipboardCheck,
   ClipboardList,
   Compass,
@@ -77,6 +78,7 @@ const categoryIcons: Record<CategoryIconKey, LucideIcon> = {
   presentation: Presentation,
   calendarRange: CalendarRange,
   sunrise: Sunrise,
+  pillBottle: PillBottle,
 };
 
 /** Component form, for the call sites that still take a `LucideIcon` prop. */
