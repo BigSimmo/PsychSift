@@ -23,6 +23,8 @@ precedence; on Railway, leave it unset or ensure it equals `PORT`. Set variables
 through the service's supported variable configuration, not `deploy.env` in
 config as code. The 300-second rollout window allows boot and probe retries;
 database or Python failures still return 503 and block promotion.
+The Supabase probe reports failures as a structured result; `/health` honours
+that result as well as thrown errors and omits provider failure details.
 
 ---
 
@@ -221,8 +223,8 @@ Host requirements for the always-on instance:
   a fatal bootstrap error; the host must bring it back.
 - **No scale-to-zero.** The worker _is_ the queue drain — if it scales to zero,
   `jobs_pending` never settles. Keep min instances = 1.
-- No inbound port / health endpoint: liveness is "process is up + queue is
-  draining", observed via `reindex:health` (step 3), not an HTTP probe.
+- Railway uses the worker's `/health` endpoint on `PORT` for deployment readiness.
+  Queue progress is checked separately through `reindex:health` (step 3).
 
 ### Secrets and env (`worker.env`)
 
