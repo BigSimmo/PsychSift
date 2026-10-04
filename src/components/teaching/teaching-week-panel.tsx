@@ -8,6 +8,7 @@ import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { TeachingSessionScreen } from "@/components/teaching/teaching-session";
 import { TeachingWeekScreen } from "@/components/teaching/teaching-week";
 import { cn, eyebrowText } from "@/components/ui-primitives";
+import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 
 /*
  * Week on a wide screen (U4 Step 9): tapping a row opens the session in a
@@ -71,7 +72,8 @@ export function TeachingWeekPanel({
 }
 
 /** Week with the side panel on wide screens only; a phone keeps navigating to the session page. */
-export function TeachingWeekWithPanel({ demoMode }: { demoMode: boolean }) {
+export function TeachingWeekWithPanel({ demoMode: serverDemoMode }: { demoMode: boolean }) {
+  const demoMode = useTeachingDemoMode(serverDemoMode);
   const wide = useWide();
   return (
     <TeachingWeekScreen

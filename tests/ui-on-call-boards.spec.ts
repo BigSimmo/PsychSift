@@ -625,12 +625,15 @@ test.describe("06 Contacts", () => {
     await expect(page.getByTestId("on-call-contact-row-demo-interpreter-line")).toHaveCount(1);
   });
 
-  test("rings the number from anywhere on the row, and shows the call disc", async ({ page }) => {
+  test("never offers an invented 0000 number to the dialler, and keeps the row one target", async ({ page }) => {
+    // Every example number starts "0000", and a phone keying "000…" can reach
+    // Triple Zero, so example rows show their number as text with no call link.
     await openBoard(page, ROUTES.contacts);
     const row = page.getByTestId("on-call-contact-row-demo-nurse-manager");
-    await expect(row).toHaveAttribute("href", /^tel:/);
+    await expect(row).toContainText("0000 000 001");
+    await expect(row.locator('a[href^="tel:"]')).toHaveCount(0);
+    expect((await row.getAttribute("href")) ?? "").not.toMatch(/^tel:/);
     await expectTapFloor(row, "contact row");
-    // The disc is decoration inside the link: one target for one action.
     await expect(row.locator("button")).toHaveCount(0);
   });
 

@@ -1,11 +1,10 @@
 "use client";
 
-import { ChevronLeft, LogIn, Sunrise } from "lucide-react";
+import { ChevronLeft, Sunrise } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -30,7 +29,7 @@ import type { RenewalRow } from "@/lib/my-day/figures";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { focusRing } from "@/components/card-recipes";
-import { DashTag } from "@/components/dashboard-kit/icon-chip";
+import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { dashSurface } from "@/components/dashboard-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 
@@ -308,7 +307,6 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const now = useMyDayNow(nowProp);
   const today = perthCalendarDate(now);
   const state = useMyDayItems({ enabled, now });
-  const [signInOpen, setSignInOpen] = useState(false);
   // The full list has its own address, so the phone's Back returns to the dashboard.
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
@@ -415,27 +413,14 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
 
         {sampleView ? (
           <div className="grid gap-5" data-testid="my-day-sample">
-            <div
-              className="grid gap-3 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-card)] p-4 forced-colors:border"
-              data-testid="my-day-signed-out"
+            <SignedOutSampleNotice
+              title="Sign in to see your day"
+              testId="my-day-signed-out"
+              noticeTestId="my-day-sample-notice"
             >
-              <div className="grid gap-1">
-                <p>
-                  <DashTag tint="amber">Sample</DashTag>
-                </p>
-                <h2 className="font-dash-title text-lg text-[color:var(--dash-ink)]">Sign in to see your day</h2>
-                <p className="text-sm text-[color:var(--dash-muted)]" data-testid="my-day-sample-notice">
-                  Below is a sample day made of invented examples, so you can see how My Day works. Signed in, it
-                  gathers your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared.
-                </p>
-              </div>
-              <div>
-                <Button variant="primary" icon={LogIn} onClick={() => setSignInOpen(true)}>
-                  Sign in
-                </Button>
-              </div>
-              <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
-            </div>
+              Below is a sample day made of invented examples, so you can see how My Day works. Signed in, it gathers
+              your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared.
+            </SignedOutSampleNotice>
             {view === "all" ? (
               <MyDaySampleDashboard
                 now={now}

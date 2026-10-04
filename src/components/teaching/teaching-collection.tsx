@@ -31,6 +31,11 @@ import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import type { CollectionRead, ResourceRow } from "@/lib/teaching/model";
+import {
+  useSignedOutSampleRead,
+  useTeachingDemoMode,
+  useTeachingSignedOut,
+} from "@/components/teaching/use-teaching-sample";
 
 const TYPES = [
   { value: "all", label: "All" },
@@ -52,20 +57,35 @@ const itemCount = (n: number) => withUnit(n, n === 1 ? "item" : "items");
  */
 export function TeachingCollection({
   collection,
-  demoMode,
-  sampleData,
+  demoMode: serverDemoMode,
+  sampleData: serverSample,
 }: {
   collection: string;
   demoMode: boolean;
   sampleData?: CollectionRead;
 }) {
+  const demoMode = useTeachingDemoMode(serverDemoMode);
+  const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const monday = now ? mondayOf(perthDateKey(now)) : null;
   const builtIn = collection in BUILT_IN_NAMES;
   const query = builtIn ? `builtIn=${collection}` : `collectionId=${collection}`;
+  // Signed out with no server sample: build the made-up collection here, and ask the API for nothing.
+  const built = useSignedOutSampleRead<CollectionRead | null>(signedOut && !serverSample, collection, async () => {
+    const { demoTeachingResources } = await import("@/lib/teaching/demo-resources");
+    try {
+      return demoTeachingResources({
+        action: "collection.read",
+        ...(builtIn ? { builtIn: collection as "saved" | "recordings" } : { collectionId: collection }),
+      }) as CollectionRead;
+    } catch {
+      return null;
+    }
+  });
+  const sampleData = serverSample ?? built ?? undefined;
   // Demo mode reads too: the server answers with the made-up collections (master plan R8).
   const read = useTeachingResource<CollectionRead>(
-    `/api/teaching/resources?action=collection.read&${query}`,
+    signedOut && !sampleData ? null : `/api/teaching/resources?action=collection.read&${query}`,
     sampleData,
   );
   const week = useTeachingWeek(monday ? { from: monday, to: addDays(monday, 6) } : null, { demoMode }, now);
@@ -126,7 +146,8 @@ export function TeachingCollection({
 
   const name = read.data?.collection?.name ?? BUILT_IN_NAMES[collection] ?? "Collection";
   let body;
-  if (read.code === "teaching_not_found") body = <ModeNotice>{"This collection isn't available."}</ModeNotice>;
+  if (read.code === "teaching_not_found" || (signedOut && !serverSample && built === null))
+    body = <ModeNotice>{"This collection isn't available."}</ModeNotice>;
   else if (read.status === "signed-out") body = <TeachingSignInNotice />;
   else if (read.status === "offline" || read.status === "error" || read.status === "setup")
     body = <TeachingStateNotice state={read.status} onRetry={read.retry} />;

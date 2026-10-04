@@ -69,10 +69,10 @@ describe("On Call hub routes", () => {
   );
 
   it.each(routes.map((route) => [route.page, route] as const))(
-    "%s tells a signed-out reader the hospital pages need an account",
+    "%s shows a signed-out reader the sample hospital instead of a sign-in wall",
     (_page, route) => {
       render(<route.Route />);
-      expect(screen.getByTestId("on-call-handbook-state-signed-out")).toBeInTheDocument();
+      expect(screen.queryByTestId("on-call-handbook-state-signed-out")).toBeNull();
     },
   );
 
