@@ -6712,3 +6712,112 @@ test.describe("PsychSift UI smoke coverage", () => {
     expect(pill.background).toBe(pill.commandFill);
   });
 });
+
+// TEMPORARY PROBES (diagnostic only, removed before merge).
+test.describe("PROBE diagnostics", () => {
+  test("PROBE firefox document back race", async ({ page, browserName }) => {
+    test.skip(browserName !== "firefox" && browserName !== "chromium", "probe targets firefox");
+    await mockDemoApi(page);
+    const documentId = "22222222-2222-4222-8222-222222222222";
+    const results: string[] = [`navigationApi=${await page.evaluate(() => "navigation" in window)}`];
+    for (const mode of ["sametask", "sametask", "sametask", "aftercommit", "aftercommit"]) {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await gotoApp(page, "/documents/search?mode=documents&q=clozapine+monitoring&run=1");
+      await page.goto(`/documents/${documentId}?page=1`, { waitUntil: "domcontentloaded" });
+      await expect(
+        page.getByRole("heading", { level: 1, name: /Synthetic clozapine monitoring protocol/i }),
+      ).toBeVisible({ timeout: 30_000 });
+      if (mode === "sametask") {
+        await page.evaluate(() => {
+          (document.querySelector('[aria-label="Next page"]') as HTMLElement).click();
+          (document.querySelector('[aria-label="Back to documents"]') as HTMLElement).click();
+        });
+      } else {
+        await page.getByLabel("Next page").first().click();
+        await expect(page).toHaveURL((url) => url.searchParams.get("page") === "2");
+        await page.waitForTimeout(1500);
+        await page.getByRole("link", { name: "Back to documents" }).click();
+      }
+      await page.waitForTimeout(4000);
+      results.push(`${mode}:${new URL(page.url()).pathname}${new URL(page.url()).search}${new URL(page.url()).hash}`);
+    }
+    expect(results.join(" | ")).toBe("PROBE-REPORT");
+  });
+
+  test("PROBE webkit account setup geometry", async ({ page, browserName }) => {
+    test.skip(browserName !== "webkit", "probe targets webkit");
+    const report: string[] = [];
+    for (let round = 0; round < 4; round += 1) {
+      await page.setViewportSize({ width: 390, height: 820 });
+      await mockDemoApi(page);
+      await gotoApp(page, "/");
+      await waitForDemoDashboardReady(page);
+      await page.evaluate(() => {
+        document.documentElement.style.setProperty("--safe-area-top", "59px");
+      });
+      const setup = accountSetupDialog(page);
+      const accountMenu = await openMobileClinicalGuideMenu(page);
+      await accountMenu.getByTestId("sidebar-account-settings").click();
+      await expect(setup).toBeVisible();
+      await expect(setup.getByLabel("Email address")).toBeFocused();
+      await setup.getByLabel("Email address").blur();
+      const snapshot = (label: string) =>
+        page.evaluate((stepLabel) => {
+          const dialog = document.querySelector('[role="dialog"][aria-labelledby]') as HTMLElement | null;
+          const panel = [...document.querySelectorAll<HTMLElement>('[role="dialog"]')].find((d) =>
+            d.querySelector('[aria-label="Close account setup"]'),
+          );
+          const close = panel?.querySelector<HTMLElement>('[aria-label="Close account setup"]');
+          const mark = panel?.querySelector<HTMLElement>('[data-testid="account-workspace-mark"]');
+          const scrolled: string[] = [];
+          for (let el: HTMLElement | null = close ?? null; el; el = el.parentElement) {
+            if (el.scrollTop !== 0)
+              scrolled.push(`${el.tagName}.${(el.className || "").toString().slice(0, 30)}=${el.scrollTop}`);
+          }
+          for (let el: HTMLElement | null = mark ?? null; el; el = el.parentElement) {
+            if (el.scrollTop !== 0)
+              scrolled.push(`mark>${el.tagName}.${(el.className || "").toString().slice(0, 30)}=${el.scrollTop}`);
+          }
+          const r = (el?: Element | null) =>
+            el
+              ? `${Math.round(el.getBoundingClientRect().top)}/${Math.round(el.getBoundingClientRect().height)}`
+              : "none";
+          const active = document.activeElement as HTMLElement | null;
+          return [
+            stepLabel,
+            `vp=${innerWidth}x${innerHeight}`,
+            `vv=${window.visualViewport?.offsetTop ?? "na"}/${window.visualViewport?.pageTop ?? "na"}/${window.visualViewport?.height ?? "na"}`,
+            `doc=${document.scrollingElement?.scrollTop}`,
+            `close=${r(close)}`,
+            `mark=${r(mark)}`,
+            `panel=${r(panel)}`,
+            `backdrop=${r(panel?.parentElement)}`,
+            `scrolled=[${scrolled.join(",")}]`,
+            `active=${active?.tagName}:${active?.getAttribute("aria-label") ?? active?.getAttribute("name") ?? ""}`,
+            `dialogs=${dialog ? "y" : "n"}`,
+          ].join(" ");
+        }, label);
+      const port = setup.locator(".polished-scroll");
+      await port.evaluate((el) => {
+        el.scrollTop = 0;
+      });
+      report.push(await snapshot(`r${round}-initial`));
+      for (const size of [
+        { width: 320, height: 700 },
+        { width: 430, height: 820 },
+        { width: 639, height: 820 },
+      ]) {
+        await page.setViewportSize(size);
+        await port.evaluate((el) => {
+          el.scrollTop = 0;
+        });
+        const now = await snapshot(`r${round}-${size.width}x${size.height}-now`);
+        await page.waitForTimeout(600);
+        const later = await snapshot(`r${round}-${size.width}x${size.height}-later`);
+        report.push(now, later);
+      }
+      await page.keyboard.press("Escape");
+    }
+    expect(report.join("\n")).toBe("PROBE-REPORT");
+  });
+});
