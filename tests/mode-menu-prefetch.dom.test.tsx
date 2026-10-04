@@ -194,7 +194,7 @@ describe("mode menu destination prefetch", () => {
     await user.click(screen.getByRole("button", { name: /Mode Answer/i }));
     const toolsOption = within(await screen.findByRole("menu", { name: "Choose app mode" })).getByRole(
       "menuitemradio",
-      { name: /Tools/i },
+      { name: /^Tools\b/i },
     );
 
     await user.hover(toolsOption);
@@ -275,7 +275,7 @@ describe("mode menu destination prefetch", () => {
     await user.click(trigger);
     const toolsOption = within(await screen.findByRole("menu", { name: "Choose app mode" })).getByRole(
       "menuitemradio",
-      { name: /Tools/i },
+      { name: /^Tools\b/i },
     );
     await user.click(toolsOption);
 

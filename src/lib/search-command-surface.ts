@@ -309,6 +309,19 @@ const searchCommandSurfaceByMode: Partial<Record<AppModeId, SearchCommandSurface
     crossModes: ["on-call", "roster", "my-work"],
     remoteSearchEnabled: false,
   },
+  medicines: {
+    // Like Psychiatry, a dashboard of links to the sections it gathers, each of
+    // which keeps its own search, so its command panel must not query the
+    // remote index; the cross-modes are those sections.
+    examples: [...sharedHomePresentation.medicines.suggestions],
+    suggestions: [
+      { text: "lithium monitoring", meta: "Medication" },
+      { text: "clozapine", meta: "Medication" },
+      { text: "valproate", meta: "Medication" },
+    ],
+    crossModes: ["prescribing", "calculators", "tools"],
+    remoteSearchEnabled: false,
+  },
 };
 
 export function searchCommandSurfaceConfig(modeId: AppModeId): SearchCommandSurfaceConfig | null {

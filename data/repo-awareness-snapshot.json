@@ -78,6 +78,12 @@
         "dev_only": false
       },
       {
+        "id": "medicines",
+        "label": "Medicines & tools",
+        "home": "/medicines",
+        "dev_only": false
+      },
+      {
         "id": "my-day",
         "label": "My Day",
         "home": "/my-day",
@@ -660,6 +666,11 @@
         "path": "/mockups/mode-dropdown",
         "file": "src/app/mockups/mode-dropdown/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/medicines",
+        "file": "src/app/(search-app)/medicines/page.tsx",
+        "area": "product"
       },
       {
         "path": "/on-call/education",

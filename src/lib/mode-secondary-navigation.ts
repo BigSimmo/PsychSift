@@ -196,6 +196,7 @@ export const modeSecondaryNavigationRegistry = {
   // Psychiatry's home is itself the list of sections it gathers, and each
   // section keeps its own navigation, so the hub registers no destinations.
   psychiatry: [],
+  medicines: [],
   // Admin keeps the internal mode id for existing preferences and links.
   "my-work": [
     { id: "admin-today", label: "Today", href: "/admin" },
