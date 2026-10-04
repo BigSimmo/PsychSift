@@ -824,10 +824,14 @@ test.describe("11 Admin: Help", () => {
     // No microphone on this box: it is a filter over what is already on the
     // page, never the shared search composer (spec).
     const filter = page.getByRole("textbox", { name: "Find in Help" });
-    await filter.fill("payslip");
     const guides = page.getByTestId("admin-help-guides-list");
+    // Text typed before hydration is dropped (mobile WebKit, release matrix
+    // 2026-10-04), so retype until the filter has visibly applied.
+    await expect(async () => {
+      await filter.fill("payslip");
+      await expect(guides.getByText("Demo sick leave, and who to tell first")).toHaveCount(0, { timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
     await expect(guides.getByText("Demo payslips and pay queries")).toBeVisible();
-    await expect(guides.getByText("Demo sick leave, and who to tell first")).toHaveCount(0);
     // Crisis lines are never filtered (spec): they render above this check.
     await expect(page.getByTestId("admin-help-crisis")).toBeVisible();
   });

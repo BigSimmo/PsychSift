@@ -1,27 +1,35 @@
 {
-  "approvedSigners": [],
+  "approvedSigners": [
+    {
+      "userId": "3ea89594-b3a1-46b7-b570-33c198ce5524",
+      "name": "Josh Simpson"
+    }
+  ],
   "fatigue": {
-    "enabled": false,
-    "signedBy": null,
-    "signedByUserId": null,
-    "signedAt": null,
-    "signedContentSha256": null
+    "enabled": true,
+    "signedBy": "Josh Simpson",
+    "signedByUserId": "3ea89594-b3a1-46b7-b570-33c198ce5524",
+    "signedAt": "2026-10-04T01:37:02.076Z",
+    "signedContentSha256": "4680a82054eab35a348bee9c114f491bab6011f4944710a90e513ca059b4c194"
   },
   "cpd": {
-    "enabled": false,
-    "signedBy": null,
-    "signedByUserId": null,
-    "signedAt": null,
-    "signedContentSha256": null
+    "enabled": true,
+    "signedBy": "Josh Simpson",
+    "signedByUserId": "3ea89594-b3a1-46b7-b570-33c198ce5524",
+    "signedAt": "2026-10-04T01:37:02.076Z",
+    "signedContentSha256": "765000fda1c0517584d1454ebc54d921b652de203d3e073226c7d32bf8b8d876"
   },
   "mhaTimerSwitch": {
-    "medicalDeviceRuling": null,
+    "medicalDeviceRuling": {
+      "confirmedOn": "2026-10-04",
+      "record": "local"
+    },
     "signOff": {
-      "enabled": false,
-      "signedBy": null,
-      "signedByUserId": null,
-      "signedAt": null,
-      "signedContentSha256": null
+      "enabled": true,
+      "signedBy": "Josh Simpson",
+      "signedByUserId": "3ea89594-b3a1-46b7-b570-33c198ce5524",
+      "signedAt": "2026-10-04T01:37:02.076Z",
+      "signedContentSha256": "c7ea900967da7d9507e0a38a814fcbc445d97df12fc8dd70ed457ff049963300"
     }
   }
 }

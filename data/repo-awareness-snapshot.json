@@ -92,7 +92,7 @@
       {
         "id": "my-work",
         "label": "Admin",
-        "home": "/admin",
+        "home": "/admin/renewals",
         "dev_only": false
       },
       {
@@ -1417,7 +1417,7 @@
       {
         "path": "/my-work",
         "file": "src/app/(search-app)/my-work/page.tsx",
-        "target": "/admin"
+        "target": "/admin/renewals"
       },
       {
         "path": "/calculators",
@@ -4164,6 +4164,11 @@
         "path": "docs/design-system/ADOPTION.md",
         "section": "design-system",
         "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-04-mha-countdowns-covered-by-samd-ruling.md",
+        "section": "decisions",
+        "catalogued": false
       },
       {
         "path": "docs/design-system/sweep-fix-missing-values.md",
@@ -12889,6 +12894,14 @@
         "scope": "docs/outstanding-issues.md, docs/outstanding-issues-inbox/**",
         "outcome": "Replaces PR #2110, whose reconciliation had permanently baked two applied records (a #316 update, a cancellation of 22946f19) whose pending predecessors never existed on any base commit -- structurally unfixable via forward-only commits because the ledger tool forbids ever cancelling a cancel-type request and the one valid cancellation slot for 22946f19 was already claimed by a different request landed via PR #2118. Rebuilt fresh from current main (ddc7e899, already including #2118's corrections): reconciled all 74 pending requests in one clean pass, no manual duplicate-target resolution needed, confirming #2118 left main's inbox internally consistent. #2110 can be closed once this merges.",
         "checks": "issues:reconcile: 74 applied, 10 cancellation decisions, no manual resolution needed; check:outstanding-issues passed (0 pending, 325 applied, guard passed, no ids deleted from base); docs:check-links passed (1902 references resolve, full batch simulation); check:ledger-write-discipline passed for ddc7e8998267..HEAD with no override; prettier clean; no provider-backed checks run"
+      },
+      {
+        "date": "2026-10-03",
+        "ref": "claude/tooling-guards-from-3238",
+        "head": "604a0eda10c2de7d7a55d41a4a1fd0d52362d82e",
+        "scope": "Run PR",
+        "outcome": "Prepared both actionable review fixes: safe local-main resolver fallback and canonical gate docs alignment. Root independently reviewed correction diff.",
+        "checks": "42 focused tests passed, 1 historical incident test skipped absent commit; self-test 23/23; docs script refs 838 pass; whole-tree format pass; typecheck and focused lint pending final collection."
       },
       {
         "date": "2026-07-25",
@@ -22649,6 +22662,14 @@
         "scope": "branch-cleanup-deletion-pending",
         "outcome": "Pending deletion: content already on origin/main or superseded old-lineage snapshot / throwaway CI-retry branch; branch-only-file sweep found no novel work. Remote deletion DENIED (HTTP 403, session lacks ref-delete permission); branch still exists at this HEAD — operator must complete deletion. Scope is deletion-pending so future cleanup passes re-evaluate rather than skip.",
         "checks": "Provider-backed GitHub PR inventory via MCP (400 PRs #264-#674, all merged=false); local read-only git: rewritten-main-aware cherry-pick + two-dot tree + branch-only-file novelty sweep vs origin/main e75fad90; adversarial re-check. Remote `git push --delete` attempted (provider-backed write) and DENIED with HTTP 403. No OpenAI/Supabase/live-eval checks."
+      },
+      {
+        "date": "2026-10-04",
+        "ref": "PR-3246",
+        "head": "d257df65f42b68c4d2bdf85edaa8a4a8de93abd2",
+        "scope": "PR unblock sweep 2026-10-04",
+        "outcome": "Bounded fixture-cleanup retries fix the observed unit safety failure; hosted validation pending publication",
+        "checks": "diff-integrity and test-runner-safety: 83 passed, 1 historical incident test skipped because commit absent; exact-lock setup passed"
       },
       {
         "date": "2026-08-08",

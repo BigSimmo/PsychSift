@@ -4294,12 +4294,41 @@ test.describe("PsychSift UI smoke coverage", () => {
         timeout: 30_000,
       });
 
+      // A page flip rewrites the URL, and Next then fetches the page's server payload for
+      // the new URL. Tapping Back while that fetch is in flight makes Firefox cancel it,
+      // and Next answers a cancelled fetch with a hard reload of the page-2 URL, which
+      // overrides the Back (CI 2026-10-04: still on ?page=2 after 30 s). Let the flip
+      // settle first, as a reader's tap after reading the page would.
+      const pendingPayloads = new Set<Request>();
+      let payloadsStarted = 0;
+      const isPagePayload = (request: Request) =>
+        new URL(request.url()).pathname === `/documents/${documentId}` && request.headers()["rsc"] === "1";
+      const trackStart = (request: Request) => {
+        if (!isPagePayload(request)) return;
+        payloadsStarted += 1;
+        pendingPayloads.add(request);
+      };
+      const trackEnd = (request: Request) => pendingPayloads.delete(request);
+      page.on("request", trackStart);
+      page.on("requestfinished", trackEnd);
+      page.on("requestfailed", trackEnd);
+
       const historyLength = await page.evaluate(() => window.history.length);
+      const flippedAt = Date.now();
       await page.getByLabel("Next page").first().click();
       await expect(page).toHaveURL(
         (url) => url.pathname === `/documents/${documentId}` && url.searchParams.get("page") === "2",
       );
       expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
+      await expect
+        .poll(() => pendingPayloads.size === 0 && (payloadsStarted > 0 || Date.now() - flippedAt > 2_000), {
+          message: "the page flip's server payload must finish before Back is tapped",
+          timeout: 15_000,
+        })
+        .toBe(true);
+      page.off("request", trackStart);
+      page.off("requestfinished", trackEnd);
+      page.off("requestfailed", trackEnd);
 
       await page.getByRole("link", { name: "Back to documents" }).click();
       await expect(page).toHaveURL(
