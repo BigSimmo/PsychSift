@@ -75,10 +75,10 @@ const ROUTINE: CmeRoutine = {
 beforeEach(() => window.localStorage.removeItem(cmeModuleOrderStorageKey));
 
 describe("Today", () => {
-  it("is headed Today, matching its tab", () => {
+  it("is headed Year, matching its tab", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 1, name: "Today" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Year" })).toBeInTheDocument();
   });
 
   it("lists every requirement once, biggest gap first, with met ones folded under N done", () => {

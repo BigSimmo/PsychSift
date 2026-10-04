@@ -173,7 +173,9 @@ export const modeSecondaryNavigationRegistry = {
   // Year check, Routines, Calendar, Training and Programme are tabs reached
   // from their parent pages. Customise and the annual summary stay secondary.
   cme: [
-    { id: "year", label: "Today", href: "/cme" },
+    // The year overview, named Year rather than Today: My Day is the one Today
+    // (modes review, phase 2b).
+    { id: "year", label: "Year", href: "/cme" },
     { id: "log", label: "Log", href: "/cme/log" },
     { id: "plan", label: "Plan", href: "/cme/plan" },
     { id: "learning", label: "Learning", href: "/cme/learning" },
@@ -447,7 +449,7 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/cme/learning") return "learning";
     if (pathname === "/cme/programme" || pathname === "/cme/setup") return "setup";
     // Exact match only, for the same reason On Call's home is: a prefix test
-    // here would mark Today current on every CPD route as well as its own.
+    // here would mark Year current on every CPD route as well as its own.
     if (pathname === "/cme") return "year";
     return null;
   }

@@ -349,7 +349,7 @@ export function CmeDashboard({
     <>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className={cmePageTitle}>Today</h1>
+          <h1 className={cmePageTitle}>Year</h1>
           <p data-testid="cme-data-freshness" className={cn(textMuted, "mt-1 flex items-center gap-1.5 text-xs")}>
             <span
               aria-hidden="true"
