@@ -6717,3 +6717,129 @@ test.describe("PsychSift UI smoke coverage", () => {
     expect(pill.background).toBe(pill.commandFill);
   });
 });
+
+// TEMPORARY PROBE (diagnostic only, never to be merged): replays the full WebKit
+// account-settings sequence and fails only if the -140 fault reproduces, printing geometry.
+async function probeAccountSnapshot(page: Page, label: string) {
+  return page.evaluate((stepLabel) => {
+    const close = document.querySelector<HTMLElement>('[aria-label="Close account setup"]');
+    const panel = close?.closest<HTMLElement>('[role="dialog"]') ?? null;
+    const mark = document.querySelector<HTMLElement>('[data-testid="account-workspace-mark"]');
+    const r = (el?: Element | null) => {
+      if (!el) return "none";
+      const b = el.getBoundingClientRect();
+      return `${Math.round(b.top)}/${Math.round(b.height)}`;
+    };
+    const scrolled: string[] = [];
+    for (const el of [document.documentElement, document.body, ...document.querySelectorAll<HTMLElement>("body *")]) {
+      if (el.scrollTop !== 0 || el.scrollLeft !== 0) {
+        const cls = (el.getAttribute("class") || "").slice(0, 40);
+        scrolled.push(`${el.tagName}.${cls}#${el.getAttribute("data-testid") ?? ""}=${el.scrollTop}/${el.scrollLeft}`);
+      }
+    }
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;top:0;left:0;width:1px;height:100dvh;visibility:hidden";
+    document.body.appendChild(probe);
+    const dvh = Math.round(probe.getBoundingClientRect().height);
+    probe.style.height = "100vh";
+    const vh = Math.round(probe.getBoundingClientRect().height);
+    probe.remove();
+    const transformed: string[] = [];
+    for (let el: HTMLElement | null = close; el; el = el.parentElement) {
+      const t = getComputedStyle(el).transform;
+      if (t && t !== "none") transformed.push(`${el.tagName}:${t}`);
+    }
+    const active = document.activeElement as HTMLElement | null;
+    const bodyStyle = getComputedStyle(document.body);
+    return [
+      stepLabel,
+      `vp=${innerWidth}x${innerHeight}`,
+      `vv=${window.visualViewport?.offsetTop}/${window.visualViewport?.pageTop}/${window.visualViewport?.height}/${window.visualViewport?.scale}`,
+      `scrollY=${window.scrollY}`,
+      `dvh=${dvh} vh=${vh}`,
+      `close=${r(close)} mark=${r(mark)} panel=${r(panel)} backdrop=${r(panel?.parentElement)}`,
+      `panelMaxH=${panel ? getComputedStyle(panel).maxHeight : "-"}`,
+      `body=${bodyStyle.position}/${bodyStyle.top}/${bodyStyle.overflow}`,
+      `transforms=[${transformed.join(",")}]`,
+      `scrolled=[${scrolled.join(",")}]`,
+      `active=${active?.tagName}:${active?.getAttribute("aria-label") ?? active?.getAttribute("name") ?? ""}`,
+    ].join(" ");
+  }, label);
+}
+
+test.describe("PROBE webkit account settings", () => {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    test(`PROBE full account settings sequence ${attempt}`, async ({ page, browserName }) => {
+      test.skip(browserName !== "webkit", "probe targets webkit");
+      const report: string[] = [];
+      let faulted = false;
+      const snap = async (label: string) => report.push(await probeAccountSnapshot(page, label));
+
+      await page.setViewportSize({ width: 390, height: 820 });
+      await mockDemoApi(page);
+      await gotoApp(page, "/");
+      await waitForDemoDashboardReady(page);
+      const settings = accountSettingsDialog(page);
+      const setup = accountSetupDialog(page);
+      const menu = await openMobileClinicalGuideMenu(page);
+      await menu.getByRole("button", { name: "Settings", exact: true }).click();
+      await expect(settings).toBeVisible();
+      await expectAccountSettingsSurface(settings, "phone");
+      for (const width of [320, 390, 430, 639]) {
+        await page.setViewportSize({ width, height: 820 });
+        await expectMobileSettingsLayout(settings);
+      }
+      await page.emulateMedia({ reducedMotion: "reduce", forcedColors: "active" });
+      await page.emulateMedia({ reducedMotion: "no-preference", forcedColors: "none" });
+      await settings.getByRole("button", { name: "Close settings" }).click();
+      await expect(settings).toBeHidden();
+      await snap("after-settings-close");
+      await page.setViewportSize({ width: 390, height: 820 });
+      await page.evaluate(() => {
+        document.documentElement.style.setProperty("--safe-area-top", "59px");
+      });
+      const escapeMenu = await openMobileClinicalGuideMenu(page);
+      await escapeMenu.getByRole("button", { name: "Settings", exact: true }).click();
+      await expect(settings).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(settings).toBeHidden();
+      await snap("after-escape");
+
+      const accountMenu = await openMobileClinicalGuideMenu(page);
+      await accountMenu.getByTestId("sidebar-account-settings").click();
+      await expect(accountMenu).toHaveCount(0);
+      await expect(setup).toBeVisible();
+      await expectAccountSetupSurface(setup);
+      await expectAccountProviderLayout(setup, "stack");
+      await expect(setup.getByLabel("Email address")).toBeFocused();
+      await snap("setup-open");
+      const setupScrollPort = setup.locator(".polished-scroll");
+      await setup.getByLabel("Email address").blur();
+      await setupScrollPort.evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await snap("setup-reset");
+      const close = setup.getByRole("button", { name: "Close account setup" });
+      const mark = setup.getByTestId("account-workspace-mark");
+      for (const viewportSize of [
+        { width: 320, height: 700 },
+        { width: 430, height: 820 },
+        { width: 639, height: 820 },
+      ]) {
+        await page.setViewportSize(viewportSize);
+        await setupScrollPort.evaluate((element) => {
+          element.scrollTop = 0;
+        });
+        const closeY = (await close.boundingBox())?.y ?? -999;
+        const markY = (await mark.boundingBox())?.y ?? -999;
+        if (closeY < 59 || markY < 59) faulted = true;
+        await snap(`${viewportSize.width}x${viewportSize.height} closeY=${closeY} markY=${markY}`);
+        if (faulted) {
+          await page.waitForTimeout(800);
+          await snap(`${viewportSize.width}x${viewportSize.height}-later`);
+        }
+      }
+      expect(faulted ? report.join("\n") : "clean").toBe("clean");
+    });
+  }
+});
