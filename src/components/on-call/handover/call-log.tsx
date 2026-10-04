@@ -30,7 +30,11 @@ import {
   type OnCallCallLogEntry,
 } from "@/lib/on-call/call-log";
 import { onCallDeviceStateChangedEvent, onCallDeviceStoreChangedEvent } from "@/lib/on-call/device-state-keys";
-import { PATIENT_LABEL_EXPIRY_STORAGE_KEY, PATIENT_LABELS_CLEARED_EVENT } from "@/lib/patient-label-storage";
+import {
+  PATIENT_LABEL_EXPIRY_STORAGE_KEY,
+  PATIENT_LABELS_CLEARED_EVENT,
+  startPatientLabelRetention,
+} from "@/lib/patient-label-storage";
 
 /*
  * Two pieces the Today layout can place on their own: the quick call log
@@ -149,6 +153,7 @@ export function OnCallCallLogCard() {
   const view = useOnCallCallLog();
   const entries = view?.entries ?? null;
   const [draft, setDraft] = useState<OnCallCallLogDraft>(emptyDraft);
+  const [draftExpiresAt, setDraftExpiresAt] = useState<number | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [saved, setSaved] = useState("");
 
@@ -156,6 +161,7 @@ export function OnCallCallLogCard() {
   useEffect(() => {
     const onCleared = () => {
       setDraft(emptyDraft);
+      setDraftExpiresAt(null);
       setProblem(null);
       setSaved("");
     };
@@ -174,7 +180,41 @@ export function OnCallCallLogCard() {
     };
   }, []);
 
+  useEffect(() => {
+    if (draftExpiresAt === null) return;
+    const check = () => {
+      if (Date.now() < draftExpiresAt) return;
+      setDraft(emptyDraft);
+      setDraftExpiresAt(null);
+      setProblem(null);
+      setSaved("");
+    };
+    const timer = window.setTimeout(check, Math.max(0, draftExpiresAt - Date.now()));
+    window.addEventListener("focus", check);
+    window.addEventListener("pageshow", check);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", check);
+      window.removeEventListener("pageshow", check);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [draftExpiresAt]);
+
   const update = (key: keyof OnCallCallLogDraft) => (value: string) => {
+    if (draftExpiresAt !== null && Date.now() >= draftExpiresAt) {
+      setDraft(emptyDraft);
+      setDraftExpiresAt(null);
+      return;
+    }
+    if (value && draftExpiresAt === null) {
+      const expiresAt = startPatientLabelRetention();
+      if (expiresAt === null) {
+        setProblem("The shift expiry could not be set. This note cannot be kept on this device.");
+        return;
+      }
+      setDraftExpiresAt(expiresAt);
+    }
     setDraft((current) => ({ ...current, [key]: value }));
     setProblem(null);
     setSaved("");
@@ -182,12 +222,19 @@ export function OnCallCallLogCard() {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (draftExpiresAt !== null && Date.now() >= draftExpiresAt) {
+      setDraft(emptyDraft);
+      setDraftExpiresAt(null);
+      setProblem("The shift has ended. This draft was cleared.");
+      return;
+    }
     const result = addOnCallCallLogEntry(draft);
     if (!result.ok) {
       setProblem(result.problem);
       return;
     }
     setDraft(emptyDraft);
+    setDraftExpiresAt(null);
     const message = `Noted at ${onCallCallLogTime(result.entry.at)}.`;
     setSaved(message);
     announce(message);
