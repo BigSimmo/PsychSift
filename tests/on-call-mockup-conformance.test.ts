@@ -243,7 +243,9 @@ describe("On Call mockup conformance ledger", () => {
       "on-call-now-emergency",
       "on-call-now-right-now",
       "on-call-now-footer",
-      "on-call-home-upcoming",
+      // Coming up (`on-call-home-upcoming`) left the On Call boards when
+      // `/on-call/education` hard-redirected to Teaching Week — see the
+      // deviation rows in mockup-conformance.md.
       "on-call-page-menu-trigger",
       "on-call-page-menu-order",
       "on-call-contacts-group-needs-checking",
