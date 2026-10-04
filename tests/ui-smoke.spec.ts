@@ -5787,11 +5787,20 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(documentActions).toBeVisible();
     const composerBox = await composer.boundingBox();
     expect(composerBox).not.toBeNull();
-    const sheetOwnsComposerPoint = await documentActions.evaluate(
-      (dialog, point) => dialog.contains(document.elementFromPoint(point.x, point.y)),
-      { x: composerBox!.x + composerBox!.width / 2, y: composerBox!.y + composerBox!.height / 2 },
-    );
-    expect(sheetOwnsComposerPoint).toBe(true);
+    // Polled, not read once: the sheet slides up as it opens, so a single read
+    // straight after it turns visible can land before it covers the composer
+    // (Production UI on #3270, 2026-10-04).
+    const composerPoint = { x: composerBox!.x + composerBox!.width / 2, y: composerBox!.y + composerBox!.height / 2 };
+    await expect
+      .poll(
+        () =>
+          documentActions.evaluate(
+            (dialog, point) => dialog.contains(document.elementFromPoint(point.x, point.y)),
+            composerPoint,
+          ),
+        { message: "the open actions sheet must cover the composer", timeout: 5_000 },
+      )
+      .toBe(true);
     await tapOutsideActiveSurface(page);
     await expect(documentActions).toHaveCount(0);
     await expectNoPageHorizontalOverflow(page);
