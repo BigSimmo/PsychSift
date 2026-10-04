@@ -42,7 +42,8 @@
  * per iteration, so shrinking that array loses real cases without moving the count. Inherent to
  * any static count; the aggregate and rule 2 are unaffected.
  *
- * The comparison base is the merge base with `origin/main`, never the previous commit, so
+ * The comparison base is the merge base with `origin/main` (or local `main` when the
+ * remote-tracking ref is absent), never the previous commit, so
  * a branch that removes tests across several small commits is still measured against the
  * whole drop rather than sliding under the threshold one commit at a time.
  *
@@ -50,7 +51,7 @@
  * pass, because the failure mode being guarded is precisely a weak signal read as consent.
  *
  * Usage:
- *   node scripts/check-diff-integrity.mjs [--base <ref>]   # default: merge-base origin/main
+ *   node scripts/check-diff-integrity.mjs [--base <ref>]   # default: merge-base origin/main (local main if absent)
  *   node scripts/check-diff-integrity.mjs --json
  *   node scripts/check-diff-integrity.mjs --self-test
  *
@@ -392,11 +393,20 @@ export function resolveBase({ requested = "", env = process.env, git = NODE_GIT 
     }
   }
   try {
-    return git(["merge-base", "HEAD", "refs/remotes/origin/main"]);
+    let comparisonRef = "refs/remotes/origin/main";
+    try {
+      git(["rev-parse", "--verify", "--end-of-options", `${comparisonRef}^{commit}`]);
+    } catch {
+      // Only a missing remote ref permits the local branch fallback. If the remote
+      // exists but its ancestry is shallow/unrelated, merge-base must still fail closed.
+      comparisonRef = "refs/heads/main";
+      git(["rev-parse", "--verify", "--end-of-options", `${comparisonRef}^{commit}`]);
+    }
+    return git(["merge-base", "HEAD", comparisonRef]);
   } catch (error) {
     throw new Error(
       `cannot resolve a comparison base (${firstLine(error)}). Pass --base <commit>, set DIFF_INTEGRITY_BASE_SHA, ` +
-        "or fetch refs/remotes/origin/main — on a shallow clone run `git fetch --deepen=2000` first.",
+        "or restore local main/fetch refs/remotes/origin/main — on a shallow clone run `git fetch --deepen=2000` first.",
     );
   }
 }

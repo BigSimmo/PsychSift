@@ -41,10 +41,10 @@ describe("Customise", () => {
     window.localStorage.removeItem(cmeModuleOrderStorageKey);
   });
 
-  it("has a way back: a back link to Today and a Done control that returns there", async () => {
+  it("has a way back: a back link to Year and a Done control that returns there", async () => {
     const user = userEvent.setup();
     render(<CmeCustomisePage />);
-    expect(screen.getByRole("link", { name: "Back to today" })).toHaveAttribute("href", "/cme");
+    expect(screen.getByRole("link", { name: "Back to year" })).toHaveAttribute("href", "/cme");
     await user.click(screen.getByRole("button", { name: "Done" }));
     expect(navigation.push).toHaveBeenCalledWith("/cme");
   });

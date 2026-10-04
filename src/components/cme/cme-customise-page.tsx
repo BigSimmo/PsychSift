@@ -38,7 +38,7 @@ export function CmeCustomisePage() {
           where the new order shows. */}
       <CmeDetailNavHeader
         title="Customise"
-        back={{ href: "/cme", label: "Today" }}
+        back={{ href: "/cme", label: "Year" }}
         primaryAction={{ label: "Done", icon: Check, onClick: () => router.push("/cme") }}
         testIdPrefix="cme-customise"
       />
