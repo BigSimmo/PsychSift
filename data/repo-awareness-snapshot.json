@@ -4166,6 +4166,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-04-mha-countdowns-covered-by-samd-ruling.md",
+        "section": "decisions",
+        "catalogued": false
+      },
+      {
         "path": "docs/design-system/sweep-fix-missing-values.md",
         "section": "design-system",
         "catalogued": true
