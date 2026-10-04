@@ -28,6 +28,7 @@ import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day
 import { MY_DAY_PAGE_LABELS, myDayPageIds, parseMyDayPage, type MyDayPageId } from "@/lib/my-day/dashboard";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
+import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { focusRing } from "@/components/card-recipes";
 import { DashTag } from "@/components/dashboard-kit/icon-chip";
 import { dashSurface } from "@/components/dashboard-kit/recipes";
@@ -35,6 +36,7 @@ import { cn } from "@/components/ui-primitives";
 
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
+const NO_ENTRIES: readonly OnCallEntry[] = [];
 import { useAuthSession } from "@/lib/supabase/client";
 
 /**
@@ -340,6 +342,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const adminReal = allowSample || !myWorkSample;
   const renewals = adminReal ? (state.renewals ?? NO_RENEWALS) : NO_RENEWALS;
   const helpItems = adminReal ? (state.helpItems ?? NO_HELP) : NO_HELP;
+  const adminEntries = adminReal ? (state.adminEntries ?? NO_ENTRIES) : NO_ENTRIES;
   const demoNote = allowSample && state.demoMode;
   // Roster's "unavailable" is its team data (swaps); the others are whole modes not offered yet.
   const notYet = [...(rosterUnavailable ? ["Roster swaps"] : []), ...otherUnavailable];
@@ -483,6 +486,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                   items={items}
                   renewals={renewals}
                   helpItems={helpItems}
+                  adminEntries={adminEntries}
                   checked={checked}
                   editing={editing}
                   page={page}
