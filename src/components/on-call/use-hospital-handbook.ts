@@ -16,7 +16,7 @@ import {
   rememberReportOnThisDevice,
   type HandbookReportReason,
 } from "@/lib/on-call/handbook-reports";
-import { demoServiceDetail, demoServiceSummary } from "@/lib/on-call/service-demo";
+import { demoServiceDetail, demoServiceSummary, sampleServiceDetail } from "@/lib/on-call/service-demo";
 import type { ServiceDetail, ServiceSummary } from "@/lib/on-call/service-model";
 import { useAuthSession } from "@/lib/supabase/client";
 
@@ -255,8 +255,14 @@ function hospitalOptions(services: readonly ServiceSummary[]): HospitalHandbookO
 const noop = () => {};
 
 export function useHospitalHandbook(): HospitalHandbookState {
-  const demo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
   const auth = useAuthSession();
+  // A signed-out visitor sees the invented sample hospital (the same synthetic
+  // one the local demo build serves), held in memory only: nothing is fetched,
+  // remembered or reported.
+  const envDemo = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const demo = envDemo || auth.status === "signed_out" || auth.status === "expired";
+  // The sample's numbers are text only; the local demo build keeps its own.
+  const sampleDetail = envDemo ? demoServiceDetail : sampleServiceDetail;
   const epoch = auth.authEpoch;
   const live = !demo && auth.status === "authenticated";
   const [servicesState, setServicesState] = useState<ServicesState | null>(null);
@@ -438,12 +444,12 @@ export function useHospitalHandbook(): HospitalHandbookState {
   const items = useMemo(
     () =>
       (demo
-        ? publishedHandbookItems(demoServiceDetail)
+        ? publishedHandbookItems(sampleDetail)
         : readyDetail
           ? publishedHandbookItems(readyDetail.detail)
           : []
       ).filter((item) => item.siteId === null || item.siteId === siteId),
-    [demo, readyDetail, siteId],
+    [demo, readyDetail, sampleDetail, siteId],
   );
   const hospitals = useMemo(() => hospitalOptions(services), [services]);
   const visible = status === "ready" || status === "loading";
@@ -464,7 +470,7 @@ export function useHospitalHandbook(): HospitalHandbookState {
     source: "network",
     savedAt: null,
     hours: (() => {
-      const site = (demo ? demoServiceDetail : readyDetail?.detail)?.sites.find((site) => site.id === siteId);
+      const site = (demo ? sampleDetail : readyDetail?.detail)?.sites.find((site) => site.id === siteId);
       return site?.afterHoursStart && site.afterHoursEnd
         ? { afterHoursFrom: site.afterHoursStart, afterHoursUntil: site.afterHoursEnd }
         : null;

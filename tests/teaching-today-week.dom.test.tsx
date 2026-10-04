@@ -404,7 +404,8 @@ describe("Today", () => {
     await waitFor(() => expect(screen.getByTestId("roles")).toHaveTextContent("organiser"));
     view.unmount();
 
-    authState.status = "signed_out";
+    // The API refusing a read the browser thought was signed in (the reader's status is signed out is the sample, below).
+    authState.status = "authenticated";
     serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? apiError(401, "teaching_signed_out") : null));
     render(
       <>
@@ -416,8 +417,8 @@ describe("Today", () => {
     await waitFor(() => expect(screen.getByTestId("roles")).toBeEmptyDOMElement());
   });
 
-  it("signed out: the sign-in module, and Open the demo enters the whole-mode Teaching sample", async () => {
-    authState.status = "signed_out";
+  it("a refused read: the sign-in module, and Open the demo enters the whole-mode Teaching sample", async () => {
+    authState.status = "authenticated";
     serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? apiError(401, "teaching_signed_out") : null));
     render(<TeachingToday demoMode={false} />);
     const moduleEl = await screen.findByTestId("teaching-state-signed-out");

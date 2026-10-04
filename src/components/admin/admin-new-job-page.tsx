@@ -30,6 +30,7 @@ import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { onCallEntrySchema, type OnCallEntry, type OnCallSection } from "@/lib/on-call/entry-model";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
+import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
 
 type UndoState = { id: number; entryId: string; restore: unknown; label: string };
 
@@ -60,7 +61,11 @@ function ContactRow({ entry }: { entry: OnCallEntry }) {
     >
       <span className="break-words text-sm font-medium text-[color:var(--text-heading)]">{entry.title}</span>
       {entry.subtitle ? <span className={cn(textMuted, "text-sm")}>{entry.subtitle}</span> : null}
-      {phone ? (
+      {phone && isOnCallPlaceholderNumber(phone) ? (
+        <span className="nums inline w-fit text-sm text-[color:var(--text)]">
+          {displayPhoneNumber(phone, "own-list")}
+        </span>
+      ) : phone ? (
         <a href={telHref ?? `tel:${phone}`} className="nums inline w-fit text-sm text-[color:var(--text)]">
           {displayPhoneNumber(phone, "own-list")}
         </a>

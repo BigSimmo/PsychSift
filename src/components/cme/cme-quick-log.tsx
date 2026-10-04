@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { useCmeSample } from "@/components/cme/cme-sample-context";
 import { CmeEntryForm, type CmeEntryDraft, type CmeEntryFormProps } from "@/components/cme/cme-entry-form";
 import { CME_NEW_ENTRY_DRAFT_KEY } from "@/components/cme/cme-new-entry-route";
 import { Sheet } from "@/components/ui/sheet";
@@ -118,6 +119,7 @@ export function CmeQuickLog({
   demoMode?: boolean;
 }) {
   const router = useRouter();
+  const sample = useCmeSample();
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
@@ -288,7 +290,7 @@ export function CmeQuickLog({
             existingEntries={entries}
             initialStatedHours={undefined}
             availableDomains={domains}
-            draftStorageKey={selected ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
+            draftStorageKey={selected || sample ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
             stickySave={false}
             actionContainer={actionContainer}
             onSaveDraft={demoMode ? undefined : saveDraft}
