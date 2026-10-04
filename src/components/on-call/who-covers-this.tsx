@@ -92,7 +92,7 @@ export function WhoCoversThis({
       className="grid gap-3 rounded-xl border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] p-3 shadow-[var(--e2)]"
     >
       <div className="grid gap-0.5">
-        <h2 id="on-call-who-covers-heading" className="text-sm font-bold text-[color:var(--text-heading)]">
+        <h2 id="on-call-who-covers-heading" className="text-sm font-semibold text-[color:var(--text-heading)]">
           Who covers this?
         </h2>
         <p className={cn(textMuted, "text-xs")}>
@@ -102,7 +102,7 @@ export function WhoCoversThis({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="grid gap-0.5">
-          <span className="text-3xs font-bold uppercase tracking-kicker text-[color:var(--text-muted)]">Age</span>
+          <span className="text-3xs font-semibold uppercase tracking-kicker text-[color:var(--text-muted)]">Age</span>
           <input
             type="number"
             inputMode="numeric"
@@ -111,19 +111,19 @@ export function WhoCoversThis({
             value={ageText}
             onChange={(event) => setAgeText(event.target.value)}
             placeholder="e.g. 70"
-            className="min-h-12 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-sm font-bold text-[color:var(--text-heading)]"
+            className="min-h-12 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-sm font-semibold text-[color:var(--text-heading)]"
             data-testid="on-call-who-covers-age"
           />
         </label>
         <label className="grid gap-0.5">
-          <span className="text-3xs font-bold uppercase tracking-kicker text-[color:var(--text-muted)]">Suburb</span>
+          <span className="text-3xs font-semibold uppercase tracking-kicker text-[color:var(--text-muted)]">Suburb</span>
           <input
             type="text"
             value={suburb}
             onChange={(event) => setSuburb(event.target.value)}
             placeholder="e.g. Demo Bay"
             autoComplete="off"
-            className="min-h-12 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-sm font-bold text-[color:var(--text-heading)]"
+            className="min-h-12 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-sm font-semibold text-[color:var(--text-heading)]"
             data-testid="on-call-who-covers-suburb"
           />
         </label>
@@ -149,10 +149,10 @@ export function WhoCoversThis({
               data-verdict={match.verdict}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="min-w-0 text-sm font-bold leading-5 text-[color:var(--text-heading)]">{entry.title}</p>
+                <p className="min-w-0 text-sm font-semibold leading-5 text-[color:var(--text-heading)]">{entry.title}</p>
                 <span
                   className={cn(
-                    "shrink-0 rounded-sm border px-1.5 py-0.5 text-3xs font-bold uppercase tracking-kicker",
+                    "shrink-0 rounded-sm border px-1.5 py-0.5 text-3xs font-semibold uppercase tracking-kicker",
                     VERDICT_CLASS[match.verdict],
                   )}
                 >
@@ -162,7 +162,7 @@ export function WhoCoversThis({
               <p className="mt-0.5 text-xs leading-5 text-[color:var(--text)]">{match.why}</p>
               {facts?.phone ? (
                 <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2">
-                  <span className="nums text-xs font-bold text-[color:var(--text-muted)]">
+                  <span className="nums text-xs font-semibold text-[color:var(--text-muted)]">
                     {facts.phone}
                     {facts.hours ? ` · ${facts.hours}` : ""}
                   </span>
@@ -171,7 +171,7 @@ export function WhoCoversThis({
                       <a
                         href={onCallTelHref(facts.phone)}
                         onClick={() => recordOnCallRecent({ id: entry.id, title: entry.title })}
-                        className="inline-flex min-h-tap items-center gap-1 rounded-sm bg-[color:var(--command)] px-2.5 text-2xs font-bold text-[color:var(--command-contrast)]"
+                        className="inline-flex min-h-tap items-center gap-1 rounded-sm bg-[color:var(--command)] px-2.5 text-2xs font-semibold text-[color:var(--command-contrast)]"
                         data-testid={`on-call-who-covers-call-${entry.slug}`}
                       >
                         Call
