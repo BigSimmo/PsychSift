@@ -276,6 +276,8 @@ describe("Roster Shifts", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Hours" }));
     const hours = await screen.findByTestId("roster-hours");
     expect(hours).toHaveTextContent("19 h rostered, not pay");
+    expect(within(hours).getByTestId("roster-hours-ledger")).toBeInTheDocument();
+    expect(within(hours).getByTestId("roster-hours-day-2026-10-12")).toHaveTextContent("rostered");
     expect(within(hours).getByTestId("roster-hours-claim-link")).toHaveAttribute("href", "/my-work");
 
     fireEvent.click(screen.getByRole("button", { name: "Stayed late" }));
