@@ -35,7 +35,7 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
   test("/my-work lands on /admin/renewals, and the pill names Admin without a Today page", async ({ page }) => {
     await page.goto("/my-work");
     await expect(page).toHaveURL(/\/admin\/renewals$/);
-    await expect(page.getByRole("button", { name: "Mode Admin", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mode Admin, page Renewals", exact: true })).toBeVisible();
   });
 
   test("/on-call/compliance lands on /admin/renewals, keeping the checklist's own groups", async ({ page }) => {
