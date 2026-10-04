@@ -32,32 +32,21 @@ describe("phone mode groups", () => {
     expect(new Set(groupIds).size).toBe(groupIds.length);
   });
 
-  it("gives On Call, Roster, Admin, First Nations, CPD and Teaching areas of their own, after the clinical groups", () => {
+  it("draws five doors: My Day with the work areas, On Call alone, then Search, Psychiatry, Medicines & tools", () => {
     const groupOf = (modeId: AppModeId) =>
       phoneModeGroups.find((group) => (group.modeIds as readonly AppModeId[]).includes(modeId));
-    expect(groupOf("on-call")).toMatchObject({ id: "on-call", label: "On Call", modeIds: ["on-call"] });
-    expect(groupOf("roster")).toMatchObject({ id: "roster", label: "Roster", modeIds: ["roster"] });
-    expect(groupOf("my-work")).toMatchObject({ id: "my-work", label: "Admin", modeIds: ["my-work"] });
-    expect(groupOf("first-nations")).toMatchObject({
-      id: "first-nations",
-      label: "First Nations",
-      modeIds: ["first-nations"],
+    // Modes review, phase 1: the work areas sit behind My Day, which leads.
+    expect(groupOf("my-day")).toMatchObject({
+      id: "my-day",
+      label: "My Day",
+      modeIds: ["my-day", "roster", "teaching", "cme", "my-work"],
     });
-    expect(groupOf("cme")).toMatchObject({ id: "cpd", label: "CPD and teaching", modeIds: ["cme", "teaching"] });
-    expect(groupOf("my-day")).toMatchObject({ id: "my-day", label: "My Day", modeIds: ["my-day"] });
-    // My Day leads the whole list (design review 2026-10-03, item 4); the
-    // other operational areas still follow the clinical groups.
-    expect(phoneModeGroups.map((group) => group.id)).toEqual([
-      "my-day",
-      "find",
-      "psychiatry",
-      "care",
-      "on-call",
-      "roster",
-      "my-work",
-      "first-nations",
-      "cpd",
-    ]);
+    // On Call stays a door of its own, second, so the urgent screen is never buried.
+    expect(groupOf("on-call")).toMatchObject({ id: "on-call", label: "On Call", modeIds: ["on-call"] });
+    // First Nations culturally safe care is clinical guidance, beside diagnosis and formulation.
+    expect(groupOf("first-nations")?.id).toBe("psychiatry");
+    expect(groupOf("prescribing")).toMatchObject({ id: "care", label: "Medicines & tools" });
+    expect(phoneModeGroups.map((group) => group.id)).toEqual(["my-day", "on-call", "find", "psychiatry", "care"]);
   });
 
   it("orders modes the way the grouped menus draw them, for arrow-key focus", () => {
@@ -65,6 +54,6 @@ describe("phone mode groups", () => {
     expect(orderByPhoneModeGroups(registryOrder).map((mode) => mode.id)).toEqual(groupedModeIds);
     // A session that hides some modes keeps the drawn order for the rest.
     const someModes = (["cme", "psychiatry", "forms", "answer"] as const).map((id) => ({ id }));
-    expect(orderByPhoneModeGroups(someModes).map((mode) => mode.id)).toEqual(["answer", "psychiatry", "forms", "cme"]);
+    expect(orderByPhoneModeGroups(someModes).map((mode) => mode.id)).toEqual(["cme", "answer", "psychiatry", "forms"]);
   });
 });

@@ -72,5 +72,6 @@ export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; rea
     nextRenewal: signedOut ? null : entries.nextRenewal,
     renewals: signedOut ? [] : entries.renewals,
     helpItems: signedOut ? [] : entries.helpItems,
+    adminEntries: signedOut ? [] : entries.adminEntries,
   };
 }
