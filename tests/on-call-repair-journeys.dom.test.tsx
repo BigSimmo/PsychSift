@@ -42,10 +42,15 @@ describe("On call repair journeys", () => {
     expect(screen.getByRole("button", { name: "Copy extension for Ward contact" })).toBeInTheDocument();
     expect(document.querySelector('a[href="tel:0001"]')).toBeNull();
   });
-  it("gives dialable contact names a full line above the number on phones", () => {
+  it("puts the role full width and the phone on the line below, outside the dial/copy column", () => {
     render(<OnCallContactsSection entries={[{ ...entry, details: { role: "Registrar", phone: "08 9224 1000" } }]} />);
     const row = screen.getByTestId("on-call-contact-row-ward");
-    expect(row).toHaveClass("flex-col", "sm:flex-row");
+    const number = row.querySelector("[data-contact-row-number]");
+    expect(number).not.toBeNull();
+    expect(number).toHaveTextContent("08 9224 1000");
+    // Role-first: the number is under the title in the text column, not stacked
+    // beside it via the old phone-only flex-col trailing slot.
+    expect(row).not.toHaveClass("flex-col");
     expect(row).toHaveAttribute("href", "tel:0892241000");
     expect(row).not.toContainElement(screen.getByRole("button", { name: /Copy Direct number/ }));
   });
