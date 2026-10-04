@@ -46,8 +46,7 @@ export function useRosterAskContext(): {
   const selectedTeam = availableTeams.find((team) => team.serviceId === selectedTeamId);
   const overview = useRosterRead(selectedTeamId, "overview");
   const assignments = useRosterRead(selectedTeamId, "assignments", range);
-  const payFortnightAnchor =
-    overview.status === "ready" ? (overview.data?.settings?.payFortnightAnchor ?? null) : null;
+  const payFortnightAnchor = overview.status === "ready" ? (overview.data?.settings?.payFortnightAnchor ?? null) : null;
   const fortnight = fortnightFor(today, payFortnightAnchor);
   useEffect(() => {
     const controller = new AbortController();
@@ -55,9 +54,7 @@ export function useRosterAskContext(): {
       cache: "no-store",
       signal: controller.signal,
     })
-      .then(async (response) =>
-        response.ok ? ((await response.json()) as { records?: HoursExtra[] }) : null,
-      )
+      .then(async (response) => (response.ok ? ((await response.json()) as { records?: HoursExtra[] }) : null))
       .then((payload) => {
         if (!controller.signal.aborted && Array.isArray(payload?.records)) setExtras(payload.records);
       })

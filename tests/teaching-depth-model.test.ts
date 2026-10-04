@@ -318,10 +318,7 @@ describe("the spreadsheet import", () => {
 
   it("refuses patient-shaped column headers before accepting any row", () => {
     const groups = [{ groupId: GROUP, name: "Registrars", userIds: [] }];
-    const refused = previewRows(
-      parseCsv(`${header},patient_name,mrn\n${clean},Alex Example,12345`),
-      groups,
-    );
+    const refused = previewRows(parseCsv(`${header},patient_name,mrn\n${clean},Alex Example,12345`), groups);
     expect(refused.ready).toBeNull();
     expect(refused.rows[0].errors[0]).toMatch(/patient details/i);
     expect(refused.rows[0].errors[0]).toMatch(/patient_name/);

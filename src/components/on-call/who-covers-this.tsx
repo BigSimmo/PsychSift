@@ -129,8 +129,7 @@ export function WhoCoversThis({
         </label>
       </div>
       <p className={cn(textMuted, "nums text-xs")} data-testid="on-call-who-covers-time">
-        Time · Now ·{" "}
-        {`${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`} Perth
+        Time · Now · {`${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`} Perth
       </p>
       {!ageValid ? (
         <p role="status" className="text-sm text-[color:var(--warning-text)]">

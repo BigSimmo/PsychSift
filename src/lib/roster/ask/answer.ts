@@ -141,8 +141,7 @@ export function answerQuestion(q: AskQuestion, data: AskAnswerData): AskAnswer {
     const lines = [
       `${summary.totalHours} rostered hours in ${formatPerthDay(window.start)}–${formatPerthDay(window.end)} from the loaded shifts. This is not a pay total.`,
     ];
-    if (summary.extraHours > 0)
-      lines.push(`${summary.extraHours} hours of saved extra time in the same fortnight.`);
+    if (summary.extraHours > 0) lines.push(`${summary.extraHours} hours of saved extra time in the same fortnight.`);
     else lines.push("Missing shifts or extra time can change this figure.");
     return { lines, source: ownSource };
   }

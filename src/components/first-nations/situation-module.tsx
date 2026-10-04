@@ -197,12 +197,7 @@ export function SituationModule() {
         </div>
         {call && callHref ? (
           <div ref={dialRef} id="fn-situation-dial" data-testid="fn-situation-dial" className="pt-1">
-            <FnButton
-              icon={Phone}
-              filled
-              href={callHref}
-              label={`Call ${call === liaison ? "liaison" : call.name}`}
-            />
+            <FnButton icon={Phone} filled href={callHref} label={`Call ${call === liaison ? "liaison" : call.name}`} />
           </div>
         ) : (
           <div ref={dialRef} id="fn-situation-dial" data-testid="fn-situation-dial" className="sr-only" />

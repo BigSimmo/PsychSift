@@ -14,7 +14,8 @@ export function OnCallCardQr({ className }: { readonly className?: string }) {
   useEffect(() => {
     setValue(`${window.location.origin}/on-call/card`);
   }, []);
-  if (!value) return <div className={cn("size-20", className)} aria-hidden="true" data-testid="on-call-card-qr-pending" />;
+  if (!value)
+    return <div className={cn("size-20", className)} aria-hidden="true" data-testid="on-call-card-qr-pending" />;
   const drawn = qrModulePath(value);
   return (
     <svg

@@ -5,7 +5,13 @@ import { CopyNoteWording } from "@/components/first-nations/copy-note-wording";
 import { ContactReviewLine } from "@/components/first-nations/review-line";
 import { ReviewStamp } from "@/components/first-nations/review-stamp";
 import type { ReviewStamp as ReviewStampData } from "@/lib/first-nations/review-stamp-text";
-import { ModeDialRow, ModeFactTile, ModeFactTiles, ModeStateLabel, ModeUpdatedLine } from "@/components/first-nations/kit";
+import {
+  ModeDialRow,
+  ModeFactTile,
+  ModeFactTiles,
+  ModeStateLabel,
+  ModeUpdatedLine,
+} from "@/components/first-nations/kit";
 import { FnModule } from "@/components/first-nations/module-header";
 import { ContactActions, NumberTile } from "@/components/first-nations/number-button";
 import { dialNumber } from "@/lib/first-nations/contact-format";
