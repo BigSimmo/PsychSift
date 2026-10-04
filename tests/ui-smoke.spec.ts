@@ -1825,7 +1825,14 @@ test.describe("PsychSift UI smoke coverage", () => {
     const setupScrollPort = setup.locator(".polished-scroll");
     // WebKit scrolls the dialog to the focused email field on open. Prove the
     // autofocus first, then reset that scroll before checking top safe-area layout.
+    // A bare blur() does not stick: for its first seconds an open sheet hands focus
+    // back to its autofocus field whenever focus drops to the page, and only a real
+    // key press or tap ends that. WebKit then keeps the refocused field in view on
+    // every resize, so the body sat 224px down and the workspace mark at -140
+    // (CI 2026-10-04, recorded at the failure). Press a key first, as a reader would.
+    await page.keyboard.press("Shift");
     await setup.getByLabel("Email address").blur();
+    await expect(setup.getByLabel("Email address")).not.toBeFocused();
     await setupScrollPort.evaluate((element) => {
       element.scrollTop = 0;
     });
@@ -4294,12 +4301,41 @@ test.describe("PsychSift UI smoke coverage", () => {
         timeout: 30_000,
       });
 
+      // A page flip rewrites the URL, and Next then fetches the page's server payload for
+      // the new URL. Tapping Back while that fetch is in flight makes Firefox cancel it,
+      // and Next answers a cancelled fetch with a hard reload of the page-2 URL, which
+      // overrides the Back (CI 2026-10-04: still on ?page=2 after 30 s). Let the flip
+      // settle first, as a reader's tap after reading the page would.
+      const pendingPayloads = new Set<Request>();
+      let payloadsStarted = 0;
+      const isPagePayload = (request: Request) =>
+        new URL(request.url()).pathname === `/documents/${documentId}` && request.headers()["rsc"] === "1";
+      const trackStart = (request: Request) => {
+        if (!isPagePayload(request)) return;
+        payloadsStarted += 1;
+        pendingPayloads.add(request);
+      };
+      const trackEnd = (request: Request) => pendingPayloads.delete(request);
+      page.on("request", trackStart);
+      page.on("requestfinished", trackEnd);
+      page.on("requestfailed", trackEnd);
+
       const historyLength = await page.evaluate(() => window.history.length);
+      const flippedAt = Date.now();
       await page.getByLabel("Next page").first().click();
       await expect(page).toHaveURL(
         (url) => url.pathname === `/documents/${documentId}` && url.searchParams.get("page") === "2",
       );
       expect(await page.evaluate(() => window.history.length)).toBe(historyLength);
+      await expect
+        .poll(() => pendingPayloads.size === 0 && (payloadsStarted > 0 || Date.now() - flippedAt > 2_000), {
+          message: "the page flip's server payload must finish before Back is tapped",
+          timeout: 15_000,
+        })
+        .toBe(true);
+      page.off("request", trackStart);
+      page.off("requestfinished", trackEnd);
+      page.off("requestfailed", trackEnd);
 
       await page.getByRole("link", { name: "Back to documents" }).click();
       await expect(page).toHaveURL(
@@ -5751,11 +5787,20 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(documentActions).toBeVisible();
     const composerBox = await composer.boundingBox();
     expect(composerBox).not.toBeNull();
-    const sheetOwnsComposerPoint = await documentActions.evaluate(
-      (dialog, point) => dialog.contains(document.elementFromPoint(point.x, point.y)),
-      { x: composerBox!.x + composerBox!.width / 2, y: composerBox!.y + composerBox!.height / 2 },
-    );
-    expect(sheetOwnsComposerPoint).toBe(true);
+    // Polled, not read once: the sheet slides up as it opens, so a single read
+    // straight after it turns visible can land before it covers the composer
+    // (Production UI on #3270, 2026-10-04).
+    const composerPoint = { x: composerBox!.x + composerBox!.width / 2, y: composerBox!.y + composerBox!.height / 2 };
+    await expect
+      .poll(
+        () =>
+          documentActions.evaluate(
+            (dialog, point) => dialog.contains(document.elementFromPoint(point.x, point.y)),
+            composerPoint,
+          ),
+        { message: "the open actions sheet must cover the composer", timeout: 5_000 },
+      )
+      .toBe(true);
     await tapOutsideActiveSurface(page);
     await expect(documentActions).toHaveCount(0);
     await expectNoPageHorizontalOverflow(page);
