@@ -271,3 +271,12 @@ export const demoServiceSummary: ServiceSummary = {
   clinicalReviewer: true,
   sites: demoServiceDetail.sites,
 };
+
+/**
+ * The signed-out sample hospital: the same synthetic service with its reserved
+ * `5550` numbers swapped for the `0000` placeholders, which are shown as text
+ * and never linked to a dialler. Built in memory; nothing is stored.
+ */
+export const sampleServiceDetail: ServiceDetail = JSON.parse(
+  JSON.stringify(demoServiceDetail).replace(/\b5550 (\d{4})\b/g, "0000 $1"),
+) as ServiceDetail;

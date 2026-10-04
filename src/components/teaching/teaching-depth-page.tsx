@@ -7,6 +7,7 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import type { TeachingResource } from "@/components/teaching/use-teaching-resource";
+import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 import { useAuthSession } from "@/lib/supabase/client";
 
 /**
@@ -25,7 +26,8 @@ export function TeachingAccountPage({
   demoMode: boolean;
 }) {
   const auth = useAuthSession();
-  return <Component key={`${auth.authEpoch}:${demoMode}`} demoMode={demoMode} />;
+  const demo = useTeachingDemoMode(demoMode);
+  return <Component key={`${auth.authEpoch}:${demo}`} demoMode={demo} />;
 }
 
 export function TeachingDepthPage<T>({
