@@ -143,7 +143,7 @@ function FindHero() {
             placeholder="Dosing, safety or monitoring"
             autoComplete="off"
             data-testid="medicines-find-input"
-            className="min-h-12 min-w-0 flex-1 bg-transparent text-base text-[color:var(--dash-ink)] outline-none placeholder:text-[color:var(--dash-muted)]"
+            className="min-h-12 w-0 min-w-0 flex-1 bg-transparent text-base text-[color:var(--dash-ink)] outline-none placeholder:text-[color:var(--dash-muted)]"
           />
           <button
             type="submit"
