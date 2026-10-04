@@ -51,7 +51,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Who's who",
     "Orientation checklists",
   ],
-  cme: ["Today", "Log", "Plan", "Learning", "Set up"],
+  cme: ["Year", "Log", "Plan", "Learning", "Set up"],
   teaching: ["Today", "Week", "What's on", "Resources", "Logbook", "Teach", "Supervision", "Organise"],
   psychiatry: [],
   medicines: [],
@@ -161,7 +161,7 @@ describe("mode secondary navigation registry", () => {
 
   it("keeps every older CPD address under one of the five current pages", () => {
     expect(modeSecondaryNavigationRegistry.cme.map(({ label }) => label)).toEqual([
-      "Today",
+      "Year",
       "Log",
       "Plan",
       "Learning",
