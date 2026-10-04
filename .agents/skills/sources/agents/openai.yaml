@@ -1,4 +1,0 @@
-interface:
-  display_name: "Sources"
-  short_description: "Audit PsychSift citations and source governance"
-  default_prompt: "Use $sources to audit source metadata, citations, approvals, provenance, and release-governance coverage."
