@@ -54,7 +54,7 @@ describe("document section navigation ownership", () => {
   it("keeps document-viewer ui-smoke on the current phone section chrome", () => {
     const documentViewerSmoke = sourceSegment(
       uiSmokeSource,
-      'test("document viewer puts the PDF preview first',
+      'test("document viewer puts the matching passage above the PDF preview',
       'test("answer glass header overlays main',
       { label: "document viewer phone section smoke" },
     );
@@ -64,8 +64,9 @@ describe("document section navigation ownership", () => {
     expect(documentViewerSmoke).not.toMatch(
       /getByRole\(\s*["']navigation["']\s*,\s*\{\s*name:\s*["']Document viewer sections["']/,
     );
-    // Demo docs without visuals omit Images from the sheet; open via summary.
-    expect(documentViewerSmoke).toContain("openImagesDisclosure");
-    expect(documentViewerSmoke).toContain('images.locator("summary")');
+    // Demo docs without visuals leave Tables and diagrams out entirely, so
+    // the smoke proves the section is absent rather than opening it.
+    expect(documentViewerSmoke).toContain("await expect(images).toHaveCount(0)");
+    expect(documentViewerSmoke).toContain("openIndexingDisclosure");
   });
 });
