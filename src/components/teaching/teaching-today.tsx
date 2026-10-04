@@ -29,6 +29,7 @@ import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingWeek, type TeachingWeekState } from "@/components/teaching/use-teaching-week";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
+import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 
 /*
  * Today on the shared Today shell: the hero is Now (the mode's own surface),
@@ -72,7 +73,8 @@ function TeachingTodayShell({
   );
 }
 
-export function TeachingToday({ demoMode }: { demoMode: boolean }) {
+export function TeachingToday({ demoMode: serverDemoMode }: { demoMode: boolean }) {
+  const demoMode = useTeachingDemoMode(serverDemoMode);
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   // From this Monday, so the catch-up count sees the whole calendar week (as Resources does); the hero

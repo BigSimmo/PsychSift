@@ -431,21 +431,17 @@ describe("the example-content module", () => {
     expect(screen.queryByText("Example content")).toBeNull();
   });
 
-  it("offers a signed-out reader the on-device preview, because that is most readers", () => {
-    // Changed deliberately on 2026-09-22 (owner request). This module used to
-    // render nothing at all when signed out, which meant the overwhelmingly
-    // common case — someone opening the site without an account — saw an empty
-    // hub and no way to see what a filled one looks like. The preview needs no
-    // account and writes nothing to the server, so there is no reason to
-    // withhold it.
+  it("offers a signed-out reader no example-content control, because the page shows the sample itself", () => {
+    // Changed 2026-10-04. Signed out, the hook now supplies an invented sample
+    // from memory, so the "Preview with example content" control (which wrote
+    // the corpus into this device's cache) is gone, and the account-writing
+    // controls would only 401.
     storeState.entries = [];
     storeState.signedOut = true;
 
     render(<OnCallHome />);
 
-    expect(screen.getByTestId("on-call-home-example-content")).toBeInTheDocument();
-    expect(screen.getByTestId("on-call-demo-preview-start")).toBeVisible();
-    // And it must not offer the account-writing controls, which would 401.
+    expect(screen.queryByTestId("on-call-demo-preview-start")).toBeNull();
     expect(screen.queryByTestId("on-call-demo-content-load")).toBeNull();
     expect(screen.queryByTestId("on-call-demo-content-remove")).toBeNull();
   });
@@ -580,7 +576,7 @@ describe("what the home raises on its own", () => {
 });
 
 describe("the example-content module when the entries request fails", () => {
-  it("still offers the preview, because the browser knows there is no session", () => {
+  it("still offers no control when the browser knows there is no session", () => {
     // The defect this exists for, found while Josh could not see the block on
     // the live site. `useOnCallEntries().signedOut` starts false and is only
     // ever set by a SUCCESSFUL response, so a request that fails — no signal, a
@@ -599,8 +595,8 @@ describe("the example-content module when the entries request fails", () => {
 
     render(<OnCallHome />);
 
-    expect(screen.getByTestId("on-call-home-example-content")).toBeInTheDocument();
-    expect(screen.getByTestId("on-call-demo-preview-start")).toBeVisible();
+    expect(screen.queryByTestId("on-call-demo-preview-start")).toBeNull();
+    expect(screen.queryByTestId("on-call-demo-content-load")).toBeNull();
   });
 
   it("treats an expired session the same way", () => {
@@ -610,7 +606,7 @@ describe("the example-content module when the entries request fails", () => {
 
     render(<OnCallHome />);
 
-    expect(screen.getByTestId("on-call-demo-preview-start")).toBeVisible();
+    expect(screen.queryByTestId("on-call-demo-preview-start")).toBeNull();
   });
 
   it("does NOT guess while the session is still being resolved", () => {
