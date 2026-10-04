@@ -101,7 +101,7 @@ export function WhoCoversThis({
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <label className="grid gap-0.5">
+        <label className="grid min-w-0 gap-0.5">
           <span className="text-3xs font-semibold uppercase tracking-kicker text-[color:var(--text-muted)]">Age</span>
           <input
             type="number"
@@ -111,11 +111,11 @@ export function WhoCoversThis({
             value={ageText}
             onChange={(event) => setAgeText(event.target.value)}
             placeholder="e.g. 70"
-            className="min-h-12 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-sm font-semibold text-[color:var(--text-heading)]"
+            className="min-h-12 w-full min-w-0 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-sm font-semibold text-[color:var(--text-heading)]"
             data-testid="on-call-who-covers-age"
           />
         </label>
-        <label className="grid gap-0.5">
+        <label className="grid min-w-0 gap-0.5">
           <span className="text-3xs font-semibold uppercase tracking-kicker text-[color:var(--text-muted)]">
             Suburb
           </span>
@@ -125,7 +125,7 @@ export function WhoCoversThis({
             onChange={(event) => setSuburb(event.target.value)}
             placeholder="e.g. Demo Bay"
             autoComplete="off"
-            className="min-h-12 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-sm font-semibold text-[color:var(--text-heading)]"
+            className="min-h-12 w-full min-w-0 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-sm font-semibold text-[color:var(--text-heading)]"
             data-testid="on-call-who-covers-suburb"
           />
         </label>
