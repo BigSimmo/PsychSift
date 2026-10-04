@@ -562,9 +562,10 @@ test("follow-up answer generation stays one line above the previous answer", asy
   expect((await stop.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
 
   // The wait must not introduce a horizontal scrollbar at any supported width,
-  // and it must stay inside its own column. The retired panel was ~210px tall;
-  // the line is a fraction of that, which is the point — assert it stays small
-  // so a future addition cannot quietly grow a panel back.
+  // and it must stay inside its own column. On 2026-10-04 the owner asked for the
+  // wait to stop looking blank, so it now carries the question, the five steps,
+  // an answer placeholder and the sources row. Keep it bounded so it never pushes
+  // the previous answer more than one phone screen down.
   for (const width of [320, 390, 639, 768, 1440, 1920]) {
     await page.setViewportSize({ width, height: width < 768 ? 844 : 1000 });
     const geometry = await progress.evaluate((section) => {
@@ -585,7 +586,7 @@ test("follow-up answer generation stays one line above the previous answer", asy
     expect(geometry.bodyScrollWidth).toBeLessThanOrEqual(geometry.bodyClientWidth + 1);
     expect(geometry.lineLeft).toBeGreaterThanOrEqual(geometry.sectionLeft - 1);
     expect(geometry.lineRight).toBeLessThanOrEqual(geometry.sectionRight + 1);
-    expect(geometry.sectionHeight).toBeLessThanOrEqual(96);
+    expect(geometry.sectionHeight).toBeLessThanOrEqual(560);
   }
 
   await stop.press("Enter");
