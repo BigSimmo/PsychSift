@@ -136,6 +136,7 @@ export const APP_MODE_ICON: Record<AppModeId, CategoryIconKey> = {
   roster: "calendarRange",
   "first-nations": "users",
   "my-day": "sunrise",
+  medicines: "pill",
 };
 
 /**
@@ -181,6 +182,7 @@ export const APP_MODE_ACCENT: Record<AppModeId, CategoryAccent> = {
   // use. See the class doc comment above.
   "first-nations": "slate",
   "my-day": "slate",
+  medicines: "rose",
 };
 
 /**

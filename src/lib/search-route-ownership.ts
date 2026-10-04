@@ -26,6 +26,7 @@ const routeOwnedSubmittedSearchModes = new Set<AppModeId>([
   "roster",
   "first-nations",
   "my-day",
+  "medicines",
 ]);
 
 /**
@@ -59,6 +60,8 @@ export const standaloneModeHomePaths = [
   "/cme",
   // Psychiatry's dashboard of section links, for the same reason again.
   "/psychiatry",
+  // The Medicines & tools dashboard, Psychiatry's twin, for the same reason.
+  "/medicines",
   // Admin's Today page, for the same reason again.
   "/admin",
   // Roster's dashboard (Today), for the same reason: it declares no search
@@ -127,6 +130,9 @@ export function standaloneModeHomeHref(mode: AppModeId): string | null {
     // page of links to the sections it gathers, with no results surface.
     case "psychiatry":
       return "/psychiatry";
+    // The Medicines & tools dashboard, Psychiatry's twin.
+    case "medicines":
+      return "/medicines";
     // Admin's Today page has no search results surface.
     case "my-work":
       return "/admin";
@@ -211,6 +217,7 @@ const alwaysStandaloneShellPathPrefixes = [
   "/on-call",
   "/cme",
   "/psychiatry",
+  "/medicines",
   "/admin",
   "/roster",
   "/first-nations",

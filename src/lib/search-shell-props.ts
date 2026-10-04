@@ -113,6 +113,10 @@ export function searchShellPropsForPathname(pathname: string): SearchShellPathPr
     return { initialMode: "psychiatry", desktopSearchPlacement: "hero" };
   }
 
+  if (pathname === "/medicines") {
+    return { initialMode: "medicines", desktopSearchPlacement: "hero" };
+  }
+
   // Admin has no search surface, and its pages never wear the shared composer or its
   // microphone (spec review 18). Help's "Find in Help" is an in-page filter, not a composer.
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {

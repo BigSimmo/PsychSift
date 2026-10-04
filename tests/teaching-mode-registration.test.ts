@@ -34,7 +34,7 @@ afterEach(() => setTeachingRoles([]));
 
 describe("Teaching mode registration", () => {
   it("sits right after CPD with no results surface and titles-only search", () => {
-    expect(appModeIds).toHaveLength(24);
+    expect(appModeIds).toHaveLength(25);
     expect(appModeIds.indexOf("teaching")).toBe(appModeIds.indexOf("cme") + 1);
     expect(appModeDefinition("teaching")).toMatchObject({ label: "Teaching", href: "/teaching" });
     const search = appModeSearchConfig("teaching");
