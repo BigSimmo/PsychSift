@@ -1825,7 +1825,14 @@ test.describe("PsychSift UI smoke coverage", () => {
     const setupScrollPort = setup.locator(".polished-scroll");
     // WebKit scrolls the dialog to the focused email field on open. Prove the
     // autofocus first, then reset that scroll before checking top safe-area layout.
+    // A bare blur() does not stick: for its first seconds an open sheet hands focus
+    // back to its autofocus field whenever focus drops to the page, and only a real
+    // key press or tap ends that. WebKit then keeps the refocused field in view on
+    // every resize, so the body sat 224px down and the workspace mark at -140
+    // (CI 2026-10-04, recorded at the failure). Press a key first, as a reader would.
+    await page.keyboard.press("Shift");
     await setup.getByLabel("Email address").blur();
+    await expect(setup.getByLabel("Email address")).not.toBeFocused();
     await setupScrollPort.evaluate((element) => {
       element.scrollTop = 0;
     });
