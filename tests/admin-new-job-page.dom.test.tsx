@@ -174,12 +174,13 @@ describe("AdminNewJobPage", () => {
     expect(screen.queryByText(loginOwn.title)).toBeNull();
   });
 
-  it("says the reader's records go with them, and ends with a link to Your Admin records (M16)", () => {
+  it("lists what to take for a site or job change, and ends with a link to Your Admin records (M16)", () => {
     render(<AdminNewJobPage now={NOW} />);
-    // There is no Leaving list on this page, so it must not talk about ticks it does not show.
     const notice = screen.getByTestId("admin-new-job-leaving-notice");
-    expect(notice).toHaveTextContent("When you leave, your records go with you.");
-    expect(notice.textContent).not.toMatch(/tick/i);
+    expect(notice).toHaveTextContent("Changing site or starting a new job?");
+    expect(screen.getByTestId("admin-new-job-leaving-checklist")).toHaveTextContent(
+      "Registration numbers and renewal dates",
+    );
     const link = screen.getByTestId("admin-new-job-records-link");
     expect(link.getAttribute("href")).toBe("/admin/new-job/records");
   });
@@ -236,10 +237,8 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
     render(<AdminNewJobPage now={NOW} />);
     const link = screen.getByTestId("admin-new-job-records-link");
     expect(link).toContainElement(screen.getByTestId("admin-new-job-leaving-notice"));
-    expect(link).toHaveTextContent(
-      "When you leave, your records go with you. Open Your Admin records to copy or print them.",
-    );
+    expect(link).toHaveTextContent("Changing site or starting a new job?");
     expect(link).toHaveTextContent("Your Admin records");
-    expect(link).toHaveTextContent("Renewals, history and New job ticks");
+    expect(link).toHaveTextContent("Registration numbers and renewal dates");
   });
 });

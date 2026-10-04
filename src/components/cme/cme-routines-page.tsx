@@ -24,33 +24,30 @@ export type CmeRoutinesPageProps = {
   /** The instant "now" is evaluated against — required, not defaulted, so a server render and the client it hydrates into always agree on what is due. */
   readonly now: Date;
   /**
-   * Called when the owner taps "Log" on a routine, with everything the entry
-   * form needs to open pre-filled. Required, not defaulted: a caller that
-   * forgets to wire this up must fail to compile rather than render a button
-   * that looks like it logs an activity and silently does nothing when
-   * tapped — in a record someone may have to defend to a regulator, that is
-   * the worst available failure.
+   * Due-routine "Log N h": the route saves immediately when the usual category
+   * split is already known (with Undo), otherwise opens the entry form. The
+   * labelled tap is the explicit log.
+   */
+  readonly onLogDueRoutine: (prefill: CmeRoutineLogPrefill) => void;
+  /**
+   * Not-yet-due "Log now": always opens a pre-filled entry form. Required so a
+   * missing wire fails at compile time rather than painting a silent button.
    */
   readonly onLogRoutine: (prefill: CmeRoutineLogPrefill) => void;
   /** Called when the owner taps "New routine". Required for the same reason as `onLogRoutine`. */
   readonly onNewRoutine: () => void;
   readonly onEditRoutine?: (routine: CmeRoutine) => void;
+  /** True while a one-tap due log is in flight — disables the due Log buttons. */
+  readonly loggingDue?: boolean;
 };
 
 /**
  * ROUTINES — the recurring activities an owner does every month or term:
- * supervision, a journal club, a peer-review meeting. This screen only ever
- * OFFERS to log one; it never logs one itself.
+ * supervision, a journal club, a peer-review meeting.
  *
- * That property holds structurally, not by convention: there is no fetch, no
- * Supabase call, and no dispatch anywhere in this file. The two callback
- * props above are the entire surface this component can act through, and
- * neither one is a write. Tapping "Log" builds a `CmeRoutineLogPrefill`
- * (`routineLogPrefill`, in `@/lib/cme/routines`) and hands it to
- * `onLogRoutine` — the caller's job is to open the entry form with those
- * values already filled in, which the owner still has to look at and confirm
- * with Save before anything is recorded. There is no code path here, or
- * reachable from here, that creates a `CmeEntry` on its own.
+ * Due "Log N h" is the explicit one-tap save (with Undo upstream). "Log now"
+ * and routines without a usual category split still open the entry form.
+ * Nothing here auto-logs from attendance, timers, or search.
  *
  * This is a sub-screen, not the CME mode home — it does not mount
  * `CmeNavHeader`. See `docs/search-chrome-behaviour.md` for when a page owns
@@ -59,9 +56,11 @@ export type CmeRoutinesPageProps = {
 export function CmeRoutinesPage({
   routines = [],
   now,
+  onLogDueRoutine,
   onLogRoutine,
   onNewRoutine,
   onEditRoutine,
+  loggingDue = false,
 }: CmeRoutinesPageProps) {
   const dueRoutines = routinesDueOn(routines, now);
   const dueIds = new Set(dueRoutines.map((routine) => routine.id));
@@ -78,10 +77,6 @@ export function CmeRoutinesPage({
         (a.nextDue ?? "9999-99-99").localeCompare(b.nextDue ?? "9999-99-99"),
     );
 
-  function handleLog(routine: CmeRoutine) {
-    onLogRoutine(routineLogPrefill(routine, now));
-  }
-
   return (
     <main className={cn(cmePageWidth, "px-4 py-6 sm:px-6")}>
       <h1 className={cmePageTitle}>Routines</h1>
@@ -89,8 +84,7 @@ export function CmeRoutinesPage({
         The things you do every month or term. Log one whenever it happens.
       </p>
 
-      {/* Folded, wording unchanged: read once, then out of the way. The note
-          stays in the DOM, so the promise is still there for anyone who opens it. */}
+      {/* Folded, wording unchanged intent: read once, then out of the way. */}
       <details data-testid="cme-routines-how" className="group mt-3">
         <summary className="inline-flex min-h-tap cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-[color:var(--clinical-accent)] [&::-webkit-details-marker]:hidden">
           How this works
@@ -101,8 +95,9 @@ export function CmeRoutinesPage({
         </summary>
         <div data-testid="cme-routines-confirmation-note" className="mt-1">
           <InlineNotice tone="neutral">
-            A routine only ever suggests. Tapping Log opens a pre-filled entry for you to check — nothing is recorded
-            until you confirm and save it.
+            Tapping Log on a due routine with a usual category split saves that activity straight away and offers Undo.
+            Log now, and routines without a usual split, still open a form to check first. Nothing is recorded from
+            attendance, timers, or search.
           </InlineNotice>
         </div>
       </details>
@@ -153,8 +148,10 @@ export function CmeRoutinesPage({
                       <Button
                         variant="secondary"
                         size="sm"
+                        busy={loggingDue}
+                        busyLabel="Saving…"
                         aria-label={`Log ${formatRoutineHours(routine.usualHours)} h for ${routine.title}`}
-                        onClick={() => handleLog(routine)}
+                        onClick={() => onLogDueRoutine(routineLogPrefill(routine, now))}
                       >
                         {`Log ${formatRoutineHours(routine.usualHours)} h`}
                       </Button>
@@ -163,7 +160,7 @@ export function CmeRoutinesPage({
                         variant="secondary"
                         size="sm"
                         aria-label={`Log now for ${routine.title}`}
-                        onClick={() => handleLog(routine)}
+                        onClick={() => onLogRoutine(routineLogPrefill(routine, now))}
                       >
                         Log now
                       </Button>
