@@ -44,6 +44,7 @@ import {
   type RegisterResult,
   type RegisterRow,
 } from "@/lib/teaching/model";
+import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 
 /*
  * One session (spec §9, review focus 5): the phase module (Coming up; On now
@@ -61,7 +62,13 @@ const GONE = "This session is no longer in the programme.";
 type Mark = { method: AttendanceMethod; recordedAt: string };
 type Props = { occurrenceId: string; demoMode: boolean; initialSheet?: "scan"; embedded?: boolean };
 
-export function TeachingSessionScreen({ occurrenceId, demoMode, initialSheet, embedded = false }: Props) {
+export function TeachingSessionScreen({
+  occurrenceId,
+  demoMode: serverDemoMode,
+  initialSheet,
+  embedded = false,
+}: Props) {
+  const demoMode = useTeachingDemoMode(serverDemoMode);
   const now = useTeachingNow();
   const valid = isOccurrenceId(occurrenceId);
   const resource = useSessionDetail(valid ? occurrenceId : null, demoMode, now);

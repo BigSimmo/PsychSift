@@ -425,8 +425,8 @@ describe("document library recovery", () => {
     const onOpenLibrary = vi.fn();
     const plainDoc = match({
       document_id: "44444444-4444-4444-8444-444444444444",
-      title: "Plain text note",
-      file_name: "plain-note.txt",
+      title: "Plain note",
+      file_name: "plain-note.pdf",
       labels: [],
       imageCount: 0,
       tableCount: 0,
