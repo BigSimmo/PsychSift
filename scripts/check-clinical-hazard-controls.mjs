@@ -612,7 +612,7 @@ function seal() {
   // Formatting is not cosmetic here. Raw JSON.stringify expands every short array that Prettier
   // keeps on one line, so an unformatted seal turns a 29-line diff into a 127-line one and then
   // loses to the format gate on push. Run the repository formatter so sealing is idempotent.
-  execFileSync(resolve(root, "node_modules/.bin/prettier"), ["--write", manifestPath], {
+  execFileSync(process.execPath, [resolve(root, "node_modules/prettier/bin/prettier.cjs"), "--write", manifestPath], {
     cwd: root,
     stdio: "ignore",
   });
