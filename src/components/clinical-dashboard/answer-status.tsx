@@ -554,7 +554,7 @@ export function AnswerProgress({
 
           <div
             data-slot="answer-progress-answer"
-            className="grid gap-2 rounded-2xl border border-[color:var(--border)] px-3.5 py-3"
+            className="grid gap-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3.5 py-3"
           >
             <p className="text-3xs font-bold tracking-[0.1em] text-[color:var(--text-muted)] uppercase">Answer</p>
             <p className="text-xs text-[color:var(--text-muted)]">Your cited answer will appear here.</p>
