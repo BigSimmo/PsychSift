@@ -1,5 +1,5 @@
-import { fortnightFor, summariseHours } from "@/lib/roster/hours";
-import type { AskAssignment, AskQuestion } from "@/lib/roster/ask/parse";
+import { fortnightFor, summariseHours, type HoursExtra } from "@/lib/roster/hours";
+import type { AskAssignment, AskQuestion, AskResult } from "@/lib/roster/ask/parse";
 import type { RosterDisplayShift as MyShift } from "@/lib/roster/team/team-view";
 import { inferShiftKind, isWorkedKind } from "@/lib/roster/shift-kind";
 import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -21,7 +21,21 @@ export type AskAnswerData = {
   readonly payFortnightAnchor?: string | null;
   readonly rotationEndsOn?: string | null;
   readonly leave?: readonly { readonly startsOn: string; readonly endsOn: string; readonly status?: string }[];
+  /** Saved extra time for the fortnight; Ask hours answers include these. */
+  readonly extras?: readonly HoursExtra[];
 };
+
+/** Team publication answers and swap/leave handoffs wait for team reads; personal hours and nights do not. */
+export function askNeedsTeamReady(result: AskResult): boolean {
+  if (result.kind === "change") return true;
+  if (result.kind !== "question") return false;
+  return (
+    result.q.kind === "who_on" ||
+    result.q.kind === "with_me" ||
+    result.q.kind === "next_day_off" ||
+    result.q.kind === "next_weekend_off"
+  );
+}
 
 function source(data: AskAnswerData, team = false): string {
   if (team && data.publication) {
@@ -121,16 +135,16 @@ export function answerQuestion(q: AskQuestion, data: AskAnswerData): AskAnswer {
     const window = fortnightFor(data.today, data.payFortnightAnchor ?? null);
     const summary = summariseHours(
       data.shifts.map((shift) => ({ ...shift, kind: kindOf(shift) })),
-      [],
+      data.extras ?? [],
       window,
     );
-    return {
-      lines: [
-        `${summary.totalHours} rostered hours in ${formatPerthDay(window.start)}–${formatPerthDay(window.end)} from the loaded shifts. This is not a pay total.`,
-        "Missing shifts or extra time can change this figure.",
-      ],
-      source: ownSource,
-    };
+    const lines = [
+      `${summary.totalHours} rostered hours in ${formatPerthDay(window.start)}–${formatPerthDay(window.end)} from the loaded shifts. This is not a pay total.`,
+    ];
+    if (summary.extraHours > 0)
+      lines.push(`${summary.extraHours} hours of saved extra time in the same fortnight.`);
+    else lines.push("Missing shifts or extra time can change this figure.");
+    return { lines, source: ownSource };
   }
   if (q.kind === "on_date") {
     const personal = myShifts(data, q.span.from, q.span.to);

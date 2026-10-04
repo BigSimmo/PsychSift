@@ -292,6 +292,7 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const now = useRosterNow(pinnedNow);
   const shifts = useRosterShifts();
   const teams = useRosterTeams();
+  const hasTeam = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).some((team) => team.enabled);
   const links = useRosterLinks();
   const settings = useRosterSettings();
   const [importing, setImporting] = useState(false);
@@ -397,13 +398,17 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
                 onSelect: () => setImporting(true),
               },
               { id: "link", label: "Add a calendar link", icon: Link2, onSelect: () => setAddView("link") },
-              {
-                id: "swap",
-                label: "Swap or give away",
-                description: "Pick the shift on the Team calendar",
-                icon: ArrowLeftRight,
-                href: "/roster/team?view=week",
-              },
+              ...(hasTeam
+                ? [
+                    {
+                      id: "swap",
+                      label: "Swap or give away",
+                      description: "Pick the shift on the Team calendar",
+                      icon: ArrowLeftRight,
+                      href: "/roster/team?view=week",
+                    } as const,
+                  ]
+                : []),
               { id: "leave", label: "Plan leave", icon: Plane, href: "/roster/requests?start=leave" },
               { id: "dates", label: "Dates I can't work", icon: CalendarOff, href: "/roster/requests?start=dates" },
             ]}

@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -151,7 +152,20 @@ function WeekBody({
     week.relocated.length === 0 &&
     week.sessions.length === 0
   )
-    return <TeachingStateNotice state="no-team" />;
+    return (
+      <div className="grid gap-3">
+        <TeachingStateNotice state="no-team" />
+        <ModeNotice>
+          <Link
+            href="/teaching/whats-on"
+            className="inline-flex min-h-12 items-center font-semibold text-[color:var(--clinical-accent)] underline-offset-2 hover:underline"
+            data-testid="teaching-week-whats-on"
+          >
+            See what&apos;s on across services
+          </Link>
+        </ModeNotice>
+      </div>
+    );
   if (view.status !== "ready" || !week)
     return (
       <>
@@ -208,11 +222,24 @@ function WeekBody({
         <SessionTimeline groups={groups} testId="teaching-week-list" />
       ) : (
         <ModeNotice>
-          {filter === "presenting"
-            ? "You're not presenting this week."
-            : current
-              ? "No more sessions this week."
-              : "No sessions this week."}
+          <span className="grid gap-2">
+            <span>
+              {filter === "presenting"
+                ? "You're not presenting this week."
+                : current
+                  ? "No more sessions this week."
+                  : "No sessions this week."}
+            </span>
+            {filter !== "presenting" ? (
+              <Link
+                href="/teaching/whats-on"
+                className="inline-flex min-h-12 items-center font-semibold text-[color:var(--clinical-accent)] underline-offset-2 hover:underline"
+                data-testid="teaching-week-whats-on"
+              >
+                See what&apos;s on across services
+              </Link>
+            ) : null}
+          </span>
         </ModeNotice>
       )}
     </>
