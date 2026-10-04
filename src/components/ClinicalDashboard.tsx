@@ -1,5 +1,6 @@
 "use client";
 
+import { isPdfDocument } from "@/lib/pdf-documents";
 import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-submitted-mode-search";
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -318,6 +319,8 @@ function ClinicalDashboardContent({
   const documentsRef = useRef(documents);
   const [documentsPagination, setDocumentsPagination] = useState<DocumentPagination | null>(null);
   const indexedDocumentTotal = documentsPagination?.total ?? documents.length;
+  // Recent and library views list PDFs only; the admin view still lists every file.
+  const libraryPdfDocuments = useMemo(() => documents.filter(isPdfDocument), [documents]);
   const [dashboardDataLoading, setDashboardDataLoading] = useState(false);
   const [loadingMoreDocuments, setLoadingMoreDocuments] = useState(false);
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
@@ -3862,7 +3865,7 @@ function ClinicalDashboardContent({
                         />
                       ) : null}
                       <DocumentDrawer
-                        documents={documents}
+                        documents={documentsDrawerIsAdmin ? documents : libraryPdfDocuments}
                         pagination={documentsPagination}
                         loadingMoreDocuments={loadingMoreDocuments}
                         mode={documentsDrawerIsAdmin ? "admin" : settingsState.documentsDrawerMode}
