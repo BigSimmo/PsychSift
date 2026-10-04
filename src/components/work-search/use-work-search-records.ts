@@ -90,7 +90,9 @@ async function fetchRecords(epoch: number, now: Date, signal: AbortSignal): Prom
       status: week.status,
       sample: week.status === "ready" && week.sample,
       items:
-        week.status === "ready" ? sessionWorkItems([...(week.body.sessions ?? []), ...(week.body.relocated ?? [])]) : [],
+        week.status === "ready"
+          ? sessionWorkItems([...(week.body.sessions ?? []), ...(week.body.relocated ?? [])])
+          : [],
     },
     cme: {
       status: cme.status,
@@ -193,5 +195,16 @@ export function useWorkSearchRecords(now: Date): WorkSearchRecords {
       sample: false,
       retry,
     };
-  }, [signedOut, sample, sampleEntries, fetched, authEpoch, enabled, onCallStatus, liveEntries, onCall.demoMode, retry]);
+  }, [
+    signedOut,
+    sample,
+    sampleEntries,
+    fetched,
+    authEpoch,
+    enabled,
+    onCallStatus,
+    liveEntries,
+    onCall.demoMode,
+    retry,
+  ]);
 }

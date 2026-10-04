@@ -87,15 +87,7 @@ function SectionHeading({ children, action }: { children: string; action?: React
   );
 }
 
-function ResultRow({
-  item,
-  showArea,
-  onOpen,
-}: {
-  item: WorkItem;
-  showArea: boolean;
-  onOpen: () => void;
-}) {
+function ResultRow({ item, showArea, onOpen }: { item: WorkItem; showArea: boolean; onOpen: () => void }) {
   return (
     <li>
       <Link
@@ -211,7 +203,9 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
 
   const grouped = useMemo(() => {
     if (filter !== "all") return null;
-    const order = currentArea ? [currentArea, ...workSearchAreas.filter((area) => area !== currentArea)] : workSearchAreas;
+    const order = currentArea
+      ? [currentArea, ...workSearchAreas.filter((area) => area !== currentArea)]
+      : workSearchAreas;
     return order
       .map((area) => ({ area, hits: shown.filter((hit) => hit.item.area === area) }))
       .filter((group) => group.hits.length > 0);
@@ -239,7 +233,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
       mobileHeaderSafeArea="padding"
       testId="work-search-sheet"
       headerBottom={
-        <div className="w-full basis-full pt-3" data-work-search-root="">
+        <div className="w-full px-4 sm:px-5" data-work-search-root="">
           <form
             role="search"
             aria-label="Search my work"
@@ -248,7 +242,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               rememberQuery(query);
               setRecents(recentQueries);
             }}
-            className="flex min-h-12 items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 focus-within:border-[color:var(--clinical-accent-border)]"
+            className="search-shell flex min-h-12 items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3"
           >
             <Search aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
             <input
@@ -263,7 +257,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
-              className="min-w-0 flex-1 bg-transparent py-2 text-base text-[color:var(--text-heading)] outline-none placeholder:text-[color:var(--text-muted)] [&::-webkit-search-cancel-button]:hidden"
+              className="search-shell-input min-w-0 flex-1 bg-transparent py-2 text-base text-[color:var(--text-heading)] outline-none placeholder:text-[color:var(--text-muted)] [&::-webkit-search-cancel-button]:hidden"
             />
             {typed ? (
               <button
@@ -282,7 +276,11 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               </button>
             ) : null}
           </form>
-          <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Filter by area">
+          <div
+            className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-5 sm:px-5"
+            role="group"
+            aria-label="Filter by area"
+          >
             {(["all", ...workSearchAreas] as const).map((area) => {
               const selected = filter === area;
               const count = area === "all" ? hits.length : (counts[area] ?? 0);
@@ -296,9 +294,11 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   className={cn(
                     "inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors motion-reduce:transition-none",
                     focusRing,
-                    selected
-                      ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]"
-                      : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
+                    selected && area === "all"
+                      ? "border-[color:var(--text-heading)] bg-[color:var(--text-heading)] text-[color:var(--surface)]"
+                      : selected
+                        ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]"
+                        : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)]",
                   )}
                 >
                   {area === "all" ? "All" : workSearchAreaLabels[area]}

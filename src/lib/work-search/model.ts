@@ -12,7 +12,13 @@ import type { AppModeId } from "@/lib/app-modes";
  */
 
 /** The areas searched, in the order the chips show them. */
-export const workSearchAreas = ["roster", "teaching", "cme", "my-work", "on-call"] as const satisfies readonly AppModeId[];
+export const workSearchAreas = [
+  "roster",
+  "teaching",
+  "cme",
+  "my-work",
+  "on-call",
+] as const satisfies readonly AppModeId[];
 export type WorkSearchArea = (typeof workSearchAreas)[number];
 
 export const workSearchAreaLabels: Readonly<Record<WorkSearchArea, string>> = {

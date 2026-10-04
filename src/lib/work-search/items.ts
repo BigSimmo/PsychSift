@@ -4,7 +4,7 @@ import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { onCallSearchSummary } from "@/lib/on-call/entry-search";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/perth-time";
 import type { RosterLeave } from "@/lib/roster/leave";
-import { SHIFT_KIND_LABEL, type ShiftKind } from "@/lib/roster/shift-kind";
+import { inferShiftKind, SHIFT_KIND_LABEL, type ShiftKind } from "@/lib/roster/shift-kind";
 import type { SessionSummary } from "@/lib/teaching/model";
 import type { WorkItem, WorkSearchArea } from "@/lib/work-search/model";
 
@@ -35,12 +35,13 @@ function joinDetail(parts: readonly (string | null | undefined)[]): string | nul
 export function shiftWorkItems(shifts: readonly ShiftLike[]): WorkItem[] {
   return shifts.map((shift) => {
     const date = perthDateOf(shift.startsAt);
-    const kindLabel = shift.kind ? SHIFT_KIND_LABEL[shift.kind] : null;
+    // An older import may carry no kind; Roster infers it from the times the same way.
+    const kindLabel = SHIFT_KIND_LABEL[shift.kind ?? inferShiftKind(shift)];
     return {
       id: `roster:shift:${shift.id}`,
       area: "roster",
       kind: "shift",
-      title: shift.title.trim() || (kindLabel ? `${kindLabel} shift` : "Shift"),
+      title: shift.title.trim() || `${kindLabel} shift`,
       detail: joinDetail([
         formatPerthDay(date),
         `${perthTimeOf(shift.startsAt)} to ${perthTimeOf(shift.endsAt)}`,
@@ -49,7 +50,7 @@ export function shiftWorkItems(shifts: readonly ShiftLike[]): WorkItem[] {
       date,
       href: ROSTER_SHIFTS_HREF,
       // "nights" and "on call" are what people type; the kind label carries both.
-      tags: [kindLabel ?? "", kindLabel ? `${kindLabel}s` : "", "shift", "shifts"].filter(Boolean),
+      tags: [kindLabel, `${kindLabel}s`, "shift", "shifts"],
       text: [shift.location ?? "", shift.workplace ?? ""],
     } satisfies WorkItem;
   });
