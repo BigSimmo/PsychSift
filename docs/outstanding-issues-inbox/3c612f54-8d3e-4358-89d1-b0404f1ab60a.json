@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "3c612f54-8d3e-4358-89d1-b0404f1ab60a",
+  "createdOn": "2026-10-04",
+  "action": "update",
+  "payload": {
+    "id": "#J8SJQ9",
+    "detail": "UPDATE 2026-10-04 (read-only GitHub Actions log read of eval-canary runs 34773883150, 35528299276, 36218356438, 36264242906, 36339819587; no provider access): the 'failing for about five weeks on clozapine-monitoring, clozapine-monitoring-paraphrase and nocc-requirements' statement is STALE. Those three cases, metabolic-screening and direct-document-lookup-nocc PASSED in the answer-quality subset in every run 2026-09-13..27. The answer-targeting eval that originally graded them is dispatch-only and opt-in (answer_quality_eval=true; calls OpenAI), so the weekly schedule never runs it by design; it is not skipped because the quality step fails. What actually failed for clozapine 2026-09-13..26 was clozapine-fbc-acronym-threshold and clozapine-anc-withhold-threshold: source-backed review fallback (grounded=false, guideline passages shown, no written answer; numeric grounding failures 0 every run), i.e. conservative degradation, not a wrong figure. Cause: evidence-relevance rejected the NMHS clozapine red-range table row; fixed by PR #3134 (b602173fb, 2026-09-27; real code fix, eval cases not relaxed); both passed on run 36339819587. Still individually failing on 2026-09-27 (none unsafe on report data; answer texts unread because the artifact download was blocked): clozapine-missed-dose-table (expected visual evidence missing), assessment-documentation (MHSP.AssessmentDocumentation.pdf not matched; unrelated FSH pressure-injury and radiotherapy citations), admission-discharge-comparison and admission-discharge-coverage-paraphrase (MHSP.AdmissionCommunityPts.pdf missing from top 5). Fixes there touch a protected RAG surface and need an owner-approved canary pair. The metabolic-monitoring stub (quality-antipsychotic-metabolic-monitoring) needs an approved dispatched targeting run to re-measure.",
+    "baseRowFingerprint": "c6c254419bafe8c74f73bfc1120ee8c5875b11f06fc32aac7b4026b19332cb9c"
+  }
+}
