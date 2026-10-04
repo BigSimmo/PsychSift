@@ -536,10 +536,12 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // so it is one flat list. One group is a heading, not navigation, and with
     // the title and the actions both gone there is nothing left for a header
     // to hold. It is absent rather than drawn as an empty 48px band.
+    // `/on-call/education` is the retained bookmark only: Teaching is its own
+    // mode, so the On Call pill names the mode and does not claim a Teaching page.
     await openBoard(page, ROUTES.teaching);
     await expect(page.getByTestId("on-call-section-detail-header")).toHaveCount(0);
-    // The page is still named, and still has its actions — both one level up.
-    await expect(page.getByRole("button", { name: "Mode On Call, page Teaching" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mode On Call, page Teaching" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Mode On Call" })).toBeVisible();
     await expect(page.getByTestId("on-call-page-menu-trigger")).toBeVisible();
   });
 
