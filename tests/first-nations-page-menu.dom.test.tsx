@@ -13,6 +13,7 @@ describe("FirstNationsMenuActions", () => {
       <FirstNationsMenuActions pageTitle="Talking" href="/first-nations/talking" reportHref={null} training={null} />,
     );
     expect(screen.getByRole("link", { name: "Pocket card" }).getAttribute("href")).toBe("/first-nations/card");
+    expect(screen.getByRole("button", { name: "What am I reading?" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Log as CPD" }).getAttribute("href")).toBe(
       "/cme/new?title=First+Nations%3A+Talking&sourceUrl=%2Ffirst-nations%2Ftalking",
     );
