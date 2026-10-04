@@ -673,11 +673,6 @@
         "area": "product"
       },
       {
-        "path": "/on-call/education",
-        "file": "src/app/(search-app)/on-call/education/page.tsx",
-        "area": "product"
-      },
-      {
         "path": "/mockups/search-heading",
         "file": "src/app/mockups/search-heading/page.tsx",
         "area": "mockup"
@@ -1478,6 +1473,11 @@
         "path": "/documents/source/evidence",
         "file": "src/app/(search-app)/documents/source/evidence/page.tsx",
         "target": "/documents/[id]"
+      },
+      {
+        "path": "/on-call/education",
+        "file": "src/app/(search-app)/on-call/education/page.tsx",
+        "target": "/teaching/week"
       },
       {
         "path": "/applications",
