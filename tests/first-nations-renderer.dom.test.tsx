@@ -29,6 +29,11 @@ vi.mock("@/components/first-nations/page-menu", () => ({
   FirstNationsMenuActions: () => null,
 }));
 vi.mock("@/components/first-nations/primer", () => ({ Primer: () => null, PRIMER_EVENT: "x" }));
+vi.mock("@/components/first-nations/reading-trust-sheet", () => ({
+  ReadingTrustSheet: () => null,
+  READING_TRUST_EVENT: "x",
+  openReadingTrustSheet: () => {},
+}));
 vi.mock("next/navigation", () => ({ usePathname: () => "/first-nations" }));
 
 resetAfterEach();

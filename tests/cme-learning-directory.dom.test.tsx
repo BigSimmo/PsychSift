@@ -64,10 +64,11 @@ describe("CME learning directory page", () => {
     const add = within(card).getByRole("button", { name: "Add to calendar" });
     expect(add.className).toContain("min-h-12");
     expect(add.className).toContain("min-w-12");
-    expect(within(card).queryByRole("link", { name: "Log as CPD" })).toBeNull();
+    const upcomingLog = within(card).getByRole("link", { name: "Log as CPD" });
+    expect(upcomingLog.getAttribute("href")).toContain("/cme/new?");
   });
 
-  it("offers Log as CPD only in Past, carrying the public event title and source", () => {
+  it("offers Log as CPD from Past, carrying the public event title and source", () => {
     render(
       <CmeLearningPage
         items={[item({ title: "A & B", startsOn: "2026-09-01" })]}

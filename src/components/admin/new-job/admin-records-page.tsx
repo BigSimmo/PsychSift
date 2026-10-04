@@ -135,6 +135,11 @@ export function AdminRecordsPage({ now: nowProp }: { now?: Date } = {}) {
           <p className={cn(textMuted, "text-sm")} data-testid="admin-records-subtitle">
             As you recorded them · {formatDateEcho(perthCalendarDate(now))}
           </p>
+          <p className={cn(textMuted, "text-sm")} data-testid="admin-records-take-with-you">
+            For a site or job change, take registration numbers and renewal dates, the contacts and logins you saved,
+            and your New job ticks. Hospital files, patient information, and anything you did not type here are not
+            included.
+          </p>
         </div>
 
         {loadState === "ready" ? (

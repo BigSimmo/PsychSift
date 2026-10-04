@@ -113,6 +113,12 @@ describe("the printed essentials card", () => {
     expect(output.textContent).toContain("Printed");
   });
 
+  it("shows a QR that points at the live pocket card once the page is in the browser", async () => {
+    renderCard([entry({ id: "a", slug: "switch", title: "Hospital switchboard" })]);
+    const qr = await screen.findByTestId("on-call-card-qr");
+    expect(qr.getAttribute("data-qr-value")).toMatch(/\/on-call\/card$/);
+  });
+
   /**
    * Regression, 2026-09-19. `CARD_NUMBER_FIELDS` read `phone`,
    * `afterHoursPhone`, `pager` and `fax` — and not `extension`. A ward stores
