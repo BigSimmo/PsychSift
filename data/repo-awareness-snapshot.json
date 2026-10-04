@@ -92,7 +92,7 @@
       {
         "id": "my-work",
         "label": "Admin",
-        "home": "/admin",
+        "home": "/admin/renewals",
         "dev_only": false
       },
       {
