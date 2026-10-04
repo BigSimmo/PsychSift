@@ -37,6 +37,9 @@ const preferredDomainsByMode: Record<AppModeId, readonly UniversalSearchDomain[]
   // Psychiatry is a landing page for the modes it gathers; each of those keeps
   // its own domains, so the hub contributes none of its own.
   psychiatry: [],
+  // Medicines & tools, like Psychiatry, is a landing page for the modes it
+  // gathers, each of which keeps its own domains.
+  medicines: [],
   // Admin (formerly My Work) keeps the owner's own records and sends nothing to
   // search; it contributes no search domains either.
   "my-work": [],

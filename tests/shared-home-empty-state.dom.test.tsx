@@ -156,6 +156,12 @@ const expectedPresentations = [
     subtitle: "What needs you today, across On Call, Roster, CPD, Teaching and Admin.",
     iconClass: "lucide-sunrise",
   },
+  {
+    modeId: "medicines",
+    title: "Medicines & tools",
+    subtitle: "Medication, calculators, clinical tools, factsheets and the dictionary.",
+    iconClass: "lucide-pill-bottle",
+  },
 ] as const satisfies ReadonlyArray<{
   modeId: AppModeId;
   title: string;

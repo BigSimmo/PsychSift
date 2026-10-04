@@ -28,6 +28,7 @@ export type SiteContentProducerDefinition = {
     | "first-nations"
     | "teaching"
     | "my-day"
+    | "medicines"
   >;
   corpusScope: SiteContentCorpusScope;
   domain: SiteContentDomain;
@@ -356,6 +357,15 @@ export const siteContentModeExclusions = [
     // retrieval corpus.
     modeId: "my-day",
     reason: "private_user_state",
+    permanent: true,
+    reviewed: true,
+    reviewOwner: "clinical_content_governance",
+  },
+  {
+    // Medicines & tools, like Psychiatry, is a landing page of links to other
+    // modes. It holds no content of its own, so there is nothing to publish.
+    modeId: "medicines",
+    reason: "operational_chrome",
     permanent: true,
     reviewed: true,
     reviewOwner: "clinical_content_governance",
