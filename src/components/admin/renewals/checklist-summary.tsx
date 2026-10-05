@@ -23,11 +23,15 @@ function dateParts(date: string): { year: number; month: number; day: number } {
  * right edge rather than overflowing the chart.
  */
 function trackOffset(date: string, today: string): number {
+  return Math.min(Math.max(monthsFromToday(date, today), 0), 11.96);
+}
+
+/** Unclamped months from the first day of today's month. */
+function monthsFromToday(date: string, today: string): number {
   const start = dateParts(today);
   const { year, month, day } = dateParts(date);
   const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const months = (year - start.year) * 12 + (month - start.month) + (day - 1) / daysInMonth;
-  return Math.min(Math.max(months, 0), 11.96);
+  return (year - start.year) * 12 + (month - start.month) + (day - 1) / daysInMonth;
 }
 
 const percent = (offset: number) => `${(offset / 12) * 100}%`;
@@ -56,7 +60,13 @@ function ChecklistTimeline({
   readonly testId?: string;
 }) {
   const today = perthCalendarDate(now);
-  const dated = rows.filter((row): row is RequirementChecklistRow & { expiresOn: string } => Boolean(row.expiresOn));
+  // The soonest five inside the twelve months the chart draws. A date further
+  // out is left off rather than pinned to the right edge, where it would read
+  // as due within the year.
+  const dated = rows
+    .filter((row): row is RequirementChecklistRow & { expiresOn: string } => Boolean(row.expiresOn))
+    .filter((row) => monthsFromToday(row.expiresOn, today) < 12)
+    .sort((a, b) => (a.expiresOn === b.expiresOn ? 0 : a.expiresOn < b.expiresOn ? -1 : 1));
   if (dated.length === 0) return null;
   const items = dated.slice(0, 5);
   const startMonth = dateParts(today).month;

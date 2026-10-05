@@ -189,6 +189,28 @@ describe("AdminRenewalsPage — the checklist", () => {
     expect(timeline.querySelector("svg.lucide-triangle")).not.toBeNull();
   });
 
+  it("charts the soonest dates within twelve months, never pinning a later date to the edge", () => {
+    const later = complianceFixture(
+      "Code of Conduct",
+      { category: "job", expiresOn: "2028-03-01", requirementId: "code-of-conduct" },
+      { slug: "conduct" },
+    );
+    storeState.entries = [later, ...ALL];
+    renderPage();
+    const timeline = screen.getByTestId("admin-renewals-summary-timeline");
+    const listed = within(timeline).getByRole("list", { name: "Coming up in the next twelve months" });
+    const names = within(listed)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent?.split(":")[0]);
+    // Soonest first (WWC passed 3 Sep, then ALS, indemnity, registration); 2028 is beyond the chart.
+    expect(names).toEqual([
+      "Working with Children Check",
+      "ALS course certification",
+      "Indemnity insurance declaration",
+      "Medical registration renewal",
+    ]);
+  });
+
   it("filters the checklist to one kind", () => {
     renderPage();
     fireEvent.click(screen.getByTestId("admin-renewals-kind-checks"));
