@@ -203,7 +203,8 @@ const routeDescriptions: Record<string, string> = {
     "My Day: one time-ordered list of what needs you across On Call, Roster, CPD, Teaching and Admin — overdue first, then due soon, then the rest — each row linking to the page that resolves it. My Day has no search results surface.",
   "/open-shifts":
     "Open shifts Browse: extra shifts advertised in your Roster teams, with filter chips. Open shifts has no search results surface.",
-  "/open-shifts/shift/[serviceId]/[openShiftId]": "One extra-shift advert in your Roster team, where you put your hand up.",
+  "/open-shifts/shift/[serviceId]/[openShiftId]":
+    "One extra-shift advert in your Roster team, where you put your hand up.",
   "/open-shifts/mine": "Open shifts My shifts: extra shifts you have applied for or been given.",
   "/open-shifts/alerts": "Open shifts Alerts: choose which new extra shifts you hear about.",
   "/open-shifts/post": "Open shifts Post: the extra shifts a Roster team manager has posted.",
