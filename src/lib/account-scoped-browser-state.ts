@@ -73,6 +73,13 @@ export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
  * while "Save recent searches" is on, cleared with recent searches.
  */
 export const PSYCHIATRY_VISITS_STORAGE_KEY = "psychsift:psychiatry:visits-v1";
+/**
+ * localStorage — the Medicines hub's recently opened medicine pages: slug,
+ * catalogue name and time (time used for order only, never shown). Reference
+ * records only, never patient detail; recorded only while "Save recent
+ * searches" is on, cleared with recent searches.
+ */
+export const MEDICINES_RECENT_STORAGE_KEY = "psychsift:medicines:recent-v1";
 
 function removeQuietly(storage: () => Storage, key: string): void {
   try {
@@ -118,6 +125,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_SNOOZED_ITEMS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
 

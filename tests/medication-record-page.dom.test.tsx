@@ -1,8 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { MedicationRecordPage } from "@/components/clinical-dashboard/medication-record-page";
+import { appModeHomeHref } from "@/lib/app-modes";
 import type { MedicationRecord } from "@/lib/medications";
 
 vi.mock("next/navigation", () => ({
@@ -71,6 +72,7 @@ describe("MedicationRecordPage content-first states", () => {
   it("renders the error panel when nothing renderable exists", () => {
     mockDetail({ data: null, loading: false, error: "Network unavailable" });
     render(<MedicationRecordPage slug="test-med" />);
+    expect(screen.getByRole("heading", { name: "This medicine page didn\u2019t load" })).toBeInTheDocument();
     expect(screen.getByText("Network unavailable")).toBeInTheDocument();
   });
 
@@ -208,5 +210,93 @@ describe("MedicationRecordPage confirmed source links (#05WXHX step 2)", () => {
     expect(screen.queryByText(/does not yet link to its own sources/)).not.toBeInTheDocument();
     expect(screen.getByText(/against this record’s linked sources/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Search the TGA Product Information/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("MedicationRecordPage mock-up v6 states", () => {
+  const statDrug: MedicationRecord = {
+    ...fallbackDrug,
+    stats: [
+      { label: "Target range", value: "0.6-0.8" },
+      { label: "Half-life", value: "24 h", cls: "good" },
+      { label: "Toxicity risk", value: "High", cls: "hi" },
+      { label: "Renal adj.", value: "Mandatory", flag: "warn" },
+    ],
+  };
+
+  it("shows every key figure neutral, with a warning icon only on risk-type fields (decision 1)", () => {
+    mockDetail({ data: { record: statDrug }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={statDrug} />);
+    const figures = screen.getAllByTestId("medication-figure");
+    expect(figures.map((figure) => figure.getAttribute("data-caution"))).toEqual([null, null, "true", "true"]);
+    for (const figure of figures) {
+      expect(figure.className).not.toMatch(/danger|warning|success/);
+      expect(figure.querySelectorAll("svg")).toHaveLength(figure.getAttribute("data-caution") ? 1 : 0);
+    }
+  });
+
+  it("says plainly when the record has no source linked, and not when it has one", () => {
+    mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
+    const { unmount } = render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} />);
+    expect(screen.getByTestId("medication-no-source")).toHaveTextContent("No source linked to this record yet");
+    unmount();
+    render(
+      <MedicationRecordPage
+        slug="test-med"
+        fallbackRecord={fallbackDrug}
+        sourceLinks={[{ id: "x", title: "PI", publisher: "TGA", href: "https://www.tga.gov.au/" }]}
+      />,
+    );
+    expect(screen.queryByTestId("medication-no-source")).not.toBeInTheDocument();
+  });
+
+  it("says nothing is linked from this page yet and offers the reader's own PDFs", () => {
+    mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} />);
+    const from = screen.getByTestId("medication-from-page");
+    expect(from).toHaveTextContent("No calculator, monitoring schedule or factsheet is linked to this medicine yet.");
+    expect(within(from).getByRole("link", { name: /Search your PDFs for Fallback Drug/ })).toHaveAttribute(
+      "href",
+      appModeHomeHref("documents", { query: "Fallback Drug", run: true }),
+    );
+  });
+
+  it("adds a plain 'Still loading' line after eight seconds, and shows nothing clinical", () => {
+    vi.useFakeTimers();
+    try {
+      mockDetail({ data: null, loading: true, error: null });
+      render(<MedicationRecordPage slug="owner-only" />);
+      expect(screen.queryByTestId("medication-slow-load")).not.toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(8_000);
+      });
+      expect(screen.getByTestId("medication-slow-load")).toHaveTextContent(
+        "Still loadingTaking longer than usual. Nothing is shown until the record arrives.",
+      );
+      expect(screen.queryByTestId("medication-figure")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("offers Try again and two ways forward when the record fails to load", async () => {
+    const retry = vi.fn();
+    useMedicationDetail.mockReturnValue({
+      data: null,
+      loading: false,
+      error: "Request failed (503)",
+      notFound: false,
+      retry,
+    });
+    render(<MedicationRecordPage slug="lithium-carbonate" />);
+    const failed = screen.getByTestId("medication-load-failed");
+    expect(failed).toHaveTextContent("The server didn’t answer. Check the connection, then try again.");
+    await userEvent.setup().click(within(failed).getByRole("button", { name: "Try again" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(within(failed).getByRole("link", { name: /Search your PDFs for lithium carbonate/ })).toBeInTheDocument();
+    expect(within(failed).getByRole("link", { name: "Back to all medicines" })).toHaveAttribute(
+      "href",
+      appModeHomeHref("prescribing"),
+    );
   });
 });

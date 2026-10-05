@@ -63,6 +63,7 @@ import {
   type PreferenceSyncState,
 } from "@/components/clinical-dashboard/use-app-preferences";
 import { useScrollHideReporter } from "@/components/clinical-dashboard/use-hide-on-scroll";
+import { clearMedicineVisits, countMedicineVisits } from "@/lib/medicines-recent";
 import { clearPsychiatryVisits, countPsychiatryVisits } from "@/lib/psychiatry-hub/visits";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { cn, floatingControl, InlineNotice, primaryControl, toggleThumbSurface } from "@/components/ui-primitives";
@@ -173,8 +174,8 @@ type PinnedSection = { id: SettingsSectionId; offset: number; distance: number; 
 
 function readRecentQueryCount(): number {
   if (typeof window === "undefined") return 0;
-  // The Psychiatry hub's recently opened records ride on the same switch and the same Clear.
-  return countRecentQueries() + countPsychiatryVisits();
+  // The Psychiatry and Medicines hubs' recently opened records ride on the same switch and the same Clear.
+  return countRecentQueries() + countPsychiatryVisits() + countMedicineVisits();
 }
 
 /**
@@ -612,6 +613,7 @@ export function SettingsDialog({
   function handleClearRecent() {
     clearRecentQueries();
     clearPsychiatryVisits();
+    clearMedicineVisits();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches cleared.");
   }
@@ -630,6 +632,7 @@ export function SettingsDialog({
     }
     clearRecentQueries();
     clearPsychiatryVisits();
+    clearMedicineVisits();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches turned off and existing ones cleared.");
   }

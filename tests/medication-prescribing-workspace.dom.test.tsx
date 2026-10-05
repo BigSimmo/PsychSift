@@ -1,12 +1,39 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MedicationPrescribingWorkspace } from "@/components/clinical-dashboard/medication-prescribing-workspace";
 import { PatientProfileProvider } from "@/components/clinical-dashboard/patient-profile-context";
+import { appModeHomeHref } from "@/lib/app-modes";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
+
+// When set, the catalogue answers with no ranked matches over a catalogue of
+// two records: the "nothing found" state.
+const catalogEmpty = vi.hoisted(() => ({ current: false }));
+const catalogueRecords = [
+  {
+    slug: "lithium",
+    name: "Lithium",
+    class: "Mood stabiliser",
+    subclass: "",
+    category: "",
+    stats: [],
+    sections: [],
+    quick: [],
+  },
+  {
+    slug: "clozapine",
+    name: "Clozapine",
+    class: "Antipsychotic",
+    subclass: "",
+    category: "",
+    stats: [],
+    sections: [],
+    quick: [],
+  },
+];
 
 // The prescribing results view filters a medication catalogue through scope,
 // match-quality, class and clinical-signal controls. The catalogue hook fetches
@@ -83,8 +110,8 @@ vi.mock("@/components/clinical-dashboard/universal-search-also-matches", () => (
 vi.mock("@/components/clinical-dashboard/use-medication-catalog", () => ({
   useMedicationCatalog: () => ({
     data: {
-      records: [],
-      matches: [clozapine, lithium, sertraline].map((result) => ({
+      records: catalogEmpty.current ? catalogueRecords : [],
+      matches: (catalogEmpty.current ? [] : [clozapine, lithium, sertraline]).map((result) => ({
         medication: undefined,
         result,
         score: 1,
@@ -129,6 +156,7 @@ function filterButton(label: string): HTMLElement {
 
 afterEach(() => {
   catalogInterpretation.current = undefined;
+  catalogEmpty.current = false;
   window.history.replaceState(null, "", "/");
   cleanup();
   vi.restoreAllMocks();
@@ -157,8 +185,26 @@ describe("MedicationPrescribingWorkspace — home vs submitted results", () => {
   });
 });
 
+describe("MedicationPrescribingWorkspace — nothing found (mock-up v6, screen 4)", () => {
+  it("names the search, gives the real catalogue count and two ways forward", () => {
+    catalogEmpty.current = true;
+    renderWorkspace({ query: "Examplex", showHome: false });
+
+    const empty = screen.getByTestId("medication-nothing-found");
+    expect(empty).toHaveTextContent("No medicine called \u201cExamplex\u201d in PsychSift\u2019s list of 2");
+    expect(empty).toHaveTextContent("Check the spelling. It may also be in your own PDFs");
+    expect(within(empty).getByRole("link", { name: /Search your PDFs for Examplex/ })).toHaveAttribute(
+      "href",
+      appModeHomeHref("documents", { query: "Examplex", run: true }),
+    );
+
+    fireEvent.click(within(empty).getByTestId("medication-browse-all"));
+    expect(new URLSearchParams(window.location.search).get("scope")).toBe("all");
+  });
+});
+
 describe("MedicationPrescribingWorkspace — query interpretation", () => {
-  it("shows the API corrected query and visibly counts related terms", () => {
+  it("says plainly there is no medicine by a misspelt name and suggests the corrected one as a link (mock-up v6, decision 2)", () => {
     catalogInterpretation.current = {
       correctedQuery: "sertraline",
       corrections: [{ from: "sertaline", to: "sertraline" }],
@@ -167,12 +213,14 @@ describe("MedicationPrescribingWorkspace — query interpretation", () => {
 
     renderWorkspace({ query: "sertaline" });
 
-    const note = screen.getByRole("note", {
-      name: "Did you mean sertraline? Related terms were also included: zoloft.",
-    });
-    expect(note).toHaveTextContent("Did you mean");
-    expect(note).toHaveTextContent("sertraline");
-    expect(note).toHaveTextContent("+1");
+    const note = screen.getByTestId("medication-query-interpretation");
+    expect(note).toHaveTextContent("No medicine called sertaline. Did you mean sertraline?");
+    expect(within(note).getByRole("link", { name: "sertraline" })).toHaveAttribute(
+      "href",
+      appModeHomeHref("prescribing", { query: "sertraline", run: true }),
+    );
+    expect(screen.getByText("Related terms were also included: zoloft.")).toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });
 
   it("distinguishes applied expansions from a corrected query", () => {

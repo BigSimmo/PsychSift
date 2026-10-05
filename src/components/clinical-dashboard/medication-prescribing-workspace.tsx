@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CircleCheck,
   ChevronRight,
+  FileSearch,
   Lock,
   Pill,
   SearchX,
@@ -21,6 +22,7 @@ import { useId, useMemo, useState } from "react";
 
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { appModeIcons } from "@/lib/app-mode-icons";
+import { appModeHomeHref } from "@/lib/app-modes";
 import { sharedHomePresentation } from "@/lib/ui-copy";
 import { RetainedSnapshotNotice } from "@/components/clinical-dashboard/dashboard-notices";
 import { SearchResultsHeaderBand } from "@/components/clinical-dashboard/search-results-header-band";
@@ -237,22 +239,63 @@ function StatusNotice({
   );
 }
 
-function MedicationInterpretationChip({ interpretation }: { interpretation?: MedicationCatalogInterpretation }) {
+/**
+ * A misspelt medicine name (Medicines mock-up v6, screen 3; owner decision 2 of
+ * 5 Oct 2026): say plainly there is no medicine by the typed name and suggest
+ * the corrected one as a link, never swapping it silently, because look-alike
+ * medicine names are a known error source.
+ */
+function MedicationDidYouMean({
+  query,
+  correctedQuery,
+  expansions,
+}: {
+  query: string;
+  correctedQuery: string;
+  expansions: readonly string[];
+}) {
+  return (
+    <div className="medication-results-inset">
+      <p data-testid="medication-query-interpretation" className="text-sm leading-6 text-[color:var(--text-heading)]">
+        No medicine called <strong className="font-semibold">{query}</strong>. Did you mean{" "}
+        <Link
+          href={appModeHomeHref("prescribing", { query: correctedQuery, run: true })}
+          className="font-semibold text-[color:var(--clinical-accent)] underline underline-offset-2"
+        >
+          {correctedQuery}
+        </Link>
+        ?
+      </p>
+      {expansions.length ? (
+        <p className="mt-0.5 text-xs leading-snug text-[color:var(--text-muted)]">
+          Related terms were also included: {expansions.join(", ")}.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function MedicationInterpretationChip({
+  query,
+  interpretation,
+}: {
+  query: string;
+  interpretation?: MedicationCatalogInterpretation;
+}) {
   const correctedQuery = interpretation?.correctedQuery?.trim();
-  const hasCorrection = Boolean(correctedQuery);
+  const hasCorrection = Boolean(correctedQuery) && correctedQuery?.toLowerCase() !== query.trim().toLowerCase();
   const expansions = Array.from(
     new Set(interpretation?.appliedExpansions?.map((term) => term.trim()).filter(Boolean) ?? []),
   );
-  if (!hasCorrection && expansions.length === 0) return null;
+  if (hasCorrection && correctedQuery) {
+    return <MedicationDidYouMean query={query.trim()} correctedQuery={correctedQuery} expansions={expansions} />;
+  }
+  if (expansions.length === 0) return null;
 
-  const displayTerms = hasCorrection && correctedQuery ? correctedQuery : expansions.slice(0, 3).join(", ");
-  const hiddenExpansionCount = hasCorrection ? expansions.length : Math.max(0, expansions.length - 3);
-  const leadingLabel = hasCorrection ? "Did you mean" : "Search also included";
-  const accessibleLabel = hasCorrection
-    ? `Did you mean ${correctedQuery}?${
-        expansions.length ? ` Related terms were also included: ${expansions.join(", ")}.` : ""
-      }`
-    : `Search also included related terms: ${expansions.join(", ")}.`;
+  const displayTerms = expansions.slice(0, 3).join(", ");
+  const hiddenExpansionCount = Math.max(0, expansions.length - 3);
+  const leadingLabel = "Search also included";
+  const accessibleLabel = `Search also included related terms: ${expansions.join(", ")}.`;
 
   return (
     <div className="medication-results-inset">
@@ -269,6 +312,67 @@ function MedicationInterpretationChip({ interpretation }: { interpretation?: Med
         <span className="min-w-0 truncate">{displayTerms}</span>
         {hiddenExpansionCount ? <span className="shrink-0">+{hiddenExpansionCount}</span> : null}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Nothing matched (mock-up v6, screen 4): what was searched, why it may have
+ * failed, and two ways forward: the reader's own PDFs, or the full list with
+ * its real count. Never a dead end.
+ */
+function MedicationNothingFound({
+  query,
+  catalogueCount,
+  onBrowseAll,
+}: {
+  query: string;
+  catalogueCount: number;
+  onBrowseAll: () => void;
+}) {
+  const trimmed = query.trim();
+  const title =
+    catalogueCount > 0
+      ? `No medicine called \u201c${trimmed}\u201d in PsychSift\u2019s list of ${catalogueCount.toLocaleString("en-AU")}`
+      : `No medicine called \u201c${trimmed}\u201d`;
+  return (
+    <div className="medication-results-inset grid gap-3" data-testid="medication-nothing-found">
+      <EmptyState
+        icon={SearchX}
+        title={title}
+        body="Check the spelling. It may also be in your own PDFs, or listed under a brand or generic name."
+        live="polite"
+      />
+      <ul role="list" className="grid">
+        <li className="min-w-0 border-t border-[color:var(--border)] first:border-t-0">
+          <Link
+            href={appModeHomeHref("documents", { query: trimmed, run: true })}
+            className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg py-2 text-[color:var(--text-heading)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+          >
+            <FileSearch className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+            <span className="grid min-w-0 gap-0.5">
+              <span className="break-words text-sm font-semibold leading-snug">Search your PDFs for {trimmed}</span>
+              <span className="text-xs leading-snug text-[color:var(--text-muted)]">Opens Documents</span>
+            </span>
+            <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+          </Link>
+        </li>
+        <li className="min-w-0 border-t border-[color:var(--border)] first:border-t-0">
+          <button
+            type="button"
+            onClick={onBrowseAll}
+            data-testid="medication-browse-all"
+            className="grid min-h-14 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-lg py-2 text-left text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+          >
+            <Pill className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+            <span className="break-words text-sm font-semibold leading-snug">Browse all medicines</span>
+            <span className="nums text-sm text-[color:var(--text-muted)]">
+              {catalogueCount > 0 ? catalogueCount.toLocaleString("en-AU") : null}
+            </span>
+            <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+          </button>
+        </li>
+      </ul>
     </div>
   );
 }
@@ -689,7 +793,7 @@ function MedicationResults({
 
       {catalog.data?.retainedSnapshot ? <RetainedSnapshotNotice /> : null}
 
-      <MedicationInterpretationChip interpretation={catalog.data?.interpretation} />
+      <MedicationInterpretationChip query={query} interpretation={catalog.data?.interpretation} />
 
       <ResultFilterSheet
         open={filterOpen}
@@ -758,14 +862,11 @@ function MedicationResults({
             </button>
           </div>
         ) : (
-          <div className="medication-results-inset">
-            <EmptyState
-              icon={SearchX}
-              title="No prescribing matches"
-              body="Try a different medication name, class, or indication."
-              live="polite"
-            />
-          </div>
+          <MedicationNothingFound
+            query={query}
+            catalogueCount={catalog.data?.records?.length ?? 0}
+            onBrowseAll={() => setScope("all")}
+          />
         )
       ) : null}
 
