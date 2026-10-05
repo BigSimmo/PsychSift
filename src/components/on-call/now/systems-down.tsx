@@ -55,10 +55,22 @@ export function NowFooter({
     <nav aria-label="More for this shift" className="grid min-w-0" data-testid="on-call-now-footer">
       <ul role="list" className={modeModuleSurface}>
         {/* Literal hrefs on Links: the route-reachability guard reads only
-            those, and these two are their pages' only ways in from On Call. */}
+            those, and these are their pages' only ways in from On Call. */}
         <li className={modeInsetHairline}>
           <Link href="/on-call/now" data-testid="on-call-home-call-now" className={literalRow}>
             <span className={literalRowText}>Who do I call now?</span>
+            <ChevronRight aria-hidden="true" className={literalRowChevron} />
+          </Link>
+        </li>
+        <li className={modeInsetHairline}>
+          <Link href="/on-call/handover" data-testid="on-call-home-handover" className={literalRow}>
+            <span className={literalRowText}>Handover</span>
+            <ChevronRight aria-hidden="true" className={literalRowChevron} />
+          </Link>
+        </li>
+        <li className={modeInsetHairline}>
+          <Link href="/on-call/pulse" data-testid="on-call-home-pulse" className={literalRow}>
+            <span className={literalRowText}>Shift pulse</span>
             <ChevronRight aria-hidden="true" className={literalRowChevron} />
           </Link>
         </li>
