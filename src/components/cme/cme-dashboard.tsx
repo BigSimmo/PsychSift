@@ -37,6 +37,7 @@ import { evaluateYear } from "@/lib/cme/evaluate";
 import { useCmeModuleOrder, type CmeDashboardModuleId } from "@/lib/cme/module-order";
 import { cmeRoutineGapScenarios, cmeWeeklyPace } from "@/lib/cme/pace";
 import type { CmePlanGoal } from "@/lib/cme/plan-goals";
+import { readCpdHome } from "@/lib/cme/home-choice";
 import { describeConfirmedSource } from "@/lib/cme/presets";
 import {
   cmeRoutineCadenceLabels,
@@ -516,7 +517,7 @@ export function CmeDashboard({
     );
 
   const targetsLine = set.confirmedOn
-    ? `You confirmed ${describeConfirmedSource(set.confirmedSource)} on ${formatCalendarDateShort(set.confirmedOn)}.${nothingLogged ? "" : " A personal record, not independent certification."}`
+    ? `You confirmed ${readCpdHome(set.confirmedSource).kind === "ranzcp" ? "the RANZCP starting set" : describeConfirmedSource(set.confirmedSource)} on ${formatCalendarDateShort(set.confirmedOn)}.${nothingLogged ? "" : " A personal record, not independent certification."}`
     : "No targets confirmed yet. Set them up whenever you like.";
 
   const aboutRows: ReactNode[] = [];
