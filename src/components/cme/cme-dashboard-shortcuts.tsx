@@ -1,72 +1,82 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
-import { cn, textMuted } from "@/components/ui-primitives";
-import type { CmeTodoRow } from "@/lib/cme/todo";
-
-/** Short chip names for the "to finish" rows `buildCmeTodo` already computes. */
-const CHIP_LABELS: Record<string, string> = {
-  copy: "Not copied",
-  drafts: "Drafts to finish",
-  reflection: "Reflections to add",
-  evidence: "Certificates to add",
-};
-
-const CHIP =
-  "inline-flex min-h-tap items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-[color:var(--surface-raised)] py-1 pl-3.5 pr-2.5 text-sm text-[color:var(--text)] shadow-[var(--e0)] transition-colors hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
-
-function Chip({ href, label, count, testId }: { href: string; label: string; count: string; testId?: string }) {
-  return (
-    <li>
-      <Link href={href} data-testid={testId} className={CHIP}>
-        <span>{label}</span>
-        <span className={cn(textMuted, "nums font-normal")}>{count}</span>
-        <ChevronRight aria-hidden="true" className={cn("size-icon-xs shrink-0", textMuted)} />
-      </Link>
-    </li>
-  );
-}
+import { focusRing } from "@/components/card-recipes";
+import { cn } from "@/components/ui-primitives";
+import type { CmeYearCheck } from "@/lib/cme/year-check";
 
 /**
- * Today's row of small things to finish, one chip each, so none of them takes
- * a card of its own: activities not yet copied to the CPD home (opening Log's
- * one-at-a-time copy view), the year check's progress, drafts, and missing
- * reflections or certificates. Only rows with something in them appear, and
- * the counts come from the same `buildCmeTodo` the Log page's "To finish"
- * reads, so the two never disagree.
+ * The Year page's row of small things to finish, one quiet chip each
+ * (the 5 Oct mock-up): activities not marked copied to the CPD home, activities
+ * with no reflection yet, and drafts whose next step is the owner's own. Only
+ * chips with something in them appear.
+ *
+ * The copied and reflection counts are the live year check's own (the same
+ * activities its rows name), so the chip, "What's left" and the Year check
+ * page can never disagree. The draft count is the page's `draftsToFinish`;
+ * when it is null (the drafts did not load) the chip is left out rather than
+ * shown as a zero.
  */
-export function CmeTodayShortcuts({
-  toFinish,
+
+/** A chip: hairline outline, its count in the heading colour, a 48px tap area around its 32px face. */
+const CHIP = cn(
+  focusRing,
+  "relative inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-[color:var(--border-strong)] px-2.75 text-sm-minus text-[color:var(--text-muted)] no-underline",
+  "after:absolute after:inset-x-0 after:top-1/2 after:h-12 after:-translate-y-1/2 after:content-['']",
+  "hover:border-[color:var(--text-muted)]",
+);
+
+export type CmeYearChip = {
+  readonly id: string;
+  readonly label: string;
+  readonly count: number;
+  readonly href: string;
+};
+
+export function buildCmeYearChips({
+  year,
   yearCheck,
+  draftsToFinish,
 }: {
-  toFinish: readonly CmeTodoRow[];
-  yearCheck: { readonly href: string; readonly readyCount: number; readonly rowCount: number };
-}) {
+  year: number;
+  yearCheck: CmeYearCheck;
+  draftsToFinish: number | null | undefined;
+}): CmeYearChip[] {
+  const count = (id: string) => {
+    const row = yearCheck.rows.find((item) => item.id === id);
+    return row && !row.ready && !row.notChecked ? row.entryIds.length : 0;
+  };
+  const chips: CmeYearChip[] = [
+    { id: "copy", label: "Not marked copied", count: count("copied"), href: `/cme/log?year=${year}&copy=todo` },
+    {
+      id: "reflection",
+      label: "No reflection",
+      count: count("reflection"),
+      href: `/cme/log?year=${year}&fix=reflection`,
+    },
+    {
+      id: "drafts",
+      label: "Draft to finish",
+      count: typeof draftsToFinish === "number" ? draftsToFinish : 0,
+      href: `/cme/log?year=${year}&tab=finish#cme-drafts`,
+    },
+  ];
+  return chips.filter((chip) => chip.count > 0);
+}
+
+export function CmeTodayShortcuts({ chips }: { chips: readonly CmeYearChip[] }) {
+  if (chips.length === 0) return null;
   return (
-    <ul aria-label="To finish" data-testid="cme-today-shortcuts" className="flex flex-wrap gap-2">
-      {toFinish
-        .filter((item) => item.id === "copy")
-        .map((item) => (
-          <Chip key={item.id} href={item.href} label={CHIP_LABELS.copy} count={String(item.count ?? 0)} />
-        ))}
-      <Chip
-        href={yearCheck.href}
-        label="Year check"
-        count={`${yearCheck.readyCount} of ${yearCheck.rowCount}`}
-        testId="cme-year-check-link"
-      />
-      {toFinish
-        .filter((item) => item.id !== "copy")
-        .map((item) => (
-          <Chip
-            key={item.id}
-            href={item.href}
-            label={CHIP_LABELS[item.id] ?? item.label}
-            count={String(item.count ?? 0)}
-          />
-        ))}
+    <ul role="list" aria-label="To finish" data-testid="cme-today-shortcuts" className="flex flex-wrap gap-2">
+      {chips.map((chip) => (
+        <li key={chip.id}>
+          <Link href={chip.href} data-testid={`cme-chip-${chip.id}`} className={CHIP}>
+            {chip.label}
+            <b className="nums font-normal text-[color:var(--text-heading)]">{chip.count}</b>
+          </Link>
+        </li>
+      ))}
     </ul>
   );
 }

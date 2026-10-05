@@ -47,13 +47,9 @@ test.describe("CME on a phone", () => {
   test("the dashboard leads with position, pace and one action", async ({ page }) => {
     await page.goto("/cme");
     await expect(page.locator("#main-content")).toBeVisible();
-    // `toContainText`, not `toHaveText`: the testid now sits on a hero span
-    // whose text is "32.5 of 50 h" — the figure plus its own muted "of N h"
-    // sibling text. An exact-text match would pin that whole sentence instead
-    // of the one figure this assertion is actually about.
     await expect(page.getByTestId("cme-total-hours")).toContainText("32.5");
-    await expect(page.getByTestId("cme-pace-sentence")).toContainText("About 1.2 h a week reaches 50 h by 31 Dec");
-    await expect(page.getByTestId("cme-hero-season")).toHaveText("Year ends 31 Dec 2026, in 15 weeks");
+    await expect(page.getByTestId("cme-pace-sentence")).toContainText("17.5 h to go, about 1.2 h a week.");
+    await expect(page.getByTestId("cme-year-label").filter({ visible: true })).toHaveText("2026 · about 15 weeks left");
     await expect(page.getByTestId("cme-next-action")).toBeVisible();
   });
 
@@ -335,7 +331,10 @@ test.describe("CME phone design", () => {
     const main = page.locator("#main-content");
     await expect(main).toBeVisible();
     const before = await main.boundingBox();
-    await page.getByTestId("cme-hero-summary").getByRole("button").click();
+    await page
+      .getByTestId("cme-requirements")
+      .getByRole("button", { name: /Hours in total/ })
+      .click();
     const sheet = page.getByTestId("cme-today-detail-sheet");
     await expect(sheet).toBeVisible();
     await expect(sheet.getByTestId("cme-today-detail-total")).toContainText("saved activities");
@@ -354,8 +353,10 @@ test.describe("CME phone design", () => {
     });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/cme");
-    await expect(page.getByTestId("cme-hero-summary").filter({ visible: true })).toBeVisible();
-    const logButton = await expectSingleSettledOwner(page.getByTestId("cme-quick-log-button"));
+    await expect(page.getByTestId("cme-year-summary").filter({ visible: true })).toBeVisible();
+    // The Year page's own filled "Log an activity" opens the panel; the floating + Log stays off this page.
+    await expect(page.getByTestId("cme-quick-log-button")).toHaveCount(0);
+    const logButton = await expectSingleSettledOwner(page.getByTestId("cme-log-activity"));
     await logButton.click();
     const sheet = page.getByTestId("cme-quick-log-sheet");
     await expect(sheet.getByLabel("What was it", { exact: false })).toBeVisible();

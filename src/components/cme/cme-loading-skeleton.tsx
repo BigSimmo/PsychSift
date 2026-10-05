@@ -1,5 +1,4 @@
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { modeSummarySurface } from "@/components/mode-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 
 /** A static outline block: no shimmer, nothing moves (standard §7). */
@@ -10,20 +9,17 @@ const PAGE =
   "mx-auto flex w-full flex-col bg-[color:var(--background)] px-4 pb-[calc(max(1rem,env(safe-area-inset-bottom))+6rem)] pt-6 sm:px-6";
 
 /**
- * CPD Today's loading state: its shapes in its order, so nothing jumps when it
- * arrives (spec §6.2 and §7; standard §7: static outlines, no shimmer). Heights
- * are worked out from the loaded layout at 390 px wide:
- *   - the header row, 48 px (the "CPD" heading beside the 48 px Customise button);
- *   - the hero summary (Task 12) on the same summary surface at the 16 px radius,
- *     148 px: 16 px padding, the 20 px season line, the 42 px figure line, the bar
- *     with 12 px above and below, the 20 px pace line, 16 px padding;
- *   - the card holding the pace chart and the next action, 224 px;
- *   - the two tiles (Year check, Calendar), 88 px with the Calendar tile's two-line label;
- *   - the teaching link, 48 px;
- *   - the first module: its eyebrow and three 52 px rows (the kit's skeleton).
- * Task 17's screenshots check these against the loaded page; if a shape moved,
- * change its h-* class here. It holds no data and no words except the
- * screen-reader label.
+ * The Year page's loading state: its shapes in its order, so nothing jumps when
+ * it arrives (spec §6.2 and §7; standard §7: static outlines, no shimmer).
+ * Heights follow the loaded layout (the 5 Oct mock-up) at 390 px wide:
+ *   - the header row, 48 px (the "Year" heading beside the 48 px Customise button);
+ *   - the summary card, 400 px: label, figure, bar, four legend rows, the pace
+ *     sentence and the week chart;
+ *   - the one "Log an activity" button, 40 px;
+ *   - a row of 32 px chips;
+ *   - "What's left": its label and three 52 px rows (the kit's skeleton).
+ * On a computer the summary, button and chips sit left and the rows right, as
+ * on the loaded page. It holds no data and no words except the screen-reader label.
  */
 export function CmeLoadingSkeleton() {
   return (
@@ -32,16 +28,18 @@ export function CmeLoadingSkeleton() {
         <span className="h-7 w-14 rounded-sm bg-[color:var(--surface-subtle)]" />
         <span className={cn(BLOCK, "h-12 w-28")} />
       </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-2" data-testid="cme-loading-lead">
-        <div data-testid="cme-loading-hero" aria-hidden="true" className={cn(modeSummarySurface, "h-37 rounded-xl")} />
-        <div data-testid="cme-loading-card" aria-hidden="true" className={cn(BLOCK, "h-56")} />
-      </div>
-      <div aria-hidden="true" className="mt-3 grid grid-cols-2 gap-3">
-        <div data-testid="cme-loading-tile" className={cn(BLOCK, "h-22")} />
-        <div data-testid="cme-loading-tile" className={cn(BLOCK, "h-22")} />
-      </div>
-      <div aria-hidden="true" className={cn(BLOCK, "mt-3 h-12")} />
-      <div className="mt-6">
+      <div
+        className="mt-4 grid gap-5.5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-x-10"
+        data-testid="cme-loading-lead"
+      >
+        <div className="grid content-start gap-5.5">
+          <div data-testid="cme-loading-hero" aria-hidden="true" className={cn(BLOCK, "h-100")} />
+          <div data-testid="cme-loading-card" aria-hidden="true" className={cn(BLOCK, "h-10 lg:w-40")} />
+          <div aria-hidden="true" className="flex gap-2">
+            <span data-testid="cme-loading-chip" className={cn(BLOCK, "h-8 w-36 rounded-md")} />
+            <span data-testid="cme-loading-chip" className={cn(BLOCK, "h-8 w-28 rounded-md")} />
+          </div>
+        </div>
         <ModeModuleSkeleton rows={3} twoLine eyebrow testId="cme-loading-rows" />
       </div>
     </div>

@@ -92,24 +92,28 @@ describe("the dashboard's progress picture", () => {
     expect(hoursByCategory(ENTRIES)).toEqual({ educational: 14, reviewing: 7, measuring: 1.5 });
   });
 
-  it("gives an hours requirement a small bar, and a tick once it is met", () => {
+  it("gives a requirement an open circle until it is met, and folds it under a tick once it is", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={new Date("2026-09-01T02:00:00Z")} />);
     const items = within(screen.getByTestId("cme-requirements")).getAllByRole("listitem");
-    const educational = items.find((item) => item.textContent?.includes("Educational activities"))!;
-    const measuring = items.find((item) => item.textContent?.includes("Measuring outcomes"))!;
+    const rows = items.filter((item) => item.hasAttribute("data-met"));
+    const educational = rows.find((item) => item.textContent?.startsWith("Educational activities"))!;
+    const measuring = rows.find((item) => item.textContent?.startsWith("Measuring outcomes"))!;
     expect(educational).toHaveAttribute("data-met", "true");
+    expect(educational.closest("details")).toBe(screen.getByTestId("cme-requirements-done"));
     expect(measuring).toHaveAttribute("data-met", "false");
-    expect(within(measuring).getByTestId("cme-requirement-meter")).toBeInTheDocument();
+    expect(measuring.querySelector(".rounded-full")).not.toBeNull();
   });
 
-  it("draws the pace chart as one described image, not a pile of points", () => {
+  it("says each category's hours in words in the summary, in CPD's indigo shades, leaving archived entries out", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={new Date("2026-09-01T02:00:00Z")} />);
-    const chart = within(screen.getByTestId("cme-pace-chart")).getByRole("img");
-    expect(chart).toHaveAccessibleName(
-      "22.5 hours logged so far. An even pace to 50 hours by 31 December would be about 33 by today.",
-    );
-    // Today's point is product blue (module 7); the line stays in the grey-to-ink ramp.
-    expect(screen.getByTestId("cme-pace-chart-end").getAttribute("class")).toContain("--clinical-accent");
+    const legend = within(screen.getByTestId("cme-year-summary")).getByRole("list", { name: "Hours by category" });
+    expect(legend).toHaveTextContent("Educational14 h");
+    expect(legend).toHaveTextContent("Reviewing performance7 h");
+    expect(legend).toHaveTextContent("Measuring outcomes1.5 h");
+    const bar = screen.getByTestId("cme-summary-bar");
+    expect(bar).toHaveAttribute("aria-hidden", "true");
+    expect(bar.innerHTML).toContain("--cme-cat-1");
+    expect(bar.innerHTML).not.toMatch(/--tone-(rose|purple|green|red|amber)/);
   });
 });
 
@@ -130,6 +134,23 @@ describe("the pace chart", () => {
 });
 
 describe("quick log", () => {
+  it("opens from the Year page's own Log an activity button, with no floating + Log beside it", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <CmeDashboard set={SET} entries={ENTRIES} now={new Date("2026-09-01T02:00:00Z")} />
+        <CmeQuickLog set={SET} entries={ENTRIES} />
+      </>,
+    );
+    // One filled button for logging: the page's own; the floating one stays away.
+    await waitFor(() => expect(screen.queryByTestId("cme-quick-log-button")).toBeNull());
+    const log = screen.getByTestId("cme-log-activity");
+    await user.click(log);
+    expect(await screen.findByTestId("cme-quick-log-sheet")).toBeInTheDocument();
+    // The panel opened in place: nothing navigated to the full page.
+    expect(navigation.push).not.toHaveBeenCalled();
+  });
+
   it("keeps save in the fixed sheet footer and accepts Ctrl+Enter from the form", async () => {
     const user = userEvent.setup();
     const fetchMock = vi

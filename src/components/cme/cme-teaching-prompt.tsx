@@ -1,16 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { cardSurface } from "@/components/card-recipes";
 import { cn, textMuted } from "@/components/ui-primitives";
 
-/** A quiet handoff: Teaching remains the owner of its unlogged count. */
-export function CmeTeachingPrompt() {
+/**
+ * Teaching's own count of sessions given but not yet logged as CPD, or null
+ * when it is unknown (not asked, the endpoint failed, or nothing is waiting).
+ * Teaching remains the owner of the count; CPD only reads it.
+ */
+export function useCmeTeachingUnloggedCount(enabled = true): number | null {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     async function loadCount() {
       try {
@@ -37,9 +42,32 @@ export function CmeTeachingPrompt() {
     }
     void loadCount();
     return () => controller.abort();
-  }, []);
+  }, [enabled]);
 
-  if (count === null) return null;
+  return count;
+}
+
+/** The Year page's own "Teaching you gave" row carries this attribute; while it is on the page, this card stays away. */
+export const CME_TEACHING_ROW_ATTRIBUTE = "data-cme-teaching-row";
+
+/** Re-reads the snapshot once after mount, when the page's other parts are in the DOM. */
+function subscribeAfterMount(callback: () => void) {
+  const frame = window.requestAnimationFrame(callback);
+  return () => window.cancelAnimationFrame(frame);
+}
+
+/** A quiet handoff: Teaching remains the owner of its unlogged count. */
+export function CmeTeachingPrompt() {
+  // The Year page now names the count in its own "Also for you" row; this card is only for pages without it.
+  // Before the page is in the browser, assume the row is there, so nothing is fetched twice.
+  const inPageRow = useSyncExternalStore(
+    subscribeAfterMount,
+    () => document.querySelector(`[${CME_TEACHING_ROW_ATTRIBUTE}]`) !== null,
+    () => true,
+  );
+  const count = useCmeTeachingUnloggedCount(!inPageRow);
+
+  if (inPageRow || count === null) return null;
 
   return (
     <section

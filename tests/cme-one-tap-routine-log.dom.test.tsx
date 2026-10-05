@@ -13,8 +13,16 @@ vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
 vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({
   useAppPreferences: () => ({ preferences: { reminders: DEFAULT_REMINDER_SETTINGS }, setPreference: vi.fn() }),
 }));
-vi.mock("@/components/cme/cme-quick-log", () => ({ CmeQuickLog: () => null }));
-vi.mock("@/components/cme/cme-teaching-prompt", () => ({ CmeTeachingPrompt: () => null }));
+vi.mock("@/components/cme/cme-quick-log", () => ({
+  CmeQuickLog: () => null,
+  CME_LOG_TRIGGER_ATTRIBUTE: "data-cme-log-trigger",
+  openCmeQuickLog: () => false,
+}));
+vi.mock("@/components/cme/cme-teaching-prompt", () => ({
+  CmeTeachingPrompt: () => null,
+  CME_TEACHING_ROW_ATTRIBUTE: "data-cme-teaching-row",
+  useCmeTeachingUnloggedCount: () => null,
+}));
 
 afterEach(() => {
   vi.restoreAllMocks();
