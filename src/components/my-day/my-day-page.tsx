@@ -37,7 +37,12 @@ import { cn } from "@/components/ui-primitives";
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
 import { useAuthSession } from "@/lib/supabase/client";
-import { ModeBandAction, PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
+import {
+  ModeBandAction,
+  PageTitleUnderBand,
+  useModeBandCurrentTab,
+  WithoutModeBand,
+} from "@/components/mode-band/mode-band";
 
 /**
  * The signed-out sample: invented data, downloaded only when a signed-out
@@ -200,64 +205,7 @@ function insideHorizontalScroller(target: EventTarget | null, stop: Element): bo
   return false;
 }
 
-/** Today / Work / Me: a tab list over the dashboard; a sideways swipe on the page changes tab too. */
-function MyDayTabs({ page, onChange }: { readonly page: MyDayPageId; readonly onChange: (page: MyDayPageId) => void }) {
-  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const move = (delta: number) => {
-    const index = myDayPageIds.indexOf(page);
-    const next = myDayPageIds[(index + delta + myDayPageIds.length) % myDayPageIds.length] ?? "today";
-    onChange(next);
-    refs.current[next]?.focus();
-  };
-  return (
-    <div
-      role="tablist"
-      aria-label="My Day sections"
-      data-testid="my-day-tabs"
-      className="flex gap-1 rounded-full border border-[color:var(--dash-line)] bg-[color:var(--dash-card)] p-1 forced-colors:border"
-    >
-      {myDayPageIds.map((id) => {
-        const selected = id === page;
-        return (
-          <button
-            key={id}
-            ref={(node) => {
-              refs.current[id] = node;
-            }}
-            type="button"
-            role="tab"
-            id={`my-day-tab-${id}`}
-            aria-selected={selected}
-            aria-controls="my-day-panel"
-            tabIndex={selected ? 0 : -1}
-            data-testid={`my-day-tab-${id}`}
-            onClick={() => onChange(id)}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowRight") {
-                event.preventDefault();
-                move(1);
-              } else if (event.key === "ArrowLeft") {
-                event.preventDefault();
-                move(-1);
-              }
-            }}
-            className={cn(
-              focusRing,
-              "min-h-12 flex-1 rounded-full text-sm font-dash-title",
-              selected
-                ? "bg-[color:var(--dash-raised)] text-[color:var(--dash-ink)] shadow-[var(--dash-shadow)] forced-colors:border"
-                : "text-[color:var(--dash-muted)]",
-            )}
-          >
-            {MY_DAY_PAGE_LABELS[id]}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** The tab panel; a sideways swipe on it moves to the next or previous tab. */
+/** The page body; a sideways swipe on it moves to the next or previous page (the header tabs name it). */
 function MyDaySwipePanel({
   page,
   onChange,
@@ -273,8 +221,6 @@ function MyDaySwipePanel({
     <div
       ref={swipeRef}
       id="my-day-panel"
-      role="tabpanel"
-      aria-labelledby={`my-day-tab-${page}`}
       onTouchStart={(event) => {
         const touch = event.touches[0];
         touchStart.current =
@@ -321,6 +267,8 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
   const page = parseMyDayPage(searchParams?.get("page"));
+  // The header's Today / Work / Me tabs: ?page= is not part of the path, so the page names its own tab.
+  useModeBandCurrentTab(view === "dashboard" ? `my-day-${page}` : null);
   const changePage = (next: MyDayPageId) => {
     if (next !== page) showPage(next);
   };
@@ -399,7 +347,6 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
             </ModeBandAction>
           ) : null}
         </header>
-        {(ready || sampleView) && view === "dashboard" ? <MyDayTabs page={page} onChange={changePage} /> : null}
 
         {authStatus === "loading" || (enabled && state.status === "loading") ? (
           <>

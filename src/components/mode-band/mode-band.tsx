@@ -96,6 +96,7 @@ export type ModeBandProps = {
 };
 
 const ModeBandCountContext = createContext<(tabId: string, count: number | null) => void>(() => {});
+const ModeBandCurrentTabContext = createContext<(tabId: string | null) => void>(() => {});
 const ModeBandStatusKindContext = createContext<(kind: ModeBandStatusValue["kind"] | null) => void>(() => {});
 
 /** Counts could be wrong or invented while records are out of reach or examples. */
@@ -123,6 +124,20 @@ export function useModeBandCount(tabId: string, count: number | null) {
 }
 
 export { useModeBandShown };
+
+/**
+ * Names the current tab when the address alone cannot: My Day switches its
+ * pages with ?page= and by swipe, without a navigation. Pass null to fall back
+ * to the address. The override ends when the page closes.
+ */
+export function useModeBandCurrentTab(tabId: string | null) {
+  const setCurrentTab = useContext(ModeBandCurrentTabContext);
+  useEffect(() => {
+    setCurrentTab(tabId);
+    return () => setCurrentTab(null);
+  }, [setCurrentTab, tabId]);
+}
+
 
 function greetingFor(now: Date): string {
   const hour = Number(
@@ -302,7 +317,8 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   const [pageStatusKind, setPageStatusKind] = useState<ModeBandStatusValue["kind"] | null>(null);
   const statusKind = pageStatusKind ?? props.status?.kind ?? null;
   const hideCounts = statusKind !== null && COUNTS_HIDDEN.has(statusKind);
-  const activeId = bandActiveId(props.modeId, pathname);
+  const [pageTabId, setPageTabId] = useState<string | null>(null);
+  const activeId = pageTabId ?? bandActiveId(props.modeId, pathname);
   const shown =
     !isHidden(pathname, props.hiddenOn) &&
     (activeId !== null || pathname === (props.homePath ?? modeHomePath(props.modeId)));
@@ -310,8 +326,12 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
     <ModeBandShownContext.Provider value={shown}>
       <ModeBandCountContext.Provider value={setCount}>
         <ModeBandStatusKindContext.Provider value={setPageStatusKind}>
-          {shown ? <ModeBandHeader {...props} counts={hideCounts ? undefined : allCounts} activeId={activeId} /> : null}
-          {children}
+          <ModeBandCurrentTabContext.Provider value={setPageTabId}>
+            {shown ? (
+              <ModeBandHeader {...props} counts={hideCounts ? undefined : allCounts} activeId={activeId} />
+            ) : null}
+            {children}
+          </ModeBandCurrentTabContext.Provider>
         </ModeBandStatusKindContext.Provider>
       </ModeBandCountContext.Provider>
     </ModeBandShownContext.Provider>
