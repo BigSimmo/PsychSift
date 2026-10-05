@@ -2770,16 +2770,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/design-system/COMPONENTS.md",
-        "section": "design-system",
-        "catalogued": true
-      },
-      {
-        "path": "docs/design-system/COMPONENTS.md",
-        "section": "design-system",
-        "catalogued": true
-      },
-      {
         "path": "docs/superpowers/plans/2026-09-27-first-nations-mode-completion.md",
         "section": "superpowers",
         "catalogued": false
@@ -4212,16 +4202,6 @@
       {
         "path": "docs/prompts/rag-coverage-gate-extraction.md",
         "section": "prompts",
-        "catalogued": true
-      },
-      {
-        "path": "docs/design-system/ADOPTION.md",
-        "section": "design-system",
-        "catalogued": true
-      },
-      {
-        "path": "docs/design-system/ADOPTION.md",
-        "section": "design-system",
         "catalogued": true
       },
       {
