@@ -117,3 +117,18 @@ describe("end-of-shift card", async () => {
     expect(endOfShiftCard(new Date("2026-10-05T08:00:00Z"), [])).toBeNull();
   });
 });
+
+describe("reminder time labels", async () => {
+  const { reminderWhenLabel } = await import("@/lib/alerts/remind-me");
+  const now = new Date("2026-10-04T23:30:00Z"); // Mon 07:30 Perth
+  const at = (dueAt: string, doneAt: string | null = null) =>
+    reminderWhenLabel({ id: "x", text: "t", dueAt, createdAt: now.toISOString(), doneAt }, now);
+
+  it("says due, today, tomorrow or the weekday", () => {
+    expect(at("2026-10-04T23:00:00Z")).toBe("Due 07:00");
+    expect(at("2026-10-05T04:00:00Z")).toBe("Today 12:00");
+    expect(at("2026-10-06T00:00:00Z")).toBe("Tomorrow 08:00");
+    expect(at("2026-10-07T00:00:00Z")).toBe("Wed 08:00");
+    expect(at("2026-10-05T04:00:00Z", "2026-10-05T00:00:00Z")).toBe("Done");
+  });
+});

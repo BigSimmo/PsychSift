@@ -5,10 +5,17 @@ import { useId, useMemo, useState } from "react";
 
 import { ChoiceChips, SheetLabel } from "@/components/alerts/alerts-rows";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
+import { ModeRow } from "@/components/mode-kit/grouped-list";
+import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
-import { checkReminderText, REMIND_ME_TEXT_LIMIT, remindMeWhenOptions } from "@/lib/alerts/remind-me";
+import {
+  checkReminderText,
+  REMIND_ME_TEXT_LIMIT,
+  reminderWhenLabel,
+  remindMeWhenOptions,
+} from "@/lib/alerts/remind-me";
 import { useSharedDevice } from "@/lib/alerts/shared-device";
 
 /**
@@ -125,6 +132,71 @@ export function RemindMeSheet({
             This phone couldn&apos;t save it. Try again.
           </p>
         ) : null}
+      </div>
+    </Sheet>
+  );
+}
+
+/** Your reminders: the notes on this phone, due ones first, each with Done and Remove. */
+export function YourRemindersSheet({
+  open,
+  onClose,
+  now,
+  onAdd,
+}: {
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly now: Date;
+  readonly onAdd: () => void;
+}) {
+  const { reminders, markDone, remove } = useRemindMe();
+  const shared = useSharedDevice();
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Your reminders"
+      description="Kept on this phone only"
+      testId="your-reminders-sheet"
+      footer={
+        <Button variant="primary" block onClick={onAdd} disabled={shared} testId="your-reminders-add">
+          Remind me
+        </Button>
+      }
+    >
+      <div className="grid min-w-0 gap-3">
+        {reminders.length === 0 ? (
+          <p className="text-sm text-[color:var(--text-muted)]" data-testid="your-reminders-empty">
+            {shared ? "This shared device keeps no reminders." : "None set on this phone."}
+          </p>
+        ) : (
+          <ul role="list" className={modeModuleSurface}>
+            {reminders.map((item) => {
+              const status = reminderWhenLabel(item, now);
+              return (
+                <ModeRow
+                  key={item.id}
+                  title={<span className={item.doneAt ? "line-through" : undefined}>{item.text}</span>}
+                  subtitle={status}
+                  trailing={
+                    item.doneAt ? (
+                      <Button variant="ghost" size="sm" className="min-h-12" onClick={() => remove(item.id)}>
+                        Remove
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="min-h-12" onClick={() => markDone(item.id)}>
+                        Done
+                      </Button>
+                    )
+                  }
+                />
+              );
+            })}
+          </ul>
+        )}
+        <p className="text-sm leading-5 text-[color:var(--text-muted)]">
+          Buzzing while the app is closed arrives with the next update. Signing out clears them.
+        </p>
       </div>
     </Sheet>
   );

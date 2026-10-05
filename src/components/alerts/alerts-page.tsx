@@ -5,7 +5,9 @@ import { useState } from "react";
 import { AlertsDeviceSection } from "@/components/alerts/alerts-device-section";
 import { AlertsButtonRow, AlertsQuietRow, AreaDot } from "@/components/alerts/alerts-rows";
 import { AlertsAreaSheet, AlertsDailyLimitSheet, AlertsQuietHoursSheet } from "@/components/alerts/alerts-sheets";
+import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
 import { usePhoneAlerts } from "@/components/alerts/use-phone-alerts";
+import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeStateLabel } from "@/components/mode-kit/state-label";
@@ -40,7 +42,13 @@ export function AlertsPage({ now }: { now?: Date } = {}) {
   );
 }
 
-type OpenSheet = { kind: "area"; area: AlertAreaId } | { kind: "quiet" } | { kind: "limit" } | null;
+type OpenSheet =
+  | { kind: "area"; area: AlertAreaId }
+  | { kind: "quiet" }
+  | { kind: "limit" }
+  | { kind: "reminders" }
+  | { kind: "remind-me" }
+  | null;
 
 function AlertsBody({ now }: { now: Date }) {
   const { preferences, setPreference } = useAppPreferences();
@@ -48,6 +56,8 @@ function AlertsBody({ now }: { now: Date }) {
   const roster = useRosterSettings();
   const alerts = usePhoneAlerts();
   const shared = useSharedDevice();
+  const { reminders: notes } = useRemindMe();
+  const openNotes = notes.filter((item) => !item.doneAt).length;
   const [sheet, setSheet] = useState<OpenSheet>(null);
   const [rosterError, setRosterError] = useState<string | null>(null);
   const today = perthDateKey(now);
@@ -97,6 +107,16 @@ function AlertsBody({ now }: { now: Date }) {
               testId={`alerts-area-${id}`}
             />
           ))}
+          <AlertsButtonRow
+            title="Your reminders"
+            subtitle={
+              openNotes
+                ? `At the time you set · ${openNotes} on this phone`
+                : "At the time you set · kept on this phone"
+            }
+            onSelect={() => setSheet({ kind: "reminders" })}
+            testId="alerts-your-reminders"
+          />
           <AlertsQuietRow title="Open shifts" reason="Arrives with Open shifts" testId="alerts-area-open-shifts" />
           <AlertsQuietRow title="Mental Health Act timers" reason="Locked until clinical sign-off" />
           <AlertsQuietRow title="Rest-break warnings" reason="Locked until clinical sign-off" />
@@ -150,6 +170,19 @@ function AlertsBody({ now }: { now: Date }) {
         onClose={() => setSheet(null)}
         reminders={reminders}
         onChange={setReminders}
+      />
+      <YourRemindersSheet
+        open={sheet?.kind === "reminders"}
+        onClose={() => setSheet(null)}
+        now={now}
+        onAdd={() => setSheet({ kind: "remind-me" })}
+      />
+      {/* The Alerts page has no roster read of its own, so "End of shift" is offered from My Day, not here. */}
+      <RemindMeSheet
+        open={sheet?.kind === "remind-me"}
+        onClose={() => setSheet({ kind: "reminders" })}
+        now={now}
+        shiftEndsAt={null}
       />
       <AlertsDailyLimitSheet
         open={sheet?.kind === "limit"}

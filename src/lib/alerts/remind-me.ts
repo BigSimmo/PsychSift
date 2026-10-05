@@ -230,4 +230,22 @@ export function dueReminders(list: readonly Reminder[], now: Date): Reminder[] {
   return list.filter((item) => item.doneAt === null && Date.parse(item.dueAt) <= now.getTime());
 }
 
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+function perthDayIndex(instant: number): number {
+  return Math.floor((instant + PERTH_OFFSET_MS) / (24 * HOUR_MS));
+}
+
+/** "Due 12:00", "Today 12:00", "Tomorrow 08:00" or "Wed 08:00", Perth time. */
+export function reminderWhenLabel(reminder: Reminder, now: Date): string {
+  if (reminder.doneAt) return "Done";
+  const due = Date.parse(reminder.dueAt);
+  const clock = perthClock(due);
+  if (due <= now.getTime()) return `Due ${clock}`;
+  const days = perthDayIndex(due) - perthDayIndex(now.getTime());
+  if (days === 0) return `Today ${clock}`;
+  if (days === 1) return `Tomorrow ${clock}`;
+  return `${DAYS[new Date(due + PERTH_OFFSET_MS).getUTCDay()]} ${clock}`;
+}
+
 export { perthClock as remindMeClock };
