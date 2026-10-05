@@ -216,6 +216,14 @@ describe("MyDayWeekPage", () => {
     );
   });
 
+  it("says a passed Admin date once", () => {
+    setItems({ items: [item("bls", "2026-10-01", { severity: "overdue", detail: "Date has passed" })] });
+    render(<MyDayWeekPage now={NOW} />);
+    const row = screen.getByTestId("my-day-week-day-2026-10-03");
+    expect(row.textContent).toContain("Date passed");
+    expect(row.textContent).not.toContain("Date has passed");
+  });
+
   it("keeps a shift that ends at midnight on its own day", () => {
     // 16:00 to 24:00 Sat 3 Oct in Perth.
     setShifts({ shifts: [shift("late", "2026-10-03T08:00:00Z", "2026-10-03T16:00:00Z", "evening")] });

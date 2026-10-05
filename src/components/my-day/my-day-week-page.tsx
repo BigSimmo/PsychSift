@@ -265,7 +265,8 @@ function itemEntry(item: MyDayItem): AgendaEntry {
     startsAt: timed ? Date.parse(timed) : null,
     endsAt: null,
     area: appModeDefinition(item.mode).label,
-    detail: item.detail ?? null,
+    // The state already says the date has passed; a detail that repeats it is dropped.
+    detail: item.detail && !(overdue && /passed|overdue/i.test(item.detail)) ? item.detail : null,
     state,
     warn: overdue,
     href: item.href,
