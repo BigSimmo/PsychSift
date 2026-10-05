@@ -7,6 +7,7 @@ import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { hoursRestCheck, type HoursRestBreak, type HoursRestGauge } from "@/lib/roster/hours-rest-check";
+import { formatSpanWords } from "@/lib/roster/shifts-overview";
 import { WEEKDAYS, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 
@@ -55,15 +56,6 @@ const GAUGE_LABEL: Record<HoursRestGauge["rule"], { title: string; limit: (limit
 
 function weekday(date: string): string {
   return `${WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!} ${Number(date.slice(8, 10))}`;
-}
-
-function shortSpan(start: string, end: string): string {
-  const month = (date: string) => formatPerthDay(date).split(" ")[2];
-  const first = Number(start.slice(8, 10));
-  const last = Number(end.slice(8, 10));
-  return month(start) === month(end)
-    ? `${first} to ${last} ${month(end)}`
-    : `${first} ${month(start)} to ${last} ${month(end)}`;
 }
 
 function Gauge({ gauge, partial }: { readonly gauge: HoursRestGauge; readonly partial: boolean }) {
@@ -252,7 +244,9 @@ export function RosterHoursRestCheck({
           id="roster-hours-rest-heading"
           title="Next 14 days"
           right={
-            <span className="nums text-sm text-[color:var(--text-muted)]">{shortSpan(check.start, check.end)}</span>
+            <span className="nums text-sm text-[color:var(--text-muted)]">
+              {formatSpanWords(check.start, check.end)}
+            </span>
           }
         />
         <ul role="list" className={cn(modeModuleSurface, "shadow-none")} data-mode-identity="roster">

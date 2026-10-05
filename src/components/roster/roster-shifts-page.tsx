@@ -34,6 +34,7 @@ import { fortnightFor, summariseHours } from "@/lib/roster/hours";
 import { restCuesByTeam } from "@/lib/roster/rest-cues";
 import { SHIFT_KIND_LABEL, SHIFT_LETTER } from "@/lib/roster/shift-kind";
 import {
+  formatSpanWords,
   leadShift,
   shiftSpan,
   weekCountWords,
@@ -48,7 +49,7 @@ import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/r
 import { RosterAskButton } from "./ask/roster-ask-box";
 import { RosterSignInNotice } from "./invite/roster-sign-in-notice";
 import { RosterAddSheet, type RosterAddView } from "./roster-add-sheet";
-import { formatDateSpan, kindOf, useRosterNow } from "./roster-format";
+import { kindOf, useRosterNow } from "./roster-format";
 import { RosterFortnight } from "./roster-fortnight";
 import { RosterHoursPanel } from "./roster-hours-panel";
 import { RosterImportFlow } from "./roster-import-flow";
@@ -208,7 +209,8 @@ function DayRow({
         const sub = (
           <>
             {leave ? "All day" : kind === "on_call" ? ["On call from home", place].filter(Boolean).join(" · ") : place}
-            <RosterRestChip cue={cues.get(item.id)} />
+            {/* Only a crossed team rule earns a chip here; plain rest figures live in Hours & rest. */}
+            <RosterRestChip cue={cues.get(item.id)?.warning ? cues.get(item.id) : undefined} />
           </>
         );
         const name = `${formatPerthDay(row.date)}: ${SHIFT_KIND_LABEL[kind]}, ${leave ? "all day" : title}${place ? `, ${place}` : ""}`;
@@ -277,7 +279,8 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   const view = viewOf(useSearchParams()?.get("view") ?? null);
   const now = useRosterNow(pinnedNow);
   const today = perthDateOf(now);
-  const [monday, setMonday] = useState(() => mondayOf(today));
+  // On a Sunday the week that matters is the one starting tomorrow.
+  const [monday, setMonday] = useState(() => mondayOf(addDaysToDate(perthDateOf(now), 1)));
   const [month, setMonth] = useState(() => monthKeyOf(today));
   const monthRange = monthGridRange(month);
   const shownRange =
@@ -310,7 +313,10 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   const [removing, setRemoving] = useState(false);
 
   const payAnchor = teamOverview.status === "ready" ? (teamOverview.data?.settings?.payFortnightAnchor ?? null) : null;
-  const fortnight = fortnightFor(today, payAnchor);
+  // Without a team pay date the fortnight is last week and this one, and on a
+  // Sunday it moves on with the week list, which then opens on tomorrow's week.
+  const weekStart = mondayOf(addDaysToDate(today, 1));
+  const fortnight = fortnightFor(payAnchor || weekStart <= today ? today : weekStart, payAnchor);
   const extra = useRosterExtraTime(shifts.shifts, now, fortnight);
   const summary = useMemo(
     () =>
@@ -349,7 +355,12 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   const rows = weekRows(overview, monday);
   // The shifts API returns only the last LOADED_PAST_DAYS; a week wholly before that would falsely read as empty.
   const previousWeekLoaded = addDaysToDate(monday, -1) >= addDaysToDate(today, -LOADED_PAST_DAYS);
-  const isThisWeek = monday === mondayOf(today);
+  const weekLabel =
+    monday === mondayOf(today)
+      ? "This week"
+      : monday === addDaysToDate(mondayOf(today), 7)
+        ? "Next week"
+        : `Week of ${formatPerthDay(monday)}`;
   const datesHref = `/roster/requests?start=dates${oneTeamId ? `&team=${encodeURIComponent(oneTeamId)}` : ""}`;
   const teamParam = oneTeamId ? `&team=${encodeURIComponent(oneTeamId)}` : "";
 
@@ -598,11 +609,9 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                   <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
                 </button>
                 <h2 id="roster-week-heading" className="grid flex-1 text-center">
-                  <span className="text-lg-minus font-semibold text-[color:var(--text-heading)]">
-                    {isThisWeek ? "This week" : `Week of ${formatPerthDay(monday)}`}
-                  </span>
+                  <span className="text-lg-minus font-semibold text-[color:var(--text-heading)]">{weekLabel}</span>
                   <span className="nums text-xs text-[color:var(--text-muted)]">
-                    {formatDateSpan(monday, addDaysToDate(monday, 6))} · {weekCountWords(rows)}
+                    {formatSpanWords(monday, addDaysToDate(monday, 6))} · {weekCountWords(rows)}
                   </span>
                 </h2>
                 <button

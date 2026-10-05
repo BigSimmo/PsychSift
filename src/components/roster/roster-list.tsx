@@ -228,7 +228,13 @@ export function RosterRow({
     "relative before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden";
 
   if (target.href || target.onClick) {
-    const controlClass = cn(rowClass, modePressable, focusRing, "flex-1 text-left no-underline", Boolean(action) && "pr-1");
+    const controlClass = cn(
+      rowClass,
+      modePressable,
+      focusRing,
+      "flex-1 text-left no-underline",
+      Boolean(action) && "pr-1",
+    );
     return (
       <li className={cn(hairline, "flex min-w-0 items-center")} data-testid={testId}>
         {target.href ? (
@@ -311,5 +317,5 @@ export const rosterFilledButton = cn(
 export const rosterOutlineButton = cn(
   focusRing,
   modePressable,
-  "inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-4 text-center text-base-minus font-semibold text-[color:var(--text-heading)] no-underline disabled:text-[color:var(--disabled)]",
+  "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-2.5 text-center text-base-minus font-semibold text-[color:var(--text-heading)] no-underline disabled:text-[color:var(--disabled)]",
 );

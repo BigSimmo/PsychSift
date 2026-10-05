@@ -10,7 +10,9 @@ import type { HoursSummary } from "@/lib/roster/hours";
 import { WEEKDAYS, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 
-import { formatDateSpan, formatHours } from "./roster-format";
+import { formatSpanWords } from "@/lib/roster/shifts-overview";
+
+import { formatHours } from "./roster-format";
 import {
   RosterDateLead,
   RosterIconLead,
@@ -146,12 +148,12 @@ export function RosterHoursPanel({
               title="This pay fortnight"
               right={
                 <span className="nums text-sm text-[color:var(--text-muted)]">
-                  {formatDateSpan(summary.start, summary.end)}
+                  {formatSpanWords(summary.start, summary.end)}
                 </span>
               }
             />
             <p className={cn(modeModuleSurface, "flex flex-wrap items-baseline gap-x-2 p-4 shadow-none")}>
-              <span className="nums text-xl font-semibold text-[color:var(--text-heading)]">
+              <span className="nums text-lg font-semibold text-[color:var(--text-heading)]">
                 {formatHours(summary.totalHours)}
               </span>
               <span className="text-sm text-[color:var(--text-muted)]">rostered</span>

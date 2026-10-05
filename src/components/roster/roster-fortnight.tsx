@@ -7,7 +7,9 @@ import { cn } from "@/components/ui-primitives";
 import type { HoursSummary } from "@/lib/roster/hours";
 import { WEEKDAYS } from "@/lib/roster/shifts/perth-time";
 
-import { formatDateSpan, formatHours } from "./roster-format";
+import { formatSpanWords } from "@/lib/roster/shifts-overview";
+
+import { formatHours } from "./roster-format";
 import { RosterSectionHead } from "./roster-list";
 
 /**
@@ -60,13 +62,13 @@ export function RosterFortnight({
         title="This pay fortnight"
         right={
           <span className="nums text-sm text-[color:var(--text-muted)]">
-            {formatDateSpan(summary.start, summary.end)}
+            {formatSpanWords(summary.start, summary.end)}
           </span>
         }
       />
       <div data-mode-identity="roster" className={cn(modeModuleSurface, "grid gap-3 p-4 shadow-none")}>
         <p className="flex flex-wrap items-baseline gap-x-2">
-          <span className="nums text-xl font-semibold text-[color:var(--text-heading)]">
+          <span className="nums text-lg font-semibold text-[color:var(--text-heading)]">
             {atLeast}
             {formatHours(summary.totalHours)}
           </span>
@@ -77,7 +79,7 @@ export function RosterFortnight({
         </p>
         <div
           role="img"
-          aria-label={`Rostered hours each day, ${formatDateSpan(summary.start, summary.end)}. Most in one day ${formatHours(most)}.${hasLeave ? " L marks a leave day." : ""}`}
+          aria-label={`Rostered hours each day, ${formatSpanWords(summary.start, summary.end)}. Most in one day ${formatHours(most)}.${hasLeave ? " L marks a leave day." : ""}`}
           className="grid h-20 grid-cols-14 items-end gap-1"
         >
           <svg aria-hidden="true" className="absolute size-0">

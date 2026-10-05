@@ -1,5 +1,5 @@
 import { isWorkedKind, SHIFT_KIND_LABEL, type ShiftKind } from "@/lib/roster/shift-kind";
-import { WEEKDAYS, addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { MONTHS, WEEKDAYS, addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 /**
  * The words on Roster Shifts, worked out once from the doctor's own shifts so
@@ -130,4 +130,15 @@ export function hoursUntilNextDuty(
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
   if (!next) return null;
   return { hours: Math.round(((Date.parse(next.startsAt) - end) / HOUR_MS) * 10) / 10, next };
+}
+
+/** "5 to 11 Oct", "28 Sep to 4 Oct": a date span in words, as the Roster screens write it. */
+export function formatSpanWords(start: string, end: string): string {
+  const month = (date: string) => MONTHS[Number(date.slice(5, 7)) - 1]!;
+  const first = Number(start.slice(8, 10));
+  const last = Number(end.slice(8, 10));
+  if (start === end) return `${first} ${month(start)}`;
+  return month(start) === month(end)
+    ? `${first} to ${last} ${month(end)}`
+    : `${first} ${month(start)} to ${last} ${month(end)}`;
 }

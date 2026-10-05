@@ -101,7 +101,7 @@ export function RosterNextShift({
     >
       <h2 className="text-2xs font-semibold uppercase tracking-label text-[color:var(--text-muted)]">{eyebrow}</h2>
       <div className="-mt-2 grid gap-0.5">
-        <p className="nums text-xl font-semibold leading-tight text-[color:var(--text-heading)]">{big}</p>
+        <p className="nums text-lg font-semibold leading-tight text-[color:var(--text-heading)]">{big}</p>
         <p className="text-sm text-[color:var(--text-muted)]">{sub.filter(Boolean).join(" · ")}</p>
       </div>
       <DayStrip shift={shift} />
