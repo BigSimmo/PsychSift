@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-04"
+    "committed_at": "2026-10-05"
   },
   "routes": {
     "modes": [
@@ -586,6 +586,11 @@
         "path": "/mockups/care-plan/team",
         "file": "src/app/mockups/care-plan/team/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/sources/currency",
+        "file": "src/app/(search-app)/sources/currency/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/document-navigation-contract",
