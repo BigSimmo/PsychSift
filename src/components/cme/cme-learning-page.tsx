@@ -245,7 +245,7 @@ export function CmeLearningPage({
 
   return (
     <main data-testid="cme-learning" data-mode-identity="cme" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>
-      <h1 className={cmePageTitle}>Learning</h1>
+      <h1 className={cmePageTitle}>Courses</h1>
       <div className="mt-3 grid gap-6">
         <CmeSegmentedTabs
           label="Courses pages"
