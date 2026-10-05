@@ -1,8 +1,11 @@
 import { Diamond, Triangle } from "lucide-react";
 
+import { AdminStatusWord } from "@/components/admin/admin-status-word";
 import { requirementDateLine, requirementRowUrgency } from "@/components/admin/renewals/urgency";
+import { focusRing } from "@/components/card-recipes";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
+import type { ComplianceBucket } from "@/lib/admin/compliance-overview";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import type { RequirementChecklistRow } from "@/lib/admin/requirements";
 
@@ -160,6 +163,77 @@ export function ChecklistSummary({
         </p>
         <p className={cn(textMuted, "text-xs")}>Dates you entered, not a check</p>
       </div>
+      <ChecklistTimeline rows={soonest} now={now} testId={testId ? `${testId}-timeline` : undefined} />
+    </div>
+  );
+}
+
+/** The at-a-glance rows, most urgent first, as the mock-up orders them. */
+const GLANCE_ORDER: readonly ComplianceBucket[] = ["date-passed", "start-renewing", "not-recorded", "recorded"];
+
+/**
+ * The count module at the top of the Checklist tab (5 Oct mock-up v2, screen
+ * 1): "At a glance · N items", four count rows with a shape and a word that
+ * filter the list below, then the twelve-month timeline. Counts in words,
+ * never a percentage or a verdict (spec rule 10), from the same buckets
+ * Compliance counts with, so the two pages cannot disagree.
+ */
+export function ChecklistAtAGlance({
+  rows,
+  counts,
+  total,
+  notForThisJob,
+  now,
+  active,
+  onFilter,
+  testId,
+}: {
+  readonly rows: readonly RequirementChecklistRow[];
+  readonly counts: Readonly<Record<ComplianceBucket, number>>;
+  readonly total: number;
+  readonly notForThisJob: number;
+  readonly now: Date;
+  readonly active: ComplianceBucket | null;
+  readonly onFilter: (bucket: ComplianceBucket | null) => void;
+  readonly testId?: string;
+}) {
+  const soonest = rows.filter((row) => row.state === "needs-action");
+  return (
+    <div className={cn(modeModuleSurface, "grid min-w-0 gap-3 p-3")} data-testid={testId}>
+      <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <h2 className={eyebrowText}>{`At a glance · ${total} items`}</h2>
+        {notForThisJob > 0 ? (
+          <span className={cn(textMuted, "text-xs")}>{`${notForThisJob} not for this job`}</span>
+        ) : null}
+      </div>
+      <ul role="list" className="grid min-w-0 gap-0.5" aria-label="Filter the list">
+        {GLANCE_ORDER.map((bucket) => {
+          const count = counts[bucket];
+          const on = active === bucket;
+          return (
+            <li key={bucket}>
+              <button
+                type="button"
+                aria-pressed={on}
+                disabled={count === 0 && !on}
+                onClick={() => onFilter(on ? null : bucket)}
+                data-testid={testId ? `${testId}-count-${bucket}` : undefined}
+                className={cn(
+                  focusRing,
+                  "flex min-h-12 w-full min-w-0 items-center gap-3 rounded-lg px-2 text-left disabled:cursor-default",
+                  on ? "bg-[color:var(--surface-wash)]" : "enabled:hover:bg-[color:var(--surface-subtle)]",
+                )}
+              >
+                <span className="w-8 shrink-0 text-right text-lg font-semibold tabular-nums text-[color:var(--text-heading)]">
+                  {count}
+                </span>
+                <AdminStatusWord bucket={bucket} className="font-normal" />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className={cn(textMuted, "px-2 text-xs")}>Dates you entered, not a check</p>
       <ChecklistTimeline rows={soonest} now={now} testId={testId ? `${testId}-timeline` : undefined} />
     </div>
   );

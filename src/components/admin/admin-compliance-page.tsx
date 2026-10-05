@@ -118,7 +118,7 @@ function Actions() {
   return (
     <div className="grid min-w-0 gap-3">
       <Link
-        href={ADMIN_PAGE_HREFS.renewals}
+        href={`${ADMIN_PAGE_HREFS.renewals}?record=missing`}
         data-testid="admin-compliance-record-dates"
         className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
       >
@@ -293,7 +293,7 @@ function FirstUse({ overview }: { readonly overview: ComplianceOverview }) {
         </p>
       </div>
       <Link
-        href={ADMIN_PAGE_HREFS.renewals}
+        href={`${ADMIN_PAGE_HREFS.renewals}?record=missing`}
         data-testid="admin-compliance-record-dates"
         className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
       >
