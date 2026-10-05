@@ -7,13 +7,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { postRosterAction } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
-import {
-  endsNextDay,
-  formatHours,
-  gradeLabel,
-  hoursBetween,
-  type OpenShiftListing,
-} from "@/lib/open-shifts/model";
+import { endsNextDay, formatHours, gradeLabel, hoursBetween, type OpenShiftListing } from "@/lib/open-shifts/model";
 import { rosterCheck, type RosterCheck } from "@/lib/open-shifts/roster-check";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -81,7 +75,9 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
   if (check.state === "ok") {
     const breaks = breakWords(check);
     if (breaks) items.push(breaks);
-    items.push(`Busiest 14 days with this shift: at least ${formatHours(check.busiest14d).replace(" h", "")} of ${check.limit14d} h.`);
+    items.push(
+      `Busiest 14 days with this shift: at least ${formatHours(check.busiest14d).replace(" h", "")} of ${check.limit14d} h.`,
+    );
     if (!check.nightsBefore) items.push("No nights in the week before.");
   } else if (check.state === "flag") {
     for (const warning of check.warnings) items.push(warning.words);
@@ -93,12 +89,17 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
     items.push("An overlap is the only thing that stops a request. If your roster changes, this updates.");
   } else if (check.state === "clash-only") {
     items.push("Doesn't overlap anything on your PsychSift roster.");
-    items.push(`Breaks, 14-day hours and night limits aren't checked yet: the fatigue rules are switched off until they're signed. Check them yourself against ${AGREEMENT}.`);
+    items.push(
+      `Breaks, 14-day hours and night limits aren't checked yet: the fatigue rules are switched off until they're signed. Check them yourself against ${AGREEMENT}.`,
+    );
   } else {
     items.push("There's no PsychSift roster to compare this shift with.");
   }
   return (
-    <section aria-label="Roster check" className={`mx-3 rounded-lg border ${border} bg-[color:var(--surface-raised)] px-4 py-3.5`}>
+    <section
+      aria-label="Roster check"
+      className={`mx-3 rounded-lg border ${border} bg-[color:var(--surface-raised)] px-4 py-3.5`}
+    >
       <h2 className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-heading)]">
         <ToneIcon tone={tone} />
         {check.state === "flag" ? "Roster flag" : text}
@@ -114,7 +115,10 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
         ))}
       </ul>
       {check.state === "none" ? (
-        <Link href="/roster/shifts" className="mt-2 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)]">
+        <Link
+          href="/roster/shifts"
+          className="mt-2 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)]"
+        >
           Add your roster
         </Link>
       ) : check.state !== "overlap" ? (
@@ -143,7 +147,10 @@ export function RequestSheet({
   async function send() {
     setBusy(true);
     setError(null);
-    const result = await postRosterAction(listing.serviceId, { action: "open.claim", openShiftId: listing.id } as RosterAction);
+    const result = await postRosterAction(listing.serviceId, {
+      action: "open.claim",
+      openShiftId: listing.id,
+    } as RosterAction);
     setBusy(false);
     if (!result.ok) {
       setError(
@@ -181,20 +188,23 @@ export function RequestSheet({
         <p className="text-sm text-[color:var(--text-muted)]">
           {`Your roster manager in ${listing.teamName} decides. Until then it shows in My shifts as "Requested". They see your name and level, as for any Roster request; nothing else is shared.`}
         </p>
-        <label className="flex min-h-12 cursor-pointer items-start gap-3 border-t border-[color:var(--border)] pt-3">
+        <div className="flex min-h-12 items-start gap-3 border-t border-[color:var(--border)] pt-3">
           <input
+            id="os-fit"
             type="checkbox"
             checked={fit}
             onChange={(event) => setFit(event.target.checked)}
             className="mt-0.5 size-5 shrink-0 accent-[color:var(--command)]"
           />
-          <span className="flex flex-col">
+          <label htmlFor="os-fit" className="flex cursor-pointer flex-col">
             <span className="text-base-minus font-medium text-[color:var(--text-heading)]">
               I&apos;m fit to work this shift, and it keeps me within the agreement&apos;s hours limits (clause 15)
             </span>
-            <span className="text-xs text-[color:var(--text-muted)]">Including work that isn&apos;t on my PsychSift roster</span>
-          </span>
-        </label>
+            <span className="text-xs text-[color:var(--text-muted)]">
+              Including work that isn&apos;t on my PsychSift roster
+            </span>
+          </label>
+        </div>
         {error ? (
           <p role="alert" className="text-sm font-medium text-[color:var(--danger-text)]">
             {error}
@@ -233,7 +243,10 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
               ? "Nothing was sent. Try again when you're back online."
               : "It may have been filled, cancelled, or started. Nothing was sent for you."}
           </p>
-          <Link href={OPEN_SHIFTS_HREF} className="mt-3 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)]">
+          <Link
+            href={OPEN_SHIFTS_HREF}
+            className="mt-3 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)]"
+          >
             Back to Browse
           </Link>
         </div>
@@ -262,7 +275,12 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
       <SubHeader backHref={OPEN_SHIFTS_HREF} backLabel="Browse" title="Shift advert" />
       <div className="px-3 pt-2 pb-4">
         <p className="text-xs text-[color:var(--text-muted)]">
-          {[listing.kind === "night" ? "Night" : null, startsIn(listing.startsAt, now), `${gradeLabel(listing.minGrade)} level`, listing.urgent ? "Urgent" : null]
+          {[
+            listing.kind === "night" ? "Night" : null,
+            startsIn(listing.startsAt, now),
+            `${gradeLabel(listing.minGrade)} level`,
+            listing.urgent ? "Urgent" : null,
+          ]
             .filter(Boolean)
             .join(" · ")}
         </p>
@@ -281,21 +299,40 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
       <div className="mt-4">{sample ? null : <RosterCheckPanel check={check} />}</div>
 
       <ul className="mt-4">
-        <InfoRow icon={<Building2 aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />} title={listing.siteName ?? "Site not named"}>
+        <InfoRow
+          icon={<Building2 aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />}
+          title={listing.siteName ?? "Site not named"}
+        >
           {listing.teamName}
         </InfoRow>
-        <InfoRow icon={<ShieldCheck aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />} title={`${gradeLabel(listing.minGrade)} level or above`}>
-          {listing.myGrade ? `Your level in this team: ${gradeLabel(listing.myGrade)}` : "Your level in this team isn't set, so the roster manager checks it."}
+        <InfoRow
+          icon={<ShieldCheck aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />}
+          title={`${gradeLabel(listing.minGrade)} level or above`}
+        >
+          {listing.myGrade
+            ? `Your level in this team: ${gradeLabel(listing.myGrade)}`
+            : "Your level in this team isn't set, so the roster manager checks it."}
         </InfoRow>
-        <InfoRow icon={<Users aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />} title="Approved by your roster manager">
+        <InfoRow
+          icon={<Users aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />}
+          title="Approved by your roster manager"
+        >
           {`A roster manager in ${listing.teamName} approves or declines each request.`}
         </InfoRow>
-        <InfoRow icon={<Scale aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />} title="Your entitlements">
-          Paid breaks, penalties and extended shift rates are set by the agreement and your health service. Check your payslip.
+        <InfoRow
+          icon={<Scale aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />}
+          title="Your entitlements"
+        >
+          Paid breaks, penalties and extended shift rates are set by the agreement and your health service. Check your
+          payslip.
         </InfoRow>
       </ul>
       <div className="mx-3 mt-4 flex items-start gap-3 rounded-lg border border-dashed border-[color:var(--border-strong)] px-4 py-3">
-        <Lock aria-hidden="true" strokeWidth={1.6} className="mt-0.5 size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+        <Lock
+          aria-hidden="true"
+          strokeWidth={1.6}
+          className="mt-0.5 size-icon-md shrink-0 text-[color:var(--text-muted)]"
+        />
         <p className="text-sm text-[color:var(--text-muted)]">
           <b className="block font-semibold text-[color:var(--text-heading)]">Reporting details</b>
           Who to report to and where come from your team, as for any rostered shift.
@@ -312,16 +349,28 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
         </FootAction>
       ) : alreadyMine ? (
         <FootAction>
-          <div role="status" className="flex items-start gap-3 rounded-lg border border-[color:var(--border)] px-4 py-3">
+          <div
+            role="status"
+            className="flex items-start gap-3 rounded-lg border border-[color:var(--border)] px-4 py-3"
+          >
             {sent === "approved" || listing.status === "approved" ? (
-              <CircleCheck aria-hidden="true" strokeWidth={1.6} className="mt-0.5 size-icon-md shrink-0 text-[color:var(--success-text)]" />
+              <CircleCheck
+                aria-hidden="true"
+                strokeWidth={1.6}
+                className="mt-0.5 size-icon-md shrink-0 text-[color:var(--success-text)]"
+              />
             ) : (
-              <Clock aria-hidden="true" strokeWidth={1.6} className="mt-0.5 size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+              <Clock
+                aria-hidden="true"
+                strokeWidth={1.6}
+                className="mt-0.5 size-icon-md shrink-0 text-[color:var(--text-muted)]"
+              />
             )}
             <p className="text-sm text-[color:var(--text)]">
               {sent === "approved" || listing.status === "approved" ? (
                 <>
-                  <b className="block font-semibold text-[color:var(--text-heading)]">Approved</b>It&apos;s on your roster now.
+                  <b className="block font-semibold text-[color:var(--text-heading)]">Approved</b>It&apos;s on your
+                  roster now.
                 </>
               ) : (
                 <>
@@ -331,7 +380,10 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
               )}
             </p>
           </div>
-          <Link href={`${OPEN_SHIFTS_HREF}/mine`} className="inline-flex min-h-12 items-center justify-center text-sm font-medium text-[color:var(--mode-identity)]">
+          <Link
+            href={`${OPEN_SHIFTS_HREF}/mine`}
+            className="inline-flex min-h-12 items-center justify-center text-sm font-medium text-[color:var(--mode-identity)]"
+          >
             Go to My shifts
           </Link>
         </FootAction>

@@ -1,6 +1,6 @@
 import type { RosterGrade, RosterOpenShift } from "@/lib/roster/team/model";
 import { gradeRank } from "@/lib/roster/team/eligibility";
-import { addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, perthDateOf, perthTimeOf, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 
 /**
  * Open shifts, version 1: the open shifts a doctor's Roster teams already
@@ -52,10 +52,7 @@ export function inWindow(listing: Pick<OpenShiftListing, "startsAt">, today: str
 /** Shifts a doctor could ask for: open, not their own post, not already theirs, not started. */
 export function isBrowsable(listing: OpenShiftListing, now: Date): boolean {
   return (
-    listing.status === "open" &&
-    !listing.mine &&
-    !listing.claimedByMe &&
-    Date.parse(listing.startsAt) > now.getTime()
+    listing.status === "open" && !listing.mine && !listing.claimedByMe && Date.parse(listing.startsAt) > now.getTime()
   );
 }
 
@@ -104,4 +101,11 @@ const KIND_LABEL: Readonly<Record<RosterOpenShift["kind"], string>> = {
 
 export function kindLabel(kind: RosterOpenShift["kind"]): string {
   return KIND_LABEL[kind];
+}
+
+/** A Perth start and end from a date and two wall times; an end at or before the start is the next day. */
+export function gapTimes(date: string, start: string, end: string): { startsAt: string; endsAt: string } | null {
+  const startsAt = perthWallToIso(date, start);
+  const endsAt = perthWallToIso(end > start ? date : addDaysToDate(date, 1), end);
+  return startsAt && endsAt ? { startsAt, endsAt } : null;
 }

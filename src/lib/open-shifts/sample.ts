@@ -24,12 +24,29 @@ type SampleRow = {
   readonly site: "northgate" | "riverside" | "lakeside";
   readonly urgent?: boolean;
   readonly minGrade?: OpenShiftListing["minGrade"];
+  /** The example doctor has asked for it ("claimed") or been given it ("approved"). */
+  readonly claim?: "claimed" | "approved";
 };
 
 const SITES = {
-  northgate: { siteId: SITE_NORTHGATE, siteName: "Northgate Hospital · Ward 4B", serviceId: TEAM_NORTH, teamName: "Northgate Psychiatry" },
-  riverside: { siteId: SITE_RIVERSIDE, siteName: "Riverside Hospital · ED liaison", serviceId: TEAM_RIVER, teamName: "Riverside Mental Health" },
-  lakeside: { siteId: SITE_LAKESIDE, siteName: "Lakeside Hospital · Older adult", serviceId: TEAM_NORTH, teamName: "Northgate Psychiatry" },
+  northgate: {
+    siteId: SITE_NORTHGATE,
+    siteName: "Northgate Hospital · Ward 4B",
+    serviceId: TEAM_NORTH,
+    teamName: "Northgate Psychiatry",
+  },
+  riverside: {
+    siteId: SITE_RIVERSIDE,
+    siteName: "Riverside Hospital · ED liaison",
+    serviceId: TEAM_RIVER,
+    teamName: "Riverside Mental Health",
+  },
+  lakeside: {
+    siteId: SITE_LAKESIDE,
+    siteName: "Lakeside Hospital · Older adult",
+    serviceId: TEAM_NORTH,
+    teamName: "Northgate Psychiatry",
+  },
 } as const;
 
 const ROWS: readonly SampleRow[] = [
@@ -49,6 +66,8 @@ const ROWS: readonly SampleRow[] = [
   { day: 10, start: "08:00", end: "16:30", kind: "day", code: "D", site: "northgate" },
   { day: 11, start: "21:30", end: "08:00", kind: "night", code: "N", site: "riverside" },
   { day: 12, start: "08:00", end: "18:00", kind: "day", code: "L", site: "northgate" },
+  { day: 5, start: "17:00", end: "23:00", kind: "evening", code: "E", site: "riverside", claim: "claimed" },
+  { day: 9, start: "08:00", end: "16:30", kind: "day", code: "D", site: "northgate", claim: "approved" },
 ];
 
 function instant(date: string, time: string): string {
@@ -67,7 +86,7 @@ export function sampleListings(now: Date): OpenShiftListing[] {
     const site = SITES[row.site];
     return {
       id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
-      status: "open",
+      status: row.claim ?? "open",
       urgent: row.urgent ?? false,
       ...span(today, row.day, row.start, row.end),
       shiftCode: row.code,
@@ -78,7 +97,7 @@ export function sampleListings(now: Date): OpenShiftListing[] {
       serviceId: site.serviceId,
       teamName: site.teamName,
       mine: false,
-      claimedByMe: false,
+      claimedByMe: row.claim !== undefined,
       myGrade: "registrar",
     };
   });

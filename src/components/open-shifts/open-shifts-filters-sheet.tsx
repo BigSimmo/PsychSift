@@ -43,7 +43,9 @@ export function OpenShiftsFiltersSheet({
   const toggleStart = (band: TimeOfDay) =>
     onChange({
       ...filters,
-      starts: filters.starts.includes(band) ? filters.starts.filter((value) => value !== band) : [...filters.starts, band],
+      starts: filters.starts.includes(band)
+        ? filters.starts.filter((value) => value !== band)
+        : [...filters.starts, band],
     });
 
   return (
@@ -85,7 +87,9 @@ export function OpenShiftsFiltersSheet({
             <legend className="flex w-full items-baseline justify-between pt-3 text-sm font-semibold text-[color:var(--text-heading)]">
               <span>Sites</span>
               <span className="text-xs font-normal text-[color:var(--text-muted)]">
-                {filters.siteIds.length === 0 ? "All sites" : `${filters.siteIds.length} of ${summary.sites.length} chosen`}
+                {filters.siteIds.length === 0
+                  ? "All sites"
+                  : `${filters.siteIds.length} of ${summary.sites.length} chosen`}
               </span>
             </legend>
             <ul className="mt-1 flex flex-col">
@@ -93,7 +97,10 @@ export function OpenShiftsFiltersSheet({
                 const checked = filters.siteIds.includes(site.id);
                 const id = `os-site-${site.id}`;
                 return (
-                  <li key={site.id} className="flex min-h-12 items-center gap-3 border-t border-[color:var(--border)] first:border-t-0">
+                  <li
+                    key={site.id}
+                    className="flex min-h-12 items-center gap-3 border-t border-[color:var(--border)] first:border-t-0"
+                  >
                     <input
                       id={id}
                       type="checkbox"
@@ -101,7 +108,10 @@ export function OpenShiftsFiltersSheet({
                       onChange={() => toggleSite(site.id)}
                       className="size-5 shrink-0 accent-[color:var(--command)]"
                     />
-                    <label htmlFor={id} className="flex min-h-12 min-w-0 flex-1 cursor-pointer flex-col justify-center py-2">
+                    <label
+                      htmlFor={id}
+                      className="flex min-h-12 min-w-0 flex-1 cursor-pointer flex-col justify-center py-2"
+                    >
                       <span className="text-base-minus font-medium text-[color:var(--text-heading)]">{site.name}</span>
                       <span className="text-xs text-[color:var(--text-muted)]">{site.teamName}</span>
                     </label>
@@ -123,7 +133,11 @@ export function OpenShiftsFiltersSheet({
             <span>Level</span>
             <span className="text-xs font-normal text-[color:var(--text-muted)]">{`Yours: ${gradeLabel(myGrade)}`}</span>
           </legend>
-          <div role="radiogroup" aria-label="Level" className="mt-2 grid grid-cols-2 rounded-md bg-[color:var(--surface-subtle)] p-0.5">
+          <div
+            role="radiogroup"
+            aria-label="Level"
+            className="mt-2 grid grid-cols-2 rounded-md bg-[color:var(--surface-subtle)] p-0.5"
+          >
             {[
               { value: false, label: `${gradeLabel(myGrade)} only`, sub: null },
               { value: true, label: "Also lower levels", sub: `+${summary.lowerLevelCount}` },

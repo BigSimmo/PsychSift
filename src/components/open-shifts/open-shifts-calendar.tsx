@@ -113,7 +113,12 @@ export function OpenShiftsCalendar({
               const isSelected = date === selected;
               const isToday = date === today;
               const label = [
-                new Date(`${date}T12:00:00Z`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }),
+                new Date(`${date}T12:00:00Z`).toLocaleDateString("en-AU", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  timeZone: "UTC",
+                }),
                 count ? `${count} ${count === 1 ? "shift matches" : "shifts match"}` : null,
                 urgent ? "includes an urgent shift" : null,
                 rostered ? "you're rostered" : null,
@@ -140,7 +145,11 @@ export function OpenShiftsCalendar({
                     <span>{Number(date.slice(8))}</span>
                     <span className="flex h-3.5 items-center gap-0.5 text-3xs font-medium text-[color:var(--text-muted)]">
                       {urgent ? (
-                        <TriangleAlert aria-hidden="true" strokeWidth={1.6} className="size-2.5 text-[color:var(--danger-text)]" />
+                        <TriangleAlert
+                          aria-hidden="true"
+                          strokeWidth={1.6}
+                          className="size-2.5 text-[color:var(--danger-text)]"
+                        />
                       ) : null}
                       {count ? count : null}
                     </span>

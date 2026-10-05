@@ -39,7 +39,12 @@ export const DEFAULT_FILTERS: BrowseFilters = {
 
 export type BrowseRow = { readonly listing: OpenShiftListing; readonly check: RosterCheck };
 
-export type SiteChoice = { readonly id: string; readonly name: string; readonly teamName: string; readonly count: number };
+export type SiteChoice = {
+  readonly id: string;
+  readonly name: string;
+  readonly teamName: string;
+  readonly count: number;
+};
 
 export type BrowseSummary = {
   /** Open in the window, before any filter. */
@@ -118,7 +123,12 @@ export function summariseBrowse(
   for (const row of all) {
     const key = siteKey(row.listing);
     if (key !== null && !siteMap.has(key)) {
-      siteMap.set(key, { id: key, name: row.listing.siteName ?? "Site not named", teamName: row.listing.teamName, count: 0 });
+      siteMap.set(key, {
+        id: key,
+        name: row.listing.siteName ?? "Site not named",
+        teamName: row.listing.teamName,
+        count: 0,
+      });
     }
   }
 

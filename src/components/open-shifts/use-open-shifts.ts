@@ -85,12 +85,12 @@ export function useOpenShifts(): OpenShiftsState {
     setGeneration((value) => value + 1);
   }, [teams, shifts]);
 
-  const enabled = useMemo(
-    () => (teams.data?.teams ?? []).filter((team) => team.enabled),
-    [teams.data],
-  );
+  const enabled = useMemo(() => (teams.data?.teams ?? []).filter((team) => team.enabled), [teams.data]);
   const releaseHeld = teams.data?.sample === true;
-  const key = enabled.map((team) => team.serviceId).sort().join(",");
+  const key = enabled
+    .map((team) => team.serviceId)
+    .sort()
+    .join(",");
 
   useEffect(() => {
     setOpenShiftsIsPoster(!releaseHeld && enabled.some((team) => team.role === "manager"));
@@ -205,7 +205,7 @@ export function useOpenShifts(): OpenShiftsState {
     };
   }
 
-  if (teams.status === "error" || failed) {
+  if (teams.status === "error" || teams.status === "unavailable" || teams.status === "not-confirmed" || failed) {
     return {
       ...base,
       status: "error",

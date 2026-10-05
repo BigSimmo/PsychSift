@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { ModeBandStatus, PageTitleUnderBand, type ModeBandStatusValue } from "@/components/mode-band/mode-band";
+import { ModeBandStatus, PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import {
   DEFAULT_FILTERS,
   activeFilterCount,
@@ -21,24 +21,14 @@ import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { OpenShiftsCalendar } from "./open-shifts-calendar";
 import { SignInAction } from "./open-shifts-sign-in";
 import { FlatList, ListSkeleton, Note, ShiftRow, advertHref, formatDayLong, formatDayShort } from "./open-shifts-ui";
-import { useOpenShifts, type OpenShiftsState } from "./use-open-shifts";
+import { LoadFailed, NoTeam, openShiftsStatus } from "./open-shifts-states";
+import { useOpenShifts } from "./use-open-shifts";
 
 // The sheet loads only when someone opens it.
 const OpenShiftsFiltersSheet = dynamic(
   () => import("./open-shifts-filters-sheet").then((module) => module.OpenShiftsFiltersSheet),
   { ssr: false },
 );
-
-function statusFor(state: OpenShiftsState): ModeBandStatusValue | null {
-  if (state.sample === "signed-out") return { kind: "sample" };
-  if (state.sample === "release-held") return { kind: "text", text: "Made-up example records · team rosters aren't open to real staff yet", info: true };
-  if (state.offline) return { kind: "offline" };
-  if (state.status === "loading") return { kind: "loading" };
-  if (state.status === "error") return { kind: "failed", text: "Open shifts couldn't be reached" };
-  if (state.failedTeams.length > 0) return { kind: "failed", text: `Couldn't read ${state.failedTeams.join(", ")}` };
-  if (state.readAt) return { kind: "text", text: `Shift list updated ${perthTimeOf(state.readAt)}` };
-  return null;
-}
 
 const chip =
   "inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-[color:var(--command)]";
@@ -82,33 +72,15 @@ export function OpenShiftsBrowsePage() {
 
   return (
     <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts">
-      <PageTitleUnderBand className="px-3 pt-4 text-xl font-semibold text-[color:var(--text-heading)]">Open shifts</PageTitleUnderBand>
-      <ModeBandStatus value={statusFor(state)} testId="open-shifts-status" />
+      <PageTitleUnderBand className="px-3 pt-4 text-xl font-semibold text-[color:var(--text-heading)]">
+        Open shifts
+      </PageTitleUnderBand>
+      <ModeBandStatus value={openShiftsStatus(state)} testId="open-shifts-status" />
 
       {state.status === "no-team" ? (
-        <div className="px-3 py-8">
-          <h2 className="text-base font-semibold text-[color:var(--text-heading)]">No teams yet</h2>
-          <p className="mt-1 text-sm text-[color:var(--text-muted)]">
-            Open shifts come from the Roster teams you belong to. When your team&apos;s roster manager posts a shift, it appears here.
-          </p>
-          <Link href="/roster/join" className="mt-3 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)]">
-            Join a Roster team
-          </Link>
-        </div>
+        <NoTeam />
       ) : state.status === "error" ? (
-        <div className="px-3 py-8">
-          <h2 className="text-base font-semibold text-[color:var(--text-heading)]">Open shifts couldn&apos;t be reached</h2>
-          <p className="mt-1 text-sm text-[color:var(--text-muted)]">
-            Nothing here means there are no shifts: the list didn&apos;t load. {state.message}
-          </p>
-          <button
-            type="button"
-            onClick={state.reload}
-            className="mt-3 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)]"
-          >
-            Try again
-          </button>
-        </div>
+        <LoadFailed message={state.message} onRetry={state.reload} />
       ) : state.status === "loading" ? (
         <ListSkeleton rows={4} />
       ) : (
@@ -135,17 +107,29 @@ export function OpenShiftsBrowsePage() {
                   No clashes
                 </button>
                 {summary.sites.length > 1 ? (
-                  <button type="button" className={filters.siteIds.length ? chipOn : chipOff} onClick={() => setSheetOpen(true)}>
+                  <button
+                    type="button"
+                    className={filters.siteIds.length ? chipOn : chipOff}
+                    onClick={() => setSheetOpen(true)}
+                  >
                     Sites
                     {filters.siteIds.length ? <span className="nums text-xs">{filters.siteIds.length}</span> : null}
                     <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
                   </button>
                 ) : null}
-                <button type="button" className={filters.includeLowerLevels ? chipOn : chipOff} onClick={() => setSheetOpen(true)}>
+                <button
+                  type="button"
+                  className={filters.includeLowerLevels ? chipOn : chipOff}
+                  onClick={() => setSheetOpen(true)}
+                >
                   {filters.includeLowerLevels ? "All levels" : gradeLabel(myGrade)}
                   <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
                 </button>
-                <button type="button" className={filters.starts.length ? chipOn : chipOff} onClick={() => setSheetOpen(true)}>
+                <button
+                  type="button"
+                  className={filters.starts.length ? chipOn : chipOff}
+                  onClick={() => setSheetOpen(true)}
+                >
                   {startsLabel}
                   <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
                 </button>
@@ -183,14 +167,23 @@ export function OpenShiftsBrowsePage() {
             rosteredDays={rosteredDays}
           />
           <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 pt-2 text-xs text-[color:var(--text-muted)]">
-            <span>{sample ? "Number under a date: open shifts" : "Number under a date: shifts that match your filters"}</span>
+            <span>
+              {sample ? "Number under a date: open shifts" : "Number under a date: shifts that match your filters"}
+            </span>
             <span className="inline-flex items-center gap-1">
-              <TriangleAlert aria-hidden="true" strokeWidth={1.6} className="size-icon-xs text-[color:var(--danger-text)]" />
+              <TriangleAlert
+                aria-hidden="true"
+                strokeWidth={1.6}
+                className="size-icon-xs text-[color:var(--danger-text)]"
+              />
               Includes an urgent shift
             </span>
             {state.roster && state.roster.length > 0 ? (
               <span className="inline-flex items-center gap-1">
-                <span aria-hidden="true" className="inline-block h-0.5 w-3 rounded-full bg-[color:var(--info,var(--command))]" />
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-0.5 w-3 rounded-full bg-[color:var(--info,var(--command))]"
+                />
                 You&apos;re rostered
               </span>
             ) : null}
@@ -198,8 +191,8 @@ export function OpenShiftsBrowsePage() {
 
           {state.rosterStatus === "ready" && (!state.roster || state.roster.length === 0) && !sample ? (
             <Note icon={<CircleHelp aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}>
-              <b className="font-semibold text-[color:var(--text-heading)]">No roster to check against.</b> Add your roster so each
-              shift shows whether it clashes.{" "}
+              <b className="font-semibold text-[color:var(--text-heading)]">No roster to check against.</b> Add your
+              roster so each shift shows whether it clashes.{" "}
               <Link href="/roster/shifts" className="font-medium text-[color:var(--mode-identity)]">
                 Add your roster
               </Link>
@@ -230,13 +223,24 @@ export function OpenShiftsBrowsePage() {
           {day.shown.length > 0 ? (
             <FlatList label={`Open shifts on ${formatDayLong(selected)}`}>
               {day.shown.map((row) => (
-                <ShiftRow key={row.listing.id} listing={row.listing} check={sample ? null : row.check} href={advertHref(row.listing)} />
+                <ShiftRow
+                  key={row.listing.id}
+                  listing={row.listing}
+                  check={sample ? null : row.check}
+                  href={advertHref(row.listing)}
+                />
               ))}
             </FlatList>
           ) : (
             <div className="flex flex-col items-center px-6 py-8 text-center">
-              <CalendarDays aria-hidden="true" strokeWidth={1.6} className="size-icon-lg text-[color:var(--text-muted)]" />
-              <h3 className="mt-3 text-base font-semibold text-[color:var(--text-heading)]">No shifts match on this day</h3>
+              <CalendarDays
+                aria-hidden="true"
+                strokeWidth={1.6}
+                className="size-icon-lg text-[color:var(--text-muted)]"
+              />
+              <h3 className="mt-3 text-base font-semibold text-[color:var(--text-heading)]">
+                No shifts match on this day
+              </h3>
               <p className="mt-1 text-sm text-[color:var(--text-muted)]">
                 {day.hidden.length === 0
                   ? `None are hidden by your filters either.${next ? ` The next day with a match is ${formatDayLong(next)}.` : ""}`
@@ -259,8 +263,12 @@ export function OpenShiftsBrowsePage() {
               <div className="mx-3 mt-2 flex min-h-12 items-center justify-between gap-3 border-t border-[color:var(--border)] text-sm text-[color:var(--text-muted)]">
                 <span>
                   {`${day.hidden.length} hidden: ${[
-                    day.hiddenClash ? `${day.hiddenClash} ${day.hiddenClash === 1 ? "overlaps" : "overlap"} your roster` : null,
-                    day.hiddenLevel ? `${day.hiddenLevel} ${day.hiddenLevel === 1 ? "is" : "are"} for a lower level` : null,
+                    day.hiddenClash
+                      ? `${day.hiddenClash} ${day.hiddenClash === 1 ? "overlaps" : "overlap"} your roster`
+                      : null,
+                    day.hiddenLevel
+                      ? `${day.hiddenLevel} ${day.hiddenLevel === 1 ? "is" : "are"} for a lower level`
+                      : null,
                     day.hidden.length - day.hiddenClash - day.hiddenLevel > 0
                       ? `${day.hidden.length - day.hiddenClash - day.hiddenLevel} outside your site or time choices`
                       : null,
@@ -280,7 +288,12 @@ export function OpenShiftsBrowsePage() {
               {showHidden ? (
                 <FlatList label="Hidden shifts">
                   {day.hidden.map((row) => (
-                    <ShiftRow key={row.listing.id} listing={row.listing} check={row.check} href={advertHref(row.listing)} />
+                    <ShiftRow
+                      key={row.listing.id}
+                      listing={row.listing}
+                      check={row.check}
+                      href={advertHref(row.listing)}
+                    />
                   ))}
                 </FlatList>
               ) : null}

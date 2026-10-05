@@ -95,7 +95,8 @@ export function checkSummary(check: RosterCheck): { tone: CheckTone; text: strin
     case "flag": {
       const shortest = [check.breakBefore, check.breakAfter].filter((hours): hours is number => hours !== null);
       const breakWarning = check.warnings.find((warning) => warning.rule === "minBreakHours");
-      if (breakWarning && shortest.length > 0) return { tone: "warn", text: `Roster flag: ${formatHours(Math.min(...shortest))} break` };
+      if (breakWarning && shortest.length > 0)
+        return { tone: "warn", text: `Roster flag: ${formatHours(Math.min(...shortest))} break` };
       return { tone: "warn", text: "Roster flag: check your hours" };
     }
     case "overlap":
@@ -155,7 +156,10 @@ export function ShiftRow({
   status?: ReactNode;
 }) {
   const hours = hoursBetween(listing.startsAt, listing.endsAt);
-  const meta = [endsNextDay(listing.startsAt, listing.endsAt) ? "Ends next day" : null, listing.urgent ? "Urgent" : null]
+  const meta = [
+    endsNextDay(listing.startsAt, listing.endsAt) ? "Ends next day" : null,
+    listing.urgent ? "Urgent" : null,
+  ]
     .filter(Boolean)
     .join(" · ");
   return (
@@ -175,7 +179,11 @@ export function ShiftRow({
           {meta ? <span className="text-sm text-[color:var(--text-muted)]">{meta}</span> : null}
           {status ?? (check ? <span className="mt-1">{<CheckLine check={check} />}</span> : null)}
         </span>
-        <ChevronRight aria-hidden="true" strokeWidth={1.6} className="mt-3 size-icon-md shrink-0 text-[color:var(--text-soft)]" />
+        <ChevronRight
+          aria-hidden="true"
+          strokeWidth={1.6}
+          className="mt-3 size-icon-md shrink-0 text-[color:var(--text-soft)]"
+        />
       </Link>
     </li>
   );
@@ -195,7 +203,15 @@ export function SectionHeading({ children, count, id }: { children: ReactNode; c
 }
 
 /** A grey note with an icon: never amber unless it really is a warning. */
-export function Note({ icon, children, tone = "muted" }: { icon: ReactNode; children: ReactNode; tone?: "muted" | "warn" }) {
+export function Note({
+  icon,
+  children,
+  tone = "muted",
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+  tone?: "muted" | "warn";
+}) {
   return (
     <div
       className={`flex items-start gap-2.5 px-3 py-3 text-sm ${tone === "warn" ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]"}`}
@@ -207,7 +223,17 @@ export function Note({ icon, children, tone = "muted" }: { icon: ReactNode; chil
 }
 
 /** The back row on a sub-page (where the mode band steps aside). */
-export function SubHeader({ backHref, backLabel, title, action }: { backHref: string; backLabel: string; title: string; action?: ReactNode }) {
+export function SubHeader({
+  backHref,
+  backLabel,
+  title,
+  action,
+}: {
+  backHref: string;
+  backLabel: string;
+  title: string;
+  action?: ReactNode;
+}) {
   return (
     <div className="flex min-h-14 items-center gap-1 px-1">
       <Link
@@ -281,7 +307,10 @@ export function ListSkeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div role="img" aria-label="Loading open shifts" className="flex flex-col gap-3 px-3 py-4">
       {Array.from({ length: rows }, (_, index) => (
-        <div key={index} className="h-14 animate-pulse rounded-md bg-[color:var(--surface-subtle)] motion-reduce:animate-none" />
+        <div
+          key={index}
+          className="h-14 animate-pulse rounded-md bg-[color:var(--surface-subtle)] motion-reduce:animate-none"
+        />
       ))}
     </div>
   );
