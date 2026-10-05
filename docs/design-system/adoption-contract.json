@@ -200,6 +200,7 @@
         "src/app/(search-app)/services/page.tsx",
         "src/app/(search-app)/services/search/page.tsx",
         "src/app/(search-app)/sources/[sourceId]/page.tsx",
+        "src/app/(search-app)/sources/currency/page.tsx",
         "src/app/(search-app)/sources/method/page.tsx",
         "src/app/(search-app)/sources/page.tsx",
         "src/app/(search-app)/sources/publishers/page.tsx",
