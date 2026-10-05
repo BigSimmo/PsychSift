@@ -5,6 +5,7 @@ import { isAuthRetryableFetchError, type Session, type SupabaseClient } from "@s
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import { clearAdminPins } from "@/lib/admin/pin-storage-keys";
+import { removeThisDevicePushSubscription } from "@/lib/alerts/device-push";
 import { clearPersistedAnswerThread } from "@/lib/answer-thread-storage";
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
 import { clearOnCallEntryCache } from "@/lib/on-call/entry-cache-keys";
@@ -501,6 +502,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     if (!client) return;
     invalidateAuthRequests();
+    // Phone alerts belong to the account, not the device: stop them here while
+    // the session can still tell the server which subscription to drop.
+    await removeThisDevicePushSubscription();
     let remoteSignOutFailed = false;
     try {
       const result = await client.auth.signOut();

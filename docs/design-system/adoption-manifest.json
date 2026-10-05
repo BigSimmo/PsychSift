@@ -307,6 +307,8 @@
         "src/components/admin/renewals/personal-list.tsx",
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/renewals/show-filter-list.tsx",
+        "src/components/alerts/alerts-device-section.tsx",
+        "src/components/alerts/alerts-sheets.tsx",
         "src/components/calendar/calendar-subscribe.tsx",
         "src/components/clinical-dashboard/ClinicalSidebar.tsx",
         "src/components/clinical-dashboard/settings-reminders.tsx",
@@ -449,6 +451,8 @@
         "src/components/admin/renewals/personal-list.tsx",
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/renewals/show-filter-list.tsx",
+        "src/components/alerts/alerts-device-section.tsx",
+        "src/components/alerts/alerts-sheets.tsx",
         "src/components/calendar/calendar-subscribe.tsx",
         "src/components/clinical-dashboard/ClinicalSidebar.tsx",
         "src/components/clinical-dashboard/settings-reminders.tsx",
@@ -2157,6 +2161,7 @@
       "sourceExported": true,
       "entryExported": true,
       "directImportFiles": [
+        "src/components/alerts/alerts-sheets.tsx",
         "src/components/clinical-dashboard/settings-dialog.tsx",
         "src/components/clinical-dashboard/settings-reminders.tsx",
         "src/components/cme/cme-drafts-section.tsx",
@@ -2174,6 +2179,7 @@
         "src/components/ui/catalogue-toolbar.tsx"
       ],
       "productImportFiles": [
+        "src/components/alerts/alerts-sheets.tsx",
         "src/components/clinical-dashboard/settings-dialog.tsx",
         "src/components/clinical-dashboard/settings-reminders.tsx",
         "src/components/cme/cme-drafts-section.tsx",
@@ -2243,6 +2249,7 @@
         "src/components/admin/admin-setup-sheet.tsx",
         "src/components/admin/renewals/item-detail-sheet.tsx",
         "src/components/admin/renewals/record-dates-sheet.tsx",
+        "src/components/alerts/alerts-sheets.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/calendar/calendar-view.tsx",
         "src/components/clinical-dashboard/ClinicalSidebar.tsx",
@@ -2335,6 +2342,7 @@
         "src/components/admin/admin-setup-sheet.tsx",
         "src/components/admin/renewals/item-detail-sheet.tsx",
         "src/components/admin/renewals/record-dates-sheet.tsx",
+        "src/components/alerts/alerts-sheets.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/calendar/calendar-view.tsx",
         "src/components/clinical-dashboard/ClinicalSidebar.tsx",
@@ -3198,6 +3206,7 @@
         "src/app/(search-app)/forms/search/page.tsx",
         "src/app/(search-app)/medications/[slug]/page.tsx",
         "src/app/(search-app)/medicines/page.tsx",
+        "src/app/(search-app)/my-day/alerts/page.tsx",
         "src/app/(search-app)/my-day/hours/page.tsx",
         "src/app/(search-app)/my-day/page.tsx",
         "src/app/(search-app)/my-day/week/page.tsx",
@@ -3837,6 +3846,16 @@
         },
         {
           "file": "src/app/(search-app)/medicines/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/my-day/alerts/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5559,6 +5578,7 @@
       "src/app/(search-app)/medications/[slug]/page.tsx",
       "src/app/(search-app)/medications/page.tsx",
       "src/app/(search-app)/medicines/page.tsx",
+      "src/app/(search-app)/my-day/alerts/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
@@ -5717,6 +5737,7 @@
       "src/app/(search-app)/medications/[slug]/page.tsx",
       "src/app/(search-app)/medications/page.tsx",
       "src/app/(search-app)/medicines/page.tsx",
+      "src/app/(search-app)/my-day/alerts/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
@@ -5803,7 +5824,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 163,
+    "inheritedCkbV2RootCount": 164,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -5812,8 +5833,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 46,
-    "rootCount": 164,
-    "productionRouteCount": 156,
-    "nextUiEntryCount": 252
+    "rootCount": 165,
+    "productionRouteCount": 157,
+    "nextUiEntryCount": 253
   }
 }

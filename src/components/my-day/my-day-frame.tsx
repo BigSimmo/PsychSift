@@ -15,6 +15,8 @@ import { myDayEnabledForAuth, myDayNeedsSignIn } from "@/lib/my-day/model";
 import { useAuthSession } from "@/lib/supabase/client";
 
 const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 sm:gap-6";
+/** A two-column page on a computer (Alerts); the phone layout is unchanged. */
+const WIDE_PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 sm:gap-6 lg:max-w-5xl";
 
 /**
  * The shared frame of My Day's sub-pages: header, then the sign-in states
@@ -27,6 +29,8 @@ export function MyDayFrame({
   testId,
   now: nowProp,
   signedOutSample,
+  signedOut,
+  wide = false,
   children,
 }: {
   readonly title: string;
@@ -40,6 +44,9 @@ export function MyDayFrame({
    * invented data. The sample reads and keeps nothing.
    */
   readonly signedOutSample?: { readonly notice: ReactNode; readonly render: (now: Date) => ReactNode };
+  /** The sign-in prompt's own words, for a page that is not about "your day". */
+  readonly signedOut?: { readonly title: string; readonly body: string };
+  readonly wide?: boolean;
   readonly children: (now: Date) => ReactNode;
 }) {
   const { status: authStatus } = useAuthSession();
@@ -49,7 +56,7 @@ export function MyDayFrame({
 
   return (
     <InformationPageShell testId={`${testId}-main`}>
-      <div className={PAGE_WIDTH}>
+      <div className={wide ? WIDE_PAGE_WIDTH : PAGE_WIDTH}>
         <header className="grid gap-0.5" data-testid={`${testId}-header`}>
           <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">{title}</h1>
           <p className="text-sm text-[color:var(--text-muted)]">{subtitle(now)}</p>
@@ -94,8 +101,11 @@ export function MyDayFrame({
           <div className="grid gap-3" data-testid={`${testId}-signed-out`}>
             <EmptyState
               icon={LogIn}
-              title="Sign in to see your day"
-              body="My Day gathers your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared."
+              title={signedOut?.title ?? "Sign in to see your day"}
+              body={
+                signedOut?.body ??
+                "My Day gathers your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared."
+              }
               actions={
                 <Button variant="primary" onClick={() => setSignInOpen(true)}>
                   Sign in

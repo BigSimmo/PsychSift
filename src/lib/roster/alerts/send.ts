@@ -7,7 +7,7 @@ import { fetchRosterSettings } from "@/lib/roster/settings";
 import type { RosterAdminClient } from "@/lib/roster/team/api";
 
 import type { RosterAlertType } from "./messages";
-import { removeGoneSubscription, subscriptionsForOwners } from "./subscriptions";
+import { ownerSubscriptionFor, removeGoneSubscription, subscriptionsForOwners } from "./subscriptions";
 
 export function webPushConfigured(): boolean {
   return !!(env.WEB_PUSH_PUBLIC_KEY && env.WEB_PUSH_PRIVATE_KEY && env.WEB_PUSH_SUBJECT);
@@ -55,4 +55,28 @@ export async function sendRosterAlerts(
     }
   }
   return totals;
+}
+
+/**
+ * "Send test" on the Alerts page: one `{t:"test"}` push to the one device that
+ * asked, after checking that this owner owns it. Returns how many were sent
+ * (0 or 1); a gone subscription is removed, as a real send would.
+ */
+export async function sendTestAlert(client: RosterAdminClient, ownerId: string, endpoint: string): Promise<number> {
+  if (!webPushConfigured()) return 0;
+  const row = await ownerSubscriptionFor(client, ownerId, endpoint);
+  if (!row) return 0;
+  webpush.setVapidDetails(env.WEB_PUSH_SUBJECT!, env.WEB_PUSH_PUBLIC_KEY!, env.WEB_PUSH_PRIVATE_KEY!);
+  try {
+    await webpush.sendNotification(
+      { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+      JSON.stringify({ t: "test" }),
+      { TTL: 60 },
+    );
+    return 1;
+  } catch (error) {
+    const status = (error as { statusCode?: number })?.statusCode;
+    if (status === 404 || status === 410) await removeGoneSubscription(client, row).catch(() => {});
+    return 0;
+  }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
@@ -70,7 +71,7 @@ const CAP_OPTIONS = Array.from({ length: MAX_ALERTS_PER_DAY - MIN_ALERTS_PER_DAY
 const CALENDAR_REACH_NOTES: Partial<Record<ReminderType, string>> = {
   "on-call-checks": "In the app only. These are not calendar dates, so they cannot alert your phone.",
   "compliance-dates":
-    "Alerts go only in a downloaded calendar file. Your calendar link never carries compliance dates.",
+    "Alerts go only in a downloaded calendar file. Your calendar link never carries compliance dates. My Day always shows them, whatever Show in the app says, so a date is never missed.",
 };
 
 export function ReminderSettingsBlock({
@@ -95,7 +96,10 @@ export function ReminderSettingsBlock({
         </p>
         <p className={cn("mt-0.5 text-xs font-medium leading-5", textMuted)}>
           These work now. They choose which CPD and On Call reminders show in the app, and which dates alert your phone
-          through your calendar link or a downloaded calendar file. Nothing is sent anywhere else.
+          through your calendar link or a downloaded calendar file. Nothing is sent anywhere else.{" "}
+          <Link href="/my-day/alerts" className="text-[color:var(--clinical-accent)] underline">
+            All alerts, including phone alerts
+          </Link>
         </p>
       </div>
 

@@ -330,7 +330,19 @@ const ROSTER_PUSH = {
   request: { body: "Something in Roster is waiting for you.", path: "/roster/swaps" },
   offer: { body: "A shift is open in your team. Open Roster to see it.", path: "/roster/swaps" },
   manage: { body: "Something in Manage is waiting for you.", path: "/roster/manage" },
+  test: { title: "PsychSift", body: "Test alert. Phone alerts are working on this device.", path: "/my-day/alerts" },
 };
+
+// Open PsychSift pages hear which kind of alert arrived (the code only), so the
+// Alerts page can say a test reached this device.
+async function tellOpenPages(code) {
+  try {
+    const pages = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const page of pages) page.postMessage({ type: "psychsift-push", t: code });
+  } catch {
+    // Telling the page is a courtesy; the notification still shows.
+  }
+}
 
 self.addEventListener("push", (event) => {
   let code = "changed";
@@ -341,10 +353,13 @@ self.addEventListener("push", (event) => {
     // A malformed push still shows a generic notification.
   }
   event.waitUntil(
-    self.registration.showNotification("Roster", {
-      body: ROSTER_PUSH[code].body,
-      data: { t: code },
-    }),
+    Promise.all([
+      self.registration.showNotification(ROSTER_PUSH[code].title ?? "Roster", {
+        body: ROSTER_PUSH[code].body,
+        data: { t: code },
+      }),
+      tellOpenPages(code),
+    ]),
   );
 });
 
