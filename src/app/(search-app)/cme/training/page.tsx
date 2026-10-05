@@ -15,11 +15,11 @@ export const metadata: Metadata = {
 
 type CmeTrainingRouteProps = {
   /** `?example=intern` switches the demo between the registrar and junior doctor examples. */
-  readonly searchParams?: Promise<{ example?: string | string[] }>;
+  readonly searchParams: Promise<{ example?: string | string[] }>;
 };
 
-export default async function CmeTrainingRoute({ searchParams }: CmeTrainingRouteProps = {}) {
-  const [data, query] = await Promise.all([loadCmeTrainingPageData(), searchParams ?? Promise.resolve({})]);
+export default async function CmeTrainingRoute({ searchParams }: CmeTrainingRouteProps) {
+  const [data, query] = await Promise.all([loadCmeTrainingPageData(), searchParams]);
   if (data.state !== "ready") {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
@@ -27,7 +27,7 @@ export default async function CmeTrainingRoute({ searchParams }: CmeTrainingRout
       </main>
     );
   }
-  const view = trainingExampleView((query as { example?: string | string[] }).example);
+  const view = trainingExampleView(query.example);
   return (
     <CmeTrainingPage
       key={data.demoMode ? view : "owner"}

@@ -521,7 +521,7 @@ describe("CME training route", () => {
       milestones: [],
       now: new Date(NOW_ISO),
     });
-    render(await CmeTrainingRoute());
+    render(await CmeTrainingRoute({ searchParams: Promise.resolve({}) }));
     expect(screen.getByTestId("cme-signed-out")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Training" })).toBeInTheDocument();
     expect(screen.queryByTestId("cme-training")).toBeNull();
@@ -535,7 +535,7 @@ describe("CME training route", () => {
       milestones: [],
       now: new Date(NOW_ISO),
     });
-    render(await CmeTrainingRoute());
+    render(await CmeTrainingRoute({ searchParams: Promise.resolve({}) }));
     expect(screen.getByTestId("cme-training-epas-figure")).toHaveTextContent("1 of 2marked attained");
   });
 
