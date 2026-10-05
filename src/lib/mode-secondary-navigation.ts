@@ -203,6 +203,7 @@ export const modeSecondaryNavigationRegistry = {
   "my-work": [
     // No Today tab: My Day is the one Today (modes review, phase 2b).
     { id: "renewals", label: "Renewals", href: "/admin/renewals" },
+    { id: "admin-compliance", label: "Compliance", href: "/admin/compliance" },
     { id: "new-job", label: "New job", href: "/admin/new-job" },
     { id: "help", label: "Help", href: "/admin/help" },
   ],
@@ -470,6 +471,7 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
   }
   if (modeId === "my-work") {
     if (pathname === "/admin/renewals") return "renewals";
+    if (pathname === "/admin/compliance") return "admin-compliance";
     if (pathname === "/admin/new-job" || pathname === "/admin/new-job/records" || pathname === "/admin/new-job/pack")
       return "new-job";
     if (pathname === "/admin/help") return "help";
