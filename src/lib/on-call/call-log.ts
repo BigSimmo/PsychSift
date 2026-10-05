@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { recordOnCallCallCount } from "@/lib/on-call/call-counts";
 import { onCallDeviceStoreChangedEvent } from "@/lib/on-call/device-state-keys";
 import {
   parsePatientLabelExpiryStamp,
@@ -74,7 +75,7 @@ export type OnCallCallLogDraft = Pick<OnCallCallLogEntry, "label" | "caller" | "
  * to four letters, such as "JS"). Anything else, such as "Smith" or "Jane
  * Smith", reads as a name and is refused.
  */
-function labelLooksLikeName(label: string): boolean {
+export function onCallLabelLooksLikeName(label: string): boolean {
   const trimmed = label.trim();
   if (trimmed === "" || /\d/.test(trimmed)) return false;
   return !/^[\p{L}.\s]{1,4}$/u.test(trimmed) || trimmed.replace(/[.\s]/g, "").length > 4;
@@ -90,7 +91,7 @@ export const ON_CALL_CALL_LOG_FULL_MESSAGE = `The log holds ${ON_CALL_CALL_LOG_L
 export function onCallCallLogProblem(draft: OnCallCallLogDraft): string | null {
   const fields = [draft.label, draft.caller, draft.note, draft.followUp];
   if (fields.every((field) => field.trim() === "")) return "Write something about the call first.";
-  if (labelLooksLikeName(draft.label)) return ON_CALL_CALL_LOG_NAME_MESSAGE;
+  if (onCallLabelLooksLikeName(draft.label)) return ON_CALL_CALL_LOG_NAME_MESSAGE;
   for (const key of Object.keys(ON_CALL_CALL_LOG_FIELD_LIMITS) as (keyof OnCallCallLogDraft)[]) {
     if (draft[key].trim().length > ON_CALL_CALL_LOG_FIELD_LIMITS[key]) return "That note is too long to keep.";
   }
@@ -195,7 +196,10 @@ export function addOnCallCallLogEntry(draft: OnCallCallLogDraft, now: Date = new
   // Refuse rather than silently dropping the oldest note, which may still be open.
   if (current.length >= ON_CALL_CALL_LOG_LIMIT) return { ok: false, problem: ON_CALL_CALL_LOG_FULL_MESSAGE };
   const next = [entry, ...current];
-  return write(next, now) ? { ok: true, entry } : { ok: false, problem: "This device would not keep the note." };
+  if (!write(next, now)) return { ok: false, problem: "This device would not keep the note." };
+  // Shift pulse counts the call by its hour, and nothing else about it.
+  recordOnCallCallCount(now);
+  return { ok: true, entry };
 }
 
 /** Mark a note's follow-up done, or not done. */
