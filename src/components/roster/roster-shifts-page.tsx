@@ -1,80 +1,124 @@
 "use client";
 
 import {
-  ArrowLeftRight,
   CalendarClock,
-  CalendarOff,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock,
   FileUp,
-  Link2,
-  Plane,
+  Info,
   Plus,
-  Trash2,
+  RefreshCw,
+  Share2,
+  Users,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { CalendarView } from "@/components/calendar/calendar-view";
-import { InformationPageShell } from "@/components/information-page-shell";
 import { focusRing } from "@/components/card-recipes";
-import { ModeActionButton } from "@/components/mode-kit/action-button";
+import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { modeInsetHairline, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
-import { modeNumberText } from "@/components/mode-kit/type";
+import { modeModuleSurface, modePressable } from "@/components/mode-kit/recipes";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import type { CalendarEvent } from "@/lib/calendar/calendar-event";
 import { monthGridRange, monthKeyOf } from "@/lib/calendar/month-grid";
-import { isWorkedKind, SHIFT_KIND_LABEL, SHIFT_LETTER } from "@/lib/roster/shift-kind";
+import { fortnightFor, summariseHours } from "@/lib/roster/hours";
+import { restCuesByTeam } from "@/lib/roster/rest-cues";
+import { SHIFT_KIND_LABEL, SHIFT_LETTER } from "@/lib/roster/shift-kind";
+import {
+  leadShift,
+  shiftSpan,
+  weekCountWords,
+  weekRows,
+  type OverviewShift,
+  type WeekRow,
+} from "@/lib/roster/shifts-overview";
 import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
+import { RosterAskButton } from "./ask/roster-ask-box";
 import { RosterSignInNotice } from "./invite/roster-sign-in-notice";
 import { RosterAddSheet, type RosterAddView } from "./roster-add-sheet";
-import { RosterNewButton } from "./roster-new-button";
-import { RosterRestChip } from "./roster-rest-chip";
-import { RosterWhoCanCover } from "./roster-who-can-cover";
-import { RosterShareButton } from "./roster-share-button";
-import { restCuesByTeam, type RestCue } from "@/lib/roster/rest-cues";
-import { formatDateSpan, formatHours, formatShiftRange, kindOf, useRosterNow } from "./roster-format";
-import { RosterHoursPanel, type RosterExtraTime } from "./roster-hours-panel";
+import { formatDateSpan, kindOf, useRosterNow } from "./roster-format";
+import { RosterFortnight } from "./roster-fortnight";
+import { RosterHoursPanel } from "./roster-hours-panel";
 import { RosterImportFlow } from "./roster-import-flow";
-import { RosterLetter, RosterWeekChart } from "./roster-week-strip";
+import {
+  RosterDateLead,
+  RosterFootnote,
+  RosterIconLead,
+  RosterLinkWord,
+  RosterList,
+  RosterNote,
+  RosterRow,
+  RosterSectionHead,
+  rosterFilledButton,
+} from "./roster-list";
+import { RosterNextShift } from "./roster-next-shift";
+import { RosterRestChip } from "./roster-rest-chip";
+import { RosterShareButton } from "./roster-share-button";
+import { RosterWhoCanCover } from "./roster-who-can-cover";
 import { RosterSampleShiftsNotice } from "./team/roster-sample-notice";
+import { useRosterExtraTime } from "./use-roster-extra-time";
 import { useRosterLinks } from "./use-roster-links";
 import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
-import { useRosterRead, useRosterTeams, useRosterTeamRules } from "./use-roster-team";
+import { useRosterRead, useRosterTeamRules, useRosterTeams } from "./use-roster-team";
 import { RosterPageHeader } from "./roster-ui";
 
 /**
- * Roster Shifts: Week (a 24-hour chart and every shift in words), Month
- * (the shared calendar), Hours (the fortnight). "+ Add" opens one sheet with
- * three ways in. A night belongs to the day it starts and ends "+1".
+ * Roster Shifts, as the Roster mock-up draws it: the shift on now or next, the
+ * hours-and-rest row, Ask, the week as one row per day, this pay fortnight, and
+ * the roster tools. Hours & rest (`?view=hours`) and the month calendar
+ * (`?view=month`) open from here and link back. The signed rules and their
+ * quotes download in their own chunk, after the page.
+ *
+ * Honest states: loading shows the page's shape; a failed load says nothing was
+ * checked; part of a team roster missing makes every figure "at least"; a new
+ * doctor with no shifts is offered an import.
  */
 
-type View = "week" | "month" | "hours";
+type View = "week" | "hours" | "month";
 
 /** Mirrors PAST_SHIFT_DAYS in `GET /api/roster/shifts`: how far back the owner's own shifts are loaded. */
 const LOADED_PAST_DAYS = 21;
+/**
+ * The furthest back a team rule can look from one shift: `maxDaysInRow` allows
+ * up to 21 days (`rosterRulesSchema`), beyond `maxHours14d`'s 14.
+ */
+const TEAM_RULE_LOOKBACK_DAYS = 21;
+/** The longest span "Share my shifts" offers, and the hours-and-rest window, counted from today. */
+const ROSTER_AHEAD_DAYS = 14;
 
-const VIEWS = [
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-  { value: "hours", label: "Hours" },
-] as const;
+const SHIFTS_HREF = "/roster/shifts";
+const HOURS_HREF = "/roster/shifts?view=hours";
+const MONTH_HREF = "/roster/shifts?view=month";
+
+const RosterHoursRow = dynamic(() => import("./roster-shifts-checks").then((module) => module.RosterHoursRow), {
+  ssr: false,
+  loading: () => <RosterRow lead={<RosterIconLead icon={Clock} />} title="Hours and rest" sub="Checking…" />,
+});
+const RosterAfterNightNote = dynamic(
+  () => import("./roster-shifts-checks").then((module) => module.RosterAfterNightNote),
+  { ssr: false },
+);
 
 function mondayOf(date: string): string {
   const weekday = (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
   return addDaysToDate(date, -weekday);
+}
+
+function maxDate(a: string, b: string): string {
+  return a > b ? a : b;
 }
 
 function hoursOf(shift: OnCallShift): number {
@@ -96,171 +140,143 @@ function toCalendarEvents(shifts: readonly OnCallShift[]): CalendarEvent[] {
   });
 }
 
-function WeekView({
-  shifts,
-  now,
-  monday,
-  onWeekChange,
-  onRemoveSeries,
-  onTeamShift,
-  cues,
-}: {
-  readonly cues: ReadonlyMap<string, RestCue>;
-  readonly shifts: readonly OnCallShift[];
-  readonly now: Date;
-  readonly monday: string;
-  readonly onWeekChange: (monday: string) => void;
-  readonly onRemoveSeries: (series: { readonly id: string; readonly label: string }) => void;
-  readonly onTeamShift: (shift: OnCallShift) => void;
-}) {
-  const sunday = addDaysToDate(monday, 6);
-  // The shifts API returns only the last LOADED_PAST_DAYS; a week wholly before that would falsely read as empty.
-  const previousWeekLoaded = addDaysToDate(monday, -1) >= addDaysToDate(perthDateOf(now), -LOADED_PAST_DAYS);
-  const inWeek = shifts
-    .filter((shift) => {
-      const date = perthDateOf(shift.startsAt);
-      return date >= monday && date <= sunday;
-    })
-    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
-  const total = inWeek.filter((shift) => isWorkedKind(kindOf(shift))).reduce((sum, shift) => sum + hoursOf(shift), 0);
+function toOverview(shift: OnCallShift): OverviewShift {
+  return {
+    id: shift.id,
+    startsAt: shift.startsAt,
+    endsAt: shift.endsAt,
+    kind: kindOf(shift),
+    place: shift.workplace ?? shift.location,
+  };
+}
 
+function viewOf(value: string | null): View {
+  return value === "hours" || value === "month" ? value : "week";
+}
+
+/** The "‹ Shifts" link a sub-view opens with. */
+function BackToShifts() {
   return (
-    <div className="grid min-w-0 gap-4" data-testid="roster-shifts-week">
-      <div className="flex min-w-0 items-center justify-between gap-2">
-        <ModeActionButton
-          icon={ChevronLeft}
-          label="Previous week"
-          disabled={!previousWeekLoaded}
-          onClick={() => onWeekChange(addDaysToDate(monday, -7))}
-        />
-        <h2 className={cn(modeNumberText, "text-base-minus text-[color:var(--text-heading)]")}>
-          {formatDateSpan(monday, sunday)} · {formatHours(Math.round(total * 100) / 100)}
-        </h2>
-        <ModeActionButton
-          icon={ChevronRight}
-          label="Next week"
-          onClick={() => onWeekChange(addDaysToDate(monday, 7))}
-        />
+    <Link
+      href={SHIFTS_HREF}
+      data-mode-identity="roster"
+      className={cn(
+        focusRing,
+        "-ml-1 inline-flex min-h-12 items-center gap-1 justify-self-start rounded-md px-1 text-sm font-semibold text-[color:var(--mode-identity)] no-underline",
+      )}
+    >
+      <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
+      Shifts
+    </Link>
+  );
+}
+
+/** One day of the week list. A team or hand-added repeating shift opens its actions. */
+function DayRow({
+  row,
+  byId,
+  cues,
+  onTeamShift,
+  onRemoveSeries,
+}: {
+  readonly row: WeekRow;
+  readonly byId: ReadonlyMap<string, OnCallShift>;
+  readonly cues: ReturnType<typeof useCues>;
+  readonly onTeamShift: (shift: OnCallShift) => void;
+  readonly onRemoveSeries: (series: { readonly id: string; readonly label: string }) => void;
+}) {
+  const lead = <RosterDateLead weekday={row.weekday} day={row.day} />;
+  if (!row.shifts.length)
+    return (
+      <RosterRow
+        lead={lead}
+        title="Off"
+        sub={row.offNote ?? undefined}
+        dim
+        label={`${formatPerthDay(row.date)}: off`}
+        testId="roster-shifts-off"
+      />
+    );
+  return (
+    <>
+      {row.shifts.map((item) => {
+        const shift = byId.get(item.id)!;
+        const kind = item.kind;
+        const leave = kind === "leave";
+        const title = leave ? shift.title || SHIFT_KIND_LABEL.leave : shiftSpan(item);
+        const place = item.place;
+        const sub = (
+          <>
+            {leave ? "All day" : kind === "on_call" ? ["On call from home", place].filter(Boolean).join(" · ") : place}
+            <RosterRestChip cue={cues.get(item.id)} />
+          </>
+        );
+        const name = `${formatPerthDay(row.date)}: ${SHIFT_KIND_LABEL[kind]}, ${leave ? "all day" : title}${place ? `, ${place}` : ""}`;
+        const common = {
+          lead,
+          title,
+          sub,
+          trail: leave ? undefined : SHIFT_KIND_LABEL[kind],
+          testId: "roster-shifts-row",
+        } as const;
+        if (shift.source === "team" && shift.assignmentId)
+          return (
+            <RosterRow
+              key={item.id}
+              {...common}
+              onClick={() => onTeamShift(shift)}
+              label={`${name}. Swap, give away or find cover`}
+            />
+          );
+        if (shift.source === "manual" && shift.seriesId)
+          return (
+            <RosterRow
+              key={item.id}
+              {...common}
+              onClick={() =>
+                onRemoveSeries({
+                  id: shift.seriesId!,
+                  label: `${SHIFT_KIND_LABEL[kind].toLowerCase()} on ${formatPerthDay(row.date)}`,
+                })
+              }
+              label={`Remove ${SHIFT_KIND_LABEL[kind]} on ${formatPerthDay(row.date)} and its repeats`}
+            />
+          );
+        return <RosterRow key={item.id} {...common} label={name} />;
+      })}
+    </>
+  );
+}
+
+function useCues(shifts: readonly OnCallShift[], rulesByTeam: Parameters<typeof restCuesByTeam>[1]) {
+  return useMemo(
+    () => new Map(restCuesByTeam(shifts, rulesByTeam).map((cue) => [cue.shiftId, cue])),
+    [shifts, rulesByTeam],
+  );
+}
+
+/** Shown while the roster loads: the page's shape in grey, and one plain line. */
+function ShiftsLoading() {
+  return (
+    <div className="grid gap-3" data-testid="roster-shifts-loading">
+      <div className={cn(modeModuleSurface, "grid gap-3 p-4 shadow-none")} aria-hidden="true">
+        <span className="h-3.5 w-2/5 rounded-full bg-[color:var(--surface-inset)]" />
+        <span className="h-3.5 w-4/5 rounded-full bg-[color:var(--surface-inset)]" />
+        <span className="h-3.5 w-2/5 rounded-full bg-[color:var(--surface-inset)]" />
       </div>
-      <div className={cn(modeModuleSurface, "p-3")}>
-        <RosterWeekChart monday={monday} shifts={shifts} now={now} testId="roster-shifts-week-chart" />
-      </div>
-      <ModeGroupedList testId="roster-shifts-agenda">
-        {inWeek.length === 0 ? (
-          <ModeRow title="No shifts this week" />
-        ) : (
-          inWeek.map((shift) => {
-            const kind = kindOf(shift);
-            const place = shift.workplace ?? shift.location;
-            if (shift.source === "team" && shift.assignmentId)
-              return (
-                <li key={shift.id} className={modeInsetHairline}>
-                  <button
-                    type="button"
-                    onClick={() => onTeamShift(shift)}
-                    data-testid="roster-shifts-row"
-                    className={cn(
-                      modeRowHeight.double,
-                      modePressable,
-                      focusRing,
-                      "flex w-full min-w-0 items-center justify-between gap-3 px-3 text-left",
-                    )}
-                  >
-                    <span className="grid min-w-0 gap-0.5 py-1">
-                      <span className="flex items-center gap-2 text-base-minus text-[color:var(--text-heading)]">
-                        <RosterLetter kind={kind} />
-                        {formatPerthDay(perthDateOf(shift.startsAt))}
-                      </span>
-                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[color:var(--text-muted)]">
-                        <span>
-                          {SHIFT_KIND_LABEL[kind]}
-                          {place ? ` · ${place}` : ""}
-                        </span>
-                        <RosterRestChip cue={cues.get(shift.id)} />
-                      </span>
-                    </span>
-                    <span
-                      className={cn(
-                        modeNumberText,
-                        "shrink-0 whitespace-nowrap text-base-minus text-[color:var(--text)]",
-                      )}
-                    >
-                      {formatShiftRange(shift)}
-                    </span>
-                  </button>
-                </li>
-              );
-            return (
-              <ModeRow
-                key={shift.id}
-                testId="roster-shifts-row"
-                title={
-                  <span className="flex min-w-0 items-center gap-2">
-                    <RosterLetter kind={kind} />
-                    {formatPerthDay(perthDateOf(shift.startsAt))}
-                  </span>
-                }
-                subtitle={
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span>{`${SHIFT_KIND_LABEL[kind]}${place ? ` · ${place}` : ""}`}</span>
-                    <RosterRestChip cue={cues.get(shift.id)} />
-                  </span>
-                }
-                trailing={
-                  <>
-                    <span
-                      className={cn(
-                        modeNumberText,
-                        "whitespace-nowrap text-base-minus text-[color:var(--text)]",
-                        // Room before the card edge when no remove control follows the time.
-                        !(shift.source === "manual" && shift.seriesId) && "pr-2",
-                      )}
-                    >
-                      {formatShiftRange(shift)}
-                    </span>
-                    {shift.source === "manual" && shift.seriesId ? (
-                      <ModeActionButton
-                        icon={Trash2}
-                        label={`Remove ${SHIFT_KIND_LABEL[kind]} on ${formatPerthDay(perthDateOf(shift.startsAt))} and its repeats`}
-                        onClick={() =>
-                          onRemoveSeries({
-                            id: shift.seriesId!,
-                            label: `${SHIFT_KIND_LABEL[kind].toLowerCase()} on ${formatPerthDay(perthDateOf(shift.startsAt))}`,
-                          })
-                        }
-                      />
-                    ) : null}
-                  </>
-                }
-              />
-            );
-          })
-        )}
-      </ModeGroupedList>
-      <div className="justify-self-start">
-        <RosterShareButton shifts={shifts} now={now} />
-      </div>
+      <p role="status" className="mx-1 text-xs text-[color:var(--text-muted)]">
+        Loading your roster…
+      </p>
+      <ModeModuleSkeleton rows={5} twoLine />
     </div>
   );
 }
 
-/**
- * The furthest back a team rule can look from one shift: `maxDaysInRow` allows
- * up to 21 days (`rosterRulesSchema`), beyond `maxHours14d`'s 14.
- */
-const TEAM_RULE_LOOKBACK_DAYS = 21;
-/** The longest span "Share my shifts" offers, counted from today. */
-const ROSTER_SHARE_MAX_DAYS = 14;
-
-function maxDate(a: string, b: string): string {
-  return a > b ? a : b;
-}
-
 export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {}) {
   const router = useRouter();
+  const view = viewOf(useSearchParams()?.get("view") ?? null);
   const now = useRosterNow(pinnedNow);
   const today = perthDateOf(now);
-  const [view, setView] = useState<View>("week");
   const [monday, setMonday] = useState(() => mondayOf(today));
   const [month, setMonth] = useState(() => monthKeyOf(today));
   const monthRange = monthGridRange(month);
@@ -272,12 +288,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
         : { from: addDaysToDate(today, -21), to: addDaysToDate(today, 40) };
   // Team shifts are read wider than the screen shows, so nothing on it is
   // judged from a partial roster: back far enough for the rest, run and
-  // rolling-hours rule cues on the first shown day, and always through the 14-day
-  // share window from today, which would otherwise copy a missing team shift
-  // as "Off".
+  // rolling-hours rule cues on the first shown day, and always through the
+  // 14 days ahead that the share and the hours-and-rest check cover.
   const teamRange = {
     from: addDaysToDate(shownRange.from < today ? shownRange.from : today, -TEAM_RULE_LOOKBACK_DAYS),
-    to: maxDate(shownRange.to, addDaysToDate(today, ROSTER_SHARE_MAX_DAYS)),
+    to: maxDate(shownRange.to, addDaysToDate(today, ROSTER_AHEAD_DAYS)),
   };
   const shifts = useRosterShifts(teamRange);
   const teams = useRosterTeams();
@@ -289,17 +304,33 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   const settings = useRosterSettings();
   const [addView, setAddView] = useState<RosterAddView | null>(null);
   const [importing, setImporting] = useState(false);
-  const [extras, setExtras] = useState<readonly RosterExtraTime[]>([]);
   const [notice, setNotice] = useState<{ tone: "neutral" | "warning"; text: string } | null>(null);
   const [teamShift, setTeamShift] = useState<OnCallShift | null>(null);
   const [confirmSeries, setConfirmSeries] = useState<{ readonly id: string; readonly label: string } | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  const events = useMemo(() => toCalendarEvents(shifts.shifts), [shifts.shifts]);
-  const cues = useMemo(
-    () => new Map(restCuesByTeam(shifts.shifts, rulesByTeam).map((cue) => [cue.shiftId, cue])),
-    [shifts.shifts, rulesByTeam],
+  const payAnchor = teamOverview.status === "ready" ? (teamOverview.data?.settings?.payFortnightAnchor ?? null) : null;
+  const fortnight = fortnightFor(today, payAnchor);
+  const extra = useRosterExtraTime(shifts.shifts, now, fortnight);
+  const summary = useMemo(
+    () =>
+      summariseHours(
+        shifts.shifts.map((shift) => ({ startsAt: shift.startsAt, endsAt: shift.endsAt, kind: kindOf(shift) })),
+        extra.records,
+        fortnight,
+      ),
+    // `fortnight` is rebuilt each render from its two dates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [shifts.shifts, extra.records, fortnight.start, fortnight.end],
   );
+  const overview = useMemo(() => shifts.shifts.map(toOverview), [shifts.shifts]);
+  const byId = useMemo(() => new Map(shifts.shifts.map((shift) => [shift.id, shift])), [shifts.shifts]);
+  const leaveDates = useMemo(
+    () => new Set(overview.filter((shift) => shift.kind === "leave").map((shift) => perthDateOf(shift.startsAt))),
+    [overview],
+  );
+  const cues = useCues(shifts.shifts, rulesByTeam);
+  const events = useMemo(() => toCalendarEvents(shifts.shifts), [shifts.shifts]);
   const holidayEvents = useMemo<CalendarEvent[]>(
     () =>
       [...WA_PUBLIC_HOLIDAYS]
@@ -312,6 +343,15 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     [shifts.shifts],
   );
   const canEdit = shifts.status === "ready" && !shifts.demoMode;
+  const partial = Boolean(shifts.teamMessage);
+  const lead = leadShift(overview, now);
+  const leadDisplay = lead.state === "none" ? null : byId.get(lead.shift.id)!;
+  const rows = weekRows(overview, monday);
+  // The shifts API returns only the last LOADED_PAST_DAYS; a week wholly before that would falsely read as empty.
+  const previousWeekLoaded = addDaysToDate(monday, -1) >= addDaysToDate(today, -LOADED_PAST_DAYS);
+  const isThisWeek = monday === mondayOf(today);
+  const datesHref = `/roster/requests?start=dates${oneTeamId ? `&team=${encodeURIComponent(oneTeamId)}` : ""}`;
+  const teamParam = oneTeamId ? `&team=${encodeURIComponent(oneTeamId)}` : "";
 
   async function removeSeries(seriesId: string) {
     setRemoving(true);
@@ -321,55 +361,336 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     setNotice(failure ? { tone: "warning", text: failure } : { tone: "neutral", text: "Removed" });
   }
 
+  const title = view === "hours" ? "Hours & rest" : view === "month" ? "Month" : "Shifts";
+  const subtitle =
+    view === "hours"
+      ? "The next 14 days against your agreement."
+      : view === "month"
+        ? "Your shifts and WA public holidays."
+        : "Your shifts, week by week.";
+
+  function body() {
+    if (shifts.status === "loading") return <ShiftsLoading />;
+    if (shifts.status === "signed-out")
+      return <RosterSignInNotice testId="roster-shifts-signed-out">Sign in to see your roster.</RosterSignInNotice>;
+    if (shifts.status === "error")
+      return (
+        <div className="grid gap-3" data-testid="roster-shifts-error">
+          <RosterNote icon={Info} role="alert">
+            <p>
+              <span className="font-semibold text-[color:var(--text-heading)]">Couldn&apos;t load your roster.</span>{" "}
+              This is a connection problem. Nothing in your roster has been changed.
+            </p>
+          </RosterNote>
+          <button type="button" className={rosterFilledButton} onClick={() => void shifts.reload()}>
+            <RefreshCw aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
+            Try again
+          </button>
+          <RosterList>
+            <RosterRow
+              lead={<RosterIconLead icon={Clock} />}
+              title="Hours and rest: not checked"
+              sub="Your roster didn't load, so nothing could be checked"
+              testId="roster-hours-not-checked"
+            />
+          </RosterList>
+          {links.links.length ? (
+            <RosterFootnote>A linked calendar may still show your shifts, as of its last update.</RosterFootnote>
+          ) : null}
+        </div>
+      );
+
+    const notices = (
+      <>
+        {shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
+        <RosterSampleShiftsNotice sample={shifts.sample} />
+        {notice ? <ModeNotice tone={notice.tone}>{notice.text}</ModeNotice> : null}
+        {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
+      </>
+    );
+
+    if (view === "hours")
+      return (
+        <div className="grid min-w-0 gap-3">
+          <BackToShifts />
+          {notices}
+          {shifts.teamLoading ? (
+            <ModeModuleSkeleton rows={4} twoLine testId="roster-team-shifts-loading" />
+          ) : (
+            <RosterHoursPanel
+              shifts={shifts.shifts}
+              now={now}
+              summary={summary}
+              extra={extra}
+              partial={partial}
+              onRetry={() => void shifts.reload()}
+            />
+          )}
+        </div>
+      );
+
+    if (view === "month")
+      return (
+        <div className="grid min-w-0 gap-3">
+          <BackToShifts />
+          {notices}
+          {shifts.teamLoading ? <ModeModuleSkeleton rows={4} twoLine testId="roster-team-shifts-loading" /> : null}
+          <div className={shifts.teamLoading ? "hidden" : undefined}>
+            <CalendarView
+              events={[...events, ...holidayEvents]}
+              exportEvents={events}
+              today={today}
+              exportName="Roster"
+              testId="roster-shifts-month"
+              onMonthChange={setMonth}
+            />
+          </div>
+          <RosterFootnote>WA public holidays, wa.gov.au, read 25 Sep 2026</RosterFootnote>
+        </div>
+      );
+
+    const nothingYet = shifts.shifts.length === 0 && !shifts.teamLoading && enabledTeams.length === 0;
+    if (nothingYet && !shifts.demoMode)
+      return (
+        <div className="grid min-w-0 gap-3" data-testid="roster-shifts-empty">
+          {notices}
+          <div className="grid justify-items-center gap-1.5 px-4 pb-2 pt-6 text-center">
+            <CalendarDays aria-hidden="true" strokeWidth={1.6} className="size-10 text-[color:var(--text-muted)]" />
+            <h2 className="text-lg-minus font-semibold text-[color:var(--text-heading)]">No shifts yet</h2>
+            <p className="max-w-72 text-sm text-[color:var(--text-muted)]">
+              Add your roster once and PsychSift shows your next shift, your week and your hours.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={rosterFilledButton}
+            data-mode-identity="roster"
+            disabled={!canEdit}
+            onClick={() => setImporting(true)}
+          >
+            <FileUp aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
+            Import a roster file
+          </button>
+          <RosterList>
+            <RosterRow
+              onClick={() => setAddView("menu")}
+              lead={<RosterIconLead icon={Plus} />}
+              title="Add a shift"
+              sub="Type in one shift at a time"
+            />
+            <RosterRow
+              href="/roster/join"
+              lead={<RosterIconLead icon={Users} />}
+              title="Join a team"
+              sub="Paste an invite link or code"
+            />
+          </RosterList>
+        </div>
+      );
+
+    return (
+      <div className="grid min-w-0 gap-3">
+        {notices}
+        {shifts.teamLoading ? (
+          <ModeModuleSkeleton rows={4} twoLine testId="roster-team-shifts-loading" />
+        ) : (
+          <>
+            {leadDisplay ? (
+              <RosterNextShift
+                shift={leadDisplay}
+                onNow={lead.state === "on_now"}
+                now={now}
+                actorId={teams.data?.actorId ?? null}
+              />
+            ) : (
+              <RosterNote icon={CalendarClock}>
+                <p>No more shifts in your roster.</p>
+              </RosterNote>
+            )}
+
+            {lead.state === "on_now" ? (
+              <>
+                <RosterSectionHead title="After this shift" />
+                <RosterList testId="roster-after-shift">
+                  {weekRows(overview, addDaysToDate(perthDateOf(lead.shift.startsAt), 1))
+                    .slice(0, 2)
+                    .map((row) => (
+                      <DayRow
+                        key={row.date}
+                        row={row}
+                        byId={byId}
+                        cues={cues}
+                        onTeamShift={setTeamShift}
+                        onRemoveSeries={setConfirmSeries}
+                      />
+                    ))}
+                </RosterList>
+                <RosterAfterNightNote shifts={shifts.shifts} shift={leadDisplay!} now={now} />
+              </>
+            ) : null}
+
+            <RosterList testId="roster-shifts-checks">
+              <RosterHoursRow shifts={shifts.shifts} now={now} partial={partial} href={HOURS_HREF} />
+              {extra.finished && !extra.alreadyLogged ? (
+                <RosterRow
+                  lead={<RosterIconLead icon={Clock} />}
+                  title="Stayed late?"
+                  sub="Add the extra time while you remember"
+                  action={
+                    <RosterLinkWord
+                      onClick={() => void extra.stayedLate()}
+                      label="Add the time since your last shift ended"
+                      testId="roster-stayed-late"
+                    >
+                      {extra.saving ? "Saving…" : "Add"}
+                    </RosterLinkWord>
+                  }
+                />
+              ) : null}
+            </RosterList>
+            {extra.message ? (
+              <p role="status" className="mx-1 text-sm text-[color:var(--text)]">
+                {extra.message.text}
+              </p>
+            ) : null}
+
+            <RosterAskButton variant="field" />
+            {oneTeamId ? (
+              <nav
+                aria-label="Change a shift"
+                className="-mt-1 grid grid-cols-3 overflow-hidden rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)]"
+              >
+                {(
+                  [
+                    ["Can't make", `/roster/requests?start=cant_make${teamParam}`],
+                    ["Give away", `/roster/requests?start=give_away${teamParam}`],
+                    ["Prefer off", `${datesHref}&kind=prefer_off`],
+                  ] as const
+                ).map(([label, href], index) => (
+                  <Link
+                    key={label}
+                    href={href}
+                    className={cn(
+                      focusRing,
+                      modePressable,
+                      "grid min-h-12 place-items-center px-1 text-center text-sm font-medium text-[color:var(--text-heading)] no-underline",
+                      index > 0 && "border-l border-[color:var(--border)]",
+                    )}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+            ) : null}
+
+            <section aria-labelledby="roster-week-heading" className="grid gap-3" data-testid="roster-shifts-week">
+              <div className="mt-1 flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="Previous week"
+                  disabled={!previousWeekLoaded}
+                  onClick={() => setMonday(addDaysToDate(monday, -7))}
+                  className={cn(
+                    focusRing,
+                    "grid size-12 shrink-0 place-items-center rounded-md text-[color:var(--text-muted)] disabled:text-[color:var(--disabled)]",
+                  )}
+                >
+                  <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
+                </button>
+                <h2 id="roster-week-heading" className="grid flex-1 text-center">
+                  <span className="text-lg-minus font-semibold text-[color:var(--text-heading)]">
+                    {isThisWeek ? "This week" : `Week of ${formatPerthDay(monday)}`}
+                  </span>
+                  <span className="nums text-xs text-[color:var(--text-muted)]">
+                    {formatDateSpan(monday, addDaysToDate(monday, 6))} · {weekCountWords(rows)}
+                  </span>
+                </h2>
+                <button
+                  type="button"
+                  aria-label="Next week"
+                  onClick={() => setMonday(addDaysToDate(monday, 7))}
+                  className={cn(
+                    focusRing,
+                    "grid size-12 shrink-0 place-items-center rounded-md text-[color:var(--text-muted)]",
+                  )}
+                >
+                  <ChevronRight aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
+                </button>
+              </div>
+              <RosterList testId="roster-shifts-agenda" label="Shifts this week">
+                {rows.map((row) => (
+                  <DayRow
+                    key={row.date}
+                    row={row}
+                    byId={byId}
+                    cues={cues}
+                    onTeamShift={setTeamShift}
+                    onRemoveSeries={setConfirmSeries}
+                  />
+                ))}
+              </RosterList>
+            </section>
+
+            <RosterFortnight
+              summary={summary}
+              today={today}
+              leaveDates={leaveDates}
+              extraHours={summary.extraHours}
+              extraStatus={extra.status}
+              partial={partial}
+            />
+
+            <RosterSectionHead title="Roster tools" />
+            <RosterList testId="roster-tools">
+              {canEdit ? (
+                <>
+                  <RosterRow
+                    onClick={() => setAddView("menu")}
+                    lead={<RosterIconLead icon={Plus} />}
+                    title="Add a shift"
+                    sub="Or a day you're on call, or a calendar link"
+                    testId="roster-tools-add"
+                  />
+                  <RosterRow
+                    onClick={() => setImporting(true)}
+                    lead={<RosterIconLead icon={FileUp} />}
+                    title="Import a roster file"
+                    sub="PDF, Excel, CSV or calendar file"
+                    testId="roster-tools-import"
+                  />
+                </>
+              ) : null}
+              <RosterShareButton
+                shifts={shifts.shifts}
+                now={now}
+                trigger={(open) => (
+                  <RosterRow
+                    onClick={open}
+                    lead={<RosterIconLead icon={Share2} />}
+                    title="Share my shifts"
+                    sub="Next 7 or 14 days"
+                    testId="roster-share"
+                  />
+                )}
+              />
+              <RosterRow
+                href={MONTH_HREF}
+                lead={<RosterIconLead icon={CalendarDays} />}
+                title="Month"
+                sub="Your shifts and WA public holidays"
+                testId="roster-tools-month"
+              />
+            </RosterList>
+            <RosterFootnote>Rostered hours, not pay. Claiming extra time is in Admin.</RosterFootnote>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <InformationPageShell testId="roster-shifts-main" width="narrow">
-      <RosterPageHeader
-        icon={CalendarClock}
-        title="Shifts"
-        subtitle="Your shifts, week by week."
-        actions={
-          !importing && canEdit ? (
-            <RosterNewButton
-              entries={[
-                { id: "shift", label: "Add a shift", icon: Plus, onSelect: () => setAddView("shift") },
-                {
-                  id: "import",
-                  label: "Import a file",
-                  description: "PDF, Excel, CSV or calendar file",
-                  icon: FileUp,
-                  onSelect: () => setImporting(true),
-                },
-                { id: "link", label: "Add a calendar link", icon: Link2, onSelect: () => setAddView("link") },
-                ...(enabledTeams.length > 0
-                  ? [
-                      {
-                        id: "swap",
-                        label: "Swap or give away",
-                        description: "Pick the shift on the Team calendar",
-                        icon: ArrowLeftRight,
-                        href: "/roster/team?view=week",
-                      } as const,
-                    ]
-                  : []),
-                { id: "leave", label: "Plan leave", icon: Plane, href: "/roster/requests?start=leave" },
-                {
-                  id: "dates",
-                  label: "Dates I can't work",
-                  icon: CalendarOff,
-                  href: `/roster/requests?start=dates${oneTeamId ? `&team=${encodeURIComponent(oneTeamId)}` : ""}`,
-                },
-                {
-                  id: "late",
-                  label: "Stayed late",
-                  description: "Record extra time in Hours",
-                  icon: Clock,
-                  onSelect: () => setView("hours"),
-                },
-              ]}
-            />
-          ) : null
-        }
-      />
+      <RosterPageHeader icon={CalendarClock} title={title} subtitle={subtitle} ask={false} />
       {importing ? (
         <RosterImportFlow
           shifts={shifts}
@@ -382,76 +703,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
           }}
         />
       ) : (
-        <div className="grid min-w-0 gap-5 pb-20">
-          {/* The roster identity scope recolours the selected segment violet (globals.css remaps the accent). */}
-          <div data-mode-identity="roster" className="min-w-0">
-            <SegmentedControl label="View" value={view} onChange={setView} options={VIEWS} layout="equal" />
-          </div>
-
-          {shifts.status === "loading" ? (
-            <ModeModuleSkeleton rows={5} twoLine testId="roster-shifts-loading" />
-          ) : shifts.status === "signed-out" ? (
-            <RosterSignInNotice testId="roster-shifts-signed-out">Sign in to see your roster.</RosterSignInNotice>
-          ) : shifts.status === "error" ? (
-            <div className="grid gap-2" data-testid="roster-shifts-error">
-              <ModeNotice tone="warning">Your shifts could not be loaded.</ModeNotice>
-              <Button className="justify-self-start" onClick={() => void shifts.reload()}>
-                Try again
-              </Button>
-            </div>
-          ) : (
-            <>
-              {shifts.demoMode ? <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice> : null}
-              <RosterSampleShiftsNotice sample={shifts.sample} />
-              {notice ? <ModeNotice tone={notice.tone}>{notice.text}</ModeNotice> : null}
-              {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
-              {view === "week" ? (
-                shifts.teamLoading ? (
-                  <ModeModuleSkeleton rows={4} twoLine testId="roster-team-shifts-loading" />
-                ) : (
-                  <WeekView
-                    shifts={shifts.shifts}
-                    now={now}
-                    monday={monday}
-                    onWeekChange={setMonday}
-                    onRemoveSeries={setConfirmSeries}
-                    onTeamShift={setTeamShift}
-                    cues={cues}
-                  />
-                )
-              ) : view === "month" ? (
-                <div className="grid gap-2">
-                  {shifts.teamLoading ? (
-                    <ModeModuleSkeleton rows={4} twoLine testId="roster-team-shifts-loading" />
-                  ) : null}
-                  <div className={shifts.teamLoading ? "hidden" : undefined}>
-                    <CalendarView
-                      events={[...events, ...holidayEvents]}
-                      exportEvents={events}
-                      today={today}
-                      exportName="Roster"
-                      testId="roster-shifts-month"
-                      onMonthChange={setMonth}
-                    />
-                  </div>
-                  <p className="px-3 text-xs text-[color:var(--text-muted)]">
-                    WA public holidays, wa.gov.au, read 25 Sep 2026
-                  </p>
-                </div>
-              ) : (
-                <RosterHoursPanel
-                  shifts={shifts.shifts}
-                  now={now}
-                  extras={extras}
-                  onExtra={(extra) => setExtras((current) => [...current, extra])}
-                  payFortnightAnchor={
-                    teamOverview.status === "ready" ? (teamOverview.data?.settings?.payFortnightAnchor ?? null) : null
-                  }
-                />
-              )}
-            </>
-          )}
-        </div>
+        <div className="grid min-w-0 gap-3 pb-20">{body()}</div>
       )}
 
       <ConfirmDialog
@@ -488,10 +740,10 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                 ["give_away", "Give away"],
                 ["cant_make", "I can't make it"],
               ] as const
-            ).map(([start, title]) => (
+            ).map(([start, label]) => (
               <ModeRow
                 key={start}
-                title={title}
+                title={label}
                 href={`/roster/requests?start=${start}&assignment=${encodeURIComponent(teamShift.assignmentId!)}${teamShift.serviceId ? `&team=${encodeURIComponent(teamShift.serviceId)}` : ""}`}
               />
             ))}
@@ -517,7 +769,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
         hasTeam={enabledTeams.length > 0}
         onDates={() => {
           setAddView(null);
-          router.push(`/roster/requests?start=dates${oneTeamId ? `&team=${encodeURIComponent(oneTeamId)}` : ""}`);
+          router.push(datesHref);
         }}
         onImportFile={() => {
           setAddView(null);
