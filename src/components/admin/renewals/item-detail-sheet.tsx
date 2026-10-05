@@ -83,6 +83,10 @@ export function ChecklistItemDetailSheet({
   const history = entry ? complianceExpiryHistory(entry) : [];
   const flagged = entry ? entryNotForThisJob(entry) : false;
   const issuerCheckedOn = entry ? complianceIssuerCheckedOn(entry) : undefined;
+  const proofNote =
+    entry?.details && typeof entry.details === "object"
+      ? (entry.details as { proofNote?: unknown }).proofNote
+      : undefined;
   const today = perthCalendarDate(now);
   const startOn = entry && expiresOn ? (renewalStartOn(entry) ?? null) : null;
   const windowProgress = windowShare(startOn, expiresOn, today);
@@ -227,35 +231,37 @@ export function ChecklistItemDetailSheet({
             </div>
           ) : null}
 
-          <div className="grid gap-3">
-            {!row && expiresOn ? (
-              <div className="flex items-start justify-between gap-3">
-                <span className="text-sm font-medium text-[color:var(--text-heading)]">Expiry date</span>
-                <span className="nums text-lg-minus text-[color:var(--text-heading)]">
-                  {formatRecordedDate(expiresOn)}
-                </span>
-              </div>
-            ) : null}
-            {entry?.details &&
-            typeof entry.details === "object" &&
-            (entry.details as { proofNote?: unknown }).proofNote ? (
-              <p className={cn(textMuted, "text-sm")}>
-                Where your proof is
-                <br />
-                {String((entry.details as { proofNote?: unknown }).proofNote)}
-              </p>
-            ) : null}
-            {history.length > 0 ? (
-              <div className="grid gap-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-[color:var(--text-muted)]">History</p>
-                {history.map((date) => (
-                  <p key={date} className={cn(textMuted, "text-sm")}>
-                    {`Recorded before: ${formatRecordedDate(date)}`}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-          </div>
+          {(!row && expiresOn) || proofNote || history.length > 0 ? (
+            <div className="grid gap-3">
+              {!row && expiresOn ? (
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-sm font-medium text-[color:var(--text-heading)]">Expiry date</span>
+                  <span className="nums text-lg-minus text-[color:var(--text-heading)]">
+                    {formatRecordedDate(expiresOn)}
+                  </span>
+                </div>
+              ) : null}
+              {entry?.details &&
+              typeof entry.details === "object" &&
+              (entry.details as { proofNote?: unknown }).proofNote ? (
+                <p className={cn(textMuted, "text-sm")}>
+                  Where your proof is
+                  <br />
+                  {String((entry.details as { proofNote?: unknown }).proofNote)}
+                </p>
+              ) : null}
+              {history.length > 0 ? (
+                <div className="grid gap-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-[color:var(--text-muted)]">History</p>
+                  {history.map((date) => (
+                    <p key={date} className={cn(textMuted, "text-sm")}>
+                      {`Recorded before: ${formatRecordedDate(date)}`}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {entry ? (
             <div className="grid gap-2" data-testid={`${testId}-issuer-check`}>
