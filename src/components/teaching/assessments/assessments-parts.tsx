@@ -48,7 +48,7 @@ export function viewHref(view: AssessmentsView, params: Record<string, string> =
 
 export const secondaryText = "text-sm-minus leading-snug text-[color:var(--text-muted)]";
 export const titleText = "text-sm font-semibold leading-snug text-[color:var(--text-heading)]";
-export const labelText = "text-2xs font-bold uppercase tracking-label text-[color:var(--text-muted)]";
+export const labelText = "text-2xs font-semibold uppercase tracking-label text-[color:var(--text-muted)]";
 const hairlineRow = "border-t border-[color:var(--border)] first:border-t-0";
 
 const PILL_TONES: Record<PillTone, string> = {
@@ -65,7 +65,7 @@ export function Pill({ pill }: { pill: PillValue }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-2xs leading-4 font-bold tracking-label uppercase forced-colors:border",
+        "inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-2xs leading-4 font-semibold tracking-label uppercase forced-colors:border",
         PILL_TONES[pill.tone],
       )}
     >
@@ -127,7 +127,7 @@ export function Eyebrow({ children, accent }: { children: ReactNode; accent?: bo
   return (
     <span
       className={cn(
-        "text-2xs font-bold tracking-label uppercase",
+        "text-2xs font-semibold tracking-label uppercase",
         accent ? "text-[color:var(--mode-identity)]" : "text-[color:var(--text-muted)]",
       )}
     >
@@ -218,7 +218,7 @@ export function Row({
         {avatar ? (
           <span
             aria-hidden="true"
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-xs font-bold text-[color:var(--text-heading)]"
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-xs font-semibold text-[color:var(--text-heading)]"
           >
             {avatar}
           </span>
@@ -368,7 +368,7 @@ export function ScreenHeader({
         <ChevronLeft aria-hidden="true" className="size-icon-md" />
       </Link>
       <div className="grid min-w-0 text-center">
-        <h2 className="truncate text-base font-bold text-[color:var(--text-heading)]">{title}</h2>
+        <h2 className="truncate text-base font-semibold text-[color:var(--text-heading)]">{title}</h2>
         {subtitle ? <p className="truncate text-xs text-[color:var(--text-muted)]">{subtitle}</p> : null}
       </div>
       <div className="flex justify-end">{end}</div>

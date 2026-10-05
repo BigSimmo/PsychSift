@@ -58,7 +58,7 @@ export type SheetState =
 
 function PhoneNumber({ children }: { children: string }) {
   return (
-    <span className="rounded-md border border-[color:var(--border)] px-2 py-0.5 text-xs font-semibold text-[color:var(--text-heading)] tabular-nums">
+    <span className="rounded-md border border-[color:var(--border)] px-2 py-0.5 text-xs font-normal text-[color:var(--text-heading)] tabular-nums">
       {children}
     </span>
   );
@@ -313,7 +313,7 @@ function DisagreeSheet({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
         label="Draft (kept on this page, visible only to you)"
         value={s.disagreeDraft}
         onChange={(value) => dispatch({ type: "set-disagree-draft", value })}
-        placeholder="I'd like to respond to my end-of-term report for Psychiatry. No patient details."
+        placeholder="I'd like to respond to my end-of-term report for Psychiatry."
       />
       <Button
         icon={Copy}
@@ -344,7 +344,7 @@ function WordsSheet() {
     <dl className="grid">
       {GLOSSARY.map(([term, meaning]) => (
         <div key={term} className="grid gap-0.5 border-t border-[color:var(--border)] py-2.5 first:border-t-0">
-          <dt className="text-sm font-bold text-[color:var(--text-heading)]">{term}</dt>
+          <dt className="text-sm font-semibold text-[color:var(--text-heading)]">{term}</dt>
           <dd className={secondaryText}>{meaning}</dd>
         </div>
       ))}

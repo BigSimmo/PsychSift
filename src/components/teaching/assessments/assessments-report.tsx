@@ -50,7 +50,7 @@ function Marker({ value, kind }: { value: number; kind: "you" | "sup" | "both" }
       aria-hidden="true"
       data-mode-identity="teaching"
       className={cn(
-        "absolute top-1/2 grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-xs font-bold tabular-nums forced-colors:border",
+        "absolute top-1/2 grid size-6 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-xs font-normal tabular-nums forced-colors:border",
         kind === "sup" && "bg-[color:var(--text-heading)] text-[color:var(--surface-raised)]",
         kind === "you" &&
           "border-2 border-[color:var(--text-heading)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)]",
@@ -227,7 +227,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
           </span>
           <div className="grid gap-0.5">
             <Eyebrow>{mid ? "Mid-term" : "Supervisor's overall rating"}</Eyebrow>
-            <p className="text-lg font-bold text-[color:var(--text-heading)]">
+            <p className="text-lg font-semibold text-[color:var(--text-heading)]">
               {mid ? "Feedback only" : globalRatingName(g)}
             </p>
             <p className={secondaryText}>
@@ -460,7 +460,7 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
       />
       <Panel>
         <Eyebrow accent>{sup ? "Term supervisor" : "Prevocational doctor"}</Eyebrow>
-        <h2 className="text-xl font-extrabold text-[color:var(--text-heading)]">{name}</h2>
+        <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">{name}</h2>
         <p className={secondaryText}>
           {sup
             ? `I have completed this assessment and discussed it with ${DOC.first}.`

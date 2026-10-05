@@ -124,7 +124,7 @@ export function SupervisorHome({ s, dispatch, openSheet }: ScreenProps) {
     <>
       <Panel>
         <Eyebrow accent>Psychiatry · term 4</Eyebrow>
-        <h2 className="text-xl font-extrabold text-[color:var(--text-heading)]">{`3 doctors · ${todo} to finish`}</h2>
+        <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">{`3 doctors · ${todo} to finish`}</h2>
         <KeyValue k="End-of-term window" v="26 Oct to 6 Nov" />
         <Inset tone="accent" icon={EyeOff} title="You rate first">
           You see each doctor&apos;s self-assessment only after you finish your draft. You sign after the meeting.
@@ -203,7 +203,7 @@ export function SupervisorHome({ s, dispatch, openSheet }: ScreenProps) {
         <Row
           icon={Clock}
           title="Your times in the end-of-term window"
-          subtitle={`${Object.values(s.avail).flat().length} half-hour times offered over 2 weeks`}
+          subtitle={`${Object.values(s.avail).flat().length} half-hour times offered over 2 weeks`}
           href={viewHref("times", asSup)}
         />
       </List>
@@ -370,7 +370,7 @@ export function SupervisorTimes({ s, dispatch }: ScreenProps) {
         return (
           <Card key={i} className="gap-2">
             <div className="flex items-baseline justify-between gap-2">
-              <h2 className="text-sm font-bold text-[color:var(--text-heading)]">{dayLabel(i)}</h2>
+              <h2 className="text-sm font-semibold text-[color:var(--text-heading)]">{dayLabel(i)}</h2>
               <span className="text-sm-minus text-[color:var(--text-muted)]">
                 {on.length ? `${on.length} offered` : "None offered"}
               </span>

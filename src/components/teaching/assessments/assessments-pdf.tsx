@@ -73,7 +73,7 @@ function Field({ label, children }: { label: string; children?: ReactNode }) {
 function DomainBlock({ d, f }: { d: Domain; f: Filled }) {
   return (
     <div className="grid gap-1">
-      <div className="bg-[color:var(--surface-subtle)] px-1.5 py-1 font-bold">
+      <div className="bg-[color:var(--surface-subtle)] px-1.5 py-1 font-semibold">
         Domain {d.n}: {d.title} | {d.subtitle}
       </div>
       <div className="grid gap-0.5">
@@ -92,7 +92,8 @@ function DomainBlock({ d, f }: { d: Domain; f: Filled }) {
             key={label}
             className={cn(
               "border-l border-[color:var(--border-strong)] px-1 py-0.5 text-center first:border-l-0",
-              f.ratings[d.n] === i + 1 && "bg-[color:var(--text-heading)] font-bold text-[color:var(--surface-raised)]",
+              f.ratings[d.n] === i + 1 &&
+                "bg-[color:var(--text-heading)] font-semibold text-[color:var(--surface-raised)]",
             )}
           >
             {i + 1} {label}
@@ -107,7 +108,7 @@ function DomainBlock({ d, f }: { d: Domain; f: Filled }) {
 function Paper({ page, children }: { page: number; children: ReactNode }) {
   return (
     <section
-      aria-label={`Page ${page} of 3`}
+      aria-label={`Page ${page} of 3`}
       className="relative grid gap-2.5 border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4 pb-7 text-[color:var(--text-heading)] shadow-[var(--e1)]"
     >
       {children}
@@ -271,7 +272,7 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
           </Paper>
           <Paper page={3}>
             <DomainBlock d={DOMAINS[3]!} f={f} />
-            <div className="bg-[color:var(--surface-subtle)] px-1.5 py-1 font-bold">
+            <div className="bg-[color:var(--surface-subtle)] px-1.5 py-1 font-semibold">
               Global rating (end-of-term only)
             </div>
             <div className="grid gap-0.5">

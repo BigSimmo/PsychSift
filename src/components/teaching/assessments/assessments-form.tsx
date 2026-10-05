@@ -64,7 +64,7 @@ function StepHeading({ eyebrow, title, detail }: { eyebrow: string; title: strin
   return (
     <div className="grid gap-1 px-0.5" data-mode-identity="teaching">
       <Eyebrow accent>{eyebrow}</Eyebrow>
-      <h3 className="text-lg font-bold text-[color:var(--text-heading)]">{title}</h3>
+      <h3 className="text-lg font-semibold text-[color:var(--text-heading)]">{title}</h3>
       {detail ? <p className={secondaryText}>{detail}</p> : null}
     </div>
   );
@@ -106,7 +106,7 @@ function OptionRow({
         <span
           aria-hidden="true"
           className={cn(
-            "grid size-7 shrink-0 place-items-center rounded-full text-sm font-bold tabular-nums",
+            "grid size-7 shrink-0 place-items-center rounded-full text-sm font-normal tabular-nums",
             checked
               ? low
                 ? "bg-[color:var(--danger-text)] text-[color:var(--surface-raised)]"
@@ -197,7 +197,7 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
         {blind}
         <Panel>
           <Eyebrow accent>{sup ? `${DOC.name} · ${DOC.grade}` : "End-of-term · term 4"}</Eyebrow>
-          <h3 className="text-xl font-extrabold text-[color:var(--text-heading)]">Psychiatry, 31 Aug to 8 Nov</h3>
+          <h3 className="text-xl font-semibold text-[color:var(--text-heading)]">Psychiatry, 31 Aug to 8 Nov</h3>
           <p className={secondaryText}>
             {sup
               ? "You're completing this as term supervisor. The form goes to the MEU by Fri 20 Nov, within 10 working days of the end of term."
@@ -291,7 +291,7 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
     body = (
       <>
         {blind}
-        <StepHeading eyebrow={`Domain ${k} of 4`} title={d.title} detail={d.subtitle} />
+        <StepHeading eyebrow={`Domain ${k} of 4`} title={d.title} detail={d.subtitle} />
         <SectionLabel
           end={
             <span className="flex gap-3">
@@ -455,11 +455,11 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
         <List label="Your answers">
           {DOMAINS.map((d) => {
             const rating = f.ratings[d.n];
-            const words = `${f.ticks[d.n].length} of ${d.outcomes.length} outcomes · ${rating ? RATING_LABELS[rating - 1] : "not rated"}`;
+            const words = `${f.ticks[d.n].length} of ${d.outcomes.length} outcomes · ${rating ? RATING_LABELS[rating - 1] : "not rated"}`;
             const score = (
               <b
                 className={cn(
-                  "text-lg font-bold tabular-nums",
+                  "text-lg font-normal tabular-nums",
                   rating
                     ? sup && rating <= 2
                       ? "text-[color:var(--danger-text)]"
@@ -550,7 +550,7 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
         back={back}
         backLabel={sup ? "your requests" : "End-of-term"}
         title={sup ? `${DOC.first}'s end-of-term` : "Rate yourself"}
-        subtitle={locked ? "View only" : `Step ${n} of ${FORM_STEPS.length}`}
+        subtitle={locked ? "View only" : `Step ${n} of ${FORM_STEPS.length}`}
         end={
           locked ? null : (
             <TextLink
@@ -571,7 +571,7 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
           aria-valuemin={1}
           aria-valuemax={FORM_STEPS.length}
           aria-valuenow={n}
-          aria-valuetext={`Step ${n} of ${FORM_STEPS.length}`}
+          aria-valuetext={`Step ${n} of ${FORM_STEPS.length}`}
           data-mode-identity="teaching"
           className="h-1 overflow-hidden rounded-full bg-[color:var(--border)]"
         >

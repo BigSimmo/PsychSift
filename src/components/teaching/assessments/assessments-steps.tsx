@@ -124,8 +124,8 @@ export function EndOfTermSteps({ s }: ScreenProps) {
         subtitle="Psychiatry · term 4"
       />
       <Panel>
-        <Eyebrow accent>{`Step ${currentStepNumber(steps)} of ${steps.length}`}</Eyebrow>
-        <h2 className="text-xl leading-tight font-extrabold text-[color:var(--text-heading)]">{endOfTermLine(s)}</h2>
+        <Eyebrow accent>{`Step ${currentStepNumber(steps)} of ${steps.length}`}</Eyebrow>
+        <h2 className="text-xl leading-tight font-semibold text-[color:var(--text-heading)]">{endOfTermLine(s)}</h2>
         <p className={secondaryText}>Due to your MEU by Fri 20 Nov, within 10 working days of the end of term.</p>
       </Panel>
       {late ? (
@@ -203,7 +203,7 @@ export function AskSupervisor({ s, dispatch, go }: ScreenProps) {
         value={r.message}
         readOnly={r.sent}
         onChange={(value) => dispatch({ type: "set-request-message", value })}
-        placeholder="Anything you'd like her to look at. No patient details."
+        placeholder="Anything you'd like her to look at."
       />
       <SmallPrint>
         {SUP} gets a secure link by email, or it appears in her PsychSift inbox if she has one. On these made-up records
@@ -262,7 +262,7 @@ function DayButton({
       )}
     >
       <small className="text-2xs font-semibold">{d[0]}</small>
-      <b className="text-base font-bold tabular-nums">{d[1]}</b>
+      <b className="text-base font-normal tabular-nums">{d[1]}</b>
       <i className="text-2xs not-italic">{status}</i>
     </button>
   );
@@ -283,7 +283,7 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
         {header("Meeting", "End-of-term")}
         <Panel>
           <Eyebrow>Held</Eyebrow>
-          <p className="text-lg font-bold text-[color:var(--text-heading)]">{meetingDate(s)}</p>
+          <p className="text-lg font-semibold text-[color:var(--text-heading)]">{meetingDate(s)}</p>
           <p className={secondaryText}>With {SAMPLE_SUPERVISOR.name}</p>
         </Panel>
       </>
@@ -295,7 +295,7 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
         {header("Book a meeting", "End-of-term")}
         <Panel className="justify-items-start">
           <Lock aria-hidden="true" className="size-icon-lg text-[color:var(--text-muted)]" />
-          <h2 className="text-lg font-bold text-[color:var(--text-heading)]">Opens Mon 26 Oct</h2>
+          <h2 className="text-lg font-semibold text-[color:var(--text-heading)]">Opens Mon 26 Oct</h2>
           <p className={secondaryText}>
             The booking window is the last two weeks of term. That keeps the meeting near the end of term, so the form
             can reach the MEU by Fri 20 Nov.
@@ -323,7 +323,7 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
         {header("Meeting booked", "End-of-term")}
         <Panel>
           <Eyebrow>Booked</Eyebrow>
-          <p className="text-lg font-bold text-[color:var(--text-heading)]">{bookingLabel(s.booking)}</p>
+          <p className="text-lg font-semibold text-[color:var(--text-heading)]">{bookingLabel(s.booking)}</p>
           <p className={secondaryText}>With {SAMPLE_SUPERVISOR.name} · Ward 4 office · 30 minutes</p>
         </Panel>
         <List>
@@ -381,7 +381,7 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
           className="grid gap-1.5"
           aria-label={start === 0 ? "Week 9, October" : "Week 10, November"}
         >
-          <span className="px-1 text-2xs font-bold tracking-label text-[color:var(--text-muted)] uppercase">
+          <span className="px-1 text-2xs font-semibold tracking-label text-[color:var(--text-muted)] uppercase">
             {start === 0 ? "Week 9 · Oct" : "Week 10 · Nov"}
           </span>
           <div className="grid grid-cols-5 gap-1.5">
@@ -424,7 +424,7 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
                     : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)]",
                 )}
               >
-                <b className="text-sm font-bold tabular-nums">{t}</b>
+                <b className="text-sm font-normal tabular-nums">{t}</b>
                 <small className="text-2xs text-[color:var(--text-muted)]">30 min</small>
               </button>
             ))}

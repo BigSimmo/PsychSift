@@ -53,7 +53,7 @@ export function WeeksRing({ weeks, href }: { weeks: number; href?: string }) {
       stroke="stroke-[color:var(--mode-identity)]"
       track="stroke-[color:var(--border)]"
     >
-      <b className="text-xl leading-none font-bold text-[color:var(--text-heading)] tabular-nums">{weeks}</b>
+      <b className="text-xl leading-none font-normal text-[color:var(--text-heading)] tabular-nums">{weeks}</b>
       <small className="mt-0.5 text-2xs font-semibold text-[color:var(--text-muted)]">of {YEAR_WEEKS} wk</small>
     </ProgressRing>
   );
@@ -62,7 +62,7 @@ export function WeeksRing({ weeks, href }: { weeks: number; href?: string }) {
     <Link
       href={href}
       data-mode-identity="teaching"
-      aria-label={`${weeks} of ${YEAR_WEEKS} weeks done. Open year requirements.`}
+      aria-label={`${weeks} of ${YEAR_WEEKS} weeks done. Open year requirements.`}
       className={cn(focusRing, "shrink-0 rounded-full")}
     >
       {ring}
@@ -74,7 +74,7 @@ export function WeeksRing({ weeks, href }: { weeks: number; href?: string }) {
 function TermTrack({ week }: { week: number }) {
   const done = ((week - 0.5) / 10) * 100;
   return (
-    <div aria-label={`Week ${week} of 10`} role="img" className="grid gap-1.5" data-mode-identity="teaching">
+    <div aria-label={`Week ${week} of 10`} role="img" className="grid gap-1.5" data-mode-identity="teaching">
       <div className="relative h-1.5 rounded-full bg-[color:var(--border)]">
         <i
           className="absolute inset-y-0 left-0 rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]"
@@ -135,8 +135,8 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
       <Panel>
         <div className="flex items-center justify-between gap-3">
           <div className="grid min-w-0 gap-1">
-            <Eyebrow accent>{`${SAMPLE_DOCTOR.grade} 2026 · term 4 of 5`}</Eyebrow>
-            <h2 className="text-xl leading-tight font-extrabold text-[color:var(--text-heading)]">{t.name}</h2>
+            <Eyebrow accent>{`${SAMPLE_DOCTOR.grade} 2026 · term 4 of 5`}</Eyebrow>
+            <h2 className="text-xl leading-tight font-semibold text-[color:var(--text-heading)]">{t.name}</h2>
             <p className={secondaryText}>
               Chronic illness (B) · {t.from} to {t.to}
               <br />
@@ -177,8 +177,8 @@ export function AssessmentsHome({ s, openSheet }: ScreenProps) {
       <List>
         <Row
           icon={CalendarDays}
-          title={`${weeks} of ${YEAR_WEEKS} weeks · ${kindsDone(SAMPLE_TERMS)} of 4 kinds`}
-          subtitle={`${epaRecords(s).length} EPAs recorded here, at least ${epaNeedMore(s)} more needed. Leave: ${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} days.`}
+          title={`${weeks} of ${YEAR_WEEKS} weeks · ${kindsDone(SAMPLE_TERMS)} of 4 kinds`}
+          subtitle={`${epaRecords(s).length} EPAs recorded here, at least ${epaNeedMore(s)} more needed. Leave: ${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} days.`}
           tag={
             <Pill
               pill={

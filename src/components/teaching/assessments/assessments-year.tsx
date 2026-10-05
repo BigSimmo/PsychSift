@@ -112,7 +112,7 @@ function KindBoxes({ s }: { s: AssessmentsState }) {
         >
           <b
             className={cn(
-              "text-base font-bold",
+              "text-base font-semibold",
               done ? "text-[color:var(--success-text)]" : "text-[color:var(--mode-identity)]",
             )}
           >
@@ -147,7 +147,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
         <div className="flex items-center justify-between gap-3">
           <div className="grid min-w-0 gap-1">
             <Eyebrow accent>Weeks: on track</Eyebrow>
-            <h2 className="text-xl font-extrabold text-[color:var(--text-heading)]">{YEAR_WEEKS - w} weeks to go</h2>
+            <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">{YEAR_WEEKS - w} weeks to go</h2>
             <p className={secondaryText}>
               At least 47 weeks of supervised practice, including professional development leave. Your year runs 2 Feb
               2026 to 31 Jan 2027.
@@ -174,7 +174,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
       <List>
         <Requirement
           title="Terms completed"
-          value="3 of at least 4 countersigned"
+          value="3 of at least 4 countersigned"
           percent={75}
           note={
             s.sigs.doc
@@ -193,7 +193,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
         <Requirement title="Service terms (relief, nights)" value="None · limit 20%" percent={0} ok />
         <Requirement
           title="Sick, personal and carer's leave"
-          value={`${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} working days`}
+          value={`${SAMPLE_LEAVE.used} of ${SAMPLE_LEAVE.limit} working days`}
           percent={(SAMPLE_LEAVE.used / SAMPLE_LEAVE.limit) * 100}
           note="Over 10 working days, the Assessment Review Panel will monitor your progress."
         />
@@ -207,7 +207,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
           title="This year"
           value={`${total} recorded here · at least ${more} more needed`}
           percent={(total / (total + more)) * 100}
-          note="At least 10 a year, with EPA 1 in every term and at least 2 of each other EPA. For your terms that means at least 11."
+          note="At least 10 a year, with EPA 1 in every term and at least 2 of each other EPA. For your terms that means at least 11."
         />
         <Requirement
           title="This term"
@@ -239,7 +239,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
                 </span>
                 <b
                   className={cn(
-                    "text-right font-semibold tabular-nums",
+                    "text-right font-normal tabular-nums",
                     need && x.id === 1 ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-heading)]",
                   )}
                 >
@@ -258,8 +258,8 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
 
       <SectionLabel>Term assessments</SectionLabel>
       <List>
-        <Requirement title="Mid-term (terms over 5 weeks)" value="4 of 4 so far" percent={100} ok />
-        <Requirement title="End-of-term" value="3 of 5 countersigned" percent={60} />
+        <Requirement title="Mid-term (terms over 5 weeks)" value="4 of 4 so far" percent={100} ok />
+        <Requirement title="End-of-term" value="3 of 5 countersigned" percent={60} />
       </List>
       <SmallPrint>PGY2 has its own rules. They&apos;ll show here when you start PGY2.</SmallPrint>
       <SmallPrint center>
@@ -345,9 +345,9 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
       <ScreenHeader back={viewHref("home")} backLabel="Assessments" title={`Term ${t.n}`} subtitle={t.name} />
       <Panel>
         <Eyebrow accent>{`${t.category} · ${t.categoryName}`}</Eyebrow>
-        <h2 className="text-xl font-extrabold text-[color:var(--text-heading)]">{t.name}</h2>
+        <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">{t.name}</h2>
         <KeyValue k="Dates" v={`${t.from} to ${t.to}`} />
-        <KeyValue k="Length" v={`${t.weeks} weeks`} />
+        <KeyValue k="Length" v={`${t.weeks} weeks`} />
         <KeyValue k="Term supervisor" v={t.supervisor} />
       </Panel>
       <SectionLabel>Assessments</SectionLabel>
@@ -520,7 +520,7 @@ export function AllAssessments({ s }: ScreenProps) {
       ) : (
         <Card className="justify-items-center text-center">
           <Check aria-hidden="true" className="size-icon-lg text-[color:var(--success-text)]" />
-          <h2 className="text-base font-bold text-[color:var(--text-heading)]">Nothing to do</h2>
+          <h2 className="text-base font-semibold text-[color:var(--text-heading)]">Nothing to do</h2>
           <p className={secondaryText}>Every assessment so far is signed.</p>
         </Card>
       )}
