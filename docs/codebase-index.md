@@ -609,6 +609,13 @@ The owner-scoped calendar consent read enriches `week.read` from `teaching_calen
 failed reads never display a false opt-out. Legacy On Call teaching remains available until
 an approved service transfer; new recording resources remain deferred.
 
+The term tracker and exam prep (`/teaching/term`, opened from Logbook's Term card, and
+`/teaching/exam-prep`, opened from Resources and from Term) keep the doctor's own records on the
+device only: `term-tracker.ts` holds the model, validation, date arithmetic and the made-up
+signed-out sample, and `term-tracker-store.ts` reads and writes two account-scoped localStorage
+keys that the auth provider clears at sign-out. No API, no table. Term assessments are signed in
+the CLA ePortfolio, which the page links to; EPA targets apply only once the doctor confirms them.
+
 `/teaching/assessments` (`src/components/teaching/assessments/`, logic in
 `src/lib/teaching/assessments/`) walks a prevocational doctor and their term supervisor through
 term assessments and EPAs, one route switched by `?view=` and `?as=supervisor`. It runs only on
