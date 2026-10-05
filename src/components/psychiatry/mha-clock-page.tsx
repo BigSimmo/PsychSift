@@ -1,19 +1,27 @@
 "use client";
 
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Copy, Phone, Plus, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
-import { useId, useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { DashCard } from "@/components/dashboard-kit/dash-card";
-import { DashTag } from "@/components/dashboard-kit/icon-chip";
-import { dashFigure, dashLink, dashMuted, dashSurface } from "@/components/dashboard-kit/recipes";
+import { dashSurface } from "@/components/dashboard-kit/recipes";
 import {
   MHA_TIMELINE_AWAITING_REVIEW,
   MHA_TIMELINE_NOT_CALCULABLE,
   MHA_TIMELINE_REFERENCE_NOTE,
 } from "@/components/forms/mha-timeline-panel";
 import { InformationPageBreadcrumbs, InformationPageShell } from "@/components/information-page-shell";
+import {
+  flatButton,
+  flatLink,
+  FlatLabel,
+  FlatList,
+  flatPanel,
+  flatPanelPadded,
+  FlatRow,
+  FlatTag,
+} from "@/components/psychiatry/psychiatry-flat";
 import { cn } from "@/components/ui-primitives";
 import { toAwstParts } from "@/lib/caring-contacts/clock";
 import { mhaActMetadata } from "@/lib/mha-act-sections";
@@ -21,13 +29,15 @@ import { formatPerthDateTime, parsePerthDateTimeInput } from "@/lib/mha-timeline
 import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
 import {
   addMhaClock,
-  EMPTY_MHA_CLOCKS,
-  loadMhaClocks,
+  EMPTY_MHA_CLOCK_STATE,
+  loadMhaClockState,
   MHA_CLOCK_LIMIT,
   removeMhaClock,
+  restoreMhaClock,
   subscribeMhaClocks,
   type AddMhaClockResult,
   type MhaClock,
+  type MhaClockState,
 } from "@/lib/psychiatry-hub/mha-clocks";
 
 /**
@@ -38,7 +48,11 @@ import {
  * reads the governed timeframe data and shows an end time only for a limit signed off by a named
  * clinician while the owner's signed countdown switch is on. Everything else shows the owner-approved
  * "awaiting clinical review" or "not calculated" line from the form page, with the Act's own words.
- * A clock holds a form code and a time, never anything about the person.
+ * A clock holds a form code and a time, never anything about the person, and is kept on this device
+ * until the reader removes it or signs out (owner decisions, 5 October 2026).
+ *
+ * A passed limit is shown in red: the one place red is used, for a legal time limit that has gone by
+ * (owner decision 6, 5 October 2026).
  */
 
 export interface MhaClockForm {
@@ -49,6 +63,16 @@ export interface MhaClockForm {
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
+/** A weekday name alone is unambiguous only within this window. */
+const WEEKDAY_WINDOW_MS = 6 * 24 * HOUR_MS;
+/** How long the Undo bar stays after a clock is removed. */
+const UNDO_MS = 8_000;
+
+export const MHA_CLOCK_RETENTION_NOTE =
+  "Only on this phone, not on your other devices. Kept until you remove it or sign out. A clock holds the form and the time only.";
+export const MHA_CLOCK_UNREADABLE = "Clocks could not be read on this phone.";
+export const MHA_CLOCK_HANDOVER_NOTE =
+  "Copies the form and made-at time only. No names, and no running times, because those go out of date once pasted.";
 
 function subscribeMinute(listener: () => void): () => void {
   const timer = window.setInterval(listener, 30_000);
@@ -66,8 +90,8 @@ function useNow(nowProp?: Date): Date | null {
   return minute === null ? null : new Date(minute);
 }
 
-function useClocks(): readonly MhaClock[] {
-  return useSyncExternalStore(subscribeMhaClocks, loadMhaClocks, () => EMPTY_MHA_CLOCKS);
+function useClockState(): MhaClockState {
+  return useSyncExternalStore(subscribeMhaClocks, loadMhaClockState, () => EMPTY_MHA_CLOCK_STATE);
 }
 
 function hhmm(instant: Date | number): string {
@@ -75,19 +99,34 @@ function hhmm(instant: Date | number): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
-/** "0:45", "26:05": hours and minutes, for elapsed time. */
-function hoursMinutes(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / MINUTE_MS));
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+const WEEKDAY = new Intl.DateTimeFormat("en-AU", { weekday: "short", timeZone: "Australia/Perth" });
+
+/**
+ * "Sun 23:40" within six days of now either way, so every time carries its day; further out the
+ * full Perth date, because a weekday alone would be ambiguous.
+ */
+export function mhaClockWhen(instant: Date | number, nowMs: number): string {
+  const ms = new Date(instant).getTime();
+  if (Math.abs(ms - nowMs) > WEEKDAY_WINDOW_MS) return formatPerthDateTime(new Date(ms));
+  return `${WEEKDAY.format(new Date(ms))} ${hhmm(ms)}`;
 }
 
-/** "5 h 20 min", "45 min". */
-function spoken(ms: number): string {
-  const total = Math.max(0, Math.round(ms / MINUTE_MS));
+/** "5 h 20 min", "45 min", "26 h". */
+export function mhaClockDuration(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / MINUTE_MS));
   const hours = Math.floor(total / 60);
   const minutes = total % 60;
   if (hours === 0) return `${minutes} min`;
   return minutes === 0 ? `${hours} h` : `${hours} h ${minutes} min`;
+}
+
+/** The plain lines the handover copy puts on the clipboard. Exported for tests. */
+export function mhaClockHandoverText(clocks: readonly MhaClock[], nowMs: number): string {
+  return [
+    `As at ${mhaClockWhen(nowMs, nowMs)}`,
+    ...clocks.map((clock) => `Form ${clock.formCode} · made ${mhaClockWhen(clock.madeAt, nowMs)}`),
+    MHA_TIMELINE_REFERENCE_NOTE,
+  ].join("\n");
 }
 
 /** A `datetime-local` value for now, in Perth wall time. */
@@ -103,7 +142,9 @@ const ADD_MESSAGE: Readonly<Record<Exclude<AddMhaClockResult, "added">, string>>
   "not-saved": "This browser would not save the clock. Check that site storage is allowed.",
 };
 
-function AddClockCard({ forms, now }: { readonly forms: readonly MhaClockForm[]; readonly now: Date | null }) {
+const ADD_SECTION_ID = "mha-clock-start";
+
+function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; readonly now: Date | null }) {
   const formId = useId();
   const timeId = useId();
   const messageId = useId();
@@ -133,13 +174,23 @@ function AddClockCard({ forms, now }: { readonly forms: readonly MhaClockForm[];
   };
 
   const field =
-    "min-h-12 w-full rounded-xl border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-3 text-sm text-[color:var(--dash-ink)] forced-colors:border";
+    "min-h-12 w-full min-w-0 rounded-lg border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-3 text-sm text-[color:var(--dash-ink)] forced-colors:border";
+  const label = "text-xs font-medium text-[color:var(--dash-muted)]";
 
   return (
-    <DashCard title="Start a clock" testId="mha-clock-add">
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] sm:items-end">
+    <section
+      aria-labelledby={`${ADD_SECTION_ID}-title`}
+      id={ADD_SECTION_ID}
+      data-testid="mha-clock-add"
+      className="grid gap-2 scroll-mt-24"
+    >
+      <FlatLabel id={`${ADD_SECTION_ID}-title`} title="Start a clock" />
+      <form
+        onSubmit={submit}
+        className={cn(flatPanelPadded, "sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] sm:items-end sm:gap-3")}
+      >
         <div className="grid min-w-0 gap-1">
-          <label htmlFor={formId} className="text-sm font-dash-title text-[color:var(--dash-ink)]">
+          <label htmlFor={formId} className={label}>
             Form
           </label>
           <select
@@ -158,7 +209,7 @@ function AddClockCard({ forms, now }: { readonly forms: readonly MhaClockForm[];
           </select>
         </div>
         <div className="grid min-w-0 gap-1">
-          <label htmlFor={timeId} className="text-sm font-dash-title text-[color:var(--dash-ink)]">
+          <label htmlFor={timeId} className={label}>
             When was it made?
           </label>
           <input
@@ -167,69 +218,60 @@ function AddClockCard({ forms, now }: { readonly forms: readonly MhaClockForm[];
             value={madeAt || (now ? perthInputValue(now) : "")}
             onChange={(event) => setMadeAt(event.target.value)}
             data-testid="mha-clock-time"
-            className={field}
+            aria-invalid={message?.startsWith("That time") ? true : undefined}
+            aria-describedby={messageId}
+            className={cn(field, message?.startsWith("That time") && "border-[color:var(--danger-text)]")}
           />
         </div>
-        <button
-          type="submit"
-          data-testid="mha-clock-start"
-          aria-describedby={message ? messageId : undefined}
+        <p
+          id={messageId}
+          role="status"
+          data-testid="mha-clock-message"
           className={cn(
-            focusRing,
-            "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-[color:var(--dash-blue)] px-4 text-sm font-dash-title text-[color:var(--dash-hero-ink)] forced-colors:border",
+            "flex min-h-4 items-start gap-1.5 text-xs sm:col-span-3 sm:row-start-2",
+            message ? "font-medium text-[color:var(--danger-text)]" : "text-[color:var(--dash-muted)]",
           )}
         >
+          {message ? <TriangleAlert aria-hidden="true" className="mt-px size-icon-xs shrink-0" /> : null}
+          <span>{message ?? "Perth time. Only forms with time limits in the app are listed."}</span>
+        </p>
+        <button type="submit" data-testid="mha-clock-start" className={cn(flatButton, "w-full sm:w-auto")}>
           <Plus aria-hidden="true" className="size-icon-sm" />
           Start
         </button>
       </form>
-      <p id={messageId} role="status" className={cn(dashMuted, "min-h-4")} data-testid="mha-clock-message">
-        {message ?? "Perth time. Only forms with time limits in the app are listed."}
-      </p>
-    </DashCard>
+    </section>
   );
 }
 
 /**
- * One lane per clock from when it was made to now, with a dot at each limit's end time when one
- * may be shown, and a shared now line. Decorative: every figure on it is also written in the cards.
+ * One lane per clock from when it was made to now, and a shared now line. Decorative: every figure
+ * on it is also written in the list below.
  */
-function ShiftBand({
-  clocks,
-  items,
-  now,
-}: {
-  readonly clocks: readonly MhaClock[];
-  readonly items: readonly MhaTimerItem[];
-  readonly now: Date;
-}) {
+function ShiftBand({ clocks, now }: { readonly clocks: readonly MhaClock[]; readonly now: Date }) {
   const nowMs = now.getTime();
-  const earliest = Math.max(Math.min(...clocks.map((clock) => clock.madeAt)), nowMs - 24 * HOUR_MS);
+  const earliest = Math.max(Math.min(...clocks.map((clock) => clock.madeAt)), nowMs - 33 * HOUR_MS);
   const start = Math.floor(earliest / HOUR_MS) * HOUR_MS;
-  const firstDeadlines = items.flatMap((item) =>
-    item.kind === "countdown" && item.occurrence === 1 && !item.expired ? [item.deadline.getTime()] : [],
-  );
-  const latest = Math.min(Math.max(nowMs + HOUR_MS, ...firstDeadlines), start + 36 * HOUR_MS);
-  const end = Math.max(Math.ceil(latest / HOUR_MS) * HOUR_MS, start + 6 * HOUR_MS);
+  const end = Math.max(Math.ceil((nowMs + HOUR_MS) / HOUR_MS) * HOUR_MS, start + 6 * HOUR_MS);
   const span = end - start;
   const pct = (ms: number) => Math.min(100, Math.max(0, ((ms - start) / span) * 100));
-  const step = span <= 12 * HOUR_MS ? 3 * HOUR_MS : 6 * HOUR_MS;
+  const step = span <= 12 * HOUR_MS ? 3 * HOUR_MS : span <= 24 * HOUR_MS ? 6 * HOUR_MS : 12 * HOUR_MS;
   const ticks: number[] = [];
   for (let tick = start; tick <= end; tick += step) ticks.push(tick);
-  const LANE = 20;
+  const LANE = 14;
   const GAP = 8;
   const lanesHeight = clocks.length * LANE + (clocks.length - 1) * GAP;
-  const height = lanesHeight + 22;
+  const height = lanesHeight + 20;
   const nowX = `${pct(nowMs)}%`;
 
   // SVG with percentage coordinates, so positions need no inline styles.
   return (
-    <div aria-hidden="true" className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-2 py-1" data-testid="mha-clock-band">
+    <div aria-hidden="true" className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 py-1" data-testid="mha-clock-band">
       <div className="grid content-start gap-2">
         {clocks.map((clock) => (
           <span
             key={clock.id}
-            className="flex h-5 items-center justify-end truncate text-xs font-dash-title text-[color:var(--dash-ink)]"
+            className="flex h-3.5 items-center justify-end text-xs font-semibold text-[color:var(--dash-ink)]"
           >
             {clock.formCode}
           </span>
@@ -241,38 +283,23 @@ function ShiftBand({
           const from = pct(clock.madeAt);
           return (
             <g key={clock.id}>
-              <rect x="0" y={y} width="100%" height={LANE} rx={LANE / 2} className="fill-[color:var(--dash-line)]" />
+              <rect x="0" y={y} width="100%" height={LANE} rx={LANE / 2} className="fill-[color:var(--dash-card)]" />
               <rect
                 x={`${from}%`}
                 y={y}
                 width={`${Math.max(0, pct(nowMs) - from)}%`}
                 height={LANE}
                 rx={LANE / 2}
-                className="fill-[color:var(--dash-blue)] forced-colors:fill-[CanvasText]"
+                className="fill-[color:var(--dash-faint)] forced-colors:fill-[CanvasText]"
               />
-              {items.map((item) =>
-                item.timerId === clock.id &&
-                item.kind === "countdown" &&
-                item.occurrence === 1 &&
-                item.deadline.getTime() <= end ? (
-                  <circle
-                    key={item.entry.id}
-                    cx={`${pct(item.deadline.getTime())}%`}
-                    cy={y + LANE / 2}
-                    r="5"
-                    strokeWidth="2"
-                    className="fill-[color:var(--dash-raised)] stroke-[color:var(--dash-blue)]"
-                  />
-                ) : null,
-              )}
             </g>
           );
         })}
         <line
           x1={nowX}
           x2={nowX}
-          y1="-4"
-          y2={lanesHeight + 4}
+          y1="-2"
+          y2={lanesHeight + 2}
           strokeWidth="2"
           className="stroke-[color:var(--dash-ink)] forced-colors:stroke-[CanvasText]"
         />
@@ -280,9 +307,9 @@ function ShiftBand({
           <text
             key={tick}
             x={`${pct(tick)}%`}
-            y={height - 4}
+            y={height - 3}
             textAnchor={index === 0 ? "start" : index === ticks.length - 1 ? "end" : "middle"}
-            className="fill-[color:var(--dash-faint)] text-3xs nums"
+            className="fill-[color:var(--dash-faint)] text-2xs nums"
           >
             {hhmm(tick)}
           </text>
@@ -294,102 +321,113 @@ function ShiftBand({
 
 function LimitRow({ item, nowMs }: { readonly item: MhaTimerItem; readonly nowMs: number }) {
   const { entry } = item;
+  const quote =
+    "border-l-2 border-[color:var(--dash-line-strong)] pl-3 text-sm italic leading-6 text-[color:var(--dash-ink)]";
   return (
-    <li className="grid gap-1.5 border-t border-[color:var(--dash-line)] pt-3 first:border-t-0 first:pt-0">
-      <p className="text-sm font-dash-title leading-snug text-[color:var(--dash-ink)]">{entry.trigger}</p>
+    <li className="grid gap-1 border-t border-[color:var(--dash-line)] pt-3">
+      <p className="text-sm leading-snug text-[color:var(--dash-ink)]">{entry.trigger}</p>
       {entry.condition ? (
         <p className="text-xs leading-snug text-[color:var(--dash-muted)]" data-testid="mha-clock-condition">
           {entry.condition}
         </p>
       ) : null}
       {item.kind === "countdown" ? (
-        <div className="grid gap-0.5" data-testid="mha-clock-countdown">
-          <p className="text-sm text-[color:var(--dash-ink)]">
-            <span className="font-dash-title">{item.expired ? "Time limit passed " : "Time limit "}</span>
-            <time dateTime={item.deadline.toISOString()}>{formatPerthDateTime(item.deadline)}</time>
+        <div
+          className={cn(
+            "grid gap-0.5",
+            item.expired ? "text-[color:var(--danger-text)]" : "text-[color:var(--dash-ink)]",
+          )}
+          data-testid="mha-clock-countdown"
+          data-passed={item.expired ? "true" : undefined}
+        >
+          <p className="flex flex-wrap items-center gap-x-2 text-sm">
+            <span className="font-semibold">{item.expired ? "Time limit passed" : "Time limit"}</span>
+            <time
+              dateTime={item.deadline.toISOString()}
+              className="nums rounded-md border border-[color:var(--dash-line-strong)] px-1.5 text-xs text-[color:var(--dash-muted)] forced-colors:border"
+            >
+              {mhaClockWhen(item.deadline, nowMs)}
+            </time>
           </p>
-          <p className={cn(dashFigure, "text-lg text-[color:var(--dash-blue)]")}>
+          <p className="nums text-base font-semibold">
             {item.expired
-              ? `${spoken(nowMs - item.deadline.getTime())} ago`
-              : `${spoken(item.deadline.getTime() - nowMs)} left`}
+              ? `${mhaClockDuration(nowMs - item.deadline.getTime())} ago`
+              : `${mhaClockDuration(item.deadline.getTime() - nowMs)} left`}
           </p>
           {item.repeatsEveryHours !== null ? (
-            <p className={dashMuted}>{`Repeats every ${item.repeatsEveryHours} hours while the order is in force.`}</p>
+            <p className="text-xs text-[color:var(--dash-muted)]">{`Repeats every ${item.repeatsEveryHours} hours while the order is in force.`}</p>
           ) : null}
         </div>
       ) : (
-        <div className="grid gap-1" data-testid="mha-clock-quote-only">
-          <p className="text-sm font-dash-title text-[color:var(--dash-muted)]">
+        <div className="grid gap-1.5" data-testid="mha-clock-quote-only">
+          <p className="text-sm font-semibold text-[color:var(--dash-muted)]">
             {item.reason === "not-calculable" ? MHA_TIMELINE_NOT_CALCULABLE : MHA_TIMELINE_AWAITING_REVIEW}
           </p>
-          <blockquote
-            cite={mhaActMetadata.sourceUrl}
-            className="border-l-2 border-[color:var(--dash-line-strong)] pl-3 text-sm italic leading-6 text-[color:var(--dash-ink)]"
-          >
+          <blockquote cite={mhaActMetadata.sourceUrl} className={quote}>
             {entry.leadIn ? `“${entry.leadIn} … ${entry.quote}”` : `“${entry.quote}”`}
           </blockquote>
           {entry.caveat ? (
-            <blockquote
-              cite={mhaActMetadata.sourceUrl}
-              className="border-l-2 border-[color:var(--dash-line-strong)] pl-3 text-sm italic leading-6 text-[color:var(--dash-ink)]"
-            >
+            <blockquote cite={mhaActMetadata.sourceUrl} className={quote}>
               {`The Act also says (s ${entry.caveat.section}): “${entry.caveat.quote}”`}
             </blockquote>
           ) : null}
         </div>
       )}
-      <p className={dashMuted}>{`Section ${entry.section}. Counted from: ${entry.anchor}.`}</p>
+      <p className="text-xs text-[color:var(--dash-muted)]">{`Section ${entry.section}. Counted from: ${entry.anchor}.`}</p>
     </li>
   );
 }
 
-function ClockCard({
+function ClockItem({
   clock,
   form,
   items,
   nowMs,
+  onRemove,
 }: {
   readonly clock: MhaClock;
   readonly form: MhaClockForm | undefined;
   readonly items: readonly MhaTimerItem[];
   readonly nowMs: number;
+  readonly onRemove: (clock: MhaClock) => void;
 }) {
-  const title = form?.title ?? "Form not in the catalogue";
+  const made = mhaClockWhen(clock.madeAt, nowMs);
   return (
-    <li className="min-w-0">
+    <li className="min-w-0 border-t border-[color:var(--dash-line)] first:border-t-0">
       <article
-        aria-label={`Form ${clock.formCode}, made at ${hhmm(clock.madeAt)}`}
+        aria-label={`Form ${clock.formCode}, made ${made}`}
         data-testid="mha-clock-card"
-        className="grid gap-3 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] p-3.5 forced-colors:border"
+        className="grid gap-2 px-3.5 py-3"
       >
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5">
           <span
             aria-hidden="true"
-            className="grid size-12 place-items-center rounded-full bg-[color:var(--dash-blue-tint)] font-dash-figure text-base text-[color:var(--dash-blue)] forced-colors:border"
+            className="nums grid h-7 min-w-9 place-items-center rounded-lg border border-[color:var(--dash-line-strong)] px-1.5 text-sm-minus font-semibold text-[color:var(--dash-ink)] forced-colors:border"
           >
             {clock.formCode}
           </span>
-          <span className="grid min-w-0 gap-0.5">
-            <span className="break-words font-dash-title text-base-minus leading-tight text-[color:var(--dash-ink)]">
-              {title}
+          <span className="grid min-w-0">
+            <span className="text-sm font-semibold text-[color:var(--dash-ink)]">{`Form ${clock.formCode}`}</span>
+            <span className="break-words text-xs text-[color:var(--dash-muted)]">
+              {form?.title ?? "Form not in the catalogue"}
             </span>
-            <span
-              className={dashMuted}
-            >{`Made ${hhmm(clock.madeAt)} · running ${hoursMinutes(nowMs - clock.madeAt)}`}</span>
           </span>
           <button
             type="button"
-            onClick={() => removeMhaClock(clock.id)}
-            aria-label={`Remove the Form ${clock.formCode} clock made at ${hhmm(clock.madeAt)}`}
+            onClick={() => onRemove(clock)}
+            aria-label={`Remove the Form ${clock.formCode} clock made ${made}`}
             data-testid="mha-clock-remove"
             className={cn(
               focusRing,
-              "grid size-12 place-items-center rounded-full text-[color:var(--dash-muted)] forced-colors:border",
+              "-mr-2 grid size-12 place-items-center rounded-full text-[color:var(--dash-muted)] forced-colors:border",
             )}
           >
-            <Trash2 aria-hidden="true" className="size-icon-sm" />
+            <X aria-hidden="true" className="size-icon-sm" />
           </button>
         </div>
+        <p className="nums text-xs text-[color:var(--dash-muted)]" data-testid="mha-clock-meta">
+          {`Made ${made} · ${mhaClockDuration(nowMs - clock.madeAt)} running`}
+        </p>
         {items.length > 0 ? (
           <ol className="grid gap-3">
             {items.map((item, index) => (
@@ -397,18 +435,106 @@ function ClockCard({
             ))}
           </ol>
         ) : (
-          <p className={dashMuted}>The app has no time limits for this form.</p>
+          <p className="text-xs text-[color:var(--dash-muted)]">The app has no time limits for this form.</p>
         )}
         {form ? (
-          <Link
-            href={`/forms/${form.slug}`}
-            className={cn(focusRing, dashLink, "inline-flex min-h-12 items-center self-start rounded-full")}
-          >
+          <Link href={`/forms/${form.slug}`} className={cn(flatLink, "self-start")}>
             {`Open Form ${clock.formCode}`}
+            <ChevronRight aria-hidden="true" className="size-icon-xs" />
           </Link>
         ) : null}
       </article>
     </li>
+  );
+}
+
+function HandoverCopy({ clocks, nowMs }: { readonly clocks: readonly MhaClock[]; readonly nowMs: number }) {
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const text = mhaClockHandoverText(clocks, nowMs);
+  const lines = text.split("\n");
+  const copy = () => {
+    if (!navigator.clipboard?.writeText) {
+      setStatus("failed");
+      return;
+    }
+    navigator.clipboard.writeText(text).then(
+      () => setStatus("copied"),
+      () => setStatus("failed"),
+    );
+  };
+  return (
+    <section aria-labelledby="mha-clock-handover-title" className="grid gap-2" data-testid="mha-clock-handover">
+      <FlatLabel id="mha-clock-handover-title" title="For handover" />
+      <div className={flatPanelPadded}>
+        <div className="grid gap-0.5" data-testid="mha-clock-handover-lines">
+          <p className="nums text-xs text-[color:var(--dash-muted)]">{lines[0]}</p>
+          {lines.slice(1, -1).map((line, index) => (
+            <p key={`${index}:${line}`} className="nums text-sm text-[color:var(--dash-ink)]">
+              {line}
+            </p>
+          ))}
+          <p className="text-xs text-[color:var(--dash-muted)]">{lines.at(-1)}</p>
+        </div>
+        <p className="text-xs text-[color:var(--dash-muted)]">{MHA_CLOCK_HANDOVER_NOTE}</p>
+        <div className="flex flex-wrap items-center justify-end gap-x-3">
+          <p
+            role="status"
+            className="min-w-0 flex-1 text-xs text-[color:var(--dash-muted)]"
+            data-testid="mha-clock-handover-status"
+          >
+            {status === "copied"
+              ? "Copied."
+              : status === "failed"
+                ? "This browser would not copy. Select the lines above and copy them yourself."
+                : ""}
+          </p>
+          <button type="button" onClick={copy} data-testid="mha-clock-handover-copy" className={flatButton}>
+            <Copy aria-hidden="true" className="size-icon-sm" />
+            Copy
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function UndoBar({
+  removed,
+  onUndo,
+  message,
+}: {
+  readonly removed: MhaClock | null;
+  readonly onUndo: () => void;
+  readonly message: string | null;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[var(--z-toast)] flex justify-center px-4"
+    >
+      {removed || message ? (
+        <div
+          data-testid="mha-clock-undo"
+          className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-xl bg-[color:var(--dash-ink)] py-1 pr-1 pl-4 text-sm text-[color:var(--dash-page)] shadow-[var(--dash-shadow)] forced-colors:border"
+        >
+          <span className="nums min-w-0 py-2">{message ?? `Form ${removed?.formCode} clock removed`}</span>
+          {removed ? (
+            <button
+              type="button"
+              onClick={onUndo}
+              data-testid="mha-clock-undo-button"
+              className={cn(
+                focusRing,
+                "min-h-12 shrink-0 rounded-lg px-4 font-semibold underline-offset-2 hover:underline",
+              )}
+            >
+              Undo
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -423,6 +549,39 @@ function firstOfEach(items: readonly MhaTimerItem[]): MhaTimerItem[] {
   });
 }
 
+function useUndo() {
+  const [removed, setRemoved] = useState<MhaClock | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const timer = useRef<number | null>(null);
+  const clear = useCallback(() => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+  }, []);
+  const show = useCallback(
+    (clock: MhaClock | null, text: string | null) => {
+      clear();
+      setRemoved(clock);
+      setMessage(text);
+      timer.current = window.setTimeout(() => {
+        setRemoved(null);
+        setMessage(null);
+      }, UNDO_MS);
+    },
+    [clear],
+  );
+  useEffect(() => clear, [clear]);
+  const remove = (clock: MhaClock) => {
+    if (removeMhaClock(clock.id)) show(clock, null);
+    else show(null, "This browser would not remove the clock. Check that site storage is allowed.");
+  };
+  const undo = () => {
+    if (!removed) return;
+    const result = restoreMhaClock(removed);
+    show(null, result === "added" ? `Form ${removed.formCode} clock put back` : ADD_MESSAGE[result]);
+  };
+  return { removed, message, remove, undo };
+}
+
 export function MhaClockPage({
   forms,
   now: nowProp,
@@ -431,7 +590,8 @@ export function MhaClockPage({
   readonly now?: Date;
 }) {
   const now = useNow(nowProp);
-  const clocks = useClocks();
+  const { clocks, unreadable } = useClockState();
+  const undo = useUndo();
   const formByCode = useMemo(() => new Map(forms.map((form) => [form.code, form])), [forms]);
   const result = useMemo(
     () =>
@@ -445,10 +605,11 @@ export function MhaClockPage({
   );
   const items = result ? firstOfEach(result.items) : [];
   const nowMs = now?.getTime() ?? 0;
+  const passed = items.filter((item) => item.kind === "countdown" && item.expired).length;
 
   return (
     <InformationPageShell testId="mha-clock-page">
-      <div className={cn("mx-auto grid w-full max-w-3xl gap-4 sm:gap-5", dashSurface)}>
+      <div className={cn("mx-auto grid w-full max-w-3xl gap-3", dashSurface)}>
         <InformationPageBreadcrumbs home={{ label: "Psychiatry", href: "/psychiatry" }} current="MHA clock" />
         <header className="grid min-w-0 gap-0.5">
           <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{now ? `${hhmm(now)} Perth time` : null}</p>
@@ -457,66 +618,92 @@ export function MhaClockPage({
           </h1>
         </header>
 
-        <DashCard title="Running now" testId="mha-clock-running" aside={<DashTag tint="blue">On this device</DashTag>}>
-          {clocks.length === 0 ? (
-            <p className={dashMuted} data-testid="mha-clock-empty">
-              No clocks yet. Start one below for each Mental Health Act form you are holding.
-            </p>
-          ) : (
-            <>
-              <p className="flex items-baseline gap-2 text-[color:var(--dash-ink)]">
-                <span className={cn(dashFigure, "text-3xl-minus")} data-testid="mha-clock-count">
-                  {clocks.length}
-                </span>
-                <span className="text-sm font-dash-title">{clocks.length === 1 ? "clock" : "clocks"}</span>
-              </p>
-              {now ? <ShiftBand clocks={clocks} items={items} now={now} /> : null}
-            </>
-          )}
-          <p className={dashMuted}>
-            Cleared at the end of your shift and when you sign out. A clock holds the form and the time only.
+        {unreadable ? (
+          <p
+            role="alert"
+            data-testid="mha-clock-unreadable"
+            className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-2.5 text-sm text-[color:var(--dash-ink)] forced-colors:border"
+          >
+            <TriangleAlert aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--dash-muted)]" />
+            <span className="font-semibold">{MHA_CLOCK_UNREADABLE}</span>
           </p>
-        </DashCard>
+        ) : null}
+
+        <section aria-labelledby="mha-clock-running-title" className="grid gap-2" data-testid="mha-clock-running">
+          <FlatLabel
+            id="mha-clock-running-title"
+            title="Running now"
+            aside={
+              clocks.length > 0 ? (
+                <a href={`#${ADD_SECTION_ID}`} className={flatLink} data-testid="mha-clock-jump-start">
+                  <Plus aria-hidden="true" className="size-icon-xs" />
+                  Start a clock
+                </a>
+              ) : (
+                <FlatTag>On this phone</FlatTag>
+              )
+            }
+          />
+          <div className={flatPanelPadded}>
+            {clocks.length === 0 ? (
+              unreadable ? null : (
+                <p className="text-sm text-[color:var(--dash-muted)]" data-testid="mha-clock-empty">
+                  No clocks yet. Start one below for each Mental Health Act form you are holding.
+                </p>
+              )
+            ) : (
+              <>
+                <p className="flex flex-wrap items-baseline gap-x-1.5 text-[color:var(--dash-ink)]">
+                  <span className="nums text-xl font-semibold" data-testid="mha-clock-count">
+                    {clocks.length}
+                  </span>
+                  <span className="text-sm-minus font-medium">{clocks.length === 1 ? "clock" : "clocks"}</span>
+                  {passed > 0 ? (
+                    <span
+                      className="text-xs font-semibold text-[color:var(--danger-text)]"
+                      data-testid="mha-clock-passed-count"
+                    >
+                      {`· ${passed} time ${passed === 1 ? "limit" : "limits"} passed`}
+                    </span>
+                  ) : null}
+                </p>
+                {now ? <ShiftBand clocks={clocks} now={now} /> : null}
+              </>
+            )}
+            <p className="text-xs text-[color:var(--dash-muted)]" data-testid="mha-clock-retention">
+              {MHA_CLOCK_RETENTION_NOTE}
+            </p>
+          </div>
+        </section>
 
         {clocks.length > 0 ? (
-          <ul role="list" aria-label="Running clocks" className="grid gap-3">
+          <ul role="list" aria-label="Running clocks" className={cn(flatPanel, "grid")}>
             {clocks.map((clock) => (
-              <ClockCard
+              <ClockItem
                 key={clock.id}
                 clock={clock}
                 form={formByCode.get(clock.formCode)}
                 items={items.filter((item) => item.timerId === clock.id)}
                 nowMs={nowMs}
+                onRemove={undo.remove}
               />
             ))}
           </ul>
         ) : null}
 
-        <AddClockCard forms={forms} now={now} />
+        {clocks.length > 0 && now ? <HandoverCopy clocks={clocks} nowMs={nowMs} /> : null}
 
-        <div className="grid gap-1">
-          <p className="text-sm font-dash-title text-[color:var(--dash-ink)]" data-testid="mha-clock-reference">
-            {MHA_TIMELINE_REFERENCE_NOTE}
-          </p>
-          <div className="flex flex-wrap gap-x-3">
-            <Link
-              href="/forms/act"
-              className={cn(focusRing, dashLink, "inline-flex min-h-12 items-center rounded-full")}
-            >
-              The Act and Standards
-            </Link>
-            <a
-              href={mhaActMetadata.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={cn(focusRing, dashLink, "inline-flex min-h-12 items-center gap-1 rounded-full")}
-            >
-              Mental Health Act 2014 (WA)
-              <ExternalLink aria-hidden="true" className="size-icon-sm" />
-            </a>
-          </div>
-        </div>
+        <AddClock forms={forms} now={now} />
+
+        <p className="mt-1 text-xs text-[color:var(--dash-muted)]" data-testid="mha-clock-reference">
+          {MHA_TIMELINE_REFERENCE_NOTE}
+        </p>
+        <FlatList label="Related pages">
+          <FlatRow href="/forms/act" icon={ShieldCheck} title="Form pages and the Act" />
+          <FlatRow href="/on-call/call" icon={Phone} title="Handover" subtitle="On Call" />
+        </FlatList>
       </div>
+      <UndoBar removed={undo.removed} message={undo.message} onUndo={undo.undo} />
     </InformationPageShell>
   );
 }

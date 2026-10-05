@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BookOpen,
   ChevronRight,
   Compass,
   FileText,
@@ -10,23 +11,32 @@ import {
   Network,
   Pill,
   Search,
+  ShieldCheck,
   Tags,
   Timer,
+  WifiOff,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
+import { useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { DashCard } from "@/components/dashboard-kit/dash-card";
-import { DashTag, IconChip } from "@/components/dashboard-kit/icon-chip";
 import type { DashQuickAction } from "@/components/dashboard-kit/quick-actions";
-import { dashFigure, dashLink, dashMuted, dashSurface } from "@/components/dashboard-kit/recipes";
-import { ProgressRing } from "@/components/dashboard-kit/rings";
+import { dashMuted, dashSurface } from "@/components/dashboard-kit/recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
+import {
+  FlatCount,
+  flatLink,
+  FlatLabel,
+  FlatList,
+  flatPanel,
+  flatPanelPadded,
+  FlatRow,
+  FlatTag,
+} from "@/components/psychiatry/psychiatry-flat";
 import { readAppPreferences, subscribeAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { cn } from "@/components/ui-primitives";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -50,21 +60,17 @@ import {
 import { sharedHomePresentation } from "@/lib/ui-copy";
 
 /**
- * The Psychiatry hub, drawn in the dashboard style My Day uses (owner decision,
- * 3 October 2026: "designed like the personal hub"), in three pages: Ask, Tools
- * and Saved.
+ * The Psychiatry hub, in three pages: Ask, Tools and Saved, drawn to the approved mock-up v3
+ * (5 October 2026) in the calmer Work search style: flat hairline lists, grey icons and at most
+ * one filled button per screen.
  *
- * It is a front door, not clinical content: every card is a way into a section
- * that keeps its own address and search. Colour here is decoration or a
- * section, never a source's status; green, amber and red are not used.
+ * It is a front door, not clinical content: every row is a way into a section that keeps its own
+ * address and search. Green, amber and red are not used for decoration here.
  *
- * The figures are real or absent. Section counts come from the catalogues (read
- * on the server); "Continue", the ring and the forms card read this device's
- * own history (`src/lib/psychiatry-hub/visits.ts`), and a card with nothing to
- * show says so in one line or is left out.
- *
- * The layout is meant to be reused for a "Medicines and tools" hub, and leaves
- * room for a culturally safe care card should First Nations move here.
+ * The figures are real or absent. Section counts come from the catalogues (read on the server);
+ * "Continue", "Your week" and the forms list read this device's own history
+ * (`src/lib/psychiatry-hub/visits.ts`), and a section with nothing to show says so in one line.
+ * Offline, search is switched off and says so, rather than failing after a tap.
  */
 
 export interface PsychiatrySectionCounts {
@@ -264,176 +270,159 @@ function PsychiatryTabs({
 
 // ---------------------------------------------------------------- Ask page
 
-function AskHero({
-  visits,
-  thisMonth,
-  lastMonth,
-  now,
-}: {
-  readonly visits: readonly PsychiatryVisit[];
-  readonly thisMonth: number;
-  readonly lastMonth: number;
-  readonly now: Date | null;
-}) {
+function subscribeOnline(listener: () => void): () => void {
+  window.addEventListener("online", listener);
+  window.addEventListener("offline", listener);
+  return () => {
+    window.removeEventListener("online", listener);
+    window.removeEventListener("offline", listener);
+  };
+}
+
+/** True only when the browser says it has no connection; the server and hydration assume online. */
+function useOffline(): boolean {
+  return useSyncExternalStore(
+    subscribeOnline,
+    () => !navigator.onLine,
+    () => false,
+  );
+}
+
+function AskSearch({ offline }: { readonly offline: boolean }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = query.trim();
-    if (!trimmed) return;
+    if (!trimmed || offline) return;
     router.push(appModeHomeHref("answer", { query: trimmed, run: true }));
   };
-  const latest = visits[0] ?? null;
-  const showRing = thisMonth > 0 || lastMonth > 0;
-  const ringFraction = lastMonth > 0 ? thisMonth / lastMonth : 1;
   return (
-    <DashCard title="Ask PsychSift" showTitle={false} tone="hero" testId="psychiatry-card-ask">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:items-center lg:gap-8">
-        <form role="search" aria-label="Ask a psychiatry question" onSubmit={submit} className="grid min-w-0 gap-3">
-          <div className="grid gap-0.5">
-            <span className="text-3xs font-dash-title uppercase tracking-widest opacity-80">Ask PsychSift</span>
-            <p className="font-dash-figure text-2xl-minus leading-tight tracking-tight text-balance lg:text-3xl-minus">
-              What do you need to check?
-            </p>
-          </div>
-          <div className="flex min-h-14 items-center gap-2 rounded-2xl bg-[color:var(--dash-raised)] py-1.5 pr-1.5 pl-3.5 text-[color:var(--dash-ink)] shadow-[var(--dash-shadow)] forced-colors:border">
-            <Search aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--dash-muted)]" />
-            <label htmlFor="psychiatry-ask-input" className="sr-only">
-              Your question
-            </label>
-            <input
-              id="psychiatry-ask-input"
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search your guidelines"
-              autoComplete="off"
-              data-testid="psychiatry-ask-input"
-              className="min-h-12 min-w-0 flex-1 bg-transparent text-base text-[color:var(--dash-ink)] outline-none placeholder:text-[color:var(--dash-muted)]"
-            />
-            <button
-              type="submit"
-              data-testid="psychiatry-ask-submit"
+    <form
+      role="search"
+      aria-label="Ask a psychiatry question"
+      onSubmit={submit}
+      className="grid min-w-0 gap-2"
+      data-testid="psychiatry-card-ask"
+    >
+      {offline ? (
+        <p
+          className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-2.5 text-sm-minus text-[color:var(--dash-muted)] forced-colors:border"
+          data-testid="psychiatry-offline"
+        >
+          <WifiOff aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
+          <span>
+            <b className="font-semibold text-[color:var(--dash-ink)]">Offline.</b> Search needs a connection. Other
+            pages may not open until you reconnect.
+          </span>
+        </p>
+      ) : null}
+      <div
+        className={cn(
+          "flex min-h-12 items-center gap-2 rounded-lg border pl-3 forced-colors:border",
+          offline
+            ? "border-dashed border-[color:var(--dash-line-strong)] bg-[color:var(--dash-card)]"
+            : "border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)]",
+        )}
+      >
+        <Search aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-ink)]" />
+        <label htmlFor="psychiatry-ask-input" className="sr-only">
+          Your question
+        </label>
+        <input
+          id="psychiatry-ask-input"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={offline ? "Search is offline" : "Search your guidelines"}
+          disabled={offline}
+          autoComplete="off"
+          enterKeyHint="search"
+          data-testid="psychiatry-ask-input"
+          className="min-h-12 min-w-0 flex-1 bg-transparent text-sm text-[color:var(--dash-ink)] outline-none placeholder:text-[color:var(--dash-muted)] disabled:cursor-not-allowed"
+        />
+        <button
+          type="submit"
+          disabled={offline}
+          data-testid="psychiatry-ask-submit"
+          className={cn(
+            focusRing,
+            "min-h-12 shrink-0 rounded-lg px-3 text-sm font-semibold text-[color:var(--dash-ink)] disabled:text-[color:var(--dash-faint)]",
+          )}
+        >
+          Ask
+        </button>
+      </div>
+      {offline ? null : (
+        <div className="flex flex-wrap items-center gap-x-3.5 text-sm-minus" data-testid="psychiatry-ask-try">
+          <span className="text-[color:var(--dash-faint)]">Try</span>
+          {sharedHomePresentation.psychiatry.suggestions.map((suggestion) => (
+            <Link
+              key={suggestion}
+              href={appModeHomeHref("answer", { query: suggestion, run: true })}
               className={cn(
                 focusRing,
-                "min-h-12 shrink-0 rounded-xl bg-[color:var(--dash-hero-3)] px-4 text-sm font-dash-title text-[color:var(--dash-hero-ink)] forced-colors:border",
+                "inline-flex min-h-12 items-center rounded-md font-medium text-[color:var(--dash-ink)] underline decoration-[color:var(--dash-line-strong)] underline-offset-4",
               )}
             >
-              Ask
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0" data-testid="psychiatry-ask-try">
-            <span className="text-xs opacity-85">Try</span>
-            {sharedHomePresentation.psychiatry.suggestions.map((suggestion) => (
-              <Link
-                key={suggestion}
-                href={appModeHomeHref("answer", { query: suggestion, run: true })}
-                className={cn(focusRing, "inline-flex min-h-12 items-center rounded-full no-underline")}
-              >
-                <span className="rounded-full border border-[color:var(--dash-hero-glass-line)] bg-[color:var(--dash-hero-glass)] px-3 py-1.5 text-xs font-dash-title text-[color:var(--dash-hero-ink)] forced-colors:border">
-                  {suggestion}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </form>
-
-        {showRing || latest ? (
-          <div className="grid min-w-0 gap-3">
-            {showRing ? (
-              <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3.5" data-testid="psychiatry-month">
-                <p className="sr-only">
-                  {`${plural(thisMonth, "record", "records")} opened in Psychiatry this month on this device${lastMonth > 0 ? `, against ${lastMonth} last month` : ""}.`}
-                </p>
-                <ProgressRing
-                  fraction={ringFraction}
-                  size={92}
-                  strokeWidth={7}
-                  stroke="stroke-[color:var(--dash-hero-ink)]"
-                  track="stroke-[color:var(--dash-hero-track)]"
-                  testId="psychiatry-month-ring"
-                >
-                  <span className={cn(dashFigure, "block text-2xl-minus")}>{thisMonth}</span>
-                  <span className="mt-0.5 block text-3xs font-dash-title opacity-85">opened</span>
-                </ProgressRing>
-                <span aria-hidden="true" className="grid min-w-0 gap-0.5">
-                  <span className="text-3xs font-dash-title uppercase tracking-widest opacity-80">This month</span>
-                  <span className="break-words font-dash-figure text-lg leading-tight">
-                    {`${plural(thisMonth, "record", "records")} opened`}
-                  </span>
-                  <span className="break-words text-sm opacity-90">
-                    {lastMonth > 0 ? `Last month: ${lastMonth}` : "On this device"}
-                  </span>
-                </span>
-              </div>
-            ) : null}
-            {latest ? (
-              <div
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-[color:var(--dash-hero-glass-line)] bg-[color:var(--dash-hero-glass)] px-3 py-2.5"
-                data-testid="psychiatry-resume"
-              >
-                <span className="grid min-w-0 gap-0.5">
-                  <span className="text-3xs font-dash-title uppercase tracking-widest opacity-80">
-                    Pick up where you left off
-                  </span>
-                  <span className="break-words font-dash-figure text-base-minus leading-snug">{latest.title}</span>
-                  <span className="text-xs opacity-90">
-                    {[
-                      PSYCHIATRY_VISIT_KIND_LABEL[latest.kind],
-                      now ? formatPsychiatryVisitWhen(latest.at, now.getTime()) : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </span>
-                <Link
-                  href={latest.href}
-                  aria-label={`Open ${latest.title}`}
-                  data-testid="psychiatry-resume-open"
-                  className={cn(focusRing, "inline-flex min-h-12 items-center rounded-full no-underline")}
-                >
-                  <span className="rounded-full bg-[color:var(--dash-hero-ink)] px-4 py-1.5 text-sm font-dash-title text-[color:var(--dash-hero-button-ink)] forced-colors:border">
-                    Open
-                  </span>
-                </Link>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-    </DashCard>
+              {suggestion}
+            </Link>
+          ))}
+        </div>
+      )}
+    </form>
   );
 }
 
-/**
- * The quick actions as a grid (two across on a phone, four on a wide screen),
- * as in the approved mock-up, rather than My Day's swipeable row: eight tools
- * read at a glance, and a wrapped label is never cut off.
- */
+function visitIcon(kind: PsychiatryVisitKind): LucideIcon {
+  return appModeIcons[KIND_MODE[kind]];
+}
+
+function ResumeRow({ latest, now }: { readonly latest: PsychiatryVisit; readonly now: Date | null }) {
+  return (
+    <FlatList label="Pick up where you left off" testId="psychiatry-resume">
+      <FlatRow
+        href={latest.href}
+        icon={visitIcon(latest.kind)}
+        title={latest.title}
+        ariaLabel={`Open ${latest.title}`}
+        testId="psychiatry-resume-open"
+        subtitle={["Pick up where you left off", now ? formatPsychiatryVisitWhen(latest.at, now.getTime()) : null]
+          .filter(Boolean)
+          .join(" · ")}
+        end={<span className="text-sm font-semibold text-[color:var(--dash-ink)]">Open</span>}
+      />
+    </FlatList>
+  );
+}
+
+/** The quick actions as a two-across hairline grid (four across on a wide screen). */
 function QuickActionGrid({ actions }: { readonly actions: readonly DashQuickAction[] }) {
   return (
     <ul
       role="list"
       aria-label="Quick actions"
       data-testid="psychiatry-quick-actions"
-      className="grid grid-cols-2 gap-2 lg:grid-cols-4"
+      className={cn(flatPanel, "grid grid-cols-2")}
     >
-      {actions.map(({ label, href, icon: ActionIcon, testId }) => (
-        <li key={label} className="min-w-0">
+      {actions.map(({ label, href, icon: ActionIcon, testId }, index) => (
+        <li
+          key={label}
+          className={cn(
+            "min-w-0 border-[color:var(--dash-line)]",
+            index >= 2 && "border-t",
+            index % 2 === 0 && "border-r",
+          )}
+        >
           <Link
             href={href}
             data-testid={testId}
             className={cn(
               focusRing,
-              "flex min-h-14 items-center gap-2.5 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] py-2 pr-3 pl-2 font-dash-title text-sm leading-tight text-[color:var(--dash-ink)] no-underline forced-colors:border",
+              "flex h-full min-h-13 items-center gap-2.5 rounded-xl px-3 py-2 text-sm-minus font-medium leading-tight text-[color:var(--dash-ink)] no-underline",
             )}
           >
-            <span
-              aria-hidden="true"
-              className="grid size-9 shrink-0 place-items-center rounded-lg bg-[color:var(--dash-blue-tint)] text-[color:var(--dash-blue)] forced-colors:border"
-            >
-              <ActionIcon aria-hidden="true" className="size-icon-lg" />
-            </span>
+            <ActionIcon aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
             <span className="min-w-0 break-words">{label}</span>
           </Link>
         </li>
@@ -442,23 +431,29 @@ function QuickActionGrid({ actions }: { readonly actions: readonly DashQuickActi
   );
 }
 
-/** Medication and calculators live in Medicines now: a signpost, not a copy. */
-function MedicinesSignpost() {
+/** A signpost to a section that lives elsewhere: a line of text and a bold link. */
+function Signpost({
+  href,
+  icon: SignIcon,
+  text,
+  link,
+  testId,
+}: {
+  readonly href: string;
+  readonly icon: LucideIcon;
+  readonly text: string;
+  readonly link: string;
+  readonly testId?: string;
+}) {
   return (
-    <Link
-      href={appModeHomeHref("medicines")}
-      data-testid="psychiatry-medicines-signpost"
-      className={cn(
-        focusRing,
-        "grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-2xl px-1 text-sm text-[color:var(--dash-ink)] no-underline",
-      )}
-    >
-      <IconChip tint="neutral" size="sm">
-        <Pill aria-hidden="true" className="size-icon-sm" />
-      </IconChip>
-      <span className="min-w-0 break-words">Medication and calculators are in Medicines</span>
-      <ChevronRight aria-hidden="true" className="size-icon-sm text-[color:var(--dash-faint)]" />
-    </Link>
+    <p className="flex min-h-10 items-center gap-2.5 px-0.5 text-sm-minus text-[color:var(--dash-muted)]">
+      <SignIcon aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
+      <span className="min-w-0 flex-1">{text}</span>
+      <Link href={href} data-testid={testId} className={cn(flatLink, "shrink-0")}>
+        {link}
+        <ChevronRight aria-hidden="true" className="size-icon-xs" />
+      </Link>
+    </p>
   );
 }
 
@@ -466,152 +461,71 @@ function useMhaClocks(): readonly MhaClock[] {
   return useSyncExternalStore(subscribeMhaClocks, loadMhaClocks, () => EMPTY_MHA_CLOCKS);
 }
 
-function clockSummary(clocks: readonly MhaClock[]): string {
+/** "2 running on this phone · Forms 2 and 3A". Exported for tests. */
+export function clockSummary(clocks: readonly MhaClock[]): string {
   if (clocks.length === 0) return "No clocks running";
   const codes = [...new Set(clocks.map((clock) => clock.formCode))];
-  return `${codes.length === 1 ? "Form" : "Forms"} ${codes.join(", ")}`;
+  const list = codes.length === 1 ? codes[0] : `${codes.slice(0, -1).join(", ")} and ${codes.at(-1)}`;
+  return `${clocks.length} running on this phone · ${codes.length === 1 ? "Form" : "Forms"} ${list}`;
 }
 
 /**
- * "For a shift": the tools used during an after-hours shift, as a sideways row of rich cards.
- * Only tools that exist are here; nothing clinical is shown on a card, and the MHA clock card
- * shows a count and form codes from this device, never anything about a person.
+ * "For a shift": the tools used during an after-hours shift. Only tools that exist are here; the
+ * MHA clock row shows a count and form codes from this device, never anything about a person.
  */
-function ShiftToolsCard() {
+function ShiftToolsList({ clockLine }: { readonly clockLine: (clocks: readonly MhaClock[]) => string }) {
   const clocks = useMhaClocks();
-  const card =
-    "grid h-full min-h-32 content-between gap-3 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] p-3.5 text-[color:var(--dash-ink)] no-underline forced-colors:border";
   return (
-    <DashCard title="For a shift" testId="psychiatry-card-shift" aside={<DashTag tint="blue">On this device</DashTag>}>
-      <ul role="list" aria-label="For a shift" className="grid grid-cols-2 gap-2">
-        <li className="min-w-0">
-          <Link href="/psychiatry/mha-clock" data-testid="psychiatry-shift-mha-clock" className={cn(focusRing, card)}>
-            <span className="flex items-center justify-between gap-2">
-              <IconChip tint="blue" size="md">
-                <Timer aria-hidden="true" className="size-icon-md" />
-              </IconChip>
-              {clocks.length > 0 ? <DashTag tint="blue">{`${clocks.length} running`}</DashTag> : null}
-            </span>
-            <span className="grid gap-0.5">
-              <span className="font-dash-title text-base-minus leading-tight">MHA clock</span>
-              <span className={dashMuted} data-testid="psychiatry-shift-mha-summary">
-                {clockSummary(clocks)}
-              </span>
-            </span>
-          </Link>
-        </li>
-        <li className="min-w-0">
-          <Link href="/safety-plan" data-testid="psychiatry-shift-safety-plan" className={cn(focusRing, card)}>
-            <span className="flex items-center justify-between gap-2">
-              <IconChip tint="blue" size="md">
-                <LifeBuoy aria-hidden="true" className="size-icon-md" />
-              </IconChip>
-            </span>
-            <span className="grid gap-0.5">
-              <span className="font-dash-title text-base-minus leading-tight">Safety plan</span>
-              <span className={dashMuted}>Build one together</span>
-            </span>
-          </Link>
-        </li>
-      </ul>
-    </DashCard>
+    <FlatList label="For a shift" testId="psychiatry-card-shift">
+      <FlatRow
+        href="/psychiatry/mha-clock"
+        icon={Timer}
+        title="MHA clock"
+        subtitle={<span data-testid="psychiatry-shift-mha-summary">{clockLine(clocks)}</span>}
+        testId="psychiatry-shift-mha-clock"
+      />
+      <FlatRow
+        href="/safety-plan"
+        icon={LifeBuoy}
+        title="Safety plan"
+        subtitle="Build one together"
+        testId="psychiatry-shift-safety-plan"
+      />
+    </FlatList>
   );
 }
 
-function SectionChip({ mode }: { readonly mode: AppModeId }) {
-  const ModeIcon = appModeIcons[mode];
-  return (
-    <IconChip tint="blue" size="sm">
-      <ModeIcon aria-hidden="true" className="size-icon-sm" />
-    </IconChip>
-  );
-}
-
-function LinkRow({
-  href,
-  chip,
-  title,
-  subtitle,
-  testId,
-}: {
-  readonly href: string;
-  readonly chip: ReactNode;
-  readonly title: string;
-  readonly subtitle?: string | null;
-  readonly testId?: string;
-}) {
-  return (
-    <li className="border-t border-[color:var(--dash-line)] first:border-t-0">
-      <Link
-        href={href}
-        data-testid={testId}
-        className={cn(
-          focusRing,
-          "grid min-h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-2xl px-3 py-2 text-[color:var(--dash-ink)] no-underline",
-        )}
-      >
-        {chip}
-        <span className="grid min-w-0 gap-0.5">
-          <span className="break-words font-dash-title text-base-minus leading-tight">{title}</span>
-          {subtitle ? <span className={cn(dashMuted, "break-words")}>{subtitle}</span> : null}
-        </span>
-        <ChevronRight aria-hidden="true" className="size-icon-sm text-[color:var(--dash-faint)]" />
-      </Link>
-    </li>
-  );
-}
-
-function LinkList({
-  label,
-  children,
-  testId,
-}: {
-  readonly label: string;
-  readonly children: ReactNode;
-  readonly testId?: string;
-}) {
-  return (
-    <ul
-      role="list"
-      aria-label={label}
-      data-testid={testId}
-      className="grid min-w-0 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] forced-colors:border"
-    >
-      {children}
-    </ul>
-  );
-}
-
-function ContinueCard({ visits, now }: { readonly visits: readonly PsychiatryVisit[]; readonly now: Date | null }) {
+function ContinueSection({ visits, now }: { readonly visits: readonly PsychiatryVisit[]; readonly now: Date | null }) {
   const recordingOff = useRecordingOff();
   const shown = visits.slice(0, 4);
   return (
-    <DashCard
-      title="Continue"
-      testId="psychiatry-card-continue"
-      aside={
-        shown.length > 0 ? (
-          <>
-            <DashTag tint="blue">On this device</DashTag>
-            <button
-              type="button"
-              onClick={clearPsychiatryVisits}
-              data-testid="psychiatry-continue-clear"
-              className={cn(focusRing, dashLink, "inline-flex min-h-12 items-center rounded-full px-2")}
-            >
-              Clear
-            </button>
-          </>
-        ) : null
-      }
-    >
+    <section aria-labelledby="psychiatry-continue-title" className="grid gap-2" data-testid="psychiatry-card-continue">
+      <FlatLabel
+        id="psychiatry-continue-title"
+        title="Continue"
+        aside={
+          shown.length > 0 ? (
+            <>
+              <FlatTag>On this phone</FlatTag>
+              <button
+                type="button"
+                onClick={clearPsychiatryVisits}
+                data-testid="psychiatry-continue-clear"
+                className={flatLink}
+              >
+                Clear
+              </button>
+            </>
+          ) : null
+        }
+      />
       {shown.length > 0 ? (
-        <LinkList label="Recently opened" testId="psychiatry-continue-list">
+        <FlatList label="Recently opened" testId="psychiatry-continue-list">
           {shown.map((visit) => (
-            <LinkRow
+            <FlatRow
               key={visit.href}
               href={visit.href}
-              chip={<SectionChip mode={KIND_MODE[visit.kind]} />}
+              icon={visitIcon(visit.kind)}
               title={visit.title}
               subtitle={[
                 PSYCHIATRY_VISIT_KIND_LABEL[visit.kind],
@@ -621,116 +535,162 @@ function ContinueCard({ visits, now }: { readonly visits: readonly PsychiatryVis
                 .join(" · ")}
             />
           ))}
-        </LinkList>
+        </FlatList>
       ) : (
-        <p className={dashMuted} data-testid="psychiatry-continue-empty">
+        <p className="text-sm-minus text-[color:var(--dash-muted)]" data-testid="psychiatry-continue-empty">
           {recordingOff
             ? "Turn on Save recent searches in Settings to see what you opened here. It stays on this device."
             : "Diagnoses, therapies and forms you open will appear here, on this device only."}
         </p>
       )}
-    </DashCard>
+    </section>
   );
 }
 
-function MentalHealthActCard({
+function MentalHealthActSection({
   visits,
   opens,
 }: {
   readonly visits: readonly PsychiatryVisit[];
   readonly opens: readonly PsychiatryOpen[];
 }) {
-  const forms = mostOpenedForms(visits, opens);
-  const chip = (href: string, label: string, testId?: string) => (
-    <Link
-      key={href}
-      href={href}
-      data-testid={testId}
-      className={cn(focusRing, "inline-flex min-h-12 max-w-full items-center rounded-full no-underline")}
-    >
-      <span className="truncate rounded-full border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-3 py-1.5 text-xs font-dash-title text-[color:var(--dash-ink)] forced-colors:border">
-        {label}
-      </span>
-    </Link>
-  );
+  const forms = mostOpenedForms(visits, opens, 3);
+  const opened = (href: string) => {
+    const count = Math.max(1, opens.filter((open) => open.href === href).length);
+    return `Opened ${count === 1 ? "once" : `${count} times`} on this phone`;
+  };
   return (
-    <DashCard
-      title="Mental Health Act"
-      testId="psychiatry-card-mha"
-      aside={
-        <Link
-          href="/forms/search"
-          className={cn(focusRing, dashLink, "inline-flex min-h-12 items-center rounded-full px-2")}
-        >
-          All forms
-        </Link>
-      }
-    >
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-        <span
-          aria-hidden="true"
-          className="grid w-13 overflow-hidden rounded-xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] text-center forced-colors:border"
-        >
-          <span className="bg-[color:var(--dash-blue)] py-0.5 text-3xs font-dash-figure tracking-widest text-[color:var(--dash-hero-ink)]">
-            WA
-          </span>
-          <span className="py-1 font-dash-figure text-lg leading-none text-[color:var(--dash-ink)]">2014</span>
-        </span>
-        <span className="grid min-w-0 gap-0.5">
-          <span className="font-dash-title text-base-minus leading-tight text-[color:var(--dash-ink)]">
-            {forms.length > 0 ? "Your most-opened forms" : "Forms and the Act"}
-          </span>
-          <span className={dashMuted}>
-            {forms.length > 0
-              ? "From this device. Each opens the form and its guidance."
-              : "The Mental Health Act 2014 (WA) forms register, and plain-English summaries of the Act."}
-          </span>
-        </span>
+    <section aria-labelledby="psychiatry-mha-title" className="grid gap-2" data-testid="psychiatry-card-mha">
+      <FlatLabel
+        id="psychiatry-mha-title"
+        title="Mental Health Act"
+        aside={
+          <Link href="/forms/search" className={flatLink}>
+            All forms
+          </Link>
+        }
+      />
+      <FlatList label="Mental Health Act" testId="psychiatry-mha-links">
+        {forms.map((form) => (
+          <FlatRow
+            key={form.href}
+            href={form.href}
+            icon={ShieldCheck}
+            title={form.title}
+            subtitle={opened(form.href)}
+          />
+        ))}
+        {forms.length === 0 ? (
+          <FlatRow
+            href="/forms/search"
+            icon={ShieldCheck}
+            title="Search the forms"
+            subtitle="The Mental Health Act 2014 (WA) forms register"
+            testId="psychiatry-mha-search"
+          />
+        ) : null}
+        <FlatRow
+          href="/forms/act"
+          icon={BookOpen}
+          title="The Act and Standards"
+          subtitle="Mental Health Act 2014 (WA)"
+          testId="psychiatry-mha-act"
+        />
+      </FlatList>
+    </section>
+  );
+}
+
+function AskPage({
+  visits,
+  opens,
+  now,
+}: {
+  readonly visits: readonly PsychiatryVisit[];
+  readonly opens: readonly PsychiatryOpen[];
+  readonly now: Date | null;
+}) {
+  const offline = useOffline();
+  const latest = visits[0] ?? null;
+  return (
+    <div className="grid items-start gap-3 lg:grid-cols-2 lg:gap-x-8">
+      <div className="grid min-w-0 gap-3">
+        <AskSearch offline={offline} />
+        {latest ? <ResumeRow latest={latest} now={now} /> : null}
+        <section aria-labelledby="psychiatry-shift-title" className="grid gap-2">
+          <FlatLabel id="psychiatry-shift-title" title="For a shift" />
+          <ShiftToolsList clockLine={clockSummary} />
+        </section>
       </div>
-      <div className="-my-1 flex flex-wrap gap-x-1.5" data-testid="psychiatry-mha-links">
-        {forms.map((form) => chip(form.href, form.title))}
-        {forms.length === 0 ? chip("/forms/search", "Search the forms", "psychiatry-mha-search") : null}
-        {chip("/forms/act", "The Act and Standards", "psychiatry-mha-act")}
+      <div className="grid min-w-0 gap-3">
+        <section
+          aria-labelledby="psychiatry-qa-title"
+          className="grid gap-2 lg:order-last"
+          data-testid="psychiatry-card-quick-actions"
+        >
+          <FlatLabel id="psychiatry-qa-title" title="Quick actions" />
+          <QuickActionGrid actions={QUICK_ACTIONS} />
+        </section>
+        <Signpost
+          href={appModeHomeHref("medicines")}
+          icon={Pill}
+          text="Medication and calculators are in Medicines"
+          link="Medicines"
+          testId="psychiatry-medicines-signpost"
+        />
+        <ContinueSection visits={visits} now={now} />
+        <MentalHealthActSection visits={visits} opens={opens} />
       </div>
-    </DashCard>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------- Tools page
 
-function SectionsCard({ counts }: { readonly counts: PsychiatrySectionCounts }) {
+function SectionsSection({ counts }: { readonly counts: PsychiatrySectionCounts }) {
   return (
-    <DashCard title="Sections" testId="psychiatry-card-sections">
-      <ul role="list" aria-label="Psychiatry sections" className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {SECTION_MODE_IDS.map((modeId) => {
+    <section aria-labelledby="psychiatry-sections-title" className="grid gap-2" data-testid="psychiatry-card-sections">
+      <FlatLabel
+        id="psychiatry-sections-title"
+        title="Sections"
+        aside={<FlatCount>{SECTION_MODE_IDS.length}</FlatCount>}
+      />
+      <ul role="list" aria-label="Psychiatry sections" className={cn(flatPanel, "grid grid-cols-2")}>
+        {SECTION_MODE_IDS.map((modeId, index) => {
           const mode = appModeDefinition(modeId);
-          const countLine = sectionCountLine(modeId, counts);
+          const ModeIcon = appModeIcons[modeId];
+          const last = index === SECTION_MODE_IDS.length - 1;
           return (
-            <li key={modeId} className="min-w-0">
+            <li
+              key={modeId}
+              className={cn(
+                "min-w-0 border-[color:var(--dash-line)]",
+                index >= 2 && "border-t",
+                index % 2 === 0 && !last && "border-r",
+                last && SECTION_MODE_IDS.length % 2 === 1 && "col-span-2",
+              )}
+            >
               <Link
                 href={appModeHomeHref(modeId)}
                 data-testid={`psychiatry-section-${modeId}`}
                 className={cn(
                   focusRing,
-                  "grid min-h-16 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] px-3 py-2.5 text-[color:var(--dash-ink)] no-underline forced-colors:border",
+                  "flex h-full min-h-13 items-center gap-2.5 rounded-xl px-3 py-2 text-[color:var(--dash-ink)] no-underline",
                 )}
               >
-                <IconChip tint="blue" size="md">
-                  {(() => {
-                    const ModeIcon = appModeIcons[modeId];
-                    return <ModeIcon aria-hidden="true" className="size-icon-md" />;
-                  })()}
-                </IconChip>
-                <span className="grid min-w-0 gap-0.5">
-                  <span className="break-words font-dash-title text-base-minus leading-tight">{mode.label}</span>
-                  <span className={cn(dashMuted, "nums break-words")}>{countLine ?? mode.description}</span>
+                <ModeIcon aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
+                <span className="grid min-w-0">
+                  <span className="break-words text-sm-minus font-medium leading-tight">{mode.label}</span>
+                  <span className="nums break-words text-xs text-[color:var(--dash-muted)]">
+                    {sectionCountLine(modeId, counts) ?? mode.description}
+                  </span>
                 </span>
               </Link>
             </li>
           );
         })}
       </ul>
-    </DashCard>
+    </section>
   );
 }
 
@@ -745,94 +705,141 @@ const TOOL_ICON: Readonly<Record<string, LucideIcon>> = {
   "/forms/act": FileText,
 };
 
-function ShiftToolsListCard() {
-  const clocks = useMhaClocks();
+function toolsClockLine(clocks: readonly MhaClock[]): string {
+  return clocks.length > 0 ? `Every running time limit · ${clocks.length} running` : "Every running time limit";
+}
+
+function BuildersSection() {
   return (
-    <DashCard title="For a shift" testId="psychiatry-card-shift-tools">
-      <LinkList label="For a shift">
-        <LinkRow
-          href="/psychiatry/mha-clock"
-          testId="psychiatry-tools-mha-clock"
-          chip={
-            <IconChip tint="blue-2" size="sm">
-              <Timer aria-hidden="true" className="size-icon-sm" />
-            </IconChip>
-          }
-          title="MHA clock"
-          subtitle={clocks.length > 0 ? `${clocks.length} running` : "Every running time limit"}
-        />
-        <LinkRow
-          href="/safety-plan"
-          chip={
-            <IconChip tint="blue-2" size="sm">
-              <LifeBuoy aria-hidden="true" className="size-icon-sm" />
-            </IconChip>
-          }
-          title="Safety plan"
-          subtitle="Build one together"
-        />
-      </LinkList>
-    </DashCard>
+    <section aria-labelledby="psychiatry-builders-title" className="grid gap-2" data-testid="psychiatry-card-builders">
+      <FlatLabel
+        id="psychiatry-builders-title"
+        title="Builders and comparisons"
+        aside={<FlatCount>{TOOL_LINKS.length}</FlatCount>}
+      />
+      <FlatList label="Builders and comparisons">
+        {TOOL_LINKS.map((tool) => (
+          <FlatRow
+            key={tool.href}
+            href={tool.href}
+            icon={TOOL_ICON[tool.href] ?? appModeIcons[tool.mode]}
+            title={tool.label}
+            subtitle={appModeDefinition(tool.mode).label}
+          />
+        ))}
+      </FlatList>
+    </section>
   );
 }
 
-function BuildersCard() {
-  return (
-    <DashCard title="Builders and comparisons" testId="psychiatry-card-builders">
-      <LinkList label="Builders and comparisons">
-        {TOOL_LINKS.map((tool) => {
-          const ToolIcon = TOOL_ICON[tool.href] ?? appModeIcons[tool.mode];
-          return (
-            <LinkRow
-              key={tool.href}
-              href={tool.href}
-              chip={
-                <IconChip tint="blue-2" size="sm">
-                  <ToolIcon aria-hidden="true" className="size-icon-sm" />
-                </IconChip>
-              }
-              title={tool.label}
-              subtitle={appModeDefinition(tool.mode).label}
-            />
-          );
-        })}
-      </LinkList>
-    </DashCard>
-  );
-}
-
-function WeekCard({
+function WeekSection({
   week,
+  thisMonth,
 }: {
   readonly week: ReadonlyArray<{ readonly kind: PsychiatryVisitKind; readonly count: number }>;
+  readonly thisMonth: number;
 }) {
-  if (week.length === 0) return null;
-  const max = Math.max(...week.map((row) => row.count));
+  const recordingOff = useRecordingOff();
+  const max = Math.max(1, ...week.map((row) => row.count));
+  const total = week.reduce((sum, row) => sum + row.count, 0);
+  const hasData = week.length > 0 || thisMonth > 0;
   return (
-    <DashCard title="Your week" testId="psychiatry-card-week" aside={<DashTag tint="blue">On this device</DashTag>}>
-      <p className="sr-only">
-        {`Opened in the last seven days: ${week.map((row) => `${PSYCHIATRY_VISIT_KIND_LABEL[row.kind]} ${row.count}`).join(", ")}.`}
-      </p>
-      <div aria-hidden="true" className="grid gap-2">
-        {week.map((row) => (
-          <div key={row.kind} className="grid grid-cols-[6.5rem_minmax(0,1fr)_2rem] items-center gap-2 text-xs">
-            <span className="truncate text-[color:var(--dash-muted)]">{PSYCHIATRY_VISIT_KIND_LABEL[row.kind]}</span>
-            <svg viewBox="0 0 100 8" preserveAspectRatio="none" className="h-2 w-full">
-              <rect x="0" y="0" width="100" height="8" rx="4" className="fill-[color:var(--dash-line)]" />
-              <rect
-                x="0"
-                y="0"
-                width={Math.max(4, (row.count / max) * 100)}
-                height="8"
-                rx="4"
-                className="fill-[color:var(--dash-blue)] forced-colors:fill-[CanvasText]"
-              />
-            </svg>
-            <span className="nums text-right font-dash-title text-[color:var(--dash-ink)]">{row.count}</span>
-          </div>
-        ))}
+    <section aria-labelledby="psychiatry-week-title" className="grid gap-2" data-testid="psychiatry-card-week">
+      <FlatLabel id="psychiatry-week-title" title="Your week" aside={<FlatTag>On this phone</FlatTag>} />
+      <div className={flatPanelPadded}>
+        {hasData ? (
+          <>
+            <p className="flex items-center gap-3" data-testid="psychiatry-month">
+              <span className="nums text-xl font-semibold text-[color:var(--dash-ink)]">{thisMonth}</span>
+              <span className="text-sm-minus text-[color:var(--dash-ink)]">
+                {thisMonth === 1 ? "record opened so far this month" : "records opened so far this month"}
+              </span>
+            </p>
+            {week.length > 0 ? (
+              <>
+                <p className="mt-1 border-t border-[color:var(--dash-line)] pt-2.5 text-xs text-[color:var(--dash-muted)]">
+                  Last 7 days by section{" "}
+                  <span className="nums text-[color:var(--dash-faint)]">{`· ${total} in all`}</span>
+                </p>
+                <p className="sr-only">
+                  {`Opened in the last seven days: ${week.map((row) => `${PSYCHIATRY_VISIT_KIND_LABEL[row.kind]} ${row.count}`).join(", ")}.`}
+                </p>
+                <div aria-hidden="true" className="grid gap-1.5">
+                  {week.map((row) => (
+                    <div
+                      key={row.kind}
+                      className="grid grid-cols-[5.25rem_minmax(0,1fr)_1.5rem] items-center gap-2 text-xs"
+                    >
+                      <span className="truncate text-[color:var(--dash-muted)]">
+                        {PSYCHIATRY_VISIT_KIND_LABEL[row.kind]}
+                      </span>
+                      <svg viewBox="0 0 100 6" preserveAspectRatio="none" className="h-1.5 w-full">
+                        <rect x="0" y="0" width="100" height="6" rx="3" className="fill-[color:var(--dash-card)]" />
+                        <rect
+                          x="0"
+                          y="0"
+                          width={Math.max(4, (row.count / max) * 100)}
+                          height="6"
+                          rx="3"
+                          className="fill-[color:var(--dash-faint)] forced-colors:fill-[CanvasText]"
+                        />
+                      </svg>
+                      <span className="nums text-right font-semibold text-[color:var(--dash-ink)]">{row.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </>
+        ) : null}
+        <p className="text-xs text-[color:var(--dash-muted)]">
+          {recordingOff && !hasData
+            ? "Turn on Save recent searches in Settings to count what you open here. It stays on this phone."
+            : "Counted on this phone while Save recent searches is on."}
+        </p>
       </div>
-    </DashCard>
+    </section>
+  );
+}
+
+function ToolsPage({
+  counts,
+  week,
+  thisMonth,
+}: {
+  readonly counts: PsychiatrySectionCounts;
+  readonly week: ReadonlyArray<{ readonly kind: PsychiatryVisitKind; readonly count: number }>;
+  readonly thisMonth: number;
+}) {
+  return (
+    <div className="grid gap-3">
+      <SectionsSection counts={counts} />
+      <div className="grid items-start gap-3 lg:grid-cols-2 lg:gap-x-8">
+        <div className="grid min-w-0 gap-3">
+          <section
+            aria-labelledby="psychiatry-tools-shift-title"
+            className="grid gap-2"
+            data-testid="psychiatry-card-shift-tools"
+          >
+            <FlatLabel id="psychiatry-tools-shift-title" title="For a shift" aside={<FlatCount>2</FlatCount>} />
+            <ShiftToolsList clockLine={toolsClockLine} />
+          </section>
+          <BuildersSection />
+        </div>
+        <div className="grid min-w-0 gap-3">
+          <WeekSection week={week} thisMonth={thisMonth} />
+          <div className="grid">
+            <Signpost
+              href={appModeHomeHref("medicines")}
+              icon={Pill}
+              text="Medication and calculators"
+              link="Medicines"
+            />
+            <Signpost href={appModeHomeHref("documents")} icon={FileText} text="Your PDFs" link="Documents" />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -872,32 +879,8 @@ export function PsychiatryHome({
           aria-labelledby={`psychiatry-tab-${page}`}
           className="grid gap-3 sm:gap-4"
         >
-          {page === "ask" ? (
-            <>
-              <AskHero visits={state.visits} thisMonth={month.thisMonth} lastMonth={month.lastMonth} now={now} />
-              <DashCard title="Quick actions" testId="psychiatry-card-quick-actions">
-                <QuickActionGrid actions={QUICK_ACTIONS} />
-                <MedicinesSignpost />
-              </DashCard>
-              <ShiftToolsCard />
-              <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
-                <ContinueCard visits={state.visits} now={now} />
-                <MentalHealthActCard visits={state.visits} opens={state.opens} />
-              </div>
-            </>
-          ) : null}
-          {page === "tools" ? (
-            <>
-              <SectionsCard counts={counts} />
-              <div className="grid items-start gap-3 sm:gap-4 lg:grid-cols-2">
-                <div className="grid gap-3 sm:gap-4">
-                  <ShiftToolsListCard />
-                  <BuildersCard />
-                </div>
-                <WeekCard week={week} />
-              </div>
-            </>
-          ) : null}
+          {page === "ask" ? <AskPage visits={state.visits} opens={state.opens} now={now} /> : null}
+          {page === "tools" ? <ToolsPage counts={counts} week={week} thisMonth={month.thisMonth} /> : null}
           {page === "saved" ? <PsychiatrySavedCard /> : null}
         </div>
       </div>

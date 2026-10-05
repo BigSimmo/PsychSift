@@ -73,6 +73,13 @@ export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
  * while "Save recent searches" is on, cleared with recent searches.
  */
 export const PSYCHIATRY_VISITS_STORAGE_KEY = "psychsift:psychiatry:visits-v1";
+/**
+ * localStorage — the Psychiatry MHA clock: which Mental Health Act forms the
+ * reader is holding (form code, when it was made, a random id). No patient
+ * label. Kept until the reader removes a clock or the account changes, because
+ * a detention can outlast a shift (owner decision, 5 October 2026).
+ */
+export const PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY = "psychsift:psychiatry:mha-clocks-v1";
 
 function removeQuietly(storage: () => Storage, key: string): void {
   try {
@@ -118,6 +125,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_SNOOZED_ITEMS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
 
