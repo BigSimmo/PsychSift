@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent, type RefObject } from "react";
 
 import { Sheet } from "@/components/ui/sheet";
+import { focusRing } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
 
 import { RosterAskAnswer } from "@/components/roster/ask/roster-ask-answer";
@@ -196,7 +197,8 @@ export function RosterAskButton({
           data-testid="roster-ask-open"
           data-mode-identity="roster"
           className={cn(
-            "flex min-h-12 w-full min-w-0 items-center gap-2 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] py-1 pl-3.5 pr-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)]",
+            "flex min-h-12 w-full min-w-0 items-center gap-2 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] py-1 pl-3.5 pr-1 text-left",
+            focusRing,
             className,
           )}
         >

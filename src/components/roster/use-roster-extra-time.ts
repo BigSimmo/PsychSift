@@ -78,6 +78,8 @@ export type RosterExtraTimeState = {
   /** The shift a late finish can be recorded against now, or null. */
   readonly finished: OnCallShift | null;
   readonly alreadyLogged: boolean;
+  /** A late finish can be recorded now: one just ended, it is not logged, and the saved records loaded. */
+  readonly canAdd: boolean;
   readonly saving: boolean;
   readonly message: { readonly tone: "neutral" | "warning"; readonly text: string } | null;
   readonly stayedLate: () => Promise<void>;
@@ -107,7 +109,8 @@ export function useRosterExtraTime(
     : false;
 
   async function stayedLate() {
-    if (!finished || alreadyLogged) return;
+    // Only once the saved records are known, so a late finish already logged elsewhere is never sent again.
+    if (!finished || alreadyLogged || saving || saved.status !== "ready") return;
     const extra = { kind: "stayed_late" as const, startedAt: finished.endsAt, endedAt: now.toISOString() };
     setSaving(true);
     try {
@@ -133,6 +136,7 @@ export function useRosterExtraTime(
     records,
     finished,
     alreadyLogged,
+    canAdd: Boolean(finished) && !alreadyLogged && saved.status === "ready",
     saving,
     message,
     stayedLate,

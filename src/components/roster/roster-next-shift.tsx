@@ -42,7 +42,12 @@ function DayStrip({ shift }: { readonly shift: OnCallShift }) {
   return (
     <div aria-hidden="true" className="grid gap-1" data-testid="roster-next-shift-strip">
       <svg className="h-2 w-full overflow-visible">
-        <rect width="100%" height="100%" rx="4" className="fill-[color:var(--surface-inset)]" />
+        <rect
+          width="100%"
+          height="100%"
+          rx="4"
+          className="fill-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]"
+        />
         {to > from ? (
           <rect
             x={`${(from / 24) * 100}%`}

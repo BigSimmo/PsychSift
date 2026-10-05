@@ -51,9 +51,12 @@ export function RosterLinkWord({
   children,
   label,
   testId,
+  disabled = false,
 }: {
   readonly href?: string;
   readonly onClick?: () => void;
+  /** Transient: a save in flight. */
+  readonly disabled?: boolean;
   readonly children: ReactNode;
   /** A fuller accessible name when the word alone is vague ("Add" → "Add a date you can't work"). */
   readonly label?: string;
@@ -61,7 +64,7 @@ export function RosterLinkWord({
 }) {
   const className = cn(
     focusRing,
-    "inline-grid min-h-12 items-center whitespace-nowrap rounded-md px-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
+    "inline-grid min-h-12 min-w-12 items-center justify-center whitespace-nowrap rounded-md px-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline disabled:text-[color:var(--disabled)]",
   );
   if (href)
     return (
@@ -73,6 +76,7 @@ export function RosterLinkWord({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       className={className}
       data-mode-identity="roster"
@@ -102,9 +106,18 @@ export function RosterList({
 /** The day lead: weekday over the date number. */
 export function RosterDateLead({ weekday, day }: { readonly weekday: string; readonly day: number }) {
   return (
-    <span aria-hidden="true" className="grid w-9 shrink-0 justify-items-center leading-tight">
-      <span className="text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">{weekday}</span>
-      <span className="nums text-lg-minus font-semibold text-[color:var(--text-heading)]">{day}</span>
+    <span className="grid w-9 shrink-0 justify-items-center leading-tight">
+      <span
+        aria-hidden="true"
+        className="text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]"
+      >
+        {weekday}
+      </span>
+      <span aria-hidden="true" className="nums text-lg-minus font-semibold text-[color:var(--text-heading)]">
+        {day}
+      </span>
+      {/* Read as "Mon 5," so a row that is not a control still says its day. */}
+      <span className="sr-only">{`${weekday} ${day}, `}</span>
     </span>
   );
 }
@@ -124,7 +137,7 @@ export function RosterIconLead({
         "grid size-9 shrink-0 place-items-center rounded-md forced-colors:border",
         tone === "warning"
           ? "bg-[color:var(--warning-soft)] text-[color:var(--warning-text)]"
-          : "bg-[color:var(--surface-inset)] text-[color:var(--text-muted)]",
+          : "bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))] text-[color:var(--text-muted)]",
       )}
     >
       <Icon aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
@@ -144,7 +157,7 @@ export function RosterInitials({ name }: { readonly name: string }) {
   return (
     <span
       aria-hidden="true"
-      className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:var(--surface-inset)] text-xs font-semibold text-[color:var(--text-muted)]"
+      className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))] text-xs font-semibold text-[color:var(--text-muted)]"
     >
       {initials}
     </span>
@@ -282,7 +295,7 @@ export function RosterNote({
         "flex min-w-0 items-start gap-2.5 rounded-lg px-3.5 py-3 text-sm text-[color:var(--text)] forced-colors:border",
         tone === "warning"
           ? "border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)]"
-          : "bg-[color:var(--surface-inset)]",
+          : "bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]",
       )}
     >
       <Icon
@@ -317,5 +330,5 @@ export const rosterFilledButton = cn(
 export const rosterOutlineButton = cn(
   focusRing,
   modePressable,
-  "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-2.5 text-center text-base-minus font-semibold text-[color:var(--text-heading)] no-underline disabled:text-[color:var(--disabled)]",
+  "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 text-balance rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-2.5 text-center text-base-minus font-semibold text-[color:var(--text-heading)] no-underline disabled:text-[color:var(--disabled)]",
 );

@@ -32,6 +32,7 @@ export function RosterFortnight({
   extraHours,
   extraStatus,
   partial,
+  payAnchored,
 }: {
   readonly summary: HoursSummary;
   readonly today: string;
@@ -40,10 +41,11 @@ export function RosterFortnight({
   readonly extraStatus: "loading" | "ready" | "error";
   /** Only part of the roster loaded, so every figure is a minimum. */
   readonly partial: boolean;
+  /** The fortnight follows the doctor's pay anchor; without one it is just two weeks. */
+  readonly payAnchored: boolean;
 }) {
   const hatch = useId().replace(/:/g, "");
   const scale = Math.max(BAR_SCALE_MIN, ...summary.days.map((day) => day.hours));
-  const most = Math.max(0, ...summary.days.map((day) => day.hours));
   const atLeast = partial ? "at least " : "";
   const hasLeave = summary.days.some((day) => leaveDates.has(day.date));
   const extraWords =
@@ -59,7 +61,7 @@ export function RosterFortnight({
     <section aria-labelledby="roster-fortnight-heading" className="grid gap-3" data-testid="roster-fortnight">
       <RosterSectionHead
         id="roster-fortnight-heading"
-        title="This pay fortnight"
+        title={payAnchored ? "This pay fortnight" : "This fortnight"}
         right={
           <span className="nums text-sm text-[color:var(--text-muted)]">
             {formatSpanWords(summary.start, summary.end)}
@@ -77,11 +79,20 @@ export function RosterFortnight({
             <span className="nums ml-auto text-xs text-[color:var(--text-muted)]">{extraWords}</span>
           ) : null}
         </p>
-        <div
-          role="img"
-          aria-label={`Rostered hours each day, ${formatSpanWords(summary.start, summary.end)}. Most in one day ${formatHours(most)}.${hasLeave ? " L marks a leave day." : ""}`}
-          className="grid h-20 grid-cols-14 items-end gap-1"
-        >
+        <ul className="sr-only" aria-label={`Rostered hours each day, ${formatSpanWords(summary.start, summary.end)}`}>
+          {summary.days.map((day) => (
+            <li key={day.date}>
+              {`${WEEKDAYS[new Date(`${day.date}T00:00:00Z`).getUTCDay()]} ${Number(day.date.slice(8, 10))}: ${
+                leaveDates.has(day.date) && day.hours === 0
+                  ? "leave"
+                  : day.hours > 0
+                    ? `${atLeast}${formatHours(day.hours)}`
+                    : "no shift"
+              }${day.date <= today ? "" : ", coming"}`}
+            </li>
+          ))}
+        </ul>
+        <div aria-hidden="true" className="grid h-20 grid-cols-14 items-end gap-1">
           <svg aria-hidden="true" className="absolute size-0">
             <defs>
               <pattern id={hatch} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">

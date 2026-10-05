@@ -58,8 +58,18 @@ function weekday(date: string): string {
   return `${WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!} ${Number(date.slice(8, 10))}`;
 }
 
-function Gauge({ gauge, partial }: { readonly gauge: HoursRestGauge; readonly partial: boolean }) {
-  const over = gauge.value > gauge.limit;
+function Gauge({
+  gauge,
+  partial,
+  warned,
+}: {
+  readonly gauge: HoursRestGauge;
+  readonly partial: boolean;
+  readonly warned: boolean;
+}) {
+  // Five nights can be within clause 15(6)(f)'s exception, which the signed check allows without
+  // a warning; the nights gauge is over its limit only when that check warns.
+  const over = gauge.value > gauge.limit && (gauge.rule !== "maxNightsInRow" || warned);
   const fill = Math.min(1, (gauge.value / gauge.limit) * LIMIT_AT);
   const label = GAUGE_LABEL[gauge.rule];
   const value = `${partial ? "at least " : ""}${gauge.unit === "hours" ? formatHours(gauge.value) : String(gauge.value)}`;
@@ -87,7 +97,10 @@ function Gauge({ gauge, partial }: { readonly gauge: HoursRestGauge; readonly pa
           {value}
         </span>
       </div>
-      <div aria-hidden="true" className="relative h-1.5 rounded-full bg-[color:var(--surface-inset)]">
+      <div
+        aria-hidden="true"
+        className="relative h-1.5 rounded-full bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]"
+      >
         <BarFill share={fill} className={over ? "fill-[color:var(--warning)]" : "fill-[color:var(--mode-identity)]"} />
         <span className="absolute -inset-y-1.5 left-4/5 w-0.5 rounded-full bg-[color:var(--text-heading)]" />
       </div>
@@ -102,14 +115,14 @@ function BreakRow({ item, minBreakHours }: { readonly item: HoursRestBreak; read
     item.fromDate === item.toDate ? weekday(item.toDate) : `${weekday(item.fromDate)} to ${weekday(item.toDate)}`;
   return (
     <li
-      className="relative grid min-h-11 grid-cols-[7.5rem_minmax(0,1fr)_auto] items-center gap-3 px-4 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden"
+      className="relative grid min-h-11 grid-cols-[minmax(0,7.5rem)_minmax(2.5rem,1fr)_auto] items-center gap-3 px-4 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden"
       data-testid="roster-hours-rest-break"
       data-short={short ? "true" : undefined}
-      aria-label={`${span}: ${formatHours(item.hours)} break${short ? `, under ${minBreakHours} hours` : ""}`}
     >
+      <span className="sr-only">{`${span}: ${formatHours(item.hours)} break${short ? `, under ${minBreakHours} hours` : ""}`}</span>
       <span
         className={cn(
-          "truncate text-sm",
+          "break-words text-sm",
           short ? "font-semibold text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]",
         )}
         aria-hidden="true"
@@ -119,7 +132,11 @@ function BreakRow({ item, minBreakHours }: { readonly item: HoursRestBreak; read
       <span aria-hidden="true" className="relative h-2">
         <BarFill
           share={Math.max(width, 0.02)}
-          className={short ? "fill-[color:var(--warning)]" : "fill-[color:var(--mode-identity-border)]"}
+          className={
+            short
+              ? "fill-[color:var(--warning)]"
+              : "fill-[color:color-mix(in_oklab,var(--mode-identity)_50%,var(--surface-raised))]"
+          }
         />
         <span className="absolute -inset-y-1.5 left-[calc(100%/4.8)] border-l-[1.5px] border-dashed border-[color:var(--text-heading)]" />
       </span>
@@ -141,11 +158,11 @@ function BreakRow({ item, minBreakHours }: { readonly item: HoursRestBreak; read
 const UNDRAWN = [
   {
     rule: "restAfterNights",
-    words: `${FATIGUE_RULE_SET.rules.restAfterNights.bands[0]!.hours} hours free after nights (clause ${FATIGUE_RULE_SET.rules.restAfterNights.clause})`,
+    words: `rest after nights (${FATIGUE_RULE_SET.rules.restAfterNights.bands.map((band) => band.hours).join(" or ")} hours, clause ${FATIGUE_RULE_SET.rules.restAfterNights.clause})`,
   },
   {
     rule: "maxDaysBeforeTwoDaysOff",
-    words: `${FATIGUE_RULE_SET.rules.maxDaysBeforeTwoDaysOff.hoursOff} hours off after ${FATIGUE_RULE_SET.rules.maxDaysBeforeTwoDaysOff.days} days (clause ${FATIGUE_RULE_SET.rules.maxDaysBeforeTwoDaysOff.clause})`,
+    words: `${FATIGUE_RULE_SET.rules.maxDaysBeforeTwoDaysOff.hoursOff} hours free from all duty after ${FATIGUE_RULE_SET.rules.maxDaysBeforeTwoDaysOff.days} days' work (clause ${FATIGUE_RULE_SET.rules.maxDaysBeforeTwoDaysOff.clause})`,
   },
 ] as const;
 
@@ -183,7 +200,7 @@ export function RosterHoursRestCheck({
         <RosterNote icon={Info}>
           <p>
             <span className="font-semibold text-[color:var(--text-heading)]">
-              Hours and rest checks are off until the rules are signed off again.
+              Hours and rest checks are off until the rules are signed off.
             </span>{" "}
             No warnings are shown, and that does not mean your roster is within the limits.
           </p>
@@ -195,7 +212,14 @@ export function RosterHoursRestCheck({
   }
 
   const warned = new Set(check.warnings.map((warning) => warning.rule));
-  const undrawn = UNDRAWN.filter((item) => !warned.has(item.rule));
+  // The signed check does not measure rest after a night run longer than its bands cover, so
+  // rest after nights is not named as checked when such a run (or a nights warning) is present.
+  const longestNights = check.gauges.find((gauge) => gauge.rule === "maxNightsInRow")?.value ?? 0;
+  const restBands = FATIGUE_RULE_SET.rules.restAfterNights.bands;
+  const nightsUncovered = warned.has("maxNightsInRow") || longestNights > restBands[restBands.length - 1]!.upToNights;
+  const undrawn = UNDRAWN.filter(
+    (item) => !warned.has(item.rule) && !(item.rule === "restAfterNights" && nightsUncovered),
+  );
 
   return (
     <div className="grid min-w-0 gap-3" data-testid="roster-hours-rest">
@@ -251,7 +275,7 @@ export function RosterHoursRestCheck({
         />
         <ul role="list" className={cn(modeModuleSurface, "shadow-none")} data-mode-identity="roster">
           {check.gauges.map((gauge) => (
-            <Gauge key={gauge.rule} gauge={gauge} partial={partial} />
+            <Gauge key={gauge.rule} gauge={gauge} partial={partial} warned={warned.has(gauge.rule)} />
           ))}
         </ul>
       </section>

@@ -51,7 +51,10 @@ export type RosterShiftsState = {
    * Delete every shift. `keepalive` lets the request outlive a closing page,
    * which is how a pending "Delete my data" still happens on `pagehide`.
    */
-  readonly deleteAll: (options?: { keepalive?: boolean }) => Promise<string | null>;
+  /** `ok` once your own data is removed; `message` says what did not go (or why it failed). */
+  readonly deleteAll: (options?: {
+    keepalive?: boolean;
+  }) => Promise<{ readonly ok: boolean; readonly message: string | null }>;
   /** Remove one workplace's imported shifts and its calendar links. No import is recorded. */
   readonly removeWorkplace: (workplace: string) => Promise<string | null>;
   /** Fetch the shifts again, e.g. after a calendar link refresh brought new ones. */
@@ -232,11 +235,12 @@ export function useRosterShifts(teamRange?: { from: string; to: string }): Roste
       try {
         const response = await fetch(ROSTER_SHIFTS_URL, { method: "DELETE", keepalive: options?.keepalive ?? false });
         const payload = await readPayload(response);
-        if (!response.ok) return errorText(payload, "Your data could not be deleted. Try again.");
+        if (!response.ok)
+          return { ok: false, message: errorText(payload, "Your data could not be deleted. Try again.") };
         accept(payload);
-        return payload.message ?? null;
+        return { ok: true, message: payload.message ?? null };
       } catch {
-        return "Your data could not be deleted. Check your connection and try again.";
+        return { ok: false, message: "Your data could not be deleted. Check your connection and try again." };
       }
     },
     [accept],

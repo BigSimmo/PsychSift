@@ -17,8 +17,6 @@ export type OverviewShift = {
   readonly place: string | null;
 };
 
-const HOUR_MS = 3_600_000;
-
 function weekdayOf(date: string): string {
   return WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!;
 }
@@ -114,22 +112,6 @@ export function weekCountWords(rows: readonly WeekRow[]): string {
   if (worked) parts.push(`${worked} ${worked === 1 ? "shift" : "shifts"}`);
   if (onCall) parts.push(`${onCall} on call`);
   return parts.length ? parts.join(" and ") : "No shifts";
-}
-
-/**
- * Hours from the end of `shift` to the start of the next on-call or worked
- * shift, or null when the roster holds none after it.
- */
-export function hoursUntilNextDuty(
-  shifts: readonly OverviewShift[],
-  shift: OverviewShift,
-): { readonly hours: number; readonly next: OverviewShift } | null {
-  const end = Date.parse(shift.endsAt);
-  const next = shifts
-    .filter((other) => other.id !== shift.id && other.kind !== "leave" && Date.parse(other.startsAt) >= end)
-    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
-  if (!next) return null;
-  return { hours: Math.round(((Date.parse(next.startsAt) - end) / HOUR_MS) * 10) / 10, next };
 }
 
 /** "5 to 11 Oct", "28 Sep to 4 Oct": a date span in words, as the Roster screens write it. */

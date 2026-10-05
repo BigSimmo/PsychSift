@@ -424,6 +424,11 @@ export function RosterSwapsPage() {
             <p>No confirmed team yet, so there are no swaps to show.</p>
           </RosterNote>
         ) : null}
+        {teams.status === "ready" && serviceId && !actorId ? (
+          <TryAgainNote onRetry={teams.reload}>
+            Your place on the team couldn&apos;t be confirmed, so swaps can&apos;t be shown.
+          </TryAgainNote>
+        ) : null}
         {serviceId && (requests.status === "error" || assignments.status === "error" || overview.status === "error") ? (
           <TryAgainNote onRetry={reload}>The team roster couldn&apos;t be checked.</TryAgainNote>
         ) : null}

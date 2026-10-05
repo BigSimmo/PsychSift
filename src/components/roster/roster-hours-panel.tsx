@@ -46,7 +46,6 @@ function ExtraTime({ extra, summary }: { readonly extra: RosterExtraTimeState; r
       return date >= summary.start && date <= summary.end;
     })
     .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
-  const canAdd = Boolean(extra.finished) && !extra.alreadyLogged;
   return (
     <section className="grid min-w-0 gap-3" aria-labelledby="roster-extra-heading" data-testid="roster-hours-extra">
       <RosterSectionHead
@@ -58,10 +57,11 @@ function ExtraTime({ extra, summary }: { readonly extra: RosterExtraTimeState; r
         }
         isNew
         right={
-          canAdd ? (
+          extra.canAdd || extra.saving ? (
             <RosterLinkWord
               onClick={() => void extra.stayedLate()}
               label="Add the time since your last shift ended"
+              disabled={extra.saving}
               testId="roster-hours-add-extra"
             >
               {extra.saving ? "Saving…" : "Add"}
@@ -125,6 +125,7 @@ export function RosterHoursPanel({
   summary,
   extra,
   partial,
+  payAnchored,
   onRetry,
 }: {
   readonly shifts: readonly OnCallShift[];
@@ -132,6 +133,7 @@ export function RosterHoursPanel({
   readonly summary: HoursSummary;
   readonly extra: RosterExtraTimeState;
   readonly partial: boolean;
+  readonly payAnchored: boolean;
   readonly onRetry: () => void;
 }) {
   return (
@@ -145,7 +147,7 @@ export function RosterHoursPanel({
           <section className="grid gap-3" aria-labelledby="roster-hours-off-fortnight">
             <RosterSectionHead
               id="roster-hours-off-fortnight"
-              title="This pay fortnight"
+              title={payAnchored ? "This pay fortnight" : "This fortnight"}
               right={
                 <span className="nums text-sm text-[color:var(--text-muted)]">
                   {formatSpanWords(summary.start, summary.end)}
@@ -154,6 +156,7 @@ export function RosterHoursPanel({
             />
             <p className={cn(modeModuleSurface, "flex flex-wrap items-baseline gap-x-2 p-4 shadow-none")}>
               <span className="nums text-lg font-semibold text-[color:var(--text-heading)]">
+                {partial ? "at least " : ""}
                 {formatHours(summary.totalHours)}
               </span>
               <span className="text-sm text-[color:var(--text-muted)]">rostered</span>

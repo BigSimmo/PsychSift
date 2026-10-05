@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { hoursRestCheck } from "@/lib/roster/hours-rest-check";
-import { formatSpanUntil, hoursUntilNextDuty, type OverviewShift } from "@/lib/roster/shifts-overview";
+import { formatSpanUntil, type OverviewShift } from "@/lib/roster/shifts-overview";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 
@@ -56,7 +56,7 @@ export function RosterHoursRow({
         href={href}
         lead={<RosterIconLead icon={Clock} />}
         title="Hours and rest: checks off"
-        sub="Until the rules are signed off again"
+        sub="Until the rules are signed off"
         testId="roster-hours-row"
       />
     );
@@ -87,31 +87,37 @@ export function RosterHoursRow({
   );
 }
 
-/** How many nights in a row end with `shift`, counting back one Perth day at a time. */
-function nightsInRow(shifts: readonly OverviewShift[], shift: OverviewShift): number {
+/** The night run `shift` belongs to, as Perth start dates, and whether `shift` is its last night. */
+function nightRun(
+  shifts: readonly OverviewShift[],
+  shift: OverviewShift,
+): { readonly length: number; readonly last: boolean } {
   const nightDates = new Set(shifts.filter((item) => item.kind === "night").map((item) => perthDateOf(item.startsAt)));
-  let count = 1;
-  let date = addDaysToDate(perthDateOf(shift.startsAt), -1);
-  while (nightDates.has(date)) {
-    count += 1;
-    date = addDaysToDate(date, -1);
-  }
-  return count;
+  const own = perthDateOf(shift.startsAt);
+  let length = 1;
+  for (let date = addDaysToDate(own, -1); nightDates.has(date); date = addDaysToDate(date, -1)) length += 1;
+  return { length, last: !nightDates.has(addDaysToDate(own, 1)) };
 }
 
 /**
- * Under a night shift on now: how long after it ends the next duty starts,
- * with the exact words of clause 15(6)(g). Shown only while the signed rules
- * are on, and only when the roster holds a next duty.
+ * Under the last night of a run, on now: how long after it ends the next duty
+ * starts, with the exact words of clause 15(6)(g). It follows the signed check:
+ * the band by nights in the run, no note for a run the bands do not cover, and
+ * a duty that overlaps the end of the night leaves no free time. When the
+ * signed check warns about this rest, the note shows that warning. Hidden while
+ * the rules are off, while only part of the roster loaded (an earlier duty
+ * could be missing), and when the roster holds no next duty.
  */
 export function RosterAfterNightNote({
   shifts,
   shift,
   now,
+  partial,
 }: {
   readonly shifts: readonly OnCallShift[];
   readonly shift: OnCallShift;
   readonly now: Date;
+  readonly partial: boolean;
 }) {
   const check = useCheck(shifts, now);
   const overview = useMemo(
@@ -126,21 +132,32 @@ export function RosterAfterNightNote({
     [shifts],
   );
   const self = overview.find((item) => item.id === shift.id);
-  if (!check.on || !self || self.kind !== "night") return null;
-  const next = hoursUntilNextDuty(overview, self);
-  if (!next) return null;
+  if (!check.on || partial || !self || self.kind !== "night") return null;
+  const run = nightRun(overview, self);
+  if (!run.last) return null;
   const rule = FATIGUE_RULE_SET.rules.restAfterNights;
-  const run = nightsInRow(overview, self);
-  const band = rule.bands.find((item) => run <= item.upToNights) ?? rule.bands[rule.bands.length - 1]!;
+  const band = rule.bands.find((item) => run.length <= item.upToNights);
+  if (!band) return null;
+  const end = Date.parse(self.endsAt);
+  const next = overview
+    .filter((item) => item.id !== self.id && item.kind !== "leave" && Date.parse(item.endsAt) > end)
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
+  if (!next) return null;
+  const warning = check.warnings.find((item) => item.rule === "restAfterNights" && item.shiftId === next.id);
+  const free = Math.max(0, Date.parse(next.startsAt) - end);
   const what =
-    next.next.kind === "on_call" ? "Your on call" : `Your next ${SHIFT_KIND_LABEL[next.next.kind].toLowerCase()} shift`;
+    next.kind === "on_call" ? "Your on call" : `Your next ${SHIFT_KIND_LABEL[next.kind].toLowerCase()} shift`;
   return (
-    <RosterNote icon={Moon} testId="roster-after-night-note">
+    <RosterNote
+      icon={warning ? TriangleAlert : Moon}
+      tone={warning ? "warning" : "neutral"}
+      testId="roster-after-night-note"
+    >
       <p className="font-semibold text-[color:var(--text-heading)]">
-        {what} starts {formatSpanUntil(next.hours * 3_600_000)} after this shift ends.
+        {warning ? trimStop(warning.words) + "." : `${what} starts ${formatSpanUntil(free)} after this shift ends.`}
       </p>
       <p className="text-xs text-[color:var(--text-muted)]">
-        Clause {rule.clause}: “{rule.leadIn} {band.quote} … {rule.caveat}”
+        Clause {rule.clause}: “{rule.leadIn} … {band.quote} … {rule.caveat}”
       </p>
     </RosterNote>
   );

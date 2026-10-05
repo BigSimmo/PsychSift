@@ -86,11 +86,10 @@ export function RosterSettingsPage() {
     setDeleteState("deleting");
     // Committed once the undo window ends: `keepalive` lets the request outlive
     // the page if it is closed or left now. Only the pending window cancels.
-    void deleteAll({ keepalive: true }).then((failure) => {
-      if (failure) {
-        setDeleteState("idle");
-        setNotice({ tone: "warning", text: failure });
-      } else setDeleteState("deleted");
+    void deleteAll({ keepalive: true }).then((result) => {
+      // A delete that removed your own data but left some team requests is done, with a note.
+      setDeleteState(result.ok ? "deleted" : "idle");
+      if (result.message) setNotice({ tone: "warning", text: result.message });
     });
   }, [deleteAll]);
 
@@ -204,6 +203,11 @@ export function RosterSettingsPage() {
                 ? "Deleting your own Roster data…"
                 : "Your own Roster data is deleted. Team rostered shifts remain with the team."}
           </RosterNote>
+          {deleteState === "deleted" && notice ? (
+            <RosterNote icon={TriangleAlert} tone="warning" testId="roster-settings-delete-partial">
+              {notice.text}
+            </RosterNote>
+          ) : null}
           {deleteState === "pending" ? (
             <button type="button" className={cn(rosterOutlineButton, "justify-self-start")} onClick={undoDelete}>
               <Undo2 aria-hidden="true" className="size-icon-md" />
@@ -372,7 +376,8 @@ export function RosterSettingsPage() {
                 <b className="font-semibold text-[color:var(--text-heading)]">Who sees what.</b> Shifts you add or
                 import yourself are private to you. Shifts on a team roster are seen by that team and its manager. Dates
                 you can&apos;t work, and leave you add to a team, are seen by your manager; teammates see only how many
-                people are already off. No patient details are stored.
+                people are already off. Roster does not ask for patient details: do not put any in shift names or
+                imported calendars.
               </span>
             </RosterNote>
 
@@ -396,10 +401,11 @@ export function RosterSettingsPage() {
                 )}
               </RosterList>
               <RosterFootnote testId="roster-settings-delete-note">
-                Your open swap and open-shift requests are withdrawn, and dates you can&apos;t work are cleared. Shifts
-                on a team roster stay with that team, which keeps its roster records for 12 months. Uploaded files are
-                never kept. Extra time you logged and your reminder choices are not removed here. You get 30 seconds to
-                change your mind. After that it cannot be undone.
+                Your open swap and open-shift requests are withdrawn, and upcoming dates you can&apos;t work are cleared
+                (if a team&apos;s requests cannot be withdrawn, you are told to check Requests). Shifts on a team roster
+                stay with that team, which keeps its roster records for 12 months. Uploaded files are never kept. Extra
+                time you logged is not removed here, and phone alerts stop on every device. You get 30 seconds to change
+                your mind. After that it cannot be undone.
               </RosterFootnote>
             </section>
           </>

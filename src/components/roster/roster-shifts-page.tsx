@@ -206,14 +206,15 @@ function DayRow({
         const leave = kind === "leave";
         const title = leave ? shift.title || SHIFT_KIND_LABEL.leave : shiftSpan(item);
         const place = item.place;
+        const warning = cues.get(item.id)?.warning;
         const sub = (
           <>
             {leave ? "All day" : kind === "on_call" ? ["On call from home", place].filter(Boolean).join(" · ") : place}
             {/* Only a crossed team rule earns a chip here; plain rest figures live in Hours & rest. */}
-            <RosterRestChip cue={cues.get(item.id)?.warning ? cues.get(item.id) : undefined} />
+            <RosterRestChip cue={warning ? cues.get(item.id) : undefined} />
           </>
         );
-        const name = `${formatPerthDay(row.date)}: ${SHIFT_KIND_LABEL[kind]}, ${leave ? "all day" : title}${place ? `, ${place}` : ""}`;
+        const name = `${formatPerthDay(row.date)}: ${SHIFT_KIND_LABEL[kind]}, ${leave ? "all day" : title}${place ? `, ${place}` : ""}${warning ? `. ${warning}` : ""}`;
         const common = {
           lead,
           title,
@@ -241,7 +242,7 @@ function DayRow({
                   label: `${SHIFT_KIND_LABEL[kind].toLowerCase()} on ${formatPerthDay(row.date)}`,
                 })
               }
-              label={`Remove ${SHIFT_KIND_LABEL[kind]} on ${formatPerthDay(row.date)} and its repeats`}
+              label={`Remove ${SHIFT_KIND_LABEL[kind]} on ${formatPerthDay(row.date)} and its repeats${warning ? `. ${warning}` : ""}`}
             />
           );
         return <RosterRow key={item.id} {...common} label={name} />;
@@ -262,9 +263,9 @@ function ShiftsLoading() {
   return (
     <div className="grid gap-3" data-testid="roster-shifts-loading">
       <div className={cn(modeModuleSurface, "grid gap-3 p-4 shadow-none")} aria-hidden="true">
-        <span className="h-3.5 w-2/5 rounded-full bg-[color:var(--surface-inset)]" />
-        <span className="h-3.5 w-4/5 rounded-full bg-[color:var(--surface-inset)]" />
-        <span className="h-3.5 w-2/5 rounded-full bg-[color:var(--surface-inset)]" />
+        <span className="h-3.5 w-2/5 rounded-full bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]" />
+        <span className="h-3.5 w-4/5 rounded-full bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]" />
+        <span className="h-3.5 w-2/5 rounded-full bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]" />
       </div>
       <p role="status" className="mx-1 text-xs text-[color:var(--text-muted)]">
         Loading your roster…
@@ -434,6 +435,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               summary={summary}
               extra={extra}
               partial={partial}
+              payAnchored={Boolean(payAnchor)}
               onRetry={() => void shifts.reload()}
             />
           )}
@@ -536,13 +538,13 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                       />
                     ))}
                 </RosterList>
-                <RosterAfterNightNote shifts={shifts.shifts} shift={leadDisplay!} now={now} />
+                <RosterAfterNightNote shifts={shifts.shifts} shift={leadDisplay!} now={now} partial={partial} />
               </>
             ) : null}
 
             <RosterList testId="roster-shifts-checks">
               <RosterHoursRow shifts={shifts.shifts} now={now} partial={partial} href={HOURS_HREF} />
-              {extra.finished && !extra.alreadyLogged ? (
+              {extra.canAdd || extra.saving ? (
                 <RosterRow
                   lead={<RosterIconLead icon={Clock} />}
                   title="Stayed late?"
@@ -551,6 +553,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                     <RosterLinkWord
                       onClick={() => void extra.stayedLate()}
                       label="Add the time since your last shift ended"
+                      disabled={extra.saving}
                       testId="roster-stayed-late"
                     >
                       {extra.saving ? "Saving…" : "Add"}
@@ -647,6 +650,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               extraHours={summary.extraHours}
               extraStatus={extra.status}
               partial={partial}
+              payAnchored={Boolean(payAnchor)}
             />
 
             <RosterSectionHead title="Roster tools" />

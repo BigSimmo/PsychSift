@@ -249,7 +249,7 @@ describe("Roster Shifts", () => {
     expect(screen.getByRole("heading", { name: /This week\s*12 to 18 Oct · 1 shift/ })).toBeInTheDocument();
     // The morning the night ends is a day off that says so.
     expect(screen.getAllByTestId("roster-shifts-off").map((item) => item.textContent)).toContain(
-      "Fri16OffNight shift ends 08:00",
+      "Fri16Fri 16, OffNight shift ends 08:00",
     );
   });
 
@@ -369,6 +369,45 @@ describe("Roster Shifts", () => {
     expect(screen.getByTestId("roster-hours-extra")).toHaveTextContent("this fortnight so far");
     fireEvent.click(within(error).getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.queryByTestId("roster-hours-extras-error")).toBeNull());
+  });
+
+  it("sends a late finish once however fast it is tapped, and never before saved extra time loads", async () => {
+    mockShifts([day("2026-10-12")]);
+    let release: () => void = () => {};
+    routes.set("GET /api/roster/extra-time", () => Response.json({ records: [] }));
+    routes.set(
+      "POST /api/roster/extra-time",
+      () => new Promise<Response>((resolve) => (release = () => resolve(Response.json({ saved: true })))),
+    );
+    render(<RosterShiftsPage now={new Date("2026-10-12T09:45:00Z")} />);
+    const add = await screen.findByRole("button", { name: "Add the time since your last shift ended" });
+    fireEvent.click(add);
+    fireEvent.click(add);
+    release();
+    await screen.findByText("Saved");
+    expect(fetchCalls("/api/roster/extra-time", "POST")).toHaveLength(1);
+  });
+
+  it("hides Add while saved extra time could not be loaded, so a logged late finish is never sent again", async () => {
+    mockShifts([day("2026-10-12")]);
+    routes.set("GET /api/roster/extra-time", () => Response.json({ error: "down" }, { status: 503 }));
+    navigation.search = new URLSearchParams("view=hours");
+    render(<RosterShiftsPage now={new Date("2026-10-12T09:45:00Z")} />);
+    await screen.findByTestId("roster-hours-extras-error");
+    expect(screen.queryByRole("button", { name: "Add the time since your last shift ended" })).toBeNull();
+  });
+
+  it("gives the rest after nights only under the last night of a run", async () => {
+    // Thursday's night is followed by another night, so the rest is not measured from it.
+    mockShifts([
+      night("2026-10-15"),
+      night("2026-10-16"),
+      shift("2026-10-18", "09:00", "17:00", "on_call", { workplace: null }),
+    ]);
+    render(<RosterShiftsPage now={new Date("2026-10-15T15:40:00Z")} />);
+    await screen.findByTestId("roster-next-shift");
+    await screen.findByTestId("roster-hours-row");
+    expect(screen.queryByTestId("roster-after-night-note")).toBeNull();
   });
 
   it("says plainly that nothing was checked when the roster cannot load", async () => {

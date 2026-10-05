@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   formatSpanUntil,
   formatSpanWords,
-  hoursUntilNextDuty,
   leadShift,
   relativeDay,
   shiftSpan,
@@ -84,10 +83,5 @@ describe("Roster Shifts words", () => {
     expect(rows[5]).toMatchObject({ shifts: [], offNote: "Night shift ends 08:00" });
     expect(weekCountWords(rows)).toBe("3 shifts and 1 on call");
     expect(weekCountWords(weekRows([], "2026-10-05"))).toBe("No shifts");
-  });
-
-  it("measures the time from a shift's end to the next duty, on call included", () => {
-    expect(hoursUntilNextDuty(week, week[3]!)).toMatchObject({ hours: 37, next: { kind: "on_call" } });
-    expect(hoursUntilNextDuty(week, week[4]!)).toBeNull();
   });
 });
