@@ -136,12 +136,18 @@ function WeekStrip({ days, label }: { days: readonly WorkAnswerDay[]; label: str
                 free
                   ? "border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] font-semibold text-[color:var(--mode-identity)]"
                   : "border border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]",
-                !day.inRange && "border-[color:var(--border)]",
+                (!day.inRange || !day.known) && "border-[color:var(--border)]",
               )}
             >
               {date.getUTCDate()}
               <span className="sr-only">
-                {free ? ", no rostered shift" : day.inRange ? ", rostered" : ", not asked about"}
+                {!day.inRange
+                  ? ", not asked about"
+                  : free
+                    ? ", no rostered shift"
+                    : day.known
+                      ? ", rostered"
+                      : ", roster not available"}
               </span>
             </span>
           </li>

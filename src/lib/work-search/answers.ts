@@ -75,6 +75,8 @@ export interface WorkAnswerDay {
   readonly free: boolean;
   /** False for days of the week the question did not ask about (already past, say). */
   readonly inRange: boolean;
+  /** False past the roster's last shift: whether that day is free isn't known yet. */
+  readonly known: boolean;
 }
 
 export interface WorkAnswerProgress {
@@ -511,6 +513,7 @@ function freeDays(input: WorkAnswerInput, range: Range, named: string | null): W
             date,
             free: counted(date) && !worked.has(date),
             inRange: date >= range.from && date <= range.to,
+            known: counted(date),
           })),
         }
       : {}),

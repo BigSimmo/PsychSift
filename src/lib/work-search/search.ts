@@ -69,7 +69,13 @@ function dateOrder(a: WorkItem, b: WorkItem, today: string): number {
 export function searchWork(
   input: { readonly items: readonly WorkItem[]; readonly entries: readonly WorkSearchEntry[] },
   query: string,
-  options: { readonly currentArea: WorkSearchArea | null; readonly today: string; readonly exact?: boolean },
+  options: {
+    readonly currentArea: WorkSearchArea | null;
+    readonly today: string;
+    readonly exact?: boolean;
+    /** The current instant, so a session that finished earlier today is not shown as the next one. */
+    readonly now?: number;
+  },
 ): WorkSearchHit[] {
   // "Search for … exactly" turns off the one-letter-out matching.
   const terms = workSearchTerms(query).map((alternatives) =>
@@ -107,7 +113,7 @@ export function searchWork(
 
 function finish(
   best: ReadonlyMap<string, WorkSearchHit>,
-  options: { readonly currentArea: WorkSearchArea | null; readonly today: string },
+  options: { readonly currentArea: WorkSearchArea | null; readonly today: string; readonly now?: number },
 ): WorkSearchHit[] {
   // Series are folded before the cap, so a long weekly series cannot crowd out other matches.
   return collapseSeries(
@@ -119,6 +125,7 @@ function finish(
         a.item.title.localeCompare(b.item.title),
     ),
     options.today,
+    options.now,
   ).slice(0, WORK_SEARCH_RESULT_LIMIT);
 }
 
@@ -158,36 +165,48 @@ export function workSearchCorrection(
   return null;
 }
 
+/** The series a Teaching session belongs to: its title at its place. */
+export function seriesKey(item: WorkItem): string {
+  return `${item.title.trim().toLowerCase()}|${(item.text[0] ?? "").trim().toLowerCase()}`;
+}
+
 /**
  * A weekly session shows once: the best-ranked match of each Teaching title at
  * each place, with "+2 more" added to its detail line for the other sessions
- * still ahead, so a series cannot fill the list.
+ * still ahead, so a series cannot fill the list. A session that has already
+ * finished gives way to the next one still ahead, so the row links somewhere
+ * useful. `now` is optional so plain date checks still work without a clock.
  */
-export function collapseSeries(hits: readonly WorkSearchHit[], today: string): WorkSearchHit[] {
-  const firstOf = new Map<string, number>();
-  const extra = new Map<string, number>();
+export function collapseSeries(hits: readonly WorkSearchHit[], today: string, now?: number): WorkSearchHit[] {
+  const ahead = (item: WorkItem) =>
+    now !== undefined && item.endsAt ? Date.parse(item.endsAt) > now : item.date === null || item.date >= today;
+  const series = new Map<string, WorkSearchHit[]>();
+  for (const hit of hits) {
+    if (hit.item.kind !== "session") continue;
+    const key = seriesKey(hit.item);
+    series.set(key, [...(series.get(key) ?? []), hit]);
+  }
   const kept: WorkSearchHit[] = [];
+  const done = new Set<string>();
   for (const hit of hits) {
     if (hit.item.kind !== "session") {
       kept.push(hit);
       continue;
     }
-    const key = `${hit.item.title.trim().toLowerCase()}|${(hit.item.text[0] ?? "").trim().toLowerCase()}`;
-    if (firstOf.has(key)) {
-      if (hit.item.date === null || hit.item.date >= today) extra.set(key, (extra.get(key) ?? 0) + 1);
-      continue;
-    }
-    firstOf.set(key, kept.length);
-    kept.push(hit);
-  }
-  for (const [key, count] of extra) {
-    if (count === 0) continue;
-    const index = firstOf.get(key) as number;
-    const { item } = kept[index] as WorkSearchHit;
-    kept[index] = {
-      ...(kept[index] as WorkSearchHit),
-      item: { ...item, detail: [item.detail, `+${count} more`].filter(Boolean).join(" · ") },
-    };
+    const key = seriesKey(hit.item);
+    if (done.has(key)) continue;
+    done.add(key);
+    const members = series.get(key) as WorkSearchHit[];
+    const shown = members.find((member) => ahead(member.item)) ?? hit;
+    const count = members.filter((member) => member !== shown && ahead(member.item)).length;
+    kept.push(
+      count === 0
+        ? shown
+        : {
+            ...shown,
+            item: { ...shown.item, detail: [shown.item.detail, `+${count} more`].filter(Boolean).join(" · ") },
+          },
+    );
   }
   return kept;
 }

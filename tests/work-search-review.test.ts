@@ -366,6 +366,31 @@ describe("post-build review fixes", () => {
     expect(hits.find((hit) => hit.item.detail?.includes("Library"))?.item.detail).not.toMatch(/more$/);
   });
 
+  it("shows the next session of a series, not one that finished earlier today", () => {
+    const weekly = (id: string, date: string) => ({
+      occurrenceId: id,
+      serviceId: "t",
+      title: "Journal club",
+      startsAt: `${date}T04:30:00.000Z`,
+      endsAt: `${date}T05:30:00.000Z`,
+      venue: "Room 2",
+      hasJoinLink: false,
+      status: "scheduled" as const,
+      isPresenter: false,
+      source: "teaching" as const,
+    });
+    const series = sessionWorkItems([weekly("past", today), weekly("next", "2026-10-12")]);
+    // 18:00 Perth: today's 12:30 to 13:30 session has finished.
+    const hits = searchWork({ items: series, entries: [] }, "journal", {
+      currentArea: null,
+      today,
+      now: at(`${today}T18:00`),
+    });
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.item.id).toBe(series[1]?.id);
+    expect(hits[0]?.item.detail).not.toMatch(/more$/);
+  });
+
   it("never looks up patient details, and gives a clinical question records but no work answer", () => {
     expect(workSearchGate("bed 12 UMRN 4471023")).toMatchObject({ patient: true, search: false, answer: false });
     expect(workSearchGate("ECT list")).toMatchObject({ clinical: true, search: true, answer: false });
@@ -396,6 +421,17 @@ describe("post-build review fixes", () => {
     expect(week?.note).toContain("Your roster only holds shifts up to Tue 13 Oct.");
     // Monday 12 is leave, so it has no working shift; days after Tuesday 13 are not counted.
     expect(week?.week?.filter((day) => day.free).map((day) => day.date)).toEqual(["2026-10-12"]);
+    // Wednesday to Sunday are not known yet, so the strip must not call them rostered.
+    expect(week?.week?.filter((day) => !day.known).map((day) => day.date)).toEqual([
+      "2026-10-14",
+      "2026-10-15",
+      "2026-10-16",
+      "2026-10-17",
+      "2026-10-18",
+    ]);
+    const unpublished = answerWorkQuestion("free days on 26 Oct", input("2026-10-05T09:00"));
+    expect(unpublished?.headline).toBe("Roster not out yet");
+    expect(unpublished?.week?.every((day) => !day.known)).toBe(true);
   });
 
   it("mentions a night carried over from the day before", () => {

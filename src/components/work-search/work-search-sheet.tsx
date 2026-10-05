@@ -49,12 +49,13 @@ import { perthDateOf } from "@/lib/perth-time";
 import { answerWorkQuestion } from "@/lib/work-search/answers";
 import { workSearchAreaLabels, workSearchAreas, type WorkAreaRead, type WorkSearchArea } from "@/lib/work-search/model";
 import {
+  collapseSeries,
   searchWork,
+  seriesKey,
   workComingUp,
   workSearchCorrection,
   workSearchCounts,
   workSearchNothingFound,
-  type WorkSearchHit,
 } from "@/lib/work-search/search";
 import { clinicalSearchHref, looksLikePatientDetails, workSearchGate } from "@/lib/work-search/signals";
 
@@ -290,8 +291,13 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
       // Patient details are not looked up at all: the notice is the whole answer.
       !gate.search
         ? []
-        : searchWork({ items: records.items, entries: records.entries }, searchQuery, { currentArea, today, exact }),
-    [gate.search, records.items, records.entries, searchQuery, currentArea, today, exact],
+        : searchWork({ items: records.items, entries: records.entries }, searchQuery, {
+            currentArea,
+            today,
+            exact,
+            now,
+          }),
+    [gate.search, records.items, records.entries, searchQuery, currentArea, today, exact, now],
   );
   const allItems = useMemo(
     () => [...records.items, ...records.entries.map(({ item }) => item)],
@@ -303,7 +309,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   );
   const nextUp = useMemo(() => workComingUp(allItems, today, now, 3), [allItems, today, now]);
   const loadingAreas = records.areas.filter((area) => area.status === "loading");
-  const loading = loadingAreas.length > 0;
+  // Patient details are never searched, so nothing is "still searching" for them.
+  const loading = loadingAreas.length > 0 && !patient;
   // A clinical question or patient details never get a work answer: the notice says what to do instead.
   const answer = useMemo(
     () =>
@@ -346,14 +353,24 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   );
   // Every record the lists can show, once, without the ones the answer card already shows.
   const listed = useMemo(() => {
-    const extra: WorkSearchHit[] = extraFromAnswer ? answerItems.map((item) => ({ item, rank: 0 as const })) : [];
+    // The answer's own records are folded like search results, so "Am I presenting?" shows a weekly
+    // talk once with "+2 more". Search results are folded already, so their series are not counted twice.
+    const extra = extraFromAnswer
+      ? collapseSeries(
+          answerItems.map((item) => ({ item, rank: 0 as const })),
+          today,
+          now,
+        )
+      : [];
+    const extraSeries = new Set(extra.filter((hit) => hit.item.kind === "session").map((hit) => seriesKey(hit.item)));
     const seen = new Set<string>();
-    return [...extra, ...hits].filter((hit) => {
+    return [...extra, ...hits].filter((hit, index) => {
       if (seen.has(hit.item.id) || hiddenIds.has(hit.item.id)) return false;
+      if (index >= extra.length && hit.item.kind === "session" && extraSeries.has(seriesKey(hit.item))) return false;
       seen.add(hit.item.id);
       return true;
     });
-  }, [extraFromAnswer, answerItems, hits, hiddenIds]);
+  }, [extraFromAnswer, answerItems, hits, hiddenIds, today, now]);
   // Tab counts come from the same list the groups show, so a count always matches what is beneath it.
   const counts = useMemo(() => workSearchCounts(listed), [listed]);
   const groups = useMemo(() => {
