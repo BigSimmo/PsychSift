@@ -1,38 +1,37 @@
 "use client";
 
-import { ChevronRight, Pencil, Users } from "lucide-react";
-import Link from "next/link";
+import { CalendarDays, Layers, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { ModeNotice } from "@/components/mode-kit/notice";
-import { modeInsetHairline, modePressable } from "@/components/mode-kit/recipes";
 import {
-  modeDisplayNumberText,
-  modeHeadingText,
-  modeNameText,
-  modeNumberText,
-  modeSecondaryText,
-} from "@/components/mode-kit/type";
+  T5Actions,
+  T5Heading,
+  T5Icon,
+  T5Kicker,
+  T5Link,
+  T5List,
+  T5Meta,
+  T5Meter,
+  T5Note,
+  T5Page,
+  T5Pair,
+  T5Panel,
+  T5Row,
+  T5Section,
+} from "@/components/teaching/t5-kit";
 import { perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
-import { TeachingModule } from "@/components/teaching/teaching-modules";
 import { TeachingUndoBar } from "@/components/teaching/teaching-row";
-import {
-  NoPatientDetailsMark,
-  TermAddItem,
-  TermDateTile,
-  TermRemoveButton,
-} from "@/components/teaching/teaching-term-kit";
+import { NoPatientDetailsMark, TermAddItem, TermRemoveButton } from "@/components/teaching/teaching-term-kit";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/chip";
 import { TextField } from "@/components/ui/text-field";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 import {
   addDays,
   dayMonth,
@@ -45,7 +44,6 @@ import {
   studyPlanWeek,
   studyStreak,
   weekdayDayMonth,
-  weekdayShort,
   type ExamPrepState,
   type HeatCell,
 } from "@/lib/teaching/term-tracker";
@@ -73,7 +71,7 @@ function ExamForm({
   const [error, setError] = useState("");
   return (
     <form
-      className="grid gap-3 p-3"
+      className="grid gap-3 pt-2"
       onSubmit={(event) => {
         event.preventDefault();
         if (on <= today) {
@@ -136,46 +134,26 @@ function Countdown({
   const days = daysBetween(today, exam.on);
   const plan = studyPlanWeek(exam, today);
   return (
-    <ModeFeaturedModule mode="teaching" testId="teaching-exam-countdown" className="grid gap-3 p-3">
-      <div className="flex items-center gap-3">
-        <TermDateTile date={exam.on} />
-        <div className="grid min-w-0 flex-1 gap-0.5">
-          <h2 className={cn(modeHeadingText, "text-lg-minus break-words text-[color:var(--text-heading)]")}>
-            {exam.name}
-          </h2>
-          <p className={modeSecondaryText}>{weekdayDayMonth(exam.on)} · set by you</p>
-        </div>
-        <Button type="button" variant="ghost" size="sm" icon={Pencil} onClick={onEdit}>
-          Edit
-        </Button>
-      </div>
+    <T5Panel testId="teaching-exam-countdown">
+      <T5Kicker>{`${exam.name} · ${weekdayDayMonth(exam.on)}`}</T5Kicker>
       {days >= 0 ? (
-        <p className="flex items-baseline gap-2">
-          <span className={cn(modeDisplayNumberText, "text-4xl text-[color:var(--mode-identity)]")}>{days}</span>
-          <span className="text-base-minus text-[color:var(--text)]">{days === 1 ? "day to go" : "days to go"}</span>
-        </p>
+        <>
+          <T5Heading big>{days === 0 ? "Today" : `${days} ${days === 1 ? "day" : "days"}`}</T5Heading>
+          <T5Pair label="Study plan" value={`Week ${plan.week} of ${plan.total}`} />
+          <T5Meter percent={Math.round((plan.week / plan.total) * 100)} label={`Week ${plan.week} of ${plan.total}`} />
+        </>
       ) : (
-        <p className="text-base-minus text-[color:var(--text)]">This date has passed. Set your next exam with Edit.</p>
+        <T5Heading>This date has passed</T5Heading>
       )}
-      {days >= 0 ? (
-        <div className="grid gap-1.5">
-          <p className={cn("text-sm", textMuted)}>
-            Study plan · week {plan.week} of {plan.total}
-          </p>
-          <div aria-hidden="true" className="flex gap-0.5">
-            {Array.from({ length: plan.total }, (_, index) => (
-              <span
-                key={index}
-                className={cn(
-                  "h-1.5 min-w-0 flex-1 rounded-full",
-                  index < plan.week ? "bg-[color:var(--mode-identity)]" : "bg-[color:var(--surface-inset)]",
-                )}
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </ModeFeaturedModule>
+      <T5Meta>
+        {days >= 0 ? "The date you entered. Check it against your college." : "Set your next exam with Edit."}
+      </T5Meta>
+      <T5Actions>
+        <T5Link onClick={onEdit} quiet label="Edit the exam name or date">
+          Edit
+        </T5Link>
+      </T5Actions>
+    </T5Panel>
   );
 }
 
@@ -189,35 +167,40 @@ const heatClass: Record<HeatCell["level"], string> = {
   4: "bg-[color:var(--mode-identity)]",
 };
 
-function StudyHeatmap({ weeks, today }: { weeks: HeatCell[][]; today: string }) {
+function StudyHeatmap({ weeks, today, label }: { weeks: HeatCell[][]; today: string; label: string }) {
   return (
     <div className="grid gap-1.5">
-      <div role="img" aria-label="Study by day, last 12 weeks" className="grid grid-flow-col grid-rows-7 gap-1">
+      <div role="img" aria-label={label} className="grid grid-flow-col grid-cols-12 grid-rows-7 gap-0.75">
         {weeks.flat().map((cell) => (
           <span
             key={cell.date}
-            title={`${weekdayDayMonth(cell.date)}: ${cell.minutes} min`}
+            title={`${weekdayDayMonth(cell.date)}: ${cell.minutes} min`}
             className={cn(
-              "aspect-square w-full rounded-sm",
+              "h-3.25 rounded-[3px]",
               cell.future ? "bg-transparent" : heatClass[cell.level],
-              cell.date === today &&
-                "ring-2 ring-[color:var(--text-heading)] ring-offset-1 ring-offset-[color:var(--surface-raised)]",
+              cell.date === today && "ring-[1.5px] ring-[color:var(--text-heading)]",
             )}
           />
         ))}
       </div>
-      <div className={cn("flex items-center justify-between text-xs", textMuted)}>
+      <div className="flex items-center justify-between text-2xs text-[color:var(--text-soft)]">
         <span>{dayMonth(weeks[0][0].date)}</span>
         <span aria-hidden="true" className="flex items-center gap-1">
           Less
           {([0, 1, 2, 3, 4] as const).map((level) => (
-            <span key={level} className={cn("inline-block size-2.5 rounded-sm", heatClass[level])} />
+            <span key={level} className={cn("inline-block size-2.5 rounded-[3px]", heatClass[level])} />
           ))}
           More
         </span>
       </div>
     </div>
   );
+}
+
+function studyStepLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const rest = minutes % 60;
+  return rest ? `${Math.floor(minutes / 60)} h ${rest}` : `${minutes / 60} h`;
 }
 
 function Study({ state, today, update }: { state: ExamPrepState; today: string; update: Update }) {
@@ -234,34 +217,46 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
     setUndo({ before: todayMinutes, added: minutes });
   };
   let streakLine = "Log today's study to start a run.";
-  if (streak === 1) streakLine = "1 day in a row.";
-  if (streak > 1) streakLine = `${streak} days in a row.`;
+  if (streak === 1) streakLine = "1 day in a row";
+  if (streak > 1) streakLine = `${streak} days in a row`;
   return (
-    <TeachingModule title="Last 12 weeks" testId="teaching-exam-study">
-      <div className="grid gap-3 p-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="flex items-baseline gap-1.5">
-            <span className={cn(modeNumberText, "text-2xl text-[color:var(--text-heading)]")}>
-              {formatMinutesAsHours(total)}
-            </span>
-            <span className={cn("text-sm", textMuted)}>logged</span>
-          </p>
-          <p className="text-sm text-[color:var(--text)]">{streakLine}</p>
+    <>
+      <T5Section
+        label="Add study for today"
+        right={todayMinutes ? <T5Meta>{`${studyStepLabel(todayMinutes)} so far`}</T5Meta> : null}
+        testId="teaching-exam-log"
+      >
+        <div
+          role="group"
+          aria-label="Add study for today"
+          className="flex gap-2 border-t border-[color:var(--border)] pt-2.5"
+        >
+          {STUDY_STEPS.map((minutes) => (
+            <button
+              key={minutes}
+              type="button"
+              onClick={() => log(minutes)}
+              aria-label={`Add ${studyStepLabel(minutes)} of study for today`}
+              className={cn(
+                "relative grid h-10 flex-1 place-items-center rounded-md border border-[color:var(--border-strong)] text-sm-minus font-semibold text-[color:var(--text-heading)] after:absolute after:inset-x-0 after:top-1/2 after:h-12 after:-translate-y-1/2",
+                focusRing,
+              )}
+            >
+              {studyStepLabel(minutes)}
+            </button>
+          ))}
         </div>
-        <StudyHeatmap weeks={weeks} today={today} />
-        <fieldset className="grid gap-2">
-          <legend className={cn(modeNameText, "mb-1 text-sm text-[color:var(--text-heading)]")}>
-            Log study for today{todayMinutes ? ` · ${todayMinutes} min so far` : ""}
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {STUDY_STEPS.map((minutes) => (
-              <ChoiceChip key={minutes} pressed={false} onPressedChange={() => log(minutes)}>
-                + {minutes} min
-              </ChoiceChip>
-            ))}
-          </div>
-        </fieldset>
-      </div>
+      </T5Section>
+      <T5Section label={`Last 12 weeks · ${formatMinutesAsHours(total)}`} testId="teaching-exam-study">
+        <div className="grid gap-2 border-t border-[color:var(--border)] pt-2.5">
+          <p className="text-sm font-medium text-[color:var(--text-heading)]">{streakLine}</p>
+          <StudyHeatmap
+            weeks={weeks}
+            today={today}
+            label={`Study minutes per day for 12 weeks; ${streakLine.toLowerCase()}`}
+          />
+        </div>
+      </T5Section>
       {undo ? (
         <TeachingUndoBar
           testId="teaching-exam-study-undo"
@@ -278,7 +273,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
           Added {undo.added} min for today
         </TeachingUndoBar>
       ) : null}
-    </TeachingModule>
+    </>
   );
 }
 
@@ -286,45 +281,44 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
 
 function Topics({ state, update }: { state: ExamPrepState; update: Update }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   return (
-    <TeachingModule title="Topics · your list" testId="teaching-exam-topics">
-      {state.topics.length === 0 ? (
-        <p className={cn("px-3 pt-2 text-sm", textMuted)}>
+    <T5Section
+      label={`Your topics · ${state.topics.length}`}
+      right={<T5Link onClick={() => setAdding((value) => !value)}>{adding ? "Done" : "Add topic"}</T5Link>}
+      testId="teaching-exam-topics"
+    >
+      {state.topics.length === 0 && !adding ? (
+        <T5Meta className="border-t border-[color:var(--border)] py-2.5">
           Add the topics from your college syllabus, then mark how far through each you are.
-        </p>
+        </T5Meta>
       ) : null}
-      <ul className="mt-1">
+      <T5List ruled>
         {state.topics.map((topic) => (
-          <li key={topic.id} className={cn(modeInsetHairline, "grid gap-2 py-2 pr-1 pl-3")}>
+          <li key={topic.id} className="grid min-w-0 gap-1 py-1">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 aria-expanded={open === topic.id}
                 onClick={() => setOpen((current) => (current === topic.id ? null : topic.id))}
-                className={cn("grid min-h-12 min-w-0 flex-1 gap-1.5 text-left", modePressable, focusRing)}
+                className={cn("grid min-h-12 min-w-0 flex-1 gap-1.5 rounded-sm text-left", focusRing)}
               >
                 <span className="flex items-baseline justify-between gap-3">
-                  <span className={cn(modeNameText, "text-base-minus break-words text-[color:var(--text-heading)]")}>
-                    {topic.name}
+                  <span className="text-sm font-medium break-words text-[color:var(--text-heading)]">{topic.name}</span>
+                  <span className="shrink-0 text-sm font-semibold text-[color:var(--text-heading)] tabular-nums">
+                    {topic.percent}%
                   </span>
-                  <span className={cn(modeNumberText, "shrink-0 text-sm", textMuted)}>{topic.percent}%</span>
                 </span>
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 100 6"
-                  preserveAspectRatio="none"
-                  className="h-1.5 w-full overflow-hidden rounded-full"
-                >
-                  <rect width="100" height="6" rx="3" className="fill-[color:var(--surface-inset)]" />
-                  <rect width={topic.percent} height="6" rx="3" className="fill-[color:var(--mode-identity)]" />
-                </svg>
+                <T5Meter percent={topic.percent} thin />
               </button>
-              <TermRemoveButton
-                label={`Remove topic: ${topic.name}`}
-                onRemove={() =>
-                  update((current) => ({ ...current, topics: current.topics.filter((t) => t.id !== topic.id) }))
-                }
-              />
+              {adding ? (
+                <TermRemoveButton
+                  label={`Remove topic: ${topic.name}`}
+                  onRemove={() =>
+                    update((current) => ({ ...current, topics: current.topics.filter((t) => t.id !== topic.id) }))
+                  }
+                />
+              ) : null}
             </div>
             {open === topic.id ? (
               <div role="group" aria-label={`How far through ${topic.name}`} className="flex flex-wrap gap-2 pb-1">
@@ -347,24 +341,24 @@ function Topics({ state, update }: { state: ExamPrepState; update: Update }) {
             ) : null}
           </li>
         ))}
-      </ul>
-      <div className="grid gap-1 p-3">
-        <TermAddItem
-          label="Add a topic"
-          placeholder="Add a topic"
-          disabled={state.topics.length >= 40}
-          onAdd={(name) =>
-            update((current) => ({
-              ...current,
-              topics: [...current.topics, { id: newItemId("topic"), name, percent: 0 }],
-            }))
-          }
-        />
-        <p className={cn("text-xs", textMuted)}>
-          Topic names come from your college syllabus. PsychSift adds none of its own.
-        </p>
-      </div>
-    </TeachingModule>
+        {adding ? (
+          <li className="grid gap-1 py-2">
+            <TermAddItem
+              label="Add a topic"
+              placeholder="Add a topic"
+              disabled={state.topics.length >= 40}
+              onAdd={(name) =>
+                update((current) => ({
+                  ...current,
+                  topics: [...current.topics, { id: newItemId("topic"), name, percent: 0 }],
+                }))
+              }
+            />
+            <T5Meta>Topic names come from your college syllabus. PsychSift adds none of its own.</T5Meta>
+          </li>
+        ) : null}
+      </T5List>
+    </T5Section>
   );
 }
 
@@ -377,7 +371,7 @@ function GroupForm({ group, update, onDone }: { group: ExamPrepState["group"]; u
   const [place, setPlace] = useState(group?.place ?? "");
   return (
     <form
-      className="grid gap-2 p-3"
+      className="grid gap-2 py-3"
       onSubmit={(event) => {
         event.preventDefault();
         update((current) => ({ ...current, group: { title: title.trim(), on, time, place: place.trim() } }));
@@ -426,38 +420,37 @@ function StudyGroup({ state, today, update }: { state: ExamPrepState; today: str
   const [editing, setEditing] = useState(false);
   const group = state.group;
   return (
-    <TeachingModule
-      title="Study group"
-      icon={Users}
+    <T5Section
+      label="Study group"
+      right={!editing ? <T5Link onClick={() => setEditing(true)}>{group ? "Change" : "Add"}</T5Link> : null}
       testId="teaching-exam-group"
-      aside={
-        !editing ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(true)}>
-            {group ? "Change" : "Add"}
-          </Button>
-        ) : null
-      }
     >
       {editing ? (
-        <GroupForm group={group} update={update} onDone={() => setEditing(false)} />
-      ) : group ? (
-        <div className="flex items-center gap-3 p-3">
-          <TermDateTile date={group.on} />
-          <div className="grid min-w-0 gap-0.5">
-            <p className={cn(modeNameText, "text-base-minus break-words text-[color:var(--text-heading)]")}>
-              {group.title}
-            </p>
-            <p className={modeSecondaryText}>
-              {[`${weekdayShort(group.on)} ${group.time}`.trim(), group.place, group.on < today ? "past" : null]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-          </div>
+        <div className="border-t border-[color:var(--border)]">
+          <GroupForm group={group} update={update} onDone={() => setEditing(false)} />
         </div>
       ) : (
-        <p className={cn("p-3 text-sm", textMuted)}>Keep your next study group here.</p>
+        <T5List ruled>
+          {group ? (
+            <T5Row
+              title={group.title}
+              meta={[
+                [weekdayDayMonth(group.on), group.time].filter(Boolean).join(", "),
+                group.place,
+                group.on < today ? "past" : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              lead={<T5Icon icon={Users} />}
+            />
+          ) : (
+            <li className="py-2.5">
+              <T5Meta>Keep your next study group here.</T5Meta>
+            </li>
+          )}
+        </T5List>
       )}
-    </TeachingModule>
+    </T5Section>
   );
 }
 
@@ -477,11 +470,12 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
     body = (
       <>
         {!state.exam || editingExam ? (
-          <TeachingModule title={state.exam ? "Edit exam" : "Your exam"} testId="teaching-exam-setup">
+          <T5Panel testId="teaching-exam-setup">
+            <T5Heading>{state.exam ? "Edit exam" : "Your exam"}</T5Heading>
             {!state.exam ? (
-              <p className={cn("px-3 pt-2 text-sm", textMuted)}>
+              <T5Meta>
                 Set the exam you are sitting and its date for a countdown. Everything here stays on this device.
-              </p>
+              </T5Meta>
             ) : null}
             <ExamForm
               exam={state.exam}
@@ -489,57 +483,44 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
               update={store.update}
               onDone={state.exam ? () => setEditingExam(false) : undefined}
             />
-          </TeachingModule>
+          </T5Panel>
         ) : (
           <Countdown exam={state.exam} today={today} onEdit={() => setEditingExam(true)} />
         )}
         <Study state={state} today={today} update={store.update} />
         <Topics state={state} update={store.update} />
         <StudyGroup state={state} today={today} update={store.update} />
-        <nav aria-label="Leave and materials" className="grid gap-3">
-          <Link
-            href="/roster/requests"
-            className={cn(
-              "flex min-h-13 items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 no-underline",
-              modePressable,
-              focusRing,
-            )}
-          >
-            <span className="grid min-w-0 flex-1 gap-0.5 py-1">
-              <span className={cn(modeNameText, "text-base-minus text-[color:var(--text-heading)]")}>
-                Study and exam leave
-              </span>
-              <span className={modeSecondaryText}>Plan it in Roster requests</span>
-            </span>
-            <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-          </Link>
-          <Link
-            href="/teaching/resources"
-            className={cn(
-              "flex min-h-13 items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 no-underline",
-              modePressable,
-              focusRing,
-            )}
-          >
-            <span className="grid min-w-0 flex-1 gap-0.5 py-1">
-              <span className={cn(modeNameText, "text-base-minus text-[color:var(--text-heading)]")}>
-                Teaching resources
-              </span>
-              <span className={modeSecondaryText}>Collections, recordings and saved items</span>
-            </span>
-            <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-          </Link>
+        <nav aria-label="Leave and materials">
+          <T5List ruled className="mt-4.5">
+            <T5Row
+              title="Ask for study or exam leave"
+              meta="In Roster, under requests"
+              lead={<T5Icon icon={CalendarDays} />}
+              href="/roster/requests"
+            />
+            <T5Row
+              title="Teaching resources"
+              meta="Collections, recordings and saved items"
+              lead={<T5Icon icon={Layers} />}
+              href="/teaching/resources"
+            />
+          </T5List>
         </nav>
+        <T5Note icon="shield" className="mt-3">
+          Stays on this device and is not backed up.
+        </T5Note>
       </>
     );
 
   return (
     <InformationPageShell width="narrow" gap={false} testId="teaching-exam-prep">
-      <div data-mode-identity="teaching" className="grid gap-3">
-        <h1 className="text-xl font-semibold text-[color:var(--text-heading)]">Exam prep</h1>
-        {demoMode ? <ModeNotice>Made-up demo. Changes stay on this page and are not saved.</ModeNotice> : null}
+      <T5Page>
+        <h1 className="sr-only">My exam prep</h1>
+        {demoMode ? (
+          <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
+        ) : null}
         {body}
-      </div>
+      </T5Page>
     </InformationPageShell>
   );
 }
