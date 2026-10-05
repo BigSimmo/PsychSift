@@ -683,6 +683,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/compliance",
+        "file": "src/app/(search-app)/admin/compliance/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/sources/publishers",
         "file": "src/app/(search-app)/sources/publishers/page.tsx",
         "area": "product"

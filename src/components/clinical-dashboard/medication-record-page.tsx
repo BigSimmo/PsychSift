@@ -63,6 +63,7 @@ import { InformationPageFooter, InformationPageShell } from "@/components/inform
 import { RouteNotFoundPanel } from "@/components/route-not-found-panel";
 import { appModeHomeHref } from "@/lib/app-modes";
 import type { MedicationSourceLink } from "@/lib/medication-source-links";
+import { MedicationWhereItStands } from "@/components/clinical-dashboard/medication-where-it-stands";
 import { ExternalTextLink } from "@/components/ui/link";
 import { Sheet } from "@/components/ui/sheet";
 
@@ -392,6 +393,8 @@ function MedicationRecordDetail({
               <DetailTile key={`${metric.label}-${index}`} metric={metric} />
             ))}
           </section>
+
+          <MedicationWhereItStands medicineName={record.name} />
 
           {/* The patient-profile and considerations cards used to sit here,
               between the hero stats and the sections. They moved behind the
