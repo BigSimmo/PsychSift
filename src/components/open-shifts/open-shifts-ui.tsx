@@ -297,7 +297,7 @@ export function Switch({
         className={`relative inline-block h-7 w-12 rounded-full border transition-colors duration-[var(--duration-instant)] forced-colors:border-[CanvasText] forced-colors:[forced-color-adjust:none] ${
           checked
             ? "border-[color:var(--command)] bg-[color:var(--command)] forced-colors:bg-[Highlight]"
-            : "border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] forced-colors:bg-[Canvas]"
+            : "border-[color:var(--border-strong)] bg-[color:var(--surface-inset)] forced-colors:bg-[Canvas]"
         }`}
       >
         <span
@@ -329,7 +329,7 @@ export function ListSkeleton({ rows = 3 }: { rows?: number }) {
       {Array.from({ length: rows }, (_, index) => (
         <div
           key={index}
-          className="h-14 animate-pulse rounded-md bg-[color:var(--surface-subtle)] motion-reduce:animate-none"
+          className="h-14 animate-pulse rounded-md bg-[color:var(--surface-inset)] motion-reduce:animate-none"
         />
       ))}
     </div>

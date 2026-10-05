@@ -45,6 +45,12 @@ export function OpenShiftsBrowsePage() {
   const { end: windowEnd } = windowOf(today);
   const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Loaded on first open, then kept mounted so closing can hand focus back to the chip that opened it.
+  const [sheetLoaded, setSheetLoaded] = useState(false);
+  const openSheet = () => {
+    setSheetLoaded(true);
+    setSheetOpen(true);
+  };
   const [chosenDay, setChosenDay] = useState<string | null>(null);
   const [showHidden, setShowHidden] = useState(false);
 
@@ -101,7 +107,7 @@ export function OpenShiftsBrowsePage() {
                   type="button"
                   className={filterCount ? chipOn : chipOff}
                   aria-haspopup="dialog"
-                  onClick={() => setSheetOpen(true)}
+                  onClick={openSheet}
                 >
                   <ListFilter aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
                   Filters
@@ -121,7 +127,7 @@ export function OpenShiftsBrowsePage() {
                     type="button"
                     className={filters.siteIds.length ? chipOn : chipOff}
                     aria-haspopup="dialog"
-                    onClick={() => setSheetOpen(true)}
+                    onClick={openSheet}
                   >
                     Sites
                     {filters.siteIds.length ? <span className="nums text-xs">{filters.siteIds.length}</span> : null}
@@ -132,7 +138,7 @@ export function OpenShiftsBrowsePage() {
                   type="button"
                   className={filters.includeLowerLevels ? chipOn : chipOff}
                   aria-haspopup="dialog"
-                  onClick={() => setSheetOpen(true)}
+                  onClick={openSheet}
                 >
                   {filters.includeLowerLevels ? "All levels" : gradeLabel(myGrade)}
                   <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
@@ -141,7 +147,7 @@ export function OpenShiftsBrowsePage() {
                   type="button"
                   className={filters.starts.length ? chipOn : chipOff}
                   aria-haspopup="dialog"
-                  onClick={() => setSheetOpen(true)}
+                  onClick={openSheet}
                 >
                   {startsLabel}
                   <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
@@ -270,14 +276,20 @@ export function OpenShiftsBrowsePage() {
                 className="size-icon-lg text-[color:var(--text-muted)]"
               />
               <h3 className="mt-3 text-base font-semibold text-[color:var(--text-heading)]">
-                {partial ? "None found on this day in the teams read" : "No shifts match on this day"}
+                {partial
+                  ? "None found on this day in the teams read"
+                  : summary.total === 0
+                    ? "No open shifts in your teams"
+                    : "No shifts match on this day"}
               </h3>
               <p className="mt-1 text-sm text-[color:var(--text-muted)]">
-                {partial
-                  ? `Some of your teams couldn't be read, so there may be more.${next ? ` The next day with a match is ${formatDayLong(next)}.` : ""}`
-                  : day.hidden.length === 0
-                    ? `None are hidden by your filters either.${next ? ` The next day with a match is ${formatDayLong(next)}.` : ""}`
-                    : `${day.hidden.length} ${day.hidden.length === 1 ? "is" : "are"} hidden by your filters.`}
+                {!partial && summary.total === 0
+                  ? "Nothing is posted for the next 14 days. New shifts appear here when a roster manager posts them."
+                  : partial
+                    ? `Some of your teams couldn't be read, so there may be more.${next ? ` The next day with a match is ${formatDayLong(next)}.` : ""}`
+                    : day.hidden.length === 0
+                      ? `None are hidden by your filters either.${next ? ` The next day with a match is ${formatDayLong(next)}.` : ""}`
+                      : `${day.hidden.length} ${day.hidden.length === 1 ? "is" : "are"} hidden by your filters.`}
               </p>
               {next ? (
                 <button
@@ -335,7 +347,7 @@ export function OpenShiftsBrowsePage() {
 
           {state.sample === "signed-out" ? <SignInAction label="Sign in to request shifts" /> : null}
 
-          {sheetOpen ? (
+          {sheetLoaded ? (
             <OpenShiftsFiltersSheet
               open={sheetOpen}
               onClose={() => setSheetOpen(false)}

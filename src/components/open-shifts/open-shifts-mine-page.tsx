@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, NotebookPen } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
 
@@ -58,10 +58,7 @@ function Key({ label, hours, swatch }: { label: string; hours: number; swatch: s
 function Meter({ meter }: { meter: HoursMeter }) {
   const scale = Math.max(meter.limit ?? 0, meter.total, 1);
   return (
-    <section
-      aria-labelledby="os-meter"
-      className="mx-3 mt-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-4 py-4"
-    >
+    <section aria-labelledby="os-meter" className="mx-3 mt-3 border-b border-[color:var(--border)] pt-1 pb-2">
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="os-meter" className="text-2xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
           {`Busiest 14 days · ${dayRange(meter.from, meter.to)}`}
@@ -77,7 +74,7 @@ function Meter({ meter }: { meter: HoursMeter }) {
       <div
         role="img"
         aria-label={`Rostered ${formatHours(meter.rostered)}, approved ${formatHours(meter.approved)}, requested ${formatHours(meter.requested)}`}
-        className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--surface-subtle)] forced-colors:border forced-colors:border-[CanvasText]"
+        className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--surface-inset)] forced-colors:border forced-colors:border-[CanvasText]"
       >
         <Segment
           hours={meter.rostered}
@@ -272,12 +269,12 @@ export function OpenShiftsMinePage() {
           </div>
         ) : null}
 
-        <div className="mt-6 px-3">
+        <div className="mt-4 px-3">
           <Link
             href="/open-shifts/log"
-            className="flex min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--border-strong)] px-4 text-sm font-medium text-[color:var(--text-heading)] no-underline focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
+            className="inline-flex min-h-12 items-center gap-2 text-sm font-medium text-[color:var(--mode-identity)] no-underline focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
           >
-            <NotebookPen aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
+            <Plus aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
             Log a shift offered to me
           </Link>
         </div>

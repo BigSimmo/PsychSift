@@ -114,7 +114,7 @@ export function useOpenShifts(): OpenShiftsState {
       if (cancelled) return;
       const ok = results.filter((result) => result.rows !== null);
       if (ok.length === 0) {
-        setFailed("Open shifts couldn't be reached. Try again shortly.");
+        setFailed("Try again shortly.");
         return;
       }
       const next: Loaded = {
@@ -233,7 +233,7 @@ export function useOpenShifts(): OpenShiftsState {
       sample: null,
       failedTeams: [],
       refreshFailed: false,
-      message: failed ?? teams.message ?? "Open shifts couldn't be reached. Try again shortly.",
+      message: failed ?? teams.message ?? "Try again shortly.",
     };
   }
 

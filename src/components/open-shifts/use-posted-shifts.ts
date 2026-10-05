@@ -118,7 +118,7 @@ export function usePostedShifts(): PostedShiftsState {
       if (cancelled) return;
       const ok = results.filter((entry) => entry.result !== null);
       if (ok.length === 0) {
-        setFailed("Your posted shifts couldn't be reached. Try again shortly.");
+        setFailed("Try again shortly.");
         return;
       }
       setFailed(null);
@@ -158,7 +158,7 @@ export function usePostedShifts(): PostedShiftsState {
       ...base,
       ...empty,
       status: "error",
-      message: failed ?? teams.message ?? "Your posted shifts couldn't be reached.",
+      message: failed ?? teams.message ?? "Try again shortly.",
     };
   }
   return { ...base, ...empty, status: "loading" };

@@ -50,7 +50,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 
 function InfoRow({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
   return (
-    <li className="flex items-start gap-3 border-t border-[color:var(--border)] px-3 py-3.5 first:border-t-0">
+    <li className="flex items-start gap-3 border-t border-[color:var(--border)] py-3.5 first:border-t-0">
       <span className="mt-0.5 shrink-0 text-[color:var(--text-muted)]">{icon}</span>
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className="text-sm font-medium text-[color:var(--text-heading)]">{title}</span>
@@ -162,6 +162,15 @@ export function RequestSheet({
   const [fit, setFit] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The sheet stays mounted between opens, so each open starts unticked: the tick is never carried over.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) {
+      setFit(false);
+      setError(null);
+    }
+  }
   async function send() {
     setBusy(true);
     setError(null);
@@ -238,6 +247,8 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
   const state = useOpenShifts();
   const now = useRosterNow();
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Kept mounted after the first open so closing hands focus back to "Request this shift".
+  const [sheetLoaded, setSheetLoaded] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
   const listing = state.listings.find((row) => row.serviceId === serviceId && row.id === openShiftId) ?? null;
 
@@ -332,7 +343,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
 
       <div className="mt-4">{sample || alreadyMine || closed ? null : <RosterCheckPanel check={check} />}</div>
 
-      <ul className="mt-4">
+      <ul className="mx-3 mt-4">
         <InfoRow
           icon={<Building2 aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />}
           title={listing.siteName ?? "Site not named"}
@@ -480,7 +491,14 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
         </FootAction>
       ) : (
         <FootAction note="Your roster manager decides. You'll confirm before anything is sent.">
-          <Button variant="primary" block onClick={() => setSheetOpen(true)}>
+          <Button
+            variant="primary"
+            block
+            onClick={() => {
+              setSheetLoaded(true);
+              setSheetOpen(true);
+            }}
+          >
             Request this shift
           </Button>
         </FootAction>
@@ -492,7 +510,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
         </p>
       ) : null}
 
-      {sheetOpen ? (
+      {sheetLoaded ? (
         <RequestSheet
           listing={listing}
           open={sheetOpen}
