@@ -152,7 +152,7 @@ export function TermAddItem({
           disabled={disabled}
           onChange={(event) => setText(event.target.value)}
           className={cn(
-            "h-10 w-full rounded-md bg-[color:var(--surface-inset)] px-3 text-sm text-[color:var(--text-heading)] placeholder:text-[color:var(--text-soft)]",
+            "h-10 w-full rounded-md bg-[color:var(--surface-inset)] px-3 text-sm text-[color:var(--text-heading)] placeholder:text-[color:var(--text-muted)]",
             focusRing,
           )}
         />

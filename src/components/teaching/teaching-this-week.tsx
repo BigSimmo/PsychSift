@@ -4,6 +4,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Network } from "lucide-react";
 import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { focusRing } from "@/components/card-recipes";
+import { withUnit } from "@/components/teaching/teaching-number";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
@@ -292,7 +293,8 @@ function ThisWeekBody({
             lead={<T5Time time={perthTime(next.startsAt)} />}
             title={`Next for you: ${next.title}`}
             meta={nextForYouMeta(next, today)}
-            href={sessionHref(next)}
+            // A presenter's next talk opens Presenting, where the patient-details check lives.
+            href={next.isPresenter ? "/teaching/teach" : sessionHref(next)}
           />
         </T5List>
       ) : null}
@@ -320,9 +322,11 @@ function ThisWeekBody({
       >
         {sessions.length === 0 ? (
           <T5Empty>
-            {filter === "presenting"
-              ? `You are not presenting from ${weekTitle(days[0], days[days.length - 1])}.`
-              : `No sessions are booked for ${weekTitle(days[0], days[days.length - 1])} yet. They appear here as soon as an organiser adds them.`}
+            {partial
+              ? "None loaded. Sessions shared from On Call are missing; try again."
+              : filter === "presenting"
+                ? `You are not presenting from ${weekTitle(days[0], days[days.length - 1])}.`
+                : `No sessions are booked for ${weekTitle(days[0], days[days.length - 1])} yet. They appear here as soon as an organiser adds them.`}
           </T5Empty>
         ) : (
           days.map((key) => {
@@ -362,8 +366,8 @@ function ThisWeekBody({
             lead={<T5Icon icon={Network} />}
             title={
               others === 1
-                ? "1 session from another service is open to you"
-                : `${others} sessions from other services are open to you`
+                ? `${withUnit(1, "session")} from another service is open to you`
+                : `${withUnit(others, "sessions")} from other services are open to you`
             }
             meta={otherNames}
             href="/teaching/whats-on"
@@ -499,7 +503,7 @@ function WeekHeader({
       data-testid="teaching-week-nav"
     >
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-3">
-        <h2 className="nums text-base font-semibold text-[color:var(--text-heading)]">{weekTitle(first, last)}</h2>
+        <h2 className="nums text-base font-normal text-[color:var(--text-heading)]">{weekTitle(first, last)}</h2>
         {current ? null : <T5Link onClick={onThisWeek}>This week</T5Link>}
       </div>
       <span className="flex gap-1">
@@ -532,7 +536,7 @@ function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
             onClick={() => jump(day.key)}
             disabled={day.count === 0}
             aria-label={`${day.weekday} ${day.day}${day.today ? ", today" : ""}: ${
-              day.count === 0 ? "no sessions" : day.count === 1 ? "1 session" : `${day.count} sessions`
+              day.count === 0 ? "no sessions" : withUnit(day.count, day.count === 1 ? "session" : "sessions")
             }`}
             className={cn("grid min-h-12 justify-items-center gap-1 rounded-lg py-1.5", focusRing)}
           >
@@ -548,7 +552,7 @@ function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
             </small>
             <b
               className={cn(
-                "nums grid size-8 place-items-center rounded-full text-sm font-semibold text-[color:var(--text-heading)]",
+                "nums grid size-8 place-items-center rounded-full text-sm font-normal text-[color:var(--text-heading)]",
                 day.today &&
                   "shadow-[inset_0_0_0_1.5px_var(--mode-identity)] forced-colors:border forced-colors:border-[Highlight]",
               )}

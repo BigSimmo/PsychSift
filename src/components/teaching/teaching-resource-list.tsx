@@ -127,7 +127,7 @@ export function ResourceRows({
                 title={title}
                 meta={subtitle}
                 lead={<T5Icon icon={KIND_ICONS[item.kind]} />}
-                end={<span className="relative z-1">{control}</span>}
+                end={<span className="relative">{control}</span>}
               />
             );
           })}

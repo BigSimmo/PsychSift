@@ -42,11 +42,21 @@ export function talkMeta(talk: TeachSession): string {
   return [talk.venue ?? "Room not set", minutesText(minutes)].join(" · ");
 }
 
-/** "Tue 16:00 · 1 of 4 ready", "Tue 17:00 · not started". */
+/**
+ * "2 of 4", or "4 of 4 · patient check open" while the de-identification check is not done, so
+ * ticking the four prep items never reads as ready on its own (clinical governance review).
+ */
+export function readinessCount(readiness: Readiness): string {
+  const ready = readinessItems.filter((item) => readiness.items.includes(item)).length;
+  return `${withUnit(ready, "of")} ${readinessItems.length}${readiness.deidConfirmedAt ? "" : " · patient check open"}`;
+}
+
+/** "Tue 16:00 · 1 of 4 ready", "Tue 17:00 · not started", "… · 4 of 4 ready · patient check open". */
 export function upcomingTalkMeta(talk: TeachSession): string {
   const p = dayParts(perthDateKey(talk.startsAt));
   const ready = readinessItems.filter((item) => talk.items.includes(item)).length;
-  return `${p.weekday} ${perthTime(talk.startsAt)} · ${ready === 0 ? "not started" : `${ready} of ${readinessItems.length} ready`}`;
+  const check = talk.deidConfirmedAt || ready === 0 ? "" : " · patient check open";
+  return `${p.weekday} ${perthTime(talk.startsAt)} · ${ready === 0 ? "not started" : `${withUnit(ready, "of")} ${readinessItems.length} ready`}${check}`;
 }
 
 const ITEM_ACTIONS: Record<ReadinessItem, string> = {
@@ -107,6 +117,9 @@ export function supervisionSummary(pairings: readonly SupervisionPairingView[]):
   const confirmedMinutes = mine.reduce((sum, p) => sum + p.confirmedMinutes, 0);
   const targets = mine.filter((p) => p.targetHours !== null);
   const targetHours = targets.reduce((sum, p) => sum + (p.targetHours ?? 0), 0);
+  // Progress counts only the pairings that carry a target; hours with an untargeted supervisor never fill it.
+  const targetedMinutes = targets.reduce((sum, p) => sum + p.confirmedMinutes, 0);
+  const mixed = targets.length > 0 && targets.length < mine.length;
   const hours = (minutes: number) => withUnit(Number((minutes / 60).toFixed(1)).toString(), "h");
   const entries = mine
     .flatMap((p) => p.entries ?? [])
@@ -130,14 +143,19 @@ export function supervisionSummary(pairings: readonly SupervisionPairingView[]):
         ? null
         : {
             confirmed: hours(confirmedMinutes),
-            targetLine: targetHours > 0 ? `of your ${withUnit(targetHours, "h")} target` : null,
+            targetLine:
+              targetHours > 0
+                ? mixed
+                  ? `${withUnit(hours(targetedMinutes), "of")} your ${withUnit(targetHours, "h")} target`
+                  : `of your ${withUnit(targetHours, "h")} target`
+                : null,
             toGo:
-              targetHours > 0 && confirmedMinutes < targetHours * 60
-                ? `${hours(targetHours * 60 - confirmedMinutes)} to go`
+              targetHours > 0 && targetedMinutes < targetHours * 60
+                ? `${hours(targetHours * 60 - targetedMinutes)} to go`
                 : targetHours > 0
                   ? "Target met"
                   : null,
-            percent: targetHours > 0 ? Math.min(100, Math.round((confirmedMinutes / (targetHours * 60)) * 100)) : null,
+            percent: targetHours > 0 ? Math.min(100, Math.round((targetedMinutes / (targetHours * 60)) * 100)) : null,
           },
     entries,
     toConfirm,

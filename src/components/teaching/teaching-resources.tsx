@@ -123,7 +123,7 @@ export function TeachingResources({
     body = (
       <>
         <TeachingCatchUp status={week.status} week={catchUpWeek} resources={data.forThisWeek} now={now} />
-        <label className="mt-1 flex h-11 items-center gap-2 rounded-md bg-[color:var(--surface-inset)] px-3 text-[color:var(--text-soft)] focus-within:ring-2 focus-within:ring-[color:var(--focus-ring)]">
+        <label className="mt-1 flex h-11 items-center gap-2 rounded-md bg-[color:var(--surface-inset)] px-3 text-[color:var(--text-muted)] focus-within:ring-2 focus-within:ring-[color:var(--focus)]">
           <Search aria-hidden="true" className="size-icon-md shrink-0" />
           <span className="sr-only">Filter resources</span>
           <input
@@ -132,7 +132,7 @@ export function TeachingResources({
             autoComplete="off"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-sm text-[color:var(--text-heading)] outline-none placeholder:text-[color:var(--text-soft)]"
+            className="min-w-0 flex-1 bg-transparent text-sm text-[color:var(--text-heading)] outline-none placeholder:text-[color:var(--text-muted)]"
           />
         </label>
         <T5Section
@@ -211,7 +211,7 @@ export function TeachingResources({
                       <span className="text-sm font-medium break-words text-[color:var(--text-heading)]">
                         {tile.name}
                       </span>
-                      <span className="text-xs text-[color:var(--text-muted)] tabular-nums">
+                      <span className="text-xs font-normal text-[color:var(--text-muted)] tabular-nums">
                         {itemCount(tile.count)}
                       </span>
                     </Link>

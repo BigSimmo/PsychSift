@@ -144,10 +144,7 @@ export function T5Icon({ icon: Icon }: { icon: LucideIcon }) {
 /** A 24-hour start time at the start of a row. */
 export function T5Time({ time, past = false }: { time: string; past?: boolean }) {
   return (
-    <span
-      data-row-time
-      className={cn("nums min-w-10 shrink-0 text-sm-minus", past ? cn("font-medium", faint) : cn("font-semibold", ink))}
-    >
+    <span data-row-time className={cn("nums min-w-10 shrink-0 text-sm-minus font-normal", past ? faint : ink)}>
       {time}
     </span>
   );
@@ -157,7 +154,7 @@ export function T5Time({ time, past = false }: { time: string; past?: boolean })
 export function T5Date({ day, month }: { day: string; month: string }) {
   return (
     <span aria-hidden="true" className={cn("grid min-w-8 shrink-0 justify-items-center leading-none", ink)}>
-      <b className="nums text-base font-semibold">{day}</b>
+      <b className="nums text-base font-normal">{day}</b>
       <small className={cn("mt-1 text-2xs font-semibold tracking-label uppercase", faint)}>{month}</small>
     </span>
   );
@@ -165,7 +162,7 @@ export function T5Date({ day, month }: { day: string; month: string }) {
 
 /** A number at the end of a row. */
 export function T5Figure({ children }: { children: ReactNode }) {
-  return <span className={cn("nums shrink-0 text-sm-minus font-semibold", ink)}>{children}</span>;
+  return <span className={cn("nums shrink-0 text-sm-minus font-normal", ink)}>{children}</span>;
 }
 
 /** The small round ✓ that marks something done at the end of a row. */
@@ -307,7 +304,7 @@ export function T5Pair({ label, value }: { label: ReactNode; value: ReactNode })
 /** A big figure with its unit in small text, e.g. "31 h of your 50 h target". */
 export function T5BigFigure({ value, unit }: { value: ReactNode; unit?: ReactNode }) {
   return (
-    <span className={cn("nums text-xl font-semibold", ink)}>
+    <span className={cn("nums text-xl font-normal", ink)}>
       {value}
       {unit ? <small className={cn("ml-1 text-sm-minus font-normal", sub)}>{unit}</small> : null}
     </span>
@@ -432,15 +429,14 @@ export function T5Segments<T extends string>({
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="mt-2.5 flex rounded-md bg-[color:var(--surface-inset)] p-0.5">
+    <div role="group" aria-label={label} className="mt-2.5 flex rounded-md bg-[color:var(--surface-inset)] p-0.5">
       {options.map((option) => {
         const on = option.value === value;
         return (
           <button
             key={option.value}
             type="button"
-            role="radio"
-            aria-checked={on}
+            aria-pressed={on}
             onClick={() => onChange(option.value)}
             className={cn(
               hitArea,

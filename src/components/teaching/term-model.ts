@@ -1,3 +1,4 @@
+import { withUnit } from "@/components/teaching/teaching-number";
 import {
   dayMonth,
   daysBetween,
@@ -40,7 +41,11 @@ export function termPanel(term: TermRecord, today: string): TermPanel {
   const week = termWeekOf(term, today);
   const finished = week > total;
   const heading =
-    week === 0 ? `Starts ${weekdayDayMonth(term.startsOn)}` : finished ? "Term finished" : `Week ${week} of ${total}`;
+    week === 0
+      ? `Starts ${weekdayDayMonth(term.startsOn)}`
+      : finished
+        ? "Term finished"
+        : `Week ${withUnit(week, "of")} ${total}`;
   // The next one still ahead; an overdue one has its own warning, so this line looks forward.
   const ahead = milestoneIds.find((id) => !term.milestones[id].doneOn && term.milestones[id].dueOn >= today) ?? null;
   const next = ahead

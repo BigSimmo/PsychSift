@@ -1,3 +1,4 @@
+import { withUnit } from "@/components/teaching/teaching-number";
 import { ApiClientError } from "@/lib/api-client-error";
 import { teachingErrorMessage } from "@/lib/teaching/client";
 import type { ResourceKind, ResourceRow } from "@/lib/teaching/model";
@@ -88,7 +89,7 @@ export function examPrepRow(state: ExamPrepState | null, today: string): { title
   return {
     title: days === 0 ? `${exam.name} today` : `${exam.name} in ${days} ${days === 1 ? "day" : "days"}`,
     meta: [
-      `Study plan week ${plan.week} of ${plan.total}`,
+      `Study plan week ${withUnit(plan.week, "of")} ${plan.total}`,
       streak > 0 ? `${streak} ${streak === 1 ? "day" : "days"} in a row` : null,
     ]
       .filter(Boolean)

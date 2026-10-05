@@ -32,6 +32,7 @@ import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import {
   feedbackSummary,
   readinessAction,
+  readinessCount,
   supervisionSummary,
   talkKicker,
   talkMeta,
@@ -216,8 +217,12 @@ function NextTalk({
       <T5Kicker>{talkKicker(talk, now, today)}</T5Kicker>
       <T5Heading>{talk.title}</T5Heading>
       <T5Meta>{talkMeta(talk)}</T5Meta>
-      <T5Pair label="Ready to present" value={`${ready} of ${readinessItems.length}`} />
-      <T5Steps total={readinessItems.length} filled={ready} label={`${ready} of ${readinessItems.length} ready`} />
+      <T5Pair label="Ready to present" value={readinessCount(local)} />
+      <T5Steps
+        total={readinessItems.length}
+        filled={ready}
+        label={`${readinessCount(local)}${local.deidConfirmedAt ? " ready" : ""}`}
+      />
       <T5List className="my-0.5" testId="teaching-readiness">
         {readinessItems.map((item) => (
           <T5Check
@@ -330,7 +335,7 @@ function FeedbackBlock({
       {compact ? null : (
         <div className="flex items-baseline justify-between gap-2.5">
           <span className="text-sm font-medium text-[color:var(--text-heading)]">{session.title}</span>
-          <span className="nums shrink-0 text-sm-minus text-[color:var(--text-muted)]">
+          <span className="nums shrink-0 text-sm-minus font-normal text-[color:var(--text-muted)]">
             {`${parts.day} ${parts.month}${summary ? ` · ${summary.answers}` : ""}`}
           </span>
         </div>
@@ -345,7 +350,9 @@ function FeedbackBlock({
         <p className="text-sm-minus text-[color:var(--text-muted)]">Feedback is not released yet.</p>
       ) : (
         <>
-          {compact ? <p className="nums text-sm-minus text-[color:var(--text-muted)]">{summary.answers}</p> : null}
+          {compact ? (
+            <p className="nums text-sm-minus font-normal text-[color:var(--text-muted)]">{summary.answers}</p>
+          ) : null}
           <span role="img" aria-label={summary.paceSentence} className="flex h-1.5 gap-0.5">
             {summary.pace.map((part) =>
               part.count > 0 ? (
@@ -362,7 +369,7 @@ function FeedbackBlock({
               ) : null,
             )}
           </span>
-          <p className="nums text-sm-minus text-[color:var(--text-muted)]">{summary.paceLine}</p>
+          <p className="nums text-sm-minus font-normal text-[color:var(--text-muted)]">{summary.paceLine}</p>
           {summary.usefulness ? (
             <T5Pair label="Usefulness" value={<T5BigFigure value={summary.usefulness} unit="out of 5" />} />
           ) : null}

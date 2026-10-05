@@ -10,6 +10,7 @@ import {
 import {
   feedbackSummary,
   readinessAction,
+  readinessCount,
   supervisionSummary,
   talkKicker,
   upcomingTalkMeta,
@@ -149,7 +150,12 @@ describe("Presenting", () => {
     expect(talkKicker(talk({ startsAt: "2026-10-12T00:00:00.000Z" }), NOW, TODAY)).toBe(
       "Your next talk · Mon 12 Oct 08:00",
     );
-    expect(upcomingTalkMeta(talk({ startsAt: "2026-10-13T08:00:00.000Z" }))).toBe("Tue 16:00 · 1 of 4 ready");
+    expect(upcomingTalkMeta(talk({ startsAt: "2026-10-13T08:00:00.000Z" }))).toBe(
+      `Tue 16:00 · 1${NB}of 4 ready · patient check open`,
+    );
+    expect(
+      upcomingTalkMeta(talk({ startsAt: "2026-10-13T08:00:00.000Z", deidConfirmedAt: "2026-10-05T00:00:00Z" })),
+    ).toBe(`Tue 16:00 · 1${NB}of 4 ready`);
     expect(upcomingTalkMeta(talk({ startsAt: "2026-10-13T09:00:00.000Z", items: [] }))).toBe("Tue 17:00 · not started");
   });
 
@@ -165,6 +171,12 @@ describe("Presenting", () => {
         talk({ deidConfirmedAt: "2026-10-05T00:00:00Z", items: ["reading_list", "aims", "slides_link", "room"] }),
       ),
     ).toBeNull();
+  });
+
+  it("never reads as fully ready while the patient-details check is open", () => {
+    const all = ["reading_list", "aims", "slides_link", "room"] as TeachSession["items"];
+    expect(readinessCount(talk({ items: all }))).toBe(`4${NB}of 4 · patient check open`);
+    expect(readinessCount(talk({ items: all, deidConfirmedAt: "2026-10-05T00:00:00Z" }))).toBe(`4${NB}of 4`);
   });
 
   it("shows released feedback only, as counts with no names", () => {
@@ -220,6 +232,15 @@ describe("Presenting", () => {
     ]);
     expect(summary.toConfirm).toBe(2);
     expect(supervisionSummary([pairing({ targetHours: null })]).mine?.targetLine).toBeNull();
+    // Hours with an untargeted supervisor do not fill another supervisor's target.
+    expect(
+      supervisionSummary([pairing({}), pairing({ pairingId: "q", targetHours: null, confirmedMinutes: 600 })]).mine,
+    ).toEqual({
+      confirmed: `16${NB}h`,
+      targetLine: `6${NB}h${NB}of your 10${NB}h target`,
+      toGo: `4${NB}h to go`,
+      percent: 60,
+    });
   });
 });
 
@@ -250,7 +271,7 @@ describe("My record", () => {
     expect(chart.axis).toEqual(["20 Jul", "31 Aug", "This week"]);
     expect(chart.averageLabel).toBe("average 0.9 a week");
     expect(recordChart([], TODAY)).toMatchObject({
-      headline: "No teaching check-ins in the last 12 weeks.",
+      headline: `No teaching check-ins in the last 12${NB}weeks.`,
       average: null,
       gapLine: `None in 11${NB}weeks. This week so far: 0.`,
     });
@@ -265,8 +286,8 @@ describe("My record", () => {
     expect(week.rows.map((r) => [r.occurrenceId, r.meta])).toEqual([[recent.occurrenceId, "Thu 1 Oct"]]);
     expect(week.right).toBe(`1.5${NB}h · 1 already logged`);
     expect(week.older).toBe(1);
-    expect(cpdButtonLabel(3)).toBe("Log 3 sessions to my CPD");
-    expect(cpdButtonLabel(1)).toBe("Log 1 session to my CPD");
+    expect(cpdButtonLabel(3)).toBe(`Log 3${NB}sessions to my CPD`);
+    expect(cpdButtonLabel(1)).toBe(`Log 1${NB}session to my CPD`);
   });
 
   it("summarises attendance for the supervisor within the term, counts only", () => {
@@ -278,14 +299,14 @@ describe("My record", () => {
       meta: `1${NB}session · 1.5${NB}h`,
     });
     expect(supervisorSummary([], null, TODAY)).toEqual({
-      title: "Attendance summary, last 12 weeks",
+      title: `Attendance summary, last 12${NB}weeks`,
       meta: "No check-ins in this span yet",
     });
   });
 
   it("names the term row from the doctor's own term, or offers to set one up", () => {
     expect(termRow(sampleTermTracker(TODAY), TODAY)).toEqual({
-      title: "Term 4 · week 6 of 10",
+      title: `Term 4 · week 6${NB}of 10`,
       meta: `Mid-term due Thu 15 Oct · 7${NB}EPAs logged this year`,
     });
     expect(termRow({ ...sampleTermTracker(TODAY), currentTermId: null }, TODAY).title).toBe("Track your term");
@@ -298,7 +319,7 @@ describe("Term", () => {
   it("shows the week, the dates and the next assessment in days", () => {
     expect(termPanel(term(), TODAY)).toMatchObject({
       kicker: "Term 4 · Psychiatry · Example Hospital",
-      heading: "Week 6 of 10",
+      heading: `Week 6${NB}of 10`,
       meta: "31 Aug to 6 Nov · mid-term due in 9 days",
       total: 10,
     });
@@ -323,7 +344,7 @@ describe("Resources: My exam prep row", () => {
   it("counts down to the doctor's own exam date, with the plan week and the run", () => {
     expect(examPrepRow(sampleExamPrep(TODAY), TODAY)).toEqual({
       title: "Written exam in 113 days",
-      meta: "Study plan week 6 of 22 · 10 days in a row",
+      meta: `Study plan week 6${NB}of 22 · 10 days in a row`,
     });
     expect(examPrepRow(null, TODAY).title).toBe("My exam prep");
     const passed = {

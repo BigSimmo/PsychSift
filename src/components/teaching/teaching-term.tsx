@@ -1,5 +1,6 @@
 "use client";
 
+import { withUnit } from "@/components/teaching/teaching-number";
 import { Award, CalendarDays, Check, Clock, ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -225,7 +226,7 @@ function TermSummary({
       <T5Heading>{panel.heading}</T5Heading>
       <T5Meta>{panel.meta}</T5Meta>
       <ol
-        aria-label={`Weeks of the term, week ${Math.min(Math.max(panel.week, 0), panel.total)} of ${panel.total}`}
+        aria-label={`Weeks of the term, week ${withUnit(Math.min(Math.max(panel.week, 0), panel.total), "of")} ${panel.total}`}
         className="mt-1 grid gap-1"
         style={{ gridTemplateColumns: `repeat(${panel.total}, minmax(0, 1fr))` }}
       >
@@ -421,10 +422,10 @@ function Epas({
       <div className="grid gap-2 border-t border-[color:var(--border)] py-2.5">
         <div className="flex items-baseline justify-between gap-3">
           <span className="flex items-baseline gap-1.5">
-            <span className="text-xl font-semibold text-[color:var(--text-heading)] tabular-nums">{summary.year}</span>
+            <span className="text-xl font-normal text-[color:var(--text-heading)] tabular-nums">{summary.year}</span>
             <T5Meta>{targets ? `logged by you, of ${targets.perYear}` : "logged by you"}</T5Meta>
           </span>
-          {targets ? <T5Meta>{`This term ${summary.term} of ${targets.perTerm}`}</T5Meta> : null}
+          {targets ? <T5Meta>{`This term ${withUnit(summary.term, "of")} ${targets.perTerm}`}</T5Meta> : null}
         </div>
         {targets ? (
           <span
@@ -474,7 +475,7 @@ function Epas({
                   Log
                 </T5Link>
               ) : (
-                <span className="shrink-0 text-sm font-semibold text-[color:var(--text-heading)] tabular-nums">
+                <span className="shrink-0 text-sm font-normal text-[color:var(--text-heading)] tabular-nums">
                   {summary.byEpa[epa]}
                   <span className="sr-only"> this year</span>
                 </span>
@@ -488,7 +489,7 @@ function Epas({
       ) : targets ? (
         <T5Note className="mt-2">
           {targets.perTerm === DEFAULT_EPA_TARGETS.perTerm && targets.perYear === DEFAULT_EPA_TARGETS.perYear
-            ? `Targets ${targets.perTerm} a term and ${targets.perYear} a year: you confirmed these from the National Framework PGY1 summary. `
+            ? `Targets ${targets.perTerm} a term and ${targets.perYear} a year, the National Framework PGY1 figures. `
             : `Targets ${targets.perTerm} a term and ${targets.perYear} a year: your own. `}
           <T5Link onClick={() => setSettingTarget(true)}>Change</T5Link>
         </T5Note>
@@ -503,7 +504,8 @@ function Epas({
             . Nothing counts against a target until you choose one.
           </T5Meta>
           <T5Actions>
-            <T5Link onClick={() => update((current) => ({ ...current, targets: { ...DEFAULT_EPA_TARGETS } }))}>
+            {/* Opens the form so the "check it with your Medical Education Unit" step stays before saving. */}
+            <T5Link onClick={() => setSettingTarget(true)}>
               {`Use ${DEFAULT_EPA_TARGETS.perTerm} a term, ${DEFAULT_EPA_TARGETS.perYear} a year`}
             </T5Link>
             <T5Link onClick={() => setSettingTarget(true)}>Set my own</T5Link>

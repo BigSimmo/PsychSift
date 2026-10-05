@@ -58,7 +58,10 @@ export function termRow(state: TermTrackerState, today: string): { title: string
   const total = termWeekCount(term);
   const week = termWeekOf(term, today);
   const title =
-    [term.number ? `Term ${term.number}` : null, week >= 1 && week <= total ? `week ${week} of ${total}` : null]
+    [
+      term.number ? `Term ${term.number}` : null,
+      week >= 1 && week <= total ? `week ${withUnit(week, "of")} ${total}` : null,
+    ]
       .filter(Boolean)
       .join(" · ") || term.unit;
   const next = nextMilestone(term);
@@ -115,7 +118,7 @@ export function recordChart(rows: readonly LogbookRow[], today: string): RecordC
     total,
     headline:
       attended === 0
-        ? "No teaching check-ins in the last 12 weeks."
+        ? `No teaching check-ins in the last ${withUnit(12, "weeks")}.`
         : `You checked in at teaching in ${withUnit(attended, "of")} the last ${withUnit(12, "weeks")}.`,
     average,
     averageLabel,
@@ -158,7 +161,7 @@ export function cpdWeek(review: readonly CpdReviewRow[], logbook: readonly Logbo
 
 /** "Log 3 sessions to my CPD". */
 export function cpdButtonLabel(count: number): string {
-  return count === 1 ? "Log 1 session to my CPD" : `Log ${count} sessions to my CPD`;
+  return `Log ${withUnit(count, count === 1 ? "session" : "sessions")} to my CPD`;
 }
 
 /**
@@ -178,7 +181,9 @@ export function supervisorSummary(
   });
   const hours = inSpan.reduce((sum, row) => sum + (Date.parse(row.endsAt) - Date.parse(row.startsAt)) / 3_600_000, 0);
   return {
-    title: term?.number ? `Term ${term.number} attendance summary` : "Attendance summary, last 12 weeks",
+    title: term?.number
+      ? `Term ${term.number} attendance summary`
+      : `Attendance summary, last ${withUnit(12, "weeks")}`,
     meta: inSpan.length ? `${sessions(inSpan.length)} · ${hoursText(hours)}` : "No check-ins in this span yet",
   };
 }

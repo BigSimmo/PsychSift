@@ -149,7 +149,12 @@ describe("My record", () => {
     hours,
   });
   function serveRecord(
-    options: { attendance?: LogbookRow[]; feedback?: Response | null; reviewRows?: ReturnType<typeof review>[] } = {},
+    options: {
+      attendance?: LogbookRow[];
+      feedback?: Response | null;
+      reviewRows?: ReturnType<typeof review>[];
+      refuse?: string;
+    } = {},
   ) {
     const posts: Array<Record<string, unknown> | null> = [];
     const fetchMock = serveFetch((url, body) => {
@@ -173,7 +178,13 @@ describe("My record", () => {
       if (url === "/api/teaching/cpd/review" && body) {
         posts.push(body);
         const rows = body.rows as Array<{ occurrenceId: string }>;
-        return json(200, { results: rows.map((r) => ({ occurrenceId: r.occurrenceId, entryId: "new" })) });
+        return json(200, {
+          results: rows.map((r) =>
+            options.refuse
+              ? { occurrenceId: r.occurrenceId, entryId: null, code: "teaching_window_closed", message: options.refuse }
+              : { occurrenceId: r.occurrenceId, entryId: "new", code: null, message: null },
+          ),
+        });
       }
       return null;
     });
@@ -233,10 +244,24 @@ describe("My record", () => {
       "href",
       "/teaching/review",
     );
-    fireEvent.click(within(cpd).getByRole("button", { name: "Log 1 session to my CPD" }));
+    fireEvent.click(within(cpd).getByRole("button", { name: /^Log 1\ssession to my CPD$/ }));
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0]).toMatchObject({ rows: [{ occurrenceId: "22222222-2222-4222-8222-222222222222", hours: 1.5 }] });
     expect(typeof (posts[0]!.rows as Array<{ requestId: string }>)[0].requestId).toBe("string");
+  });
+
+  it("says which sessions were not saved when the server refuses a row", async () => {
+    serveRecord({
+      attendance: [recent],
+      reviewRows: [review(recent, 1.5)],
+      refuse: "The CPD window for this session has closed",
+    });
+    render(<TeachingLogbook demoMode={false} />);
+    const cpd = await screen.findByTestId("teaching-record-cpd");
+    fireEvent.click(within(cpd).getByRole("button", { name: /^Log 1\ssession to my CPD$/ }));
+    expect(await within(cpd).findByRole("alert")).toHaveTextContent(
+      /^1\ssession was not saved: The CPD window for this session has closed\. Use Change hours for it\.$/,
+    );
   });
 
   it("logs nothing when every session is unticked", async () => {
@@ -244,7 +269,7 @@ describe("My record", () => {
     render(<TeachingLogbook demoMode={false} />);
     const cpd = await screen.findByTestId("teaching-record-cpd");
     fireEvent.click(within(cpd).getByRole("checkbox", { name: /Case discussion/ }));
-    expect(within(cpd).getByRole("button", { name: "Log 0 sessions to my CPD" })).toBeDisabled();
+    expect(within(cpd).getByRole("button", { name: /^Log 0\ssessions to my CPD$/ })).toBeDisabled();
   });
 
   it("says so when there are no check-ins yet", async () => {

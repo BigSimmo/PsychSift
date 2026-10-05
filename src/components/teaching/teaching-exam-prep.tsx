@@ -1,5 +1,6 @@
 "use client";
 
+import { withUnit } from "@/components/teaching/teaching-number";
 import { CalendarDays, Layers, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -139,8 +140,11 @@ function Countdown({
       {days >= 0 ? (
         <>
           <T5Heading big>{days === 0 ? "Today" : `${days} ${days === 1 ? "day" : "days"}`}</T5Heading>
-          <T5Pair label="Study plan" value={`Week ${plan.week} of ${plan.total}`} />
-          <T5Meter percent={Math.round((plan.week / plan.total) * 100)} label={`Week ${plan.week} of ${plan.total}`} />
+          <T5Pair label="Study plan" value={`Week ${withUnit(plan.week, "of")} ${plan.total}`} />
+          <T5Meter
+            percent={Math.round((plan.week / plan.total) * 100)}
+            label={`Week ${withUnit(plan.week, "of")} ${plan.total}`}
+          />
         </>
       ) : (
         <T5Heading>This date has passed</T5Heading>
@@ -174,7 +178,7 @@ function StudyHeatmap({ weeks, today, label }: { weeks: HeatCell[][]; today: str
         {weeks.flat().map((cell) => (
           <span
             key={cell.date}
-            title={`${weekdayDayMonth(cell.date)}: ${cell.minutes} min`}
+            title={`${weekdayDayMonth(cell.date)}: ${withUnit(cell.minutes, "min")}`}
             className={cn(
               "h-3.25 rounded-[3px]",
               cell.future ? "bg-transparent" : heatClass[cell.level],
@@ -198,9 +202,9 @@ function StudyHeatmap({ weeks, today, label }: { weeks: HeatCell[][]; today: str
 }
 
 function studyStepLabel(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return withUnit(minutes, "min");
   const rest = minutes % 60;
-  return rest ? `${Math.floor(minutes / 60)} h ${rest}` : `${minutes / 60} h`;
+  return rest ? `${withUnit(Math.floor(minutes / 60), "h")} ${rest}` : withUnit(minutes / 60, "h");
 }
 
 function Study({ state, today, update }: { state: ExamPrepState; today: string; update: Update }) {
@@ -236,7 +240,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
               key={minutes}
               type="button"
               onClick={() => log(minutes)}
-              aria-label={`Add ${studyStepLabel(minutes)} of study for today`}
+              aria-label={`Add ${studyStepLabel(minutes)}${"\u00a0"}of study for today`}
               className={cn(
                 "relative grid h-10 flex-1 place-items-center rounded-md border border-[color:var(--border-strong)] text-sm-minus font-semibold text-[color:var(--text-heading)] after:absolute after:inset-x-0 after:top-1/2 after:h-12 after:-translate-y-1/2",
                 focusRing,
@@ -247,13 +251,13 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
           ))}
         </div>
       </T5Section>
-      <T5Section label={`Last 12 weeks · ${formatMinutesAsHours(total)}`} testId="teaching-exam-study">
+      <T5Section label={`Last ${withUnit(12, "weeks")} · ${formatMinutesAsHours(total)}`} testId="teaching-exam-study">
         <div className="grid gap-2 border-t border-[color:var(--border)] pt-2.5">
           <p className="text-sm font-medium text-[color:var(--text-heading)]">{streakLine}</p>
           <StudyHeatmap
             weeks={weeks}
             today={today}
-            label={`Study minutes per day for 12 weeks; ${streakLine.toLowerCase()}`}
+            label={`Study minutes per day for ${withUnit(12, "weeks")}; ${streakLine.toLowerCase()}`}
           />
         </div>
       </T5Section>
@@ -305,7 +309,7 @@ function Topics({ state, update }: { state: ExamPrepState; update: Update }) {
               >
                 <span className="flex items-baseline justify-between gap-3">
                   <span className="text-sm font-medium break-words text-[color:var(--text-heading)]">{topic.name}</span>
-                  <span className="shrink-0 text-sm font-semibold text-[color:var(--text-heading)] tabular-nums">
+                  <span className="shrink-0 text-sm font-normal text-[color:var(--text-heading)] tabular-nums">
                     {topic.percent}%
                   </span>
                 </span>
@@ -507,7 +511,7 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
           </T5List>
         </nav>
         <T5Note icon="shield" className="mt-3">
-          Stays on this device and is not backed up.
+          Do not add patient details. Stays on this device and is not backed up.
         </T5Note>
       </>
     );

@@ -171,7 +171,7 @@ function CpdThisWeek({
                     })
                   }
                   end={
-                    <span className="shrink-0 text-sm font-semibold text-[color:var(--text-heading)] tabular-nums">
+                    <span className="shrink-0 text-sm font-normal text-[color:var(--text-heading)] tabular-nums">
                       {withUnit(row.hours, "h")}
                     </span>
                   }
@@ -217,7 +217,12 @@ function CpdThisWeek({
                     ...previous.filter((r) => !result.results.some((next) => next.occurrenceId === r.occurrenceId)),
                     ...result.results,
                   ]);
-                  if (result.results.every((r) => r.entryId !== null)) onLogged();
+                  const failed = result.results.filter((r) => r.entryId === null);
+                  if (failed.length > 0)
+                    setError(
+                      `${withUnit(failed.length, failed.length === 1 ? "session was" : "sessions were")} not saved${failed[0].message ? `: ${failed[0].message.replace(/\.?$/, ".")}` : "."} Use Change hours for ${failed.length === 1 ? "it" : "those"}.`,
+                    );
+                  if (failed.length < result.results.length) onLogged();
                 } catch (cause) {
                   setError(
                     `${teachingErrorMessage(cause).replace("Nothing changed. ", "")} Some entries may have saved. Try again; this will not add duplicates.`,
