@@ -69,6 +69,30 @@ export type OnCallDialRowProps = {
  * A personal entry's resolved number, as the same dial the handbook rows use,
  * so a reader's own numbers and the hospital's draw through one row.
  */
+
+/**
+ * "000 · Australia-wide · 24 hours". Every part carries its dot in front, and
+ * the row is pulled left by one dot's width inside a clipping box, so the dot
+ * of whichever part starts a line falls outside it: a wrap never leaves a dot
+ * dangling at a line's end or leading the next line.
+ */
+function SecondaryLine({ parts }: { readonly parts: readonly ReactNode[] }) {
+  return (
+    <span className={cn(modeSecondaryText, "block min-w-0 overflow-hidden break-words leading-5")}>
+      <span className="-ml-3 flex min-w-0 flex-wrap items-center">
+        {parts.map((part, index) => (
+          <span key={`part-${index}`} className="inline-flex min-w-0 items-center">
+            <span aria-hidden="true" className="inline-block w-3 shrink-0 text-center">
+              ·
+            </span>
+            {part}
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
 export function toHandbookDial(resolved: ResolvedOnCallNumber | null): HandbookDial | null {
   if (!resolved?.value) return null;
   // A pager is paged, not rung from a desk: never "From a hospital phone", never
@@ -240,23 +264,7 @@ export function OnCallDialRow({
               {title}
             </span>
           </span>
-          {lineParts.length > 0 ? (
-            <span
-              className={cn(modeSecondaryText, "flex min-w-0 flex-wrap items-center gap-x-1.5 break-words leading-5")}
-            >
-              {lineParts.map((part, index) =>
-                index === 0 ? (
-                  part
-                ) : (
-                  // The dot travels with the part after it, so a wrap never strands it at a line end.
-                  <span key={`part-${index}`} className="inline-flex min-w-0 items-center gap-x-1.5">
-                    <span aria-hidden="true">·</span>
-                    {part}
-                  </span>
-                ),
-              )}
-            </span>
-          ) : null}
+          {lineParts.length > 0 ? <SecondaryLine parts={lineParts} /> : null}
         </button>
       ) : (
         // No number: plain text, never a dimmed button.
@@ -285,23 +293,7 @@ export function OnCallDialRow({
               {title}
             </span>
           </span>
-          {lineParts.length > 0 ? (
-            <span
-              className={cn(modeSecondaryText, "flex min-w-0 flex-wrap items-center gap-x-1.5 break-words leading-5")}
-            >
-              {lineParts.map((part, index) =>
-                index === 0 ? (
-                  part
-                ) : (
-                  // The dot travels with the part after it, so a wrap never strands it at a line end.
-                  <span key={`part-${index}`} className="inline-flex min-w-0 items-center gap-x-1.5">
-                    <span aria-hidden="true">·</span>
-                    {part}
-                  </span>
-                ),
-              )}
-            </span>
-          ) : null}
+          {lineParts.length > 0 ? <SecondaryLine parts={lineParts} /> : null}
         </span>
       )}
 

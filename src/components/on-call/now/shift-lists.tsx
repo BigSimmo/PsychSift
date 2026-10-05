@@ -164,7 +164,9 @@ export function NowShiftLists({
             "flex w-full min-w-0 items-center gap-3 pl-3 pr-2 text-left",
           )}
         >
-          <ListChecks aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
+            <ListChecks aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          </span>
           <span className="grid min-w-0 flex-1 gap-1 py-1">
             <span
               className={cn(modeNameText, "break-words text-base-minus leading-5 text-[color:var(--text-heading)]")}
@@ -172,17 +174,15 @@ export function NowShiftLists({
               Shift lists
             </span>
             {hasLists ? (
-              <span className="flex min-w-0 items-center gap-2">
-                <span aria-hidden="true" className={cn(onCallTrack, "w-24 shrink-0")}>
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2">
+                <span className={cn(modeSecondaryText, modeNumberText, "break-words")}>
+                  {`${current.label} · ${doneCount} of ${current.items.length}`}
+                </span>
+                <span aria-hidden="true" className={cn(onCallTrack, "w-16 shrink-0")}>
                   <span
                     className={onCallTrackFill}
                     style={{ width: `${current.items.length ? (doneCount / current.items.length) * 100 : 0}%` }}
                   />
-                </span>
-                <span
-                  className={cn(modeNumberText, "break-words text-xs font-semibold text-[color:var(--mode-identity)]")}
-                >
-                  {`${current.label} · ${doneCount} of ${current.items.length}`}
                 </span>
               </span>
             ) : (

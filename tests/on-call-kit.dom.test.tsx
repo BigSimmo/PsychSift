@@ -227,7 +227,9 @@ describe("OnCallDialRow geometry (review B1, S2)", () => {
     expect(numberColumn).not.toBeNull();
     // The number sits inside the name button, first on the line under the name.
     expect(titleColumn?.contains(numberColumn as Node)).toBe(true);
-    expect(numberColumn?.parentElement?.firstElementChild).toBe(numberColumn);
+    // Each part carries its own (clipped at line start) dot, so the number's part is the line's first.
+    const numberPart = numberColumn?.parentElement;
+    expect(numberPart?.parentElement?.firstElementChild).toBe(numberPart);
     expect(numberColumn).toHaveTextContent("9000 0000");
     expect(numberColumn?.className).toMatch(/\bnums\b/);
     // No fixed right-hand column any more: no width and no right alignment.

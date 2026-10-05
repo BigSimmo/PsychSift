@@ -40,5 +40,5 @@ export const onCallLeadingIcon = "size-icon-md shrink-0 text-[color:var(--text-m
 
 /** The thin progress track (shift lists, first night). */
 export const onCallTrack =
-  "h-1 overflow-hidden rounded-full bg-[color:var(--surface-wash)] forced-colors:border forced-colors:border-[CanvasText]";
+  "h-1 overflow-hidden rounded-full bg-[color:var(--border)] forced-colors:border forced-colors:border-[CanvasText]";
 export const onCallTrackFill = "block h-full rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[Highlight]";
