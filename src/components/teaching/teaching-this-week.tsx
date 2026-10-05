@@ -541,12 +541,7 @@ function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
     target?.focus({ preventScroll: true });
   }
   return (
-    <div
-      className="mt-1 grid"
-      style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
-      role="list"
-      aria-label="Days this week"
-    >
+    <div className="mt-1 grid auto-cols-fr grid-flow-col" role="list" aria-label="Days this week">
       {days.map((day) => (
         <span role="listitem" key={day.key} className="grid">
           <button
@@ -570,16 +565,15 @@ function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
             </small>
             <b
               className={cn(
-                "nums grid min-h-8 min-w-8 place-items-center rounded-full px-1 text-sm font-normal text-[color:var(--text-heading)]",
-                day.today &&
-                  "shadow-[inset_0_0_0_1.5px_var(--mode-identity)] forced-colors:border forced-colors:border-[Highlight]",
+                "nums grid min-h-8 min-w-8 place-items-center rounded-full border-[1.5px] border-transparent px-1 text-sm font-normal text-[color:var(--text-heading)]",
+                day.today && "border-[color:var(--mode-identity)] forced-colors:border-[Highlight]",
               )}
             >
               {day.day}
             </b>
-            <span aria-hidden="true" className="flex h-1 gap-[3px]">
+            <span aria-hidden="true" className="flex h-1 gap-0.75">
               {Array.from({ length: Math.min(day.count, 5) }, (_, index) => (
-                <i key={index} className="size-1 rounded-full bg-[color:var(--text-soft)] opacity-70" />
+                <i key={index} className="size-1 rounded-full bg-[color:var(--decoration-soft)] opacity-70" />
               ))}
             </span>
           </button>
@@ -698,7 +692,7 @@ function OnNowPanel({
         <p
           role={message.tone === "error" ? "alert" : "status"}
           className={cn(
-            "text-sm-minus",
+            "text-sm",
             message.tone === "error"
               ? "font-medium text-[color:var(--text-heading)]"
               : "text-[color:var(--text-heading)]",

@@ -82,10 +82,10 @@ function RecordBars({ chart }: { chart: RecordChart }) {
               className={cn(
                 "relative block",
                 week.count === 0 && !current
-                  ? "rounded-none border-b-2 border-dotted border-[color:var(--text-soft)] forced-colors:border-[CanvasText]"
+                  ? "rounded-none border-b-2 border-dotted border-[color:var(--decoration-soft)] forced-colors:border-[CanvasText]"
                   : current
-                    ? "rounded-t-[3px] rounded-b-[1px] bg-[color:var(--mode-identity)] ring-[1.5px] ring-[color:var(--text-heading)] forced-colors:bg-[Highlight]"
-                    : "rounded-t-[3px] rounded-b-[1px] bg-[color:var(--border)] forced-colors:bg-[CanvasText]",
+                    ? "rounded-t-xs bg-[color:var(--mode-identity)] ring-[1.5px] ring-[color:var(--text-heading)] forced-colors:bg-[Highlight]"
+                    : "rounded-t-xs bg-[color:var(--border)] forced-colors:bg-[CanvasText]",
               )}
               style={{ height: `${Math.max((week.count / max) * 100, 3)}%` }}
             />
@@ -94,7 +94,7 @@ function RecordBars({ chart }: { chart: RecordChart }) {
         {chart.average !== null ? (
           <span
             aria-hidden="true"
-            className="absolute inset-x-0 border-t border-dashed border-[color:var(--text-soft)]"
+            className="absolute inset-x-0 border-t border-dashed border-[color:var(--decoration-soft)]"
             style={{ bottom: `${(chart.average / max) * 100}%` }}
           >
             <span className="absolute right-0 -top-4.5 bg-[color:var(--surface-raised)] pl-1 text-2xs text-[color:var(--text-muted)]">

@@ -282,11 +282,11 @@ function NextTalk({
             })()} that your material has no patient details.`
           : "Prepare your aims and reading list outside PsychSift. Do not upload slides, patient details or Teams passcodes."}
       </T5Note>
-      <p role="status" className={cn("text-sm-minus text-[color:var(--text-muted)]", pending === 0 && "sr-only")}>
+      <p role="status" className={cn("text-sm text-[color:var(--text-muted)]", pending === 0 && "sr-only")}>
         {pending > 0 ? "Saving…" : ""}
       </p>
       {error ? (
-        <p role="alert" className="text-sm-minus font-medium text-[color:var(--text-heading)]">
+        <p role="alert" className="text-sm font-medium text-[color:var(--text-heading)]">
           {error}
         </p>
       ) : null}
@@ -365,25 +365,25 @@ function FeedbackBlock({
       {compact ? null : (
         <div className="flex items-baseline justify-between gap-2.5">
           <span className="text-sm font-medium text-[color:var(--text-heading)]">{session.title}</span>
-          <span className="nums shrink-0 text-sm-minus font-normal text-[color:var(--text-muted)]">
+          <span className="nums shrink-0 text-sm font-normal text-[color:var(--text-muted)]">
             {`${parts.day} ${parts.month}${summary ? ` · ${summary.answers}` : ""}`}
           </span>
         </div>
       )}
       {failed ? (
-        <p className="text-sm-minus text-[color:var(--text-muted)]">
+        <p className="text-sm text-[color:var(--text-muted)]">
           Feedback could not load. <T5Link onClick={resource.retry}>Try again</T5Link>
         </p>
       ) : !totals ? (
         <ModeModuleSkeleton rows={1} />
       ) : !summary ? (
-        <p className="text-sm-minus text-[color:var(--text-muted)]">
+        <p className="text-sm text-[color:var(--text-muted)]">
           No totals yet. They show 7 days after the talk, once at least 3 people have answered.
         </p>
       ) : (
         <>
           {compact ? (
-            <p className="nums text-sm-minus font-normal text-[color:var(--text-muted)]">{summary.answers}</p>
+            <p className="nums text-sm font-normal text-[color:var(--text-muted)]">{summary.answers}</p>
           ) : null}
           <span role="img" aria-label={summary.paceSentence} className="flex h-1.5 gap-0.5">
             {summary.pace.map((part) =>
@@ -401,7 +401,7 @@ function FeedbackBlock({
               ) : null,
             )}
           </span>
-          <p className="nums text-sm-minus font-normal text-[color:var(--text-muted)]">{summary.paceLine}</p>
+          <p className="nums text-sm font-normal text-[color:var(--text-muted)]">{summary.paceLine}</p>
           {summary.usefulness ? (
             <T5Pair label="Usefulness" value={<T5BigFigure value={summary.usefulness} unit="out of 5" />} />
           ) : null}
@@ -448,7 +448,7 @@ function Supervision({
                   <T5BigFigure value={summary.mine.confirmed} unit={summary.mine.targetLine ?? "confirmed"} />
                 </span>
                 {summary.mine.toGo ? (
-                  <span className="text-sm-minus text-[color:var(--text-muted)]">{summary.mine.toGo}</span>
+                  <span className="text-sm text-[color:var(--text-muted)]">{summary.mine.toGo}</span>
                 ) : null}
               </div>
               {summary.mine.percent !== null ? (

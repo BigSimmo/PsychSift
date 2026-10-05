@@ -228,8 +228,7 @@ function TermSummary({
       <T5Meta>{panel.meta}</T5Meta>
       <ol
         aria-label={`Weeks of the term, week ${withUnit(Math.min(Math.max(panel.week, 0), panel.total), "of")} ${panel.total}`}
-        className="mt-1 grid gap-1"
-        style={{ gridTemplateColumns: `repeat(${panel.total}, minmax(0, 1fr))` }}
+        className="mt-1 grid auto-cols-fr grid-flow-col gap-1"
       >
         {panel.weeks.map((state, index) => (
           <li
@@ -429,11 +428,7 @@ function Epas({
           {targets ? <T5Meta>{`This term ${withUnit(summary.term, "of")} ${targets.perTerm}`}</T5Meta> : null}
         </div>
         {targets ? (
-          <span
-            aria-hidden="true"
-            className="grid gap-0.75"
-            style={{ gridTemplateColumns: `repeat(${Math.min(targets.perYear, 30)}, minmax(0, 1fr))` }}
-          >
+          <span aria-hidden="true" className="grid auto-cols-fr grid-flow-col gap-0.75">
             {Array.from({ length: Math.min(targets.perYear, 30) }, (_, index) => (
               <i
                 key={index}

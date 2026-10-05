@@ -16,7 +16,7 @@ import { cn } from "@/components/ui-primitives";
 
 const ink = "text-[color:var(--text-heading)]";
 const sub = "text-[color:var(--text-muted)]";
-const faint = "text-[color:var(--text-soft)]";
+const faint = "text-[color:var(--decoration-soft)]";
 const rule = "border-[color:var(--border)]";
 /** A link or switch keeps a 48px hit area without growing the line it sits in. */
 const hitArea =
@@ -94,7 +94,7 @@ export function T5Link({
 }) {
   const className = cn(
     hitArea,
-    "inline-flex shrink-0 items-center gap-1 rounded-sm text-sm-minus whitespace-nowrap",
+    "inline-flex shrink-0 items-center gap-1 rounded-sm text-sm whitespace-nowrap",
     quiet ? cn("font-medium", sub) : "font-semibold text-[color:var(--mode-identity)]",
     focusRing,
   );
@@ -163,7 +163,7 @@ export function T5Icon({ icon: Icon }: { icon: LucideIcon }) {
 /** A 24-hour start time at the start of a row. */
 export function T5Time({ time, past = false }: { time: string; past?: boolean }) {
   return (
-    <span data-row-time className={cn("nums min-w-10 shrink-0 text-sm-minus font-normal", past ? sub : ink)}>
+    <span data-row-time className={cn("nums min-w-10 shrink-0 text-sm font-normal", past ? sub : ink)}>
       {time}
     </span>
   );
@@ -214,7 +214,7 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
       {lead}
       <span data-row-body className="grid min-w-0 flex-1 gap-px">
         <span className={cn("text-sm leading-snug font-medium break-words", past ? sub : ink)}>{title}</span>
-        {meta ? <span className={cn("text-sm-minus leading-snug break-words", sub)}>{meta}</span> : null}
+        {meta ? <span className={cn("text-sm leading-snug break-words", sub)}>{meta}</span> : null}
         {below}
       </span>
     </>
@@ -341,13 +341,13 @@ export function T5Heading({ children, big = false, level = 2 }: { children: Reac
 
 /** A quiet sentence under a heading. */
 export function T5Meta({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cn("text-sm-minus", sub, className)}>{children}</p>;
+  return <p className={cn("text-sm", sub, className)}>{children}</p>;
 }
 
 /** A label on the left and a value on the right. */
 export function T5Pair({ label, value }: { label: ReactNode; value: ReactNode }) {
   return (
-    <div className={cn("flex items-baseline justify-between gap-2.5 text-sm-minus", sub)}>
+    <div className={cn("flex items-baseline justify-between gap-2.5 text-sm", sub)}>
       <span>{label}</span>
       <b className={cn("font-semibold", ink)}>{value}</b>
     </div>
@@ -359,7 +359,7 @@ export function T5BigFigure({ value, unit }: { value: ReactNode; unit?: ReactNod
   return (
     <span className={cn("nums text-xl font-normal", ink)}>
       {value}
-      {unit ? <small className={cn("ml-1 text-sm-minus font-normal", sub)}>{unit}</small> : null}
+      {unit ? <small className={cn("ml-1 text-sm font-normal", sub)}>{unit}</small> : null}
     </span>
   );
 }
@@ -396,12 +396,7 @@ export function T5Meter({ percent, label, thin = false }: { percent: number; lab
 /** A row of equal steps, `filled` of `total` in the Teaching colour (readiness, EPAs). */
 export function T5Steps({ total, filled, label }: { total: number; filled: number; label: string }) {
   return (
-    <span
-      role="img"
-      aria-label={label}
-      className="grid gap-[3px]"
-      style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}
-    >
+    <span role="img" aria-label={label} className="grid auto-cols-fr grid-flow-col gap-0.75">
       {Array.from({ length: total }, (_, index) => (
         <span
           key={index}
@@ -447,7 +442,7 @@ export function T5Note({
         "flex items-start gap-2 leading-normal",
         boxed
           ? cn(
-              "mb-3 rounded-lg border bg-[color:var(--surface-raised)] px-3 py-2.5 text-sm-minus forced-colors:border-[CanvasText]",
+              "mb-3 rounded-lg border bg-[color:var(--surface-raised)] px-3 py-2.5 text-sm forced-colors:border-[CanvasText]",
               ink,
               tone === "warning" ? "border-[color:var(--border-strong)]" : rule,
             )
@@ -493,14 +488,13 @@ export function T5Segments<T extends string>({
             aria-pressed={on}
             onClick={() => onChange(option.value)}
             className={cn(
-              hitArea,
-              "min-h-8.5 flex-1 rounded-md text-sm-minus",
+              "min-h-12 flex-1 rounded-md border text-sm",
               on
                 ? cn(
-                    "bg-[color:var(--surface-raised)] font-semibold shadow-[0_0_0_1px_var(--border)] forced-colors:border forced-colors:border-[Highlight]",
+                    "border-[color:var(--border)] bg-[color:var(--surface-raised)] font-semibold forced-colors:border-[Highlight]",
                     ink,
                   )
-                : cn("font-medium", sub),
+                : cn("border-transparent font-medium", sub),
               focusRing,
             )}
           >
@@ -514,7 +508,7 @@ export function T5Segments<T extends string>({
 
 /** The quiet line under an empty section: what will appear here and when. */
 export function T5Empty({ children }: { children: ReactNode }) {
-  return <p className={cn("border-t pt-2.5 pb-0.5 text-sm-minus", rule, sub)}>{children}</p>;
+  return <p className={cn("border-t pt-2.5 pb-0.5 text-sm", rule, sub)}>{children}</p>;
 }
 
 /** A tick-box row: the whole line is the label, so the 48px row is the hit area. */
@@ -544,7 +538,7 @@ export function T5Check({
             disabled={disabled}
             onChange={(event) => onChange(event.target.checked)}
             className={cn(
-              "peer absolute inset-0 cursor-pointer appearance-none rounded-sm border-[1.5px] border-[color:var(--text-soft)] bg-[color:var(--surface-raised)] checked:border-[color:var(--text-heading)] checked:bg-[color:var(--text-heading)] forced-colors:appearance-auto",
+              "peer absolute inset-0 cursor-pointer appearance-none rounded-sm border-[1.5px] border-[color:var(--decoration-soft)] bg-[color:var(--surface-raised)] checked:border-[color:var(--text-heading)] checked:bg-[color:var(--text-heading)] forced-colors:appearance-auto",
               focusRing,
             )}
           />
@@ -556,7 +550,7 @@ export function T5Check({
         </span>
         <span className="grid min-w-0 flex-1 gap-px">
           <span className={cn("text-sm leading-snug font-medium", ink)}>{label}</span>
-          {meta ? <span className={cn("text-sm-minus", sub)}>{meta}</span> : null}
+          {meta ? <span className={cn("text-sm", sub)}>{meta}</span> : null}
         </span>
         {end}
       </label>

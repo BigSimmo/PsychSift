@@ -187,9 +187,10 @@ function StudyHeatmap({ weeks, today, label }: { weeks: HeatCell[][]; today: str
             key={cell.date}
             title={`${weekdayDayMonth(cell.date)}: ${withUnit(cell.minutes, "min")}`}
             className={cn(
-              "h-3.25 rounded-[3px]",
+              "h-3.25 rounded-xs",
               cell.future ? "bg-transparent" : heatClass[cell.level],
-              cell.date === today && "ring-[1.5px] ring-[color:var(--text-heading)]",
+              cell.date === today &&
+                "outline-[1.5px] outline-offset-0 outline-[color:var(--text-heading)] outline-solid",
             )}
           />
         ))}
@@ -199,7 +200,7 @@ function StudyHeatmap({ weeks, today, label }: { weeks: HeatCell[][]; today: str
         <span aria-hidden="true" className="flex items-center gap-1">
           Less
           {([0, 1, 2, 3, 4] as const).map((level) => (
-            <span key={level} className={cn("inline-block size-2.5 rounded-[3px]", heatClass[level])} />
+            <span key={level} className={cn("inline-block size-2.5 rounded-xs", heatClass[level])} />
           ))}
           More
         </span>
@@ -251,7 +252,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
               onClick={() => log(minutes)}
               aria-label={`Add ${studyStepLabel(minutes, true)}${"\u00a0"}of study for today`}
               className={cn(
-                "relative grid h-10 flex-1 place-items-center rounded-md border border-[color:var(--border-strong)] text-sm-minus font-semibold text-[color:var(--text-heading)] after:absolute after:inset-x-0 after:top-1/2 after:h-12 after:-translate-y-1/2",
+                "relative grid h-10 flex-1 place-items-center rounded-md border border-[color:var(--border-strong)] text-sm font-semibold text-[color:var(--text-heading)] after:absolute after:inset-x-0 after:top-1/2 after:h-12 after:-translate-y-1/2",
                 focusRing,
               )}
             >

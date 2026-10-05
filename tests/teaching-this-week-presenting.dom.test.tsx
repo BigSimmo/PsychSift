@@ -189,8 +189,11 @@ describe("Presenting", () => {
       return null;
     });
     render(<TeachingPresenting demoMode={false} />);
-    expect(await screen.findByTestId("teaching-feedback-totals")).toHaveTextContent(
-      "No totals yet. They show 7 days after the talk, once at least 3 people have answered.",
+    // The totals arrive after the block renders, so wait for the words rather than the block.
+    await waitFor(() =>
+      expect(screen.getByTestId("teaching-feedback-totals")).toHaveTextContent(
+        "No totals yet. They show 7 days after the talk, once at least 3 people have answered.",
+      ),
     );
     const toggle = screen.getByRole("button", { name: "Feedback on Journal club" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
