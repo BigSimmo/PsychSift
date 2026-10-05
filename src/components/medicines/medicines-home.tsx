@@ -26,6 +26,7 @@ import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
 import { sharedHomePresentation } from "@/lib/ui-copy";
+import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
  * The Medicines & tools hub (modes review, phase 3): the Psychiatry hub's
@@ -252,10 +253,12 @@ export function MedicinesHome({ counts, now }: { readonly counts: MedicinesSecti
     <InformationPageShell testId="medicines-home">
       <div className={cn("mx-auto grid w-full max-w-5xl gap-5 sm:gap-6", dashSurface)}>
         <header className="grid min-w-0 gap-0.5" data-testid="medicines-header">
-          <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{today ? LONG_DATE.format(today) : null}</p>
-          <h1 className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
+          <WithoutModeBand>
+            <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{today ? LONG_DATE.format(today) : null}</p>
+          </WithoutModeBand>
+          <PageTitleUnderBand className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
             Medicines &amp; tools
-          </h1>
+          </PageTitleUnderBand>
         </header>
         <div className="grid gap-3 sm:gap-4">
           <FindHero />

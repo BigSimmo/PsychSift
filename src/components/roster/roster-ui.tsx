@@ -6,6 +6,7 @@ import { modeNumberText } from "@/components/mode-kit/type";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 
 import { RosterAskButton } from "./ask/roster-ask-box";
+import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
  * Roster's shared page furniture, so every Roster page opens the same way:
@@ -57,10 +58,14 @@ export function RosterPageHeader({
 }) {
   return (
     <header className="flex min-w-0 items-start gap-3" data-testid={testId}>
-      <RosterIdentityTile icon={icon} />
+      <WithoutModeBand>
+        <RosterIdentityTile icon={icon} />
+      </WithoutModeBand>
       <div className="grid min-w-0 flex-1 gap-0.5 pt-0.5">
         {eyebrow ? <p className="nums text-xs text-[color:var(--text-muted)]">{eyebrow}</p> : null}
-        <h1 className="text-lg-minus font-semibold leading-tight text-[color:var(--text-heading)]">{title}</h1>
+        <PageTitleUnderBand className="text-lg-minus font-semibold leading-tight text-[color:var(--text-heading)]">
+          {title}
+        </PageTitleUnderBand>
         {subtitle ? <div className="text-sm text-[color:var(--text-muted)]">{subtitle}</div> : null}
       </div>
       {actions || ask ? (

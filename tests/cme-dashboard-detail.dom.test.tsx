@@ -70,11 +70,12 @@ function renderDashboard() {
 }
 
 describe("Today figure details", () => {
-  it("names the saved-record snapshot and disables dot animation for reduced motion", () => {
+  it("names the saved-record snapshot with a still tick, never an animated dot", () => {
     renderDashboard();
     const freshness = screen.getByTestId("cme-data-freshness");
     expect(freshness).toHaveTextContent("Saved records loaded at");
-    expect(freshness.firstElementChild?.className).toContain("motion-reduce:animate-none");
+    expect(freshness.querySelector(".mode-band__saved-tick")).not.toBeNull();
+    expect(freshness.querySelector("[class*='animate-']")).toBeNull();
   });
 
   it("opens the total from saved, unarchived activities and links to the year Log", async () => {

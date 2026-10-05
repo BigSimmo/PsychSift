@@ -65,7 +65,7 @@ import {
   type ReminderSettings,
   type ReminderType,
 } from "@/lib/reminders/settings";
-import { cmePageTitle } from "@/components/cme/cme-page-frame";
+import { ModeBandStatus, useModeBandShown } from "@/components/mode-band/mode-band";
 
 /**
  * TODAY — the screen the whole mode is judged by.
@@ -213,6 +213,7 @@ export function CmeDashboard({
       !yearEntries.some((entry) => entry.buckets.includes("Culturally safe practice")),
   );
 
+  const underBand = useModeBandShown();
   const today = perthCalendarDate(now);
   const loadedTime = new Intl.DateTimeFormat("en-AU", {
     timeZone: "Australia/Perth",
@@ -356,24 +357,24 @@ export function CmeDashboard({
 
   const status = (
     <>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className={cmePageTitle}>Year</h1>
-          <p data-testid="cme-data-freshness" className={cn(textMuted, "mt-1 flex items-center gap-1.5 text-xs")}>
-            <span
-              aria-hidden="true"
-              className={cn(
-                "size-1.5 rounded-full bg-[color:var(--clinical-accent)]",
-                !demoMode && "motion-safe:animate-pulse motion-reduce:animate-none",
-              )}
-            />
-            {demoMode ? "Demo records" : `Saved records loaded at ${loadedTime}`}
-          </p>
+      {/* The mode band above the page names the mode and carries Customise
+          and this status line; the h1 still names the page for screen readers. */}
+      <h1 className="sr-only">Year</h1>
+      <ModeBandStatus
+        testId="cme-data-freshness"
+        value={
+          demoMode
+            ? { kind: "text", text: "Demo records" }
+            : { kind: "text", text: `Saved records loaded at ${loadedTime}`, tick: true }
+        }
+      />
+      {!underBand ? (
+        <div className="flex justify-end">
+          <Button variant="toolbar" size="sm" icon={Settings2} onClick={onOpenCustomise}>
+            Customise
+          </Button>
         </div>
-        <Button variant="toolbar" size="sm" icon={Settings2} onClick={onOpenCustomise}>
-          Customise
-        </Button>
-      </div>
+      ) : null}
 
       {currentTrainingPosition?.stage || currentTrainingPosition?.rotation || currentTrainingPosition?.breakPeriod ? (
         <Link

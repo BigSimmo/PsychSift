@@ -1,0 +1,409 @@
+/* Mode page header (C4, "soft tint"), locked by the owner on 5 Oct 2026.
+   ------------------------------------------------------------------------
+   One soft band of the mode's colour that runs edge to edge from under the
+   top bar down to the page's tabs: a small back link or today's date with
+   Customise opposite, a large title, a status line, underline tabs, and the
+   mode's icon drawn large and faint, cropped by the band's right and bottom
+   edge. Rendered by `ModeBand` (`src/components/mode-band/mode-band.tsx`).
+
+   Colour comes only from the mode identity tokens (`--mode-identity*`, which
+   `data-mode-identity` remaps per mode in globals.css). Modes without an
+   identity fall back to the product accent through the `:root` aliases, so
+   every value here is a token or a mix of tokens: no literal colours.
+
+   Light band: the identity's soft tint. Dark band: the identity mixed at 11%
+   into the page background, calmer than the soft token, with its rule at 26%.
+   The top bar is not changed; only its surface is painted the band colour on
+   pages that carry a band, so the two read as one piece (see the html rule at
+   the foot). */
+
+.mode-band {
+  --mode-band-bg: var(--mode-identity-soft);
+  --mode-band-line: var(--mode-identity-border);
+  --mode-band-gutter: 1.25rem;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--mode-band-bg);
+  border-bottom: 1px solid var(--mode-band-line);
+  color: var(--text-heading);
+  container-type: inline-size;
+  container-name: mode-band;
+}
+
+.dark .mode-band {
+  --mode-band-bg: color-mix(in srgb, var(--mode-identity) 11%, var(--background));
+  --mode-band-line: color-mix(in srgb, var(--mode-identity) 26%, var(--background));
+}
+
+/* The faint mode icon. Large on purpose and cropped by the band's right and
+   bottom edge (owner, 5 Oct 05:55 UTC: "big and extending, not shrunk"). */
+.mode-band__mark {
+  position: absolute;
+  z-index: -1;
+  right: -2.125rem;
+  top: 2.5rem;
+  width: 8.125rem;
+  height: 8.125rem;
+  color: var(--mode-identity);
+  opacity: 0.07;
+  pointer-events: none;
+}
+
+.dark .mode-band__mark {
+  opacity: 0.11;
+}
+
+.mode-band__inner {
+  position: relative;
+  max-width: 45rem;
+  margin: 0 auto;
+  padding: 0.125rem var(--mode-band-gutter) 0.125rem;
+  box-sizing: border-box;
+}
+
+.mode-band__utility {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: var(--spacing-tap, 3rem);
+}
+
+.mode-band__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  min-height: var(--spacing-tap, 3rem);
+  min-width: var(--spacing-tap, 3rem);
+  margin-left: -0.5rem;
+  padding: 0 0.5rem 0 0.25rem;
+  border-radius: 0.75rem;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--mode-identity);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mode-band__date {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.mode-band__date-short {
+  display: none;
+}
+
+.mode-band__customise {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: var(--spacing-tap, 3rem);
+  margin-left: auto;
+  margin-right: -0.625rem;
+  padding: 0 0.625rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--mode-identity);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.mode-band__title {
+  margin: 0;
+  font-size: var(--text-3xl, 1.875rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  text-wrap: balance;
+  color: var(--text-heading);
+}
+
+.mode-band__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.mode-band__status {
+  margin-top: 0.375rem;
+  min-height: 1.375rem;
+  display: flex;
+  align-items: center;
+}
+
+.mode-band__saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--text-sm-minus, 0.8125rem);
+  line-height: 1.125rem;
+  color: var(--text-muted);
+}
+
+.mode-band__saved-tick {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--mode-identity);
+}
+
+.mode-band__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.625rem 0.125rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: var(--text-sm-minus, 0.8125rem);
+  font-weight: 500;
+  line-height: 1.125rem;
+}
+
+.mode-band__chip--offline {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--warning-text);
+}
+
+.mode-band__chip--error {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
+}
+
+/* The whole chip is the retry button, with a 48px tap area that a negative
+   margin keeps from pushing the tabs down. */
+.mode-band__retry {
+  display: inline-flex;
+  margin: -0.8125rem 0;
+  padding: 0.8125rem 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.mode-band__retry-word {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.mode-band__loading {
+  display: block;
+  width: 8.5rem;
+  height: 0.75rem;
+  border-radius: 0.375rem;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--mode-identity) 16%, var(--mode-band-bg)) 0%,
+    color-mix(in srgb, var(--mode-identity) 30%, var(--mode-band-bg)) 50%,
+    color-mix(in srgb, var(--mode-identity) 16%, var(--mode-band-bg)) 100%
+  );
+}
+
+/* Tabs: underline links on the band's bottom edge. Each is a real route, so
+   the current one carries aria-current="page". */
+.mode-band__tabs {
+  position: relative;
+  max-width: 45rem;
+  margin: 0.625rem auto 0;
+}
+
+.mode-band__tab-row {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0 var(--mode-band-gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mode-band__tab-row::-webkit-scrollbar {
+  display: none;
+}
+
+.mode-band__tab-row::after {
+  content: "";
+  flex: none;
+  width: 0.25rem;
+}
+
+.mode-band__tab {
+  flex: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: var(--spacing-tap, 3rem);
+  margin: 0 -0.375rem;
+  padding: 0 0.375rem;
+  border-radius: 0.625rem 0.625rem 0 0;
+  font-size: var(--text-base-minus, 0.9375rem);
+  font-weight: 500;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mode-band__tab[aria-current="page"] {
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+/* The current page's mark is a real border, so forced colours keeps it. */
+.mode-band__tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 3px 3px 0 0;
+}
+
+.mode-band__tab[aria-current="page"]::after {
+  border-bottom-color: var(--mode-identity);
+}
+
+/* Keyboard focus: a 2px ring in the mode colour drawn INSIDE the tab, so the
+   scrolling row can never clip it. */
+.mode-band__tab:focus-visible,
+.mode-band__back:focus-visible,
+.mode-band__customise:focus-visible,
+.mode-band__retry:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: -2px;
+}
+
+.mode-band__badge {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  box-sizing: border-box;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--mode-identity);
+  color: var(--mode-identity-contrast);
+}
+
+/* Fades the row's right edge so a cut-off tab reads as "more this way". */
+.mode-band__tab-fade {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 3px;
+  width: 2rem;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--mode-band-bg));
+}
+
+/* A band with no tabs still ends with the same breathing room. */
+.mode-band__end {
+  height: 1rem;
+}
+
+/* Wide screens: content is capped at 720px and every tab fits, so no fade. */
+@media (min-width: 700px) {
+  .mode-band__tab-fade {
+    display: none;
+  }
+}
+
+/* Large text (about 200%): the band is narrower than 20 of its own rems, so
+   Customise keeps only its icon and the date shortens. */
+@container mode-band (max-width: 20rem) {
+  .mode-band__customise-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .mode-band__customise {
+    width: var(--spacing-tap, 3rem);
+    justify-content: center;
+    margin-right: -0.75rem;
+    padding: 0;
+  }
+
+  .mode-band__date-long {
+    display: none;
+  }
+
+  .mode-band__date-short {
+    display: inline;
+  }
+}
+
+/* A phone held sideways starts with the header folded: the title alone would
+   fill the screen, so only the tabs show. The heading stays for screen
+   readers. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mode-band__utility,
+  .mode-band__status,
+  .mode-band__mark {
+    display: none;
+  }
+
+  .mode-band__title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .mode-band__tabs {
+    margin-top: 0;
+  }
+}
+
+@media (forced-colors: active) {
+  .mode-band {
+    border-bottom-color: CanvasText;
+  }
+
+  .mode-band__mark {
+    display: none;
+  }
+
+  .mode-band__tab[aria-current="page"]::after {
+    border-bottom-color: Highlight;
+  }
+}
+
+/* The top bar above a band wears the band's colour, so the two read as one
+   piece. `ModeBand` publishes the resolved colour on <html> while it is
+   mounted; nothing else about the top bar changes. */
+html[data-mode-band] .edge-glass-header,
+html[data-mode-band] [data-testid="chrome-safe-area-top"] {
+  background: var(--mode-band-surface);
+}
+
+/* Under a band a page's own title is kept for screen readers only. A wrapper
+   left holding nothing but that heading must not still take a gap in its
+   grid, or the page starts a row lower than the band's tabs suggest. */
+html[data-mode-band] :is(div, header):has(> .sr-only:only-child) {
+  display: contents;
+}

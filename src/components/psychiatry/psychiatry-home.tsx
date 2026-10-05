@@ -46,6 +46,7 @@ import {
   type PsychiatryVisitKind,
 } from "@/lib/psychiatry-hub/visits";
 import { sharedHomePresentation } from "@/lib/ui-copy";
+import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
  * The Psychiatry hub, drawn in the dashboard style My Day uses (owner decision,
@@ -744,10 +745,12 @@ export function PsychiatryHome({
     <InformationPageShell testId="psychiatry-home">
       <div className={cn("mx-auto grid w-full max-w-5xl gap-5 sm:gap-6", dashSurface)}>
         <header className="grid min-w-0 gap-0.5" data-testid="psychiatry-header">
-          <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{now ? LONG_DATE.format(now) : null}</p>
-          <h1 className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
+          <WithoutModeBand>
+            <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{now ? LONG_DATE.format(now) : null}</p>
+          </WithoutModeBand>
+          <PageTitleUnderBand className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
             Psychiatry
-          </h1>
+          </PageTitleUnderBand>
         </header>
 
         <PsychiatryTabs page={page} onChange={setPage} />

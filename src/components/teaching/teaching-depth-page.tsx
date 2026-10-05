@@ -9,6 +9,7 @@ import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import type { TeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 import { useAuthSession } from "@/lib/supabase/client";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 
 /**
  * A depth page's submit, held at the bottom of the screen inside the page's own flow (not fixed chrome),
@@ -51,7 +52,9 @@ export function TeachingDepthPage<T>({
   return (
     <InformationPageShell width="narrow" gap={false}>
       <div className="grid gap-4">
-        <h1 className="text-xl font-semibold text-[color:var(--text-heading)]">{title}</h1>
+        <PageTitleUnderBand className="text-xl font-semibold text-[color:var(--text-heading)]">
+          {title}
+        </PageTitleUnderBand>
         {demoMode ? <ModeNotice>Made-up demo. Changes stay on this page and are not saved.</ModeNotice> : null}
         {body}
       </div>

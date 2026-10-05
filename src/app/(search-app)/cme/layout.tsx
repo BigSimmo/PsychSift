@@ -3,6 +3,7 @@ import { CmePageTabs } from "@/components/cme/cme-page-tabs";
 import { CmeOwnerBoundary } from "@/components/cme/cme-owner-boundary";
 import { isDemoMode } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { ModeBand } from "@/components/mode-band/mode-band";
 
 /** Bind server-rendered private records to the owner verified for this response. */
 export default async function CmeLayout({ children }: { children: ReactNode }) {
@@ -25,10 +26,18 @@ export default async function CmeLayout({ children }: { children: ReactNode }) {
   }
   return (
     <CmeOwnerBoundary serverOwnerId={serverOwnerId} serverAuthVerified={serverAuthVerified} demoMode={demoMode}>
-      <Suspense fallback={null}>
-        <CmePageTabs />
-      </Suspense>
-      {children}
+      {/* A record, a form and the summary keep their own back-arrow headers. */}
+      <ModeBand
+        modeId="cme"
+        customiseHref="/cme/customise"
+        statusSlot={["/cme"]}
+        hiddenOn={["/cme/log/", "/cme/new", "/cme/summary"]}
+      >
+        <Suspense fallback={null}>
+          <CmePageTabs />
+        </Suspense>
+        {children}
+      </ModeBand>
     </CmeOwnerBoundary>
   );
 }

@@ -37,6 +37,7 @@ const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
 const NO_ENTRIES: readonly OnCallEntry[] = [];
 import { useAuthSession } from "@/lib/supabase/client";
+import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
  * The signed-out sample: invented data, downloaded only when a signed-out
@@ -360,10 +361,12 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
       <div className={cn(PAGE_WIDTH, dashSurface)}>
         <header className="flex min-w-0 items-end justify-between gap-3" data-testid="my-day-header">
           <div className="grid min-w-0 gap-0.5">
-            <p className="text-sm text-[color:var(--dash-muted)]">{longDate(today)}</p>
-            <h1 className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
+            <WithoutModeBand>
+              <p className="text-sm text-[color:var(--dash-muted)]">{longDate(today)}</p>
+            </WithoutModeBand>
+            <PageTitleUnderBand className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
               My Day
-            </h1>
+            </PageTitleUnderBand>
           </div>
           {ready && view === "dashboard" ? (
             <button
