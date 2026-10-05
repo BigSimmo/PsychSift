@@ -41,7 +41,7 @@ import {
 } from "@/components/work-search/work-search-parts";
 import { WorkSearchGlyph } from "@/components/work-search/work-search-glyph";
 import { Sheet } from "@/components/ui/sheet";
-import { cn } from "@/components/ui-primitives";
+import { cn, primaryControl } from "@/components/ui-primitives";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
 import { perthDateOf } from "@/lib/perth-time";
@@ -473,10 +473,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
           <button
             type="button"
             onClick={() => runQuery("")}
-            className={cn(
-              "inline-flex min-h-12 shrink-0 items-center rounded-md bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)]",
-              focusRing,
-            )}
+            className={cn(primaryControl, "shrink-0 rounded-md px-4 shadow-none hover:shadow-none", focusRing)}
           >
             Clear
           </button>
