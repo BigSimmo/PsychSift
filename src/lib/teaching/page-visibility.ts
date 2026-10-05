@@ -80,12 +80,6 @@ export function setOpenShiftsIsPoster(isPoster: boolean): void {
   if (openShiftsIsPoster === isPoster) return;
   openShiftsIsPoster = isPoster;
   for (const listener of openShiftsListeners) listener();
-  // The page lists (mode band tabs, top-bar page sheet) recompute only when
-  // the Teaching roles snapshot changes identity, and read the poster flag
-  // through `modePageVisible`'s default argument. Re-issue that snapshot with
-  // a new identity (same roles) so those lists pick the change up at once.
-  current = current.length === 0 ? [] : [...current];
-  for (const listener of listeners) listener();
 }
 
 function subscribeOpenShifts(listener: () => void) {
