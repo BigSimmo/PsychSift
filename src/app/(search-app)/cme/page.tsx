@@ -73,7 +73,8 @@ export default async function CmeHomeRoute({ searchParams }: { searchParams: Pro
       nowIso={data.now.toISOString()}
       routines={data.routines}
       demoMode={data.demoMode}
-      draftsToFinish={groupDrafts(data.drafts).nextAction.length}
+      // Null when drafts could not be read, so nothing shows a count of none.
+      draftsToFinish={data.recordsFailed ? null : groupDrafts(data.drafts).nextAction.length}
       currentTrainingPosition={data.trainingPosition}
       goals={data.goals}
       nextYearConfirmed={data.nextYearConfirmed}
