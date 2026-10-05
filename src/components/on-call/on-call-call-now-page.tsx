@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, Phone, Sun } from "lucide-react";
+import { Check, Moon, Phone, Play, RotateCcw, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -14,6 +14,7 @@ import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
+import { Button } from "@/components/ui/button";
 import { SearchField } from "@/components/ui/text-field";
 import { cn, eyebrowText, primaryControl, textMuted } from "@/components/ui-primitives";
 import {
@@ -49,6 +50,7 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
   );
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [run, setRun] = useState<LadderRun | null>(null);
 
   // Re-read the clock when the in-hours period starts or ends (holidays count),
   // so a phone left open on this page does not keep offering the daytime order at night.
@@ -74,6 +76,15 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
   const nowSteps = steps.filter((step) => step.appliesNow);
   const laterSteps = steps.filter((step) => !step.appliesNow);
   const PeriodIcon = period === "after-hours" ? Moon : Sun;
+  const activeRun = run && selected && run.scenarioId === selected.id ? run : null;
+  const markCalled = (order: number) =>
+    setRun((current) => {
+      if (!current) return current;
+      const called = { ...current.called };
+      if (called[order] === undefined) called[order] = Date.now();
+      else delete called[order];
+      return { ...current, called };
+    });
 
   if (!nowProp && !mounted) {
     return (
@@ -163,7 +174,10 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
                     key={entry.id}
                     type="button"
                     aria-pressed={pressed}
-                    onClick={() => setSelectedId(entry.id)}
+                    onClick={() => {
+                      setSelectedId(entry.id);
+                      if (run && run.scenarioId !== entry.id) setRun(null);
+                    }}
                     className={cn(
                       "inline-flex min-h-tap shrink-0 items-center rounded-lg border px-3 text-sm font-semibold",
                       pressed
@@ -189,11 +203,25 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
                 {steps.length === 0 ? (
                   <p className={cn(textMuted, "mt-2 text-sm")}>This scenario has no escalation steps recorded yet.</p>
                 ) : (
-                  <ol className="mt-3 flex flex-col gap-2" data-testid="on-call-now-steps">
-                    {nowSteps.map((step, index) => (
-                      <CallNowStep key={`${step.order}-${step.whoToCall}`} step={step} position={index + 1} />
-                    ))}
-                  </ol>
+                  <>
+                    <LadderRunPanel
+                      run={activeRun}
+                      steps={steps}
+                      onStart={() => setRun({ scenarioId: selected.id, startedAt: Date.now(), called: {} })}
+                      onStop={() => setRun(null)}
+                    />
+                    <ol className="mt-3 flex flex-col gap-2" data-testid="on-call-now-steps">
+                      {nowSteps.map((step, index) => (
+                        <CallNowStep
+                          key={`${step.order}-${step.whoToCall}`}
+                          step={step}
+                          position={index + 1}
+                          run={activeRun}
+                          onMark={markCalled}
+                        />
+                      ))}
+                    </ol>
+                  </>
                 )}
                 {laterSteps.length > 0 ? (
                   <>
@@ -205,6 +233,8 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
                           step={step}
                           position={nowSteps.length + index + 1}
                           muted
+                          run={activeRun}
+                          onMark={markCalled}
                         />
                       ))}
                     </ol>
@@ -229,20 +259,38 @@ function CallNowStep({
   step,
   position,
   muted = false,
+  run,
+  onMark,
 }: {
   step: OnCallCallNowStep;
   position: number;
   muted?: boolean;
+  run: LadderRun | null;
+  onMark: (order: number) => void;
 }) {
   const href = onCallTelHref(step.phone);
+  const calledAt = run?.called[step.order];
   return (
-    <li className={cn(cardSurface, "flex flex-col gap-2 p-3", muted && "opacity-80")}>
+    <li
+      className={cn(
+        cardSurface,
+        "flex flex-col gap-2 p-3",
+        muted && calledAt === undefined && "opacity-80",
+        calledAt !== undefined && "border-[color:var(--clinical-accent-border)]",
+      )}
+      data-testid="on-call-now-step"
+    >
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
-          className="nums grid size-7 shrink-0 place-items-center rounded-full bg-[color:var(--surface-subtle)] text-sm font-semibold text-[color:var(--text)]"
+          className={cn(
+            "nums grid size-7 shrink-0 place-items-center rounded-full text-sm font-semibold",
+            calledAt !== undefined
+              ? "bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]"
+              : "bg-[color:var(--surface-subtle)] text-[color:var(--text)]",
+          )}
         >
-          {position}
+          {calledAt !== undefined ? <Check aria-hidden="true" className="size-icon-sm" /> : position}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-[color:var(--text)]">
@@ -270,6 +318,110 @@ function CallNowStep({
           </div>
         )
       ) : null}
+      {run ? (
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <p className={cn(textMuted, "nums text-sm")} data-testid="on-call-now-step-called">
+            {calledAt !== undefined ? `Called ${ladderClock(calledAt)} · ${minutesAgo(calledAt)}` : "Not called yet"}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={calledAt !== undefined ? RotateCcw : Check}
+            onClick={() => onMark(step.order)}
+            aria-label={
+              calledAt !== undefined ? `Undo: ${step.whoToCall} not called` : `Mark ${step.whoToCall} as called now`
+            }
+            testId="on-call-now-step-mark"
+          >
+            {calledAt !== undefined ? "Undo" : "Mark called"}
+          </Button>
+        </div>
+      ) : null}
     </li>
+  );
+}
+
+/** One run up the ladder: when it started and when each step was called. Held on screen only, never saved. */
+type LadderRun = {
+  readonly scenarioId: string;
+  readonly startedAt: number;
+  /** Step order to the time it was marked called (epoch ms). */
+  readonly called: Readonly<Record<number, number>>;
+};
+
+function ladderClock(epochMs: number): string {
+  return new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Perth",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(epochMs));
+}
+
+function minutesAgo(epochMs: number): string {
+  const minutes = Math.max(0, Math.floor((Date.now() - epochMs) / 60_000));
+  if (minutes === 0) return "just now";
+  return minutes === 1 ? "1 min ago" : `${minutes} min ago`;
+}
+
+/**
+ * Start the ladder: a clock for the night's worst moment. It records when it
+ * started and when each step was called, so "how long since I rang the
+ * registrar" is on screen rather than in memory. It adds no wait of its own and
+ * no advice: every step and its "when" stay exactly as the Playbook says.
+ */
+function LadderRunPanel({
+  run,
+  steps,
+  onStart,
+  onStop,
+}: {
+  run: LadderRun | null;
+  steps: readonly OnCallCallNowStep[];
+  onStart: () => void;
+  onStop: () => void;
+}) {
+  // Re-render every 30 seconds while running, so "6 min ago" stays true.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!run) return;
+    const timer = window.setInterval(() => setTick((value) => value + 1), 30_000);
+    return () => window.clearInterval(timer);
+  }, [run]);
+
+  if (!run) {
+    return (
+      <div className="mt-3 flex min-w-0 flex-wrap items-center gap-3" data-testid="on-call-now-ladder-start">
+        <Button variant="secondary" icon={Play} onClick={onStart} testId="on-call-now-ladder-start-button">
+          Start the ladder
+        </Button>
+        <p className={cn(textMuted, "text-sm")}>Keeps the time of each call on screen. Nothing is saved.</p>
+      </div>
+    );
+  }
+  const calledSteps = steps.filter((step) => run.called[step.order] !== undefined);
+  const latest = calledSteps.reduce<OnCallCallNowStep | null>(
+    (best, step) => (best === null || run.called[step.order]! > run.called[best.order]! ? step : best),
+    null,
+  );
+  return (
+    <div
+      role="status"
+      className="mt-3 grid gap-2 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] p-3"
+      data-testid="on-call-now-ladder-run"
+    >
+      <p className={cn(eyebrowText, "text-[color:var(--clinical-accent)]")}>Started {ladderClock(run.startedAt)}</p>
+      <p className="text-base font-semibold text-[color:var(--text-heading)]">
+        {latest ? `${latest.whoToCall} called ${minutesAgo(run.called[latest.order]!)}` : "No one called yet"}
+      </p>
+      <p className={cn(textMuted, "text-sm")}>
+        {calledSteps.length} of {steps.length} {steps.length === 1 ? "step" : "steps"} called
+      </p>
+      <div>
+        <Button variant="ghost" size="sm" icon={X} onClick={onStop} testId="on-call-now-ladder-stop">
+          Stop the ladder
+        </Button>
+      </div>
+    </div>
   );
 }

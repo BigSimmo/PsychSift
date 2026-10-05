@@ -386,6 +386,17 @@ to ring, the display formatter, desk-only and pause-dial numbers), `handbook-tit
 `clearOnCallDeviceState()`). The API is `/api/on-call/entries`, `[id]`, and `[id]/verify` — the last
 being the one-tap "still correct today" action that resets the freshness clock.
 
+**Handover and Shift pulse** (5 Oct 2026, linked from Now's footer). `/on-call/handover`
+(`src/components/on-call/handover/handover-page.tsx` over `src/lib/on-call/handover.ts`) is the
+psychiatry handover form: one record per patient (bed or initials, ward, legal, impression, story,
+referrals, requires review, plan), a table, Copy as table and Print. It is kept only through
+`src/lib/patient-label-storage.ts`, so it is wiped at shift end and at sign-out, and no work-search
+file may import it. `/on-call/pulse` (`src/components/on-call/pulse/shift-pulse-page.tsx`) draws
+calls by hour from `src/lib/on-call/call-counts.ts` (counts only, fed by the call log, a sign-out
+device store) and, while the signed fatigue rules are on, the rest before the next rostered shift.
+"Who do I call now?" (`/on-call/now`) can start the ladder: it times each call on screen and saves
+nothing.
+
 **Storage.** `on_call_entries` is owner-scoped with RLS enabled and revoked from `anon` and
 `authenticated`; reads and writes go through the service-role client at the API layer, the same
 application-layer ownership model as `clinical_registry_records`.
