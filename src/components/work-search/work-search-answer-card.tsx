@@ -5,6 +5,7 @@ import {
   CalendarCheck,
   CalendarDays,
   CalendarOff,
+  CalendarPlus,
   Check,
   Database,
   Info,
@@ -17,10 +18,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 import { cn } from "@/components/ui-primitives";
 import { cardSurface, focusRing, onPlainClick, ResultRow } from "@/components/work-search/work-search-parts";
-import type { WorkAnswer, WorkAnswerIcon, WorkAnswerProgress } from "@/lib/work-search/answers";
+import { downloadTextFile } from "@/lib/admin/download-file";
+import { icsFileName, toIcs } from "@/lib/calendar/ics";
+import { perthTimeOf } from "@/lib/perth-time";
+import type { WorkAnswer, WorkAnswerDay, WorkAnswerIcon, WorkAnswerProgress } from "@/lib/work-search/answers";
+import type { WorkItem } from "@/lib/work-search/model";
 
 const ANSWER_ICONS: Readonly<Record<WorkAnswerIcon, LucideIcon>> = {
   night: Moon,
@@ -51,11 +57,11 @@ const BAR_WIDTHS = [
 
 function ProgressRows({ rows }: { rows: readonly WorkAnswerProgress[] }) {
   return (
-    <ul className="grid gap-2.5">
+    <ul className="grid gap-3">
       {rows.map((row) => (
-        <li key={row.label} className="grid gap-1">
+        <li key={row.label} className="grid gap-1.5">
           <div className="flex items-start justify-between gap-3 text-sm">
-            <span className="flex min-w-0 items-start gap-1.5 font-semibold leading-snug text-[color:var(--text-heading)]">
+            <span className="flex min-w-0 items-start gap-1.5 leading-snug text-[color:var(--text-heading)]">
               {row.met ? (
                 <Check aria-hidden="true" className="mt-0.5 size-icon-xs shrink-0 text-[color:var(--success)]" />
               ) : null}
@@ -63,15 +69,15 @@ function ProgressRows({ rows }: { rows: readonly WorkAnswerProgress[] }) {
             </span>
             <span
               className={cn(
-                "max-w-[45%] shrink-0 text-right text-xs leading-snug",
-                row.met ? "text-[color:var(--text-muted)]" : "font-bold text-[color:var(--text-heading)]",
+                "max-w-[45%] shrink-0 text-right text-sm leading-snug tabular-nums",
+                row.met ? "text-[color:var(--text-muted)]" : "font-semibold text-[color:var(--text-heading)]",
               )}
             >
               {row.summary}
             </span>
           </div>
           {row.fraction !== null ? (
-            <span aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-[color:var(--surface-inset)]">
+            <span aria-hidden="true" className="h-1 overflow-hidden rounded-full bg-[color:var(--surface-inset)]">
               <span
                 className={cn(
                   "block h-full rounded-full bg-[color:var(--mode-identity)]",
@@ -86,33 +92,111 @@ function ProgressRows({ rows }: { rows: readonly WorkAnswerProgress[] }) {
   );
 }
 
+/** CPD: the targets still short, with the met ones folded away until asked for. */
+function CpdProgress({ rows }: { rows: readonly WorkAnswerProgress[] }) {
+  const [all, setAll] = useState(false);
+  const short = rows.filter((row) => !row.met);
+  const shown = all || short.length === 0 ? rows : short;
+  return (
+    <div className="grid justify-items-start gap-3">
+      <div className="w-full">
+        <ProgressRows rows={shown} />
+      </div>
+      {shown.length < rows.length ? (
+        <button
+          type="button"
+          onClick={() => setAll(true)}
+          className={cn("-my-3 min-h-12 text-sm font-semibold text-[color:var(--text-heading)]", focusRing)}
+        >
+          Show all {rows.length} targets
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+const WEEKDAY_INITIAL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+/** Monday to Sunday, the free days shaded in the area's colour; the rest drawn as dashed outlines. */
+function WeekStrip({ days }: { days: readonly WorkAnswerDay[] }) {
+  return (
+    <ol className="grid grid-cols-7 gap-1" aria-label="This week">
+      {days.map((day) => {
+        const date = new Date(`${day.date}T00:00:00Z`);
+        const weekday = WEEKDAY_INITIAL[date.getUTCDay()];
+        const free = day.free && day.inRange;
+        return (
+          <li key={day.date} className="grid justify-items-center gap-1.5">
+            <span className="text-2xs font-semibold text-[color:var(--text-muted)]">{weekday}</span>
+            <span
+              className={cn(
+                "grid size-8 place-items-center rounded-full text-xs tabular-nums",
+                free
+                  ? "border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] font-semibold text-[color:var(--mode-identity)]"
+                  : "border border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]",
+                !day.inRange && "opacity-50",
+              )}
+            >
+              {date.getUTCDate()}
+              <span className="sr-only">
+                {free ? ", no rostered shift" : day.inRange ? ", rostered" : ", not asked about"}
+              </span>
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** A calendar file for one shift, made on the device and handed over as a download. Nothing is sent. */
+function addShiftToCalendar(item: WorkItem) {
+  if (!item.startsAt || !item.endsAt || !item.date) return;
+  const minutes = Math.round((Date.parse(item.endsAt) - Date.parse(item.startsAt)) / 60_000);
+  const location = item.detail?.split(" · ").slice(2).join(" · ") || undefined;
+  const file = toIcs([
+    {
+      id: item.id,
+      title: item.title,
+      date: item.date,
+      startTime: perthTimeOf(item.startsAt),
+      durationMinutes: minutes,
+      kind: "other",
+      ...(location ? { location } : {}),
+    },
+  ]);
+  downloadTextFile(file, icsFileName(item.title), "text/calendar;charset=utf-8");
+}
+
+const outlineButton =
+  "inline-flex min-h-12 shrink-0 items-center gap-1.5 self-center rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-3.5 text-sm font-semibold text-[color:var(--text-heading)]";
+
 /** When an area the question needs has not loaded: say so, never "nothing". */
 function UnavailableCard({ answer, onRetry }: { answer: WorkAnswer; onRetry: () => void }) {
   return (
     <section
       aria-label={answer.label}
       data-testid="work-search-answer"
-      className={cn(cardSurface, "flex items-start gap-3 p-3.5")}
+      className={cn(cardSurface, "flex items-start gap-3 p-4")}
     >
-      <Info aria-hidden="true" className="mt-0.5 size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+      <Info
+        aria-hidden="true"
+        className="mt-0.5 size-icon-md shrink-0 text-[color:var(--text-muted)]"
+        strokeWidth={1.6}
+      />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-[color:var(--text-heading)]">{answer.label}</p>
-        <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">{answer.headline}</p>
+        <p className="text-sm font-semibold text-[color:var(--text-heading)]">{answer.label}</p>
+        <p className="mt-0.5 text-sm text-[color:var(--text-muted)]">{answer.headline}</p>
       </div>
       {answer.loading ? null : (
         <button
           type="button"
           onClick={onRetry}
           aria-label={`Retry: ${answer.headline}`}
-          className={cn(
-            "inline-flex min-h-12 shrink-0 items-center gap-1.5 self-center rounded-full px-3 text-xs font-bold text-[color:var(--text-heading)]",
-            focusRing,
-          )}
+          className={cn(outlineButton, focusRing)}
         >
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-strong)] px-3 py-1.5">
-            <RotateCcw aria-hidden="true" className="size-icon-xs" />
-            Retry
-          </span>
+          <RotateCcw aria-hidden="true" className="size-icon-sm" strokeWidth={1.6} />
+          Retry
         </button>
       )}
     </section>
@@ -133,85 +217,75 @@ export function AnswerCard({
 }) {
   if (answer.unavailable) return <UnavailableCard answer={answer} onRetry={onRetry} />;
   const identity = answer.area === "all" ? undefined : answer.area;
-  const longMeta = answer.meta.some((line) => line.length > 28);
   const Icon = ANSWER_ICONS[answer.icon];
+  const calendar = answer.calendar;
   return (
     <section
       aria-label={answer.label}
       data-mode-identity={identity}
       data-testid="work-search-answer"
-      className={cn(cardSurface, "grid gap-3 p-4")}
+      className={cn(cardSurface, "grid grid-cols-[minmax(0,1fr)] gap-3 p-4")}
     >
-      <div className="flex items-center gap-2.5">
-        <span
-          className={cn(
-            "grid size-9 shrink-0 place-items-center rounded-xl",
-            identity
-              ? "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
-              : "border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-heading)]",
-          )}
-        >
-          <Icon aria-hidden="true" className="size-icon-sm" />
-        </span>
-        <span
-          className={cn(
-            "min-w-0 flex-1 truncate text-2xs font-extrabold uppercase tracking-widest",
-            identity ? "text-[color:var(--mode-identity)]" : "text-[color:var(--text-muted)]",
-          )}
-        >
-          {answer.label}
-        </span>
-        <span className="shrink-0 text-xs font-semibold text-[color:var(--text-muted)]">From your records</span>
-      </div>
-      <div>
-        <p className="text-2xl font-extrabold leading-tight tracking-tight text-[color:var(--text-heading)]">
+      <p
+        className={cn(
+          "flex min-w-0 items-center gap-2 text-2xs font-semibold uppercase tracking-widest",
+          identity ? "text-[color:var(--mode-identity)]" : "text-[color:var(--text-muted)]",
+        )}
+      >
+        <Icon aria-hidden="true" className="size-icon-sm shrink-0" strokeWidth={1.6} />
+        <span className="truncate">{answer.label}</span>
+      </p>
+      <div className="grid gap-1">
+        <p className="text-xl font-semibold leading-tight tracking-tight text-[color:var(--text-heading)]">
           {answer.headline}
         </p>
-        {answer.sub ? <p className="mt-1 text-sm text-[color:var(--text-muted)]">{answer.sub}</p> : null}
+        {answer.sub ? <p className="text-sm text-[color:var(--text-muted)]">{answer.sub}</p> : null}
+        {answer.meta.length > 0 ? (
+          <p className="text-sm text-[color:var(--text-muted)]">{answer.meta.join(" · ")}</p>
+        ) : null}
       </div>
-      {longMeta ? (
-        <ul className="divide-y divide-[color:var(--border)] border-y border-[color:var(--border)]">
-          {answer.meta.map((line) => (
-            <li key={line} className="py-2 text-sm text-[color:var(--text)]">
-              {line}
-            </li>
-          ))}
-        </ul>
-      ) : answer.meta.length > 0 ? (
-        <ul className="flex flex-wrap gap-1.5">
-          {answer.meta.map((line) => (
-            <li
-              key={line}
-              className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-1 text-xs font-semibold text-[color:var(--text-muted)]"
-            >
-              {line}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {answer.progress && answer.progress.length > 0 ? <ProgressRows rows={answer.progress} /> : null}
+      {answer.week ? <WeekStrip days={answer.week} /> : null}
+      {answer.note ? <p className="text-sm text-[color:var(--text-muted)]">{answer.note}</p> : null}
+      {answer.progress && answer.progress.length > 0 ? <CpdProgress rows={answer.progress} /> : null}
       {answer.area === "all" && answer.items.length > 0 ? (
-        <ul className="-mx-1 divide-y divide-[color:var(--border)]">
+        <ul className="divide-y divide-[color:var(--border)] border-t border-[color:var(--border)]">
           {answer.items.map((item) => (
-            <ResultRow key={item.id} item={item} today={today} withAreaInDetail compact onOpen={onOpen} />
+            <ResultRow key={item.id} item={item} today={today} onOpen={onOpen} />
           ))}
         </ul>
       ) : null}
-      {answer.action ? (
-        <Link
-          href={answer.action.href}
-          onClick={onPlainClick(onOpen)}
-          data-work-search-primary=""
-          className={cn(
-            "inline-flex min-h-12 items-center justify-center rounded-full bg-[color:var(--mode-identity)] px-5 text-sm font-bold text-[color:var(--mode-identity-contrast)]",
-            focusRing,
-          )}
-        >
-          {answer.action.label}
-        </Link>
+      {answer.action || calendar ? (
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          {answer.action ? (
+            <Link
+              href={answer.action.href}
+              onClick={onPlainClick(onOpen)}
+              data-work-search-primary=""
+              className={cn(
+                "inline-flex min-h-12 items-center justify-center rounded-lg bg-[color:var(--mode-identity)] px-4 text-sm font-semibold text-[color:var(--mode-identity-contrast)]",
+                focusRing,
+              )}
+            >
+              {answer.action.label}
+            </Link>
+          ) : null}
+          {calendar ? (
+            <button
+              type="button"
+              onClick={() => addShiftToCalendar(calendar)}
+              className={cn(
+                "inline-flex min-h-12 items-center gap-1.5 text-sm font-medium text-[color:var(--mode-identity)]",
+                focusRing,
+              )}
+            >
+              <CalendarPlus aria-hidden="true" className="size-icon-sm" strokeWidth={1.6} />
+              Add to calendar
+            </button>
+          ) : null}
+        </div>
       ) : null}
-      <p className="flex items-center gap-2 border-t border-[color:var(--border)] pt-3 text-xs text-[color:var(--text-muted)]">
-        <Database aria-hidden="true" className="size-icon-xs shrink-0" />
+      <p className="flex items-start gap-2 border-t border-[color:var(--border)] pt-3 text-xs text-[color:var(--text-muted)]">
+        <Database aria-hidden="true" className="mt-px size-icon-xs shrink-0" strokeWidth={1.6} />
         <span className="min-w-0 flex-1">{answer.source}</span>
       </p>
     </section>

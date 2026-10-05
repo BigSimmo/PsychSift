@@ -1,7 +1,7 @@
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { searchOnCallEntries } from "@/lib/on-call/entry-search";
 import type { WorkItem, WorkSearchArea } from "@/lib/work-search/model";
-import { alternativeMatches, workSearchTerms, type TermAlternative } from "@/lib/work-search/terms";
+import { alternativeMatches, withinOneEdit, workSearchTerms, type TermAlternative } from "@/lib/work-search/terms";
 
 /** 0 title, 1 tag or detail line, 2 other text: the same tiers On Call's own search uses. */
 export type WorkSearchRank = 0 | 1 | 2;
@@ -69,9 +69,12 @@ function dateOrder(a: WorkItem, b: WorkItem, today: string): number {
 export function searchWork(
   input: { readonly items: readonly WorkItem[]; readonly entries: readonly WorkSearchEntry[] },
   query: string,
-  options: { readonly currentArea: WorkSearchArea | null; readonly today: string },
+  options: { readonly currentArea: WorkSearchArea | null; readonly today: string; readonly exact?: boolean },
 ): WorkSearchHit[] {
-  const terms = workSearchTerms(query);
+  // "Search for … exactly" turns off the one-letter-out matching.
+  const terms = workSearchTerms(query).map((alternatives) =>
+    options.exact ? alternatives.map((alternative) => ({ ...alternative, fuzzy: false })) : alternatives,
+  );
   if (terms.length === 0) return [];
 
   const best = new Map<string, WorkSearchHit>();
@@ -90,6 +93,7 @@ export function searchWork(
     if (rank !== null) keep(item, rank);
   }
   const itemByEntry = new Map(input.entries.map(({ entry, item }) => [entry, item]));
+  if (options.exact) return finish(best, options);
   for (const result of searchOnCallEntries(
     input.entries.map(({ entry }) => entry),
     query,
@@ -98,6 +102,13 @@ export function searchWork(
     if (item) keep(item, Math.min(result.rank, 2) as WorkSearchRank);
   }
 
+  return finish(best, options);
+}
+
+function finish(
+  best: ReadonlyMap<string, WorkSearchHit>,
+  options: { readonly currentArea: WorkSearchArea | null; readonly today: string },
+): WorkSearchHit[] {
   return [...best.values()]
     .sort(
       (a, b) =>
@@ -107,6 +118,70 @@ export function searchWork(
         a.item.title.localeCompare(b.item.title),
     )
     .slice(0, WORK_SEARCH_RESULT_LIMIT);
+}
+
+/**
+ * The word a typo was read as, for "Showing matches for journal": set when a
+ * typed word matched nothing as typed but matched a word one letter out.
+ */
+export function workSearchCorrection(
+  items: readonly WorkItem[],
+  query: string,
+): { readonly typed: string; readonly read: string } | null {
+  for (const alternatives of workSearchTerms(query)) {
+    const fuzzy = alternatives.find((alternative) => alternative.fuzzy);
+    if (!fuzzy) continue;
+    const exact = alternatives.map((alternative) => ({ ...alternative, fuzzy: false }));
+    if (
+      items.some((item) =>
+        tiersOf(item).some((fields) => fields.some((field) => exact.some((alt) => alternativeMatches(field, alt)))),
+      )
+    )
+      continue;
+    for (const item of items) {
+      for (const fields of tiersOf(item)) {
+        for (const field of fields) {
+          const word = field
+            .split(/[^\p{L}\p{N}]+/u)
+            .find((candidate) => candidate.length >= 4 && withinOneEdit(candidate, fuzzy.text));
+          if (word) return { typed: fuzzy.text, read: word };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * A weekly session shows once: the soonest match of each Teaching title, with
+ * "+2 more" added to its detail line, so a series cannot fill the list.
+ */
+export function collapseSeries(hits: readonly WorkSearchHit[]): WorkSearchHit[] {
+  const firstOf = new Map<string, number>();
+  const extra = new Map<string, number>();
+  const kept: WorkSearchHit[] = [];
+  for (const hit of hits) {
+    if (hit.item.kind !== "session") {
+      kept.push(hit);
+      continue;
+    }
+    const key = hit.item.title.trim().toLowerCase();
+    if (firstOf.has(key)) {
+      extra.set(key, (extra.get(key) ?? 0) + 1);
+      continue;
+    }
+    firstOf.set(key, kept.length);
+    kept.push(hit);
+  }
+  for (const [key, count] of extra) {
+    const index = firstOf.get(key) as number;
+    const { item } = kept[index] as WorkSearchHit;
+    kept[index] = {
+      ...(kept[index] as WorkSearchHit),
+      item: { ...item, detail: [item.detail, `+${count} more`].filter(Boolean).join(" · ") },
+    };
+  }
+  return kept;
 }
 
 /** How many hits each area has, for the chip counts. */

@@ -129,7 +129,7 @@ const items = [...shifts, ...leave, ...sessions, ...cpd];
 describe("work search items", () => {
   it("maps each area's records with Perth dates and the page they open on", () => {
     expect(shifts[0]).toMatchObject({ area: "roster", date: "2026-10-12", href: "/roster/shifts" });
-    expect(shifts[0]?.detail).toBe("Mon 12 Oct · 21:00 to 08:30 · Ward 4");
+    expect(shifts[0]?.detail).toBe("Mon 12 Oct · 21:00 to 08:30 Tue · Ward 4");
     expect(shifts[2]?.title).toBe("Day shift");
     expect(leave[0]).toMatchObject({ title: "Annual leave", date: "2026-12-21" });
     expect(sessions).toHaveLength(1);

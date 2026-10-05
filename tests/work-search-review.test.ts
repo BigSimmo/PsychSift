@@ -10,7 +10,7 @@ import {
   shiftWorkItems,
 } from "@/lib/work-search/items";
 import { workSearchAreas, type WorkAreaRead } from "@/lib/work-search/model";
-import { searchWork, workComingUp } from "@/lib/work-search/search";
+import { collapseSeries, searchWork, workComingUp, workSearchCorrection } from "@/lib/work-search/search";
 import { looksLikePatientDetails } from "@/lib/work-search/signals";
 import { singularOf, workSearchTerms } from "@/lib/work-search/terms";
 
@@ -120,7 +120,7 @@ describe("next shift is never one already over, and one under way says so", () =
 
   it("shows a night in progress as on now, with what comes after", () => {
     const answer = answerWorkQuestion("when am I next on nights?", input("2026-10-06T02:00"));
-    expect(answer).toMatchObject({ label: "On now", headline: "Until 07:30", sub: "Then Tue 6 Oct, 21:00" });
+    expect(answer).toMatchObject({ label: "On now", headline: "Until 07:30", sub: "Ward 4 · then Tue 6 Oct, 21:00" });
   });
 
   it("never counts a leave row in the roster as the next shift", () => {
@@ -156,7 +156,7 @@ describe("date phrases", () => {
   it("answers am I working on a day, including when on leave", () => {
     expect(answerWorkQuestion("am I working tomorrow?", input("2026-10-05T09:00"))).toMatchObject({
       label: "Tuesday 6 October",
-      headline: "21:00 to 07:30",
+      headline: "21:00 to 07:30 Wed",
     });
     expect(answerWorkQuestion("am I working on 12 oct", input("2026-10-05T09:00"))?.headline).toBe("Not rostered");
   });
@@ -164,7 +164,7 @@ describe("date phrases", () => {
   it("counts nights and free days in a range", () => {
     expect(answerWorkQuestion("how many nights this week", input("2026-10-05T09:00"))?.headline).toBe("3 nights");
     const free = answerWorkQuestion("free days this week", input("2026-10-05T09:00"));
-    expect(free?.headline).toBe("4 days with no shift");
+    expect(free?.headline).toBe("4 days with no rostered shift");
   });
 
   it("uses next week's window for what's due next week", () => {
@@ -226,5 +226,87 @@ describe("patient details", () => {
     for (const text of ["0892241000", "9224 1000", "12/10/2026", "13 11 14", "leave form", "2026-10-12"]) {
       expect(looksLikePatientDetails(text, 2026), text).toBe(false);
     }
+  });
+});
+
+describe("v12 build: honest partial answers, week strip, calendar, series and typos", () => {
+  it("answers what's due from Admin when Teaching failed, and says at least", () => {
+    const areas = ready.map((read) => (read.area === "teaching" ? { ...read, status: "failed" as const } : read));
+    const answer = answerWorkQuestion("what's due this month?", input("2026-10-05T09:00", { areas }));
+    expect(answer?.unavailable).toBeUndefined();
+    expect(answer?.headline).toBe("1 overdue, at least 1 coming up");
+    expect(answer?.missing).toBe("Your talks");
+    expect(answer?.source).toBe("From your Admin records. Teaching couldn't be checked.");
+  });
+
+  it("still refuses to answer what's due while Admin is unread", () => {
+    const areas = ready.map((read) => (read.area === "my-work" ? { ...read, status: "failed" as const } : read));
+    expect(
+      answerWorkQuestion("what's due this month?", input("2026-10-05T09:00", { areas }))?.unavailable,
+    ).toBeTruthy();
+  });
+
+  it("names the undated renewals in the footnote, never as nothing due", () => {
+    const answer = answerWorkQuestion("what's due this month?", input("2026-10-05T09:00"));
+    expect(answer?.footnote).toBe("Dates are shown as you recorded them.");
+    expect(answer?.headline).toBe("1 overdue, 1 coming up");
+  });
+
+  it("draws a Monday-to-Sunday strip for free days this week", () => {
+    const answer = answerWorkQuestion("free days this week", input("2026-10-05T09:00"));
+    expect(answer?.label).toBe("Days off this week");
+    expect(answer?.week?.map((day) => day.date)).toEqual([
+      "2026-10-05",
+      "2026-10-06",
+      "2026-10-07",
+      "2026-10-08",
+      "2026-10-09",
+      "2026-10-10",
+      "2026-10-11",
+    ]);
+    expect(answer?.week?.filter((day) => day.free).map((day) => day.date)).toEqual([
+      "2026-10-07",
+      "2026-10-09",
+      "2026-10-10",
+      "2026-10-11",
+    ]);
+    expect(answer?.sub).toBe("Wed 7, Fri 9, Sat 10, Sun 11");
+  });
+
+  it("offers Add to calendar for an upcoming shift, never for one under way", () => {
+    expect(answerWorkQuestion("when am I next on nights?", input("2026-10-05T09:00"))?.calendar?.id).toBe(
+      "roster:shift:n1",
+    );
+    expect(answerWorkQuestion("when am I next on nights?", input("2026-10-05T23:00"))?.calendar).toBeUndefined();
+  });
+
+  it("names the day an overnight shift ends on", () => {
+    expect(shifts.find((item) => item.id === "roster:shift:n1")?.detail).toBe("Mon 5 Oct · 21:00 to 07:30 Tue");
+  });
+
+  it("shows a weekly session once with how many more there are", () => {
+    const weekly = sessionWorkItems(
+      ["o1", "o2", "o3"].map((id, index) => ({
+        occurrenceId: id,
+        serviceId: "t",
+        title: "Journal club",
+        startsAt: `2026-10-${String(7 + index * 7).padStart(2, "0")}T04:30:00.000Z`,
+        endsAt: `2026-10-${String(7 + index * 7).padStart(2, "0")}T05:30:00.000Z`,
+        venue: "Room 2",
+        hasJoinLink: false,
+        status: "scheduled" as const,
+        isPresenter: false,
+        source: "teaching" as const,
+      })),
+    );
+    const hits = collapseSeries(searchWork({ items: weekly, entries: [] }, "journal", { currentArea: null, today }));
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.item.detail).toMatch(/· \+2 more$/);
+  });
+
+  it("says which word a typo was read as, and can search exactly", () => {
+    expect(workSearchCorrection(items, "jornal")).toEqual({ typed: "jornal", read: "journal" });
+    expect(workSearchCorrection(items, "journal")).toBeNull();
+    expect(searchWork({ items, entries: [] }, "jornal", { currentArea: null, today, exact: true })).toHaveLength(0);
   });
 });
