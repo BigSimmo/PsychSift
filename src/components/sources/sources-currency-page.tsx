@@ -91,13 +91,14 @@ function SectionTitle({ id, title, count }: { id: string; title: string; count?:
 function CurrencyRing({ check }: { check: SourceCurrencyCheck }) {
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
-  let offset = 0;
-  const arcs = SOURCE_CURRENCY_STATUS_ORDER.filter((status) => check.counts[status] > 0).map((status) => {
-    const length = check.total ? (check.counts[status] / check.total) * circumference : 0;
-    const arc = { status, length, offset };
-    offset += length;
-    return arc;
-  });
+  const present = SOURCE_CURRENCY_STATUS_ORDER.filter((status) => check.counts[status] > 0);
+  const lengthOf = (status: SourceCurrencyStatus) =>
+    check.total ? (check.counts[status] / check.total) * circumference : 0;
+  const arcs = present.map((status, index) => ({
+    status,
+    length: lengthOf(status),
+    offset: present.slice(0, index).reduce((sum, previous) => sum + lengthOf(previous), 0),
+  }));
   return (
     <div className="relative size-28 shrink-0">
       <svg viewBox="0 0 100 100" className="size-28 -rotate-90" aria-hidden="true" focusable="false">
@@ -161,7 +162,7 @@ function SourceRow({ entry, children }: { entry: ClinicalSourceClientEntry; chil
         className="flex min-h-12 items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none"
       >
         <span className="grid min-w-0 flex-1 gap-0.5">
-          <span className="truncate text-sm font-semibold text-[color:var(--primary)]">{entry.title}</span>
+          <span className="line-clamp-2 text-sm font-semibold text-[color:var(--primary)]">{entry.title}</span>
           {entry.publisher ? (
             <span className="truncate text-2xs font-medium text-[color:var(--text-muted)]">{entry.publisher}</span>
           ) : null}
