@@ -18,13 +18,9 @@ export function CmePageTabs() {
 
   let label: string;
   let tabs: CmeTab[];
-  if (pathname === "/cme" || pathname === "/cme/check") {
-    label = "Year";
-    tabs = [
-      { label: "Overview", href: withYear("/cme"), active: pathname === "/cme" },
-      { label: "Year check", href: withYear("/cme/check"), active: pathname === "/cme/check" },
-    ];
-  } else if (pathname === "/cme/log" || pathname === "/cme/routines") {
+  // Year has no inner row: the mode header's Year tab covers both pages, and the
+  // year check is reached from the Year page's own "Year check" link.
+  if (pathname === "/cme/log" || pathname === "/cme/routines") {
     label = "Log";
     const finish = pathname === "/cme/log" && searchParams.get("tab") === "finish";
     tabs = [
