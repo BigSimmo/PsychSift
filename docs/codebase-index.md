@@ -593,7 +593,7 @@ an approved service transfer; new recording resources remain deferred.
 The term tracker and exam prep (`/teaching/term`, opened from Logbook's Term card, and
 `/teaching/exam-prep`, opened from Resources and from Term) keep the doctor's own records on the
 device only: `term-tracker.ts` holds the model, validation, date arithmetic and the made-up
-signed-out sample, and `use-term-tracker-store.ts` reads and writes two account-scoped localStorage
+signed-out sample, and `term-tracker-store.ts` reads and writes two account-scoped localStorage
 keys that the auth provider clears at sign-out. No API, no table. Term assessments are signed in
 the CLA ePortfolio, which the page links to; EPA targets apply only once the doctor confirms them.
 

@@ -24,7 +24,7 @@ import {
   TermRing,
 } from "@/components/teaching/teaching-term-kit";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
-import { useTermTrackerStore } from "@/components/teaching/use-term-tracker-store";
+import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/choice";
 import { TextField } from "@/components/ui/text-field";
@@ -220,7 +220,7 @@ function TermSummary({
   const week = termWeekOf(term, today);
   const next = nextMilestone(term);
   const title = [term.number ? `Term ${term.number}` : null, term.unit].filter(Boolean).join(" · ");
-  let weekLine = `Week ${week} of ${total}`;
+  let weekLine = `Week ${week} of ${total}`;
   if (week === 0) weekLine = `Starts ${weekdayDayMonth(term.startsOn)}`;
   if (week > total) weekLine = "Term finished";
   return (
@@ -246,7 +246,7 @@ function TermSummary({
         ) : null}
       </div>
       <ol
-        aria-label={`Weeks of the term, week ${Math.min(Math.max(week, 0), total)} of ${total}`}
+        aria-label={`Weeks of the term, week ${Math.min(Math.max(week, 0), total)} of ${total}`}
         className="flex gap-1"
       >
         {Array.from({ length: total }, (_, index) => {
@@ -454,7 +454,7 @@ function Epas({
         <TermRing
           value={summary.year}
           total={targets?.perYear ?? null}
-          label={targets ? `${summary.year} of ${targets.perYear} EPAs this year` : `${summary.year} EPAs this year`}
+          label={targets ? `${summary.year} of ${targets.perYear} EPAs this year` : `${summary.year} EPAs this year`}
         >
           <span className={cn(modeNumberText, "text-2xl text-[color:var(--text-heading)]")}>{summary.year}</span>
           {targets ? <span className={cn("text-xs", textMuted)}>of {targets.perYear}</span> : null}
@@ -768,7 +768,7 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
           )}
         >
           <span className="grid min-w-0 flex-1 gap-0.5 py-1">
-            <span className={cn(modeNameText, "text-base-minus text-[color:var(--text-heading)]")}>Exam prep</span>
+            <span className={cn(modeNameText, "text-base-minus text-[color:var(--text-heading)]")}>My exam prep</span>
             <span className={modeSecondaryText}>Countdown, study days and topics</span>
           </span>
           <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />

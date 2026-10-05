@@ -28,7 +28,7 @@ import {
   TermRemoveButton,
 } from "@/components/teaching/teaching-term-kit";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
-import { useExamPrepStore } from "@/components/teaching/use-term-tracker-store";
+import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/chip";
 import { TextField } from "@/components/ui/text-field";
@@ -192,11 +192,11 @@ const heatClass: Record<HeatCell["level"], string> = {
 function StudyHeatmap({ weeks, today }: { weeks: HeatCell[][]; today: string }) {
   return (
     <div className="grid gap-1.5">
-      <div role="img" aria-label="Study by day, last 12 weeks" className="grid grid-flow-col grid-rows-7 gap-1">
+      <div role="img" aria-label="Study by day, last 12 weeks" className="grid grid-flow-col grid-rows-7 gap-1">
         {weeks.flat().map((cell) => (
           <span
             key={cell.date}
-            title={`${weekdayDayMonth(cell.date)}: ${cell.minutes} min`}
+            title={`${weekdayDayMonth(cell.date)}: ${cell.minutes} min`}
             className={cn(
               "aspect-square w-full rounded-sm",
               cell.future ? "bg-transparent" : heatClass[cell.level],
@@ -237,7 +237,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
   if (streak === 1) streakLine = "1 day in a row.";
   if (streak > 1) streakLine = `${streak} days in a row.`;
   return (
-    <TeachingModule title="Last 12 weeks" testId="teaching-exam-study">
+    <TeachingModule title="Last 12 weeks" testId="teaching-exam-study">
       <div className="grid gap-3 p-3">
         <div className="flex items-baseline justify-between gap-3">
           <p className="flex items-baseline gap-1.5">
@@ -251,7 +251,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
         <StudyHeatmap weeks={weeks} today={today} />
         <fieldset className="grid gap-2">
           <legend className={cn(modeNameText, "mb-1 text-sm text-[color:var(--text-heading)]")}>
-            Log study for today{todayMinutes ? ` · ${todayMinutes} min so far` : ""}
+            Log study for today{todayMinutes ? ` · ${todayMinutes} min so far` : ""}
           </legend>
           <div className="flex flex-wrap gap-2">
             {STUDY_STEPS.map((minutes) => (

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /*
  * Teaching's term tracker and exam prep: the doctor's own checklist for a training term and an exam
- * year. Everything here is kept on the doctor's device (see `use-term-tracker-store.ts`), never sent to
+ * year. Everything here is kept on the doctor's device (see `term-tracker-store.ts`), never sent to
  * a server, and holds no patient detail: the screens say so beside every free-text field.
  *
  * The assessments themselves are signed in the Clinical Learning Australia (CLA) ePortfolio, which

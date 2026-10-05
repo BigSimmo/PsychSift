@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { modeFeaturedSurface, modePressable, modeRaisedCard } from "@/components/mode-kit/recipes";
 import { modeNameText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
-import { useTermTrackerStore } from "@/components/teaching/use-term-tracker-store";
+import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
 import { cn } from "@/components/ui-primitives";
 import {
   currentTerm,
@@ -58,7 +58,7 @@ export function TeachingTermCard({ demoMode, today }: { demoMode: boolean; today
   const epas = epaSummary(state, term.id, today);
   const title = [
     term.number ? `Term ${term.number}` : null,
-    week >= 1 && week <= total ? `week ${week} of ${total}` : null,
+    week >= 1 && week <= total ? `week ${week} of ${total}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -102,7 +102,7 @@ export function TeachingTermCard({ demoMode, today }: { demoMode: boolean; today
         <span className={modeSecondaryText}>
           EPAs this year{" "}
           <span className={cn(modeNumberText, "text-[color:var(--text-heading)]")}>
-            {state.targets ? `${epas.year} of ${state.targets.perYear}` : epas.year}
+            {state.targets ? `${epas.year} of ${state.targets.perYear}` : epas.year}
           </span>
         </span>
       </span>
