@@ -230,7 +230,7 @@ describe("MyDayWeekPage", () => {
     const monday = screen.getByTestId("my-day-week-day-2026-10-05");
     const row = within(monday).getByTestId("my-day-week-session-s1");
     expect(row.textContent).toContain("Session s1");
-    expect(row.textContent).toContain("Teaching · 11:00–12:00 · Room 2");
+    expect(row.textContent).toContain("11:00–12:00 · Teaching · Room 2");
     expect(row.getAttribute("href")).toBe("/teaching/session/s1");
   });
 

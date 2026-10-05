@@ -189,6 +189,40 @@ describe("MyDayDashboard cards", () => {
     expect(screen.getByTestId("my-day-week").querySelector("[data-kind]")).toBeNull();
   });
 
+  it("shows the next teaching session as a panel inside the hero, with no separate card", () => {
+    render(
+      <MyDayDashboard
+        {...props({
+          sources: {
+            ...EMPTY_SOURCES,
+            teaching: {
+              status: "ready",
+              sessions: [],
+              ahead: [
+                session({
+                  occurrenceId: "occ-2",
+                  title: "Case presentation",
+                  startsAt: "2026-10-06T04:30:00Z", // 12:30 Perth
+                  endsAt: "2026-10-06T05:30:00Z",
+                }),
+              ],
+              sample: false,
+            },
+          },
+        })}
+      />,
+    );
+    const hero = screen.getByTestId("my-day-card-up-next");
+    const panel = within(hero).getByTestId("my-day-next-up");
+    expect(panel.textContent).toContain("Next up · Tue 6 Oct, 12:30 to 13:30");
+    expect(panel.textContent).toContain("Case presentation");
+    expect(within(panel).getByTestId("my-day-next-up-open").getAttribute("href")).toBe(
+      "/teaching/session/occ-2?from=my-day",
+    );
+    // Only the hero draws it: the old standalone card is gone.
+    expect(screen.getAllByTestId("my-day-next-up")).toHaveLength(1);
+  });
+
   // Design review 2026-10-03, items 6, 7, 9 and 11: the Shift ring lives in the
   // Up next hero (so the same shift is never shown twice), and the week reads
   // as filled day tiles with "OC" for on call and a faded "off" for rest days.
@@ -295,6 +329,13 @@ describe("MyDayDashboard cards", () => {
       "Medical registration: recorded date, Tue 24 Nov",
     ]);
     expect(dots[1]!.getAttribute("href")).toBe("/admin/renewals?item=e1&from=my-day");
+    // The nearest renewal leads, with its own action to the same place.
+    const lead = screen.getByTestId("my-day-runway-lead");
+    expect(lead.textContent).toContain("Life support course");
+    expect(lead.textContent).toContain("Date passed · 21 Sep");
+    expect(screen.getByTestId("my-day-runway-lead-action").getAttribute("href")).toBe(
+      "/admin/renewals?item=e0&from=my-day",
+    );
     // Amber marks only a date that has passed.
     expect(runway.querySelectorAll("[data-passed]")).toHaveLength(1);
   });
@@ -514,11 +555,11 @@ describe("Work cards", () => {
       />,
     );
     const card = screen.getByTestId("my-day-card-calls");
-    expect(card.textContent).toContain("2calls logged");
-    expect(card.textContent).toContain("1 still open");
+    expect(card.textContent).toContain("2calls");
+    expect(card.textContent).toContain("1open");
     expect(card.textContent).toContain("On this device");
     // Tonight's on call ends 08:30 Sunday: that is the handover.
-    expect(card.textContent).toContain("Handover08:30 Sun");
+    expect(card.textContent).toMatch(/08:30.*handover/);
     expect(screen.getByTestId("my-day-calls-log").getAttribute("href")).toBe(
       "/on-call/call?from=my-day#on-call-call-log-heading",
     );

@@ -14,6 +14,7 @@ import {
   CpdRingsCard,
   FlagCard,
   HeroCard,
+  type HeroNextTeaching,
   MODE_CHIP,
   NeedsYouCard,
   QuickActionsCard,
@@ -78,7 +79,7 @@ import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import type { CmeEntry } from "@/lib/cme/types";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import type { ShiftKind } from "@/lib/roster/shift-kind";
-import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { summariseToday } from "@/lib/roster/today";
 import type { RosterDisplayShift } from "@/lib/roster/team/team-view";
 import type { SessionSummary } from "@/lib/teaching/model";
@@ -104,7 +105,6 @@ const NO_ENTRIES: readonly OnCallEntry[] = [];
 const NO_CPD_ENTRIES: readonly CmeEntry[] = [];
 
 // The cards that moved here from CPD, Admin and Teaching load only when drawn.
-const MyDayNextUpCard = dynamic(() => import("@/components/my-day/my-day-moved-cards").then((m) => m.MyDayNextUpCard));
 const MyDayCpdHoursCard = dynamic(() =>
   import("@/components/my-day/my-day-moved-cards").then((m) => m.MyDayCpdHoursCard),
 );
@@ -383,6 +383,8 @@ export function MyDayDashboard({
           key: help.key,
           title: help.title,
           display: help.phone ? displayPhoneNumber(help.phone, "own-list") : (help.detail ?? ""),
+          // The detail is the subtitle only when the number is shown; otherwise it already is the display.
+          detail: help.phone ? (help.detail ?? null) : null,
           tel: onCallTelHref(help.phone ?? undefined) ?? null,
           href: `${ADMIN_PAGE_HREFS.help}#${onCallEntryAnchorId(help.entry?.id ?? help.key)}`,
         })),
@@ -413,10 +415,24 @@ export function MyDayDashboard({
   const allSessions = useMemo(() => [...teachingSessions, ...ahead], [teachingSessions, ahead]);
   const nextSession = useMemo(() => nextTeachingSession(allSessions, now), [allSessions, now]);
   const nextUp = nextSession && upNext?.event.id !== `teaching:${nextSession.occurrenceId}` ? nextSession : null;
+  // The next session lives in the hero as a glass panel; hiding "next-up" hides the panel.
+  const heroNext: HeroNextTeaching | null = useMemo(() => {
+    if (!nextUp || device.hidden.has("next-up")) return null;
+    const date = perthDateOf(nextUp.startsAt);
+    const times = nextUp.allDay ? "" : `, ${perthTimeOf(nextUp.startsAt)} to ${perthTimeOf(nextUp.endsAt)}`;
+    const href = sessionHref(nextUp);
+    return {
+      key: nextUp.occurrenceId,
+      title: nextUp.title,
+      when: `${formatPerthDay(date)}${times}`,
+      href: href ?? "/teaching/week",
+      actionLabel: href ? "Details" : "See in Week",
+    };
+  }, [nextUp, device.hidden]);
   const renewNext = useMemo(() => selectRenewNext(adminEntries, undefined, now), [adminEntries, now]);
 
   const visible: Record<MyDayCardId, boolean> = {
-    "up-next": upNext !== null || leadShift !== null,
+    "up-next": upNext !== null || leadShift !== null || heroNext !== null,
     "next-up": nextUp !== null,
     flag: flagItems.length > 0,
     "quick-actions": true,
@@ -460,14 +476,14 @@ export function MyDayDashboard({
         running={shiftRunning}
         upNext={upNext}
         ribbon={ribbon}
+        nextTeaching={heroNext}
         now={now}
         onHide={onHide("up-next")}
+        onHideNextTeaching={onHide("next-up")}
       />
     ),
-    "next-up": () =>
-      nextUp ? (
-        <MyDayNextUpCard session={nextUp} sessions={allSessions} now={now} today={today} onHide={onHide("next-up")} />
-      ) : null,
+    // Drawn inside the hero (see `heroNext`), so the card itself draws nothing.
+    "next-up": () => null,
     flag: () => <FlagCard items={flagItems} onHide={onHide("flag")} />,
     "quick-actions": () => <QuickActionsCard onHide={onHide("quick-actions")} />,
     "this-week": () => (
@@ -503,17 +519,17 @@ export function MyDayDashboard({
         loggedHours={cpd.loggedHours}
         targetHours={cpd.targetHours}
         byCategory={cpd.byCategory}
-        categoryTargets={cpd.categoryTargets}
         onHide={onHide("cpd")}
       />
     ),
-    renewals: () => <RenewalsRunwayCard points={runway} onHide={onHide("renewals")} />,
+    renewals: () => <RenewalsRunwayCard points={runway} today={today} onHide={onHide("renewals")} />,
     calls: () => (
       <CallsCard
         total={callTotal}
         open={callOpen}
         clearsAt={sample ? null : (callLog?.expiresAt ?? null)}
         handoverAt={handoverAt}
+        shiftStartsAt={handoverAt && leadShift ? leadShift.startsAt : null}
         onHide={onHide("calls")}
       />
     ),

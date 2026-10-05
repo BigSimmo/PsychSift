@@ -45,11 +45,13 @@ function MovedCard({
   title,
   testId,
   onHide,
+  className,
   children,
 }: {
   readonly title: string;
   readonly testId: string;
   readonly onHide?: () => void;
+  readonly className?: string;
   readonly children: ReactNode;
 }) {
   const editing = onHide !== undefined;
@@ -58,6 +60,7 @@ function MovedCard({
       data-testid={testId}
       className={cn(
         "relative min-w-0 rounded-xl",
+        className,
         editing && "outline-2 -outline-offset-2 outline-dashed outline-[color:var(--dash-line-strong)]",
       )}
     >
@@ -118,6 +121,20 @@ export function MyDayNextUpCard({
   );
 }
 
+/**
+ * CPD's hours panel is dark on CPD's own pages, but My Day has no dark cards:
+ * here the panel's colour tokens are pointed at the dashboard's normal card
+ * surface, so it reads as a light card in light mode and the usual dark card
+ * in dark mode. Its figures and bars are unchanged.
+ */
+const LIGHT_SUMMARY = cn(
+  "[--surface-summary:var(--dash-card)] [--surface-summary-ink:var(--dash-ink)]",
+  "[--surface-summary-muted:var(--dash-muted)] [--surface-summary-line:var(--dash-line)]",
+  "[--cme-hero-fill:var(--dash-blue-tint-2)] [--clinical-accent:var(--dash-blue)]",
+  "[&_[data-testid=cme-hero-summary]]:rounded-2xl [&_[data-testid=cme-hero-summary]]:shadow-none",
+  "[&_[data-testid=cme-hero-summary]>button]:rounded-2xl",
+);
+
 export function MyDayCpdHoursCard({
   year,
   today,
@@ -137,7 +154,7 @@ export function MyDayCpdHoursCard({
 }) {
   const router = useRouter();
   return (
-    <MovedCard title="CPD hours" testId="my-day-cpd-hours" onHide={onHide}>
+    <MovedCard title="CPD hours" testId="my-day-cpd-hours" onHide={onHide} className={LIGHT_SUMMARY}>
       <CmeHeroSummary
         year={year}
         today={today}

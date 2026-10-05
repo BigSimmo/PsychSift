@@ -1,11 +1,12 @@
 "use client";
 
-import { Phone, Plus } from "lucide-react";
+import { ChevronRight, Phone, Plus } from "lucide-react";
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { DashCard } from "@/components/dashboard-kit/dash-card";
+import { ProgressRing } from "@/components/dashboard-kit/rings";
 import { DashAvatar, DashTag } from "@/components/dashboard-kit/icon-chip";
 import { dashFigure, dashLink, dashMuted, dashTile } from "@/components/dashboard-kit/recipes";
 import { DashSegmented } from "@/components/dashboard-kit/segmented";
@@ -36,16 +37,25 @@ function hoursText(value: number): string {
 
 // ================================================================ Work
 
+/** A minute counter for a live "time left"; null on the server and the first paint, so nothing mismatches. */
+function subscribeMinute(onChange: () => void): () => void {
+  const timer = window.setInterval(onChange, 30_000);
+  return () => window.clearInterval(timer);
+}
+const minuteNow = (): number | null => Math.floor(Date.now() / 60_000);
+const serverMinute = (): number | null => null;
+
 /**
  * Tonight's calls: counts only. The notes themselves can hold patient
  * details, so they stay on the Call page; this card says how many there are
- * and opens it.
+ * and opens it. It carries On Call's teal, as the mode's own pages do.
  */
 export function CallsCard({
   total,
   open,
   clearsAt,
   handoverAt,
+  shiftStartsAt = null,
   onHide,
 }: {
   readonly total: number;
@@ -54,56 +64,127 @@ export function CallsCard({
   readonly clearsAt: number | null;
   /** The running on-call shift's end, the handover time (ISO), when there is one. */
   readonly handoverAt: string | null;
+  /** That shift's start (ISO), when known: it draws the ring and the progress line. */
+  readonly shiftStartsAt?: string | null;
   readonly onHide?: () => void;
 }) {
+  const minute = useSyncExternalStore(subscribeMinute, minuteNow, serverMinute);
+  const nowMs = minute === null ? null : minute * 60_000;
+  const endMs = handoverAt ? Date.parse(handoverAt) : null;
+  const startMs = shiftStartsAt ? Date.parse(shiftStartsAt) : null;
+  const leftMs = nowMs !== null && endMs !== null ? Math.max(0, endMs - nowMs) : null;
+  const leftMinutes = leftMs === null ? null : Math.ceil(leftMs / 60_000);
+  const span = startMs !== null && endMs !== null && endMs > startMs ? endMs - startMs : null;
+  const elapsed = span !== null && nowMs !== null && startMs !== null ? (nowMs - startMs) / span : null;
+  const clamped = elapsed === null ? null : Math.min(1, Math.max(0, elapsed));
+  const handoverDayNote =
+    handoverAt && nowMs !== null && perthDateOf(handoverAt) !== perthDateOf(new Date(nowMs))
+      ? ` ${formatPerthDay(perthDateOf(handoverAt)).split(" ")[0] ?? ""}`
+      : "";
+  const stat = "grid min-w-0 content-center justify-items-start gap-0.5 px-3 first:pl-0";
   return (
-    <DashCard
-      title="Tonight's calls"
-      onHide={onHide}
-      testId="my-day-card-calls"
-      aside={<DashTag tint="green">On this device</DashTag>}
-    >
-      <div className="flex items-end justify-between gap-3">
-        <p className="flex items-baseline gap-1.5 text-[color:var(--dash-ink)]">
-          <span className={cn(dashFigure, "text-3xl-minus")}>{total}</span>
-          <span className="text-sm text-[color:var(--dash-muted)]">{`${total === 1 ? "call" : "calls"} logged`}</span>
-        </p>
-        {handoverAt ? (
-          <p className="grid text-right text-sm leading-tight">
-            <span className="text-[color:var(--dash-muted)]">Handover</span>
-            <span className="font-dash-figure nums text-[color:var(--dash-ink)]">
-              {`${perthTimeOf(handoverAt)} ${formatPerthDay(perthDateOf(handoverAt)).split(" ")[0] ?? ""}`}
-            </span>
-          </p>
+    <div data-mode-identity="on-call" className="contents">
+      <DashCard
+        title="Tonight's calls"
+        onHide={onHide}
+        testId="my-day-card-calls"
+        className="gap-3 border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)]"
+        aside={
+          <span className="inline-flex items-center rounded-full bg-[color:var(--dash-green-tint)] px-1.5 py-px font-dash-title text-3xs normal-case tracking-normal text-[color:var(--dash-green)] forced-colors:border">
+            On this device
+          </span>
+        }
+      >
+        <div className="flex items-center gap-3">
+          {leftMinutes !== null ? (
+            <ProgressRing
+              fraction={clamped ?? 0}
+              size={88}
+              strokeWidth={7}
+              stroke="stroke-[color:var(--mode-identity)]"
+              track="stroke-[color:var(--mode-identity-border)]"
+              testId="my-day-calls-ring"
+            >
+              <span className={cn(dashFigure, "text-lg text-[color:var(--dash-ink)]")}>
+                {`${Math.floor(leftMinutes / 60)}:${String(leftMinutes % 60).padStart(2, "0")}`}
+              </span>
+              <span className="mt-0.5 text-3xs font-dash-title text-[color:var(--dash-muted)]">left</span>
+            </ProgressRing>
+          ) : null}
+          <dl className="m-0 flex min-w-0 flex-1 items-stretch divide-x divide-[color:var(--mode-identity-border)]">
+            <div className={stat}>
+              <dd className={cn(dashFigure, "m-0 text-2xl text-[color:var(--dash-ink)]")}>{total}</dd>
+              <dt className="text-xs text-[color:var(--dash-muted)]">{total === 1 ? "call" : "calls"}</dt>
+            </div>
+            <div className={stat}>
+              <dd className={cn(dashFigure, "m-0 text-2xl text-[color:var(--dash-ink)]")}>{open}</dd>
+              <dt className="text-xs text-[color:var(--dash-muted)]">open</dt>
+            </div>
+            {handoverAt ? (
+              <div className={stat}>
+                <dd className={cn(dashFigure, "m-0 text-2xl text-[color:var(--dash-ink)]")}>
+                  {perthTimeOf(handoverAt)}
+                </dd>
+                <dt className="text-xs text-[color:var(--dash-muted)]">{`handover${handoverDayNote}`}</dt>
+              </div>
+            ) : null}
+          </dl>
+        </div>
+        {clamped !== null && startMs !== null && handoverAt && nowMs !== null ? (
+          <div aria-hidden="true" className="grid gap-1">
+            <svg viewBox="0 0 100 6" preserveAspectRatio="none" className="block h-2 w-full overflow-visible">
+              <rect
+                x="0"
+                y="1.5"
+                width="100"
+                height="3"
+                rx="1.5"
+                className="fill-[color:var(--mode-identity-border)]"
+              />
+              <rect
+                x="0"
+                y="1.5"
+                width={(clamped * 100).toFixed(2)}
+                height="3"
+                rx="1.5"
+                className="fill-[color:var(--mode-identity)] forced-colors:fill-[CanvasText]"
+              />
+            </svg>
+            <div className="flex justify-between text-3xs font-dash-title text-[color:var(--dash-muted)] nums">
+              <span>{perthTimeOf(new Date(startMs))}</span>
+              <span>{`now ${perthTimeOf(new Date(nowMs))}`}</span>
+              <span>{perthTimeOf(handoverAt)}</span>
+            </div>
+          </div>
         ) : null}
-      </div>
-      <p className={dashMuted}>
-        {`${open} still open${clearsAt ? ` · notes clear at ${perthTimeOf(new Date(clearsAt))}` : ""}. Notes stay on the Call page.`}
-      </p>
-      <div className="grid grid-cols-2 gap-2 pt-1">
-        <Link
-          href={withMyDayReturn("/on-call/call#on-call-call-log-heading")}
-          data-testid="my-day-calls-log"
-          className={cn(
-            focusRing,
-            "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-[color:var(--dash-ink)] px-3 font-dash-title text-base-minus text-[color:var(--dash-page)] no-underline forced-colors:border",
-          )}
-        >
-          <Plus aria-hidden="true" className="size-icon-md" />
-          Log a call
-        </Link>
-        <Link
-          href={withMyDayReturn("/on-call/call#on-call-handover-heading")}
-          data-testid="my-day-calls-handover"
-          className={cn(
-            focusRing,
-            "inline-flex min-h-12 items-center justify-center rounded-xl border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-3 font-dash-title text-base-minus text-[color:var(--dash-ink)] no-underline forced-colors:border",
-          )}
-        >
-          Handover
-        </Link>
-      </div>
-    </DashCard>
+        <p className={dashMuted}>
+          {`${clearsAt ? `Notes clear at ${perthTimeOf(new Date(clearsAt))}. ` : ""}Notes stay on the Call page.`}
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            href={withMyDayReturn("/on-call/call#on-call-call-log-heading")}
+            data-testid="my-day-calls-log"
+            className={cn(
+              focusRing,
+              "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-[color:var(--dash-ink)] px-3 font-dash-title text-base-minus text-[color:var(--dash-page)] no-underline forced-colors:border",
+            )}
+          >
+            <Plus aria-hidden="true" className="size-icon-md" />
+            Log a call
+          </Link>
+          <Link
+            href={withMyDayReturn("/on-call/call#on-call-handover-heading")}
+            data-testid="my-day-calls-handover"
+            className={cn(
+              focusRing,
+              "inline-flex min-h-12 items-center justify-center rounded-xl border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-3 font-dash-title text-base-minus text-[color:var(--dash-ink)] no-underline forced-colors:border",
+            )}
+          >
+            Handover
+          </Link>
+        </div>
+      </DashCard>
+    </div>
   );
 }
 
@@ -113,9 +194,11 @@ export interface PinnedNumber {
   readonly display: string;
   readonly tel: string | null;
   readonly href: string;
+  /** A small line under the name (a Help entry's detail), when there is one. */
+  readonly detail?: string | null;
 }
 
-/** The numbers the reader pinned on Admin's Help, two to a row. */
+/** The numbers the reader pinned on Admin's Help: one full-width row each, with a call button. */
 export function PinnedNumbersCard({
   numbers,
   onHide,
@@ -124,54 +207,61 @@ export function PinnedNumbersCard({
   readonly onHide?: () => void;
 }) {
   return (
-    <DashCard
-      title="Pinned numbers"
-      onHide={onHide}
-      testId="my-day-card-pinned-numbers"
-      aside={
-        <Link
-          href={withMyDayReturn("/admin/help")}
-          className={cn(focusRing, dashLink, "-my-3 inline-flex min-h-12 items-center rounded-md px-1")}
-        >
-          All numbers
-        </Link>
-      }
-    >
-      <ul role="list" className="grid grid-cols-2 gap-2">
-        {numbers.map((number) => (
-          <li key={number.key} className="min-w-0">
-            <a
-              href={number.tel ?? withMyDayReturn(number.href)}
-              aria-label={number.tel ? `Call ${number.title}, ${number.display}` : number.title}
-              className={cn(
-                focusRing,
-                dashTile,
-                "grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-2xl p-2.5 no-underline",
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className="grid size-9 place-items-center rounded-full bg-[color:var(--dash-green-tint)] text-[color:var(--dash-green)] forced-colors:border"
-              >
-                <Phone aria-hidden="true" className="size-icon-md" />
-              </span>
-              <span className="grid min-w-0" aria-hidden="true">
+    <div data-mode-identity="on-call" className="contents">
+      <DashCard
+        title="Pinned numbers"
+        onHide={onHide}
+        testId="my-day-card-pinned-numbers"
+        aside={
+          <Link
+            href={withMyDayReturn("/admin/help")}
+            className={cn(focusRing, dashLink, "-my-3 inline-flex min-h-12 items-center rounded-md px-1")}
+          >
+            All numbers
+          </Link>
+        }
+      >
+        <ul role="list" className="grid divide-y divide-[color:var(--dash-line)]">
+          {numbers.map((number, index) => (
+            <li key={number.key} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 py-1.5">
+              <DashAvatar
+                initials={initialsOf(number.title)}
+                tint={AVATAR_TINTS[index % AVATAR_TINTS.length] ?? "blue"}
+              />
+              <span className="grid min-w-0">
                 <span className="truncate font-dash-title text-base-minus text-[color:var(--dash-ink)]">
                   {number.title}
                 </span>
-                <span className="truncate text-xs nums text-[color:var(--dash-muted)]">{number.display}</span>
+                {number.detail ? (
+                  <span className="truncate text-xs text-[color:var(--dash-muted)]">{number.detail}</span>
+                ) : null}
               </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </DashCard>
+              <span className="flex items-center gap-2">
+                <span className="font-dash-title text-sm nums text-[color:var(--dash-blue)]">{number.display}</span>
+                <a
+                  href={number.tel ?? withMyDayReturn(number.href)}
+                  aria-label={number.tel ? `Call ${number.title}, ${number.display}` : `Open ${number.title}`}
+                  className={cn(focusRing, "grid size-12 place-items-center rounded-full no-underline")}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="grid size-10 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)] forced-colors:border"
+                  >
+                    <Phone aria-hidden="true" className="size-icon-md" />
+                  </span>
+                </a>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </DashCard>
+    </div>
   );
 }
 
 const AVATAR_TINTS = ["blue", "green", "amber"] as const;
 
-/** Colleagues on now on the reader's team, three to a row. */
+/** Colleagues on now on the reader's team, in a row that scrolls sideways. */
 export function WhosOnCard({
   colleagues,
   onHide,
@@ -193,11 +283,17 @@ export function WhosOnCard({
         </Link>
       }
     >
-      <ul role="list" className="grid grid-cols-3 gap-2">
-        {colleagues.slice(0, 6).map((person, index) => (
+      <ul
+        role="list"
+        className="-mx-3 flex snap-x scroll-px-3 gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {colleagues.slice(0, 8).map((person, index) => (
           <li
             key={person.id}
-            className={cn(dashTile, "grid justify-items-center gap-0.5 rounded-2xl px-1 py-2.5 text-center")}
+            className={cn(
+              dashTile,
+              "grid w-28 shrink-0 snap-start content-start justify-items-center gap-0.5 rounded-2xl px-2 py-3 text-center",
+            )}
           >
             <DashAvatar initials={initialsOf(person.name)} tint={AVATAR_TINTS[index % AVATAR_TINTS.length] ?? "blue"} />
             <span className="mt-1 break-words font-dash-title text-sm leading-tight text-[color:var(--dash-ink)]">
@@ -224,36 +320,41 @@ export function NextTalkCard({
 }) {
   const date = perthDateOf(session.startsAt);
   const days = Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
-  const when = days === 0 ? `today at ${perthTimeOf(session.startsAt)}` : days === 1 ? "tomorrow" : `in ${days} days`;
+  const when = days === 0 ? "today" : days === 1 ? "tomorrow" : formatPerthDay(date);
   const month = shortDayMonth(date).split(" ")[1] ?? "";
   return (
-    <DashCard title="Next talk" onHide={onHide} testId="my-day-card-next-talk">
-      <Link
-        href={withMyDayReturn(`/teaching/session/${session.occurrenceId}`)}
-        className={cn(
-          focusRing,
-          "-m-1 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-2xl p-1 no-underline",
-        )}
-      >
-        <span
-          aria-hidden="true"
-          className="grid w-14 overflow-hidden rounded-xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] text-center forced-colors:border"
+    <div data-mode-identity="teaching" className="contents">
+      <DashCard title="Next talk" showTitle={false} onHide={onHide} testId="my-day-card-next-talk">
+        <Link
+          href={withMyDayReturn(`/teaching/session/${session.occurrenceId}`)}
+          className={cn(
+            focusRing,
+            "-m-1 grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl p-1 no-underline",
+          )}
         >
-          <span className="bg-[color:var(--dash-amber)] py-0.5 text-3xs font-dash-figure uppercase tracking-widest text-[color:var(--dash-page)]">
-            {month}
+          <span
+            aria-hidden="true"
+            className="grid w-12 overflow-hidden rounded-xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] text-center forced-colors:border"
+          >
+            <span className="bg-[color:var(--mode-identity)] py-0.5 text-3xs font-dash-figure uppercase tracking-widest text-[color:var(--mode-identity-contrast)]">
+              {month}
+            </span>
+            <span className={cn(dashFigure, "py-1 text-xl text-[color:var(--dash-ink)]")}>
+              {Number(date.slice(8, 10))}
+            </span>
           </span>
-          <span className={cn(dashFigure, "py-1 text-2xl text-[color:var(--dash-ink)]")}>
-            {Number(date.slice(8, 10))}
+          <span className="grid min-w-0 gap-0.5">
+            <span className="break-words font-dash-title text-base-minus leading-tight text-[color:var(--dash-ink)]">
+              {session.title}
+            </span>
+            <span className="text-sm text-[color:var(--dash-muted)]">
+              {`Next talk · ${when} ${perthTimeOf(session.startsAt)}${session.venue ? ` · ${session.venue}` : ""}`}
+            </span>
           </span>
-        </span>
-        <span className="grid min-w-0 gap-0.5">
-          <span className="break-words font-dash-title text-base-minus leading-tight text-[color:var(--dash-ink)]">
-            {session.title}
-          </span>
-          <span className="text-sm text-[color:var(--dash-muted)]">{`${formatPerthDay(date)} · ${when}`}</span>
-        </span>
-      </Link>
-    </DashCard>
+          <ChevronRight aria-hidden="true" className="size-icon-md text-[color:var(--dash-faint)]" />
+        </Link>
+      </DashCard>
+    </div>
   );
 }
 
@@ -477,18 +578,18 @@ export function CredentialsCard({
         {rows.map((row, index) => {
           const passed = row.date < today;
           return (
-            <li key={row.entryId} className="w-4/5 shrink-0 snap-start">
+            <li key={row.entryId} className="grid w-50 shrink-0 snap-start">
               <Link
                 href={withMyDayReturn(row.href)}
                 className={cn(
                   focusRing,
                   passed ? "dash-wallet-amber" : WALLET[index % WALLET.length],
-                  "grid min-h-30 content-between gap-2 rounded-2xl p-3.5 text-[color:var(--dash-hero-ink)] no-underline shadow-[var(--dash-shadow)] forced-colors:border",
+                  "grid min-h-30 content-between gap-2 rounded-2xl p-3 text-[color:var(--dash-hero-ink)] no-underline shadow-[var(--dash-shadow)] forced-colors:border",
                 )}
               >
                 <span className="text-3xs font-dash-figure uppercase tracking-widest opacity-85">Admin</span>
-                <span className="break-words font-dash-figure text-lg leading-tight">{row.title}</span>
-                <span className="flex justify-between gap-2 text-xs font-dash-title opacity-90">
+                <span className="break-words font-dash-figure text-base leading-tight">{row.title}</span>
+                <span className="flex flex-wrap justify-between gap-x-2 text-xs font-dash-title opacity-90">
                   <span>{passed ? "Date passed" : "Recorded date"}</span>
                   <span className="nums">{`${passed ? "" : "to "}${shortDayMonth(row.date)} ${row.date.slice(0, 4)}`}</span>
                 </span>

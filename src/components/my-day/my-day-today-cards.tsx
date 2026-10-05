@@ -1,6 +1,19 @@
 "use client";
 
-import { BookPlus, CalendarDays, ChevronLeft, ChevronRight, GraduationCap, Phone, Sunrise, Users } from "lucide-react";
+import {
+  Award,
+  BookPlus,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  GraduationCap,
+  Phone,
+  ShieldCheck,
+  Sunrise,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
 
@@ -11,7 +24,7 @@ import { DashItemList, DashItemRow } from "@/components/dashboard-kit/item-row";
 import { DashPill } from "@/components/dashboard-kit/pill";
 import { DashQuickActions, type DashQuickAction } from "@/components/dashboard-kit/quick-actions";
 import { dashFigure, dashLink, dashMuted } from "@/components/dashboard-kit/recipes";
-import { ProgressRing, RingStack } from "@/components/dashboard-kit/rings";
+import { ProgressRing } from "@/components/dashboard-kit/rings";
 import { DashSegmented } from "@/components/dashboard-kit/segmented";
 import { DashWeekTiles, type DashDayTileKind, type DashWeekDay } from "@/components/dashboard-kit/week-tiles";
 import { listNames } from "@/components/my-day/my-day-page-parts";
@@ -27,8 +40,8 @@ import {
   monthWeeks,
   myDayActionLabel,
   shortDayMonth,
-  spreadLabels,
   WEEKDAY_LETTERS,
+  RUNWAY_DAYS,
   type DayRibbon,
   type RunwayPoint,
 } from "@/lib/my-day/figures";
@@ -49,12 +62,14 @@ const HOUR_MS = 60 * 60 * 1000;
 
 // ---------------------------------------------------------------- shared words
 
-export const MODE_CHIP: Readonly<Record<MyDaySourceMode, { readonly code: string; readonly tint: DashTint }>> = {
-  cme: { code: "CPD", tint: "blue" },
-  "my-work": { code: "ADM", tint: "amber" },
-  "on-call": { code: "OC", tint: "green" },
-  teaching: { code: "TCH", tint: "blue-2" },
-  roster: { code: "ROS", tint: "blue-2" },
+export const MODE_CHIP: Readonly<
+  Record<MyDaySourceMode, { readonly code: string; readonly tint: DashTint; readonly icon: LucideIcon }>
+> = {
+  cme: { code: "CPD", tint: "blue", icon: Award },
+  "my-work": { code: "ADM", tint: "amber", icon: ShieldCheck },
+  "on-call": { code: "OC", tint: "green", icon: Phone },
+  teaching: { code: "TCH", tint: "blue-2", icon: GraduationCap },
+  roster: { code: "ROS", tint: "blue-2", icon: CalendarDays },
 };
 
 const MODE_NAME: Readonly<Record<MyDaySourceMode, string>> = {
@@ -177,6 +192,58 @@ function HeroUpNext({
   );
 }
 
+/** The next teaching session, shown inside the hero. Built by the dashboard from the session already read. */
+export interface HeroNextTeaching {
+  readonly key: string;
+  readonly title: string;
+  /** "Tue 6 Oct, 12:30 to 13:30". */
+  readonly when: string;
+  readonly href: string;
+  readonly actionLabel: string;
+}
+
+function HeroNextTeachingPanel({ next, onHide }: { readonly next: HeroNextTeaching; readonly onHide?: () => void }) {
+  return (
+    <div
+      className="relative grid gap-2 rounded-2xl border border-[color:var(--dash-hero-glass-line)] bg-[color:var(--dash-hero-glass)] px-3 py-2.5"
+      data-testid="my-day-next-up"
+    >
+      <div className="grid gap-0.5 pr-8">
+        <span className="text-3xs font-dash-title uppercase tracking-widest opacity-80">{`Next up · ${next.when}`}</span>
+        <span className="break-words font-dash-figure text-base-minus leading-snug">{next.title}</span>
+      </div>
+      <div className="-my-2 flex gap-2">
+        <Link
+          href={withMyDayReturn(next.href)}
+          aria-label={`${next.actionLabel}: ${next.title}`}
+          data-testid="my-day-next-up-open"
+          className={cn(focusRing, "inline-flex min-h-12 items-center rounded-full no-underline")}
+        >
+          <span className="rounded-full bg-[color:var(--dash-hero-ink)] px-4 py-1.5 text-sm font-dash-title text-[color:var(--dash-hero-button-ink)] forced-colors:border">
+            {next.actionLabel}
+          </span>
+        </Link>
+      </div>
+      {onHide ? (
+        <button
+          type="button"
+          onClick={onHide}
+          aria-label="Hide Next teaching"
+          data-testid="my-day-next-up-hide"
+          className={cn(focusRing, "absolute -top-1 -right-1 grid size-12 place-items-center rounded-full")}
+        >
+          <span
+            aria-hidden="true"
+            className="grid size-6 place-items-center rounded-full bg-[color:var(--dash-hero-ink)] text-[color:var(--dash-hero-button-ink)] forced-colors:border"
+          >
+            <X aria-hidden="true" className="size-icon-xs" />
+          </span>
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * The hero: the shift ring (time to the shift, or left in it), the day ribbon
  * with a now marker, and "Up next" nested inside. Drawn only when there is a
@@ -187,15 +254,21 @@ export function HeroCard({
   running,
   upNext,
   ribbon,
+  nextTeaching = null,
   now,
   onHide,
+  onHideNextTeaching,
 }: {
   readonly shift: RosterDisplayShift | null;
   readonly running: boolean;
   readonly upNext: { readonly event: MyDayTimedEvent; readonly state: "upcoming" | "on-now" } | null;
   readonly ribbon: DayRibbon | null;
+  /** The next teaching session, as a glass panel at the bottom of the hero. */
+  readonly nextTeaching?: HeroNextTeaching | null;
   readonly now: Date;
   readonly onHide?: () => void;
+  /** Edit mode only: hides the teaching panel (the "next-up" card). */
+  readonly onHideNextTeaching?: () => void;
 }) {
   let top: ReactNode = null;
   if (shift) {
@@ -250,6 +323,7 @@ export function HeroCard({
       {top}
       {ribbon ? <Ribbon ribbon={ribbon} /> : null}
       {upNext ? <HeroUpNext event={upNext.event} state={upNext.state} now={now} /> : null}
+      {nextTeaching ? <HeroNextTeachingPanel next={nextTeaching} onHide={onHideNextTeaching} /> : null}
     </DashCard>
   );
 }
@@ -725,33 +799,45 @@ export function NeedsYouCard({
           const chip = MODE_CHIP[item.mode];
           const action = myDayActionLabel(item);
           return (
-            <DashItemRow
+            <li
               key={item.id}
-              testId={`my-day-item-${item.id}`}
-              chip={<IconChip tint={chip.tint}>{chip.code}</IconChip>}
-              title={item.title}
-              subtitle={state.text}
-              subtitleTone={state.passed ? "passed" : "muted"}
-              actions={
-                <>
-                  <DashPill
-                    href={withMyDayReturn(item.href)}
-                    emphasis="primary"
-                    ariaLabel={`${action}: ${item.title}`}
-                    testId={`my-day-open-${item.id}`}
-                  >
-                    {action}
-                  </DashPill>
-                  <DashPill
-                    onClick={() => onLater(item)}
-                    ariaLabel={`Later: ${item.title}`}
-                    testId={`my-day-later-${item.id}`}
-                  >
-                    Later
-                  </DashPill>
-                </>
-              }
-            />
+              data-testid={`my-day-item-${item.id}`}
+              className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 border-t border-[color:var(--dash-line)] px-3 py-2.5 first:border-t-0"
+            >
+              <IconChip tint={chip.tint} size="lg" className="rounded-full">
+                <chip.icon aria-hidden="true" className="size-icon-lg" />
+              </IconChip>
+              <span className="grid min-w-0 gap-0.5">
+                <span className="break-words font-dash-title text-base-minus leading-tight text-[color:var(--dash-ink)]">
+                  {item.title}
+                </span>
+                <span
+                  className={cn(
+                    "break-words",
+                    state.passed ? "font-dash-title text-xs text-[color:var(--dash-amber)]" : dashMuted,
+                  )}
+                >
+                  {state.text}
+                </span>
+              </span>
+              <span className="col-start-2 -mb-2 flex items-center gap-1">
+                <DashPill
+                  href={withMyDayReturn(item.href)}
+                  emphasis="primary"
+                  ariaLabel={`${action}: ${item.title}`}
+                  testId={`my-day-open-${item.id}`}
+                >
+                  {action}
+                </DashPill>
+                <DashPill
+                  onClick={() => onLater(item)}
+                  ariaLabel={`Later: ${item.title}`}
+                  testId={`my-day-later-${item.id}`}
+                >
+                  Later
+                </DashPill>
+              </span>
+            </li>
           );
         })}
       </DashItemList>
@@ -826,22 +912,96 @@ function hoursText(value: number): string {
   return `${Number(value.toFixed(1))}`;
 }
 
+const CPD_RING_SIZE = 108;
+const CPD_RING_STROKE = 12;
+/** A hairline between neighbouring segments, in ring pixels. */
+const CPD_SEGMENT_GAP = 2;
+
+/** One ring out of the year's target: a segment per CPD type, grey for what is left. */
+function CpdSegmentedRing({
+  loggedHours,
+  targetHours,
+  byCategory,
+}: {
+  readonly loggedHours: number;
+  readonly targetHours: number;
+  readonly byCategory: Readonly<Record<CmeCategory, number>>;
+}) {
+  const radius = (CPD_RING_SIZE - CPD_RING_STROKE) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const centre = CPD_RING_SIZE / 2;
+  const target = Math.max(1, targetHours);
+  const segments = cmeCategories.flatMap((category, index) => {
+    const before = cmeCategories.slice(0, index).reduce((sum, other) => sum + Math.max(0, byCategory[other]), 0);
+    const from = Math.min(1, before / target);
+    const to = Math.min(1, (before + Math.max(0, byCategory[category])) / target);
+    const length = (to - from) * circumference;
+    if (length <= 0) return [];
+    // Keep a small gap between segments, but never erase a short one.
+    const drawn = Math.max(1, length - (length > CPD_SEGMENT_GAP * 2 ? CPD_SEGMENT_GAP : 0));
+    return [{ category, start: from * circumference, drawn }];
+  });
+  return (
+    <span
+      aria-hidden="true"
+      className="relative grid shrink-0 place-items-center"
+      data-testid="my-day-cpd-ring"
+      data-fraction={Math.min(1, loggedHours / target).toFixed(3)}
+    >
+      <svg
+        width={CPD_RING_SIZE}
+        height={CPD_RING_SIZE}
+        viewBox={`0 0 ${CPD_RING_SIZE} ${CPD_RING_SIZE}`}
+        className="-rotate-90"
+        data-testid="my-day-cpd-rings"
+      >
+        <circle
+          cx={centre}
+          cy={centre}
+          r={radius}
+          fill="none"
+          strokeWidth={CPD_RING_STROKE}
+          className="stroke-[color:var(--dash-line)]"
+        />
+        {segments.map((segment) => (
+          <circle
+            key={segment.category}
+            cx={centre}
+            cy={centre}
+            r={radius}
+            fill="none"
+            strokeWidth={CPD_RING_STROKE}
+            strokeDasharray={`${segment.drawn} ${circumference}`}
+            strokeDashoffset={-segment.start}
+            data-ring={segment.category}
+            className={cn(CPD_TYPE[segment.category].stroke, "forced-colors:stroke-[CanvasText]")}
+          />
+        ))}
+      </svg>
+      <span className="absolute inset-0 grid place-content-center text-center leading-none">
+        <span className={cn(dashFigure, "block text-2xl-minus text-[color:var(--dash-ink)]")}>
+          {hoursText(loggedHours)}
+        </span>
+        <span className="mt-1 block text-3xs font-dash-title text-[color:var(--dash-muted)]">{`of ${hoursText(targetHours)} h`}</span>
+      </span>
+    </span>
+  );
+}
+
 /**
- * CPD this year by Medical Board CPD type: one ring per type, each measured
- * against that type's own target when the confirmed set states one, else
- * against the year's total target.
+ * CPD this year by Medical Board CPD type: one ring out of the year's target,
+ * a segment per type, with the hours per type beside it. No per-type targets
+ * are shown: only the year's total is a real target.
  */
 export function CpdRingsCard({
   loggedHours,
   targetHours,
   byCategory,
-  categoryTargets,
   onHide,
 }: {
   readonly loggedHours: number;
   readonly targetHours: number;
   readonly byCategory: Readonly<Record<CmeCategory, number>>;
-  readonly categoryTargets: Readonly<Record<CmeCategory, number | null>>;
   readonly onHide?: () => void;
 }) {
   const left = Math.max(0, targetHours - loggedHours);
@@ -861,18 +1021,11 @@ export function CpdRingsCard({
         data-testid="my-day-cpd"
         className={cn(
           focusRing,
-          "-m-1 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-2xl p-1 no-underline",
+          "-m-1 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 rounded-2xl p-1 no-underline",
         )}
       >
-        <RingStack
-          testId="my-day-cpd-rings"
-          rings={cmeCategories.map((category) => ({
-            key: category,
-            fraction: byCategory[category] / Math.max(1, categoryTargets[category] ?? targetHours),
-            stroke: CPD_TYPE[category].stroke,
-          }))}
-        />
-        <span className="grid gap-1 text-sm text-[color:var(--dash-ink)]">
+        <CpdSegmentedRing loggedHours={loggedHours} targetHours={targetHours} byCategory={byCategory} />
+        <span className="grid gap-1.5 text-sm text-[color:var(--dash-ink)]">
           {cmeCategories.map((category) => (
             <span key={category} className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1.5">
@@ -885,7 +1038,7 @@ export function CpdRingsCard({
               <span className="font-dash-title nums">{`${hoursText(byCategory[category])} h`}</span>
             </span>
           ))}
-          <span className="flex items-center justify-between gap-2">
+          <span className="flex items-center justify-between gap-2 border-t border-[color:var(--dash-line)] pt-1.5">
             <span>{left > 0 ? "To go by 31 Dec" : "Target reached"}</span>
             {left > 0 ? <span className="font-dash-title nums">{`${hoursText(left)} h`}</span> : null}
           </span>
@@ -898,36 +1051,53 @@ export function CpdRingsCard({
 // ---------------------------------------------------------------- renewals runway
 
 const RUNWAY_MAX_POINTS = 4;
-/** Half a label's width in runway units: labels are centred inside the line's ends. */
-const RUNWAY_LABEL_HALF = 42;
+const SHORT_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 
-/** A short runway label: a long name is cut at a word. The dot's own label carries the full name. */
-function runwayLabel(text: string): string {
-  if (text.length <= 13) return text;
-  const cut = text.slice(0, 13);
-  const space = cut.lastIndexOf(" ");
-  return `${(space > 5 ? cut.slice(0, space) : cut.slice(0, 12)).trim()}…`;
+/** Month marks along the runway: this month at the start, then each month's first day that falls within it. */
+function runwayMonths(today: string): readonly { readonly name: string; readonly at: number }[] {
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7)) - 1;
+  const start = Date.UTC(year, month, Number(today.slice(8, 10)));
+  const marks = [{ name: SHORT_MONTH_NAMES[month] ?? "", at: 0 }];
+  for (let step = 1; step <= 6; step += 1) {
+    const first = Date.UTC(year, month + step, 1);
+    const at = (first - start) / (RUNWAY_DAYS * 86_400_000);
+    if (at > 0.97) break;
+    marks.push({ name: SHORT_MONTH_NAMES[new Date(first).getUTCMonth()] ?? "", at });
+  }
+  return marks;
 }
 
-/** Recorded Admin dates over the next six months on one line. Amber only for a date that has passed. */
+function daysUntil(point: RunwayPoint): number {
+  return Math.round(point.at * RUNWAY_DAYS);
+}
+
+/** "In 40 days · 14 Nov", or "Date passed · 21 Sep". */
+function runwayCountdown(point: RunwayPoint): string {
+  if (point.passed) return `Date passed · ${shortDayMonth(point.date)}`;
+  const days = daysUntil(point);
+  const when = days === 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`;
+  return `${when} · ${shortDayMonth(point.date)}`;
+}
+
+/** The nearest recorded Admin date over the next six months, then every one on a line with month marks. */
 export function RenewalsRunwayCard({
   points,
+  today,
   onHide,
 }: {
   readonly points: readonly RunwayPoint[];
+  /** `YYYY-MM-DD`, for the month marks under the line. */
+  readonly today: string;
   readonly onHide?: () => void;
 }) {
   const width = 320;
-  const inset = 30;
+  const inset = 20;
   const span = width - inset * 2;
-  // Four dates at most on the line; the rest are counted. Each label gets an
-  // equal share of the width so neighbouring names never overlap.
   const shown = points.slice(0, RUNWAY_MAX_POINTS);
   const more = points.length - shown.length;
-  const labels = spreadLabels(
-    shown.map((point) => point.at),
-    1 / 3,
-  );
+  const lead = points[0] ?? null;
+  const months = runwayMonths(today);
   return (
     <DashCard
       title="Renewals, next 6 months"
@@ -942,8 +1112,31 @@ export function RenewalsRunwayCard({
         </Link>
       }
     >
+      {lead ? (
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3" data-testid="my-day-runway-lead">
+          <IconChip tint="amber" size="lg" className="rounded-full">
+            <ShieldCheck aria-hidden="true" className="size-icon-lg" />
+          </IconChip>
+          <span className="grid min-w-0 gap-0.5">
+            <span className="break-words font-dash-title text-base-minus leading-tight text-[color:var(--dash-ink)]">
+              {lead.title}
+            </span>
+            <span className="break-words font-dash-title text-xs text-[color:var(--dash-amber)]">
+              {runwayCountdown(lead)}
+            </span>
+          </span>
+          <DashPill
+            href={withMyDayReturn(lead.href)}
+            emphasis="primary"
+            ariaLabel={`Renew: ${lead.title}`}
+            testId="my-day-runway-lead-action"
+          >
+            Renew
+          </DashPill>
+        </div>
+      ) : null}
       <svg
-        viewBox={`0 0 ${width} 50`}
+        viewBox={`0 0 ${width} 56`}
         className="mx-auto block w-full max-w-md overflow-visible"
         data-testid="my-day-runway"
       >
@@ -955,9 +1148,20 @@ export function RenewalsRunwayCard({
           strokeWidth="2"
           className="stroke-[color:var(--dash-line-strong)]"
         />
-        {shown.map((point, index) => {
+        {months.map((mark) => (
+          <text
+            key={`${mark.name}-${mark.at}`}
+            x={inset + mark.at * span}
+            y="52"
+            textAnchor={mark.at === 0 ? "start" : "middle"}
+            aria-hidden="true"
+            className="fill-[color:var(--dash-muted)] font-dash-title text-3xs"
+          >
+            {mark.name}
+          </text>
+        ))}
+        {shown.map((point) => {
           const x = inset + point.at * span;
-          const labelX = RUNWAY_LABEL_HALF + (labels[index] ?? point.at) * (width - RUNWAY_LABEL_HALF * 2);
           const spoken = `${point.title}: ${point.passed ? "date has passed" : "recorded date"}, ${formatPerthDay(point.date)}`;
           return (
             <a key={point.entryId} href={withMyDayReturn(point.href)} aria-label={spoken} className={focusRing}>
@@ -973,15 +1177,6 @@ export function RenewalsRunwayCard({
                   point.passed ? "fill-[color:var(--dash-amber)]" : "fill-[color:var(--dash-blue)]",
                 )}
               />
-              <text
-                x={labelX}
-                y="44"
-                textAnchor="middle"
-                aria-hidden="true"
-                className="fill-[color:var(--dash-muted)] font-dash-title text-3xs"
-              >
-                {runwayLabel(point.title)}
-              </text>
             </a>
           );
         })}
