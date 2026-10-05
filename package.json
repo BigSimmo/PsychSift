@@ -410,6 +410,6 @@
     "@eslint/eslintrc@3.3.6": true,
     "@humanwhocodes/module-importer@1.0.1": true,
     "@humanfs/node@0.16.8": true,
-    "sharp@0.35.4": true
+    "sharp@0.35.5": true
   }
 }
