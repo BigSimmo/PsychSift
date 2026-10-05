@@ -8,6 +8,7 @@ import {
   type EpaNumber,
   type GlobalRating,
   type Rating,
+  SUPERVISION_LEVELS,
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
 import {
@@ -49,7 +50,7 @@ export type AssessmentForm = {
   fullWording: boolean;
 };
 
-export type Signature = { typed: string; image: string | null; date: string };
+export type Signature = { typed: string; image: string | null; date: string; day: number };
 
 export type EpaRequest = {
   epa: EpaNumber;
@@ -134,7 +135,7 @@ export function bookingLabel(booking: { day: number; time: string }): string {
 }
 
 export function bookableDay(s: AssessmentsState, day: number): boolean {
-  return day >= Math.max(0, s.now) && !NIGHT_DAYS.has(day) && (s.avail[day]?.length ?? 0) > 0;
+  return windowOpen(s) && day >= s.now && !NIGHT_DAYS.has(day) && (s.avail[day]?.length ?? 0) > 0;
 }
 
 export function dayStatus(s: AssessmentsState, day: number): string {
@@ -212,7 +213,7 @@ export function doctorActions(s: AssessmentsState): number {
   if (st === "start" || st === "self-draft" || st === "self-done") n++;
   else if (st === "sup-signed") n++;
   else if (st === "doc-signed" && !s.sentToMeu) n++;
-  else if (windowOpen(s) && !s.booking && !meetingHeld(s)) n++;
+  else if (st === "ready" && windowOpen(s) && !s.booking) n++;
   return n;
 }
 
@@ -284,8 +285,8 @@ export function endOfTermPill(s: AssessmentsState): Pill {
 export type StepState = "ok" | "now" | "lock";
 export type Step = { state: StepState; title: string; detail: string };
 
-/** True when the supervisor's draft is still not done on Thu 5 Nov or later. */
-export const supervisorLate = (s: AssessmentsState) => s.request.sent && !supReady(s) && s.now >= 7;
+/** True when the supervisor's draft is still not done on Thu 5 Nov (window day 8) or later. */
+export const supervisorLate = (s: AssessmentsState) => s.request.sent && !supReady(s) && s.now >= 8;
 
 /** The eight end-of-term steps, in order. */
 export function endOfTermSteps(s: AssessmentsState): Step[] {
@@ -296,7 +297,7 @@ export function endOfTermSteps(s: AssessmentsState): Step[] {
     selfDone(s)
       ? step("ok", "Rate yourself (optional)", "Saved")
       : selfLocked(s)
-        ? step("lock", "Rate yourself (optional)", "Skipped")
+        ? step("lock", "Rate yourself (optional)", s.self.status === "draft" ? "Not finished" : "Skipped")
         : step(
             "now",
             "Rate yourself (optional)",
@@ -336,9 +337,22 @@ export function endOfTermSteps(s: AssessmentsState): Step[] {
   ];
 }
 
-/** "Step n of 8": the first step not yet done. */
+/** "Step n of 8": the first step that is neither done nor skipped. */
 export function currentStepNumber(steps: readonly Step[]): number {
-  return Math.min(steps.length, steps.filter((x) => x.state === "ok").length + 1);
+  // A step left behind by a later done step (a skipped self-rating) is not the current one.
+  const i = steps.findIndex((x, n) => x.state !== "ok" && !steps.slice(n + 1).some((y) => y.state === "ok"));
+  return i < 0 ? steps.length : i + 1;
+}
+
+/** The made-up date can't move before anything already recorded on it. */
+function earliestNow(s: AssessmentsState): number {
+  return Math.max(
+    -1,
+    s.request.sent ? s.request.sentOn : -1,
+    s.meetingDay ?? -1,
+    s.sigs.sup?.day ?? -1,
+    s.sigs.doc?.day ?? -1,
+  );
 }
 
 /* ---------------- The form ---------------- */
@@ -521,7 +535,9 @@ function editForm(s: AssessmentsState, who: Who, change: (f: AssessmentForm) => 
   if (who === "self" ? selfLocked(s) : supLocked(s)) return s;
   const current = s[who];
   const next = change(current);
-  const status = next.status === "new" ? "draft" : next.status;
+  // A finished form that is changed into one with gaps goes back to a draft.
+  const status =
+    next.status === "new" || (next.status === "done" && formBlockers(next, who).length) ? "draft" : next.status;
   return { ...s, [who]: { ...next, status } };
 }
 
@@ -531,8 +547,10 @@ const toggle = (list: readonly string[], item: string) =>
 export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): AssessmentsState {
   switch (a.type) {
     case "set-now":
-      return { ...s, now: Math.max(-1, Math.min(WINDOW_DAYS.length - 1, a.now)) };
+      if (!Number.isInteger(a.now)) return s;
+      return { ...s, now: Math.max(earliestNow(s), Math.min(WINDOW_DAYS.length - 1, a.now)) };
     case "form-step": {
+      if (!Number.isInteger(a.step)) return s;
       const step = Math.max(0, Math.min(LAST_FORM_STEP, a.step));
       return { ...s, [a.who]: { ...s[a.who], step } };
     }
@@ -540,6 +558,8 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
       return editForm(s, a.who, (f) => f);
     case "form-finish": {
       if (formBlockers(s[a.who], a.who).length) return s;
+      // The supervisor's view starts only once the doctor has asked for it.
+      if (a.who === "sup" && !s.request.sent) return s;
       return editForm(s, a.who, (f) => ({ ...f, status: "done" }));
     }
     case "form-example": {
@@ -601,7 +621,7 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
     case "toggle-remind-day":
       return { ...s, remindDayBefore: !s.remindDayBefore };
     case "book":
-      if (!bookableDay(s, a.day) || !s.avail[a.day]?.includes(a.time) || meetingHeld(s)) return s;
+      if (!supReady(s) || !bookableDay(s, a.day) || !s.avail[a.day]?.includes(a.time) || meetingHeld(s)) return s;
       return { ...s, booking: { day: a.day, time: a.time } };
     case "cancel-booking":
       return meetingHeld(s) ? s : { ...s, booking: null };
@@ -610,18 +630,22 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
       return { ...s, meetingDay: s.booking.day };
     case "sign": {
       if (!a.typed.trim() && !a.image) return s;
-      const sig: Signature = { typed: a.typed.trim(), image: a.image, date: todayLabel(s) };
-      if (a.who === "sup") return meetingHeld(s) && !s.sigs.sup ? { ...s, sigs: { ...s.sigs, sup: sig } } : s;
+      const sig: Signature = { typed: a.typed.trim(), image: a.image, date: todayLabel(s), day: s.now };
+      if (a.who === "sup") {
+        const ok = meetingHeld(s) && !s.sigs.sup && !formBlockers(s.sup, "sup").length;
+        return ok ? { ...s, sigs: { ...s.sigs, sup: sig } } : s;
+      }
       return s.sigs.sup && !s.sigs.doc ? { ...s, sigs: { ...s.sigs, doc: sig } } : s;
     }
     case "sent-to-meu":
       return s.sigs.doc ? { ...s, sentToMeu: true } : s;
     case "request-epa":
-      if (pendingEpaRequest(s, a.epa)) return s;
+      if (![1, 2, 3, 4].includes(a.epa) || (a.who !== "sup" && a.who !== "reg") || pendingEpaRequest(s, a.epa))
+        return s;
       return { ...s, epaRequests: [...s.epaRequests, { epa: a.epa, who: a.who, status: "requested" }] };
     case "record-epa": {
       const r = s.epaRequests[a.index];
-      if (!r || r.status !== "requested") return s;
+      if (!r || r.status !== "requested" || !SUPERVISION_LEVELS.some((l) => l.id === a.level)) return s;
       const epaRequests = s.epaRequests.map((x, i) =>
         i === a.index ? { ...x, status: "done" as const, level: a.level } : x,
       );

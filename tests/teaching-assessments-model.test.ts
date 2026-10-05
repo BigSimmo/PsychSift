@@ -310,3 +310,86 @@ describe("Teaching assessments: the supervisor", () => {
     expect(supervisorTodo(s)).toBe(4);
   });
 });
+
+describe("Teaching assessments: post-build review guards", () => {
+  it("does not call the supervisor late on Wed 4 Nov", () => {
+    const s = run({ type: "send-request" }, { type: "set-now", now: 7 });
+    expect(endOfTermSteps(s)[2]).toMatchObject({ state: "now", detail: "In progress" });
+  });
+
+  it("never moves the made-up date before something already recorded", () => {
+    const sent = run({ type: "set-now", now: 3 }, { type: "send-request" }, { type: "set-now", now: -1 });
+    expect(sent.now).toBe(3);
+    const signed = storyTo("doc-signed");
+    expect(assessmentsReducer(signed, { type: "set-now", now: 0 }).now).toBe(2);
+  });
+
+  it("ignores a made-up date or form step that is not a whole number", () => {
+    const s = initialAssessmentsState();
+    expect(assessmentsReducer(s, { type: "set-now", now: 1.5 })).toBe(s);
+    expect(assessmentsReducer(s, { type: "form-step", who: "self", step: Number.NaN })).toBe(s);
+  });
+
+  it("refuses a booking before the window opens or before the supervisor's draft is done", () => {
+    const early = storyTo("ready");
+    expect(early.now).toBe(-1);
+    expect(assessmentsReducer(early, { type: "book", day: 2, time: "14:30" }).booking).toBeNull();
+    const notReady = run({ type: "send-request" }, { type: "set-now", now: 1 });
+    expect(assessmentsReducer(notReady, { type: "book", day: 2, time: "14:30" }).booking).toBeNull();
+  });
+
+  it("does not let the supervisor finish before the doctor has asked", () => {
+    const s = run({ type: "form-example", who: "sup" }, { type: "form-finish", who: "sup" });
+    expect(s.sup.status).toBe("draft");
+  });
+
+  it("turns a finished supervisor form back into a draft if a change leaves a gap", () => {
+    const met = storyTo("met");
+    const changed = assessmentsReducer(met, { type: "set-feedback", who: "sup", domain: 1, value: "" });
+    const low = assessmentsReducer(changed, { type: "set-rating", who: "sup", domain: 1, rating: 1 });
+    expect(low.sup.status).toBe("draft");
+    expect(assessmentsReducer(low, { type: "sign", who: "sup", typed: "Priya Nair", image: null }).sigs.sup).toBeNull();
+  });
+
+  it("counts the booking prompt only while the supervisor's draft is ready", () => {
+    const waiting = run(
+      { type: "send-request" },
+      { type: "set-now", now: 1 },
+      { type: "request-epa", epa: 1, who: "sup" },
+    );
+    expect(doctorActions(waiting)).toBe(0);
+    const ready = run(
+      { type: "send-request" },
+      { type: "form-example", who: "sup" },
+      { type: "form-finish", who: "sup" },
+      { type: "set-now", now: 1 },
+      { type: "request-epa", epa: 1, who: "sup" },
+    );
+    expect(doctorActions(ready)).toBe(1);
+  });
+
+  it("points at the real current step when the doctor skipped rating herself", () => {
+    const s = run({ type: "send-request" }, { type: "form-example", who: "sup" }, { type: "form-finish", who: "sup" });
+    const steps = endOfTermSteps(s);
+    expect(steps[0]).toMatchObject({ state: "lock", detail: "Skipped" });
+    expect(currentStepNumber(steps)).toBe(4);
+  });
+
+  it("calls an unfinished self-assessment 'Not finished', not 'Skipped', once it locks", () => {
+    const s = run(
+      { type: "set-text", who: "self", field: "strengths", value: "x" },
+      { type: "send-request" },
+      { type: "form-example", who: "sup" },
+      { type: "form-finish", who: "sup" },
+    );
+    expect(endOfTermSteps(s)[0]).toMatchObject({ state: "lock", detail: "Not finished" });
+  });
+
+  it("ignores an EPA number or supervision level it does not know", () => {
+    const s = initialAssessmentsState();
+    expect(assessmentsReducer(s, { type: "request-epa", epa: 9 as never, who: "sup" })).toBe(s);
+    const asked = assessmentsReducer(s, { type: "request-epa", epa: 2, who: "sup" });
+    const i = asked.epaRequests.length - 1;
+    expect(assessmentsReducer(asked, { type: "record-epa", index: i, level: "bogus" as never })).toBe(asked);
+  });
+});
