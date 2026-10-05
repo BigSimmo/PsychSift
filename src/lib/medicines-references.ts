@@ -57,7 +57,7 @@ export const MEDICINES_REFERENCES: readonly MedicinesReference[] = [
   {
     id: "healthpathways-wa",
     mark: "HP",
-    title: "HealthPathways WA",
+    title: "Health\u00adPathways WA",
     publisher: "HealthPathways",
     href: "https://wa.communityhealthpathways.org/",
   },

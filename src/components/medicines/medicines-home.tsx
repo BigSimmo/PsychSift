@@ -326,7 +326,7 @@ function ReferencesCard() {
               )}
             >
               <RoundChip className="size-12 text-xs">{reference.mark}</RoundChip>
-              <span className="break-words font-dash-title text-xs leading-tight text-[color:var(--dash-ink)]">
+              <span className="w-full hyphens-auto break-words font-dash-title text-xs leading-tight text-[color:var(--dash-ink)] [overflow-wrap:anywhere]">
                 {reference.title}
               </span>
               <span className="sr-only">(opens in a new tab)</span>

@@ -61,7 +61,7 @@ describe("MedicinesHome", () => {
       "F1Formulary One(opens in a new tab)",
       "AMHMedicines Handbook(opens in a new tab)",
       "TGTherapeutic Guidelines(opens in a new tab)",
-      "HPHealthPathways WA(opens in a new tab)",
+      "HPHealth\u00adPathways WA(opens in a new tab)",
     ]);
     const charts = within(
       screen.getByRole("list", { name: "WA statewide mental health medication charts" }),
