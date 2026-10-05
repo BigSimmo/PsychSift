@@ -178,8 +178,10 @@ export const modeSecondaryNavigationRegistry = {
     { id: "year", label: "Year", href: "/cme" },
     { id: "log", label: "Log", href: "/cme/log" },
     { id: "plan", label: "Plan", href: "/cme/plan" },
-    { id: "learning", label: "Learning", href: "/cme/learning" },
-    { id: "setup", label: "Set up", href: "/cme/setup" },
+    // Named as the mock-up names them (Josh, 5 Oct 2026): Courses lists the
+    // learning on offer; Report is the year check, and Set up opens from it.
+    { id: "learning", label: "Courses", href: "/cme/learning" },
+    { id: "setup", label: "Report", href: "/cme/check" },
   ],
   // Teaching's pages, for the mode pill's page list, like CME's. Teaching is
   // absent from `MODE_NAV_ADOPTED_MODES`: the pill already opens these, so no
@@ -445,10 +447,9 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
       pathname === "/cme/new"
     )
       return "log";
-    if (pathname === "/cme/check") return "year";
     if (pathname === "/cme/training" || pathname === "/cme/calendar" || pathname === "/cme/plan") return "plan";
     if (pathname === "/cme/learning") return "learning";
-    if (pathname === "/cme/programme" || pathname === "/cme/setup") return "setup";
+    if (pathname === "/cme/check" || pathname === "/cme/programme" || pathname === "/cme/setup") return "setup";
     // Exact match only, for the same reason On Call's home is: a prefix test
     // here would mark Year current on every CPD route as well as its own.
     if (pathname === "/cme") return "year";
