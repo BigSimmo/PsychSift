@@ -212,67 +212,82 @@ function ShiftBand({
   const latest = Math.min(Math.max(nowMs + HOUR_MS, ...firstDeadlines), start + 36 * HOUR_MS);
   const end = Math.max(Math.ceil(latest / HOUR_MS) * HOUR_MS, start + 6 * HOUR_MS);
   const span = end - start;
-  const at = (ms: number) => `${Math.min(100, Math.max(0, ((ms - start) / span) * 100))}%`;
+  const pct = (ms: number) => Math.min(100, Math.max(0, ((ms - start) / span) * 100));
   const step = span <= 12 * HOUR_MS ? 3 * HOUR_MS : 6 * HOUR_MS;
   const ticks: number[] = [];
   for (let tick = start; tick <= end; tick += step) ticks.push(tick);
+  const LANE = 20;
+  const GAP = 8;
+  const lanesHeight = clocks.length * LANE + (clocks.length - 1) * GAP;
+  const height = lanesHeight + 22;
+  const nowX = `${pct(nowMs)}%`;
 
+  // SVG with percentage coordinates, so positions need no inline styles.
   return (
-    <div aria-hidden="true" className="grid gap-2" data-testid="mha-clock-band">
-      <div className="relative grid gap-2 py-1">
-        {clocks.map((clock) => {
-          const dots = items.filter(
-            (item) =>
-              item.timerId === clock.id &&
-              item.kind === "countdown" &&
-              item.occurrence === 1 &&
-              item.deadline.getTime() <= end,
-          );
+    <div aria-hidden="true" className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-2 py-1" data-testid="mha-clock-band">
+      <div className="grid content-start gap-2">
+        {clocks.map((clock) => (
+          <span
+            key={clock.id}
+            className="flex h-5 items-center justify-end truncate text-xs font-dash-title text-[color:var(--dash-ink)]"
+          >
+            {clock.formCode}
+          </span>
+        ))}
+      </div>
+      <svg width="100%" height={height} className="overflow-visible">
+        {clocks.map((clock, index) => {
+          const y = index * (LANE + GAP);
+          const from = pct(clock.madeAt);
           return (
-            <div key={clock.id} className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2">
-              <span className="truncate text-right text-xs font-dash-title text-[color:var(--dash-ink)]">
-                {clock.formCode}
-              </span>
-              <div className="relative h-5 rounded-full bg-[color:var(--dash-line)]">
-                <span
-                  className="absolute inset-y-0 rounded-full bg-[color:var(--dash-blue)] forced-colors:bg-[CanvasText]"
-                  style={{ left: at(clock.madeAt), width: `calc(${at(nowMs)} - ${at(clock.madeAt)})` }}
-                />
-                {dots.map((item) =>
-                  item.kind === "countdown" ? (
-                    <span
-                      key={item.entry.id}
-                      className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[color:var(--dash-blue)] bg-[color:var(--dash-raised)]"
-                      style={{ left: at(item.deadline.getTime()) }}
-                    />
-                  ) : null,
-                )}
-              </div>
-            </div>
+            <g key={clock.id}>
+              <rect x="0" y={y} width="100%" height={LANE} rx={LANE / 2} className="fill-[color:var(--dash-line)]" />
+              <rect
+                x={`${from}%`}
+                y={y}
+                width={`${Math.max(0, pct(nowMs) - from)}%`}
+                height={LANE}
+                rx={LANE / 2}
+                className="fill-[color:var(--dash-blue)] forced-colors:fill-[CanvasText]"
+              />
+              {items.map((item) =>
+                item.timerId === clock.id &&
+                item.kind === "countdown" &&
+                item.occurrence === 1 &&
+                item.deadline.getTime() <= end ? (
+                  <circle
+                    key={item.entry.id}
+                    cx={`${pct(item.deadline.getTime())}%`}
+                    cy={y + LANE / 2}
+                    r="5"
+                    strokeWidth="2"
+                    className="fill-[color:var(--dash-raised)] stroke-[color:var(--dash-blue)]"
+                  />
+                ) : null,
+              )}
+            </g>
           );
         })}
-        <span
-          className="pointer-events-none absolute inset-y-0 w-0.5 bg-[color:var(--dash-ink)]"
-          style={{ left: `calc(3.25rem + (100% - 3.25rem) * ${(nowMs - start) / span})` }}
+        <line
+          x1={nowX}
+          x2={nowX}
+          y1="-4"
+          y2={lanesHeight + 4}
+          strokeWidth="2"
+          className="stroke-[color:var(--dash-ink)] forced-colors:stroke-[CanvasText]"
         />
-      </div>
-      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-2">
-        <span />
-        <div className="relative h-4">
-          {ticks.map((tick, index) => (
-            <span
-              key={tick}
-              className={cn(
-                "absolute top-0 text-3xs nums text-[color:var(--dash-faint)]",
-                index === 0 ? "" : index === ticks.length - 1 ? "-translate-x-full" : "-translate-x-1/2",
-              )}
-              style={{ left: at(tick) }}
-            >
-              {hhmm(tick)}
-            </span>
-          ))}
-        </div>
-      </div>
+        {ticks.map((tick, index) => (
+          <text
+            key={tick}
+            x={`${pct(tick)}%`}
+            y={height - 4}
+            textAnchor={index === 0 ? "start" : index === ticks.length - 1 ? "end" : "middle"}
+            className="fill-[color:var(--dash-faint)] text-3xs nums"
+          >
+            {hhmm(tick)}
+          </text>
+        ))}
+      </svg>
     </div>
   );
 }
