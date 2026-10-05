@@ -360,8 +360,11 @@ function ModeBandHeader({
     status !== undefined || (Array.isArray(statusSlot) ? statusSlot.includes(pathname) : Boolean(statusSlot));
 
   return (
-    <div
+    // A named region, so everything on the page sits in a landmark; a header
+    // element would add a second page banner beside the top bar's.
+    <section
       ref={setBand}
+      aria-label={modeName}
       className="mode-band"
       data-testid="mode-band"
       data-mode-identity={IDENTITY_MODES.has(modeId) ? modeId : undefined}
@@ -439,7 +442,7 @@ function ModeBandHeader({
       ) : (
         <div aria-hidden="true" className="mode-band__end" />
       )}
-    </div>
+    </section>
   );
 }
 
