@@ -6,7 +6,6 @@ import {
   Cloud,
   GraduationCap,
   Info,
-  LogOut,
   MapPin,
   Plus,
   Route,
@@ -110,12 +109,15 @@ export function ProfilePanel({
   identity,
   onChooseStage,
   layout,
+  offline = false,
 }: {
   readonly data: WorkProfileData;
   readonly identity: { name: string; email: string };
   readonly onChooseStage: () => void;
   /** "split" puts the areas in a second column on a wide screen. */
   readonly layout: "single" | "split";
+  /** Offline nothing can be changed, so rows are read-only and the add/start actions are hidden. */
+  readonly offline?: boolean;
 }) {
   const { preferences } = useAppPreferences();
   const stage = workStageLabel(preferences.workStage, preferences.ranzcpStage);
@@ -144,7 +146,7 @@ export function ProfilePanel({
             <span className="text-[color:var(--clinical-accent)]">Choose your stage</span>
           )
         }
-        onSelect={onChooseStage}
+        onSelect={offline ? undefined : onChooseStage}
         testId="work-profile-stage"
       />
       <WorkProfileRow title="Guidelines for" subtitle={jurisdiction} />
@@ -189,18 +191,26 @@ export function ProfilePanel({
     <WorkProfileSection label="Where you work" testId="work-profile-workplaces">
       {data.workplaces.status === "ready" ? (
         data.workplaces.value.map((name) => (
-          <WorkProfileRow key={name} icon={MapPin} title={name} subtitle="From your roster" href="/roster/settings" />
+          <WorkProfileRow
+            key={name}
+            icon={MapPin}
+            title={name}
+            subtitle="From your roster"
+            href={offline ? undefined : "/roster/settings"}
+          />
         ))
       ) : data.workplaces.status === "failed" ? (
         <WorkProfileRow icon={MapPin} title="Couldn’t load your workplaces" subtitle="Not checked" />
       ) : null}
-      <WorkProfileRow
-        icon={Plus}
-        title="Add a workplace"
-        tone="link"
-        href="/roster/settings"
-        testId="work-profile-add-workplace"
-      />
+      {offline ? null : (
+        <WorkProfileRow
+          icon={Plus}
+          title="Add a workplace"
+          tone="link"
+          href="/roster/settings"
+          testId="work-profile-add-workplace"
+        />
+      )}
     </WorkProfileSection>
   );
 
@@ -213,14 +223,14 @@ export function ProfilePanel({
           title={row.title}
           subtitle={row.subtitle}
           trailing={<AreaTrailing row={row} />}
-          href={row.state === "not-checked" ? undefined : AREA_HREF[row.id]}
+          href={offline || row.state === "not-checked" ? undefined : AREA_HREF[row.id]}
           testId={`work-profile-area-${row.id}`}
         />
       ))}
     </WorkProfileSection>
   );
 
-  const newJob = (
+  const newJob = offline ? null : (
     <WorkProfileSection>
       <WorkProfileRow
         icon={Route}
@@ -439,7 +449,6 @@ function SignOutBlock({ onSignOut }: { readonly onSignOut: () => void }): ReactN
         data-testid="work-profile-sign-out"
         className="flex min-h-tap items-center gap-3 text-left text-base-minus font-medium text-[color:var(--danger-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
       >
-        <LogOut aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
         Sign out
       </button>
       <WorkProfileFoot>

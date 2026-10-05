@@ -1,9 +1,9 @@
 "use client";
 
-import { Bell, Check, ChevronLeft, CloudOff, Lock, LogIn, Shield, TriangleAlert, UserRound } from "lucide-react";
+import { Bell, Check, ChevronLeft, CloudOff, Lock, Shield, TriangleAlert, UserRound } from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { deriveSidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
@@ -14,7 +14,7 @@ import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
-import { useOnline, useWorkProfileData } from "@/components/work-profile/use-work-profile-data";
+import { useOnline, useWorkProfileData, type WorkProfileData } from "@/components/work-profile/use-work-profile-data";
 import { WorkProfileNote, WorkProfileRow, WorkProfileSection } from "@/components/work-profile/work-profile-list";
 import { AlertsPanel, PrivacyPanel, ProfilePanel, WorkPanel } from "@/components/work-profile/work-profile-panels";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -41,11 +41,11 @@ type HeaderStatus =
   | { kind: "none" };
 
 function StatusLine({ status, onRetry }: { readonly status: HeaderStatus; readonly onRetry: () => void }) {
-  const base = "flex min-h-5 items-center gap-1.5 text-xs text-[color:var(--text-muted)]";
+  const base = "-mt-4 flex min-h-5 items-center gap-1.5 text-xs text-[color:var(--text-muted)]";
   if (status.kind === "failed") {
     // The whole line is the retry button; its 48px tap area must not push the tabs down.
     return (
-      <div role="alert">
+      <div role="alert" className="-mt-4">
         <button
           type="button"
           onClick={onRetry}
@@ -99,7 +99,7 @@ function SignedOutBody() {
         <WorkProfileRow icon={Bell} title="Alerts and calendar" subtitle="One link for shifts, teaching and CPD" />
         <WorkProfileRow icon={Shield} title="Privacy" subtitle="See what stays on this phone" />
       </WorkProfileSection>
-      <Button variant="primary" icon={LogIn} onClick={() => setOpen(true)} block>
+      <Button variant="primary" onClick={() => setOpen(true)} block>
         Sign in
       </Button>
       <AccountSetupDialog open={open} onClose={() => setOpen(false)} />
@@ -141,11 +141,51 @@ function SignedInBody({
   const { preferences, syncState, retrySync } = useAppPreferences();
   const online = useOnline();
   const savedAt = useSavedAt(syncState);
+  return (
+    <WorkProfileSignedInView
+      tab={tab}
+      onTab={onTab}
+      email={email}
+      data={data}
+      online={online}
+      syncState={syncState}
+      savedAt={savedAt}
+      onRetry={retrySync}
+      workStageSet={preferences.workStage !== null}
+    />
+  );
+}
+
+/**
+ * The signed-in page from already-read values, with no reads of its own, so a
+ * test or a screenshot can show any state without a live account.
+ */
+export function WorkProfileSignedInView({
+  tab,
+  onTab,
+  email,
+  data,
+  online,
+  syncState,
+  savedAt,
+  onRetry,
+  workStageSet,
+}: {
+  readonly tab: WorkProfileTab;
+  readonly onTab: (tab: WorkProfileTab) => void;
+  readonly email: string;
+  readonly data: WorkProfileData;
+  readonly online: boolean;
+  readonly syncState: string;
+  readonly savedAt: Date | null;
+  readonly onRetry: () => void;
+  readonly workStageSet: boolean;
+}) {
   const [stageOpen, setStageOpen] = useState(false);
   const identity = deriveSidebarIdentity(email);
 
   const nothingSetUp =
-    preferences.workStage === null &&
+    !workStageSet &&
     data.roster.status === "ready" &&
     data.roster.value.workplaces === 0 &&
     data.teaching.status === "ready" &&
@@ -157,13 +197,11 @@ function SignedInBody({
     ? { kind: "offline" }
     : syncState === "error"
       ? { kind: "failed" }
-      : syncState === "syncing" && savedAt === null && nothingSetUp
-        ? { kind: "none" }
-        : syncState === "syncing"
-          ? { kind: "saving" }
-          : nothingSetUp
-            ? { kind: "none" }
-            : { kind: "saved", at: savedAt };
+      : syncState === "syncing"
+        ? { kind: "saving" }
+        : nothingSetUp
+          ? { kind: "none" }
+          : { kind: "saved", at: savedAt };
 
   // Counts are hidden while offline: a figure from a partial read could be too low.
   const count = online ? profileTabCount(data.admin) : undefined;
@@ -175,20 +213,23 @@ function SignedInBody({
 
   return (
     <>
-      <StatusLine status={status} onRetry={retrySync} />
-      {!online ? (
-        <WorkProfileNote icon={CloudOff} title="You’re offline" testId="work-profile-offline">
-          Only what loaded is shown. Settings can’t be changed until you’re back online. Nothing was saved.
-        </WorkProfileNote>
-      ) : null}
+      <StatusLine status={status} onRetry={onRetry} />
       <Tabs items={items} value={tab} onChange={(id) => onTab(readWorkProfileTab(id))} label="Work profile">
         <div className="pt-5" data-testid={`work-profile-panel-${tab}`}>
+          {!online ? (
+            <div className="pb-6">
+              <WorkProfileNote icon={CloudOff} title="You’re offline" testId="work-profile-offline">
+                Only what loaded is shown. Settings can’t be changed until you’re back online. Nothing was saved.
+              </WorkProfileNote>
+            </div>
+          ) : null}
           {tab === "profile" ? (
             <ProfilePanel
               data={data}
               identity={{ name: identity.displayName, email }}
               onChooseStage={() => setStageOpen(true)}
               layout="split"
+              offline={!online}
             />
           ) : tab === "work" ? (
             <WorkPanel data={data} />
@@ -201,6 +242,27 @@ function SignedInBody({
       </Tabs>
       {stageOpen ? <WorkStageSheet open={stageOpen} onClose={() => setStageOpen(false)} /> : null}
     </>
+  );
+}
+
+/** The page frame: back link and title over the body, shared by every state. */
+export function WorkProfileFrame({ children }: { readonly children: ReactNode }) {
+  return (
+    <InformationPageShell testId="work-profile-main">
+      <div className={PAGE_WIDTH}>
+        <header className="grid gap-1" data-testid="work-profile-header">
+          <ContextualBackLink
+            fallbackHref="/my-day"
+            className="-ml-1 inline-flex min-h-tap w-fit items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)] no-underline"
+          >
+            <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+            My Day
+          </ContextualBackLink>
+          <h1 className="text-hero font-semibold leading-tight text-[color:var(--text-heading)]">Work profile</h1>
+        </header>
+        {children}
+      </div>
+    </InformationPageShell>
   );
 }
 
@@ -231,50 +293,37 @@ export function WorkProfilePage() {
   const email = session?.user?.email ?? "";
 
   return (
-    <InformationPageShell testId="work-profile-main">
-      <div className={PAGE_WIDTH}>
-        <header className="grid gap-1" data-testid="work-profile-header">
-          <ContextualBackLink
-            fallbackHref="/my-day"
-            className="-ml-1 inline-flex min-h-tap w-fit items-center gap-1 text-sm font-medium text-[color:var(--clinical-accent)] no-underline"
-          >
-            <ChevronLeft aria-hidden="true" className="size-icon-sm" />
-            My Day
-          </ContextualBackLink>
-          <h1 className="text-hero font-semibold leading-tight text-[color:var(--text-heading)]">Work profile</h1>
-        </header>
-
-        {authStatus === "loading" ? (
-          <>
-            <span role="status" className="sr-only">
-              Loading Work profile
-            </span>
-            <div className="grid gap-5" aria-hidden="true" data-testid="work-profile-loading">
-              <ModeModuleSkeleton rows={3} twoLine eyebrow />
-            </div>
-          </>
-        ) : null}
-
-        {authStatus === "error" ? (
-          <div className="grid gap-2" data-testid="work-profile-auth-error">
-            <ModeNotice tone="warning">Couldn&apos;t check your sign-in. Try again.</ModeNotice>
-            <div>
-              <Button variant="secondary" onClick={() => window.location.reload()}>
-                Retry
-              </Button>
-            </div>
+    <WorkProfileFrame>
+      {authStatus === "loading" ? (
+        <>
+          <span role="status" className="sr-only">
+            Loading Work profile
+          </span>
+          <div className="grid gap-5" aria-hidden="true" data-testid="work-profile-loading">
+            <ModeModuleSkeleton rows={3} twoLine eyebrow />
           </div>
-        ) : null}
+        </>
+      ) : null}
 
-        {signedOut ? (
-          <>
-            <StatusLine status={{ kind: "signed-out" }} onRetry={() => undefined} />
-            <SignedOutBody />
-          </>
-        ) : null}
+      {authStatus === "error" ? (
+        <div className="grid gap-2" data-testid="work-profile-auth-error">
+          <ModeNotice tone="warning">Couldn&apos;t check your sign-in. Try again.</ModeNotice>
+          <div>
+            <Button variant="secondary" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
-        {authStatus === "authenticated" ? <SignedInBody tab={tab} onTab={setTab} email={email} /> : null}
-      </div>
-    </InformationPageShell>
+      {signedOut ? (
+        <>
+          <StatusLine status={{ kind: "signed-out" }} onRetry={() => undefined} />
+          <SignedOutBody />
+        </>
+      ) : null}
+
+      {authStatus === "authenticated" ? <SignedInBody tab={tab} onTab={setTab} email={email} /> : null}
+    </WorkProfileFrame>
   );
 }
