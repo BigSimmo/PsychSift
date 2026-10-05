@@ -19,8 +19,8 @@ export async function POST(request: Request) {
         removeSubscriptionBodySchema,
         "Choose this device's alert subscription.",
       );
-      return { sent: await sendTestAlert(client, ownerId, body.endpoint) };
+      return sendTestAlert(client, ownerId, body.endpoint);
     },
-    { demo: () => ({ sent: 0 }) },
+    { demo: () => ({ sent: 0, reason: "not_configured" }) },
   );
 }

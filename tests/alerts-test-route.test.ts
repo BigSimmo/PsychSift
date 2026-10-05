@@ -101,7 +101,7 @@ describe("Send test alert", () => {
 
   it("never sends to a device this account does not own", async () => {
     mocks.rows = [{ ...mocks.rows[0]!, owner_id: "someone-else" }];
-    expect(await (await POST(req({ endpoint: ENDPOINT }))).json()).toEqual({ sent: 0 });
+    expect(await (await POST(req({ endpoint: ENDPOINT }))).json()).toEqual({ sent: 0, reason: "not_owned" });
     expect(mocks.send).not.toHaveBeenCalled();
   });
 
@@ -113,8 +113,14 @@ describe("Send test alert", () => {
 
   it("drops a subscription the push service says is gone, and reports nothing sent", async () => {
     mocks.send.mockRejectedValue(Object.assign(new Error("gone"), { statusCode: 410 }));
-    expect(await (await POST(req({ endpoint: ENDPOINT }))).json()).toEqual({ sent: 0 });
+    expect(await (await POST(req({ endpoint: ENDPOINT }))).json()).toEqual({ sent: 0, reason: "gone" });
     expect(queries.some((query) => query.op === "delete")).toBe(true);
+  });
+
+  it("a passing push-service failure is not reported as a broken link", async () => {
+    mocks.send.mockRejectedValue(Object.assign(new Error("busy"), { statusCode: 503 }));
+    expect(await (await POST(req({ endpoint: ENDPOINT }))).json()).toEqual({ sent: 0, reason: "failed" });
+    expect(queries.some((query) => query.op === "delete")).toBe(false);
   });
 
   it("needs a signed-in account", async () => {

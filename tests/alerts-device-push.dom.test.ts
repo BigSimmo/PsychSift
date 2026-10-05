@@ -29,7 +29,7 @@ describe("removing this device's phone alerts (sign-out and Off)", () => {
       return new Response("{}");
     });
     vi.stubGlobal("fetch", fetchMock);
-    await removeThisDevicePushSubscription();
+    await expect(removeThisDevicePushSubscription()).resolves.toBe(true);
     expect(order).toEqual(["browser", "server:DELETE"]);
     expect(JSON.parse(String(fetchMock.mock.calls[0]![1]!.body))).toEqual({ endpoint: ENDPOINT });
   });
@@ -42,13 +42,22 @@ describe("removing this device's phone alerts (sign-out and Off)", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("reports a browser that refused to unsubscribe, so the page never shows Off by mistake", async () => {
+    installWorker({ endpoint: ENDPOINT, unsubscribe: async () => false });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(removeThisDevicePushSubscription()).resolves.toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("never throws, and gives up waiting on a hung network so sign-out still finishes", async () => {
     installWorker({ endpoint: ENDPOINT, unsubscribe: async () => true });
     vi.stubGlobal("fetch", () => new Promise(() => undefined));
-    await expect(removeThisDevicePushSubscription(20)).resolves.toBeUndefined();
+    // The browser half finished, so this device is off even though the server never answered.
+    await expect(removeThisDevicePushSubscription(20)).resolves.toBe(true);
     vi.stubGlobal("fetch", async () => {
       throw new Error("offline");
     });
-    await expect(removeThisDevicePushSubscription(20)).resolves.toBeUndefined();
+    await expect(removeThisDevicePushSubscription(20)).resolves.toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { focusRing } from "@/components/card-recipes";
 import { useState } from "react";
 
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
@@ -97,7 +98,10 @@ export function ReminderSettingsBlock({
         <p className={cn("mt-0.5 text-xs font-medium leading-5", textMuted)}>
           These work now. They choose which CPD and On Call reminders show in the app, and which dates alert your phone
           through your calendar link or a downloaded calendar file. Nothing is sent anywhere else.{" "}
-          <Link href="/my-day/alerts" className="text-[color:var(--clinical-accent)] underline">
+          <Link
+            href="/my-day/alerts"
+            className={cn(focusRing, "rounded-xs text-[color:var(--clinical-accent)] underline")}
+          >
             All alerts, including phone alerts
           </Link>
         </p>

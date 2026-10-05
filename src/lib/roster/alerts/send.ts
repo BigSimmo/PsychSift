@@ -57,15 +57,23 @@ export async function sendRosterAlerts(
   return totals;
 }
 
+export type TestAlertResult =
+  { readonly sent: 1 } | { readonly sent: 0; readonly reason: "not_configured" | "not_owned" | "gone" | "failed" };
+
 /**
  * "Send test" on the Alerts page: one `{t:"test"}` push to the one device that
- * asked, after checking that this owner owns it. Returns how many were sent
- * (0 or 1); a gone subscription is removed, as a real send would.
+ * asked, after checking that this owner owns it. A failure says why, so the
+ * page only suggests re-linking when the link is really gone; a gone
+ * subscription is removed, as a real send would.
  */
-export async function sendTestAlert(client: RosterAdminClient, ownerId: string, endpoint: string): Promise<number> {
-  if (!webPushConfigured()) return 0;
+export async function sendTestAlert(
+  client: RosterAdminClient,
+  ownerId: string,
+  endpoint: string,
+): Promise<TestAlertResult> {
+  if (!webPushConfigured()) return { sent: 0, reason: "not_configured" };
   const row = await ownerSubscriptionFor(client, ownerId, endpoint);
-  if (!row) return 0;
+  if (!row) return { sent: 0, reason: "not_owned" };
   webpush.setVapidDetails(env.WEB_PUSH_SUBJECT!, env.WEB_PUSH_PUBLIC_KEY!, env.WEB_PUSH_PRIVATE_KEY!);
   try {
     await webpush.sendNotification(
@@ -73,10 +81,13 @@ export async function sendTestAlert(client: RosterAdminClient, ownerId: string, 
       JSON.stringify({ t: "test" }),
       { TTL: 60 },
     );
-    return 1;
+    return { sent: 1 };
   } catch (error) {
     const status = (error as { statusCode?: number })?.statusCode;
-    if (status === 404 || status === 410) await removeGoneSubscription(client, row).catch(() => {});
-    return 0;
+    if (status === 404 || status === 410) {
+      await removeGoneSubscription(client, row).catch(() => {});
+      return { sent: 0, reason: "gone" };
+    }
+    return { sent: 0, reason: "failed" };
   }
 }

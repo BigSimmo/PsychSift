@@ -11,6 +11,8 @@ import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { Select } from "@/components/ui/select";
+import { focusRing } from "@/components/card-recipes";
+import { cn } from "@/components/ui-primitives";
 import { ALERT_AREAS, LEAD_PHRASES, shortDay, type AlertAreaId, type RosterAlertChoices } from "@/lib/alerts/areas";
 import { DEVICE_NAMES, type DeviceKind } from "@/lib/alerts/phone-state";
 import {
@@ -247,7 +249,10 @@ export function AlertsAreaSheet({
               {area.id === "roster" && roster.calendarShifts === false ? (
                 <SheetNote>
                   Turn on Shifts on my calendar link in{" "}
-                  <Link href="/roster/settings" className="text-[color:var(--clinical-accent)] underline">
+                  <Link
+                    href="/roster/settings"
+                    className={cn(focusRing, "rounded-xs text-[color:var(--clinical-accent)] underline")}
+                  >
                     Roster settings
                   </Link>{" "}
                   first.

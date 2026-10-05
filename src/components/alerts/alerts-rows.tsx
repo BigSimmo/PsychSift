@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronRight } from "lucide-react";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { modeDot, modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
@@ -117,24 +117,45 @@ export function ChoiceChips<T extends string>({
   readonly labelledBy: string;
   readonly testId?: string;
 }) {
+  const index = Math.max(
+    0,
+    options.findIndex((option) => option.value === value),
+  );
+  // One tab stop for the group; arrows move the choice, as a radio group should.
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const step =
+      event.key === "ArrowRight" || event.key === "ArrowDown"
+        ? 1
+        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+          ? -1
+          : 0;
+    if (!step) return;
+    event.preventDefault();
+    const next = (index + step + options.length) % options.length;
+    onChange(options[next]!.value);
+    const group = event.currentTarget.parentElement;
+    (group?.children[next] as HTMLElement | undefined)?.focus();
+  };
   return (
     <div role="radiogroup" aria-labelledby={labelledBy} className="flex flex-wrap gap-x-2" data-testid={testId}>
-      {options.map((option) => {
-        const chosen = option.value === value;
+      {options.map((option, position) => {
+        const chosen = position === index;
         return (
           <button
             key={option.value}
             type="button"
             role="radio"
             aria-checked={chosen}
+            tabIndex={chosen ? 0 : -1}
             onClick={() => onChange(option.value)}
+            onKeyDown={onKeyDown}
             className={cn(focusRing, "inline-flex min-h-12 items-center rounded-md")}
           >
             <span
               className={cn(
                 "inline-flex min-h-10 items-center gap-1.5 rounded-md border px-3 text-sm",
                 chosen
-                  ? "border-[color:var(--text-heading)] font-semibold text-[color:var(--text-heading)]"
+                  ? "border-[color:var(--text-heading)] font-semibold text-[color:var(--text-heading)] forced-colors:border-2 forced-colors:border-[Highlight]"
                   : "border-[color:var(--border-strong)] text-[color:var(--text)]",
               )}
             >

@@ -128,7 +128,6 @@ function LockedTestButton({ reason }: { readonly reason: string }) {
         aria-disabled="true"
         onClick={ignoreUnavailableActivation}
         aria-describedby="alerts-test-locked-reason"
-        title={reason}
         testId="alerts-test-locked"
       >
         Send test alert
@@ -187,7 +186,7 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
         <Footnote>
           {blocked
             ? "Until then you won't get phone alerts, but everything still shows in My Day."
-            : "The test unlocks after step 3. Until then, everything still shows in My Day."}
+            : "Until then, everything still shows in My Day."}
         </Footnote>
       </section>
     );
@@ -260,8 +259,8 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
         </p>
       ) : null}
       <Footnote testId="alerts-device-footnote">
-        Settings follow your account. Phone alerts are switched on per device, and signing out stops them on that
-        device.
+        Settings follow your account. Phone alerts are switched on per device, and signing out here turns them off on
+        this device.
       </Footnote>
     </section>
   );

@@ -179,9 +179,11 @@ export function usePhoneAlerts(): PhoneAlerts {
     return () => worker.removeEventListener("message", onMessage);
   }, []);
 
-  const turnOff = useCallback(async () => {
-    await removeThisDevicePushSubscription();
-    setSubscribed(false);
+  const turnOff = useCallback(async (): Promise<boolean> => {
+    const removed = await removeThisDevicePushSubscription();
+    if (removed) setSubscribed(false);
+    else setMessage("Phone alerts couldn't be turned off. Try again.");
+    return removed;
   }, []);
 
   const toggle = useCallback(async () => {
@@ -245,10 +247,14 @@ export function usePhoneAlerts(): PhoneAlerts {
         body: JSON.stringify({ endpoint: subscription.endpoint }),
         cache: "no-store",
       });
-      const payload = (await response.json().catch(() => null)) as { sent?: number } | null;
+      const payload = (await response.json().catch(() => null)) as { sent?: number; reason?: string } | null;
       if (!response.ok) throw new Error("Test not sent");
       if (!payload?.sent) {
-        setMessage("The test couldn't reach this device. Turn phone alerts off and on again.");
+        setMessage(
+          payload?.reason === "gone" || payload?.reason === "not_owned"
+            ? "This device isn't linked to your alerts any more. Turn phone alerts off and on again."
+            : "The test alert couldn't be sent. Try again shortly.",
+        );
         return;
       }
       setTestSentAt(new Date().toISOString());
@@ -261,9 +267,10 @@ export function usePhoneAlerts(): PhoneAlerts {
 
   const setShared = useCallback(
     async (shared: boolean) => {
+      // A shared computer keeps no subscription: the switch only turns on once
+      // this device's subscription is really gone.
+      if (shared && subscribed && !(await turnOff())) return;
       setSharedDevice(shared);
-      // A shared computer keeps no subscription: turning the switch on removes it.
-      if (shared && subscribed) await turnOff();
     },
     [subscribed, turnOff],
   );
