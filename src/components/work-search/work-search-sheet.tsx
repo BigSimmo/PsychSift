@@ -33,6 +33,7 @@ import {
   AREA_ICONS,
   cardSurface,
   focusRing,
+  focusRingInset,
   Kicker,
   ListCard,
   moveFocus,
@@ -48,14 +49,14 @@ import { perthDateOf } from "@/lib/perth-time";
 import { answerWorkQuestion } from "@/lib/work-search/answers";
 import { workSearchAreaLabels, workSearchAreas, type WorkAreaRead, type WorkSearchArea } from "@/lib/work-search/model";
 import {
-  collapseSeries,
   searchWork,
   workComingUp,
   workSearchCorrection,
   workSearchCounts,
+  workSearchNothingFound,
   type WorkSearchHit,
 } from "@/lib/work-search/search";
-import { clinicalSearchHref, looksClinical, looksLikePatientDetails } from "@/lib/work-search/signals";
+import { clinicalSearchHref, looksLikePatientDetails, workSearchGate } from "@/lib/work-search/signals";
 
 /** The built-in questions, offered on the empty screen and as "Ask" suggestions while typing. */
 const QUESTIONS = [
@@ -281,26 +282,24 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
 
   const trimmed = searchQuery.trim();
   const typed = query.trim().length > 0;
-  const patient = trimmed.length > 0 && looksLikePatientDetails(trimmed);
-  const clinical = trimmed.length > 0 && !patient && looksClinical(trimmed);
+  const gate = workSearchGate(trimmed);
+  const { patient, clinical } = gate;
   const exact = exactFor !== null && exactFor === trimmed;
   const hits = useMemo(
     () =>
-      // Patient details and clinical questions are not looked up at all: the notice is the whole answer.
-      patient || clinical
+      // Patient details are not looked up at all: the notice is the whole answer.
+      !gate.search
         ? []
-        : collapseSeries(
-            searchWork({ items: records.items, entries: records.entries }, searchQuery, { currentArea, today, exact }),
-          ),
-    [patient, clinical, records.items, records.entries, searchQuery, currentArea, today, exact],
+        : searchWork({ items: records.items, entries: records.entries }, searchQuery, { currentArea, today, exact }),
+    [gate.search, records.items, records.entries, searchQuery, currentArea, today, exact],
   );
   const allItems = useMemo(
     () => [...records.items, ...records.entries.map(({ item }) => item)],
     [records.items, records.entries],
   );
   const correction = useMemo(
-    () => (exact || hits.length === 0 ? null : workSearchCorrection(allItems, searchQuery)),
-    [exact, hits.length, allItems, searchQuery],
+    () => (exact || hits.length === 0 ? null : workSearchCorrection(records, searchQuery)),
+    [exact, hits.length, records, searchQuery],
   );
   const nextUp = useMemo(() => workComingUp(allItems, today, now, 3), [allItems, today, now]);
   const loadingAreas = records.areas.filter((area) => area.status === "loading");
@@ -308,10 +307,10 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   // A clinical question or patient details never get a work answer: the notice says what to do instead.
   const answer = useMemo(
     () =>
-      patient || clinical
+      !gate.answer
         ? null
         : answerWorkQuestion(searchQuery, { items: allItems, areas: records.areas, today, now, cpd: records.cpd }),
-    [patient, clinical, searchQuery, allItems, records.areas, records.cpd, today, now],
+    [gate.answer, searchQuery, allItems, records.areas, records.cpd, today, now],
   );
   const suggestions = useMemo(() => (answer || patient ? [] : suggestQuestions(trimmed)), [answer, patient, trimmed]);
 
@@ -373,11 +372,15 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   // Spoken once the typing settles, not on every key.
   const announcement = !typed
     ? ""
-    : answer
-      ? `${answer.label}: ${answer.headline}.`
-      : loading && visibleCount === 0
-        ? "Searching."
-        : `${visibleCount} ${visibleCount === 1 ? "result" : "results"}${filter === "all" ? "" : ` in ${workSearchAreaLabels[filter]}`}.`;
+    : patient
+      ? "Looks like patient details. Not searched or saved."
+      : clinical && visibleCount === 0 && !loading
+        ? "Clinical question. Open in clinical search is available."
+        : answer
+          ? `${answer.label}: ${answer.headline}.`
+          : loading && visibleCount === 0
+            ? "Searching."
+            : `${clinical ? "Clinical question. " : ""}${visibleCount} ${visibleCount === 1 ? "result" : "results"}${filter === "all" ? "" : ` in ${workSearchAreaLabels[filter]}`}.`;
   useEffect(() => {
     const timer = window.setTimeout(() => setLiveText(announcement), 600);
     return () => window.clearTimeout(timer);
@@ -461,14 +464,16 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
           role="note"
           className="flex items-center gap-3 rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--surface-raised)] py-2 pl-4 pr-2"
         >
-          <Lock
-            aria-hidden="true"
-            className="size-icon-md shrink-0 self-start text-[color:var(--warning)] mt-2.5"
-            strokeWidth={1.6}
-          />
-          <p className="min-w-0 flex-1 py-1.5 text-sm text-[color:var(--text-muted)]">
-            <b className="block font-semibold text-[color:var(--text-heading)]">Looks like patient details</b>
-            Not saved to Recent. Please don&apos;t type patient details here.
+          <p className="flex min-w-0 flex-1 items-start gap-3 py-1.5 text-sm text-[color:var(--text-muted)]">
+            <Lock
+              aria-hidden="true"
+              className="mt-0.5 size-icon-md shrink-0 text-[color:var(--warning)]"
+              strokeWidth={1.6}
+            />
+            <span className="min-w-0">
+              <b className="block font-semibold text-[color:var(--text-heading)]">Looks like patient details</b>
+              Not searched or saved. Please don&apos;t type patient details here.
+            </span>
           </p>
           <button
             type="button"
@@ -492,7 +497,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 Clinical question?
               </p>
               <p className="mt-0.5 text-sm text-[color:var(--text-muted)]">
-                Work search only looks at your staff records. Clinical search answers from guidelines, with citations.
+                Clinical search answers from guidelines, with citations. Search my work only looks at your own records.
               </p>
             </div>
           </div>
@@ -657,10 +662,10 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                     }}
                     data-mode-identity={area === "all" ? undefined : area}
                     className={cn(
-                      "relative inline-flex min-h-12 shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold focus-visible:outline-offset-[-2px] forced-colors:border-b-2 forced-colors:border-transparent",
+                      "relative inline-flex min-h-12 shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold forced-colors:border-b-2 forced-colors:border-transparent",
                       selected && "forced-colors:border-[Highlight]",
                       selected ? "text-[color:var(--text-heading)]" : "text-[color:var(--text-muted)]",
-                      focusRing,
+                      focusRingInset,
                     )}
                   >
                     {label}
@@ -722,13 +727,17 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               inputRef.current?.focus();
             }}
           />
-          {typed && correction && !patient && !clinical ? (
+          {typed && correction ? (
             <p className="text-sm text-[color:var(--text-muted)]">
               Showing matches for <b className="font-semibold text-[color:var(--text-heading)]">{correction.read}</b>.
               <br />
               <button
                 type="button"
-                onClick={() => setExactFor(trimmed)}
+                onClick={() => {
+                  setExactFor(trimmed);
+                  // The line goes away once the search is exact, so the box keeps the focus.
+                  inputRef.current?.focus();
+                }}
                 className={cn(
                   "-my-3 min-h-12 font-semibold text-[color:var(--text-heading)] underline decoration-[color:var(--border-strong)] underline-offset-4",
                   focusRing,
@@ -786,6 +795,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                           onClick={() => {
                             recentMemory = { epoch, list: recentsFor(epoch).filter((item) => item !== value) };
                             setRecents(recentsFor(epoch));
+                            inputRef.current?.focus();
                           }}
                           aria-label={`Remove ${value} from recent searches`}
                           className={cn(
@@ -861,6 +871,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   answer={answer}
                   today={today}
                   onOpen={openResult}
+                  onListKeyDown={(event) => moveFocus(event, inputRef)}
                   onRetry={() => {
                     records.retry();
                     inputRef.current?.focus();
@@ -904,9 +915,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   Nothing for &ldquo;{trimmed}&rdquo;
                 </p>
                 <p className="max-w-xs text-sm text-[color:var(--text-muted)]">
-                  {filter === "all"
-                    ? "It isn't in your Roster, Teaching, CPD, Admin or On Call records."
-                    : `It isn't in your ${workSearchAreaLabels[filter]} records.`}
+                  {workSearchNothingFound(records.areas, filter)}
                 </p>
               </div>
               <section className="grid gap-1">

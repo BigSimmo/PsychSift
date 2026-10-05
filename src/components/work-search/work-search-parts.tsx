@@ -15,7 +15,8 @@ import Link from "next/link";
 import type { KeyboardEvent, MouseEvent, ReactNode, RefObject } from "react";
 
 import { cn } from "@/components/ui-primitives";
-import { workSearchAreaLabels, type WorkItem, type WorkSearchArea } from "@/lib/work-search/model";
+import { formatPerthDay } from "@/lib/perth-time";
+import type { WorkItem, WorkSearchArea } from "@/lib/work-search/model";
 import { highlightWords } from "@/lib/work-search/terms";
 
 /** Shared pieces of the "Search my work" screen, drawn to the approved mock-up. */
@@ -56,27 +57,15 @@ export function onPlainClick(then: () => void) {
 
 export const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
+/** The same ring drawn just inside the edge, for full-width rows and tabs a scrolling parent would clip. */
+export const focusRingInset =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]";
 
 /** The quiet bordered card answers and notices sit in: no shadow, one hairline. */
 export const cardSurface = "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]";
 
 const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
-const MONTH_LONG = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-] as const;
 
 function utcDay(date: string): Date {
   return new Date(`${date}T00:00:00Z`);
@@ -84,28 +73,6 @@ function utcDay(date: string): Date {
 
 export function daysFrom(today: string, date: string): number {
   return Math.round((utcDay(date).getTime() - utcDay(today).getTime()) / 86_400_000);
-}
-
-/** "Today", "Tomorrow", a weekday within the week, else "12 Oct". */
-export function relativeDay(today: string, date: string): string {
-  const days = daysFrom(today, date);
-  if (days === 0) return "Today";
-  if (days === 1) return "Tomorrow";
-  const day = utcDay(date);
-  if (days > 1 && days < 7) return WEEKDAY_LONG[day.getUTCDay()] ?? date;
-  return `${day.getUTCDate()} ${MONTH_SHORT[day.getUTCMonth()]}`;
-}
-
-/** "Wed 23 Sep". */
-export function dayShort(date: string): string {
-  const day = utcDay(date);
-  return `${WEEKDAY_SHORT[day.getUTCDay()]} ${day.getUTCDate()} ${MONTH_SHORT[day.getUTCMonth()]}`;
-}
-
-/** "18 October". */
-export function dayMonthLong(date: string): string {
-  const day = utcDay(date);
-  return `${day.getUTCDate()} ${MONTH_LONG[day.getUTCMonth()]}`;
 }
 
 /** The item's detail line without its leading day, for rows that show the date in a tile. */
@@ -217,7 +184,7 @@ function highlightPattern(query: string): RegExp | null {
   return pattern;
 }
 
-/** Marks the typed words inside a title: bold and underlined in the area's colour. */
+/** Marks the typed words inside a title in semibold, as the mock-up does. */
 export function Highlight({ text, query }: { text: string; query: string }) {
   const pattern = highlightPattern(query);
   if (!pattern) return <>{text}</>;
@@ -266,24 +233,21 @@ export function ResultRow({
   item,
   today,
   query = "",
-  showArea = false,
-  withAreaInDetail = false,
   onOpen,
   onNow = false,
 }: {
   item: WorkItem;
   today: string;
   query?: string;
-  showArea?: boolean;
-  withAreaInDetail?: boolean;
   onOpen: () => void;
   /** A shift under way right now: tagged "On now". */
   onNow?: boolean;
 }) {
   const dated = showsDateTile(item) && item.date !== null;
   const overdue = item.kind === "renewal" && item.date !== null && item.date < today;
-  const detail = overdue && item.date ? `Lapsed ${dayShort(item.date)}` : item.detail;
-  const line = withAreaInDetail ? [workSearchAreaLabels[item.area], detail].filter(Boolean).join(" · ") : detail;
+  // A date tile already says the day, so the line under the title leaves it out.
+  const line =
+    overdue && item.date ? `Lapsed ${formatPerthDay(item.date)}` : dated ? detailWithoutDay(item) : item.detail;
   return (
     <li data-mode-identity={item.area}>
       <Link
@@ -292,8 +256,8 @@ export function ResultRow({
         data-work-search-result=""
         className={cn(
           // Room above for the sticky search box, so a row reached with the arrow keys is never hidden under it.
-          "flex min-h-14 scroll-mb-6 scroll-mt-44 items-center gap-3 py-2.5 transition-colors focus-visible:outline-offset-[-2px] motion-reduce:transition-none [@media(hover:hover)]:hover:bg-[color:var(--surface-subtle)]",
-          focusRing,
+          "flex min-h-14 scroll-mb-6 scroll-mt-44 items-center gap-3 py-2.5 transition-colors motion-reduce:transition-none [@media(hover:hover)]:hover:bg-[color:var(--surface-subtle)]",
+          focusRingInset,
         )}
       >
         {dated && item.date ? (
@@ -305,25 +269,14 @@ export function ResultRow({
           <span className="block text-sm leading-snug text-[color:var(--text-heading)]">
             <Highlight text={item.title} query={query} />
           </span>
-          {line ? (
-            <span className="mt-0.5 line-clamp-2 text-xs text-[color:var(--text-muted)]">
-              {overdue ? <span className="sr-only">Overdue. </span> : null}
-              {line}
-            </span>
-          ) : null}
+          {line ? <span className="mt-0.5 line-clamp-2 text-xs text-[color:var(--text-muted)]">{line}</span> : null}
         </span>
         {overdue ? <RowTag tone="warning">Overdue</RowTag> : onNow ? <RowTag tone="area">On now</RowTag> : null}
-        {showArea ? (
-          <span className="shrink-0 text-2xs font-semibold text-[color:var(--mode-identity)]">
-            {workSearchAreaLabels[item.area]}
-          </span>
-        ) : (
-          <ChevronRight
-            aria-hidden="true"
-            className="size-icon-sm shrink-0 text-[color:var(--text-muted)]"
-            strokeWidth={1.6}
-          />
-        )}
+        <ChevronRight
+          aria-hidden="true"
+          className="size-icon-sm shrink-0 text-[color:var(--text-muted)]"
+          strokeWidth={1.6}
+        />
       </Link>
     </li>
   );
@@ -363,8 +316,8 @@ export function ActionRow({
   onNavigate?: () => void;
 }) {
   const className = cn(
-    "flex min-h-12 w-full items-center gap-3 py-2.5 text-left text-sm text-[color:var(--text-heading)] transition-colors focus-visible:outline-offset-[-2px] motion-reduce:transition-none [@media(hover:hover)]:hover:bg-[color:var(--surface-subtle)]",
-    focusRing,
+    "flex min-h-12 w-full items-center gap-3 py-2.5 text-left text-sm text-[color:var(--text-heading)] transition-colors motion-reduce:transition-none [@media(hover:hover)]:hover:bg-[color:var(--surface-subtle)]",
+    focusRingInset,
   );
   const body = (
     <>

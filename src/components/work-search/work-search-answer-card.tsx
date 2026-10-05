@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 
 import { cn } from "@/components/ui-primitives";
 import { cardSurface, focusRing, onPlainClick, ResultRow } from "@/components/work-search/work-search-parts";
@@ -122,7 +122,7 @@ const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const
 /** Monday to Sunday, the free days shaded in the area's colour; the rest drawn as dashed outlines. */
 function WeekStrip({ days, label }: { days: readonly WorkAnswerDay[]; label: string }) {
   return (
-    <ol className="grid grid-cols-7 gap-1" aria-label={label}>
+    <ol className="grid grid-cols-7 gap-1" aria-label={`${label}, by day`}>
       {days.map((day) => {
         const date = new Date(`${day.date}T00:00:00Z`);
         const weekday = WEEKDAY_SHORT[date.getUTCDay()];
@@ -211,11 +211,14 @@ export function AnswerCard({
   today,
   onOpen,
   onRetry,
+  onListKeyDown,
 }: {
   answer: WorkAnswer;
   today: string;
   onOpen: () => void;
   onRetry: () => void;
+  /** Arrow keys between the records listed in the card, as in the lists below it. */
+  onListKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
 }) {
   if (answer.unavailable) return <UnavailableCard answer={answer} onRetry={onRetry} />;
   const identity = answer.area === "all" ? undefined : answer.area;
@@ -250,7 +253,10 @@ export function AnswerCard({
       {answer.note ? <p className="text-sm text-[color:var(--text-muted)]">{answer.note}</p> : null}
       {answer.progress && answer.progress.length > 0 ? <CpdProgress rows={answer.progress} /> : null}
       {answer.area === "all" && answer.items.length > 0 ? (
-        <ul className="divide-y divide-[color:var(--border)] border-t border-[color:var(--border)]">
+        <ul
+          onKeyDown={onListKeyDown}
+          className="divide-y divide-[color:var(--border)] border-t border-[color:var(--border)]"
+        >
           {answer.items.map((item) => (
             <ResultRow key={item.id} item={item} today={today} onOpen={onOpen} />
           ))}
