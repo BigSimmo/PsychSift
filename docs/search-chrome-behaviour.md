@@ -1024,6 +1024,21 @@ Coverage: `tests/master-search-header.dom.test.tsx`,
 `tests/ui-clinical-ask.spec.ts` for the one-composer routing and five-mode
 local-only request boundary.
 
+## Search my work (staff modes header icon)
+
+The staff work modes (My Day, Roster, Teaching, CPD, Admin, On Call) show a
+"Search my work" icon at the right end of the universal header, declared on each
+mode as `workSearch: true` in `src/lib/app-modes.ts` and read through
+`appModeHasWorkSearch` — never a `searchMode === "…"` branch. It is the one
+deliberate second control in the trailing region: on On Call it sits right of the
+page menu in the trailing slot (Josh, 2026-10-04: top right on every staff page).
+
+It is not a second composer. It reserves no space and adds no fixed bar: tapping
+it opens a full-screen modal `Sheet` over the chrome, so the page keeps exactly
+one search owner. The header imports only the icon; the search screen is a lazy
+chunk (`lazy-work-search-sheet.tsx`) fetched on tap, hover or focus. Guarded by
+`tests/work-search-header.test.ts`.
+
 ## Change checklist
 
 Before changing search bar behaviour:

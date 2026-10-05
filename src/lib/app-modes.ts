@@ -91,6 +91,11 @@ export type AppModeDefinition = {
   description: string;
   devOnly?: boolean;
   href?: string;
+  /** Staff work modes show the "Search my work" icon in the header, which searches
+      all of them at once. Declared here rather than as a list of mode ids in the
+      header, for the same reason `resultsSurface` is: the header must not grow a
+      `searchMode === "…"` branch. */
+  workSearch?: true;
   search: AppModeSearchConfig;
 };
 
@@ -504,6 +509,7 @@ export const appModeDefinitions = [
   },
   {
     id: "on-call",
+    workSearch: true,
     label: "On Call",
     description: "Your service's contacts, escalation, orientation and teaching",
     href: "/on-call",
@@ -533,6 +539,7 @@ export const appModeDefinitions = [
   },
   {
     id: "cme",
+    workSearch: true,
     label: "CPD",
     description: "Your continuing education: what you have done, and what is still short",
     href: "/cme",
@@ -563,6 +570,7 @@ export const appModeDefinitions = [
   },
   {
     id: "teaching",
+    workSearch: true,
     label: "Teaching",
     description: "Your hospital's teaching: this week's sessions, check-in and your attendance record",
     href: "/teaching",
@@ -647,6 +655,7 @@ export const appModeDefinitions = [
   },
   {
     id: "my-work",
+    workSearch: true,
     label: "Admin",
     description: "The paperwork around hospital work: renewals, starting and leaving a job, and where to get help",
     // Opens on Renewals, Admin's working page (modes review, phase 2b): My Day is
@@ -675,6 +684,7 @@ export const appModeDefinitions = [
   },
   {
     id: "roster",
+    workSearch: true,
     label: "Roster",
     description: "Your own shifts: imported, or added by hand, with Today, Shifts and Settings",
     href: "/roster",
@@ -733,6 +743,7 @@ export const appModeDefinitions = [
   },
   {
     id: "my-day",
+    workSearch: true,
     label: "My Day",
     description: "One list of what needs you today across On Call, Roster, CPD, Teaching and Admin",
     href: "/my-day",
@@ -763,6 +774,11 @@ export const appModeDefinitions = [
 
 export function appModeDefinition(modeId: AppModeId) {
   return appModeDefinitions.find((mode) => mode.id === modeId) ?? appModeDefinitions[0];
+}
+
+/** Whether this mode shows the "Search my work" header icon. */
+export function appModeHasWorkSearch(modeId: AppModeId): boolean {
+  return (appModeDefinition(modeId) as AppModeDefinition).workSearch === true;
 }
 
 export function isAppModeId(value: string | null | undefined): value is AppModeId {

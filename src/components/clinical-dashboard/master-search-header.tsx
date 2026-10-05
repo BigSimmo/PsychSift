@@ -68,9 +68,11 @@ import {
 import { UniversalSearchCommandSurface } from "@/components/clinical-dashboard/universal-search-command-surface";
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
 import { Sheet } from "@/components/ui/sheet";
+import { WorkSearchButton } from "@/components/work-search/work-search-button";
 import {
   appModeDefinition,
   appModeDefinitions,
+  appModeHasWorkSearch,
   appModeSelectionHref,
   appModeSearchConfig,
   factsheetsTopicsHref,
@@ -2895,6 +2897,13 @@ export function MasterSearchHeader({
               <span className="hidden whitespace-nowrap xl:inline">New chat</span>
             </button>
           ) : null}
+          {/* "Search my work" on the staff work modes (Josh, 2026-10-04: top right on
+              every staff page). Declared on the mode as `workSearch`, never a mode-id
+              branch here. It is the one deliberate second control in this region: on
+              On Call it sits right of the page menu in the slot, and the staff modes
+              have no new-chat button to stand beside. The icon is all the header
+              loads; the search itself is a lazy chunk fetched on tap. */}
+          {appModeHasWorkSearch(selectedAppMode.id) ? <WorkSearchButton modeId={selectedAppMode.id} /> : null}
         </div>
       </div>
 

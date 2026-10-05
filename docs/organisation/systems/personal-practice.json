@@ -28,6 +28,7 @@
     "src/components/on-call/**",
     "src/components/roster/**",
     "src/components/teaching/**",
+    "src/components/work-search/**",
     "src/data/cme/**",
     "src/lib/admin/**",
     "src/lib/calendar/**",
@@ -44,6 +45,7 @@
     "src/lib/roster/**",
     "src/lib/saved-registry-storage.ts",
     "src/lib/teaching/**",
+    "src/lib/work-search/**",
     "tests/admin-*",
     "tests/calendar-*",
     "tests/cme-*",
@@ -62,6 +64,7 @@
     "tests/ui-admin*",
     "tests/ui-cme-phone.spec.ts",
     "tests/ui-on-*",
-    "tests/ui-teaching.spec.ts"
+    "tests/ui-teaching.spec.ts",
+    "tests/work-search*"
   ]
 }
