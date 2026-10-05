@@ -164,8 +164,9 @@ function OutsideEnd({ online }: { readonly online: boolean }) {
 
 /**
  * Shown when the browser reports no connection. `navigator.onLine` is only a
- * hint (docs/pwa.md), so nothing is blocked: the page says what will not work
- * and greys it, and everything still answers a tap.
+ * hint (docs/pwa.md), so nothing is blocked or greyed (greying live controls
+ * would drop them below contrast): the page says what will not work, and
+ * everything still answers a tap.
  */
 function OfflineNote() {
   return (
@@ -274,10 +275,18 @@ function RecentGroup() {
       aside={
         <button
           type="button"
-          onClick={clearMedicineVisits}
+          onClick={() => {
+            clearMedicineVisits();
+            // The group (and this button) disappears; keep focus on the page.
+            document.getElementById("medicines-find-input")?.focus();
+          }}
           aria-label="Clear recent medicines"
           data-testid="medicines-recent-clear"
-          className={cn(focusRing, dashLink, "inline-flex min-h-12 items-center rounded-lg px-1 text-sm")}
+          className={cn(
+            focusRing,
+            dashLink,
+            "inline-flex min-h-12 min-w-12 items-center justify-end rounded-lg px-1 text-sm",
+          )}
         >
           Clear
         </button>
@@ -324,7 +333,7 @@ function SectionsGroup({ counts }: { readonly counts: MedicinesSectionCounts }) 
               >
                 <ModeIcon aria-hidden="true" className={rowIcon} />
                 <span className={rowTitle}>{mode.label}</span>
-                <span className="nums whitespace-nowrap text-right text-sm text-[color:var(--dash-muted)]">
+                <span className="nums text-right text-sm text-[color:var(--dash-muted)]">
                   {countLine ?? mode.description}
                 </span>
                 <ChevronRight aria-hidden="true" className={rowEnd} />
@@ -354,7 +363,7 @@ function PbsMonthGroup({ today, online }: { readonly today: Date | null; readonl
       >
         <span
           aria-hidden="true"
-          className="grid w-11 shrink-0 rounded-lg border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] py-1 text-center forced-colors:border"
+          className="grid min-w-11 shrink-0 rounded-lg px-1 border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] py-1 text-center forced-colors:border"
         >
           <span className="font-dash-title text-3xs uppercase tracking-widest text-[color:var(--dash-muted)]">
             {monthShort ?? "PBS"}
@@ -441,7 +450,7 @@ function ReferencesGroup({ online }: { readonly online: boolean }) {
               >
                 {reference.mark}
               </span>
-              <span className="w-full hyphens-auto break-words text-xs leading-tight text-[color:var(--dash-ink)] [overflow-wrap:break-word]">
+              <span className="w-full break-words text-xs leading-tight text-[color:var(--dash-ink)] [overflow-wrap:break-word]">
                 {reference.title}
               </span>
               <span className="sr-only">(opens in a new tab)</span>
@@ -486,9 +495,6 @@ function SignpostsGroup() {
   );
 }
 
-/** Greyed while the browser reports no connection; still usable, because the signal is only a hint. */
-const offlineDim = "opacity-60";
-
 export function MedicinesHome({ counts, now }: { readonly counts: MedicinesSectionCounts; readonly now?: Date }) {
   const today = useToday(now);
   const online = useOnlineStatus();
@@ -504,11 +510,9 @@ export function MedicinesHome({ counts, now }: { readonly counts: MedicinesSecti
         {online ? null : <OfflineNote />}
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
           <div className="grid min-w-0 gap-6">
-            <div className={cn("grid min-w-0 gap-6", !online && offlineDim)}>
-              <FindArea />
-              <RecentGroup />
-              <SectionsGroup counts={counts} />
-            </div>
+            <FindArea />
+            <RecentGroup />
+            <SectionsGroup counts={counts} />
           </div>
           <div className="grid min-w-0 gap-6">
             <PbsMonthGroup today={today} online={online} />

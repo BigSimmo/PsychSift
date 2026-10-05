@@ -112,16 +112,30 @@ function isCautionMetric(metric: MedicationHeroMetric): boolean {
   return metric.tone === "danger" || metric.tone === "warning";
 }
 
+/** One row of figures on a computer, as many columns as there are figures (at most four). */
+const figureColumns: Record<number, string> = {
+  0: "",
+  1: "xl:grid-cols-1",
+  2: "xl:grid-cols-2",
+  3: "xl:grid-cols-3",
+  4: "xl:grid-cols-4",
+};
+
 function DetailTile({ metric }: { metric: MedicationHeroMetric }) {
   const caution = isCautionMetric(metric);
   return (
     <div
       data-testid="medication-figure"
       data-caution={caution ? "true" : undefined}
-      className="min-w-0 border-b border-[color:var(--border)] px-3 py-3 odd:border-r xl:border-r xl:[&:nth-child(4n)]:border-r-0"
+      className="min-w-0 border-r border-b border-[color:var(--border)] px-3 py-3 last:odd:col-span-2 xl:last:odd:col-span-1"
     >
       <p className="flex items-start gap-1.5 text-2xs font-semibold uppercase leading-tight tracking-eyebrow text-[color:var(--text-muted)]">
-        {caution ? <TriangleAlert className="mt-px size-icon-xs shrink-0" aria-hidden="true" /> : null}
+        {caution ? (
+          <>
+            <TriangleAlert className="mt-px size-icon-xs shrink-0" aria-hidden="true" />
+            <span className="sr-only">Caution: </span>
+          </>
+        ) : null}
         <span className="min-w-0 break-words">{metric.label}</span>
       </p>
       <p className="mt-1.5 break-words text-sm-minus font-semibold leading-5 text-[color:var(--text-heading)]">
@@ -338,15 +352,18 @@ function MedicationRecordDetail({
             </div>
           </section>
 
-          <section
-            aria-label="Key figures"
-            className="grid grid-cols-2 border-t border-[color:var(--border)] xl:grid-cols-4"
-          >
-            {metrics.map((metric, index) => (
-              // Some records repeat a stat label (e.g. adrenaline has two "Route"
-              // stats), so the label alone is not a unique key — include the index.
-              <DetailTile key={`${metric.label}-${index}`} metric={metric} />
-            ))}
+          {/* Hairlines without stray edges at any count: every tile draws its
+              right and bottom rule, the grid is pulled 1px past the clip so the
+              outer column's and last row's rules fall outside it, and the
+              section draws the top and bottom lines. */}
+          <section aria-label="Key figures" className="overflow-hidden border-y border-[color:var(--border)]">
+            <div className={cn("-mr-px -mb-px grid grid-cols-2", figureColumns[Math.min(metrics.length, 4)])}>
+              {metrics.map((metric, index) => (
+                // Some records repeat a stat label (e.g. adrenaline has two "Route"
+                // stats), so the label alone is not a unique key — include the index.
+                <DetailTile key={`${metric.label}-${index}`} metric={metric} />
+              ))}
+            </div>
           </section>
 
           <MedicationWhereItStands medicineName={record.name} />
@@ -530,9 +547,9 @@ function MedicationLoadFailed({ slug, error, onRetry }: { slug: string; error: s
       className="grid gap-4"
     >
       <div className="grid gap-1">
-        <h2 id="medication-failed-heading" className="text-lg font-semibold text-[color:var(--text-heading)]">
+        <h1 id="medication-failed-heading" className="text-lg font-semibold text-[color:var(--text-heading)]">
           This medicine page didn&rsquo;t load
-        </h2>
+        </h1>
         <p className="text-sm leading-6 text-[color:var(--text-muted)]">
           The server didn&rsquo;t answer. Check the connection, then try again.
         </p>
@@ -612,6 +629,11 @@ export function MedicationRecordPage({
   const interactionsTab = medicationTabForSectionType("inter") ?? "more";
   const [patientOpen, setPatientOpen] = useState(false);
   const patientTriggerRef = useRef<HTMLElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const retryAndKeepFocus = () => {
+    retry();
+    bodyRef.current?.focus();
+  };
 
   return (
     <>
@@ -637,7 +659,8 @@ export function MedicationRecordPage({
         </div>
       </Sheet>
       <InformationPageShell testId={`medication-page-${slug}`} gap={false}>
-        <div className="mt-3">
+        {/* Focus lands here after "Try again", whose button the loading state replaces. */}
+        <div ref={bodyRef} tabIndex={-1} className="mt-3 outline-none">
           {/* Findings against the entered patient belong on the page, not only
               behind the patient sheet — arriving here from a result row flagged
               "2 interactions" should not mean hunting for them. Renders nothing
@@ -670,7 +693,7 @@ export function MedicationRecordPage({
               returnLabel="Return to medications"
             />
           ) : (
-            <MedicationLoadFailed slug={slug} error={error} onRetry={retry} />
+            <MedicationLoadFailed slug={slug} error={error} onRetry={retryAndKeepFocus} />
           )}
         </div>
         <InformationPageFooter className="mt-4 pb-1">

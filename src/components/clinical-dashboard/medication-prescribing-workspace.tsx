@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -522,6 +522,7 @@ function MedicationResults({
   const { profile, isEmpty: profileEmpty } = usePatientProfile();
   const searchParams = useSearchParams();
   const filterPanelId = useId();
+  const resultsRef = useRef<HTMLDivElement | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const { bestRows, allRows } = useMemo(() => {
     const governance = catalog.data?.governance;
@@ -751,7 +752,11 @@ function MedicationResults({
   const catalogRefetching = catalog.loading && Boolean(catalog.data);
 
   return (
-    <div className={cn(pageContainer, "medication-results-workspace space-y-3 py-0 sm:py-2")}>
+    <div
+      ref={resultsRef}
+      tabIndex={-1}
+      className={cn(pageContainer, "medication-results-workspace space-y-3 py-0 outline-none sm:py-2")}
+    >
       <SearchResultsHeaderBand
         modeId="prescribing"
         query={query}
@@ -865,7 +870,11 @@ function MedicationResults({
           <MedicationNothingFound
             query={query}
             catalogueCount={catalog.data?.records?.length ?? 0}
-            onBrowseAll={() => setScope("all")}
+            onBrowseAll={() => {
+              setScope("all");
+              // The button goes with the empty state; keep focus on the results.
+              resultsRef.current?.focus();
+            }}
           />
         )
       ) : null}

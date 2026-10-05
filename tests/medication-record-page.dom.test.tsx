@@ -233,6 +233,19 @@ describe("MedicationRecordPage mock-up v6 states", () => {
       expect(figure.className).not.toMatch(/danger|warning|success/);
       expect(figure.querySelectorAll("svg")).toHaveLength(figure.getAttribute("data-caution") ? 1 : 0);
     }
+    // The caution cue is spoken too, not only drawn.
+    expect(figures[2]).toHaveTextContent("Caution: Toxicity risk");
+    expect(figures[0]).not.toHaveTextContent("Caution");
+  });
+
+  it("lets an odd last figure span the phone row so the hairlines close cleanly", () => {
+    const three = { ...statDrug, stats: statDrug.stats.slice(0, 3), schedule: "", category: "" };
+    mockDetail({ data: { record: three }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={three} />);
+    const figures = screen.getAllByTestId("medication-figure");
+    expect(figures.length % 2).toBe(1);
+    expect(figures.at(-1)?.className).toContain("last:odd:col-span-2");
+    expect(figures[0]?.parentElement?.className).toContain(`xl:grid-cols-${figures.length}`);
   });
 
   it("says plainly when the record has no source linked, and not when it has one", () => {
