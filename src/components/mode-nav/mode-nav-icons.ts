@@ -128,6 +128,8 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   setup: ListChecks,
   // Admin's page destinations in the mode picker.
   renewals: ON_CALL_VIEW_ICONS.compliance,
+  // Compliance groups every requirement a health service asks for: a checklist on a clipboard.
+  "admin-compliance": ClipboardCheck,
   "new-job": BriefcaseBusiness,
   help: LifeBuoy,
   // Roster. Today is the mode home a shift opens to; Shifts reuses the mode's
