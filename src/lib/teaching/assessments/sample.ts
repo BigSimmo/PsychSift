@@ -337,3 +337,6 @@ export const GOAL_SUGGESTIONS: Record<DomainNumber, string> = {
 
 export const SAMPLE_REGISTRAR_NOTE =
   "Reliable on the ward and good with families. Has grown a lot in risk assessments since mid-term.";
+
+/** Sick, personal and carer's leave used so far this year, and the level the panel watches. */
+export const SAMPLE_LEAVE = { used: 4, limit: 10 } as const;

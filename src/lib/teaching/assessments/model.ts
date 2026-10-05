@@ -634,3 +634,8 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
       return { ...s, disagreeDraft: a.value };
   }
 }
+
+/** Kinds of experience (A to D) from terms already countersigned. */
+export function kindsDone(terms: readonly { status: string; category: string }[]): number {
+  return new Set(terms.filter((t) => t.status === "done").map((t) => t.category)).size;
+}
