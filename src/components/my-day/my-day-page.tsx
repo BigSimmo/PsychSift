@@ -212,7 +212,7 @@ function MyDayTabs({ page, onChange }: { readonly page: MyDayPageId; readonly on
   return (
     <div
       role="tablist"
-      aria-label="My Day pages"
+      aria-label="My Day sections"
       data-testid="my-day-tabs"
       className="flex gap-1 rounded-full border border-[color:var(--dash-line)] bg-[color:var(--dash-card)] p-1 forced-colors:border"
     >
