@@ -191,6 +191,8 @@ const routeDescriptions: Record<string, string> = {
     "Admin Today: the next renewal to act on, what needs you, statewide requirements recorded and new-job progress. Admin has no search results surface.",
   "/admin/renewals":
     "Statewide requirements alongside the doctor's own recorded dates and personal renewals; dates are not verified with an issuing body.",
+  "/admin/compliance":
+    "The statewide requirements grouped as a health service asks for them, with the doctor's own recorded dates, what to do before the next job, and an Excel export saved on the device; dates are not verified with an issuing body.",
   "/admin/new-job": "Starting and leaving a job, with the doctor's own progress and service contacts.",
   "/admin/new-job/records": "The doctor's own Admin records to copy or print.",
   "/admin/help": "Crisis lines, support, guides, contacts and on-site detail with in-page search.",
