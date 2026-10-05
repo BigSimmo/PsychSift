@@ -85,6 +85,7 @@
     "src/components/medicines/**",
     "src/components/mode-home-page-skeleton.tsx",
     "src/components/mode-home-template.tsx",
+    "src/components/mode-band/**",
     "src/components/mode-nav/**",
     "src/components/navigation-back-button.tsx",
     "src/components/page-secondary-navigation.tsx",

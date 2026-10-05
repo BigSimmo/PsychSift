@@ -37,6 +37,7 @@ import { cn } from "@/components/ui-primitives";
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
 import { useAuthSession } from "@/lib/supabase/client";
+import { ModeBandAction, PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
  * The signed-out sample: invented data, downloaded only when a signed-out
@@ -211,7 +212,7 @@ function MyDayTabs({ page, onChange }: { readonly page: MyDayPageId; readonly on
   return (
     <div
       role="tablist"
-      aria-label="My Day pages"
+      aria-label="My Day sections"
       data-testid="my-day-tabs"
       className="flex gap-1 rounded-full border border-[color:var(--dash-line)] bg-[color:var(--dash-card)] p-1 forced-colors:border"
     >
@@ -368,24 +369,34 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
       <div className={cn(PAGE_WIDTH, dashSurface, "my-day-quiet")}>
         <header className="flex min-w-0 items-end justify-between gap-3" data-testid="my-day-header">
           <div className="grid min-w-0 gap-0.5">
-            <p className="text-sm text-[color:var(--dash-muted)]">{longDate(today)}</p>
-            <h1 className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
+            <WithoutModeBand>
+              <p className="text-sm text-[color:var(--dash-muted)]">{longDate(today)}</p>
+            </WithoutModeBand>
+            <PageTitleUnderBand className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
               My Day
-            </h1>
+            </PageTitleUnderBand>
           </div>
           {ready && view === "dashboard" ? (
-            <button
-              type="button"
-              onClick={() => setEditing((value) => !value)}
-              data-testid="my-day-edit"
-              aria-pressed={editing}
-              className={cn(
-                focusRing,
-                "-mr-2 inline-flex min-h-12 items-center rounded-md px-2 font-dash-title text-base-minus text-[color:var(--dash-blue)]",
+            <ModeBandAction>
+              {(underBand) => (
+                <button
+                  type="button"
+                  onClick={() => setEditing((value) => !value)}
+                  data-testid="my-day-edit"
+                  aria-pressed={editing}
+                  className={
+                    underBand
+                      ? "mode-band__customise"
+                      : cn(
+                          focusRing,
+                          "-mr-2 inline-flex min-h-12 items-center rounded-md px-2 font-dash-title text-base-minus text-[color:var(--dash-blue)]",
+                        )
+                  }
+                >
+                  {editing ? "Done" : "Edit"}
+                </button>
               )}
-            >
-              {editing ? "Done" : "Edit"}
-            </button>
+            </ModeBandAction>
           ) : null}
         </header>
         {(ready || sampleView) && view === "dashboard" ? <MyDayTabs page={page} onChange={changePage} /> : null}
