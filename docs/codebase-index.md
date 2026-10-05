@@ -418,16 +418,22 @@ it opens and keep the records in tab memory only. It never reads the patient-lab
 on-device record of psychiatry records the reader opened (not the query-driven tools) (path, page title, section,
 time; no patient detail), written by `src/components/psychiatry/psychiatry-visit-recorder.tsx` in
 the search-app layout only while "Save recent searches" is on. It feeds the hub's Continue list,
-monthly ring and most-opened forms, is cleared with recent searches and at account transitions,
+"Your week" figures and most-opened forms, is cleared with recent searches and at account transitions,
 and expires after 90 days.
 
 **MHA clock.** `/psychiatry/mha-clock` (`src/components/psychiatry/mha-clock-page.tsx`) lists every
 Mental Health Act form the reader is holding, from `src/lib/psychiatry-hub/mha-clocks.ts`: a form
-code, the time it was made and an opaque id, kept through `src/lib/patient-label-storage.ts` so it
-clears at shift end and every account transition. No patient label field exists (owner decision
-pending). Limits come only from `mhaTimers` (`src/lib/on-call/mha-timers.ts`), so a countdown shows
-only while the signed switch is on; otherwise the owner-approved quote-only lines from the form-page
-Timeline. Linked from the hub's "For a shift" card and Tools list.
+code, the time it was made and an opaque id, under its own localStorage key
+(`PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY`), kept until the reader removes it or the account changes; never
+wiped at shift end, because a Form 3A detention can outlast a shift (owner decisions, 5 October
+2026: no shift-end wipe, no patient label). Clocks from the old patient-label store are moved across
+once. An unreadable store says "Clocks could not be read on this phone" rather than "No clocks yet".
+Limits come only from `mhaTimers` (`src/lib/on-call/mha-timers.ts`), so a countdown shows only while
+the signed switch is on (a passed limit is red); otherwise the owner-approved quote-only lines from
+the form-page Timeline. The page also copies the running clocks for handover (form and made-at time
+only) and offers Undo after a removal. Linked from the hub's "For a shift" list on Ask and Tools.
+The hub and the clock page are drawn with the flat list parts in
+`src/components/psychiatry/psychiatry-flat.tsx`.
 
 **My shifts moved to Roster.** The doctor's own roster now lives in **`src/lib/roster/`**
 (`src/lib/roster/shifts/`, moved from the old On Call shifts folder, plus `shift-kind.ts` for the

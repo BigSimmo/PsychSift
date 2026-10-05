@@ -750,7 +750,7 @@ function WeekSection({
         {hasData ? (
           <>
             <p className="flex items-center gap-3" data-testid="psychiatry-month">
-              <span className="nums text-xl font-semibold text-[color:var(--dash-ink)]">{thisMonth}</span>
+              <span className="nums text-xl font-semibold text-[color:var(--dash-ink)]">{thisMonth}</span>{" "}
               <span className="text-sm-minus text-[color:var(--dash-ink)]">
                 {thisMonth === 1 ? "record opened so far this month" : "records opened so far this month"}
               </span>

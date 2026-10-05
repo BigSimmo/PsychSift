@@ -656,8 +656,8 @@ export function MhaClockPage({
                 <p className="flex flex-wrap items-baseline gap-x-1.5 text-[color:var(--dash-ink)]">
                   <span className="nums text-xl font-semibold" data-testid="mha-clock-count">
                     {clocks.length}
-                  </span>
-                  <span className="text-sm-minus font-medium">{clocks.length === 1 ? "clock" : "clocks"}</span>
+                  </span>{" "}
+                  <span className="text-sm-minus font-medium">{clocks.length === 1 ? "clock" : "clocks"}</span>{" "}
                   {passed > 0 ? (
                     <span
                       className="text-xs font-semibold text-[color:var(--danger-text)]"

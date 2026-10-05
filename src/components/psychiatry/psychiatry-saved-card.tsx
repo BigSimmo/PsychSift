@@ -48,7 +48,7 @@ function SignedOut() {
       data-testid="psychiatry-saved-signed-out"
     >
       <Star aria-hidden="true" className="size-7 text-[color:var(--dash-faint)]" />
-      <p className="text-base font-semibold text-[color:var(--dash-ink)]">Sign in to see what you&apos;ve saved.</p>
+      <p className="text-base font-semibold text-[color:var(--dash-ink)]">Sign in to see what you’ve saved.</p>
       <p className="max-w-[30ch] text-sm-minus text-[color:var(--dash-muted)]">
         Starred items are kept with your account, so they appear on any phone you sign in on.
       </p>
@@ -146,7 +146,7 @@ export function PsychiatrySavedCard() {
                       : "border-transparent text-[color:var(--dash-muted)]",
                   )}
                 >
-                  {chip.label}
+                  {chip.label}{" "}
                   <span className="nums ml-1 font-medium text-[color:var(--dash-faint)]">{chip.count}</span>
                 </button>
               );

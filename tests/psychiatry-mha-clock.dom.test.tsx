@@ -1,7 +1,8 @@
 /** @vitest-environment jsdom */
 
-// Psychiatry · MHA clock. A clock holds a form code and a time only, lives in the shift-scoped
-// patient-label store (so it clears at shift end and sign-out), and every time limit on the page
+// Psychiatry · MHA clock. A clock holds a form code and a time only, lives in its own store on this
+// device until it is removed or the account changes (never at shift end: a Form 3A detention can
+// outlast a shift; owner decision 5 October 2026), and every time limit on the page
 // comes from the governed timeframe engine: while a limit may not be counted, the page shows the
 // owner-approved line and the Act's own words, never an invented time.
 
@@ -17,14 +18,22 @@ import { MHA_TIMELINE_REFERENCE_NOTE } from "@/components/forms/mha-timeline-pan
 import { MhaClockPage, type MhaClockForm } from "@/components/psychiatry/mha-clock-page";
 import { PsychiatryHome } from "@/components/psychiatry/psychiatry-home";
 import { mhaTimers } from "@/lib/on-call/mha-timers";
-import { clearPatientLabels, PATIENT_LABEL_KEY_PREFIX } from "@/lib/patient-label-storage";
+import {
+  clearAccountScopedBrowserStorage,
+  PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY,
+} from "@/lib/account-scoped-browser-state";
+import { clearPatientLabels, readPatientLabels, writePatientLabels } from "@/lib/patient-label-storage";
 import {
   addMhaClock,
   clearMhaClocks,
+  LEGACY_MHA_CLOCK_STORE_NAME,
   loadMhaClocks,
+  loadMhaClockState,
   MHA_CLOCK_LIMIT,
   parseMhaClocks,
+  parseMhaClockState,
   removeMhaClock,
+  restoreMhaClock,
 } from "@/lib/psychiatry-hub/mha-clocks";
 
 const forms: MhaClockForm[] = [
@@ -40,14 +49,27 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("MHA clock store", () => {
-  it("keeps a form code and a time only, in the patient-label namespace", () => {
+  it("keeps a form code and a time only, under its own key", () => {
     expect(addMhaClock("3A", new Date(now.getTime() - 45 * 60_000))).toBe("added");
     const [clock] = loadMhaClocks();
     expect(Object.keys(clock).sort()).toEqual(["formCode", "id", "madeAt"]);
-    const keys = Object.keys(window.localStorage);
-    expect(keys.every((key) => key.startsWith(PATIENT_LABEL_KEY_PREFIX))).toBe(true);
-    removeMhaClock(clock.id);
+    expect(Object.keys(window.localStorage)).toEqual([PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY]);
+    expect(removeMhaClock(clock.id)).toBe(true);
     expect(loadMhaClocks()).toEqual([]);
+    expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).toBeNull();
+  });
+
+  it("puts a removed clock back for Undo, once, and never beyond the limit", () => {
+    addMhaClock("2", now);
+    const [clock] = loadMhaClocks();
+    removeMhaClock(clock.id);
+    expect(restoreMhaClock(clock)).toBe("added");
+    expect(restoreMhaClock(clock)).toBe("added");
+    expect(loadMhaClocks()).toEqual([clock]);
+    removeMhaClock(clock.id);
+    for (let index = 0; index < MHA_CLOCK_LIMIT; index += 1) addMhaClock("2", now);
+    expect(restoreMhaClock(clock)).toBe("full");
+    expect(restoreMhaClock({ id: "x", formCode: "2", madeAt: 1 })).toBe("invalid");
   });
 
   it("refuses bad input and a full list rather than dropping a clock", () => {
@@ -69,12 +91,43 @@ describe("MHA clock store", () => {
     });
     expect(parseMhaClocks(raw)).toEqual([{ id: "abcdefgh-1", formCode: "2", madeAt: 1 }]);
     expect(parseMhaClocks("{nope")).toEqual([]);
+    expect(parseMhaClockState(raw).unreadable).toBe(true);
+    expect(parseMhaClockState("{nope").unreadable).toBe(true);
+    expect(parseMhaClockState(null)).toEqual({ clocks: [], unreadable: false });
   });
 
-  it("is wiped with every other shift record", () => {
+  it("survives the end-of-shift wipe, because a detention can outlast a shift", () => {
     addMhaClock("2", now);
-    clearPatientLabels("account-transition");
+    clearPatientLabels("shift-ended");
+    expect(loadMhaClocks()).toHaveLength(1);
+  });
+
+  it("is cleared at sign-out and every other account transition", () => {
+    addMhaClock("2", now);
+    expect(loadMhaClocks()).toHaveLength(1);
+    clearAccountScopedBrowserStorage();
     expect(loadMhaClocks()).toEqual([]);
+  });
+
+  it("moves clocks from the old patient-label store once, and removes the old copy", () => {
+    const old = { id: "abcdefgh-1", formCode: "3A", madeAt: now.getTime() - 60_000 };
+    expect(writePatientLabels(LEGACY_MHA_CLOCK_STORE_NAME, JSON.stringify({ v: 1, clocks: [old] }))).toBe(true);
+    expect(loadMhaClocks()).toEqual([old]);
+    expect(readPatientLabels(LEGACY_MHA_CLOCK_STORE_NAME)).toBeNull();
+    expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).not.toBeNull();
+  });
+
+  it("reports storage it cannot read instead of an empty list", () => {
+    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    try {
+      expect(loadMhaClockState()).toEqual({ clocks: [], unreadable: true });
+    } finally {
+      getItem.mockRestore();
+    }
+    window.localStorage.setItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY, "{broken");
+    expect(loadMhaClockState().unreadable).toBe(true);
   });
 });
 
@@ -96,7 +149,7 @@ describe("MhaClockPage", () => {
 
     const card = screen.getByTestId("mha-clock-card");
     expect(card).toHaveTextContent("Detention order");
-    expect(card).toHaveTextContent("Made 17:15 · running 0:45");
+    expect(card).toHaveTextContent("Made Mon 17:15 · 45 min running");
     expect(screen.getByTestId("mha-clock-count")).toHaveTextContent("1");
     expect(within(card).getByRole("link", { name: "Open Form 3A" }).getAttribute("href")).toBe(
       "/forms/detention-examination-movement",
@@ -106,6 +159,40 @@ describe("MhaClockPage", () => {
       fireEvent.click(within(card).getByTestId("mha-clock-remove"));
     });
     expect(screen.queryByTestId("mha-clock-card")).toBeNull();
+    expect(screen.getByTestId("mha-clock-undo")).toHaveTextContent("Form 3A clock removed");
+
+    act(() => {
+      fireEvent.click(screen.getByTestId("mha-clock-undo-button"));
+    });
+    expect(screen.getByTestId("mha-clock-card")).toHaveTextContent("Made Mon 17:15");
+    expect(screen.getByTestId("mha-clock-undo")).toHaveTextContent("Form 3A clock put back");
+  });
+
+  it("copies the form and made-at time only for handover, with the reference line", () => {
+    addMhaClock("2", new Date("2026-10-04T15:40:00Z")); // Sun 23:40 Perth
+    addMhaClock("3A", new Date("2026-10-04T17:55:00Z")); // Mon 01:55 Perth
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<MhaClockPage forms={forms} now={now} />);
+    fireEvent.click(screen.getByTestId("mha-clock-handover-copy"));
+    expect(writeText).toHaveBeenCalledWith(
+      ["As at Mon 18:00", "Form 2 · made Sun 23:40", "Form 3A · made Mon 01:55", MHA_TIMELINE_REFERENCE_NOTE].join(
+        "\n",
+      ),
+    );
+  });
+
+  it("says when clocks could not be read, never that there are none", () => {
+    window.localStorage.setItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY, "{broken");
+    render(<MhaClockPage forms={forms} now={now} />);
+    expect(screen.getByTestId("mha-clock-unreadable")).toHaveTextContent("Clocks could not be read on this phone.");
+    expect(screen.queryByTestId("mha-clock-empty")).toBeNull();
+  });
+
+  it("says clocks are kept until removed or sign-out", () => {
+    render(<MhaClockPage forms={forms} now={now} />);
+    expect(screen.getByTestId("mha-clock-retention")).toHaveTextContent("Kept until you remove it or sign out.");
+    expect(screen.getByTestId("mha-clock-retention")).not.toHaveTextContent(/end of your shift/);
   });
 
   it("shows exactly what the timeframe engine allows, never a time it withholds", () => {
@@ -137,8 +224,9 @@ describe("Psychiatry hub · For a shift", () => {
     render(<PsychiatryHome counts={counts} now={now} />);
     const link = screen.getByTestId("psychiatry-shift-mha-clock");
     expect(link.getAttribute("href")).toBe("/psychiatry/mha-clock");
-    expect(link).toHaveTextContent("2 running");
-    expect(screen.getByTestId("psychiatry-shift-mha-summary")).toHaveTextContent("Forms 2, 3A");
+    expect(screen.getByTestId("psychiatry-shift-mha-summary")).toHaveTextContent(
+      "2 running on this phone · Forms 2 and 3A",
+    );
   });
 
   it("signposts Medicines instead of copying Medication and Calculators", () => {

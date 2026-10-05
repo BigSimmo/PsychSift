@@ -96,7 +96,7 @@ describe("PsychiatryHome", () => {
     render(<PsychiatryHome counts={counts} now={now} />);
 
     expect(screen.getByTestId("psychiatry-resume-open")).toHaveAttribute("href", "/dsm/diagnoses/mdd");
-    expect(screen.getByTestId("psychiatry-month")).toHaveTextContent("2 records opened");
+    expect(screen.getByTestId("psychiatry-resume-open")).toHaveTextContent("Pick up where you left off");
     const recent = screen.getByRole("list", { name: "Recently opened" });
     expect(
       within(recent)
@@ -104,8 +104,33 @@ describe("PsychiatryHome", () => {
         .map((link) => link.getAttribute("href")),
     ).toEqual(["/dsm/diagnoses/mdd", "/forms/form-1a"]);
     expect(within(screen.getByTestId("psychiatry-mha-links")).getByText("Form 1A")).toBeTruthy();
+    expect(within(screen.getByTestId("psychiatry-mha-links")).getByText("Opened once on this phone")).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("psychiatry-continue-clear"));
     expect(screen.queryByTestId("psychiatry-resume")).toBeNull();
+  });
+
+  it("counts this month's records and the last seven days on the Tools page", () => {
+    const at = now.getTime() - 60 * 60 * 1000;
+    recordPsychiatryVisit({ href: "/forms/form-1a", title: "Form 1A", kind: "forms", at: at - 60_000 });
+    recordPsychiatryVisit({ href: "/dsm/diagnoses/mdd", title: "Major depressive disorder", kind: "dsm", at });
+    render(<PsychiatryHome counts={counts} now={now} initialPage="tools" />);
+    expect(screen.getByTestId("psychiatry-month")).toHaveTextContent("2 records opened so far this month");
+    expect(screen.getByTestId("psychiatry-card-week")).toHaveTextContent("· 2 in all");
+    expect(screen.getByTestId("psychiatry-card-week")).toHaveTextContent(
+      "Counted on this phone while Save recent searches is on.",
+    );
+  });
+
+  it("switches search off and says so when the browser is offline", () => {
+    const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    try {
+      render(<PsychiatryHome counts={counts} now={now} />);
+      expect(screen.getByTestId("psychiatry-offline")).toHaveTextContent("Search needs a connection.");
+      expect(screen.getByTestId("psychiatry-ask-input")).toBeDisabled();
+      expect(screen.queryByTestId("psychiatry-ask-try")).toBeNull();
+    } finally {
+      onLine.mockRestore();
+    }
   });
 });
