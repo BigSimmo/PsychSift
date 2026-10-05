@@ -158,9 +158,7 @@ export function TeachingThisWeek({ demoMode: serverDemoMode }: { demoMode: boole
             monday={monday}
             onMonday={setChosenMonday}
             whatsOn={whatsOn.status === "ready" ? whatsOn.data : null}
-            whatsOnFailed={
-              whatsOn.status === "error" || whatsOn.status === "offline" || whatsOn.status === "setup"
-            }
+            whatsOnFailed={whatsOn.status === "error" || whatsOn.status === "offline" || whatsOn.status === "setup"}
             retryWhatsOn={whatsOn.retry}
             signedOut={signedOut}
           />
@@ -356,11 +354,16 @@ function ThisWeekBody({
         </T5List>
       ) : null}
       {others !== null && others > 0 ? (
-        <T5List className={sessions.length === 0 && !current ? "" : "mt-4.5"} ruled={!(sessions.length === 0 && !current)}>
+        <T5List
+          className={sessions.length === 0 && !current ? "" : "mt-4.5"}
+          ruled={!(sessions.length === 0 && !current)}
+        >
           <T5Row
             lead={<T5Icon icon={Network} />}
             title={
-              others === 1 ? "1 session from another service is open to you" : `${others} sessions from other services are open to you`
+              others === 1
+                ? "1 session from another service is open to you"
+                : `${others} sessions from other services are open to you`
             }
             meta={otherNames}
             href="/teaching/whats-on"
@@ -406,9 +409,7 @@ function ThisWeekBody({
               <T5Empty>Teaching you add in On Call shows here and in the week above.</T5Empty>
             )}
           </T5Section>
-          {handbook.failed ? (
-            <T5Note>Your service handbook&apos;s teaching entries couldn&apos;t load.</T5Note>
-          ) : null}
+          {handbook.failed ? <T5Note>Your service handbook&apos;s teaching entries couldn&apos;t load.</T5Note> : null}
           {handbook.items.length > 0 ? (
             <T5Section label="From your service's handbook" id="teaching-handbook" testId="teaching-handbook">
               <T5List>
@@ -450,13 +451,7 @@ function ThisWeekBody({
   );
 }
 
-function WeekRow({
-  session,
-  context,
-}: {
-  session: SessionSummaryRead;
-  context: Parameters<typeof weekRow>[1];
-}) {
+function WeekRow({ session, context }: { session: SessionSummaryRead; context: Parameters<typeof weekRow>[1] }) {
   const row = weekRow(session, context);
   const muted = row.state === "past" || row.state === "done" || row.state === "cancelled";
   return (
@@ -544,7 +539,9 @@ function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
             <small
               className={cn(
                 "text-2xs",
-                day.today ? "font-semibold text-[color:var(--text-heading)]" : "font-medium text-[color:var(--text-soft)]",
+                day.today
+                  ? "font-semibold text-[color:var(--text-heading)]"
+                  : "font-medium text-[color:var(--text-soft)]",
               )}
             >
               {day.weekday}
@@ -552,7 +549,8 @@ function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
             <b
               className={cn(
                 "nums grid size-8 place-items-center rounded-full text-sm font-semibold text-[color:var(--text-heading)]",
-                day.today && "shadow-[inset_0_0_0_1.5px_var(--mode-identity)] forced-colors:border forced-colors:border-[Highlight]",
+                day.today &&
+                  "shadow-[inset_0_0_0_1.5px_var(--mode-identity)] forced-colors:border forced-colors:border-[Highlight]",
               )}
             >
               {day.day}

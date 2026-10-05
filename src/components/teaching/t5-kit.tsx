@@ -48,7 +48,12 @@ export function T5Section({
   testId?: string;
 }) {
   return (
-    <section id={id} aria-label={label} data-testid={testId} className={cn("mt-5 grid min-w-0 scroll-mt-32", className)}>
+    <section
+      id={id}
+      aria-label={label}
+      data-testid={testId}
+      className={cn("mt-5 grid min-w-0 scroll-mt-32", className)}
+    >
       <div className="mb-0.5 flex min-h-6 items-center justify-between gap-2.5">
         <h2 className={cn("truncate text-2xs font-semibold tracking-label uppercase", faint)}>{label}</h2>
         {right}
@@ -120,7 +125,7 @@ export function T5List({
     <ul
       role="list"
       data-testid={testId}
-      className={cn("grid min-w-0 divide-y", rule, ruled && "border-t", className)}
+      className={cn("grid min-w-0 divide-y divide-[color:var(--border)]", rule, ruled && "border-t", className)}
     >
       {children}
     </ul>
@@ -139,7 +144,9 @@ export function T5Icon({ icon: Icon }: { icon: LucideIcon }) {
 /** A 24-hour start time at the start of a row. */
 export function T5Time({ time, past = false }: { time: string; past?: boolean }) {
   return (
-    <span className={cn("nums w-10 shrink-0 text-sm-minus", past ? cn("font-medium", faint) : cn("font-semibold", ink))}>
+    <span
+      className={cn("nums w-10 shrink-0 text-sm-minus", past ? cn("font-medium", faint) : cn("font-semibold", ink))}
+    >
       {time}
     </span>
   );
@@ -197,9 +204,7 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
         {below}
       </span>
       {end ??
-        (href || onClick ? (
-          <ChevronRight aria-hidden="true" className={cn("size-icon-sm shrink-0", faint)} />
-        ) : null)}
+        (href || onClick ? <ChevronRight aria-hidden="true" className={cn("size-icon-sm shrink-0", faint)} /> : null)}
     </>
   );
   const shape = "flex min-h-12 w-full min-w-0 items-center gap-3 py-2 text-left";
@@ -249,7 +254,7 @@ export function T5Panel({
       aria-label={label}
       data-testid={testId}
       className={cn(
-        "grid min-w-0 gap-2 rounded-xl border bg-[color:var(--surface-raised)] p-3.5 forced-colors:border-[CanvasText]",
+        "grid min-w-0 gap-2 rounded-lg border bg-[color:var(--surface-raised)] p-3.5 forced-colors:border-[CanvasText]",
         rule,
         className,
       )}
@@ -332,7 +337,12 @@ export function T5Meter({ percent, label, thin = false }: { percent: number; lab
 /** A row of equal steps, `filled` of `total` in the Teaching colour (readiness, EPAs). */
 export function T5Steps({ total, filled, label }: { total: number; filled: number; label: string }) {
   return (
-    <span role="img" aria-label={label} className="grid gap-[3px]" style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}>
+    <span
+      role="img"
+      aria-label={label}
+      className="grid gap-[3px]"
+      style={{ gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))` }}
+    >
       {Array.from({ length: total }, (_, index) => (
         <span
           key={index}
@@ -377,7 +387,7 @@ export function T5Note({
         "flex items-start gap-2 leading-normal",
         boxed
           ? cn(
-              "mb-3 rounded-xl border bg-[color:var(--surface-raised)] px-3 py-2.5 text-sm-minus forced-colors:border-[CanvasText]",
+              "mb-3 rounded-lg border bg-[color:var(--surface-raised)] px-3 py-2.5 text-sm-minus forced-colors:border-[CanvasText]",
               ink,
               tone === "warning" ? "border-[color:var(--warning-border)]" : rule,
             )
@@ -387,10 +397,7 @@ export function T5Note({
     >
       <Icon
         aria-hidden="true"
-        className={cn(
-          "mt-px size-icon-sm shrink-0",
-          tone === "warning" ? "text-[color:var(--warning-text)]" : faint,
-        )}
+        className={cn("mt-px size-icon-sm shrink-0", tone === "warning" ? "text-[color:var(--warning-text)]" : faint)}
         strokeWidth={1.6}
       />
       <span className="min-w-0">{children}</span>
@@ -416,7 +423,7 @@ export function T5Segments<T extends string>({
   label: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="mt-2.5 flex rounded-lg bg-[color:var(--surface-inset)] p-0.5">
+    <div role="radiogroup" aria-label={label} className="mt-2.5 flex rounded-md bg-[color:var(--surface-inset)] p-0.5">
       {options.map((option) => {
         const on = option.value === value;
         return (
@@ -428,9 +435,12 @@ export function T5Segments<T extends string>({
             onClick={() => onChange(option.value)}
             className={cn(
               hitArea,
-              "min-h-8.5 flex-1 rounded-lg text-sm-minus",
+              "min-h-8.5 flex-1 rounded-md text-sm-minus",
               on
-                ? cn("bg-[color:var(--surface-raised)] font-semibold shadow-[0_0_0_1px_var(--border)] forced-colors:border forced-colors:border-[Highlight]", ink)
+                ? cn(
+                    "bg-[color:var(--surface-raised)] font-semibold shadow-[0_0_0_1px_var(--border)] forced-colors:border forced-colors:border-[Highlight]",
+                    ink,
+                  )
                 : cn("font-medium", sub),
               focusRing,
             )}
@@ -446,4 +456,47 @@ export function T5Segments<T extends string>({
 /** The quiet line under an empty section: what will appear here and when. */
 export function T5Empty({ children }: { children: ReactNode }) {
   return <p className={cn("border-t pt-2.5 pb-0.5 text-sm-minus", rule, sub)}>{children}</p>;
+}
+
+/** A tick-box row: the whole line is the label, so the 48px row is the hit area. */
+export function T5Check({
+  label,
+  meta,
+  checked,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  meta?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <li className="min-w-0">
+      <label className="flex min-h-12 cursor-pointer items-center gap-3 py-2">
+        <span className="relative grid size-5 shrink-0 place-items-center">
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={disabled}
+            onChange={(event) => onChange(event.target.checked)}
+            className={cn(
+              "peer absolute inset-0 cursor-pointer appearance-none rounded-sm border-[1.5px] border-[color:var(--text-soft)] bg-[color:var(--surface-raised)] checked:border-[color:var(--text-heading)] checked:bg-[color:var(--text-heading)] forced-colors:appearance-auto",
+              focusRing,
+            )}
+          />
+          <Check
+            aria-hidden="true"
+            strokeWidth={2.4}
+            className="pointer-events-none relative size-icon-xs text-[color:var(--surface-raised)] opacity-0 peer-checked:opacity-100 forced-colors:hidden"
+          />
+        </span>
+        <span className="grid min-w-0 flex-1 gap-px">
+          <span className={cn("text-sm leading-snug font-medium", ink)}>{label}</span>
+          {meta ? <span className={cn("text-sm-minus", sub)}>{meta}</span> : null}
+        </span>
+      </label>
+    </li>
+  );
 }

@@ -80,7 +80,11 @@ export function sessionsOn(sessions: readonly SessionSummaryRead[], dateKey: str
 }
 
 /** How many sessions run this week, and the words for it. `partial` says some may be missing. */
-export function weekCountLabel(sessions: readonly SessionSummaryRead[], partial: boolean, prefix = "This week"): string {
+export function weekCountLabel(
+  sessions: readonly SessionSummaryRead[],
+  partial: boolean,
+  prefix = "This week",
+): string {
   const count = sessions.filter(running).length;
   if (count === 0 && !partial) return `${prefix} · nothing booked yet`;
   const noun = count === 1 ? "session" : "sessions";
@@ -169,7 +173,13 @@ function duration(minutes: number): string {
 /** The session on now, else the next one that has not ended; null when nothing is ahead. */
 export function nowPanel(
   sessions: readonly SessionSummaryRead[],
-  context: { teams: readonly TeamSummary[]; attendance: readonly AttendanceMark[]; showTeam: boolean; now: Date; today: string },
+  context: {
+    teams: readonly TeamSummary[];
+    attendance: readonly AttendanceMark[];
+    showTeam: boolean;
+    now: Date;
+    today: string;
+  },
 ): NowPanel | null {
   const time = context.now.getTime();
   const session =
@@ -200,7 +210,15 @@ export function nowPanel(
     live,
     meta: meta.join(" · "),
     elapsed: live ? Math.round(((time - start) / (end - start)) * 100) : null,
-    checkIn: !canCheckIn ? "none" : mark ? "done" : phase === "checkin" && isToday ? "open" : isToday ? "not-yet" : "none",
+    checkIn: !canCheckIn
+      ? "none"
+      : mark
+        ? "done"
+        : phase === "checkin" && isToday
+          ? "open"
+          : isToday
+            ? "not-yet"
+            : "none",
     doneLabel: mark ? "You checked in" : null,
     opensAt: isToday && phase === "upcoming" ? perthTime(new Date(start - 15 * MINUTE).toISOString()) : null,
   };
@@ -225,7 +243,8 @@ export function nextForYouMeta(session: SessionSummaryRead, today: string): stri
   return [
     when,
     session.isPresenter && "You present",
-    session.venue ?? (session.hasJoinLink ? "online" : session.isPresenter ? "room still to confirm" : "room to confirm"),
+    session.venue ??
+      (session.hasJoinLink ? "online" : session.isPresenter ? "room still to confirm" : "room to confirm"),
   ]
     .filter((p): p is string => Boolean(p))
     .join(" · ");

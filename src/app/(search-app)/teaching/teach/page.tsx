@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { TeachingTeach } from "@/components/teaching/teaching-teach";
+import { TeachingPresenting } from "@/components/teaching/teaching-presenting";
 import { teachingDemoMode } from "@/lib/teaching/sample";
-export const metadata: Metadata = { title: "Teach | Teaching | PsychSift", robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: "Presenting | Teaching | PsychSift",
+  robots: { index: false, follow: false },
+};
 export default async function Page() {
-  return <TeachingTeach demoMode={await teachingDemoMode()} />;
+  return <TeachingPresenting demoMode={await teachingDemoMode()} />;
 }
