@@ -37,7 +37,7 @@ const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
 const NO_ENTRIES: readonly OnCallEntry[] = [];
 import { useAuthSession } from "@/lib/supabase/client";
-import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
+import { ModeBandAction, PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
  * The signed-out sample: invented data, downloaded only when a signed-out
@@ -369,18 +369,26 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
             </PageTitleUnderBand>
           </div>
           {ready && view === "dashboard" ? (
-            <button
-              type="button"
-              onClick={() => setEditing((value) => !value)}
-              data-testid="my-day-edit"
-              aria-pressed={editing}
-              className={cn(
-                focusRing,
-                "-mr-2 inline-flex min-h-12 items-center rounded-md px-2 font-dash-title text-base-minus text-[color:var(--dash-blue)]",
+            <ModeBandAction>
+              {(underBand) => (
+                <button
+                  type="button"
+                  onClick={() => setEditing((value) => !value)}
+                  data-testid="my-day-edit"
+                  aria-pressed={editing}
+                  className={
+                    underBand
+                      ? "mode-band__customise"
+                      : cn(
+                          focusRing,
+                          "-mr-2 inline-flex min-h-12 items-center rounded-md px-2 font-dash-title text-base-minus text-[color:var(--dash-blue)]",
+                        )
+                  }
+                >
+                  {editing ? "Done" : "Edit"}
+                </button>
               )}
-            >
-              {editing ? "Done" : "Edit"}
-            </button>
+            </ModeBandAction>
           ) : null}
         </header>
         {(ready || sampleView) && view === "dashboard" ? <MyDayTabs page={page} onChange={changePage} /> : null}

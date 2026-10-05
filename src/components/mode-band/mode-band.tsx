@@ -41,6 +41,7 @@ const IDENTITY_MODES: ReadonlySet<AppModeId> = new Set([
 
 /** Where the band's status line is drawn; `ModeBandStatus` portals into it. */
 export const modeBandStatusSlotId = "mode-band-status";
+const modeBandActionSlotId = "mode-band-action";
 
 export type ModeBandLead =
   /** A child of another page: a small back link in the mode colour. */
@@ -271,7 +272,10 @@ function ModeBandHeader({
                 Customise
               </span>
             </Link>
-          ) : null}
+          ) : (
+            // A page's own action (My Day's Edit) takes Customise's place.
+            <span id={modeBandActionSlotId} className="contents" />
+          )}
         </div>
         {/* Not a heading: each page keeps its own h1 naming the page, which the
             top bar's pill also names; this is the mode's name. */}
@@ -397,13 +401,13 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
 
 const subscribeNever = () => () => {};
 
-/** The band's status slot: undefined while server rendering, null when absent. */
-function useModeBandHost(): HTMLElement | null | undefined {
+/** A band slot by id: undefined while server rendering, null when absent. */
+function useModeBandHost(slotId: string): HTMLElement | null | undefined {
   // React re-reads the snapshot once it has committed, so a slot drawn in the
   // same render as this page is still found.
   return useSyncExternalStore(
     subscribeNever,
-    () => document.getElementById(modeBandStatusSlotId),
+    () => document.getElementById(slotId),
     () => undefined,
   );
 }
@@ -417,7 +421,7 @@ function useModeBandHost(): HTMLElement | null | undefined {
  */
 export function ModeBandStatus({ value, testId }: { value: ModeBandStatusValue | null; testId?: string }) {
   const shown = useModeBandShown();
-  const host = useModeBandHost();
+  const host = useModeBandHost(modeBandStatusSlotId);
   if (!value) return null;
   const line = (
     <span role="status" data-testid={testId} className="contents">
@@ -436,6 +440,18 @@ export function ModeBandStatus({ value, testId }: { value: ModeBandStatusValue |
 export function PageTitleUnderBand({ className, children }: { className?: string; children: ReactNode }) {
   const shown = useModeBandShown();
   return <h1 className={shown ? "sr-only" : className}>{children}</h1>;
+}
+
+/**
+ * A page's one header action, drawn opposite the date in its mode band (where
+ * Customise sits on other modes) and styled like Customise there. With no
+ * band it is drawn where it is placed, with the page's own look.
+ */
+export function ModeBandAction({ children }: { children: (underBand: boolean) => ReactNode }) {
+  const shown = useModeBandShown();
+  const host = useModeBandHost(modeBandActionSlotId);
+  if (!shown) return <>{children(false)}</>;
+  return host ? createPortal(children(true), host) : null;
 }
 
 /** Draws its children only on a page with no mode band above it. */
