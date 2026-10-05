@@ -226,6 +226,7 @@ describe("learningItemLogHref", () => {
 describe("learning countdown and upcoming split", () => {
   it("labels the countdown in plain words and never goes negative", () => {
     expect(learningCountdownLabel("2026-09-26", TODAY_PERTH)).toBe("Today");
+    expect(learningCountdownLabel("2026-09-24", TODAY_PERTH)).toBe("On now");
     expect(learningCountdownLabel("2026-09-27", TODAY_PERTH)).toBe("Tomorrow");
     expect(learningCountdownLabel("2026-10-16", TODAY_PERTH)).toBe("In 20 days");
     expect(daysUntilLearningStart("2026-09-01", TODAY_PERTH)).toBe(0);
@@ -243,6 +244,17 @@ describe("learning countdown and upcoming split", () => {
     expect(split.next.map((i) => i.id)).toEqual(["a", "b"]);
     expect(split.laterThisYear.map((i) => i.id)).toEqual(["c"]);
     expect(split.nextYearAndAnyTime.map((i) => i.id)).toEqual(["d", "e"]);
+  });
+
+  it("keeps something already running with this year, even when it started last year", () => {
+    const upcoming = [
+      item({ id: "a", startsOn: "2026-10-01" }),
+      item({ id: "b", startsOn: "2026-10-05" }),
+      item({ id: "running", startsOn: "2025-12-29" }),
+    ];
+    const split = splitUpcomingLearning(upcoming, "2026-01-01");
+    expect(split.laterThisYear.map((i) => i.id)).toEqual(["running"]);
+    expect(split.nextYearAndAnyTime).toEqual([]);
   });
 
   it("skips undated items when choosing the next two", () => {

@@ -50,9 +50,6 @@ describe("CmeDraftsSection", () => {
     render(<CmeDraftsSection drafts={[mine, supervisor]} />);
 
     expect(screen.getByTestId("cme-drafts-group-nextAction")).toHaveTextContent("Yours to do · 1");
-    expect(screen.getByTestId("cme-drafts-count-note")).toHaveTextContent(
-      "The number on the Log tab counts only the drafts that are yours to do.",
-    );
     expect(screen.getByTestId("cme-drafts-group-supervisor")).toHaveTextContent(
       "Waiting on others: your supervisor · 1",
     );
@@ -65,6 +62,12 @@ describe("CmeDraftsSection", () => {
     expect(
       within(screen.getByTestId("cme-drafts-group-supervisor")).getByText("Peer review session"),
     ).toBeInTheDocument();
+  });
+
+  it("shows the last-edited day in Perth, not UTC", () => {
+    // 23:30 UTC on 9 Sep is 07:30 on 10 Sep in Perth.
+    render(<CmeDraftsSection drafts={[draft({ updatedAt: "2026-09-09T23:30:00.000Z" })]} />);
+    expect(screen.getByText(/Last edited/)).toHaveTextContent("10 Sep");
   });
 
   it("falls back to 'Untitled draft' for a blank draft", () => {

@@ -35,7 +35,8 @@ export function CmeSegmentedTabs({
             aria-current={segment.active ? "page" : undefined}
             className={cn(
               focusRing,
-              "relative inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-sm px-1.5 text-sm-minus no-underline",
+              // Labels wrap rather than overlap when there is no room (200% zoom on a phone).
+              "relative inline-flex min-h-10 min-w-0 flex-1 items-center justify-center rounded-sm px-1.5 py-1 text-center text-sm-minus leading-4 no-underline",
               "after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
               segment.active
                 ? "border border-[color:var(--border)] bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] forced-colors:border-[Highlight]"

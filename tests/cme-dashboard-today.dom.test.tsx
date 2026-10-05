@@ -162,6 +162,16 @@ describe("Today", () => {
     for (const link of within(chips).getAllByRole("link")) expect(link.className).toContain("after:h-12");
   });
 
+  it("still shows drafts to finish before anything is logged, and no other chip", () => {
+    render(<CmeDashboard set={SET} entries={[]} now={NOW} draftsToFinish={2} />);
+    const chips = screen.getByTestId("cme-today-shortcuts");
+    expect(
+      within(chips)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Draft to finish2"]);
+  });
+
   it("leaves out a chip with nothing in it, and the drafts chip when drafts did not load", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} draftsToFinish={null as unknown as number} />);
     const chips = screen.getByTestId("cme-today-shortcuts");

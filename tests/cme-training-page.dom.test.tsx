@@ -246,7 +246,7 @@ describe("CME training page, mock-up layout", () => {
     expect(screen.getByTestId("cme-training")).not.toHaveTextContent(/\bAMA\b/);
   });
 
-  it("works the CPD rule out from the training record, read-only, with a link to Set up", () => {
+  it("works the CPD rule out from the training record, read-only", () => {
     const { unmount } = render(
       <CmeTrainingPage nowIso={NOW_ISO} initialPeriods={PERIODS} initialMilestones={[]} demoMode={false} />,
     );
@@ -255,17 +255,34 @@ describe("CME training page, mock-up layout", () => {
       "Trainee in an accredited college programmeCovered by your training",
     );
     expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent("Stage 2 covers today");
-    expect(screen.getByTestId("cme-training-cpd-rule-change")).toHaveAttribute("href", "/cme/setup");
+    // There is no stored rule setting, so nothing offers to change it in Set up.
+    expect(screen.queryByTestId("cme-training-cpd-rule-change")).toBeNull();
     unmount();
 
     const { unmount: unmount2 } = render(
       <CmeTrainingPage nowIso={NOW_ISO} initialPeriods={[]} initialMilestones={[]} demoMode={false} />,
     );
-    expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent(
-      "Everyone else50 h a year with a CPD home, a written plan and category minimums",
-    );
-    expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent("no training stage covers today");
+    // An empty record is not a reading: nothing is ticked.
+    expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent("Not worked out here");
+    expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent("empty or was not read here");
     unmount2();
+
+    // A break inside a stage leaves the rule unworked-out rather than "covered by your training".
+    const { unmount: unmount3 } = render(
+      <CmeTrainingPage
+        nowIso={NOW_ISO}
+        initialPeriods={[
+          { id: "s1", kind: "stage", label: "Stage 2", startsOn: "2026-02-01", endsOn: "2027-02-01", fte: 1 },
+          { id: "b1", kind: "break", label: "Parental leave", startsOn: "2026-08-01", endsOn: "2026-12-01", fte: 0 },
+        ]}
+        initialMilestones={[]}
+        demoMode={false}
+      />,
+    );
+    expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent("Not worked out here");
+    expect(screen.getByTestId("cme-training-cpd-rule-result")).not.toHaveTextContent("Covered by your training");
+    expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent("a break within Stage 2 today");
+    unmount3();
 
     // A break or a rotation alone never counts as being covered by training.
     render(

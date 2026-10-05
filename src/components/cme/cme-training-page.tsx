@@ -581,7 +581,8 @@ export function CmeTrainingPage({
         ? { ...next, projectedOn: next.projectedOn }
         : null
       : null;
-  const cpdRule = cpdRuleFromTraining(position);
+  // An empty record is not a reading, so nothing is ticked until a period has been entered.
+  const cpdRule = cpdRuleFromTraining(periods.length ? position : null);
 
   return (
     <main data-testid="cme-training" data-mode-identity="cme" className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
@@ -838,12 +839,19 @@ export function CmeTrainingPage({
           <CmeFlatList label="Your CPD rule">
             <RecordRow
               testId="cme-training-cpd-rule-result"
-              title={cpdRule.lane === "trainee" ? "Trainee in an accredited college programme" : "Everyone else"}
-              subtitle={cpdRule.lane === "trainee" ? "Covered by your training" : CPD_STANDARD_RULE_TEXT}
-              end={
-                <CmeTextLink href="/cme/setup" testId="cme-training-cpd-rule-change">
-                  Change in Set up
-                </CmeTextLink>
+              title={
+                cpdRule.lane === "trainee"
+                  ? "Trainee in an accredited college programme"
+                  : cpdRule.lane === "everyone"
+                    ? "Everyone else"
+                    : "Not worked out here"
+              }
+              subtitle={
+                cpdRule.lane === "trainee"
+                  ? "Covered by your training"
+                  : cpdRule.lane === "everyone"
+                    ? CPD_STANDARD_RULE_TEXT
+                    : "The Report lists each rule"
               }
             />
           </CmeFlatList>

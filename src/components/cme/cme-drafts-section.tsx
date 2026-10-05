@@ -190,7 +190,7 @@ function DraftRow({
         <div className="min-w-0">
           <p className="line-clamp-2 text-sm font-medium text-[color:var(--text-heading)]">{draftTitle(draft)}</p>
           <p className={cn(textMuted, "mt-0.5 text-xs")}>
-            Last edited {formatCalendarDateLong(draft.updatedAt.slice(0, 10))}
+            Last edited {formatCalendarDateLong(perthCalendarDate(new Date(draft.updatedAt)))}
           </p>
           {draft.followUpOn ? (
             <p className={cn(textMuted, "mt-1 text-xs")}>Follow up {formatCalendarDateLong(draft.followUpOn)}</p>
@@ -300,9 +300,6 @@ export function CmeDraftsSection({
       <h2 id="cme-drafts-heading" className={cn(eyebrowText, "mb-2")}>
         Drafts
       </h2>
-      <p className={cn(textMuted, "mb-3 text-sm-minus")} data-testid="cme-drafts-count-note">
-        The number on the Log tab counts only the drafts that are yours to do.
-      </p>
       <div className="flex flex-col gap-5">
         {sections.map((group) => (
           <div key={group.key} data-testid={`cme-drafts-group-${group.key}`}>

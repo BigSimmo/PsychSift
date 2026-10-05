@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { CmeDomainsRing, isActivityCountRequirement } from "@/components/cme/cme-domains-ring";
+import { formatSourceMonth } from "@/components/cme/cme-plan-goal-split";
 import {
   CmeCategoryDot,
   CmeFlatList,
@@ -22,17 +23,19 @@ import {
 import { evaluateRequirement, totalAllocatedHours } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries } from "@/lib/cme/export";
 import { readCpdHome } from "@/lib/cme/home-choice";
+import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
 import { CPD_STANDARD_RULE_TEXT, cpdRuleFromTraining, type CpdRuleLane } from "@/lib/cme/cpd-rule";
 import type { TrainingPosition } from "@/lib/cme/training-timeline";
 import { cmeCategories, cmeCategoryLabels, type CmeEntry, type CmeRequirementSet } from "@/lib/cme/types";
 import { buildCmeYearCheck, type CmeYearCheckRow } from "@/lib/cme/year-check";
 import { canCloseCmeYear, CME_CLOSE_WINDOW_DAYS } from "@/lib/cme/year-close";
 
-/** Where the CPD rule and renewal claims come from: the Board's own "what do I need to do" CPD page. */
-const MEDICAL_BOARD_CPD_URL =
-  "https://www.medicalboard.gov.au/Professional-Performance-Framework/CPD/What--do-I-need-to-do.aspx";
-/** When that page was last read for these rule summaries. Shown beside every rule figure. */
-const MEDICAL_BOARD_CHECKED = "checked Oct 2026";
+/**
+ * Where the CPD rule summaries come from: the same captured, fingerprinted Medical Board registration
+ * standard the Training page cites (linked through the Board page that lists it), so the two pages show one source and one checked date.
+ */
+const MEDICAL_BOARD_CPD_URL = CPD_CATEGORY_RULE_SET.source.listedOn;
+const MEDICAL_BOARD_CHECKED = `checked ${formatSourceMonth(CPD_CATEGORY_RULE_SET.source.checkedOn)}`;
 
 /** Targets in the order the report reads them; anything else follows in the order the check built it. */
 const TARGET_ORDER = [
@@ -190,8 +193,8 @@ const RULE_LANES: readonly { id: CpdRuleLane | "intern"; title: string; subtitle
  * A thin part-per-check line under the count; the targets the owner confirmed
  * and the record-keeping checks, each open row with a quiet text action at its
  * end and each done row with a grey tick; the domains ring; hours by category;
- * the annual summary and its two exports; the CPD rule as Set up decided it,
- * with its source; then closing the year and the settings that shape it.
+ * the annual summary and its two exports; the CPD rule the training record
+ * suggests (read-only, nothing ticked when it cannot be worked out), with its source; then closing the year and the settings that shape it.
  *
  * Done and open are carried by a tick or an open circle plus the words, never
  * by colour: this mode does not use red, amber or green for progress.
@@ -237,7 +240,7 @@ export function CmeYearCheckPage({
   const closed = Boolean(set.closedAt);
   const closeHref = `/cme/summary?year=${set.year}#cme-year-close-heading`;
   const summaryHref = `/cme/summary?year=${set.year}`;
-  const rule = cpdRuleFromTraining(trainingPosition);
+  const rule = cpdRuleFromTraining(trainingPosition, { forYear: set.year, now });
   const lane = rule.lane;
   const confirmedShort = formatCalendarDateShort(set.confirmedOn);
 
@@ -388,8 +391,8 @@ export function CmeYearCheckPage({
           </CmeFlatList>
           <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-check-rule-note">
             Not signed off: a plain summary of the Medical Board standard, {MEDICAL_BOARD_CHECKED}. {rule.basis}{" "}
-            <CmeTextLink href="/cme/setup" className="min-h-0">
-              Change in Set up
+            <CmeTextLink href="/cme/training" className="min-h-0">
+              Check your training record
             </CmeTextLink>
           </p>
         </CmeGroup>

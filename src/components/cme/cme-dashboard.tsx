@@ -268,7 +268,9 @@ export function CmeDashboard({
   // Customise (or before anything is logged), the standalone row carries it instead.
   const showWhatsLeft = hasTarget && !nothingLogged && shows("requirements");
   const nextStepRowId = !offerYearEnd && showWhatsLeft ? nextStep.rowId : null;
-  const chips = nothingLogged || !hasTarget ? [] : buildCmeYearChips({ year: set.year, yearCheck, draftsToFinish });
+  // Before anything is logged only the drafts chip can say something true, so it alone still shows.
+  const yearChips = hasTarget ? buildCmeYearChips({ year: set.year, yearCheck, draftsToFinish }) : [];
+  const chips = nothingLogged ? yearChips.filter((chip) => chip.id === "drafts") : yearChips;
 
   const nextDate = expandEvents(cmeCalendarEvents({ set, entries, routines }).exported, {
     start: today,

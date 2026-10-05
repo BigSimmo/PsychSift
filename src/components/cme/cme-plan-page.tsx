@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { CmeFlatList, CmeFlatRow, CmeGroup, CmeNote, CmeRowMark, CmeTextLink } from "@/components/cme/cme-flat-list";
+import { cmeFilledButton } from "@/components/cme/cme-log-shared";
 import { cmePageTitle, cmePageWidth } from "@/components/cme/cme-page-frame";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { cn, controlDisabled, eyebrowText, textMuted } from "@/components/ui-primitives";
@@ -293,11 +294,7 @@ export function CmePlanPage({
           <div className="grid gap-1">
             <button
               type="button"
-              className={cn(
-                focusRing,
-                "inline-flex min-h-12 w-full items-center justify-center rounded-md bg-[color:var(--clinical-accent)] px-4 text-sm-minus font-semibold text-[color:var(--clinical-accent-contrast)] forced-colors:border",
-                controlDisabled,
-              )}
+              className={cn(focusRing, cmeFilledButton, "w-full", controlDisabled)}
               disabled={saving || tooShort || saveConflict}
               onClick={() => void save()}
               data-testid="cme-plan-save"

@@ -106,8 +106,9 @@ export function daysUntilLearningStart(startsOn: string, todayPerth: string): nu
   return Math.max(0, Math.round(days));
 }
 
-/** "Today", "Tomorrow" or "In 20 days" for the countdown chip. */
+/** "On now" (started before today and still listed), "Today", "Tomorrow" or "In 20 days" for the countdown chip. */
 export function learningCountdownLabel(startsOn: string, todayPerth: string): string {
+  if (startsOn < todayPerth) return "On now";
   const days = daysUntilLearningStart(startsOn, todayPerth);
   if (days === 0) return "Today";
   return days === 1 ? "Tomorrow" : `In ${days} days`;
@@ -130,10 +131,13 @@ export function splitUpcomingLearning(
   const next = upcoming.filter((item) => item.startsOn !== null).slice(0, 2);
   const rest = upcoming.filter((item) => !next.includes(item));
   const thisYear = todayPerth.slice(0, 4);
+  // Something already running (it started before today, perhaps last year) belongs with this year.
+  const isThisYear = (item: LearningDirectoryItem) =>
+    item.startsOn !== null && (item.startsOn < todayPerth || item.startsOn.slice(0, 4) === thisYear);
   return {
     next,
-    laterThisYear: rest.filter((item) => item.startsOn?.slice(0, 4) === thisYear),
-    nextYearAndAnyTime: rest.filter((item) => item.startsOn?.slice(0, 4) !== thisYear),
+    laterThisYear: rest.filter(isThisYear),
+    nextYearAndAnyTime: rest.filter((item) => !isThisYear(item)),
   };
 }
 

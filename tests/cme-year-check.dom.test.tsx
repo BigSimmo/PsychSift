@@ -15,6 +15,8 @@ vi.mock("next/navigation", () => ({
 afterEach(cleanup);
 
 const SET = createAustralianRanzcpPreset(2026, "2026-01-05");
+/** A fixed day inside SET's CPD year, so the rule tests do not depend on the real date. */
+const RULE_NOW = new Date("2026-09-28T02:00:00.000Z");
 
 function entry(overrides: Partial<CmeEntry> & Pick<CmeEntry, "id">): CmeEntry {
   return {
@@ -187,20 +189,24 @@ describe("year check page", () => {
   });
 
   it("shows the CPD rule read-only: none ticked when the training record was not read", () => {
-    const { unmount } = render(<CmeYearCheckPage set={SET} entries={ENTRIES} />);
+    const { unmount } = render(<CmeYearCheckPage set={SET} entries={ENTRIES} now={RULE_NOW} />);
     for (const id of ["everyone", "trainee", "intern"]) {
       expect(screen.getByTestId(`cme-check-rule-${id}`)).not.toHaveTextContent("your rule");
     }
     const note = screen.getByTestId("cme-check-rule-note");
     expect(note).toHaveTextContent("Not signed off");
-    expect(note).toHaveTextContent("not read here, so no rule is ticked");
-    expect(within(note).getByRole("link", { name: "Change in Set up" })).toHaveAttribute("href", "/cme/setup");
+    expect(note).toHaveTextContent("empty or was not read here, so no rule is ticked");
+    expect(within(note).getByRole("link", { name: "Check your training record" })).toHaveAttribute(
+      "href",
+      "/cme/training",
+    );
     unmount();
     const stage = { id: "s3", kind: "stage" as const, label: "Stage 3", startsOn: "2026-02-01", endsOn: null, fte: 1 };
     render(
       <CmeYearCheckPage
         set={SET}
         entries={ENTRIES}
+        now={RULE_NOW}
         trainingPosition={{
           stage,
           rotation: null,
@@ -228,6 +234,7 @@ describe("year check page", () => {
       <CmeYearCheckPage
         set={SET}
         entries={ENTRIES}
+        now={RULE_NOW}
         trainingPosition={{
           stage: null,
           rotation: null,
@@ -241,6 +248,50 @@ describe("year check page", () => {
     expect(screen.getByTestId("cme-check-rule-everyone")).toHaveTextContent("Everyone else — your rule");
     expect(screen.getByTestId("cme-check-rule-everyone")).toHaveTextContent("50 h a year");
     expect(screen.getByTestId("cme-check-rule-trainee")).not.toHaveTextContent("your rule");
+  });
+
+  it("ticks no rule for a break inside a stage, or for a year other than the current one", () => {
+    const stage = { id: "s3", kind: "stage" as const, label: "Stage 3", startsOn: "2026-02-01", endsOn: null, fte: 1 };
+    const breakPeriod = {
+      id: "b1",
+      kind: "break" as const,
+      label: "Leave",
+      startsOn: "2026-09-01",
+      endsOn: null,
+      fte: 0,
+    };
+    const { unmount } = render(
+      <CmeYearCheckPage
+        set={SET}
+        entries={ENTRIES}
+        now={RULE_NOW}
+        trainingPosition={{ stage, rotation: null, rotationIndex: null, rotationCount: 0, onBreak: true, breakPeriod }}
+      />,
+    );
+    for (const id of ["everyone", "trainee", "intern"]) {
+      expect(screen.getByTestId(`cme-check-rule-${id}`)).not.toHaveTextContent("your rule");
+    }
+    expect(screen.getByTestId("cme-check-rule-note")).toHaveTextContent("a break within Stage 3 today");
+    unmount();
+
+    // A 2026 report read in 2027: today's training record says nothing about 2026.
+    render(
+      <CmeYearCheckPage
+        set={SET}
+        entries={ENTRIES}
+        now={new Date("2027-03-01T02:00:00.000Z")}
+        trainingPosition={{
+          stage,
+          rotation: null,
+          rotationIndex: null,
+          rotationCount: 0,
+          onBreak: false,
+          breakPeriod: null,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("cme-check-rule-trainee")).not.toHaveTextContent("your rule");
+    expect(screen.getByTestId("cme-check-rule-note")).toHaveTextContent("Your rule for 2026 is not worked out here");
   });
 
   it("links to Set up and Customise", () => {

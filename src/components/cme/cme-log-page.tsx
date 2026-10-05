@@ -401,7 +401,13 @@ export function CmeLogPage({
             </CmeFlatList>
           </CmeGroup>
           <div id="cme-drafts" className="mt-5">
-            <CmeDraftsSection drafts={drafts} demoMode={demoMode} loadFailed={recordsFailed} />
+            <CmeDraftsSection
+              // Re-seeded whenever a refresh brings a different draft list, so its groups never go stale.
+              key={drafts.map((draft) => `${draft.id}:${draft.updatedAt}`).join("|")}
+              drafts={drafts}
+              demoMode={demoMode}
+              loadFailed={recordsFailed}
+            />
           </div>
         </>
       ) : null}
