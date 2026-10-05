@@ -100,7 +100,8 @@ test.describe("Invited handbook phone experience", () => {
       .locator("div")
       .filter({ has: page.getByText("Telephone advice structure", { exact: true }) })
       .last();
-    await telephone.getByRole("button", { name: "Copy blank structure" }).click();
+    // A click before hydration is dropped and nothing is copied.
+    await clickWhenHydrated(telephone.getByRole("button", { name: "Copy blank structure" }));
     // The copy runs after the click resolves, so poll rather than read once.
     await expect
       .poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"))

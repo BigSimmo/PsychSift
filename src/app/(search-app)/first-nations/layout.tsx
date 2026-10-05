@@ -2,6 +2,7 @@ import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import { Primer } from "@/components/first-nations/primer";
 import { ReadingTrustSheet } from "@/components/first-nations/reading-trust-sheet";
+import { ModeBand } from "@/components/mode-band/mode-band";
 
 const newsreader = localFont({
   src: "../../../fonts/newsreader-latin-400-italic.woff2",
@@ -18,9 +19,11 @@ export default function FirstNationsLayout({ children }: { children: ReactNode }
   // Primer and reading-trust live here so every page's ••• (and the example line) can open them.
   return (
     <div className={`${newsreader.variable} contents`}>
-      <Primer />
-      <ReadingTrustSheet />
-      {children}
+      <ModeBand modeId="first-nations" lead={{ kind: "date" }}>
+        <Primer />
+        <ReadingTrustSheet />
+        {children}
+      </ModeBand>
     </div>
   );
 }

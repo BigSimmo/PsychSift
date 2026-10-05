@@ -9,6 +9,10 @@ import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import type { TeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 import { useAuthSession } from "@/lib/supabase/client";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
+import { modeSecondaryNavigationEntries } from "@/lib/mode-secondary-navigation";
+
+const TAB_LABELS: ReadonlySet<string> = new Set(modeSecondaryNavigationEntries("teaching").map((entry) => entry.label));
 
 /**
  * A depth page's submit, held at the bottom of the screen inside the page's own flow (not fixed chrome),
@@ -51,7 +55,15 @@ export function TeachingDepthPage<T>({
   return (
     <InformationPageShell width="narrow" gap={false}>
       <div className="grid gap-4">
-        <h1 className="text-xl font-semibold text-[color:var(--text-heading)]">{title}</h1>
+        {/* A page named by its own band tab (Teach, Supervision) leaves the name
+            to the band; a child page (Weekly CPD review, Import) keeps it in view. */}
+        {TAB_LABELS.has(title) ? (
+          <PageTitleUnderBand className="text-xl font-semibold text-[color:var(--text-heading)]">
+            {title}
+          </PageTitleUnderBand>
+        ) : (
+          <h1 className="text-xl font-semibold text-[color:var(--text-heading)]">{title}</h1>
+        )}
         {demoMode ? <ModeNotice>Made-up demo. Changes stay on this page and are not saved.</ModeNotice> : null}
         {body}
       </div>
