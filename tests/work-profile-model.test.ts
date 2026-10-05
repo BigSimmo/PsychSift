@@ -107,6 +107,13 @@ describe("Admin never shows a tick and never overstates", () => {
     );
   });
 
+  it("a partial read with nothing in it is Not checked, never Start", () => {
+    expect(adminArea({ status: "ready", value: summariseAdmin([], true) })).toMatchObject({
+      state: "not-checked",
+      label: "Not checked",
+    });
+  });
+
   it("nothing recorded is a Start step, not a warning", () => {
     expect(adminArea({ status: "ready", value: summariseAdmin([], false) })).toMatchObject({ state: "start" });
   });

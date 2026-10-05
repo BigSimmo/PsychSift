@@ -19,6 +19,8 @@ import {
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
+import { focusRing } from "@/components/card-recipes";
+import { cn } from "@/components/ui-primitives";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
 import {
@@ -30,7 +32,8 @@ import {
 import type { WorkProfileData } from "@/components/work-profile/use-work-profile-data";
 import { JURISDICTION_OPTIONS, workStageLabel } from "@/lib/account-preferences";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
-import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
+import { ruleGate } from "@/lib/admin/rule-sign-off";
+import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF } from "@/lib/roster/fatigue-rules-source";
 import { ROSTER_GRADES } from "@/lib/roster/team/model";
 import { useAuthSession } from "@/lib/supabase/client";
 import {
@@ -277,7 +280,10 @@ function AddLink({ href }: { readonly href: string }) {
   return (
     <Link
       href={href}
-      className="inline-flex min-h-tap min-w-tap items-center justify-center text-sm font-medium text-[color:var(--clinical-accent)] no-underline"
+      className={cn(
+        focusRing,
+        "inline-flex min-h-tap min-w-tap items-center justify-center rounded-md text-sm font-medium text-[color:var(--clinical-accent)] no-underline",
+      )}
     >
       Add
     </Link>
@@ -285,6 +291,7 @@ function AddLink({ href }: { readonly href: string }) {
 }
 
 export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
+  const rulesOn = ruleGate(FATIGUE_RULES_SIGN_OFF, FATIGUE_RULE_SET).on;
   const weekday =
     data.payFortnightAnchor.status === "ready" ? payFortnightWeekday(data.payFortnightAnchor.value) : null;
   return (
@@ -317,7 +324,9 @@ export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
         ))}
         <WorkProfileRow
           title="Check my next 14 days"
-          subtitle="Roster’s Hours check uses these limits"
+          subtitle={
+            rulesOn ? "Roster’s Hours check uses these limits" : "Roster doesn’t check these until they’re signed off"
+          }
           href="/roster/shifts"
         />
       </WorkProfileSection>
@@ -388,8 +397,8 @@ export function PrivacyPanel({ data }: { readonly data: WorkProfileData }) {
         />
       </WorkProfileSection>
       <WorkProfileNote icon={ShieldCheck} title="Patient labels stay on this phone" testId="work-profile-label-rule">
-        Cleared at the end of your rostered shift (or 12 hours after the first one), when you sign out or your session
-        ends, and before anyone else signs in here.
+        Cleared at the end of your rostered shift (or 12 hours after the first label if Roster doesn’t know when it
+        ends), when you sign out or your session ends, and before anyone else signs in here.
       </WorkProfileNote>
       <WorkProfileSection label="Searches">
         <PrivacyToggleRow
