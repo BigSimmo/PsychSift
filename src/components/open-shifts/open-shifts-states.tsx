@@ -58,7 +58,7 @@ export function LoadFailed({
   what?: string;
 }) {
   return (
-    <div className="px-3 py-8">
+    <div role="alert" className="px-3 py-8">
       <h2 className="text-base font-semibold text-[color:var(--text-heading)]">{`${what} couldn't be reached`}</h2>
       <p className="mt-1 text-sm text-[color:var(--text-muted)]">
         {`Nothing is shown because the list didn't load. It doesn't mean there are no shifts.${message ? ` ${message}` : ""}`}

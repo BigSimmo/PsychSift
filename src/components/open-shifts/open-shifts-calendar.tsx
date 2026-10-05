@@ -46,7 +46,6 @@ export function OpenShiftsCalendar({
   perDay,
   urgentDays,
   rosteredDays,
-  showCounts = true,
 }: {
   today: string;
   windowEnd: string;
@@ -55,9 +54,14 @@ export function OpenShiftsCalendar({
   perDay: ReadonlyMap<string, number>;
   urgentDays: ReadonlySet<string>;
   rosteredDays: ReadonlySet<string>;
-  showCounts?: boolean;
 }) {
   const [month, setMonth] = useState(() => monthOf(selected));
+  // Follow the chosen day when it moves to another month ("Go to …" can jump past the month shown).
+  const [shownFor, setShownFor] = useState(selected);
+  if (shownFor !== selected) {
+    setShownFor(selected);
+    if (monthOf(selected) !== monthOf(shownFor)) setMonth(monthOf(selected));
+  }
   const firstMonth = monthOf(today);
   const lastMonth = monthOf(windowEnd);
   const cells = gridFor(month);
@@ -102,8 +106,8 @@ export function OpenShiftsCalendar({
               const inMonth = monthOf(date) === month;
               const past = date < today;
               const inRange = date >= today && date <= windowEnd;
-              const count = showCounts && inRange ? (perDay.get(date) ?? 0) : 0;
-              const urgent = showCounts && inRange && urgentDays.has(date);
+              const count = inRange ? (perDay.get(date) ?? 0) : 0;
+              const urgent = inRange && urgentDays.has(date);
               const rostered = rosteredDays.has(date) && !past;
               const isSelected = date === selected;
               const isToday = date === today;
@@ -132,7 +136,7 @@ export function OpenShiftsCalendar({
                     onClick={() => onSelect(date)}
                     className={`mx-auto flex min-h-12 w-full max-w-12 flex-col items-center justify-center gap-0.5 rounded-md text-sm nums ${
                       isSelected
-                        ? "bg-[color:var(--mode-identity-soft)] font-semibold text-[color:var(--text-heading)] outline outline-1 outline-[color:var(--mode-identity)] forced-colors:border-2 forced-colors:border-[Highlight]"
+                        ? "bg-[color:var(--mode-identity-soft)] font-semibold text-[color:var(--text-heading)] ring-1 ring-inset ring-[color:var(--mode-identity)] forced-colors:border-2 forced-colors:border-[Highlight]"
                         : inMonth && !past
                           ? "font-medium text-[color:var(--text-heading)]"
                           : "font-normal text-[color:var(--text-soft)]"
@@ -144,7 +148,7 @@ export function OpenShiftsCalendar({
                         <TriangleAlert
                           aria-hidden="true"
                           strokeWidth={1.6}
-                          className="size-2.5 text-[color:var(--danger-text)]"
+                          className="size-2.5 text-[color:var(--mode-identity)]"
                         />
                       ) : null}
                       {count ? count : null}

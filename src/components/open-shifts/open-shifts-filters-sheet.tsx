@@ -22,18 +22,14 @@ export function OpenShiftsFiltersSheet({
   filters,
   onChange,
   summary,
-  matchingCount,
   myGrade,
-  rosterAsOf,
 }: {
   open: boolean;
   onClose: () => void;
   filters: BrowseFilters;
   onChange: (next: BrowseFilters) => void;
   summary: BrowseSummary;
-  matchingCount: number;
   myGrade: RosterGrade | null;
-  rosterAsOf: string | null;
 }) {
   const toggleSite = (id: string) =>
     onChange({
@@ -61,7 +57,7 @@ export function OpenShiftsFiltersSheet({
             Reset
           </Button>
           <Button variant="primary" block onClick={onClose}>
-            {`Show ${matchingCount} ${matchingCount === 1 ? "shift" : "shifts"}`}
+            {`Show ${summary.matching.length} ${summary.matching.length === 1 ? "shift" : "shifts"}`}
           </Button>
         </div>
       }
@@ -71,7 +67,7 @@ export function OpenShiftsFiltersSheet({
           <div className="min-w-0 flex-1">
             <p className="text-base-minus font-medium text-[color:var(--text-heading)]">Hide roster clashes</p>
             <p id="os-clash-help" className="text-sm text-[color:var(--text-muted)]">
-              {`Shifts that overlap your roster${rosterAsOf ? ` as of ${rosterAsOf}` : ""} (${summary.hidden.clash} hidden). Roster flags still show.`}
+              {`Shifts that overlap your roster (${summary.hidden.clash} hidden). Roster flags still show.`}
             </p>
           </div>
           <Switch
@@ -142,7 +138,7 @@ export function OpenShiftsFiltersSheet({
               return (
                 <label
                   key={option.label}
-                  className={`flex min-h-12 cursor-pointer flex-col items-center justify-center rounded-[0.4rem] px-2 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[color:var(--command)] ${
+                  className={`flex min-h-12 cursor-pointer flex-col items-center justify-center rounded-sm px-2 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[color:var(--command)] ${
                     selected
                       ? "border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] shadow-[var(--e1)] forced-colors:border-2 forced-colors:border-[Highlight]"
                       : "font-medium text-[color:var(--text-muted)]"

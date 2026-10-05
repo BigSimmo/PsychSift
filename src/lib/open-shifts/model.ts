@@ -74,8 +74,9 @@ export function formatHours(hours: number): string {
 }
 
 /** Whether the shift ends on a later Perth day than it starts. */
+/** True when the shift runs past midnight. One that ends at exactly 00:00 ends the same night, as Roster shows it. */
 export function endsNextDay(startsAt: string, endsAt: string): boolean {
-  return perthDateOf(endsAt) > perthDateOf(startsAt);
+  return perthDateOf(endsAt) > perthDateOf(startsAt) && perthTimeOf(endsAt) !== "00:00";
 }
 
 const GRADE_LABEL: Readonly<Record<RosterGrade, string>> = {

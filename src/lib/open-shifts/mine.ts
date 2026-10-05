@@ -71,14 +71,16 @@ export function hoursMeter(
   const worked = roster.filter((shift) => isWorkedKind(shift.kind));
   // Once approved, the shift becomes a team roster shift with the same times; count that copy once.
   const onRoster = (row: OpenShiftListing) =>
-    worked.some((shift) => shift.startsAt === row.startsAt && shift.endsAt === row.endsAt) ||
     worked.some(
       (shift) =>
         Math.abs(Date.parse(shift.startsAt) - Date.parse(row.startsAt)) < 60_000 &&
         Math.abs(Date.parse(shift.endsAt) - Date.parse(row.endsAt)) < 60_000,
     );
   const approved = listings.filter((row) => row.claimedByMe && row.status === "approved" && !onRoster(row));
-  const requested = listings.filter((row) => row.claimedByMe && row.status === "claimed");
+  // A request still undecided after its shift ended was never worked, so it no longer counts.
+  const requested = listings.filter(
+    (row) => row.claimedByMe && row.status === "claimed" && Date.parse(row.endsAt) > now.getTime(),
+  );
 
   const today = perthDateOf(now);
   let best: HoursMeter | null = null;

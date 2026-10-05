@@ -4,6 +4,7 @@ import { ChevronRight, NotebookPen } from "lucide-react";
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
 
+import { useRosterNow } from "@/components/roster/roster-format";
 import { ModeBandStatus, PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { modeInsetHairline, modePressable } from "@/components/mode-kit/recipes";
 import { groupMine, hoursMeter, type HoursMeter } from "@/lib/open-shifts/mine";
@@ -62,7 +63,7 @@ function Meter({ meter }: { meter: HoursMeter }) {
       className="mx-3 mt-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-4 py-4"
     >
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id="os-meter" className="text-2xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
+        <h2 id="os-meter" className="text-2xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
           {`Busiest 14 days · ${dayRange(meter.from, meter.to)}`}
         </h2>
         <span className="text-xs text-[color:var(--text-muted)]">PsychSift roster only</span>
@@ -138,7 +139,7 @@ function MineRow({
   const date = perthDateOf(listing.startsAt);
   const statusClass =
     tone === "ok"
-      ? "text-[color:var(--success-text)]"
+      ? "font-medium text-[color:var(--text-heading)]"
       : tone === "warn"
         ? "text-[color:var(--warning-text)]"
         : "text-[color:var(--text-muted)]";
@@ -192,7 +193,7 @@ function Group({
 
 export function OpenShiftsMinePage() {
   const state = useOpenShifts();
-  const now = useMemo(() => new Date(), []);
+  const now = useRosterNow();
   const groups = useMemo(() => groupMine(state.listings, now), [state.listings, now]);
   const meter = useMemo(
     () => (state.roster ? hoursMeter(state.roster, state.listings, now) : null),

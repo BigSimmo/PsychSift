@@ -23,7 +23,7 @@ export type BoardWeek<T extends Row> = {
     readonly team: string;
     readonly cells: readonly (readonly { shift: T; status: BoardCellStatus }[])[];
   }[];
-  readonly counts: { all: number; open: number; requested: number; unfilled: number; filled: number };
+  readonly counts: { all: number; open: number; requested: number; unfilled: number; filled: number; reported: number };
 };
 
 const UNFILLED_MS = 48 * 3_600_000;
@@ -55,7 +55,7 @@ export function boardWeek<T extends Row>(shifts: readonly T[], anyDay: string, n
     string,
     { key: string; site: string; team: string; cells: { shift: T; status: BoardCellStatus }[][] }
   >();
-  const counts = { all: 0, open: 0, requested: 0, unfilled: 0, filled: 0 };
+  const counts = { all: 0, open: 0, requested: 0, unfilled: 0, filled: 0, reported: 0 };
   const sorted = [...shifts].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
   for (const shift of sorted) {
     const index = days.indexOf(perthDateOf(shift.startsAt));
@@ -75,6 +75,7 @@ export function boardWeek<T extends Row>(shifts: readonly T[], anyDay: string, n
     if (status === "unfilled") counts.unfilled += 1;
     if (status === "requested") counts.requested += 1;
     if (status === "filled") counts.filled += 1;
+    if (status === "reported") counts.reported += 1;
   }
   return {
     days,

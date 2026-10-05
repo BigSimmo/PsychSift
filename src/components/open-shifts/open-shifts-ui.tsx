@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, CircleCheck, CircleHelp, CircleX, TriangleAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleHelp, CircleX, Info, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -14,7 +14,7 @@ import {
   type OpenShiftListing,
 } from "@/lib/open-shifts/model";
 import type { RosterCheck } from "@/lib/open-shifts/roster-check";
-import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { MONTHS, WEEKDAYS, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 /*
  * The pieces every Open shifts page shares, so the last screen is drawn from
@@ -29,32 +29,43 @@ export const advertHref = (listing: Pick<OpenShiftListing, "serviceId" | "id">) 
 export const postedShiftHref = (serviceId: string, id: string) =>
   `${OPEN_SHIFTS_HREF}/post/${encodeURIComponent(serviceId)}/${encodeURIComponent(id)}`;
 
-const dayLong = new Intl.DateTimeFormat("en-AU", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  timeZone: "Australia/Perth",
-});
-const dayShort = new Intl.DateTimeFormat("en-AU", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  timeZone: "Australia/Perth",
-});
-const weekdayShort = new Intl.DateTimeFormat("en-AU", { weekday: "short", timeZone: "Australia/Perth" });
+// Plain tables, not Intl: en-AU's short month for September is "Sept", and
+// Roster's own dates use these same three-letter names.
+const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+const MONTHS_LONG = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+function dateParts(date: string): { weekday: number; day: number; month: number } {
+  const [year, month, day] = date.split("-").map(Number);
+  return { weekday: new Date(Date.UTC(year!, month! - 1, day!)).getUTCDay(), day: day!, month: month! - 1 };
+}
 
 /** "Wednesday 7 October" for a Perth date. */
 export function formatDayLong(date: string): string {
-  return dayLong.format(new Date(`${date}T12:00:00+08:00`));
+  const { weekday, day, month } = dateParts(date);
+  return `${WEEKDAYS_LONG[weekday]} ${day} ${MONTHS_LONG[month]}`;
 }
 
 /** "Wed 7 Oct" for a Perth date. */
 export function formatDayShort(date: string): string {
-  return dayShort.format(new Date(`${date}T12:00:00+08:00`)).replace(/,/g, "");
+  const { weekday, day, month } = dateParts(date);
+  return `${WEEKDAYS[weekday]} ${day} ${MONTHS[month]}`;
 }
 
 export function formatWeekday(date: string): string {
-  return weekdayShort.format(new Date(`${date}T12:00:00+08:00`));
+  return WEEKDAYS[dateParts(date).weekday]!;
 }
 
 /** "08:00–16:30", with the end day named when it ends on a later day ("21:30–08:00 Thu"). */
@@ -115,13 +126,14 @@ export function checkSummary(check: RosterCheck): { tone: CheckTone; text: strin
 }
 
 const TONE_CLASS: Readonly<Record<CheckTone, string>> = {
-  ok: "text-[color:var(--success-text)]",
+  // "No flags" stays neutral: green is kept for source status, and a clean check isn't a safety verdict.
+  ok: "text-[color:var(--text-heading)]",
   warn: "text-[color:var(--warning-text)]",
   bad: "text-[color:var(--danger-text)]",
   muted: "text-[color:var(--text-muted)]",
 };
 
-const TONE_ICON = { ok: CircleCheck, warn: TriangleAlert, bad: CircleX, muted: CircleHelp } as const;
+const TONE_ICON = { ok: Info, warn: TriangleAlert, bad: CircleX, muted: CircleHelp } as const;
 
 export function CheckLine({ check }: { check: RosterCheck }) {
   const { tone, text } = checkSummary(check);
@@ -200,7 +212,7 @@ export function SectionHeading({ children, count, id }: { children: ReactNode; c
   return (
     <h2
       id={id}
-      className="mt-6 flex items-baseline justify-between px-3 pb-1 text-2xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-muted)]"
+      className="mt-6 flex items-baseline justify-between px-3 pb-1 text-2xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]"
     >
       <span>{children}</span>
       {count !== undefined ? <span className="nums font-medium">{count}</span> : null}
@@ -282,15 +294,17 @@ export function Switch({
     >
       <span
         aria-hidden="true"
-        className={`relative inline-block h-7 w-12 rounded-full border transition-colors duration-[var(--duration-instant)] forced-colors:border-[CanvasText] ${
+        className={`relative inline-block h-7 w-12 rounded-full border transition-colors duration-[var(--duration-instant)] forced-colors:border-[CanvasText] forced-colors:[forced-color-adjust:none] ${
           checked
-            ? "border-[color:var(--command)] bg-[color:var(--command)]"
-            : "border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)]"
+            ? "border-[color:var(--command)] bg-[color:var(--command)] forced-colors:bg-[Highlight]"
+            : "border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] forced-colors:bg-[Canvas]"
         }`}
       >
         <span
-          className={`absolute top-0.5 size-5.5 rounded-full shadow-[var(--e1)] transition-[left] duration-[var(--duration-instant)] motion-reduce:transition-none forced-colors:bg-[CanvasText] ${
-            checked ? "left-[1.375rem] bg-[color:var(--command-contrast)]" : "left-0.5 bg-[color:var(--surface-raised)]"
+          className={`absolute top-0.5 size-5.5 rounded-full shadow-[var(--e1)] transition-[left] duration-[var(--duration-instant)] motion-reduce:transition-none ${
+            checked
+              ? "left-[1.375rem] bg-[color:var(--command-contrast)] forced-colors:bg-[HighlightText]"
+              : "left-0.5 bg-[color:var(--surface-raised)] forced-colors:bg-[CanvasText]"
           }`}
         />
       </span>

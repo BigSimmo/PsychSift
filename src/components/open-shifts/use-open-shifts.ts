@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { kindOf } from "@/components/roster/roster-format";
+import { kindOf, useRosterNow } from "@/components/roster/roster-format";
 import { fetchRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
@@ -84,6 +84,7 @@ export function useOpenShifts(): OpenShiftsState {
   const [failed, setFailed] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
   const reload = useCallback(() => {
+    setFailed(null);
     teams.reload();
     void shifts.reload();
     setGeneration((value) => value + 1);
@@ -132,7 +133,7 @@ export function useOpenShifts(): OpenShiftsState {
     };
   }, [teams.status, enabled, key, generation, releaseHeld, signedOutSample, actorId]);
 
-  const now = useMemo(() => new Date(), []);
+  const now = useRosterNow();
   const rosterRows = useMemo<FatigueShift[] | null>(() => {
     if (shifts.status !== "ready") return null;
     return shifts.shifts.map((shift) => ({

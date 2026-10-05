@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useRosterNow } from "@/components/roster/roster-format";
 import { ModeBandStatus, PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import {
   DEFAULT_FILTERS,
@@ -35,9 +36,11 @@ const chip =
 const chipOff = `${chip} border-[color:var(--border-strong)] text-[color:var(--text-heading)]`;
 const chipOn = `${chip} border-[color:var(--mode-identity)] bg-[color:var(--mode-identity-soft)] text-[color:var(--text-heading)] forced-colors:border-2 forced-colors:border-[Highlight]`;
 
+const SHOW_EVERY_SHIFT: BrowseFilters = { ...DEFAULT_FILTERS, hideClashes: false, includeLowerLevels: true };
+
 export function OpenShiftsBrowsePage() {
   const state = useOpenShifts();
-  const now = useMemo(() => new Date(), []);
+  const now = useRosterNow();
   const today = perthDateOf(now);
   const { end: windowEnd } = windowOf(today);
   const [filters, setFilters] = useState<BrowseFilters>(DEFAULT_FILTERS);
@@ -45,9 +48,11 @@ export function OpenShiftsBrowsePage() {
   const [chosenDay, setChosenDay] = useState<string | null>(null);
   const [showHidden, setShowHidden] = useState(false);
 
+  // The made-up examples show every shift: their filter chips are hidden, so nothing may be filtered out unseen.
+  const shownFilters = state.sample ? SHOW_EVERY_SHIFT : filters;
   const summary = useMemo(
-    () => summariseBrowse(state.listings, state.roster, filters, now, state.rosterStatus),
-    [state.listings, state.roster, filters, now, state.rosterStatus],
+    () => summariseBrowse(state.listings, state.roster, shownFilters, now, state.rosterStatus),
+    [state.listings, state.roster, shownFilters, now, state.rosterStatus],
   );
   const rosteredDays = useMemo(
     () => new Set(state.sample ? [] : (state.roster ?? []).map((shift) => perthDateOf(shift.startsAt))),
@@ -142,6 +147,11 @@ export function OpenShiftsBrowsePage() {
                   <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
                 </button>
               </div>
+              {/* A fade at the edge says more chips sit off-screen; the row scrolls without a scrollbar. */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute top-3 right-0 h-12 w-8 bg-gradient-to-l from-[color:var(--background)] to-transparent forced-colors:hidden"
+              />
               <div className="flex min-h-10 items-center justify-between px-3 text-sm text-[color:var(--text-muted)]">
                 <span>
                   <span className="font-semibold text-[color:var(--text-heading)] nums">
@@ -182,7 +192,7 @@ export function OpenShiftsBrowsePage() {
               <TriangleAlert
                 aria-hidden="true"
                 strokeWidth={1.6}
-                className="size-icon-xs text-[color:var(--danger-text)]"
+                className="size-icon-xs text-[color:var(--mode-identity)]"
               />
               Includes an urgent shift
             </span>
@@ -332,9 +342,7 @@ export function OpenShiftsBrowsePage() {
               filters={filters}
               onChange={setFilters}
               summary={summary}
-              matchingCount={summary.matching.length}
               myGrade={myGrade}
-              rosterAsOf={null}
             />
           ) : null}
         </>

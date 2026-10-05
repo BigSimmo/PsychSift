@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useRosterNow } from "@/components/roster/roster-format";
 import { boardWeek, type BoardCellStatus } from "@/lib/open-shifts/board";
 import { addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
@@ -26,7 +27,7 @@ const STATUS: Readonly<Record<BoardCellStatus, { label: string; className: strin
   open: { label: "Open", className: "border-[color:var(--border-strong)] bg-[color:var(--surface-raised)]" },
   unfilled: {
     label: "Unfilled, next 48 h",
-    className: "border-[color:var(--danger-border)] bg-[color:var(--surface-raised)]",
+    className: "border-[color:var(--text-heading)] bg-[color:var(--surface-raised)]",
   },
   filled: { label: "Filled", className: "border-[color:var(--border)] bg-[color:var(--surface-subtle)]" },
   reported: { label: "Reported", className: "border-[color:var(--warning-border)] bg-[color:var(--surface-raised)]" },
@@ -35,7 +36,7 @@ const STATUS: Readonly<Record<BoardCellStatus, { label: string; className: strin
 /** The week board for roster managers: their teams' open shifts by site and day, on a wide screen. */
 export function OpenShiftsBoardPage() {
   const state = usePostedShifts();
-  const [nowMs] = useState(() => Date.now());
+  const nowMs = useRosterNow().getTime();
   const today = perthDateOf(new Date(nowMs));
   const [weekOffset, setWeekOffset] = useState(0);
   const week = useMemo(
@@ -105,12 +106,18 @@ export function OpenShiftsBoardPage() {
                 <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.requested}</b> requested
               </li>
               <li>
-                <b className="font-semibold text-[color:var(--danger-text)]">{week.counts.unfilled}</b> unfilled, next
+                <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.unfilled}</b> unfilled, next
                 48 h
               </li>
               <li>
                 <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.filled}</b> filled
               </li>
+              {week.counts.reported ? (
+                <li>
+                  <b className="font-semibold text-[color:var(--text-heading)]">{week.counts.reported}</b> reported, not
+                  posted yet
+                </li>
+              ) : null}
             </ul>
           </div>
 
@@ -122,7 +129,7 @@ export function OpenShiftsBoardPage() {
             </p>
           ) : (
             <div className="mt-3 overflow-x-auto px-3">
-              <table className="w-full min-w-[56rem] table-fixed border-collapse text-sm">
+              <table className="w-full min-w-4xl table-fixed border-collapse text-sm">
                 <caption className="sr-only">Posted shifts by site and day</caption>
                 <thead>
                   <tr>
@@ -163,7 +170,7 @@ export function OpenShiftsBoardPage() {
                                   aria-label={`${STATUS[status].label}, ${formatShiftTimes(shift.startsAt, shift.endsAt)}${shift.claimantName ? `, ${shift.claimantName}` : ""}`}
                                   className={`flex min-h-12 flex-col justify-center rounded-md border px-2 py-1 no-underline focus-visible:outline-2 focus-visible:outline-[color:var(--command)] ${STATUS[status].className}`}
                                 >
-                                  <span className="text-2xs font-semibold uppercase tracking-[0.06em] text-[color:var(--text-muted)]">
+                                  <span className="text-2xs font-semibold uppercase tracking-label text-[color:var(--text-muted)]">
                                     {status === "unfilled" ? "Unfilled" : STATUS[status].label}
                                   </span>
                                   <span className="nums text-xs text-[color:var(--text-heading)]">

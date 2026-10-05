@@ -4,7 +4,14 @@ import { ruleContentSha256, UNSIGNED, type RuleSignOff } from "@/lib/admin/rule-
 import { boardStatus, boardWeek, weekStart } from "@/lib/open-shifts/board";
 import { DEFAULT_FILTERS, dayRows, nextMatchingDate, summariseBrowse } from "@/lib/open-shifts/browse";
 import { groupMine, hoursMeter } from "@/lib/open-shifts/mine";
-import { gapTimes, isBrowsable, isBelowMyLevel, timeOfDay, type OpenShiftListing } from "@/lib/open-shifts/model";
+import {
+  endsNextDay,
+  gapTimes,
+  isBrowsable,
+  isBelowMyLevel,
+  timeOfDay,
+  type OpenShiftListing,
+} from "@/lib/open-shifts/model";
 import { parseOffer } from "@/lib/open-shifts/parse-offer";
 import { groupPosted } from "@/lib/open-shifts/posted";
 import { isClash, rosterCheck, rosterCheckFor, rosterCoveredUntil } from "@/lib/open-shifts/roster-check";
@@ -88,6 +95,11 @@ describe("open shifts model", () => {
     expect(
       isBelowMyLevel(listing({ date: TODAY, from: "08:00", to: "16:30", myGrade: null, minGrade: "intern" })),
     ).toBe(false);
+  });
+
+  it("treats an end at exactly midnight as the same night, and anything later as the next day", () => {
+    expect(endsNextDay(at("2026-10-07", "16:00"), at("2026-10-08", "00:00"))).toBe(false);
+    expect(endsNextDay(at("2026-10-07", "21:30"), at("2026-10-08", "08:00"))).toBe(true);
   });
 
   it("runs an end at or before the start into the next day", () => {
@@ -191,6 +203,19 @@ describe("browse", () => {
     expect(day.hidden).toHaveLength(0);
   });
 
+  it("gives each hidden shift the reason that actually hid it", () => {
+    // With "No clashes" off, the clashing 7 Oct shift is hidden by the site choice, not by the clash.
+    const summary = summariseBrowse(
+      rows,
+      roster,
+      { ...DEFAULT_FILTERS, hideClashes: false, siteIds: ["00000000-0000-4000-8000-00000000b999"] },
+      NOW,
+    );
+    const day = dayRows(summary, "2026-10-07");
+    expect(day.hidden).toHaveLength(2);
+    expect(day).toMatchObject({ hiddenClash: 0, hiddenLevel: 0 });
+  });
+
   it("explains what a day hides and finds the next day with a match", () => {
     const summary = summariseBrowse(rows, roster, DEFAULT_FILTERS, NOW);
     expect(dayRows(summary, "2026-10-07")).toMatchObject({ hiddenClash: 1, hiddenLevel: 0 });
@@ -228,6 +253,11 @@ describe("my shifts", () => {
     expect(meter).toMatchObject({ rostered: 17, approved: 0, requested: 10, total: 27, limit: 140 });
   });
 
+  it("stops counting a request that was never decided once its shift has ended", () => {
+    const ended = listing({ date: TODAY, from: "06:00", to: "09:00", status: "claimed", claimedByMe: true });
+    expect(hoursMeter([], [ended], NOW, true).requested).toBe(0);
+  });
+
   it("drops the limit while the fatigue rules are off", () => {
     expect(hoursMeter([], [requested], NOW, false).limit).toBeNull();
   });
@@ -247,6 +277,8 @@ describe("pasted offers", () => {
     expect(parseOffer("3 Jan 0800-1600", TODAY).date).toBe("2027-01-03");
     expect(parseOffer("can anyone help tomorrow?", TODAY)).toEqual({ date: null, start: null, end: null });
     expect(parseOffer("31 Feb 2500-2600", TODAY)).toEqual({ date: null, start: null, end: null });
+    // 29 Feb has no date in 2027, so it rolls on to the next year that has one.
+    expect(parseOffer("29 Feb 0800-1600", "2027-10-05").date).toBe("2028-02-29");
   });
 });
 
@@ -287,8 +319,13 @@ describe("poster views", () => {
       NOW,
     );
     expect(week.days[0]).toBe("2026-10-05");
-    expect(week.counts).toEqual({ all: 2, open: 0, requested: 1, unfilled: 1, filled: 0 });
+    expect(week.counts).toEqual({ all: 2, open: 0, requested: 1, unfilled: 1, filled: 0, reported: 0 });
     expect(week.rows).toHaveLength(1);
     expect(week.rows[0]!.cells[2]!.map((cell) => cell.status)).toEqual(["requested"]);
+  });
+
+  it("counts reported shifts on the board, so the counts add up to the posted total", () => {
+    const week = boardWeek([row("r", "reported", "2026-10-08"), row("o", "open", "2026-10-09")], "2026-10-07", NOW);
+    expect(week.counts).toMatchObject({ all: 2, open: 1, reported: 1 });
   });
 });

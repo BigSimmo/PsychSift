@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useRosterNow } from "@/components/roster/roster-format";
 import { postRosterAction } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
 import { formatHours, gradeLabel, hoursBetween, kindLabel } from "@/lib/open-shifts/model";
@@ -53,7 +54,7 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
   const state = usePostedShifts();
   const router = useRouter();
   const [pending, setPending] = useState<Pending>(null);
-  const [nowMs] = useState(() => Date.now());
+  const nowMs = useRosterNow().getTime();
   const shift = state.shifts.find((row) => row.serviceId === serviceId && row.id === openShiftId) ?? null;
   const back = `${OPEN_SHIFTS_HREF}/post`;
 
@@ -108,14 +109,15 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
   const started = Date.parse(shift.startsAt) <= nowMs;
   const ownClaim = shift.claimedBy !== null && shift.claimedBy === state.actorId;
   const live = (shift.status === "open" || shift.status === "claimed") && !started;
-  const disabled = state.offline;
+  // A stale list (offline, or the last refresh failed) could show a request that's already decided.
+  const disabled = state.offline || state.refreshFailed;
 
   return (
     <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts">
       <SubHeader backHref={back} backLabel="Post" title="Your posted shift" />
 
       <div className="px-3 pt-2">
-        <p className="text-2xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
+        <p className="text-2xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
           {formatDayLong(date)}
         </p>
         <p className="mt-1 text-xl font-semibold nums text-[color:var(--text-heading)]">
@@ -140,10 +142,10 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
             {`${shift.postedByName ?? "A team member"} can't work this shift. Post it to the team so others can ask for it, or close it if it's been covered another way.`}
           </p>
           <FootAction>
-            <Button variant="primary" block disabled={disabled} onClick={() => setPending("release")}>
+            <Button variant="primary" block disabled={disabled || started} onClick={() => setPending("release")}>
               Post to team
             </Button>
-            <Button variant="ghost" block disabled={disabled} onClick={() => setPending("cancel")}>
+            <Button variant="ghost" block disabled={disabled || started} onClick={() => setPending("cancel")}>
               Close: covered another way
             </Button>
           </FootAction>
@@ -217,8 +219,23 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
           </button>
         </div>
       ) : null}
-      {disabled ? (
+      {state.offline ? (
         <p className="px-3 text-sm text-[color:var(--text-muted)]">You&apos;re offline, so nothing can be changed.</p>
+      ) : state.refreshFailed ? (
+        <div className="px-3 text-sm text-[color:var(--text-muted)]">
+          <p>The list couldn&apos;t be refreshed, so nothing can be changed until it loads again.</p>
+          <button
+            type="button"
+            onClick={state.reload}
+            className="inline-flex min-h-12 items-center font-medium text-[color:var(--mode-identity)] focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
+          >
+            Try again
+          </button>
+        </div>
+      ) : started && shift.status !== "approved" ? (
+        <p className="px-3 text-sm text-[color:var(--text-muted)]">
+          This shift has started, so it can&apos;t be changed here.
+        </p>
       ) : null}
 
       <ConfirmSheet

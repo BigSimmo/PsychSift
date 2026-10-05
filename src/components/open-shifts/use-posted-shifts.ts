@@ -37,13 +37,22 @@ export type PostedShiftsState = {
   readonly teams: readonly PostedTeam[];
   readonly failedTeams: readonly string[];
   readonly readAt: Date | null;
+  /** The latest refresh failed, so the list shown is the earlier one: act on it only after a fresh read. */
+  readonly refreshFailed: boolean;
   readonly offline: boolean;
   readonly actorId: string | null;
   readonly message: string | null;
   readonly reload: () => void;
 };
 
-type Loaded = { key: string; shifts: PostedShift[]; teams: PostedTeam[]; failedTeams: string[]; readAt: Date };
+type Loaded = {
+  key: string;
+  actorId: string | null;
+  shifts: PostedShift[];
+  teams: PostedTeam[];
+  failedTeams: string[];
+  readAt: Date;
+};
 
 async function loadTeam(team: RosterTeam): Promise<{ shifts: PostedShift[]; team: PostedTeam } | null> {
   const [manage, overview, members] = await Promise.all([
@@ -79,7 +88,11 @@ export function usePostedShifts(): PostedShiftsState {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
-  const reload = useCallback(() => setGeneration((value) => value + 1), []);
+  // Clearing the failure first brings the loading shape back, so "Try again" visibly does something.
+  const reload = useCallback(() => {
+    setFailed(null);
+    setGeneration((value) => value + 1);
+  }, []);
 
   const managed = useMemo(
     () =>
@@ -97,6 +110,7 @@ export function usePostedShifts(): PostedShiftsState {
     if (teams.status === "signed-out") setOpenShiftsIsPoster(false);
   }, [teams.status, managed]);
 
+  const actorId = teams.data?.actorId ?? null;
   useEffect(() => {
     if (teams.status !== "ready" || managed.length === 0) return;
     let cancelled = false;
@@ -110,6 +124,7 @@ export function usePostedShifts(): PostedShiftsState {
       setFailed(null);
       setLoaded({
         key,
+        actorId,
         shifts: ok.flatMap((entry) => entry.result?.shifts ?? []),
         teams: ok.flatMap((entry) => (entry.result ? [entry.result.team] : [])),
         failedTeams: results.filter((entry) => entry.result === null).map((entry) => entry.team.name),
@@ -119,13 +134,13 @@ export function usePostedShifts(): PostedShiftsState {
     return () => {
       cancelled = true;
     };
-  }, [teams.status, managed, key, generation]);
+  }, [teams.status, managed, key, generation, actorId]);
 
-  const base = { reload, offline: !online, actorId: teams.data?.actorId ?? null };
-  const empty = { shifts: [], teams: [], failedTeams: [], readAt: null, message: null };
+  const base = { reload, offline: !online, actorId };
+  const empty = { shifts: [], teams: [], failedTeams: [], readAt: null, refreshFailed: false, message: null };
   if (teams.status === "signed-out") return { ...base, ...empty, status: "signed-out" };
   if (teams.status === "ready" && managed.length === 0) return { ...base, ...empty, status: "not-poster" };
-  const current = loaded && loaded.key === key ? loaded : null;
+  const current = loaded && loaded.key === key && loaded.actorId === actorId ? loaded : null;
   if (current) {
     return {
       ...base,
@@ -134,6 +149,7 @@ export function usePostedShifts(): PostedShiftsState {
       teams: current.teams,
       failedTeams: current.failedTeams,
       readAt: current.readAt,
+      refreshFailed: failed !== null,
       message: null,
     };
   }

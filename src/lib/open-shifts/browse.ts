@@ -52,6 +52,8 @@ export type BrowseSummary = {
   /** After every filter. */
   readonly matching: readonly BrowseRow[];
   readonly hidden: { readonly clash: number; readonly level: number; readonly site: number; readonly time: number };
+  /** Why each hidden shift is hidden: the first filter that hides it, as `hidden` counts it. */
+  readonly hiddenReason: ReadonlyMap<string, "clash" | "level" | "site" | "time">;
   /** Every open shift in the window (unfiltered), with its check: the hidden note's "Show". */
   readonly all: readonly BrowseRow[];
   readonly sites: readonly SiteChoice[];
@@ -102,11 +104,20 @@ export function summariseBrowse(
 
   // Each hidden shift is counted once, under the first filter that hides it, so the reasons add up.
   const hidden = { clash: 0, level: 0, site: 0, time: 0 };
+  const hiddenReason = new Map<string, "clash" | "level" | "site" | "time">();
   for (const row of all) {
-    if (!passesClash(row)) hidden.clash += 1;
-    else if (!passesLevel(row)) hidden.level += 1;
-    else if (!passesSite(row)) hidden.site += 1;
-    else if (!passesTime(row)) hidden.time += 1;
+    const reason = !passesClash(row)
+      ? "clash"
+      : !passesLevel(row)
+        ? "level"
+        : !passesSite(row)
+          ? "site"
+          : !passesTime(row)
+            ? "time"
+            : null;
+    if (reason === null) continue;
+    hidden[reason] += 1;
+    hiddenReason.set(row.listing.id, reason);
   }
 
   const siteMap = new Map<string, SiteChoice>();
@@ -151,6 +162,7 @@ export function summariseBrowse(
     total: all.length,
     matching,
     hidden,
+    hiddenReason,
     all,
     sites: [...siteMap.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
     startCounts,
@@ -185,7 +197,7 @@ export function dayRows(summary: BrowseSummary, date: string) {
   return {
     shown,
     hidden: hiddenRows,
-    hiddenClash: hiddenRows.filter((row) => isClash(row.check)).length,
-    hiddenLevel: hiddenRows.filter((row) => !isClash(row.check) && isBelowMyLevel(row.listing)).length,
+    hiddenClash: hiddenRows.filter((row) => summary.hiddenReason.get(row.listing.id) === "clash").length,
+    hiddenLevel: hiddenRows.filter((row) => summary.hiddenReason.get(row.listing.id) === "level").length,
   };
 }

@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 import { useId, useMemo, useState } from "react";
 
 import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
-import { kindOf } from "@/components/roster/roster-format";
+import { kindOf, useRosterNow } from "@/components/roster/roster-format";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { Button } from "@/components/ui/button";
 import { formatHours, gapTimes, hoursBetween, kindLabel } from "@/lib/open-shifts/model";
 import { parseOffer } from "@/lib/open-shifts/parse-offer";
-import { rosterCheck } from "@/lib/open-shifts/roster-check";
+import { rosterCheckFor } from "@/lib/open-shifts/roster-check";
 import type { FatigueShift } from "@/lib/roster/fatigue-rules";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { useOnlineStatus } from "@/lib/use-online-status";
@@ -35,7 +35,7 @@ export function OpenShiftsLogPage() {
   const offline = !useOnlineStatus();
   const router = useRouter();
   const id = useId();
-  const [nowMs] = useState(() => Date.now());
+  const nowMs = useRosterNow().getTime();
   const today = perthDateOf(new Date(nowMs));
   const [message, setMessage] = useState("");
   const [readNote, setReadNote] = useState<string | null>(null);
@@ -60,7 +60,8 @@ export function OpenShiftsLogPage() {
         : null,
     [shifts.status, shifts.shifts],
   );
-  const check = times ? rosterCheck({ id: "logged", ...times, kind }, roster, new Date(nowMs)) : null;
+  const rosterStatus = shifts.status === "ready" ? "ready" : shifts.status === "loading" ? "loading" : "error";
+  const check = times ? rosterCheckFor({ id: "logged", ...times, kind }, roster, rosterStatus, new Date(nowMs)) : null;
 
   function read(text: string) {
     setMessage(text);
@@ -91,8 +92,8 @@ export function OpenShiftsLogPage() {
       shift: { ...times, title: "Extra shift", location: place.trim() || null, sourceUid: null, kind },
       repeatWeeks: 0,
     });
-    setBusy(false);
     if (failure) {
+      setBusy(false);
       setError(`Not saved. ${failure}`);
       return;
     }

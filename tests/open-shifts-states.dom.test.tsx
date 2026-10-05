@@ -5,7 +5,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { OpenShiftsGate, openShiftsStatus } from "@/components/open-shifts/open-shifts-states";
-import { Switch } from "@/components/open-shifts/open-shifts-ui";
+import { Switch, formatDayLong, formatDayShort, formatShiftTimes } from "@/components/open-shifts/open-shifts-ui";
 import type { OpenShiftsState } from "@/components/open-shifts/use-open-shifts";
 
 function state(overrides: Partial<OpenShiftsState>): OpenShiftsState {
@@ -72,6 +72,21 @@ describe("Open shifts states", () => {
       kind: "text",
       text: "Shift list updated 09:50",
     });
+  });
+
+  it("writes dates the way Roster does, with three-letter months", () => {
+    expect(formatDayShort("2026-09-30")).toBe("Wed 30 Sep");
+    expect(formatDayLong("2026-10-07")).toBe("Wednesday 7 October");
+    expect(formatShiftTimes("2026-10-07T13:30:00.000Z", "2026-10-08T00:00:00.000Z")).toBe("21:30–08:00 Thu");
+  });
+
+  it("announces a failed load to screen readers", () => {
+    render(
+      <OpenShiftsGate state={state({ status: "error", message: null })}>
+        <p>the list</p>
+      </OpenShiftsGate>,
+    );
+    expect(screen.getByRole("alert").textContent).toContain("couldn't be reached");
   });
 
   it("the switch reads as a switch and works from the keyboard", () => {

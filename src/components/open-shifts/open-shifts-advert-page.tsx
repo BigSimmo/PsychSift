@@ -2,12 +2,20 @@
 
 import { Building2, CircleCheck, CircleHelp, Clock, Lock, Scale, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
+import { useRosterNow } from "@/components/roster/roster-format";
 import { postRosterAction } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
-import { endsNextDay, formatHours, gradeLabel, hoursBetween, type OpenShiftListing } from "@/lib/open-shifts/model";
+import {
+  endsNextDay,
+  formatHours,
+  gradeLabel,
+  hoursBetween,
+  isBrowsable,
+  type OpenShiftListing,
+} from "@/lib/open-shifts/model";
 import { rosterCheckFor, type RosterCheck } from "@/lib/open-shifts/roster-check";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
@@ -54,13 +62,15 @@ function InfoRow({ icon, title, children }: { icon: ReactNode; title: string; ch
 
 function breakWords(check: Extract<RosterCheck, { state: "ok" | "flag" }>): string | null {
   const parts = [
-    check.breakBefore !== null ? `At most ${formatHours(check.breakBefore)} break after your shift before` : null,
-    check.breakAfter !== null ? `at most ${formatHours(check.breakAfter)} before your next one` : null,
+    check.breakBefore !== null ? `At most ${formatHours(check.breakBefore)} break since your previous shift` : null,
+    check.breakAfter !== null
+      ? `${check.breakBefore !== null ? "at most" : "At most"} ${formatHours(check.breakAfter)} before your next one`
+      : null,
   ].filter(Boolean);
   return parts.length ? `${parts.join("; ")}.` : null;
 }
 
-/** The roster-check panel: green no problems, amber a flag, red an overlap, grey when nothing could be checked. */
+/** The roster-check panel: neutral when nothing is flagged, amber a flag, red an overlap, grey when nothing could be checked. */
 export function RosterCheckPanel({ check }: { check: RosterCheck }) {
   const { tone, text } = checkSummary(check);
   const border =
@@ -90,7 +100,7 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
   } else if (check.state === "clash-only") {
     items.push("Doesn't overlap anything on your PsychSift roster.");
     items.push(
-      `Breaks, hours, shift length and night limits aren't checked yet: the fatigue rules are switched off until they're signed. Check them yourself against ${AGREEMENT}.`,
+      `Breaks, hours, shift length, nights and days off aren't checked: the fatigue rules are switched off. Check them yourself against ${AGREEMENT}.`,
     );
   } else if (check.state === "beyond") {
     items.push(
@@ -159,8 +169,9 @@ export function RequestSheet({
       action: "open.claim",
       openShiftId: listing.id,
     } as RosterAction);
-    setBusy(false);
     if (!result.ok) {
+      // Busy clears only on failure, so a second tap can't send the request twice.
+      setBusy(false);
       setError(
         result.code === "roster_open_shift_taken"
           ? "Someone else asked for this shift first. Nothing was sent for you."
@@ -225,7 +236,7 @@ export function RequestSheet({
 
 export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: string; openShiftId: string }) {
   const state = useOpenShifts();
-  const now = useMemo(() => new Date(), []);
+  const now = useRosterNow();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
   const listing = state.listings.find((row) => row.serviceId === serviceId && row.id === openShiftId) ?? null;
@@ -278,6 +289,20 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
     : formatShiftTimes(listing.startsAt, listing.endsAt);
   const alreadyMine = listing.claimedByMe || sent !== null;
   const sample = state.sample !== null;
+  // A deep link or a list read earlier can still name a shift nobody can ask for now.
+  const closed: string | null = alreadyMine
+    ? listing.status === "cancelled" && sent === null
+      ? "cancelled"
+      : null
+    : isBrowsable(listing, now)
+      ? null
+      : listing.mine
+        ? "own"
+        : listing.status === "expired" || Date.parse(listing.startsAt) <= now.getTime()
+          ? "started"
+          : listing.status === "cancelled"
+            ? "withdrawn"
+            : "taken";
 
   return (
     <div className="mx-auto w-full max-w-reading pb-6" data-mode-identity="open-shifts">
@@ -305,7 +330,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
         <Fact label="Shift code" value={listing.shiftCode} />
       </dl>
 
-      <div className="mt-4">{sample || alreadyMine ? null : <RosterCheckPanel check={check} />}</div>
+      <div className="mt-4">{sample || alreadyMine || closed ? null : <RosterCheckPanel check={check} />}</div>
 
       <ul className="mt-4">
         <InfoRow
@@ -350,6 +375,39 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
 
       {state.sample === "signed-out" ? (
         <SignInAction label="Sign in to request shifts" />
+      ) : closed ? (
+        <FootAction>
+          <div role="status" className="rounded-lg border border-[color:var(--border)] px-4 py-3 text-sm">
+            <b className="block font-semibold text-[color:var(--text-heading)]">
+              {closed === "cancelled"
+                ? "Cancelled by the team"
+                : closed === "own"
+                  ? "You posted this shift"
+                  : closed === "started"
+                    ? "This shift has started"
+                    : closed === "withdrawn"
+                      ? "Closed by the team"
+                      : "No longer open"}
+            </b>
+            <span className="text-[color:var(--text)]">
+              {closed === "cancelled"
+                ? "Your request closed with it. Ask your roster manager if you need to know why."
+                : closed === "own"
+                  ? "Doctors at the right level in the team can ask for it."
+                  : closed === "started"
+                    ? "It can't be requested now."
+                    : closed === "withdrawn"
+                      ? "The team no longer needs it covered. Nothing was sent for you."
+                      : "Someone else has it now. Nothing was sent for you."}
+            </span>
+          </div>
+          <Link
+            href={closed === "cancelled" ? `${OPEN_SHIFTS_HREF}/mine` : OPEN_SHIFTS_HREF}
+            className="inline-flex min-h-12 items-center justify-center text-sm font-medium text-[color:var(--mode-identity)]"
+          >
+            {closed === "cancelled" ? "Go to My shifts" : "Back to Browse"}
+          </Link>
+        </FootAction>
       ) : sample ? (
         <FootAction note="This is a made-up example: team rosters aren't open to real staff yet.">
           <Button variant="primary" block disabled onClick={() => undefined}>
@@ -366,7 +424,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
               <CircleCheck
                 aria-hidden="true"
                 strokeWidth={1.6}
-                className="mt-0.5 size-icon-md shrink-0 text-[color:var(--success-text)]"
+                className="mt-0.5 size-icon-md shrink-0 text-[color:var(--mode-identity)]"
               />
             ) : (
               <Clock
@@ -427,7 +485,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           </Button>
         </FootAction>
       )}
-      {check.state === "none" && !sample ? (
+      {check.state === "none" && !sample && !closed && !alreadyMine ? (
         <p className="flex items-center gap-2 px-3 text-xs text-[color:var(--text-muted)]">
           <CircleHelp aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
           Without a roster, the check can&apos;t see clashes. Your roster manager still checks.

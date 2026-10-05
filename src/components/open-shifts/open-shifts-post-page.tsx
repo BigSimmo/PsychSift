@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
+import { useRosterNow } from "@/components/roster/roster-format";
 import { postRosterAction } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
 import { formatHours, gapTimes, gradeLabel, hoursBetween, kindLabel } from "@/lib/open-shifts/model";
@@ -64,7 +65,7 @@ export function OpenShiftsPostPage() {
   const state = usePostedShifts();
   const router = useRouter();
   const id = useId();
-  const today = useMemo(() => perthDateOf(new Date()), []);
+  const today = perthDateOf(useRosterNow());
   const [serviceId, setServiceId] = useState<string>("");
   const [date, setDate] = useState(addDaysToDate(today, 1));
   const [kind, setKind] = useState<Kind>("day");
@@ -141,7 +142,11 @@ export function OpenShiftsPostPage() {
                 id={`${id}-team`}
                 className={field}
                 value={team?.serviceId ?? ""}
-                onChange={(event) => setServiceId(event.target.value)}
+                onChange={(event) => {
+                  setServiceId(event.target.value);
+                  // Sites belong to a team, so a site picked in another team can't carry over.
+                  setSiteId("");
+                }}
               >
                 {state.teams.map((row) => (
                   <option key={row.serviceId} value={row.serviceId}>
@@ -293,7 +298,7 @@ export function OpenShiftsPostPage() {
             <p className="font-semibold text-[color:var(--text-heading)]">{`${level ? gradeLabel(level) : "Any level"} · ${kindLabel(kind)}`}</p>
             <p className="nums">{`${formatDayLong(date)}, ${formatShiftTimes(times.startsAt, times.endsAt)} · ${formatHours(hours)}`}</p>
             <p className="text-[color:var(--text-muted)]">{[siteName, team.name].filter(Boolean).join(" · ")}</p>
-            {urgent ? <p className="font-medium text-[color:var(--danger-text)]">Urgent</p> : null}
+            {urgent ? <p className="font-medium text-[color:var(--mode-identity)]">Urgent</p> : null}
           </div>
           <p className="text-[color:var(--text-muted)]">
             {`It goes live straight away for members of ${team.name} at the right level. You or another roster manager approves whoever asks.`}

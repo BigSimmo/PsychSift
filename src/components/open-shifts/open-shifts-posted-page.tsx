@@ -4,6 +4,7 @@ import { ChevronRight, LayoutGrid, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
 
+import { useRosterNow } from "@/components/roster/roster-format";
 import { ModeBandStatus, PageTitleUnderBand, type ModeBandStatusValue } from "@/components/mode-band/mode-band";
 import { Button } from "@/components/ui/button";
 import { modeInsetHairline, modePressable } from "@/components/mode-kit/recipes";
@@ -24,6 +25,9 @@ import { usePostedShifts, type PostedShift, type PostedShiftsState } from "./use
 
 export function postedStatus(state: PostedShiftsState): ModeBandStatusValue | null {
   if (state.offline) return { kind: "offline" };
+  if (state.refreshFailed && state.readAt) {
+    return { kind: "failed", text: `Couldn't refresh · showing the list from ${perthTimeOf(state.readAt)}` };
+  }
   if (state.status === "loading") return { kind: "loading" };
   if (state.status === "error") return { kind: "failed", text: "Your posted shifts couldn't be reached" };
   if (state.failedTeams.length > 0) return { kind: "failed", text: `Couldn't read ${state.failedTeams.join(", ")}` };
@@ -67,7 +71,7 @@ function PostedRow({ shift, line }: { shift: PostedShift; line: ReactNode }) {
 
 export function OpenShiftsPostedPage() {
   const state = usePostedShifts();
-  const now = useMemo(() => new Date(), []);
+  const now = useRosterNow();
   const groups = useMemo(() => groupPosted(state.shifts, now), [state.shifts, now]);
   const teamNames = state.teams.map((team) => team.name).join(", ");
 

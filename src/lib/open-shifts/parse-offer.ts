@@ -31,7 +31,7 @@ function nextDate(day: number, monthIndex: number, today: string): string | null
   const year = Number(today.slice(0, 4));
   for (const candidateYear of [year, year + 1]) {
     const date = new Date(Date.UTC(candidateYear, monthIndex, day));
-    if (date.getUTCMonth() !== monthIndex) return null;
+    if (date.getUTCMonth() !== monthIndex) continue;
     const iso = `${candidateYear}-${pad(monthIndex + 1)}-${pad(day)}`;
     if (iso >= today) return iso;
   }

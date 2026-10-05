@@ -37,8 +37,11 @@ export function ConfirmSheet({
     setBusy(true);
     setError(null);
     const failure = await onConfirm();
-    setBusy(false);
-    if (failure) setError(failure);
+    // On success the sheet closes or the page moves on; staying busy until then stops a second tap acting twice.
+    if (failure) {
+      setBusy(false);
+      setError(failure);
+    }
   }
   return (
     <Sheet
