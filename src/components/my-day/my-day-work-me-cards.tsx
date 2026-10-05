@@ -61,7 +61,7 @@ const serverMinute = (): number | null => null;
 /**
  * The on-call panel: time left out of the shift's length, and this device's
  * call log as counts only. The notes themselves can hold patient details, so
- * they stay on the Call page; this panel says how many there are and opens it.
+ * they stay in On Call; this panel says how many there are and opens it.
  */
 export function CallsCard({
   total,
@@ -149,11 +149,7 @@ export function CallsCard({
           <Phone aria-hidden="true" className="size-icon-sm" />
           Log a call
         </Link>
-        <Link
-          href={withMyDayReturn("/on-call/call#on-call-handover-heading")}
-          data-testid="my-day-calls-handover"
-          className={quietLink}
-        >
+        <Link href={withMyDayReturn("/on-call/handover")} data-testid="my-day-calls-handover" className={quietLink}>
           Handover
         </Link>
       </div>
@@ -369,7 +365,7 @@ export function ComingUpCard({
 export function CallNotesFoot() {
   return (
     <QuietFoot icon={Lock}>
-      Call notes stay on the Call page. They are deleted when the shift ends and when you sign out.
+      Call notes stay in On Call. They are deleted when the shift ends and when you sign out.
     </QuietFoot>
   );
 }

@@ -690,14 +690,12 @@ describe("Work cards", () => {
     expect(card.textContent).toContain("Counts only · this device");
     // Tonight's on call ends 08:30 Sunday: that is the handover.
     expect(card.textContent).toContain("HandoverSun 08:30");
-    // The notes themselves stay on the Call page, and the page says so.
-    expect(screen.getByText(/Call notes stay on the Call page/)).toBeTruthy();
+    // The notes themselves stay in On Call, and the page says so.
+    expect(screen.getByText(/Call notes stay in On Call/)).toBeTruthy();
     expect(screen.getByTestId("my-day-calls-log").getAttribute("href")).toBe(
       "/on-call/call?from=my-day#on-call-call-log-heading",
     );
-    expect(screen.getByTestId("my-day-calls-handover").getAttribute("href")).toBe(
-      "/on-call/call?from=my-day#on-call-handover-heading",
-    );
+    expect(screen.getByTestId("my-day-calls-handover").getAttribute("href")).toBe("/on-call/handover?from=my-day");
   });
 
   it("shows pinned Help numbers, numbers first, four at most", () => {
