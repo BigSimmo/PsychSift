@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronLeft, CircleAlert, CloudOff, Settings2 } from "lucide-react";
+import { Check, ChevronLeft, CircleAlert, CloudOff, Info, Settings2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -392,7 +392,7 @@ export type ModeBandStatusValue =
   /** Signed out: the page shows invented records. */
   | { kind: "sample" }
   /** A plain factual line, e.g. "Practice only · nothing here is saved yet". */
-  | { kind: "text"; text: string };
+  | { kind: "text"; text: string; info?: boolean };
 
 // The sign-in dialog loads only when someone asks for it.
 const AccountSetupDialog = dynamic(
@@ -447,7 +447,12 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
     case "sample":
       return <SampleLine />;
     case "text":
-      return <span className="mode-band__saved">{value.text}</span>;
+      return (
+        <span className="mode-band__saved">
+          {value.info ? <Info aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2} /> : null}
+          {value.text}
+        </span>
+      );
   }
 }
 
