@@ -52,8 +52,8 @@ function fetchCalls(url: string, method: string) {
   return fetchMock.mock.calls.filter(([input, init]) => String(input) === url && (init?.method ?? "GET") === method);
 }
 async function importFile(name: string, content = "roster") {
-  fireEvent.click(await screen.findByRole("button", { name: "New" }));
-  fireEvent.click(await screen.findByRole("button", { name: /Import a file/ }));
+  // Shifts offers Import in its Roster tools list, or as the first step when there are no shifts yet.
+  fireEvent.click((await screen.findAllByRole("button", { name: /Import a roster file/ }))[0]!);
   const input = await screen.findByTestId("roster-import-file");
   fireEvent.change(input, { target: { files: [new File([content], name)] } });
 }
