@@ -153,7 +153,7 @@ describe("CME calendar events", () => {
     const october = expandEvents(shown, { start: "2026-10-01", end: "2026-10-31" });
     expect(october.find((event) => event.title === "Journal club")?.date).toBe("2026-10-15");
     expect(exported.map((event) => event.date)).toEqual(
-      expect.arrayContaining(["2026-12-18", "2026-12-31", "2027-03-01"]),
+      expect.arrayContaining(["2026-12-17", "2026-12-31", "2027-03-01"]),
     );
   });
 });

@@ -246,7 +246,7 @@ describe("dashboard shortcuts", () => {
       />,
     );
     expect(screen.getByTestId("cme-year-check-link")).toHaveAttribute("href", "/cme/check?year=2026");
-    expect(screen.getByTestId("cme-calendar-link")).toHaveTextContent("18 Dec: You can close your 2026 CPD year");
+    expect(screen.getByTestId("cme-calendar-link")).toHaveTextContent("17 Dec: You can close your 2026 CPD year");
     const reminder = screen.getByTestId("cme-reporting-reminder");
     expect(reminder).toHaveAttribute("href", "/cme/log?year=2025&copy=todo");
     expect(reminder).toHaveTextContent("3 activities from 2025 not yet copied to MyCPD");

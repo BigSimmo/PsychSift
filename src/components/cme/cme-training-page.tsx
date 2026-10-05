@@ -911,7 +911,7 @@ function RecordRow({
       <span className="grid min-w-0 flex-1 gap-px py-2">
         <span className="break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]">{title}</span>
         {subtitle ? (
-          <span className="break-words text-sm-minus leading-[1.15rem] text-[color:var(--text-muted)]">{subtitle}</span>
+          <span className="break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">{subtitle}</span>
         ) : null}
       </span>
       {end ? <span className="flex shrink-0 items-center gap-4">{end}</span> : null}

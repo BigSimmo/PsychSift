@@ -182,7 +182,7 @@ export function CmeFlatRow({
         {title}
       </span>
       {subtitle ? (
-        <span className="line-clamp-2 break-words text-sm-minus leading-[1.15rem] text-[color:var(--text-muted)]">
+        <span className="line-clamp-2 break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">
           {subtitle}
         </span>
       ) : null}
