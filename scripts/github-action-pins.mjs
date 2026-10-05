@@ -76,6 +76,14 @@ const reviewedActionPins = new Map([
       // upstream repo's own integration-test model pin — no change to
       // permissions, secrets handling, or the action's trust boundary.
       ["756cc22e19660d20e8cc9496b4f242475a7f7790", "v1.0.235"],
+      // Reviewed 2026-10-05 for PR #3279 (Dependabot github-actions group):
+      // annotated tag v1.0.240 peels to this commit. Diff v1.0.235...v1.0.240
+      // ships only Claude Code (2.1.283->2.1.288) and Agent SDK (0.3.283->0.3.288)
+      // version bumps in base-action/action.yml, run.ts, package.json and
+      // bun.lock; the remaining changes are the upstream repo's own workflow
+      // hardening (.github/**, CLAUDE.md) — no change to permissions, secrets
+      // handling, or the action's trust boundary.
+      ["ed670b4cf9de2a5a570d130d2f6197b9e543cd64", "v1.0.240"],
     ]),
   ],
   ["actions/cache", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],
