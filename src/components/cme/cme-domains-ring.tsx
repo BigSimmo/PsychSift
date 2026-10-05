@@ -1,15 +1,14 @@
-import Link from "next/link";
-
-import { cardSurface } from "@/components/card-recipes";
-import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { CmeGroup, CmeTextLink } from "@/components/cme/cme-flat-list";
+import { modeInsetHairline, modeRowHeight } from "@/components/mode-kit/recipes";
+import { cn } from "@/components/ui-primitives";
 import type { CmeEntry, CmeRequirement } from "@/lib/cme/types";
 
 /**
  * DOMAINS RING — one ring per "activity-count" requirement the owner confirmed
  * (in the RANZCP starting set, the four professional development domains). The
  * ring has one part per domain; a part fills once the domain has as many tagged
- * activities as the confirmed minimum. Under it, each domain with its count,
- * and a "Tag one" link on a domain that still has nothing.
+ * activities as the confirmed minimum. Beside it, a flat list of each domain
+ * with its count, and a quiet "Tag one" link on a domain that still has nothing.
  *
  * Nothing here is a new rule: the domains and the minimum come only from the
  * confirmed requirement, and the counting matches `evaluateRequirement`. A
@@ -41,6 +40,11 @@ function arcPath(startDegrees: number, endDegrees: number): string {
   return `M ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${RADIUS} ${RADIUS} 0 ${large} 1 ${end.x.toFixed(3)} ${end.y.toFixed(3)}`;
 }
 
+/** The group's name: the RANZCP preset's domains read as "Activities per domain"; any other set keeps its own label. */
+function groupName(requirement: ActivityCountRequirement): string {
+  return requirement.id === "domains" ? "Activities per domain" : requirement.label;
+}
+
 export function CmeDomainsRing({
   requirement,
   entries,
@@ -58,19 +62,14 @@ export function CmeDomainsRing({
   });
   const filledCount = rows.filter((row) => row.filled).length;
   const step = 360 / Math.max(buckets.length, 1);
-  const headingId = `cme-domains-${requirement.id}`;
 
   return (
-    <section
-      className={cn(cardSurface, "p-4")}
-      aria-labelledby={headingId}
-      data-testid={`cme-domains-ring-${requirement.id}`}
+    <CmeGroup
+      testId={`cme-domains-ring-${requirement.id}`}
+      label={`${groupName(requirement)} · ${filledCount} of ${buckets.length} covered`}
     >
-      <h2 id={headingId} className={eyebrowText}>
-        {requirement.label} · {filledCount} of {buckets.length}
-      </h2>
-      <div className="mt-3 flex items-center gap-4">
-        <svg aria-hidden="true" viewBox="0 0 40 40" className="size-24 shrink-0">
+      <div className="flex items-center gap-4">
+        <svg aria-hidden="true" viewBox="0 0 40 40" className="size-18 shrink-0">
           {rows.map((row, index) => (
             <path
               key={row.bucket}
@@ -81,42 +80,52 @@ export function CmeDomainsRing({
               strokeLinecap="round"
               className={cn(
                 row.filled
-                  ? "stroke-[color:var(--tone-indigo)] forced-colors:stroke-[CanvasText]"
+                  ? "stroke-[color:var(--clinical-accent)] forced-colors:stroke-[CanvasText]"
                   : "stroke-[color:var(--border-strong)] forced-colors:stroke-[GrayText]",
               )}
             />
           ))}
           <text
             x="20"
-            y="22.5"
+            y="22.8"
             textAnchor="middle"
             className="nums fill-[color:var(--text-heading)] text-[length:8px] font-normal"
           >
             {`${filledCount}/${buckets.length}`}
           </text>
         </svg>
-        <ul className="flex min-w-0 flex-1 flex-col divide-y divide-[color:var(--border)]">
+        <ul role="list" className="grid min-w-0 flex-1">
           {rows.map((row) => (
-            <li key={row.bucket} className="flex min-h-tap items-center justify-between gap-2 text-sm">
-              <span className={cn("min-w-0", row.filled ? "text-[color:var(--text)]" : textMuted)}>{row.bucket}</span>
+            <li
+              key={row.bucket}
+              className={cn(
+                modeInsetHairline,
+                modeRowHeight.single,
+                "flex min-w-0 items-center justify-between gap-3 text-sm before:left-0",
+              )}
+            >
+              <span
+                className={cn(
+                  "min-w-0 break-words",
+                  row.count > 0 ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)]",
+                )}
+              >
+                {row.bucket}
+              </span>
               {row.count > 0 ? (
-                <span className="nums shrink-0 font-normal text-[color:var(--text)]">
+                <span className="nums shrink-0 font-normal text-[color:var(--text-heading)]">
                   {row.count}
                   <span className="sr-only">{row.count === 1 ? " activity" : " activities"}</span>
                 </span>
               ) : (
-                <Link
-                  href={`/cme/log?year=${year}`}
-                  aria-label={`Tag one for ${row.bucket}`}
-                  className="inline-flex min-h-tap shrink-0 items-center font-semibold text-[color:var(--clinical-accent)]"
-                >
-                  Tag one
-                </Link>
+                <CmeTextLink href={`/cme/log?year=${year}`} className="shrink-0">
+                  Tag one <span className="sr-only">for {row.bucket}</span>
+                </CmeTextLink>
               )}
             </li>
           ))}
         </ul>
       </div>
-    </section>
+    </CmeGroup>
   );
 }

@@ -216,7 +216,12 @@ describe("CPD copy contract", () => {
   it("says MyCPD only where the year is known to be RANZCP's", () => {
     // Both are shown only when cmeReportingCloseDate() found RANZCP in the confirmed source:
     // the calendar's 1 March reporting event, and Today's reminder built from that same date.
-    const knownRanzcp = new Set(["src/lib/cme/calendar-events.ts", "src/components/cme/cme-dashboard.tsx"]);
+    // The Report's "Close the year" row names MyCPD only when readCpdHome() reads the home as RANZCP.
+    const knownRanzcp = new Set([
+      "src/lib/cme/calendar-events.ts",
+      "src/components/cme/cme-dashboard.tsx",
+      "src/components/cme/cme-year-check-page.tsx",
+    ]);
     const found = violations(CPD_FILES, /MyCPD/).filter((line) => !knownRanzcp.has(line.slice(0, line.indexOf(":"))));
     expect(found).toEqual([]);
   });
