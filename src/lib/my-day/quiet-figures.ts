@@ -336,10 +336,11 @@ export function weekRows(
     if (group.length === 1 || running || overnight) {
       for (const shift of group) {
         const isRunning = Date.parse(shift.startsAt) <= at;
-        const end =
-          perthDateOf(shift.endsAt) === perthDateOf(shift.startsAt) && !isRunning
-            ? perthTimeOf(shift.endsAt)
-            : weekdayTime(shift.endsAt);
+        // A running shift that ends today needs no weekday; one that ends on a later day does.
+        const sameDay = isRunning
+          ? perthDateOf(shift.endsAt) === today
+          : perthDateOf(shift.endsAt) === perthDateOf(shift.startsAt);
+        const end = sameDay ? perthTimeOf(shift.endsAt) : weekdayTime(shift.endsAt);
         rows.push({
           key: `shift:${shift.id}`,
           mode: "roster",
@@ -354,7 +355,10 @@ export function weekRows(
       }
       continue;
     }
-    const days = group.map((shift) => dayWord(shift.startsAt, today));
+    const days = group.map((shift, index) => {
+      const word = dayWord(shift.startsAt, today);
+      return index > 0 && /^To/.test(word) ? word.toLowerCase() : word;
+    });
     rows.push({
       key: `shifts:${key}`,
       mode: "roster",

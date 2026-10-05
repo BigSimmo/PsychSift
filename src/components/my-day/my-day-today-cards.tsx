@@ -435,7 +435,7 @@ export const MY_DAY_QUICK_ACTIONS: readonly MyDayQuickAction[] = [
 export function QuickActionsCard({ onHide }: { readonly onHide?: () => void }) {
   return (
     <section aria-label="Quick actions" data-testid="my-day-card-quick-actions" className="relative">
-      <ul role="list" className="grid grid-cols-4 gap-1" data-testid="dash-quick-actions">
+      <ul role="list" aria-label="Quick actions" className="grid grid-cols-4 gap-1" data-testid="dash-quick-actions">
         {MY_DAY_QUICK_ACTIONS.map((action) => (
           <li key={action.testId} className="min-w-0">
             <Link

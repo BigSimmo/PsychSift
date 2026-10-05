@@ -155,12 +155,12 @@ describe("MyDayDashboard cards", () => {
     const links = within(card)
       .getAllByRole("link")
       .map((link) => [link.textContent, link.getAttribute("href")]);
+    // Mock-up v2: four icon tiles, Teaching dropped (it is one tap away in the week).
     expect(links).toEqual([
-      ["Log a callnote it for handover", "/on-call/call?from=my-day#on-call-call-log-heading"],
-      ["Log CPDadd hours", "/cme/new?from=my-day"],
-      ["Who's onteam now", "/on-call/whos-on?from=my-day"],
-      ["Rosteryour shifts", "/roster?from=my-day"],
-      ["Teachingthis week", "/teaching/week?from=my-day"],
+      ["Log a call", "/on-call/call?from=my-day#on-call-call-log-heading"],
+      ["Log CPD", "/cme/new?from=my-day"],
+      ["Who's on", "/on-call/whos-on?from=my-day"],
+      ["Roster", "/roster?from=my-day"],
     ]);
     expect(within(card).getByRole("list", { name: "Quick actions" })).toBeTruthy();
     expect(card.textContent).not.toContain("Handover");
@@ -175,18 +175,16 @@ describe("MyDayDashboard cards", () => {
       />,
     );
     const card = screen.getByTestId("my-day-card-up-next");
-    expect(card.textContent).toContain("in 1 h 20 min");
-    expect(card.textContent).toContain("Up next, in 1 hour 20 minutes: Registrar teaching: agitation at 14:00.");
+    expect(card.textContent).toContain("Next up · 14:00 to 15:00 · in 1 h 20 min");
     expect(card.textContent).toContain("Registrar teaching: agitation");
     expect(card.textContent).toContain("You're presenting · Seminar room 3");
-    // The day ribbon marks now and the session.
-    expect(within(card).getByTestId("my-day-ribbon-now")).toBeTruthy();
     expect(screen.getByTestId("my-day-up-next-open").getAttribute("href")).toBe("/teaching/session/occ-1?from=my-day");
-    // No shift ahead: the hero shows only Up next, with no ring.
+    // No shift ahead: the hero shows only Up next, with no time line.
     expect(screen.queryByTestId("my-day-shift")).toBeNull();
-    // Teaching alone gives today's agenda, so This week shows even without a roster.
-    expect(screen.getByTestId("my-day-agenda").textContent).toContain("14:00");
-    expect(screen.getByTestId("my-day-week").querySelector("[data-kind]")).toBeNull();
+    expect(screen.queryByTestId("my-day-ribbon")).toBeNull();
+    // Teaching alone gives the week a row, so This week shows even without a roster, with no shift codes.
+    expect(screen.getByTestId("my-day-agenda").textContent).toContain("Registrar teaching: agitation");
+    expect(screen.getByTestId("my-day-week").querySelector('[data-kind="on_call"]')).toBeNull();
   });
 
   it("shows the next teaching session as a panel inside the hero, with no separate card", () => {
@@ -226,7 +224,7 @@ describe("MyDayDashboard cards", () => {
   // Design review 2026-10-03, items 6, 7, 9 and 11: the Shift ring lives in the
   // Up next hero (so the same shift is never shown twice), and the week reads
   // as filled day tiles with "OC" for on call and a faded "off" for rest days.
-  it("builds the hero's shift ring and This week from the roster, showing the shift once", () => {
+  it("builds the hero's shift line and This week from the roster, showing the shift once", () => {
     render(
       <MyDayDashboard
         {...props({
@@ -237,22 +235,26 @@ describe("MyDayDashboard cards", () => {
     expect(screen.queryByTestId("my-day-card-shift")).toBeNull();
     const hero = screen.getByTestId("my-day-card-up-next");
     expect(hero.className).toContain("dash-hero");
-    expect(within(hero).getByTestId("my-day-shift-ring")).toBeTruthy();
-    expect(hero.textContent).toContain("4:20");
-    expect(hero.textContent).toContain("4 hours 20 minutes until your on call starts");
-    expect(hero.textContent).toContain("Tonight");
-    expect(hero.textContent).toContain("On call 17:00 to 08:30");
-    expect(hero.textContent).toContain("Demo hospital");
+    expect(within(hero).getByTestId("my-day-ribbon")).toBeTruthy();
+    expect(within(hero).getByTestId("my-day-ribbon-now")).toBeTruthy();
+    expect(within(hero).getByTestId("my-day-shift-countdown").textContent).toBe("Starts in 4 h 20 min");
+    expect(hero.textContent).toContain("On call tonight");
+    expect(hero.textContent).toContain("Sat 17:00 to Sun 08:30 · Demo hospital");
+    expect(hero.textContent).toContain("On call tonight, starts in 4 hours 20 minutes");
     expect(within(hero).getByTestId("my-day-shift").getAttribute("href")).toBe("/roster?from=my-day");
-    // The only thing today is that shift, so there is no separate Up next line repeating it.
+    // The only thing today is that shift, so there is no separate Up next panel repeating it.
     expect(screen.queryByTestId("my-day-up-next")).toBeNull();
+    // Seven days from today, the same days as the Week page (it used to be Monday to Sunday).
     const week = screen.getByTestId("my-day-week");
+    const days = [...week.querySelectorAll("li")].map((day) => day.getAttribute("data-testid"));
+    expect(days[0]).toBe("dash-week-tile-2026-10-03");
+    expect(days[6]).toBe("dash-week-tile-2026-10-09");
     const today = week.querySelector('[aria-current="date"]')!;
-    expect(today.getAttribute("aria-label")).toBe("Sat 3 Oct: On call");
-    expect(today.querySelector('[data-kind="on-call"]')?.textContent).toBe("OC");
+    expect(today.textContent).toContain("Sat 3 Oct: On call");
+    expect(today.getAttribute("data-kind")).toBe("on_call");
+    expect(today.textContent).toContain("OC");
     expect(week.querySelectorAll('[data-kind="off"]')).toHaveLength(6);
-    expect(week.textContent).not.toContain("–");
-    expect(week.querySelector('[aria-label="Mon 28 Sep: Off"]')).toBeTruthy();
+    expect(screen.getByTestId("my-day-card-this-week").textContent).toContain("OC on call");
   });
 
   it("puts what is up next under the shift ring in the one hero", () => {
@@ -282,10 +284,40 @@ describe("MyDayDashboard cards", () => {
       />,
     );
     const card = screen.getByTestId("my-day-card-up-next");
-    expect(card.textContent).toContain("On now");
-    expect(card.textContent).toContain("Day shift on now, 4 hours 20 minutes left, until 17:00.");
-    // A shift already running is the ring's, not an Up next line's.
+    expect(card.textContent).toContain("Day shift now");
+    expect(screen.getByTestId("my-day-shift-countdown").textContent).toBe("4 h 20 min left");
+    expect(card.textContent).toContain("Day shift now, 4 hours 20 minutes left, until 17:00.");
+    // Only on call gets Log a call in the blue card.
+    expect(screen.queryByTestId("my-day-hero-log-call")).toBeNull();
+    // A shift already running is the card's own, not an Up next panel's.
     expect(screen.queryByTestId("my-day-up-next")).toBeNull();
+  });
+
+  it("gives a running on call its one filled Log a call button", () => {
+    const onCall = shift({ id: "oc", startsAt: "2026-10-02T21:00:00Z", endsAt: "2026-10-03T08:00:00Z" });
+    render(
+      <MyDayDashboard
+        {...props({ sources: { ...EMPTY_SOURCES, roster: { status: "ready", shifts: [onCall], sample: false } } })}
+      />,
+    );
+    expect(screen.getByTestId("my-day-hero-log-call").getAttribute("href")).toBe(
+      "/on-call/call?from=my-day#on-call-call-log-heading",
+    );
+    expect(screen.getByTestId("my-day-card-up-next").textContent).toContain("Until 16:00 handover");
+  });
+
+  it("says plainly when the day's shift is over, with the next one", () => {
+    const ended = shift({ id: "d", kind: "day", startsAt: "2026-10-02T23:00:00Z", endsAt: "2026-10-03T03:00:00Z" });
+    const next = shift({ id: "n", kind: "day", startsAt: "2026-10-05T00:00:00Z", endsAt: "2026-10-05T09:00:00Z" });
+    render(
+      <MyDayDashboard
+        {...props({ sources: { ...EMPTY_SOURCES, roster: { status: "ready", shifts: [ended, next], sample: false } } })}
+      />,
+    );
+    const card = screen.getByTestId("my-day-card-up-next");
+    expect(card.textContent).toContain("Off for the rest of today");
+    expect(card.textContent).toContain("Day shift ended 11:00");
+    expect(card.textContent).toContain("next: day shift Mon 5 Oct, 08:00");
   });
 
   it("hides the hero when the roster has nothing ahead and nothing else is up next", () => {
@@ -300,7 +332,7 @@ describe("MyDayDashboard cards", () => {
     expect(screen.getByTestId("my-day-card-this-week")).toBeTruthy();
   });
 
-  it("shows CPD hours by type against target, and recorded dates on the renewals runway", () => {
+  it("shows CPD hours by type against target, and recorded dates on the renewals list", () => {
     render(
       <MyDayDashboard
         {...props({
@@ -315,35 +347,32 @@ describe("MyDayDashboard cards", () => {
       />,
     );
     const cpd = screen.getByTestId("my-day-card-cpd");
-    expect(cpd.textContent).toContain("32 / 50 h");
+    expect(cpd.textContent).toContain("32 of 50 CPD hours logged this year.");
     expect(cpd.textContent).toContain("Educational14 h");
-    expect(cpd.textContent).toContain("Performance9 h");
-    expect(cpd.textContent).toContain("Outcomes9 h");
+    expect(cpd.textContent).toContain("Reviewing performance9 h");
+    expect(cpd.textContent).toContain("Measuring outcomes9 h");
     expect(cpd.textContent).toContain("To go by 31 Dec18 h");
+    expect(cpd.textContent).toContain("Your 50 h target is the one you confirmed in CPD.");
     expect(screen.getByTestId("my-day-cpd").getAttribute("href")).toBe("/cme?from=my-day");
-    expect(screen.getByTestId("my-day-cpd-rings").querySelectorAll("circle").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByTestId("my-day-cpd-ring")).toBeTruthy();
     const runway = screen.getByTestId("my-day-runway");
-    const dots = within(runway).getAllByRole("link");
-    expect(dots.map((dot) => dot.getAttribute("aria-label"))).toEqual([
-      "Life support course: date has passed, Mon 21 Sep",
-      "Medical registration: recorded date, Tue 24 Nov",
-    ]);
-    expect(dots[1]!.getAttribute("href")).toBe("/admin/renewals?item=e1&from=my-day");
-    // The nearest renewal leads, with its own action to the same place.
+    expect(runway.querySelectorAll("li")).toHaveLength(2);
+    expect(runway.textContent).not.toContain("Indemnity");
+    // The nearest renewal leads, with Renew to the same place.
     const lead = screen.getByTestId("my-day-runway-lead");
     expect(lead.textContent).toContain("Life support course");
-    expect(lead.textContent).toContain("Date passed · 21 Sep");
+    expect(lead.textContent).toContain("Date passed · Mon 21 Sep 2026");
     expect(screen.getByTestId("my-day-runway-lead-action").getAttribute("href")).toBe(
       "/admin/renewals?item=e0&from=my-day",
     );
-    // Amber marks only a date that has passed.
-    expect(runway.querySelectorAll("[data-passed]")).toHaveLength(1);
+    expect(screen.getByTestId("my-day-runway-e1").textContent).toContain("In 52 days · Tue 24 Nov 2026");
   });
 
   it("says which card reads failed instead of silently showing nothing", () => {
     render(
       <MyDayDashboard
         {...props({
+          items: [item("a", "soon")],
           sources: {
             ...EMPTY_SOURCES,
             roster: { status: "failed", shifts: [], sample: false },
@@ -352,9 +381,46 @@ describe("MyDayDashboard cards", () => {
         })}
       />,
     );
+    // The roster has its own amber note, read out at once, with Try again.
+    const roster = screen.getByTestId("my-day-roster-failed");
+    expect(roster.textContent).toContain("Your roster did not load");
+    expect(roster.textContent).toContain("Check Roster before you rely on this page.");
+    expect(roster.getAttribute("role")).toBe("alert");
+    expect(within(roster).getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.getByTestId("my-day-card-failed").textContent).toBe(
-      "Couldn't load Shifts and CPD hours, so those cards are not shown.",
+      "Couldn't load CPD hours, so that card is not shown.",
     );
+    // With a source missing, the count is a floor, never a full count.
+    expect(screen.getByTestId("my-day-card-needs-you").textContent).toContain("at least 1");
+  });
+
+  it("never says nothing needs you while a source failed", () => {
+    render(
+      <MyDayDashboard
+        {...props({ sources: { ...EMPTY_SOURCES, roster: { status: "failed", shifts: [], sample: false } } })}
+      />,
+    );
+    const empty = screen.getByTestId("my-day-empty");
+    expect(empty.textContent).not.toContain("Nothing needs you right now");
+    expect(empty.textContent).toContain("Nothing found in the sources that loaded");
+  });
+
+  it("says when the phone is offline, and the time the page loaded", () => {
+    const online = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    render(<MyDayDashboard {...props({ checkedAt: "14:05" })} />);
+    expect(screen.getByTestId("my-day-offline").textContent).toBe(
+      "You are offlineThis is My Day as it loaded at 14:05. Reload when you are back online to see changes.",
+    );
+    online.mockRestore();
+  });
+
+  it("opens the show-and-hide mode from the Customise row at the bottom", () => {
+    const onToggleEditing = vi.fn();
+    render(<MyDayDashboard {...props({ onToggleEditing })} />);
+    const row = screen.getByTestId("my-day-customise");
+    expect(row.textContent).toContain("Show or hide these cards");
+    fireEvent.click(row);
+    expect(onToggleEditing).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -380,7 +446,8 @@ describe("Needs you", () => {
     // The row's one action opens the item, carrying the way back to My Day.
     expect(screen.getByTestId("my-day-open-a").getAttribute("href")).toBe("/admin/a?from=my-day");
     expect(screen.getByTestId("my-day-open-a").textContent).toBe("Open");
-    fireEvent.click(within(card).getByRole("button", { name: "All 5" }));
+    expect(card.textContent).toContain("Needs you3 of 5");
+    fireEvent.click(within(card).getByRole("button", { name: "See all 5" }));
     expect(onShowAll).toHaveBeenCalledTimes(1);
   });
 
@@ -390,7 +457,7 @@ describe("Needs you", () => {
     expect(screen.queryByTestId("my-day-item-a")).toBeNull();
     // The next row moves up so the card still shows three.
     expect(screen.getByTestId("my-day-item-d")).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toContain("Moved to tomorrow: Title a");
+    expect(screen.getByRole("status").textContent).toContain("Hidden until tomorrow: Title a");
     expect(JSON.parse(window.localStorage.getItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY)!)).toEqual({ a: "2026-10-04" });
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
@@ -402,7 +469,7 @@ describe("Needs you", () => {
     window.localStorage.setItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY, JSON.stringify({ a: "2026-10-04" }));
     render(<MyDayDashboard {...props({ items: [item("a", "overdue")] })} />);
     expect(screen.queryByTestId("my-day-item-a")).toBeNull();
-    expect(screen.getByTestId("my-day-needs-you-snoozed").textContent).toContain("1 moved to tomorrow");
+    expect(screen.getByTestId("my-day-needs-you-snoozed").textContent).toContain("1 hidden until tomorrow");
     cleanup();
     render(<MyDayDashboard {...props({ items: [item("a", "overdue")], today: "2026-10-04" })} />);
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
@@ -474,23 +541,35 @@ describe("Edit mode", () => {
 });
 
 // Codex review on #3234 (item 7): finished morning lines must not push the rest of the day off.
-describe("Today's agenda", () => {
-  it("keeps upcoming lines when the morning's finished lines would fill the cap", () => {
-    const morning = Array.from({ length: 6 }, (_, index) =>
-      item(`m${index}`, "soon", { due: `2026-10-03T0${index}:00:00Z`, title: `Morning ${index}` }),
+describe("This week's rows", () => {
+  it("folds repeated day shifts into one row and keeps a running shift on its own", () => {
+    const day = (id: string, date: string) =>
+      shift({ id, kind: "day", startsAt: `${date}T00:00:00Z`, endsAt: `${date}T09:00:00Z` });
+    render(
+      <MyDayDashboard
+        {...props({
+          sources: {
+            ...EMPTY_SOURCES,
+            roster: {
+              status: "ready",
+              shifts: [day("a", "2026-10-05"), day("b", "2026-10-06"), day("c", "2026-10-07")],
+              sample: false,
+            },
+          },
+        })}
+      />,
     );
-    const afternoon = item("pm", "soon", { due: "2026-10-03T07:00:00Z", title: "Afternoon task" });
-    render(<MyDayDashboard {...props({ items: [...morning, afternoon] })} />);
-    const agenda = screen.getByTestId("my-day-agenda");
-    expect(agenda.textContent).toContain("Afternoon task");
-    expect(within(agenda).getAllByRole("listitem")).toHaveLength(6);
+    const rows = screen.getByTestId("my-day-agenda");
+    expect(rows.textContent).toContain("Day shifts");
+    expect(rows.textContent).toContain("Mon, Tue and Wed · 08:00 to 17:00 · Roster");
+    expect(within(rows).getAllByRole("listitem")).toHaveLength(1);
   });
 });
 
 // Design review v13, owner-approved concept D: the flag is the one most
 // important real item, overdue first, with its one action.
 describe("The flag", () => {
-  it("leads with the overdue item, gives its one action with the way back, and steps with the dots", () => {
+  it("leads with the overdue item, gives its one action with the way back, and counts the others", () => {
     const items = [
       item("soon", "soon", { title: "Soon thing" }),
       item("cpd", "overdue", { mode: "cme", title: "Demo journal club", href: "/cme/entry/1" }),
@@ -499,14 +578,10 @@ describe("The flag", () => {
     render(<MyDayDashboard {...props({ items })} />);
     const flag = screen.getByTestId("my-day-card-flag");
     expect(within(flag).getByTestId("my-day-flag").textContent).toContain("Demo journal club");
+    expect(flag.textContent).toMatch(/1 of \d+ reminders/);
     const action = within(flag).getByTestId("my-day-flag-action");
     expect(action.textContent).toBe("Log");
     expect(action.getAttribute("href")).toBe("/cme/entry/1?from=my-day");
-    const dots = within(flag).getAllByRole("button", { name: /^Show flag / });
-    expect(dots).toHaveLength(3);
-    expect(dots[0]!.getAttribute("aria-current")).toBe("true");
-    fireEvent.click(dots[1]!);
-    expect(within(flag).getByTestId("my-day-flag").textContent).toContain("Medical registration");
   });
 
   it("hides when nothing real needs the reader", () => {
@@ -555,11 +630,14 @@ describe("Work cards", () => {
       />,
     );
     const card = screen.getByTestId("my-day-card-calls");
-    expect(card.textContent).toContain("2calls");
-    expect(card.textContent).toContain("1open");
-    expect(card.textContent).toContain("On this device");
+    expect(card.textContent).toContain("On call tonight");
+    expect(card.textContent).toContain("Calls logged2");
+    expect(card.textContent).toContain("Still open1");
+    expect(card.textContent).toContain("Counts only · this device");
     // Tonight's on call ends 08:30 Sunday: that is the handover.
-    expect(card.textContent).toMatch(/08:30.*handover/);
+    expect(card.textContent).toContain("HandoverSun 08:30");
+    // The notes themselves stay on the Call page, and the page says so.
+    expect(screen.getByText(/Call notes stay on the Call page/)).toBeTruthy();
     expect(screen.getByTestId("my-day-calls-log").getAttribute("href")).toBe(
       "/on-call/call?from=my-day#on-call-call-log-heading",
     );
@@ -628,10 +706,43 @@ describe("Work cards", () => {
     );
     const team = screen.getByTestId("my-day-card-whos-on");
     expect(team.textContent).toContain("Dr Demo B");
-    expect(team.textContent).toContain("till 21:00");
-    const talk = screen.getByTestId("my-day-card-next-talk");
+    // Role first, then the name.
+    expect(team.textContent).toContain("RegistrarDr Demo B · until 21:00");
+    // No on call tonight: the next talk leads "Coming up" rather than having its own section.
+    expect(screen.queryByTestId("my-day-card-next-talk")).toBeNull();
+    const talk = screen.getByTestId("my-day-card-coming-up");
     expect(talk.textContent).toContain("Lithium toxicity");
+    expect(talk.textContent).toContain("Thu 15 Oct · 14:00");
     expect(within(talk).getByRole("link").getAttribute("href")).toBe("/teaching/session/talk?from=my-day");
+  });
+
+  it("lists the next talk and the next on call under Coming up, soonest first", () => {
+    render(
+      <MyDayDashboard
+        {...props({
+          page: "work",
+          sources: {
+            ...EMPTY_SOURCES,
+            roster: {
+              status: "ready",
+              shifts: [shift({ id: "oc", startsAt: "2026-10-09T13:00:00Z", endsAt: "2026-10-10T00:00:00Z" })],
+              sample: false,
+            },
+            teaching: {
+              status: "ready",
+              sessions: [],
+              sample: false,
+              nextTalk: session({ occurrenceId: "talk", title: "Journal club", startsAt: "2026-10-05T04:30:00Z" }),
+            },
+          },
+        })}
+      />,
+    );
+    const rows = within(screen.getByTestId("my-day-card-coming-up")).getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Journal club"),
+      expect.stringContaining("Your next on callFri 21:00 to Sat 08:00 · in 6 days · Roster"),
+    ]);
   });
 
   it("hides who's on while the team is unavailable", () => {
@@ -666,9 +777,41 @@ describe("Me cards", () => {
     const hours = screen.getByTestId("my-day-card-hours");
     expect(hours.textContent).toContain("18 h");
     expect(hours.textContent).toContain("Rest and fatigue warnings stay off until the rules are signed off.");
+    expect(hours.textContent).toContain("rostered · 2 shifts");
+    expect(hours.textContent).toContain("On call and leave are not counted.");
     fireEvent.click(within(hours).getByRole("button", { name: "Fortnight" }));
-    expect(hours.textContent).toContain("this fortnight");
-    expect(screen.getByTestId("my-day-card-month-glance")).toBeTruthy();
+    expect(hours.textContent).toContain("rostered · 2 shifts");
+  });
+
+  it("shows the next leave from the roster and the next renewal from Admin at a glance", () => {
+    render(
+      <MyDayDashboard
+        {...props({
+          page: "me",
+          sources: {
+            ...EMPTY_SOURCES,
+            roster: {
+              status: "ready",
+              shifts: [
+                shift({ id: "lv", kind: "leave", startsAt: "2026-10-19T00:00:00Z", endsAt: "2026-10-19T09:00:00Z" }),
+              ],
+              sample: false,
+            },
+          },
+          renewals: [
+            { entryId: "e0", title: "Past course", date: "2026-09-21", href: "/admin/renewals?item=e0" },
+            { entryId: "e1", title: "Medical registration", date: "2026-11-24", href: "/admin/renewals?item=e1" },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByTestId("my-day-glance-leave").textContent).toContain(
+      "Next leaveMon 19 Oct · in 16 days · Roster",
+    );
+    // A passed date is not the next renewal.
+    expect(screen.getByTestId("my-day-glance-renewal").textContent).toContain(
+      "Medical registration · 24 Nov · in 52 days",
+    );
   });
 
   it("hides hours when the roster holds only on call", () => {
@@ -699,14 +842,17 @@ describe("Me cards", () => {
     const wallet = screen.getByTestId("my-day-card-credentials");
     expect(wallet.textContent).toContain("Date passed");
     expect(wallet.textContent).toContain("Recorded date");
-    expect(wallet.textContent).toContain("to 24 Nov 2026");
+    expect(wallet.textContent).toContain("Recorded date 24 Nov 2026");
+    expect(wallet.textContent).toContain("Date passed 21 Sep 2026");
+    // Dates only: no registration numbers.
+    expect(wallet.textContent).toContain("No registration numbers are kept on My Day.");
   });
 
   it("keeps the quick note on this device only, and forgets it at an account transition", () => {
     render(<MyDayDashboard {...props({ page: "me" })} />);
     const card = screen.getByTestId("my-day-card-quick-note");
-    expect(card.textContent).toContain("On this device only");
-    expect(card.textContent).toContain("No patient names or details here.");
+    expect(card.textContent).toContain("This device only");
+    expect(card.textContent).toContain("Never write patient names or details here. Cleared when you sign out.");
     const field = screen.getByTestId("my-day-quick-note") as HTMLTextAreaElement;
     fireEvent.change(field, { target: { value: "Ring pharmacy on Monday" } });
     expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Ring pharmacy on Monday");
