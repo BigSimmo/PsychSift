@@ -465,12 +465,15 @@ export function T5Check({
   checked,
   onChange,
   disabled,
+  end,
 }: {
   label: string;
   meta?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
+  /** A figure at the end of the line, such as the hours a session counts for. */
+  end?: ReactNode;
 }) {
   return (
     <li className="min-w-0">
@@ -496,6 +499,7 @@ export function T5Check({
           <span className={cn("text-sm leading-snug font-medium", ink)}>{label}</span>
           {meta ? <span className={cn("text-sm-minus", sub)}>{meta}</span> : null}
         </span>
+        {end}
       </label>
     </li>
   );
