@@ -1,14 +1,15 @@
 /**
  * Two cautious readings of what was typed, used only to change what the search
- * screen offers. Neither sends, stores or blocks anything.
+ * screen does on the device. Neither sends or stores anything.
  *
  * - `looksLikePatientDetails`: a labelled hospital number, bare seven-digit
  *   number, bed number, date of birth, Medicare-shaped number or a title and
  *   name. Phone and pager numbers are deliberately not flagged: the search finds
- *   On Call numbers. When true, the query is not kept in Recent and the screen
- *   reminds the reader not to type patient details.
- * - `looksClinical`: a medicine or a clinical word, so the screen can offer the
- *   clinical search (which answers from guidelines) beside the staff-record matches.
+ *   On Call numbers. When true, the query is not looked up at all, not kept in
+ *   Recent, and the screen reminds the reader not to type patient details.
+ * - `looksClinical`: a medicine or a clinical word, so the screen offers the
+ *   clinical search (which answers from guidelines) above any staff-record
+ *   matches, and gives no built-in work answer.
  *
  * Both lean towards true: a false alarm costs one extra card, a miss costs nothing
  * the reader did not already have.
@@ -168,4 +169,26 @@ export function looksClinical(query: string): boolean {
 export function clinicalSearchHref(query: string): string {
   const params = new URLSearchParams({ mode: "answer", q: query.trim(), focus: "1" });
   return `/?${params.toString()}`;
+}
+
+/**
+ * What the search screen may do with what was typed. Patient details are never
+ * looked up or answered. A clinical question is still looked up in the reader's
+ * own records (an "ECT list" can be on their roster) but gets no work answer.
+ */
+export function workSearchGate(query: string): {
+  readonly patient: boolean;
+  readonly clinical: boolean;
+  readonly search: boolean;
+  readonly answer: boolean;
+} {
+  const trimmed = query.trim();
+  const patient = trimmed.length > 0 && looksLikePatientDetails(trimmed);
+  const clinical = trimmed.length > 0 && !patient && looksClinical(trimmed);
+  return {
+    patient,
+    clinical,
+    search: trimmed.length > 0 && !patient,
+    answer: trimmed.length > 0 && !patient && !clinical,
+  };
 }

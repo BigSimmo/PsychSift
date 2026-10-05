@@ -29,6 +29,9 @@ export const workSearchAreaLabels: Readonly<Record<WorkSearchArea, string>> = {
   "on-call": "On Call",
 };
 
+/** How far ahead Teaching sessions are read: today plus this many days (six weeks in all). */
+export const TEACHING_LOOKAHEAD_DAYS = 41;
+
 export function isWorkSearchArea(value: string): value is WorkSearchArea {
   return (workSearchAreas as readonly string[]).includes(value);
 }
