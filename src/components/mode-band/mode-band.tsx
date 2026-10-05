@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ChevronLeft, CircleAlert, CloudOff, Settings2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -69,8 +70,8 @@ export type ModeBandProps = {
    * does not grow when the status arrives after hydration.
    */
   statusSlot?: boolean | readonly string[];
-  /** A static status line, for pages whose status never changes on the client. */
-  status?: ReactNode;
+  /** A fixed status line, for a mode whose status never changes on the client. */
+  status?: ModeBandStatusValue;
   /**
    * Paths (exact, or a prefix ending in "/") where this band must not draw,
    * because the page there has its own header (a record, an editor). The band
@@ -118,17 +119,6 @@ const dateLong = new Intl.DateTimeFormat("en-AU", {
   timeZone: "Australia/Perth",
 });
 
-function shortDate(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-AU", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: "Australia/Perth",
-  }).formatToParts(date);
-  const pick = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${pick("weekday")} ${pick("day")} ${pick("month")}`;
-}
-
 function modeHomePath(modeId: AppModeId): string | undefined {
   const mode = appModeDefinition(modeId);
   return "href" in mode ? mode.href : undefined;
@@ -147,12 +137,7 @@ function TodayDate() {
   const time = useClientTime();
   if (!time) return <span className="mode-band__date" />;
   const now = new Date(time);
-  return (
-    <span className="mode-band__date">
-      <span className="mode-band__date-long">{dateLong.format(now)}</span>
-      <span className="mode-band__date-short">{shortDate(now)}</span>
-    </span>
-  );
+  return <span className="mode-band__date">{dateLong.format(now)}</span>;
 }
 
 /**
@@ -179,6 +164,24 @@ function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId) {
       }
     };
   }, [band, modeId]);
+}
+
+/**
+ * Scrolls the tab row sideways, never the page, so the current tab is in view
+ * when a page opens on a tab past the phone's edge.
+ */
+function useCurrentTabInView(activeId: string | null) {
+  const [row, setRow] = useState<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const current = row?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!row || !current) return;
+    const left = current.offsetLeft - row.offsetLeft;
+    const right = left + current.offsetWidth;
+    if (left < row.scrollLeft || right > row.scrollLeft + row.clientWidth) {
+      row.scrollTo({ left: Math.max(0, left - (row.clientWidth - current.offsetWidth) / 2) });
+    }
+  }, [row, activeId]);
+  return setRow;
 }
 
 /**
@@ -240,6 +243,7 @@ function ModeBandHeader({
   }, [tabs, modeId, teachingRoles, rosterHasTeam]);
 
   usePublishBandSurface(band, modeId);
+  const tabRow = useCurrentTabInView(activeId);
 
   const Icon = appModeIcons[modeId];
   const modeName = appModeDefinition(modeId).label;
@@ -284,13 +288,17 @@ function ModeBandHeader({
         </p>
         {hasStatus ? (
           <div id={modeBandStatusSlotId} className="mode-band__status" data-testid="mode-band-status">
-            {status}
+            {status ? (
+              <span role="status" data-mode-band-status={status.kind} className="contents">
+                <StatusLine value={status} />
+              </span>
+            ) : null}
           </div>
         ) : null}
       </div>
       {tabEntries.length > 1 ? (
         <nav aria-label={`${modeName} pages`} className="mode-band__tabs" data-testid="mode-band-tabs">
-          <div className="mode-band__tab-row">
+          <div ref={tabRow} className="mode-band__tab-row">
             {tabEntries.map((entry) => {
               const count = counts?.[entry.id] ?? 0;
               return (
@@ -320,82 +328,92 @@ function ModeBandHeader({
   );
 }
 
+const perthTime = new Intl.DateTimeFormat("en-AU", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: "Australia/Perth",
+});
+const perthDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Perth", dateStyle: "short" });
+const perthDate = new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Perth" });
+
 /**
- * How long ago something was saved, in the words the header uses: "just now",
- * "4 min ago", then the time ("12:35") after an hour, then "yesterday", then
- * the date.
+ * When records were last saved to the account, in 24-hour Perth time: "14:12"
+ * today, otherwise "4 Oct 14:12". Never "just now": the line says where the
+ * records are, not how fresh they feel.
  */
-export function savedAgo(savedAt: Date, now: Date): string {
-  const minutes = Math.floor((now.getTime() - savedAt.getTime()) / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  const day = (value: Date) =>
-    new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Perth", dateStyle: "short" }).format(value);
-  if (day(savedAt) === day(now)) {
-    return new Intl.DateTimeFormat("en-AU", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-      timeZone: "Australia/Perth",
-    }).format(savedAt);
-  }
-  const yesterday = new Date(now.getTime() - 86_400_000);
-  if (day(savedAt) === day(yesterday)) return "yesterday";
-  return new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "short", timeZone: "Australia/Perth" }).format(
-    savedAt,
-  );
+export function savedAtLabel(savedAt: Date, now: Date): string {
+  const time = perthTime.format(savedAt);
+  return perthDay.format(savedAt) === perthDay.format(now) ? time : `${perthDate.format(savedAt)} ${time}`;
 }
 
 export type ModeBandStatusValue =
-  /** Records are saved; the time is when they were last saved or loaded. */
-  | { kind: "saved"; at: Date | string; verb?: string }
+  /** Records are in the account; the time is when they were last saved or loaded. */
+  | { kind: "saved"; at: Date | string }
+  /** Records live in the account, so offline they are simply out of reach. */
   | { kind: "offline" }
-  /** Never say "Saved" when a save failed. The whole chip retries. */
+  /** Never say "Saved" when a save failed. The whole line retries. */
   | { kind: "error"; onRetry: () => void }
   | { kind: "loading" }
-  /** A plain factual line, e.g. "Example records" or "24 indexed sources". */
-  | { kind: "text"; text: string; tick?: boolean };
+  /** Signed out: the page shows invented records. */
+  | { kind: "sample" }
+  /** A plain factual line, e.g. "Practice only · nothing here is saved yet". */
+  | { kind: "text"; text: string };
+
+// The sign-in dialog loads only when someone asks for it.
+const AccountSetupDialog = dynamic(
+  () => import("@/components/clinical-dashboard/account-setup-dialog").then((module) => module.AccountSetupDialog),
+  { ssr: false },
+);
+
+function SampleLine() {
+  const [signInOpen, setSignInOpen] = useState(false);
+  return (
+    <span className="mode-band__saved">
+      Made-up example records ·
+      <button type="button" className="mode-band__inline-action" onClick={() => setSignInOpen(true)}>
+        Sign in
+      </button>
+      to keep your own
+      {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
+    </span>
+  );
+}
 
 function StatusLine({ value }: { value: ModeBandStatusValue }) {
-  // Ages quietly once a minute; the line is not live-announced each tick.
-  const time = useClientTime({ updateInterval: value.kind === "saved" ? 60_000 : undefined });
-  const now = time ? new Date(time) : null;
-
+  const time = useClientTime();
   switch (value.kind) {
     case "saved": {
       const at = typeof value.at === "string" ? new Date(value.at) : value.at;
       return (
         <span className="mode-band__saved">
           <Check aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.5} />
-          {value.verb ?? "Saved"} {now ? savedAgo(at, now) : "just now"}
+          Saved to your account {savedAtLabel(at, time ? new Date(time) : at)}
         </span>
       );
     }
     case "offline":
       return (
-        <span className="mode-band__chip mode-band__chip--offline">
-          <CloudOff aria-hidden="true" className="size-icon-sm shrink-0" strokeWidth={2.25} />
-          Offline · changes kept on this phone
+        <span className="mode-band__saved">
+          <CloudOff aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2} />
+          Offline · your records reopen when you&apos;re back online
         </span>
       );
     case "error":
       return (
         <button type="button" className="mode-band__retry" onClick={value.onRetry}>
-          <span className="mode-band__chip mode-band__chip--error">
-            <CircleAlert aria-hidden="true" className="size-icon-sm shrink-0" strokeWidth={2.25} />
-            Not saved yet ·<span className="mode-band__retry-word">Try again</span>
+          <span className="mode-band__warning">
+            <CircleAlert aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.25} />
+            Not saved ·<span className="mode-band__retry-word">Try again</span>
           </span>
         </button>
       );
     case "loading":
       return <span role="img" aria-label="Loading your records" className="mode-band__loading" />;
+    case "sample":
+      return <SampleLine />;
     case "text":
-      return (
-        <span className="mode-band__saved">
-          {value.tick ? <Check aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.5} /> : null}
-          {value.text}
-        </span>
-      );
+      return <span className="mode-band__saved">{value.text}</span>;
   }
 }
 
@@ -416,15 +434,20 @@ function useModeBandHost(slotId: string): HTMLElement | null | undefined {
  * A page's status line, drawn in its mode band. With no band above the page
  * it is drawn where it is placed instead, so the page still says it.
  *
- * `role="status"` sits on this wrapper, which only changes when the status
- * itself does: the minute-by-minute ageing of "Saved 4 min ago" is quiet.
+ * The wrapper is a polite `role="status"`, or `role="alert"` when a save
+ * failed, so only a change of state is announced.
  */
 export function ModeBandStatus({ value, testId }: { value: ModeBandStatusValue | null; testId?: string }) {
   const shown = useModeBandShown();
   const host = useModeBandHost(modeBandStatusSlotId);
   if (!value) return null;
   const line = (
-    <span role="status" data-testid={testId} className="contents">
+    <span
+      role={value.kind === "error" ? "alert" : "status"}
+      data-testid={testId}
+      data-mode-band-status={value.kind}
+      className="contents"
+    >
       <StatusLine value={value} />
     </span>
   );

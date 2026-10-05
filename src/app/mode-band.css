@@ -58,7 +58,7 @@
 
 .mode-band__inner {
   position: relative;
-  max-width: 45rem;
+  max-width: calc(45rem + var(--mode-band-gutter) * 2);
   margin: 0 auto;
   padding: 0.125rem var(--mode-band-gutter) 0.125rem;
   box-sizing: border-box;
@@ -96,10 +96,6 @@
   font-size: var(--text-sm, 0.875rem);
   font-weight: 500;
   color: var(--text-muted);
-}
-
-.mode-band__date-short {
-  display: none;
 }
 
 .mode-band__customise {
@@ -162,31 +158,33 @@
   color: var(--mode-identity);
 }
 
-.mode-band__chip {
+/* A failed save is a real warning, so it alone takes the warning colour. */
+.mode-band__warning {
   display: inline-flex;
   align-items: center;
   gap: calc(var(--spacing) * 1.5);
-  padding: calc(var(--spacing) * 0.5) calc(var(--spacing) * 2.5) calc(var(--spacing) * 0.5) calc(var(--spacing) * 2);
-  border-radius: var(--radius-pill);
-  border: 1px solid;
   font-size: var(--text-sm-minus, 0.8125rem);
-  font-weight: 500;
+  font-weight: 600;
   line-height: var(--mode-band-meta-leading);
-}
-
-.mode-band__chip--offline {
-  background: var(--warning-soft);
-  border-color: var(--warning-border);
   color: var(--warning-text);
 }
 
-.mode-band__chip--error {
-  background: var(--danger-soft);
-  border-color: var(--danger-border);
-  color: var(--danger-text);
+/* "Sign in" inside the sample line: a 48px tap area that a negative margin
+   keeps from growing the line. */
+.mode-band__inline-action {
+  margin: calc(var(--spacing) * -3.25) 0;
+  padding: calc(var(--spacing) * 3.25) calc(var(--spacing) * 1);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: var(--mode-identity);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
-/* The whole chip is the retry button, with a 48px tap area that a negative
+/* The whole line is the retry button, with a 48px tap area that a negative
    margin keeps from pushing the tabs down. */
 .mode-band__retry {
   display: inline-flex;
@@ -221,14 +219,16 @@
    the current one carries aria-current="page". */
 .mode-band__tabs {
   position: relative;
-  max-width: 45rem;
+  max-width: calc(45rem + var(--mode-band-gutter) * 2);
   margin: calc(var(--spacing) * 2.5) auto 0;
 }
 
+/* 12px between tabs and 6px inside each, so the labels sit 24px apart and
+   the first one still lines up with the title. */
 .mode-band__tab-row {
   display: flex;
-  gap: calc(var(--spacing) * 6);
-  padding: 0 var(--mode-band-gutter);
+  gap: calc(var(--spacing) * 3);
+  padding: 0 calc(var(--mode-band-gutter) - var(--spacing) * 1.5);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -249,10 +249,12 @@
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 1.5);
+  justify-content: center;
   height: var(--spacing-tap, 3rem);
-  margin: 0 calc(var(--spacing) * -1.5);
+  min-width: var(--spacing-tap, 3rem);
+  box-sizing: border-box;
   padding: 0 calc(var(--spacing) * 1.5);
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-radius: calc(var(--radius-xs) * 2);
   font-size: var(--text-base-minus, 0.9375rem);
   font-weight: 500;
   color: var(--text-muted);
@@ -281,29 +283,34 @@
   border-bottom-color: var(--mode-identity);
 }
 
-/* Keyboard focus: a 2px ring in the mode colour drawn INSIDE the tab, so the
-   scrolling row can never clip it. */
+/* Keyboard focus: a 2px outline in the mode colour drawn INSIDE the control,
+   so the scrolling row can never clip it, and high-contrast mode keeps it. */
 .mode-band__tab:focus-visible,
 .mode-band__back:focus-visible,
 .mode-band__customise:focus-visible,
 .mode-band__retry:focus-visible {
   outline: 2px solid var(--mode-identity);
   outline-offset: -2px;
+  border-radius: calc(var(--radius-xs) * 2);
 }
 
+/* A count is a quiet grey figure, never the mode colour, so no mode's
+   identity can be mistaken for a warning. */
 .mode-band__badge {
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 calc(var(--spacing) * 1.5);
-  box-sizing: border-box;
-  border-radius: var(--radius-pill);
-  display: inline-grid;
-  place-items: center;
-  font-size: var(--text-xs, 0.75rem);
-  font-weight: 700;
+  font-size: var(--text-sm-minus, 0.8125rem);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  background: var(--mode-identity);
-  color: var(--mode-identity-contrast);
+  color: var(--text-muted);
+}
+
+/* No counts while they could be wrong or invented. */
+.mode-band:has([data-mode-band-status="offline"], [data-mode-band-status="loading"], [data-mode-band-status="sample"])
+  .mode-band__badge {
+  display: none;
+}
+
+.mode-band__tab[aria-current="page"] .mode-band__badge {
+  color: var(--text-heading);
 }
 
 /* Fades the row's right edge so a cut-off tab reads as "more this way". */
@@ -322,7 +329,8 @@
   height: 1rem;
 }
 
-/* Wide screens: content is capped at 720px and every tab fits, so no fade. */
+/* Wide screens: the band's text sits in the same 720px column as a page's
+   content (the column plus the gutter each side), every tab fits, so no fade. */
 @media (min-width: 700px) {
   .mode-band__tab-fade {
     display: none;
@@ -330,7 +338,7 @@
 }
 
 /* Large text (about 200%): the band is narrower than 20 of its own rems, so
-   Customise keeps only its icon and the date shortens. */
+   Customise keeps only its icon. The title keeps its size and wraps, and the date stays in full. */
 @container mode-band (max-width: 20rem) {
   .mode-band__customise-label {
     position: absolute;
@@ -346,14 +354,6 @@
     justify-content: center;
     margin-right: calc(var(--spacing) * -3);
     padding: 0;
-  }
-
-  .mode-band__date-long {
-    display: none;
-  }
-
-  .mode-band__date-short {
-    display: inline;
   }
 }
 

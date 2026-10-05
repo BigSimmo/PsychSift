@@ -70,10 +70,10 @@ function renderDashboard() {
 }
 
 describe("Today figure details", () => {
-  it("names the saved-record snapshot with a still tick, never an animated dot", () => {
+  it("says the records are saved to the account, with a still tick, never an animated dot", () => {
     renderDashboard();
     const freshness = screen.getByTestId("cme-data-freshness");
-    expect(freshness).toHaveTextContent("Saved records loaded at");
+    expect(freshness).toHaveTextContent(/Saved to your account \d{2}:\d{2}/);
     expect(freshness.querySelector(".mode-band__saved-tick")).not.toBeNull();
     expect(freshness.querySelector("[class*='animate-']")).toBeNull();
   });

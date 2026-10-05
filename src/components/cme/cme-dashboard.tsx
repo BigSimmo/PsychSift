@@ -215,11 +215,6 @@ export function CmeDashboard({
 
   const underBand = useModeBandShown();
   const today = perthCalendarDate(now);
-  const loadedTime = new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Perth",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(now);
   const loggedToday = entries.filter((entry) => entry.date === today);
   const loggedTodayHours = loggedToday.reduce(
     (sum, entry) => sum + entry.allocations.reduce((inner, allocation) => inner + allocation.hours, 0),
@@ -360,14 +355,7 @@ export function CmeDashboard({
       {/* The mode band above the page names the mode and carries Customise
           and this status line; the h1 still names the page for screen readers. */}
       <h1 className="sr-only">Year</h1>
-      <ModeBandStatus
-        testId="cme-data-freshness"
-        value={
-          demoMode
-            ? { kind: "text", text: "Demo records" }
-            : { kind: "text", text: `Saved records loaded at ${loadedTime}`, tick: true }
-        }
-      />
+      <ModeBandStatus testId="cme-data-freshness" value={demoMode ? { kind: "sample" } : { kind: "saved", at: now }} />
       {!underBand ? (
         <div className="flex justify-end">
           <Button variant="toolbar" size="sm" icon={Settings2} onClick={onOpenCustomise}>
