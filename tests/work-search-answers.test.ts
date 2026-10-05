@@ -136,7 +136,11 @@ describe("answerWorkQuestion", () => {
         entries: [],
       },
     });
-    expect(answer).toMatchObject({ area: "cme", headline: "1 target still short", sub: "0 of 1 targets met so far this year" });
+    expect(answer).toMatchObject({
+      area: "cme",
+      headline: "1 target still short",
+      sub: "0 of 1 targets met so far this year",
+    });
     expect(answer?.progress?.[0]).toMatchObject({ label: "Total hours", met: false, fraction: 0 });
   });
 
