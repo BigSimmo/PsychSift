@@ -662,7 +662,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                     }}
                     data-mode-identity={area === "all" ? undefined : area}
                     className={cn(
-                      "relative inline-flex min-h-12 shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold forced-colors:border-b-2 forced-colors:border-transparent",
+                      "relative -mx-1 inline-flex min-h-12 shrink-0 items-center gap-1 whitespace-nowrap px-1 text-sm font-semibold forced-colors:border-b-2 forced-colors:border-transparent",
                       selected && "forced-colors:border-[Highlight]",
                       selected ? "text-[color:var(--text-heading)]" : "text-[color:var(--text-muted)]",
                       focusRingInset,
@@ -685,7 +685,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                       <span
                         aria-hidden="true"
                         className={cn(
-                          "absolute inset-x-0 bottom-1.5 h-0.5 rounded-full forced-colors:bg-[Highlight]",
+                          "absolute inset-x-1 bottom-1.5 h-0.5 rounded-full forced-colors:bg-[Highlight]",
                           area === "all" ? "bg-[color:var(--text-heading)]" : "bg-[color:var(--mode-identity)]",
                         )}
                       />

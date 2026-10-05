@@ -57,9 +57,12 @@ export function onPlainClick(then: () => void) {
 
 export const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
-/** The same ring drawn just inside the edge, for full-width rows and tabs a scrolling parent would clip. */
-export const focusRingInset =
-  "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]";
+/**
+ * The shared ring drawn just inside the edge, for full-width rows and tabs a
+ * scrolling parent would clip. The global focus rule is unlayered and beats an
+ * offset utility, so this uses the app's own contained-focus class.
+ */
+export const focusRingInset = "focus-ring-contained";
 
 /** The quiet bordered card answers and notices sit in: no shadow, one hairline. */
 export const cardSurface = "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]";
