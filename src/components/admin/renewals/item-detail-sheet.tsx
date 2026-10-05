@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { AdminRuleToConfirm, AdminStatusWord } from "@/components/admin/admin-status-word";
+import { AdminWindowBar } from "@/components/admin/renewals/window-bar";
 import { focusRing } from "@/components/card-recipes";
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
@@ -196,16 +197,7 @@ export function ChecklistItemDetailSheet({
               </div>
               {expiresOn && startOn && windowProgress !== null ? (
                 <div className="grid gap-1" data-testid={`${testId}-window`}>
-                  <span aria-hidden="true" className="relative block h-1 rounded-full bg-[color:var(--surface-inset)]">
-                    <span
-                      className="absolute inset-y-0 left-0 rounded-full bg-[color:var(--text-muted)]"
-                      style={{ width: `${windowProgress * 100}%` }}
-                    />
-                    <span
-                      className="absolute -inset-y-1.5 w-0.5 -translate-x-1/2 rounded-full bg-[color:var(--clinical-accent)]"
-                      style={{ left: `${windowProgress * 100}%` }}
-                    />
-                  </span>
+                  <AdminWindowBar progress={windowProgress} />
                   <span className={cn(textMuted, "flex justify-between gap-2 text-xs")}>
                     <span>{`Opens ${formatRecordedDate(startOn)}`}</span>
                     <span>{`Renew by ${formatRecordedDate(expiresOn)}`}</span>

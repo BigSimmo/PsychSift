@@ -1,4 +1,5 @@
 import { AdminStatusWord } from "@/components/admin/admin-status-word";
+import { AdminWindowBar } from "@/components/admin/renewals/window-bar";
 import { focusRing } from "@/components/card-recipes";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { Button } from "@/components/ui/button";
@@ -22,16 +23,7 @@ function WindowBar({ item, today }: { readonly item: RenewNextItem; readonly tod
   if (progress === null || !item.startOn) return null;
   return (
     <div className="grid gap-1" data-testid="admin-renew-next-window">
-      <span aria-hidden="true" className="relative block h-2 rounded-full bg-[color:var(--surface-inset)]">
-        <span
-          className="absolute inset-y-0 left-0 rounded-full bg-[color:var(--text-muted)]"
-          style={{ width: `${progress * 100}%` }}
-        />
-        <span
-          className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded-full bg-[color:var(--clinical-accent)]"
-          style={{ left: `${progress * 100}%` }}
-        />
-      </span>
+      <AdminWindowBar progress={progress} />
       <span className={cn(textMuted, "flex justify-between gap-2 text-xs")}>
         <span>{`Start renewing ${formatRecordedDate(item.startOn)}`}</span>
         <span>{`${item.bucket === "date-passed" ? "Date passed" : "Renew by"} ${formatRecordedDate(item.row.expiresOn)}`}</span>
