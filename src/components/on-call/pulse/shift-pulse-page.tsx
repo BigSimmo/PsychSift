@@ -239,19 +239,19 @@ function RestCard({ rest }: { readonly rest: RestView }) {
             {short ? `Under ${rule.hours} h` : `Over ${rule.hours} h`}
           </span>
         </div>
-        <div className="relative h-3 rounded-full bg-[color:var(--surface-subtle)]" aria-hidden="true">
-          <span
-            className={cn(
-              "absolute inset-y-0 left-0 rounded-full",
-              short ? "bg-[color:var(--warning)]" : "bg-[color:var(--mode-identity)]",
-            )}
-            style={{ width: `${fill}%` }}
+        {/* SVG attributes rather than inline styles: the bar's length is data, not a design token. */}
+        <svg aria-hidden="true" className="block h-4 w-full overflow-visible" preserveAspectRatio="none">
+          <rect x="0" y="4" width="100%" height="8" rx="4" className="fill-[color:var(--surface-subtle)]" />
+          <rect
+            x="0"
+            y="4"
+            width={`${fill}%`}
+            height="8"
+            rx="4"
+            className={short ? "fill-[color:var(--warning)]" : "fill-[color:var(--mode-identity)]"}
           />
-          <span
-            className="absolute -inset-y-1 w-0.5 rounded-full bg-[color:var(--text-heading)]"
-            style={{ left: `${markAt}%` }}
-          />
-        </div>
+          <rect x={`${markAt}%`} y="0" width="2" height="16" rx="1" className="fill-[color:var(--text-heading)]" />
+        </svg>
         <div className="flex justify-between gap-2 text-2xs font-semibold text-[color:var(--text-muted)]">
           <span>{perthWhen(rest.from, false)}</span>
           <span>{rule.hours} h minimum</span>
