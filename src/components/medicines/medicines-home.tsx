@@ -363,7 +363,7 @@ function PbsMonthGroup({ today, online }: { readonly today: Date | null; readonl
       >
         <span
           aria-hidden="true"
-          className="grid min-w-11 shrink-0 rounded-lg px-1 border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] py-1 text-center forced-colors:border"
+          className="grid min-w-12 shrink-0 rounded-lg px-1 border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] py-1 text-center forced-colors:border"
         >
           <span className="font-dash-title text-3xs uppercase tracking-widest text-[color:var(--dash-muted)]">
             {monthShort ?? "PBS"}

@@ -23,7 +23,7 @@ export interface MedicineVisit {
 export const MEDICINES_RECENT_LIMIT = 6;
 export const MEDICINES_RECENT_SHOWN = 3;
 export const MEDICINES_RECENT_TTL_MS = 90 * 24 * 60 * 60 * 1000;
-export const medicinesRecentChangeEvent = "psychsift:medicines-recent-change";
+const medicinesRecentChangeEvent = "psychsift:medicines-recent-change";
 
 /** A path segment: no separators or whitespace, so a stored value can only ever point at one medicine page. */
 const SLUG = /^[^\s/?#\\]{1,160}$/;

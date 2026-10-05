@@ -525,7 +525,7 @@ function MedicationFromThisPage({ medicineName }: { medicineName: string }) {
 }
 
 /** How long the record may take before the page says it is slow. */
-export const MEDICATION_SLOW_LOAD_MS = 8_000;
+const MEDICATION_SLOW_LOAD_MS = 8_000;
 
 /**
  * Grey placeholders while the record loads (mock-up v6, screen 13). After

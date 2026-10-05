@@ -75,6 +75,7 @@ import {
 } from "@/lib/result-filter-url";
 import { SEMANTIC_TONE_META } from "@/lib/semantic-tone";
 import { isDeployedClinicalKb } from "@/lib/deployed-app";
+import { focusRing } from "@/components/card-recipes";
 import { cn, EmptyState, pageContainer } from "@/components/ui-primitives";
 
 type MedicationPrescribingWorkspaceProps = {
@@ -344,7 +345,8 @@ function MedicationNothingFound({
 }: {
   query: string;
   catalogueCount: number;
-  onBrowseAll: () => void;
+  /** Absent when it could change nothing: already showing every match, or no catalogue loaded. */
+  onBrowseAll?: () => void;
 }) {
   const trimmed = query.trim();
   const title =
@@ -364,7 +366,10 @@ function MedicationNothingFound({
           <Link
             // Prefilled, not run: this is the reader's own free text, so they press search in Documents.
             href={appModeHomeHref("documents", { query: trimmed })}
-            className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg py-2 text-[color:var(--text-heading)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+            className={cn(
+              focusRing,
+              "grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg py-2 text-[color:var(--text-heading)] no-underline",
+            )}
           >
             <FileSearch className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
             <span className="grid min-w-0 gap-0.5">
@@ -374,21 +379,26 @@ function MedicationNothingFound({
             <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
           </Link>
         </li>
-        <li className="min-w-0 border-t border-[color:var(--border)] first:border-t-0">
-          <button
-            type="button"
-            onClick={onBrowseAll}
-            data-testid="medication-browse-all"
-            className="grid min-h-14 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-lg py-2 text-left text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-          >
-            <Pill className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
-            <span className="break-words text-sm font-semibold leading-snug">Browse all medicines</span>
-            <span className="nums text-sm text-[color:var(--text-muted)]">
-              {catalogueCount > 0 ? catalogueCount.toLocaleString("en-AU") : null}
-            </span>
-            <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
-          </button>
-        </li>
+        {onBrowseAll ? (
+          <li className="min-w-0 border-t border-[color:var(--border)] first:border-t-0">
+            <button
+              type="button"
+              onClick={onBrowseAll}
+              data-testid="medication-browse-all"
+              className={cn(
+                focusRing,
+                "grid min-h-14 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-lg py-2 text-left text-[color:var(--text-heading)]",
+              )}
+            >
+              <Pill className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+              <span className="break-words text-sm font-semibold leading-snug">Browse all medicines</span>
+              <span className="nums text-sm text-[color:var(--text-muted)]">
+                {catalogueCount > 0 ? catalogueCount.toLocaleString("en-AU") : null}
+              </span>
+              <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+            </button>
+          </li>
+        ) : null}
       </ul>
     </div>
   );
@@ -817,8 +827,10 @@ function MedicationResults({
 
       <MedicationInterpretationChip
         query={query}
-        interpretation={catalog.data?.interpretation}
-        found={resultCount > 0}
+        // Only once the catalogue answers this query: a kept response would pair the new words with an old correction.
+        interpretation={catalog.loading ? undefined : catalog.data?.interpretation}
+        // Before filters: a filter hiding every match is not "no results" for the corrected spelling.
+        found={totalAvailable > 0}
       />
 
       <ResultFilterSheet
@@ -891,11 +903,21 @@ function MedicationResults({
           <MedicationNothingFound
             query={query}
             catalogueCount={catalog.data?.records?.length ?? 0}
-            onBrowseAll={() => {
-              setScope("all");
-              // The button goes with the empty state; keep focus on the results.
-              resultsRef.current?.focus();
-            }}
+            onBrowseAll={
+              scope === "all" || (catalog.data?.records?.length ?? 0) === 0
+                ? undefined
+                : () => {
+                    // Every match, with the narrowing filters dropped, so the list is never empty for a filter.
+                    replaceResultFilterUrl((params) => {
+                      writeResultFilterValue(params, "scope", "all", "best", medicationScopeValues);
+                      params.delete("match");
+                      params.delete("class");
+                      params.delete("signal");
+                    });
+                    // The button goes with the empty state; keep focus on the results.
+                    resultsRef.current?.focus();
+                  }
+            }
           />
         )
       ) : null}

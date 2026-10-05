@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
 // When set, the catalogue answers with no ranked matches over a catalogue of
 // two records: the "nothing found" state.
 const catalogEmpty = vi.hoisted(() => ({ current: false }));
+const catalogLoading = vi.hoisted(() => ({ current: false }));
 const catalogueRecords = [
   {
     slug: "lithium",
@@ -121,7 +122,7 @@ vi.mock("@/components/clinical-dashboard/use-medication-catalog", () => ({
       total: 3,
       governance: {},
     },
-    loading: false,
+    loading: catalogLoading.current,
     error: null,
   }),
 }));
@@ -157,6 +158,7 @@ function filterButton(label: string): HTMLElement {
 afterEach(() => {
   catalogInterpretation.current = undefined;
   catalogEmpty.current = false;
+  catalogLoading.current = false;
   window.history.replaceState(null, "", "/");
   cleanup();
   vi.restoreAllMocks();
@@ -201,6 +203,23 @@ describe("MedicationPrescribingWorkspace — nothing found (mock-up v6, screen 4
     fireEvent.click(within(empty).getByTestId("medication-browse-all"));
     expect(new URLSearchParams(window.location.search).get("scope")).toBe("all");
   });
+
+  it("drops narrowing filters when browsing all, and shows no browse-all once showing all", () => {
+    catalogEmpty.current = true;
+    window.history.replaceState(null, "", "/?mode=prescribing&match=exact&signal=safety");
+    const { unmount } = renderWorkspace({ query: "Examplex", showHome: false });
+    fireEvent.click(screen.getByTestId("medication-browse-all"));
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("scope")).toBe("all");
+    expect(params.get("match")).toBeNull();
+    expect(params.get("signal")).toBeNull();
+    unmount();
+
+    window.history.replaceState(null, "", "/?mode=prescribing&scope=all");
+    renderWorkspace({ query: "Examplex", showHome: false });
+    // Showing every match already lists the whole catalogue, so there is no dead browse-all button.
+    expect(screen.queryByTestId("medication-browse-all")).not.toBeInTheDocument();
+  });
 });
 
 describe("MedicationPrescribingWorkspace — query interpretation", () => {
@@ -232,6 +251,16 @@ describe("MedicationPrescribingWorkspace — query interpretation", () => {
     expect(note).toHaveTextContent("No exact match for \u201csertaline\u201d. No results for sertraline either.");
     expect(note).not.toHaveTextContent("Showing results");
     expect(note.closest('[role="status"]')).not.toBeNull();
+  });
+
+  it("hides a kept correction while the catalogue is still answering the new words", () => {
+    catalogLoading.current = true;
+    catalogInterpretation.current = {
+      correctedQuery: "olanzapine",
+      corrections: [{ from: "olanzepine", to: "olanzapine" }],
+    };
+    renderWorkspace({ query: "lithum", showHome: false });
+    expect(screen.queryByTestId("medication-query-interpretation")).not.toBeInTheDocument();
   });
 
   it("distinguishes applied expansions from a corrected query", () => {
