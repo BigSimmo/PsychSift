@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
 import { myDayEnabledForAuth, myDayNeedsSignIn } from "@/lib/my-day/model";
 import { useAuthSession } from "@/lib/supabase/client";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 
 const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 sm:gap-6";
 /** A two-column page on a computer (Alerts); the phone layout is unchanged. */
@@ -58,7 +59,9 @@ export function MyDayFrame({
     <InformationPageShell testId={`${testId}-main`}>
       <div className={wide ? WIDE_PAGE_WIDTH : PAGE_WIDTH}>
         <header className="grid gap-0.5" data-testid={`${testId}-header`}>
-          <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">{title}</h1>
+          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+            {title}
+          </PageTitleUnderBand>
           <p className="text-sm text-[color:var(--text-muted)]">{subtitle(now)}</p>
         </header>
 

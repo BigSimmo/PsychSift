@@ -36,6 +36,7 @@
     "scripts/token-layer-divergences.mjs",
     "src/app/ckb-v2-tokens.css",
     "src/app/globals.css",
+    "src/app/mode-band.css",
     "src/components/card-recipes.ts",
     "src/components/category-icon-tile.tsx",
     "src/components/clinical-dashboard/brand.tsx",
