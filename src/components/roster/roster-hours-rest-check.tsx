@@ -20,10 +20,22 @@ import { formatDateSpan, formatHours, kindOf } from "./roster-format";
  * never that anything is unlawful or what to do. Loaded only when the Hours view opens.
  */
 
-/** Where the limit mark sits on every gauge track, as a share of the track. */
+/** Where the limit mark sits on every gauge track, as a share of the track (`left-4/5` below). */
 const LIMIT_AT = 0.8;
-/** The breaks chart runs to two days, so the 10 hour line sits clearly left of most breaks. */
-const BREAK_SCALE_HOURS = 48;
+/**
+ * The breaks chart runs to 4.8 times the minimum break (48 hours for a 10 hour minimum), so the
+ * minimum line sits at a fixed place (`left-[calc(100%/4.8)]` below) whatever the signed figure.
+ */
+const BREAK_SCALE_FACTOR = 4.8;
+
+/** A bar filled to `share` of its track, drawn in SVG so its width needs no inline style. */
+function BarFill({ share, className }: { readonly share: number; readonly className: string }) {
+  return (
+    <svg aria-hidden="true" className="absolute inset-0 size-full overflow-visible">
+      <rect width={`${share * 100}%`} height="100%" rx="5" className={className} />
+    </svg>
+  );
+}
 
 const GAUGE_LABEL: Record<HoursRestGauge["rule"], { title: string; limit: (limit: number) => string }> = {
   maxHours7d: { title: "Most in any 7 days", limit: (limit) => `Limit ${limit} h` },
@@ -69,17 +81,8 @@ function Gauge({ gauge }: { readonly gauge: HoursRestGauge }) {
         </span>
       </div>
       <div aria-hidden="true" className="relative h-2 rounded-full bg-[color:var(--surface-inset)]">
-        <span
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-full",
-            over ? "bg-[color:var(--warning)]" : "bg-[color:var(--tone-purple)]",
-          )}
-          style={{ width: `${fill * 100}%` }}
-        />
-        <span
-          className="absolute -inset-y-1 w-0.5 rounded-full bg-[color:var(--text-heading)]"
-          style={{ left: `${LIMIT_AT * 100}%` }}
-        />
+        <BarFill share={fill} className={over ? "fill-[color:var(--warning)]" : "fill-[color:var(--tone-purple)]"} />
+        <span className="absolute -inset-y-1 left-4/5 w-0.5 rounded-full bg-[color:var(--text-heading)]" />
       </div>
     </li>
   );
@@ -87,7 +90,7 @@ function Gauge({ gauge }: { readonly gauge: HoursRestGauge }) {
 
 function BreakRow({ item, minBreakHours }: { readonly item: HoursRestBreak; readonly minBreakHours: number }) {
   const short = item.hours < minBreakHours;
-  const width = Math.min(1, item.hours / BREAK_SCALE_HOURS);
+  const width = Math.min(1, item.hours / (minBreakHours * BREAK_SCALE_FACTOR));
   const span =
     item.fromDate === item.toDate ? weekday(item.toDate) : `${weekday(item.fromDate)} to ${weekday(item.toDate)}`;
   return (
@@ -101,19 +104,15 @@ function BreakRow({ item, minBreakHours }: { readonly item: HoursRestBreak; read
         {span}
       </span>
       <span aria-hidden="true" className="relative h-2.5">
-        <span
-          className={cn(
-            "absolute inset-y-0 left-0 rounded-full",
+        <BarFill
+          share={Math.max(width, 0.02)}
+          className={
             short
-              ? "bg-[color:var(--warning)]"
-              : "bg-[color:var(--tone-purple-soft)] border border-[color:var(--tone-purple-border)]",
-          )}
-          style={{ width: `${Math.max(width, 0.02) * 100}%` }}
+              ? "fill-[color:var(--warning)]"
+              : "fill-[color:var(--tone-purple-soft)] stroke-[color:var(--tone-purple-border)]"
+          }
         />
-        <span
-          className="absolute -inset-y-1 border-l border-dashed border-[color:var(--text-heading)]"
-          style={{ left: `${(minBreakHours / BREAK_SCALE_HOURS) * 100}%` }}
-        />
+        <span className="absolute -inset-y-1 left-[calc(100%/4.8)] border-l border-dashed border-[color:var(--text-heading)]" />
       </span>
       <span
         aria-hidden="true"
