@@ -65,7 +65,7 @@ describe("year check page", () => {
   it("points to Renewals for the CPD home question, with its source", () => {
     render(<CmeYearCheckPage set={SET} entries={ENTRIES} />);
     const renewal = screen.getByTestId("cme-check-renewal");
-    expect(renewal).toHaveTextContent("Your renewal asks for your 2026 CPD home");
+    expect(renewal).toHaveTextContent("Your next renewal asks which CPD home you used in 2026");
     expect(within(renewal).getByRole("link", { name: "Open Renewals in Admin" })).toHaveAttribute(
       "href",
       "/admin/renewals",

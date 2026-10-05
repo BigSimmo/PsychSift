@@ -125,7 +125,7 @@ export function CmeYearCheckPage({ set, entries }: { set: CmeRequirementSet; ent
         <BadgeCheck aria-hidden="true" className={cn("mt-0.5 size-icon-md shrink-0", textMuted)} />
         <div className="grid min-w-0 gap-1 text-sm">
           <h2 id="cme-check-renewal" className="font-semibold text-[color:var(--text)]">
-            Your renewal asks for your {set.year} CPD home
+            Your next renewal asks which CPD home you used in {set.year}
           </h2>
           <p className={textMuted}>
             If you log CPD with a CPD home, your registration renewal asks which one you used.
