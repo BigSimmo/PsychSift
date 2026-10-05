@@ -136,7 +136,7 @@ export function OpenShiftsCalendar({
                     onClick={() => onSelect(date)}
                     className={`mx-auto flex min-h-12 w-full max-w-12 flex-col items-center justify-center gap-0.5 rounded-md text-sm nums ${
                       isSelected
-                        ? "bg-[color:var(--mode-identity-soft)] font-semibold text-[color:var(--text-heading)] outline outline-1 outline-[color:var(--mode-identity)] forced-colors:outline-[Highlight]"
+                        ? "bg-[color:var(--mode-identity-soft)] font-semibold text-[color:var(--text-heading)] outline outline-1 outline-[color:var(--mode-identity)] forced-colors:border-2 forced-colors:border-[Highlight]"
                         : inMonth && !past
                           ? "font-medium text-[color:var(--text-heading)]"
                           : "font-normal text-[color:var(--text-soft)]"

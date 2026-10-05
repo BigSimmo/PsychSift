@@ -51,7 +51,7 @@ export function OpenShiftsBoardPage() {
         title="Week board"
         action={
           <Link
-            href={`${OPEN_SHIFTS_HREF}/post/new`}
+            href="/open-shifts/post/new"
             className="mr-2 inline-flex min-h-12 items-center gap-1.5 rounded-md bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)] no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)]"
           >
             <Plus aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />

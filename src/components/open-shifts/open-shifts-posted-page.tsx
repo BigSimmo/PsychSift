@@ -89,7 +89,7 @@ export function OpenShiftsPostedPage() {
             log it for yourself.
           </p>
           <Link
-            href={`${OPEN_SHIFTS_HREF}/log`}
+            href="/open-shifts/log"
             className="mt-3 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)]"
           >
             Log a shift offered to me
@@ -156,7 +156,7 @@ export function OpenShiftsPostedPage() {
 
           <div className="mt-6 flex flex-col gap-2 px-3">
             <Link
-              href={`${OPEN_SHIFTS_HREF}/post/new`}
+              href="/open-shifts/post/new"
               aria-disabled={state.offline || undefined}
               className={`flex min-h-12 items-center justify-center gap-2 rounded-md bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)] no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)] ${state.offline ? "pointer-events-none opacity-60" : ""}`}
             >
@@ -164,7 +164,7 @@ export function OpenShiftsPostedPage() {
               Post a shift
             </Link>
             <Link
-              href={`${OPEN_SHIFTS_HREF}/board`}
+              href="/open-shifts/board"
               className="hidden min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--border-strong)] px-4 text-sm font-medium text-[color:var(--text-heading)] no-underline focus-visible:outline-2 focus-visible:outline-[color:var(--command)] md:flex"
             >
               <LayoutGrid aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />

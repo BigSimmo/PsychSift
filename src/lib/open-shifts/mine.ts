@@ -69,10 +69,13 @@ export function hoursMeter(
   gateOn: boolean = fatigueWarnings([], undefined, undefined, now.getTime()).gate.on,
 ): HoursMeter {
   const worked = roster.filter((shift) => isWorkedKind(shift.kind));
+  // Once approved, the shift becomes a team roster shift with the same times; count that copy once.
   const onRoster = (row: OpenShiftListing) =>
+    worked.some((shift) => shift.startsAt === row.startsAt && shift.endsAt === row.endsAt) ||
     worked.some(
       (shift) =>
-        Date.parse(shift.startsAt) < Date.parse(row.endsAt) && Date.parse(shift.endsAt) > Date.parse(row.startsAt),
+        Math.abs(Date.parse(shift.startsAt) - Date.parse(row.startsAt)) < 60_000 &&
+        Math.abs(Date.parse(shift.endsAt) - Date.parse(row.endsAt)) < 60_000,
     );
   const approved = listings.filter((row) => row.claimedByMe && row.status === "approved" && !onRoster(row));
   const requested = listings.filter((row) => row.claimedByMe && row.status === "claimed");

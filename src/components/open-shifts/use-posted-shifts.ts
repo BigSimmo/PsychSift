@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { fetchRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
+import { setOpenShiftsIsPoster } from "@/lib/teaching/page-visibility";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import type { RosterGrade, RosterManageOpenShift, RosterTeam } from "@/lib/roster/team/model";
 
@@ -89,6 +90,11 @@ export function usePostedShifts(): PostedShiftsState {
     .map((team) => team.serviceId)
     .sort()
     .join(",");
+
+  // The Post tab shows once the teams read confirms poster rights, whichever tab loaded first.
+  useEffect(() => {
+    if (teams.status === "ready") setOpenShiftsIsPoster(managed.length > 0);
+  }, [teams.status, managed]);
 
   useEffect(() => {
     if (teams.status !== "ready" || managed.length === 0) return;

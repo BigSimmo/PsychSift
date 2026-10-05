@@ -24,6 +24,16 @@ import {
 } from "./open-shifts-ui";
 import { useOpenShifts } from "./use-open-shifts";
 
+const dayMonth = (date: string) => formatDayShort(date).replace(/^\S+ /, "");
+
+/** "5 to 18 Oct", or "28 Oct to 10 Nov" across a month end. */
+function dayRange(from: string, to: string): string {
+  const start = dayMonth(from);
+  return from.slice(0, 7) === to.slice(0, 7)
+    ? `${start.split(" ")[0]} to ${dayMonth(to)}`
+    : `${start} to ${dayMonth(to)}`;
+}
+
 function Segment({ hours, total, className }: { hours: number; total: number; className: string }) {
   if (hours <= 0 || total <= 0) return null;
   return <span className={`h-full ${className}`} style={{ width: `${Math.min(100, (hours / total) * 100)}%` }} />;
@@ -48,7 +58,7 @@ function Meter({ meter }: { meter: HoursMeter }) {
     >
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="os-meter" className="text-2xs font-semibold uppercase tracking-[0.08em] text-[color:var(--text-muted)]">
-          {`Busiest 14 days · ${formatDayShort(meter.from).replace(/^\S+ /, "")} to ${formatDayShort(meter.to).replace(/^\S+ /, "")}`}
+          {`Busiest 14 days · ${dayRange(meter.from, meter.to)}`}
         </h2>
         <span className="text-xs text-[color:var(--text-muted)]">PsychSift roster only</span>
       </div>
@@ -218,7 +228,7 @@ export function OpenShiftsMinePage() {
 
         <div className="mt-6 px-3">
           <Link
-            href={`${OPEN_SHIFTS_HREF}/log`}
+            href="/open-shifts/log"
             className="flex min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--border-strong)] px-4 text-sm font-medium text-[color:var(--text-heading)] no-underline focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
           >
             <NotebookPen aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />

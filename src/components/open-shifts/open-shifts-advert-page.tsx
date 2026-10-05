@@ -81,7 +81,7 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
     if (!check.nightsBefore) items.push("No nights in the week before.");
   } else if (check.state === "flag") {
     for (const warning of check.warnings) items.push(warning.words);
-    items.push("A flag never stops a request. Medical staffing still decides.");
+    items.push("A flag never stops a request. Your roster manager still decides.");
   } else if (check.state === "overlap") {
     items.push(
       `Your rostered shift on ${formatDayShort(perthDateOf(check.withShift.startsAt))}, ${formatShiftTimes(check.withShift.startsAt, check.withShift.endsAt)}, overlaps this one by ${check.overlapMinutes} min.`,
@@ -289,7 +289,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           {[listing.siteName, listing.teamName].filter(Boolean).join(" · ")} · posted in Roster
         </p>
       </div>
-      <dl className="mx-3 grid grid-cols-2 border-y border-[color:var(--border)] [&>div:nth-child(odd)]:border-r [&>div:nth-child(odd)]:border-[color:var(--border)] [&>div:nth-child(n+3)]:border-t">
+      <dl className="mx-3 grid grid-cols-2 border-y border-[color:var(--border)] [&>div:nth-child(odd)]:border-r [&>div]:border-[color:var(--border)] [&>div:nth-child(n+3)]:border-t">
         <Fact label="Date" value={dateText} />
         <Fact label="Time" value={timeText} />
         <Fact label="Length" value={formatHours(hoursBetween(listing.startsAt, listing.endsAt))} />

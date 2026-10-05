@@ -31,9 +31,9 @@ const OpenShiftsFiltersSheet = dynamic(
 );
 
 const chip =
-  "inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-[color:var(--command)]";
+  "inline-flex min-h-12 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-[color:var(--command)]";
 const chipOff = `${chip} border-[color:var(--border-strong)] text-[color:var(--text-heading)]`;
-const chipOn = `${chip} border-[color:var(--mode-identity)] bg-[color:var(--mode-identity-soft)] text-[color:var(--text-heading)]`;
+const chipOn = `${chip} border-[color:var(--mode-identity)] bg-[color:var(--mode-identity-soft)] text-[color:var(--text-heading)] forced-colors:border-2 forced-colors:border-[Highlight]`;
 
 export function OpenShiftsBrowsePage() {
   const state = useOpenShifts();
@@ -50,7 +50,7 @@ export function OpenShiftsBrowsePage() {
     [state.listings, state.roster, filters, now],
   );
   const rosteredDays = useMemo(
-    () => new Set((state.roster ?? []).map((shift) => perthDateOf(shift.startsAt))),
+    () => new Set(state.sample ? [] : (state.roster ?? []).map((shift) => perthDateOf(shift.startsAt))),
     [state.roster],
   );
   const coveredUntil = state.roster ? rosterCoveredUntil(state.roster) : null;

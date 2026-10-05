@@ -97,7 +97,7 @@ export function useOpenShifts(): OpenShiftsState {
   }, [enabled, releaseHeld]);
 
   useEffect(() => {
-    if (teams.status !== "ready" || enabled.length === 0) return;
+    if (teams.status !== "ready" || enabled.length === 0 || releaseHeld || signedOutSample) return;
     let cancelled = false;
     void Promise.all(enabled.map(async (team) => ({ team, rows: await loadTeam(team) }))).then((results) => {
       if (cancelled) return;
@@ -119,7 +119,7 @@ export function useOpenShifts(): OpenShiftsState {
     return () => {
       cancelled = true;
     };
-  }, [teams.status, enabled, key, generation]);
+  }, [teams.status, enabled, key, generation, releaseHeld, signedOutSample]);
 
   const now = useMemo(() => new Date(), []);
   const rosterRows = useMemo<FatigueShift[] | null>(() => {
