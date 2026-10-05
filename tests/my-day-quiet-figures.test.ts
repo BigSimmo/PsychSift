@@ -152,7 +152,12 @@ describe("This week", () => {
   });
 
   it("treats a shift ending at midnight as ending that day", () => {
-    const late = { kind: "evening" as const, startsAt: "2026-10-04T08:00:00Z", endsAt: "2026-10-04T16:00:00Z" };
+    const late = {
+      kind: "evening" as const,
+      startsAt: "2026-10-04T08:00:00Z",
+      endsAt: "2026-10-04T16:00:00Z",
+      place: null,
+    };
     expect(heroWords(late, true, EVENING).sub).toBe("Until 00:00 · started 16:00");
     const evenings = ["2026-10-05", "2026-10-06"].map((date, index) => ({
       id: `e${index}`,
