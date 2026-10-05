@@ -702,7 +702,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             // Scrolling the results on a phone puts the keyboard away, as iOS search screens do.
             if (document.activeElement === inputRef.current && !usesFinePointer()) inputRef.current?.blur();
           }}
-          className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 px-4 pb-[calc(1.5rem+var(--keyboard-height,0px)+var(--safe-area-bottom))] pt-3 lg:pb-0"
+          className="flex min-w-0 flex-1 flex-col gap-4 px-4 pb-[calc(1.5rem+var(--keyboard-height,0px)+var(--safe-area-bottom))] pt-3 lg:pb-0"
         >
           <p className="sr-only" role="status" aria-live="polite">
             {liveText}
