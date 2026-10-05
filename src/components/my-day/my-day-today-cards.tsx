@@ -8,7 +8,7 @@ import {
   ChevronRight,
   GraduationCap,
   Phone,
-  ShieldCheck,
+  Shield,
   Sunrise,
   Users,
   X,
@@ -66,7 +66,7 @@ export const MODE_CHIP: Readonly<
   Record<MyDaySourceMode, { readonly code: string; readonly tint: DashTint; readonly icon: LucideIcon }>
 > = {
   cme: { code: "CPD", tint: "blue", icon: Award },
-  "my-work": { code: "ADM", tint: "amber", icon: ShieldCheck },
+  "my-work": { code: "ADM", tint: "amber", icon: Shield },
   "on-call": { code: "OC", tint: "green", icon: Phone },
   teaching: { code: "TCH", tint: "blue-2", icon: GraduationCap },
   roster: { code: "ROS", tint: "blue-2", icon: CalendarDays },
@@ -1115,7 +1115,7 @@ export function RenewalsRunwayCard({
       {lead ? (
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3" data-testid="my-day-runway-lead">
           <IconChip tint="amber" size="lg" className="rounded-full">
-            <ShieldCheck aria-hidden="true" className="size-icon-lg" />
+            <Shield aria-hidden="true" className="size-icon-lg" />
           </IconChip>
           <span className="grid min-w-0 gap-0.5">
             <span className="break-words font-dash-title text-base-minus leading-tight text-[color:var(--dash-ink)]">
