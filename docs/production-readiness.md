@@ -16,6 +16,27 @@ is composed of two consecutive verification steps:
 1. `npm run check:privacy-readiness:release` — executes `node scripts/check-privacy-readiness.mjs --release` (the script only recognizes `--release`; `--mode=release` is ignored and runs structural mode).
 2. `node scripts/run-tsx.mjs scripts/production-readiness.ts` — validates local environment configuration, Supabase target checks, and secret presence.
 
+### Disabled Clinical Ask configuration profile
+
+For explicitly disabled-state validation, run the local validator with
+`node scripts/run-tsx.mjs scripts/production-readiness.ts --clinical-ask-profile=disabled`.
+For an offline structural check, add `--ci`; the existing
+`npm run check:production-readiness:ci` remains the default launch-profile check.
+
+The disabled profile requires both `CLINICAL_ASK_ENABLED` and
+`CLINICAL_ASK_EXTERNAL_SEARCH_ENABLED` to be exactly `false` or unset, matching
+their runtime defaults. Enabled, empty or malformed flags block this profile even
+in CI or offline Cloud. Launch-only model, denylist, migration and hosted acceptance
+requirements are reported as not applicable and are not verified by this profile.
+Other readiness safeguards retain their existing behavior. A passing disabled
+profile is configuration evidence only, never clinical launch or release approval.
+
+The default profile (also available as `--clinical-ask-profile=launch`) preserves
+explicit launch configuration and active-launch evidence requirements. Unknown or
+repeated profile arguments fail closed. The standard production release command
+and its strict privacy gate remain unchanged; this profile neither updates privacy
+decisions nor extends an expired recovery approval.
+
 ### Fail-Closed Invariant
 
 In release mode (`--release`), `scripts/check-privacy-readiness.mjs` enforces that every requirement in `docs/governance/privacy-readiness.v1.json` has reached either `"verified"` or `"accepted_decision"` status:
