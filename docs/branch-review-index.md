@@ -15,14 +15,15 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 687
-- Distinct ref cells: 440
-- Distinct reviewed heads: 669
-- Date range: `2026-08-12` to `2026-10-03`
+- Records: 689
+- Distinct ref cells: 442
+- Distinct reviewed heads: 671
+- Date range: `2026-08-12` to `2026-10-04`
 
 Records per date, newest first:
 
-- `2026-10-03` — 1 record
+- `2026-10-04` — 1 record
+- `2026-10-03` — 2 records
 - `2026-10-02` — 10 records
 - `2026-10-01` — 3 records
 - `2026-09-27` — 4 records
@@ -70,7 +71,9 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 
 | Date | Ref | Scope | Outcome | Record |
 | --- | --- | --- | --- | --- |
+| 2026-10-04 | PR-3246 | PR unblock sweep 2026-10-04 | Bounded fixture-cleanup retries fix the observed unit safety failure;… | [9115c339](branch-review-records/9115c339226a715328756e362faf384a792530fba572815658a4ec367d1b858c.record.md) |
 | 2026-10-03 | codex/psychsift-efficiency-draft-20261003 | fresh-current-main efficiency draft complete scope | Independent complete-scope standards and specification review: no high… | [2724a0bc](branch-review-records/2724a0bc90ead02fd53081c5c5210177f2e482e18b754aee8ad8c67bf4564473.record.md) |
+| 2026-10-03 | claude/tooling-guards-from-3238 | Run PR | Prepared both actionable review fixes: safe local-main resolver fallba… | [49fa5357](branch-review-records/49fa53578bdeab1b8ca9658b3b28bf4d8db0c51be833d4273eea84b56058c101.record.md) |
 | 2026-10-02 | codex/psychsift-efficiency-resumed-20261002 | offline worker health and inherited gate blocker repair | Independent five-file review: no high-confidence findings. Focused cor… | [4266d611](branch-review-records/4266d6119a1a8aa98475310e5efedb829d365e39d5c6211ca841b6097521ec15.record.md) |
 | 2026-10-02 | codex/psychsift-efficiency-resumed-20261002 | complete efficiency and Windows repair integration preparation | Independent review of complete 14-path committed delta: no high-confid… | [505ff047](branch-review-records/505ff047d60dc87d5cefeebe8192d81eecc6469729515f56694b323b4cc57dcd.record.md) |
 | 2026-10-02 | codex/psychsift-efficiency-resumed-20261002 | efficiency documentation continuation after restart | Independent complete seven-file committed documentation review: no hig… | [57764fcd](branch-review-records/57764fcd0461bdfb4fccbf3d53357370a899c764150983394df6b74917df38dc.record.md) |
