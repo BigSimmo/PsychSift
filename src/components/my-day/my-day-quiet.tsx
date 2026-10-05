@@ -18,7 +18,7 @@ import type { MyDaySourceMode } from "@/lib/my-day/model";
 /** A text link or button: 13px, the link colour, with a 48px tap area round its words. */
 export const quietLink = cn(
   focusRing,
-  "relative inline-flex min-h-12 items-center whitespace-nowrap rounded-md text-sm-minus font-medium text-[color:var(--dash-blue)] no-underline hover:underline",
+  "relative inline-flex min-h-12 items-center whitespace-nowrap rounded-md text-sm font-medium text-[color:var(--dash-blue)] no-underline hover:underline",
 );
 
 /** The same, in the muted colour, for the quieter of two actions ("Later"). */
@@ -27,7 +27,7 @@ export const quietLinkMuted = cn(quietLink, "text-[color:var(--dash-muted)]");
 /** The one filled button on a screen. */
 export const quietPrimary = cn(
   focusRing,
-  "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg px-4 text-sm-minus font-dash-title no-underline",
+  "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg px-4 text-sm font-dash-title no-underline",
 );
 
 /** Small capitals over a section, with an optional count and a link at the right. */
@@ -172,7 +172,7 @@ export function QuietRow({
       <span className="grid min-w-0 flex-1">
         <span
           className={cn(
-            "break-words text-sm leading-snug",
+            "break-words text-base-minus leading-snug",
             done ? "text-[color:var(--dash-faint)]" : "font-medium text-[color:var(--dash-ink)]",
           )}
         >
@@ -181,7 +181,7 @@ export function QuietRow({
         {subtitle ? (
           <span
             className={cn(
-              "mt-px line-clamp-2 break-words text-sm-minus",
+              "mt-px line-clamp-2 break-words text-sm",
               done ? "text-[color:var(--dash-faint)]" : "text-[color:var(--dash-muted)]",
             )}
           >
@@ -191,7 +191,7 @@ export function QuietRow({
         {actions ? <span className="-my-2 flex flex-wrap items-center gap-x-4.5">{actions}</span> : null}
       </span>
       {end ? (
-        <span className="flex shrink-0 items-center gap-3 text-sm-minus text-[color:var(--dash-faint)]">{end}</span>
+        <span className="flex shrink-0 items-center gap-3 text-sm text-[color:var(--dash-faint)]">{end}</span>
       ) : null}
     </li>
   );
@@ -290,8 +290,8 @@ export function QuietNote({
         strokeWidth={1.6}
       />
       <span className="grid min-w-0 flex-1">
-        <span className="break-words text-sm font-dash-title text-[color:var(--dash-ink)]">{title}</span>
-        {body ? <span className="mt-px break-words text-sm-minus text-[color:var(--dash-muted)]">{body}</span> : null}
+        <span className="break-words text-base-minus font-dash-title text-[color:var(--dash-ink)]">{title}</span>
+        {body ? <span className="mt-px break-words text-sm text-[color:var(--dash-muted)]">{body}</span> : null}
       </span>
       {action ? <span className="-my-2 self-center">{action}</span> : null}
     </div>
@@ -321,7 +321,7 @@ export function QuietKeyValue({
   return (
     <span
       className={cn(
-        "flex min-w-0 justify-between gap-2.5 text-sm-minus text-[color:var(--dash-muted)]",
+        "flex min-w-0 justify-between gap-2.5 text-sm text-[color:var(--dash-muted)]",
         total && "mt-0.5 border-t border-[color:var(--dash-line)] pt-1.5",
       )}
     >

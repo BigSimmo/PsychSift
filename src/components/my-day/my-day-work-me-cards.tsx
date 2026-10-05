@@ -364,7 +364,7 @@ export function ComingUpCard({
 export function CallNotesFoot() {
   return (
     <QuietFoot icon={Lock}>
-      Call notes stay on the Call page. They are cleared when the shift ends and when you sign out.
+      Call notes stay on the Call page. They are deleted when the shift ends and when you sign out.
     </QuietFoot>
   );
 }
@@ -531,7 +531,7 @@ export function HoursCard({
             </span>
             {`rostered · ${count} ${count === 1 ? "shift" : "shifts"}`}
           </span>
-          <span className="text-sm-minus text-[color:var(--dash-muted)]">
+          <span className="text-sm text-[color:var(--dash-muted)]">
             {`${Number(bars.start.slice(8, 10))} ${shortMonth(bars.start)} to ${Number(bars.end.slice(8, 10))} ${shortMonth(bars.end)}`}
           </span>
         </p>
@@ -583,10 +583,10 @@ export function CredentialsCard({
                   "grid min-h-24 content-between gap-2 rounded-xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] p-3.5 no-underline forced-colors:border",
                 )}
               >
-                <span className="break-words text-sm text-[color:var(--dash-ink)]">{row.title}</span>
+                <span className="break-words text-base-minus text-[color:var(--dash-ink)]">{row.title}</span>
                 <span
                   className={cn(
-                    "text-sm-minus",
+                    "text-sm",
                     passed ? "font-medium text-[color:var(--dash-amber)]" : "text-[color:var(--dash-muted)]",
                   )}
                 >
@@ -639,7 +639,7 @@ export function CpdMonthCard({
         aside={<QuietTextLink href={withMyDayReturn("/cme")}>Open CPD</QuietTextLink>}
       >
         <CpdSummary loggedHours={loggedHours} targetHours={targetHours} byCategory={byCategory} />
-        <div className="flex justify-between gap-3 pt-1 text-sm-minus text-[color:var(--dash-muted)]">
+        <div className="flex justify-between gap-3 pt-1 text-sm text-[color:var(--dash-muted)]">
           <span>Hours logged each month</span>
           {(byMonth[most] ?? 0) > 0 ? (
             <span className="nums">{`most ${hoursText(byMonth[most] ?? 0)} h · ${MONTH_NAMES[most]}`}</span>
@@ -721,7 +721,7 @@ export function QuickNoteCard({ onHide }: { readonly onHide?: () => void }) {
       />
       <span id={hintId}>
         <QuietFoot icon={TriangleAlert}>
-          Never write patient names or details here. Cleared when you sign out.
+          Never write patient names or details here. Deleted when you sign out.
         </QuietFoot>
       </span>
     </QuietSection>

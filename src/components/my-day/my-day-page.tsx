@@ -429,7 +429,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
               >
                 Your shifts, on call, CPD and renewals appear here once you sign in. Nothing is shared.
               </SignedOutSampleNotice>
-              <p className="px-1 text-sm-minus text-[color:var(--dash-muted)]" data-testid="my-day-sample-line">
+              <p className="px-1 text-sm text-[color:var(--dash-muted)]" data-testid="my-day-sample-line">
                 Everything below is a made-up sample.
               </p>
             </div>
@@ -468,7 +468,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 title={`Couldn't load: ${failed.join(", ")}.`}
                 body={
                   checked.length > 0
-                    ? "Needs you may be missing items from these. Showing the rest."
+                    ? "Needs you may be incomplete. Showing the rest."
                     : "Nothing here can be relied on until it loads."
                 }
                 action={

@@ -91,7 +91,7 @@ const heroEyebrow = "text-2xs font-dash-title uppercase tracking-wider text-[col
 /** A text link on the blue card: white, underlined. */
 const heroLink = cn(
   focusRing,
-  "relative inline-flex min-h-12 items-center whitespace-nowrap rounded-md text-sm-minus font-medium text-[color:var(--dash-hero-ink)] underline decoration-[color:var(--dash-hero-glass-line)] underline-offset-3",
+  "relative inline-flex min-h-12 items-center whitespace-nowrap rounded-md text-sm font-medium text-[color:var(--dash-hero-ink)] underline decoration-[color:var(--dash-hero-glass-line)] underline-offset-3",
 );
 
 /** The one filled button on the blue card. */
@@ -192,7 +192,7 @@ function HeroPanel({
     >
       <span className={cn(heroEyebrow, onHide && "pr-8")}>{eyebrow}</span>
       <span className="break-words text-base font-dash-title leading-snug">{title}</span>
-      {where ? <span className="break-words text-sm-minus text-[color:var(--dash-hero-muted)]">{where}</span> : null}
+      {where ? <span className="break-words text-sm text-[color:var(--dash-hero-muted)]">{where}</span> : null}
       <span className="mt-1 -mb-1 flex items-center gap-4.5">
         <Link
           href={withMyDayReturn(href)}
@@ -272,7 +272,7 @@ export function HeroCard({
           >
             {words.big}
           </span>
-          <span aria-hidden="true" className="break-words text-sm-minus text-[color:var(--dash-hero-muted)]">
+          <span aria-hidden="true" className="break-words text-sm text-[color:var(--dash-hero-muted)]">
             {words.sub}
           </span>
         </Link>
@@ -296,7 +296,7 @@ export function HeroCard({
         <span className="break-words text-xl font-dash-title leading-tight">
           {finished ? "Off for the rest of today" : "Off today"}
         </span>
-        <span className="break-words text-sm-minus text-[color:var(--dash-hero-muted)]">
+        <span className="break-words text-sm text-[color:var(--dash-hero-muted)]">
           {[ended, next].filter(Boolean).join(" · ")}
         </span>
       </Link>
@@ -550,7 +550,7 @@ function MonthView({
         >
           <ChevronLeft aria-hidden="true" className="size-icon-md" />
         </button>
-        <h3 id={titleId} className="text-sm font-dash-title text-[color:var(--dash-ink)]">
+        <h3 id={titleId} className="text-base-minus font-dash-title text-[color:var(--dash-ink)]">
           {monthTitle(month)}
         </h3>
         {/* The month change is announced from a hidden line, not the visible heading (SPEC §9.2). */}
@@ -597,7 +597,7 @@ function MonthView({
                       onClick={() => setSelected(date)}
                       className={cn(
                         focusRing,
-                        "grid min-h-12 w-full content-center justify-items-center gap-0.5 rounded-lg text-sm-minus nums",
+                        "grid min-h-12 w-full content-center justify-items-center gap-0.5 rounded-lg text-sm nums",
                         date === selected
                           ? "bg-[color:var(--dash-card)] font-dash-title text-[color:var(--dash-ink)] forced-colors:border"
                           : date === today
@@ -652,7 +652,7 @@ function MonthView({
           </li>
         ))}
       </ul>
-      <h3 className="text-sm font-dash-title text-[color:var(--dash-ink)]">{formatPerthDay(selected)}</h3>
+      <h3 className="text-base-minus font-dash-title text-[color:var(--dash-ink)]">{formatPerthDay(selected)}</h3>
       {details.length ? (
         <QuietList testId="my-day-month-detail">
           {details.map((detail) => (
@@ -678,7 +678,7 @@ function MonthView({
           ))}
         </QuietList>
       ) : (
-        <p className="text-sm-minus text-[color:var(--dash-muted)]">Nothing recorded for this day.</p>
+        <p className="text-sm text-[color:var(--dash-muted)]">Nothing recorded for this day.</p>
       )}
     </div>
   );
@@ -718,7 +718,7 @@ export function StripDay({
       <span
         aria-hidden="true"
         className={cn(
-          "relative grid size-9 place-items-center rounded-full text-sm-minus nums forced-colors:border",
+          "relative grid size-9 place-items-center rounded-full text-sm nums forced-colors:border",
           isToday
             ? "border-2 border-[color:var(--dash-blue)] font-dash-title text-[color:var(--dash-blue)]"
             : off
@@ -855,17 +855,17 @@ export function NeedsYouCard({
       <div data-testid="my-day-empty" className="grid gap-0.5 py-2">
         {checked.length > 0 ? (
           <>
-            <p className="text-sm font-dash-title text-[color:var(--dash-ink)]">
+            <p className="text-base-minus font-dash-title text-[color:var(--dash-ink)]">
               {incomplete ? "Nothing found in the sources that loaded" : "Nothing needs you right now"}
             </p>
-            <p className="text-sm-minus text-[color:var(--dash-muted)]">
+            <p className="text-sm text-[color:var(--dash-muted)]">
               {`Checked ${listNames(checked)}${checkedAt ? ` at ${checkedAt}` : ""}.`}
             </p>
           </>
         ) : (
           <>
-            <p className="text-sm font-dash-title text-[color:var(--dash-ink)]">Couldn&apos;t check your day</p>
-            <p className="text-sm-minus text-[color:var(--dash-muted)]">No source could be checked just now.</p>
+            <p className="text-base-minus font-dash-title text-[color:var(--dash-ink)]">Couldn&apos;t check your day</p>
+            <p className="text-sm text-[color:var(--dash-muted)]">No source could be checked just now.</p>
             <div className="mt-1.5">
               <Button variant="secondary" onClick={onRetry}>
                 Retry
@@ -877,7 +877,7 @@ export function NeedsYouCard({
     );
   } else if (shown.length === 0) {
     body = (
-      <p className="py-2 text-sm-minus text-[color:var(--dash-muted)]" data-testid="my-day-needs-you-snoozed">
+      <p className="py-2 text-sm text-[color:var(--dash-muted)]" data-testid="my-day-needs-you-snoozed">
         {`Nothing else needs you today. ${total - waiting} hidden until tomorrow.`}
       </p>
     );
@@ -953,7 +953,7 @@ export function NeedsYouCard({
       <div role="status" className="empty:hidden">
         {undo ? (
           <div
-            className="flex min-w-0 items-center justify-between gap-2.5 border-t border-[color:var(--dash-line)] pt-1 text-sm-minus text-[color:var(--dash-muted)]"
+            className="flex min-w-0 items-center justify-between gap-2.5 border-t border-[color:var(--dash-line)] pt-1 text-sm text-[color:var(--dash-muted)]"
             data-testid="my-day-undo"
           >
             <span className="min-w-0 break-words">{`Hidden until tomorrow: ${undo.title}`}</span>
@@ -1129,10 +1129,10 @@ export function CustomiseRow({ editing, onToggle }: { readonly editing: boolean;
       >
         <AreaIcon icon={SlidersHorizontal} />
         <span className="grid min-w-0 flex-1">
-          <span className="text-sm font-medium text-[color:var(--dash-ink)]">
+          <span className="text-base-minus font-medium text-[color:var(--dash-ink)]">
             {editing ? "Done customising" : "Customise My Day"}
           </span>
-          <span className="text-sm-minus text-[color:var(--dash-muted)]">Show or hide these cards</span>
+          <span className="text-sm text-[color:var(--dash-muted)]">Show or hide these cards</span>
         </span>
         <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
       </button>

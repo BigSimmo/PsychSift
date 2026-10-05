@@ -298,15 +298,13 @@ function AgendaRow({ entry, done }: { readonly entry: AgendaEntry; readonly done
           "grid min-h-13 min-w-0 grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-2 rounded-md py-2 no-underline",
         )}
       >
-        <span
-          className={cn("text-sm-minus nums", done ? "text-[color:var(--dash-faint)]" : "text-[color:var(--dash-ink)]")}
-        >
+        <span className={cn("text-sm nums", done ? "text-[color:var(--dash-faint)]" : "text-[color:var(--dash-ink)]")}>
           {entry.time}
         </span>
         <span className="grid min-w-0">
           <span
             className={cn(
-              "flex min-w-0 items-baseline gap-1.5 text-sm",
+              "flex min-w-0 items-baseline gap-1.5 text-base-minus",
               done ? "text-[color:var(--dash-muted)]" : "text-[color:var(--dash-ink)]",
             )}
           >
@@ -317,7 +315,7 @@ function AgendaRow({ entry, done }: { readonly entry: AgendaEntry; readonly done
             />
             <span className="min-w-0 break-words">{entry.title}</span>
           </span>
-          <span className="break-words text-sm-minus text-[color:var(--dash-muted)]">
+          <span className="break-words text-sm text-[color:var(--dash-muted)]">
             {entry.area}
             {entry.state ? (
               <>
@@ -456,7 +454,7 @@ export function MyDayWeekDays({
                 </ul>
               ) : (
                 <p
-                  className="flex min-h-12 items-center text-sm-minus text-[color:var(--dash-muted)]"
+                  className="flex min-h-12 items-center text-sm text-[color:var(--dash-muted)]"
                   data-testid={`my-day-week-empty-${date}`}
                 >
                   {ending
@@ -472,7 +470,7 @@ export function MyDayWeekDays({
       <div className="grid gap-3 border-t border-[color:var(--dash-line)] pt-2">
         <div className="flex min-h-12 min-w-0 items-center gap-3" data-testid="my-day-week-footer">
           <AreaIcon icon={CalendarDays} />
-          <p className="min-w-0 flex-1 text-sm text-[color:var(--dash-ink)]">All your shifts are in Roster</p>
+          <p className="min-w-0 flex-1 text-base-minus text-[color:var(--dash-ink)]">All your shifts are in Roster</p>
           <QuietTextLink href="/roster" ariaLabel="Open Roster">
             Open Roster
           </QuietTextLink>

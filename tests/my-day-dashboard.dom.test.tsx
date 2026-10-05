@@ -852,7 +852,7 @@ describe("Me cards", () => {
     render(<MyDayDashboard {...props({ page: "me" })} />);
     const card = screen.getByTestId("my-day-card-quick-note");
     expect(card.textContent).toContain("This device only");
-    expect(card.textContent).toContain("Never write patient names or details here. Cleared when you sign out.");
+    expect(card.textContent).toContain("Never write patient names or details here. Deleted when you sign out.");
     const field = screen.getByTestId("my-day-quick-note") as HTMLTextAreaElement;
     fireEvent.change(field, { target: { value: "Ring pharmacy on Monday" } });
     expect(window.localStorage.getItem(MY_DAY_QUICK_NOTE_STORAGE_KEY)).toBe("Ring pharmacy on Monday");
