@@ -57,6 +57,19 @@ describe("This phone", () => {
     expect(value.retry).toHaveBeenCalledTimes(1);
   });
 
+  it("the shared-device switch is there in every state, since Remind me does not need phone alerts", () => {
+    for (const state of ["blocked", "needs-home-screen", "unconfigured", "unsupported", "error", "checking"] as const) {
+      render(
+        <AlertsDeviceSection
+          alerts={alerts({ state, configured: state !== "unconfigured", enabled: false })}
+          shared={false}
+        />,
+      );
+      expect(screen.getByRole("switch", { name: "This is a shared device" }), state).toBeTruthy();
+      cleanup();
+    }
+  });
+
   it("blocked on a computer gives browser steps, not iPhone ones", () => {
     render(<AlertsDeviceSection alerts={alerts({ state: "blocked", device: "computer" })} shared={false} />);
     expect(screen.queryByText("Open the Settings app")).toBeNull();

@@ -149,8 +149,9 @@ export function usePhoneAlerts(): PhoneAlerts {
           setSubscribed(false);
           return;
         }
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager?.getSubscription();
+        // Not `ready`: it never settles when no service worker is registered, which would leave "Checking…" up for good.
+        const registration = await navigator.serviceWorker.getRegistration();
+        const subscription = await registration?.pushManager?.getSubscription();
         if (!subscription) {
           if (current) setSubscribed(false);
           return;
@@ -207,8 +208,16 @@ export function usePhoneAlerts(): PhoneAlerts {
     return removed;
   }, []);
 
+  // "Sent. It should arrive in a few seconds." is only true for a short while.
+  useEffect(() => {
+    if (!testSentAt) return;
+    const timer = window.setTimeout(() => setTestSentAt(null), 30_000);
+    return () => window.clearTimeout(timer);
+  }, [testSentAt]);
+
   const toggle = useCallback(async () => {
     if (!configured || !publicKey || busy) return;
+    setTestSentAt(null);
     if (isIosNotInstalled()) {
       setMessage("On iPhone, add PsychSift to your Home Screen first.");
       return;
@@ -286,11 +295,12 @@ export function usePhoneAlerts(): PhoneAlerts {
     async (shared: boolean) => {
       // A shared computer keeps no subscription: the switch only turns on once
       // this device's subscription is really gone.
-      // Unknown (still checking, or the check failed) counts as subscribed: removal is a no-op when there is none.
-      if (shared && subscribed !== false && !(await turnOff())) return;
+      // Always try, even when this account shows Off: another account's
+      // subscription can still sit on this browser, and removal is a no-op when there is none.
+      if (shared && !(await turnOff())) return;
       setSharedDevice(shared);
     },
-    [subscribed, turnOff],
+    [turnOff],
   );
 
   const state = derivePhoneAlertState({

@@ -183,6 +183,11 @@ const DOTTED_INITIALS = /\b[A-Z]\.\s?[A-Z]\.?(?:\s?[A-Z]\.?)?(?=\W|$)/g;
 // "45yo", "45 y/o F", "34M", "45 yrs F"; a bare "2 yrs" is a length of time, not an age.
 const AGE_SEX = /\b\d{1,3}\s?(?:yo|y\/o)\b(?:\s?[MFmf]\b)?|\b\d{1,3}\s?yrs?\s?[MFmf]\b|\b\d{1,3}[MF]\b/g;
 const INITIALS = /\b[A-Z]{2,3}\b/g;
+// A full date with a year ("01/02/1980", "1-2-80", "1 Feb 1980"), usually a date of birth. "2/7" (two days) has no year and passes.
+const FULL_DATE =
+  /\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b|\b\d{1,2}\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s\d{4}\b|\bD\.?O\.?B\b\.?/gi;
+// An Australian phone number: "0412 345 678", "(08) 9224 1234", "08 9224 1234".
+const PHONE = /(?:\(0\d\)|\b0\d)(?:[\s-]?\d){8}\b/g;
 
 function initialsIn(text: string): string[] {
   return [...new Set(text.match(new RegExp(INITIALS.source, INITIALS.flags)) ?? [])].filter(
@@ -209,6 +214,8 @@ export function checkReminderText(text: string): ReminderTextProblem | null {
     [INITIAL_SURNAME, "a name"],
     [DOTTED_INITIALS, "initials"],
     [AGE_SEX, "an age"],
+    [FULL_DATE, "a date of birth"],
+    [PHONE, "a phone number"],
     [BED, "a bed number"],
     [RECORD_NUMBER, "a record number"],
   ];

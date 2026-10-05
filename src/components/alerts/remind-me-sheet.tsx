@@ -40,7 +40,13 @@ export function RemindMeSheet({
   const whenId = useId();
   const noteId = useId();
   const [text, setText] = useState("");
-  const options = useMemo(() => remindMeWhenOptions(now, shiftEndsAt), [now, shiftEndsAt]);
+  // The choices are worked out once, when the sheet opens: the clock ticking
+  // must not swap a picked time for another one while the sheet is up.
+  const [openedAt, setOpenedAt] = useState<Date | null>(null);
+  if (open && !openedAt) setOpenedAt(now);
+  if (!open && openedAt) setOpenedAt(null);
+  const optionsAt = openedAt ?? now;
+  const options = useMemo(() => remindMeWhenOptions(optionsAt, shiftEndsAt), [optionsAt, shiftEndsAt]);
   // Null means "the default": the second choice, worked out from the time the sheet is open, not page load.
   const [when, setWhen] = useState<string | null>(null);
   const [failure, setFailure] = useState<"full" | "failed" | null>(null);
@@ -126,13 +132,13 @@ export function RemindMeSheet({
           <span>
             {shared
               ? "This is marked as a shared device, so it keeps no reminders. Use your own phone."
-              : "No names, record numbers or bed numbers. The words stay on this phone and never reach our server or your calendar. For now it shows under Your reminders on the Alerts page, and it won't buzz. Not for legal deadlines such as Mental Health Act times."}
+              : "No names, record numbers or bed numbers. The words stay on this device and never reach our server or your calendar. For now it shows under Your reminders on the Alerts page, and it won't buzz. Not for legal deadlines such as Mental Health Act times."}
           </span>
         </p>
         {failure ? (
           <p role="status" className="text-sm text-[color:var(--text-muted)]">
             {failure === "full"
-              ? "This phone already holds 20 reminders. Tick one off or remove one first."
+              ? "This device already holds 20 reminders. Tick one off or remove one first."
               : "This phone couldn't save it. Try again."}
           </p>
         ) : null}
@@ -162,7 +168,7 @@ export function YourRemindersSheet({
       open={open}
       onClose={onClose}
       title="Your reminders"
-      description="Kept on this phone only"
+      description="Kept on this device only"
       testId="your-reminders-sheet"
       footer={
         <Button variant="primary" block onClick={onAdd} disabled={shared} testId="your-reminders-add">
@@ -173,7 +179,7 @@ export function YourRemindersSheet({
       <div className="grid min-w-0 gap-3">
         {reminders.length === 0 ? (
           <p className="text-sm text-[color:var(--text-muted)]" data-testid="your-reminders-empty">
-            {shared ? "This shared device keeps no reminders." : "None set on this phone."}
+            {shared ? "This shared device keeps no reminders." : "None set on this device."}
           </p>
         ) : (
           <ul role="list" className={modeModuleSurface}>

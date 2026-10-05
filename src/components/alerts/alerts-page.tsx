@@ -111,9 +111,7 @@ function AlertsBody({ now }: { now: Date }) {
           <AlertsButtonRow
             title="Your reminders"
             subtitle={
-              openNotes
-                ? `At the time you set · ${openNotes} on this phone`
-                : "At the time you set · kept on this phone"
+              openNotes ? `${openNotes} listed here · kept on this device` : "Listed here · kept on this device"
             }
             onSelect={() => setSheet({ kind: "reminders" })}
             testId="alerts-your-reminders"

@@ -208,4 +208,16 @@ describe("Remind me edge cases", () => {
     expect(reminderWhenLabel(note("b", "2026-10-02T04:00:00Z", "2026-10-02T00:00:00Z"), now)).toBe("Due Fri 12:00");
     expect(reminderWhenLabel(note("c", "2026-10-05T01:00:00Z", "2026-10-05T00:00:00Z"), now)).toBe("Due 09:00");
   });
+
+  it("refuses dates of birth and phone numbers, and the safer wording drops them", () => {
+    expect(checkReminderText("check 01/02/1980")?.title).toBe("This looks like a date of birth");
+    expect(checkReminderText("D.O.B. 1 Feb 1980 bloods")).not.toBeNull();
+    expect(checkReminderText("call 0412 345 678")?.title).toBe("This looks like a phone number");
+    const landline = checkReminderText("ring (08) 9224 1234 re results");
+    expect(landline?.suggestion).toBe("ring about results");
+    // Ordinary shorthand and times still pass.
+    for (const ok of ["Review in 2/7", "Book CPD course 12/10", "Ring pharmacy at 12:00", "call ext 4321"]) {
+      expect(checkReminderText(ok), ok).toBeNull();
+    }
+  });
 });

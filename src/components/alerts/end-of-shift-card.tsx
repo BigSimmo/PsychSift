@@ -40,7 +40,12 @@ export function EndOfShiftCard({ shift }: { readonly shift: EndOfShift }) {
           </p>
           {labelsClearAt !== null ? (
             <p className="text-sm text-[color:var(--text-muted)]">
-              {`Patient labels on this phone clear at ${remindMeClock(labelsClearAt)}, when the shift ends`}
+              {
+                // "when the shift ends" only when they really clear then, not at the fallback lifetime.
+                Math.abs(labelsClearAt - Date.parse(shift.endsAt)) < 60_000
+                  ? `Patient labels on this device clear at ${remindMeClock(labelsClearAt)}, when the shift ends`
+                  : `Patient labels on this device clear at ${remindMeClock(labelsClearAt)}`
+              }
             </p>
           ) : null}
         </div>

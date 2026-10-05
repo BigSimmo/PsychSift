@@ -183,6 +183,8 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
           testId={`alerts-device-${state}-steps`}
         />
         <LockedTestButton reason={blocked ? "Turn alerts back on first" : "The test unlocks after step 3"} />
+        {/* Remind me does not need phone alerts, so a shared device can always be marked as one. */}
+        <ModeGroupedList testId="alerts-shared-list">{sharedRow}</ModeGroupedList>
         <Footnote>
           {blocked
             ? "Until then you won't get phone alerts, but everything still shows in My Day."
@@ -254,7 +256,7 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
             }
           />
         ) : null}
-        {alerts.configured || shared ? sharedRow : null}
+        {sharedRow}
       </ModeGroupedList>
       {alerts.message ? (
         <p role="status" className="px-3 text-sm text-[color:var(--text-muted)]" data-testid="alerts-device-message">
