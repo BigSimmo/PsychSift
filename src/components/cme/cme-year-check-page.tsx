@@ -2,7 +2,6 @@ import { Award, BookOpen, CalendarDays, FileText, ShieldCheck, SlidersHorizontal
 import type { ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { cmePageTitle } from "@/components/cme/cme-page-frame";
 import { CmeDomainsRing, isActivityCountRequirement } from "@/components/cme/cme-domains-ring";
 import {
   CmeCategoryDot,
@@ -262,10 +261,12 @@ export function CmeYearCheckPage({
       data-mode-identity="cme"
       className="mx-auto w-full max-w-3xl px-4 pb-24 pt-6 sm:px-6"
     >
-      <p className={eyebrowText}>{set.year} year check</p>
-      <h1 className={cn(cmePageTitle, "mt-1")}>
-        {check.readyCount} of {check.rows.length} done
-      </h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <h1 className={eyebrowText}>Year check for {set.year}</h1>
+        <p data-testid="cme-check-count" className="nums text-sm text-[color:var(--text-heading)]">
+          {check.readyCount} of {check.rows.length} checks done
+        </p>
+      </div>
       <div aria-hidden="true" data-testid="cme-check-progress" className="mt-3 flex gap-[3px]">
         {check.rows.map((row, index) => (
           <i

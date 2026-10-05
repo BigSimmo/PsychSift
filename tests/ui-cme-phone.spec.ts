@@ -385,7 +385,8 @@ test.describe("CME phone design", () => {
     await page.getByTestId("cme-year-check-link").filter({ visible: true }).click();
     await expect(page).toHaveURL(/\/cme\/check\?year=2026/);
     const check = page.getByTestId("cme-year-check");
-    await expect(check.getByRole("heading", { level: 1 })).toHaveText(/\d+ of \d+ done/);
+    await expect(check.getByRole("heading", { level: 1 })).toHaveText(/Year check for \d{4}/);
+    await expect(check.getByTestId("cme-check-count")).toHaveText(/\d+ of \d+ checks done/);
     await expect(check.getByTestId("cme-check-row-total")).toBeVisible();
     await expect(check.getByTestId("cme-check-row-evidence")).toContainText("Not checked");
     await expect(check.getByTestId("cme-check-row-copied")).toBeVisible();

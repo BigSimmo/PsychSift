@@ -76,7 +76,8 @@ describe("year check page", () => {
 
   it("says how many checks are done with one part per check, and states each status in words", () => {
     render(<CmeYearCheckPage set={SET} entries={ENTRIES} />);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^\d+ of 10 done$/);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Year check for 2026");
+    expect(screen.getByTestId("cme-check-count")).toHaveTextContent(/^\d+ of 10 checks done$/);
     const progress = screen.getByTestId("cme-check-progress");
     expect(progress).toHaveAttribute("aria-hidden", "true");
     expect(progress.children).toHaveLength(10);
