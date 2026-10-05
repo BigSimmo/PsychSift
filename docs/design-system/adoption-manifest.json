@@ -3232,6 +3232,7 @@
         "src/app/(search-app)/on-call/service/page.tsx",
         "src/app/(search-app)/on-call/who-is-who/page.tsx",
         "src/app/(search-app)/on-call/whos-on/page.tsx",
+        "src/app/(search-app)/psychiatry/mha-clock/page.tsx",
         "src/app/(search-app)/psychiatry/page.tsx",
         "src/app/(search-app)/roster/calendar/page.tsx",
         "src/app/(search-app)/roster/join/page.tsx",
@@ -4070,6 +4071,16 @@
         },
         {
           "file": "src/app/(search-app)/on-call/whos-on/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/psychiatry/mha-clock/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5605,6 +5616,7 @@
       "src/app/(search-app)/on-call/who-is-who/page.tsx",
       "src/app/(search-app)/on-call/whos-on/page.tsx",
       "src/app/(search-app)/page.tsx",
+      "src/app/(search-app)/psychiatry/mha-clock/page.tsx",
       "src/app/(search-app)/psychiatry/page.tsx",
       "src/app/(search-app)/roster/calendar/page.tsx",
       "src/app/(search-app)/roster/join/page.tsx",
@@ -5764,6 +5776,7 @@
       "src/app/(search-app)/on-call/who-is-who/page.tsx",
       "src/app/(search-app)/on-call/whos-on/page.tsx",
       "src/app/(search-app)/page.tsx",
+      "src/app/(search-app)/psychiatry/mha-clock/page.tsx",
       "src/app/(search-app)/psychiatry/page.tsx",
       "src/app/(search-app)/roster/calendar/page.tsx",
       "src/app/(search-app)/roster/join/page.tsx",
@@ -5828,7 +5841,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 164,
+    "inheritedCkbV2RootCount": 165,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -5837,8 +5850,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 46,
-    "rootCount": 165,
-    "productionRouteCount": 157,
-    "nextUiEntryCount": 253
+    "rootCount": 166,
+    "productionRouteCount": 158,
+    "nextUiEntryCount": 254
   }
 }
