@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import { removeThisDevicePushSubscription } from "@/lib/alerts/device-push";
 import { derivePhoneAlertState, deviceKindOf, type DeviceKind, type PhoneAlertState } from "@/lib/alerts/phone-state";
@@ -45,6 +45,47 @@ function readLastTest(): string | null {
   }
 }
 
+type Environment = {
+  readonly ios: boolean;
+  readonly supported: boolean;
+  readonly device: DeviceKind;
+  readonly permission: "default" | "granted" | "denied" | "unsupported";
+  readonly lastTest: string | null;
+};
+
+const SERVER_ENVIRONMENT: Environment = {
+  ios: false,
+  supported: true,
+  device: "phone",
+  permission: "default",
+  lastTest: null,
+};
+let cachedEnvironment: Environment | null = null;
+
+/** A fresh read each call, but the same object while nothing changed, as the store contract needs. */
+function readEnvironment(): Environment {
+  const next: Environment = {
+    ios: isIosNotInstalled(),
+    supported: pushSupported(),
+    device: deviceKindOf(navigator.userAgent),
+    permission: currentPermission(),
+    lastTest: readLastTest(),
+  };
+  const previous = cachedEnvironment;
+  if (previous && (Object.keys(next) as (keyof Environment)[]).every((key) => previous[key] === next[key]))
+    return previous;
+  cachedEnvironment = next;
+  return next;
+}
+
+function serverEnvironment(): Environment {
+  return SERVER_ENVIRONMENT;
+}
+
+function subscribeNever() {
+  return () => undefined;
+}
+
 export type PhoneAlerts = {
   readonly state: PhoneAlertState;
   readonly device: DeviceKind;
@@ -68,19 +109,16 @@ export function usePhoneAlerts(): PhoneAlerts {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [failed, setFailed] = useState(false);
-  // Read once: none of these change without a reload. The page renders this
-  // only after sign-in is checked in the browser, so there is no server render.
-  const [permission, setPermission] = useState(currentPermission);
-  const [environment] = useState<{ ios: boolean; supported: boolean; device: DeviceKind }>(() => ({
-    ios: isIosNotInstalled(),
-    supported: pushSupported(),
-    device: typeof navigator === "undefined" ? "phone" : deviceKindOf(navigator.userAgent),
-  }));
+  // None of these change without a reload. Read through an external store so
+  // the server render (which cannot know the device) and the first client
+  // render agree, then the browser's real answer takes over.
+  const environment = useSyncExternalStore(subscribeNever, readEnvironment, serverEnvironment);
+  const [permissionAfterAsk, setPermission] = useState<"default" | "granted" | "denied" | null>(null);
+  const permission = permissionAfterAsk ?? environment.permission;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [lastTestArrivedAt, setLastTestArrivedAt] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : readLastTest(),
-  );
+  const [lastTestArrivedHere, setLastTestArrivedAt] = useState<string | null>(null);
+  const lastTestArrivedAt = lastTestArrivedHere ?? environment.lastTest;
   const [testSentAt, setTestSentAt] = useState<string | null>(null);
 
   useEffect(() => {
