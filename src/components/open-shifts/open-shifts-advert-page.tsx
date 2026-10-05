@@ -125,7 +125,7 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
       <ul className="mt-2 flex flex-col gap-1.5 text-sm text-[color:var(--text)]">
         {items.map((item, index) => (
           <li key={index} className="flex gap-2">
-            <span aria-hidden="true" className="text-[color:var(--text-soft)]">
+            <span aria-hidden="true" className="text-[color:var(--decoration-soft)]">
               ·
             </span>
             <span>{item}</span>

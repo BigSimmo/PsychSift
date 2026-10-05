@@ -213,7 +213,7 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
             type="button"
             disabled={disabled}
             onClick={() => setPending("cancel")}
-            className="inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--danger-text)] disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
+            className="inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--danger-text)] disabled:cursor-not-allowed disabled:text-[color:var(--disabled)] focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
           >
             Filled elsewhere
           </button>

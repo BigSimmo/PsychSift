@@ -200,7 +200,7 @@ export function ShiftRow({
         <ChevronRight
           aria-hidden="true"
           strokeWidth={1.6}
-          className="mt-3 size-icon-md shrink-0 text-[color:var(--text-soft)]"
+          className="mt-3 size-icon-md shrink-0 text-[color:var(--decoration-soft)]"
         />
       </Link>
     </li>
@@ -290,7 +290,7 @@ export function Switch({
       aria-describedby={describedBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center disabled:opacity-60"
+      className="group inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center disabled:cursor-not-allowed"
     >
       <span
         aria-hidden="true"
@@ -298,13 +298,13 @@ export function Switch({
           checked
             ? "border-[color:var(--command)] bg-[color:var(--command)] forced-colors:bg-[Highlight]"
             : "border-[color:var(--border-strong)] bg-[color:var(--surface-inset)] forced-colors:bg-[Canvas]"
-        }`}
+        } group-disabled:border-[color:var(--border)] group-disabled:bg-[color:var(--surface-subtle)] forced-colors:group-disabled:border-[GrayText]`}
       >
         <span
-          className={`absolute top-0.5 size-5.5 rounded-full shadow-[var(--e1)] transition-[left] duration-[var(--duration-instant)] motion-reduce:transition-none ${
+          className={`absolute top-0.5 left-0.5 size-5.5 rounded-full shadow-[var(--e1)] transition-transform duration-[var(--duration-instant)] motion-reduce:transition-none group-disabled:bg-[color:var(--disabled)] group-disabled:shadow-none forced-colors:group-disabled:bg-[GrayText] ${
             checked
-              ? "left-[1.375rem] bg-[color:var(--command-contrast)] forced-colors:bg-[HighlightText]"
-              : "left-0.5 bg-[color:var(--surface-raised)] forced-colors:bg-[CanvasText]"
+              ? "translate-x-5 bg-[color:var(--command-contrast)] forced-colors:bg-[HighlightText]"
+              : "bg-[color:var(--surface-raised)] forced-colors:bg-[CanvasText]"
           }`}
         />
       </span>

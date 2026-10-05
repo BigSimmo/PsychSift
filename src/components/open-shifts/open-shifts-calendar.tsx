@@ -79,9 +79,10 @@ export function OpenShiftsCalendar({
         >
           <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
         </button>
-        <h2 className="text-base font-semibold text-[color:var(--text-heading)]" aria-live="polite">
+        <h2 className="text-base font-semibold text-[color:var(--text-heading)]">{title}</h2>
+        <span className="sr-only" aria-live="polite">
           {title}
-        </h2>
+        </span>
         <button
           type="button"
           aria-label="Next month"
@@ -136,10 +137,10 @@ export function OpenShiftsCalendar({
                     onClick={() => onSelect(date)}
                     className={`mx-auto flex min-h-12 w-full max-w-12 flex-col items-center justify-center gap-0.5 rounded-md text-sm nums ${
                       isSelected
-                        ? "bg-[color:var(--mode-identity-soft)] font-semibold text-[color:var(--text-heading)] ring-1 ring-inset ring-[color:var(--mode-identity)] forced-colors:border-2 forced-colors:border-[Highlight]"
+                        ? "bg-[color:var(--mode-identity-soft)] font-semibold text-[color:var(--text-heading)] ring-1 ring-inset ring-[color:var(--mode-identity)] forced-colors:outline-2 forced-colors:-outline-offset-2 forced-colors:outline-[Highlight]"
                         : inMonth && !past
                           ? "font-medium text-[color:var(--text-heading)]"
-                          : "font-normal text-[color:var(--text-soft)]"
+                          : "font-normal text-[color:var(--text-muted)]"
                     } ${isToday && !isSelected ? "text-[color:var(--mode-identity)]" : ""}`}
                   >
                     <span>{Number(date.slice(8))}</span>

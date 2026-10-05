@@ -43,6 +43,7 @@ export function OpenShiftsBoardPage() {
     () => boardWeek(state.shifts, addDaysToDate(today, weekOffset * 7), new Date(nowMs)),
     [state.shifts, today, weekOffset, nowMs],
   );
+  const weekTitle = `${formatDayShort(week.days[0]!)} to ${formatDayShort(week.days[6]!)}`;
 
   return (
     <div className="mx-auto w-full max-w-6xl pb-10" data-mode-identity="open-shifts">
@@ -80,9 +81,10 @@ export function OpenShiftsBoardPage() {
               >
                 <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
               </button>
-              <h2 className="text-base font-semibold nums text-[color:var(--text-heading)]" aria-live="polite">
-                {`${formatDayShort(week.days[0]!)} to ${formatDayShort(week.days[6]!)}`}
-              </h2>
+              <h2 className="text-base font-semibold nums text-[color:var(--text-heading)]">{weekTitle}</h2>
+              <span className="sr-only" aria-live="polite">
+                {weekTitle}
+              </span>
               <button
                 type="button"
                 aria-label="Next week"

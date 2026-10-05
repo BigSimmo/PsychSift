@@ -62,7 +62,7 @@ function PostedRow({ shift, line }: { shift: PostedShift; line: ReactNode }) {
         <ChevronRight
           aria-hidden="true"
           strokeWidth={1.6}
-          className="mt-3 size-icon-md shrink-0 text-[color:var(--text-soft)]"
+          className="mt-3 size-icon-md shrink-0 text-[color:var(--decoration-soft)]"
         />
       </Link>
     </li>
