@@ -151,6 +151,18 @@ describe("This week", () => {
     expect(weekRows([running], [], TODAY, EVENING)[0]!.subtitle).toBe("Now, until 20:00 · Roster");
   });
 
+  it("treats a shift ending at midnight as ending that day", () => {
+    const late = { kind: "evening" as const, startsAt: "2026-10-04T08:00:00Z", endsAt: "2026-10-04T16:00:00Z" };
+    expect(heroWords(late, true, EVENING).sub).toBe("Until 00:00 · started 16:00");
+    const evenings = ["2026-10-05", "2026-10-06"].map((date, index) => ({
+      id: `e${index}`,
+      kind: "evening" as const,
+      startsAt: `${date}T08:00:00Z`,
+      endsAt: `${date}T16:00:00Z`,
+    }));
+    expect(weekRows(evenings, [], TODAY, EVENING)[0]!.title).toBe("Evening shifts");
+  });
+
   it("codes each day by its strongest shift and keys only the codes shown", () => {
     expect(dayCode(["day", "on_call"])).toBe("on_call");
     expect(dayCode(["leave"])).toBe("leave");

@@ -320,6 +320,18 @@ describe("MyDayDashboard cards", () => {
     expect(card.textContent).toContain("next: day shift Mon 5 Oct, 08:00");
   });
 
+  it("still says the day's shift is over when the roster has nothing later", () => {
+    const ended = shift({ id: "d", kind: "day", startsAt: "2026-10-02T23:00:00Z", endsAt: "2026-10-03T03:00:00Z" });
+    render(
+      <MyDayDashboard
+        {...props({ sources: { ...EMPTY_SOURCES, roster: { status: "ready", shifts: [ended], sample: false } } })}
+      />,
+    );
+    const card = screen.getByTestId("my-day-card-up-next");
+    expect(card.textContent).toContain("Off for the rest of today");
+    expect(card.textContent).toContain("Day shift ended 11:00");
+  });
+
   it("hides the hero when the roster has nothing ahead and nothing else is up next", () => {
     const past = shift({ id: "s3", startsAt: "2026-10-01T09:00:00Z", endsAt: "2026-10-02T00:30:00Z" });
     render(

@@ -143,6 +143,16 @@ function timeOn(instant: string, onDate: string): string {
   return perthDateOf(instant) === onDate ? perthTimeOf(instant) : weekdayTime(instant);
 }
 
+/** The Perth day a shift's end belongs to: one ending exactly at midnight ends the day before, as in summariseToday. */
+function endDateOf(endsAt: string): string {
+  return perthDateOf(new Date(Date.parse(endsAt) - 1).toISOString());
+}
+
+/** The end time of a shift, with its weekday when it ends on another day than `onDate`. */
+function endOn(endsAt: string, onDate: string): string {
+  return endDateOf(endsAt) === onDate ? perthTimeOf(endsAt) : weekdayTime(endsAt);
+}
+
 /** The words for a shift that is on now or still to start. */
 export function heroWords(shift: HeroShift, running: boolean, now: Date): HeroWords {
   const name = shiftTitle(shift.kind);
@@ -150,7 +160,7 @@ export function heroWords(shift: HeroShift, running: boolean, now: Date): HeroWo
   const placeText = shift.place ? ` · ${shift.place}` : "";
   if (running) {
     const left = durationWords(Date.parse(shift.endsAt) - now.getTime());
-    const until = timeOn(shift.endsAt, today);
+    const until = endOn(shift.endsAt, today);
     const handover = shift.kind === "on_call" ? " handover" : "";
     return {
       eyebrow: `${name} now`,
@@ -165,7 +175,7 @@ export function heroWords(shift: HeroShift, running: boolean, now: Date): HeroWo
   if (startDate === today) when = Number(perthTimeOf(shift.startsAt).slice(0, 2)) >= 17 ? "tonight" : "today";
   else if (startDate === addDaysToDate(today, 1)) when = "tomorrow";
   else when = `· ${formatPerthDay(startDate)}`;
-  const range = `${weekdayTime(shift.startsAt)} to ${perthDateOf(shift.endsAt) === startDate ? perthTimeOf(shift.endsAt) : weekdayTime(shift.endsAt)}`;
+  const range = `${weekdayTime(shift.startsAt)} to ${endOn(shift.endsAt, startDate)}`;
   return {
     eyebrow: `${name} ${when}`,
     big: `Starts in ${starts.short}`,
@@ -332,14 +342,14 @@ export function weekRows(
     const first = group[0]!;
     const running = Date.parse(first.startsAt) <= at;
     // A shift on now, or one overnight, reads alone; same-hours day shifts fold together.
-    const overnight = perthDateOf(first.endsAt) !== perthDateOf(first.startsAt);
+    const overnight = endDateOf(first.endsAt) !== perthDateOf(first.startsAt);
     if (group.length === 1 || running || overnight) {
       for (const shift of group) {
         const isRunning = Date.parse(shift.startsAt) <= at;
         // A running shift that ends today needs no weekday; one that ends on a later day does.
         const sameDay = isRunning
-          ? perthDateOf(shift.endsAt) === today
-          : perthDateOf(shift.endsAt) === perthDateOf(shift.startsAt);
+          ? endDateOf(shift.endsAt) === today
+          : endDateOf(shift.endsAt) === perthDateOf(shift.startsAt);
         const end = sameDay ? perthTimeOf(shift.endsAt) : weekdayTime(shift.endsAt);
         rows.push({
           key: `shift:${shift.id}`,

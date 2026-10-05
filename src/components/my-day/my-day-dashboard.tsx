@@ -427,8 +427,9 @@ export function MyDayDashboard({
   }, [nextUp, device.hidden]);
 
   const visible: Record<MyDayCardId, boolean> = {
-    "up-next": upNext !== null || leadShift !== null || heroNext !== null,
-    "next-up": nextUp !== null,
+    "up-next": upNext !== null || leadShift !== null || heroNext !== null || finished !== null,
+    // The next teaching panel lives inside the hero, so it shows only while the hero does.
+    "next-up": nextUp !== null && !device.hidden.has("up-next"),
     flag: flagItems.length > 0,
     "quick-actions": true,
     "this-week": rosterReady || rows.length > 0 || weekHasDue,
