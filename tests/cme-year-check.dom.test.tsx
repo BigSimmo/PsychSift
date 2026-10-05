@@ -296,7 +296,7 @@ describe("year check page", () => {
 
   it("links to Set up and Customise", () => {
     render(<CmeYearCheckPage set={SET} entries={ENTRIES} />);
-    expect(screen.getByTestId("cme-check-setup")).toHaveAttribute("href", "/cme/setup");
+    expect(screen.getByTestId("cme-check-setup")).toHaveAttribute("href", "/cme/setup?year=2026");
     expect(screen.getByTestId("cme-check-setup")).toHaveTextContent(
       "50 h total · RANZCP starting set, confirmed 5 Jan",
     );
@@ -330,7 +330,7 @@ describe("dashboard shortcuts", () => {
     expect(screen.getByTestId("cme-calendar-link")).toHaveTextContent("17 Dec: You can close your 2026 CPD year");
     const reminder = screen.getByTestId("cme-reporting-reminder");
     expect(reminder).toHaveAttribute("href", "/cme/log?year=2025&copy=todo");
-    expect(reminder).toHaveTextContent("3 activities from 2025 not yet copied to MyCPD");
+    expect(reminder).toHaveTextContent("3 activities from 2025 not marked copied to MyCPD");
     expect(reminder).toHaveTextContent("closes on 1 March");
   });
 });

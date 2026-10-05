@@ -5,7 +5,7 @@
     "description": "Count of style={{ }} JSX attributes under tracked src/**/*.{ts,tsx}, excluding lines that are inside a comment (trimmed line starts with // or *).",
     "measuredAt": "2026-10-05T15:48:57.411Z",
     "baselineSource": "97b695f9086ff33bf508775249454a101d1d7e06",
-    "$lastRaise": "240 -> 244, 2026-09-27, Admin Update 1. LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md: one renewal timeline mark and three Today window bar positions use percentages calculated from dates; no fixed token expresses them. Removed the redundant fixed 0% inline style."
+    "$lastRaise": "245 -> 249, 2026-10-05, CPD mock-up build (#3289). LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md: four CPD chart positions (training timeline spans and markers) use percentages calculated from dates; no fixed token expresses them. Two other new inline styles were converted to classes."
   },
   "unimportedRegisteredComponents": {
     "ceiling": 9,

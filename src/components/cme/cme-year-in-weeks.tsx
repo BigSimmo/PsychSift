@@ -129,7 +129,10 @@ export function CmeYearInWeeks({
                   className={cn(
                     "block w-0.75 rounded-xs forced-colors:bg-[CanvasText]",
                     week.state === "now"
-                      ? "h-full bg-[color:var(--clinical-accent)]"
+                      ? cn(
+                          "bg-[color:var(--clinical-accent)]",
+                          week.hours > 0 ? weekBarHeight(week.hours, tallest) : "h-0.5",
+                        )
                       : week.state === "future"
                         ? "h-0.5 border-b border-dashed border-[color:var(--border-strong)] bg-transparent forced-colors:bg-transparent"
                         : week.hours > 0

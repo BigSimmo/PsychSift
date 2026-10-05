@@ -59,7 +59,7 @@ function joinLabels(labels: readonly string[]): string {
     .join(", ");
 }
 
-export function buildWhatsLeftRows({
+function buildWhatsLeftRows({
   set,
   statuses,
   yearCheck,

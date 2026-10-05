@@ -99,7 +99,7 @@ describe("Today", () => {
       "Professional development planNot started",
       // No evidence counts were loaded, so the check says so rather than guessing.
       "Evidence kept for each activityNot checked",
-      "Copied to your CPD home2 activities not yet copied",
+      "Copied to your CPD home2 activities not marked copied",
     ]);
     const done = screen.getByTestId("cme-requirements-done");
     expect(done.tagName).toBe("DETAILS");
@@ -169,7 +169,7 @@ describe("Today", () => {
       within(chips)
         .getAllByRole("link")
         .map((link) => link.textContent),
-    ).toEqual(["Draft to finish2"]);
+    ).toEqual(["Drafts to finish2"]);
   });
 
   it("leaves out a chip with nothing in it, and the drafts chip when drafts did not load", () => {

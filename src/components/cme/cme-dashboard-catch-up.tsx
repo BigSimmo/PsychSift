@@ -37,7 +37,7 @@ const formatHours = formatCmeHours;
  *   - once the total is reached: "50 h reached on 12 Nov";
  *   - a year that has ended or been closed asks nothing more: no sentence.
  */
-export function CmeCatchUpSentence({
+function CmeCatchUpSentence({
   plan,
   weeklyHours,
   entries,
@@ -83,7 +83,7 @@ export function CmeCatchUpSentence({
  * as its part of the bar, so the eye can pair them. Colour only helps; the
  * words beside it say what it is.
  */
-export function CmeRoutineEstimateDot() {
+function CmeRoutineEstimateDot() {
   return (
     <span
       aria-hidden="true"
@@ -98,7 +98,7 @@ export function CmeRoutineEstimateDot() {
  * can always be checked. Shown only while there is something to plan and a
  * routine would add hours.
  */
-export function CmeRoutineEstimateRow({
+function CmeRoutineEstimateRow({
   plan,
   onOpenDetail,
 }: {
@@ -160,7 +160,7 @@ function dayNumber(dateOnly: string): number {
  * "2026 · about 13 weeks left"; in the last week "2026 · 3 days left"; "2026 · closed",
  * "2026 · year ended" or "2026 · starts 1 January" outside the year. Never a verdict.
  */
-export function cmeYearLabel({ year, today, closed }: { year: number; today: string; closed: boolean }): string {
+function cmeYearLabel({ year, today, closed }: { year: number; today: string; closed: boolean }): string {
   if (closed) return `${year} · closed`;
   if (today < `${year}-01-01`) return `${year} · starts 1 January`;
   if (today > `${year}-12-31`) return `${year} · year ended`;

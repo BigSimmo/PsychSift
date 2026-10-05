@@ -420,7 +420,7 @@ export function CmeYearCheckPage({
             />
             <CmeFlatRow
               testId="cme-check-setup"
-              href="/cme/setup"
+              href={`/cme/setup?year=${set.year}`}
               lead={<Award {...leadIcon} />}
               title="Set up your year"
               subtitle={`${set.totalHours} h total · ${confirmedSetName(set)}, confirmed ${confirmedShort}`}

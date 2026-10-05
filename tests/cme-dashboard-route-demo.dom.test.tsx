@@ -15,7 +15,6 @@ vi.mock("@/components/cme/cme-quick-log", () => ({
   openCmeQuickLog: () => false,
 }));
 vi.mock("@/components/cme/cme-teaching-prompt", () => ({
-  CME_TEACHING_ROW_ATTRIBUTE: "data-cme-teaching-row",
   useCmeTeachingUnloggedCount: () => null,
 }));
 

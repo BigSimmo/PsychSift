@@ -181,7 +181,7 @@ export function CmePlanPage({
   }
 
   const planWrittenOn = planRequirement?.completedOn ?? null;
-  const canAddGoal = !readOnly && (!editing || drafts.length < CME_PLAN_GOAL_MAX);
+  const canAddGoal = !readOnly && drafts.length < CME_PLAN_GOAL_MAX;
 
   return (
     <main data-testid="cme-plan" data-mode-identity="cme" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>

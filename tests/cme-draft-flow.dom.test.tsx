@@ -71,12 +71,12 @@ describe("the dashboard To finish list", () => {
 
   it("links to drafts when there are any", () => {
     render(<CmeDashboard set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={now} draftsToFinish={2} />);
-    const link = screen.getByRole("link", { name: /Draft to finish\s*2/ });
+    const link = screen.getByRole("link", { name: /Drafts to finish\s*2/ });
     expect(link).toHaveAttribute("href", "/cme/log?year=2026&tab=finish#cme-drafts");
   });
 
   it("says nothing about drafts when there are none", () => {
     render(<CmeDashboard set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={now} />);
-    expect(screen.queryByRole("link", { name: /Draft to finish/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Drafts? to finish/ })).toBeNull();
   });
 });

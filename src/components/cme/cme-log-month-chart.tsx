@@ -22,10 +22,13 @@ export function CmeLogMonthChart({
   year,
   groups,
   today,
+  filtered = false,
 }: {
   year: number;
   groups: readonly MonthGroup[];
   today: string;
+  /** A search, category or attention filter is on, so the bars and total cover only what matches. */
+  filtered?: boolean;
 }) {
   const byKey = new Map(groups.map((group) => [group.key, group]));
   const max = Math.max(0, ...groups.map((group) => group.hours));
@@ -41,7 +44,9 @@ export function CmeLogMonthChart({
             className="nums text-sm-minus font-normal text-[color:var(--text-heading)]"
           >
             <span aria-hidden="true">{`${formatHoursShort(total)}\u00a0h`}</span>
-            <span className="sr-only">{`${formatHoursShort(total)} hours in ${year}`}</span>
+            <span className="sr-only">
+              {`${formatHoursShort(total)} hours in ${year}${filtered ? ", matching your filters" : ""}`}
+            </span>
           </p>
         }
       />

@@ -42,6 +42,3 @@ export function useCmeTeachingUnloggedCount(enabled = true): number | null {
 
   return count;
 }
-
-/** The Year page's own "Teaching you gave" row carries this attribute (its "Also for you" row names the count). */
-export const CME_TEACHING_ROW_ATTRIBUTE = "data-cme-teaching-row";

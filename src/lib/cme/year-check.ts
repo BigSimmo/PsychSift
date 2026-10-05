@@ -168,7 +168,7 @@ export function buildCmeYearCheck(set: CmeRequirementSet, allEntries: readonly C
     label: "Copied to your CPD home",
     ready: notCopied.length === 0,
     summary:
-      notCopied.length === 0 ? "Every activity is marked as copied" : `${activities(notCopied.length)} not yet copied`,
+      notCopied.length === 0 ? "Every activity is marked copied" : `${activities(notCopied.length)} not marked copied`,
     entryIds: notCopied.map((entry) => entry.id),
     action: notCopied.length === 0 ? null : { label: "Copy them now", href: `/cme/log?year=${set.year}&copy=todo` },
   });

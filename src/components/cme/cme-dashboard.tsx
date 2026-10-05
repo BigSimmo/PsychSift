@@ -24,7 +24,7 @@ import { CmeWhatsLeft } from "@/components/cme/cme-dashboard-whats-left";
 import { CmeFlatList, CmeFlatRow, CmeGroup } from "@/components/cme/cme-flat-list";
 import { hoursByCategory } from "@/components/cme/cme-progress-visuals";
 import { CME_LOG_TRIGGER_ATTRIBUTE, openCmeQuickLog } from "@/components/cme/cme-quick-log";
-import { CME_TEACHING_ROW_ATTRIBUTE, useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
+import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
 import { modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
 import { Button } from "@/components/ui/button";
@@ -445,7 +445,7 @@ export function CmeDashboard({
         testId="cme-reporting-reminder"
         href={`/cme/log?year=${reportingReminder.year}&copy=todo`}
         lead={<ClipboardCopy aria-hidden="true" strokeWidth={1.6} />}
-        title={`${reportingReminder.notCopied} ${reportingReminder.notCopied === 1 ? "activity" : "activities"} from ${reportingReminder.year} not yet copied to MyCPD`}
+        title={`${reportingReminder.notCopied} ${reportingReminder.notCopied === 1 ? "activity" : "activities"} from ${reportingReminder.year} not marked copied to MyCPD`}
         subtitle={`Your ${reportingReminder.year} claim closes on ${formatDayFullMonth(reportingReminder.closesOn)}`}
         end={snoozeButton("cpd-year-end")}
       />
@@ -453,61 +453,59 @@ export function CmeDashboard({
 
   const alsoForYou =
     hasTarget && !nothingLogged ? (
-      <div {...{ [CME_TEACHING_ROW_ATTRIBUTE]: "" }}>
-        <CmeGroup label="Also for you" testId="cme-also-for-you">
-          <CmeFlatList>
-            {reportingRow}
+      <CmeGroup label="Also for you" testId="cme-also-for-you">
+        <CmeFlatList>
+          {reportingRow}
+          <CmeFlatRow
+            testId="cme-teaching-link"
+            href={teachingCount !== null ? "/teaching/review" : "/teaching"}
+            lead={<GraduationCap aria-hidden="true" strokeWidth={1.6} />}
+            title="Teaching you gave"
+            subtitle={
+              teachingCount !== null
+                ? `${teachingCount} ${teachingCount === 1 ? "session is" : "sessions are"} not logged yet`
+                : "Sessions you gave, kept in Teaching"
+            }
+          />
+          {culturallySafePracticeToLog ? (
             <CmeFlatRow
-              testId="cme-teaching-link"
-              href={teachingCount !== null ? "/teaching/review" : "/teaching"}
-              lead={<GraduationCap aria-hidden="true" strokeWidth={1.6} />}
-              title="Teaching you gave"
-              subtitle={
-                teachingCount !== null
-                  ? `${teachingCount} ${teachingCount === 1 ? "session is" : "sessions are"} not logged yet`
-                  : "Sessions you gave, kept in Teaching"
-              }
+              testId="cme-first-nations-learning-link"
+              href="/first-nations/talking"
+              lead={<Feather aria-hidden="true" strokeWidth={1.6} />}
+              title="Optional learning: First Nations Talking"
+              subtitle="Opening it does not log CPD"
             />
-            {culturallySafePracticeToLog ? (
-              <CmeFlatRow
-                testId="cme-first-nations-learning-link"
-                href="/first-nations/talking"
-                lead={<Feather aria-hidden="true" strokeWidth={1.6} />}
-                title="Optional learning: First Nations Talking"
-                subtitle="Opening it does not log CPD"
+          ) : null}
+          {/* A plain next/link row (the kit row's look), so the route checker sees the one link to the calendar. */}
+          <li className={cn(modeInsetHairline, "flex min-w-0 items-center before:left-0")}>
+            <Link
+              href={`/cme/calendar?year=${set.year}`}
+              data-testid="cme-calendar-link"
+              className={cn(
+                modeRowHeight.double,
+                modePressable,
+                focusRing,
+                "flex min-w-0 flex-1 items-center gap-3 no-underline",
+              )}
+            >
+              <CalendarDays
+                aria-hidden="true"
+                strokeWidth={1.6}
+                className="size-icon-md shrink-0 text-[color:var(--text-muted)]"
               />
-            ) : null}
-            {/* A plain next/link row (the kit row's look), so the route checker sees the one link to the calendar. */}
-            <li className={cn(modeInsetHairline, "flex min-w-0 items-center before:left-0")}>
-              <Link
-                href={`/cme/calendar?year=${set.year}`}
-                data-testid="cme-calendar-link"
-                className={cn(
-                  modeRowHeight.double,
-                  modePressable,
-                  focusRing,
-                  "flex min-w-0 flex-1 items-center gap-3 no-underline",
-                )}
-              >
-                <CalendarDays
-                  aria-hidden="true"
-                  strokeWidth={1.6}
-                  className="size-icon-md shrink-0 text-[color:var(--text-muted)]"
-                />
-                <span className="grid min-w-0 flex-1 gap-px py-2">
-                  <span className="break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]">
-                    CPD dates
-                  </span>
-                  <span className="line-clamp-2 break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">
-                    {nextDate ? `${formatCalendarDateShort(nextDate.date)}: ${nextDate.title}` : "Nothing coming up"}
-                  </span>
+              <span className="grid min-w-0 flex-1 gap-px py-2">
+                <span className="break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]">
+                  CPD dates
                 </span>
-                <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
-              </Link>
-            </li>
-          </CmeFlatList>
-        </CmeGroup>
-      </div>
+                <span className="line-clamp-2 break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">
+                  {nextDate ? `${formatCalendarDateShort(nextDate.date)}: ${nextDate.title}` : "Nothing coming up"}
+                </span>
+              </span>
+              <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+            </Link>
+          </li>
+        </CmeFlatList>
+      </CmeGroup>
     ) : (
       // Before anything is logged the year-end claim reminder still shows; nothing else here applies yet.
       reportingRow && (
@@ -554,6 +552,19 @@ export function CmeDashboard({
         title="Targets"
         subtitle={targetsLine}
         href={`/cme/setup?year=${set.year}`}
+      />,
+    );
+  }
+  // "What's left" carries the only other link to the Report; when it is hidden this row keeps the
+  // Report (exports, closing the year, Customise) one tap away.
+  if (!showWhatsLeft) {
+    aboutRows.push(
+      <CmeFlatRow
+        key="check"
+        testId="cme-about-year-check"
+        title="Year check"
+        subtitle="The report, exports and closing the year"
+        href={`/cme/check?year=${set.year}`}
       />,
     );
   }

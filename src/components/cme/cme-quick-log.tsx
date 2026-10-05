@@ -36,7 +36,7 @@ function subscribeAfterMount(callback: () => void) {
  * Whether an element matching `selector` is on the page (another CPD part's
  * marker). `serverValue` is the answer before the page is in the browser.
  */
-export function usePageHasElement(selector: string, serverValue: boolean): boolean {
+function usePageHasElement(selector: string, serverValue: boolean): boolean {
   return useSyncExternalStore(
     subscribeAfterMount,
     () => document.querySelector(selector) !== null,
@@ -164,7 +164,7 @@ export function CmeQuickLog({
   const [actionContainer, setActionContainer] = useState<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
-  const pageHasTrigger = usePageHasElement(`[${CME_LOG_TRIGGER_ATTRIBUTE}]`, false);
+  const pageHasTrigger = usePageHasElement(`[${CME_LOG_TRIGGER_ATTRIBUTE}]`, true);
   const domains = set.requirements.flatMap((requirement) =>
     requirement.spec.shape === "activity-count" ? [...requirement.spec.buckets] : [],
   );

@@ -226,7 +226,7 @@ export function CmeFlatRow({
 }
 
 /** The three CPD categories as shades of CPD indigo (tokens in globals.css). */
-export const cmeCategoryShade: Record<CmeCategory, string> = {
+const cmeCategoryShade: Record<CmeCategory, string> = {
   educational: "bg-[color:var(--cme-cat-1)]",
   reviewing: "bg-[color:var(--cme-cat-2)]",
   measuring: "bg-[color:var(--cme-cat-3)]",
@@ -305,5 +305,3 @@ export function CmeNote({
     </div>
   );
 }
-
-export { ChevronRight as CmeChevron };

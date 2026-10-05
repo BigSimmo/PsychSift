@@ -63,11 +63,8 @@ function EntryRow({ entry, today }: { entry: CmeEntry; today: string }) {
         </>
       }
       end={
-        entry.archivedAt ? (
-          <span className="text-sm-minus text-[color:var(--text-muted)]">Archived</span>
-        ) : (
-          <CmeRowValue value={formatHoursShort(totalAllocatedHours([entry]))} unit="h" />
-        )
+        // An archived row says "Archived" once, in its line; it carries no hours, as none count.
+        entry.archivedAt ? undefined : <CmeRowValue value={formatHoursShort(totalAllocatedHours([entry]))} unit="h" />
       }
     />
   );

@@ -57,7 +57,7 @@ export function buildCmeYearChips({
     },
     {
       id: "drafts",
-      label: "Draft to finish",
+      label: draftsToFinish === 1 ? "Draft to finish" : "Drafts to finish",
       count: typeof draftsToFinish === "number" ? draftsToFinish : 0,
       href: `/cme/log?year=${year}&tab=finish#cme-drafts`,
     },

@@ -508,8 +508,13 @@ export function CmeLogPage({
               </p>
             ) : null}
 
-            {!allYears && groups.length > 0 ? (
-              <CmeLogMonthChart year={effectiveYear} groups={groups} today={today} />
+            {!allYears && !showArchived && groups.length > 0 ? (
+              <CmeLogMonthChart
+                year={effectiveYear}
+                groups={groups}
+                today={today}
+                filtered={trimmedQuery.length > 0 || attentionFilter !== null || categoryFilter !== "all"}
+              />
             ) : null}
 
             {!showArchived && uncopied.length > 0 ? (
