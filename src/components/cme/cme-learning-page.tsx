@@ -243,7 +243,7 @@ export function CmeLearningPage({
   const hiddenBySpecialty = totalCount - shownCount;
 
   return (
-    <main data-testid="cme-learning" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>
+    <main data-testid="cme-learning" data-mode-identity="cme" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>
       <h1 className={cmePageTitle}>Learning</h1>
       <div className="mt-3 grid gap-6">
         <div className="grid gap-1">

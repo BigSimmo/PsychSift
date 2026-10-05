@@ -261,6 +261,7 @@ export function CmeLogPage({
   return (
     <main
       data-testid="cme-log-page"
+      data-mode-identity="cme"
       className={cn(
         "mx-auto w-full max-w-3xl px-4 pb-[calc(max(1rem,env(safe-area-inset-bottom))+2rem)] pt-6 sm:px-6",
         !showFinish && "lg:max-w-5xl",
