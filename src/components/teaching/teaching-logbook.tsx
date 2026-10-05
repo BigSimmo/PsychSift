@@ -148,7 +148,7 @@ function CpdThisWeek({
     >
       {week.rows.length === 0 ? (
         <T5Meta className="border-t border-[color:var(--border)] py-2.5">
-          Nothing from the last seven days is waiting to go into your CPD.
+          Nothing from this week is waiting to go into your CPD.
         </T5Meta>
       ) : (
         <>
