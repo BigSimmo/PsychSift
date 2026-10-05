@@ -42,7 +42,13 @@ import { cn } from "@/components/ui-primitives";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
-import { EMPTY_MHA_CLOCKS, loadMhaClocks, subscribeMhaClocks, type MhaClock } from "@/lib/psychiatry-hub/mha-clocks";
+import {
+  EMPTY_MHA_CLOCK_STATE,
+  loadMhaClockState,
+  subscribeMhaClocks,
+  type MhaClock,
+  type MhaClockState,
+} from "@/lib/psychiatry-hub/mha-clocks";
 import {
   clearPsychiatryVisits,
   EMPTY_PSYCHIATRY_VISIT_STATE,
@@ -319,7 +325,7 @@ function AskSearch({ offline }: { readonly offline: boolean }) {
       ) : null}
       <div
         className={cn(
-          "flex min-h-12 items-center gap-2 rounded-lg border pl-3 forced-colors:border",
+          "flex min-h-12 items-center gap-2 rounded-lg border pl-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus)] forced-colors:border",
           offline
             ? "border-dashed border-[color:var(--dash-line-strong)] bg-[color:var(--dash-card)]"
             : "border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)]",
@@ -339,7 +345,7 @@ function AskSearch({ offline }: { readonly offline: boolean }) {
           autoComplete="off"
           enterKeyHint="search"
           data-testid="psychiatry-ask-input"
-          className="min-h-12 min-w-0 flex-1 bg-transparent text-sm text-[color:var(--dash-ink)] outline-none placeholder:text-[color:var(--dash-muted)] disabled:cursor-not-allowed"
+          className="min-h-12 min-w-0 flex-1 bg-transparent text-sm text-[color:var(--dash-ink)] outline-none focus-visible:outline-none focus-visible:shadow-none placeholder:text-[color:var(--dash-muted)] disabled:cursor-not-allowed"
         />
         <button
           type="submit"
@@ -347,7 +353,7 @@ function AskSearch({ offline }: { readonly offline: boolean }) {
           data-testid="psychiatry-ask-submit"
           className={cn(
             focusRing,
-            "min-h-12 shrink-0 rounded-lg px-3 text-sm font-semibold text-[color:var(--dash-ink)] disabled:text-[color:var(--dash-faint)]",
+            "min-h-12 shrink-0 rounded-lg px-3 text-sm font-semibold text-[color:var(--dash-ink)] disabled:text-[color:var(--dash-muted)]",
           )}
         >
           Ask
@@ -355,7 +361,7 @@ function AskSearch({ offline }: { readonly offline: boolean }) {
       </div>
       {offline ? null : (
         <div className="flex flex-wrap items-center gap-x-3.5 text-sm-minus" data-testid="psychiatry-ask-try">
-          <span className="text-[color:var(--dash-faint)]">Try</span>
+          <span className="text-[color:var(--dash-muted)]">Try</span>
           {sharedHomePresentation.psychiatry.suggestions.map((suggestion) => (
             <Link
               key={suggestion}
@@ -419,7 +425,7 @@ function QuickActionGrid({ actions }: { readonly actions: readonly DashQuickActi
             data-testid={testId}
             className={cn(
               focusRing,
-              "flex h-full min-h-13 items-center gap-2.5 rounded-xl px-3 py-2 text-sm-minus font-medium leading-tight text-[color:var(--dash-ink)] no-underline",
+              "focus-ring-contained flex h-full min-h-13 items-center gap-2.5 rounded-xl px-3 py-2 text-sm-minus font-medium leading-tight text-[color:var(--dash-ink)] no-underline",
             )}
           >
             <ActionIcon aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
@@ -457,9 +463,12 @@ function Signpost({
   );
 }
 
-function useMhaClocks(): readonly MhaClock[] {
-  return useSyncExternalStore(subscribeMhaClocks, loadMhaClocks, () => EMPTY_MHA_CLOCKS);
+function useMhaClockState(): MhaClockState {
+  return useSyncExternalStore(subscribeMhaClocks, loadMhaClockState, () => EMPTY_MHA_CLOCK_STATE);
 }
+
+/** Said instead of any count when this device could not read its clocks: never "No clocks running". */
+const CLOCKS_UNREADABLE = "Clocks could not be read on this phone";
 
 /** "2 running on this phone · Forms 2 and 3A". Exported for tests. */
 export function clockSummary(clocks: readonly MhaClock[]): string {
@@ -474,14 +483,16 @@ export function clockSummary(clocks: readonly MhaClock[]): string {
  * MHA clock row shows a count and form codes from this device, never anything about a person.
  */
 function ShiftToolsList({ clockLine }: { readonly clockLine: (clocks: readonly MhaClock[]) => string }) {
-  const clocks = useMhaClocks();
+  const { clocks, unreadable } = useMhaClockState();
   return (
     <FlatList label="For a shift" testId="psychiatry-card-shift">
       <FlatRow
         href="/psychiatry/mha-clock"
         icon={Timer}
         title="MHA clock"
-        subtitle={<span data-testid="psychiatry-shift-mha-summary">{clockLine(clocks)}</span>}
+        subtitle={
+          <span data-testid="psychiatry-shift-mha-summary">{unreadable ? CLOCKS_UNREADABLE : clockLine(clocks)}</span>
+        }
         testId="psychiatry-shift-mha-clock"
       />
       <FlatRow
@@ -675,7 +686,7 @@ function SectionsSection({ counts }: { readonly counts: PsychiatrySectionCounts 
                 data-testid={`psychiatry-section-${modeId}`}
                 className={cn(
                   focusRing,
-                  "flex h-full min-h-13 items-center gap-2.5 rounded-xl px-3 py-2 text-[color:var(--dash-ink)] no-underline",
+                  "focus-ring-contained flex h-full min-h-13 items-center gap-2.5 rounded-xl px-3 py-2 text-[color:var(--dash-ink)] no-underline",
                 )}
               >
                 <ModeIcon aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
@@ -759,7 +770,7 @@ function WeekSection({
               <>
                 <p className="mt-1 border-t border-[color:var(--dash-line)] pt-2.5 text-xs text-[color:var(--dash-muted)]">
                   Last 7 days by section{" "}
-                  <span className="nums text-[color:var(--dash-faint)]">{`· ${total} in all`}</span>
+                  <span className="nums text-[color:var(--dash-muted)]">{`· ${total} in all`}</span>
                 </p>
                 <p className="sr-only">
                   {`Opened in the last seven days: ${week.map((row) => `${PSYCHIATRY_VISIT_KIND_LABEL[row.kind]} ${row.count}`).join(", ")}.`}

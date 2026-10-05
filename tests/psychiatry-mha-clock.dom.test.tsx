@@ -32,8 +32,10 @@ import {
   MHA_CLOCK_LIMIT,
   parseMhaClocks,
   parseMhaClockState,
+  keepReadableMhaClocks,
   removeMhaClock,
   restoreMhaClock,
+  subscribeMhaClocks,
 } from "@/lib/psychiatry-hub/mha-clocks";
 
 const forms: MhaClockForm[] = [
@@ -112,6 +114,9 @@ describe("MHA clock store", () => {
   it("moves clocks from the old patient-label store once, and removes the old copy", () => {
     const old = { id: "abcdefgh-1", formCode: "3A", madeAt: now.getTime() - 60_000 };
     expect(writePatientLabels(LEGACY_MHA_CLOCK_STORE_NAME, JSON.stringify({ v: 1, clocks: [old] }))).toBe(true);
+    const listener = vi.fn();
+    subscribeMhaClocks(listener)();
+    expect(listener).toHaveBeenCalled();
     expect(loadMhaClocks()).toEqual([old]);
     expect(readPatientLabels(LEGACY_MHA_CLOCK_STORE_NAME)).toBeNull();
     expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).not.toBeNull();
@@ -128,6 +133,26 @@ describe("MHA clock store", () => {
     }
     window.localStorage.setItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY, "{broken");
     expect(loadMhaClockState().unreadable).toBe(true);
+  });
+
+  it("leaves an old value it cannot read where it is, rather than discarding it", () => {
+    writePatientLabels(LEGACY_MHA_CLOCK_STORE_NAME, JSON.stringify({ v: 1, clocks: [{ id: "x", formCode: "2" }] }));
+    subscribeMhaClocks(() => undefined)();
+    expect(readPatientLabels(LEGACY_MHA_CLOCK_STORE_NAME)).not.toBeNull();
+    expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).toBeNull();
+  });
+
+  it("refuses every change while some clocks cannot be read, until the reader keeps the readable ones", () => {
+    const good = { id: "abcdefgh-1", formCode: "2", madeAt: 1 };
+    const raw = JSON.stringify({ v: 1, clocks: [good, { id: "bad" }] });
+    window.localStorage.setItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY, raw);
+    expect(addMhaClock("3A", now)).toBe("unreadable");
+    expect(removeMhaClock(good.id)).toBe(false);
+    expect(restoreMhaClock({ ...good, id: "abcdefgh-2" })).toBe("unreadable");
+    expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).toBe(raw);
+    expect(keepReadableMhaClocks()).toBe(true);
+    expect(loadMhaClockState()).toEqual({ clocks: [good], unreadable: false });
+    expect(addMhaClock("3A", now)).toBe("added");
   });
 });
 
@@ -176,9 +201,12 @@ describe("MhaClockPage", () => {
     render(<MhaClockPage forms={forms} now={now} />);
     fireEvent.click(screen.getByTestId("mha-clock-handover-copy"));
     expect(writeText).toHaveBeenCalledWith(
-      ["As at Mon 18:00", "Form 2 · made Sun 23:40", "Form 3A · made Mon 01:55", MHA_TIMELINE_REFERENCE_NOTE].join(
-        "\n",
-      ),
+      [
+        "As at Mon 5 Oct 2026, 18:00 (Perth time)",
+        "Form 2 · made Sun 4 Oct 2026, 23:40 (Perth time)",
+        "Form 3A · made Mon 5 Oct 2026, 01:55 (Perth time)",
+        MHA_TIMELINE_REFERENCE_NOTE,
+      ].join("\n"),
     );
   });
 
@@ -187,6 +215,31 @@ describe("MhaClockPage", () => {
     render(<MhaClockPage forms={forms} now={now} />);
     expect(screen.getByTestId("mha-clock-unreadable")).toHaveTextContent("Clocks could not be read on this phone.");
     expect(screen.queryByTestId("mha-clock-empty")).toBeNull();
+    act(() => {
+      fireEvent.click(screen.getByTestId("mha-clock-keep-readable"));
+    });
+    expect(screen.queryByTestId("mha-clock-unreadable")).toBeNull();
+    expect(screen.getByTestId("mha-clock-empty")).toBeTruthy();
+  });
+
+  it("never puts a removed clock back after the account changes", () => {
+    addMhaClock("2", new Date(now.getTime() - 60 * 60_000));
+    render(<MhaClockPage forms={forms} now={now} />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("mha-clock-remove"));
+    });
+    expect(screen.getByTestId("mha-clock-undo-button")).toBeTruthy();
+    act(() => {
+      clearAccountScopedBrowserStorage();
+    });
+    expect(screen.queryByTestId("mha-clock-undo-button")).toBeNull();
+    expect(loadMhaClocks()).toEqual([]);
+  });
+
+  it("links the Act itself beside the reference line", () => {
+    render(<MhaClockPage forms={forms} now={now} />);
+    expect(screen.getByTestId("mha-clock-act-link")).toHaveTextContent("Mental Health Act 2014 (WA)");
+    expect(screen.getByTestId("mha-clock-act-link").getAttribute("target")).toBe("_blank");
   });
 
   it("says clocks are kept until removed or sign-out", () => {
@@ -226,6 +279,14 @@ describe("Psychiatry hub · For a shift", () => {
     expect(link.getAttribute("href")).toBe("/psychiatry/mha-clock");
     expect(screen.getByTestId("psychiatry-shift-mha-summary")).toHaveTextContent(
       "2 running on this phone · Forms 2 and 3A",
+    );
+  });
+
+  it("says the clocks could not be read, never that none are running", () => {
+    window.localStorage.setItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY, "{broken");
+    render(<PsychiatryHome counts={counts} now={now} />);
+    expect(screen.getByTestId("psychiatry-shift-mha-summary")).toHaveTextContent(
+      "Clocks could not be read on this phone",
     );
   });
 

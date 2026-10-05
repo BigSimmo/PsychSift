@@ -79,8 +79,8 @@ export function parseMhaClockState(raw: string | null): MhaClockState {
     if (parsed?.v !== 1 || !Array.isArray(parsed.clocks)) return UNREADABLE_STATE;
     const clocks = parsed.clocks.filter(isClock);
     return {
-      clocks: [...clocks.slice(0, MHA_CLOCK_LIMIT)].sort((a, b) => a.madeAt - b.madeAt),
-      unreadable: clocks.length !== parsed.clocks.length,
+      clocks: [...clocks].sort((a, b) => a.madeAt - b.madeAt).slice(0, MHA_CLOCK_LIMIT),
+      unreadable: clocks.length !== parsed.clocks.length || clocks.length > MHA_CLOCK_LIMIT,
     };
   } catch {
     return UNREADABLE_STATE;
@@ -111,15 +111,21 @@ function writeRaw(raw: string | null): boolean {
 }
 
 /**
- * Move clocks out of the patient-label store, once. The old copy is removed only after the new one
- * is written, so a refused write leaves the clocks where they were.
+ * Move clocks out of the patient-label store, once, when the new store is empty. The old copy is
+ * removed only when it parsed completely and the new copy was written, so a refused write or an old
+ * value this code cannot read leaves the clocks where they were. Run from `subscribeMhaClocks`,
+ * outside render, because it writes. Returns true when it moved anything.
  */
-function migrateLegacyClocks(): void {
+function migrateLegacyClocks(): boolean {
+  const { raw, failed } = readRaw();
+  if (failed || raw !== null) return false;
   const legacy = readPatientLabels(LEGACY_MHA_CLOCK_STORE_NAME);
-  if (legacy === null) return;
-  const clocks = parseMhaClocks(legacy);
-  if (clocks.length > 0 && !writeRaw(JSON.stringify({ v: 1, clocks } satisfies StoredClocks))) return;
+  if (legacy === null) return false;
+  const { clocks, unreadable } = parseMhaClockState(legacy);
+  if (unreadable) return false;
+  if (clocks.length > 0 && !writeRaw(JSON.stringify({ v: 1, clocks } satisfies StoredClocks))) return false;
   removePatientLabels(LEGACY_MHA_CLOCK_STORE_NAME);
+  return clocks.length > 0;
 }
 
 // useSyncExternalStore needs the same object back while nothing changed.
@@ -130,11 +136,7 @@ let cachedState: MhaClockState = EMPTY_MHA_CLOCK_STATE;
 /** The clocks on this device and whether they could all be read. Empty on the server. */
 export function loadMhaClockState(): MhaClockState {
   if (typeof window === "undefined") return EMPTY_MHA_CLOCK_STATE;
-  let { raw, failed } = readRaw();
-  if (!failed && raw === null) {
-    migrateLegacyClocks();
-    ({ raw, failed } = readRaw());
-  }
+  const { raw, failed } = readRaw();
   if (raw !== cachedRaw || failed !== cachedFailed) {
     cachedRaw = raw;
     cachedFailed = failed;
@@ -158,21 +160,42 @@ function save(clocks: readonly MhaClock[]): boolean {
   return ok;
 }
 
-export type AddMhaClockResult = "added" | "full" | "invalid" | "not-saved";
+export type AddMhaClockResult = "added" | "full" | "invalid" | "not-saved" | "unreadable";
+
+/**
+ * The clocks a write may build on, or null while the store is unreadable: writing then would
+ * silently overwrite what could not be read, so every change is refused until the reader chooses
+ * `keepReadableMhaClocks`.
+ */
+function writableClocks(): readonly MhaClock[] | null {
+  const state = loadMhaClockState();
+  return state.unreadable ? null : state.clocks;
+}
 
 /** Start a clock. The caller checks the form has a timeline; this checks only the shape. */
 export function addMhaClock(formCode: string, madeAt: Date): AddMhaClockResult {
   const ms = madeAt.getTime();
   if (!FORM_CODE.test(formCode) || !Number.isFinite(ms)) return "invalid";
-  const current = loadMhaClocks();
+  const current = writableClocks();
+  if (current === null) return "unreadable";
   if (current.length >= MHA_CLOCK_LIMIT) return "full";
   const clock: MhaClock = { id: window.crypto.randomUUID(), formCode, madeAt: ms };
   return save([...current, clock]) ? "added" : "not-saved";
 }
 
-/** Remove one clock. Returns false when the browser refused the change. */
+/** Remove one clock. Returns false when the browser refused the change or the store is unreadable. */
 export function removeMhaClock(id: string): boolean {
-  return save(loadMhaClocks().filter((clock) => clock.id !== id));
+  const current = writableClocks();
+  if (current === null) return false;
+  return save(current.filter((clock) => clock.id !== id));
+}
+
+/**
+ * The reader's explicit choice after "Clocks could not be read": keep the clocks that could be read
+ * and drop the rest. Returns false when the browser refused the change.
+ */
+export function keepReadableMhaClocks(): boolean {
+  return save(loadMhaClockState().clocks);
 }
 
 /**
@@ -181,7 +204,8 @@ export function removeMhaClock(id: string): boolean {
  */
 export function restoreMhaClock(clock: MhaClock): AddMhaClockResult {
   if (!isClock(clock)) return "invalid";
-  const current = loadMhaClocks();
+  const current = writableClocks();
+  if (current === null) return "unreadable";
   if (current.some((existing) => existing.id === clock.id)) return "added";
   if (current.length >= MHA_CLOCK_LIMIT) return "full";
   return save([...current, clock]) ? "added" : "not-saved";
@@ -200,6 +224,7 @@ export function subscribeMhaClocks(listener: () => void): () => void {
   window.addEventListener(mhaClocksChangeEvent, listener);
   window.addEventListener("storage", onStorage);
   const stopTransition = subscribeAccountTransition(listener);
+  if (migrateLegacyClocks()) listener();
   return () => {
     window.removeEventListener(mhaClocksChangeEvent, listener);
     window.removeEventListener("storage", onStorage);

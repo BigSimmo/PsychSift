@@ -140,14 +140,14 @@ export function PsychiatrySavedCard() {
                   data-testid={`psychiatry-saved-filter-${chip.type}`}
                   className={cn(
                     focusRing,
-                    "-mb-px min-h-12 shrink-0 whitespace-nowrap border-b-2",
+                    "focus-ring-contained -mb-px min-h-12 shrink-0 whitespace-nowrap border-b-2",
                     on
                       ? "border-[color:var(--dash-ink)] text-[color:var(--dash-ink)]"
                       : "border-transparent text-[color:var(--dash-muted)]",
                   )}
                 >
                   {chip.label}{" "}
-                  <span className="nums ml-1 font-medium text-[color:var(--dash-faint)]">{chip.count}</span>
+                  <span className="nums ml-1 font-medium text-[color:var(--dash-muted)]">{chip.count}</span>
                 </button>
               );
             })}

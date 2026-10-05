@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Copy, Phone, Plus, ShieldCheck, TriangleAlert, X } from "lucide-react";
+import { ChevronRight, Copy, ExternalLink, Phone, Plus, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 
@@ -14,6 +14,7 @@ import {
 import { InformationPageBreadcrumbs, InformationPageShell } from "@/components/information-page-shell";
 import {
   flatButton,
+  flatSecondaryButton,
   flatLink,
   FlatLabel,
   FlatList,
@@ -23,6 +24,7 @@ import {
   FlatTag,
 } from "@/components/psychiatry/psychiatry-flat";
 import { cn } from "@/components/ui-primitives";
+import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { toAwstParts } from "@/lib/caring-contacts/clock";
 import { mhaActMetadata } from "@/lib/mha-act-sections";
 import { formatPerthDateTime, parsePerthDateTimeInput } from "@/lib/mha-timeline";
@@ -30,6 +32,7 @@ import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
 import {
   addMhaClock,
   EMPTY_MHA_CLOCK_STATE,
+  keepReadableMhaClocks,
   loadMhaClockState,
   MHA_CLOCK_LIMIT,
   removeMhaClock,
@@ -123,8 +126,8 @@ export function mhaClockDuration(ms: number): string {
 /** The plain lines the handover copy puts on the clipboard. Exported for tests. */
 export function mhaClockHandoverText(clocks: readonly MhaClock[], nowMs: number): string {
   return [
-    `As at ${mhaClockWhen(nowMs, nowMs)}`,
-    ...clocks.map((clock) => `Form ${clock.formCode} · made ${mhaClockWhen(clock.madeAt, nowMs)}`),
+    `As at ${formatPerthDateTime(new Date(nowMs))}`,
+    ...clocks.map((clock) => `Form ${clock.formCode} · made ${formatPerthDateTime(new Date(clock.madeAt))}`),
     MHA_TIMELINE_REFERENCE_NOTE,
   ].join("\n");
 }
@@ -140,6 +143,7 @@ const ADD_MESSAGE: Readonly<Record<Exclude<AddMhaClockResult, "added">, string>>
   full: `You are holding ${MHA_CLOCK_LIMIT} clocks, the most this page keeps. Remove one first.`,
   invalid: "Choose a form and enter when it was made.",
   "not-saved": "This browser would not save the clock. Check that site storage is allowed.",
+  unreadable: "Clocks could not be read on this phone, so nothing was changed.",
 };
 
 const ADD_SECTION_ID = "mha-clock-start";
@@ -488,7 +492,7 @@ function HandoverCopy({ clocks, nowMs }: { readonly clocks: readonly MhaClock[];
                 ? "This browser would not copy. Select the lines above and copy them yourself."
                 : ""}
           </p>
-          <button type="button" onClick={copy} data-testid="mha-clock-handover-copy" className={flatButton}>
+          <button type="button" onClick={copy} data-testid="mha-clock-handover-copy" className={flatSecondaryButton}>
             <Copy aria-hidden="true" className="size-icon-sm" />
             Copy
           </button>
@@ -570,6 +574,16 @@ function useUndo() {
     [clear],
   );
   useEffect(() => clear, [clear]);
+  // A clock removed under one account must never be put back under the next.
+  useEffect(
+    () =>
+      subscribeAccountTransition(() => {
+        clear();
+        setRemoved(null);
+        setMessage(null);
+      }),
+    [clear],
+  );
   const remove = (clock: MhaClock) => {
     if (removeMhaClock(clock.id)) show(clock, null);
     else show(null, "This browser would not remove the clock. Check that site storage is allowed.");
@@ -619,14 +633,35 @@ export function MhaClockPage({
         </header>
 
         {unreadable ? (
-          <p
+          <div
             role="alert"
             data-testid="mha-clock-unreadable"
-            className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-2.5 text-sm text-[color:var(--dash-ink)] forced-colors:border"
+            className="grid gap-1 rounded-lg bg-[color:var(--dash-card)] px-3 pt-2.5 pb-1 text-sm text-[color:var(--dash-ink)] forced-colors:border"
           >
-            <TriangleAlert aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--dash-muted)]" />
-            <span className="font-semibold">{MHA_CLOCK_UNREADABLE}</span>
-          </p>
+            <p className="flex items-start gap-2.5">
+              <TriangleAlert
+                aria-hidden="true"
+                className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--dash-muted)]"
+              />
+              <span>
+                <span className="font-semibold">{MHA_CLOCK_UNREADABLE}</span>{" "}
+                <span className="text-[color:var(--dash-muted)]">
+                  {clocks.length > 0
+                    ? "The clocks below are the ones that could be read. Check the others against the paperwork."
+                    : "Check your forms against the paperwork."}{" "}
+                  Nothing can be added or removed until you choose to keep only the readable clocks.
+                </span>
+              </span>
+            </p>
+            <button
+              type="button"
+              onClick={() => keepReadableMhaClocks()}
+              data-testid="mha-clock-keep-readable"
+              className={cn(flatLink, "justify-self-end")}
+            >
+              Keep only the readable clocks
+            </button>
+          </div>
         ) : null}
 
         <section aria-labelledby="mha-clock-running-title" className="grid gap-2" data-testid="mha-clock-running">
@@ -698,12 +733,22 @@ export function MhaClockPage({
         <p className="mt-1 text-xs text-[color:var(--dash-muted)]" data-testid="mha-clock-reference">
           {MHA_TIMELINE_REFERENCE_NOTE}
         </p>
+        <a
+          href={mhaActMetadata.sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          className={cn(flatLink, "-mt-2 self-start")}
+          data-testid="mha-clock-act-link"
+        >
+          Mental Health Act 2014 (WA)
+          <ExternalLink aria-hidden="true" className="size-icon-xs" />
+        </a>
         <FlatList label="Related pages">
           <FlatRow href="/forms/act" icon={ShieldCheck} title="Form pages and the Act" />
           <FlatRow href="/on-call/call" icon={Phone} title="Handover" subtitle="On Call" />
         </FlatList>
+        <UndoBar removed={undo.removed} message={undo.message} onUndo={undo.undo} />
       </div>
-      <UndoBar removed={undo.removed} message={undo.message} onUndo={undo.undo} />
     </InformationPageShell>
   );
 }

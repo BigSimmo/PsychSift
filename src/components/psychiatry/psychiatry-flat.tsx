@@ -26,6 +26,12 @@ export const flatButton = cn(
   "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg bg-[color:var(--dash-ink)] px-4 text-sm font-semibold text-[color:var(--dash-page)] forced-colors:border",
 );
 
+/** The outlined button for a second action on a screen that already has a filled one. */
+export const flatSecondaryButton = cn(
+  focusRing,
+  "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-4 text-sm font-semibold text-[color:var(--dash-ink)] forced-colors:border",
+);
+
 /** A plain bold link ("Open", "All forms", "Try again"), with a 48px tap area. */
 export const flatLink = cn(
   focusRing,
@@ -37,7 +43,7 @@ export function FlatTag({ children, testId }: { readonly children: ReactNode; re
   return (
     <span
       data-testid={testId}
-      className="whitespace-nowrap rounded-md border border-[color:var(--dash-line-strong)] px-1.5 text-2xs font-medium normal-case leading-5 tracking-normal text-[color:var(--dash-faint)] forced-colors:border"
+      className="whitespace-nowrap rounded-md border border-[color:var(--dash-line-strong)] px-1.5 text-2xs font-medium normal-case leading-5 tracking-normal text-[color:var(--dash-muted)] forced-colors:border"
     >
       {children}
     </span>
@@ -58,7 +64,7 @@ export function FlatLabel({
 }) {
   return (
     <div className="mt-2 flex min-h-6 flex-wrap items-center justify-between gap-2">
-      <Heading id={id} className="text-2xs font-semibold uppercase tracking-widest text-[color:var(--dash-faint)]">
+      <Heading id={id} className="text-2xs font-semibold uppercase tracking-widest text-[color:var(--dash-muted)]">
         {title}
       </Heading>
       {aside ? <span className="flex min-w-0 items-center gap-2">{aside}</span> : null}
@@ -68,7 +74,7 @@ export function FlatLabel({
 
 /** A count beside a section label ("9"). */
 export function FlatCount({ children }: { readonly children: ReactNode }) {
-  return <span className="nums text-xs text-[color:var(--dash-faint)]">{children}</span>;
+  return <span className="nums text-xs text-[color:var(--dash-muted)]">{children}</span>;
 }
 
 export function FlatList({
@@ -136,7 +142,12 @@ export function FlatRow({
   return (
     <li className="border-t border-[color:var(--dash-line)] first:border-t-0" data-testid={href ? undefined : testId}>
       {href ? (
-        <Link href={href} data-testid={testId} aria-label={ariaLabel} className={cn(focusRing, rowShell, "rounded-xl")}>
+        <Link
+          href={href}
+          data-testid={testId}
+          aria-label={ariaLabel}
+          className={cn(focusRing, "focus-ring-contained", rowShell, "rounded-xl")}
+        >
           {body}
         </Link>
       ) : (
