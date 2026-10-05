@@ -2,11 +2,11 @@
 
 import { Check, ChevronRight, ListChecks } from "lucide-react";
 import { useId, useState } from "react";
-
 import { focusRing } from "@/components/card-recipes";
 import { modeInsetHairline, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
+import { OnCallTrackBar } from "@/components/on-call/kit/track-bar";
 import { OnCallStateLabel } from "@/components/on-call/kit/state-label";
-import { onCallLeadingIcon, onCallTrack, onCallTrackFill } from "@/components/on-call/kit/calm";
+import { onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { modeNameText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
 import { OnCallNextShift } from "@/components/on-call/on-call-next-shift";
 import type { RosterShiftsState } from "@/components/roster/use-roster-shifts";
@@ -20,11 +20,8 @@ import {
   type OnCallShiftContext,
   type OnCallShiftPeriod,
 } from "@/lib/on-call/shift-context";
-
 const PERIODS: readonly OnCallShiftPeriod[] = ["day", "evening", "night"];
-
 type ShiftList = { readonly key: "start" | "end"; readonly label: string; readonly items: readonly HandbookItem[] };
-
 /**
  * The hospital's start- and end-of-shift lists: the orientation entries in the
  * `first_shift` and `ongoing` phases only. Before-start, first-week and leaving
@@ -37,7 +34,6 @@ function onCallShiftLists(items: readonly HandbookItem[]): { start: HandbookItem
     end: orientation.filter((item) => item.orientationPhase === "ongoing"),
   };
 }
-
 function TickList({
   list,
   ticked,
@@ -104,7 +100,6 @@ function TickList({
     </section>
   );
 }
-
 /**
  * "Shift lists" (v6 moved it behind the mode button; the page menu has no link
  * slot yet, so it sits in Now's footer group as one 52px row).
@@ -140,7 +135,6 @@ export function NowShiftLists({
     else next.add(id);
     setTicks({ shiftKey: context.shiftKey, ids: next });
   };
-
   const { start, end } = onCallShiftLists(items);
   const startList: ShiftList = { key: "start", label: "Start of shift", items: start };
   const endList: ShiftList = { key: "end", label: "End of shift", items: end };
@@ -148,7 +142,6 @@ export function NowShiftLists({
   const lists = context.phase === "end" ? [endList, startList] : [startList, endList];
   const doneCount = current.items.filter((item) => ticked.has(item.id)).length;
   const hasLists = start.length + end.length > 0;
-
   return (
     <>
       <li className={modeInsetHairline}>
@@ -178,12 +171,10 @@ export function NowShiftLists({
                 <span className={cn(modeSecondaryText, modeNumberText, "break-words")}>
                   {`${current.label} · ${doneCount} of ${current.items.length}`}
                 </span>
-                <span aria-hidden="true" className={cn(onCallTrack, "w-16 shrink-0")}>
-                  <span
-                    className={onCallTrackFill}
-                    style={{ width: `${current.items.length ? (doneCount / current.items.length) * 100 : 0}%` }}
-                  />
-                </span>
+                <OnCallTrackBar
+                  percent={current.items.length ? (doneCount / current.items.length) * 100 : 0}
+                  className="w-16 shrink-0"
+                />
               </span>
             ) : (
               <OnCallStateLabel state={{ kind: "not-set-up" }} />

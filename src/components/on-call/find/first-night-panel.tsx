@@ -3,9 +3,9 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
-
 import { focusRing } from "@/components/card-recipes";
-import { onCallActionLink, onCallTrack, onCallTrackFill } from "@/components/on-call/kit/calm";
+import { OnCallTrackBar } from "@/components/on-call/kit/track-bar";
+import { onCallActionLink } from "@/components/on-call/kit/calm";
 import { modeSecondaryText } from "@/components/mode-kit/type";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { onCallChecklistItemKey, useOnCallChecklists } from "@/lib/on-call/checklist-storage";
@@ -15,14 +15,11 @@ import {
   onCallFirstNightProgress,
   type OnCallFirstNightStage,
 } from "@/lib/on-call/first-night";
-
 type StageId = OnCallFirstNightStage["id"];
-
 /** How many prompts a stage shows here before "N more · Open". */
 const SHOWN = 3;
 const RING_RADIUS = 20;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
-
 function ProgressRing({ done, total }: { readonly done: number; readonly total: number }) {
   const fraction = total > 0 ? done / total : 0;
   return (
@@ -59,7 +56,6 @@ function ProgressRing({ done, total }: { readonly done: number; readonly total: 
     </span>
   );
 }
-
 /**
  * Handbook's First night panel (mock-up v10 s-4): one quiet panel with a small
  * progress ring, a three-stage switch and the chosen stage's first prompts.
@@ -88,7 +84,6 @@ export function OnCallFirstNightPanel({ id, testId }: { readonly id?: string; re
   const [picked, setPicked] = useState<StageId | null>(null);
   const current = stages.find((stage) => stage.id === (picked ?? firstOpen)) ?? stages[0];
   const more = current.prompts.length - SHOWN;
-
   return (
     <section id={id} aria-labelledby={headingId} className="grid min-w-0 scroll-mt-32 gap-2" data-testid={testId}>
       <div className="flex min-w-0 items-center gap-3 px-3">
@@ -100,7 +95,6 @@ export function OnCallFirstNightPanel({ id, testId }: { readonly id?: string; re
           </h2>
         </div>
       </div>
-
       <div role="group" aria-label="Stage" className="grid min-w-0 grid-cols-3 gap-2 px-3">
         {stages.map((stage) => {
           const active = stage.id === current.id;
@@ -114,9 +108,7 @@ export function OnCallFirstNightPanel({ id, testId }: { readonly id?: string; re
               data-testid={`on-call-find-first-night-stage-${stage.id}`}
               className={cn(focusRing, "grid min-h-12 min-w-0 content-center gap-1.5 rounded-sm text-left")}
             >
-              <span aria-hidden="true" className={onCallTrack}>
-                <span className={onCallTrackFill} style={{ width: `${fill}%` }} />
-              </span>
+              <OnCallTrackBar percent={fill} />
               <span
                 className={cn(
                   "break-words text-xs",
@@ -131,7 +123,6 @@ export function OnCallFirstNightPanel({ id, testId }: { readonly id?: string; re
           );
         })}
       </div>
-
       <div className="grid min-w-0 gap-1">
         <div className="flex min-h-12 min-w-0 items-center justify-between gap-3 px-3">
           <h3 className={eyebrowText}>{current.title}</h3>

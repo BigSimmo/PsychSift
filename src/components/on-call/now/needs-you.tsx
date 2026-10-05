@@ -3,15 +3,9 @@
 import { Phone } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-
+import { OnCallTrackBar } from "@/components/on-call/kit/track-bar";
 import { focusRing } from "@/components/card-recipes";
-import {
-  onCallLeadingIcon,
-  onCallOutlineButton,
-  onCallOutlineDisc,
-  onCallTrack,
-  onCallTrackFill,
-} from "@/components/on-call/kit/calm";
+import { onCallLeadingIcon, onCallOutlineButton, onCallOutlineDisc } from "@/components/on-call/kit/calm";
 import { modeNumberText } from "@/components/mode-kit/type";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { readOnCallYouCalled, rememberOnCallYouCalled, type OnCallYouCalled } from "@/lib/on-call/call-marks";
@@ -24,7 +18,6 @@ import { ON_CALL_YOU_CALLED_ENABLED } from "@/lib/on-call/feature-flags";
 import { formatOnCallTime } from "@/lib/on-call/display-dates";
 import { spokenOnCallNumber } from "@/lib/on-call/number-resolver";
 import { onCallLadderStepMarkId, type OnCallNeedsYou } from "@/lib/on-call/now-rows";
-
 function subscribeToMarks(onChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   window.addEventListener(onCallDeviceStoreChangedEvent, onChange);
@@ -36,7 +29,6 @@ function subscribeToMarks(onChange: () => void): () => void {
     window.removeEventListener("storage", onChange);
   };
 }
-
 function marksSnapshot(): string {
   if (typeof window === "undefined") return "";
   try {
@@ -45,7 +37,6 @@ function marksSnapshot(): string {
     return "";
   }
 }
-
 /**
  * This shift's "You called" marks (ids and times only), re-read when a call is
  * recorded here, in another tab, or wiped at sign-out. Empty while the "You
@@ -55,7 +46,6 @@ export function useOnCallCallMarks(now: Date): readonly OnCallYouCalled[] {
   const raw = useSyncExternalStore(subscribeToMarks, marksSnapshot, () => "");
   return useMemo(() => (ON_CALL_YOU_CALLED_ENABLED && raw ? readOnCallYouCalled(now) : []), [raw, now]);
 }
-
 /** "6 min ago", "1 h 5 min ago": elapsed time only, never a deadline. */
 function elapsed(calledAt: string, now: Date): string {
   const minutes = Math.max(0, Math.floor((now.getTime() - Date.parse(calledAt)) / 60_000));
@@ -64,12 +54,10 @@ function elapsed(calledAt: string, now: Date): string {
   const rest = minutes % 60;
   return rest === 0 ? `${hours} h ago` : `${hours} h ${rest} min ago`;
 }
-
 /** The mark "They answered" leaves: a ladder id and a time, nothing else. */
 export function onCallLadderAnsweredMarkId(ladderId: string): string {
   return `answered:${ladderId}`;
 }
-
 /** Whether the reader said the rung answered after this call was made. */
 export function onCallNeedsYouAnswered(
   needs: OnCallNeedsYou | null,
@@ -79,7 +67,6 @@ export function onCallNeedsYouAnswered(
   const answered = marks.find((mark) => mark.entryId === onCallLadderAnsweredMarkId(needs.ladderId));
   return Boolean(answered && answered.calledAt >= needs.calledAt);
 }
-
 /**
  * "Escalating" (mock-up v10 Now): shown only while a call to a rung of a
  * ladder waits. It says who was rung and when, and, only when the hospital
@@ -146,11 +133,7 @@ export function NowNeedsYou({
           </p>
         </div>
       </div>
-      {used !== null ? (
-        <span aria-hidden="true" className={onCallTrack}>
-          <span className={onCallTrackFill} style={{ width: `${used}%` }} />
-        </span>
-      ) : null}
+      {used !== null ? <OnCallTrackBar percent={used} /> : null}
       <div className="grid grid-cols-2 gap-2">
         <button
           type="button"

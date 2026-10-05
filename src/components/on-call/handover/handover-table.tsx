@@ -8,6 +8,7 @@ import {
   OnCallHandoverBeforeItLeaves,
   type OnCallHandoverDestination,
 } from "@/components/on-call/handover/before-it-leaves";
+import { OnCallTrackBar } from "@/components/on-call/kit/track-bar";
 import { onCallActionLink, onCallFilledButton } from "@/components/on-call/kit/calm";
 import { modeSecondaryText } from "@/components/mode-kit/type";
 import { announce } from "@/components/ui/live-announcer";
@@ -144,12 +145,11 @@ function ReviewBar({ patients }: { readonly patients: readonly OnCallHandoverPat
             />
           ))
         ) : (
-          <span className="h-1 flex-1 overflow-hidden rounded-full bg-[color:var(--surface-wash)]">
-            <span
-              className="block h-full rounded-full bg-[color:var(--text-heading)]"
-              style={{ width: `${Math.round((review / total) * 100)}%` }}
-            />
-          </span>
+          <OnCallTrackBar
+            percent={Math.round((review / total) * 100)}
+            className="flex-1"
+            fillClassName="bg-[color:var(--text-heading)]"
+          />
         )}
       </span>
       <p className="nums shrink-0 text-sm font-semibold text-[color:var(--text-heading)]">

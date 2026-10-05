@@ -4,6 +4,7 @@ import { Clock, Phone } from "lucide-react";
 import { useId, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
+import { OnCallTrackBar } from "@/components/on-call/kit/track-bar";
 import { onCallOutlineButton } from "@/components/on-call/kit/calm";
 import { OnCallDialSheet, onCallCallRoute } from "@/components/on-call/kit/dial-sheet";
 import { OnCallGroupActionControl } from "@/components/on-call/kit/grouped-list";
@@ -152,11 +153,7 @@ export function NowRightNow({
           {cover ? (
             <div className="grid gap-1" data-testid="on-call-now-right-now-track">
               <div aria-hidden="true" className="relative h-3">
-                <span className="absolute inset-x-0 top-1 h-1 rounded-full bg-[color:var(--surface-wash)]" />
-                <span
-                  className="absolute left-0 top-1 h-1 rounded-full bg-[color:var(--mode-identity)]"
-                  style={{ width: `${cover.progress}%` }}
-                />
+                <OnCallTrackBar percent={cover.progress} className="absolute inset-x-0 top-1" />
                 <span
                   className="absolute top-0 size-3 -translate-x-1/2 rounded-full border-2 border-[color:var(--mode-identity)] bg-[color:var(--surface)]"
                   style={{ left: `${cover.progress}%` }}
