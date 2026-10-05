@@ -62,7 +62,12 @@ export function RosterPageHeader({
         <RosterIdentityTile icon={icon} />
       </WithoutModeBand>
       <div className="grid min-w-0 flex-1 gap-0.5 pt-0.5">
-        {eyebrow ? <p className="nums text-xs text-[color:var(--text-muted)]">{eyebrow}</p> : null}
+        {/* The band already says "Roster" (its eyebrow on most pages). */}
+        {eyebrow ? (
+          <WithoutModeBand>
+            <p className="nums text-xs text-[color:var(--text-muted)]">{eyebrow}</p>
+          </WithoutModeBand>
+        ) : null}
         <PageTitleUnderBand className="text-lg-minus font-semibold leading-tight text-[color:var(--text-heading)]">
           {title}
         </PageTitleUnderBand>

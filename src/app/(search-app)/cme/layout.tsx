@@ -25,19 +25,22 @@ export default async function CmeLayout({ children }: { children: ReactNode }) {
     }
   }
   return (
-    <CmeOwnerBoundary serverOwnerId={serverOwnerId} serverAuthVerified={serverAuthVerified} demoMode={demoMode}>
-      {/* A record, a form and the summary keep their own back-arrow headers. */}
-      <ModeBand
-        modeId="cme"
-        customiseHref="/cme/customise"
-        statusSlot={["/cme"]}
-        hiddenOn={["/cme/log/", "/cme/new", "/cme/summary"]}
-      >
+    // The band sits outside the owner boundary: it holds no private record, so it
+    // shows signed out, offline and while the session is checked, and the page's
+    // status line and counts reach it from inside the boundary.
+    // A record, a form and the summary keep their own back-arrow headers.
+    <ModeBand
+      modeId="cme"
+      customiseHref="/cme/customise"
+      statusSlot={["/cme"]}
+      hiddenOn={["/cme/log/", "/cme/new", "/cme/summary"]}
+    >
+      <CmeOwnerBoundary serverOwnerId={serverOwnerId} serverAuthVerified={serverAuthVerified} demoMode={demoMode}>
         <Suspense fallback={null}>
           <CmePageTabs />
         </Suspense>
         {children}
-      </ModeBand>
-    </CmeOwnerBoundary>
+      </CmeOwnerBoundary>
+    </ModeBand>
   );
 }

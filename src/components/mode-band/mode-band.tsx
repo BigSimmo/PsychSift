@@ -137,7 +137,7 @@ function greetingFor(now: Date): string {
 
 /** The greeting, settled after hydration so a cached page never greets the wrong part of the day. */
 function GreetingTitle({ fallback }: { fallback: string }) {
-  const now = useClientTime();
+  const now = useClientTime({ updateInterval: 60_000 });
   return <>{now ? greetingFor(new Date(now)) : fallback}</>;
 }
 
@@ -159,11 +159,12 @@ function isHidden(pathname: string, hiddenOn: readonly string[] | undefined): bo
 
 /**
  * Today's date, rendered after hydration so a server in another timezone, or a
- * page cached across midnight, can never show yesterday. The row keeps its
- * height either way.
+ * page cached across midnight, can never show yesterday, and checked each
+ * minute so a page left open moves on at midnight. The row keeps its height
+ * either way.
  */
 function TodayDate() {
-  const time = useClientTime();
+  const time = useClientTime({ updateInterval: 60_000 });
   if (!time) return <span className="mode-band__date" />;
   const now = new Date(time);
   return <span className="mode-band__date">{dateLong.format(now)}</span>;
@@ -227,9 +228,10 @@ function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId) {
 
 /**
  * Scrolls the tab row sideways, never the page, so the current tab is in view
- * when a page opens on a tab past the phone's edge.
+ * when a page opens on a tab past the phone's edge, or when a tab that arrives
+ * after loading (Roster's Team, Teaching's Organise) pushes it there.
  */
-function useCurrentTabInView(activeId: string | null) {
+function useCurrentTabInView(activeId: string | null, tabKey: string) {
   const [row, setRow] = useState<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     const current = row?.querySelector<HTMLElement>('[aria-current="page"]');
@@ -239,7 +241,7 @@ function useCurrentTabInView(activeId: string | null) {
     if (left < row.scrollLeft || right > row.scrollLeft + row.clientWidth) {
       row.scrollTo({ left: Math.max(0, left - (row.clientWidth - current.offsetWidth) / 2) });
     }
-  }, [row, activeId]);
+  }, [row, activeId, tabKey]);
   // The edge fade shows only while a tab is still cut off to the right, so it
   // never dims the last tab once the row is scrolled to its end, or fits.
   useLayoutEffect(() => {
@@ -256,7 +258,7 @@ function useCurrentTabInView(activeId: string | null) {
       row.removeEventListener("scroll", update);
       observer?.disconnect();
     };
-  }, [row]);
+  }, [row, tabKey]);
   return setRow;
 }
 
@@ -274,6 +276,18 @@ function useCurrentTabInView(activeId: string | null) {
  * Scrolling therefore takes the band with the page, and the top bar keeps its
  * own single hide-and-reveal (docs/search-chrome-behaviour.md).
  */
+/**
+ * The tab naming this page. The shared page list answers for most modes; a mode
+ * it has no rule for (First Nations) still marks a tab whose link is this page.
+ */
+function bandActiveId(modeId: AppModeId, pathname: string): string | null {
+  return (
+    activeModeSecondaryNavigationId(modeId, pathname) ??
+    modeSecondaryNavigationEntries(modeId).find((entry) => entry.href?.split(/[?#]/)[0] === pathname)?.id ??
+    null
+  );
+}
+
 export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   const pathname = usePathname() ?? "";
   const [pageCounts, setPageCounts] = useState<Readonly<Record<string, number>>>({});
@@ -290,7 +304,7 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   const [pageStatusKind, setPageStatusKind] = useState<ModeBandStatusValue["kind"] | null>(null);
   const statusKind = pageStatusKind ?? props.status?.kind ?? null;
   const hideCounts = statusKind !== null && COUNTS_HIDDEN.has(statusKind);
-  const activeId = activeModeSecondaryNavigationId(props.modeId, pathname);
+  const activeId = bandActiveId(props.modeId, pathname);
   const shown =
     !isHidden(pathname, props.hiddenOn) &&
     (activeId !== null || pathname === (props.homePath ?? modeHomePath(props.modeId)));
@@ -337,7 +351,7 @@ function ModeBandHeader({
   }, [tabs, modeId, teachingRoles, rosterHasTeam]);
 
   usePublishBandSurface(band, modeId);
-  const tabRow = useCurrentTabInView(activeId);
+  const tabRow = useCurrentTabInView(activeId, tabEntries.map((entry) => entry.id).join(" "));
 
   const Icon = appModeIcons[modeId];
   const modeName = appModeDefinition(modeId).label;
@@ -490,7 +504,7 @@ function SampleLine() {
 }
 
 function StatusLine({ value }: { value: ModeBandStatusValue }) {
-  const time = useClientTime();
+  const time = useClientTime({ updateInterval: 60_000 });
   switch (value.kind) {
     case "saved": {
       const at = typeof value.at === "string" ? new Date(value.at) : value.at;
