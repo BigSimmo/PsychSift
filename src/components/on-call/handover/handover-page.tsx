@@ -187,7 +187,7 @@ function PatientRail({
                 aria-current={current ? "step" : undefined}
                 aria-label={`Edit ${label}${patient.review === "yes" ? ", flagged for review" : ""}`}
                 className={cn(
-                  "relative grid size-11 place-items-center rounded-full border-2 text-xs font-semibold",
+                  "relative grid size-12 place-items-center rounded-full border-2 text-xs font-semibold",
                   current
                     ? "border-[color:var(--mode-identity)] bg-[color:var(--surface-raised)] text-[color:var(--mode-identity)]"
                     : "border-transparent bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]",
@@ -211,7 +211,7 @@ function PatientRail({
             type="button"
             onClick={onAdd}
             aria-label="Add a patient"
-            className="grid size-11 place-items-center rounded-full border-2 border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]"
+            className="grid size-12 place-items-center rounded-full border-2 border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]"
             data-testid="on-call-handover-rail-add"
           >
             <Plus aria-hidden="true" className="size-icon-sm" />
