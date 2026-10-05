@@ -55,7 +55,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
   teaching: ["Today", "Week", "What's on", "Resources", "Logbook", "Teach", "Supervision", "Organise"],
   psychiatry: [],
   medicines: [],
-  "my-work": ["Renewals", "New job", "Help"],
+  "my-work": ["Renewals", "Compliance", "New job", "Help"],
   roster: ["Today", "Shifts", "Team", "Swaps", "Requests", "Settings"],
   "first-nations": [
     "Bedside",
@@ -600,7 +600,8 @@ describe("mode secondary navigation registry", () => {
     const visible = (modeId: AppModeId) =>
       modeSecondaryNavigationEntries(modeId).filter((entry) => entry.href && !entry.hidden);
     expect(visible("teaching")).toHaveLength(8);
-    expect(visible("my-work")).toHaveLength(3);
+    // Compliance joined Admin with the 5 Oct mock-up (Renewals · Compliance · New job · Help).
+    expect(visible("my-work")).toHaveLength(4);
     expect(visible("roster")).toHaveLength(6);
     expect(visible("first-nations")).toHaveLength(9);
     expect(visible("my-day")).toHaveLength(3);

@@ -290,6 +290,7 @@
       "entryExported": true,
       "directImportFiles": [
         "src/components/AccessibleTable.tsx",
+        "src/components/admin/admin-compliance-page.tsx",
         "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-help-page.tsx",
         "src/components/admin/admin-load-failed.tsx",
@@ -431,6 +432,7 @@
       ],
       "productImportFiles": [
         "src/components/AccessibleTable.tsx",
+        "src/components/admin/admin-compliance-page.tsx",
         "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-help-page.tsx",
         "src/components/admin/admin-load-failed.tsx",
@@ -3142,6 +3144,7 @@
       "documentedDisposition": null,
       "routes": [
         "src/app/(display)/teaching/display/[token]/page.tsx",
+        "src/app/(search-app)/admin/compliance/page.tsx",
         "src/app/(search-app)/admin/help/page.tsx",
         "src/app/(search-app)/admin/new-job/pack/page.tsx",
         "src/app/(search-app)/admin/new-job/page.tsx",
@@ -3294,6 +3297,16 @@
       "roots": [
         {
           "file": "src/app/(display)/teaching/display/[token]/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/admin/compliance/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5470,6 +5483,7 @@
   "routeCoverage": {
     "discovered": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
+      "src/app/(search-app)/admin/compliance/page.tsx",
       "src/app/(search-app)/admin/help/page.tsx",
       "src/app/(search-app)/admin/new-job/pack/page.tsx",
       "src/app/(search-app)/admin/new-job/page.tsx",
@@ -5627,6 +5641,7 @@
     ],
     "declared": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
+      "src/app/(search-app)/admin/compliance/page.tsx",
       "src/app/(search-app)/admin/help/page.tsx",
       "src/app/(search-app)/admin/new-job/pack/page.tsx",
       "src/app/(search-app)/admin/new-job/page.tsx",
@@ -5788,7 +5803,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 162,
+    "inheritedCkbV2RootCount": 163,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -5797,8 +5812,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 46,
-    "rootCount": 163,
-    "productionRouteCount": 155,
-    "nextUiEntryCount": 250
+    "rootCount": 164,
+    "productionRouteCount": 156,
+    "nextUiEntryCount": 252
   }
 }
