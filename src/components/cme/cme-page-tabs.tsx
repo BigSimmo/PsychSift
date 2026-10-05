@@ -36,10 +36,10 @@ export function CmeSegmentedTabs({
             className={cn(
               focusRing,
               // Labels wrap rather than overlap when there is no room (200% zoom on a phone).
-              "relative inline-flex min-h-10 min-w-0 flex-1 items-center justify-center rounded-sm px-1.5 py-1 text-center text-sm-minus leading-4 no-underline",
+              "relative inline-flex min-w-0 flex-1 items-center justify-center rounded-sm border border-transparent px-1.5 py-2.25 text-center text-sm-minus leading-5 no-underline",
               "after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
               segment.active
-                ? "border border-[color:var(--border)] bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] forced-colors:border-[Highlight]"
+                ? "border-[color:var(--border)] bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] forced-colors:border-[Highlight]"
                 : "font-medium text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
             )}
           >
