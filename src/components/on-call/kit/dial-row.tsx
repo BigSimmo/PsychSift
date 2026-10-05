@@ -1,9 +1,10 @@
 "use client";
 
-import { Phone } from "lucide-react";
+import { Copy, Phone, Star } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
+import { onCallOutlineDisc } from "@/components/on-call/kit/calm";
 import { OnCallDialSheet, onCallCallRoute } from "@/components/on-call/kit/dial-sheet";
 import {
   modeCallDiscShape,
@@ -51,6 +52,10 @@ export type OnCallDialRowProps = {
   /** Named in the dial sheet ("Synthetic Hospital"). */
   readonly hospitalName?: string | null;
   readonly trailingAction?: ReactNode;
+  /** A badge or glyph before the name (REG, W2, a shield). */
+  readonly leading?: ReactNode;
+  /** Starred for My Day: a small teal star before the name. */
+  readonly starred?: boolean;
   /** This phone is a hospital phone (the reader's switch): a bare extension rings its own digits. */
   readonly hospitalPhone?: boolean;
   /** The "I'm on a hospital phone" switch, shown in the dial sheet under a bare extension. */
@@ -98,17 +103,16 @@ function visibleNumberLabel(label: OnCallNumberLabel | undefined, dial: Handbook
  * - The **call disc** is the `tel:` link, inside a 48px tap area, named with the
  *   digits spaced out ("Call Switchboard, 9 0 0 0, 0 0 0 0") so a screen reader
  *   reads a number, not "nine million".
- * - The **number text** sits in a fixed right-hand column beside the disc, so
- *   digits line up down a list (standard §2), and is a button that opens the
- *   "Dial from a desk phone" sheet. It is 400 weight, tabular, and wraps rather
- *   than truncating.
+ * - The **number** leads the secondary line under the name (mock-up v10),
+ *   400 weight and tabular, and wraps rather than truncating. The name and
+ *   number together are one button that opens the "Dial from a desk phone"
+ *   sheet; the outlined call disc beside them is the call link.
  * - The row is **48px** with a title alone and **52px** with one secondary
- *   line (subtitle, number label, "From a hospital phone", state, "You
- *   called"), matching `OnCallModuleSkeleton`. Nothing in it carries vertical
- *   padding; a test fails if any does (review B1).
- * - A desk-only number (an extension or short code) gets **no call disc** and
- *   says "From a hospital phone". If a mobile route is recorded beside it, that
- *   route is the row's only call link.
+ *   line, matching `OnCallModuleSkeleton`, growing only when text wraps.
+ * - A desk-only number (an extension or short code) gets **no call link**: its
+ *   disc is a copy control that opens the sheet, and the line says "From a
+ *   hospital phone". If a mobile route is recorded beside it, that route is
+ *   the row's only call link.
  * - A tap on the call link records "Your usual" and the "You called 02:14" mark.
  *
  * The row is a list item and is never a link itself, so no control sits inside
@@ -130,6 +134,8 @@ export function OnCallDialRow({
   tone = "default",
   hospitalName,
   trailingAction,
+  leading,
+  starred = false,
   hospitalPhone = false,
   hospitalPhoneSwitch,
   now,
@@ -167,19 +173,49 @@ export function OnCallDialRow({
     secondary.push(<span key="called" className={modeNumberText}>{`You called ${formatOnCallTime(calledAt)}`}</span>);
   }
 
+  // The number leads the secondary line (mock-up v10), so a list reads as
+  // names with their numbers under them and one outlined disc per row.
+  const numberLine: ReactNode[] = [];
+  if (hasNumber && dial) {
+    numberLine.push(
+      <span key="number" data-dial-row-number="" className={cn(modeNumberText, "text-[color:var(--text)]")}>
+        {dial.display}
+      </span>,
+    );
+  }
+  const lineParts = [...numberLine, ...secondary];
+  const deskOnly = hasNumber && !callRoute?.tel;
+
   return (
     <li
       data-testid={testId}
       className={cn(
         modeInsetHairline,
-        secondary.length > 0 ? modeRowHeight.double : modeRowHeight.single,
-        // No vertical padding here or in either column: the 48px controls on
-        // the right set the floor, and the row's min height sets 48/52.
-        "grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 pl-3 pr-1",
+        lineParts.length > 0 ? modeRowHeight.double : modeRowHeight.single,
+        "flex min-w-0 items-center gap-x-3 pl-3 pr-1",
         className,
       )}
     >
-      <span data-dial-row-title="" className="grid min-w-0 content-center gap-0.5">
+      {leading ? (
+        <span aria-hidden="true" className="flex w-9 shrink-0 items-center justify-center">
+          {leading}
+        </span>
+      ) : null}
+      {/* The name and number open the "Dial from a desk phone" sheet; the disc
+          beside them is the call link. Siblings, never nested. */}
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-label={hasNumber && dial ? `${title}, ${dial.display}. Dialling details` : undefined}
+        onClick={hasNumber ? () => setSheetOpen(true) : undefined}
+        disabled={!hasNumber}
+        data-dial-row-title=""
+        className={cn(
+          focusRing,
+          hasNumber ? modePressable : null,
+          "grid min-h-12 min-w-0 flex-1 content-center gap-0.5 rounded-md py-1.5 text-left disabled:cursor-default",
+        )}
+      >
         <span className="flex min-w-0 items-center gap-1.5">
           {emergency ? (
             <span
@@ -188,13 +224,20 @@ export function OnCallDialRow({
               className={cn(modeDot, "bg-[color:var(--danger)]")}
             />
           ) : null}
-          <span className={cn(modeNameText, "min-w-0 break-words text-base-minus text-[color:var(--text-heading)]")}>
+          {starred ? (
+            <Star
+              aria-label="Starred"
+              data-testid={`${testId}-star`}
+              className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
+            />
+          ) : null}
+          <span className={cn(modeNameText, "min-w-0 break-words text-base-minus leading-5 text-[color:var(--text-heading)]")}>
             {title}
           </span>
         </span>
-        {secondary.length > 0 ? (
-          <span className={cn(modeSecondaryText, "flex min-w-0 flex-wrap items-center gap-x-1.5 break-words")}>
-            {secondary.flatMap((part, index) =>
+        {lineParts.length > 0 ? (
+          <span className={cn(modeSecondaryText, "flex min-w-0 flex-wrap items-center gap-x-1.5 break-words leading-5")}>
+            {lineParts.flatMap((part, index) =>
               index === 0
                 ? [part]
                 : [
@@ -206,28 +249,10 @@ export function OnCallDialRow({
             )}
           </span>
         ) : null}
-      </span>
+      </button>
 
-      {hasNumber && dial ? (
+      {hasNumber || trailingAction ? (
         <span className="flex shrink-0 items-center">
-          {/* The number column: a fixed width, right-aligned, so digits line up
-              down a list (standard §2). The number text opens the desk-phone
-              sheet; it wraps rather than truncating. */}
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-label={`${dial.display}. Dialling details for ${title}`}
-            onClick={() => setSheetOpen(true)}
-            data-dial-row-number=""
-            className={cn(
-              focusRing,
-              modePressable,
-              modeNumberText,
-              "grid min-h-12 w-30 content-center justify-items-end rounded-md px-1 text-right text-base-minus text-[color:var(--text)]",
-            )}
-          >
-            <span className="break-words">{dial.display}</span>
-          </button>
           {callRoute?.tel ? (
             <a
               href={callRoute.tel}
@@ -235,18 +260,28 @@ export function OnCallDialRow({
               aria-label={callName}
               className={cn(modeTapArea, focusRing, "rounded-full")}
             >
-              <span aria-hidden="true" className={emergency ? modeCallDiscShape.emergency : modeCallDiscShape.neutral}>
+              <span aria-hidden="true" className={emergency ? modeCallDiscShape.emergency : onCallOutlineDisc}>
                 <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-md" />
               </span>
             </a>
-          ) : (
-            // Holds the disc's place, so a desk-only number stays in line.
-            <span aria-hidden="true" data-dial-row-disc-spacer="" className="w-12 shrink-0" />
-          )}
+          ) : deskOnly ? (
+            // A desk-only number has no call link: the disc becomes the copy
+            // control, which opens the sheet that copies it.
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              aria-label={`Copy ${title}, ${dial?.display ?? ""}`}
+              onClick={() => setSheetOpen(true)}
+              data-dial-row-disc-spacer=""
+              className={cn(modeTapArea, focusRing, "rounded-full")}
+            >
+              <span aria-hidden="true" className={onCallOutlineDisc}>
+                <Copy aria-hidden="true" strokeWidth={1.5} className="size-icon-sm" />
+              </span>
+            </button>
+          ) : null}
           {trailingAction ? <span className="flex shrink-0 items-center">{trailingAction}</span> : null}
         </span>
-      ) : trailingAction ? (
-        <span className="flex shrink-0 items-center">{trailingAction}</span>
       ) : null}
 
       {dial && dial.kind !== "none" ? (
