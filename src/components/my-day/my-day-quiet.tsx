@@ -342,16 +342,16 @@ export function QuietKeyValue({
 export function QuietRing({
   fraction,
   mode,
-  size = 84,
   testId,
   children,
 }: {
   readonly fraction: number;
   readonly mode?: MyDaySourceMode;
-  readonly size?: number;
   readonly testId?: string;
   readonly children: ReactNode;
 }) {
+  // 84px, matching the size-21 box below.
+  const size = 84;
   const stroke = 6;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -362,8 +362,7 @@ export function QuietRing({
       data-mode-identity={mode}
       data-testid={testId}
       data-fraction={clamped.toFixed(3)}
-      className="relative grid shrink-0 place-items-center text-center"
-      style={{ width: size, height: size }}
+      className="relative grid size-21 shrink-0 place-items-center text-center"
     >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 -rotate-90">
         <circle
