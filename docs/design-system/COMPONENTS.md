@@ -1092,7 +1092,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `RetrievalStateBanner`   | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `SafeBoldText`           | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               9 |
 | `SearchField`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
-| `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              21 |
+| `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              20 |
 | `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              15 |
 | `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |              87 |
 | `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               7 |

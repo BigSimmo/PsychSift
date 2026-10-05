@@ -110,12 +110,12 @@ describe("Log", () => {
     );
   });
 
-  it("offers a year choice per year the log holds data for, inside the filter sheet", async () => {
+  it("offers a year choice per year the log holds data for, from the year picker", async () => {
     const user = userEvent.setup();
     render(<CmeLogPage entries={fixtureEntries} set={fixtureSet} />);
-    // The year lives in the sheet; the Filters button says which year is showing.
+    // The year lives in a sheet; the year picker beside "Log an activity" says which year is showing.
     expect(screen.queryByTestId("cme-log-year-tabs")).toBeNull();
-    expect(screen.getByTestId("cme-log-open-filters")).toHaveTextContent("Filters · 2026");
+    expect(screen.getByTestId("cme-log-open-filters")).toHaveTextContent("2026");
     await user.click(screen.getByTestId("cme-log-open-filters"));
     const years = screen.getByRole("navigation", { name: "Select year" });
     expect(years).toHaveAttribute("data-testid", "cme-log-year-tabs");
@@ -123,7 +123,7 @@ describe("Log", () => {
     await user.click(within(years).getByRole("button", { name: /^2025/ }));
     expect(screen.getByText("Audit — discharge planning review")).toBeInTheDocument();
     expect(screen.queryByText("Journal club — treatment-resistant depression")).toBeNull();
-    expect(screen.getByTestId("cme-log-open-filters")).toHaveTextContent("Filters · 2025");
+    expect(screen.getByTestId("cme-log-open-filters")).toHaveTextContent("2025");
   });
 
   it("groups entries by month, most recent month first", () => {
@@ -143,16 +143,18 @@ describe("Log", () => {
     expect(screen.queryByText("Journal club — treatment-resistant depression")).toBeNull();
   });
 
-  it("filters by category from the filter sheet, without hiding the month grouping's own job", async () => {
+  it("filters by category from the category chip, without hiding the month grouping's own job", async () => {
     const user = userEvent.setup();
     render(<CmeLogPage entries={fixtureEntries} set={fixtureSet} />);
-    // The category row moved off the page into the sheet: one less control above the first entry.
+    // The categories live in a sheet behind one chip that names the one in force.
     expect(screen.queryByRole("radio", { name: "Measuring outcomes" })).toBeNull();
-    expect(screen.queryByTestId("cme-log-filter-count")).toBeNull();
-    await user.click(screen.getByTestId("cme-log-open-filters"));
-    const category = within(screen.getByTestId("cme-log-filter-sheet")).getByTestId("cme-log-filter");
+    expect(screen.getByTestId("cme-log-category-chip")).toHaveTextContent("All categories");
+    await user.click(screen.getByTestId("cme-log-category-chip"));
+    const sheet = screen.getByTestId("cme-log-filter-sheet");
+    expect(within(sheet).queryByTestId("cme-log-year-tabs")).toBeNull();
+    const category = within(sheet).getByTestId("cme-log-filter");
     await user.click(within(category).getByRole("button", { name: /measuring outcomes/i }));
-    expect(screen.getByTestId("cme-log-filter-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("cme-log-category-chip")).toHaveTextContent("Measuring outcomes");
     expect(screen.getByText("Peer review group — September")).toBeInTheDocument();
     expect(screen.queryByText("Journal club — treatment-resistant depression")).toBeNull();
     expect(screen.queryByText("RANZCP WA Branch training day")).toBeNull();
@@ -163,7 +165,7 @@ describe("Log", () => {
     render(<CmeLogPage entries={fixtureEntries} set={fixtureSet} initialCategory="measuring" />);
     expect(screen.getByText("Peer review group — September")).toBeInTheDocument();
     expect(screen.queryByText("Journal club — treatment-resistant depression")).toBeNull();
-    await user.click(screen.getByTestId("cme-log-open-filters"));
+    await user.click(screen.getByTestId("cme-log-category-chip"));
     const sheet = screen.getByTestId("cme-log-filter-sheet");
     expect(within(sheet).getByRole("button", { name: /measuring outcomes/i })).toHaveAttribute("aria-pressed", "true");
     await user.click(within(sheet).getByRole("button", { name: /educational activities/i }));
@@ -193,7 +195,7 @@ describe("Log", () => {
     expect(within(screen.getByTestId("cme-log-filter-sheet")).queryByRole("button", { name: /all years/i })).toBeNull();
   });
 
-  it("opens the copy sheet from Copy next, and marks and undoes only on the owner's say-so", async () => {
+  it("opens the copy sheet from Copy the next one, and marks and undoes only on the owner's say-so", async () => {
     const user = userEvent.setup();
     const writeText = vi.fn().mockResolvedValue(undefined);
     stubClipboard(writeText);
@@ -234,7 +236,7 @@ describe("Log", () => {
     expect(screen.getByTestId("cme-log-row-fx-2")).toHaveAttribute("href", "/cme/log/fx-2");
   });
 
-  it("keeps the board's closing call to action — a standing way to add a new entry", () => {
+  it("puts Log an activity beside the year picker — a standing way to add a new entry", () => {
     render(<CmeLogPage entries={fixtureEntries} set={fixtureSet} />);
     expect(screen.getByTestId("cme-log-new-entry")).toHaveAttribute("href", "/cme/new?year=2026");
   });
@@ -436,19 +438,25 @@ describe("Log rows, grouped by month", () => {
     expect(within(september).getByRole("heading", { level: 2 })).not.toHaveTextContent("2.5");
   });
 
-  it("reads a row as its title, then the day and category, with the hours at one decimal", () => {
+  it("reads a row as its title, then the category dot, the category and what is missing, with the hours", () => {
     render(<CmeLogPage entries={fixtureEntries} set={fixtureSet} today={TODAY} />);
     const row = screen.getByTestId("cme-log-row-fx-3").closest("li") as HTMLElement;
     expect(row).toHaveTextContent("RANZCP WA Branch training day");
+    // The date column shows "22 / Aug"; the full date with its weekday is read aloud.
     expect(row).toHaveTextContent("Sat 22 Aug");
-    expect(row).toHaveTextContent("Educational activities");
-    expect(row.textContent).toContain("5.0 h");
+    expect(row).toHaveTextContent("Educational · No reflection · Not marked copied");
+    expect(row.querySelector("[class*='--cme-cat-1']")).not.toBeNull();
+    expect(row.textContent).toContain("5h");
     const journal = screen.getByTestId("cme-log-row-fx-1").closest("li") as HTMLElement;
     expect(journal).toHaveTextContent("Wed 16 Sep");
-    expect(journal.textContent).toContain("1.0 h");
+    expect(journal).toHaveTextContent("Educational · Not marked copied");
+    expect(journal.textContent).toContain("1h");
+    const peer = screen.getByTestId("cme-log-row-fx-2").closest("li") as HTMLElement;
+    expect(peer).toHaveTextContent("Reviewing performance + Measuring outcomes · Marked copied");
+    expect(peer.textContent).toContain("1.5h");
   });
 
-  it("says No certificate only when the log has counted none, never when the count is unknown", () => {
+  it("says No evidence only when the log has counted none, never when the count is unknown", () => {
     const entries: CmeEntry[] = [
       { ...fixtureEntries[0]!, id: "none", evidenceCount: 0 },
       { ...fixtureEntries[1]!, id: "some", evidenceCount: 2 },
@@ -456,11 +464,10 @@ describe("Log rows, grouped by month", () => {
     ];
     render(<CmeLogPage entries={entries} set={fixtureSet} today={TODAY} />);
     const none = screen.getByTestId("cme-log-row-none").closest("li") as HTMLElement;
-    expect(none).toHaveTextContent("No certificate");
-    // The kit's state label: grey words after a small dot, never a filled chip.
-    expect(none.querySelector("[data-state-dot]")).not.toBeNull();
-    expect(screen.getByTestId("cme-log-row-some").closest("li")).not.toHaveTextContent("No certificate");
-    expect(screen.getByTestId("cme-log-row-unknown").closest("li")).not.toHaveTextContent("No certificate");
+    // Grey words on the row's second line, never a filled chip.
+    expect(none).toHaveTextContent("Educational · No evidence · Not marked copied");
+    expect(screen.getByTestId("cme-log-row-some").closest("li")).not.toHaveTextContent("No evidence");
+    expect(screen.getByTestId("cme-log-row-unknown").closest("li")).not.toHaveTextContent("No evidence");
   });
 
   it("adds the year to a date only when it is not this year", () => {
@@ -475,19 +482,26 @@ describe("Log rows, grouped by month", () => {
     expect(screen.getByTestId("cme-log-row-fx-4").closest("li")).toHaveTextContent("Mon 3 Nov 2025");
   });
 
-  it("leaves the floating Log as the page's one dark button", () => {
+  it("makes Log an activity the page's one filled button, in CPD indigo, with no floating Log", () => {
     const { container } = render(<CmeLogPage entries={fixtureEntries} set={fixtureSet} today={TODAY} />);
-    const dark = [...container.querySelectorAll<HTMLElement>("button, a[href]")].filter((node) =>
-      node.className.includes("bg-[color:var(--command)]"),
+    const filled = [...container.querySelectorAll<HTMLElement>("button, a[href]")].filter(
+      (node) =>
+        node.className.includes("bg-[color:var(--command)]") ||
+        node.className.includes("bg-[color:var(--clinical-accent)]"),
     );
-    expect(dark.map((node) => node.getAttribute("data-testid"))).toEqual(["cme-quick-log-button"]);
+    expect(filled.map((node) => node.getAttribute("data-testid"))).toEqual(["cme-log-new-entry"]);
+    expect(screen.getByTestId("cme-log-new-entry")).toHaveTextContent("Log an activity");
+    expect(screen.queryByTestId("cme-quick-log-button")).toBeNull();
   });
 
-  it("keeps 48 px clear under the last row for the floating + Log (spec §5)", () => {
+  it("reminds the owner to keep patient details out of reflections, beside the archived link", async () => {
+    const user = userEvent.setup();
     render(<CmeLogPage entries={fixtureEntries} set={fixtureSet} today={TODAY} />);
-    // The button sits max(16 px, the home indicator) off the bottom and is 48 px tall; 6rem more is those 48 px plus 48 px clear.
-    expect(screen.getByTestId("cme-log-page").className).toContain(
-      "pb-[calc(max(1rem,env(safe-area-inset-bottom))+6rem)]",
+    expect(screen.getByTestId("cme-log-privacy-reminder")).toHaveTextContent(
+      "Reflections are yours: leave out patient names, dates of birth and record numbers.",
     );
+    await user.click(screen.getByTestId("cme-log-show-archived"));
+    expect(screen.getByTestId("cme-log-show-archived")).toHaveTextContent("Back to active activities");
+    expect(screen.getByTestId("cme-log-empty")).toHaveTextContent("No archived activities in 2026.");
   });
 });

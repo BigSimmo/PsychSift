@@ -1,50 +1,94 @@
 "use client";
 
-import { categoryNames, formatLogHours, monthAnchorId, type MonthGroup } from "@/components/cme/cme-log-shared";
+import { CmeCategoryDot, CmeFlatList, CmeFlatRow, CmeGroupLabel, CmeRowValue } from "@/components/cme/cme-flat-list";
+import {
+  CATEGORY_SHORT_LABELS,
+  entryCategories,
+  entryStatusWords,
+  formatHoursShort,
+  monthAnchorId,
+  type MonthGroup,
+} from "@/components/cme/cme-log-shared";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
-import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
-import { ModeStateLabel } from "@/components/mode-kit/state-label";
-import { modeNumberText } from "@/components/mode-kit/type";
-import { cn, eyebrowText } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 import { formatCmeRowDate } from "@/lib/cme/cpd-year";
 import { totalAllocatedHours } from "@/lib/cme/evaluate";
-import { cmeCertificateMissing, type CmeEntry } from "@/lib/cme/types";
+import type { CmeEntry } from "@/lib/cme/types";
+
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+/** The row's date column: the day large, the month small. The full date (weekday, and the year when not this year) is read aloud. */
+function DateColumn({ date, today }: { date: string; today: string }) {
+  const day = Number(date.slice(8, 10));
+  const month = SHORT_MONTHS[Number(date.slice(5, 7)) - 1] ?? "";
+  return (
+    <span className="grid w-10 shrink-0 justify-items-center leading-tight">
+      <span aria-hidden="true" className="nums text-base font-normal text-[color:var(--text-heading)]">
+        {day}
+      </span>
+      <span aria-hidden="true" className="text-2xs text-[color:var(--text-muted)]">
+        {month}
+      </span>
+      <span className="sr-only">{formatCmeRowDate(date, today)}</span>
+    </span>
+  );
+}
 
 /**
- * One activity as a 52 px row in its month's hairline list (`ModeRow`: the
- * title at 500, the second line at 13 px muted): the day and the category,
- * then "No certificate" only when something is known to be missing, and the
- * hours at 400 beside the row's link. "No certificate" shows only when the log
- * has counted active certificates and found none (`cmeCertificateMissing`); an activity
- * whose evidence was not counted says nothing rather than guessing.
+ * One activity as a flat row (mock-up screen 02): the date column, the title,
+ * then one grey line — a small indigo-shade dot, the category, and what the
+ * audit still needs — with the hours at the end. Colour only helps: the
+ * category is always named in words beside its dot.
  */
 function EntryRow({ entry, today }: { entry: CmeEntry; today: string }) {
+  const categories = entryCategories(entry);
+  const first = categories[0];
+  const words = [categories.map((category) => CATEGORY_SHORT_LABELS[category]).join(" + "), ...entryStatusWords(entry)]
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <ModeRow
+    <CmeFlatRow
       href={`/cme/log/${entry.id}`}
       testId={`cme-log-row-${entry.id}`}
+      lead={<DateColumn date={entry.date} today={today} />}
       title={entry.title}
-      subtitle={`${formatCmeRowDate(entry.date, today)} · ${categoryNames(entry)}`}
-      meta={cmeCertificateMissing(entry) ? <ModeStateLabel>No certificate</ModeStateLabel> : null}
-      trailing={
-        // `nums font-normal` are repeated from the recipe so Task 7's scanner, which reads literal classes, sees 400.
-        <span className={cn(modeNumberText, "nums font-normal pr-2 text-base-minus text-[color:var(--text)]")}>
-          {entry.archivedAt ? "Archived" : `${formatLogHours(totalAllocatedHours([entry]))} h`}
-        </span>
+      subtitle={
+        <>
+          {first ? (
+            <span className="mr-1.5 inline-flex align-[1px]">
+              <CmeCategoryDot category={first} />
+            </span>
+          ) : null}
+          {words}
+        </>
+      }
+      end={
+        entry.archivedAt ? (
+          <span className="text-sm-minus text-[color:var(--text-muted)]">Archived</span>
+        ) : (
+          <CmeRowValue value={formatHoursShort(totalAllocatedHours([entry]))} unit="h" />
+        )
       }
     />
   );
 }
 
 /**
- * The log's months, most recent first. Each month header stays pinned at the
- * top of the page while its own rows scroll under it — the same in-flow sticky
- * group header On Call's contact groups use. It is a content heading inside
- * page flow, not a second navigation bar: it pins at `top-0` of the page
- * scroll, so the phone header's collapse row (which owns the viewport top)
- * still covers it whenever that header is showing.
+ * The log's months, most recent first: an uppercase month label with the
+ * month's hours at the right, then that month's flat list. The label row stays
+ * pinned at the top of the page while its own rows scroll under it — a content
+ * heading in page flow, not a second navigation bar. `showYear` adds the year
+ * to each label when the list spans more than one year.
  */
-export function CmeLogMonthList({ groups, today }: { groups: readonly MonthGroup[]; today: string }) {
+export function CmeLogMonthList({
+  groups,
+  today,
+  showYear = false,
+}: {
+  groups: readonly MonthGroup[];
+  today: string;
+  showYear?: boolean;
+}) {
   return (
     <>
       {groups.map((group) => (
@@ -53,26 +97,29 @@ export function CmeLogMonthList({ groups, today }: { groups: readonly MonthGroup
           id={monthAnchorId(group.key)}
           data-testid={`cme-log-month-${group.key}`}
           aria-labelledby={`${group.key}-heading`}
-          className={cn(inPageAnchor, "grid gap-2")}
+          className={cn(inPageAnchor, "grid gap-1")}
         >
           <div
             data-testid={`cme-log-month-header-${group.key}`}
-            className="sticky top-0 z-[var(--z-raised)] flex min-h-8 items-center justify-between gap-3 bg-[color:var(--background)] px-3"
+            className="sticky top-0 z-[var(--z-raised)] flex min-h-8 items-center bg-[color:var(--background)]"
           >
-            <h2 id={`${group.key}-heading`} className={eyebrowText}>
-              {group.label}
-            </h2>
-            <span
-              className={cn(modeNumberText, "nums font-normal text-2xs normal-case text-[color:var(--text-muted)]")}
-            >
-              {`${formatLogHours(group.hours)} h`}
-            </span>
+            <div className="min-w-0 flex-1">
+              <CmeGroupLabel
+                id={`${group.key}-heading`}
+                label={showYear ? group.label : group.label.split(" ")[0]}
+                end={
+                  <span className="nums text-xs font-normal normal-case tracking-normal text-[color:var(--text-muted)]">
+                    {`${formatHoursShort(group.hours)}\u00a0h`}
+                  </span>
+                }
+              />
+            </div>
           </div>
-          <ModeGroupedList>
+          <CmeFlatList>
             {group.entries.map((entry) => (
               <EntryRow key={entry.id} entry={entry} today={today} />
             ))}
-          </ModeGroupedList>
+          </CmeFlatList>
         </section>
       ))}
     </>

@@ -1,11 +1,11 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Trash2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { cardSurface } from "@/components/card-recipes";
 import { CmeDateField } from "@/components/cme/cme-date-field";
+import { CmeNote } from "@/components/cme/cme-flat-list";
 import { Button } from "@/components/ui/button";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
@@ -178,10 +178,13 @@ function DraftRow({
   }
 
   return (
-    <li className={cn(cardSurface, "flex flex-col gap-3 p-3")} data-testid={`cme-draft-${draft.id}`}>
+    <li
+      className="flex flex-col gap-3 border-t border-[color:var(--border)] py-3 first:border-t-0"
+      data-testid={`cme-draft-${draft.id}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="line-clamp-2 text-sm font-semibold text-[color:var(--text)]">{draftTitle(draft)}</p>
+          <p className="line-clamp-2 text-sm font-medium text-[color:var(--text-heading)]">{draftTitle(draft)}</p>
           <p className={cn(textMuted, "mt-0.5 text-xs")}>
             Last edited {formatCalendarDateLong(draft.updatedAt.slice(0, 10))}
           </p>
@@ -193,7 +196,7 @@ function DraftRow({
         <Link
           href={`/cme/new?draft=${draft.id}`}
           data-testid={`cme-draft-continue-${draft.id}`}
-          className="min-h-tap inline-flex shrink-0 items-center font-semibold text-[color:var(--clinical-accent)]"
+          className="min-h-tap inline-flex shrink-0 items-center text-sm-minus font-medium text-[color:var(--clinical-accent)]"
         >
           Continue
         </Link>
@@ -266,7 +269,9 @@ export function CmeDraftsSection({
           Drafts
         </h2>
         <div data-testid="cme-drafts-load-failed">
-          <InlineNotice tone="neutral">Your drafts could not be loaded. Reload the page to try again.</InlineNotice>
+          <CmeNote tone="warn" icon={<TriangleAlert aria-hidden="true" strokeWidth={1.6} />}>
+            Your drafts could not be loaded. Reload the page to try again.
+          </CmeNote>
         </div>
       </section>
     );
@@ -295,7 +300,7 @@ export function CmeDraftsSection({
         {sections.map((group) => (
           <div key={group.key} data-testid={`cme-drafts-group-${group.key}`}>
             <h3 className="text-sm font-semibold text-[color:var(--text)]">{WAITING_GROUP_LABEL[group.key]}</h3>
-            <ul className="mt-2 flex flex-col gap-2">
+            <ul className="mt-1 flex flex-col">
               {group.drafts.map((draft) => (
                 <DraftRow
                   key={draft.id}
