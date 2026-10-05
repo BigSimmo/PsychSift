@@ -1,7 +1,7 @@
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { searchOnCallEntries } from "@/lib/on-call/entry-search";
-import type { WorkItem, WorkSearchArea } from "@/lib/work-search/model";
-import { alternativeMatches, workSearchTerms, type TermAlternative } from "@/lib/work-search/terms";
+import { workSearchAreaLabels, type WorkAreaRead, type WorkItem, type WorkSearchArea } from "@/lib/work-search/model";
+import { alternativeMatches, withinOneEdit, workSearchTerms, type TermAlternative } from "@/lib/work-search/terms";
 
 /** 0 title, 1 tag or detail line, 2 other text: the same tiers On Call's own search uses. */
 export type WorkSearchRank = 0 | 1 | 2;
@@ -69,9 +69,18 @@ function dateOrder(a: WorkItem, b: WorkItem, today: string): number {
 export function searchWork(
   input: { readonly items: readonly WorkItem[]; readonly entries: readonly WorkSearchEntry[] },
   query: string,
-  options: { readonly currentArea: WorkSearchArea | null; readonly today: string },
+  options: {
+    readonly currentArea: WorkSearchArea | null;
+    readonly today: string;
+    readonly exact?: boolean;
+    /** The current instant, so a session that finished earlier today is not shown as the next one. */
+    readonly now?: number;
+  },
 ): WorkSearchHit[] {
-  const terms = workSearchTerms(query);
+  // "Search for … exactly" turns off the one-letter-out matching.
+  const terms = workSearchTerms(query).map((alternatives) =>
+    options.exact ? alternatives.map((alternative) => ({ ...alternative, fuzzy: false })) : alternatives,
+  );
   if (terms.length === 0) return [];
 
   const best = new Map<string, WorkSearchHit>();
@@ -89,6 +98,7 @@ export function searchWork(
     const rank = rankItem(item, terms);
     if (rank !== null) keep(item, rank);
   }
+  // On Call's own search has no one-letter-out matching, so it runs in exact mode too.
   const itemByEntry = new Map(input.entries.map(({ entry, item }) => [entry, item]));
   for (const result of searchOnCallEntries(
     input.entries.map(({ entry }) => entry),
@@ -98,15 +108,107 @@ export function searchWork(
     if (item) keep(item, Math.min(result.rank, 2) as WorkSearchRank);
   }
 
-  return [...best.values()]
-    .sort(
+  return finish(best, options);
+}
+
+function finish(
+  best: ReadonlyMap<string, WorkSearchHit>,
+  options: { readonly currentArea: WorkSearchArea | null; readonly today: string; readonly now?: number },
+): WorkSearchHit[] {
+  // Series are folded before the cap, so a long weekly series cannot crowd out other matches.
+  return collapseSeries(
+    [...best.values()].sort(
       (a, b) =>
         a.rank - b.rank ||
         Number(b.item.area === options.currentArea) - Number(a.item.area === options.currentArea) ||
         dateOrder(a.item, b.item, options.today) ||
         a.item.title.localeCompare(b.item.title),
+    ),
+    options.today,
+    options.now,
+  ).slice(0, WORK_SEARCH_RESULT_LIMIT);
+}
+
+/**
+ * The word a typo was read as, for "Showing matches for journal": set when a
+ * typed word matched nothing as typed, in any record or in On Call's own search,
+ * but matched a word one letter out.
+ */
+export function workSearchCorrection(
+  input: { readonly items: readonly WorkItem[]; readonly entries: readonly WorkSearchEntry[] },
+  query: string,
+): { readonly typed: string; readonly read: string } | null {
+  const items = [...input.items, ...input.entries.map(({ item }) => item)];
+  const entries = input.entries.map(({ entry }) => entry);
+  for (const alternatives of workSearchTerms(query)) {
+    const fuzzy = alternatives.find((alternative) => alternative.fuzzy);
+    if (!fuzzy) continue;
+    const exact = alternatives.map((alternative) => ({ ...alternative, fuzzy: false }));
+    if (
+      items.some((item) =>
+        tiersOf(item).some((fields) => fields.some((field) => exact.some((alt) => alternativeMatches(field, alt)))),
+      ) ||
+      searchOnCallEntries(entries, fuzzy.text).length > 0
     )
-    .slice(0, WORK_SEARCH_RESULT_LIMIT);
+      continue;
+    for (const item of items) {
+      for (const fields of tiersOf(item)) {
+        for (const field of fields) {
+          const word = field
+            .split(/[^\p{L}\p{N}]+/u)
+            .find((candidate) => candidate.length >= 4 && withinOneEdit(candidate, fuzzy.text));
+          if (word) return { typed: fuzzy.text, read: word };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/** The series a Teaching session belongs to: its title at its place. */
+export function seriesKey(item: WorkItem): string {
+  return `${item.title.trim().toLowerCase()}|${(item.text[0] ?? "").trim().toLowerCase()}`;
+}
+
+/**
+ * A weekly session shows once: the best-ranked match of each Teaching title at
+ * each place, with "+2 more" added to its detail line for the other sessions
+ * still ahead, so a series cannot fill the list. A session that has already
+ * finished gives way to the next one still ahead, so the row links somewhere
+ * useful. `now` is optional so plain date checks still work without a clock.
+ */
+export function collapseSeries(hits: readonly WorkSearchHit[], today: string, now?: number): WorkSearchHit[] {
+  const ahead = (item: WorkItem) =>
+    now !== undefined && item.endsAt ? Date.parse(item.endsAt) > now : item.date === null || item.date >= today;
+  const series = new Map<string, WorkSearchHit[]>();
+  for (const hit of hits) {
+    if (hit.item.kind !== "session") continue;
+    const key = seriesKey(hit.item);
+    series.set(key, [...(series.get(key) ?? []), hit]);
+  }
+  const kept: WorkSearchHit[] = [];
+  const done = new Set<string>();
+  for (const hit of hits) {
+    if (hit.item.kind !== "session") {
+      kept.push(hit);
+      continue;
+    }
+    const key = seriesKey(hit.item);
+    if (done.has(key)) continue;
+    done.add(key);
+    const members = series.get(key) as WorkSearchHit[];
+    const shown = members.find((member) => ahead(member.item)) ?? hit;
+    const count = members.filter((member) => member !== shown && ahead(member.item)).length;
+    kept.push(
+      count === 0
+        ? shown
+        : {
+            ...shown,
+            item: { ...shown.item, detail: [shown.item.detail, `+${count} more`].filter(Boolean).join(" · ") },
+          },
+    );
+  }
+  return kept;
 }
 
 /** How many hits each area has, for the chip counts. */
@@ -145,4 +247,24 @@ export function workComingUp(items: readonly WorkItem[], today: string, now: num
     (a, b) => (a.startsAt ?? a.date ?? "").localeCompare(b.startsAt ?? b.date ?? "") || a.title.localeCompare(b.title),
   );
   return [...overdue, ...ahead].slice(0, limit);
+}
+
+function listWords(words: readonly string[], joiner: "and" | "or"): string {
+  if (words.length <= 1) return words[0] ?? "";
+  return `${words.slice(0, -1).join(", ")} ${joiner} ${words[words.length - 1]}`;
+}
+
+/**
+ * The "Nothing for …" line, naming only the areas that were actually checked, so
+ * it never claims a record is absent from an area that failed or is still loading.
+ */
+export function workSearchNothingFound(areas: readonly WorkAreaRead[], filter: WorkSearchArea | "all"): string {
+  const inScope = areas.filter((read) => filter === "all" || read.area === filter);
+  const checked = inScope.filter((read) => read.status === "ready").map((read) => workSearchAreaLabels[read.area]);
+  const unchecked = inScope.filter((read) => read.status !== "ready").map((read) => workSearchAreaLabels[read.area]);
+  if (checked.length === 0) {
+    return `${listWords(unchecked, "and")} couldn't be checked, so it may be there.`;
+  }
+  const missing = unchecked.length > 0 ? ` ${listWords(unchecked, "and")} couldn't be checked.` : "";
+  return `It isn't in your ${listWords(checked, "or")} records.${missing}`;
 }

@@ -48,6 +48,9 @@ export function shiftWorkItems(shifts: readonly ShiftLike[]): WorkItem[] {
     // An older import may carry no kind; Roster infers it from the times the same way.
     const kind = shift.kind ?? inferShiftKind(shift);
     const kindLabel = SHIFT_KIND_LABEL[kind];
+    // A shift that ends on a later day names that day: "21:00 to 08:30 Thu".
+    const endDate = perthDateOf(shift.endsAt);
+    const endDay = endDate !== date ? ` ${formatPerthDay(endDate).slice(0, 3)}` : "";
     return {
       id: `roster:shift:${shift.id}`,
       area: "roster",
@@ -55,7 +58,7 @@ export function shiftWorkItems(shifts: readonly ShiftLike[]): WorkItem[] {
       title: shift.title.trim() || `${kindLabel} shift`,
       detail: joinDetail([
         formatPerthDay(date),
-        `${perthTimeOf(shift.startsAt)} to ${perthTimeOf(shift.endsAt)}`,
+        `${perthTimeOf(shift.startsAt)} to ${perthTimeOf(shift.endsAt)}${endDay}`,
         shift.location,
       ]),
       date,
@@ -185,6 +188,8 @@ export function entryWorkItem(entry: OnCallEntry, href: string): WorkItem {
       : onCallSearchSummary(entry),
     date: compliance && !notForThisJob ? (complianceExpiresOn(entry) ?? null) : null,
     href,
+    // The On Call section it is stored in: the row's icon says contact, guide or admin record.
+    facet: entry.section,
     tags: [...entry.tags, ...(compliance ? ["renewal", "renewals", "renew", "expiry", "due"] : [])],
     text: [entry.subtitle ?? ""],
   };
