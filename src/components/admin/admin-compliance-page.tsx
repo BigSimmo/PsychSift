@@ -234,7 +234,11 @@ function NextJobCard({ overview, today }: { readonly overview: ComplianceOvervie
             aria-hidden="true"
             className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--clinical-accent-soft)]"
           >
-            <CalendarClock aria-hidden="true" strokeWidth={1.5} className="size-icon-md text-[color:var(--clinical-accent)]" />
+            <CalendarClock
+              aria-hidden="true"
+              strokeWidth={1.5}
+              className="size-icon-md text-[color:var(--clinical-accent)]"
+            />
           </span>
           <div className="grid min-w-0 gap-0.5">
             <p className="text-base-minus font-medium text-[color:var(--text-heading)]">
