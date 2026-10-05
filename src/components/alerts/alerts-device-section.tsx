@@ -202,7 +202,7 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
           : state === "shared"
             ? `Off on this shared ${device}`
             : state === "error"
-              ? "Couldn't be checked. Check your connection and reload."
+              ? "Couldn't be checked. Check your connection and try again."
               : state === "on"
                 ? [
                     `On for this ${device}`,
@@ -227,6 +227,10 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
                 onToggle={() => void alerts.toggle()}
                 aria-label={`Phone alerts on this ${device}`}
               />
+            ) : state === "error" ? (
+              <Button variant="ghost" size="sm" onClick={alerts.retry} testId="alerts-retry">
+                Try again
+              </Button>
             ) : undefined
           }
         />

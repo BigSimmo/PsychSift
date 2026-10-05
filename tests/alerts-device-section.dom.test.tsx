@@ -19,6 +19,7 @@ function alerts(overrides: Partial<PhoneAlerts>): PhoneAlerts {
     toggle: vi.fn(async () => undefined),
     sendTest: vi.fn(async () => undefined),
     setShared: vi.fn(async () => undefined),
+    retry: vi.fn(),
     ...overrides,
   };
 }
@@ -48,6 +49,14 @@ describe("This phone", () => {
     ).toBeTruthy();
   });
 
+  it("a failed check offers Try again, which re-runs the check", async () => {
+    const value = alerts({ state: "error", enabled: false });
+    render(<AlertsDeviceSection alerts={value} shared={false} />);
+    expect(screen.getByText("Couldn't be checked. Check your connection and try again.")).toBeTruthy();
+    await userEvent.click(screen.getByTestId("alerts-retry"));
+    expect(value.retry).toHaveBeenCalledTimes(1);
+  });
+
   it("blocked on a computer gives browser steps, not iPhone ones", () => {
     render(<AlertsDeviceSection alerts={alerts({ state: "blocked", device: "computer" })} shared={false} />);
     expect(screen.queryByText("Open the Settings app")).toBeNull();
@@ -64,7 +73,7 @@ describe("This phone", () => {
 
   it("a failed check says so and is never shown as off", () => {
     render(<AlertsDeviceSection alerts={alerts({ state: "error", enabled: false })} shared={false} />);
-    expect(screen.getByText("Couldn't be checked. Check your connection and reload.")).toBeTruthy();
+    expect(screen.getByText("Couldn't be checked. Check your connection and try again.")).toBeTruthy();
     expect(screen.queryByText(/^Off on this/)).toBeNull();
   });
 

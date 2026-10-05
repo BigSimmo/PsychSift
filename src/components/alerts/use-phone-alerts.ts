@@ -30,11 +30,16 @@ function isIosNotInstalled(): boolean {
 }
 
 function pushSupported(): boolean {
-  return typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator;
+  return hasNotificationApi() && "serviceWorker" in navigator;
+}
+
+// Some embedded browsers define Notification but leave it empty; treat that as unsupported.
+function hasNotificationApi(): boolean {
+  return typeof window !== "undefined" && typeof window.Notification === "function";
 }
 
 function currentPermission(): "default" | "granted" | "denied" | "unsupported" {
-  return typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported";
+  return hasNotificationApi() ? Notification.permission : "unsupported";
 }
 
 function publicKeyBytes(value: string): Uint8Array<ArrayBuffer> {
@@ -107,6 +112,8 @@ export type PhoneAlerts = {
   readonly toggle: () => Promise<void>;
   readonly sendTest: () => Promise<void>;
   readonly setShared: (shared: boolean) => Promise<void>;
+  /** Re-run the device check after it failed. */
+  readonly retry: () => void;
 };
 
 export function usePhoneAlerts(): PhoneAlerts {
@@ -115,6 +122,7 @@ export function usePhoneAlerts(): PhoneAlerts {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   // None of these change without a reload. Read through an external store so
   // the server render (which cannot know the device) and the first client
   // render agree, then the browser's real answer takes over.
@@ -163,6 +171,13 @@ export function usePhoneAlerts(): PhoneAlerts {
     return () => {
       current = false;
     };
+  }, [attempt]);
+
+  const retry = useCallback(() => {
+    setFailed(false);
+    setConfigured(null);
+    setSubscribed(null);
+    setAttempt((value) => value + 1);
   }, []);
 
   // The service worker tells open pages when a test arrives, so "last test
@@ -300,5 +315,6 @@ export function usePhoneAlerts(): PhoneAlerts {
     toggle,
     sendTest,
     setShared,
+    retry,
   };
 }
