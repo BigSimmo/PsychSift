@@ -127,16 +127,69 @@ describe("the models", () => {
   });
 });
 
-describe("Logbook", () => {
-  it("shows the figures, the chart and the ledger, and opens Log to CPD from an unlogged row", async () => {
-    serveFetch((url) =>
-      url === "/api/teaching?view=logbook"
-        ? json(200, { attendance: [row(), row({ occurrenceId: "x", cpdEntryId: "e" })] })
-        : null,
-    );
+describe("My record", () => {
+  const recent = row({
+    occurrenceId: "22222222-2222-4222-8222-222222222222",
+    title: "Case discussion",
+    startsAt: "2026-09-29T04:30:00.000Z",
+    endsAt: "2026-09-29T06:00:00.000Z",
+  });
+  const recentLogged = row({
+    occurrenceId: "33333333-3333-4333-8333-333333333333",
+    cpdEntryId: "e",
+    startsAt: "2026-09-28T04:30:00.000Z",
+    endsAt: "2026-09-28T05:30:00.000Z",
+  });
+  const review = (r: LogbookRow, hours: number) => ({
+    occurrenceId: r.occurrenceId,
+    serviceName: r.serviceName,
+    title: r.title,
+    startsAt: r.startsAt,
+    endsAt: r.endsAt,
+    hours,
+  });
+  function serveRecord(
+    options: { attendance?: LogbookRow[]; feedback?: Response | null; reviewRows?: ReturnType<typeof review>[] } = {},
+  ) {
+    const posts: Array<Record<string, unknown> | null> = [];
+    const fetchMock = serveFetch((url, body) => {
+      if (url === "/api/teaching?view=logbook")
+        return json(200, { attendance: options.attendance ?? [row(), row({ occurrenceId: "x", cpdEntryId: "e" })] });
+      if (url === "/api/teaching/depth?view=feedback-open")
+        return options.feedback === undefined
+          ? json(200, {
+              sessions: [
+                {
+                  occurrenceId: OCC,
+                  serviceId: TEAM_A,
+                  title: "Case presentation",
+                  startsAt: "2026-09-29T04:30:00.000Z",
+                  endsAt: "2026-09-29T05:30:00.000Z",
+                },
+              ],
+            })
+          : options.feedback;
+      if (url === "/api/teaching/depth?view=cpd-review") return json(200, { rows: options.reviewRows ?? [] });
+      if (url === "/api/teaching/cpd/review" && body) {
+        posts.push(body);
+        const rows = body.rows as Array<{ occurrenceId: string }>;
+        return json(200, { results: rows.map((r) => ({ occurrenceId: r.occurrenceId, entryId: "new" })) });
+      }
+      return null;
+    });
+    return { posts, fetchMock };
+  }
+
+  it("shows the 12 weeks in words, the ledger, and opens Log to CPD from an unlogged row", async () => {
+    serveRecord();
     render(<TeachingLogbook demoMode={false} />);
-    expect(await screen.findByRole("group", { name: "Your attendance" })).toHaveTextContent(/Not in CPD\s*1/);
-    expect(screen.getByTestId("teaching-attendance-chart")).toBeInTheDocument();
+    const chart = await screen.findByTestId("teaching-record-chart");
+    expect(chart.textContent).toContain(`Last 12 weeks · 2${NB}sessions`);
+    expect(chart.textContent).toContain(`You checked in at teaching in 1${NB}of the last 12${NB}weeks.`);
+    expect(within(chart).getByRole("img").getAttribute("aria-label")).toMatch(
+      /^Sessions per week, 13 July to this week:/,
+    );
+    expect(chart).toHaveTextContent("None in 10 weeks. This week so far: 0.");
     // jest-dom folds a real non-breaking space to a plain one, so read the raw text (U1 report).
     expect(screen.getByRole("region", { name: "September 2026" }).textContent).toContain(`2${NB}h`);
     fireEvent.click(screen.getAllByRole("button", { name: /Registrar teaching/ })[0]);
@@ -144,25 +197,58 @@ describe("Logbook", () => {
     expect(screen.getByRole("link", { name: "Download CSV" }).getAttribute("href")).toMatch(/^blob:|^data:text\/csv/);
   });
 
-  it("links Supervision, the CPD review and Feedback as rows, counting what is not in CPD yet", async () => {
-    serveFetch((url) =>
-      url === "/api/teaching?view=logbook"
-        ? json(200, { attendance: [row(), row({ occurrenceId: "x", cpdEntryId: "e" })] })
-        : null,
-    );
+  it("lists feedback you owe with Give, keeping names out, and links Supervision under Presenting", async () => {
+    serveRecord();
     render(<TeachingLogbook demoMode={false} />);
-    const links = within(await screen.findByRole("navigation", { name: "Logbook actions" }));
-    expect(links.getByRole("link", { name: /^Supervision/ })).toHaveAttribute("href", "/teaching/supervision");
-    expect(links.getByRole("link", { name: /^Give feedback/ })).toHaveAttribute("href", "/teaching/feedback");
-    await waitFor(() =>
-      expect(links.getByRole("link", { name: /^Weekly CPD review/ }).textContent).toContain(
-        `1${NB}session not in CPD yet`,
-      ),
+    const owed = await screen.findByTestId("teaching-record-feedback");
+    expect(owed).toHaveTextContent("Feedback you owe · 1");
+    expect(owed).toHaveTextContent("Name not shown");
+    expect(within(owed).getByRole("link", { name: "Give feedback on Case presentation" })).toHaveAttribute(
+      "href",
+      "/teaching/feedback",
+    );
+    expect(screen.getByRole("link", { name: /^Supervision hours/ })).toHaveAttribute(
+      "href",
+      "/teaching/teach#supervision",
     );
   });
 
+  it("says plainly when feedback owed did not load, instead of showing nothing owed", async () => {
+    serveRecord({ feedback: json(500, { error: "nope" }) });
+    render(<TeachingLogbook demoMode={false} />);
+    expect(await screen.findByText(/Sessions waiting for your feedback did not load/)).toBeInTheDocument();
+    expect(screen.queryByTestId("teaching-record-feedback")).toBeNull();
+  });
+
+  it("ticks this week's sessions not in CPD and logs them in one go, with the week's hours", async () => {
+    const { posts } = serveRecord({
+      attendance: [recent, recentLogged, row()],
+      reviewRows: [review(recent, 1.5), review(row(), 1)],
+    });
+    render(<TeachingLogbook demoMode={false} />);
+    const cpd = await screen.findByTestId("teaching-record-cpd");
+    expect(cpd.textContent).toContain(`1.5${NB}h · 1 already logged`);
+    expect(within(cpd).getByRole("checkbox", { name: /Case discussion/ })).toBeChecked();
+    expect(within(cpd).getByRole("link", { name: /^1\solder session not in CPD yet/ })).toHaveAttribute(
+      "href",
+      "/teaching/review",
+    );
+    fireEvent.click(within(cpd).getByRole("button", { name: "Log 1 session to my CPD" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]).toMatchObject({ rows: [{ occurrenceId: "22222222-2222-4222-8222-222222222222", hours: 1.5 }] });
+    expect(typeof (posts[0]!.rows as Array<{ requestId: string }>)[0].requestId).toBe("string");
+  });
+
+  it("logs nothing when every session is unticked", async () => {
+    serveRecord({ attendance: [recent], reviewRows: [review(recent, 1.5)] });
+    render(<TeachingLogbook demoMode={false} />);
+    const cpd = await screen.findByTestId("teaching-record-cpd");
+    fireEvent.click(within(cpd).getByRole("checkbox", { name: /Case discussion/ }));
+    expect(within(cpd).getByRole("button", { name: "Log 0 sessions to my CPD" })).toBeDisabled();
+  });
+
   it("says so when there are no check-ins yet", async () => {
-    serveFetch((url) => (url === "/api/teaching?view=logbook" ? json(200, { attendance: [] }) : null));
+    serveRecord({ attendance: [] });
     render(<TeachingLogbook demoMode={false} />);
     expect(await screen.findByText("No check-ins yet. Sessions you check in to show here.")).toBeInTheDocument();
   });
@@ -212,15 +298,18 @@ describe("Organise", () => {
     serveOrganise([teamA]);
     const first = render(<TeachingOrganise demoMode={false} />);
     expect(await screen.findByText("Organise is for your service's organisers.")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Import a timetable" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Import a timetable/ })).toBeNull();
     first.unmount();
     serveOrganise([organiser]);
     const second = render(<TeachingOrganise demoMode={false} />);
-    expect(await screen.findByRole("link", { name: "Import a timetable" })).toHaveAttribute("href", "/teaching/import");
+    expect(await screen.findByRole("link", { name: /^Import a timetable/ })).toHaveAttribute(
+      "href",
+      "/teaching/import",
+    );
     second.unmount();
     render(<TeachingOrganise demoMode />);
     expect(await screen.findByTestId("teaching-organise-demo")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Import a timetable" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Import a timetable/ })).toBeNull();
   });
 
   it("shows Download attendance as busy while the export is read", async () => {
@@ -242,13 +331,17 @@ describe("Organise", () => {
     await waitFor(() => expect(download).not.toHaveAttribute("aria-busy"));
   });
 
-  it("names the one risk in the next 48 hours, and shows the counts", async () => {
+  it("names the one risk in the next 48 hours with the one filled button, and shows the counts", async () => {
     serveOrganise([organiser]);
     render(<TeachingOrganise demoMode={false} />);
-    expect(await screen.findByTestId(`teaching-row-${OCC}`)).toHaveTextContent("Room not confirmed");
+    const risky = await screen.findByTestId(`teaching-row-${OCC}`);
+    expect(risky).toHaveTextContent("Room not confirmed");
+    expect(within(risky).getByRole("button", { name: "Set room" })).toBeInTheDocument();
+    expect(screen.getByTestId("teaching-organise-soon")).toHaveTextContent(/Next 48 hours · 1 · 1 to check/);
     expect(screen.getByText("1 thing to fix")).toBeInTheDocument();
     expect(screen.getByText("Checked 11:50")).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "This service" })).toHaveTextContent(/Members\s*3/);
+    expect(screen.getByRole("button", { name: /^Members/ })).toHaveTextContent(/3\smembers/);
+    expect(screen.getByText(/^Series · 0$/)).toBeInTheDocument();
   });
 
   it("posts a change only after 10 seconds, undoes inside them, and sends with keepalive", async () => {

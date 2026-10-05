@@ -316,7 +316,7 @@ test.describe("Coming up — moved off Home to Teaching (plan C25)", () => {
   test("legacy /on-call/education hard-redirects to Teaching Week", async ({ page }) => {
     await page.goto("/on-call/education", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/teaching\/week/);
-    await expect(visibleByTestId(page, "teaching-week")).toBeVisible({ timeout: 20_000 });
+    await expect(visibleByTestId(page, "teaching-this-week")).toBeVisible({ timeout: 20_000 });
   });
 });
 

@@ -299,6 +299,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                     return (
                       <T5Row
                         key={s.occurrenceId}
+                        testId={`teaching-row-${s.occurrenceId}`}
                         title={s.title}
                         meta={meta}
                         lead={<T5Time time={perthTime(s.startsAt)} />}
@@ -330,7 +331,8 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                   title="Download attendance"
                   meta={downloading ? "Preparing the spreadsheet…" : `Last ${withUnit(12, "weeks")}, as a spreadsheet`}
                   lead={<T5Icon icon={Download} />}
-                  onClick={downloading ? undefined : () => void download()}
+                  onClick={() => void download()}
+                  busy={downloading}
                   testId="teaching-organise-download"
                 />
                 <T5Row
@@ -386,7 +388,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                   />
                 ))}
                 <T5Row
-                  title="Everyone in this service"
+                  title="Members"
                   meta={membersWord(data.members.length)}
                   lead={<T5Icon icon={Users} />}
                   onClick={() => setOpen({ kind: "members" })}

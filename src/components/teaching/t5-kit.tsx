@@ -145,7 +145,8 @@ export function T5Icon({ icon: Icon }: { icon: LucideIcon }) {
 export function T5Time({ time, past = false }: { time: string; past?: boolean }) {
   return (
     <span
-      className={cn("nums w-10 shrink-0 text-sm-minus", past ? cn("font-medium", faint) : cn("font-semibold", ink))}
+      data-row-time
+      className={cn("nums min-w-10 shrink-0 text-sm-minus", past ? cn("font-medium", faint) : cn("font-semibold", ink))}
     >
       {time}
     </span>
@@ -155,7 +156,7 @@ export function T5Time({ time, past = false }: { time: string; past?: boolean })
 /** A day number over a short month, at the start of a row. */
 export function T5Date({ day, month }: { day: string; month: string }) {
   return (
-    <span aria-hidden="true" className={cn("grid w-8 shrink-0 justify-items-center leading-none", ink)}>
+    <span aria-hidden="true" className={cn("grid min-w-8 shrink-0 justify-items-center leading-none", ink)}>
       <b className="nums text-base font-semibold">{day}</b>
       <small className={cn("mt-1 text-2xs font-semibold tracking-label uppercase", faint)}>{month}</small>
     </span>
@@ -191,14 +192,16 @@ export type T5RowProps = {
   below?: ReactNode;
   testId?: string;
   id?: string;
+  /** A button row whose action is running: announced busy and not pressable again. */
+  busy?: boolean;
 };
 
 /** One row: optional lead, a title with up to two lines of meta, and an end. 48px minimum. */
-export function T5Row({ title, meta, lead, end, href, external, onClick, past, below, testId, id }: T5RowProps) {
+export function T5Row({ title, meta, lead, end, href, external, onClick, past, below, testId, id, busy }: T5RowProps) {
   const body = (
     <>
       {lead}
-      <span className="grid min-w-0 flex-1 gap-px">
+      <span data-row-body className="grid min-w-0 flex-1 gap-px">
         <span className={cn("text-sm leading-snug font-medium", past ? sub : ink)}>{title}</span>
         {meta ? <span className={cn("line-clamp-2 text-sm-minus leading-snug", sub)}>{meta}</span> : null}
         {below}
@@ -225,7 +228,13 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
   if (onClick && !end)
     return (
       <li id={id} data-testid={testId} className="min-w-0">
-        <button type="button" onClick={onClick} className={cn(shape, "rounded-sm", focusRing)}>
+        <button
+          type="button"
+          onClick={onClick}
+          disabled={busy}
+          aria-busy={busy || undefined}
+          className={cn(shape, "rounded-sm", focusRing)}
+        >
           {body}
         </button>
       </li>

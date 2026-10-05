@@ -29,44 +29,54 @@ async function expectNoSidewaysScroll(page: Page, label: string) {
   expect(scrollWidth, `${label} scrolls sideways`).toBeLessThanOrEqual(clientWidth + 1);
 }
 
-test("Today leads with the next session and links to the week", async ({ page }, testInfo) => {
+test("This week leads with the session on now or next, and fits a phone in light and dark", async ({
+  page,
+}, testInfo) => {
   await page.goto("/teaching");
   await expect(visibleByTestId(page, "teaching-hero")).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole("link", { name: /Rest of this week/ })).toHaveAttribute("href", "/teaching/week");
-  await expectNoSidewaysScroll(page, "Today");
+  await expect(visibleByTestId(page, "teaching-week-list")).toBeVisible();
+  await expectNoSidewaysScroll(page, "This week");
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    await testInfo.attach(`teaching-today-${scheme}`, {
+    await testInfo.attach(`teaching-this-week-${scheme}`, {
       body: await page.screenshot({ fullPage: true }),
       contentType: "image/png",
     });
   }
 });
 
-test("Week at 200% text puts every time above its title and never scrolls sideways", async ({ page }, testInfo) => {
-  await page.goto("/teaching/week");
+test("This week at 200% text keeps every time clear of its title and never scrolls sideways", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/teaching");
   const list = visibleByTestId(page, "teaching-week-list");
   await expect(list).toBeVisible({ timeout: 20_000 });
   await largeText(page);
-  const rows = list.locator("li");
+  const rows = list.locator("li:has([data-row-time])");
   expect(await rows.count()).toBeGreaterThan(0);
   for (const row of await rows.all()) {
     const time = await row.locator("[data-row-time]").boundingBox();
     const body = await row.locator("[data-row-body]").boundingBox();
-    expect(time && body && time.y + time.height <= body.y + 1, "time sits above the title").toBe(true);
+    const clear = time && body && (time.x + time.width <= body.x + 1 || time.y + time.height <= body.y + 1);
+    expect(clear, "time does not overlap the title").toBe(true);
   }
-  await expectNoSidewaysScroll(page, "Week at 200%");
+  await expectNoSidewaysScroll(page, "This week at 200%");
   const presenting = page.getByRole("radio", { name: "Presenting" });
   await presenting.scrollIntoViewIfNeeded();
   await expect(presenting).toBeInViewport({ ratio: 1 });
-  await testInfo.attach("teaching-week-200", {
+  await testInfo.attach("teaching-this-week-200", {
     body: await page.screenshot({ fullPage: true }),
     contentType: "image/png",
   });
 });
 
-test("a session opened from Week says where and when, and fits at 200% text", async ({ page }) => {
+test("the old Week address shows This week, so links with an On Call anchor keep working", async ({ page }) => {
   await page.goto("/teaching/week");
+  await expect(visibleByTestId(page, "teaching-this-week")).toBeVisible({ timeout: 20_000 });
+});
+
+test("a session opened from This week says where and when, and fits at 200% text", async ({ page }) => {
+  await page.goto("/teaching");
   await visibleByTestId(page, "teaching-week-list").locator("a").first().click();
   await expect(page).toHaveURL(/\/teaching\/session\/[0-9a-f-]{36}$/);
   await expect(visibleByTestId(page, "teaching-session")).toBeVisible({ timeout: 20_000 });
@@ -74,28 +84,53 @@ test("a session opened from Week says where and when, and fits at 200% text", as
   await expectNoSidewaysScroll(page, "Session at 200%");
 });
 
-test("On Call's legacy teaching calendar redirects to Teaching Week", async ({ page }) => {
+test("On Call's legacy teaching calendar opens Teaching's This week", async ({ page }) => {
   await page.goto("/on-call/education");
   await expect(page).toHaveURL(/\/teaching\/week$/);
+  await expect(visibleByTestId(page, "teaching-this-week")).toBeVisible({ timeout: 20_000 });
 });
 
-test("Teaching page menu reaches Resources and What's on", async ({ page }) => {
+test("Teaching's five tabs reach Presenting, My record, Resources and Organise", async ({ page }) => {
   await page.goto("/teaching");
-  await expect(visibleByTestId(page, "teaching-hero")).toBeVisible();
-  for (const [id, path] of [
-    ["resources", "/teaching/resources"],
-    ["whats-on", "/teaching/whats-on"],
+  await expect(visibleByTestId(page, "teaching-hero")).toBeVisible({ timeout: 20_000 });
+  for (const [id, path, testId] of [
+    ["teach", "/teaching/teach", "teaching-presenting"],
+    ["logbook", "/teaching/logbook", "teaching-logbook"],
+    ["resources", "/teaching/resources", "teaching-resources"],
   ] as const) {
     await page.getByRole("button", { name: /^Mode Teaching/ }).click();
     await visibleByTestId(page, `app-mode-section-${id}`).click();
     await expect(page).toHaveURL(path);
-    await expect(visibleByTestId(page, `teaching-${id}`)).toBeVisible();
+    await expect(visibleByTestId(page, testId)).toBeVisible({ timeout: 20_000 });
     await expectNoSidewaysScroll(page, id);
   }
 });
 
+for (const [path, testId] of [
+  ["teach", "teaching-presenting"],
+  ["logbook", "teaching-logbook"],
+  ["resources", "teaching-resources"],
+  ["organise", "teaching-organise"],
+  ["term", "teaching-term"],
+  ["exam-prep", "teaching-exam-prep"],
+] as const) {
+  test(`${path} (v5) fits a phone in light and dark, and at 200% text`, async ({ page }, testInfo) => {
+    await page.goto(`/teaching/${path}`);
+    await expect(visibleByTestId(page, testId)).toBeVisible({ timeout: 20_000 });
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await expectNoSidewaysScroll(page, `${path} ${scheme}`);
+      await testInfo.attach(`${path}-v5-${scheme}`, {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: "image/png",
+      });
+    }
+    await largeText(page);
+    await expectNoSidewaysScroll(page, `${path} at 200%`);
+  });
+}
+
 for (const [path, heading] of [
-  ["teach", "Teach"],
   ["supervision", "Supervision"],
   ["feedback", "Feedback"],
   ["review", "Weekly CPD review"],

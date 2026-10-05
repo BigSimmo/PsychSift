@@ -45,6 +45,9 @@ const DOC = "77777777-7777-4777-8777-777777777777";
 const WEEK_URL = "/api/teaching?view=week&from=2026-09-28&to=2026-10-04";
 const WEEK_RESOURCES_URL = "/api/teaching/resources?action=resources.read&weekStart=2026-09-28";
 const COLLECTION_URL = `/api/teaching/resources?action=collection.read&collectionId=${EXAM}`;
+const RECORDINGS_URL = "/api/teaching/resources?action=collection.read&builtIn=recordings";
+const SAVED_URL = "/api/teaching/resources?action=collection.read&builtIn=saved";
+const builtIn = (items: ResourceRow[]) => json(200, { collection: null, sections: [], items });
 
 function item(overrides: Partial<ResourceRow> = {}): ResourceRow {
   return {
@@ -100,27 +103,54 @@ describe("resources-model", () => {
 });
 
 describe("Resources", () => {
-  it("shows this week's materials with catch-up, the collections, and the way to CPD's learning directory", async () => {
+  it("shows this week's materials with catch-up, recordings, collections, saved, and the way to CPD's learning directory", async () => {
     serveFetch((url) => {
       if (url === WEEK_RESOURCES_URL)
         return json(200, {
           forThisWeek: [{ ...recording, catchUp: true }],
           collections: [{ collectionId: EXAM, serviceId: TEAM_A, name: "Exam prep", count: 12 }],
           recordingsCount: 3,
-          savedCount: 0,
+          savedCount: 1,
         });
       if (url === WEEK_URL) return json(200, week());
+      if (url === RECORDINGS_URL) return builtIn([recording]);
+      if (url === SAVED_URL) return builtIn([item({ saved: true })]);
       return null;
     });
     render(<TeachingResources demoMode={false} />);
     const thisWeek = await waitFor(() => byId("teaching-resources-week"));
     expect(within(thisWeek).getByText("Recording · catch-up")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Exam prep/ })).toHaveAttribute("href", `/teaching/resources/${EXAM}`);
-    expect(screen.getByRole("link", { name: /^Recordings/ })).toHaveAttribute("href", "/teaching/resources/recordings");
-    expect(screen.getByRole("link", { name: /^Recordings/ }).textContent).toContain(`3${NB}items`);
-    expect(screen.getByRole("link", { name: /^Saved/ })).toHaveAttribute("href", "/teaching/resources/saved");
-    expect(screen.getByRole("link", { name: /Learning directory/ })).toHaveAttribute("href", "/cme/learning");
+    expect(screen.getByText("For this week · 1")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Exam prep/ })).toHaveAttribute("href", `/teaching/resources/${EXAM}`);
+    expect(screen.getByRole("link", { name: /^Exam prep/ }).textContent).toContain(`12${NB}items`);
+    expect(screen.getByText("Recordings · 3")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "All" })).toHaveAttribute("href", "/teaching/resources/recordings");
+    const recordings = await waitFor(() => byId("teaching-resources-recordings"));
+    expect(within(recordings).getByText("Recording · added Tue 1 Sep")).toBeInTheDocument();
+    const saved = await waitFor(() => byId("teaching-resources-saved"));
+    expect(within(saved).getByRole("button", { name: "Unsave MCQ practice paper" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("link", { name: /^My exam prep/ })).toHaveAttribute("href", "/teaching/exam-prep");
+    expect(screen.getByRole("link", { name: /WA courses and modules are in CPD/ })).toHaveAttribute(
+      "href",
+      "/cme/learning",
+    );
     expect(screen.queryByRole("button", { name: "New collection" })).toBeNull(); // a doctor, not an organiser
+  });
+
+  it("says recordings did not load rather than showing none", async () => {
+    serveFetch((url) => {
+      if (url === WEEK_RESOURCES_URL)
+        return json(200, { forThisWeek: [], collections: [], recordingsCount: 2, savedCount: 0 });
+      if (url === WEEK_URL) return json(200, week());
+      if (url === RECORDINGS_URL) return json(500, { error: "nope" });
+      if (url === SAVED_URL) return builtIn([]);
+      return null;
+    });
+    render(<TeachingResources demoMode={false} />);
+    expect(await screen.findByText("Recordings did not load. Open All to try again.")).toBeInTheDocument();
   });
 
   it("renders the demo's made-up resources in demo mode, and says the demo doesn't save a bookmark", async () => {
@@ -153,7 +183,7 @@ describe("Resources", () => {
       return null;
     });
     const { unmount } = render(<TeachingResources demoMode={false} />);
-    expect(await screen.findByRole("link", { name: /Learning directory/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /WA courses and modules are in CPD/ })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText("Hospital A psychiatry")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "New collection" })).toBeNull();
     unmount();
