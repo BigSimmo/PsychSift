@@ -98,7 +98,7 @@ export function MedicationWhereItStands({ medicineName }: { readonly medicineNam
     >
       <h2
         id="medication-where-it-stands-heading"
-        className="border-b border-[color:var(--border)] px-3 py-2 text-sm-minus font-semibold text-[color:var(--text-heading)]"
+        className="border-b border-[color:var(--border)] px-3 py-2 text-sm font-semibold text-[color:var(--text-heading)]"
       >
         Where it stands
       </h2>
