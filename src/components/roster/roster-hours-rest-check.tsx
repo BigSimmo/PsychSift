@@ -62,12 +62,14 @@ function Gauge({ gauge }: { readonly gauge: HoursRestGauge }) {
       className={cn(modeInsetHairline, "grid gap-2 px-3 py-3")}
       data-testid={`roster-hours-rest-${gauge.rule}`}
       data-over={over ? "true" : undefined}
+      aria-label={`${label.title}: ${value}. ${label.limit(gauge.limit)}, clause ${gauge.clause}.${over ? " Over the limit." : ""}`}
     >
       <div className="flex min-w-0 items-baseline justify-between gap-3">
         <div className="grid min-w-0">
           <span className={modeNameText}>{label.title}</span>
           <span className={cn(modeSecondaryText, "text-xs")}>
             {label.limit(gauge.limit)} · clause {gauge.clause}
+            {over ? <span className="text-[color:var(--warning-text)]"> · Over the limit</span> : null}
           </span>
         </div>
         <span
