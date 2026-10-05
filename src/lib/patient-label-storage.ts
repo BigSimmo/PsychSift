@@ -39,7 +39,7 @@
 /** Every patient-label key starts with this. The trailing colon is part of it. */
 export const PATIENT_LABEL_KEY_PREFIX = "psychsift:patient-labels:";
 
-/** localStorage — `{ v: 1, startedAt, expiresAt }` (epoch ms) for this shift's labels. */
+/** localStorage — `{ v: 1, generation, startedAt, expiresAt }` (epoch ms) for this shift's labels. */
 export const PATIENT_LABEL_EXPIRY_STORAGE_KEY = `${PATIENT_LABEL_KEY_PREFIX}__shift-expiry`;
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -66,7 +66,9 @@ export const PATIENT_LABELS_CLEARED_EVENT = "psychsift-patient-labels-cleared";
 export type PatientLabelStorageArea = "local" | "session";
 export type PatientLabelClearReason = "shift-ended" | "account-transition" | "invalid-expiry" | "manual";
 
-type ExpiryStamp = { v: 1; startedAt: number; expiresAt: number };
+type ExpiryStamp = { v: 1; startedAt: number; expiresAt: number; generation: string };
+/** Session values belong to one shift even if another tab replaces the shared stamp. */
+type SessionLabel = { v: 1; generation: string; expiresAt: number; value: string };
 
 const NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
@@ -131,7 +133,17 @@ export function parsePatientLabelExpiryStamp(raw: string | null): ExpiryStamp | 
     ) {
       return null;
     }
-    return { v: 1, startedAt: value.startedAt, expiresAt: value.expiresAt };
+    if (value.generation !== undefined && (typeof value.generation !== "string" || !value.generation.trim())) {
+      return null;
+    }
+    // Existing local labels retain their original expiry. Raw session labels
+    // from before generation binding are never accepted by readSessionLabel.
+    return {
+      v: 1,
+      startedAt: value.startedAt,
+      expiresAt: value.expiresAt,
+      generation: value.generation ?? `legacy:${value.startedAt}`,
+    };
   } catch {
     return null;
   }
@@ -165,7 +177,51 @@ export function clearPatientLabels(reason: PatientLabelClearReason = "manual"): 
       // Storage that refuses access has nothing stored to clear.
     }
   }
+  notifyPatientLabelsCleared(reason);
+}
+
+function notifyPatientLabelsCleared(reason: PatientLabelClearReason): void {
   window.dispatchEvent(new CustomEvent(PATIENT_LABELS_CLEARED_EVENT, { detail: { reason } }));
+}
+
+function readSessionLabel(raw: string | null, stamp: ExpiryStamp, now: number): string | null {
+  if (raw === null) return null;
+  try {
+    const value = JSON.parse(raw) as Partial<SessionLabel> | null;
+    if (
+      value?.v === 1 &&
+      value.generation === stamp.generation &&
+      typeof value.expiresAt === "number" &&
+      Number.isFinite(value.expiresAt) &&
+      value.expiresAt > now &&
+      value.expiresAt <= stamp.startedAt + PATIENT_LABEL_MAX_LIFETIME_MS &&
+      typeof value.value === "string"
+    ) {
+      return value.value;
+    }
+  } catch {
+    // Legacy raw session values and malformed envelopes are untrusted.
+  }
+  return null;
+}
+
+/** A sleeping tab must not carry old session keys into a newly stamped shift. */
+function clearStaleSessionLabels(stamp: ExpiryStamp, now: number): boolean {
+  const session = storageFor("session");
+  if (!session) return false;
+  let removed = false;
+  try {
+    for (const key of labelKeysIn(session)) {
+      if (readSessionLabel(session.getItem(key), stamp, now) === null) {
+        session.removeItem(key);
+        removed = true;
+      }
+    }
+  } catch {
+    // Unreadable storage cannot provide a label.
+  }
+  if (removed) notifyPatientLabelsCleared("invalid-expiry");
+  return removed;
 }
 
 /**
@@ -224,6 +280,47 @@ export type WritePatientLabelsOptions = {
   readonly now?: number;
 };
 
+/** Ensure the shift expiry is stored before any sensitive value is accepted. */
+function ensurePatientLabelStamp(options: WritePatientLabelsOptions = {}): ExpiryStamp | null {
+  const now = options.now ?? Date.now();
+  const local = storageFor("local");
+  if (!local) return null;
+
+  clearExpiredPatientLabels(now);
+  const rosterEnd = usableShiftEnd(options.shiftEndsAt, now);
+  // An autosave as the rostered shift ends must not start a fresh 12-hour stamp.
+  if (rosterEnd === "ended") return null;
+  const existing = readStamp();
+  let stamp: ExpiryStamp;
+  try {
+    stamp =
+      typeof existing === "object"
+        ? {
+            v: 1,
+            startedAt: existing.startedAt,
+            generation: existing.generation,
+            // A roster end may bring the wipe forward, never push it back.
+            expiresAt: rosterEnd !== null && rosterEnd < existing.expiresAt ? rosterEnd : existing.expiresAt,
+          }
+        : {
+            v: 1,
+            startedAt: now,
+            expiresAt: rosterEnd ?? now + PATIENT_LABEL_FALLBACK_LIFETIME_MS,
+            generation: window.crypto.randomUUID(),
+          };
+    local.setItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY, JSON.stringify(stamp));
+  } catch {
+    return null;
+  }
+  clearStaleSessionLabels(stamp, now);
+  return stamp;
+}
+
+/** Start the existing shift retention window without persisting an in-memory draft. */
+export function startPatientLabelRetention(options: WritePatientLabelsOptions = {}): number | null {
+  return ensurePatientLabelStamp(options)?.expiresAt ?? null;
+}
+
 /**
  * Store one label store's value (the caller serialises it). Returns false, and
  * stores nothing, when the expiry stamp could not be written first or when the
@@ -231,33 +328,22 @@ export type WritePatientLabelsOptions = {
  */
 export function writePatientLabels(name: string, value: string, options: WritePatientLabelsOptions = {}): boolean {
   const key = patientLabelStorageKey(name);
-  const now = options.now ?? Date.now();
-  const local = storageFor("local");
   const target = storageFor(options.area ?? "local");
-  if (!local || !target) return false;
-
-  clearExpiredPatientLabels(now);
-  const rosterEnd = usableShiftEnd(options.shiftEndsAt, now);
-  // An autosave as the rostered shift ends must not start a fresh 12-hour stamp.
-  if (rosterEnd === "ended") return false;
-  const existing = readStamp();
-  const stamp: ExpiryStamp =
-    typeof existing === "object"
-      ? {
-          v: 1,
-          startedAt: existing.startedAt,
-          // A roster end may bring the wipe forward, never push it back.
-          expiresAt: rosterEnd !== null && rosterEnd < existing.expiresAt ? rosterEnd : existing.expiresAt,
-        }
-      : { v: 1, startedAt: now, expiresAt: rosterEnd ?? now + PATIENT_LABEL_FALLBACK_LIFETIME_MS };
-
+  if (!target) return false;
+  const stamp = ensurePatientLabelStamp(options);
+  if (!stamp) return false;
   try {
-    local.setItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY, JSON.stringify(stamp));
-  } catch {
-    return false;
-  }
-  try {
-    target.setItem(key, value);
+    target.setItem(
+      key,
+      options.area === "session"
+        ? JSON.stringify({
+            v: 1,
+            generation: stamp.generation,
+            expiresAt: stamp.expiresAt,
+            value,
+          } satisfies SessionLabel)
+        : value,
+    );
     return true;
   } catch {
     return false;
@@ -270,11 +356,16 @@ export function readPatientLabels(
   options: { readonly area?: PatientLabelStorageArea; readonly now?: number } = {},
 ): string | null {
   const key = patientLabelStorageKey(name);
-  clearExpiredPatientLabels(options.now ?? Date.now());
+  const now = options.now ?? Date.now();
+  clearExpiredPatientLabels(now);
+  const stamp = readStamp();
+  if (typeof stamp !== "object") return null;
+  clearStaleSessionLabels(stamp, now);
   const storage = storageFor(options.area ?? "local");
   if (!storage) return null;
   try {
-    return storage.getItem(key);
+    const raw = storage.getItem(key);
+    return options.area === "session" ? readSessionLabel(raw, stamp, now) : raw;
   } catch {
     return null;
   }
@@ -306,14 +397,33 @@ export function subscribePatientLabelsCleared(listener: (event: Event) => void):
  */
 export function watchPatientLabelExpiry(): () => void {
   if (typeof window === "undefined") return () => undefined;
+  let previousGeneration: string | null | undefined;
   const check = () => {
-    clearExpiredPatientLabels();
+    const now = Date.now();
+    const wiped = clearExpiredPatientLabels(now);
+    const stamp = readStamp();
+    const generation = typeof stamp === "object" ? stamp.generation : null;
+    const removed = typeof stamp === "object" && clearStaleSessionLabels(stamp, now);
+    const generationChanged =
+      previousGeneration !== undefined && previousGeneration !== null && generation !== previousGeneration;
+    if (!wiped && !removed && generationChanged) {
+      notifyPatientLabelsCleared("invalid-expiry");
+    }
+    previousGeneration = generation;
+    return wiped || removed || generationChanged;
   };
   const onVisibility = () => {
     if (document.visibilityState === "visible") check();
   };
   const onStorage = (event: StorageEvent) => {
-    if (event.key === null || event.key === PATIENT_LABEL_EXPIRY_STORAGE_KEY) check();
+    if (event.key === null || event.key === PATIENT_LABEL_EXPIRY_STORAGE_KEY) {
+      const cleared = check();
+      if (!cleared && event.newValue === null) {
+        // Another tab may already have deleted every shared key. Notify even
+        // with nothing left here; do not delete a newer shift's shared values.
+        notifyPatientLabelsCleared("invalid-expiry");
+      }
+    }
   };
   check();
   const interval = window.setInterval(check, PATIENT_LABEL_WATCH_INTERVAL_MS);

@@ -178,7 +178,21 @@ export function ragProgrammeReadinessPolicy(
   return failures;
 }
 
-export type ClinicalAskReadinessStatus = "config_present" | "evidence_supplied" | "blocked" | "not_verified";
+export type ClinicalAskReadinessStatus =
+  "config_present" | "evidence_supplied" | "blocked" | "not_verified" | "not_applicable";
+export type ClinicalAskReadinessProfile = "launch" | "disabled";
+
+export function clinicalAskReadinessProfile(args: string[]): ClinicalAskReadinessProfile {
+  const supplied = args.filter((arg) => arg === "--clinical-ask-profile" || arg.startsWith("--clinical-ask-profile="));
+  if (supplied.length === 0) return "launch";
+  if (supplied.length === 1) {
+    if (supplied[0] === "--clinical-ask-profile=disabled") return "disabled";
+    if (supplied[0] === "--clinical-ask-profile=launch") return "launch";
+  }
+  throw new Error(
+    "Clinical Ask profile must be specified once as --clinical-ask-profile=launch or --clinical-ask-profile=disabled.",
+  );
+}
 export type ClinicalAskReadinessFinding = {
   area: string;
   status: ClinicalAskReadinessStatus;
@@ -222,6 +236,7 @@ export function clinicalAskReadinessFindings(
   environment: Record<string, string | undefined>,
   fileExists: (filePath: string) => boolean = existsSync,
   readArtifact: (filePath: string) => string | undefined = readClinicalAskEvidenceArtifact,
+  profile: ClinicalAskReadinessProfile = "launch",
 ): ClinicalAskReadinessFinding[] {
   const enabled = environment.CLINICAL_ASK_ENABLED;
   const external = environment.CLINICAL_ASK_EXTERNAL_SEARCH_ENABLED;
@@ -241,6 +256,37 @@ export function clinicalAskReadinessFindings(
       message: `${message} (${artifact})`,
     };
   };
+
+  if (profile === "disabled") {
+    return [
+      configured(
+        "master flag",
+        enabled === undefined || enabled === "false",
+        "Disabled profile requires CLINICAL_ASK_ENABLED to be false or unset (runtime defaults to false).",
+      ),
+      configured(
+        "external flag",
+        external === undefined || external === "false",
+        "Disabled profile requires CLINICAL_ASK_EXTERNAL_SEARCH_ENABLED to be false or unset (runtime defaults to false).",
+      ),
+      ...[
+        "emergency denylist",
+        "transcription model",
+        "migration file",
+        "hosted migration",
+        "authority approval",
+        "synthetic evaluation",
+        "protected staging canary",
+        "contractual retention and region",
+        "physical iPhone acceptance",
+      ].map((area): ClinicalAskReadinessFinding => ({
+        area,
+        status: "not_applicable",
+        message:
+          "Launch requirement is not assessed in the disabled profile; this supplies no launch approval or evidence.",
+      })),
+    ];
+  }
 
   return [
     configured("master flag", enabled === "true" || enabled === "false", "CLINICAL_ASK_ENABLED must be explicit."),
@@ -293,14 +339,30 @@ export function clinicalAskReadinessFindings(
   ];
 }
 
-function recordClinicalAskReadiness() {
-  const findings = clinicalAskReadinessFindings(process.env);
-  const launchRequested = process.env.CLINICAL_ASK_ENABLED === "true";
+export function clinicalAskFindingIsBlocking(
+  finding: ClinicalAskReadinessFinding,
+  environment: Record<string, string | undefined>,
+  profile: ClinicalAskReadinessProfile = "launch",
+  ci = false,
+  providerFree = false,
+) {
+  if (
+    finding.status === "config_present" ||
+    finding.status === "evidence_supplied" ||
+    finding.status === "not_applicable"
+  )
+    return false;
+  if (profile === "disabled") return true;
+  return (finding.status === "blocked" && !ci && !providerFree) || environment.CLINICAL_ASK_ENABLED === "true";
+}
+
+function recordClinicalAskReadiness(profile: ClinicalAskReadinessProfile) {
+  const findings = clinicalAskReadinessFindings(process.env, existsSync, readClinicalAskEvidenceArtifact, profile);
   for (const finding of findings) {
     const line = `Clinical Ask ${finding.status.replace("_", " ")} — ${finding.area}: ${finding.message}`;
     if (finding.status === "config_present" || finding.status === "evidence_supplied") result.passes.push(line);
-    else if (finding.status === "blocked" && !isCiMode && !providerFreeCodexCloud) result.failures.push(line);
-    else if (launchRequested) result.failures.push(line);
+    else if (clinicalAskFindingIsBlocking(finding, process.env, profile, isCiMode, providerFreeCodexCloud))
+      result.failures.push(line);
     else result.warnings.push(line);
   }
 }
@@ -507,6 +569,7 @@ async function checkQueryHashGuardWiring() {
 }
 
 async function main() {
+  const clinicalAskProfile = clinicalAskReadinessProfile(process.argv.slice(2));
   checkNodeRuntime();
   const programmeFailures = ragProgrammeReadinessPolicy(process.env);
   for (const reason of programmeFailures) result.failures.push(`RAG programme readiness: ${reason}`);
@@ -522,7 +585,7 @@ async function main() {
   recordAnswerPersistenceProductionCheck();
   await checkFileForServiceRoleExposure();
   await checkQueryHashGuardWiring();
-  recordClinicalAskReadiness();
+  recordClinicalAskReadiness(clinicalAskProfile);
 
   if (!(await checkRequiredFile(path.join(process.cwd(), "package-lock.json"), "package-lock.json is required"))) {
     // keep going so we can show all diagnostics
@@ -672,6 +735,11 @@ async function main() {
   }
 
   console.log("[Production Readiness]");
+  if (clinicalAskProfile === "disabled") {
+    console.log(
+      "Clinical Ask profile: disabled — configuration validation only; clinical launch readiness is not assessed.",
+    );
+  }
   console.log(`Project: ${supabaseCheck.expected.name} (${supabaseCheck.expected.ref})`);
   if (supabaseCheck.observed.configuredName) {
     console.log(`Configured name: ${supabaseCheck.observed.configuredName}`);
@@ -691,6 +759,10 @@ async function main() {
     console.log(`FAIL (${result.failures.length}):`);
     for (const item of result.failures) console.log(`  - ${item}`);
     process.exitCode = 1;
+  } else if (clinicalAskProfile === "disabled") {
+    console.log(
+      "DISABLED PROFILE CHECKS PASSED: Clinical Ask launch readiness and release approval are not established.",
+    );
   } else if (providerFreeCodexCloud && providerCapabilityGap) {
     console.log(
       "CLOUD PROVIDER-FREE READY: local production safeguards passed; authenticated provider readiness is capability-blocked by the offline agent profile.",
@@ -702,7 +774,7 @@ async function main() {
 
 if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
-    result.failures.push(error instanceof Error ? error.message : String(error));
+    console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
   });
 }
