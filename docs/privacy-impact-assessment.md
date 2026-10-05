@@ -179,8 +179,10 @@ label. Labels are wiped at the end of the shift (the rostered end when the write
 otherwise 12 hours after the first label of the shift; a later roster end may bring the wipe
 forward but never push it back) and on sign-out and account switch through
 `clearAccountScopedBrowserState`. The wipe removes only keys with that prefix, and fails closed:
-a missing, damaged or clock-contradicted stamp wipes the labels rather than showing them. As of
-this change no feature writes a label yet; the timer, call-note and handover builds plug into it.
+a missing, damaged or clock-contradicted stamp wipes the labels rather than showing them.
+The call-note consumer also starts this expiry on the first unsaved edit: draft text stays in
+memory, and only expiry metadata is stored until the note is saved. Session labels are bound
+to their originating shift generation so a newer shared stamp cannot revive an older tab's labels.
 Evidence: [tests/patient-label-storage.dom.test.tsx](../tests/patient-label-storage.dom.test.tsx).
 
 **Deployment context (from code):** the answer system prompt positions the assistant as _"an
