@@ -1,0 +1,88 @@
+"use client";
+
+import { useCallback, useSyncExternalStore } from "react";
+
+import { REMIND_ME_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
+import { checkReminderText, normalizeReminders, REMIND_ME_TEXT_LIMIT, type Reminder } from "@/lib/alerts/remind-me";
+import { isSharedDevice } from "@/lib/alerts/shared-device";
+
+/**
+ * Remind me notes on this device. Nothing here reaches a server or a calendar.
+ * A save re-runs the patient-detail check (the sheet's check is not trusted
+ * alone) and is refused on a device marked shared.
+ */
+const CHANGE_EVENT = "psychsift-remind-me-change";
+const EMPTY: readonly Reminder[] = [];
+let cachedRaw: string | null = null;
+let cachedList: readonly Reminder[] = EMPTY;
+
+function readRaw(): string | null {
+  try {
+    return window.localStorage.getItem(REMIND_ME_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function snapshot(): readonly Reminder[] {
+  const raw = readRaw();
+  if (raw === cachedRaw) return cachedList;
+  cachedRaw = raw;
+  try {
+    cachedList = raw ? normalizeReminders(JSON.parse(raw), new Date()) : EMPTY;
+  } catch {
+    cachedList = EMPTY;
+  }
+  return cachedList;
+}
+
+function subscribe(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(CHANGE_EVENT, onChange);
+  const stop = subscribeAccountTransition(onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(CHANGE_EVENT, onChange);
+    stop();
+  };
+}
+
+function write(list: readonly Reminder[]): boolean {
+  try {
+    if (list.length) window.localStorage.setItem(REMIND_ME_STORAGE_KEY, JSON.stringify(list));
+    else window.localStorage.removeItem(REMIND_ME_STORAGE_KEY);
+  } catch {
+    return false;
+  }
+  window.dispatchEvent(new Event(CHANGE_EVENT));
+  return true;
+}
+
+export type SaveReminderResult = "saved" | "unsafe" | "shared-device" | "failed";
+
+export function useRemindMe() {
+  const reminders = useSyncExternalStore(subscribe, snapshot, () => EMPTY);
+
+  const add = useCallback((text: string, dueAt: string): SaveReminderResult => {
+    const words = text.trim().slice(0, REMIND_ME_TEXT_LIMIT);
+    if (!words || checkReminderText(words)) return "unsafe";
+    if (isSharedDevice()) return "shared-device";
+    const now = new Date();
+    const next = normalizeReminders(
+      [...snapshot(), { id: `r${now.getTime()}`, text: words, dueAt, createdAt: now.toISOString(), doneAt: null }],
+      now,
+    );
+    return write(next) ? "saved" : "failed";
+  }, []);
+
+  const markDone = useCallback((id: string) => {
+    const now = new Date().toISOString();
+    write(snapshot().map((item) => (item.id === id ? { ...item, doneAt: now } : item)));
+  }, []);
+
+  const remove = useCallback((id: string) => {
+    write(snapshot().filter((item) => item.id !== id));
+  }, []);
+
+  return { reminders, add, markDone, remove };
+}

@@ -67,6 +67,12 @@ export const MY_DAY_SNOOZED_ITEMS_STORAGE_KEY = "psychsift:my-day:snoozed-v1";
  */
 export const MY_DAY_QUICK_NOTE_STORAGE_KEY = "psychsift:my-day:quick-note-v1";
 /**
+ * localStorage — Remind me notes: short text and a due time, kept on this
+ * device only. The sheet refuses initials, bed and record numbers and names,
+ * and a shared device keeps none; cleared at every account transition.
+ */
+export const REMIND_ME_STORAGE_KEY = "psychsift:alerts:remind-me-v1";
+/**
  * localStorage — the Psychiatry hub's recently opened records: path, the page's
  * own title (a diagnosis, therapy or form name), section and time.
  * Reference records only, never patient detail; kept 90 days, recorded only
@@ -118,6 +124,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_SNOOZED_ITEMS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
 

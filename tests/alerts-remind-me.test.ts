@@ -1,0 +1,119 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  checkReminderText,
+  dueReminders,
+  normalizeReminders,
+  remindMeWhenOptions,
+  type Reminder,
+} from "@/lib/alerts/remind-me";
+
+describe("Remind me keeps patient details out", () => {
+  it("screen 15: initials and a bed number are caught, with a safer wording", () => {
+    expect(checkReminderText("Call back JS bed 12 re bloods")).toEqual({
+      title: "This looks like initials and a bed number",
+      body: "Reminders can't hold patient details.",
+      suggestion: "Call back about bloods",
+    });
+  });
+
+  it("screen 14: an everyday job passes", () => {
+    expect(checkReminderText("Ask switchboard for the new pager list")).toBeNull();
+    expect(checkReminderText("Check ECG and LFTs before the MDT")).toBeNull();
+  });
+
+  it.each([
+    ["Review Mr Smith after lunch", "This looks like a name"],
+    ["Chase URN 1234567 discharge", "This looks like a record number"],
+    ["Bloods for 9876543", "This looks like a record number"],
+    ["See room 4b again", "This looks like a bed number"],
+  ])("%s", (text, title) => {
+    expect(checkReminderText(text)?.title).toBe(title);
+  });
+
+  it("gives the same answer every time (no state carried between checks)", () => {
+    for (let i = 0; i < 3; i += 1) expect(checkReminderText("bed 3 obs")?.title).toBe("This looks like a bed number");
+  });
+});
+
+describe("when choices, Perth time", () => {
+  const morning = new Date("2026-10-04T23:30:00Z"); // Mon 5 Oct 07:30 Perth
+
+  it("in an hour, 12:00, the end of today's shift and tomorrow 08:00", () => {
+    const options = remindMeWhenOptions(morning, "2026-10-05T08:30:00Z");
+    expect(options.map((option) => option.label)).toEqual([
+      "In 1 hour",
+      "12:00",
+      "End of shift, 16:30",
+      "Tomorrow 08:00",
+    ]);
+    expect(options[1]!.dueAt).toBe("2026-10-05T04:00:00.000Z");
+    expect(options[3]!.dueAt).toBe("2026-10-06T00:00:00.000Z");
+  });
+
+  it("no shift today, or it has ended: no end-of-shift choice", () => {
+    expect(remindMeWhenOptions(morning, null).some((option) => option.id === "shift-end")).toBe(false);
+    expect(remindMeWhenOptions(morning, "2026-10-04T23:00:00Z").some((option) => option.id === "shift-end")).toBe(
+      false,
+    );
+  });
+
+  it("late afternoon skips 12:00 and offers 17:00 only when far enough away", () => {
+    const afternoon = new Date("2026-10-05T06:00:00Z"); // 14:00 Perth
+    expect(remindMeWhenOptions(afternoon, null).map((option) => option.label)).toEqual([
+      "In 1 hour",
+      "17:00",
+      "Tomorrow 08:00",
+    ]);
+  });
+});
+
+describe("stored reminders", () => {
+  const now = new Date("2026-10-05T04:00:00Z");
+  const base: Reminder = {
+    id: "a",
+    text: "Ask switchboard for the new pager list",
+    dueAt: "2026-10-05T03:00:00Z",
+    createdAt: "2026-10-04T23:30:00Z",
+    doneAt: null,
+  };
+
+  it("drops garbage, old done notes and anything that fails the patient check", () => {
+    const list = normalizeReminders(
+      [
+        base,
+        { ...base, id: "done-old", doneAt: "2026-10-03T00:00:00Z" },
+        { ...base, id: "unsafe", text: "Call JS bed 12" },
+        { nonsense: true },
+      ],
+      now,
+    );
+    expect(list.map((item) => item.id)).toEqual(["a"]);
+    expect(normalizeReminders("not a list", now)).toEqual([]);
+  });
+
+  it("due means due now or earlier and not ticked off", () => {
+    const later = { ...base, id: "later", dueAt: "2026-10-05T09:00:00Z" };
+    const done = { ...base, id: "done", doneAt: "2026-10-05T03:30:00Z" };
+    expect(dueReminders([base, later, done], now).map((item) => item.id)).toEqual(["a"]);
+  });
+});
+
+describe("end-of-shift card", async () => {
+  const { endOfShiftCard } = await import("@/lib/alerts/end-of-shift");
+  const ward = { label: "Ward 4 day shift", startsAt: "2026-10-05T00:00:00Z", endsAt: "2026-10-05T08:30:00Z" };
+
+  it("shows in the last 30 minutes of a shift that has started", () => {
+    expect(endOfShiftCard(new Date("2026-10-05T08:00:00Z"), [ward])).toEqual({
+      label: "Ward 4 day shift",
+      endsAt: ward.endsAt,
+      minutesLeft: 30,
+    });
+  });
+
+  it("not before, not after, and not with no rostered shift", () => {
+    expect(endOfShiftCard(new Date("2026-10-05T07:59:00Z"), [ward])).toBeNull();
+    expect(endOfShiftCard(new Date("2026-10-05T08:30:00Z"), [ward])).toBeNull();
+    expect(endOfShiftCard(new Date("2026-10-05T08:00:00Z"), [])).toBeNull();
+  });
+});
