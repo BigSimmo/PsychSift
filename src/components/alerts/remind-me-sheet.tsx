@@ -151,6 +151,8 @@ export function YourRemindersSheet({
 }) {
   const { reminders, markDone, remove } = useRemindMe();
   const shared = useSharedDevice();
+  // Still to do first (due ones at the top, as stored), ticked-off ones last.
+  const ordered = [...reminders.filter((item) => !item.doneAt), ...reminders.filter((item) => item.doneAt)];
   return (
     <Sheet
       open={open}
@@ -171,7 +173,7 @@ export function YourRemindersSheet({
           </p>
         ) : (
           <ul role="list" className={modeModuleSurface}>
-            {reminders.map((item) => {
+            {ordered.map((item) => {
               const status = reminderWhenLabel(item, now);
               return (
                 <ModeRow

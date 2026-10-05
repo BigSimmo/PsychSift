@@ -140,12 +140,20 @@ function AlertsBody({ now }: { now: Date }) {
         <ModeRow
           title="Quiet while on a night"
           subtitle="Swap and open-shift requests don't buzz during a night shift"
-          trailing={<ModeStateLabel>Always on</ModeStateLabel>}
+          trailing={
+            <span className="pr-3">
+              <ModeStateLabel>Always on</ModeStateLabel>
+            </span>
+          }
         />
         <ModeRow
           title="Roster changes come through"
           subtitle="Even during a night shift, so a changed shift is never missed"
-          trailing={<ModeStateLabel>Always on</ModeStateLabel>}
+          trailing={
+            <span className="pr-3">
+              <ModeStateLabel>Always on</ModeStateLabel>
+            </span>
+          }
         />
       </ModeGroupedList>
 
