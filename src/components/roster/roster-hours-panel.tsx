@@ -1,9 +1,11 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import { ModeFactTile, ModeFactTiles } from "@/components/mode-kit/fact-tile";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
+import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
@@ -27,6 +29,12 @@ import { formatDateSpan, formatHours, kindOf } from "./roster-format";
  * extra time survives a reload. If they cannot be read, the panel says so and
  * counts only what was recorded on this visit.
  */
+
+/** Hours and rest downloads only when the Hours view opens, never with the rest of Shifts. */
+const RosterHoursRestCheck = dynamic(
+  () => import("./roster-hours-rest-check").then((module) => module.RosterHoursRestCheck),
+  { ssr: false, loading: () => <ModeModuleSkeleton rows={4} twoLine testId="roster-hours-rest-loading" /> },
+);
 
 /** A late finish is offered for this long after a shift ends. */
 const STAYED_LATE_WINDOW_MS = 8 * 60 * 60 * 1000;
@@ -194,6 +202,8 @@ export function RosterHoursPanel({
           ))}
         </div>
       </section>
+
+      <RosterHoursRestCheck shifts={shifts} now={now} />
 
       <ModeGroupedList eyebrow="Each day" testId="roster-hours-ledger">
         {summary.days.map((day) => (
