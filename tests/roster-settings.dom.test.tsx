@@ -61,7 +61,7 @@ function fetchCalls(url: string, method: string) {
   return fetchMock.mock.calls.filter(([input, init]) => String(input) === url && (init?.method ?? "GET") === method);
 }
 async function deleteMyData() {
-  fireEvent.click(screen.getByRole("button", { name: "Delete my data" }));
+  fireEvent.click(screen.getByRole("button", { name: /Delete my roster data/ }));
   expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
 }
 
@@ -110,6 +110,16 @@ describe("Roster Settings", () => {
     expect(fetchCalls("/api/roster/shifts", "DELETE")).toHaveLength(1);
     // Committed: the request must outlive the page if it is left now.
     expect(fetchCalls("/api/roster/shifts", "DELETE")[0]![1]).toEqual(expect.objectContaining({ keepalive: true }));
+  });
+
+  it("says what Delete removes and what it keeps, and who sees what", async () => {
+    mockShifts([day("2026-10-12")]);
+    render(<RosterSettingsPage />);
+    await screen.findByText("Example Hospital");
+    const note = screen.getByTestId("roster-settings-delete-note");
+    expect(note).toHaveTextContent("You get 30 seconds to change your mind.");
+    expect(note).toHaveTextContent("Extra time you logged and your reminder choices are not removed here.");
+    expect(screen.getByTestId("roster-settings-who-sees")).toHaveTextContent("No patient details are stored.");
   });
 
   it("deletes nothing if the page closes during the 30 seconds", async () => {
@@ -202,7 +212,7 @@ describe("Roster Settings", () => {
     render(<RosterSettingsPage />);
     const reminder = await screen.findByRole("switch", { name: "Remind me the evening before" });
     expect(reminder).toBeDisabled();
-    expect(screen.getByText("Turn on Shifts on my calendar link first")).toBeInTheDocument();
+    expect(screen.getByText("Turn on Calendar link first")).toBeInTheDocument();
 
     const calendar = screen.getByRole("switch", { name: "Shifts on my calendar link" });
     await waitFor(() => expect(calendar).toBeEnabled());
@@ -240,7 +250,8 @@ describe("Roster Settings", () => {
     );
     render(<RosterSettingsPage />);
     expect(await screen.findByText("calendar.example.org/…")).toBeInTheDocument();
-    expect(screen.getByText("That calendar could not be reached.")).toBeInTheDocument();
+    // The failure leads the second line, before the workplace the link belongs to.
+    expect(screen.getByText("That calendar could not be reached. · Example Hospital")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Refresh calendar.example.org/…" }));
     await waitFor(() => expect(fetchCalls("/api/roster/links/refresh", "POST")).toHaveLength(1));
     expect(JSON.parse(String(fetchCalls("/api/roster/links/refresh", "POST")[0]?.[1]?.body))).toEqual({ id: "l1" });

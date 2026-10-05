@@ -1,9 +1,17 @@
 "use client";
 
-import { managerWaiting, RosterWaitingBadge } from "@/components/roster/manage/roster-manage-waiting";
-import { useEffect, useState } from "react";
+import { ArrowLeftRight, Bell, ShieldCheck, Smartphone, Users } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
+import { managerWaiting, RosterWaitingBadge } from "@/components/roster/manage/roster-manage-waiting";
+import {
+  RosterFootnote,
+  RosterIconLead,
+  RosterLinkWord,
+  RosterList,
+  RosterRow,
+  RosterSectionHead,
+} from "@/components/roster/roster-list";
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import { useRosterSettings } from "@/components/roster/use-roster-settings";
@@ -67,7 +75,7 @@ function usePhoneAlerts() {
   async function toggle() {
     if (!configured || !publicKey || busy) return;
     if (isIosNotInstalled()) {
-      setMessage("On iPhone, add Roster to your home screen first.");
+      setMessage("On iPhone, add PsychSift to your home screen first.");
       return;
     }
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {
@@ -156,15 +164,17 @@ function TeamRow({ team, actorId }: { team: RosterTeam; actorId: string | null }
   const subtitle = [manager ? `manager ${manager}` : null, ends ? `to ${formatPerthDay(ends)}` : null]
     .filter(Boolean)
     .join(" · ");
+  const sub = subtitle || (team.enabled ? "Confirmed team" : "Not confirmed yet");
   return (
     <>
-      <ModeRow
-        title={team.name}
-        subtitle={subtitle || (team.enabled ? "Confirmed team" : "Not confirmed yet")}
-        href={team.enabled ? "/roster/team" : undefined}
-      />
+      {team.enabled ? (
+        <RosterRow lead={<RosterIconLead icon={Users} />} title={team.name} sub={sub} href="/roster/team" />
+      ) : (
+        <RosterRow lead={<RosterIconLead icon={Users} />} title={team.name} sub={sub} />
+      )}
       {isManager ? (
-        <ModeRow
+        <RosterRow
+          lead={<RosterIconLead icon={ShieldCheck} />}
           title={
             <>
               Manage
@@ -179,11 +189,15 @@ function TeamRow({ team, actorId }: { team: RosterTeam; actorId: string | null }
   );
 }
 
-/** Settings: phone switch, category choices and confirmed teams in words. */
-export function RosterAlertsSection() {
+/**
+ * Settings: "Reminders and alerts", as the Roster mock-up draws it. The page
+ * passes its evening-before reminder row in `reminder`, so it sits first in
+ * the same list. The phone row is the push subscription itself; the two rows
+ * after it choose which alerts that subscription carries.
+ */
+export function RosterAlertsSection({ reminder }: { readonly reminder?: ReactNode } = {}) {
   const alerts = usePhoneAlerts();
   const settings = useRosterSettings();
-  const teams = useRosterTeams();
   const [error, setError] = useState<string | null>(null);
   const preferences = settings.settings.alerts;
 
@@ -193,58 +207,100 @@ export function RosterAlertsSection() {
   }
 
   return (
-    <div className="grid gap-5">
-      {alerts.configured ? (
-        <ModeGroupedList eyebrow="Alerts">
-          <ModeRow
-            title="Alerts on this phone"
-            trailing={
-              <ToggleSwitch
-                enabled={alerts.enabled}
-                disabled={alerts.busy}
-                onToggle={() => void alerts.toggle()}
-                aria-label="Alerts on this phone"
-              />
-            }
-          />
-          <ModeRow
-            title="Roster changes"
-            trailing={
-              <ToggleSwitch
-                enabled={preferences.changes}
-                disabled={settings.status !== "ready"}
-                onToggle={() => void change("changes")}
-                aria-label="Roster changes"
-              />
-            }
-          />
-          <ModeRow
-            title="Swap and open-shift requests"
-            trailing={
-              <ToggleSwitch
-                enabled={preferences.requests}
-                disabled={settings.status !== "ready"}
-                onToggle={() => void change("requests")}
-                aria-label="Swap and open-shift requests"
-              />
-            }
-          />
-        </ModeGroupedList>
-      ) : null}
+    <section aria-labelledby="roster-settings-alerts-title" className="grid gap-3" data-testid="roster-settings-alerts">
+      <RosterSectionHead id="roster-settings-alerts-title" title="Reminders and alerts" />
+      <RosterList label="Reminders and alerts">
+        {reminder}
+        {alerts.configured ? (
+          <>
+            <RosterRow
+              lead={<RosterIconLead icon={Smartphone} />}
+              title="Alerts on this phone"
+              sub="Turn on to get the alerts below"
+              action={
+                <ToggleSwitch
+                  enabled={alerts.enabled}
+                  disabled={alerts.busy}
+                  onToggle={() => void alerts.toggle()}
+                  aria-label="Alerts on this phone"
+                />
+              }
+            />
+            <RosterRow
+              lead={<RosterIconLead icon={Bell} />}
+              title="Roster changes"
+              sub="Alert on this phone"
+              action={
+                <ToggleSwitch
+                  enabled={preferences.changes}
+                  disabled={settings.status !== "ready"}
+                  onToggle={() => void change("changes")}
+                  aria-label="Roster changes"
+                />
+              }
+            />
+            <RosterRow
+              lead={<RosterIconLead icon={ArrowLeftRight} />}
+              title="Swap and open-shift requests"
+              sub="Alert on this phone"
+              action={
+                <ToggleSwitch
+                  enabled={preferences.requests}
+                  disabled={settings.status !== "ready"}
+                  onToggle={() => void change("requests")}
+                  aria-label="Swap and open-shift requests"
+                />
+              }
+            />
+          </>
+        ) : null}
+      </RosterList>
       {alerts.message || error ? (
-        <p role="status" className="text-sm text-[color:var(--text-muted)]">
+        <p role="status" className="mx-1 text-sm text-[color:var(--text)]">
           {alerts.message ?? error}
         </p>
       ) : null}
-      <ModeGroupedList eyebrow="Your team">
+      {alerts.configured ? (
+        <RosterFootnote testId="roster-settings-alerts-note">
+          Lock screen alerts say only that something changed, never who or which shift. On iPhone, add PsychSift to your
+          home screen first.
+        </RosterFootnote>
+      ) : null}
+    </section>
+  );
+}
+
+/** Settings: the teams you belong to, and Manage for a rostering manager. */
+export function RosterTeamsSection() {
+  const teams = useRosterTeams();
+  return (
+    <section aria-labelledby="roster-settings-teams-title" className="grid gap-3" data-testid="roster-settings-teams">
+      <RosterSectionHead id="roster-settings-teams-title" title="Your team" />
+      <RosterList label="Your team">
         {teams.data?.teams?.length ? (
           teams.data.teams.map((team) => (
             <TeamRow key={team.serviceId} team={team} actorId={teams.data?.actorId ?? null} />
           ))
         ) : (
-          <ModeRow title={teams.status === "loading" ? "Checking your teams…" : "No team yet"} />
+          <RosterRow
+            lead={<RosterIconLead icon={Users} />}
+            title={
+              teams.status === "loading"
+                ? "Checking your teams…"
+                : teams.status === "error"
+                  ? "Your teams could not be checked"
+                  : "No team yet"
+            }
+            action={
+              teams.status === "error" ? (
+                <RosterLinkWord onClick={teams.reload} label="Check your teams again">
+                  Try again
+                </RosterLinkWord>
+              ) : undefined
+            }
+          />
         )}
-      </ModeGroupedList>
-    </div>
+      </RosterList>
+    </section>
   );
 }
