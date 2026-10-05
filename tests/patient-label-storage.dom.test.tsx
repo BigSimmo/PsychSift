@@ -165,6 +165,45 @@ describe("patient label keys", () => {
 });
 
 describe("writing and reading labels", () => {
+  it("rejects a sleeping tab's session label under a different shift, even with the same start time", () => {
+    writePatientLabels("old-session", "SYNTHETIC_OLD", { area: "session", now: T0 });
+    const key = patientLabelStorageKey("old-session");
+    const old = window.sessionStorage.getItem(key)!;
+    window.localStorage.clear(); // The other tab wiped shared storage; this tab slept.
+    writePatientLabels("new-local", "SYNTHETIC_NEW", { now: T0 });
+    window.sessionStorage.setItem(key, old);
+    expect(readPatientLabels("old-session", { area: "session", now: T0 })).toBeNull();
+    expect(readPatientLabels("new-local", { now: T0 })).toBe("SYNTHETIC_NEW");
+  });
+
+  it("keeps session generation stable when the same shift's expiry is shortened", () => {
+    writePatientLabels("session", "SYNTHETIC", { area: "session", now: T0 });
+    const initial = JSON.parse(window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY)!);
+    writePatientLabels("local", "SYNTHETIC", { now: T0 + HOUR, shiftEndsAt: T0 + 2 * HOUR });
+    const shortened = JSON.parse(window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY)!);
+    expect(shortened.generation).toBe(initial.generation);
+    expect(readPatientLabels("session", { area: "session", now: T0 + HOUR })).toBe("SYNTHETIC");
+    expect(readPatientLabels("session", { area: "session", now: T0 + 2 * HOUR })).toBeNull();
+  });
+
+  it("drops stale sibling session keys before a resumed tab writes into a new shift", () => {
+    writePatientLabels("old-session", "SYNTHETIC_OLD", { area: "session", now: T0 });
+    const key = patientLabelStorageKey("old-session");
+    const old = window.sessionStorage.getItem(key)!;
+    window.localStorage.clear();
+    writePatientLabels("new-local", "SYNTHETIC_NEW", { now: T0 + 13 * HOUR });
+    window.sessionStorage.setItem(key, old);
+    writePatientLabels("new-session", "SYNTHETIC_NEW", { area: "session", now: T0 + 13 * HOUR });
+    expect(window.sessionStorage.getItem(key)).toBeNull();
+    expect(readPatientLabels("new-session", { area: "session", now: T0 + 13 * HOUR })).toBe("SYNTHETIC_NEW");
+  });
+
+  it("rejects legacy raw session values even under a valid shared stamp", () => {
+    writePatientLabels("local", "SYNTHETIC", { now: T0 });
+    window.sessionStorage.setItem(patientLabelStorageKey("legacy-session"), "SYNTHETIC_LEGACY");
+    expect(readPatientLabels("legacy-session", { area: "session", now: T0 })).toBeNull();
+  });
+
   it("round-trips in either storage area and stamps a fallback expiry on first write", () => {
     expect(writePatientLabels("timers", '["Bed 4"]', { now: T0 })).toBe(true);
     expect(writePatientLabels("call-notes", '["JS"]', { area: "session", now: T0 + HOUR })).toBe(true);
@@ -323,6 +362,64 @@ describe("the watcher", () => {
       vi.setSystemTime(Date.now() + 2 * HOUR);
       window.dispatchEvent(new Event("focus"));
       expect(labelKeyCount()).toBe(0);
+    } finally {
+      stop();
+    }
+  });
+
+  it.each([null, PATIENT_LABEL_EXPIRY_STORAGE_KEY])(
+    "notifies local-only draft subscribers after a shared wipe (%s)",
+    (key) => {
+      writePatientLabels("local", "SYNTHETIC_SAVED");
+      const stop = watchPatientLabelExpiry();
+      const onCleared = vi.fn();
+      const unsubscribe = subscribePatientLabelsCleared(onCleared);
+      try {
+        window.localStorage.clear(); // Another tab cleared the shared keys, not this tab's cache.
+        expect(window.sessionStorage.length).toBe(0);
+        window.dispatchEvent(new StorageEvent("storage", { key, newValue: null }));
+        expect(onCleared).toHaveBeenCalledTimes(1);
+      } finally {
+        unsubscribe();
+        stop();
+      }
+    },
+  );
+
+  it("notifies an unstamped unsaved-draft subscriber without creating an expiry stamp", () => {
+    const stop = watchPatientLabelExpiry();
+    const onCleared = vi.fn();
+    const unsubscribe = subscribePatientLabelsCleared(onCleared);
+    try {
+      window.dispatchEvent(new StorageEvent("storage", { key: null, newValue: null }));
+      expect(onCleared).toHaveBeenCalledTimes(1);
+      expect(window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY)).toBeNull();
+    } finally {
+      unsubscribe();
+      stop();
+    }
+  });
+
+  it("does not invalidate a draft merely because the first shift stamp was created", () => {
+    const stop = watchPatientLabelExpiry();
+    const onCleared = vi.fn();
+    const unsubscribe = subscribePatientLabelsCleared(onCleared);
+    try {
+      writePatientLabels("first-local", "SYNTHETIC_FIRST");
+      window.dispatchEvent(new Event("focus"));
+      expect(onCleared).not.toHaveBeenCalled();
+    } finally {
+      unsubscribe();
+      stop();
+    }
+  });
+
+  it("does not delete a new shift's shared labels when an older removal event arrives late", () => {
+    const stop = watchPatientLabelExpiry();
+    try {
+      writePatientLabels("new-local", "SYNTHETIC_NEW");
+      window.dispatchEvent(new StorageEvent("storage", { key: PATIENT_LABEL_EXPIRY_STORAGE_KEY, newValue: null }));
+      expect(readPatientLabels("new-local")).toBe("SYNTHETIC_NEW");
     } finally {
       stop();
     }
