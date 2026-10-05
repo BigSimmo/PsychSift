@@ -1,16 +1,12 @@
 "use client";
 
+import { CalendarDays, Download, GraduationCap, Network, Plus, Presentation, Upload, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
-import Link from "next/link";
 import { TeachingSupervisionAdmin } from "@/components/teaching/teaching-supervision-admin";
 
-import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeFactTile, ModeFactTiles } from "@/components/mode-kit/fact-tile";
-import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { ModeNotice } from "@/components/mode-kit/notice";
 import {
   AUDIENCE_LABELS,
   changeBody,
@@ -32,20 +28,31 @@ import {
   REPEAT_LABELS,
   SeriesSheet,
 } from "@/components/teaching/organise-sheets";
-import { addDays, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
-import { SessionTimeline } from "@/components/teaching/teaching-modules";
+import {
+  T5Icon,
+  T5Kicker,
+  T5Link,
+  T5List,
+  T5Meta,
+  T5Note,
+  T5Page,
+  T5Panel,
+  T5Row,
+  T5Section,
+  T5Time,
+} from "@/components/teaching/t5-kit";
+import { addDays, dayParts, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
 import { withUnit } from "@/components/teaching/teaching-number";
-import { TeachingRow, TeachingUndoBar } from "@/components/teaching/teaching-row";
+import { TeachingUndoBar } from "@/components/teaching/teaching-row";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
-import { sessionRow } from "@/components/teaching/teaching-view-model";
 import { useDelayedPost } from "@/components/teaching/use-delayed-post";
 import { useSessionDetail } from "@/components/teaching/use-session-detail";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
 import { Select } from "@/components/ui/select";
-import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { Button } from "@/components/ui/button";
 import { teachingErrorMessage, teachingGet, teachingServiceUrl } from "@/lib/teaching/client";
 import {
   attendanceLabels,
@@ -73,7 +80,7 @@ type Open =
 const HOUR = 3_600_000;
 const organises = (team: TeamSummary) => team.role === "organiser" || team.role === "admin";
 
-/** The service picker: a plain line for one service, a select for two or more. Never "All services". */
+/** The service row: the one you organise, or a select for two or more. Never "All services". */
 function ServicePicker({
   teams,
   value,
@@ -84,25 +91,36 @@ function ServicePicker({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="flex min-h-12 items-center border-b border-[color:var(--border)]">
+    <T5List ruled testId="teaching-organise-service">
       {teams.length === 1 ? (
-        <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-[color:var(--text-heading)]">
-          <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[color:var(--mode-identity)]" />
-          <span className="truncate">{teams[0].name}</span>
-        </span>
-      ) : (
-        <Select
-          label="Service you organise"
-          hideLabel
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          options={teams.map((team) => ({ value: team.id, label: team.name }))}
-          fieldClassName="min-w-0 max-w-full"
+        <T5Row
+          title={teams[0].name}
+          meta="You organise · only organisers see this page"
+          lead={<T5Icon icon={Network} />}
         />
+      ) : (
+        <li className="flex min-h-12 items-center gap-3 py-2">
+          <T5Icon icon={Network} />
+          <Select
+            label="Service you organise"
+            hideLabel
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            options={teams.map((team) => ({ value: team.id, label: team.name }))}
+            fieldClassName="min-w-0 max-w-full flex-1"
+          />
+        </li>
       )}
-    </div>
+    </T5List>
   );
 }
+
+const dayWord = (iso: string, today: string) => {
+  const key = perthDateKey(iso);
+  if (key === today) return "Today";
+  if (key === addDays(today, 1)) return "Tomorrow";
+  return dayParts(key).weekday;
+};
 
 function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
   const now = useTeachingNow();
@@ -131,38 +149,59 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
   else if (demoMode)
     body = (
       <>
-        <ModeNotice>
+        <T5Note className="mt-0">
           Made-up demo service. Explore the programme and roles; no real invitations, membership changes or records are
           sent.
-        </ModeNotice>
-        <ModeGroupedList eyebrow="Demo programme" testId="teaching-organise-demo">
-          {view.week.sessions.map((session) => (
-            <ModeRow
-              key={session.occurrenceId}
-              title={session.title}
-              subtitle={`${perthDateKey(session.startsAt)} · ${perthTime(session.startsAt)}`}
-              href={`/teaching/session/${session.occurrenceId}`}
+        </T5Note>
+        <T5Section label={`Demo programme · ${view.week.sessions.length}`}>
+          <T5List ruled testId="teaching-organise-demo">
+            {view.week.sessions.map((session) => (
+              <T5Row
+                key={session.occurrenceId}
+                title={session.title}
+                meta={[dayWord(session.startsAt, perthDateKey(now)), session.venue ?? "Room not set"].join(" · ")}
+                lead={<T5Time time={perthTime(session.startsAt)} />}
+                href={`/teaching/session/${session.occurrenceId}`}
+              />
+            ))}
+          </T5List>
+        </T5Section>
+        <T5Section label="Explore the roles">
+          <T5List ruled>
+            <T5Row
+              title="Learner"
+              meta="Choose attendance and personal CPD actions"
+              lead={<T5Icon icon={GraduationCap} />}
+              href="/teaching/logbook"
             />
-          ))}
-        </ModeGroupedList>
-        <ModeGroupedList eyebrow="Explore the roles">
-          <ModeRow title="Learner" subtitle="Choose attendance and personal CPD actions" href="/teaching/logbook" />
-          <ModeRow title="Presenter" subtitle="Readiness, de-identification and feedback" href="/teaching/teach" />
-          <ModeRow
-            title="Registrar and supervisor"
-            subtitle="Log, review and confirm synthetic supervision"
-            href="/teaching/supervision"
-          />
-          <ModeRow title="Organiser" subtitle="Preview a timetable without saving it" href="/teaching/import" />
-        </ModeGroupedList>
-        <ModeNotice>
+            <T5Row
+              title="Presenter"
+              meta="Readiness, de-identification and feedback"
+              lead={<T5Icon icon={Presentation} />}
+              href="/teaching/teach"
+            />
+            <T5Row
+              title="Registrar and supervisor"
+              meta="Log, review and confirm synthetic supervision"
+              lead={<T5Icon icon={Users} />}
+              href="/teaching/supervision"
+            />
+            <T5Row
+              title="Organiser"
+              meta="Preview a timetable without saving it"
+              lead={<T5Icon icon={Upload} />}
+              href="/teaching/import"
+            />
+          </T5List>
+        </T5Section>
+        <T5Note className="mt-3" icon="shield">
           In an approved service, organisers manage series, groups, invitations and supervision pairings. Service admins
           manage programme access. Neither role can read a doctor&apos;s private CPD figures.
-        </ModeNotice>
+        </T5Note>
       </>
     );
   else if (teams.length === 0 || !serviceId)
-    body = <ModeNotice>Organise is for your service&apos;s organisers.</ModeNotice>;
+    body = <T5Note className="mt-0">Organise is for your service&apos;s organisers.</T5Note>;
   else if (organise.status === "loading" || organise.status === "idle") body = <ModeModuleSkeleton rows={4} eyebrow />;
   else if (organise.status !== "ready" || !organise.data)
     body = (
@@ -182,16 +221,6 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
     const risks = sessionRisks(mine).filter((r) => soonIds.has(r.occurrenceId));
     // At most one amber mark in the list: the first risk, in time order.
     const firstRisk = soon.flatMap((s) => risks.filter((r) => r.occurrenceId === s.occurrenceId))[0] ?? null;
-    const context = { teams: view.week.teams, attendance: [], showTeam: false };
-    const rows = soon.map((s) => ({
-      ...sessionRow(s, context),
-      href: null,
-      onSelect:
-        delayed.pending || s.status === "cancelled" || s.source !== "teaching"
-          ? undefined
-          : () => setOpen({ kind: "change", session: s }),
-      status: firstRisk?.occurrenceId === s.occurrenceId ? { tone: "warning" as const, text: firstRisk.text } : null,
-    }));
     const refresh = () => {
       view.retry();
       organise.retry();
@@ -239,79 +268,139 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
 
     body = (
       <>
-        <section aria-label="Next 48 hours" className="grid gap-2">
-          {rows.length > 0 ? (
-            <SessionTimeline
-              groups={[{ id: "soon", label: "Next 48 hours", count: null, rows }]}
-              testId="teaching-organise-soon"
-            />
-          ) : (
-            <>
-              <h2 className={cn(eyebrowText, "px-1")}>Next 48 hours</h2>
-              <p className={cn("px-1 text-sm", textMuted)}>Nothing in the next 48 hours.</p>
-            </>
-          )}
-          <div className="px-1">
-            <CheckedLine at={now} count={risks.length} />
+        <div className="grid gap-x-8 lg:grid-cols-2 lg:items-start">
+          <div className="grid min-w-0 content-start">
+            <T5Panel className="mt-3" testId="teaching-organise-soon">
+              <T5Kicker>
+                {`Next 48 hours · ${soon.length}${risks.length ? ` · ${risks.length} to check` : ""}`}
+              </T5Kicker>
+              {soon.length > 0 ? (
+                <T5List ruled={false}>
+                  {soon.map((s) => {
+                    const risk = firstRisk?.occurrenceId === s.occurrenceId ? firstRisk : null;
+                    const live = Date.parse(s.startsAt) <= now.getTime();
+                    const change =
+                      delayed.pending || s.status === "cancelled" || s.source !== "teaching"
+                        ? undefined
+                        : () => setOpen({ kind: "change", session: s });
+                    const meta = risk ? (
+                      <span className="text-[color:var(--warning-text)]">
+                        {dayWord(s.startsAt, perthDateKey(now))} · {risk.text}
+                      </span>
+                    ) : (
+                      [
+                        live ? "On now" : dayWord(s.startsAt, perthDateKey(now)),
+                        s.status === "cancelled" ? "Cancelled" : s.status === "moved" ? "Moved" : null,
+                        s.venue ?? (s.hasJoinLink ? "Online" : null),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                    );
+                    return (
+                      <T5Row
+                        key={s.occurrenceId}
+                        title={s.title}
+                        meta={meta}
+                        lead={<T5Time time={perthTime(s.startsAt)} />}
+                        onClick={risk ? undefined : change}
+                        end={
+                          risk && change ? (
+                            <Button type="button" variant="primary" size="sm" onClick={change}>
+                              {risk.rule === "room" ? "Set room" : "Fix"}
+                            </Button>
+                          ) : undefined
+                        }
+                      />
+                    );
+                  })}
+                </T5List>
+              ) : (
+                <T5Meta>Nothing in the next 48 hours.</T5Meta>
+              )}
+              <CheckedLine at={now} count={risks.length} />
+            </T5Panel>
+            {notice ? (
+              <T5Note tone="warning" icon="alert" className="mt-3">
+                {notice}
+              </T5Note>
+            ) : null}
+            <T5Section label="Tools">
+              <T5List ruled>
+                <T5Row
+                  title="Download attendance"
+                  meta={downloading ? "Preparing the spreadsheet…" : `Last ${withUnit(12, "weeks")}, as a spreadsheet`}
+                  lead={<T5Icon icon={Download} />}
+                  onClick={downloading ? undefined : () => void download()}
+                  testId="teaching-organise-download"
+                />
+                <T5Row
+                  title="Import a timetable"
+                  meta="CSV or XLSX, up to 1 MB. You see a preview before anything saves."
+                  lead={<T5Icon icon={Upload} />}
+                  href="/teaching/import"
+                />
+              </T5List>
+            </T5Section>
           </div>
-        </section>
-        <div role="group" aria-label="This service">
-          <ModeFactTiles testId="teaching-organise-counts">
-            <ModeFactTile
-              label="Sessions this week"
-              value={String(mine.filter((s) => s.status !== "cancelled").length)}
-            />
-            <ModeFactTile label="Members" value={String(data.members.length)} />
-            <ModeFactTile label="Groups" value={String(data.groups.length)} />
-            <ModeFactTile label="Series" value={String(data.series.length)} />
-          </ModeFactTiles>
+          <div className="grid min-w-0 content-start">
+            <T5Section
+              label={`Series · ${data.series.length}`}
+              right={<T5Link onClick={() => setOpen({ kind: "series", series: null })}>New series</T5Link>}
+            >
+              <T5List ruled testId="teaching-organise-series">
+                {data.series.map((s) => (
+                  <T5Row
+                    key={s.seriesId}
+                    title={s.title}
+                    meta={[
+                      REPEAT_LABELS[s.repeat as keyof typeof REPEAT_LABELS] ?? null,
+                      s.startTime,
+                      s.venue ?? "Room not set",
+                      s.audience ? AUDIENCE_LABELS[s.audience] : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    lead={<T5Icon icon={CalendarDays} />}
+                    onClick={() => setOpen({ kind: "series", series: s })}
+                  />
+                ))}
+                {data.series.length === 0 ? (
+                  <li className="py-2.5">
+                    <T5Meta>No series yet. Add one, or import a timetable.</T5Meta>
+                  </li>
+                ) : null}
+              </T5List>
+            </T5Section>
+            <T5Section
+              label="Groups and members"
+              right={<T5Link onClick={() => setOpen({ kind: "group", group: null })}>New group</T5Link>}
+            >
+              <T5List ruled testId="teaching-organise-people">
+                {data.groups.map((g) => (
+                  <T5Row
+                    key={g.groupId}
+                    title={g.name}
+                    meta={membersWord(g.userIds.length)}
+                    lead={<T5Icon icon={Users} />}
+                    onClick={() => setOpen({ kind: "group", group: g })}
+                  />
+                ))}
+                <T5Row
+                  title="Everyone in this service"
+                  meta={membersWord(data.members.length)}
+                  lead={<T5Icon icon={Users} />}
+                  onClick={() => setOpen({ kind: "members" })}
+                />
+                <T5Row
+                  title="Invite a member"
+                  meta="By work email, with a one-time code"
+                  lead={<T5Icon icon={Plus} />}
+                  onClick={() => setOpen({ kind: "invite" })}
+                />
+              </T5List>
+            </T5Section>
+          </div>
         </div>
-        <ModeGroupedList eyebrow="Series" testId="teaching-organise-series">
-          {data.series.map((s) => (
-            <TeachingRow
-              key={s.seriesId}
-              title={s.title}
-              subtitle={[
-                REPEAT_LABELS[s.repeat as keyof typeof REPEAT_LABELS] ?? null,
-                s.startTime,
-                s.venue ?? "Room not set",
-                s.audience ? AUDIENCE_LABELS[s.audience] : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-              onClick={() => setOpen({ kind: "series", series: s })}
-            />
-          ))}
-          <TeachingRow title="New series" onClick={() => setOpen({ kind: "series", series: null })} />
-        </ModeGroupedList>
-        <ModeGroupedList eyebrow="People" testId="teaching-organise-people">
-          {data.groups.map((g) => (
-            <TeachingRow
-              key={g.groupId}
-              title={g.name}
-              subtitle={membersWord(g.userIds.length)}
-              onClick={() => setOpen({ kind: "group", group: g })}
-            />
-          ))}
-          <TeachingRow title="New group" onClick={() => setOpen({ kind: "group", group: null })} />
-          <TeachingRow
-            title="Members"
-            subtitle={String(data.members.length)}
-            onClick={() => setOpen({ kind: "members" })}
-          />
-          <TeachingRow
-            title="Invite"
-            subtitle="By work email, with a one-time code"
-            onClick={() => setOpen({ kind: "invite" })}
-          />
-          <TeachingRow
-            title="Download attendance"
-            subtitle={downloading ? "Preparing the spreadsheet…" : `Last ${withUnit(12, "weeks")}, as a spreadsheet`}
-            busy={downloading}
-            onClick={() => void download()}
-          />
-        </ModeGroupedList>
-        {notice ? <ModeNotice tone="warning">{notice}</ModeNotice> : null}
         <TeachingSupervisionAdmin
           key={service}
           serviceId={service}
@@ -366,24 +455,15 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
   }
 
   return (
-    <InformationPageShell width="narrow" gap={false} testId="teaching-organise">
-      <div className="grid gap-3">
-        <h1 className="sr-only">Organise</h1>
-        {teams.length > 0 && !demoMode ? (
-          <Link
-            href="/teaching/import"
-            className={cn(
-              "inline-flex min-h-tap items-center self-start px-1 text-sm font-medium text-[color:var(--primary)]",
-              focusRing,
-            )}
-          >
-            Import a timetable
-          </Link>
-        ) : null}
-        {teams.length > 0 && serviceId && !demoMode ? (
-          <ServicePicker teams={teams} value={serviceId} onChange={setChosen} />
-        ) : null}
-        {body}
+    <InformationPageShell gap={false} testId="teaching-organise">
+      <div className="mx-auto w-full max-w-reading lg:max-w-5xl">
+        <T5Page>
+          <h1 className="sr-only">Organise</h1>
+          {teams.length > 0 && serviceId && !demoMode ? (
+            <ServicePicker teams={teams} value={serviceId} onChange={setChosen} />
+          ) : null}
+          {body}
+        </T5Page>
       </div>
       {delayed.pending ? (
         <TeachingUndoBar testId="teaching-organise-pending" onUndo={delayed.undo}>
