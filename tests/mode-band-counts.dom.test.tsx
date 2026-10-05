@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { ModeBand, ModeBandStatus, useModeBandCount } from "@/components/mode-band/mode-band";
@@ -57,5 +58,37 @@ describe("mode band tab counts", () => {
     );
     expect(screen.getByRole("link", { name: /^Log/ })).toHaveTextContent(/^Log$/);
     expect(screen.getByText(/Drafts didn't load/)).toBeTruthy();
+  });
+
+  it("shows no count after a save failed, and says 'Not saved · Try again' as an alert", () => {
+    function NotSavedPage() {
+      useModeBandCount("log", 3);
+      return <ModeBandStatus value={{ kind: "error", onRetry: () => {} }} />;
+    }
+    render(
+      <ModeBand modeId="cme" statusSlot>
+        <NotSavedPage />
+      </ModeBand>,
+    );
+    expect(screen.getByRole("link", { name: /^Log/ })).toHaveTextContent(/^Log$/);
+    expect(screen.getByRole("alert")).toHaveTextContent("Not saved · Try again");
+  });
+
+  it("keeps the status line's room in the server HTML, so the band does not grow on load", () => {
+    const html = renderToString(
+      <ModeBand modeId="cme" statusSlot>
+        <YearPage drafts={0} />
+      </ModeBand>,
+    );
+    expect(html).toContain("data-mode-band-reserve");
+  });
+
+  it("reserves nothing in the server HTML when no page has a status to show", () => {
+    const html = renderToString(
+      <ModeBand modeId="cme" statusSlot>
+        <p>Signed in, nothing to say</p>
+      </ModeBand>,
+    );
+    expect(html).not.toContain("data-mode-band-reserve");
   });
 });

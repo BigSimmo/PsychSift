@@ -123,7 +123,7 @@ it("shows the iPhone home-screen step and offers no lock-screen place control", 
   Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Mozilla/5.0 (iPhone)" });
   render(<RosterAlertsSection />);
   await user.click(await screen.findByRole("switch", { name: "Alerts on this phone" }));
-  expect(await screen.findByText("On iPhone, add Roster to your home screen first.")).toBeTruthy();
+  expect(await screen.findByText("On iPhone, add PsychSift to your home screen first.")).toBeTruthy();
   expect(screen.queryByText(/Show the place on the lock screen/i)).toBeNull();
   expect(requestPermission).not.toHaveBeenCalled();
 });

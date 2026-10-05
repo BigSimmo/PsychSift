@@ -178,8 +178,10 @@ export const modeSecondaryNavigationRegistry = {
     { id: "year", label: "Year", href: "/cme" },
     { id: "log", label: "Log", href: "/cme/log" },
     { id: "plan", label: "Plan", href: "/cme/plan" },
-    { id: "learning", label: "Learning", href: "/cme/learning" },
-    { id: "setup", label: "Set up", href: "/cme/setup" },
+    // Named as the mock-up names them (Josh, 5 Oct 2026): Courses lists the
+    // learning on offer; Report is the year check, and Set up opens from it.
+    { id: "learning", label: "Courses", href: "/cme/learning" },
+    { id: "setup", label: "Report", href: "/cme/check" },
   ],
   // Teaching's pages, for the mode pill's page list, like CME's. Teaching is
   // absent from `MODE_NAV_ADOPTED_MODES`: the pill already opens these, so no
@@ -455,10 +457,9 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
       pathname === "/cme/new"
     )
       return "log";
-    if (pathname === "/cme/check") return "year";
     if (pathname === "/cme/training" || pathname === "/cme/calendar" || pathname === "/cme/plan") return "plan";
     if (pathname === "/cme/learning") return "learning";
-    if (pathname === "/cme/programme" || pathname === "/cme/setup") return "setup";
+    if (pathname === "/cme/check" || pathname === "/cme/programme" || pathname === "/cme/setup") return "setup";
     // Exact match only, for the same reason On Call's home is: a prefix test
     // here would mark Year current on every CPD route as well as its own.
     if (pathname === "/cme") return "year";
@@ -473,7 +474,9 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/teaching/resources" || pathname.startsWith("/teaching/resources/")) return "resources";
     if (pathname === "/teaching/teach") return "teach";
     if (pathname === "/teaching/supervision") return "supervision";
-    if (pathname === "/teaching/review" || pathname === "/teaching/feedback") return "logbook";
+    if (pathname === "/teaching/review" || pathname === "/teaching/feedback" || pathname === "/teaching/term")
+      return "logbook";
+    if (pathname === "/teaching/exam-prep") return "resources";
     if (pathname === "/teaching/import") return "organise";
     if (pathname === "/teaching/logbook") return "logbook";
     if (pathname === "/teaching/organise") return "organise";
