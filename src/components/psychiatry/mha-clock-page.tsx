@@ -211,7 +211,7 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
             value={code}
             onChange={(event) => setCode(event.target.value)}
             data-testid="mha-clock-form"
-            className={field}
+            className={cn(focusRing, field)}
           >
             <option value="">Choose a form</option>
             {forms.map((form) => (
@@ -233,7 +233,7 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
             data-testid="mha-clock-time"
             aria-invalid={timeError ? true : undefined}
             aria-describedby={messageId}
-            className={cn(field, timeError && "border-[color:var(--danger-text)]")}
+            className={cn(focusRing, field, timeError && "border-[color:var(--danger-text)]")}
           />
         </div>
         <p
