@@ -22,6 +22,7 @@ import {
   onCallHandoverDraftFromCall,
   onCallHandoverExportSummary,
   onCallHandoverHtmlTable,
+  ON_CALL_HANDOVER_LEGAL_CATEGORIES,
   onCallHandoverLegalGroups,
   onCallHandoverLegalStatusesMatching,
   onCallHandoverLegalTitle,
@@ -177,9 +178,19 @@ describe("handover output", () => {
 });
 
 describe("handover helpers (mock-up v10)", () => {
-  it("groups every register form under the register's own categories, nothing added or dropped", () => {
+  it("offers only the register's status-bearing forms, under the register's own categories", () => {
     const groups = onCallHandoverLegalGroups();
-    expect(groups.reduce((total, group) => total + group.forms.length, 0)).toBe(officialForms.length);
+    expect(groups.map((group) => group.category).sort()).toEqual([
+      "Community treatment orders",
+      "Inpatient treatment orders",
+      "Referral and detention",
+    ]);
+    expect(groups.reduce((total, group) => total + group.forms.length, 0)).toBe(
+      officialForms.filter((form) => ON_CALL_HANDOVER_LEGAL_CATEGORIES.includes(form.category)).length,
+    );
+    // Search and seizure, restraint, seclusion and ECT records are forms, not a legal status.
+    const codes = groups.flatMap((group) => group.forms.map((form) => form.code));
+    for (const code of ["8A", "10D", "13"]) expect(codes).not.toContain(code);
     for (const group of groups) {
       for (const form of group.forms) expect(form.category).toBe(group.category);
     }
@@ -225,7 +236,7 @@ describe("handover helpers (mock-up v10)", () => {
     const summary = onCallHandoverExportSummary([draft({ review: "yes" }), draft({ bed: "JS" })]);
     expect(summary).toEqual({
       title: "This handover lists 2 patients",
-      detail: "Beds and initials only · 1 for review",
+      detail: "Check the free text for names or record numbers · 1 for review",
     });
   });
 

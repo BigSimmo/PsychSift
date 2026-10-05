@@ -31,7 +31,8 @@ import {
 /*
  * THE TABLE: a shift header, one table with the patient column frozen, what
  * lands when it is pasted, and the three exports, each through "Before it
- * leaves". Beds and initials only: the handover has no name or record number.
+ * leaves". The handover has no name or record-number field, and the check asks
+ * the reader to look over the free text for any.
  */
 
 /** A two-way switch (Table / Cards, Word or email / Plain text): a grey track with a raised tile on the choice. */

@@ -117,12 +117,13 @@ describe("handover page (mock-up v10, screens 6 to 10)", () => {
     fireEvent.click(screen.getByTestId("on-call-handover-table-copy"));
     const check = screen.getByTestId("on-call-handover-before-it-leaves");
     expect(check).toHaveTextContent("This handover lists 2 patients");
-    expect(check).toHaveTextContent("Beds and initials only · 1 for review");
+    expect(check).toHaveTextContent("Check the free text for names or record numbers · 1 for review");
     expect(check).toHaveTextContent("PsychSift sends nothing to its servers or to AI");
     expect(check).toHaveTextContent("Once pasted or shared, that place's rules apply");
     expect(check).toHaveTextContent(/Your draft still clears at \d\d:\d\d/);
-    expect(check).not.toHaveTextContent(/names|UMRN/);
-    // jsdom has no navigator.share, so Share is not offered.
+    // It asks the reader to check the free text, and never claims a count of names.
+    expect(check).not.toHaveTextContent(/\d+ names?|UMRN/);
+    // Share is off until the owner decides (and jsdom has no navigator.share).
     expect(within(check).queryByTestId("on-call-handover-leave-share")).toBeNull();
     expect(screen.getByTestId("on-call-handover-leave-confirm")).toHaveTextContent("Copy table");
     fireEvent.click(within(check).getByTestId("on-call-handover-leave-print"));

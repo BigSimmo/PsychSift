@@ -340,9 +340,21 @@ export type OnCallHandoverLegalGroup = { readonly category: string; readonly for
  * The register's forms grouped by its own categories, in register order, each
  * filtered by a search on code or words. Empty groups are left out.
  */
+/**
+ * The register's categories whose forms describe where a patient stands under
+ * the Act. Records such as search and seizure, restraint, seclusion or ECT
+ * statistics are forms, not a legal status, so they are never offered here.
+ */
+export const ON_CALL_HANDOVER_LEGAL_CATEGORIES: readonly string[] = [
+  "Inpatient treatment orders",
+  "Community treatment orders",
+  "Referral and detention",
+];
+
 export function onCallHandoverLegalGroups(query = ""): OnCallHandoverLegalGroup[] {
   const groups = new Map<string, OfficialForm[]>();
   for (const form of officialForms) {
+    if (!ON_CALL_HANDOVER_LEGAL_CATEGORIES.includes(form.category)) continue;
     const code = normalizeCode(form.code);
     const q = normalizeCode(query);
     const hit = !q || code === q || code.startsWith(`${q} `) || matchesQuery(`${form.code} ${form.title}`, query);
@@ -369,7 +381,11 @@ export function onCallHandoverReviewCount(patients: readonly OnCallHandoverDraft
   return patients.filter((patient) => patient.review === "yes").length;
 }
 
-/** What "Before it leaves" says the table holds. Beds and initials only: there are no names to count. */
+/**
+ * What "Before it leaves" says the table holds. The bed field refuses a name, but
+ * the free-text fields cannot be checked, so it asks the reader to check them
+ * rather than promising "beds and initials only".
+ */
 export function onCallHandoverExportSummary(patients: readonly OnCallHandoverDraft[]): {
   readonly title: string;
   readonly detail: string;
@@ -378,7 +394,10 @@ export function onCallHandoverExportSummary(patients: readonly OnCallHandoverDra
   const review = onCallHandoverReviewCount(patients);
   return {
     title: `This handover lists ${count === 1 ? "1 patient" : `${count} patients`}`,
-    detail: ["Beds and initials only", review > 0 ? `${review} for review` : "none for review"].join(" · "),
+    detail: [
+      "Check the free text for names or record numbers",
+      review > 0 ? `${review} for review` : "none for review",
+    ].join(" · "),
   };
 }
 
