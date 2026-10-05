@@ -38,6 +38,7 @@ import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store"
 import { onCallEntrySchema, type OnCallEntry, type OnCallSection } from "@/lib/on-call/entry-model";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 import { isOnCallPlaceholderNumber } from "@/lib/on-call/number-resolver";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 
 type UndoState = { id: number; entryId: string; restore: unknown; label: string };
 
@@ -271,7 +272,9 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
     <>
       <AdminNavHeader title="New job" sections={ADMIN_NEW_JOB_SECTIONS} />
       <InformationPageShell testId="admin-new-job-main">
-        <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">New job</h1>
+        <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+          New job
+        </PageTitleUnderBand>
 
         <AdminNewJobStart
           startsOn={start?.startsOn ?? null}

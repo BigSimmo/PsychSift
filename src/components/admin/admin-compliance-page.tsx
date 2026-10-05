@@ -1,5 +1,6 @@
 "use client";
 
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ChevronRight, ClipboardList, PenLine } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -405,7 +406,9 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
   return (
     <InformationPageShell testId="admin-compliance-main">
       <div className="grid min-w-0 gap-1">
-        <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Compliance</h1>
+        <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+          Compliance
+        </PageTitleUnderBand>
         <p className={cn(textMuted, "text-sm")}>What your health service asks you to keep current</p>
       </div>
 

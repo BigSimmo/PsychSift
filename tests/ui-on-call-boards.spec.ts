@@ -346,7 +346,12 @@ test.describe("02 More, 03 All modes — the pill owns page switching", () => {
     for (const route of [ROUTES.home, ROUTES.contacts, ROUTES.playbook, ROUTES.logistics, ROUTES.compliance]) {
       await openBoard(page, route);
       await expect(page.getByTestId("mode-nav")).toHaveCount(0);
-      await expect(page.getByRole("navigation", { name: "On Call pages" })).toHaveCount(0);
+      // The one exception is the mode header band's tab row (the C4 header the
+      // owner locked on 5 Oct 2026 for every mode, On Call included). It is
+      // the only "On Call pages" bar allowed; nothing else may repeat it.
+      // Some pages show the band without tabs, so the bar is at most that one.
+      expect(await page.getByRole("navigation", { name: "On Call pages" }).count()).toBeLessThanOrEqual(1);
+      expect(await page.getByTestId("mode-band-tabs").count()).toBeLessThanOrEqual(1);
     }
   });
 });
@@ -512,7 +517,16 @@ test.describe("02 More — the second row is about the page you are on", () => {
     await expect(page.getByTestId("on-call-contacts-filters")).toHaveCount(0);
     const firstGroup = page.getByTestId("on-call-contacts-group-needs-checking");
     const header = page.getByTestId("on-call-section-detail-header");
-    const [groupBox, headerBox] = [await firstGroup.boundingBox(), await header.boundingBox()];
+    // The mode header band (C4, locked 5 Oct 2026) sits between this bar and
+    // the list by design, so the gap is measured from whichever ends lower.
+    const band = page.getByTestId("mode-band");
+    const [groupBox, sectionBox, bandBox] = [
+      await firstGroup.boundingBox(),
+      await header.boundingBox(),
+      await band.boundingBox(),
+    ];
+    const headerBox =
+      bandBox && sectionBox && bandBox.y + bandBox.height > sectionBox.y + sectionBox.height ? bandBox : sectionBox;
     // The threshold is the height of a control band, not a design opinion: a
     // chip row or a toolbar is a 48px control plus its gaps, so anything that
     // reappears between the header and the list pushes this well past 72. The
