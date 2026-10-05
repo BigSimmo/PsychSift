@@ -57,7 +57,7 @@ export function CmePlanGoalSplit({ tally }: { tally: readonly GoalTally[] }) {
   return (
     <div data-testid="cme-plan-goal-split">
       <p className="flex items-baseline justify-between gap-3 text-sm">
-        <span className="nums font-semibold text-[color:var(--text)]">{`${formatHours(total)} h logged`}</span>
+        <span className="nums font-normal text-[color:var(--text)]">{`${formatHours(total)} h logged`}</span>
         <span className={cn(textMuted, "nums")}>{`${activities(linkedCount)} linked`}</span>
       </p>
       <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--surface-inset)] shadow-[var(--shadow-inset)] forced-colors:border">
@@ -85,7 +85,7 @@ export function CmePlanGoalSplit({ tally }: { tally: readonly GoalTally[] }) {
               </span>
               <span className={cn(textMuted, "text-xs")}>{activities(row.entryCount)}</span>
             </span>
-            <span className="nums shrink-0 text-sm font-semibold text-[color:var(--text)]">
+            <span className="nums shrink-0 text-sm font-normal text-[color:var(--text)]">
               {`${formatHours(row.hours)} h`}
               <span className="sr-only">{` from ${activities(row.entryCount)}`}</span>
             </span>

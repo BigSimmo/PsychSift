@@ -90,7 +90,7 @@ export function CmeDomainsRing({
             x="20"
             y="22.5"
             textAnchor="middle"
-            className="nums fill-[color:var(--text-heading)] text-[length:8px] font-semibold"
+            className="nums fill-[color:var(--text-heading)] text-[length:8px] font-normal"
           >
             {`${filledCount}/${buckets.length}`}
           </text>
@@ -100,7 +100,7 @@ export function CmeDomainsRing({
             <li key={row.bucket} className="flex min-h-tap items-center justify-between gap-2 text-sm">
               <span className={cn("min-w-0", row.filled ? "text-[color:var(--text)]" : textMuted)}>{row.bucket}</span>
               {row.count > 0 ? (
-                <span className="nums shrink-0 font-semibold text-[color:var(--text)]">
+                <span className="nums shrink-0 font-normal text-[color:var(--text)]">
                   {row.count}
                   <span className="sr-only">{row.count === 1 ? " activity" : " activities"}</span>
                 </span>
