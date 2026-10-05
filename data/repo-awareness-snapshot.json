@@ -478,6 +478,11 @@
         "area": "product"
       },
       {
+        "path": "/psychiatry/mha-clock",
+        "file": "src/app/(search-app)/psychiatry/mha-clock/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan/patients/[patientId]/management-plan/edit",
         "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/edit/page.tsx",
         "area": "mockup"

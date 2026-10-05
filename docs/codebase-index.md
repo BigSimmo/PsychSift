@@ -432,6 +432,14 @@ the search-app layout only while "Save recent searches" is on. It feeds the hub'
 monthly ring and most-opened forms, is cleared with recent searches and at account transitions,
 and expires after 90 days.
 
+**MHA clock.** `/psychiatry/mha-clock` (`src/components/psychiatry/mha-clock-page.tsx`) lists every
+Mental Health Act form the reader is holding, from `src/lib/psychiatry-hub/mha-clocks.ts`: a form
+code, the time it was made and an opaque id, kept through `src/lib/patient-label-storage.ts` so it
+clears at shift end and every account transition. No patient label field exists (owner decision
+pending). Limits come only from `mhaTimers` (`src/lib/on-call/mha-timers.ts`), so a countdown shows
+only while the signed switch is on; otherwise the owner-approved quote-only lines from the form-page
+Timeline. Linked from the hub's "For a shift" card and Tools list.
+
 **My shifts moved to Roster.** The doctor's own roster now lives in **`src/lib/roster/`**
 (`src/lib/roster/shifts/`, moved from the old On Call shifts folder, plus `shift-kind.ts` for the
 day/evening/night/on-call/leave/other kinds shown as letter squares) and its API at
