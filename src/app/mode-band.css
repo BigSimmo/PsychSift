@@ -21,6 +21,9 @@
   --mode-band-bg: var(--mode-identity-soft);
   --mode-band-line: var(--mode-identity-border);
   --mode-band-gutter: 1.25rem;
+  /* The mock-up's title and meta line heights, written down once. */
+  --mode-band-title-leading: 1.12;
+  --mode-band-meta-leading: 1.125rem;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -40,7 +43,6 @@
    bottom edge (owner, 5 Oct 05:55 UTC: "big and extending, not shrunk"). */
 .mode-band__mark {
   position: absolute;
-  z-index: -1;
   right: -2.125rem;
   top: 2.5rem;
   width: 8.125rem;
@@ -66,19 +68,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: calc(var(--spacing) * 2);
   min-height: var(--spacing-tap, 3rem);
 }
 
 .mode-band__back {
   display: inline-flex;
   align-items: center;
-  gap: 0.125rem;
+  gap: calc(var(--spacing) * 0.5);
   min-height: var(--spacing-tap, 3rem);
   min-width: var(--spacing-tap, 3rem);
-  margin-left: -0.5rem;
-  padding: 0 0.5rem 0 0.25rem;
-  border-radius: 0.75rem;
+  margin-left: calc(var(--spacing) * -2);
+  padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 1);
+  border-radius: var(--radius-lg);
   font-size: var(--text-sm, 0.875rem);
   font-weight: 600;
   color: var(--mode-identity);
@@ -104,13 +106,13 @@
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: calc(var(--spacing) * 1.5);
   min-height: var(--spacing-tap, 3rem);
   margin-left: auto;
-  margin-right: -0.625rem;
-  padding: 0 0.625rem;
+  margin-right: calc(var(--spacing) * -2.5);
+  padding: 0 calc(var(--spacing) * 2.5);
   border: 0;
-  border-radius: 0.75rem;
+  border-radius: var(--radius-lg);
   background: transparent;
   font: inherit;
   font-size: var(--text-sm, 0.875rem);
@@ -125,7 +127,7 @@
   font-size: var(--text-3xl, 1.875rem);
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.12;
+  line-height: var(--mode-band-title-leading);
   text-wrap: balance;
   color: var(--text-heading);
 }
@@ -134,11 +136,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: calc(var(--spacing) * 3);
 }
 
 .mode-band__status {
-  margin-top: 0.375rem;
+  margin-top: calc(var(--spacing) * 1.5);
   min-height: 1.375rem;
   display: flex;
   align-items: center;
@@ -147,9 +149,9 @@
 .mode-band__saved {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: calc(var(--spacing) * 1.5);
   font-size: var(--text-sm-minus, 0.8125rem);
-  line-height: 1.125rem;
+  line-height: var(--mode-band-meta-leading);
   color: var(--text-muted);
 }
 
@@ -163,13 +165,13 @@
 .mode-band__chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.125rem 0.625rem 0.125rem 0.5rem;
-  border-radius: 999px;
+  gap: calc(var(--spacing) * 1.5);
+  padding: calc(var(--spacing) * 0.5) calc(var(--spacing) * 2.5) calc(var(--spacing) * 0.5) calc(var(--spacing) * 2);
+  border-radius: var(--radius-pill);
   border: 1px solid;
   font-size: var(--text-sm-minus, 0.8125rem);
   font-weight: 500;
-  line-height: 1.125rem;
+  line-height: var(--mode-band-meta-leading);
 }
 
 .mode-band__chip--offline {
@@ -188,8 +190,8 @@
    margin keeps from pushing the tabs down. */
 .mode-band__retry {
   display: inline-flex;
-  margin: -0.8125rem 0;
-  padding: 0.8125rem 0;
+  margin: calc(var(--spacing) * -3.25) 0;
+  padding: calc(var(--spacing) * 3.25) 0;
   border: 0;
   background: transparent;
   font: inherit;
@@ -206,7 +208,7 @@
   display: block;
   width: 8.5rem;
   height: 0.75rem;
-  border-radius: 0.375rem;
+  border-radius: var(--radius-sm);
   background: linear-gradient(
     90deg,
     color-mix(in srgb, var(--mode-identity) 16%, var(--mode-band-bg)) 0%,
@@ -220,12 +222,12 @@
 .mode-band__tabs {
   position: relative;
   max-width: 45rem;
-  margin: 0.625rem auto 0;
+  margin: calc(var(--spacing) * 2.5) auto 0;
 }
 
 .mode-band__tab-row {
   display: flex;
-  gap: 1.5rem;
+  gap: calc(var(--spacing) * 6);
   padding: 0 var(--mode-band-gutter);
   overflow-x: auto;
   scrollbar-width: none;
@@ -246,11 +248,11 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: calc(var(--spacing) * 1.5);
   height: var(--spacing-tap, 3rem);
-  margin: 0 -0.375rem;
-  padding: 0 0.375rem;
-  border-radius: 0.625rem 0.625rem 0 0;
+  margin: 0 calc(var(--spacing) * -1.5);
+  padding: 0 calc(var(--spacing) * 1.5);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
   font-size: var(--text-base-minus, 0.9375rem);
   font-weight: 500;
   color: var(--text-muted);
@@ -272,7 +274,7 @@
   bottom: 0;
   height: 0;
   border-bottom: 3px solid transparent;
-  border-radius: 3px 3px 0 0;
+  border-radius: var(--radius-xs) var(--radius-xs) 0 0;
 }
 
 .mode-band__tab[aria-current="page"]::after {
@@ -292,9 +294,9 @@
 .mode-band__badge {
   min-width: 1.25rem;
   height: 1.25rem;
-  padding: 0 0.375rem;
+  padding: 0 calc(var(--spacing) * 1.5);
   box-sizing: border-box;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   display: inline-grid;
   place-items: center;
   font-size: var(--text-xs, 0.75rem);
@@ -342,7 +344,7 @@
   .mode-band__customise {
     width: var(--spacing-tap, 3rem);
     justify-content: center;
-    margin-right: -0.75rem;
+    margin-right: calc(var(--spacing) * -3);
     padding: 0;
   }
 
