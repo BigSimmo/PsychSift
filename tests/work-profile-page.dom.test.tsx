@@ -35,8 +35,8 @@ vi.mock("@/components/clinical-dashboard/use-app-preferences", () => ({ useAppPr
 const data = vi.hoisted(() => ({ current: undefined as unknown as WorkProfileData, online: true }));
 vi.mock("@/components/work-profile/use-work-profile-data", () => ({
   useWorkProfileData: () => data.current,
-  useOnline: () => data.online,
 }));
+vi.mock("@/lib/use-online-status", () => ({ useOnlineStatus: () => data.online }));
 
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="account-dialog" /> : null),
@@ -127,5 +127,79 @@ describe("Work profile page", () => {
     render(<WorkProfilePage />);
     expect(screen.getByTestId("work-profile-status").textContent).toContain("Offline");
     expect(screen.getByTestId("work-profile-offline")).toBeTruthy();
+  });
+
+  it("while signing in, shows a loading state; a sign-in check failure offers Retry", () => {
+    auth.status = "loading";
+    render(<WorkProfilePage />);
+    expect(screen.getByTestId("work-profile-loading")).toBeTruthy();
+    expect(screen.getByText("Loading Work profile")).toBeTruthy();
+    cleanup();
+    auth.status = "error";
+    render(<WorkProfilePage />);
+    expect(screen.getByTestId("work-profile-auth-error")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+
+  it("a failed read when the page opens is not called a failed save", () => {
+    prefs.syncState = "error";
+    render(<WorkProfilePage />);
+    expect(screen.getByTestId("work-profile-status-failed").textContent).toBe(
+      "Couldn’t load your saved settings · Try again",
+    );
+  });
+
+  it("opening the page never claims a save time", () => {
+    prefs.syncState = "syncing";
+    const { rerender } = render(<WorkProfilePage />);
+    prefs.syncState = "synced";
+    rerender(<WorkProfilePage />);
+    expect(screen.getByTestId("work-profile-status").textContent).toBe("Saved to your account");
+  });
+
+  it("while workplaces load, says Checking rather than showing only Add", () => {
+    data.current = readyData({ workplaces: { status: "loading" }, roster: { status: "loading" } });
+    render(<WorkProfilePage />);
+    expect(screen.getByTestId("work-profile-workplaces-loading").textContent).toContain("Checking…");
+  });
+
+  it("a registrar with no RANZCP stage is asked for it", () => {
+    prefs.preferences = { ...DEFAULT_PREFERENCES, workStage: "registrar", ranzcpStage: null };
+    render(<WorkProfilePage />);
+    const row = screen.getByTestId("work-profile-ranzcp-stage");
+    expect(row.textContent).toContain("Choose your stage");
+    expect(row.closest("button")).toBeTruthy();
+  });
+
+  it("offline, nothing can be changed: no Add, no stage button, no new-job link", () => {
+    data.online = false;
+    render(<WorkProfilePage />);
+    expect(screen.queryByTestId("work-profile-add-workplace")).toBeNull();
+    expect(screen.getByTestId("work-profile-stage").closest("button")).toBeNull();
+    expect(screen.queryByText("Starting a new job or rotation")).toBeNull();
+  });
+
+  it("says Nothing set up yet only when no row shows Ready", () => {
+    data.current = readyData({
+      roster: { status: "ready", value: { workplaces: 0, rowName: null } },
+      workplaces: { status: "ready", value: [] },
+      teaching: { status: "ready", value: { teams: 0 } },
+      cpd: { status: "ready", value: { configured: false, routines: 0 } },
+    });
+    render(<WorkProfilePage />);
+    expect(screen.getByTestId("work-profile-status").textContent).toBe("Nothing set up yet");
+    cleanup();
+    data.current = readyData({
+      roster: { status: "ready", value: { workplaces: 0, rowName: null } },
+      workplaces: { status: "ready", value: [] },
+      teaching: { status: "ready", value: { teams: 0 } },
+    });
+    render(<WorkProfilePage />);
+    expect(screen.getByTestId("work-profile-status").textContent).not.toContain("Nothing set up yet");
+  });
+
+  it("the Teaching row opens the teaching week, not the organisers' page", () => {
+    render(<WorkProfilePage />);
+    expect(screen.getByTestId("work-profile-area-teaching").closest("a")?.getAttribute("href")).toBe("/teaching/week");
   });
 });

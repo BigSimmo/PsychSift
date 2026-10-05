@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useId, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
+import { modeDot, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 
@@ -41,12 +41,15 @@ export function WorkProfileSection({
 const hairline = "border-t border-[color:var(--border)] first:border-t-0 forced-colors:border-[color:CanvasText]";
 
 /** A small dot in an area's colour, beside its name. Decorative: the name always says the area. */
-export function AreaDot({ mode }: { readonly mode: string }) {
+function AreaDot({ mode }: { readonly mode: string }) {
   return (
     <span
       aria-hidden="true"
       data-mode-identity={mode}
-      className="inline-block size-1.5 shrink-0 rounded-full bg-[color:var(--mode-identity)] forced-colors:border forced-colors:border-[color:CanvasText]"
+      className={cn(
+        modeDot,
+        "bg-[color:var(--mode-identity)] forced-colors:border forced-colors:border-[color:CanvasText]",
+      )}
     />
   );
 }

@@ -3,21 +3,27 @@
 import { Bell, Check, ChevronLeft, CloudOff, Lock, Shield, TriangleAlert, UserRound } from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { deriveSidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ContextualBackLink } from "@/components/contextual-back-link";
 import { InformationPageShell } from "@/components/information-page-shell";
+import { formatModeTime } from "@/components/mode-kit/dates";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
-import { useOnline, useWorkProfileData, type WorkProfileData } from "@/components/work-profile/use-work-profile-data";
+import {
+  useWorkProfileData,
+  type WorkProfileData,
+  type WorkProfilePreferences,
+} from "@/components/work-profile/use-work-profile-data";
 import { WorkProfileNote, WorkProfileRow, WorkProfileSection } from "@/components/work-profile/work-profile-list";
 import { AlertsPanel, PrivacyPanel, ProfilePanel, WorkPanel } from "@/components/work-profile/work-profile-panels";
 import { useAuthSession } from "@/lib/supabase/client";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { WORK_PROFILE_TABS, profileTabCount, readWorkProfileTab, type WorkProfileTab } from "@/lib/work-profile/model";
 
 // The sheet is opened rarely; it loads on first open, not with the page.
@@ -25,24 +31,18 @@ const WorkStageSheet = dynamic(() => import("@/components/work-profile/work-stag
 
 const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 lg:max-w-5xl";
 
-const TIME = new Intl.DateTimeFormat("en-AU", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-  timeZone: "Australia/Perth",
-});
-
 type HeaderStatus =
   | { kind: "saved"; at: Date | null }
   | { kind: "saving" }
   | { kind: "failed" }
+  | { kind: "read-failed" }
   | { kind: "offline" }
   | { kind: "signed-out" }
   | { kind: "none" };
 
 function StatusLine({ status, onRetry }: { readonly status: HeaderStatus; readonly onRetry: () => void }) {
   const base = "-mt-4 flex min-h-5 items-center gap-1.5 text-xs text-[color:var(--text-muted)]";
-  if (status.kind === "failed") {
+  if (status.kind === "failed" || status.kind === "read-failed") {
     // The whole line is the retry button; its 48px tap area must not push the tabs down.
     return (
       <div role="alert" className="-mt-4">
@@ -53,7 +53,7 @@ function StatusLine({ status, onRetry }: { readonly status: HeaderStatus; readon
           data-testid="work-profile-status-failed"
         >
           <TriangleAlert aria-hidden="true" className="size-icon-xs" />
-          Not saved · Try again
+          {status.kind === "failed" ? "Not saved · Try again" : "Couldn’t load your saved settings · Try again"}
         </button>
       </div>
     );
@@ -62,7 +62,7 @@ function StatusLine({ status, onRetry }: { readonly status: HeaderStatus; readon
     status.kind === "saved" ? (
       <>
         <Check aria-hidden="true" className="size-icon-xs" />
-        {status.at ? `Saved to your account ${TIME.format(status.at)}` : "Saved to your account"}
+        {status.at ? `Saved to your account ${formatModeTime(status.at)}` : "Saved to your account"}
       </>
     ) : status.kind === "saving" ? (
       "Saving…"
@@ -116,14 +116,17 @@ function useNow(): Date {
   return now;
 }
 
-/** When the account copy of the preferences last finished saving in this visit. */
-function useSavedAt(syncState: string): Date | null {
+/**
+ * When a change made on this page last finished saving to the account. The
+ * page-open read also passes through "syncing", so only a write stamps a time.
+ */
+function useSavedAt(syncState: string, wrote: boolean): Date | null {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const previous = useRef(syncState);
   useEffect(() => {
-    if (previous.current === "syncing" && syncState === "synced") setSavedAt(new Date());
+    if (wrote && previous.current === "syncing" && syncState === "synced") setSavedAt(new Date());
     previous.current = syncState;
-  }, [syncState]);
+  }, [syncState, wrote]);
   return savedAt;
 }
 
@@ -138,9 +141,20 @@ function SignedInBody({
 }) {
   const now = useNow();
   const data = useWorkProfileData(now);
-  const { preferences, syncState, retrySync } = useAppPreferences();
-  const online = useOnline();
-  const savedAt = useSavedAt(syncState);
+  const { preferences, setPreference, syncState, retrySync } = useAppPreferences();
+  const online = useOnlineStatus();
+  const [wrote, setWrote] = useState(false);
+  const savedAt = useSavedAt(syncState, wrote);
+  const prefs = useMemo<WorkProfilePreferences>(
+    () => ({
+      preferences,
+      setPreference: (key, value) => {
+        setWrote(true);
+        setPreference(key, value);
+      },
+    }),
+    [preferences, setPreference],
+  );
   return (
     <WorkProfileSignedInView
       tab={tab}
@@ -149,9 +163,10 @@ function SignedInBody({
       data={data}
       online={online}
       syncState={syncState}
+      wrote={wrote}
       savedAt={savedAt}
       onRetry={retrySync}
-      workStageSet={preferences.workStage !== null}
+      prefs={prefs}
     />
   );
 }
@@ -167,9 +182,10 @@ export function WorkProfileSignedInView({
   data,
   online,
   syncState,
+  wrote = false,
   savedAt,
   onRetry,
-  workStageSet,
+  prefs,
 }: {
   readonly tab: WorkProfileTab;
   readonly onTab: (tab: WorkProfileTab) => void;
@@ -177,26 +193,32 @@ export function WorkProfileSignedInView({
   readonly data: WorkProfileData;
   readonly online: boolean;
   readonly syncState: string;
+  /** A change was made on this page, so a failure is a failed save rather than a failed read. */
+  readonly wrote?: boolean;
   readonly savedAt: Date | null;
   readonly onRetry: () => void;
-  readonly workStageSet: boolean;
+  readonly prefs: WorkProfilePreferences;
 }) {
   const [stageOpen, setStageOpen] = useState(false);
   const identity = deriveSidebarIdentity(email);
 
+  // Nothing set up: no row below shows Ready or a recorded figure.
   const nothingSetUp =
-    !workStageSet &&
+    prefs.preferences.workStage === null &&
     data.roster.status === "ready" &&
     data.roster.value.workplaces === 0 &&
+    !data.roster.value.rowName &&
     data.teaching.status === "ready" &&
     data.teaching.value.teams === 0 &&
+    data.cpd.status === "ready" &&
+    !data.cpd.value.configured &&
     data.admin.status === "ready" &&
     data.admin.value.recorded === 0;
 
   const status: HeaderStatus = !online
     ? { kind: "offline" }
     : syncState === "error"
-      ? { kind: "failed" }
+      ? { kind: wrote ? "failed" : "read-failed" }
       : syncState === "syncing"
         ? { kind: "saving" }
         : nothingSetUp
@@ -227,8 +249,8 @@ export function WorkProfileSignedInView({
             <ProfilePanel
               data={data}
               identity={{ name: identity.displayName, email }}
+              prefs={prefs}
               onChooseStage={() => setStageOpen(true)}
-              layout="split"
               offline={!online}
             />
           ) : tab === "work" ? (
@@ -236,11 +258,11 @@ export function WorkProfileSignedInView({
           ) : tab === "alerts" ? (
             <AlertsPanel />
           ) : (
-            <PrivacyPanel data={data} />
+            <PrivacyPanel data={data} prefs={prefs} />
           )}
         </div>
       </Tabs>
-      {stageOpen ? <WorkStageSheet open={stageOpen} onClose={() => setStageOpen(false)} /> : null}
+      {stageOpen ? <WorkStageSheet open={stageOpen} onClose={() => setStageOpen(false)} prefs={prefs} /> : null}
     </>
   );
 }

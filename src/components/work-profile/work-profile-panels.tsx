@@ -12,16 +12,16 @@ import {
   Scale,
   Search,
   ShieldCheck,
+  type LucideIcon,
   Smartphone,
   Trash2,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
-import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
 import {
   WorkProfileFoot,
@@ -29,7 +29,7 @@ import {
   WorkProfileRow,
   WorkProfileSection,
 } from "@/components/work-profile/work-profile-list";
-import type { WorkProfileData } from "@/components/work-profile/use-work-profile-data";
+import type { WorkProfileData, WorkProfilePreferences } from "@/components/work-profile/use-work-profile-data";
 import { JURISDICTION_OPTIONS, workStageLabel } from "@/lib/account-preferences";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
@@ -38,6 +38,7 @@ import { useAuthSession } from "@/lib/supabase/client";
 import {
   adminArea,
   cpdArea,
+  missingSetupDates,
   onCallArea,
   payFortnightWeekday,
   restRules,
@@ -50,7 +51,7 @@ import {
 
 const AREA_HREF: Record<AreaRow["id"], string> = {
   roster: "/roster/settings",
-  teaching: "/teaching/organise",
+  teaching: "/teaching/week",
   cpd: "/cme/setup",
   admin: "/admin/renewals",
   "on-call": "/on-call/call",
@@ -84,7 +85,7 @@ function gradeLabel(grade: string | null | undefined): string | null {
     : null;
 }
 
-export function ProfileIdentity({ name, email }: { readonly name: string; readonly email: string }) {
+function ProfileIdentity({ name, email }: { readonly name: string; readonly email: string }) {
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -110,26 +111,23 @@ export function ProfileIdentity({ name, email }: { readonly name: string; readon
 export function ProfilePanel({
   data,
   identity,
+  prefs: { preferences },
   onChooseStage,
-  layout,
   offline = false,
 }: {
   readonly data: WorkProfileData;
   readonly identity: { name: string; email: string };
+  readonly prefs: WorkProfilePreferences;
   readonly onChooseStage: () => void;
-  /** "split" puts the areas in a second column on a wide screen. */
-  readonly layout: "single" | "split";
   /** Offline nothing can be changed, so rows are read-only and the add/start actions are hidden. */
   readonly offline?: boolean;
 }) {
-  const { preferences } = useAppPreferences();
   const stage = workStageLabel(preferences.workStage, preferences.ranzcpStage);
   const jurisdiction =
     JURISDICTION_OPTIONS.find((option) => option.value === preferences.jurisdiction)?.label ?? "Western Australia";
   const teams = data.teams.status === "ready" ? data.teams.value : [];
   const grades = [...new Set(teams.map((team) => gradeLabel(team.grade)).filter(Boolean))] as string[];
-  const admin = data.admin.status === "ready" ? data.admin.value : null;
-  const showMissing = admin !== null && !admin.partial && admin.recorded > 0 && admin.missing.length > 0;
+  const missing = missingSetupDates(data.admin);
   const areas = [
     rosterArea(data.roster),
     teachingArea(data.teaching),
@@ -168,27 +166,39 @@ export function ProfilePanel({
     </WorkProfileSection>
   );
 
+  // A registrar without a RANZCP stage is asked for it: until then CPD can't say "Covered".
   const training =
-    preferences.workStage === "registrar" && preferences.ranzcpStage ? (
-      <WorkProfileSection label="Your training">
-        <WorkProfileRow
-          icon={GraduationCap}
-          title={`RANZCP Stage ${preferences.ranzcpStage}`}
-          subtitle="Assessments stay in InTrain"
-        />
+    preferences.workStage === "registrar" ? (
+      <WorkProfileSection label="Your training" testId="work-profile-training">
+        {preferences.ranzcpStage ? (
+          <WorkProfileRow
+            icon={GraduationCap}
+            title={`RANZCP Stage ${preferences.ranzcpStage}`}
+            subtitle="Assessments stay in InTrain"
+          />
+        ) : (
+          <WorkProfileRow
+            icon={GraduationCap}
+            title="RANZCP stage"
+            subtitle={<span className="text-[color:var(--clinical-accent)]">Choose your stage</span>}
+            onSelect={offline ? undefined : onChooseStage}
+            testId="work-profile-ranzcp-stage"
+          />
+        )}
       </WorkProfileSection>
     ) : null;
 
-  const missingNote = showMissing ? (
-    <WorkProfileNote
-      icon={Info}
-      title={admin.missing.length === 1 ? "One date not recorded" : `${admin.missing.length} dates not recorded`}
-      action={<AddLink href="/admin/renewals" />}
-      testId="work-profile-missing-note"
-    >
-      {admin.missing.join(", ")}
-    </WorkProfileNote>
-  ) : null;
+  const missingNote =
+    missing.length > 0 ? (
+      <WorkProfileNote
+        icon={Info}
+        title={missing.length === 1 ? "One date not recorded" : `${missing.length} dates not recorded`}
+        action={<AddLink href="/admin/renewals" />}
+        testId="work-profile-missing-note"
+      >
+        {missing.join(", ")}
+      </WorkProfileNote>
+    ) : null;
 
   const workplaces = (
     <WorkProfileSection label="Where you work" testId="work-profile-workplaces">
@@ -202,6 +212,13 @@ export function ProfilePanel({
             href={offline ? undefined : "/roster/settings"}
           />
         ))
+      ) : data.workplaces.status === "loading" ? (
+        <WorkProfileRow
+          icon={MapPin}
+          title="Your workplaces"
+          subtitle="Checking…"
+          testId="work-profile-workplaces-loading"
+        />
       ) : data.workplaces.status === "failed" ? (
         <WorkProfileRow icon={MapPin} title="Couldn’t load your workplaces" subtitle="Not checked" />
       ) : null}
@@ -244,34 +261,19 @@ export function ProfilePanel({
     </WorkProfileSection>
   );
 
-  const identityBlock = <ProfileIdentity name={identity.name} email={identity.email} />;
-
-  if (layout === "split") {
-    return (
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-        <div className="grid min-w-0 content-start gap-6">
-          {identityBlock}
-          {about}
-          {training}
-          {missingNote}
-          {workplaces}
-        </div>
-        <div className="grid min-w-0 content-start gap-6">
-          {areaList}
-          {newJob}
-        </div>
-      </div>
-    );
-  }
   return (
-    <div className="grid gap-6">
-      {identityBlock}
-      {about}
-      {training}
-      {missingNote}
-      {workplaces}
-      {areaList}
-      {newJob}
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div className="grid min-w-0 content-start gap-6">
+        <ProfileIdentity name={identity.name} email={identity.email} />
+        {about}
+        {training}
+        {missingNote}
+        {workplaces}
+      </div>
+      <div className="grid min-w-0 content-start gap-6">
+        {areaList}
+        {newJob}
+      </div>
     </div>
   );
 }
@@ -291,7 +293,7 @@ function AddLink({ href }: { readonly href: string }) {
 }
 
 export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
-  const rulesOn = restRulesGate().on;
+  const gate = restRulesGate();
   const weekday =
     data.payFortnightAnchor.status === "ready" ? payFortnightWeekday(data.payFortnightAnchor.value) : null;
   return (
@@ -325,12 +327,12 @@ export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
         <WorkProfileRow
           title="Check my next 14 days"
           subtitle={
-            rulesOn ? "Roster’s Hours check uses these limits" : "Roster doesn’t check these until they’re signed off"
+            gate.on ? "Roster’s Hours check uses these limits" : "Roster doesn’t check these until they’re signed off"
           }
           href="/roster/shifts"
         />
       </WorkProfileSection>
-      <WorkProfileFoot>{restRulesProvenance()}</WorkProfileFoot>
+      <WorkProfileFoot>{restRulesProvenance(gate)}</WorkProfileFoot>
     </div>
   );
 }
@@ -362,7 +364,7 @@ function PrivacyToggleRow({
   readonly subtitle: string;
   readonly enabled: boolean;
   readonly onToggle: () => void;
-  readonly icon: typeof Search;
+  readonly icon: LucideIcon;
 }) {
   return (
     <WorkProfileRow
@@ -374,8 +376,13 @@ function PrivacyToggleRow({
   );
 }
 
-export function PrivacyPanel({ data }: { readonly data: WorkProfileData }) {
-  const { preferences, setPreference } = useAppPreferences();
+export function PrivacyPanel({
+  data,
+  prefs: { preferences, setPreference },
+}: {
+  readonly data: WorkProfileData;
+  readonly prefs: WorkProfilePreferences;
+}) {
   const { signOut } = useAuthSession();
   const [cleared, setCleared] = useState<string | null>(null);
   const teams = data.teams.status === "ready" ? data.teams.value : [];
@@ -453,14 +460,17 @@ export function PrivacyPanel({ data }: { readonly data: WorkProfileData }) {
   );
 }
 
-function SignOutBlock({ onSignOut }: { readonly onSignOut: () => void }): ReactNode {
+function SignOutBlock({ onSignOut }: { readonly onSignOut: () => void }) {
   return (
     <div className="grid gap-1 border-t border-[color:var(--border)] pt-1">
       <button
         type="button"
         onClick={onSignOut}
         data-testid="work-profile-sign-out"
-        className="flex min-h-tap items-center gap-3 text-left text-base-minus font-medium text-[color:var(--danger-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+        className={cn(
+          focusRing,
+          "flex min-h-tap items-center gap-3 rounded-md text-left text-base-minus font-medium text-[color:var(--danger-text)]",
+        )}
       >
         Sign out
       </button>

@@ -647,6 +647,13 @@ calendar pages.
 feeds them produce it from their own selectors; it carries no patient identifiers and is never
 stored on a server.
 
+**Work profile.** `src/lib/work-profile/model.ts` turns each Work area's read into the row
+`/my-day/profile` shows (`src/components/work-profile/`): a read that failed or is still loading says
+"Not checked", Admin never shows a tick (dates are self-entered, not checked with Ahpra), and the rest
+rules are quoted from the one signed fatigue source with the same gate Roster's Hours check uses. The
+doctor's self-chosen stage (`workStage`, `ranzcpStage`) lives in account preferences and is never
+copied from a shared device into a new account.
+
 **Reminder controls.** `src/lib/reminders/settings.ts` is a settings layer over the reminders that
 already exist; it never decides when anything is due. Five types (compliance dates, On Call checks,
 CPD year-end, CPD routines, teaching — in that priority order) each have "Show in the app", a snooze

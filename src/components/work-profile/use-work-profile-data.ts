@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useOnCallHospitalPhone } from "@/components/on-call/call/call-device-stores";
 import { useRosterSettings } from "@/components/roster/use-roster-settings";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
+import type { AppPreferences } from "@/lib/account-preferences";
 import { cmeYearConfigurationState } from "@/lib/cme/year-configuration";
 import type { CmeRequirementSet } from "@/lib/cme/types";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -14,23 +15,11 @@ import type { RosterTeam } from "@/lib/roster/team/model";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { summariseAdmin, workplaceNames, type AdminSummary, type Loaded } from "@/lib/work-profile/model";
 
-function subscribeOnline(onChange: () => void) {
-  window.addEventListener("online", onChange);
-  window.addEventListener("offline", onChange);
-  return () => {
-    window.removeEventListener("online", onChange);
-    window.removeEventListener("offline", onChange);
-  };
-}
-
-/** False only when the browser says there is no network; true on the server. */
-export function useOnline(): boolean {
-  return useSyncExternalStore(
-    subscribeOnline,
-    () => navigator.onLine,
-    () => true,
-  );
-}
+/** The page's one preferences reader and writer, so every save on it shows in the header line. */
+export type WorkProfilePreferences = {
+  readonly preferences: AppPreferences;
+  readonly setPreference: <Key extends keyof AppPreferences>(key: Key, value: AppPreferences[Key]) => void;
+};
 
 type CpdStatus = { configured: boolean; routines: number };
 
@@ -103,37 +92,35 @@ export function useWorkProfileData(now: Date): WorkProfileData {
   const range = useMemo(() => ({ from: today, to: addDaysToDate(today, 6) }), [today]);
   const teachingWeek = useTeachingWeek(range, { demoMode: false }, now);
 
-  const teamList = Array.isArray(teamsRead.data?.teams) ? teamsRead.data.teams : [];
+  // A sample team (release held, or demo) is only for looking at: never the doctor's own.
+  const teamList = teamsRead.data?.sample ? [] : Array.isArray(teamsRead.data?.teams) ? teamsRead.data.teams : [];
   const enabledTeams = teamList.filter((team) => team.enabled);
   const oneTeamId = enabledTeams.length === 1 ? enabledTeams[0]!.serviceId : null;
   const overview = useRosterRead(oneTeamId, "overview");
 
+  // A sample roster (team rosters held) is not the doctor's own set-up.
+  const ownWorkplaces = shifts.sample ? [] : workplaceNames(shifts.shifts, settings.settings.codes);
+  const rowName = settings.settings.rowName?.trim() || null;
   const rosterLoaded: Loaded<{ workplaces: number; rowName: string | null }> =
-    settings.status === "loading" || shifts.status === "loading"
+    settings.status === "loading" || shifts.status === "loading" || shifts.teamLoading
       ? { status: "loading" }
       : settings.status === "signed-out" || shifts.status === "signed-out"
         ? { status: "signed-out" }
         : settings.status === "error" || shifts.status === "error"
           ? { status: "failed" }
-          : {
-              status: "ready",
-              value: {
-                // A sample roster (team rosters held) is not the doctor's own set-up.
-                workplaces: shifts.sample ? 0 : workplaceNames(shifts.shifts, settings.settings.codes).length,
-                rowName: settings.settings.rowName?.trim() || null,
-              },
-            };
+          : // Team shifts didn't load and nothing of the doctor's own shows: "Start" could be wrong.
+            shifts.teamMessage && ownWorkplaces.length === 0 && !rowName
+            ? { status: "failed" }
+            : { status: "ready", value: { workplaces: ownWorkplaces.length, rowName } };
 
   const workplaces: Loaded<readonly string[]> =
-    rosterLoaded.status === "ready"
-      ? { status: "ready", value: shifts.sample ? [] : workplaceNames(shifts.shifts, settings.settings.codes) }
-      : rosterLoaded;
+    rosterLoaded.status === "ready" ? { status: "ready", value: ownWorkplaces } : rosterLoaded;
 
   const teams: Loaded<readonly RosterTeam[]> =
     teamsRead.status === "loading"
       ? { status: "loading" }
       : teamsRead.status === "ready"
-        ? { status: "ready", value: teamsRead.data?.sample ? [] : teamList }
+        ? { status: "ready", value: teamList }
         : teamsRead.status === "signed-out"
           ? { status: "signed-out" }
           : teamsRead.status === "unavailable" || teamsRead.status === "not-confirmed"
@@ -149,9 +136,10 @@ export function useWorkProfileData(now: Date): WorkProfileData {
           ? { status: "signed-out" }
           : { status: "failed" };
 
+  // The invented sample (shown when the server says signed out) is never the doctor's own dates.
   const admin: Loaded<AdminSummary> = entries.loading
     ? { status: "loading" }
-    : entries.signedOut
+    : entries.signedOut || entries.sample
       ? { status: "signed-out" }
       : entries.isOffline && entries.entries.length === 0
         ? { status: "failed" }

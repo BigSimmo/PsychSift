@@ -5,6 +5,7 @@ import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import {
   adminArea,
   cpdArea,
+  missingSetupDates,
   onCallArea,
   payFortnightWeekday,
   profileTabCount,
@@ -136,6 +137,18 @@ describe("Profile tab count", () => {
   });
 });
 
+describe("missing setup dates", () => {
+  it("lists them only from a complete, non-empty read", () => {
+    expect(missingSetupDates({ status: "ready", value: summariseAdmin([vaccination], false) })).toEqual([
+      "Medical registration renewal",
+      "Indemnity insurance",
+    ]);
+    expect(missingSetupDates({ status: "ready", value: summariseAdmin([vaccination], true) })).toEqual([]);
+    expect(missingSetupDates({ status: "ready", value: summariseAdmin([], false) })).toEqual([]);
+    expect(missingSetupDates({ status: "loading" })).toEqual([]);
+  });
+});
+
 describe("tabs, stage, rules and helpers", () => {
   it("reads the tab from the URL, falling back to Profile", () => {
     expect(readWorkProfileTab("privacy")).toBe("privacy");
@@ -177,6 +190,13 @@ describe("tabs, stage, rules and helpers", () => {
     const lapsed = restRulesGate(Date.parse(`${FATIGUE_RULE_SET.source.reviewBy}T12:00:00Z`) + 2 * 86_400_000);
     expect(lapsed).toEqual({ on: false, reason: "review-date-passed" });
     expect(off).toContain("not a safety judgement");
+  });
+
+  it("prints dates as the Renewals page does (Sep, not Sept), on the Perth day", () => {
+    const on = restRulesProvenance({ on: true });
+    expect(on).toContain("expires on 2 Sep 2027");
+    expect(on).not.toContain("Sept");
+    expect(on).toMatch(/checked \d{1,2} [A-Z][a-z]{2} \d{4}/);
   });
 
   it("names the pay-fortnight weekday and rejects bad dates", () => {

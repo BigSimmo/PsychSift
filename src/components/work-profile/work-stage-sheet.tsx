@@ -1,8 +1,9 @@
 "use client";
 
-import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { RadioGroup } from "@/components/ui/choice";
 import { Sheet } from "@/components/ui/sheet";
+import type { WorkProfilePreferences } from "@/components/work-profile/use-work-profile-data";
+import { WorkProfileFoot } from "@/components/work-profile/work-profile-list";
 import {
   RANZCP_STAGE_OPTIONS,
   WORK_STAGE_OPTIONS,
@@ -15,8 +16,15 @@ import {
  * saves at once to the account (no Save button), and a registrar then picks
  * a RANZCP stage. It is self-reported and changes nothing a manager set.
  */
-export default function WorkStageSheet({ open, onClose }: { readonly open: boolean; readonly onClose: () => void }) {
-  const { preferences, setPreference } = useAppPreferences();
+export default function WorkStageSheet({
+  open,
+  onClose,
+  prefs: { preferences, setPreference },
+}: {
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly prefs: WorkProfilePreferences;
+}) {
   return (
     <Sheet open={open} onClose={onClose} title="Your stage">
       <div className="grid gap-5" data-testid="work-profile-stage-sheet">
@@ -41,9 +49,9 @@ export default function WorkStageSheet({ open, onClose }: { readonly open: boole
             options={RANZCP_STAGE_OPTIONS.map((stage) => ({ value: String(stage), label: `Stage ${stage}` }))}
           />
         ) : null}
-        <p className="text-xs leading-5 text-[color:var(--text-muted)]">
+        <WorkProfileFoot>
           Tailors your training rows. Your roster team’s grade is set by its manager and shows separately.
-        </p>
+        </WorkProfileFoot>
       </div>
     </Sheet>
   );
