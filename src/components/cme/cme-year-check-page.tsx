@@ -4,15 +4,7 @@ import type { ReactNode } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { CmeDomainsRing, isActivityCountRequirement } from "@/components/cme/cme-domains-ring";
 import { formatSourceMonth } from "@/components/cme/cme-plan-goal-split";
-import {
-  CmeCategoryDot,
-  CmeFlatList,
-  CmeFlatRow,
-  CmeGroup,
-  CmeRowMark,
-  CmeRowValue,
-  CmeTextLink,
-} from "@/components/cme/cme-flat-list";
+import { CmeFlatList, CmeFlatRow, CmeGroup, CmeRowMark, CmeTextLink } from "@/components/cme/cme-flat-list";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import {
   formatCalendarDateLong,
@@ -20,13 +12,14 @@ import {
   formatCmeRowDate,
   perthCalendarDate,
 } from "@/lib/cme/cpd-year";
-import { evaluateRequirement, totalAllocatedHours } from "@/lib/cme/evaluate";
+import { totalAllocatedHours } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries } from "@/lib/cme/export";
 import { readCpdHome } from "@/lib/cme/home-choice";
+import { CME_PRESET_SOURCES } from "@/lib/cme/presets";
 import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
 import { CPD_STANDARD_RULE_TEXT, cpdRuleFromTraining, type CpdRuleLane } from "@/lib/cme/cpd-rule";
 import type { TrainingPosition } from "@/lib/cme/training-timeline";
-import { cmeCategories, cmeCategoryLabels, type CmeEntry, type CmeRequirementSet } from "@/lib/cme/types";
+import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { buildCmeYearCheck, type CmeYearCheckRow } from "@/lib/cme/year-check";
 import { canCloseCmeYear, CME_CLOSE_WINDOW_DAYS } from "@/lib/cme/year-close";
 
@@ -35,6 +28,8 @@ import { canCloseCmeYear, CME_CLOSE_WINDOW_DAYS } from "@/lib/cme/year-close";
  * standard the Training page cites (linked through the Board page that lists it), so the two pages show one source and one checked date.
  */
 const MEDICAL_BOARD_CPD_URL = CPD_CATEGORY_RULE_SET.source.listedOn;
+/** The RANZCP CPD page the starting set's practice domains come from. No checked date is recorded for it. */
+const RANZCP_CPD_URL = CME_PRESET_SOURCES[1].url;
 const MEDICAL_BOARD_CHECKED = `checked ${formatSourceMonth(CPD_CATEGORY_RULE_SET.source.checkedOn)}`;
 
 /** Targets in the order the report reads them; anything else follows in the order the check built it. */
@@ -66,44 +61,9 @@ function reportOrder(rows: readonly CmeYearCheckRow[]): CmeYearCheckRow[] {
     .map(({ row }) => row);
 }
 
-/**
- * The second line of a row, as the report words it: a target shows how far it
- * has come against its figure ("7 of 10 h"), not only what is left. Built from
- * `evaluateRequirement`, so every figure is the one the check itself counted.
- */
-function reportSummary(row: CmeYearCheckRow, set: CmeRequirementSet, entries: readonly CmeEntry[]): string {
-  if (row.id === "copied" && !row.ready) return `${activities(row.entryIds.length)} not marked copied`;
-  if (!row.id.startsWith("requirement-")) return row.summary;
-  const requirement = set.requirements.find((candidate) => `requirement-${candidate.id}` === row.id);
-  if (!requirement) return row.summary;
-  const status = evaluateRequirement(requirement, entries);
-  const spec = requirement.spec;
-  switch (spec.shape) {
-    case "hours-in-category":
-    case "credited-hours": {
-      const figure = `${status.progress?.value ?? 0} of ${spec.minimumHours} h`;
-      return status.met ? `${figure} · reached` : figure;
-    }
-    case "hours-across-categories": {
-      const figure = `${status.progress?.value ?? 0} of ${spec.minimumHours} h`;
-      if (status.met) return `${figure} · reached`;
-      // The combined figure is reached but one category is still short: name that gap.
-      if ((status.progress?.value ?? 0) >= spec.minimumHours) return `${figure} · ${status.summary}`;
-      return `${figure}, at least ${spec.minimumEachHours} h in each`;
-    }
-    case "activity-count": {
-      const empty = spec.buckets.filter(
-        (bucket) =>
-          entries.filter((entry) => !entry.archivedAt && entry.buckets.includes(bucket)).length < spec.minimumPerBucket,
-      );
-      if (empty.length === 0) return `All ${spec.buckets.length} covered`;
-      return empty.length === 1
-        ? `${empty[0]} has nothing yet`
-        : `${empty.length} of ${spec.buckets.length} have nothing yet`;
-    }
-    case "task":
-      return status.summary;
-  }
+/** The second line of a row: the check's own wording, with a target's condition beside an open figure. */
+function reportSummary(row: CmeYearCheckRow): string {
+  return row.condition && !row.ready && !row.summary.includes("·") ? `${row.summary}, ${row.condition}` : row.summary;
 }
 
 /** The quiet text action at the end of an open row, named for the row so a screen reader hears which one. */
@@ -130,15 +90,7 @@ function confirmedSetName(set: CmeRequirementSet): string {
   return home.name ? `${home.name} targets` : "your own targets";
 }
 
-function CheckRow({
-  row,
-  set,
-  entries,
-}: {
-  row: CmeYearCheckRow;
-  set: CmeRequirementSet;
-  entries: readonly CmeEntry[];
-}) {
+function CheckRow({ row, set }: { row: CmeYearCheckRow; set: CmeRequirementSet }) {
   const action = rowAction(row, set);
   return (
     <CmeFlatRow
@@ -150,7 +102,7 @@ function CheckRow({
           <span className="sr-only">{row.notChecked ? " — not checked" : row.ready ? " — done" : " — to do"}</span>
         </>
       }
-      subtitle={reportSummary(row, set, entries)}
+      subtitle={reportSummary(row)}
       end={
         action ? (
           <CmeTextLink href={action.href} testId={`cme-check-action-${row.id}`}>
@@ -164,10 +116,10 @@ function CheckRow({
 }
 
 /** A small source line for a group label: grey book icon, who said it and when it was checked. */
-function SourceLink({ children }: { children: ReactNode }) {
+function SourceLink({ href = MEDICAL_BOARD_CPD_URL, children }: { href?: string; children: ReactNode }) {
   return (
     <a
-      href={MEDICAL_BOARD_CPD_URL}
+      href={href}
       target="_blank"
       rel="noreferrer"
       className={cn(
@@ -192,9 +144,9 @@ const RULE_LANES: readonly { id: CpdRuleLane | "intern"; title: string; subtitle
  *
  * A thin part-per-check line under the count; the targets the owner confirmed
  * and the record-keeping checks, each open row with a quiet text action at its
- * end and each done row with a grey tick; the domains ring; hours by category;
+ * end and each done row with a grey tick; the domains ring;
  * the annual summary and its two exports; the CPD rule the training record
- * suggests (read-only, nothing ticked when it cannot be worked out), with its source; then closing the year and the settings that shape it.
+ * suggests (ticked, read-only; nothing ticked when it cannot be worked out), with its source; then closing the year and the settings that shape it.
  *
  * Done and open are carried by a tick or an open circle plus the words, never
  * by colour: this mode does not use red, amber or green for progress.
@@ -221,17 +173,6 @@ export function CmeYearCheckPage({
   const domainRequirements = set.requirements.filter(isActivityCountRequirement);
   const yearEntries = activeCmeYearEntries(entries, set.year);
   const yearHours = totalAllocatedHours(yearEntries);
-  const categoryHours = cmeCategories.map((category) => ({
-    category,
-    hours:
-      Math.round(
-        yearEntries.reduce(
-          (sum, entry) =>
-            sum + entry.allocations.filter((a) => a.category === category).reduce((inner, a) => inner + a.hours, 0),
-          0,
-        ) * 100,
-      ) / 100,
-  }));
   const home = readCpdHome(set.confirmedSource);
   const homeName = home.kind === "ranzcp" ? "MyCPD" : home.kind === "other" && home.name ? home.name : "your CPD home";
   const today = perthCalendarDate(now);
@@ -279,7 +220,7 @@ export function CmeYearCheckPage({
           >
             <CmeFlatList>
               {targets.map((row) => (
-                <CheckRow key={row.id} row={row} set={set} entries={entries} />
+                <CheckRow key={row.id} row={row} set={set} />
               ))}
             </CmeFlatList>
           </CmeGroup>
@@ -287,7 +228,7 @@ export function CmeYearCheckPage({
           <CmeGroup testId="cme-check-records" label="Your own record-keeping checks">
             <CmeFlatList>
               {records.map((row) => (
-                <CheckRow key={row.id} row={row} set={set} entries={entries} />
+                <CheckRow key={row.id} row={row} set={set} />
               ))}
             </CmeFlatList>
             <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-check-note">
@@ -306,21 +247,18 @@ export function CmeYearCheckPage({
         </div>
 
         {domainRequirements.map((requirement) => (
-          <CmeDomainsRing key={requirement.id} requirement={requirement} entries={entries} year={set.year} />
+          <CmeDomainsRing
+            key={requirement.id}
+            requirement={requirement}
+            entries={entries}
+            year={set.year}
+            source={
+              requirement.id === "domains" && readCpdHome(set.confirmedSource).kind === "ranzcp" ? (
+                <SourceLink href={RANZCP_CPD_URL}>RANZCP</SourceLink>
+              ) : undefined
+            }
+          />
         ))}
-
-        <CmeGroup testId="cme-check-categories" label="Hours by category">
-          <CmeFlatList>
-            {categoryHours.map(({ category, hours }) => (
-              <CmeFlatRow
-                key={category}
-                lead={<CmeCategoryDot category={category} />}
-                title={cmeCategoryLabels[category]}
-                end={<CmeRowValue value={hours} unit=" h" />}
-              />
-            ))}
-          </CmeFlatList>
-        </CmeGroup>
 
         <CmeGroup testId="cme-check-summary" label="Annual summary">
           <CmeFlatList>
@@ -363,7 +301,7 @@ export function CmeYearCheckPage({
                   key={option.id}
                   testId={`cme-check-rule-${option.id}`}
                   muted={!chosen}
-                  lead={<CmeRowMark state="none" />}
+                  lead={<CmeRowMark state={chosen ? "done" : "none"} />}
                   title={
                     <>
                       {option.title}
@@ -371,13 +309,6 @@ export function CmeYearCheckPage({
                     </>
                   }
                   subtitle={option.subtitle}
-                  end={
-                    chosen ? (
-                      <span aria-hidden="true" className="text-xs text-[color:var(--text-muted)]">
-                        Your rule
-                      </span>
-                    ) : undefined
-                  }
                 />
               );
             })}

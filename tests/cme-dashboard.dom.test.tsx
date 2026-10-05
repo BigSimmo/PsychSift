@@ -329,7 +329,7 @@ describe("the dashboard", () => {
     // "Big gap requirement" (19 hours further from met) must be named, not
     // "Small gap requirement" — which lists first but is nearly met.
     expect(nextAction).toHaveTextContent(/Big gap requirement/);
-    expect(nextAction).toHaveTextContent(/20 h to go/);
+    expect(nextAction).toHaveTextContent(/0 of 20 h/);
     expect(nextAction).not.toHaveTextContent(/Small gap requirement/);
   });
 

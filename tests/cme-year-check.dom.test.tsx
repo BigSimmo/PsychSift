@@ -152,7 +152,7 @@ describe("year check page", () => {
     expect(ids.at(-1)).toBe("cme-check-row-requirement-educational");
   });
 
-  it("hands over through the annual summary as text links, with hours by category", () => {
+  it("hands over through the annual summary as text links, with no separate hours-by-category list", () => {
     render(<CmeYearCheckPage set={SET} entries={ENTRIES} goalCount={3} />);
     const summary = screen.getByTestId("cme-check-summary");
     expect(summary).toHaveTextContent("2 activities · 4 h · 3 goals");
@@ -166,9 +166,27 @@ describe("year check page", () => {
       "/api/cme/export?year=2026",
     );
     expect(within(summary).queryByRole("button")).toBeNull();
-    const categories = screen.getByTestId("cme-check-categories");
-    expect(categories).toHaveTextContent("Educational activities4 h");
-    expect(categories).toHaveTextContent("Reviewing performance0 h");
+    // The mock-up's Report has no hours-by-category list: the Year page carries those figures.
+    expect(screen.queryByTestId("cme-check-categories")).toBeNull();
+  });
+
+  it("lists covered domains first and names RANZCP as their source", () => {
+    render(
+      <CmeYearCheckPage
+        set={SET}
+        entries={[entry({ id: "d", buckets: ["Ethical practice"] })]}
+        now={new Date("2026-10-05T02:00:00Z")}
+      />,
+    );
+    const ring = screen.getByTestId("cme-domains-ring-domains");
+    const domains = within(ring)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent ?? "");
+    expect(domains[0]).toMatch(/^Ethical practice1/);
+    expect(within(ring).getByRole("link", { name: "RANZCP" })).toHaveAttribute(
+      "href",
+      "https://www.ranzcp.org/cpd-program-membership/cpd-program/cpd-overview",
+    );
   });
 
   it("offers closing from 17 December, in PsychSift only, and links to the summary once open", () => {

@@ -94,8 +94,8 @@ describe("Today", () => {
       .filter((row) => row.getAttribute("data-met") === "false");
     expect(rows.map((row) => row.textContent?.replace(/\u00a0/g, " "))).toEqual([
       "Hours in total39 h to go",
-      "Big gap requirement20 h to go",
-      "Small gap requirement1 h to go",
+      "Big gap requirement0 of 20 h",
+      "Small gap requirement9 of 10 h",
       "Professional development planNot started",
       // No evidence counts were loaded, so the check says so rather than guessing.
       "Evidence kept for each activityNot checked",
