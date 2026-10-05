@@ -577,13 +577,9 @@ function MedicationLoadFailed({ slug, error, onRetry }: { slug: string; error: s
   // The hook's own offline wording; any other failure (sign-in, rate limit, server) is not a connection problem.
   const offline = Boolean(error && /offline/i.test(error));
   return (
-    <section
-      role="alert"
-      aria-labelledby="medication-failed-heading"
-      data-testid="medication-load-failed"
-      className="grid gap-4"
-    >
-      <div className="grid gap-1">
+    <section aria-labelledby="medication-failed-heading" data-testid="medication-load-failed" className="grid gap-4">
+      {/* Only the message is announced; the retry button and onward links are reached in order. */}
+      <div role="alert" className="grid gap-1">
         <h1 id="medication-failed-heading" className="text-lg font-semibold text-[color:var(--text-heading)]">
           This medicine page didn&rsquo;t load
         </h1>

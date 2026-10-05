@@ -256,7 +256,8 @@ function MedicationDidYouMean({
   expansions: readonly string[];
 }) {
   return (
-    <div className="medication-results-inset">
+    // Announced politely: the results below are for a different spelling than the one typed.
+    <div role="status" className="medication-results-inset">
       <p data-testid="medication-query-interpretation" className="text-sm leading-6 text-[color:var(--text-heading)]">
         No exact match for <strong className="font-semibold">&ldquo;{query}&rdquo;</strong>. Showing results for{" "}
         <strong className="font-semibold">{correctedQuery}</strong> instead.

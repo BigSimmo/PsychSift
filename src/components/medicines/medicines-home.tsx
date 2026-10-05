@@ -112,7 +112,7 @@ function useToday(nowProp?: Date): Date | null {
 }
 
 /** The group heading: small capitals in the muted ink, so it stays readable (the faint rung is below 4.5:1). */
-const groupLabel = "font-dash-title text-2xs uppercase tracking-widest text-[color:var(--dash-muted)]";
+const groupLabel = "font-dash-title text-2xs uppercase tracking-eyebrow text-[color:var(--dash-muted)]";
 
 /** A flat titled group: heading row over its content, no card. */
 function Group({
@@ -207,7 +207,7 @@ function FindArea() {
             Which medicine are you checking?
           </h2>
         </div>
-        <div className="flex min-h-14 items-center gap-2 rounded-xl border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] py-1 pr-1 pl-4 text-[color:var(--dash-ink)] forced-colors:border">
+        <div className="flex min-h-14 items-center gap-2 rounded-xl border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] py-1 pr-1 pl-4 text-[color:var(--dash-ink)] focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus)] forced-colors:border">
           <Search aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--dash-muted)]" />
           <label htmlFor="medicines-find-input" className="sr-only">
             Medicine or question
@@ -235,7 +235,7 @@ function FindArea() {
           </button>
         </div>
         <div
-          className="-mx-4 flex min-w-0 items-center gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]"
+          className="-mx-4 -my-1 flex min-w-0 items-center gap-1.5 overflow-x-auto px-4 py-1 [scrollbar-width:none]"
           data-testid="medicines-find-try"
         >
           <span className={cn(dashMuted, "shrink-0")}>Try</span>
@@ -386,7 +386,12 @@ function StatewideChartsGroup({ online }: { readonly online: boolean }) {
     <Group
       title="WA statewide charts"
       testId="medicines-card-charts"
-      aside={<span className={cn(dashMuted, "nums")}>{WA_STATEWIDE_CHARTS.length}</span>}
+      aside={
+        <span className={cn(dashMuted, "nums")}>
+          {WA_STATEWIDE_CHARTS.length}
+          <span className="sr-only"> charts</span>
+        </span>
+      }
     >
       <ul role="list" aria-label="WA statewide mental health medication charts" className={hairlineList}>
         {WA_STATEWIDE_CHARTS.map((chart) => (
