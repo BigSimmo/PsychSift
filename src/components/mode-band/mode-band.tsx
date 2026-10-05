@@ -6,6 +6,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   createContext,
+  useCallback,
+  useEffect,
   useContext,
   useState,
   useLayoutEffect,
@@ -86,6 +88,22 @@ export type ModeBandProps = {
 };
 
 const ModeBandShownContext = createContext(false);
+const ModeBandCountContext = createContext<(tabId: string, count: number | null) => void>(() => {});
+
+/**
+ * Puts a page's to-do count on one of its mode's tabs ("Log 3") while that
+ * page is open, and takes it off again when the page closes, so the band never
+ * shows a count nothing on screen is keeping current. Pass null while the
+ * count is unknown. The band hides counts while offline, loading or signed
+ * out.
+ */
+export function useModeBandCount(tabId: string, count: number | null) {
+  const setCount = useContext(ModeBandCountContext);
+  useEffect(() => {
+    setCount(tabId, count);
+    return () => setCount(tabId, null);
+  }, [setCount, tabId, count]);
+}
 
 /**
  * Whether this page sits under a mode band. Decided from the address alone, so
@@ -198,16 +216,29 @@ function useCurrentTabInView(activeId: string | null) {
  * Scrolling therefore takes the band with the page, and the top bar keeps its
  * own single hide-and-reveal (docs/search-chrome-behaviour.md).
  */
-export function ModeBand({ children, ...props }: ModeBandProps) {
+export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   const pathname = usePathname() ?? "";
+  const [pageCounts, setPageCounts] = useState<Readonly<Record<string, number>>>({});
+  const setCount = useCallback((tabId: string, count: number | null) => {
+    setPageCounts((current) => {
+      if ((current[tabId] ?? null) === count) return current;
+      const next = { ...current };
+      if (count === null) delete next[tabId];
+      else next[tabId] = count;
+      return next;
+    });
+  }, []);
+  const allCounts = useMemo(() => ({ ...counts, ...pageCounts }), [counts, pageCounts]);
   const activeId = activeModeSecondaryNavigationId(props.modeId, pathname);
   const shown =
     !isHidden(pathname, props.hiddenOn) &&
     (activeId !== null || pathname === (props.homePath ?? modeHomePath(props.modeId)));
   return (
     <ModeBandShownContext.Provider value={shown}>
-      {shown ? <ModeBandHeader {...props} activeId={activeId} /> : null}
-      {children}
+      <ModeBandCountContext.Provider value={setCount}>
+        {shown ? <ModeBandHeader {...props} counts={allCounts} activeId={activeId} /> : null}
+        {children}
+      </ModeBandCountContext.Provider>
     </ModeBandShownContext.Provider>
   );
 }
@@ -307,12 +338,15 @@ function ModeBandHeader({
                   href={entry.href!}
                   className="mode-band__tab"
                   aria-current={entry.id === activeId ? "page" : undefined}
-                  aria-label={count > 0 ? `${entry.label}, ${count} to do` : undefined}
                 >
                   {entry.label}
                   {count > 0 ? (
-                    <span aria-hidden="true" className="mode-band__badge">
-                      {count}
+                    // Hidden as a whole (the figure and its spoken words) when
+                    // the band hides counts, so a screen reader never hears one
+                    // that is not on screen.
+                    <span className="mode-band__badge">
+                      <span aria-hidden="true">{count}</span>
+                      <span className="sr-only">, {count} to do</span>
                     </span>
                   ) : null}
                 </Link>

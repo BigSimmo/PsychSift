@@ -65,7 +65,7 @@ import {
   type ReminderSettings,
   type ReminderType,
 } from "@/lib/reminders/settings";
-import { ModeBandStatus, useModeBandShown } from "@/components/mode-band/mode-band";
+import { ModeBandStatus, useModeBandCount, useModeBandShown } from "@/components/mode-band/mode-band";
 
 /**
  * TODAY — the screen the whole mode is judged by.
@@ -214,6 +214,8 @@ export function CmeDashboard({
   );
 
   const underBand = useModeBandShown();
+  // The drafts waiting to be finished live under Log, so its tab carries them.
+  useModeBandCount("log", draftsToFinish);
   const today = perthCalendarDate(now);
   const loggedToday = entries.filter((entry) => entry.date === today);
   const loggedTodayHours = loggedToday.reduce(
