@@ -303,8 +303,8 @@ export function CmeRotationTrack({
             today >= rotation.startsOn
               ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] forced-colors:bg-[Highlight]"
               : "border-[color:var(--border-strong)] bg-[color:var(--surface-raised)]",
+            "left-0",
           )}
-          style={{ left: "0%" }}
         />
         {markerPct !== null ? (
           <span
@@ -319,8 +319,8 @@ export function CmeRotationTrack({
             today >= rotation.endsOn
               ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] forced-colors:bg-[Highlight]"
               : "border-[color:var(--border-strong)] bg-[color:var(--surface-raised)]",
+            "left-full",
           )}
-          style={{ left: "100%" }}
         />
         {today >= rotation.startsOn && today <= rotation.endsOn ? (
           <span
