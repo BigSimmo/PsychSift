@@ -158,6 +158,7 @@ export function TeachingResources({
         ) : null}
         <ModeGroupedList mode="teaching" testId="teaching-resources-more">
           {organised.length > 0 ? <TeachingRow title="New collection" onClick={() => setCreating(true)} /> : null}
+          <ModeRow title="My exam prep" subtitle="Countdown, study days and topics" href="/teaching/exam-prep" />
           <ModeRow title="Learning directory" subtitle="WA courses and modules, in CPD" href="/cme/learning" />
         </ModeGroupedList>
         {creating ? <NewCollectionSheet services={organised} onClose={() => setCreating(false)} /> : null}

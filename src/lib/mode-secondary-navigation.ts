@@ -463,7 +463,9 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/teaching/resources" || pathname.startsWith("/teaching/resources/")) return "resources";
     if (pathname === "/teaching/teach") return "teach";
     if (pathname === "/teaching/supervision") return "supervision";
-    if (pathname === "/teaching/review" || pathname === "/teaching/feedback") return "logbook";
+    if (pathname === "/teaching/review" || pathname === "/teaching/feedback" || pathname === "/teaching/term")
+      return "logbook";
+    if (pathname === "/teaching/exam-prep") return "resources";
     if (pathname === "/teaching/import") return "organise";
     if (pathname === "/teaching/logbook") return "logbook";
     if (pathname === "/teaching/organise") return "organise";
