@@ -480,14 +480,10 @@ function clockSummary(clocks: readonly MhaClock[]): string {
 function ShiftToolsCard() {
   const clocks = useMhaClocks();
   const card =
-    "grid min-h-32 w-56 shrink-0 snap-start content-between gap-3 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] p-3.5 text-[color:var(--dash-ink)] no-underline forced-colors:border sm:w-auto";
+    "grid h-full min-h-32 content-between gap-3 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] p-3.5 text-[color:var(--dash-ink)] no-underline forced-colors:border";
   return (
     <DashCard title="For a shift" testId="psychiatry-card-shift" aside={<DashTag tint="blue">On this device</DashTag>}>
-      <ul
-        role="list"
-        aria-label="For a shift"
-        className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible"
-      >
+      <ul role="list" aria-label="For a shift" className="grid grid-cols-2 gap-2">
         <li className="min-w-0">
           <Link href="/psychiatry/mha-clock" data-testid="psychiatry-shift-mha-clock" className={cn(focusRing, card)}>
             <span className="flex items-center justify-between gap-2">
