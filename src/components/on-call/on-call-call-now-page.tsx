@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Moon, Phone, Play, RotateCcw, Square, Sun } from "lucide-react";
+import { Check, Moon, Phone, Play, RotateCcw, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -418,7 +418,7 @@ function LadderRunPanel({
         {calledSteps.length} of {steps.length} {steps.length === 1 ? "step" : "steps"} called
       </p>
       <div>
-        <Button variant="ghost" size="sm" icon={Square} onClick={onStop} testId="on-call-now-ladder-stop">
+        <Button variant="ghost" size="sm" icon={X} onClick={onStop} testId="on-call-now-ladder-stop">
           Stop the ladder
         </Button>
       </div>

@@ -59,7 +59,7 @@ const HOUR_MS = 3_600_000;
 
 /** Four steps, so a busy hour reads at a glance and a quiet one still shows it was counted. */
 function cellTone(count: number): string {
-  if (count <= 0) return "bg-[color:var(--surface-subtle)]";
+  if (count <= 0) return "bg-[color:color-mix(in_oklab,var(--border)_70%,transparent)]";
   if (count === 1) return "bg-[color:color-mix(in_oklab,var(--mode-identity)_30%,var(--surface-raised))]";
   if (count === 2) return "bg-[color:color-mix(in_oklab,var(--mode-identity)_60%,var(--surface-raised))]";
   return "bg-[color:var(--mode-identity)]";
