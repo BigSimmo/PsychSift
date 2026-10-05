@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { areaSummary, type RosterAlertChoices } from "@/lib/alerts/areas";
-import { derivePhoneAlertState, deviceKindOf, type PhoneAlertInputs } from "@/lib/alerts/phone-state";
+import {
+  derivePhoneAlertState,
+  deviceKindOf,
+  testAlertFailureMessage,
+  type PhoneAlertInputs,
+} from "@/lib/alerts/phone-state";
 import { DEFAULT_REMINDER_SETTINGS, updateReminderType } from "@/lib/reminders/settings";
 
 const TODAY = "2026-10-05";
@@ -23,6 +28,20 @@ describe("area summaries say what the app will do", () => {
     // Shifts not on the calendar link: the evening-before alert cannot fire, so it is not claimed.
     expect(areaSummary("roster", evening, TODAY, { ...ROSTER_ON, calendarShifts: false })).toBe(
       "Changes straight away",
+    );
+  });
+
+  it("Roster: any shift calendar alert is named, not only the evening before", () => {
+    const hour = updateReminderType(DEFAULT_REMINDER_SETTINGS, "shifts", { calendarAlert: "1h" });
+    expect(areaSummary("roster", hour, TODAY, ROSTER_ON)).toMatch(/^Changes straight away · calendar /);
+    expect(areaSummary("roster", hour, TODAY, { ...ROSTER_ON, calendarShifts: false })).toBe("Changes straight away");
+  });
+
+  it("Roster: a default is never shown as the reader's choice while settings load or fail", () => {
+    const loading = { ...ROSTER_ON, changes: null, requests: null, calendarShifts: null };
+    expect(areaSummary("roster", DEFAULT_REMINDER_SETTINGS, TODAY, loading)).toBe("Checking Roster settings");
+    expect(areaSummary("roster", DEFAULT_REMINDER_SETTINGS, TODAY, { ...loading, failed: true })).toBe(
+      "Couldn't load Roster settings",
     );
   });
 
@@ -73,7 +92,9 @@ describe("phone alert state on this device", () => {
     expect(derivePhoneAlertState({ ...base, configured: false })).toBe("unconfigured");
     expect(derivePhoneAlertState({ ...base, permission: "denied" })).toBe("blocked");
     expect(derivePhoneAlertState({ ...base, supported: false })).toBe("unsupported");
-    expect(derivePhoneAlertState({ ...base, sharedDevice: true })).toBe("shared");
+    expect(derivePhoneAlertState({ ...base, sharedDevice: true, subscribed: false })).toBe("shared");
+    // Marked shared yet still subscribed (switched on elsewhere): never shown as off.
+    expect(derivePhoneAlertState({ ...base, sharedDevice: true })).toBe("on");
   });
 
   it("puts the Home Screen step first on an iPhone, even when permission looks denied", () => {
@@ -88,5 +109,17 @@ describe("phone alert state on this device", () => {
     expect(deviceKindOf("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)")).toBe("iphone");
     expect(deviceKindOf("Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile")).toBe("phone");
     expect(deviceKindOf("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("computer");
+  });
+});
+
+describe("a test alert that wasn't sent says whether trying again helps", () => {
+  it.each([
+    ["gone", "This device isn't linked to your alerts any more. Turn phone alerts off and on again."],
+    ["not_owned", "This device isn't linked to your alerts any more. Turn phone alerts off and on again."],
+    ["not_configured", "Phone alerts aren't switched on for this site yet, so no test can be sent."],
+    ["failed", "The test alert couldn't be sent. Try again shortly."],
+    [undefined, "The test alert couldn't be sent. Try again shortly."],
+  ])("%s", (reason, message) => {
+    expect(testAlertFailureMessage(reason)).toBe(message);
   });
 });

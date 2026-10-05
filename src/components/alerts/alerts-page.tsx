@@ -64,8 +64,9 @@ function AlertsBody({ now }: { now: Date }) {
 
   const rosterChoices = {
     phoneOn: alerts.state === "on",
-    changes: roster.settings.alerts.changes,
-    requests: roster.settings.alerts.requests,
+    changes: roster.status === "ready" ? roster.settings.alerts.changes : null,
+    requests: roster.status === "ready" ? roster.settings.alerts.requests : null,
+    failed: roster.status === "error",
     calendarShifts: roster.status === "ready" ? roster.settings.calendarShifts : null,
   };
   const setReminders = (next: ReminderSettings) => setPreference("reminders", next);
@@ -169,6 +170,7 @@ function AlertsBody({ now }: { now: Date }) {
         onRemindersChange={setReminders}
         roster={rosterChoices}
         rosterReady={roster.status === "ready"}
+        rosterMessage={rosterError}
         onRosterChange={(which) => void changeRoster(which)}
         device={alerts.device}
         today={today}
@@ -185,7 +187,7 @@ function AlertsBody({ now }: { now: Date }) {
         now={now}
         onAdd={() => setSheet({ kind: "remind-me" })}
       />
-      {/* The Alerts page has no roster read of its own, so "End of shift" is offered from My Day, not here. */}
+      {/* The Alerts page reads no roster, so "End of shift" is not offered here; My Day will offer it once it shows reminders. */}
       <RemindMeSheet
         open={sheet?.kind === "remind-me"}
         onClose={() => setSheet({ kind: "reminders" })}

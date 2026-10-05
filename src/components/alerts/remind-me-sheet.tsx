@@ -41,21 +41,23 @@ export function RemindMeSheet({
   const noteId = useId();
   const [text, setText] = useState("");
   const options = useMemo(() => remindMeWhenOptions(now, shiftEndsAt), [now, shiftEndsAt]);
-  const [when, setWhen] = useState<string>(options[1]?.id ?? options[0]!.id);
-  const [failed, setFailed] = useState(false);
+  // Null means "the default": the second choice, worked out from the time the sheet is open, not page load.
+  const [when, setWhen] = useState<string | null>(null);
+  const [failure, setFailure] = useState<"full" | "failed" | null>(null);
   const problem = text.trim() ? checkReminderText(text) : null;
-  const chosen = options.find((option) => option.id === when) ?? options[0]!;
+  const chosen = options.find((option) => option.id === when) ?? options[1] ?? options[0]!;
   const canSave = Boolean(text.trim()) && !problem && !shared;
 
   const close = () => {
     setText("");
-    setFailed(false);
+    setWhen(null);
+    setFailure(null);
     onClose();
   };
   const save = () => {
     const result = add(text, chosen.dueAt);
     if (result === "saved") close();
-    else setFailed(true);
+    else setFailure(result === "full" ? "full" : "failed");
   };
 
   return (
@@ -127,9 +129,11 @@ export function RemindMeSheet({
               : "No names, record numbers or bed numbers. The words stay on this phone and never reach our server or your calendar. For now it shows under Your reminders on the Alerts page, and it won't buzz. Not for legal deadlines such as Mental Health Act times."}
           </span>
         </p>
-        {failed ? (
+        {failure ? (
           <p role="status" className="text-sm text-[color:var(--text-muted)]">
-            This phone couldn&apos;t save it. Try again.
+            {failure === "full"
+              ? "This phone already holds 20 reminders. Tick one off or remove one first."
+              : "This phone couldn't save it. Try again."}
           </p>
         ) : null}
       </div>
@@ -182,11 +186,11 @@ export function YourRemindersSheet({
                   subtitle={status}
                   trailing={
                     item.doneAt ? (
-                      <Button variant="ghost" size="sm" className="min-h-12" onClick={() => remove(item.id)}>
+                      <Button variant="ghost" size="sm" onClick={() => remove(item.id)}>
                         Remove
                       </Button>
                     ) : (
-                      <Button variant="ghost" size="sm" className="min-h-12" onClick={() => markDone(item.id)}>
+                      <Button variant="ghost" size="sm" onClick={() => markDone(item.id)}>
                         Done
                       </Button>
                     )

@@ -125,6 +125,7 @@ export function AlertsAreaSheet({
   onRemindersChange,
   roster,
   rosterReady,
+  rosterMessage,
   onRosterChange,
   device,
   today,
@@ -136,11 +137,14 @@ export function AlertsAreaSheet({
   readonly onRemindersChange: (next: ReminderSettings) => void;
   readonly roster: RosterAlertChoices;
   readonly rosterReady: boolean;
+  /** Why the last Roster change didn't save, shown here because the switches are here. */
+  readonly rosterMessage: string | null;
   readonly onRosterChange: (which: "changes" | "requests") => void;
   readonly device: DeviceKind;
   readonly today: string;
 }) {
   const whereId = useId();
+  const calendarId = useId();
   const area = areaId ? ALERT_AREAS[areaId] : null;
   const deviceName = DEVICE_NAMES[device];
   return (
@@ -165,7 +169,7 @@ export function AlertsAreaSheet({
                       subtitle={`On this ${deviceName}, straight away`}
                       trailing={
                         <ToggleSwitch
-                          enabled={roster.changes}
+                          enabled={roster.changes ?? false}
                           disabled={!rosterReady}
                           onToggle={() => onRosterChange("changes")}
                           aria-label="Roster changes on this device"
@@ -177,7 +181,7 @@ export function AlertsAreaSheet({
                       subtitle={`On this ${deviceName}, except while you're working a night`}
                       trailing={
                         <ToggleSwitch
-                          enabled={roster.requests}
+                          enabled={roster.requests ?? false}
                           disabled={!rosterReady}
                           onToggle={() => onRosterChange("requests")}
                           aria-label="Swap and open-shift requests on this device"
@@ -199,7 +203,10 @@ export function AlertsAreaSheet({
                   title="In My Day"
                   subtitle="Always, so a date is never missed"
                   trailing={
-                    <Check aria-label="Always on" className="mr-3 size-icon-md text-[color:var(--text-muted)]" />
+                    <span className="pr-3">
+                      <Check aria-hidden="true" className="size-icon-md text-[color:var(--text-muted)]" />
+                      <span className="sr-only">Always on</span>
+                    </span>
                   }
                 />
               ) : (
@@ -241,11 +248,23 @@ export function AlertsAreaSheet({
                 })
               )}
             </ul>
+            {area.id === "roster" && roster.phoneOn && !rosterReady ? (
+              <SheetNote>
+                {roster.failed
+                  ? "Roster settings couldn't be loaded, so these can't be changed right now. Try again shortly."
+                  : "Loading your Roster settings…"}
+              </SheetNote>
+            ) : null}
+            {area.id === "roster" && rosterMessage ? (
+              <p role="status" className="text-sm leading-5 text-[color:var(--text-muted)]">
+                {rosterMessage}
+              </p>
+            ) : null}
           </section>
 
           {area.types.some((type) => REMINDER_CALENDAR_REACH[type] !== "none") ? (
-            <section className="grid gap-3" aria-label="In your calendar">
-              <SheetLabel>In your calendar</SheetLabel>
+            <section className="grid gap-3" aria-labelledby={calendarId}>
+              <SheetLabel id={calendarId}>In your calendar</SheetLabel>
               {area.id === "roster" && roster.calendarShifts === false ? (
                 <SheetNote>
                   Turn on Shifts on my calendar link in{" "}

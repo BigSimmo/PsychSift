@@ -39,7 +39,8 @@ export function derivePhoneAlertState(input: PhoneAlertInputs): PhoneAlertState 
   if (input.failed) return "error";
   if (input.configured === null) return "checking";
   if (!input.configured) return "unconfigured";
-  if (input.sharedDevice) return "shared";
+  // Marked shared but still subscribed (e.g. switched on from another screen): say "on", truthfully.
+  if (input.sharedDevice && input.subscribed !== true) return "shared";
   if (input.iosNotInstalled) return "needs-home-screen";
   if (!input.supported || input.permission === "unsupported") return "unsupported";
   if (input.permission === "denied") return "blocked";
@@ -61,3 +62,11 @@ export const DEVICE_NAMES: Readonly<Record<DeviceKind, string>> = {
   phone: "phone",
   computer: "computer",
 };
+
+/** Why a test alert wasn't sent, in words that say whether trying again will help. */
+export function testAlertFailureMessage(reason: string | undefined): string {
+  if (reason === "gone" || reason === "not_owned")
+    return "This device isn't linked to your alerts any more. Turn phone alerts off and on again.";
+  if (reason === "not_configured") return "Phone alerts aren't switched on for this site yet, so no test can be sent.";
+  return "The test alert couldn't be sent. Try again shortly.";
+}

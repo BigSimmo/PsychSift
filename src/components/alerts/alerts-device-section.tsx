@@ -244,7 +244,6 @@ export function AlertsDeviceSection({ alerts, shared }: { readonly alerts: Phone
                 busy={alerts.busy}
                 busyLabel="Sending…"
                 testId="alerts-send-test"
-                className="min-h-12"
               >
                 Send test
               </Button>

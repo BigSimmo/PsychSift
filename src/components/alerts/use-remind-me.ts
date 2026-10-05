@@ -3,7 +3,13 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 import { REMIND_ME_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
-import { checkReminderText, normalizeReminders, REMIND_ME_TEXT_LIMIT, type Reminder } from "@/lib/alerts/remind-me";
+import {
+  checkReminderText,
+  normalizeReminders,
+  remindersFull,
+  REMIND_ME_TEXT_LIMIT,
+  type Reminder,
+} from "@/lib/alerts/remind-me";
 import { isSharedDevice, SHARED_DEVICE_CHANGE_EVENT } from "@/lib/alerts/shared-device";
 
 /**
@@ -74,7 +80,7 @@ function write(list: readonly Reminder[]): boolean {
   return true;
 }
 
-export type SaveReminderResult = "saved" | "unsafe" | "shared-device" | "failed";
+export type SaveReminderResult = "saved" | "unsafe" | "shared-device" | "full" | "failed";
 
 export function useRemindMe() {
   const reminders = useSyncExternalStore(subscribe, snapshot, () => EMPTY);
@@ -83,11 +89,16 @@ export function useRemindMe() {
     const words = text.trim().slice(0, REMIND_ME_TEXT_LIMIT);
     if (!words || checkReminderText(words)) return "unsafe";
     if (isSharedDevice()) return "shared-device";
+    const current = snapshot();
+    if (remindersFull(current)) return "full";
     const now = new Date();
+    const id = `r${now.getTime()}`;
     const next = normalizeReminders(
-      [...snapshot(), { id: `r${now.getTime()}`, text: words, dueAt, createdAt: now.toISOString(), doneAt: null }],
+      [...current, { id, text: words, dueAt, createdAt: now.toISOString(), doneAt: null }],
       now,
     );
+    // Only "saved" when the new note really is in what was written.
+    if (!next.some((item) => item.id === id)) return "failed";
     return write(next) ? "saved" : "failed";
   }, []);
 

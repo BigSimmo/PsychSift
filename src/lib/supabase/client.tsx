@@ -504,7 +504,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     invalidateAuthRequests();
     // Phone alerts belong to the account, not the device: stop them here while
     // the session can still tell the server which subscription to drop.
-    await removeThisDevicePushSubscription();
+    const alertsRemoved = await removeThisDevicePushSubscription();
     let remoteSignOutFailed = false;
     try {
       const result = await client.auth.signOut();
@@ -520,6 +520,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("signed_out");
     if (remoteSignOutFailed) {
       setNotice("Signed out on this device. Reconnect to complete server sign-out.");
+    } else if (!alertsRemoved) {
+      // Said plainly rather than hidden: on a shared computer the next person should know.
+      setError(null);
+      setNotice("Signed out. Phone alerts may still be on for this device; turn them off in its settings.");
     } else {
       setError(null);
       setNotice(null);

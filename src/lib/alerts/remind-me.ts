@@ -137,6 +137,39 @@ const NOT_INITIALS = new Set([
   "ADHD",
   "PTSD",
   "SMS",
+  // Ordinary words typed in capitals.
+  "ON",
+  "TO",
+  "RE",
+  "NO",
+  "DO",
+  "IN",
+  "AT",
+  "OF",
+  "OR",
+  "AN",
+  "AS",
+  "BY",
+  "IS",
+  "UP",
+  "WE",
+  "ME",
+  "MY",
+  "BE",
+  "GO",
+  "SO",
+  "IF",
+  "THE",
+  "AND",
+  "FOR",
+  "NOT",
+  "ALL",
+  "ASAP",
+  "CALL",
+  "NEW",
+  "OFF",
+  "OUT",
+  "DUE",
 ]);
 
 const BED = /\b(?:bed|bay|room|rm|cubicle|cube)\s*#?\s*\d+[a-z]?\b/gi;
@@ -147,7 +180,8 @@ const TITLE_NAME =
 // One initial then a surname ("J Smith", "J. Smith"); A and I are left alone as ordinary words.
 const INITIAL_SURNAME = /\b[B-HJ-Z]\.?\s\p{Lu}\p{Ll}[\p{L}'-]+/gu;
 const DOTTED_INITIALS = /\b[A-Z]\.\s?[A-Z]\.?(?:\s?[A-Z]\.?)?(?=\W|$)/g;
-const AGE_SEX = /\b\d{1,3}\s?(?:yo|y\/o|yrs?)\b(?:\s?[MFmf]\b)?|\b\d{1,3}[MF]\b/g;
+// "45yo", "45 y/o F", "34M", "45 yrs F"; a bare "2 yrs" is a length of time, not an age.
+const AGE_SEX = /\b\d{1,3}\s?(?:yo|y\/o)\b(?:\s?[MFmf]\b)?|\b\d{1,3}\s?yrs?\s?[MFmf]\b|\b\d{1,3}[MF]\b/g;
 const INITIALS = /\b[A-Z]{2,3}\b/g;
 
 function initialsIn(text: string): string[] {
@@ -228,8 +262,11 @@ export function remindMeWhenOptions(now: Date, shiftEndsAt: string | null): When
   const end = shiftEndsAt ? Date.parse(shiftEndsAt) : Number.NaN;
   if (Number.isFinite(end) && end - at > 15 * 60 * 1000 && end - at < 16 * HOUR_MS)
     options.push({ id: "shift-end", label: `End of shift, ${perthClock(end)}`, dueAt: new Date(end).toISOString() });
-  const tomorrow = perthAt(at, 8, 1);
-  options.push({ id: "tomorrow", label: "Tomorrow 08:00", dueAt: new Date(tomorrow).toISOString() });
+  // Before 08:00 (a night shift) "08:00" means this morning, not the day after.
+  const morning = perthAt(at, 8);
+  if (morning - at >= 1.5 * HOUR_MS)
+    options.push({ id: "morning", label: "08:00", dueAt: new Date(morning).toISOString() });
+  else options.push({ id: "tomorrow", label: "Tomorrow 08:00", dueAt: new Date(perthAt(at, 8, 1)).toISOString() });
   return options;
 }
 
@@ -237,25 +274,40 @@ export function remindMeWhenOptions(now: Date, shiftEndsAt: string | null): When
 export function normalizeReminders(input: unknown, now: Date): Reminder[] {
   if (!Array.isArray(input)) return [];
   const dayAgo = now.getTime() - 24 * HOUR_MS;
-  return (
-    input
-      .filter(
-        (item): item is Reminder =>
-          typeof item === "object" &&
-          item !== null &&
-          typeof item.id === "string" &&
-          typeof item.text === "string" &&
-          item.text.length <= REMIND_ME_TEXT_LIMIT &&
-          Number.isFinite(Date.parse(item.dueAt)) &&
-          typeof item.createdAt === "string" &&
-          (item.doneAt === null || Number.isFinite(Date.parse(item.doneAt))),
-      )
-      .filter((item) => item.doneAt === null || Date.parse(item.doneAt) > dayAgo)
-      // A note saved before this check existed is re-checked on every read, never shown if it fails.
-      .filter((item) => checkReminderText(item.text) === null)
-      .sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt))
-      .slice(-REMIND_ME_MAX)
+  const list = input
+    .filter(
+      (item): item is Reminder =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof item.id === "string" &&
+        typeof item.text === "string" &&
+        item.text.length <= REMIND_ME_TEXT_LIMIT &&
+        Number.isFinite(Date.parse(item.dueAt)) &&
+        typeof item.createdAt === "string" &&
+        (item.doneAt === null || Number.isFinite(Date.parse(item.doneAt))),
+    )
+    .filter((item) => item.doneAt === null || Date.parse(item.doneAt) > dayAgo)
+    // A note saved before this check existed is re-checked on every read, never shown if it fails.
+    .filter((item) => checkReminderText(item.text) === null)
+    .sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
+  return capReminders(list);
+}
+
+/** Over the cap, ticked-off notes go first, then the oldest written; never a note still to do ahead of them. */
+function capReminders(list: Reminder[]): Reminder[] {
+  if (list.length <= REMIND_ME_MAX) return list;
+  const drop = new Set(
+    [...list]
+      .sort((a, b) => Number(a.doneAt === null) - Number(b.doneAt === null) || a.createdAt.localeCompare(b.createdAt))
+      .slice(0, list.length - REMIND_ME_MAX)
+      .map((item) => item.id),
   );
+  return list.filter((item) => !drop.has(item.id));
+}
+
+/** True when this device already holds the most notes still to do, so a new one can't be kept. */
+export function remindersFull(list: readonly Reminder[]): boolean {
+  return list.filter((item) => item.doneAt === null).length >= REMIND_ME_MAX;
 }
 
 /** Due now or earlier and not yet ticked off. */
@@ -274,8 +326,12 @@ export function reminderWhenLabel(reminder: Reminder, now: Date): string {
   if (reminder.doneAt) return "Done";
   const due = Date.parse(reminder.dueAt);
   const clock = perthClock(due);
-  if (due <= now.getTime()) return `Due ${clock}`;
   const days = perthDayIndex(due) - perthDayIndex(now.getTime());
+  if (due <= now.getTime()) {
+    if (days === 0) return `Due ${clock}`;
+    if (days === -1) return `Due yesterday ${clock}`;
+    return `Due ${DAYS[new Date(due + PERTH_OFFSET_MS).getUTCDay()]} ${clock}`;
+  }
   if (days === 0) return `Today ${clock}`;
   if (days === 1) return `Tomorrow ${clock}`;
   return `${DAYS[new Date(due + PERTH_OFFSET_MS).getUTCDay()]} ${clock}`;

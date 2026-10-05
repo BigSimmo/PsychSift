@@ -93,8 +93,11 @@ export function shortDay(dateKey: string): string {
 export type RosterAlertChoices = {
   /** Whether THIS device is receiving phone alerts. */
   readonly phoneOn: boolean;
-  readonly changes: boolean;
-  readonly requests: boolean;
+  /** Null until Roster's settings have loaded, so a default is never shown as the reader's choice. */
+  readonly changes: boolean | null;
+  readonly requests: boolean | null;
+  /** Roster's settings could not be read. */
+  readonly failed?: boolean;
   /** Null while Roster's settings have not loaded. */
   readonly calendarShifts: boolean | null;
 };
@@ -124,6 +127,8 @@ function calendarPart(area: AlertArea, settings: ReminderSettings): string | nul
 
 function rosterPhonePart(roster: RosterAlertChoices): string {
   if (!roster.phoneOn) return "In Roster and My Day";
+  if (roster.changes === null || roster.requests === null)
+    return roster.failed ? "Couldn't load Roster settings" : "Checking Roster settings";
   if (roster.changes && roster.requests) return "Changes and requests straight away";
   if (roster.changes) return "Changes straight away";
   if (roster.requests) return "Requests straight away";
@@ -140,8 +145,14 @@ export function areaSummary(
   const area = ALERT_AREAS[id];
   if (id === "roster") {
     const parts = [rosterPhonePart(roster)];
-    if (settings.types.shifts.calendarAlert === "evening-before" && roster.calendarShifts !== false)
-      parts.push("next shift the evening before");
+    // A shift calendar alert can only fire once shifts are on the calendar link.
+    if (roster.calendarShifts !== false) {
+      if (settings.types.shifts.calendarAlert === "evening-before") parts.push("next shift the evening before");
+      else {
+        const calendar = calendarPart(area, settings);
+        if (calendar) parts.push(calendar);
+      }
+    }
     return parts.join(" · ");
   }
   const parts = [inMyDayPart(area, settings, today)];

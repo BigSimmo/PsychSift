@@ -3,14 +3,20 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import { removeThisDevicePushSubscription } from "@/lib/alerts/device-push";
-import { derivePhoneAlertState, deviceKindOf, type DeviceKind, type PhoneAlertState } from "@/lib/alerts/phone-state";
+import {
+  derivePhoneAlertState,
+  deviceKindOf,
+  testAlertFailureMessage,
+  type DeviceKind,
+  type PhoneAlertState,
+} from "@/lib/alerts/phone-state";
 import { setSharedDevice, useSharedDevice } from "@/lib/alerts/shared-device";
 
 /**
  * Phone alerts on THIS device: whether the server can send them, whether this
  * browser can take them, what the reader has allowed, and whether this device
- * is subscribed to the signed-in account. Shared by the Alerts page and
- * Roster's own switch, so both always agree.
+ * is subscribed to the signed-in account. Used by the Alerts page; Roster
+ * settings still has its own switch until the Roster build adopts this hook.
  */
 
 const LAST_TEST_KEY = "psychsift-last-test-alert";
@@ -248,13 +254,9 @@ export function usePhoneAlerts(): PhoneAlerts {
         cache: "no-store",
       });
       const payload = (await response.json().catch(() => null)) as { sent?: number; reason?: string } | null;
-      if (!response.ok) throw new Error("Test not sent");
-      if (!payload?.sent) {
-        setMessage(
-          payload?.reason === "gone" || payload?.reason === "not_owned"
-            ? "This device isn't linked to your alerts any more. Turn phone alerts off and on again."
-            : "The test alert couldn't be sent. Try again shortly.",
-        );
+      // A refusal (not released, signed out) is not a connection problem, so it gets the server's reason.
+      if (!response.ok || !payload?.sent) {
+        setMessage(testAlertFailureMessage(payload?.reason));
         return;
       }
       setTestSentAt(new Date().toISOString());
@@ -269,7 +271,8 @@ export function usePhoneAlerts(): PhoneAlerts {
     async (shared: boolean) => {
       // A shared computer keeps no subscription: the switch only turns on once
       // this device's subscription is really gone.
-      if (shared && subscribed && !(await turnOff())) return;
+      // Unknown (still checking, or the check failed) counts as subscribed: removal is a no-op when there is none.
+      if (shared && subscribed !== false && !(await turnOff())) return;
       setSharedDevice(shared);
     },
     [subscribed, turnOff],

@@ -4,6 +4,7 @@ import {
   checkReminderText,
   dueReminders,
   normalizeReminders,
+  reminderWhenLabel,
   remindMeWhenOptions,
   type Reminder,
 } from "@/lib/alerts/remind-me";
@@ -56,6 +57,13 @@ describe("Remind me keeps patient details out", () => {
   ])("lets an ordinary clinical job through: %s", (text) => {
     expect(checkReminderText(text)).toBeNull();
   });
+
+  it.each(["Check ON CALL roster", "Call RE discharge plan", "Email the MDT TO list", "review in 2 yrs"])(
+    "does not refuse ordinary capitals or a length of time: %s",
+    (text) => {
+      expect(checkReminderText(text)).toBeNull();
+    },
+  );
 
   it("gives the same answer every time (no state carried between checks)", () => {
     for (let i = 0; i < 3; i += 1) expect(checkReminderText("bed 3 obs")?.title).toBe("This looks like a bed number");
@@ -156,5 +164,48 @@ describe("reminder time labels", async () => {
     expect(at("2026-10-06T00:00:00Z")).toBe("Tomorrow 08:00");
     expect(at("2026-10-07T00:00:00Z")).toBe("Wed 08:00");
     expect(at("2026-10-05T04:00:00Z", "2026-10-05T00:00:00Z")).toBe("Done");
+  });
+});
+
+describe("Remind me edge cases", () => {
+  const note = (id: string, dueAt: string, createdAt: string, doneAt: string | null = null): Reminder => ({
+    id,
+    text: "Chase the ECG report",
+    dueAt,
+    createdAt,
+    doneAt,
+  });
+
+  it("a night shift is offered 08:00 this morning, not the day after", () => {
+    const twoAm = new Date("2026-10-04T18:00:00Z"); // Mon 5 Oct 02:00 Perth
+    const options = remindMeWhenOptions(twoAm, null);
+    const morning = options.find((option) => option.id === "morning");
+    expect(morning?.label).toBe("08:00");
+    expect(morning?.dueAt).toBe("2026-10-05T00:00:00.000Z");
+    expect(options.some((option) => option.id === "tomorrow")).toBe(false);
+  });
+
+  it("over the cap, ticked-off notes go before any still to do", () => {
+    const now = new Date("2026-10-05T02:00:00Z");
+    const list = Array.from({ length: 21 }, (_, index) =>
+      note(
+        `n${index}`,
+        new Date(now.getTime() + index * 60_000).toISOString(),
+        new Date(now.getTime() - (21 - index) * 60_000).toISOString(),
+        index === 20 ? now.toISOString() : null,
+      ),
+    );
+    const kept = normalizeReminders(list, now);
+    expect(kept).toHaveLength(20);
+    expect(kept.every((item) => item.doneAt === null)).toBe(true);
+  });
+
+  it("overdue notes from an earlier day say which day", () => {
+    const now = new Date("2026-10-05T04:00:00Z"); // Mon 12:00 Perth
+    expect(reminderWhenLabel(note("a", "2026-10-04T04:00:00Z", "2026-10-04T00:00:00Z"), now)).toBe(
+      "Due yesterday 12:00",
+    );
+    expect(reminderWhenLabel(note("b", "2026-10-02T04:00:00Z", "2026-10-02T00:00:00Z"), now)).toBe("Due Fri 12:00");
+    expect(reminderWhenLabel(note("c", "2026-10-05T01:00:00Z", "2026-10-05T00:00:00Z"), now)).toBe("Due 09:00");
   });
 });
