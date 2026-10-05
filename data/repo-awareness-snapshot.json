@@ -533,6 +533,11 @@
         "area": "product"
       },
       {
+        "path": "/my-day/profile",
+        "file": "src/app/(search-app)/my-day/profile/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/also-matches-closed",
         "file": "src/app/mockups/also-matches-closed/page.tsx",
         "area": "mockup"
