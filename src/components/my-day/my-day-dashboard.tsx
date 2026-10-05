@@ -276,16 +276,19 @@ export function MyDayDashboard({
         shifts
           .filter((shift) => kindOf(shift) !== "leave")
           .map((shift) => ({ id: shift.id, kind: kindOf(shift), startsAt: shift.startsAt, endsAt: shift.endsAt })),
-        [...teachingSessions, ...ahead].map((session) => ({
-          id: session.occurrenceId,
-          title: session.title,
-          startsAt: session.startsAt,
-          endsAt: session.endsAt,
-          venue: session.venue ?? null,
-          isPresenter: session.isPresenter,
-          allDay: session.allDay,
-          href: sessionHref(session) ?? "/teaching/week",
-        })),
+        // Today's sessions are also in `ahead`: keep each occurrence once.
+        [...new Map([...teachingSessions, ...ahead].map((session) => [session.occurrenceId, session])).values()].map(
+          (session) => ({
+            id: session.occurrenceId,
+            title: session.title,
+            startsAt: session.startsAt,
+            endsAt: session.endsAt,
+            venue: session.venue ?? null,
+            isPresenter: session.isPresenter,
+            allDay: session.allDay,
+            href: sessionHref(session) ?? "/teaching/week",
+          }),
+        ),
         today,
         now,
       ),
@@ -555,7 +558,8 @@ export function MyDayDashboard({
         byCategory={cpd.byCategory}
         loggedHours={cpd.loggedHours}
         targetHours={cpd.targetHours}
-        projected={cpdProjectedHours(cpd.loggedHours, today)}
+        projected={cpd.closed ? null : cpdProjectedHours(cpd.loggedHours, today)}
+        closed={cpd.closed === true}
         currentMonth={Number(today.slice(5, 7)) - 1}
         onHide={onHide("cpd-month")}
       />

@@ -216,6 +216,23 @@ describe("MyDayWeekPage", () => {
     );
   });
 
+  it("keeps a shift that ends at midnight on its own day", () => {
+    // 16:00 to 24:00 Sat 3 Oct in Perth.
+    setShifts({ shifts: [shift("late", "2026-10-03T08:00:00Z", "2026-10-03T16:00:00Z", "evening")] });
+    render(<MyDayWeekPage now={NOW} />);
+    expect(screen.getByTestId("my-day-week-empty-2026-10-04").textContent).toBe("Nothing on");
+  });
+
+  it("draws no false day off and says why when the roster did not load", () => {
+    setShifts({ status: "error" });
+    render(<MyDayWeekPage now={NOW} />);
+    const strip = screen.getByTestId("my-day-week-strip");
+    expect(strip.querySelectorAll('[data-kind="off"]')).toHaveLength(0);
+    expect(screen.getByTestId("my-day-week-empty-2026-10-05").textContent).toBe(
+      "Roster not loaded, so shifts are not shown",
+    );
+  });
+
   it("greys what is over today and draws the now line before what is still to come", () => {
     // Now is 09:00 Sat 3 Oct in Perth.
     setShifts({

@@ -1500,7 +1500,7 @@ body {
   --dash-hero-3: #1a5f9f;
   --dash-hero-glass: rgb(255 255 255 / 0.1);
   --dash-hero-glass-line: rgb(255 255 255 / 0.16);
-  --dash-hero-muted: #e3eefa;
+  --dash-hero-muted: #f0f6fc;
   --dash-line: #e4e8ee;
   --dash-line-strong: #cfd6df;
   --dash-blue: #1d6fb8;
@@ -1562,6 +1562,7 @@ body {
     --dash-ink: CanvasText;
     --dash-muted: CanvasText;
     --dash-faint: CanvasText;
+    --dash-blue: LinkText;
     --dash-flag: Canvas;
     --dash-green-line: CanvasText;
     --dash-blue-tint: Canvas;

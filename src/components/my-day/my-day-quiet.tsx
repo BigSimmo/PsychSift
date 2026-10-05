@@ -84,11 +84,14 @@ export function QuietHideButton({
   onHide,
   testId,
   onHero = false,
+  inset = false,
 }: {
   readonly label: string;
   readonly onHide: () => void;
   readonly testId?: string;
   readonly onHero?: boolean;
+  /** Sits inside its box, so it cannot overlap a parent's own Hide button. */
+  readonly inset?: boolean;
 }) {
   return (
     <button
@@ -96,7 +99,11 @@ export function QuietHideButton({
       onClick={onHide}
       aria-label={`Hide ${label}`}
       data-testid={testId ? `${testId}-hide` : undefined}
-      className={cn(focusRing, "absolute -top-3 -right-3 grid size-12 place-items-center rounded-full")}
+      className={cn(
+        focusRing,
+        "absolute grid size-12 place-items-center rounded-full",
+        inset ? "top-0 right-0" : "-top-3 -right-3",
+      )}
     >
       <span
         aria-hidden="true"
@@ -181,7 +188,7 @@ export function QuietRow({
         {subtitle ? (
           <span
             className={cn(
-              "mt-px line-clamp-2 break-words text-sm",
+              "mt-px break-words text-sm",
               done ? "text-[color:var(--dash-faint)]" : "text-[color:var(--dash-muted)]",
             )}
           >
@@ -365,7 +372,7 @@ export function QuietRing({
           r={radius}
           fill="none"
           strokeWidth={stroke}
-          className="stroke-[color:var(--dash-card)]"
+          className="stroke-[color:var(--dash-line)]"
         />
         {clamped > 0 ? (
           <circle

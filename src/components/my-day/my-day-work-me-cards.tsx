@@ -123,14 +123,16 @@ export function CallsCard({
       <div className="flex min-w-0 items-center gap-4">
         {left && span !== null && endMs !== null && nowMs !== null ? (
           <QuietRing fraction={(endMs - nowMs) / span} mode="on-call" testId="my-day-calls-ring">
-            <span className="sr-only">{`${left.spoken} left of ${durationWords(span).spoken}`}</span>
-            <span aria-hidden="true" className="grid justify-items-center">
+            <span className="grid justify-items-center">
               <span className="max-w-16 text-sm font-dash-title leading-tight text-[color:var(--dash-ink)] nums">
                 {left.short}
               </span>
               <span className="text-2xs text-[color:var(--dash-faint)]">{`left of ${durationWords(span).short}`}</span>
             </span>
           </QuietRing>
+        ) : null}
+        {left && span !== null && endMs !== null && nowMs !== null ? (
+          <span className="sr-only">{`${left.spoken} left of ${durationWords(span).spoken}.`}</span>
         ) : null}
         <dl className="m-0 grid min-w-0 flex-1 gap-1">
           <CallFigure label="Calls logged" value={String(total)} />
@@ -142,10 +144,7 @@ export function CallsCard({
         <Link
           href={withMyDayReturn("/on-call/call#on-call-call-log-heading")}
           data-testid="my-day-calls-log"
-          className={cn(
-            quietPrimary,
-            "bg-[color:var(--dash-blue)] text-[color:var(--dash-hero-ink)] forced-colors:border",
-          )}
+          className={cn(quietPrimary, "bg-[color:var(--dash-blue)] text-[color:var(--dash-page)] forced-colors:border")}
         >
           <Phone aria-hidden="true" className="size-icon-sm" />
           Log a call
@@ -293,7 +292,10 @@ function TalkRow({
       title={
         <Link
           href={withMyDayReturn(`/teaching/session/${session.occurrenceId}`)}
-          className={cn(focusRing, "rounded-sm text-[color:var(--dash-ink)] no-underline hover:underline")}
+          className={cn(
+            focusRing,
+            "-my-3 inline-flex min-h-12 items-center rounded-sm text-[color:var(--dash-ink)] no-underline hover:underline",
+          )}
         >
           {session.title}
         </Link>
@@ -340,7 +342,10 @@ export function ComingUpCard({
               title={
                 <Link
                   href={withMyDayReturn("/roster")}
-                  className={cn(focusRing, "rounded-sm text-[color:var(--dash-ink)] no-underline hover:underline")}
+                  className={cn(
+                    focusRing,
+                    "-my-3 inline-flex min-h-12 items-center rounded-sm text-[color:var(--dash-ink)] no-underline hover:underline",
+                  )}
                 >
                   Your next on call
                 </Link>
@@ -506,7 +511,7 @@ export function HoursCard({
     (day) => WEEKDAY_LETTERS[(new Date(`${day.date}T00:00:00Z`).getUTCDay() + 6) % 7] ?? "",
   );
   return (
-    <section data-mode-identity="roster" className="contents">
+    <div data-mode-identity="roster" className="min-w-0">
       <QuietSection
         title="Hours worked"
         onHide={onHide}
@@ -547,7 +552,7 @@ export function HoursCard({
           rules are signed off.
         </QuietFoot>
       </QuietSection>
-    </section>
+    </div>
   );
 }
 
@@ -615,6 +620,7 @@ export function CpdMonthCard({
   loggedHours,
   targetHours,
   projected,
+  closed = false,
   currentMonth,
   onHide,
 }: {
@@ -623,6 +629,8 @@ export function CpdMonthCard({
   readonly loggedHours: number;
   readonly targetHours: number;
   readonly projected: number | null;
+  /** The CPD year has been closed: no estimate is drawn. */
+  readonly closed?: boolean;
   /** 0 = January. */
   readonly currentMonth: number;
   readonly onHide?: () => void;
@@ -631,7 +639,7 @@ export function CpdMonthCard({
   const most = byMonth.reduce((best, hours, index) => (hours > (byMonth[best] ?? 0) ? index : best), 0);
   const height = 50;
   return (
-    <section data-mode-identity="cme" className="contents">
+    <div data-mode-identity="cme" className="min-w-0">
       <QuietSection
         title="CPD this year"
         onHide={onHide}
@@ -686,10 +694,12 @@ export function CpdMonthCard({
         <QuietFoot icon={Info}>
           {projected !== null
             ? `At this rate, about ${projected} h by 31 Dec. This is a straight-line estimate from what you have logged.`
-            : "No hours logged yet this year."}
+            : closed
+              ? "This CPD year is closed. The hours above are final."
+              : "No hours logged yet this year."}
         </QuietFoot>
       </QuietSection>
-    </section>
+    </div>
   );
 }
 
@@ -719,11 +729,11 @@ export function QuickNoteCard({ onHide }: { readonly onHide?: () => void }) {
         placeholder="A reminder for yourself"
         className="min-h-14 w-full resize-y rounded-lg border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-3 py-2.5 text-base-minus text-[color:var(--dash-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)] forced-colors:border"
       />
-      <span id={hintId}>
+      <div id={hintId}>
         <QuietFoot icon={TriangleAlert}>
           Never write patient names or details here. Deleted when you sign out.
         </QuietFoot>
-      </span>
+      </div>
     </QuietSection>
   );
 }

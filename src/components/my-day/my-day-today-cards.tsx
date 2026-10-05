@@ -51,7 +51,6 @@ import {
   heroTrack,
   heroWords,
   itemLine,
-  MY_DAY_AREA_NAME,
   perthWeekday,
   relativeDays,
   reminderLine,
@@ -73,7 +72,7 @@ import type { RosterDisplayShift } from "@/lib/roster/team/team-view";
 
 // ---------------------------------------------------------------- shared words
 
-export const MODE_ICON: Readonly<Record<MyDaySourceMode, LucideIcon>> = {
+const MODE_ICON: Readonly<Record<MyDaySourceMode, LucideIcon>> = {
   cme: Award,
   "my-work": Shield,
   "on-call": Phone,
@@ -203,7 +202,7 @@ function HeroPanel({
           {actionLabel}
         </Link>
       </span>
-      {onHide ? <QuietHideButton label="Next teaching" onHide={onHide} testId="my-day-next-up" onHero /> : null}
+      {onHide ? <QuietHideButton label="Next teaching" onHide={onHide} testId="my-day-next-up" onHero inset /> : null}
     </div>
   );
 }
@@ -417,7 +416,7 @@ export function FlagCard({
 
 // ---------------------------------------------------------------- quick actions
 
-export interface MyDayQuickAction {
+interface MyDayQuickAction {
   readonly label: string;
   readonly href: string;
   readonly icon: LucideIcon;
@@ -425,7 +424,7 @@ export interface MyDayQuickAction {
 }
 
 /** Real destinations only: each opens an existing page of its mode. Four fit across a phone. */
-export const MY_DAY_QUICK_ACTIONS: readonly MyDayQuickAction[] = [
+const MY_DAY_QUICK_ACTIONS: readonly MyDayQuickAction[] = [
   { label: "Log a call", href: "/on-call/call#on-call-call-log-heading", icon: Phone, testId: "my-day-qa-call" },
   { label: "Log CPD", href: "/cme/new", icon: BookPlus, testId: "my-day-qa-cpd" },
   { label: "Who's on", href: "/on-call/whos-on", icon: Users, testId: "my-day-qa-whos-on" },
@@ -435,7 +434,7 @@ export const MY_DAY_QUICK_ACTIONS: readonly MyDayQuickAction[] = [
 export function QuickActionsCard({ onHide }: { readonly onHide?: () => void }) {
   return (
     <section aria-label="Quick actions" data-testid="my-day-card-quick-actions" className="relative">
-      <ul role="list" aria-label="Quick actions" className="grid grid-cols-4 gap-1" data-testid="dash-quick-actions">
+      <ul role="list" className="grid grid-cols-4 gap-1" data-testid="dash-quick-actions">
         {MY_DAY_QUICK_ACTIONS.map((action) => (
           <li key={action.testId} className="min-w-0">
             <Link
@@ -510,7 +509,7 @@ function WeekMonthSwitch({
           className={cn(
             focusRing,
             // A small face; the 48px tap area overlaps the section's spacing, not the layout.
-            "relative rounded-md px-2.5 py-0.5 text-xs before:absolute before:-inset-x-1 before:-inset-y-3",
+            "relative rounded-md px-2.5 py-0.5 text-xs before:absolute before:inset-x-0 before:-inset-y-3.5",
             value === option
               ? "bg-[color:var(--dash-card)] font-dash-title text-[color:var(--dash-ink)] forced-colors:border"
               : "font-medium text-[color:var(--dash-muted)]",
@@ -878,7 +877,7 @@ export function NeedsYouCard({
   } else if (shown.length === 0) {
     body = (
       <p className="py-2 text-sm text-[color:var(--dash-muted)]" data-testid="my-day-needs-you-snoozed">
-        {`Nothing else needs you today. ${total - waiting} hidden until tomorrow.`}
+        {`${incomplete ? "Nothing else found in the sources that loaded." : "Nothing else needs you today."} ${total - waiting} hidden until tomorrow.`}
       </p>
     );
   } else {
@@ -996,7 +995,11 @@ export function CpdSummary({
       data-testid="my-day-cpd"
       className={cn(focusRing, "-m-1 flex min-w-0 items-center gap-4 rounded-lg p-1 pt-2.5 no-underline")}
     >
-      <span className="sr-only">{`${hoursText(loggedHours)} of ${hoursText(targetHours)} CPD hours logged this year.`}</span>
+      <span className="sr-only">
+        {`${hoursText(loggedHours)} of ${hoursText(targetHours)} CPD hours logged this year: ${cmeCategories
+          .map((category) => `${CPD_LABEL[category]} ${hoursText(byCategory[category])}`)
+          .join(", ")}. ${left > 0 ? `${hoursText(left)} hours to go by 31 December.` : "Target reached."}`}
+      </span>
       <QuietRing fraction={loggedHours / Math.max(1, targetHours)} mode="cme" testId="my-day-cpd-ring">
         <span className="text-base font-dash-title text-[color:var(--dash-ink)] nums">{`${hoursText(loggedHours)} h`}</span>
         <span className="text-2xs text-[color:var(--dash-faint)]">{`of ${hoursText(targetHours)} h`}</span>
@@ -1139,5 +1142,3 @@ export function CustomiseRow({ editing, onToggle }: { readonly editing: boolean;
     </div>
   );
 }
-
-export { MY_DAY_AREA_NAME };

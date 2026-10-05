@@ -74,6 +74,7 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
                 items={sample.items}
                 cmeRoutines={[]}
                 reminders={DEFAULT_REMINDER_SETTINGS}
+                rosterKnown
               />
             )}
           </MyDayWeekSample>
@@ -175,6 +176,7 @@ function MyDayWeekBody({ now }: { now: Date }) {
         items={items.items}
         cmeRoutines={items.cmeRoutines}
         reminders={reminders}
+        rosterKnown={showShifts}
       />
     </div>
   );
@@ -361,6 +363,7 @@ export function MyDayWeekDays({
   items,
   cmeRoutines,
   reminders,
+  rosterKnown,
 }: {
   readonly now: Date;
   readonly shifts: readonly MyShift[];
@@ -368,6 +371,8 @@ export function MyDayWeekDays({
   readonly items: readonly MyDayItem[];
   readonly cmeRoutines: readonly CmeRoutine[];
   readonly reminders: ReminderSettings;
+  /** False when the roster did not load: the strip shows no false "off" and empty days say why. */
+  readonly rosterKnown: boolean;
 }) {
   const today = perthDateOf(now);
   const dates = useMemo(() => myDayWeekDates(today), [today]);
@@ -403,7 +408,11 @@ export function MyDayWeekDays({
   // An overnight shift that started the day before: an empty day says when it ends.
   const endsOn = (date: string): MyShift | undefined =>
     shifts.find(
-      (shift) => kindOf(shift) !== "leave" && perthDateOf(shift.startsAt) < date && perthDateOf(shift.endsAt) === date,
+      // A shift ending exactly at midnight belongs to the day before, as in summariseToday.
+      (shift) =>
+        kindOf(shift) !== "leave" &&
+        perthDateOf(shift.startsAt) < date &&
+        perthDateOf(new Date(Date.parse(shift.endsAt) - 1).toISOString()) === date,
     );
   const at = now.getTime();
 
@@ -415,7 +424,7 @@ export function MyDayWeekDays({
             key={date}
             date={date}
             today={today}
-            kinds={kindsByDate.get(date) ?? []}
+            kinds={rosterKnown ? (kindsByDate.get(date) ?? []) : null}
             due={dueByDate.get(date) ?? 0}
           />
         ))}
@@ -457,9 +466,11 @@ export function MyDayWeekDays({
                   className="flex min-h-12 items-center text-sm text-[color:var(--dash-muted)]"
                   data-testid={`my-day-week-empty-${date}`}
                 >
-                  {ending
-                    ? `${shiftTitle(kindOf(ending))} ends ${perthTimeOf(ending.endsAt)} · nothing else on`
-                    : "Nothing on"}
+                  {!rosterKnown
+                    ? "Roster not loaded, so shifts are not shown"
+                    : ending
+                      ? `${shiftTitle(kindOf(ending))} ends ${perthTimeOf(ending.endsAt)} · nothing else on`
+                      : "Nothing on"}
                 </p>
               )}
             </li>

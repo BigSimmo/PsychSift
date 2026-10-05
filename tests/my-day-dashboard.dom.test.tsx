@@ -162,7 +162,7 @@ describe("MyDayDashboard cards", () => {
       ["Who's on", "/on-call/whos-on?from=my-day"],
       ["Roster", "/roster?from=my-day"],
     ]);
-    expect(within(card).getByRole("list", { name: "Quick actions" })).toBeTruthy();
+    expect(card.getAttribute("aria-label")).toBe("Quick actions");
     expect(card.textContent).not.toContain("Handover");
   });
 
@@ -347,7 +347,9 @@ describe("MyDayDashboard cards", () => {
       />,
     );
     const cpd = screen.getByTestId("my-day-card-cpd");
-    expect(cpd.textContent).toContain("32 of 50 CPD hours logged this year.");
+    expect(cpd.textContent).toContain(
+      "32 of 50 CPD hours logged this year: Educational 14, Reviewing performance 9, Measuring outcomes 9. 18 hours to go by 31 December.",
+    );
     expect(cpd.textContent).toContain("Educational14 h");
     expect(cpd.textContent).toContain("Reviewing performance9 h");
     expect(cpd.textContent).toContain("Measuring outcomes9 h");
@@ -465,6 +467,14 @@ describe("Needs you", () => {
     expect(window.localStorage.getItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY)).toBeNull();
   });
 
+  it("never says nothing else needs you when every row is hidden but a source failed", () => {
+    render(<MyDayDashboard {...props({ items: [item("a", "soon")], incomplete: true })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Later: Title a" }));
+    expect(screen.getByTestId("my-day-needs-you-snoozed").textContent).toBe(
+      "Nothing else found in the sources that loaded. 1 hidden until tomorrow.",
+    );
+  });
+
   it("shows a moved row again from the day it comes back", () => {
     window.localStorage.setItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY, JSON.stringify({ a: "2026-10-04" }));
     render(<MyDayDashboard {...props({ items: [item("a", "overdue")] })} />);
@@ -563,6 +573,23 @@ describe("This week's rows", () => {
     expect(rows.textContent).toContain("Day shifts");
     expect(rows.textContent).toContain("Mon, Tue and Wed · 08:00 to 17:00 · Roster");
     expect(within(rows).getAllByRole("listitem")).toHaveLength(1);
+  });
+});
+
+describe("This week's teaching rows", () => {
+  it("lists a session from today once, though it is in both today's list and the weeks ahead", () => {
+    render(
+      <MyDayDashboard
+        {...props({
+          sources: {
+            ...EMPTY_SOURCES,
+            teaching: { status: "ready", sessions: [session()], ahead: [session()], sample: false },
+          },
+        })}
+      />,
+    );
+    const rows = screen.getByTestId("my-day-agenda");
+    expect(rows.textContent!.split("Registrar teaching: agitation")).toHaveLength(2);
   });
 });
 
@@ -812,6 +839,15 @@ describe("Me cards", () => {
     expect(screen.getByTestId("my-day-glance-renewal").textContent).toContain(
       "Medical registration · 24 Nov · in 52 days",
     );
+  });
+
+  it("draws no estimate for a CPD year that is closed", () => {
+    render(
+      <MyDayDashboard {...props({ page: "me", sources: { ...EMPTY_SOURCES, cpd: { ...READY_CPD, closed: true } } })} />,
+    );
+    const card = screen.getByTestId("my-day-card-cpd-month");
+    expect(card.textContent).toContain("This CPD year is closed. The hours above are final.");
+    expect(card.textContent).not.toContain("At this rate");
   });
 
   it("hides hours when the roster holds only on call", () => {
