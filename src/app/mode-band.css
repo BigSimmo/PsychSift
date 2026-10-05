@@ -150,9 +150,14 @@
   align-items: center;
 }
 
-/* A slot no page has filled (a signed-in Roster) takes no room. */
+/* A slot no page has filled (a signed-in Roster) takes no room, unless a page
+   rendered on the server has said a status is coming (ModeBandStatus). */
 .mode-band__status:empty {
   display: none;
+}
+
+:root:has([data-mode-band-reserve]) .mode-band__status:empty {
+  display: flex;
 }
 
 .mode-band__saved {
@@ -333,6 +338,10 @@
 }
 
 /* Fades the row's right edge so a cut-off tab reads as "more this way". */
+.mode-band__tabs:not([data-more]) .mode-band__tab-fade {
+  display: none;
+}
+
 .mode-band__tab-fade {
   position: absolute;
   top: 0;

@@ -93,7 +93,13 @@ const ModeBandCountContext = createContext<(tabId: string, count: number | null)
 const ModeBandStatusKindContext = createContext<(kind: ModeBandStatusValue["kind"] | null) => void>(() => {});
 
 /** Counts could be wrong or invented while records are out of reach or examples. */
-const COUNTS_HIDDEN: ReadonlySet<ModeBandStatusValue["kind"]> = new Set(["offline", "loading", "sample", "failed"]);
+const COUNTS_HIDDEN: ReadonlySet<ModeBandStatusValue["kind"]> = new Set([
+  "offline",
+  "loading",
+  "sample",
+  "failed",
+  "error",
+]);
 
 /**
  * Puts a page's to-do count on one of its mode's tabs ("Log 3") while that
@@ -234,6 +240,23 @@ function useCurrentTabInView(activeId: string | null) {
       row.scrollTo({ left: Math.max(0, left - (row.clientWidth - current.offsetWidth) / 2) });
     }
   }, [row, activeId]);
+  // The edge fade shows only while a tab is still cut off to the right, so it
+  // never dims the last tab once the row is scrolled to its end, or fits.
+  useLayoutEffect(() => {
+    const nav = row?.parentElement;
+    if (!row || !nav) return;
+    const update = () => {
+      nav.toggleAttribute("data-more", row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
+    };
+    update();
+    row.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(row);
+    return () => {
+      row.removeEventListener("scroll", update);
+      observer?.disconnect();
+    };
+  }, [row]);
   return setRow;
 }
 
@@ -506,7 +529,7 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
         <button type="button" className="mode-band__retry" onClick={value.onRetry}>
           <span className="mode-band__warning">
             <CircleAlert aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.25} />
-            Not saved ·<span className="mode-band__retry-word">Try again</span>
+            Not saved · <span className="mode-band__retry-word">Try again</span>
           </span>
         </button>
       );
@@ -554,6 +577,9 @@ export function ModeBandStatus({ value, testId }: { value: ModeBandStatusValue |
     return () => setStatusKind(null);
   }, [setStatusKind, kind]);
   if (!value) return null;
+  // Before hydration the band's slot is empty and so takes no room; this marker
+  // tells it to keep the line, so the band does not grow when the status arrives.
+  if (shown && host === undefined) return <span hidden data-mode-band-reserve="" />;
   const line = (
     <span
       role={value.kind === "error" ? "alert" : "status"}
