@@ -15,15 +15,15 @@ vi.mock("@/components/cme/cme-teaching-prompt", () => ({ CmeTeachingPrompt: () =
 const nowIso = "2026-09-19T02:00:00Z";
 
 describe("CmeDashboardRoute demo wording", () => {
-  it("labels sample data as demo records rather than saved records", () => {
+  it("labels sample data as made-up examples rather than saved records", () => {
     render(<CmeDashboardRoute set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} nowIso={nowIso} routines={[]} demoMode />);
-    expect(screen.getByText("Demo records")).toBeTruthy();
-    expect(screen.queryByText(/Saved records loaded at/)).toBeNull();
+    expect(screen.getByText(/Made-up example records/)).toBeTruthy();
+    expect(screen.queryByText(/In your account/)).toBeNull();
   });
 
   it("keeps the saved-records line for a signed-in record", () => {
     render(<CmeDashboardRoute set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} nowIso={nowIso} routines={[]} />);
-    expect(screen.getByText(/Saved records loaded at/)).toBeTruthy();
-    expect(screen.queryByText("Demo records")).toBeNull();
+    expect(screen.getByText(/In your account · loaded \d{2}:\d{2}/)).toBeTruthy();
+    expect(screen.queryByText(/Made-up example records/)).toBeNull();
   });
 });

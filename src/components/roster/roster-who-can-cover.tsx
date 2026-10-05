@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -53,6 +53,7 @@ export function RosterWhoCanCover({
   actorId,
   startsAt,
   label = "Who can cover?",
+  variant = "row",
 }: {
   readonly serviceId: string;
   readonly assignmentId: string;
@@ -61,8 +62,42 @@ export function RosterWhoCanCover({
   /** The shift's start, so the read covers its weeks. Without it the weeks from this one are read. */
   readonly startsAt?: string;
   readonly label?: string;
+  /** `button`: a bordered button (the next-shift card) instead of a list row. */
+  readonly variant?: "row" | "button";
 }) {
   const [open, setOpen] = useState(false);
+  const sheet = (
+    <Sheet open={open} onClose={() => setOpen(false)} title={label} mobilePlacement="bottom">
+      {open ? (
+        <CoverSession
+          key={JSON.stringify([serviceId, assignmentId, actorId, startsAt ?? null])}
+          serviceId={serviceId}
+          assignmentId={assignmentId}
+          actorId={actorId}
+          startsAt={startsAt}
+        />
+      ) : null}
+    </Sheet>
+  );
+  if (variant === "button")
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          data-testid="roster-who-can-cover"
+          className={cn(
+            focusRing,
+            modePressable,
+            "inline-flex min-h-12 min-w-0 items-center justify-center gap-2 rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-4 text-base-minus font-semibold text-[color:var(--text-heading)]",
+          )}
+        >
+          <Users aria-hidden="true" strokeWidth={1.6} className="size-icon-md text-[color:var(--text-muted)]" />
+          {label}
+        </button>
+        {sheet}
+      </>
+    );
   return (
     <li className={cn(modeInsetHairline, "flex min-w-0 items-center pr-1")}>
       <button
@@ -84,17 +119,7 @@ export function RosterWhoCanCover({
         </span>
         <ChevronRight aria-hidden="true" className="ml-auto size-icon-md shrink-0 text-[color:var(--text-muted)]" />
       </button>
-      <Sheet open={open} onClose={() => setOpen(false)} title={label} mobilePlacement="bottom">
-        {open ? (
-          <CoverSession
-            key={JSON.stringify([serviceId, assignmentId, actorId, startsAt ?? null])}
-            serviceId={serviceId}
-            assignmentId={assignmentId}
-            actorId={actorId}
-            startsAt={startsAt}
-          />
-        ) : null}
-      </Sheet>
+      {sheet}
     </li>
   );
 }
