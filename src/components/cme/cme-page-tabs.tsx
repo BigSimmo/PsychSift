@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { PhoneHeaderCollapsePortal } from "@/components/clinical-dashboard/phone-header-collapse-portal";
 import { cn } from "@/components/ui-primitives";
 
 type CmeTab = { label: string; href: string; active: boolean };
@@ -51,30 +50,30 @@ export function CmePageTabs() {
   }
 
   return (
-    <PhoneHeaderCollapsePortal>
-      <nav
-        aria-label={`${label} tabs`}
-        data-testid="cme-page-tabs"
-        className="w-full border-b border-[color:var(--border)] bg-[color:var(--surface)]"
-      >
-        <div className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-4 sm:px-6">
-          {tabs.map((tab) => (
-            <Link
-              key={tab.label}
-              href={tab.href}
-              aria-current={tab.active ? "page" : undefined}
+    // In page flow under the mode band, whose tabs name the page these split:
+    // pinned in the top bar they would sit above that band.
+    <nav aria-label={`${label} tabs`} data-testid="cme-page-tabs" data-mode-identity="cme" className="w-full pt-2">
+      <div className="mx-auto flex max-w-3xl gap-1.5 overflow-x-auto px-4 sm:px-6">
+        {tabs.map((tab) => (
+          <Link
+            key={tab.label}
+            href={tab.href}
+            aria-current={tab.active ? "page" : undefined}
+            className="group inline-flex min-h-tap shrink-0 items-center whitespace-nowrap text-sm font-medium focus-visible:outline-none"
+          >
+            <span
               className={cn(
-                "inline-flex min-h-tap shrink-0 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium",
+                "rounded-full border px-3.5 py-1.5 group-focus-visible:outline group-focus-visible:outline-2 group-focus-visible:outline-offset-2 group-focus-visible:outline-[color:var(--focus)]",
                 tab.active
-                  ? "border-[color:var(--clinical-accent)] text-[color:var(--text)]"
-                  : "border-transparent text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
+                  ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] font-semibold text-[color:var(--clinical-accent)]"
+                  : "border-[color:var(--border)] text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
               )}
             >
               {tab.label}
-            </Link>
-          ))}
-        </div>
-      </nav>
-    </PhoneHeaderCollapsePortal>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </nav>
   );
 }

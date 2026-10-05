@@ -33,6 +33,7 @@ import { MEDICINES_REFERENCES, PBS_HOME_HREF, WA_STATEWIDE_CHARTS } from "@/lib/
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
 import { sharedHomePresentation } from "@/lib/ui-copy";
 import { useOnlineStatus } from "@/lib/use-online-status";
+import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
  * The Medicines & tools hub (modes review, phase 3; Medicines mock-up of
@@ -507,10 +508,12 @@ export function MedicinesHome({ counts, now }: { readonly counts: MedicinesSecti
     <InformationPageShell testId="medicines-home">
       <div className={cn("mx-auto grid w-full max-w-5xl gap-5 sm:gap-6", dashSurface)}>
         <header className="grid min-w-0 gap-0.5" data-testid="medicines-header">
-          <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{today ? LONG_DATE.format(today) : null}</p>
-          <h1 className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
+          <WithoutModeBand>
+            <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{today ? LONG_DATE.format(today) : null}</p>
+          </WithoutModeBand>
+          <PageTitleUnderBand className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
             Medicines &amp; tools
-          </h1>
+          </PageTitleUnderBand>
         </header>
         {online ? null : <OfflineNote />}
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
