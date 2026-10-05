@@ -410,6 +410,8 @@ export function MyDayDashboard({
   const allSessions = useMemo(() => [...teachingSessions, ...ahead], [teachingSessions, ahead]);
   const nextSession = useMemo(() => nextTeachingSession(allSessions, now), [allSessions, now]);
   const nextUp = nextSession && upNext?.event.id !== `teaching:${nextSession.occurrenceId}` ? nextSession : null;
+  // Today's next session can be Up next itself: hiding "next-up" hides that panel too.
+  const heroUpNext = upNext?.event.id.startsWith("teaching:") && device.hidden.has("next-up") ? null : upNext;
   // The next session lives in the hero as a glass panel; hiding "next-up" hides the panel.
   const heroNext: HeroNextTeaching | null = useMemo(() => {
     if (!nextUp || device.hidden.has("next-up")) return null;
@@ -427,7 +429,7 @@ export function MyDayDashboard({
   }, [nextUp, device.hidden]);
 
   const visible: Record<MyDayCardId, boolean> = {
-    "up-next": upNext !== null || leadShift !== null || heroNext !== null || finished !== null,
+    "up-next": heroUpNext !== null || leadShift !== null || heroNext !== null || finished !== null,
     // The next teaching panel lives inside the hero, so it shows only while the hero does.
     "next-up": nextUp !== null && !device.hidden.has("up-next"),
     flag: flagItems.length > 0,
@@ -475,7 +477,7 @@ export function MyDayDashboard({
       <HeroCard
         shift={heroShift}
         running={shiftRunning}
-        upNext={upNext}
+        upNext={heroUpNext}
         nextTeaching={heroNext}
         finished={finished}
         nextShift={nextShift}

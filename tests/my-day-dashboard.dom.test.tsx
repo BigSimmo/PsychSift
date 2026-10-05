@@ -529,6 +529,21 @@ describe("Edit mode", () => {
     expect(window.localStorage.getItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY)).toBeNull();
   });
 
+  it("hides today's teaching from the hero when Next teaching is hidden", () => {
+    window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["next-up"]));
+    render(
+      <MyDayDashboard
+        {...props({
+          sources: {
+            ...EMPTY_SOURCES,
+            teaching: { status: "ready", sessions: [session()], ahead: [session()], sample: false },
+          },
+        })}
+      />,
+    );
+    expect(screen.queryByTestId("my-day-card-up-next")?.textContent ?? "").not.toContain("Registrar teaching");
+  });
+
   it("says how to bring cards back when every shown card is hidden", () => {
     window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["quick-actions", "needs-you"]));
     render(<MyDayDashboard {...props()} />);
