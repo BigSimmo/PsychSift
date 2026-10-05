@@ -774,15 +774,13 @@ function WeekSection({
                 <p className="sr-only">
                   {`Opened in the last seven days: ${week.map((row) => `${PSYCHIATRY_VISIT_KIND_LABEL[row.kind]} ${row.count}`).join(", ")}.`}
                 </p>
-                <div aria-hidden="true" className="grid gap-1.5">
+                <div
+                  aria-hidden="true"
+                  className="grid grid-cols-[max-content_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 text-xs"
+                >
                   {week.map((row) => (
-                    <div
-                      key={row.kind}
-                      className="grid grid-cols-[5.25rem_minmax(0,1fr)_1.5rem] items-center gap-2 text-xs"
-                    >
-                      <span className="truncate text-[color:var(--dash-muted)]">
-                        {PSYCHIATRY_VISIT_KIND_LABEL[row.kind]}
-                      </span>
+                    <div key={row.kind} className="contents">
+                      <span className="text-[color:var(--dash-muted)]">{PSYCHIATRY_VISIT_KIND_LABEL[row.kind]}</span>
                       <svg viewBox="0 0 100 6" preserveAspectRatio="none" className="h-1.5 w-full">
                         <rect x="0" y="0" width="100" height="6" rx="3" className="fill-[color:var(--dash-card)]" />
                         <rect
