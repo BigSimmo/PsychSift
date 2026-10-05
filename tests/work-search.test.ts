@@ -12,6 +12,7 @@ import {
   shiftWorkItems,
 } from "@/lib/work-search/items";
 import { searchWork, workComingUp, workSearchCounts } from "@/lib/work-search/search";
+import { clinicalSearchHref, looksClinical, looksLikePatientDetails } from "@/lib/work-search/signals";
 
 const today = "2026-10-04";
 
@@ -210,5 +211,26 @@ describe("work search privacy boundary", () => {
         expect(source, file).not.toMatch(/psychsift:patient-labels/);
       }
     }
+  });
+});
+
+describe("work search signals", () => {
+  it("spots patient details so they are never kept in Recent", () => {
+    for (const query of ["bed 12 UR 447102", "UMRN 4471023", "DOB 03/04/1981", "mrn: 12345", "1234567"]) {
+      expect(looksLikePatientDetails(query), query).toBe(true);
+    }
+    for (const query of ["leave form", "night shift allowance", "CPD hours 2026", "ward 4"]) {
+      expect(looksLikePatientDetails(query), query).toBe(false);
+    }
+  });
+
+  it("offers clinical search for clinical questions only", () => {
+    for (const query of ["lithium level timing", "clozapine titration", "QTc on haloperidol"]) {
+      expect(looksClinical(query), query).toBe(true);
+    }
+    for (const query of ["leave form", "when am I next on nights", "parking permit", "journal club"]) {
+      expect(looksClinical(query), query).toBe(false);
+    }
+    expect(clinicalSearchHref(" lithium level ")).toBe("/?mode=answer&q=lithium+level&focus=1");
   });
 });

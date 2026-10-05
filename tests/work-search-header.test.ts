@@ -18,7 +18,7 @@ describe("Search my work header icon", () => {
 
   it("keeps the search screen out of the header's own bundle", () => {
     // The header loads on every page; it may import the icon only. The icon may
-    // import the lazy wrapper only, which loads the screen with a dynamic import.
+    // import its glyph and the lazy wrapper, which loads the screen with a dynamic import.
     const header = readFileSync("src/components/clinical-dashboard/master-search-header.tsx", "utf8");
     expect(header.match(/@\/components\/work-search\/[\w-]+/g)).toEqual([
       "@/components/work-search/work-search-button",
@@ -27,8 +27,11 @@ describe("Search my work header icon", () => {
     const button = readFileSync("src/components/work-search/work-search-button.tsx", "utf8");
     expect(button.match(/@\/(?:components|lib)\/work-search\/[\w-]+/g)?.sort()).toEqual([
       "@/components/work-search/lazy-work-search-sheet",
+      "@/components/work-search/work-search-glyph",
       "@/lib/work-search/model",
     ]);
+    const glyph = readFileSync("src/components/work-search/work-search-glyph.tsx", "utf8");
+    expect(glyph).not.toMatch(/work-search\/(?!work-search-glyph)/);
     const model = readFileSync("src/lib/work-search/model.ts", "utf8");
     expect(model.match(/^import .+$/gm)).toEqual(['import type { AppModeId } from "@/lib/app-modes";']);
 

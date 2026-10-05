@@ -39,6 +39,8 @@ export interface WorkAnswer {
   readonly source: string;
   /** Set instead of an answer when an area the question needs did not load. */
   readonly unavailable?: string;
+  /** A caution printed under the card, e.g. that dates are as the reader recorded them. */
+  readonly footnote?: string;
   /** The primary action, when there is one. */
   readonly action?: { readonly label: string; readonly href: string };
 }
@@ -82,6 +84,12 @@ function longDay(date: string): string {
     month: "long",
     timeZone: "UTC",
   }).format(new Date(`${date}T00:00:00Z`));
+}
+
+function dayMonth(date: string): string {
+  return new Intl.DateTimeFormat("en-AU", { day: "numeric", month: "long", timeZone: "UTC" }).format(
+    new Date(`${date}T00:00:00Z`),
+  );
 }
 
 function unavailableAnswer(area: WorkSearchArea | "all", understood: string, why: string): WorkAnswer {
@@ -132,7 +140,7 @@ function nextShift(input: WorkAnswerInput, kind: ShiftKind | null, one: string, 
     items: upcoming.slice(0, Math.max(run, 3)),
     understood,
     source: "From your Roster",
-    action: { label: "View shift", href: first.href },
+    action: { label: "Open shift", href: first.href },
   };
 }
 
@@ -184,17 +192,17 @@ function endOfMonth(today: string): string {
 }
 
 /** The window "due" covers, as the question names it. Printed in the answer, never implied. */
-function dueWindow(query: string, today: string): { to: string; words: string } {
+function dueWindow(query: string, today: string): { to: string; words: string; label: string } {
   if (/\bthis week\b|\bweek\b/.test(query)) {
     const to = addDaysToDate(today, 6);
-    return { to, words: `in the next 7 days (to ${formatPerthDay(to)})` };
+    return { to, words: `in the next 7 days (to ${formatPerthDay(to)})`, label: `Due by ${dayMonth(to)}` };
   }
   if (/\bthis month\b|\bmonth\b/.test(query)) {
     const to = endOfMonth(today);
-    return { to, words: `by ${longDay(to)}` };
+    return { to, words: `by ${longDay(to)}`, label: `Due by ${dayMonth(to)}` };
   }
   const to = addDaysToDate(today, 30);
-  return { to, words: `in the next 30 days (to ${formatPerthDay(to)})` };
+  return { to, words: `in the next 30 days (to ${formatPerthDay(to)})`, label: `Due by ${dayMonth(to)}` };
 }
 
 function due(input: WorkAnswerInput, query: string): WorkAnswer {
@@ -218,7 +226,7 @@ function due(input: WorkAnswerInput, query: string): WorkAnswer {
   const first = upcoming[0];
   return {
     area: "all",
-    label: "Due",
+    label: window.label,
     headline:
       all.length === 0
         ? "Nothing recorded as due"
@@ -234,7 +242,8 @@ function due(input: WorkAnswerInput, query: string): WorkAnswer {
     meta: [],
     items: all,
     understood,
-    source: "From your Admin renewal dates and Teaching. Dates are shown as you recorded them",
+    source: "From your Admin renewal dates and Teaching",
+    footnote: "Dates are shown as you recorded them",
   };
 }
 

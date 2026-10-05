@@ -71,7 +71,7 @@ describe("answerWorkQuestion", () => {
       source: "From your Roster",
     });
     expect(answer?.meta).toEqual(["First of 3 nights", "In 8 days"]);
-    expect(answer?.action?.label).toBe("View shift");
+    expect(answer?.action?.label).toBe("Open shift");
   });
 
   it("lists what is due, overdue first, and prints the window it used", () => {
