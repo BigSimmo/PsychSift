@@ -438,7 +438,8 @@ function allItems(s: AssessmentsState): Item[] {
     detail: endOfTermLine(s),
     tag: <Pill pill={endOfTermPill(s)} />,
     href: viewHref("hub"),
-    todo: !s.sigs.doc,
+    // Still the doctor's to do until the signed PDF is marked as emailed to the MEU.
+    todo: !s.sentToMeu,
   });
   items.push({
     term: t4,

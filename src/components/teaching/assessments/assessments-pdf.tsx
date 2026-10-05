@@ -14,7 +14,7 @@ import {
   RATING_LABELS,
   type Domain,
 } from "@/lib/teaching/assessments/content";
-import { blankForm, meetingDate, type AssessmentForm } from "@/lib/teaching/assessments/model";
+import { blankForm, meetingDate, type AssessmentForm, type Signature } from "@/lib/teaching/assessments/model";
 import {
   CURRENT_TERM,
   SAMPLE_DOCTOR,
@@ -120,6 +120,21 @@ function Paper({ page, children }: { page: number; children: ReactNode }) {
 const sig = (text: string | null | undefined) =>
   text ? <span className="font-serif text-sm italic">{text}</span> : null;
 
+/** A drawn signature prints as drawn; a typed one prints as the typed name. */
+const signed = (s: Signature) =>
+  s.image ? (
+    <svg
+      role="img"
+      aria-label={`Signature: ${s.typed}`}
+      viewBox={`0 0 ${s.image.width} ${s.image.height}`}
+      className="h-6 w-auto"
+    >
+      <path d={s.image.path} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" />
+    </svg>
+  ) : (
+    sig(s.typed)
+  );
+
 export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
   const [zoom, setZoom] = useState(false);
   const [sentNote, setSentNote] = useState(false);
@@ -155,8 +170,8 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
     term = CURRENT_TERM;
     kind = "eot";
     f = s.sup;
-    supSig = s.sigs.sup ? sig(s.sigs.sup.typed) : null;
-    docSig = s.sigs.doc ? sig(s.sigs.doc.typed) : null;
+    supSig = s.sigs.sup ? signed(s.sigs.sup) : null;
+    docSig = s.sigs.doc ? signed(s.sigs.doc) : null;
     supDate = s.sigs.sup ? (meetingDate(s) ?? s.sigs.sup.date) : "";
     docDate = s.sigs.doc?.date ?? "";
   }
