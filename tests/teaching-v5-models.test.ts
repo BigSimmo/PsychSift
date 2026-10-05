@@ -116,16 +116,33 @@ describe("This week", () => {
   });
 
   it("offers one-tap check-in only from the start, the code in the 15 minutes before, and keeps it past midnight", () => {
-    const at = (iso: string) => ({ ...context, now: new Date(iso), today: TODAY });
+    const member = {
+      id: TEAM,
+      name: "Hospital A",
+      role: "doctor" as const,
+      acceptsRealData: true,
+      isDemo: false,
+    };
+    const at = (iso: string) => ({ ...context, teams: [member], now: new Date(iso), today: TODAY });
     // 12:20 Perth: inside the check-in window, before the start. The server refuses one-tap until 12:30.
     expect(nowPanel([session()], at("2026-10-06T04:20:00Z"))).toMatchObject({ live: false, checkIn: "code" });
     // 12:00 Perth: the window has not opened.
     expect(nowPanel([session()], at("2026-10-06T04:00:00Z"))).toMatchObject({ checkIn: "not-yet", opensAt: "12:15" });
     // A session from 23:30 to 00:30 is still open for one-tap check-in at 00:10 the next day.
     const late = session({ startsAt: "2026-10-05T15:30:00.000Z", endsAt: "2026-10-05T16:30:00.000Z" });
-    expect(nowPanel([late], { ...context, now: new Date("2026-10-05T16:10:00Z"), today: TODAY })).toMatchObject({
+    expect(nowPanel([late], { ...at("2026-10-05T16:10:00Z"), today: TODAY })).toMatchObject({
       live: true,
       checkIn: "open",
+    });
+    // A midnight session viewed at 23:50 the evening before: the code window is open, though the date differs.
+    const midnight = session({ startsAt: "2026-10-06T16:00:00.000Z", endsAt: "2026-10-06T17:00:00.000Z" });
+    expect(nowPanel([midnight], at("2026-10-06T15:50:00Z"))).toMatchObject({ live: false, checkIn: "code" });
+    // A visitor session from another service (What's on) is never checked in from here: it opens its page.
+    expect(
+      nowPanel([session({ serviceId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" })], at("2026-10-06T04:40:00Z")),
+    ).toMatchObject({
+      live: true,
+      checkIn: "none",
     });
     // Already checked in reads as done whatever the time.
     expect(
@@ -217,7 +234,7 @@ describe("Presenting", () => {
 
   it("sums your own supervision against your own targets, and counts what waits for you to confirm", () => {
     const entry = (date: string, minutes: number, status: "pending" | "confirmed") =>
-      ({ entryId: `e-${date}`, date, minutes, status }) as unknown as SupervisionEntry;
+      ({ entryId: `e-${date}`, date, minutes, status, notes: [] }) as unknown as SupervisionEntry;
     const pairing = (overrides: Partial<SupervisionPairingView>): SupervisionPairingView =>
       ({
         pairingId: "p",
@@ -252,6 +269,16 @@ describe("Presenting", () => {
       `28 Sep · 60${NB}min · confirmed`,
     ]);
     expect(summary.toConfirm).toBe(2);
+    // With rows loaded, a correction to an already-confirmed entry waits too (pendingCount leaves it out).
+    const corrected = {
+      ...entry("2026-09-21", 60, "confirmed"),
+      notes: [
+        { noteId: "n", reason: "minutes", correctedValue: {}, createdAt: "2026-09-22T00:00:00Z", confirmedAt: null },
+      ],
+    } as unknown as SupervisionEntry;
+    expect(
+      supervisionSummary([pairing({ access: "supervisor", pendingCount: 0, entries: [{ ...corrected }] })]).toConfirm,
+    ).toBe(1);
     expect(supervisionSummary([pairing({ targetHours: null })]).mine?.targetLine).toBeNull();
     // Hours with an untargeted supervisor do not fill another supervisor's target.
     expect(

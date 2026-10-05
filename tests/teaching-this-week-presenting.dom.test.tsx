@@ -173,6 +173,27 @@ describe("Presenting", () => {
     expect(screen.getByTestId("teaching-next-talk")).toHaveTextContent(/^Your next talk/);
   });
 
+  it("follows a new ?talk= without leaving the old talk selected", async () => {
+    const later = {
+      ...talk,
+      occurrenceId: "44444444-4444-4444-8444-444444444444",
+      title: "Journal club",
+      startsAt: "2026-10-07T04:30:00.000Z",
+      endsAt: "2026-10-07T05:15:00.000Z",
+    };
+    serveFetch((url) => {
+      if (url === "/api/teaching/depth?view=teach") return json(200, { upcoming: [talk, later], taught: [] });
+      if (url === "/api/teaching/depth?view=supervision") return json(200, { pairings: [] });
+      return null;
+    });
+    const view = render(<TeachingPresenting demoMode={false} talkId={later.occurrenceId} />);
+    expect(await screen.findByTestId("teaching-next-talk")).toHaveTextContent("Journal club");
+    view.rerender(<TeachingPresenting demoMode={false} talkId={null} />);
+    await waitFor(() => expect(screen.getByTestId("teaching-next-talk")).toHaveTextContent("Registrar teaching"));
+    // Later talks carry their full date for screen readers, since the date block is hidden from them.
+    expect(screen.getByRole("button", { name: /Journal club, \w{3} 7 Oct/ })).toBeInTheDocument();
+  });
+
   it("explains when feedback totals appear, as the server releases them", async () => {
     const taught = { ...talk, startsAt: "2026-09-28T04:30:00.000Z", endsAt: "2026-09-28T05:15:00.000Z" };
     const older = {

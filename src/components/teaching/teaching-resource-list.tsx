@@ -50,7 +50,17 @@ export function ResourceRows({
   onRemove,
   sampleMode = false,
   look = "grouped",
+  shared,
 }: {
+  /**
+   * Bookmark state shared by every list on one page, so the same resource never shows two states, and a
+   * hook to re-read lists and counts after a save lands. Without it each list keeps its own.
+   */
+  shared?: {
+    saved: Record<string, boolean>;
+    setSaved: (update: (current: Record<string, boolean>) => Record<string, boolean>) => void;
+    onWritten: () => void;
+  };
   sampleMode?: boolean;
   /** "t5": plain ruled rows with a grey type icon, for the v5 Resources page, whose section label names the list. */
   look?: "grouped" | "t5";
@@ -60,7 +70,9 @@ export function ResourceRows({
   meta?: (item: ResourceRow) => string | null;
   onRemove?: (item: ResourceRow) => void;
 }) {
-  const [saved, setSaved] = useState<Record<string, boolean>>({});
+  const [localSaved, setLocalSaved] = useState<Record<string, boolean>>({});
+  const saved = shared?.saved ?? localSaved;
+  const setSaved = shared?.setSaved ?? setLocalSaved;
   const [error, setError] = useState<string | null>(null);
 
   async function toggle(item: ResourceRow) {
@@ -77,6 +89,7 @@ export function ResourceRows({
         resourceId: item.resourceId,
       });
       setSaved((current) => ({ ...current, [item.resourceId]: result.saved }));
+      shared?.onWritten();
     } catch (cause) {
       setSaved((current) => ({ ...current, [item.resourceId]: !next }));
       setError(resourceWriteError(cause));

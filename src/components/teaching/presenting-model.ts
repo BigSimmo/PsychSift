@@ -2,6 +2,7 @@ import { dayParts, perthDateKey, perthTime } from "@/components/teaching/teachin
 import { durationText, withUnit } from "@/components/teaching/teaching-number";
 import {
   feedbackPaceLabels,
+  pendingConfirmations,
   feedbackPaces,
   readinessItems,
   type FeedbackTotals,
@@ -133,7 +134,11 @@ export function supervisionSummary(pairings: readonly SupervisionPairingView[]):
         ].join(" · "),
       };
     });
-  const toConfirm = pairings.filter((p) => p.access === "supervisor").reduce((sum, p) => sum + p.pendingCount, 0);
+  // Entries and corrections waiting for you as a supervisor. Where a pairing's rows are loaded, count them
+  // (that includes corrections to confirmed entries, which pendingCount leaves out); else use its count.
+  const toConfirm = pairings
+    .filter((p) => p.access === "supervisor")
+    .reduce((sum, p) => sum + (p.entries ? pendingConfirmations([p]).length : p.pendingCount), 0);
   return {
     mine:
       mine.length === 0

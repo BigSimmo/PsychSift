@@ -74,7 +74,7 @@ import {
 export function TeachingPresenting({ demoMode, talkId = null }: { demoMode: boolean; talkId?: string | null }) {
   const auth = useAuthSession();
   const demo = useTeachingDemoMode(demoMode);
-  return <PresentingPage key={`${auth.authEpoch}:${demo}`} demoMode={demo} talkId={talkId} />;
+  return <PresentingPage key={`${auth.authEpoch}:${demo}:${talkId ?? ""}`} demoMode={demo} talkId={talkId} />;
 }
 
 /**
@@ -140,7 +140,13 @@ function PresentingPage({ demoMode, talkId = null }: { demoMode: boolean; talkId
                   <T5Row
                     key={talk.occurrenceId}
                     lead={<T5Date day={parts.day} month={parts.month} />}
-                    title={talk.title}
+                    title={
+                      <>
+                        {talk.title}
+                        {/* The date block is hidden from screen readers; say the date here instead. */}
+                        <span className="sr-only">{`, ${parts.weekday} ${parts.day} ${parts.month}`}</span>
+                      </>
+                    }
                     meta={upcomingTalkMeta(talk)}
                     onClick={() => {
                       setSelectedId(talk.occurrenceId);
@@ -469,8 +475,8 @@ function Supervision({
               <T5Row
                 title={
                   summary.toConfirm === 1
-                    ? "1 entry to confirm for your registrar"
-                    : `${summary.toConfirm} entries to confirm for your registrars`
+                    ? "1 entry or correction to confirm"
+                    : `${summary.toConfirm} entries or corrections to confirm`
                 }
                 meta="You supervise"
                 href="/teaching/supervision"

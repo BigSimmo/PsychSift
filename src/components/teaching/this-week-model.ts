@@ -186,7 +186,8 @@ export function nowPanel(
   const range = `${perthTime(session.startsAt)} to ${perthTime(session.endsAt)}`;
   const mark = context.attendance.find((item) => item.occurrenceId === session.occurrenceId) ?? null;
   const phase = sessionPhase(session, context.now);
-  const canCheckIn = sessionHref(session) !== null;
+  // Only a member of the host service can check in here: a visitor session from What's on goes to its page.
+  const canCheckIn = sessionHref(session) !== null && context.teams.some((team) => team.id === session.serviceId);
   const kicker = live
     ? `On now · ${range}`
     : isToday
@@ -208,13 +209,13 @@ export function nowPanel(
       ? "none"
       : mark
         ? "done"
-        : phase === "checkin" && live
-          ? "open"
-          : phase === "checkin" && isToday
-            ? "code"
-            : isToday
-              ? "not-yet"
-              : "none",
+        : phase === "checkin"
+          ? live
+            ? "open"
+            : "code"
+          : isToday
+            ? "not-yet"
+            : "none",
     doneLabel: mark ? "You checked in" : null,
     opensAt: isToday && phase === "upcoming" ? perthTime(new Date(start - 15 * MINUTE).toISOString()) : null,
   };

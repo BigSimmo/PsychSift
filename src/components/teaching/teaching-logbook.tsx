@@ -45,6 +45,7 @@ import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
 import { demoTeachingLogbook } from "@/lib/teaching/demo-programme";
 import { demoCpdReview, demoFeedbackOpen } from "@/lib/teaching/depth-demo";
 import {
+  CPD_REVIEW_MAX_ROWS,
   cpdReviewBodySchema,
   FEEDBACK_PRIVACY_LINE,
   type CpdReviewResult,
@@ -184,9 +185,9 @@ function CpdThisWeek({
               type="button"
               variant="primary"
               block
-              disabled={busy || chosen.length === 0}
+              disabled={busy || chosen.length === 0 || chosen.length > CPD_REVIEW_MAX_ROWS}
               onClick={async () => {
-                if (busy || chosen.length === 0) return;
+                if (busy || chosen.length === 0 || chosen.length > CPD_REVIEW_MAX_ROWS) return;
                 setError(null);
                 const ids = new Map(requestIds);
                 for (const row of chosen)
@@ -238,6 +239,11 @@ function CpdThisWeek({
               Change hours
             </T5Link>
           </T5Actions>
+          {chosen.length > CPD_REVIEW_MAX_ROWS ? (
+            <p role="status" className="mt-2 text-sm text-[color:var(--text-heading)]">
+              {`Choose up to ${withUnit(CPD_REVIEW_MAX_ROWS, "sessions")} at a time.`}
+            </p>
+          ) : null}
           {error ? (
             <p role="alert" className="mt-2 text-sm text-[color:var(--text-heading)]">
               {error}

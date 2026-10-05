@@ -79,6 +79,7 @@ export function TeachingResources({
   const [team, setTeam] = useState<string>(ALL_TEAMS);
   const [filter, setFilter] = useState("");
   const [creating, setCreating] = useState(false);
+  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({});
   const today = now ? perthDateKey(now) : null;
   const examSample = useMemo(() => (demoMode && today ? sampleExamPrep(today) : null), [demoMode, today]);
   const examPrep = useExamPrepStore(examSample);
@@ -93,6 +94,15 @@ export function TeachingResources({
   else if (!read.data) body = <ModeModuleSkeleton rows={4} twoLine eyebrow />;
   else {
     const data = read.data;
+    const bookmarks = {
+      saved: savedOverrides,
+      setSaved: setSavedOverrides,
+      // Re-read the lists and counts so Saved shows what was just saved.
+      onWritten: () => {
+        extras.retry();
+        read.retry();
+      },
+    };
     const inTeam = (serviceId: string) => team === ALL_TEAMS || serviceId === team;
     const needle = filter.trim().toLowerCase();
     const thisWeek = filterResources(
@@ -117,8 +127,18 @@ export function TeachingResources({
           attendance: week.week.attendance,
         }
       : null;
-    const recordings = filterResources(extras.recordings ?? [], "all", filter);
-    const savedItems = filterResources(extras.saved ?? [], "all", filter);
+    const recordings = filterResources(
+      (extras.recordings ?? []).filter((item) => inTeam(item.serviceId)),
+      "all",
+      filter,
+    );
+    const savedItems = filterResources(
+      (extras.saved ?? []).filter((item) => inTeam(item.serviceId)),
+      "all",
+      filter,
+    );
+    // The server's totals cover every service; with one service chosen, count what is shown.
+    const allTeams = team === ALL_TEAMS;
     const exam = today ? examPrepRow(examPrep.state, today) : null;
     body = (
       <>
@@ -143,6 +163,7 @@ export function TeachingResources({
           {thisWeek.length > 0 ? (
             <ResourceRows
               look="t5"
+              shared={bookmarks}
               sampleMode={Boolean(sampleData)}
               items={thisWeek}
               label="For this week"
@@ -169,7 +190,7 @@ export function TeachingResources({
           </T5Section>
         ) : null}
         <T5Section
-          label={`Recordings · ${data.recordingsCount}`}
+          label={`Recordings · ${allTeams ? data.recordingsCount : recordings.length}`}
           right={<T5Link href="/teaching/resources/recordings">All</T5Link>}
         >
           {extras.recordings === null ? (
@@ -179,6 +200,7 @@ export function TeachingResources({
           ) : recordings.length > 0 ? (
             <ResourceRows
               look="t5"
+              shared={bookmarks}
               sampleMode={Boolean(sampleData)}
               items={recordings.slice(0, 4)}
               label="Recordings"
@@ -224,8 +246,8 @@ export function TeachingResources({
           </T5Section>
         ) : null}
         <T5Section
-          label={`Saved · ${data.savedCount}`}
-          right={data.savedCount > 4 ? <T5Link href="/teaching/resources/saved">All</T5Link> : null}
+          label={`Saved · ${allTeams ? data.savedCount : savedItems.length}`}
+          right={data.savedCount > 4 || extras.failed ? <T5Link href="/teaching/resources/saved">All</T5Link> : null}
         >
           {extras.saved === null ? (
             <T5Meta className="border-t border-[color:var(--border)] py-2.5">
@@ -234,6 +256,7 @@ export function TeachingResources({
           ) : savedItems.length > 0 ? (
             <ResourceRows
               look="t5"
+              shared={bookmarks}
               sampleMode={Boolean(sampleData)}
               items={savedItems.slice(0, 4)}
               label="Saved"
@@ -297,6 +320,10 @@ function useResourceExtras(signedOut: boolean, ready: boolean) {
     recordings: built?.recordings ?? recordings.data?.items ?? null,
     saved: built?.saved ?? saved.data?.items ?? null,
     failed: !built && (failed(recordings.status) || failed(saved.status)),
+    retry: () => {
+      recordings.retry();
+      saved.retry();
+    },
   };
 }
 

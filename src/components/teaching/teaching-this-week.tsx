@@ -72,6 +72,7 @@ import { useTeachingWeek, type TeachingWeekState } from "@/components/teaching/u
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import { onCallEntryIsEditable, type OnCallEntry } from "@/lib/on-call/entry-model";
+import { useAuthSession } from "@/lib/supabase/client";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
 import type { TeachingWeekResponse, WhatsOnRow } from "@/lib/teaching/model";
 
@@ -123,8 +124,17 @@ function useLastLoaded(view: TeachingWeekState, monday: string | null, now: Date
 
 type WhatsOnRead = { sessions: WhatsOnRow[] };
 
+/**
+ * Remounts on sign-in, sign-out, account switch and demo change, like TeachingAccountPage, so the last
+ * week kept for offline reading never shows one account's sessions to another.
+ */
 export function TeachingThisWeek({ demoMode: serverDemoMode }: { demoMode: boolean }) {
+  const auth = useAuthSession();
   const demoMode = useTeachingDemoMode(serverDemoMode);
+  return <ThisWeekScreen key={`${auth.authEpoch}:${demoMode}`} demoMode={demoMode} />;
+}
+
+function ThisWeekScreen({ demoMode }: { demoMode: boolean }) {
   const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
