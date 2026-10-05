@@ -147,12 +147,14 @@ function BreaksCard({ breaks, shift }: { readonly breaks: readonly OnCallBreak[]
             {shift ? `${perthWhen(shift.startsAt, true)} – ${perthWhen(shift.endsAt, true)}` : "This shift"}
           </p>
           <p
-            aria-live="polite"
             className="text-lg-minus font-semibold leading-6 text-[color:var(--text-heading)]"
             data-testid="on-call-pulse-breaks-title"
           >
             {title}
           </p>
+          <span className="sr-only" aria-live="polite">
+            {title}
+          </span>
           <p className={modeSecondaryText}>Start and end times only, kept on this phone for this shift.</p>
         </div>
       </div>

@@ -62,7 +62,7 @@ describe("handover page (mock-up v10, screens 6 to 10)", () => {
     fireEvent.click(screen.getByTestId("on-call-handover-next"));
     expect(screen.getByTestId("on-call-handover-ward")).toHaveValue("Example Ward");
     expect(screen.getByText("Ward copied from last")).toBeInTheDocument();
-    expect(screen.getByText(/Patient 2/)).toHaveTextContent("Patient 2 of 2");
+    expect(screen.getByTestId("on-call-handover-position")).toHaveTextContent("Patient 2 of 2");
   });
 
   it("takes any legal status as typed, so the register is a help and never the only choice", () => {

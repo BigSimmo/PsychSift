@@ -370,7 +370,7 @@ function CallLogRow({ entry }: { readonly entry: OnCallCallLogEntry }) {
       className={cn(modeInsetHairline, "flex min-w-0 items-start gap-3 py-2 pl-3 pr-1")}
       data-testid="on-call-call-log-row"
     >
-      <span className={cn(modeNumberText, "w-11 shrink-0 pt-0.5 text-sm text-[color:var(--text-muted)]")}>
+      <span className={cn(modeNumberText, "w-12 shrink-0 pt-0.5 text-sm text-[color:var(--text-muted)]")}>
         {onCallCallLogTime(entry.at)}
       </span>
       <div className="min-w-0 flex-1">

@@ -254,9 +254,13 @@ function PatientRail({
   return (
     <section className="grid min-w-0 gap-2" aria-label="Patients" data-testid="on-call-handover-rail">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
-        <p className="text-lg-minus font-semibold text-[color:var(--text-heading)]" aria-live="polite">
+        <p
+          className="text-lg-minus font-semibold text-[color:var(--text-heading)]"
+          data-testid="on-call-handover-position"
+        >
           Patient {position} <span className="text-[color:var(--text-muted)]">of {total}</span>
         </p>
+        <span className="sr-only" aria-live="polite">{`Patient ${position} of ${total}`}</span>
         {forReview > 0 ? <p className={cn(modeSecondaryText, "text-xs")}>{forReview} for review</p> : null}
       </div>
       <ol

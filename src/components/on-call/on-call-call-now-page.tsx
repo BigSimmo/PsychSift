@@ -551,9 +551,7 @@ function RungFrame({
       <div
         className={cn(
           "grid min-w-0 flex-1 gap-1 rounded-lg border bg-[color:var(--surface-raised)] py-2.5 pl-3 pr-1.5 forced-colors:border",
-          emphasis
-            ? "border-[color:var(--text-heading)] ring-1 ring-[color:var(--text-heading)]"
-            : "border-[color:var(--border)]",
+          emphasis ? "border-2 border-[color:var(--text-heading)]" : "border-[color:var(--border)]",
           muted && "opacity-80",
         )}
       >
@@ -881,12 +879,12 @@ function RunPanel({
         <MinutesRing left={left} wait={wait} elapsed={elapsed} />
         <div className="grid min-w-0 gap-0.5">
           <p className={cn(eyebrowText, "nums")}>{`Started ${formatOnCallTime(startedAt)}`}</p>
-          <p
-            aria-live="polite"
-            className="break-words text-lg-minus font-semibold leading-6 text-[color:var(--text-heading)]"
-          >
+          <p className="break-words text-lg-minus font-semibold leading-6 text-[color:var(--text-heading)]">
             {`Step ${position}: ${step.whoToCall} ${step.phone ? "called" : "done"}`}
           </p>
+          <span className="sr-only" aria-live="polite">
+            {`Step ${position}: ${step.whoToCall} ${step.phone ? "called" : "done"}`}
+          </span>
           {nextAt ? (
             <p className={cn(modeSecondaryText, "nums")} data-testid="on-call-now-next-at">
               {`Next step suggested at ${nextAt}`}
@@ -936,7 +934,7 @@ function MinutesRing({ left, wait, elapsed }: { left: number | null; wait: numbe
             fill="none"
             strokeLinecap="round"
             strokeDasharray={`${circumference * fraction} ${circumference}`}
-            className="stroke-[color:var(--mode-identity)] transition-[stroke-dasharray] motion-reduce:transition-none"
+            className="stroke-[color:var(--mode-identity)]"
           />
         ) : null}
       </svg>
