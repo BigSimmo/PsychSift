@@ -1,15 +1,175 @@
 "use client";
 
+import { Lock, RefreshCw, TriangleAlert, Users } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+
 import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
-import { Button } from "@/components/ui/button";
 import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { TeamCalendar } from "@/components/roster/team/calendar/team-calendar";
-import { useRosterNow } from "@/components/roster/roster-format";
-import { useRosterTeams } from "@/components/roster/use-roster-team";
-import { Users } from "lucide-react";
+import { formatShiftRange, useRosterNow } from "@/components/roster/roster-format";
+import {
+  RosterFootnote,
+  RosterIconLead,
+  RosterInitials,
+  RosterList,
+  RosterNote,
+  RosterRow,
+  RosterSectionHead,
+  rosterOutlineButton,
+} from "@/components/roster/roster-list";
+import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
+import { SHIFT_KIND_LABEL, SHIFT_KINDS, SHIFT_LETTER } from "@/lib/roster/shift-kind";
+import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { calendarWindow, readCalendarState, type CalendarState } from "@/lib/roster/team/calendar-model";
+import type { RosterAssignment, RosterTeam } from "@/lib/roster/team/model";
+import { assignmentStartDate } from "@/lib/roster/team/team-view";
+
+/** The letters the week and month views really use, with "blank is off". */
+const LEGEND = `${SHIFT_KINDS.map((kind) => `${SHIFT_LETTER[kind]} ${SHIFT_KIND_LABEL[kind].toLowerCase()}`).join(" · ")} · blank is off.`;
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** `5 to 11 Oct`, or `28 Sep to 4 Oct` across a month end. */
+function dayRange(from: string, to: string): string {
+  const [, fromMonth, fromDay] = from.split("-").map(Number);
+  const [, toMonth, toDay] = to.split("-").map(Number);
+  const start = fromMonth === toMonth ? `${fromDay}` : `${fromDay} ${MONTHS[fromMonth - 1]}`;
+  return `${start} to ${toDay} ${MONTHS[toMonth - 1]}`;
+}
+
+function calendarTitle(state: CalendarState): string {
+  if (state.view === "week") {
+    const { from } = calendarWindow(state);
+    return `Team week · ${dayRange(from, addDaysToDate(from, 6))}`;
+  }
+  // The calendar's own heading names the day or month, so the section head does not repeat it.
+  return state.view === "day" ? "Team day" : "Team month";
+}
+
+/** "you're on late" in the mock-up; here the shift kind's own name. */
+function ownShiftWords(own: readonly RosterAssignment[]): string {
+  if (!own.length) return "you're off";
+  const kind = own[0].kind;
+  if (kind === "other") return "you're working";
+  return `you're on ${SHIFT_KIND_LABEL[kind].toLowerCase()}`;
+}
+
+/**
+ * Who is on tomorrow. With a shift of your own, the colleagues whose shifts
+ * overlap it; without one, everyone rostered to start tomorrow. Only named,
+ * filled shifts are listed; an open shift is not a colleague.
+ */
+function OnTomorrow({ team, actorId, now }: { team: RosterTeam; actorId: string | null; now: Date }) {
+  const tomorrow = addDaysToDate(perthDateOf(now), 1);
+  const read = useRosterRead(team.serviceId, "assignments", {
+    from: addDaysToDate(tomorrow, -1),
+    to: addDaysToDate(tomorrow, 1),
+  });
+  const rows = Array.isArray(read.data?.assignments) ? read.data.assignments : [];
+  const startingTomorrow = rows
+    .filter((row) => assignmentStartDate(row) === tomorrow)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const own = actorId ? startingTomorrow.filter((row) => row.userId === actorId) : [];
+  const others = startingTomorrow.filter((row) => row.userId !== null && row.userId !== actorId);
+  const colleagues = own.length
+    ? rows
+        .filter(
+          (row) =>
+            row.userId !== null &&
+            row.userId !== actorId &&
+            own.some(
+              (mine) =>
+                Date.parse(row.startsAt) < Date.parse(mine.endsAt) &&
+                Date.parse(row.endsAt) > Date.parse(mine.startsAt),
+            ),
+        )
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    : others;
+  const day = formatPerthDay(tomorrow);
+  const right =
+    read.status === "ready" ? (
+      <span className="text-sm text-[color:var(--text-muted)]">{actorId ? `${day} · ${ownShiftWords(own)}` : day}</span>
+    ) : null;
+  return (
+    <section aria-labelledby="roster-team-tomorrow" className="grid gap-3">
+      <RosterSectionHead
+        id="roster-team-tomorrow"
+        title={own.length ? "On with you tomorrow" : "On tomorrow"}
+        right={right}
+      />
+      {read.status === "loading" ? (
+        <RosterNote icon={Users}>Loading who&apos;s on tomorrow…</RosterNote>
+      ) : read.status !== "ready" ? (
+        <RosterNote icon={TriangleAlert} tone="warning" role="alert">
+          <p>Couldn&apos;t load who&apos;s on tomorrow. {read.message}</p>
+          <div>
+            <button type="button" className={rosterOutlineButton} onClick={read.reload}>
+              <RefreshCw aria-hidden="true" className="size-icon-sm" />
+              Try again
+            </button>
+          </div>
+        </RosterNote>
+      ) : colleagues.length ? (
+        <RosterList label={own.length ? "On with you tomorrow" : "On tomorrow"} testId="roster-team-tomorrow">
+          {colleagues.map((row) => {
+            const name = row.name ?? "Name not available";
+            return (
+              <RosterRow
+                key={row.id}
+                lead={<RosterInitials name={name} />}
+                title={name}
+                sub={`${SHIFT_KIND_LABEL[row.kind]} · ${formatShiftRange(row)}`}
+              />
+            );
+          })}
+        </RosterList>
+      ) : (
+        <RosterNote icon={Users}>
+          {own.length ? "Nobody else on the team is rostered with you." : "Nobody on the team is rostered tomorrow."}
+        </RosterNote>
+      )}
+    </section>
+  );
+}
+
+/** The team calendar under a heading that names the week (or month, or day) it shows. */
+function TeamCalendarSection({ team, actorId, now }: { team: RosterTeam; actorId: string | null; now: Date }) {
+  const params = useSearchParams();
+  const state = readCalendarState(params, perthDateOf(now));
+  return (
+    <section aria-labelledby="roster-team-calendar" className="grid gap-3">
+      <RosterSectionHead id="roster-team-calendar" title={calendarTitle(state)} />
+      <div data-roster-print className="contents">
+        <TeamCalendar key={team.serviceId} team={team} actorId={actorId} now={now} />
+      </div>
+      {state.view === "day" ? null : <RosterFootnote testId="roster-team-legend">{LEGEND}</RosterFootnote>}
+    </section>
+  );
+}
+
+/** Join and (for managers) Manage, as the mock-up's last list. */
+function TeamLinks({ manager }: { manager: boolean }) {
+  return (
+    <RosterList label="Teams">
+      <RosterRow
+        lead={<RosterIconLead icon={Users} />}
+        title="Join a team"
+        sub="Paste an invite link or code"
+        href="/roster/join"
+      />
+      {manager ? (
+        <RosterRow
+          lead={<RosterIconLead icon={Lock} />}
+          title="Manage a team"
+          sub="For rostering managers"
+          href="/roster/manage"
+        />
+      ) : null}
+    </RosterList>
+  );
+}
 
 export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {}) {
   const now = useRosterNow(suppliedNow);
@@ -18,51 +178,60 @@ export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {
   const listed = Array.isArray(teams.data?.teams) ? teams.data.teams : [];
   const available = listed.filter((team) => team.enabled);
   const selected = available.find((team) => team.serviceId === selectedId) ?? available[0];
+  const actorId = teams.data?.actorId ?? null;
+  const manager = available.some((team) => team.role === "manager");
   return (
     <InformationPageShell testId="roster-team-page" width="narrow">
       <RosterPageHeader icon={Users} eyebrow="Roster" title="Team" subtitle="Who's on, and the whole team calendar." />
-      {teams.status === "loading" ? (
-        <p role="status">Loading your teams…</p>
-      ) : teams.status !== "ready" ? (
-        <div role="alert">
-          <p>{teams.message}</p>
-          <Button onClick={teams.reload}>Try again</Button>
-        </div>
-      ) : !selected ? (
-        <ModeGroupedList>
-          <ModeRow
-            title={listed.length ? "This team hasn't been confirmed yet." : "Appears once your manager adds you."}
-          />
-          <ModeRow title="Have an invite link? Open it here" href="/roster/join" />
-        </ModeGroupedList>
-      ) : (
-        <>
-          <RosterSampleNotice sample={teams.data?.sample} />
-          {available.length > 1 ? (
-            <label className="grid gap-1 text-sm">
-              Team
-              <select
-                className={rosterField}
-                value={selected.serviceId}
-                onChange={(event) => setSelectedId(event.target.value)}
-              >
-                {available.map((team) => (
-                  <option key={team.serviceId} value={team.serviceId}>
-                    {team.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <p className="text-sm">{selected.name}</p>
-          )}
-          <div data-roster-print className="contents">
-            <Suspense fallback={<p role="status">Loading the team roster…</p>}>
-              <TeamCalendar key={selected.serviceId} team={selected} actorId={teams.data?.actorId ?? null} now={now} />
+      <div className="grid gap-3" data-mode-identity="roster">
+        {teams.status === "loading" ? (
+          <RosterNote icon={Users}>Loading your teams…</RosterNote>
+        ) : teams.status !== "ready" ? (
+          <RosterNote icon={TriangleAlert} tone="warning" role="alert">
+            <p>{teams.message}</p>
+            <div>
+              <button type="button" className={rosterOutlineButton} onClick={teams.reload}>
+                <RefreshCw aria-hidden="true" className="size-icon-sm" />
+                Try again
+              </button>
+            </div>
+          </RosterNote>
+        ) : !selected ? (
+          <>
+            <RosterNote icon={Users}>
+              {listed.length ? "This team hasn't been confirmed yet." : "Appears once your manager adds you."}
+            </RosterNote>
+            <TeamLinks manager={false} />
+          </>
+        ) : (
+          <>
+            <RosterSampleNotice sample={teams.data?.sample} />
+            {available.length > 1 ? (
+              <label className="grid gap-1 px-1 text-sm text-[color:var(--text-muted)]">
+                Team
+                <select
+                  className={rosterField}
+                  value={selected.serviceId}
+                  onChange={(event) => setSelectedId(event.target.value)}
+                >
+                  {available.map((team) => (
+                    <option key={team.serviceId} value={team.serviceId}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="px-1 text-sm text-[color:var(--text-muted)]">{selected.name}</p>
+            )}
+            <OnTomorrow key={`tomorrow-${selected.serviceId}`} team={selected} actorId={actorId} now={now} />
+            <Suspense fallback={<RosterNote icon={Users}>Loading the team roster…</RosterNote>}>
+              <TeamCalendarSection team={selected} actorId={actorId} now={now} />
             </Suspense>
-          </div>
-        </>
-      )}
+            <TeamLinks manager={manager} />
+          </>
+        )}
+      </div>
     </InformationPageShell>
   );
 }

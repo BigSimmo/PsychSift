@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, Settings2, Trash2 } from "lucide-react";
+import { Check, Link2, Lock, MapPin, Moon, RefreshCw, Settings2, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CalendarSubscribe } from "@/components/calendar/calendar-subscribe";
@@ -8,17 +8,25 @@ import { useAppPreferences } from "@/components/clinical-dashboard/use-app-prefe
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeActionButton } from "@/components/mode-kit/action-button";
 import { formatModeDate, formatModeTime } from "@/components/mode-kit/dates";
-import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { ModeStateLabel } from "@/components/mode-kit/state-label";
 import { ToggleSwitch } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { cn } from "@/components/ui-primitives";
 import { updateReminderType, type ReminderLeadTime, type ReminderType } from "@/lib/reminders/settings-model";
 
-import { RosterAlertsSection } from "./alerts/roster-alerts-section";
+import { RosterAlertsSection, RosterTeamsSection } from "./alerts/roster-alerts-section";
 import { RosterSignInNotice } from "./invite/roster-sign-in-notice";
+import {
+  RosterFootnote,
+  RosterIconLead,
+  RosterList,
+  RosterNote,
+  RosterRow,
+  RosterSectionHead,
+  rosterFilledButton,
+  rosterOutlineButton,
+} from "./roster-list";
 import { describeLinkFailure, useRosterLinks } from "./use-roster-links";
 import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
@@ -71,20 +79,30 @@ export function RosterSettingsPage() {
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [shifts.shifts, settings.settings.codes]);
 
-  const { deleteAll } = shifts;
+  const { deleteAll, reload: reloadShifts } = shifts;
+  const { reload: reloadLinks } = links;
   const sendDelete = useCallback(() => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
     setDeleteState("deleting");
     // Committed once the undo window ends: `keepalive` lets the request outlive
     // the page if it is closed or left now. Only the pending window cancels.
-    void deleteAll({ keepalive: true }).then((failure) => {
-      if (failure) {
-        setDeleteState("idle");
-        setNotice({ tone: "warning", text: failure });
-      } else setDeleteState("deleted");
+    void deleteAll({ keepalive: true }).then((result) => {
+      // A delete that removed your own data but left some team requests is done, with a note.
+      setDeleteState(result.ok ? "deleted" : "idle");
+      if (result.ok) {
+        if (result.message) setNotice({ tone: "warning", text: result.message });
+        return;
+      }
+      // A failure can come part way through, so show what is actually left rather than the old list.
+      void reloadShifts();
+      void reloadLinks();
+      setNotice({
+        tone: "warning",
+        text: `${result.message ?? "Your roster data couldn't be deleted."} Some of it may already be gone; this page now shows what is left.`,
+      });
     });
-  }, [deleteAll]);
+  }, [deleteAll, reloadShifts, reloadLinks]);
 
   // Leaving the page during the 30 seconds, closed or navigated away from
   // inside the app, cancels the pending delete: nothing is sent.
@@ -151,6 +169,25 @@ export function RosterSettingsPage() {
     setNotice(failure ? { tone: "warning", text: failure } : { tone: "neutral", text: done });
   }
 
+  function linkStatus(link: (typeof links.links)[number]): string | null {
+    return (
+      describeLinkFailure(link.lastError) ??
+      (link.lastFetchedAt
+        ? `Updated ${formatModeDate(link.lastFetchedAt)} ${formatModeTime(link.lastFetchedAt)}`
+        : null)
+    );
+  }
+
+  /** A workplace's second line, from what is really saved for it: its calendar link's state and its codes. */
+  function workplaceSub(name: string): string | undefined {
+    const own = links.links.filter((link) => link.workplace === name);
+    const parts = [
+      own.length === 1 ? "Calendar link" : own.length > 1 ? `${own.length} calendar links` : null,
+      Object.keys(settings.settings.codes[name] ?? {}).length ? "Shift codes saved" : null,
+    ].filter(Boolean);
+    return parts.length ? parts.join(" · ") : undefined;
+  }
+
   async function confirmRemoval() {
     if (!confirm) return;
     setConfirmBusy(true);
@@ -169,18 +206,24 @@ export function RosterSettingsPage() {
           subtitle="Calendar links, hours and your data."
           ask={false}
         />
-        <div className="grid gap-3" data-testid="roster-settings-deleting">
-          <ModeNotice>
+        <div className="grid gap-3" data-testid="roster-settings-deleting" data-mode-identity="roster">
+          <RosterNote icon={deleteState === "deleted" ? Check : Trash2}>
             {deleteState === "pending"
               ? "Your Roster data will be deleted in 30 seconds. Leaving this page cancels it."
               : deleteState === "deleting"
                 ? "Deleting your own Roster data…"
                 : "Your own Roster data is deleted. Team rostered shifts remain with the team."}
-          </ModeNotice>
+          </RosterNote>
+          {deleteState === "deleted" && notice ? (
+            <RosterNote icon={TriangleAlert} tone="warning" testId="roster-settings-delete-partial">
+              {notice.text}
+            </RosterNote>
+          ) : null}
           {deleteState === "pending" ? (
-            <Button variant="secondary" onClick={undoDelete}>
+            <button type="button" className={cn(rosterOutlineButton, "justify-self-start")} onClick={undoDelete}>
+              <Undo2 aria-hidden="true" className="size-icon-md" />
               Undo
-            </Button>
+            </button>
           ) : null}
         </div>
       </InformationPageShell>
@@ -190,7 +233,7 @@ export function RosterSettingsPage() {
   return (
     <InformationPageShell testId="roster-settings-main" width="narrow">
       <RosterPageHeader icon={Settings2} title="Settings" subtitle="Calendar links, hours and your data." ask={false} />
-      <div className="grid min-w-0 gap-5">
+      <div className="grid min-w-0 gap-3" data-mode-identity="roster">
         {notice ? <ModeNotice tone={notice.tone}>{notice.text}</ModeNotice> : null}
         {shifts.status === "loading" ? (
           <ModeModuleSkeleton rows={4} eyebrow testId="roster-settings-loading" />
@@ -200,120 +243,181 @@ export function RosterSettingsPage() {
           </RosterSignInNotice>
         ) : (
           <>
-            <ModeGroupedList eyebrow="Calendar" testId="roster-settings-calendar">
-              <ModeRow
-                title="Shifts on my calendar link"
-                subtitle="Type and time only"
-                trailing={
-                  <ToggleSwitch
-                    enabled={calendarShifts}
-                    onToggle={() => void toggleCalendarShifts()}
-                    aria-label="Shifts on my calendar link"
-                    disabled={settings.status !== "ready"}
-                  />
-                }
-              />
-              <ModeRow
-                title="Remind me the evening before"
-                subtitle="20:00"
-                meta={
-                  calendarShifts ? undefined : <ModeStateLabel>Turn on Shifts on my calendar link first</ModeStateLabel>
-                }
-                trailing={
-                  <ToggleSwitch
-                    enabled={calendarShifts && reminderOn}
-                    onToggle={toggleReminder}
-                    aria-label="Remind me the evening before"
-                    disabled={!calendarShifts}
-                  />
-                }
-              />
-            </ModeGroupedList>
-            {calendarShifts ? <CalendarSubscribe testId="roster-settings-subscribe" /> : null}
-            <RosterAlertsSection />
-
-            {shifts.status === "error" ? (
-              <div className="grid gap-2" data-testid="roster-settings-error">
-                <ModeNotice tone="warning">Your shifts could not be loaded.</ModeNotice>
-                <Button className="justify-self-start" onClick={() => void shifts.reload()}>
-                  Try again
-                </Button>
-              </div>
-            ) : (
-              <ModeGroupedList eyebrow="Workplaces" testId="roster-settings-workplaces">
-                {workplaces.length === 0 ? (
-                  <ModeRow title="None yet" />
-                ) : (
-                  workplaces.map((name) => (
-                    <ModeRow
-                      key={name}
-                      title={name}
-                      trailing={
-                        <ModeActionButton
-                          icon={Trash2}
-                          label={`Remove ${name}`}
-                          onClick={() => setConfirm({ kind: "workplace", name })}
-                          disabled={shifts.demoMode}
-                        />
-                      }
+            <section aria-labelledby="roster-settings-calendar-title" className="grid gap-3">
+              <RosterSectionHead id="roster-settings-calendar-title" title="Calendar" />
+              <RosterList label="Calendar" testId="roster-settings-calendar">
+                <RosterRow
+                  lead={<RosterIconLead icon={Link2} />}
+                  title="Calendar link"
+                  sub="Your shifts in your phone calendar"
+                  action={
+                    <ToggleSwitch
+                      enabled={calendarShifts}
+                      onToggle={() => void toggleCalendarShifts()}
+                      aria-label="Shifts on my calendar link"
+                      disabled={settings.status !== "ready"}
                     />
-                  ))
-                )}
-              </ModeGroupedList>
-            )}
+                  }
+                />
+              </RosterList>
+              <RosterFootnote testId="roster-settings-calendar-note">
+                {calendarShifts
+                  ? "Your shifts for the next 60 days go on your private calendar link as shift type and time only, never the workplace. Anyone with the link can see them, so keep it to yourself."
+                  : "Off: your shifts are not on your calendar link."}
+              </RosterFootnote>
+            </section>
+            {calendarShifts ? <CalendarSubscribe testId="roster-settings-subscribe" /> : null}
 
-            {links.status === "error" ? (
-              <div className="grid gap-2" data-testid="roster-settings-links-error">
-                <ModeNotice tone="warning">Your calendar links could not be loaded.</ModeNotice>
-                <Button className="justify-self-start" onClick={() => void links.reload()}>
-                  Try again
-                </Button>
-              </div>
-            ) : (
-              <ModeGroupedList eyebrow="Calendar links" testId="roster-settings-links">
-                {links.links.length === 0 ? (
-                  <ModeRow title="None yet" />
-                ) : (
-                  links.links.map((link) => (
-                    <ModeRow
-                      key={link.id}
-                      title={link.hostPreview}
-                      subtitle={
-                        describeLinkFailure(link.lastError) ??
-                        (link.lastFetchedAt
-                          ? `Updated ${formatModeDate(link.lastFetchedAt)} ${formatModeTime(link.lastFetchedAt)}`
-                          : (link.workplace ?? undefined))
-                      }
-                      trailing={
-                        <>
-                          <ModeActionButton
-                            icon={RefreshCw}
-                            label={`Refresh ${link.hostPreview}`}
-                            onClick={() => void linkAction(links.refresh(link.id), "Refreshed")}
-                          />
+            <RosterAlertsSection
+              reminder={
+                <RosterRow
+                  lead={<RosterIconLead icon={Moon} />}
+                  title="Remind me the evening before"
+                  sub={
+                    calendarShifts
+                      ? "At 20:00 in your calendar · shift type and time only"
+                      : "Turn on Calendar link first"
+                  }
+                  action={
+                    <ToggleSwitch
+                      enabled={calendarShifts && reminderOn}
+                      onToggle={toggleReminder}
+                      aria-label="Remind me the evening before"
+                      disabled={!calendarShifts}
+                    />
+                  }
+                />
+              }
+            />
+
+            <section aria-labelledby="roster-settings-workplaces-title" className="grid gap-3">
+              <RosterSectionHead id="roster-settings-workplaces-title" title="Workplaces" />
+              {shifts.status === "error" ? (
+                <div className="grid gap-3" data-testid="roster-settings-error">
+                  <RosterNote icon={TriangleAlert} tone="warning" role="alert">
+                    Your shifts could not be loaded.
+                  </RosterNote>
+                  <button
+                    type="button"
+                    className={cn(rosterFilledButton, "justify-self-start")}
+                    onClick={() => void shifts.reload()}
+                  >
+                    <RefreshCw aria-hidden="true" className="size-icon-md" />
+                    Try again
+                  </button>
+                </div>
+              ) : (
+                <RosterList label="Workplaces" testId="roster-settings-workplaces">
+                  {workplaces.length === 0 ? (
+                    <RosterRow lead={<RosterIconLead icon={MapPin} />} title="None yet" />
+                  ) : (
+                    workplaces.map((name) => (
+                      <RosterRow
+                        key={name}
+                        lead={<RosterIconLead icon={MapPin} />}
+                        title={<span className="line-clamp-2">{name}</span>}
+                        sub={workplaceSub(name)}
+                        action={
                           <ModeActionButton
                             icon={Trash2}
-                            label={`Remove ${link.hostPreview}`}
-                            onClick={() => setConfirm({ kind: "link", id: link.id, host: link.hostPreview })}
+                            label={`Remove ${name}`}
+                            onClick={() => setConfirm({ kind: "workplace", name })}
+                            disabled={shifts.demoMode}
                           />
-                        </>
-                      }
-                    />
-                  ))
-                )}
-              </ModeGroupedList>
-            )}
+                        }
+                      />
+                    ))
+                  )}
+                </RosterList>
+              )}
+            </section>
 
-            <section className="grid gap-2" aria-label="Delete my data">
-              <Button variant="danger" icon={Trash2} onClick={startDelete} disabled={shifts.demoMode}>
-                Delete my data
-              </Button>
-              <p className="px-3 text-sm text-[color:var(--text-muted)]">
-                Uploaded files are never kept. Your team retains its roster records for 12 months.
-              </p>
-              <p className="px-3 text-sm text-[color:var(--text-muted)]">
-                Your shifts, requests, leave, alerts and settings. Your team&apos;s roster keeps your rostered shifts.
-              </p>
+            <section aria-labelledby="roster-settings-links-title" className="grid gap-3">
+              <RosterSectionHead id="roster-settings-links-title" title="Roster calendar links" />
+              {links.status === "error" ? (
+                <div className="grid gap-3" data-testid="roster-settings-links-error">
+                  <RosterNote icon={TriangleAlert} tone="warning" role="alert">
+                    Your calendar links could not be loaded.
+                  </RosterNote>
+                  <button
+                    type="button"
+                    className={cn(rosterOutlineButton, "justify-self-start")}
+                    onClick={() => void links.reload()}
+                  >
+                    <RefreshCw aria-hidden="true" className="size-icon-md" />
+                    Try again
+                  </button>
+                </div>
+              ) : (
+                <RosterList label="Roster calendar links" testId="roster-settings-links">
+                  {links.links.length === 0 ? (
+                    <RosterRow lead={<RosterIconLead icon={Link2} />} title="None yet" />
+                  ) : (
+                    links.links.map((link) => (
+                      <RosterRow
+                        key={link.id}
+                        lead={<RosterIconLead icon={Link2} />}
+                        title={link.hostPreview}
+                        sub={[linkStatus(link), link.workplace].filter(Boolean).join(" · ") || undefined}
+                        action={
+                          <span className="flex items-center">
+                            <ModeActionButton
+                              icon={RefreshCw}
+                              label={`Refresh ${link.hostPreview}`}
+                              onClick={() => void linkAction(links.refresh(link.id), "Refreshed")}
+                            />
+                            <ModeActionButton
+                              icon={Trash2}
+                              label={`Remove ${link.hostPreview}`}
+                              onClick={() => setConfirm({ kind: "link", id: link.id, host: link.hostPreview })}
+                            />
+                          </span>
+                        }
+                      />
+                    ))
+                  )}
+                </RosterList>
+              )}
+            </section>
+
+            <RosterTeamsSection />
+
+            <RosterNote icon={Lock} role="note" testId="roster-settings-who-sees">
+              <span>
+                <b className="font-semibold text-[color:var(--text-heading)]">Who sees what.</b> Shifts you add or
+                import yourself are private to you. Shifts on a team roster are seen by that team and its manager. Dates
+                you can&apos;t work, and leave you add to a team, are seen by your manager; teammates see only how many
+                people are already off. Roster does not ask for patient details: do not put any in shift names or
+                imported calendars.
+              </span>
+            </RosterNote>
+
+            <section aria-labelledby="roster-settings-data-title" className="grid gap-3">
+              <RosterSectionHead id="roster-settings-data-title" title="Your data" />
+              <RosterList label="Your data" testId="roster-settings-delete">
+                {shifts.demoMode ? (
+                  <RosterRow
+                    lead={<RosterIconLead icon={Trash2} />}
+                    title="Delete my roster data"
+                    sub="Not available in the demo"
+                    dim
+                  />
+                ) : (
+                  <RosterRow
+                    lead={<RosterIconLead icon={Trash2} />}
+                    title="Delete my roster data"
+                    sub="Your shifts, leave, workplaces and their shift codes, roster calendar links, phone alerts and Roster settings"
+                    onClick={startDelete}
+                  />
+                )}
+              </RosterList>
+              <RosterFootnote testId="roster-settings-delete-note">
+                Your open swap and open-shift requests are withdrawn, and upcoming dates you can&apos;t work are cleared
+                (if a team&apos;s requests cannot be withdrawn, you are told to check Requests). Shifts on a team roster
+                stay with that team, which keeps its roster records for 12 months. Uploaded files are never kept. Extra
+                time you logged is not removed here, and phone alerts stop on every device. You get 30 seconds to change
+                your mind. After that it cannot be undone.
+              </RosterFootnote>
             </section>
           </>
         )}
