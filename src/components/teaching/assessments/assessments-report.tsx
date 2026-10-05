@@ -36,6 +36,7 @@ import {
   supReady,
   todayLabel,
   type ComparisonRow,
+  type SignatureInk,
   type Who,
 } from "@/lib/teaching/assessments/model";
 import { SAMPLE_DOCTOR, SAMPLE_MIDTERM, SAMPLE_SUPERVISOR } from "@/lib/teaching/assessments/sample";
@@ -155,12 +156,14 @@ function SignatureMark({ who, mid, s }: { who: "sup" | "doc"; mid: boolean; s: S
     return <Pill pill={{ label: who === "doc" ? "Your turn" : "Not yet", tone: who === "doc" ? "warm" : "neutral" }} />;
   if (sig.image)
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- a drawn signature held in page memory as a data URL
-      <img
-        src={sig.image}
-        alt={`Signature of ${who === "sup" ? SAMPLE_SUPERVISOR.name : DOC.name}`}
-        className="h-8 w-auto dark:invert"
-      />
+      <svg
+        role="img"
+        aria-label={`Signature of ${who === "sup" ? SAMPLE_SUPERVISOR.name : DOC.name}`}
+        viewBox={`0 0 ${sig.image.width} ${sig.image.height}`}
+        className="h-8 w-auto text-[color:var(--text-heading)]"
+      >
+        <path d={sig.image.path} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" />
+      </svg>
     );
   return <span className="font-serif text-base text-[color:var(--text-heading)] italic">{sig.typed}</span>;
 }
@@ -360,11 +363,13 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
   );
 }
 
-/** Draw with a finger or a mouse. The drawing stays in page memory as an image. */
-function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => void; label: string }) {
+/** Draw with a finger or a mouse. The drawing stays in page memory as line data. */
+function SignaturePad({ onDraw, label }: { onDraw: (image: SignatureInk | null) => void; label: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const moved = useRef(false);
+  const path = useRef("");
+  const stroke = useRef("");
   const [drawn, setDrawn] = useState(false);
   const point = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -387,9 +392,9 @@ function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => voi
     moved.current = false;
     ctx.lineWidth = 2.2;
     ctx.lineCap = "round";
-    // Fixed ink, so the saved image reads the same in either theme (it is shown inverted in dark).
-    ctx.strokeStyle = "black";
+    ctx.strokeStyle = getComputedStyle(c).color;
     const [x, y] = point(event);
+    stroke.current = `M${x.toFixed(1)} ${y.toFixed(1)}`;
     ctx.beginPath();
     ctx.moveTo(x, y);
   };
@@ -400,6 +405,7 @@ function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => voi
     const [x, y] = point(event);
     ctx.lineTo(x, y);
     ctx.stroke();
+    stroke.current += `L${x.toFixed(1)} ${y.toFixed(1)}`;
     moved.current = true;
   };
   const end = () => {
@@ -408,7 +414,9 @@ function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => voi
     // A tap with no line drawn is not a signature.
     if (!moved.current) return;
     setDrawn(true);
-    onDraw(canvas.current?.toDataURL("image/png") ?? null);
+    path.current += stroke.current;
+    const c = canvas.current;
+    onDraw(c ? { width: c.clientWidth, height: c.clientHeight, path: path.current } : null);
   };
   return (
     <div className="relative h-32 rounded-xl border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)]">
@@ -424,7 +432,7 @@ function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => voi
         ref={canvas}
         aria-label={label}
         role="img"
-        className="absolute inset-0 size-full touch-none dark:invert"
+        className="absolute inset-0 size-full touch-none text-[color:var(--text-heading)]"
         onPointerDown={begin}
         onPointerMove={move}
         onPointerUp={end}
@@ -442,7 +450,7 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
   const sup = who === "sup";
   const name = sup ? SAMPLE_SUPERVISOR.name : DOC.name;
   const [typed, setTyped] = useState("");
-  const [image, setImage] = useState<string | null>(null);
+  const [image, setImage] = useState<SignatureInk | null>(null);
   const [agree, setAgree] = useState(false);
   const [padKey, setPadKey] = useState(0);
   const hasSignature = !!image || typed.trim().length > 2;

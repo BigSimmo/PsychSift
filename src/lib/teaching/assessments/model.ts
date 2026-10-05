@@ -50,7 +50,9 @@ export type AssessmentForm = {
   fullWording: boolean;
 };
 
-export type Signature = { typed: string; image: string | null; date: string; day: number };
+/** A drawn signature as line data, so it is redrawn in the reader's own text colour in either theme. */
+export type SignatureInk = { width: number; height: number; path: string };
+export type Signature = { typed: string; image: SignatureInk | null; date: string; day: number };
 
 type EpaRequest = {
   epa: EpaNumber;
@@ -523,7 +525,7 @@ export type AssessmentsAction =
   | { type: "book"; day: number; time: string }
   | { type: "cancel-booking" }
   | { type: "meeting-held" }
-  | { type: "sign"; who: Who; typed: string; image: string | null }
+  | { type: "sign"; who: Who; typed: string; image: SignatureInk | null }
   | { type: "sent-to-meu" }
   | { type: "request-epa"; epa: EpaNumber; who: "sup" | "reg" }
   | { type: "record-epa"; index: number; level: SupervisionLevel }
