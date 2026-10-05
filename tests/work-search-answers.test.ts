@@ -82,7 +82,7 @@ describe("answerWorkQuestion", () => {
       "Basic life support",
       "Registrar teaching",
     ]);
-    expect(answer?.headline).toBe("1 overdue, 2 coming up, the first in 14 days");
+    expect(answer?.headline).toBe("1 overdue · 2 coming up, the first in 14 days");
   });
 
   it("defaults 'due' to the next 30 days and says so", () => {
@@ -93,7 +93,7 @@ describe("answerWorkQuestion", () => {
   it("answers next leave and presenting", () => {
     expect(answerWorkQuestion("when is my next leave", input)).toMatchObject({
       headline: "Mon 21 Dec to Thu 24 Dec",
-      meta: ["4 days", "In 78 days"],
+      meta: ["4 calendar days", "Approved", "In 78 days"],
     });
     expect(answerWorkQuestion("am I presenting", input)).toMatchObject({
       headline: "Thursday 22 October",
@@ -137,7 +137,7 @@ describe("answerWorkQuestion", () => {
       },
     });
     expect(answer).toMatchObject({ area: "cme", headline: "1 of 1 targets still short", sub: "0 h logged" });
-    expect(answer?.meta[0]).toMatch(/^Total hours: /);
+    expect(answer?.progress?.[0]).toMatchObject({ label: "Total hours", met: false, fraction: 0 });
   });
 
   it("leaves ordinary words to word search", () => {

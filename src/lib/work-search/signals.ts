@@ -2,9 +2,11 @@
  * Two cautious readings of what was typed, used only to change what the search
  * screen offers. Neither sends, stores or blocks anything.
  *
- * - `looksLikePatientDetails`: a hospital number, bed number, date of birth or
- *   Medicare-length digit run. When true, the query is not kept in Recent and the
- *   screen reminds the reader not to type patient details.
+ * - `looksLikePatientDetails`: a labelled hospital number, bare seven-digit
+ *   number, bed number, date of birth, Medicare-shaped number or a title and
+ *   name. Phone and pager numbers are deliberately not flagged: the search finds
+ *   On Call numbers. When true, the query is not kept in Recent and the screen
+ *   reminds the reader not to type patient details.
  * - `looksClinical`: a medicine or a clinical word, so the screen can offer the
  *   clinical search (which answers from guidelines) beside the staff-record matches.
  *
@@ -13,17 +15,41 @@
  */
 
 const PATIENT_PATTERNS: readonly RegExp[] = [
-  /\b(?:u\.?r\.?n?|umrn|mrn|nhi|hospital\s+(?:no|number))\b\.?\s*[:#-]?\s*\d{3,}/i,
+  // A labelled hospital or Medicare number, however it is spaced.
+  /\b(?:u\.?r\.?n?|umrn|mrn|nhi|medicare|hospital\s+(?:no|number))\b\.?\s*[:#-]?\s*[a-z]?\d{3,}/i,
+  /\b(?:urn|umrn|mrn)\d{3,}/i,
   /\bbed\s*\d{1,3}[a-z]?\b/i,
-  /\b(?:dob|d\.o\.b\.?|date of birth)\b/i,
-  /\b\d{1,2}[/.-]\d{1,2}[/.-](?:19|20)\d{2}\b/,
-  /\d{6,}/,
+  /\b(?:dob|d\.o\.b\.?|date of birth|born)\b/i,
+  // A Medicare-shaped number: starts 2 to 6, ten digits, often typed 4-5-1.
+  /\b[2-6]\d{3}\s?\d{5}\s?\d(?:\s?[/-]?\s?\d)?\b/,
+  // A bare seven-digit hospital number. Phone numbers are eight or ten digits, or start 0, 13 or 18.
+  /(?:^|[^\d\s-])\s*\b(?!0|1[38])\d{7}\b(?![\d\s-]*\d)/,
+  // A title and a name.
+  /\b(?:mr|mrs|miss|mx|master)\.?\s+[a-z][a-z'-]{1,}/i,
 ];
 
-export function looksLikePatientDetails(query: string): boolean {
+/** A date whose year is long enough ago to be a date of birth rather than a roster date. */
+function hasBirthDate(text: string, thisYear: number): boolean {
+  const years: number[] = [];
+  for (const match of text.matchAll(/\b\d{1,2}[/.-]\d{1,2}[/.-](\d{2}|\d{4})\b/g)) {
+    const raw = Number(match[1]);
+    years.push(match[1]!.length === 2 ? (raw > thisYear % 100 ? 1900 + raw : 2000 + raw) : raw);
+  }
+  for (const match of text.matchAll(/\b((?:19|20)\d{2})[/.-]\d{1,2}[/.-]\d{1,2}\b/g)) years.push(Number(match[1]));
+  for (const match of text.matchAll(
+    /\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+((?:19|20)\d{2})\b/gi,
+  )) {
+    years.push(Number(match[1]));
+  }
+  // Roster, renewal and CPD dates sit within a few years of now; birth dates do not.
+  return years.some((year) => year <= thisYear - 5);
+}
+
+export function looksLikePatientDetails(query: string, thisYear = new Date().getFullYear()): boolean {
   const text = query.trim();
   if (text.length < 3) return false;
-  return PATIENT_PATTERNS.some((pattern) => pattern.test(text));
+  if (/\bms\s+teams\b/i.test(text)) return PATIENT_PATTERNS.slice(0, -1).some((pattern) => pattern.test(text));
+  return PATIENT_PATTERNS.some((pattern) => pattern.test(text)) || hasBirthDate(text, thisYear);
 }
 
 const CLINICAL_WORDS = [

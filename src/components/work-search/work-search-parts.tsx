@@ -2,10 +2,11 @@
 
 import { Award, CalendarDays, ChevronRight, Folder, GraduationCap, Phone, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import type { KeyboardEvent, ReactNode, RefObject } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode, RefObject } from "react";
 
 import { cn } from "@/components/ui-primitives";
 import { workSearchAreaLabels, type WorkItem, type WorkSearchArea } from "@/lib/work-search/model";
+import { highlightWords } from "@/lib/work-search/terms";
 
 /** Shared pieces of the "Search my work" screen, drawn to the approved mock-up. */
 
@@ -16,6 +17,17 @@ export const AREA_ICONS: Readonly<Record<WorkSearchArea, LucideIcon>> = {
   "my-work": Folder,
   "on-call": Phone,
 };
+
+/**
+ * Runs `then` only for a plain click. Ctrl/Cmd/Shift-click and middle-click open a
+ * new tab, so the search should stay open behind them.
+ */
+export function onPlainClick(then: () => void) {
+  return (event: MouseEvent<HTMLElement>) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    then();
+  };
+}
 
 export const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
@@ -87,10 +99,11 @@ export function AreaTile({ area, size = "sm" }: { area: WorkSearchArea; size?: "
     <span
       data-mode-identity={area}
       className={cn(
-        "grid shrink-0 place-items-center bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
+        // The border keeps the tile's shape in dark mode and when the system forces its own colours.
+        "grid shrink-0 place-items-center border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
         size === "sm" && "size-9 rounded-xl",
         size === "md" && "size-12 rounded-xl",
-        size === "lg" && "size-12 rounded-2xl border border-[color:var(--mode-identity-border)]",
+        size === "lg" && "size-12 rounded-2xl",
       )}
     >
       <Icon aria-hidden="true" className={size === "sm" ? "size-icon-sm" : "size-icon-md"} />
@@ -120,11 +133,11 @@ export function DateTile({
         "grid size-12 shrink-0 content-center justify-items-center rounded-xl leading-none",
         overdue
           ? "border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] text-[color:var(--warning)]"
-          : "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
+          : "border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
       )}
     >
       <span className="text-base-minus font-extrabold">{day.getUTCDate()}</span>
-      <span className="mt-1 text-3xs font-extrabold uppercase tracking-wider">{under}</span>
+      <span className="mt-1 text-2xs font-extrabold uppercase tracking-wider">{under}</span>
     </span>
   );
 }
@@ -146,7 +159,7 @@ export function Kicker({
       <h3
         id={id}
         data-mode-identity={area}
-        className="flex items-center gap-2 text-2xs font-extrabold uppercase tracking-widest text-[color:var(--text-muted)]"
+        className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[color:var(--text-muted)]"
       >
         {area ? <span aria-hidden="true" className="size-2 rounded-full bg-[color:var(--mode-identity)]" /> : null}
         {children}
@@ -156,23 +169,35 @@ export function Kicker({
   );
 }
 
-/** Underlines the typed words inside a title, in the area's colour. */
+const highlightCache = new Map<string, RegExp | null>();
+
+/** The pattern for the typed words (and their alternatives), matched at the start of a word. */
+function highlightPattern(query: string): RegExp | null {
+  if (highlightCache.has(query)) return highlightCache.get(query) ?? null;
+  const words = highlightWords(query).sort((a, b) => b.length - a.length);
+  const pattern =
+    words.length === 0
+      ? null
+      : new RegExp(`(${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "giu");
+  if (highlightCache.size > 50) highlightCache.clear();
+  highlightCache.set(query, pattern);
+  return pattern;
+}
+
+/** Marks the typed words inside a title: bold and underlined in the area's colour. */
 export function Highlight({ text, query }: { text: string; query: string }) {
-  const words = query
-    .toLowerCase()
-    .split(/\s+/)
-    .map((word) => word.replace(/[^\p{L}\p{N}'-]/gu, ""))
-    .filter((word) => word.length >= 2);
-  if (words.length === 0) return <>{text}</>;
-  const pattern = new RegExp(`(${words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`, "gi");
+  const pattern = highlightPattern(query);
+  if (!pattern) return <>{text}</>;
   const parts = text.split(pattern);
+  // Only a match at the start of a word is marked ("on" in "On call", not in "Consultant").
+  const atWordStart = (index: number) => !/[\p{L}\p{N}]$/u.test(parts[index - 1] ?? "");
   return (
     <>
       {parts.map((part, index) =>
-        index % 2 === 1 ? (
+        index % 2 === 1 && atWordStart(index) ? (
           <mark
             key={index}
-            className="bg-transparent text-inherit underline decoration-[color:var(--mode-identity)] decoration-2 underline-offset-4"
+            className="bg-transparent font-extrabold text-inherit underline decoration-[color:var(--mode-identity)] decoration-2 underline-offset-4 forced-colors:bg-[Mark] forced-colors:text-[MarkText]"
           >
             {part}
           </mark>
@@ -210,10 +235,11 @@ export function ResultRow({
     <li data-mode-identity={item.area}>
       <Link
         href={item.href}
-        onClick={onOpen}
+        onClick={onPlainClick(onOpen)}
         data-work-search-result=""
         className={cn(
-          "flex items-center gap-3 transition-colors hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
+          // Room above for the sticky search box, so a row reached with the arrow keys is never hidden under it.
+          "flex scroll-mb-6 scroll-mt-44 items-center gap-3 transition-colors hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
           compact ? "min-h-14 px-1 py-2.5" : "min-h-14 px-3.5 py-2.5",
           focusRing,
         )}
@@ -301,7 +327,7 @@ export function ActionRow({
   return (
     <li>
       {href ? (
-        <Link href={href} onClick={onNavigate} className={className}>
+        <Link href={href} onClick={onNavigate ? onPlainClick(onNavigate) : undefined} className={className}>
           {body}
         </Link>
       ) : (
