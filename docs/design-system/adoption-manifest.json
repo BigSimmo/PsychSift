@@ -290,6 +290,7 @@
       "entryExported": true,
       "directImportFiles": [
         "src/components/AccessibleTable.tsx",
+        "src/components/admin/admin-compliance-export-page.tsx",
         "src/components/admin/admin-compliance-page.tsx",
         "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-help-page.tsx",
@@ -306,6 +307,7 @@
         "src/components/admin/renewals/item-detail-sheet.tsx",
         "src/components/admin/renewals/personal-list.tsx",
         "src/components/admin/renewals/record-dates-sheet.tsx",
+        "src/components/admin/renewals/renew-next-card.tsx",
         "src/components/admin/renewals/show-filter-list.tsx",
         "src/components/calendar/calendar-subscribe.tsx",
         "src/components/clinical-dashboard/ClinicalSidebar.tsx",
@@ -432,6 +434,7 @@
       ],
       "productImportFiles": [
         "src/components/AccessibleTable.tsx",
+        "src/components/admin/admin-compliance-export-page.tsx",
         "src/components/admin/admin-compliance-page.tsx",
         "src/components/admin/admin-credentials-wallet.tsx",
         "src/components/admin/admin-help-page.tsx",
@@ -448,6 +451,7 @@
         "src/components/admin/renewals/item-detail-sheet.tsx",
         "src/components/admin/renewals/personal-list.tsx",
         "src/components/admin/renewals/record-dates-sheet.tsx",
+        "src/components/admin/renewals/renew-next-card.tsx",
         "src/components/admin/renewals/show-filter-list.tsx",
         "src/components/calendar/calendar-subscribe.tsx",
         "src/components/clinical-dashboard/ClinicalSidebar.tsx",
@@ -2079,6 +2083,7 @@
       "sourceExported": true,
       "entryExported": true,
       "directImportFiles": [
+        "src/components/admin/admin-compliance-export-page.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
@@ -2102,6 +2107,7 @@
         "src/components/therapy-compass/screens/sheets-screen.tsx"
       ],
       "productImportFiles": [
+        "src/components/admin/admin-compliance-export-page.tsx",
         "src/components/applications-launcher-page.tsx",
         "src/components/clinical-dashboard/favourites-command-library-page.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
@@ -3144,6 +3150,7 @@
       "documentedDisposition": null,
       "routes": [
         "src/app/(display)/teaching/display/[token]/page.tsx",
+        "src/app/(search-app)/admin/compliance/export/page.tsx",
         "src/app/(search-app)/admin/compliance/page.tsx",
         "src/app/(search-app)/admin/help/page.tsx",
         "src/app/(search-app)/admin/new-job/pack/page.tsx",
@@ -3297,6 +3304,16 @@
       "roots": [
         {
           "file": "src/app/(display)/teaching/display/[token]/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/admin/compliance/export/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5483,6 +5500,7 @@
   "routeCoverage": {
     "discovered": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
+      "src/app/(search-app)/admin/compliance/export/page.tsx",
       "src/app/(search-app)/admin/compliance/page.tsx",
       "src/app/(search-app)/admin/help/page.tsx",
       "src/app/(search-app)/admin/new-job/pack/page.tsx",
@@ -5641,6 +5659,7 @@
     ],
     "declared": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
+      "src/app/(search-app)/admin/compliance/export/page.tsx",
       "src/app/(search-app)/admin/compliance/page.tsx",
       "src/app/(search-app)/admin/help/page.tsx",
       "src/app/(search-app)/admin/new-job/pack/page.tsx",
@@ -5803,7 +5822,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 163,
+    "inheritedCkbV2RootCount": 164,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -5812,8 +5831,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 46,
-    "rootCount": 164,
-    "productionRouteCount": 156,
-    "nextUiEntryCount": 252
+    "rootCount": 165,
+    "productionRouteCount": 157,
+    "nextUiEntryCount": 253
   }
 }

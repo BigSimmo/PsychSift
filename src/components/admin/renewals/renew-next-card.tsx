@@ -47,12 +47,15 @@ function WindowBar({ item, today }: { readonly item: RenewNextItem; readonly tod
  */
 export function RenewNextCard({
   next,
+  notRecorded,
   today,
   canEdit,
   onRenew,
   onOpen,
 }: {
   readonly next: RenewNext;
+  /** Items with no date recorded, said beside "Nothing to renew right now" so it never reads as all clear. */
+  readonly notRecorded: number;
   readonly today: string;
   readonly canEdit: boolean;
   readonly onRenew: (item: RenewNextItem) => void;
@@ -73,6 +76,11 @@ export function RenewNextCard({
             ? renewNextNothingDueLine(next.next)
             : "No renewal dates are recorded yet. Dates you record appear here."}
         </p>
+        {notRecorded > 0 ? (
+          <p className={cn(textMuted, "text-sm")} data-testid="admin-renew-next-not-recorded">
+            {`${notRecorded} ${notRecorded === 1 ? "item has" : "items have"} no date recorded yet.`}
+          </p>
+        ) : null}
       </section>
     );
   }

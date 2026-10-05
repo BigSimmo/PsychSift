@@ -109,7 +109,15 @@ function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview
   const toDo = nextJob?.toDo ?? [];
   const needsAction = complianceNeedsActionCount(overview);
   const title = nextJob ? "Paperwork for your next job" : "Paperwork";
-  const count = nextJob ? toDo.length : needsAction;
+  const countLine = nextJob
+    ? toDo.length > 0
+      ? `${toDo.length} to do before you start, in Compliance`
+      : "Nothing due before you start, on the dates you recorded"
+    : `${needsAction} need action, in Compliance`;
+  const alsoLine =
+    nextJob && needsAction > 0 && toDo.length < needsAction
+      ? `${needsAction} need action in Compliance overall.`
+      : null;
   return (
     <Link
       href={ADMIN_PAGE_HREFS.compliance}
@@ -123,14 +131,21 @@ function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview
       <span className="grid min-w-0 flex-1 gap-0.5">
         <span className="text-sm font-medium">{title}</span>
         <span className="text-sm text-[color:var(--text)]" data-testid="admin-new-job-paperwork-count">
-          {count === 0 ? "Nothing to do, in Compliance" : `${count} to do, in Compliance`}
+          {countLine}
         </span>
         {nextJob && toDo.length > 0 ? (
           <span className={cn(textMuted, "text-xs")} data-testid="admin-new-job-paperwork-names">
             {`Before ${formatRecordedDate(nextJob.startsOn)}: ${namesLine(toDo.map((todo) => todo.item.row.item.title))}`}
           </span>
         ) : null}
-        <span className={cn(textMuted, "text-xs")}>Your service&apos;s list may differ.</span>
+        {alsoLine ? (
+          <span className="text-xs text-[color:var(--text)]" data-testid="admin-new-job-paperwork-also">
+            {alsoLine}
+          </span>
+        ) : null}
+        <span className={cn(textMuted, "text-xs")}>
+          Dates you entered, not a check. Your service&apos;s list may differ.
+        </span>
       </span>
       <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
     </Link>

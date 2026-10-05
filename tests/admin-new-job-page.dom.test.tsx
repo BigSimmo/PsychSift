@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminNewJobPage } from "@/components/admin/admin-new-job-page";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
+import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { complianceFixture, onCallEntryFixture } from "./helpers/on-call-entry-fixture";
 
 vi.mock("next/navigation", () => ({
@@ -251,9 +252,32 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
     const signpost = screen.getByTestId("admin-new-job-paperwork");
     expect(signpost.getAttribute("href")).toBe("/admin/compliance");
     expect(signpost).toHaveTextContent("Paperwork for your next job");
-    expect(screen.getByTestId("admin-new-job-paperwork-count").textContent).toMatch(/^\d+ to do, in Compliance$/);
+    expect(screen.getByTestId("admin-new-job-paperwork-count").textContent).toMatch(
+      /^\d+ to do before you start, in Compliance$/,
+    );
     expect(screen.getByTestId("admin-new-job-paperwork-names")).toHaveTextContent(/^Before 2 Nov 2026: /);
-    expect(signpost).toHaveTextContent("Your service's list may differ.");
+    expect(signpost).toHaveTextContent("Dates you entered, not a check. Your service's list may differ.");
+  });
+
+  it("never says nothing to do: an open renewal window after the start still counts", () => {
+    // Start 10 Nov; registration ends 20 Nov, so its window is open but it runs past the start.
+    entryState.entries = [
+      { ...loginOwn, details: { category: "Logins", jobStartsOn: "2026-11-10" } } as OnCallEntry,
+      ...ADMIN_REQUIREMENTS_CATALOGUE.map((item) =>
+        complianceFixture(item.title, {
+          requirementId: item.id,
+          expiresOn: item.id === "medical-registration-renewal" ? "2026-11-20" : "2028-01-01",
+        }),
+      ),
+    ];
+    render(<AdminNewJobPage now={new Date("2026-10-25T01:00:00Z")} />);
+    expect(screen.getByTestId("admin-new-job-paperwork-count")).toHaveTextContent(
+      "Nothing due before you start, on the dates you recorded",
+    );
+    expect(screen.getByTestId("admin-new-job-paperwork-also")).toHaveTextContent(
+      "1 need action in Compliance overall.",
+    );
+    expect(document.body.textContent).not.toMatch(/Nothing to do/);
   });
 
   it("keeps the credential pack as a quiet text link under Leaving", () => {

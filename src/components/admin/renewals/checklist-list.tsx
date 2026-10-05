@@ -197,7 +197,8 @@ export function ChecklistList({
       ) : null}
 
       <p className={cn(textMuted, "px-3 text-xs")}>
-        Dates you entered, not a check. Linked to your account only, not shared with your health service.
+        Dates you entered, not a check. Linked to your account only, not shared with your health service. Rule to
+        confirm means its source did not state it clearly: check it with your service.
       </p>
     </div>
   );

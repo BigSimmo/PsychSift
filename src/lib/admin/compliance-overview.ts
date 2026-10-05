@@ -238,8 +238,30 @@ export function complianceExportRows(overview: ComplianceOverview): string[][] {
 }
 
 /** The export's second sheet: what the file is, and what it is not. */
-export function complianceExportAboutRows(overview: ComplianceOverview, now: Date): string[][] {
+export function complianceExportAboutRows(
+  overview: ComplianceOverview,
+  now: Date,
+  selection?: {
+    readonly range: ComplianceExportRange;
+    readonly omittedColumns: readonly string[];
+    readonly rows: number;
+    readonly demo?: boolean;
+  },
+): string[][] {
   const today = perthCalendarDate(now);
+  const selectionRows: string[][] = selection
+    ? [
+        selection.range === "next-60-days"
+          ? [
+              `Range: next ${COMPLIANCE_EXPORT_SOON_DAYS} days only. ${selection.rows} of ${overview.total + overview.notForThisJob.length} items are in this file; items with no recorded date, or a date further ahead, are left out.`,
+            ]
+          : ["Range: every item."],
+        selection.omittedColumns.length > 0
+          ? [`Columns left out: ${selection.omittedColumns.join(", ")}.`]
+          : ["Columns: all."],
+        ...(selection.demo ? [["Example records: these dates are made up, and nothing here is your own."]] : []),
+      ]
+    : [];
   return [
     ["About this file"],
     [`Exported ${formatRecordedDate(today)} from PsychSift, Admin · Compliance.`],
@@ -254,6 +276,8 @@ export function complianceExportAboutRows(overview: ComplianceOverview, now: Dat
         ]
       : ["No start date for a next job is recorded in Admin · New job."],
     ["Rules come from the statewide requirements list. Rule to confirm means the source did not state it clearly."],
+    ["Confirmed means the source states the rule. It does not mean anyone has checked your records against it."],
+    ...selectionRows,
   ];
 }
 
@@ -346,13 +370,13 @@ export function complianceExportSelection(
   let body = rows.slice(1);
   if (range === "next-60-days") {
     const limit = addDays(today, COMPLIANCE_EXPORT_SOON_DAYS);
-    const soon = new Set(
-      overview.groups
-        .flatMap((group) => group.items)
-        .filter((item) => item.row.expiresOn !== undefined && item.row.expiresOn <= limit)
-        .map((item) => item.row.item.title),
-    );
-    body = body.filter((row) => soon.has(row[0] ?? "") && row[2] !== "Not for this job");
+    // complianceExportRows writes one row per applying item, in group order, then the
+    // "Not for this job" rows; so the first N body rows line up with these items.
+    const applying = overview.groups.flatMap((group) => group.items);
+    body = body.filter((_, index) => {
+      const item = applying[index];
+      return item !== undefined && item.row.expiresOn !== undefined && item.row.expiresOn <= limit;
+    });
   }
   return [header, ...body].map((row) => keep.map((index) => row[index] ?? ""));
 }

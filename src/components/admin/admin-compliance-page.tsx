@@ -28,6 +28,7 @@ import {
   type ComplianceFilter,
   type ComplianceItem,
   type ComplianceOverview,
+  nextJobReasonText,
 } from "@/lib/admin/compliance-overview";
 import { selectNewJobStart } from "@/lib/admin/new-job-progress";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
@@ -109,6 +110,50 @@ function SummaryCard({ overview }: { readonly overview: ComplianceOverview }) {
         {overview.notForThisJob.length > 0 ? ` ${overview.notForThisJob.length} not for this job.` : null}
         {" Dates you entered, not a check."}
       </p>
+    </section>
+  );
+}
+
+/**
+ * What is still to do before the recorded start date, with the reason in
+ * words, including dates that run out before the start (which no status word
+ * shows). Kept from the live page although the mock-up drops it, because New
+ * job's signpost points here and the reader must be able to see what it counts.
+ */
+function BeforeNextJob({ overview }: { readonly overview: ComplianceOverview }) {
+  const pass = overview.nextJob;
+  if (!pass || pass.toDo.length === 0) return null;
+  // Passed and unrecorded items already carry their status word in the lists below;
+  // a date that runs out before the start has no status word, so it is named here.
+  const endsBefore = pass.toDo.filter((todo) => todo.reason === "ends-before-start");
+  const others = pass.toDo.length - endsBefore.length;
+  return (
+    <section
+      aria-labelledby="admin-compliance-before-next-job-heading"
+      className="grid min-w-0 gap-2"
+      data-testid="admin-compliance-before-next-job"
+    >
+      <h2 id="admin-compliance-before-next-job-heading" className={cn(eyebrowText, "px-3")}>
+        {`To do before ${formatDateEcho(pass.startsOn)} · ${pass.toDo.length}`}
+      </h2>
+      {endsBefore.length > 0 ? (
+        <ModeGroupedList testId="admin-compliance-before-next-job-list">
+          {endsBefore.map((todo) => (
+            <ModeRow
+              key={todo.item.row.item.id}
+              href={itemHref(todo.item.row.item.id)}
+              title={todo.item.row.item.title}
+              subtitle={nextJobReasonText(todo)}
+              testId={`admin-compliance-todo-${todo.item.row.item.id}`}
+            />
+          ))}
+        </ModeGroupedList>
+      ) : null}
+      {others > 0 ? (
+        <p className={cn(textMuted, "px-3 text-sm")} data-testid="admin-compliance-before-next-job-others">
+          {`${endsBefore.length > 0 ? "And " : ""}${others} ${others === 1 ? "item" : "items"} with a date passed or not recorded yet, marked in the lists below.`}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -404,6 +449,7 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
             <>
               <SummaryCard overview={overview} />
               <Actions />
+              <BeforeNextJob overview={overview} />
               <FilterChips overview={overview} filter={filter} onFilter={setFilter} />
               <GroupLists overview={overview} filter={filter} today={today} />
             </>

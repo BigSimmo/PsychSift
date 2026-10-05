@@ -147,6 +147,17 @@ describe("AdminRenewalsPage — the checklist", () => {
     expect(screen.getByTestId("admin-renew-next-then")).toHaveTextContent("ALS course certification");
   });
 
+  it("says how many items have no date beside Nothing to renew right now", () => {
+    storeState.entries = [
+      complianceFixture("Registration", { requirementId: "medical-registration-renewal", expiresOn: "2028-09-30" }),
+    ];
+    renderPage();
+    expect(screen.getByTestId("admin-renew-next-nothing-due")).toHaveTextContent("Nothing to renew right now");
+    expect(screen.getByTestId("admin-renew-next-not-recorded").textContent).toMatch(
+      /^\d+ items have no date recorded yet\.$/,
+    );
+  });
+
   it("filters the list from an at-a-glance count row, and a second tap clears it", () => {
     renderPage();
     const passed = screen.getByTestId("admin-renewals-summary-count-date-passed");

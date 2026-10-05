@@ -462,6 +462,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
             <div className="grid gap-4">
               <RenewNextCard
                 next={next}
+                notRecorded={bucketCounts["not-recorded"]}
                 today={today}
                 canEdit={canEdit}
                 onRenew={(item) => {

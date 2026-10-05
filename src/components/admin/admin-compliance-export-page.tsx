@@ -35,8 +35,12 @@ import { useOnCallEntries } from "@/lib/on-call/entry-store";
 
 /** The columns a reader can drop. Item (column 0) always stays, so every row still names its requirement. */
 const OPTIONAL_COLUMNS = COMPLIANCE_EXPORT_HEADER.slice(1);
-/** The 5 Oct mock-up starts with Item, Group, Status and the recorded date. */
-const DEFAULT_COLUMNS: readonly string[] = ["Group", "Status", "Date you recorded"];
+/**
+ * The 5 Oct mock-up starts with Item, Group, Status and the recorded date; Rule
+ * and Source are on too, so a default file still says where each rule comes
+ * from and which rules are unconfirmed.
+ */
+const DEFAULT_COLUMNS: readonly string[] = ["Group", "Status", "Date you recorded", "Rule", "Source"];
 const WIDTHS: Record<string, number> = {
   Item: 34,
   Group: 14,
@@ -92,7 +96,16 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
   function save() {
     const bytes = buildXlsx([
       { name: "Items", rows: selection, widths: header.map((name) => WIDTHS[name] ?? 18) },
-      { name: "About this file", rows: complianceExportAboutRows(overview, now), widths: [110] },
+      {
+        name: "About this file",
+        rows: complianceExportAboutRows(overview, now, {
+          range,
+          omittedColumns: OPTIONAL_COLUMNS.filter((name) => !columns.includes(name)),
+          rows: body.length,
+          demo: state.demoMode,
+        }),
+        widths: [110],
+      },
     ]);
     downloadTextFile(bytes, fileName, XLSX_MIME);
     announce("Compliance spreadsheet saved.");
@@ -154,11 +167,11 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
             </div>
             {body.length === 0 ? (
               <p className={cn(textMuted, "text-sm")} data-testid="admin-compliance-export-empty">
-                Nothing falls due in the next 60 days. Choose Everything to export every item.
+                {`No recorded dates fall in the next 60 days.${overview.counts["not-recorded"] > 0 ? ` ${overview.counts["not-recorded"]} items have no date recorded yet.` : ""} Choose Everything to export every item.`}
               </p>
             ) : (
               <div className="min-w-0 overflow-x-auto" data-testid="admin-compliance-export-preview">
-                <table className="w-full min-w-0 border-collapse text-left text-xs">
+                <table aria-labelledby="export-preview" className="w-full min-w-0 border-collapse text-left text-xs">
                   <thead>
                     <tr>
                       {header.map((name) => (

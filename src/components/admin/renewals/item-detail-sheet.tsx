@@ -304,6 +304,9 @@ export function ChecklistItemDetailSheet({
               ) : (
                 <div className="grid gap-1">
                   <AdminRuleToConfirm />
+                  <p className="text-sm text-[color:var(--text)]">
+                    Confirm this with your service or the source before relying on it.
+                  </p>
                   <p className={cn(textMuted, "text-sm leading-6")}>{item.whatIsUnconfirmed}</p>
                 </div>
               )}

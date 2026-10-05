@@ -49,22 +49,14 @@ describe("AdminComplianceExportPage", () => {
   });
   afterEach(() => cleanup());
 
-  it("previews four columns by default and lets the reader add or drop the others", () => {
+  it("previews the rule and its source by default and lets the reader add or drop columns", () => {
     render(<AdminComplianceExportPage now={NOW} />);
     const preview = screen.getByTestId("admin-compliance-export-preview");
-    expect(
-      within(preview)
-        .getAllByRole("columnheader")
-        .map((cell) => cell.textContent),
-    ).toEqual(["Item", "Group", "Status", "Date you recorded"]);
+    const headers = () => within(preview).getAllByRole("columnheader").map((cell) => cell.textContent);
+    expect(headers()).toEqual(["Item", "Group", "Status", "Date you recorded", "Rule", "Source"]);
     fireEvent.click(screen.getByTestId("admin-compliance-export-column-group"));
-    fireEvent.click(screen.getByTestId("admin-compliance-export-column-rule"));
-    expect(
-      within(preview)
-        .getAllByRole("columnheader")
-        .map((cell) => cell.textContent),
-    ).toEqual(["Item", "Status", "Date you recorded", "Rule"]);
-    expect(screen.getByTestId("admin-compliance-export-column-count")).toHaveTextContent("4 of 8");
+    expect(headers()).toEqual(["Item", "Status", "Date you recorded", "Rule", "Source"]);
+    expect(screen.getByTestId("admin-compliance-export-column-count")).toHaveTextContent("5 of 8");
   });
 
   it("narrows to the next 60 days, passed dates included and undated items left out", () => {
@@ -74,6 +66,16 @@ describe("AdminComplianceExportPage", () => {
     const preview = screen.getByTestId("admin-compliance-export-preview");
     expect(within(preview).getByText("Resuscitation competence check")).toBeTruthy();
     expect(within(preview).queryByText("Medical registration renewal")).toBeNull();
+  });
+
+  it("never reads as all clear when no recorded date falls in the next 60 days", () => {
+    storeState.entries = [];
+    render(<AdminComplianceExportPage now={NOW} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Next 60 days" }));
+    expect(screen.getByTestId("admin-compliance-export-empty").textContent).toMatch(
+      /^No recorded dates fall in the next 60 days\. \d+ items have no date recorded yet\./,
+    );
+    expect(screen.getByTestId("admin-compliance-export-save")).toBeDisabled();
   });
 
   it("saves an .xlsx on the device with the Items and About this file sheets, and sends nothing", async () => {
@@ -93,7 +95,13 @@ describe("AdminComplianceExportPage", () => {
       "Group",
       "Status",
       "Date you recorded",
+      "Rule",
+      "Source",
     ]);
+    const about = (workbook.getWorksheet("About this file")?.getSheetValues() ?? []).flat().join(" ");
+    expect(about).toContain("Range: every item.");
+    expect(about).toContain("Columns left out: Before your next job, Source checked.");
+    expect(about).toContain("It does not mean anyone has checked your records");
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
   });

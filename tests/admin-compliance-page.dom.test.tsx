@@ -77,6 +77,20 @@ describe("AdminCompliancePage", () => {
     expect(screen.getByText("Your requirements")).toBeTruthy();
   });
 
+  it("names a date that runs out before the next job, which no status word shows", () => {
+    render(<AdminCompliancePage now={NOW} />);
+    const section = screen.getByTestId("admin-compliance-before-next-job");
+    expect(section.textContent).toMatch(/To do before Mon 2 Nov 2026/);
+    expect(
+      within(screen.getByTestId("admin-compliance-todo-respirator-fit-testing")).getByText(
+        "Your date ends 20 Oct 2026, before you start",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId("admin-compliance-before-next-job-others").textContent).toMatch(
+      /date passed or not recorded yet/,
+    );
+  });
+
   it("filters with chips: Needs action, then one status, and All brings everything back", () => {
     render(<AdminCompliancePage now={NOW} />);
     const all = screen.getByTestId("admin-compliance-filter-all");
