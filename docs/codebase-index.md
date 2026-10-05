@@ -386,6 +386,17 @@ to ring, the display formatter, desk-only and pause-dial numbers), `handbook-tit
 `clearOnCallDeviceState()`). The API is `/api/on-call/entries`, `[id]`, and `[id]/verify` — the last
 being the one-tap "still correct today" action that resets the freshness clock.
 
+**Handover and Shift pulse** (5 Oct 2026, linked from Now's footer). `/on-call/handover`
+(`src/components/on-call/handover/handover-page.tsx` over `src/lib/on-call/handover.ts`) is the
+psychiatry handover form: one record per patient (bed or initials, ward, legal, impression, story,
+referrals, requires review, plan), a table, Copy as table and Print. It is kept only through
+`src/lib/patient-label-storage.ts`, so it is wiped at shift end and at sign-out, and no work-search
+file may import it. `/on-call/pulse` (`src/components/on-call/pulse/shift-pulse-page.tsx`) draws
+calls by hour from `src/lib/on-call/call-counts.ts` (counts only, fed by the call log, a sign-out
+device store) and, while the signed fatigue rules are on, the rest before the next rostered shift.
+"Who do I call now?" (`/on-call/now`) can start the ladder: it times each call on screen and saves
+nothing.
+
 **Storage.** `on_call_entries` is owner-scoped with RLS enabled and revoked from `anon` and
 `authenticated`; reads and writes go through the service-role client at the API layer, the same
 application-layer ownership model as `clinical_registry_records`.
@@ -420,6 +431,14 @@ time; no patient detail), written by `src/components/psychiatry/psychiatry-visit
 the search-app layout only while "Save recent searches" is on. It feeds the hub's Continue list,
 monthly ring and most-opened forms, is cleared with recent searches and at account transitions,
 and expires after 90 days.
+
+**MHA clock.** `/psychiatry/mha-clock` (`src/components/psychiatry/mha-clock-page.tsx`) lists every
+Mental Health Act form the reader is holding, from `src/lib/psychiatry-hub/mha-clocks.ts`: a form
+code, the time it was made and an opaque id, kept through `src/lib/patient-label-storage.ts` so it
+clears at shift end and every account transition. No patient label field exists (owner decision
+pending). Limits come only from `mhaTimers` (`src/lib/on-call/mha-timers.ts`), so a countdown shows
+only while the signed switch is on; otherwise the owner-approved quote-only lines from the form-page
+Timeline. Linked from the hub's "For a shift" card and Tools list.
 
 **My shifts moved to Roster.** The doctor's own roster now lives in **`src/lib/roster/`**
 (`src/lib/roster/shifts/`, moved from the old On Call shifts folder, plus `shift-kind.ts` for the
