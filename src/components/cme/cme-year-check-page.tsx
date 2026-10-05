@@ -22,6 +22,7 @@ import {
 import { evaluateRequirement, totalAllocatedHours } from "@/lib/cme/evaluate";
 import { activeCmeYearEntries } from "@/lib/cme/export";
 import { readCpdHome } from "@/lib/cme/home-choice";
+import { CPD_STANDARD_RULE_TEXT, cpdRuleFromTraining, type CpdRuleLane } from "@/lib/cme/cpd-rule";
 import type { TrainingPosition } from "@/lib/cme/training-timeline";
 import { cmeCategories, cmeCategoryLabels, type CmeEntry, type CmeRequirementSet } from "@/lib/cme/types";
 import { buildCmeYearCheck, type CmeYearCheckRow } from "@/lib/cme/year-check";
@@ -177,26 +178,10 @@ function SourceLink({ children }: { children: ReactNode }) {
   );
 }
 
-type RuleLane = "intern" | "trainee" | "everyone";
-
-/**
- * The CPD rule is chosen once, in Set up, and only shown here. Read-only, from
- * what is already saved: a current stage in the training record means a college
- * trainee; anyone else is on the standard rule. Interns and PGY2 doctors are not
- * stored anywhere yet, so that lane is never chosen from here.
- */
-function ruleLane(trainingPosition: TrainingPosition | null): RuleLane {
-  return trainingPosition?.stage ? "trainee" : "everyone";
-}
-
-const RULE_LANES: readonly { id: RuleLane; title: string; subtitle: string }[] = [
+const RULE_LANES: readonly { id: CpdRuleLane | "intern"; title: string; subtitle: string }[] = [
   { id: "intern", title: "Intern, or PGY2 in an accredited programme", subtitle: "Covered by your training" },
   { id: "trainee", title: "Trainee in an accredited college programme", subtitle: "Covered by your training" },
-  {
-    id: "everyone",
-    title: "Everyone else",
-    subtitle: "50 h a year with a CPD home, a written plan and category minimums",
-  },
+  { id: "everyone", title: "Everyone else", subtitle: CPD_STANDARD_RULE_TEXT },
 ];
 
 /**
@@ -252,7 +237,8 @@ export function CmeYearCheckPage({
   const closed = Boolean(set.closedAt);
   const closeHref = `/cme/summary?year=${set.year}#cme-year-close-heading`;
   const summaryHref = `/cme/summary?year=${set.year}`;
-  const lane = ruleLane(trainingPosition);
+  const rule = cpdRuleFromTraining(trainingPosition);
+  const lane = rule.lane;
   const confirmedShort = formatCalendarDateShort(set.confirmedOn);
 
   return (
@@ -374,7 +360,7 @@ export function CmeYearCheckPage({
                   key={option.id}
                   testId={`cme-check-rule-${option.id}`}
                   muted={!chosen}
-                  lead={<CmeRowMark state={chosen ? "done" : "none"} />}
+                  lead={<CmeRowMark state="none" />}
                   title={
                     <>
                       {option.title}
@@ -382,6 +368,13 @@ export function CmeYearCheckPage({
                     </>
                   }
                   subtitle={option.subtitle}
+                  end={
+                    chosen ? (
+                      <span aria-hidden="true" className="text-xs text-[color:var(--text-muted)]">
+                        Your rule
+                      </span>
+                    ) : undefined
+                  }
                 />
               );
             })}
@@ -394,8 +387,7 @@ export function CmeYearCheckPage({
             />
           </CmeFlatList>
           <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-check-rule-note">
-            Not signed off: a plain summary of the Medical Board standard, {MEDICAL_BOARD_CHECKED}. Worked out from your
-            training record{trainingPosition?.stage ? ` (${trainingPosition.stage.label})` : ""}.{" "}
+            Not signed off: a plain summary of the Medical Board standard, {MEDICAL_BOARD_CHECKED}. {rule.basis}{" "}
             <CmeTextLink href="/cme/setup" className="min-h-0">
               Change in Set up
             </CmeTextLink>

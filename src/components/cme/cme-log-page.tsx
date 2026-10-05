@@ -517,7 +517,7 @@ export function CmeLogPage({
                   {cpdHome.college}.
                 </span>
                 <span className="-my-3 flex">
-                  <CmeTextLink onClick={openCopySheet} testId="cme-log-copy-next">
+                  <CmeTextLink wrap onClick={openCopySheet} testId="cme-log-copy-next">
                     Copy the next one
                   </CmeTextLink>
                 </span>

@@ -186,13 +186,14 @@ describe("year check page", () => {
     expect(within(screen.getByTestId("cme-check-note")).getByRole("link", { name: "Add a note" })).toBeInTheDocument();
   });
 
-  it("shows the CPD rule read-only: the standard rule unless the training record has a current stage", () => {
+  it("shows the CPD rule read-only: none ticked when the training record was not read", () => {
     const { unmount } = render(<CmeYearCheckPage set={SET} entries={ENTRIES} />);
-    expect(screen.getByTestId("cme-check-rule-everyone")).toHaveTextContent("Everyone else — your rule");
-    expect(screen.getByTestId("cme-check-rule-trainee")).not.toHaveTextContent("your rule");
-    expect(screen.getByTestId("cme-check-rule-intern")).not.toHaveTextContent("your rule");
+    for (const id of ["everyone", "trainee", "intern"]) {
+      expect(screen.getByTestId(`cme-check-rule-${id}`)).not.toHaveTextContent("your rule");
+    }
     const note = screen.getByTestId("cme-check-rule-note");
     expect(note).toHaveTextContent("Not signed off");
+    expect(note).toHaveTextContent("not read here, so no rule is ticked");
     expect(within(note).getByRole("link", { name: "Change in Set up" })).toHaveAttribute("href", "/cme/setup");
     unmount();
     const stage = { id: "s3", kind: "stage" as const, label: "Stage 3", startsOn: "2026-02-01", endsOn: null, fte: 1 };
@@ -212,6 +213,34 @@ describe("year check page", () => {
     );
     expect(screen.getByTestId("cme-check-rule-trainee")).toHaveTextContent("your rule");
     expect(screen.getByTestId("cme-check-rule-everyone")).not.toHaveTextContent("your rule");
+  });
+
+  it("shows the standard rule when the record has no current stage, even on a break", () => {
+    const breakPeriod = {
+      id: "b1",
+      kind: "break" as const,
+      label: "Leave",
+      startsOn: "2026-02-01",
+      endsOn: null,
+      fte: 0,
+    };
+    render(
+      <CmeYearCheckPage
+        set={SET}
+        entries={ENTRIES}
+        trainingPosition={{
+          stage: null,
+          rotation: null,
+          rotationIndex: null,
+          rotationCount: null,
+          onBreak: true,
+          breakPeriod,
+        }}
+      />,
+    );
+    expect(screen.getByTestId("cme-check-rule-everyone")).toHaveTextContent("Everyone else — your rule");
+    expect(screen.getByTestId("cme-check-rule-everyone")).toHaveTextContent("50 h a year");
+    expect(screen.getByTestId("cme-check-rule-trainee")).not.toHaveTextContent("your rule");
   });
 
   it("links to Set up and Customise", () => {

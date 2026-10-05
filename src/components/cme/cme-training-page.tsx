@@ -16,6 +16,7 @@ import { Select } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
 import { cn, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
+import { CPD_STANDARD_RULE_TEXT, cpdRuleFromTraining } from "@/lib/cme/cpd-rule";
 import { formatCalendarDateLong, formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
 import {
@@ -32,7 +33,6 @@ import {
   type TrainingPeriod,
   type TrainingPeriodKind,
   type TrainingPeriodProblem,
-  type TrainingPosition,
 } from "@/lib/cme/training-timeline";
 import { cmePageTitle } from "@/components/cme/cme-page-frame";
 
@@ -581,7 +581,7 @@ export function CmeTrainingPage({
         ? { ...next, projectedOn: next.projectedOn }
         : null
       : null;
-  const cpdRule = cpdRuleFromRecord(position);
+  const cpdRule = cpdRuleFromTraining(position);
 
   return (
     <main data-testid="cme-training" data-mode-identity="cme" className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
@@ -838,9 +838,8 @@ export function CmeTrainingPage({
           <CmeFlatList label="Your CPD rule">
             <RecordRow
               testId="cme-training-cpd-rule-result"
-              lead={<CmeRowMark state="done" />}
-              title={cpdRule.lane}
-              subtitle={cpdRule.result}
+              title={cpdRule.lane === "trainee" ? "Trainee in an accredited college programme" : "Everyone else"}
+              subtitle={cpdRule.lane === "trainee" ? "Covered by your training" : CPD_STANDARD_RULE_TEXT}
               end={
                 <CmeTextLink href="/cme/setup" testId="cme-training-cpd-rule-change">
                   Change in Set up
@@ -920,11 +919,15 @@ function RecordRow({
 }
 
 /** A rule figure's source and check month, always marked as not signed off. */
-function RuleSource({ source, checkedOn }: { readonly source: string; readonly checkedOn: string }) {
+function RuleSource({ source, checkedOn }: { readonly source: string; readonly checkedOn: string | null }) {
   return (
     <span className="inline-flex flex-wrap items-center gap-1 text-xs font-normal normal-case tracking-normal text-[color:var(--text-muted)]">
       <BookOpen aria-hidden="true" strokeWidth={1.6} className="size-3.5 shrink-0" />
-      <span>{`${source} · checked ${formatSourceMonth(checkedOn)}`}</span>
+      <span>
+        {checkedOn
+          ? `${source} · checked ${formatSourceMonth(checkedOn)}`
+          : `${source} · not yet checked against the source`}
+      </span>
       <span>· Not signed off</span>
     </span>
   );
@@ -932,9 +935,10 @@ function RuleSource({ source, checkedOn }: { readonly source: string; readonly c
 
 /**
  * Assessment rule figures shown as plain reference beside the training record.
- * The words and the check month are copied from Josh's 5 Oct mock-up; they
- * were not re-checked against the source for this build, and they are NOT
- * signed off, so every one is shown with "Not signed off". Nothing is counted
+ * The words are copied from Josh's 5 Oct mock-up; they were not checked
+ * against the source for this build, so `checkedOn` stays null and the page
+ * says so, and they are NOT signed off, so every one is shown with "Not
+ * signed off". Nothing is counted
  * against them: PsychSift has no EPA or WBA record. Agents never sign these.
  */
 const TRAINING_RULE_FIGURES = [
@@ -943,39 +947,16 @@ const TRAINING_RULE_FIGURES = [
     title: "RANZCP EPAs",
     text: "At least 2 for each 6-month full-time rotation, pro rata if part-time. Three WBAs do not by themselves mean an EPA is attained.",
     source: "RANZCP",
-    checkedOn: "2026-10",
+    checkedOn: null,
   },
   {
     id: "amc-epa",
     title: "Intern and PGY2 EPA assessments",
     text: "At least 10 a year and at least 2 each term. EPA 1 at least once each term; EPAs 2 to 4 at least twice a year. Set by the AMC National Framework and run in WA by PMCWA.",
     source: "AMC framework",
-    checkedOn: "2026-10",
+    checkedOn: null,
   },
 ] as const;
-
-/**
- * The CPD rule as a result, worked out from the training record: there is no
- * stored rule setting yet (Josh chose "set it once in Set up, show only the
- * result elsewhere"). A stage, rotation or break covering today means the
- * doctor is in a training programme, and their training covers CPD; anyone
- * else has the Medical Board's standard. Shown read-only; not signed off.
- */
-function cpdRuleFromRecord(position: TrainingPosition): { lane: string; result: string; basis: string } {
-  const covering = position.rotation ?? position.stage ?? position.breakPeriod;
-  if (covering) {
-    return {
-      lane: "In a training programme",
-      result: "Covered by your training",
-      basis: `Worked out from your training record: ${covering.label} covers today.`,
-    };
-  }
-  return {
-    lane: "Everyone else",
-    result: `${CPD_CATEGORY_RULE_SET.rules.totalHours.hours} h a year with a CPD home, a written plan and category minimums`,
-    basis: "Worked out from your training record: no stage, rotation or break covers today.",
-  };
-}
 
 const MS_PER_DAY = 86_400_000;
 

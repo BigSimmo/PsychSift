@@ -76,16 +76,20 @@ export function CmeTextLink({
   children,
   testId,
   className,
+  wrap = false,
 }: {
   readonly href?: string;
   readonly onClick?: () => void;
   readonly children: ReactNode;
   readonly testId?: string;
   readonly className?: string;
+  /** Let a longer label wrap at large text sizes instead of pushing the row wider. */
+  readonly wrap?: boolean;
 }) {
   const classes = cn(
     focusRing,
-    "relative inline-flex min-h-12 items-center gap-1 whitespace-nowrap text-sm-minus font-medium normal-case tracking-normal text-[color:var(--clinical-accent)] no-underline hover:underline",
+    wrap ? "whitespace-normal text-left" : "whitespace-nowrap",
+    "relative inline-flex min-h-12 items-center gap-1 text-sm-minus font-medium normal-case tracking-normal text-[color:var(--clinical-accent)] no-underline hover:underline",
     className,
   );
   if (href) {

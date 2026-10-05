@@ -27,7 +27,7 @@ describe("CPD loading state", () => {
     const hero = screen.getByTestId("cme-loading-hero");
     expect(hero.className).toMatch(/\brounded-lg\b/);
     expect(hero.className).not.toContain("--surface-summary");
-    expect(screen.getByTestId("cme-loading-card").className).toMatch(/\bh-10\b/);
+    expect(screen.getByTestId("cme-loading-card").className).toMatch(/\bh-12\b/);
     expect(screen.getAllByTestId("cme-loading-chip")).toHaveLength(2);
     const rows = container.querySelectorAll<HTMLElement>('[data-testid="cme-loading-rows"] [data-skeleton-row]');
     expect(rows).toHaveLength(3);

@@ -367,7 +367,7 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
       </CmeCategoryLegend>
       <CmeCatchUpSentence plan={plan} weeklyHours={weeklyHours} entries={entries} year={year} />
       <div className="grid min-w-0 gap-1">
-        <h3 className={LABEL}>Each week</h3>
+        <h2 className={LABEL}>Each week</h2>
         <CmeYearInWeeks entries={entries} year={year} today={today} />
       </div>
     </section>

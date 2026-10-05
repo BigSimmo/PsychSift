@@ -255,7 +255,7 @@ export function CmeLearningPage({
           {specialty !== "all" && hiddenBySpecialty > 0 ? (
             <p className="flex flex-wrap items-center gap-x-2 text-xs text-[color:var(--text-muted)]">
               <span>Showing psychiatry and courses open to every specialty.</span>
-              <CmeTextLink onClick={() => setSpecialty("all")} testId="cme-learning-all-specialties">
+              <CmeTextLink wrap onClick={() => setSpecialty("all")} testId="cme-learning-all-specialties">
                 Show {hiddenBySpecialty} from other specialties
               </CmeTextLink>
             </p>

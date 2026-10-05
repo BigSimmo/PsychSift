@@ -236,7 +236,9 @@ describe("CME training page, mock-up layout", () => {
     expect(screen.getByTestId("cme-training-rule-ranzcp-epa")).toHaveTextContent(
       "At least 2 for each 6-month full-time rotation, pro rata if part-time.",
     );
-    expect(screen.getByTestId("cme-training-rule-ranzcp-epa")).toHaveTextContent("RANZCP · checked Oct 2026");
+    expect(screen.getByTestId("cme-training-rule-ranzcp-epa")).toHaveTextContent(
+      "RANZCP · not yet checked against the source",
+    );
     expect(screen.getByTestId("cme-training-rule-amc-epa")).toHaveTextContent("run in WA by PMCWA");
     for (const id of ["cme-training-rule-ranzcp-epa", "cme-training-rule-amc-epa", "cme-training-cpd-rule"]) {
       expect(screen.getByTestId(id)).toHaveTextContent("Not signed off");
@@ -250,18 +252,43 @@ describe("CME training page, mock-up layout", () => {
     );
     expect(screen.getByTestId("cme-training-cpd-rule")).toHaveTextContent("Medical Board · checked Oct 2026");
     expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent(
-      "In a training programmeCovered by your training",
+      "Trainee in an accredited college programmeCovered by your training",
     );
-    expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent("Consultation liaison covers today");
+    expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent("Stage 2 covers today");
     expect(screen.getByTestId("cme-training-cpd-rule-change")).toHaveAttribute("href", "/cme/setup");
     unmount();
 
-    render(<CmeTrainingPage nowIso={NOW_ISO} initialPeriods={[]} initialMilestones={[]} demoMode={false} />);
+    const { unmount: unmount2 } = render(
+      <CmeTrainingPage nowIso={NOW_ISO} initialPeriods={[]} initialMilestones={[]} demoMode={false} />,
+    );
     expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent(
       "Everyone else50 h a year with a CPD home, a written plan and category minimums",
     );
+    expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent("no training stage covers today");
+    unmount2();
+
+    // A break or a rotation alone never counts as being covered by training.
+    render(
+      <CmeTrainingPage
+        nowIso={NOW_ISO}
+        initialPeriods={[
+          { id: "b1", kind: "break", label: "Parental leave", startsOn: "2026-08-01", endsOn: "2027-02-01", fte: 0 },
+          {
+            id: "r9",
+            kind: "rotation",
+            label: "Adult inpatient",
+            startsOn: "2026-08-03",
+            endsOn: "2027-01-29",
+            fte: 1,
+          },
+        ]}
+        initialMilestones={[]}
+        demoMode={false}
+      />,
+    );
+    expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent("Everyone else");
     expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent(
-      "no stage, rotation or break covers today",
+      "A break alone is not counted as training",
     );
   });
 

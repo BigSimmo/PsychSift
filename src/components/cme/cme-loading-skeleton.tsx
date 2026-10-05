@@ -15,7 +15,7 @@ const PAGE =
  *   - the header row, 48 px (the "Year" heading beside the 48 px Customise button);
  *   - the summary card, 400 px: label, figure, bar, four legend rows, the pace
  *     sentence and the week chart;
- *   - the one "Log an activity" button, 40 px;
+ *   - the one "Log an activity" button, 48 px;
  *   - a row of 32 px chips;
  *   - "What's left": its label and three 52 px rows (the kit's skeleton).
  * On a computer the summary, button and chips sit left and the rows right, as
@@ -34,7 +34,7 @@ export function CmeLoadingSkeleton() {
       >
         <div className="grid content-start gap-5.5">
           <div data-testid="cme-loading-hero" aria-hidden="true" className={cn(BLOCK, "h-100")} />
-          <div data-testid="cme-loading-card" aria-hidden="true" className={cn(BLOCK, "h-10 lg:w-40")} />
+          <div data-testid="cme-loading-card" aria-hidden="true" className={cn(BLOCK, "h-12 lg:w-40")} />
           <div aria-hidden="true" className="flex gap-2">
             <span data-testid="cme-loading-chip" className={cn(BLOCK, "h-8 w-36 rounded-md")} />
             <span data-testid="cme-loading-chip" className={cn(BLOCK, "h-8 w-28 rounded-md")} />
