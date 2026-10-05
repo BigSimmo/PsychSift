@@ -48,6 +48,9 @@ export interface WorkItem {
   readonly date: string | null;
   /** The last day, `YYYY-MM-DD`, for a record that spans days (leave). */
   readonly until?: string;
+  /** Start and end instants (ISO) for timed records, so a shift in progress or already over is never "next". */
+  readonly startsAt?: string;
+  readonly endsAt?: string;
   readonly href: string;
   /** A fact the built-in answers filter on: a shift's kind ("night"), or "presenting" on a session. */
   readonly facet?: string;

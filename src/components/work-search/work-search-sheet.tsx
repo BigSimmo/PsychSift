@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ArrowUpLeft,
   ChevronRight,
   Clock,
   FileText,
@@ -12,9 +11,19 @@ import {
   Sparkles,
   Stethoscope,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 import { useWorkSearchRecords } from "@/components/work-search/use-work-search-records";
 import { AnswerCard } from "@/components/work-search/work-search-answer-card";
@@ -29,6 +38,7 @@ import {
   Kicker,
   ListCard,
   moveFocus,
+  onPlainClick,
   relativeDay,
   ResultRow,
 } from "@/components/work-search/work-search-parts";
@@ -37,7 +47,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
-import { perthDateOf } from "@/lib/perth-time";
+import { perthDateOf, perthTimeOf } from "@/lib/perth-time";
 import { answerWorkQuestion } from "@/lib/work-search/answers";
 import {
   workSearchAreaLabels,
@@ -49,39 +59,70 @@ import {
 import { searchWork, workComingUp, workSearchCounts, type WorkSearchHit } from "@/lib/work-search/search";
 import { clinicalSearchHref, looksClinical, looksLikePatientDetails } from "@/lib/work-search/signals";
 
-const TRY_ASKING = [
+/** The built-in questions, offered on the empty screen and as "Ask" suggestions while typing. */
+const QUESTIONS = [
   "When am I next on nights?",
   "What's due this month?",
   "How many CPD hours do I still need?",
+  "When is my next shift?",
+  "Am I working tomorrow?",
+  "What am I doing this weekend?",
+  "When is my next leave?",
+  "Am I presenting?",
+  "How many nights this month?",
+  "Free days this month",
 ] as const;
 
-/** A single word that has a built-in question behind it, offered under the word matches. */
-const QUESTION_HINTS: ReadonlyArray<[RegExp, string, string]> = [
-  [/^leave$/i, "Looking for your leave dates?", "When is my next leave?"],
-  [/^nights?$/i, "Looking for your next night?", "When am I next on nights?"],
-  [/^(?:due|renewals?|expir\w*)$/i, "Looking for what's coming due?", "What's due this month?"],
-  [/^(?:cpd|hours)$/i, "Checking your CPD year?", "How many CPD hours do I still need?"],
-  [/^(?:present\w*|talks?)$/i, "Looking for your next talk?", "Am I presenting?"],
-];
+const TRY_ASKING = QUESTIONS.slice(0, 3);
+
+function wordsOf(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+/** Built-in questions every typed word starts a word of: "next nig" → "When am I next on nights?". */
+function suggestQuestions(query: string): string[] {
+  const typed = wordsOf(query);
+  if (typed.join("").length < 3) return [];
+  return QUESTIONS.filter((question) => {
+    const words = wordsOf(question);
+    return typed.every((word) => words.some((candidate) => candidate.startsWith(word)));
+  }).slice(0, 2);
+}
 
 const GROUP_PREVIEW = 4;
+/** A single group opens fuller, but still not to every record at once. */
+const SINGLE_GROUP_PREVIEW = 12;
 
 /**
- * Recent searches, kept in this tab's memory only: never in browser storage,
- * because a shared ward computer cannot tell a typed patient name from a word.
- * Gone on reload or sign-out, and anything that looks like patient details is
- * never kept at all.
+ * Recent searches and the last unfinished search, kept in this tab's memory only:
+ * never in browser storage, because a shared ward computer cannot tell a typed
+ * patient name from a word. Both belong to one account (auth epoch) and are
+ * dropped when another signs in. Anything that looks like patient details, or
+ * that found nothing, is never kept.
  */
-let recentQueries: string[] = [];
+let recentMemory: { epoch: number; list: string[] } = { epoch: -1, list: [] };
+/** Set as the search closes: true when a result was opened, so focus is left to the new page. */
+let navigatedAway = false;
+let lastSearch: { epoch: number; query: string; at: number } | null = null;
 const RECENT_LIMIT = 5;
+const RESUME_FOR_MS = 5 * 60 * 1000;
 
-function rememberQuery(query: string) {
+function recentsFor(epoch: number): string[] {
+  return recentMemory.epoch === epoch ? recentMemory.list : [];
+}
+
+function rememberQuery(query: string, epoch: number) {
   const trimmed = query.trim();
   if (trimmed.length < 2 || looksLikePatientDetails(trimmed)) return;
-  recentQueries = [trimmed, ...recentQueries.filter((value) => value.toLowerCase() !== trimmed.toLowerCase())].slice(
-    0,
-    RECENT_LIMIT,
-  );
+  const list = recentsFor(epoch);
+  recentMemory = {
+    epoch,
+    list: [trimmed, ...list.filter((value) => value.toLowerCase() !== trimmed.toLowerCase())].slice(0, RECENT_LIMIT),
+  };
 }
 
 function groupNoun(hits: readonly WorkSearchHit[]): string {
@@ -94,48 +135,101 @@ function groupNoun(hits: readonly WorkSearchHit[]): string {
   return many ? "matches" : "match";
 }
 
+/** Which area a no-match query was most likely about, for "Open …" in Try instead. */
+function guessArea(query: string, fallback: WorkSearchArea): WorkSearchArea {
+  const text = query.toLowerCase();
+  if (/\b(rost\w*|shifts?|nights?|leave|swap|on ?call shift)\b/.test(text)) return "roster";
+  if (/\b(teach\w*|sessions?|talks?|journal|tutorial|lecture)\b/.test(text)) return "teaching";
+  if (/\b(cpd|cme|hours|reflection|college)\b/.test(text)) return "cme";
+  if (/\b(forms?|polic\w*|renew\w*|expir\w*|pay|claims?|admin)\b/.test(text)) return "my-work";
+  if (/\b(phones?|pager|contacts?|referr\w*|switch\w*|extension|ext)\b/.test(text)) return "on-call";
+  return fallback;
+}
+
 /** The small label and the big word on a "Coming up" card. */
-function comingUpFace(item: WorkItem, today: string): { label: string; big: string; small: string } {
+function comingUpFace(
+  item: WorkItem,
+  today: string,
+  now: number,
+): { label: string; big: string; small: string; warning: boolean } {
   const date = item.date ?? today;
   const rest = detailWithoutDay(item) ?? "";
   switch (item.kind) {
     case "shift":
-      return { label: "Next shift", big: relativeDay(today, date), small: rest };
+      if (item.startsAt && item.endsAt && Date.parse(item.startsAt) <= now) {
+        return { label: "On now", big: `Until ${perthTimeOf(item.endsAt)}`, small: item.title, warning: false };
+      }
+      return { label: "Next shift", big: relativeDay(today, date), small: rest, warning: false };
     case "session":
       return item.facet === "presenting"
-        ? { label: "Presenting", big: relativeDay(today, date), small: dayMonthLong(date) }
-        : { label: "Teaching", big: relativeDay(today, date), small: rest || dayMonthLong(date) };
+        ? { label: "Presenting", big: relativeDay(today, date), small: item.title, warning: false }
+        : { label: "Teaching", big: relativeDay(today, date), small: rest || item.title, warning: false };
     case "leave":
-      return { label: "Leave", big: relativeDay(today, date), small: dayMonthLong(date) };
+      return date <= today
+        ? {
+            label: "On leave",
+            big: "Now",
+            small: item.until ? `To ${dayMonthLong(item.until)}` : item.title,
+            warning: false,
+          }
+        : { label: "Leave", big: relativeDay(today, date), small: dayMonthLong(date), warning: false };
     case "renewal":
-      return { label: "Renewal", big: item.title, small: dayMonthLong(date) };
+      return date < today
+        ? { label: "Overdue", big: item.title, small: `Was due ${dayMonthLong(date)}`, warning: true }
+        : { label: "Renewal", big: item.title, small: `Due ${dayMonthLong(date)}`, warning: false };
     default:
-      return { label: workSearchAreaLabels[item.area], big: item.title, small: dayMonthLong(date) };
+      return { label: workSearchAreaLabels[item.area], big: item.title, small: dayMonthLong(date), warning: false };
   }
 }
 
-function ComingUpCards({ items, today, onOpen }: { items: readonly WorkItem[]; today: string; onOpen: () => void }) {
+function ComingUpCards({
+  items,
+  today,
+  now,
+  onOpen,
+}: {
+  items: readonly WorkItem[];
+  today: string;
+  now: number;
+  onOpen: () => void;
+}) {
   return (
-    <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+    <ul className="-mx-4 flex scroll-px-4 gap-2 overflow-x-auto overscroll-x-contain px-4 pb-2 pt-1">
       {items.map((item) => {
-        const face = comingUpFace(item, today);
+        const face = comingUpFace(item, today, now);
         return (
-          <li key={item.id} data-mode-identity={item.area} className="w-28 shrink-0">
+          <li key={item.id} data-mode-identity={item.area} className="w-36 shrink-0">
             <Link
               href={item.href}
-              onClick={onOpen}
+              onClick={onPlainClick(onOpen)}
               data-work-search-result=""
               aria-label={`${face.label}: ${item.title}, ${face.big}${face.small ? `, ${face.small}` : ""}`}
-              className={cn(cardSurface, "grid h-full min-h-12 gap-px px-2.5 py-2.5", focusRing)}
+              className={cn(
+                cardSurface,
+                "grid h-full min-h-12 content-start gap-0.5 px-3 py-2.5",
+                face.warning && "border-[color:var(--warning-border)]",
+                focusRing,
+              )}
             >
-              <span className="flex items-center gap-1.5 truncate text-3xs font-extrabold uppercase tracking-wider text-[color:var(--mode-identity)]">
-                <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[color:var(--mode-identity)]" />
+              <span
+                className={cn(
+                  "flex items-center gap-1.5 truncate text-2xs font-extrabold uppercase tracking-wider",
+                  face.warning ? "text-[color:var(--warning)]" : "text-[color:var(--mode-identity)]",
+                )}
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "size-1.5 shrink-0 rounded-full",
+                    face.warning ? "bg-[color:var(--warning)]" : "bg-[color:var(--mode-identity)]",
+                  )}
+                />
                 {face.label}
               </span>
-              <span className="mt-1 truncate text-base-minus font-bold text-[color:var(--text-heading)]">
+              <span className="mt-1 line-clamp-2 text-base-minus font-bold leading-snug text-[color:var(--text-heading)]">
                 {face.big}
               </span>
-              <span className="truncate text-xs text-[color:var(--text-muted)]">{face.small}</span>
+              <span className="line-clamp-2 text-xs text-[color:var(--text-muted)]">{face.small}</span>
             </Link>
           </li>
         );
@@ -155,13 +249,14 @@ function AreaNotices({ areas, onRetry }: { areas: readonly WorkAreaRead[]; onRet
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-[color:var(--text-heading)]">{names.join(", ")} couldn&apos;t load</p>
         <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">
-          {names.length === 1 ? "It isn't" : "They aren't"} searched yet, so nothing here doesn&apos;t mean nothing is
+          {names.length === 1 ? "It isn't" : "They aren't"} searched yet, so if something is missing, it may just be
           there.
         </p>
       </div>
       <button
         type="button"
         onClick={onRetry}
+        aria-label={`Retry loading ${names.join(" and ")}`}
         className={cn("inline-flex min-h-12 shrink-0 items-center self-center", focusRing)}
       >
         <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-strong)] px-3 py-1.5 text-xs font-bold text-[color:var(--text-heading)]">
@@ -173,76 +268,155 @@ function AreaNotices({ areas, onRetry }: { areas: readonly WorkAreaRead[]; onRet
   );
 }
 
-function FootNote({ children }: { children: string }) {
+function FootNote({ children, icon: Icon = Lock }: { children: ReactNode; icon?: LucideIcon }) {
   return (
-    <p className="flex items-start justify-center gap-2 px-1.5 pb-2 pt-1 text-xs text-[color:var(--text-muted)]">
-      <Lock aria-hidden="true" className="mt-0.5 size-icon-xs shrink-0" />
+    <p className="flex items-start justify-center gap-2 px-1.5 pb-2 pt-1 text-center text-xs text-[color:var(--text-muted)]">
+      <Icon aria-hidden="true" className="mt-0.5 size-icon-xs shrink-0" />
       <span>{children}</span>
     </p>
   );
 }
 
+/** A built-in question offered while typing: tap to ask it. Drawn to the approved "Ask" row. */
+function AskCard({ question, onAsk }: { question: string; onAsk: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onAsk}
+      className={cn(
+        cardSurface,
+        "flex min-h-12 w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
+        focusRing,
+      )}
+    >
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-heading)]">
+        <Sparkles aria-hidden="true" className="size-icon-sm" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-xs font-semibold text-[color:var(--text-muted)]">Ask</span>
+        <span className="block text-sm font-bold leading-snug text-[color:var(--text-heading)]">{question}</span>
+      </span>
+      <span className="shrink-0 rounded-lg border border-[color:var(--border-strong)] px-2 py-1 text-xs font-bold text-[color:var(--text-muted)]">
+        Ask
+      </span>
+    </button>
+  );
+}
+
 export interface WorkSearchSheetProps {
   readonly open: boolean;
-  readonly onClose: () => void;
+  /** `navigated` is true when the reader opened a result, so focus belongs to the new page. */
+  readonly onClose: (navigated?: boolean) => void;
   /** The work area the search was opened from: its results come first. */
   readonly currentArea: WorkSearchArea | null;
   readonly returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
+function returnFocusAfterClose(): HTMLElement | null {
+  return navigatedAway ? document.getElementById("main-content") : null;
+}
+
+function usesFinePointer(): boolean {
+  return typeof window !== "undefined" && window.matchMedia?.("(hover: hover) and (pointer: fine)").matches === true;
+}
+
 export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: WorkSearchSheetProps) {
-  const [now] = useState(() => new Date());
+  const [now, setNow] = useState(() => Date.now());
   const today = perthDateOf(now);
   const records = useWorkSearchRecords(now);
-  const [query, setQuery] = useState("");
+  const epoch = records.epoch;
+  // Reopened within a few minutes, the last search comes back (selected, so typing replaces it).
+  const [query, setQuery] = useState(() =>
+    lastSearch && lastSearch.epoch === epoch && Date.now() - lastSearch.at < RESUME_FOR_MS ? lastSearch.query : "",
+  );
+  const searchQuery = useDeferredValue(query);
   const [filter, setFilter] = useState<WorkSearchArea | "all">("all");
   const [expanded, setExpanded] = useState<WorkSearchArea | null>(null);
-  const [recents, setRecents] = useState(() => recentQueries);
+  const [recents, setRecents] = useState(() => recentsFor(epoch));
+  const [scrolled, setScrolled] = useState(false);
+  const [chipsMore, setChipsMore] = useState(false);
+  const [liveText, setLiveText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const chipsRef = useRef<HTMLDivElement>(null);
+  const [pendingFocus, setPendingFocus] = useState<{ area: WorkSearchArea; index: number } | null>(null);
+
+  // "Today" and "on now" stay right if the search is left open across a shift change or midnight.
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!query) return;
+    const frame = window.requestAnimationFrame(() => inputRef.current?.select());
+    return () => window.cancelAnimationFrame(frame);
+    // Only on opening, to select a restored search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hits = useMemo(
-    () => searchWork({ items: records.items, entries: records.entries }, query, { currentArea, today }),
-    [records.items, records.entries, query, currentArea, today],
+    () => searchWork({ items: records.items, entries: records.entries }, searchQuery, { currentArea, today }),
+    [records.items, records.entries, searchQuery, currentArea, today],
   );
   const counts = useMemo(() => workSearchCounts(hits), [hits]);
-  const shown = filter === "all" ? hits : hits.filter((hit) => hit.item.area === filter);
+  const shown = useMemo(
+    () => (filter === "all" ? hits : hits.filter((hit) => hit.item.area === filter)),
+    [hits, filter],
+  );
   const allItems = useMemo(
     () => [...records.items, ...records.entries.map(({ item }) => item)],
     [records.items, records.entries],
   );
-  const comingUp = useMemo(() => workComingUp(allItems, today, 5), [allItems, today]);
-  const loading = records.areas.some((area) => area.status === "loading");
+  const comingUp = useMemo(() => workComingUp(allItems, today, now, 5), [allItems, today, now]);
+  const loadingAreas = records.areas.filter((area) => area.status === "loading");
+  const loading = loadingAreas.length > 0;
   const answer = useMemo(
-    () => answerWorkQuestion(query, { items: allItems, areas: records.areas, today, cpd: records.cpd }),
-    [query, allItems, records.areas, records.cpd, today],
+    () => answerWorkQuestion(searchQuery, { items: allItems, areas: records.areas, today, now, cpd: records.cpd }),
+    [searchQuery, allItems, records.areas, records.cpd, today, now],
   );
-  const trimmed = query.trim();
-  const typed = trimmed.length > 0;
-  const patient = typed && looksLikePatientDetails(trimmed);
-  const clinical = typed && !patient && looksClinical(trimmed);
-  const hint = !answer && !patient ? QUESTION_HINTS.find(([pattern]) => pattern.test(trimmed)) : undefined;
+  const trimmed = searchQuery.trim();
+  const typed = query.trim().length > 0;
+  const patient = trimmed.length > 0 && looksLikePatientDetails(trimmed);
+  const clinical = trimmed.length > 0 && !patient && looksClinical(trimmed);
+  const suggestions = useMemo(() => (answer || patient ? [] : suggestQuestions(trimmed)), [answer, patient, trimmed]);
 
+  const close = useCallback(
+    (navigated: boolean) => {
+      const current = query.trim();
+      lastSearch =
+        !navigated && current && !looksLikePatientDetails(current) ? { epoch, query: current, at: Date.now() } : null;
+      navigatedAway = navigated;
+      onClose(navigated);
+    },
+    [epoch, onClose, query],
+  );
+  const found = hits.length > 0 || Boolean(answer && !answer.unavailable);
   const openResult = () => {
-    rememberQuery(query);
-    onClose();
+    rememberQuery(query, epoch);
+    close(true);
   };
+  const resetScroll = () => bodyRef.current?.scrollTo({ top: 0 });
   const runQuery = (value: string) => {
     setQuery(value);
     setExpanded(null);
+    resetScroll();
     inputRef.current?.focus();
   };
 
-  // Records an answer already lists inside its card are not repeated below it.
-  const insideAnswer = useMemo(
-    () => new Set(answer?.area === "all" ? answer.items.map((item) => item.id) : []),
-    [answer],
+  // Records an answer shows (in its card, or as the one record it is about) are not repeated below it.
+  const answerItems = useMemo(() => answer?.items ?? [], [answer]);
+  const extraFromAnswer = answer && answer.area !== "all" && answerItems.length > 1;
+  const hiddenIds = useMemo(
+    () => new Set(answer && !extraFromAnswer ? answerItems.map((item) => item.id) : []),
+    [answer, extraFromAnswer, answerItems],
   );
   const groups = useMemo(() => {
-    const extra: WorkSearchHit[] =
-      answer && answer.area !== "all" ? answer.items.map((item) => ({ item, rank: 0 as const })) : [];
+    const extra: WorkSearchHit[] = extraFromAnswer ? answerItems.map((item) => ({ item, rank: 0 as const })) : [];
     const seen = new Set<string>();
     const pool = [...extra, ...shown].filter((hit) => {
-      if (seen.has(hit.item.id) || insideAnswer.has(hit.item.id)) return false;
+      if (seen.has(hit.item.id) || hiddenIds.has(hit.item.id)) return false;
       seen.add(hit.item.id);
       return filter === "all" || hit.item.area === filter;
     });
@@ -254,14 +428,46 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
     return areas
       .map((area) => ({ area, hits: pool.filter((hit) => hit.item.area === area) }))
       .filter((group) => group.hits.length > 0);
-  }, [answer, shown, insideAnswer, filter, currentArea]);
+  }, [answer, answerItems, extraFromAnswer, shown, hiddenIds, filter, currentArea]);
+  const visibleCount = groups.reduce((sum, group) => sum + group.hits.length, 0);
 
-  const fallbackArea: WorkSearchArea = filter !== "all" ? filter : (currentArea ?? "my-work");
+  // Spoken once the typing settles, not on every key.
+  const announcement = !typed
+    ? ""
+    : answer
+      ? `${answer.label}: ${answer.headline}.`
+      : loading && visibleCount === 0
+        ? "Searching."
+        : `${visibleCount} ${visibleCount === 1 ? "result" : "results"}${filter === "all" ? "" : ` in ${workSearchAreaLabels[filter]}`}.`;
+  useEffect(() => {
+    const timer = window.setTimeout(() => setLiveText(announcement), 600);
+    return () => window.clearTimeout(timer);
+  }, [announcement]);
+
+  // After "See all", focus moves to the first newly shown record, not to the page.
+  useEffect(() => {
+    if (!pendingFocus) return;
+    rootRef.current
+      ?.querySelectorAll<HTMLElement>(
+        `[aria-labelledby="work-search-group-${pendingFocus.area}"] [data-work-search-result]`,
+      )
+      [pendingFocus.index]?.focus();
+  }, [pendingFocus]);
+
+  // The chip row fades its edge only while there is more to scroll to.
+  const updateChipsMore = useCallback(() => {
+    const row = chipsRef.current;
+    setChipsMore(Boolean(row && row.scrollLeft + row.clientWidth < row.scrollWidth - 4));
+  }, []);
+  useEffect(updateChipsMore, [updateChipsMore, typed, counts]);
+
+  const fallbackArea: WorkSearchArea = filter !== "all" ? filter : guessArea(trimmed, currentArea ?? "my-work");
   const firstWord = trimmed.split(/\s+/)[0] ?? "";
 
   const resultGroups = groups.map((group) => {
-    const open = filter !== "all" || expanded === group.area || groups.length === 1;
-    const visible = open ? group.hits : group.hits.slice(0, GROUP_PREVIEW);
+    const open = filter !== "all" || expanded === group.area;
+    const preview = groups.length === 1 ? SINGLE_GROUP_PREVIEW : GROUP_PREVIEW;
+    const visible = open ? group.hits : group.hits.slice(0, preview);
     const headingId = `work-search-group-${group.area}`;
     return (
       <section key={group.area} className="grid grid-cols-[minmax(0,1fr)] gap-3">
@@ -272,7 +478,11 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             visible.length < group.hits.length ? (
               <button
                 type="button"
-                onClick={() => setExpanded(group.area)}
+                onClick={() => {
+                  setPendingFocus({ area: group.area, index: visible.length });
+                  setExpanded(group.area);
+                }}
+                aria-label={`See all ${group.hits.length} ${workSearchAreaLabels[group.area]} results`}
                 className={cn(
                   "-my-3 min-h-12 px-1 text-sm font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text-heading)]",
                   focusRing,
@@ -287,36 +497,42 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
         </Kicker>
         <ListCard labelledBy={headingId} onKeyDown={(event) => moveFocus(event, inputRef)}>
           {visible.map((hit) => (
-            <ResultRow key={hit.item.id} item={hit.item} today={today} query={query} onOpen={openResult} />
+            <ResultRow key={hit.item.id} item={hit.item} today={today} query={searchQuery} onOpen={openResult} />
           ))}
         </ListCard>
       </section>
     );
   });
 
+  const askCards =
+    suggestions.length > 0 ? (
+      <div className="grid gap-2">
+        {suggestions.map((question) => (
+          <AskCard key={question} question={question} onAsk={() => runQuery(question)} />
+        ))}
+      </div>
+    ) : null;
+
   const notices = (
     <>
       {patient ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] p-3.5">
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[color:var(--surface-raised)] text-[color:var(--warning)]">
-            <Lock aria-hidden="true" className="size-icon-sm" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-[color:var(--text-heading)]">Kept on this device</p>
-            <p className="mt-0.5 text-xs text-[color:var(--text-muted)]">
-              This looks like it has patient details, so it won&apos;t be saved to Recent. Only your own staff records
-              are searched.
-            </p>
-            <button
-              type="button"
-              onClick={() => runQuery("")}
-              className={cn("-mb-2 inline-flex min-h-12 items-center", focusRing)}
-            >
-              <span className="rounded-full border border-[color:var(--warning-border)] bg-[color:var(--surface-raised)] px-3 py-1.5 text-xs font-bold text-[color:var(--text-heading)]">
-                Clear search
-              </span>
-            </button>
-          </div>
+        <div
+          role="note"
+          className="flex items-center gap-3 rounded-2xl border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] py-1 pl-3.5 pr-1"
+        >
+          <Lock aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--warning)]" />
+          <p className="min-w-0 flex-1 py-2 text-xs text-[color:var(--text-heading)]">
+            <b>Looks like patient details.</b> Not saved to Recent. Please don&apos;t type patient details here.
+          </p>
+          <button
+            type="button"
+            onClick={() => runQuery("")}
+            className={cn("inline-flex min-h-12 shrink-0 items-center px-1", focusRing)}
+          >
+            <span className="rounded-full border border-[color:var(--warning-border)] bg-[color:var(--surface-raised)] px-3 py-1.5 text-xs font-bold text-[color:var(--text-heading)]">
+              Clear
+            </span>
+          </button>
         </div>
       ) : null}
       {clinical ? (
@@ -337,7 +553,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
           </div>
           <Link
             href={clinicalSearchHref(trimmed)}
-            onClick={onClose}
+            onClick={onPlainClick(() => close(true))}
             className={cn(
               "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full bg-[color:var(--clinical-accent)] px-5 text-sm font-bold text-[color:var(--clinical-accent-contrast)]",
               focusRing,
@@ -351,39 +567,78 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
     </>
   );
 
+  const stillSearching =
+    typed && loading && visibleCount > 0 ? (
+      <p role="status" className="px-1 text-xs text-[color:var(--text-muted)]">
+        Still searching {[...new Set(loadingAreas.map((area) => workSearchAreaLabels[area.area]))].join(", ")}…
+      </p>
+    ) : null;
+
+  const chipAreas = typed
+    ? workSearchAreas.filter((area) => (counts[area] ?? 0) > 0 || filter === area)
+    : workSearchAreas;
+
   return (
     <Sheet
       open={open}
-      onClose={onClose}
+      onClose={() => close(false)}
       ariaLabel="Search my work"
       initialFocusRef={inputRef}
       returnFocusRef={returnFocusRef}
+      resolveReturnFocusTarget={returnFocusAfterClose}
       portal
       mobilePlacement="fullscreen"
       mobileSize="viewport"
       testId="work-search-sheet"
-      contentClassName="bg-[color:var(--surface-inset)] lg:mt-14 lg:max-w-2xl lg:self-start lg:rounded-3xl lg:border-[color:var(--border)]"
+      contentClassName="bg-[color:var(--surface-inset)] lg:h-[min(46rem,calc(100dvh-8rem))] lg:max-h-[calc(100dvh-8rem)] lg:max-w-2xl lg:rounded-3xl lg:border-[color:var(--border)]"
       bodyClassName="p-0 sm:p-0"
+      bodyRef={bodyRef}
+      onBodyScroll={(event) => setScrolled(event.currentTarget.scrollTop > 2)}
     >
-      <div data-work-search-root="" className="flex min-h-full flex-col">
-        <div className="sticky top-0 grid grid-cols-[minmax(0,1fr)] gap-3 bg-[color:var(--surface-inset)] px-4 pb-2 pt-[max(0.75rem,var(--safe-area-top))] lg:pt-4">
-          {records.sample ? (
-            <p className="flex items-center gap-2 rounded-xl bg-[color:var(--border)] px-3 py-2 text-xs text-[color:var(--text-muted)]">
-              <Info aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-heading)]" />
+      <div ref={rootRef} data-work-search-root="" className="flex min-h-full flex-col">
+        <h2 className="sr-only">Search my work</h2>
+        <div
+          className={cn(
+            "sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)] gap-2 border-b bg-[color:var(--surface-inset)] px-4 pb-1 pt-[max(0.75rem,var(--safe-area-top))] transition-colors motion-reduce:transition-none lg:pt-4 [@media(max-height:500px)]:static",
+            scrolled ? "border-[color:var(--border)]" : "border-transparent",
+          )}
+        >
+          {records.anySample ? (
+            <p
+              role="note"
+              className="flex items-center gap-2 rounded-xl border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] px-3 py-2 text-xs text-[color:var(--text-heading)]"
+            >
+              <Info aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--warning)]" />
               <span>
-                <b className="text-[color:var(--text-heading)]">Sample data.</b> Sign in to search your own records.
+                {records.sample ? (
+                  <>
+                    <b>Sample data.</b> Sign in to search your own records.
+                  </>
+                ) : (
+                  <>
+                    <b>Example records.</b> Some of what&apos;s shown here is sample data, not yours.
+                  </>
+                )}
               </span>
             </p>
           ) : null}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1 rounded-2xl ring-4 ring-[color:var(--border)]">
               <form
                 role="search"
-                aria-label="Search my work"
+                aria-label="My work"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  rememberQuery(query);
-                  setRecents(recentQueries);
+                  if (found) rememberQuery(query, epoch);
+                  setRecents(recentsFor(epoch));
+                  // With a keyboard and mouse, Enter opens the top result; on a phone it puts the keyboard away.
+                  if (usesFinePointer()) {
+                    rootRef.current
+                      ?.querySelector<HTMLElement>("[data-work-search-primary], [data-work-search-result]")
+                      ?.click();
+                  } else {
+                    inputRef.current?.blur();
+                  }
                 }}
                 className="search-shell flex min-h-12 min-w-0 items-center gap-2.5 rounded-2xl border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] pl-3.5 pr-1"
               >
@@ -395,15 +650,18 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   onChange={(event) => {
                     setQuery(event.target.value);
                     setExpanded(null);
+                    resetScroll();
                   }}
                   onKeyDown={(event) => moveFocus(event, inputRef)}
-                  placeholder="Shifts, CPD, forms, renewals..."
-                  aria-label="Search your shifts, teaching, CPD, admin and on-call information"
+                  placeholder="Search shifts, leave, CPD, forms…"
+                  aria-label="Search shifts, leave, teaching, CPD, admin and on-call"
                   enterKeyHint="search"
+                  inputMode="search"
                   autoComplete="off"
                   autoCorrect="off"
+                  autoCapitalize="none"
                   spellCheck={false}
-                  className="search-shell-input min-w-0 flex-1 bg-transparent py-3 text-base-minus font-medium text-[color:var(--text-heading)] outline-none placeholder:font-normal placeholder:text-[color:var(--text-muted)] [&::-webkit-search-cancel-button]:hidden"
+                  className="search-shell-input min-w-0 flex-1 bg-transparent py-3 text-base font-medium text-[color:var(--text-heading)] outline-none placeholder:font-normal placeholder:text-[color:var(--text-muted)] lg:text-base-minus [&::-webkit-search-cancel-button]:hidden"
                 />
                 {typed ? (
                   <button
@@ -412,18 +670,19 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                     aria-label="Clear search"
                     className={cn("grid size-tap shrink-0 place-items-center rounded-full", focusRing)}
                   >
-                    <span className="grid size-6 place-items-center rounded-full bg-[color:var(--border-strong)] text-[color:var(--surface-raised)]">
+                    <span className="grid size-6 place-items-center rounded-full bg-[color:var(--text-muted)] text-[color:var(--surface-raised)]">
                       <X aria-hidden="true" className="size-icon-xs" strokeWidth={3} />
                     </span>
                   </button>
                 ) : null}
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={() => close(false)}
                   aria-label="Close search"
+                  title="Close (Esc)"
                   className={cn("hidden min-h-12 shrink-0 items-center px-2 lg:inline-flex", focusRing)}
                 >
-                  <span className="rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-1.5 py-0.5 text-2xs font-bold text-[color:var(--text-muted)]">
+                  <span className="rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-1.5 py-0.5 text-xs font-bold text-[color:var(--text-muted)]">
                     esc
                   </span>
                 </button>
@@ -431,9 +690,9 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => close(false)}
               className={cn(
-                "min-h-12 shrink-0 px-1 text-base-minus font-semibold text-[color:var(--text-heading)] lg:hidden",
+                "min-h-12 shrink-0 px-2 text-base-minus font-semibold text-[color:var(--text-heading)] lg:hidden",
                 focusRing,
               )}
             >
@@ -441,22 +700,29 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             </button>
           </div>
           <div
-            className="-mx-4 flex gap-2 overflow-x-auto px-4 [mask-image:linear-gradient(90deg,black_85%,transparent)] lg:[mask-image:none]"
+            ref={chipsRef}
+            onScroll={updateChipsMore}
+            className={cn(
+              "-mx-4 flex gap-1.5 overflow-x-auto overscroll-x-contain px-4 py-1",
+              chipsMore && "[mask-image:linear-gradient(90deg,black_85%,transparent)]",
+            )}
             role="group"
             aria-label="Filter by area"
           >
-            {(["all", ...workSearchAreas] as const).map((area) => {
+            {(["all", ...chipAreas] as const).map((area) => {
               const selected = filter === area;
               const count = area === "all" ? hits.length : (counts[area] ?? 0);
-              const zero = typed && count === 0 && !selected;
+              const label = area === "all" ? "All" : workSearchAreaLabels[area];
               return (
                 <button
                   key={area}
                   type="button"
                   aria-pressed={selected}
+                  aria-label={typed ? `${label}, ${count} ${count === 1 ? "result" : "results"}` : label}
                   onClick={() => {
                     setFilter(area);
                     setExpanded(null);
+                    resetScroll();
                   }}
                   data-mode-identity={area === "all" ? undefined : area}
                   className={cn("inline-flex min-h-12 shrink-0 items-center", focusRing)}
@@ -464,19 +730,18 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   <span
                     className={cn(
                       "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors motion-reduce:transition-none",
+                      selected && "forced-colors:border-2",
                       selected && area === "all"
                         ? "border-[color:var(--border-strong)] bg-[color:var(--border)] text-[color:var(--text-heading)]"
                         : selected
                           ? "border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
-                          : zero
-                            ? "border-[color:var(--border)] bg-transparent text-[color:var(--text-muted)] opacity-60"
-                            : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]",
+                          : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]",
                     )}
                   >
                     {area === "all" ? null : (
                       <span aria-hidden="true" className="size-2 rounded-full bg-[color:var(--mode-identity)]" />
                     )}
-                    {area === "all" ? "All" : workSearchAreaLabels[area]}
+                    {label}
                     {typed && count > 0 ? <span className="text-xs font-bold">{count}</span> : null}
                   </span>
                 </button>
@@ -485,24 +750,39 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
           </div>
         </div>
 
-        <div className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 px-4 pb-6 pt-2">
-          <p className="sr-only" aria-live="polite">
-            {typed
-              ? answer
-                ? `${answer.label}: ${answer.headline}. ${answer.understood}.`
-                : loading
-                  ? "Searching."
-                  : `${shown.length} ${shown.length === 1 ? "result" : "results"}.`
-              : ""}
+        <div
+          onTouchMove={() => {
+            // Scrolling the results on a phone puts the keyboard away, as iOS search screens do.
+            if (document.activeElement === inputRef.current && !usesFinePointer()) inputRef.current?.blur();
+          }}
+          className="grid flex-1 grid-cols-[minmax(0,1fr)] content-start gap-3 px-4 pb-[calc(1.5rem+var(--keyboard-height,0px)+var(--safe-area-bottom))] pt-2 lg:pb-0"
+        >
+          <p className="sr-only" role="status" aria-live="polite">
+            {liveText}
           </p>
-          <AreaNotices areas={records.areas} onRetry={records.retry} />
+          <AreaNotices
+            areas={records.areas}
+            onRetry={() => {
+              records.retry();
+              inputRef.current?.focus();
+            }}
+          />
 
           {!typed ? (
             <>
               {comingUp.length > 0 ? (
                 <>
-                  <Kicker>{records.sample ? "Coming up · Sample" : "Coming up"}</Kicker>
-                  <ComingUpCards items={comingUp} today={today} onOpen={openResult} />
+                  <Kicker>{records.anySample ? "Coming up · Sample" : "Coming up"}</Kicker>
+                  <ComingUpCards items={comingUp} today={today} now={now} onOpen={openResult} />
+                </>
+              ) : loading ? (
+                <>
+                  <Kicker>Coming up</Kicker>
+                  <ul aria-hidden="true" className="-mx-4 flex gap-2 overflow-hidden px-4 pb-2 pt-1">
+                    {[0, 1, 2].map((index) => (
+                      <li key={index} className={cn(cardSurface, "h-24 w-36 shrink-0 motion-safe:animate-pulse")} />
+                    ))}
+                  </ul>
                 </>
               ) : null}
               <Kicker>Go to</Kicker>
@@ -511,7 +791,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   <li key={area}>
                     <Link
                       href={appModeHomeHref(area)}
-                      onClick={onClose}
+                      onClick={onPlainClick(() => close(true))}
                       className={cn(
                         "flex min-h-12 flex-col items-center gap-1.5 rounded-xl py-1 text-center text-xs font-semibold text-[color:var(--text-muted)]",
                         focusRing,
@@ -523,29 +803,19 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   </li>
                 ))}
               </ul>
-              <Kicker>Try asking</Kicker>
-              <ListCard>
-                {TRY_ASKING.map((value) => (
-                  <ActionRow
-                    key={value}
-                    icon={<Sparkles aria-hidden="true" className="size-icon-sm" />}
-                    trailing={<ChevronRight aria-hidden="true" className="size-icon-sm" />}
-                    onClick={() => runQuery(value)}
-                  >
-                    {value}
-                  </ActionRow>
-                ))}
-              </ListCard>
               {recents.length > 0 ? (
                 <>
                   <Kicker
+                    id="work-search-recent"
                     action={
                       <button
                         type="button"
                         onClick={() => {
-                          recentQueries = [];
+                          recentMemory = { epoch, list: [] };
                           setRecents([]);
+                          inputRef.current?.focus();
                         }}
+                        aria-label="Clear recent searches"
                         className={cn(
                           "-my-3 min-h-12 px-1 text-sm font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text-heading)]",
                           focusRing,
@@ -557,12 +827,12 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   >
                     Recent
                   </Kicker>
-                  <ListCard>
+                  <ListCard labelledBy="work-search-recent">
                     {recents.map((value) => (
                       <ActionRow
                         key={value}
                         icon={<Clock aria-hidden="true" className="size-icon-sm" />}
-                        trailing={<ArrowUpLeft aria-hidden="true" className="size-icon-sm" />}
+                        trailing={<ChevronRight aria-hidden="true" className="size-icon-sm" />}
                         onClick={() => runQuery(value)}
                       >
                         {value}
@@ -571,6 +841,19 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   </ListCard>
                 </>
               ) : null}
+              <Kicker id="work-search-try">Try asking</Kicker>
+              <ListCard labelledBy="work-search-try">
+                {TRY_ASKING.map((value) => (
+                  <ActionRow
+                    key={value}
+                    icon={<Sparkles aria-hidden="true" className="size-icon-sm" />}
+                    trailing={<ChevronRight aria-hidden="true" className="size-icon-sm" />}
+                    onClick={() => runQuery(value)}
+                  >
+                    {value}
+                  </ActionRow>
+                ))}
+              </ListCard>
             </>
           ) : answer ? (
             <div
@@ -581,57 +864,51 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             >
               <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
                 {notices}
-                <AnswerCard answer={answer} today={today} onOpen={openResult} onRetry={records.retry} />
-                {answer.footnote ? <FootNote>{answer.footnote}</FootNote> : null}
+                <AnswerCard
+                  answer={answer}
+                  today={today}
+                  onOpen={openResult}
+                  onRetry={() => {
+                    records.retry();
+                    inputRef.current?.focus();
+                  }}
+                />
+                {answer.footnote ? <FootNote icon={Info}>{answer.footnote}</FootNote> : null}
               </div>
-              {groups.length > 0 ? <div className="grid grid-cols-[minmax(0,1fr)] gap-3">{resultGroups}</div> : null}
+              {groups.length > 0 ? (
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
+                  {resultGroups}
+                  {stillSearching}
+                </div>
+              ) : null}
             </div>
           ) : groups.length > 0 ? (
             <>
               {notices}
+              {askCards}
               {resultGroups}
-              {hint ? (
-                <button
-                  type="button"
-                  onClick={() => runQuery(hint[2])}
-                  className={cn(
-                    "flex min-h-12 items-start gap-2.5 rounded-2xl border border-dashed border-[color:var(--border-strong)] px-3.5 py-3 text-left text-sm text-[color:var(--text-muted)]",
-                    focusRing,
-                  )}
-                >
-                  <Sparkles
-                    aria-hidden="true"
-                    className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--text-heading)]"
-                  />
-                  <span>
-                    {hint[1]} Try{" "}
-                    <b className="font-semibold text-[color:var(--text-heading)]">
-                      &ldquo;{hint[2].toLowerCase()}&rdquo;
-                    </b>
-                  </span>
-                </button>
-              ) : null}
-              <FootNote>
-                {patient
-                  ? "Call notes, handover drafts and MHA timers are never searched. Please don't type patient names."
-                  : "Call notes, handover drafts and MHA timers are never searched."}
-              </FootNote>
+              {stillSearching}
+              <FootNote>Call notes, handover drafts and MHA timers are never searched.</FootNote>
             </>
           ) : loading ? (
             <>
               {notices}
-              <p className="py-8 text-center text-sm text-[color:var(--text-muted)]">Searching your work...</p>
+              {askCards}
+              <p role="status" className="py-8 text-center text-sm text-[color:var(--text-muted)]">
+                Searching your work…
+              </p>
             </>
           ) : patient || clinical ? (
             <>
               {notices}
               <p className="px-1 pt-1 text-center text-sm text-[color:var(--text-muted)]">
-                Nothing for &ldquo;{trimmed}&rdquo; in your Roster, Teaching, CPD, Admin or On Call records.
+                Nothing for &ldquo;{trimmed}&rdquo; in your work records.
               </p>
             </>
           ) : (
             <>
-              <div className="grid justify-items-center gap-1.5 px-3 pb-4 pt-7 text-center">
+              {askCards}
+              <div className="grid justify-items-center gap-1.5 px-3 pb-4 pt-6 text-center">
                 <span className="mb-1.5 grid size-14 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]">
                   <WorkSearchGlyph className="size-icon-lg" />
                 </span>
@@ -644,8 +921,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                     : `It isn't in your ${workSearchAreaLabels[filter]} records.`}
                 </p>
               </div>
-              <Kicker>Try instead</Kicker>
-              <ListCard>
+              <Kicker id="work-search-instead">Try instead</Kicker>
+              <ListCard labelledBy="work-search-instead">
                 {filter !== "all" && hits.length > 0 ? (
                   <ActionRow
                     icon={<Search aria-hidden="true" className="size-icon-sm" />}
@@ -668,15 +945,15 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   icon={<FileText aria-hidden="true" className="size-icon-sm" />}
                   trailing={<ChevronRight aria-hidden="true" className="size-icon-sm" />}
                   href={documentsSearchHref({ query: trimmed })}
-                  onNavigate={onClose}
+                  onNavigate={() => close(true)}
                 >
-                  Look in Documents
+                  Search clinical documents for &ldquo;{trimmed}&rdquo;
                 </ActionRow>
                 <ActionRow
                   icon={<AreaTileIcon area={fallbackArea} />}
                   trailing={<ChevronRight aria-hidden="true" className="size-icon-sm" />}
                   href={appModeHomeHref(fallbackArea)}
-                  onNavigate={onClose}
+                  onNavigate={() => close(true)}
                 >
                   Open {workSearchAreaLabels[fallbackArea]}
                 </ActionRow>
@@ -684,20 +961,20 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             </>
           )}
 
-          <div className="mt-auto hidden items-center gap-4 px-1 pt-2 text-xs text-[color:var(--text-muted)] lg:flex">
+          <div className="sticky bottom-0 mt-auto hidden items-center gap-4 border-t border-[color:var(--border)] bg-[color:var(--surface-inset)] px-1 py-3 text-xs text-[color:var(--text-muted)] [@media(hover:hover)_and_(pointer:fine)_and_(min-width:48rem)]:flex">
             <span className="flex items-center gap-1.5">
-              <kbd className="rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-1.5 font-sans text-2xs">
+              <kbd className="rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-1.5 font-sans text-xs">
                 ↑↓
               </kbd>
               move
             </span>
             <span className="flex items-center gap-1.5">
-              <kbd className="rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-1.5 font-sans text-2xs">
+              <kbd className="rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] px-1.5 font-sans text-xs">
                 ↵
               </kbd>
-              open
+              open top result
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="ml-auto flex items-center gap-1.5">
               <Lock aria-hidden="true" className="size-icon-xs" />
               Your own records only
             </span>

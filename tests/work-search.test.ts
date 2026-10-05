@@ -153,9 +153,9 @@ describe("searchWork", () => {
     expect(search("   ")).toEqual([]);
   });
 
-  it("finds nights by kind, upcoming before past", () => {
+  it("finds nights by kind, upcoming before past, then a note that mentions a night", () => {
     const ids = search("nights").map((hit) => hit.item.id);
-    expect(ids).toEqual(["roster:shift:s1", "roster:shift:s0"]);
+    expect(ids).toEqual(["roster:shift:s1", "roster:shift:s0", "cme:activity:c1"]);
   });
 
   it("requires every word to match", () => {
@@ -190,7 +190,11 @@ describe("searchWork", () => {
 
 describe("workComingUp", () => {
   it("shows the next dated item per area, soonest first, never past CPD activity", () => {
-    const next = workComingUp([...items, ...entries.map(({ item }) => item)], today);
+    const next = workComingUp(
+      [...items, ...entries.map(({ item }) => item)],
+      today,
+      Date.parse(`${today}T00:00:00+08:00`),
+    );
     expect(next.map((item) => item.id)).toEqual(["roster:shift:s2", "teaching:session:o1", `entry:renewal:${bls.id}`]);
   });
 });

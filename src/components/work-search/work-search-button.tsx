@@ -95,7 +95,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           ref={coachRef}
           id="work-search-coach"
           role="note"
-          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 grid w-60 gap-1.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 text-left shadow-[var(--e4)]"
+          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 grid w-[min(14rem,calc(100vw-2rem))] gap-1.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 text-left shadow-[var(--e4)]"
         >
           <span
             aria-hidden="true"
@@ -104,7 +104,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           <span className="text-3xs font-extrabold uppercase tracking-widest text-[color:var(--text-muted)]">New</span>
           <span className="text-base-minus font-bold text-[color:var(--text-heading)]">Search my work</span>
           <span className="text-xs text-[color:var(--text-muted)]">
-            Ask about your shifts, CPD, forms and renewals, across every area.
+            Find shifts, leave, CPD, forms and renewals in one place.
           </span>
           <button
             type="button"
@@ -119,8 +119,10 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
       ) : null}
       <LazyWorkSearchSheet
         open={open}
-        onClose={() => {
+        onClose={(navigated) => {
           setOpen(false);
+          // After opening a result, focus belongs to the new page, not back on this icon.
+          if (navigated) return;
           // The sheet unmounts on close, so focus is put back here rather than left to it.
           requestAnimationFrame(() => buttonRef.current?.focus({ preventScroll: true }));
         }}

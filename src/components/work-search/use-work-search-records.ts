@@ -50,18 +50,32 @@ type Fetched = {
 export type WorkSearchCpd = { readonly set: CmeRequirementSet | null; readonly entries: readonly CmeEntry[] };
 
 const FRESH_FOR_MS = 2 * 60 * 1000;
+/** A read that hangs is reported as failed (with Retry) rather than "still loading" for ever. */
+const READ_TIMEOUT_MS = 12_000;
 let memory: Fetched | null = null;
 
 async function readJson<T>(url: string, signal: AbortSignal): Promise<Read<T>> {
+  const local = new AbortController();
+  const abort = () => local.abort();
+  signal.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(abort, READ_TIMEOUT_MS);
   try {
-    const response = await fetch(url, { cache: "no-store", signal });
+    const response = await fetch(url, { cache: "no-store", signal: local.signal });
     if (response.status === 401) return { status: "signed-out" };
     if (!response.ok) return { status: "failed" };
     const body = (await response.json()) as T & { demoMode?: boolean; sample?: boolean };
     return { status: "ready", body, sample: Boolean(body.demoMode || body.sample) };
   } catch {
     return { status: "failed" };
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", abort);
   }
+}
+
+/** Only a complete read is worth reusing; a failed area is fetched again next time. */
+function allReady(fetched: Fetched): boolean {
+  return [fetched.roster, fetched.teaching, fetched.cme].every((area) => area.status === "ready");
 }
 
 function worst(...statuses: WorkAreaStatus[]): WorkAreaStatus {
@@ -70,7 +84,7 @@ function worst(...statuses: WorkAreaStatus[]): WorkAreaStatus {
   return "ready";
 }
 
-async function fetchRecords(epoch: number, now: Date, signal: AbortSignal): Promise<Fetched> {
+async function fetchRecords(epoch: number, now: number, signal: AbortSignal): Promise<Fetched> {
   const today = perthDateOf(now);
   const weekQuery = new URLSearchParams({ view: "week", from: today, to: addDaysToDate(today, 41) });
   const [shifts, leave, week, cme, year] = await Promise.all([
@@ -127,10 +141,14 @@ export interface WorkSearchRecords {
   readonly cpd: WorkSearchCpd | null;
   /** True while a signed-out visitor searches the invented sample. */
   readonly sample: boolean;
+  /** True when any area returned invented example records (demo mode, or a roster with none of your own yet). */
+  readonly anySample: boolean;
+  /** The account the records belong to, so per-tab memory (recent searches) never crosses accounts. */
+  readonly epoch: number;
   readonly retry: () => void;
 }
 
-export function useWorkSearchRecords(now: Date): WorkSearchRecords {
+export function useWorkSearchRecords(now: number): WorkSearchRecords {
   const { status: authStatus, authEpoch } = useAuthSession();
   const enabled = myDayEnabledForAuth(authStatus);
   const signedOut = authStatus === "signed_out" || authStatus === "expired";
@@ -153,12 +171,14 @@ export function useWorkSearchRecords(now: Date): WorkSearchRecords {
   }, [retryOnCall]);
 
   useEffect(() => {
+    // Another account's records never stay in memory, even unseen.
+    if (memory && memory.epoch !== authEpoch) memory = null;
     if (!enabled) return;
     if (fetched && fetched.epoch === authEpoch) return;
     const controller = new AbortController();
     void fetchRecords(authEpoch, now, controller.signal).then((next) => {
       if (controller.signal.aborted) return;
-      memory = next;
+      memory = allReady(next) ? next : null;
       setFetched(next);
     });
     return () => controller.abort();
@@ -170,7 +190,7 @@ export function useWorkSearchRecords(now: Date): WorkSearchRecords {
     if (!signedOut || sample) return;
     let cancelled = false;
     void import("@/lib/work-search/sample").then(({ workSearchSample }) => {
-      if (!cancelled) setSample(workSearchSample(now));
+      if (!cancelled) setSample(workSearchSample(new Date(now)));
     });
     return () => {
       cancelled = true;
@@ -197,11 +217,16 @@ export function useWorkSearchRecords(now: Date): WorkSearchRecords {
         })),
         cpd: sample?.cpd ?? null,
         sample: true,
+        anySample: true,
+        epoch: authEpoch,
         retry,
       };
     }
     const current = fetched && fetched.epoch === authEpoch ? fetched : null;
     const entryStatus: WorkAreaStatus = enabled ? onCallStatus : "loading";
+    const anySample = Boolean(
+      current?.roster.sample || current?.teaching.sample || current?.cme.sample || onCall.demoMode,
+    );
     return {
       items: current ? [...current.roster.items, ...current.teaching.items, ...current.cme.items] : [],
       entries: liveEntries,
@@ -214,6 +239,8 @@ export function useWorkSearchRecords(now: Date): WorkSearchRecords {
       ],
       cpd: current?.cpd ?? null,
       sample: false,
+      anySample,
+      epoch: authEpoch,
       retry,
     };
   }, [
