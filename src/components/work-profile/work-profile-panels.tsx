@@ -131,7 +131,7 @@ export function ProfilePanel({
   const areas = [
     rosterArea(data.roster),
     teachingArea(data.teaching),
-    cpdArea(data.cpd, preferences.workStage, preferences.ranzcpStage),
+    cpdArea(data.cpd),
     adminArea(data.admin),
     onCallArea(data.hospitalPhone),
   ];
@@ -166,7 +166,7 @@ export function ProfilePanel({
     </WorkProfileSection>
   );
 
-  // A registrar without a RANZCP stage is asked for it: until then CPD can't say "Covered".
+  // A registrar without a RANZCP stage is asked for it, so the training row is never blank.
   const training =
     preferences.workStage === "registrar" ? (
       <WorkProfileSection label="Your training" testId="work-profile-training">

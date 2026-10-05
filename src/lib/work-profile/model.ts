@@ -1,4 +1,3 @@
-import type { WorkStagePreference } from "@/lib/account-preferences";
 import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import { RULE_GATE_REASON_WORDS, type RuleGate } from "@/lib/admin/rule-sign-off";
 import { setupRequirementRecorded, type SetupRequirement } from "@/lib/admin/setup";
@@ -45,11 +44,10 @@ export type AreaId = "roster" | "teaching" | "cpd" | "admin" | "on-call";
  * The right-hand state of one "Set up each area" row.
  * - `ready`: set up (a quiet tick and "Ready").
  * - `start`: nothing set up yet; the row is the first step.
- * - `optional`: usable with nothing to set.
  * - `count`: a neutral figure (Admin's "2 recorded" / "1 not recorded").
  * - `not-checked`: the read failed or is still running, so nothing is claimed.
  */
-export type AreaState = "ready" | "start" | "optional" | "count" | "not-checked";
+export type AreaState = "ready" | "start" | "count" | "not-checked";
 
 export type AreaRow = {
   readonly id: AreaId;
@@ -112,18 +110,12 @@ export function teachingArea(loaded: Loaded<{ teams: number }>): AreaRow {
   };
 }
 
-export function cpdArea(
-  loaded: Loaded<{ configured: boolean; routines: number }>,
-  stage: WorkStagePreference | null,
-  ranzcpStage: number | null = null,
-): AreaRow {
-  // The Medical Board (checked 5 Oct 2026): for PGY3+ doctors in college
-  // training, "Your CPD is taken care of in your training."
-  // Self-reported, so no tick: a neutral "Covered", and only once a RANZCP stage
-  // is chosen (a service registrar outside training still needs a CPD home).
-  if (stage === "registrar" && ranzcpStage) {
-    return { id: "cpd", title: "CPD", subtitle: "Through your RANZCP training", state: "optional", label: "Covered" };
-  }
+/**
+ * CPD from the CPD read alone. Whether college training covers a doctor's CPD is
+ * not claimed here: that is CPD's one rule (from the training record), and its
+ * wording awaits a clinician's decision. A self-chosen stage never says "Covered".
+ */
+export function cpdArea(loaded: Loaded<{ configured: boolean; routines: number }>): AreaRow {
   if (loaded.status !== "ready") return notChecked("cpd", "CPD", loaded);
   if (!loaded.value.configured) {
     return {

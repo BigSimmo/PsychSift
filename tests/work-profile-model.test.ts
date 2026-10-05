@@ -38,7 +38,7 @@ describe("a read that has not finished or failed never claims anything", () => {
     ["failed", "Didn’t load"],
     ["signed-out", "Didn’t load"],
   ] as const)("%s shows Not checked on every data-backed area", (status, subtitle) => {
-    const rows = [rosterArea({ status }), teachingArea({ status }), cpdArea({ status }, null), adminArea({ status })];
+    const rows = [rosterArea({ status }), teachingArea({ status }), cpdArea({ status }), adminArea({ status })];
     for (const row of rows) {
       expect(row.state).toBe("not-checked");
       expect(row.label).toBe("Not checked");
@@ -65,18 +65,15 @@ describe("area rows", () => {
     expect(teachingArea({ status: "ready", value: { teams: 1 } }).subtitle).toBe("1 team followed");
   });
 
-  it("CPD: a registrar's CPD is through training, whatever the CPD read did", () => {
-    expect(cpdArea({ status: "failed" }, "registrar", 2)).toMatchObject({
-      state: "optional",
-      label: "Covered",
-      subtitle: "Through your RANZCP training",
-    });
-    // No RANZCP stage chosen: not assumed to be in training.
-    expect(cpdArea({ status: "failed" }, "registrar", null).state).toBe("not-checked");
-    expect(cpdArea({ status: "ready", value: { configured: false, routines: 0 } }, "consultant").state).toBe("start");
-    expect(cpdArea({ status: "ready", value: { configured: true, routines: 2 } }, null).subtitle).toBe(
+  it("CPD comes from the CPD read alone; a self-chosen stage never says Covered", () => {
+    expect(cpdArea({ status: "failed" }).state).toBe("not-checked");
+    expect(cpdArea({ status: "ready", value: { configured: false, routines: 0 } }).state).toBe("start");
+    expect(cpdArea({ status: "ready", value: { configured: true, routines: 2 } }).subtitle).toBe(
       "This year’s plan and 2 routines",
     );
+    for (const status of ["loading", "failed", "signed-out"] as const) {
+      expect(cpdArea({ status }).label).not.toBe("Covered");
+    }
   });
 
   it("On Call reports the hospital phone setting", () => {

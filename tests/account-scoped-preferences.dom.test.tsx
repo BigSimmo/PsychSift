@@ -11,7 +11,6 @@ vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => ({ status: "sign
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { APP_PREFERENCES_STORAGE_KEY, clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
-import { cpdArea } from "@/lib/work-profile/model";
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -28,7 +27,7 @@ describe("account transition and the work stage", () => {
     expect(stored).toEqual({ density: "compact" });
   });
 
-  it("the open store drops the stage, so CPD no longer says Covered", () => {
+  it("the open store drops the stage at once", () => {
     window.localStorage.setItem(
       APP_PREFERENCES_STORAGE_KEY,
       JSON.stringify({ workStage: "registrar", ranzcpStage: 2 }),
@@ -39,7 +38,6 @@ describe("account transition and the work stage", () => {
     const { workStage, ranzcpStage } = result.current.preferences;
     expect(workStage).toBeNull();
     expect(ranzcpStage).toBeNull();
-    expect(cpdArea({ status: "loading" }, workStage, ranzcpStage).label).toBe("Not checked");
   });
 
   it("leaves preferences without a stage untouched", () => {
