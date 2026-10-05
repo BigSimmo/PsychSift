@@ -42,12 +42,28 @@ afterEach(() => {
 });
 
 const team = { serviceId: "example", name: "Example team", enabled: true, role: "member", grade: "registrar" };
-function mockTeam(enabled = true, sample = false) {
+const samsNight = {
+  id: "night",
+  userId: "sam",
+  name: "Dr Sam Example",
+  grade: "registrar",
+  siteId: "site",
+  siteName: "Example Hospital",
+  startsAt: "2026-10-15T21:30:00+08:00",
+  endsAt: "2026-10-16T08:00:00+08:00",
+  shiftCode: "N",
+  kind: "night",
+};
+function mockTeam(enabled = true, sample = false, assignments: unknown[] = [samsNight], role = "member") {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => {
       if (url === "/api/roster/team")
-        return Response.json({ actorId: "alex", teams: [{ ...team, enabled }], ...(sample ? { sample: true } : {}) });
+        return Response.json({
+          actorId: "alex",
+          teams: [{ ...team, enabled, role }],
+          ...(sample ? { sample: true } : {}),
+        });
       if (url.includes("what=overview"))
         return Response.json({
           service: { id: "example", name: "Example team" },
@@ -57,22 +73,7 @@ function mockTeam(enabled = true, sample = false) {
           settings: { rules: {} },
           sites: [],
         });
-      return Response.json({
-        assignments: [
-          {
-            id: "night",
-            userId: "sam",
-            name: "Dr Sam Example",
-            grade: "registrar",
-            siteId: "site",
-            siteName: "Example Hospital",
-            startsAt: "2026-10-15T21:30:00+08:00",
-            endsAt: "2026-10-16T08:00:00+08:00",
-            shiftCode: "N",
-            kind: "night",
-          },
-        ],
-      });
+      return Response.json({ assignments });
     }),
   );
 }
@@ -111,5 +112,68 @@ describe("Roster team journey", () => {
     render(<RosterTeamPage />);
     expect(await screen.findByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.queryByText("No shifts on this day.")).toBeNull();
+  });
+  it("lists who is on tomorrow and says plainly when the reader is off", async () => {
+    mockTeam();
+    render(<RosterTeamPage now={new Date("2026-10-14T00:00:00Z")} />);
+    const list = await screen.findByTestId("roster-team-tomorrow");
+    expect(screen.getByRole("heading", { name: "On tomorrow" })).toBeTruthy();
+    expect(screen.getByText("Thu 15 Oct · you're off")).toBeTruthy();
+    expect(list.textContent).toContain("Dr Sam Example");
+    expect(list.textContent).toContain("Night · 21:30–08:00 +1");
+  });
+  it("lists the colleagues whose shifts overlap the reader's shift tomorrow", async () => {
+    const mine = {
+      ...samsNight,
+      id: "mine",
+      userId: "alex",
+      name: "Alex Example",
+      startsAt: "2026-10-15T13:00:00+08:00",
+      endsAt: "2026-10-15T22:00:00+08:00",
+      shiftCode: "E",
+      kind: "evening",
+    };
+    const early = {
+      ...samsNight,
+      id: "early",
+      userId: "pat",
+      name: "Dr Pat Example",
+      startsAt: "2026-10-15T07:00:00+08:00",
+      endsAt: "2026-10-15T12:00:00+08:00",
+      kind: "day",
+    };
+    mockTeam(true, false, [mine, samsNight, early]);
+    render(<RosterTeamPage now={new Date("2026-10-14T00:00:00Z")} />);
+    const list = await screen.findByTestId("roster-team-tomorrow");
+    expect(screen.getByRole("heading", { name: "On with you tomorrow" })).toBeTruthy();
+    expect(screen.getByText("Thu 15 Oct · you're on evening")).toBeTruthy();
+    expect(list.textContent).toContain("Dr Sam Example");
+    // Pat's shift ends before Alex's starts, so Pat is not "on with" Alex.
+    expect(list.textContent).not.toContain("Dr Pat Example");
+  });
+  it("says nobody is on tomorrow rather than showing an empty list", async () => {
+    mockTeam(true, false, []);
+    render(<RosterTeamPage now={new Date("2026-10-14T00:00:00Z")} />);
+    expect(await screen.findByText("Nobody on the team is rostered tomorrow.")).toBeTruthy();
+    expect(screen.queryByTestId("roster-team-tomorrow")).toBeNull();
+  });
+  it("offers Join a team, and Manage a team only to a manager", async () => {
+    mockTeam();
+    const { unmount } = render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
+    expect((await screen.findByRole("link", { name: /Join a team/ })).getAttribute("href")).toBe("/roster/join");
+    expect(screen.queryByRole("link", { name: /Manage a team/ })).toBeNull();
+    unmount();
+    mockTeam(true, false, [samsNight], "manager");
+    render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
+    expect((await screen.findByRole("link", { name: /Manage a team/ })).getAttribute("href")).toBe("/roster/manage");
+  });
+  it("names the week and explains the calendar's real letters", async () => {
+    url.set("");
+    mockTeam();
+    render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
+    expect(await screen.findByRole("heading", { name: "Team week · 12 to 18 Oct" })).toBeTruthy();
+    expect(screen.getByTestId("roster-team-legend").textContent).toBe(
+      "D day · E evening · N night · C on call · L leave · W other work · blank is off.",
+    );
   });
 });
