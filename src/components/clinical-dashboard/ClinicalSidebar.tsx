@@ -115,6 +115,7 @@ const sidebarMoreModeIds = [
   "psychiatry",
   "my-work",
   "roster",
+  "open-shifts",
   "first-nations",
   "my-day",
   "medicines",

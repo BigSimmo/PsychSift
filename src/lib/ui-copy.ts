@@ -168,6 +168,11 @@ export const sharedHomePresentation = {
     subtitle: "Medication, calculators, clinical tools, factsheets and the dictionary.",
     suggestions: ["lithium monitoring", "clozapine", "valproate"],
   },
+  "open-shifts": {
+    title: "Open shifts",
+    subtitle: "Extra shifts in your Roster teams",
+    suggestions: ["this weekend", "night shifts", "my applications"],
+  },
 } as const satisfies Record<AppModeId, SharedHomePresentation>;
 
 /** Browser/assistive-technology title for the mode selected on the shared home. */

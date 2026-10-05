@@ -1242,6 +1242,41 @@ body {
   }
 }
 
+/* Open shifts: a deeper violet than Roster's, its parent team mode, so the
+   two read as related but distinct. Light #5b3f8f, dark #bba5e8 with a
+   declared dark contrast partner, as Roster's is. Same delivery mechanism:
+   the local `--clinical-accent` remap, scoped to the elements carrying the
+   attribute. */
+[data-mode-identity="open-shifts"] {
+  --mode-identity: #5b3f8f;
+  --mode-identity-soft: #f1ecf9;
+  --mode-identity-border: #dcd0ef;
+  --mode-identity-contrast: #ffffff;
+
+  --clinical-accent: var(--mode-identity);
+  --clinical-accent-soft: var(--mode-identity-soft);
+  --clinical-accent-border: var(--mode-identity-border);
+  --clinical-accent-contrast: var(--mode-identity-contrast);
+}
+
+.dark [data-mode-identity="open-shifts"] {
+  --mode-identity: #bba5e8;
+  --mode-identity-soft: #251c3c;
+  --mode-identity-border: #3d3158;
+  --mode-identity-contrast: #170f26;
+}
+
+@media (forced-colors: active) {
+  /* Its own rule, as Roster's is, so a grouped selector cannot stop this from
+     matching an exact-selector read. */
+  [data-mode-identity="open-shifts"] {
+    --mode-identity: LinkText;
+    --mode-identity-soft: Canvas;
+    --mode-identity-border: ButtonBorder;
+    --mode-identity-contrast: ButtonText;
+  }
+}
+
 /* Teaching: plum, for the pill, the current tab and module icon tiles only.
    Light #7a3b6e (spec §6). Dark is the calmer #cfa3c6 of v4.2, cleared as a
    fill under #2a0f24 as well as as text. Buttons, links and selection stay

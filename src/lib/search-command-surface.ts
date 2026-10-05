@@ -322,6 +322,18 @@ const searchCommandSurfaceByMode: Partial<Record<AppModeId, SearchCommandSurface
     crossModes: ["prescribing", "calculators", "tools"],
     remoteSearchEnabled: false,
   },
+  "open-shifts": {
+    // Open shifts lists adverts from the reader's own Roster teams, already in
+    // the browser, so its command panel must not query the remote index.
+    examples: [...sharedHomePresentation["open-shifts"].suggestions],
+    suggestions: [
+      { text: "this weekend", meta: "Browse" },
+      { text: "night shifts", meta: "Browse" },
+      { text: "my applications", meta: "My shifts" },
+    ],
+    crossModes: ["roster", "my-day", "on-call"],
+    remoteSearchEnabled: false,
+  },
 };
 
 export function searchCommandSurfaceConfig(modeId: AppModeId): SearchCommandSurfaceConfig | null {

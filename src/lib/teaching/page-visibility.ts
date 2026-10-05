@@ -65,7 +65,46 @@ export function useRosterHasEnabledTeam(): boolean | null {
   );
 }
 
+/**
+ * Open shifts uses the same in-tab store for "may post": Post stays hidden
+ * until an Open shifts read confirms the reader manages a Roster team. A
+ * convenience, not a control: the server refuses posting whatever this says,
+ * and the direct URL still opens and shows its own empty state.
+ *
+ * null = not yet known (hide Post); true once poster rights are confirmed.
+ */
+let openShiftsIsPoster: boolean | null = null;
+const openShiftsListeners = new Set<() => void>();
+
+export function setOpenShiftsIsPoster(isPoster: boolean): void {
+  if (openShiftsIsPoster === isPoster) return;
+  openShiftsIsPoster = isPoster;
+  for (const listener of openShiftsListeners) listener();
+  // The page lists (mode band tabs, top-bar page sheet) recompute only when
+  // the Teaching roles snapshot changes identity, and read the poster flag
+  // through `modePageVisible`'s default argument. Re-issue that snapshot with
+  // a new identity (same roles) so those lists pick the change up at once.
+  current = current.length === 0 ? [] : [...current];
+  for (const listener of listeners) listener();
+}
+
+function subscribeOpenShifts(listener: () => void) {
+  openShiftsListeners.add(listener);
+  return () => {
+    openShiftsListeners.delete(listener);
+  };
+}
+
+export function useOpenShiftsIsPoster(): boolean | null {
+  return useSyncExternalStore(
+    subscribeOpenShifts,
+    () => openShiftsIsPoster,
+    () => null,
+  );
+}
+
 const ORGANISER_PAGES: ReadonlySet<string> = new Set(["organise"]);
+const OPEN_SHIFTS_POSTER_PAGES: ReadonlySet<string> = new Set(["open-shifts-post"]);
 const ROSTER_TEAM_PAGES: ReadonlySet<string> = new Set(["team", "swaps"]);
 
 export function modePageVisible(
@@ -73,9 +112,11 @@ export function modePageVisible(
   pageId: string,
   roles: readonly TeachingRole[],
   rosterTeam: boolean | null = rosterHasTeam,
+  openShiftsPoster: boolean | null = openShiftsIsPoster,
 ): boolean {
   if (modeId === "teaching" && ORGANISER_PAGES.has(pageId))
     return roles.some((role) => role === "organiser" || role === "admin");
   if (modeId === "roster" && ROSTER_TEAM_PAGES.has(pageId)) return rosterTeam === true;
+  if (modeId === "open-shifts" && OPEN_SHIFTS_POSTER_PAGES.has(pageId)) return openShiftsPoster === true;
   return true;
 }

@@ -36,6 +36,7 @@ import { useClientTime } from "@/lib/use-client-time";
 const IDENTITY_MODES: ReadonlySet<AppModeId> = new Set([
   "cme",
   "roster",
+  "open-shifts",
   "teaching",
   "my-work",
   "on-call",

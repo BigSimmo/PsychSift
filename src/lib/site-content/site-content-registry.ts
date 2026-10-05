@@ -29,6 +29,7 @@ export type SiteContentProducerDefinition = {
     | "teaching"
     | "my-day"
     | "medicines"
+    | "open-shifts"
   >;
   corpusScope: SiteContentCorpusScope;
   domain: SiteContentDomain;
@@ -366,6 +367,16 @@ export const siteContentModeExclusions = [
     // modes. It holds no content of its own, so there is nothing to publish.
     modeId: "medicines",
     reason: "operational_chrome",
+    permanent: true,
+    reviewed: true,
+    reviewOwner: "clinical_content_governance",
+  },
+  {
+    // Open shifts holds extra-shift adverts and applications inside the
+    // owner's Roster teams. It publishes nothing: the records are private user
+    // state and must never become a retrieval corpus.
+    modeId: "open-shifts",
+    reason: "private_user_state",
     permanent: true,
     reviewed: true,
     reviewOwner: "clinical_content_governance",

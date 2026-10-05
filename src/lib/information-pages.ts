@@ -29,7 +29,8 @@ export type InformationPageMode =
   | "first-nations"
   | "my-day"
   | "medicines"
-  | "teaching";
+  | "teaching"
+  | "open-shifts";
 
 // Reserved route suffixes, not record slugs. `search` is here because home
 // consolidation gave every consolidated mode a `<mode>/search` results route:
@@ -113,6 +114,9 @@ export function isInformationPage(pathname: string): boolean {
   // path rather than a slug detail, so it needs its own test.
   if (isSlugDetail(pathname, "/roster")) return true;
   if (pathname === "/roster") return true;
+  // Every Open shifts route, the mode home included, for Roster's reason: the
+  // mode declares no search surface, so no route may wear a composer.
+  if (pathname === "/open-shifts" || pathname.startsWith("/open-shifts/")) return true;
   // Every First Nations route, the mode home included: the mode owns its own
   // in-page search box on every page (standard §13), so it has no composer of
   // the shared kind on any route and this is what keeps the shell from
@@ -174,4 +178,5 @@ export const informationPageShellModes = [
   "teaching",
   "my-day",
   "medicines",
+  "open-shifts",
 ] as const satisfies readonly InformationPageMode[];

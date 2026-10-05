@@ -27,6 +27,7 @@ const routeOwnedSubmittedSearchModes = new Set<AppModeId>([
   "first-nations",
   "my-day",
   "medicines",
+  "open-shifts",
 ]);
 
 /**
@@ -77,6 +78,8 @@ export const standaloneModeHomePaths = [
   "/teaching",
   // My Day's merged list, for the same reason again: no results surface.
   "/my-day",
+  // Open shifts' Browse list, for Roster's reason: no results surface.
+  "/open-shifts",
 ] as const;
 
 /**
@@ -155,6 +158,9 @@ export function standaloneModeHomeHref(mode: AppModeId): string | null {
     // My Day's merged list at `/my-day`, likewise with no results surface.
     case "my-day":
       return "/my-day";
+    // Open shifts' Browse list at `/open-shifts`, likewise with no results surface.
+    case "open-shifts":
+      return "/open-shifts";
     default:
       return null;
   }
@@ -226,6 +232,7 @@ const alwaysStandaloneShellPathPrefixes = [
   "/first-nations",
   "/teaching",
   "/my-day",
+  "/open-shifts",
 ] as const;
 
 /**
