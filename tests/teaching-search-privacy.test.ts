@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -49,6 +49,23 @@ function withoutAllowedStorageAccess(source: string): string {
   return source.replace(accessor, "");
 }
 
+/**
+ * The term tracker and exam prep store (2026-10-05): the doctor's own term dates, EPA counts and study
+ * log, kept on the device under the two account-scoped keys the auth provider clears at sign-out. This
+ * one file may touch localStorage, and only through those two named keys: it must import both from
+ * `account-scoped-browser-state` and spell no storage key of its own.
+ */
+const TERM_TRACKER_STORE = "src/lib/teaching/term-tracker-store.ts";
+
+function withoutApprovedTermTrackerStorage(path: string, source: string): string {
+  if (!path.split(sep).join("/").endsWith(TERM_TRACKER_STORE)) return source;
+  expect(source).toMatch(/TEACHING_TERM_TRACKER_STORAGE_KEY/);
+  expect(source).toMatch(/TEACHING_EXAM_PREP_STORAGE_KEY/);
+  expect(source).toContain('"@/lib/account-scoped-browser-state"');
+  expect(source, "the store spells no storage key of its own").not.toMatch(/Item\(\s*["'`]/);
+  return source.replace(/\blocalStorage\b/g, "");
+}
+
 function files(): string[] {
   const found: string[] = [];
   const walk = (dir: string) => {
@@ -71,7 +88,7 @@ describe("Teaching search privacy", () => {
 
   it.each(all)("%s reaches for no composer, microphone, search API, unapproved device storage or push", (path) => {
     const source = readFileSync(path, "utf8");
-    const sanitized = withoutAllowedStorageAccess(source);
+    const sanitized = withoutApprovedTermTrackerStorage(path, withoutAllowedStorageAccess(source));
     for (const specifier of FORBIDDEN_IMPORTS)
       expect(source, `${path} imports ${specifier}`).not.toContain(`"${specifier}"`);
     for (const [pattern, what] of FORBIDDEN_TEXT) expect(sanitized, `${path} reaches ${what}`).not.toMatch(pattern);
