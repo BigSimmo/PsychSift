@@ -52,7 +52,10 @@ describe("AdminComplianceExportPage", () => {
   it("previews the rule and its source by default and lets the reader add or drop columns", () => {
     render(<AdminComplianceExportPage now={NOW} />);
     const preview = screen.getByTestId("admin-compliance-export-preview");
-    const headers = () => within(preview).getAllByRole("columnheader").map((cell) => cell.textContent);
+    const headers = () =>
+      within(preview)
+        .getAllByRole("columnheader")
+        .map((cell) => cell.textContent);
     expect(headers()).toEqual(["Item", "Group", "Status", "Date you recorded", "Rule", "Source"]);
     fireEvent.click(screen.getByTestId("admin-compliance-export-column-group"));
     expect(headers()).toEqual(["Item", "Status", "Date you recorded", "Rule", "Source"]);
