@@ -416,7 +416,7 @@
    mounted; nothing else about the top bar changes. */
 html[data-mode-band] .edge-glass-header,
 html[data-mode-band] [data-testid="chrome-safe-area-top"] {
-  background: var(--mode-band-surface);
+  background: var(--mode-band-surface, var(--background));
 }
 
 /* Under a band a page's own title is kept for screen readers only. A wrapper
