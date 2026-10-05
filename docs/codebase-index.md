@@ -386,6 +386,17 @@ to ring, the display formatter, desk-only and pause-dial numbers), `handbook-tit
 `clearOnCallDeviceState()`). The API is `/api/on-call/entries`, `[id]`, and `[id]/verify` — the last
 being the one-tap "still correct today" action that resets the freshness clock.
 
+**Handover and Shift pulse** (5 Oct 2026, linked from Now's footer). `/on-call/handover`
+(`src/components/on-call/handover/handover-page.tsx` over `src/lib/on-call/handover.ts`) is the
+psychiatry handover form: one record per patient (bed or initials, ward, legal, impression, story,
+referrals, requires review, plan), a table, Copy as table and Print. It is kept only through
+`src/lib/patient-label-storage.ts`, so it is wiped at shift end and at sign-out, and no work-search
+file may import it. `/on-call/pulse` (`src/components/on-call/pulse/shift-pulse-page.tsx`) draws
+calls by hour from `src/lib/on-call/call-counts.ts` (counts only, fed by the call log, a sign-out
+device store) and, while the signed fatigue rules are on, the rest before the next rostered shift.
+"Who do I call now?" (`/on-call/now`) can start the ladder: it times each call on screen and saves
+nothing.
+
 **Storage.** `on_call_entries` is owner-scoped with RLS enabled and revoked from `anon` and
 `authenticated`; reads and writes go through the service-role client at the API layer, the same
 application-layer ownership model as `clinical_registry_records`.
@@ -420,6 +431,14 @@ time; no patient detail), written by `src/components/psychiatry/psychiatry-visit
 the search-app layout only while "Save recent searches" is on. It feeds the hub's Continue list,
 monthly ring and most-opened forms, is cleared with recent searches and at account transitions,
 and expires after 90 days.
+
+**MHA clock.** `/psychiatry/mha-clock` (`src/components/psychiatry/mha-clock-page.tsx`) lists every
+Mental Health Act form the reader is holding, from `src/lib/psychiatry-hub/mha-clocks.ts`: a form
+code, the time it was made and an opaque id, kept through `src/lib/patient-label-storage.ts` so it
+clears at shift end and every account transition. No patient label field exists (owner decision
+pending). Limits come only from `mhaTimers` (`src/lib/on-call/mha-timers.ts`), so a countdown shows
+only while the signed switch is on; otherwise the owner-approved quote-only lines from the form-page
+Timeline. Linked from the hub's "For a shift" card and Tools list.
 
 **My shifts moved to Roster.** The doctor's own roster now lives in **`src/lib/roster/`**
 (`src/lib/roster/shifts/`, moved from the old On Call shifts folder, plus `shift-kind.ts` for the
@@ -589,6 +608,13 @@ Held organiser and supervision changes cancel on leaving during their Undo perio
 The owner-scoped calendar consent read enriches `week.read` from `teaching_calendar_optins`;
 failed reads never display a false opt-out. Legacy On Call teaching remains available until
 an approved service transfer; new recording resources remain deferred.
+
+The term tracker and exam prep (`/teaching/term`, opened from Logbook's Term card, and
+`/teaching/exam-prep`, opened from Resources and from Term) keep the doctor's own records on the
+device only: `term-tracker.ts` holds the model, validation, date arithmetic and the made-up
+signed-out sample, and `term-tracker-store.ts` reads and writes two account-scoped localStorage
+keys that the auth provider clears at sign-out. No API, no table. Term assessments are signed in
+the CLA ePortfolio, which the page links to; EPA targets apply only once the doctor confirms them.
 
 `api.ts` and `repository.ts` wrap every database call and map its errors to plain words;
 `request.ts` parses request bodies while keeping Teaching's own plain messages, and

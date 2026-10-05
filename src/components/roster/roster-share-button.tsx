@@ -1,7 +1,7 @@
 "use client";
 
 import { Copy, Share2 } from "lucide-react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
@@ -24,10 +24,13 @@ export function RosterShareButton({
   shifts,
   now,
   testId = "roster-share",
+  trigger,
 }: {
   readonly shifts: readonly ShareShift[];
   readonly now: Date;
   readonly testId?: string;
+  /** Draws the opener instead of the default button (a list row on Shifts). */
+  readonly trigger?: (open: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [days, setDays] = useState<Span>(7);
@@ -64,6 +67,11 @@ export function RosterShareButton({
     clipboard.writeText(text).then(copied, selectForManualCopy);
   }
 
+  function openSheet() {
+    setManual(false);
+    setOpen(true);
+  }
+
   function share() {
     navigator.share({ text }).then(
       () => setManual(false),
@@ -77,17 +85,13 @@ export function RosterShareButton({
 
   return (
     <>
-      <Button
-        icon={Share2}
-        variant="secondary"
-        data-testid={testId}
-        onClick={() => {
-          setManual(false);
-          setOpen(true);
-        }}
-      >
-        Share my shifts
-      </Button>
+      {trigger ? (
+        trigger(openSheet)
+      ) : (
+        <Button icon={Share2} variant="secondary" data-testid={testId} onClick={openSheet}>
+          Share my shifts
+        </Button>
+      )}
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
