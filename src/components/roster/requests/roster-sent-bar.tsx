@@ -1,9 +1,11 @@
 "use client";
 
+import { CheckCircle2, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ROSTER_UNDO_MS } from "@/components/roster/roster-format";
-import { Button } from "@/components/ui/button";
+import { rosterOutlineButton } from "@/components/roster/roster-list";
+import { cn } from "@/components/ui-primitives";
 
 export type SentReceipt = { message: string; undo?: () => Promise<void> };
 
@@ -26,13 +28,33 @@ export function RosterSentBar({ receipt, clear }: { receipt: SentReceipt | null;
   return (
     <div
       role="status"
-      className="flex items-center justify-between gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-3"
+      className={cn(
+        "flex min-w-0 items-center gap-2.5 rounded-lg py-1.5 pl-3.5 pr-1.5 text-sm text-[color:var(--text)] forced-colors:border",
+        error
+          ? "border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)]"
+          : "bg-[color:color-mix(in_oklab,var(--text-heading)_7%,var(--surface-raised))]",
+      )}
     >
-      <span>{error ?? receipt.message}</span>
+      {error ? (
+        <TriangleAlert
+          aria-hidden="true"
+          strokeWidth={1.6}
+          className="size-icon-md shrink-0 text-[color:var(--warning-text)]"
+        />
+      ) : (
+        <CheckCircle2
+          aria-hidden="true"
+          strokeWidth={1.6}
+          className="size-icon-md shrink-0 text-[color:var(--text-muted)]"
+        />
+      )}
+      <span className="min-w-0 flex-1 break-words py-2">{error ?? receipt.message}</span>
       {receipt.undo ? (
-        <Button
-          variant="secondary"
-          busy={busy}
+        <button
+          type="button"
+          className={cn(rosterOutlineButton, "shrink-0 px-4")}
+          disabled={busy}
+          aria-busy={busy || undefined}
           onClick={() => {
             setBusy(true);
             void receipt.undo!().then(clear, () => {
@@ -41,8 +63,8 @@ export function RosterSentBar({ receipt, clear }: { receipt: SentReceipt | null;
             });
           }}
         >
-          Undo
-        </Button>
+          {busy ? "Undoing…" : "Undo"}
+        </button>
       ) : null}
     </div>
   );
