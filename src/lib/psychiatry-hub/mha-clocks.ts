@@ -62,6 +62,8 @@ export const EMPTY_MHA_CLOCKS: readonly MhaClock[] = Object.freeze([]);
 export const EMPTY_MHA_CLOCK_STATE: MhaClockState = Object.freeze({ clocks: EMPTY_MHA_CLOCKS, unreadable: false });
 const UNREADABLE_STATE: MhaClockState = Object.freeze({ clocks: EMPTY_MHA_CLOCKS, unreadable: true });
 
+const MAX_DATE_MS = 8.64e15;
+
 function isClock(value: unknown): value is MhaClock {
   if (value === null || typeof value !== "object") return false;
   const row = value as Record<string, unknown>;
@@ -71,7 +73,9 @@ function isClock(value: unknown): value is MhaClock {
     typeof row.formCode === "string" &&
     FORM_CODE.test(row.formCode) &&
     typeof row.madeAt === "number" &&
-    Number.isFinite(row.madeAt)
+    Number.isFinite(row.madeAt) &&
+    // Outside the range a Date can hold, the time would throw when shown rather than read as damaged.
+    Math.abs(row.madeAt) <= MAX_DATE_MS
   );
 }
 
@@ -227,6 +231,10 @@ export function restoreMhaClock(clock: MhaClock): AddMhaClockResult {
   return save([...current, clock]) ? "added" : "not-saved";
 }
 
+/**
+ * Forget every clock on this device. Also run for a stored session the auth server rejected on
+ * boot, where no account transition fires, so the account-scoped sweep never reaches this store.
+ */
 export function clearMhaClocks(): void {
   save(EMPTY_MHA_CLOCKS);
 }

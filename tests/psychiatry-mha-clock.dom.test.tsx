@@ -95,6 +95,10 @@ describe("MHA clock store", () => {
     expect(parseMhaClocks("{nope")).toEqual([]);
     expect(parseMhaClockState(raw).unreadable).toBe(true);
     expect(parseMhaClockState("{nope").unreadable).toBe(true);
+    const outOfRange = parseMhaClockState(
+      JSON.stringify({ v: 1, clocks: [{ id: "abcdefgh-1", formCode: "2", madeAt: Number.MAX_VALUE }] }),
+    );
+    expect(outOfRange).toEqual({ clocks: [], unreadable: true });
     expect(parseMhaClockState(null)).toEqual({ clocks: [], unreadable: false });
   });
 
@@ -299,6 +303,38 @@ describe("MhaClockPage", () => {
       expect(screen.getByTestId("mha-clock-undo")).toBeTruthy();
       act(() => {
         fireEvent.blur(screen.getByTestId("mha-clock-undo-button"));
+        vi.advanceTimersByTime(8_000);
+      });
+      expect(screen.queryByTestId("mha-clock-undo")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps Undo while focus or the pointer remains, and only counts down once both have left", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      addMhaClock("2", new Date("2026-10-05T09:00:00Z"));
+      render(<MhaClockPage forms={forms} now={now} />);
+      act(() => {
+        fireEvent.click(screen.getByTestId("mha-clock-remove"));
+      });
+      const bar = () => screen.getByTestId("mha-clock-undo");
+      act(() => {
+        fireEvent.pointerEnter(bar());
+        fireEvent.focus(screen.getByTestId("mha-clock-undo-button"));
+        fireEvent.pointerLeave(bar());
+        vi.advanceTimersByTime(20_000);
+      });
+      expect(bar()).toBeTruthy();
+      act(() => {
+        fireEvent.pointerEnter(bar());
+        fireEvent.blur(screen.getByTestId("mha-clock-undo-button"));
+        vi.advanceTimersByTime(20_000);
+      });
+      expect(bar()).toBeTruthy();
+      act(() => {
+        fireEvent.pointerLeave(bar());
         vi.advanceTimersByTime(8_000);
       });
       expect(screen.queryByTestId("mha-clock-undo")).toBeNull();

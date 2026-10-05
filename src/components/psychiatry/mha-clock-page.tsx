@@ -538,6 +538,8 @@ function HandoverCopy({
   );
 }
 
+type UndoHold = "focus" | "pointer";
+
 function UndoBar({
   removed,
   onUndo,
@@ -547,8 +549,8 @@ function UndoBar({
 }: {
   readonly removed: MhaClock | null;
   readonly onUndo: () => void;
-  readonly onHold: () => void;
-  readonly onRelease: () => void;
+  readonly onHold: (reason: UndoHold) => void;
+  readonly onRelease: (reason: UndoHold) => void;
   readonly message: string | null;
 }) {
   return (
@@ -559,10 +561,13 @@ function UndoBar({
       {removed || message ? (
         <div
           data-testid="mha-clock-undo"
-          onFocus={onHold}
-          onBlur={onRelease}
-          onPointerEnter={onHold}
-          onPointerLeave={onRelease}
+          onFocus={() => onHold("focus")}
+          onBlur={(event) => {
+            // Focus moving between parts of the bar is not focus leaving it.
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onRelease("focus");
+          }}
+          onPointerEnter={() => onHold("pointer")}
+          onPointerLeave={() => onRelease("pointer")}
           className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-xl bg-[color:var(--dash-ink)] py-1 pr-1 pl-4 text-sm text-[color:var(--dash-page)] shadow-[var(--dash-shadow)] forced-colors:border"
         >
           <span className="nums min-w-0 py-2">{message ?? `Form ${removed?.formCode} clock removed`}</span>
@@ -600,6 +605,7 @@ function useUndo() {
   const [removed, setRemoved] = useState<MhaClock | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
+  const holds = useRef(new Set<UndoHold>());
   const clear = useCallback(() => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
@@ -642,8 +648,16 @@ function useUndo() {
   };
   const say = (text: string) => show(null, text);
   // The bar waits while it has focus or the pointer, so Undo is never taken away mid-reach
-  // (WCAG 2.2.1); the countdown starts again when focus or the pointer leaves.
-  return { removed, message, remove, undo, say, hold: clear, release: startTimer };
+  // (WCAG 2.2.1); the countdown starts again only once neither is left.
+  const hold = (reason: UndoHold) => {
+    holds.current.add(reason);
+    clear();
+  };
+  const release = (reason: UndoHold) => {
+    holds.current.delete(reason);
+    if (holds.current.size === 0) startTimer();
+  };
+  return { removed, message, remove, undo, say, hold, release };
 }
 
 export function MhaClockPage({
