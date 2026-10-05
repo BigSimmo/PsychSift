@@ -65,7 +65,7 @@ export function Pill({ pill }: { pill: PillValue }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md border px-2 py-0.5 text-2xs leading-4 font-bold tracking-label uppercase forced-colors:border",
+        "inline-flex items-center whitespace-nowrap rounded-md border px-2 py-0.5 text-2xs leading-4 font-bold tracking-label uppercase forced-colors:border",
         PILL_TONES[pill.tone],
       )}
     >
@@ -77,7 +77,7 @@ export function Pill({ pill }: { pill: PillValue }) {
 /** A section label with an optional link or note on the right. */
 export function SectionLabel({ children, end, id }: { children: ReactNode; end?: ReactNode; id?: string }) {
   return (
-    <div className="mt-1 flex min-h-7 items-center justify-between gap-2 px-1">
+    <div className="-mb-1 mt-2 flex min-h-7 items-center justify-between gap-2 px-1">
       <h2 id={id} className={labelText}>
         {children}
       </h2>
@@ -93,7 +93,7 @@ export function SectionNote({ children }: { children: ReactNode }) {
 export function TextLink({ href, onClick, children }: { href?: string; onClick?: () => void; children: ReactNode }) {
   const cls = cn(
     focusRing,
-    "inline-flex min-h-12 items-center text-sm-minus font-medium text-[color:var(--mode-identity)] no-underline",
+    "-my-3 inline-flex min-h-12 items-center text-sm-minus font-medium text-[color:var(--mode-identity)] no-underline",
   );
   if (href)
     return (

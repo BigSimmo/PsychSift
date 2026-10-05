@@ -521,6 +521,7 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
             <Button
               variant="primary"
               block
+              icon={sup ? Eye : Check}
               disabled={!ok}
               aria-describedby={ok ? undefined : whyId}
               onClick={() => {
@@ -528,11 +529,6 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
                 go(sup ? viewHref("side", { as: "supervisor" }) : viewHref("hub"));
               }}
             >
-              {sup ? (
-                <Eye aria-hidden="true" className="size-icon-sm" />
-              ) : (
-                <Check aria-hidden="true" className="size-icon-sm" />
-              )}
               {sup
                 ? first
                   ? `Finish draft and see ${DOC.first}'s view`
@@ -589,13 +585,12 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
       {stepIndex < LAST_FORM_STEP ? (
         <div className="sticky bottom-0 z-[var(--z-raised)] -mx-3 flex gap-2 border-t border-[color:var(--border)] bg-[color:var(--background)] px-3 py-2">
           {stepIndex > 0 ? (
-            <Button variant="secondary" aria-label="Previous step" onClick={() => setStep(stepIndex - 1)}>
-              <ChevronLeft aria-hidden="true" className="size-icon-sm" />
+            <Button icon={ChevronLeft} variant="secondary" onClick={() => setStep(stepIndex - 1)}>
+              <span className="sr-only">Previous step</span>
             </Button>
           ) : null}
-          <Button variant="primary" block onClick={() => setStep(stepIndex + 1)}>
+          <Button variant="primary" block trailingIcon={ChevronRight} onClick={() => setStep(stepIndex + 1)}>
             {stepIndex === 0 ? "Start" : "Next"}
-            <ChevronRight aria-hidden="true" className="size-icon-sm" />
           </Button>
         </div>
       ) : null}

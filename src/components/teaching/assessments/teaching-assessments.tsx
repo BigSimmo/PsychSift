@@ -18,9 +18,8 @@ import { SideBySide, SupervisorHome, SupervisorTimes } from "@/components/teachi
 import { viewHref, type AssessmentsView } from "@/components/teaching/assessments/assessments-parts";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { cn, fieldControlPlain, textMuted } from "@/components/ui-primitives";
 import {
   assessmentsReducer,
   dayLabel,
@@ -65,7 +64,7 @@ const VIEWS: readonly AssessmentsView[] = [
 
 const DATE_OPTIONS = [
   { value: "-1", label: "Mon 5 Oct (week 6)" },
-  ...WINDOW_DAYS.map((_, i) => ({ value: String(i), label: `${dayLabel(i)} (booking window)` })),
+  ...WINDOW_DAYS.map((_, i) => ({ value: String(i), label: dayLabel(i) })),
 ];
 
 function Screen(props: ScreenProps & { view: AssessmentsView }) {
@@ -109,18 +108,28 @@ function Screen(props: ScreenProps & { view: AssessmentsView }) {
 /** The made-up records' own controls: a plain statement that nothing is kept, and a made-up date to move. */
 function SampleBar({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
   return (
-    <div className="grid gap-2" data-testid="teaching-assessments-sample">
+    <div
+      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+      data-testid="teaching-assessments-sample"
+    >
       <p role="status" className={cn("flex items-center gap-1.5 text-sm-minus", textMuted)}>
         <Info aria-hidden="true" className="size-icon-sm shrink-0" />
-        Made-up example records. Nothing here is saved or sent.
+        Made-up example records. Nothing is saved or sent.
       </p>
-      <Select
-        label="Made-up date"
-        hint="Move the made-up date to walk through the booking window."
-        value={String(s.now)}
-        onChange={(event) => dispatch({ type: "set-now", now: Number(event.target.value) })}
-        options={DATE_OPTIONS}
-      />
+      <label className={cn("flex items-center gap-2 text-sm-minus", textMuted)}>
+        Made-up date
+        <select
+          value={String(s.now)}
+          onChange={(event) => dispatch({ type: "set-now", now: Number(event.target.value) })}
+          className={cn(fieldControlPlain, "w-auto pr-8")}
+        >
+          {DATE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
@@ -137,7 +146,7 @@ function AssessmentsApp() {
   const props: ScreenProps = { s, dispatch, params, role, openSheet: setSheet, go };
   const home = view === "home";
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3" data-mode-identity="teaching">
       {home ? (
         <>
           <SampleBar s={s} dispatch={dispatch} />

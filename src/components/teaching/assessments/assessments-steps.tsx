@@ -302,14 +302,10 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
           </p>
           <Button
             variant={s.remindWhenOpen ? "secondary" : "primary"}
+            icon={s.remindWhenOpen ? Check : Bell}
             aria-pressed={s.remindWhenOpen}
             onClick={() => dispatch({ type: "toggle-remind-open" })}
           >
-            {s.remindWhenOpen ? (
-              <Check aria-hidden="true" className="size-icon-sm" />
-            ) : (
-              <Bell aria-hidden="true" className="size-icon-sm" />
-            )}
             {s.remindWhenOpen ? "Reminder set" : "Remind me when it opens"}
           </Button>
         </Panel>
@@ -438,13 +434,13 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
         <p className={secondaryText}>No times left in the window. Message {SUP} from Supervision.</p>
       )}
       <Button
+        icon={Check}
         variant="primary"
         block
         disabled={!time}
         aria-describedby={time ? undefined : "assess-book-why"}
         onClick={() => time && dispatch({ type: "book", day, time })}
       >
-        <Check aria-hidden="true" className="size-icon-sm" />
         {time ? `Book ${dayLabel(day)}, ${time}` : "Pick a time"}
       </Button>
       {time ? null : <WhyNot id="assess-book-why">Pick one of the times above.</WhyNot>}

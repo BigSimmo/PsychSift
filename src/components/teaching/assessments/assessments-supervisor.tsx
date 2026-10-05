@@ -275,8 +275,7 @@ export function SideBySide({ s, dispatch }: ScreenProps) {
           )}
         </List>
         {meetingToday ? (
-          <Button variant="primary" block onClick={() => dispatch({ type: "meeting-held" })}>
-            <PenLine aria-hidden="true" className="size-icon-sm" />
+          <Button icon={PenLine} variant="primary" block onClick={() => dispatch({ type: "meeting-held" })}>
             We&apos;ve met · sign now
           </Button>
         ) : (

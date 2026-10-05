@@ -210,12 +210,13 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
       {status}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-[color:var(--text-muted)]">3 pages · A4</span>
-        <Button variant="secondary" size="sm" aria-pressed={zoom} onClick={() => setZoom((z) => !z)}>
-          {zoom ? (
-            <Minus aria-hidden="true" className="size-icon-sm" />
-          ) : (
-            <Plus aria-hidden="true" className="size-icon-sm" />
-          )}
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={zoom ? Minus : Plus}
+          aria-pressed={zoom}
+          onClick={() => setZoom((z) => !z)}
+        >
           {zoom ? "Fit to screen" : "Zoom to full size"}
         </Button>
       </div>
@@ -338,8 +339,7 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
           Made-up records: nothing was emailed. It is marked as sent so you can see the next step.
         </p>
       ) : null}
-      <Button variant="secondary" block onClick={() => window.print()}>
-        <Download aria-hidden="true" className="size-icon-sm" />
+      <Button icon={Download} variant="secondary" block onClick={() => window.print()}>
         Save a copy
       </Button>
     </>

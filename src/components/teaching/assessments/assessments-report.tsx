@@ -354,8 +354,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
           <FileText aria-hidden="true" className="size-icon-sm" />
           View PDF
         </Link>
-        <Button variant="secondary" block onClick={() => openSheet({ kind: "disagree" })}>
-          <Flag aria-hidden="true" className="size-icon-sm" />
+        <Button icon={Flag} variant="secondary" block onClick={() => openSheet({ kind: "disagree" })}>
           Disagree?
         </Button>
       </div>
@@ -533,8 +532,8 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
         </WhyNot>
       )}
       {sup ? null : (
-        <Button variant="secondary" block onClick={() => openSheet({ kind: "disagree" })}>
-          <Flag aria-hidden="true" className="size-icon-sm" />I disagree with part of this
+        <Button icon={Flag} variant="secondary" block onClick={() => openSheet({ kind: "disagree" })}>
+          I disagree with part of this
         </Button>
       )}
     </>
