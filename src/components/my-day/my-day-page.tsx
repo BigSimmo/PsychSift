@@ -26,7 +26,7 @@ import {
   type MyDayState,
 } from "@/lib/my-day/model";
 import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day/return-link";
-import { MY_DAY_PAGE_LABELS, myDayPageIds, parseMyDayPage, type MyDayPageId } from "@/lib/my-day/dashboard";
+import { myDayPageIds, parseMyDayPage, type MyDayPageId } from "@/lib/my-day/dashboard";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { focusRing } from "@/components/card-recipes";
