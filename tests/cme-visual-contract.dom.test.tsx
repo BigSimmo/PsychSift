@@ -66,17 +66,8 @@ const CLINICAL_STATUS_CLASS =
 // min-h-13 is the kit's two-line grouped-list row (52 px), above the 48 px floor.
 const TAP_TARGET_CLASS = /\b(?:min-h-(?:12|13|tap)|size-(?:12|tap))\b/;
 
-/**
- * The 5 Oct mock-up's compact controls (the Year page's 40 px button and 32 px
- * chips) keep a smaller face and widen the tap area with an absolutely placed
- * 48 px pseudo-element, the mock-up's own `::after` pattern.
- */
-const PSEUDO_TAP_AREA = /\bafter:absolute\b/;
-const PSEUDO_TAP_HEIGHT = /\bafter:h-12\b/;
-
 function hasTapTarget(className: string): boolean {
   if (TAP_TARGET_CLASS.test(className)) return true;
-  if (PSEUDO_TAP_AREA.test(className) && PSEUDO_TAP_HEIGHT.test(className)) return true;
   return /\bh-tap\b/.test(className) && /\bw-tap\b/.test(className);
 }
 

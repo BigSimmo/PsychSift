@@ -159,7 +159,7 @@ describe("Today", () => {
       "/cme/log?year=2026&fix=reflection",
     );
     // The 32 px chip face carries a 48 px tap area.
-    for (const link of within(chips).getAllByRole("link")) expect(link.className).toContain("after:h-12");
+    for (const link of within(chips).getAllByRole("link")) expect(link.className).toContain("min-h-12");
   });
 
   it("still shows drafts to finish before anything is logged, and no other chip", () => {

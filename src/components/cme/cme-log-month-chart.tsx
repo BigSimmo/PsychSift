@@ -57,7 +57,8 @@ export function CmeLogMonthChart({
           const hours = group?.hours ?? 0;
           const name = formatCalendarMonthLabel(key).split(" ")[0] ?? key;
           const current = key === currentKey;
-          const future = key > currentKey;
+          // A later month is drawn as a placeholder only while nothing is recorded in it.
+          const future = key > currentKey && !group;
           const barPercent = max > 0 && hours > 0 ? Math.max(MIN_BAR, Math.round((hours / max) * 100)) : 0;
           const face = (
             <>

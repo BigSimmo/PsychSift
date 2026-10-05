@@ -19,13 +19,14 @@ import type { CmeYearCheck } from "@/lib/cme/year-check";
  * shown as a zero.
  */
 
-/** A chip: hairline outline, its count in the heading colour, a 48px tap area around its 32px face. */
-const CHIP = cn(
-  focusRing,
-  "relative inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-[color:var(--border-strong)] px-2.75 text-sm-minus text-[color:var(--text-muted)] no-underline",
-  "after:absolute after:inset-x-0 after:top-1/2 after:h-12 after:-translate-y-1/2 after:content-['']",
-  "hover:border-[color:var(--text-muted)]",
-);
+/**
+ * A chip: the link is a real 48px-tall box (so wrapped rows can never share a
+ * tap area), and the visible 32px face inside it carries the hairline outline
+ * and its count in the heading colour.
+ */
+const CHIP = cn(focusRing, "group inline-flex min-h-12 items-center rounded-md no-underline");
+const CHIP_FACE =
+  "inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-[color:var(--border-strong)] px-2.75 text-sm-minus text-[color:var(--text-muted)] group-hover:border-[color:var(--text-muted)]";
 
 export type CmeYearChip = {
   readonly id: string;
@@ -68,12 +69,14 @@ export function buildCmeYearChips({
 export function CmeTodayShortcuts({ chips }: { chips: readonly CmeYearChip[] }) {
   if (chips.length === 0) return null;
   return (
-    <ul role="list" aria-label="To finish" data-testid="cme-today-shortcuts" className="flex flex-wrap gap-2">
+    <ul role="list" aria-label="To finish" data-testid="cme-today-shortcuts" className="flex flex-wrap gap-x-2">
       {chips.map((chip) => (
         <li key={chip.id}>
           <Link href={chip.href} data-testid={`cme-chip-${chip.id}`} className={CHIP}>
-            {chip.label}
-            <b className="nums font-normal text-[color:var(--text-heading)]">{chip.count}</b>
+            <span className={CHIP_FACE}>
+              {chip.label}
+              <b className="nums font-normal text-[color:var(--text-heading)]">{chip.count}</b>
+            </span>
           </Link>
         </li>
       ))}

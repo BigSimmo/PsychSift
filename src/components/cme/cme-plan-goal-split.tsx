@@ -46,7 +46,8 @@ export function CmePlanGoalSplit({ tally }: { tally: readonly GoalTally[] }) {
   const total = tally.reduce((sum, row) => sum + row.hours, 0);
   const linkedCount = tally.reduce((sum, row) => sum + (row.goal ? row.entryCount : 0), 0);
   const activityCount = tally.reduce((sum, row) => sum + row.entryCount, 0);
-  const scale = Math.max(total, 1);
+  // The bar shows how the logged hours divide, so it is scaled by their own total (even below 1 h).
+  const scale = total > 0 ? total : 1;
   const withFill = tally.map((row, index) => ({
     row,
     svgFill: row.goal ? GOAL_SVG_FILLS[index % GOAL_SVG_FILLS.length] : UNLINKED_SVG_FILL,
