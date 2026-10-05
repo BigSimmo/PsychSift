@@ -156,7 +156,7 @@ export function workSearchTerms(query: string): TermAlternative[][] {
 }
 
 /** True when `a` and `b` differ by at most one letter added, removed, changed or swapped. */
-function withinOneEdit(a: string, b: string): boolean {
+export function withinOneEdit(a: string, b: string): boolean {
   if (a === b) return true;
   if (Math.abs(a.length - b.length) > 1) return false;
   let i = 0;

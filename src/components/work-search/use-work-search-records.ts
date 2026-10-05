@@ -20,7 +20,12 @@ import {
   sessionWorkItems,
   shiftWorkItems,
 } from "@/lib/work-search/items";
-import type { WorkAreaRead, WorkAreaStatus, WorkItem } from "@/lib/work-search/model";
+import {
+  TEACHING_LOOKAHEAD_DAYS,
+  type WorkAreaRead,
+  type WorkAreaStatus,
+  type WorkItem,
+} from "@/lib/work-search/model";
 import type { WorkSearchEntry } from "@/lib/work-search/search";
 
 /**
@@ -86,7 +91,11 @@ function worst(...statuses: WorkAreaStatus[]): WorkAreaStatus {
 
 async function fetchRecords(epoch: number, now: number, signal: AbortSignal): Promise<Fetched> {
   const today = perthDateOf(now);
-  const weekQuery = new URLSearchParams({ view: "week", from: today, to: addDaysToDate(today, 41) });
+  const weekQuery = new URLSearchParams({
+    view: "week",
+    from: today,
+    to: addDaysToDate(today, TEACHING_LOOKAHEAD_DAYS),
+  });
   const [shifts, leave, week, cme, year] = await Promise.all([
     readJson<{ shifts: OnCallShift[] }>("/api/roster/shifts", signal),
     readJson<{ leave: RosterLeave[] }>("/api/roster/leave", signal),
