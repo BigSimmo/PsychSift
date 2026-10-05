@@ -195,7 +195,7 @@ describe("MedicationPrescribingWorkspace — nothing found (mock-up v6, screen 4
     expect(empty).toHaveTextContent("Check the spelling. It may also be in your own PDFs");
     expect(within(empty).getByRole("link", { name: /Search your PDFs for Examplex/ })).toHaveAttribute(
       "href",
-      appModeHomeHref("documents", { query: "Examplex", run: true }),
+      appModeHomeHref("documents", { query: "Examplex" }),
     );
 
     fireEvent.click(within(empty).getByTestId("medication-browse-all"));
@@ -204,7 +204,7 @@ describe("MedicationPrescribingWorkspace — nothing found (mock-up v6, screen 4
 });
 
 describe("MedicationPrescribingWorkspace — query interpretation", () => {
-  it("says plainly there is no medicine by a misspelt name and suggests the corrected one as a link (mock-up v6, decision 2)", () => {
+  it("says plainly there is no exact match and that the results are for the corrected spelling (decision 2)", () => {
     catalogInterpretation.current = {
       correctedQuery: "sertraline",
       corrections: [{ from: "sertaline", to: "sertraline" }],
@@ -214,11 +214,7 @@ describe("MedicationPrescribingWorkspace — query interpretation", () => {
     renderWorkspace({ query: "sertaline" });
 
     const note = screen.getByTestId("medication-query-interpretation");
-    expect(note).toHaveTextContent("No medicine called sertaline. Did you mean sertraline?");
-    expect(within(note).getByRole("link", { name: "sertraline" })).toHaveAttribute(
-      "href",
-      appModeHomeHref("prescribing", { query: "sertraline", run: true }),
-    );
+    expect(note).toHaveTextContent("No exact match for \u201csertaline\u201d. Showing results for sertraline instead.");
     expect(screen.getByText("Related terms were also included: zoloft.")).toBeInTheDocument();
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });

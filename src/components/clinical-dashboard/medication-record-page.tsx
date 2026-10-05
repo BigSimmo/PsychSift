@@ -15,6 +15,7 @@ import {
   History,
   Lock,
   Pill,
+  ShieldAlert,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
@@ -102,14 +103,21 @@ function medicationAccentStyle(accent: string | undefined): CSSProperties {
   } as CSSProperties;
 }
 
-// The record's key figures as a flat hairline grid (Medicines mock-up v6,
-// owner decision 1 of 5 Oct 2026): every figure is neutral. A risk-type field
-// (Toxicity risk, Renal adjustment: the danger and warning tones from
-// medicationStatTone) carries a small warning icon instead of a red or amber
-// tile, because its colour came from the kind of field, not from a sourced
-// warning about this medicine. Red stays for a sourced, medicine-specific warning.
-function isCautionMetric(metric: MedicationHeroMetric): boolean {
-  return metric.tone === "danger" || metric.tone === "warning";
+// The record's key figures as a flat hairline grid (Medicines mock-up v6).
+// Owner decision 1 of 5 Oct 2026 was to make the red and amber tiles neutral,
+// on the understanding that their colour came from the kind of field. The
+// clinical review found otherwise: `cls`/`flag` is a curator's per-medicine
+// severity flag ("Nitrates: FATAL" is `hi`; "Urine colour: NEON YELLOW" is
+// `warn`), unsourced but medicine-specific. Until the owner re-decides on the
+// corrected facts, the build degrades conservatively: a `hi` (danger) figure
+// keeps today's red tile and gains a spoken "High risk" cue; amber and green
+// become neutral, with a small warning icon and spoken "Caution" on amber.
+type FigureFlag = "high" | "caution" | null;
+
+function figureFlag(metric: MedicationHeroMetric): FigureFlag {
+  if (metric.tone === "danger") return "high";
+  if (metric.tone === "warning") return "caution";
+  return null;
 }
 
 /** One row of figures on a computer, as many columns as there are figures (at most four). */
@@ -122,15 +130,28 @@ const figureColumns: Record<number, string> = {
 };
 
 function DetailTile({ metric }: { metric: MedicationHeroMetric }) {
-  const caution = isCautionMetric(metric);
+  const flag = figureFlag(metric);
   return (
     <div
       data-testid="medication-figure"
-      data-caution={caution ? "true" : undefined}
-      className="min-w-0 border-r border-b border-[color:var(--border)] px-3 py-3 last:odd:col-span-2 xl:last:odd:col-span-1"
+      data-flag={flag ?? undefined}
+      className={cn(
+        "min-w-0 border-r border-b border-[color:var(--border)] px-3 py-3 last:odd:col-span-2 xl:last:odd:col-span-1",
+        flag === "high" && "bg-[color:var(--danger-soft)]",
+      )}
     >
-      <p className="flex items-start gap-1.5 text-2xs font-semibold uppercase leading-tight tracking-eyebrow text-[color:var(--text-muted)]">
-        {caution ? (
+      <p
+        className={cn(
+          "flex items-start gap-1.5 text-2xs font-semibold uppercase leading-tight tracking-eyebrow",
+          flag === "high" ? "text-[color:var(--danger)]" : "text-[color:var(--text-muted)]",
+        )}
+      >
+        {flag === "high" ? (
+          <>
+            <ShieldAlert className="mt-px size-icon-xs shrink-0" aria-hidden="true" />
+            <span className="sr-only">High risk: </span>
+          </>
+        ) : flag === "caution" ? (
           <>
             <TriangleAlert className="mt-px size-icon-xs shrink-0" aria-hidden="true" />
             <span className="sr-only">Caution: </span>
@@ -138,7 +159,12 @@ function DetailTile({ metric }: { metric: MedicationHeroMetric }) {
         ) : null}
         <span className="min-w-0 break-words">{metric.label}</span>
       </p>
-      <p className="mt-1.5 break-words text-sm-minus font-semibold leading-5 text-[color:var(--text-heading)]">
+      <p
+        className={cn(
+          "mt-1.5 break-words text-sm-minus font-semibold leading-5",
+          flag === "high" ? "text-[color:var(--danger-text)]" : "text-[color:var(--text-heading)]",
+        )}
+      >
         {metric.value}
       </p>
     </div>
@@ -345,7 +371,7 @@ function MedicationRecordDetail({
                     className="mt-2 text-sm-minus leading-5 text-[color:var(--text-muted)]"
                     data-testid="medication-no-source"
                   >
-                    No source linked to this record yet
+                    No source link confirmed for this record yet. Its own source notes are under Additional.
                   </p>
                 ) : null}
               </div>
@@ -471,7 +497,7 @@ function MedicationFromThisPage({ medicineName }: { medicineName: string }) {
         From this page
       </h2>
       <p className="text-sm-minus leading-5 text-[color:var(--text-muted)]">
-        No calculator, monitoring schedule or factsheet is linked to this medicine yet.
+        No calculator, monitoring schedule or factsheet is linked to this medicine page yet.
       </p>
       <ul role="list" className="grid">
         <OnwardRow
@@ -480,6 +506,15 @@ function MedicationFromThisPage({ medicineName }: { medicineName: string }) {
           title={`Search your PDFs for ${medicineName}`}
           detail="Opens Documents"
           testId="medication-search-pdfs"
+        />
+        {/* Some medicines already have a factsheet in the Factsheets section; until they are linked
+            here, the section is one tap away so "nothing linked" is never read as "none exists". */}
+        <OnwardRow
+          href={appModeHomeHref("factsheets")}
+          icon={BookOpen}
+          title="Browse factsheets"
+          detail="Patient and family leaflets"
+          testId="medication-browse-factsheets"
         />
       </ul>
     </section>
@@ -539,6 +574,8 @@ function slugAsWords(slug: string): string {
  */
 function MedicationLoadFailed({ slug, error, onRetry }: { slug: string; error: string | null; onRetry: () => void }) {
   const words = slugAsWords(slug);
+  // The hook's own offline wording; any other failure (sign-in, rate limit, server) is not a connection problem.
+  const offline = Boolean(error && /offline/i.test(error));
   return (
     <section
       role="alert"
@@ -551,7 +588,9 @@ function MedicationLoadFailed({ slug, error, onRetry }: { slug: string; error: s
           This medicine page didn&rsquo;t load
         </h1>
         <p className="text-sm leading-6 text-[color:var(--text-muted)]">
-          The server didn&rsquo;t answer. Check the connection, then try again.
+          {offline
+            ? "The server didn\u2019t answer. Check the connection, then try again."
+            : "Try again in a moment. If it keeps happening, the reason is below."}
         </p>
         {/* The request's own reason, so a sign-in or server fault is never passed off as a bad connection. */}
         {error ? (
@@ -566,7 +605,8 @@ function MedicationLoadFailed({ slug, error, onRetry }: { slug: string; error: s
       <ul role="list" className="grid">
         {words ? (
           <OnwardRow
-            href={appModeHomeHref("documents", { query: words, run: true })}
+            // Prefilled, not run: the words come from the address, so the reader presses search.
+            href={appModeHomeHref("documents", { query: words })}
             icon={FileSearch}
             title={`Search your PDFs for ${words}`}
             detail="Opens Documents"

@@ -224,18 +224,20 @@ describe("MedicationRecordPage mock-up v6 states", () => {
     ],
   };
 
-  it("shows every key figure neutral, with a warning icon only on risk-type fields (decision 1)", () => {
+  it("keeps a high-risk figure red and spoken, and makes caution and reassurance figures neutral", () => {
     mockDetail({ data: { record: statDrug }, loading: false, error: null });
     render(<MedicationRecordPage slug="test-med" fallbackRecord={statDrug} />);
     const figures = screen.getAllByTestId("medication-figure");
-    expect(figures.map((figure) => figure.getAttribute("data-caution"))).toEqual([null, null, "true", "true"]);
-    for (const figure of figures) {
-      expect(figure.className).not.toMatch(/danger|warning|success/);
-      expect(figure.querySelectorAll("svg")).toHaveLength(figure.getAttribute("data-caution") ? 1 : 0);
+    expect(figures.map((figure) => figure.getAttribute("data-flag"))).toEqual([null, null, "high", "caution"]);
+    expect(figures[2]?.className).toContain("danger");
+    for (const figure of [figures[0], figures[1], figures[3]]) {
+      expect(figure?.className).not.toMatch(/danger|warning|success/);
     }
-    // The caution cue is spoken too, not only drawn.
-    expect(figures[2]).toHaveTextContent("Caution: Toxicity risk");
-    expect(figures[0]).not.toHaveTextContent("Caution");
+    expect(figures.map((figure) => figure.querySelectorAll("svg").length)).toEqual([0, 0, 1, 1]);
+    // The cue is spoken too, not only drawn.
+    expect(figures[2]).toHaveTextContent("High risk: Toxicity risk");
+    expect(figures[3]).toHaveTextContent("Caution: Renal adj.");
+    expect(figures[0]).not.toHaveTextContent(/Caution|High risk/);
   });
 
   it("lets an odd last figure span the phone row so the hairlines close cleanly", () => {
@@ -251,7 +253,9 @@ describe("MedicationRecordPage mock-up v6 states", () => {
   it("says plainly when the record has no source linked, and not when it has one", () => {
     mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
     const { unmount } = render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} />);
-    expect(screen.getByTestId("medication-no-source")).toHaveTextContent("No source linked to this record yet");
+    expect(screen.getByTestId("medication-no-source")).toHaveTextContent(
+      "No source link confirmed for this record yet. Its own source notes are under Additional.",
+    );
     unmount();
     render(
       <MedicationRecordPage
@@ -267,7 +271,13 @@ describe("MedicationRecordPage mock-up v6 states", () => {
     mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
     render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} />);
     const from = screen.getByTestId("medication-from-page");
-    expect(from).toHaveTextContent("No calculator, monitoring schedule or factsheet is linked to this medicine yet.");
+    expect(from).toHaveTextContent(
+      "No calculator, monitoring schedule or factsheet is linked to this medicine page yet.",
+    );
+    expect(within(from).getByRole("link", { name: /Browse factsheets/ })).toHaveAttribute(
+      "href",
+      appModeHomeHref("factsheets"),
+    );
     expect(within(from).getByRole("link", { name: /Search your PDFs for Fallback Drug/ })).toHaveAttribute(
       "href",
       appModeHomeHref("documents", { query: "Fallback Drug", run: true }),
@@ -303,7 +313,9 @@ describe("MedicationRecordPage mock-up v6 states", () => {
     });
     render(<MedicationRecordPage slug="lithium-carbonate" />);
     const failed = screen.getByTestId("medication-load-failed");
-    expect(failed).toHaveTextContent("The server didn’t answer. Check the connection, then try again.");
+    // A server error is not called a connection problem; its own reason is shown.
+    expect(failed).toHaveTextContent("Try again in a moment. If it keeps happening, the reason is below.");
+    expect(failed).toHaveTextContent("Details: Request failed (503)");
     await userEvent.setup().click(within(failed).getByRole("button", { name: "Try again" }));
     expect(retry).toHaveBeenCalledTimes(1);
     expect(within(failed).getByRole("link", { name: /Search your PDFs for lithium carbonate/ })).toBeInTheDocument();

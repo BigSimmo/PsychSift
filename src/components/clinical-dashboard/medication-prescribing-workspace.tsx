@@ -241,9 +241,10 @@ function StatusNotice({
 
 /**
  * A misspelt medicine name (Medicines mock-up v6, screen 3; owner decision 2 of
- * 5 Oct 2026): say plainly there is no medicine by the typed name and suggest
- * the corrected one as a link, never swapping it silently, because look-alike
- * medicine names are a known error source.
+ * 5 Oct 2026: never swap silently, because look-alike medicine names are a
+ * known error source). The catalogue already ranks by the corrected spelling,
+ * so the line says so outright rather than only asking "Did you mean", which
+ * would leave the corrected results below unlabelled.
  */
 function MedicationDidYouMean({
   query,
@@ -257,14 +258,8 @@ function MedicationDidYouMean({
   return (
     <div className="medication-results-inset">
       <p data-testid="medication-query-interpretation" className="text-sm leading-6 text-[color:var(--text-heading)]">
-        No medicine called <strong className="font-semibold">{query}</strong>. Did you mean{" "}
-        <Link
-          href={appModeHomeHref("prescribing", { query: correctedQuery, run: true })}
-          className="font-semibold text-[color:var(--clinical-accent)] underline underline-offset-2"
-        >
-          {correctedQuery}
-        </Link>
-        ?
+        No exact match for <strong className="font-semibold">&ldquo;{query}&rdquo;</strong>. Showing results for{" "}
+        <strong className="font-semibold">{correctedQuery}</strong> instead.
       </p>
       {expansions.length ? (
         <p className="mt-0.5 text-xs leading-snug text-[color:var(--text-muted)]">
@@ -346,7 +341,8 @@ function MedicationNothingFound({
       <ul role="list" className="grid">
         <li className="min-w-0 border-t border-[color:var(--border)] first:border-t-0">
           <Link
-            href={appModeHomeHref("documents", { query: trimmed, run: true })}
+            // Prefilled, not run: this is the reader's own free text, so they press search in Documents.
+            href={appModeHomeHref("documents", { query: trimmed })}
             className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg py-2 text-[color:var(--text-heading)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >
             <FileSearch className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
