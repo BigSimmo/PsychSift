@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
+import { ModeBandStatus } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { RosterSignedOutSampleProvider } from "@/components/roster/roster-sample-context";
@@ -77,6 +78,7 @@ function SampleRoster({
   }, []);
   return (
     <>
+      <ModeBandStatus value={{ kind: "sample" }} />
       <div className="mx-auto w-full max-w-reading px-3 pt-4 sm:px-5 lg:px-7">
         <SignedOutSampleNotice title={title} testId="roster-signed-out-sample">
           Below is a sample made of invented examples, so you can see how Roster works. Signed in, it shows your own{" "}

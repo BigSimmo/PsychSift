@@ -29,6 +29,7 @@ import { ADMIN_STATEWIDE_SUPPORT } from "@/lib/admin/statewide-support";
 import { ON_CALL_IN_HOURS_END_HOUR, isOnCallOutOfHours } from "@/lib/on-call/home-modules";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry, OnCallSection } from "@/lib/on-call/entry-model";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 
 const TAB_BY_SECTION_ID: Record<string, AdminHelpTab> = {
   "admin-help-support": "support",
@@ -109,7 +110,9 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
     <>
       <AdminNavHeader title="Help" sections={ADMIN_HELP_SECTIONS} />
       <InformationPageShell testId="admin-help-main">
-        <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Help</h1>
+        <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+          Help
+        </PageTitleUnderBand>
 
         {/* Crisis lines first, above the filter and every tab (design; ui-lane-rules). */}
         <AdminCrisisLines />

@@ -3,6 +3,7 @@ import { Fragment, type ReactNode, useEffect, useRef, useSyncExternalStore } fro
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { CmeOfflineBanner } from "@/components/cme/cme-offline-banner";
+import { ModeBandStatus } from "@/components/mode-band/mode-band";
 import { useAuthSession } from "@/lib/supabase/client";
 
 /**
@@ -87,6 +88,9 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
   const unavailable = !serverAuthVerified || auth.status === "error" || auth.status === "unconfigured";
   return (
     <section className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-owner-boundary">
+      {/* The mode band's line: offline, or loading while the session is checked.
+          Nothing when the session could not be verified; the line below says so. */}
+      <ModeBandStatus value={isOffline ? { kind: "offline" } : unavailable ? null : { kind: "loading" }} />
       <p role="status">
         {isOffline
           ? "You are offline. Connect to view or update your private CPD record."

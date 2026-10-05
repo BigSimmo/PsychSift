@@ -47,6 +47,7 @@ import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { onCallEntrySchema, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 
 type CatalogueItem = (typeof ADMIN_REQUIREMENTS_CATALOGUE)[number];
 type RenewSubject = { entry: OnCallEntry | null; createItem?: CatalogueItem };
@@ -373,7 +374,9 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
     <InformationPageShell testId="admin-renewals-main">
       <div className="flex items-start justify-between gap-2">
         <div className="grid min-w-0 gap-1">
-          <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Renewals</h1>
+          <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+            Renewals
+          </PageTitleUnderBand>
           <p className={cn(textMuted, "text-sm")}>Source: Medical Board, WA Health · Updated 26 Sep 2026</p>
         </div>
         {ready ? (

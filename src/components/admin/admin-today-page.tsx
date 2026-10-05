@@ -37,6 +37,7 @@ import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cacheOnCallEntries, readCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 
 /**
  * Today (mode id `my-work`) on the shared Today shell. Slots: the greeting is
@@ -143,7 +144,10 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
           status={
             <div className="grid gap-2">
               <header data-testid="admin-today-greeting" className="grid gap-0.5">
-                <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">{greetingFor(now)}</h1>
+                <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+                  {greetingFor(now)}
+                </PageTitleUnderBand>
+                {/* The band leads with a way back to My Day, so the date stays here. */}
                 <p className="text-sm text-[color:var(--text-muted)]">{formatDateEcho(today)}</p>
               </header>
               {state.demoMode && load === "ready" ? (
