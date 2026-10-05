@@ -323,6 +323,7 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
       </div>
       {canSend && !s.sentToMeu ? (
         <Button
+          icon={Send}
           variant="primary"
           block
           onClick={() => {
@@ -330,7 +331,6 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
             setSentNote(true);
           }}
         >
-          <Send aria-hidden="true" className="size-icon-sm" />
           Email the PDF to your MEU
         </Button>
       ) : null}

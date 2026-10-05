@@ -513,6 +513,7 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
         these made-up records it stays on this page. Made-up date: {todayLabel(s)}.
       </SmallPrint>
       <Button
+        icon={PenLine}
         variant="primary"
         block
         disabled={!can}
@@ -522,7 +523,6 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
           go(sup ? viewHref("side", { as: "supervisor" }) : viewHref("hub"));
         }}
       >
-        <PenLine aria-hidden="true" className="size-icon-sm" />
         Sign
       </Button>
       {can ? null : (

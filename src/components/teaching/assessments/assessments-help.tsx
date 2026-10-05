@@ -231,6 +231,7 @@ function RequestEpaSheet({
       />
       <SmallPrint>At least one EPA a term must be from your term supervisor or another specialist.</SmallPrint>
       <Button
+        icon={Send}
         variant="primary"
         block
         disabled={!!dup}
@@ -240,7 +241,6 @@ function RequestEpaSheet({
           close();
         }}
       >
-        <Send aria-hidden="true" className="size-icon-sm" />
         Send request
       </Button>
       {dup ? (
@@ -316,6 +316,7 @@ function DisagreeSheet({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
         placeholder="I'd like to respond to my end-of-term report for Psychiatry. No patient details."
       />
       <Button
+        icon={Copy}
         variant="primary"
         block
         onClick={async () => {
@@ -327,7 +328,6 @@ function DisagreeSheet({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
           }
         }}
       >
-        <Copy aria-hidden="true" className="size-icon-sm" />
         Copy the draft to email your DCT
       </Button>
       {copied ? (

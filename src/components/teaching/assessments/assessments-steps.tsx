@@ -211,6 +211,7 @@ export function AskSupervisor({ s, dispatch, go }: ScreenProps) {
       </SmallPrint>
       {r.sent ? null : (
         <Button
+          icon={Send}
           variant="primary"
           block
           onClick={() => {
@@ -218,7 +219,6 @@ export function AskSupervisor({ s, dispatch, go }: ScreenProps) {
             go(viewHref("hub"));
           }}
         >
-          <Send aria-hidden="true" className="size-icon-sm" />
           Send request
         </Button>
       )}
