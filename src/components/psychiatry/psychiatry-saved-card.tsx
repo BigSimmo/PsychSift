@@ -101,10 +101,11 @@ export function PsychiatrySavedCard() {
       <div className="flex justify-end">{favouritesLink}</div>
       {partial ? (
         <div
+          role="status"
           data-testid="psychiatry-saved-partial"
           className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-1 text-sm text-[color:var(--dash-muted)] forced-colors:border"
         >
-          <TriangleAlert aria-hidden="true" className="mt-3 size-icon-sm shrink-0 text-[color:var(--dash-amber)]" />
+          <TriangleAlert aria-hidden="true" className="mt-3 size-icon-sm shrink-0 text-[color:var(--dash-muted)]" />
           <span className="min-w-0 flex-1 py-2.5">
             {`Some saved items could not load, so this list may be incomplete. Showing at least ${saved.length}.`}
           </span>
@@ -156,7 +157,7 @@ export function PsychiatrySavedCard() {
             const groupItems = byType.get(group.type) ?? [];
             return (
               <div key={group.type} className="grid gap-2">
-                <FlatLabel title={group.label} aside={<FlatCount>{groupItems.length}</FlatCount>} as="h3" />
+                <FlatLabel title={group.label} aside={<FlatCount>{groupItems.length}</FlatCount>} />
                 <FlatList label={`Saved ${group.label.toLowerCase()}`} testId={`psychiatry-saved-${group.type}`}>
                   {groupItems.map((item) => (
                     <FlatRow key={item.id} href={item.href} icon={item.icon} title={item.title} subtitle={item.meta} />
@@ -176,7 +177,7 @@ export function PsychiatrySavedCard() {
           Loading your saved items…
         </p>
       ) : status === "error" ? (
-        <p className="flex flex-wrap items-center gap-x-1 text-sm text-[color:var(--dash-muted)]">
+        <p role="status" className="flex flex-wrap items-center gap-x-1 text-sm text-[color:var(--dash-muted)]">
           Couldn&apos;t load your saved items. {retry}
         </p>
       ) : partial ? null : (

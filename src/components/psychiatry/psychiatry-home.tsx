@@ -402,7 +402,7 @@ function ResumeRow({ latest, now }: { readonly latest: PsychiatryVisit; readonly
   );
 }
 
-/** The quick actions as a two-across hairline grid (four across on a wide screen). */
+/** The quick actions as a two-across hairline grid. */
 function QuickActionGrid({ actions }: { readonly actions: readonly DashQuickAction[] }) {
   return (
     <ul
@@ -720,7 +720,9 @@ const TOOL_ICON: Readonly<Record<string, LucideIcon>> = {
 };
 
 function toolsClockLine(clocks: readonly MhaClock[]): string {
-  return clocks.length > 0 ? `Every running time limit · ${clocks.length} running` : "Every running time limit";
+  // Neutral while countdowns are switched off: the page holds forms, it does not always count limits.
+  const holding = "Mental Health Act forms you are holding";
+  return clocks.length > 0 ? `${holding} · ${clocks.length} running` : holding;
 }
 
 function BuildersSection() {

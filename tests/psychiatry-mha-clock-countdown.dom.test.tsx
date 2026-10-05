@@ -79,6 +79,16 @@ describe("MHA clock with countdowns signed", () => {
     expect(screen.queryByTestId("mha-clock-passed-count")).toBeNull();
   });
 
+  it("keeps the Act's own words and a link to the section beside a countdown, not only beside quotes", () => {
+    render(<MhaClockPage forms={forms} now={new Date("2026-10-04T18:50:00Z")} />);
+    const [form2] = screen.getAllByTestId("mha-clock-card");
+    expect(within(form2).getByTestId("mha-clock-countdown")).toBeTruthy();
+    expect(within(form2).getByTestId("mha-clock-quote").tagName).toBe("BLOCKQUOTE");
+    const link = within(form2).getByTestId("mha-clock-act-section");
+    expect(link).toHaveTextContent(/^Mental Health Act 2014 \(WA\) s 34/);
+    expect(link).toHaveAttribute("target", "_blank");
+  });
+
   it("marks a passed limit as passed, in red, on the card and in the count line", () => {
     render(<MhaClockPage forms={forms} now={new Date("2026-10-04T22:10:00Z")} />); // Mon 06:10
     const countdown = screen.getByTestId("mha-clock-countdown");

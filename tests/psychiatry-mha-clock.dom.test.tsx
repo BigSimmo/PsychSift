@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { MHA_TIMELINE_REFERENCE_NOTE } from "@/components/forms/mha-timeline-panel";
-import { MhaClockPage, type MhaClockForm } from "@/components/psychiatry/mha-clock-page";
+import { MhaClockPage, mhaClockHandoverText, type MhaClockForm } from "@/components/psychiatry/mha-clock-page";
 import { PsychiatryHome } from "@/components/psychiatry/psychiatry-home";
 import { mhaTimers } from "@/lib/on-call/mha-timers";
 import {
@@ -269,6 +269,44 @@ describe("MhaClockPage", () => {
     expect(screen.getByTestId("mha-clock-undo")).toHaveTextContent("This browser would not save the change.");
   });
 
+  it("says in the handover copy that some clocks could not be read, so the list never looks complete", () => {
+    const good = { id: "abcdefgh-1", formCode: "2", madeAt: new Date("2026-10-04T15:40:00Z").getTime() };
+    window.localStorage.setItem(
+      PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY,
+      JSON.stringify({ v: 1, clocks: [good, { id: "bad" }] }),
+    );
+    render(<MhaClockPage forms={forms} now={now} />);
+    expect(screen.getByTestId("mha-clock-handover-lines")).toHaveTextContent(
+      "Clocks could not be read on this phone. Check the others against the paperwork.",
+    );
+    expect(mhaClockHandoverText([good], now.getTime(), true).split("\n")[1]).toBe(
+      "Clocks could not be read on this phone. Check the others against the paperwork.",
+    );
+  });
+
+  it("keeps Undo on screen while it has focus, and starts the countdown again when focus leaves", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      addMhaClock("2", new Date("2026-10-05T09:00:00Z"));
+      render(<MhaClockPage forms={forms} now={now} />);
+      act(() => {
+        fireEvent.click(screen.getByTestId("mha-clock-remove"));
+      });
+      act(() => {
+        fireEvent.focus(screen.getByTestId("mha-clock-undo-button"));
+        vi.advanceTimersByTime(20_000);
+      });
+      expect(screen.getByTestId("mha-clock-undo")).toBeTruthy();
+      act(() => {
+        fireEvent.blur(screen.getByTestId("mha-clock-undo-button"));
+        vi.advanceTimersByTime(8_000);
+      });
+      expect(screen.queryByTestId("mha-clock-undo")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("never puts a removed clock back after the account changes", () => {
     addMhaClock("2", new Date(now.getTime() - 60 * 60_000));
     render(<MhaClockPage forms={forms} now={now} />);
@@ -291,7 +329,9 @@ describe("MhaClockPage", () => {
 
   it("says clocks are kept until removed or sign-out", () => {
     render(<MhaClockPage forms={forms} now={now} />);
-    expect(screen.getByTestId("mha-clock-retention")).toHaveTextContent("Kept until you remove it or sign out.");
+    expect(screen.getByTestId("mha-clock-retention")).toHaveTextContent(
+      "Kept until you remove it or you are signed out.",
+    );
     expect(screen.getByTestId("mha-clock-retention")).not.toHaveTextContent(/end of your shift/);
   });
 

@@ -26,7 +26,7 @@ import {
 import { cn } from "@/components/ui-primitives";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { toAwstParts } from "@/lib/caring-contacts/clock";
-import { mhaActMetadata } from "@/lib/mha-act-sections";
+import { mhaActMetadata, mhaActSection } from "@/lib/mha-act-sections";
 import { formatPerthDateTime, parsePerthDateTimeInput } from "@/lib/mha-timeline";
 import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
 import {
@@ -54,8 +54,9 @@ import {
  * A clock holds a form code and a time, never anything about the person, and is kept on this device
  * until the reader removes it or signs out (owner decisions, 5 October 2026).
  *
- * A passed limit is shown in red: the one place red is used, for a legal time limit that has gone by
- * (owner decision 6, 5 October 2026).
+ * A passed limit is shown in red, for a legal time limit that has gone by (owner decision 6, 5 October
+ * 2026). The only other red is the add form's own input error, as the agreed mock-up draws it; red
+ * is otherwise kept for source status.
  */
 
 export interface MhaClockForm {
@@ -72,7 +73,7 @@ const WEEKDAY_WINDOW_MS = 6 * 24 * HOUR_MS;
 const UNDO_MS = 8_000;
 
 export const MHA_CLOCK_RETENTION_NOTE =
-  "Only on this phone, not on your other devices. Kept until you remove it or sign out. A clock holds the form and the time only.";
+  "Only on this phone, not on your other devices. Kept until you remove it or you are signed out. A clock holds the form and the time only.";
 export const MHA_CLOCK_UNREADABLE = "Clocks could not be read on this phone.";
 export const MHA_CLOCK_HANDOVER_NOTE =
   "Copies the form and made-at time only. No names, and no running times, because those go out of date once pasted.";
@@ -124,9 +125,11 @@ export function mhaClockDuration(ms: number): string {
 }
 
 /** The plain lines the handover copy puts on the clipboard. Exported for tests. */
-export function mhaClockHandoverText(clocks: readonly MhaClock[], nowMs: number): string {
+export function mhaClockHandoverText(clocks: readonly MhaClock[], nowMs: number, unreadable = false): string {
   return [
     `As at ${formatPerthDateTime(new Date(nowMs))}`,
+    // A pasted list must never look complete when some clocks could not be read.
+    ...(unreadable ? [`${MHA_CLOCK_UNREADABLE} Check the others against the paperwork.`] : []),
     ...clocks.map((clock) => `Form ${clock.formCode} · made ${formatPerthDateTime(new Date(clock.madeAt))}`),
     MHA_TIMELINE_REFERENCE_NOTE,
   ].join("\n");
@@ -325,6 +328,7 @@ function ShiftBand({ clocks, now }: { readonly clocks: readonly MhaClock[]; read
 
 function LimitRow({ item, nowMs }: { readonly item: MhaTimerItem; readonly nowMs: number }) {
   const { entry } = item;
+  const heading = mhaActSection(entry.section)?.title;
   const quote =
     "border-l-2 border-[color:var(--dash-line-strong)] pl-3 text-sm italic leading-6 text-[color:var(--dash-ink)]";
   return (
@@ -363,21 +367,32 @@ function LimitRow({ item, nowMs }: { readonly item: MhaTimerItem; readonly nowMs
           ) : null}
         </div>
       ) : (
-        <div className="grid gap-1.5" data-testid="mha-clock-quote-only">
-          <p className="text-sm font-semibold text-[color:var(--dash-muted)]">
-            {item.reason === "not-calculable" ? MHA_TIMELINE_NOT_CALCULABLE : MHA_TIMELINE_AWAITING_REVIEW}
-          </p>
-          <blockquote cite={mhaActMetadata.sourceUrl} className={quote}>
-            {entry.leadIn ? `“${entry.leadIn} … ${entry.quote}”` : `“${entry.quote}”`}
-          </blockquote>
-          {entry.caveat ? (
-            <blockquote cite={mhaActMetadata.sourceUrl} className={quote}>
-              {`The Act also says (s ${entry.caveat.section}): “${entry.caveat.quote}”`}
-            </blockquote>
-          ) : null}
-        </div>
+        <p className="text-sm font-semibold text-[color:var(--dash-muted)]" data-testid="mha-clock-quote-only">
+          {item.reason === "not-calculable" ? MHA_TIMELINE_NOT_CALCULABLE : MHA_TIMELINE_AWAITING_REVIEW}
+        </p>
       )}
-      <p className="text-xs text-[color:var(--dash-muted)]">{`Section ${entry.section}. Counted from: ${entry.anchor}.`}</p>
+      {/* The Act's own words and a link to the section sit beside every limit, a countdown
+          included: the owner's medical-device rulings rest on both being shown with each entry
+          (docs/clinical-hazard-analysis.md). */}
+      <blockquote cite={mhaActMetadata.sourceUrl} className={quote} data-testid="mha-clock-quote">
+        {entry.leadIn ? `“${entry.leadIn} … ${entry.quote}”` : `“${entry.quote}”`}
+      </blockquote>
+      {entry.caveat ? (
+        <blockquote cite={mhaActMetadata.sourceUrl} className={quote}>
+          {`The Act also says (s ${entry.caveat.section}): “${entry.caveat.quote}”`}
+        </blockquote>
+      ) : null}
+      <a
+        href={mhaActMetadata.sourceUrl}
+        target="_blank"
+        rel="noreferrer"
+        data-testid="mha-clock-act-section"
+        className={cn(focusRing, flatLink, "w-fit underline underline-offset-2")}
+      >
+        {`Mental Health Act 2014 (WA) s ${entry.section}${heading ? ` — ${heading}` : ""}`}
+        <ExternalLink aria-hidden="true" className="size-icon-xs shrink-0" />
+      </a>
+      <p className="text-xs text-[color:var(--dash-muted)]">{`Counted from: ${entry.anchor}.`}</p>
     </li>
   );
 }
@@ -452,11 +467,21 @@ function ClockItem({
   );
 }
 
-function HandoverCopy({ clocks, nowMs }: { readonly clocks: readonly MhaClock[]; readonly nowMs: number }) {
+function HandoverCopy({
+  clocks,
+  nowMs,
+  unreadable,
+}: {
+  readonly clocks: readonly MhaClock[];
+  readonly nowMs: number;
+  readonly unreadable: boolean;
+}) {
   const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
-  const text = mhaClockHandoverText(clocks, nowMs);
+  const text = mhaClockHandoverText(clocks, nowMs, unreadable);
   const lines = text.split("\n");
   const copy = () => {
+    // Clear first, so a second Copy is announced again.
+    setStatus("idle");
     if (!navigator.clipboard?.writeText) {
       setStatus("failed");
       return;
@@ -505,10 +530,14 @@ function HandoverCopy({ clocks, nowMs }: { readonly clocks: readonly MhaClock[];
 function UndoBar({
   removed,
   onUndo,
+  onHold,
+  onRelease,
   message,
 }: {
   readonly removed: MhaClock | null;
   readonly onUndo: () => void;
+  readonly onHold: () => void;
+  readonly onRelease: () => void;
   readonly message: string | null;
 }) {
   return (
@@ -519,6 +548,10 @@ function UndoBar({
       {removed || message ? (
         <div
           data-testid="mha-clock-undo"
+          onFocus={onHold}
+          onBlur={onRelease}
+          onPointerEnter={onHold}
+          onPointerLeave={onRelease}
           className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-3 rounded-xl bg-[color:var(--dash-ink)] py-1 pr-1 pl-4 text-sm text-[color:var(--dash-page)] shadow-[var(--dash-shadow)] forced-colors:border"
         >
           <span className="nums min-w-0 py-2">{message ?? `Form ${removed?.formCode} clock removed`}</span>
@@ -560,17 +593,20 @@ function useUndo() {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
   }, []);
+  const startTimer = useCallback(() => {
+    clear();
+    timer.current = window.setTimeout(() => {
+      setRemoved(null);
+      setMessage(null);
+    }, UNDO_MS);
+  }, [clear]);
   const show = useCallback(
     (clock: MhaClock | null, text: string | null) => {
-      clear();
       setRemoved(clock);
       setMessage(text);
-      timer.current = window.setTimeout(() => {
-        setRemoved(null);
-        setMessage(null);
-      }, UNDO_MS);
+      startTimer();
     },
-    [clear],
+    [startTimer],
   );
   useEffect(() => clear, [clear]);
   // A clock removed under one account must never be put back under the next.
@@ -593,7 +629,9 @@ function useUndo() {
     show(null, result === "added" ? `Form ${removed.formCode} clock put back` : ADD_MESSAGE[result]);
   };
   const say = (text: string) => show(null, text);
-  return { removed, message, remove, undo, say };
+  // The bar waits while it has focus or the pointer, so Undo is never taken away mid-reach
+  // (WCAG 2.2.1); the countdown starts again when focus or the pointer leaves.
+  return { removed, message, remove, undo, say, hold: clear, release: startTimer };
 }
 
 export function MhaClockPage({
@@ -730,7 +768,7 @@ export function MhaClockPage({
           </ul>
         ) : null}
 
-        {clocks.length > 0 && now ? <HandoverCopy clocks={clocks} nowMs={nowMs} /> : null}
+        {clocks.length > 0 && now ? <HandoverCopy clocks={clocks} nowMs={nowMs} unreadable={unreadable} /> : null}
 
         <AddClock forms={forms} now={now} />
 
@@ -751,7 +789,13 @@ export function MhaClockPage({
           <FlatRow href="/forms/act" icon={ShieldCheck} title="Form pages and the Act" />
           <FlatRow href="/on-call/call" icon={Phone} title="Handover" subtitle="On Call" />
         </FlatList>
-        <UndoBar removed={undo.removed} message={undo.message} onUndo={undo.undo} />
+        <UndoBar
+          removed={undo.removed}
+          message={undo.message}
+          onUndo={undo.undo}
+          onHold={undo.hold}
+          onRelease={undo.release}
+        />
       </div>
     </InformationPageShell>
   );
