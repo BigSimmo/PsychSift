@@ -134,6 +134,14 @@ describe("AdminCompliancePage", () => {
     expect(screen.queryByTestId("admin-compliance-ready")).toBeNull();
   });
 
+  it("blames the server, not the connection, when the server failed while online", () => {
+    // The store marks every failed fetch isOffline (it is serving the cache); only loadError says why.
+    Object.assign(storeState, { loadError: "failed", isOffline: true, entries: [] });
+    render(<AdminCompliancePage now={NOW} />);
+    expect(screen.getByTestId("admin-compliance-failed")).toHaveTextContent("The server did not answer");
+    expect(screen.getByTestId("admin-compliance-failed")).not.toHaveTextContent("offline");
+  });
+
   it("asks a signed-out reader to sign in and says the example records are made up in demo", () => {
     storeState.signedOut = true;
     const { unmount } = render(<AdminCompliancePage now={NOW} />);

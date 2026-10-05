@@ -123,7 +123,7 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
         <ModeModuleSkeleton rows={6} twoLine testId="admin-compliance-export-loading" />
       ) : loadState === "failed" ? (
         <AdminLoadFailed
-          reason={state.isOffline ? "offline" : "failed"}
+          reason={state.loadError ?? "failed"}
           onRetry={state.retry}
           testId="admin-compliance-export-failed"
         />

@@ -412,11 +412,7 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
       {loadState === "loading" ? (
         <ModeModuleSkeleton rows={6} twoLine testId="admin-compliance-loading" />
       ) : loadState === "failed" ? (
-        <AdminLoadFailed
-          reason={state.isOffline ? "offline" : "failed"}
-          onRetry={state.retry}
-          testId="admin-compliance-failed"
-        />
+        <AdminLoadFailed reason={state.loadError ?? "failed"} onRetry={state.retry} testId="admin-compliance-failed" />
       ) : loadState === "signed-out" ? (
         <>
           <EmptyState
