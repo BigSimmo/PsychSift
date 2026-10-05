@@ -31,6 +31,32 @@ describe("Remind me keeps patient details out", () => {
     expect(checkReminderText(text)?.title).toBe(title);
   });
 
+  it.each([
+    ["mrs smith wants a call", "This looks like a name"],
+    ["Review Mr. o'brien", "This looks like a name"],
+    ["Mrs Ó'Brien family meeting", "This looks like a name"],
+    ["Call J Smith back", "This looks like a name"],
+    ["Ring J.S. about leave", "This looks like initials"],
+    ["Review the 34M from last night", "This looks like an age"],
+    ["45yo F needs obs", "This looks like an age"],
+  ])("also catches %s", (text, title) => {
+    expect(checkReminderText(text)?.title).toBe(title);
+  });
+
+  it.each([
+    "Chase urgent bloods",
+    "Send urine sample form",
+    "Book urology clinic slot",
+    "Check BP and BMI log",
+    "LAI clinic list for CBT group",
+    "Join the MS Teams call",
+    "FYI the OCD and ADHD talk moved",
+    "I need to update the roster",
+    "A meeting at 3",
+  ])("lets an ordinary clinical job through: %s", (text) => {
+    expect(checkReminderText(text)).toBeNull();
+  });
+
   it("gives the same answer every time (no state carried between checks)", () => {
     for (let i = 0; i < 3; i += 1) expect(checkReminderText("bed 3 obs")?.title).toBe("This looks like a bed number");
   });

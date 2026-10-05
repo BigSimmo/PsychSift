@@ -124,7 +124,7 @@ export function RemindMeSheet({
           <span>
             {shared
               ? "This is marked as a shared device, so it keeps no reminders. Use your own phone."
-              : "No names, record numbers or bed numbers. The words stay on this phone and never reach our server or your calendar. It shows in My Day when it's due. Not for legal deadlines such as Mental Health Act times."}
+              : "No names, record numbers or bed numbers. The words stay on this phone and never reach our server or your calendar. For now it shows under Your reminders on the Alerts page, and it won't buzz. Not for legal deadlines such as Mental Health Act times."}
           </span>
         </p>
         {failed ? (

@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 import { REMIND_ME_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { checkReminderText, normalizeReminders, REMIND_ME_TEXT_LIMIT, type Reminder } from "@/lib/alerts/remind-me";
-import { isSharedDevice } from "@/lib/alerts/shared-device";
+import { isSharedDevice, SHARED_DEVICE_CHANGE_EVENT } from "@/lib/alerts/shared-device";
 
 /**
  * Remind me notes on this device. Nothing here reaches a server or a calendar.
@@ -25,24 +25,40 @@ function readRaw(): string | null {
 }
 
 function snapshot(): readonly Reminder[] {
+  if (isSharedDevice()) return EMPTY;
   const raw = readRaw();
   if (raw === cachedRaw) return cachedList;
   cachedRaw = raw;
+  let stored: unknown = null;
   try {
-    cachedList = raw ? normalizeReminders(JSON.parse(raw), new Date()) : EMPTY;
+    stored = raw ? JSON.parse(raw) : null;
   } catch {
-    cachedList = EMPTY;
+    stored = null;
   }
+  cachedList = normalizeReminders(stored, new Date());
+  // A stored note that now fails the check (or a broken value) is deleted, not just hidden.
+  if (raw && (!Array.isArray(stored) || stored.length > cachedList.length)) {
+    try {
+      if (cachedList.length) window.localStorage.setItem(REMIND_ME_STORAGE_KEY, JSON.stringify(cachedList));
+      else window.localStorage.removeItem(REMIND_ME_STORAGE_KEY);
+      cachedRaw = readRaw();
+    } catch {
+      // Storage refused: the bad note stays hidden and is cleared at sign-out.
+    }
+  }
+  if (!cachedList.length) cachedList = EMPTY;
   return cachedList;
 }
 
 function subscribe(onChange: () => void) {
   window.addEventListener("storage", onChange);
   window.addEventListener(CHANGE_EVENT, onChange);
+  window.addEventListener(SHARED_DEVICE_CHANGE_EVENT, onChange);
   const stop = subscribeAccountTransition(onChange);
   return () => {
     window.removeEventListener("storage", onChange);
     window.removeEventListener(CHANGE_EVENT, onChange);
+    window.removeEventListener(SHARED_DEVICE_CHANGE_EVENT, onChange);
     stop();
   };
 }

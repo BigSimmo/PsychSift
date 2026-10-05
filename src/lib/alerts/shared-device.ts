@@ -2,6 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 
+import { REMIND_ME_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
+
 /**
  * "This is a shared computer": kept on this device only, never on the account,
  * because the same account may be signed in on a personal phone at the same
@@ -10,7 +12,7 @@ import { useSyncExternalStore } from "react";
  * state the device was in before the switch existed.
  */
 const STORAGE_KEY = "psychsift-shared-device";
-const CHANGE_EVENT = "psychsift-shared-device-change";
+export const SHARED_DEVICE_CHANGE_EVENT = "psychsift-shared-device-change";
 
 function read(): boolean {
   try {
@@ -22,10 +24,10 @@ function read(): boolean {
 
 function subscribe(onChange: () => void) {
   window.addEventListener("storage", onChange);
-  window.addEventListener(CHANGE_EVENT, onChange);
+  window.addEventListener(SHARED_DEVICE_CHANGE_EVENT, onChange);
   return () => {
     window.removeEventListener("storage", onChange);
-    window.removeEventListener(CHANGE_EVENT, onChange);
+    window.removeEventListener(SHARED_DEVICE_CHANGE_EVENT, onChange);
   };
 }
 
@@ -35,12 +37,15 @@ export function isSharedDevice(): boolean {
 
 export function setSharedDevice(shared: boolean): void {
   try {
-    if (shared) window.localStorage.setItem(STORAGE_KEY, "1");
-    else window.localStorage.removeItem(STORAGE_KEY);
+    if (shared) {
+      window.localStorage.setItem(STORAGE_KEY, "1");
+      // A shared device keeps no notes, including ones saved before it was marked.
+      window.localStorage.removeItem(REMIND_ME_STORAGE_KEY);
+    } else window.localStorage.removeItem(STORAGE_KEY);
   } catch {
     // Storage refused (private mode): the switch simply does not stick.
   }
-  window.dispatchEvent(new Event(CHANGE_EVENT));
+  window.dispatchEvent(new Event(SHARED_DEVICE_CHANGE_EVENT));
 }
 
 export function useSharedDevice(): boolean {

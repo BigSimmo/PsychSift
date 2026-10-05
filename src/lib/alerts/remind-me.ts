@@ -113,11 +113,41 @@ const NOT_INITIALS = new Set([
   "PMCWA",
   "AMC",
   "EMR",
+  "BP",
+  "BMI",
+  "LAI",
+  "CBT",
+  "DBT",
+  "MDD",
+  "BPD",
+  "OCD",
+  "GAD",
+  "ASD",
+  "TMS",
+  "AOD",
+  "MH",
+  "OPD",
+  "EPSE",
+  "NMS",
+  "UDS",
+  "PHQ",
+  "TBC",
+  "FYI",
+  "MS",
+  "ADHD",
+  "PTSD",
+  "SMS",
 ]);
 
 const BED = /\b(?:bed|bay|room|rm|cubicle|cube)\s*#?\s*\d+[a-z]?\b/gi;
-const RECORD_NUMBER = /\b(?:urn|mrn|umrn|ur)\s*[:#-]?\s*\w+|\b\d{5,}\b/gi;
-const TITLE_NAME = /\b(?:[Mm]rs?|[Mm]s|[Mm]iss|[Mm]x|[Mm]aster)\.?\s+[A-Z][a-z'-]+/g;
+const RECORD_NUMBER = /\b(?:urn|mrn|umrn|ur)\b\s*[:#-]?\s*\w+|\b\d{5,}\b/gi;
+// A title then a surname, in any case ("Mrs Smith", "mr. o'brien"); "MS Teams" is the software.
+const TITLE_NAME =
+  /\b(?:[Mm]rs?|[Mm]s|[Mm]x)\b\.?\s+(?![Tt]eams\b)\p{L}[\p{L}'-]+|\b(?:Miss|Master)\s+\p{Lu}[\p{L}'-]+/gu;
+// One initial then a surname ("J Smith", "J. Smith"); A and I are left alone as ordinary words.
+const INITIAL_SURNAME = /\b[B-HJ-Z]\.?\s\p{Lu}\p{Ll}[\p{L}'-]+/gu;
+const DOTTED_INITIALS = /\b[A-Z]\.\s?[A-Z]\.?(?:\s?[A-Z]\.?)?(?=\W|$)/g;
+const AGE_SEX = /\b\d{1,3}\s?(?:yo|y\/o|yrs?)\b(?:\s?[MFmf]\b)?|\b\d{1,3}[MF]\b/g;
 const INITIALS = /\b[A-Z]{2,3}\b/g;
 
 function initialsIn(text: string): string[] {
@@ -142,6 +172,9 @@ export function checkReminderText(text: string): ReminderTextProblem | null {
   if (initials.length) found.push("initials");
   const checks: [RegExp, string][] = [
     [TITLE_NAME, "a name"],
+    [INITIAL_SURNAME, "a name"],
+    [DOTTED_INITIALS, "initials"],
+    [AGE_SEX, "an age"],
     [BED, "a bed number"],
     [RECORD_NUMBER, "a record number"],
   ];
@@ -149,7 +182,7 @@ export function checkReminderText(text: string): ReminderTextProblem | null {
   for (const [pattern, label] of checks) {
     // A fresh copy each time: a shared /g pattern keeps its position between calls.
     const fresh = new RegExp(pattern.source, pattern.flags);
-    if (fresh.test(text)) found.push(label);
+    if (fresh.test(text) && !found.includes(label)) found.push(label);
     safer = safer.replace(new RegExp(pattern.source, pattern.flags), " ");
   }
   for (const word of initials) safer = safer.replace(new RegExp(`\\b${word}\\b`, "g"), " ");
