@@ -13,6 +13,12 @@ vi.mock("@/lib/cme/training-page-data", () => ({ loadCmeTrainingPageData: mocks.
 
 import CmeTrainingRoute from "@/app/(search-app)/cme/training/page";
 import { CmeTrainingPage } from "@/components/cme/cme-training-page";
+import {
+  SAMPLE_TRAINING_MILESTONES,
+  SAMPLE_TRAINING_NOW_ISO,
+  SAMPLE_TRAINING_PERIODS,
+  sampleTrainingAssessments,
+} from "@/lib/cme/training-assessments-sample";
 import type { TrainingMilestone, TrainingPeriod } from "@/lib/cme/training-timeline";
 
 afterEach(() => {
@@ -22,6 +28,13 @@ afterEach(() => {
   mocks.refresh.mockReset();
   mocks.load.mockReset();
 });
+
+/** Opens one part of the training record from its summary row. */
+async function openRecordPart(name: "Stages, rotations and breaks" | "Milestones") {
+  await userEvent.setup().click(screen.getByRole("button", { name: new RegExp(`^${name}`) }));
+}
+
+const NOT_RECORDED = "Not recorded in PsychSift yet. Keep them in InTrain (RANZCP) or your ePortfolio (interns).";
 
 /** 28 September 2026, 10:00 Perth. */
 const NOW_ISO = "2026-09-28T02:00:00.000Z";
@@ -49,8 +62,10 @@ const OVERDUE_EXAM: TrainingMilestone = {
 };
 
 describe("CME training page", () => {
-  it("draws the timeline above the list of periods", () => {
+  it("draws the timeline above the list of periods", async () => {
     render(<CmeTrainingPage nowIso={NOW_ISO} initialPeriods={PERIODS} initialMilestones={[]} demoMode={false} />);
+    expect(screen.queryByTestId("cme-training-periods")).toBeNull();
+    await openRecordPart("Stages, rotations and breaks");
     const timeline = screen.getByTestId("cme-training-timeline");
     const list = screen.getByTestId("cme-training-periods");
     expect(timeline.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -69,13 +84,24 @@ describe("CME training page", () => {
     const empty = screen.getByTestId("cme-training-empty");
     expect(empty).toHaveTextContent("Nothing is preloaded here.");
     expect(empty).toHaveTextContent("your college's current requirements");
-    expect(screen.queryByTestId("cme-training-position")).toBeNull();
+    expect(screen.getByTestId("cme-training-record-periods")).toHaveTextContent("Nothing recorded yet");
+    // An empty record starts open, so the doctor sees where to begin.
+    expect(screen.getByTestId("cme-training-record-periods")).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByTestId("cme-training-stage")).toBeNull();
   });
 
-  it("shows where the trainee is, the training clock, and an overdue milestone", () => {
+  it("shows where the trainee is, the training clock, and an overdue milestone", async () => {
     render(
       <CmeTrainingPage nowIso={NOW_ISO} initialPeriods={PERIODS} initialMilestones={[OVERDUE_EXAM]} demoMode={false} />,
     );
+    expect(screen.getByTestId("cme-training-record-periods")).toHaveTextContent(
+      "Stages, rotations and breaksStage 2 · rotation 2 of 2 · 1 rotation done",
+    );
+    expect(screen.getByTestId("cme-training-record-milestones")).toHaveTextContent(
+      "Milestones1 open · overdue since Tue 1 Sep",
+    );
+    await openRecordPart("Stages, rotations and breaks");
+    await openRecordPart("Milestones");
     expect(screen.queryByTestId("cme-training-empty")).toBeNull();
     expect(screen.getByTestId("cme-training-stage")).toHaveTextContent("Stage 2");
     expect(screen.getByTestId("cme-training-rotation")).toHaveTextContent(
@@ -90,7 +116,7 @@ describe("CME training page", () => {
     );
   });
 
-  it("says the clock is paused on a break", () => {
+  it("says the clock is paused on a break", async () => {
     render(
       <CmeTrainingPage
         nowIso={NOW_ISO}
@@ -101,6 +127,8 @@ describe("CME training page", () => {
         demoMode={false}
       />,
     );
+    await openRecordPart("Stages, rotations and breaks");
+    await openRecordPart("Milestones");
     expect(screen.getByTestId("cme-training-on-break")).toHaveTextContent(
       "On a break: Parental leave. Your training clock is paused.",
     );
@@ -229,21 +257,46 @@ describe("CME training page, mock-up layout", () => {
     );
   });
 
-  it("shows rule figures with their source, check month and Not signed off, and counts nothing", () => {
+  it("shows the EPA, term and A to D headings signed in, with an honest line and no counts", () => {
     render(<CmeTrainingPage nowIso={NOW_ISO} initialPeriods={PERIODS} initialMilestones={[]} demoMode={false} />);
-    const assessments = screen.getByTestId("cme-training-assessments");
-    expect(assessments).toHaveTextContent("PsychSift does not record EPAs, WBAs or term assessments yet");
-    expect(screen.getByTestId("cme-training-rule-ranzcp-epa")).toHaveTextContent(
-      "At least 2 for each 6-month full-time rotation, pro rata if part-time.",
+    const page = screen.getByTestId("cme-training");
+    for (const id of [
+      "cme-training-epas",
+      "cme-training-this-term",
+      "cme-training-epa-assessments",
+      "cme-training-experience",
+    ]) {
+      expect(screen.getByTestId(id)).toHaveTextContent(NOT_RECORDED);
+    }
+    expect(screen.getByTestId("cme-training-epas")).toHaveTextContent("EPAs this rotation");
+    expect(screen.getByTestId("cme-training-epas")).toHaveTextContent(
+      "The minimum is 2 for each 6-month full-time rotation, pro rata if part-time.",
     );
-    expect(screen.getByTestId("cme-training-rule-ranzcp-epa")).toHaveTextContent(
-      "RANZCP · not yet checked against the source",
+    expect(screen.getByTestId("cme-training-epas")).toHaveTextContent("RANZCP · not yet checked against the source");
+    expect(screen.getByTestId("cme-training-epa-assessments")).toHaveTextContent(
+      "AMC framework · not yet checked against the source",
     );
-    expect(screen.getByTestId("cme-training-rule-amc-epa")).toHaveTextContent("run in WA by PMCWA");
-    for (const id of ["cme-training-rule-ranzcp-epa", "cme-training-rule-amc-epa", "cme-training-cpd-rule"]) {
+    for (const id of ["cme-training-epas", "cme-training-epa-assessments", "cme-training-cpd-rule"]) {
       expect(screen.getByTestId(id)).toHaveTextContent("Not signed off");
     }
-    expect(screen.getByTestId("cme-training")).not.toHaveTextContent(/\bAMA\b/);
+    // Nothing counted, nothing that would look like it saves.
+    expect(page).not.toHaveTextContent(/marked attained|WBAs logged|\b0 of 2\b|\bof 3\b|\blogged ·/);
+    expect(screen.queryByTestId("cme-training-epas-figure")).toBeNull();
+    expect(screen.queryByTestId("cme-training-term-chart")).toBeNull();
+    expect(screen.queryByTestId("cme-training-experience-grid")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Add an EPA/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Draft a WBA request/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Log an EPA assessment/ })).toBeNull();
+    expect(page).not.toHaveTextContent("Dr Example");
+    expect(screen.queryByTestId("cme-training-example-switch")).toBeNull();
+    // The official records are linked.
+    expect(screen.getByTestId("cme-training-portal")).toHaveTextContent(
+      "Open your college training portalInTrain is the official record",
+    );
+    expect(screen.getByTestId("cme-training-eportfolio")).toHaveTextContent(
+      "Your ePortfolioThe official record of your training",
+    );
+    expect(page).not.toHaveTextContent(/\bAMA\b/);
   });
 
   it("works the CPD rule out from the training record, read-only", () => {
@@ -319,10 +372,139 @@ describe("CME training page, mock-up layout", () => {
         demoMode={false}
       />,
     );
+    await openRecordPart("Milestones");
     expect(screen.getByTestId("cme-training-milestones")).toHaveTextContent("You marked it done on 14 September 2026");
     await user.click(screen.getByRole("button", { name: "Edit Mid-rotation review" }));
     await user.click(screen.getByRole("button", { name: "Delete this milestone" }));
     expect(screen.getByRole("button", { name: "Delete milestone" })).toBeInTheDocument();
+  });
+});
+
+describe("CME training page, the mock-up's sample people", () => {
+  function renderSample(view: "registrar" | "intern") {
+    return render(
+      <CmeTrainingPage
+        nowIso={SAMPLE_TRAINING_NOW_ISO}
+        initialPeriods={SAMPLE_TRAINING_PERIODS}
+        initialMilestones={SAMPLE_TRAINING_MILESTONES}
+        demoMode
+        assessments={sampleTrainingAssessments(view)}
+      />,
+    );
+  }
+
+  it("shows the registrar example with the mock-up's values", async () => {
+    renderSample("registrar");
+    expect(screen.getByTestId("cme-training-this-rotation")).toHaveTextContent("This rotation · Adult inpatient");
+    expect(screen.getByTestId("cme-rotation-track-words")).toHaveTextContent(
+      "Rotation runs 3 August 2026 to 29 January 2027.",
+    );
+    expect(screen.getByTestId("cme-training-rotation-milestone")).toHaveTextContent(
+      "Mid-rotation reviewYour milestone · Mon 2 Nov",
+    );
+    expect(screen.getByTestId("cme-training-epas")).toHaveTextContent("EPAs this rotation");
+    expect(screen.getByTestId("cme-training-epas")).toHaveTextContent("Not signed off");
+    expect(screen.getByTestId("cme-training-epas-figure")).toHaveTextContent("1 of 2marked attained");
+    const segments = screen.getByTestId("cme-training-epas-segments").children;
+    expect(segments).toHaveLength(2);
+    expect(segments[0]).toHaveAttribute("data-filled", "true");
+    expect(segments[1]).toHaveAttribute("data-filled", "false");
+    expect(screen.getByText("1 of the minimum 2 EPAs marked attained this rotation.")).toHaveClass("sr-only");
+    expect(screen.getByTestId("cme-training-epas-next")).toHaveTextContent(
+      "At least 1 more by 29 January. The minimum is 2 for each 6-month full-time rotation, pro rata if part-time.",
+    );
+    const list = screen.getByTestId("cme-training-epa-list");
+    expect(list).toHaveTextContent("EPAs in progress · 2");
+    expect(screen.getByTestId("cme-training-epa-sample-epa-1")).toHaveTextContent(
+      "Example EPA one2 of 3 WBAs logged · Dr ExampleDraft a WBA request",
+    );
+    expect(screen.getByTestId("cme-training-epa-sample-epa-2")).toHaveTextContent(
+      "Example EPA two0 of 3 WBAs logged · not startedDraft a WBA request",
+    );
+    expect(screen.getByTestId("cme-training-epa-sample-epa-3")).toHaveTextContent(
+      "Example EPA threeYou marked it attained on 14 Sep · keep your COE form in InTrain",
+    );
+    expect(screen.getByTestId("cme-training-wba-note")).toHaveTextContent(
+      "A WBA request opens a draft for you to send. PsychSift sends nothing. Three WBAs do not by themselves mean an EPA is attained (RANZCP).",
+    );
+    expect(screen.getByTestId("cme-training-record-periods")).toHaveTextContent(
+      "Stages, rotations and breaksStage 3 · rotation 2 of 4 · 1 rotation done",
+    );
+    expect(screen.getByTestId("cme-training-record-milestones")).toHaveTextContent("Milestones3 open · next Mon 2 Nov");
+    expect(screen.getByTestId("cme-training-portal")).toHaveTextContent(
+      "Open your college training portalInTrain is the official record",
+    );
+    expect(screen.getByTestId("cme-training-footer")).toHaveTextContent(
+      "Your Director of Training has the final word on every requirement.",
+    );
+    // The junior doctor parts belong to the other example.
+    expect(screen.queryByTestId("cme-training-epa-assessments")).toBeNull();
+    expect(screen.queryByTestId("cme-training-cpd-rule")).toBeNull();
+    expect(screen.getByRole("link", { name: "See the junior doctor example" })).toHaveAttribute(
+      "href",
+      "/cme/training?example=intern",
+    );
+
+    // A sample button saves and drafts nothing, and says so.
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    await userEvent.setup().click(screen.getByRole("button", { name: "Draft a WBA request: Example EPA one" }));
+    expect(list).toHaveTextContent("This is an example.");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("shows the junior doctor example with the mock-up's values", () => {
+    renderSample("intern");
+    expect(screen.getByTestId("cme-training-this-term")).toHaveTextContent("This term · general medicine");
+    expect(screen.getByTestId("cme-training-mid-term")).toHaveTextContent(
+      "Mid-term assessmentWith your term supervisor · Fri 16 Oct, in 12 days",
+    );
+    expect(screen.getByTestId("cme-training-term")).toHaveTextContent("Term 4Mon 14 Sep to Sun 22 Nov · week 3 of 10");
+    const epas = screen.getByTestId("cme-training-epa-assessments");
+    expect(epas).toHaveTextContent("EPA assessments · 2026");
+    expect(epas).toHaveTextContent("AMC framework · not yet checked against the source");
+    expect(screen.getByTestId("cme-training-epa-assessments-figure")).toHaveTextContent(
+      "7logged · at least 10 a year, at least 2 each term",
+    );
+    expect(["1", "2", "3", "4", "5"].map((n) => screen.getByTestId(`cme-training-term-${n}`).textContent)).toEqual([
+      "3",
+      "2",
+      "2",
+      "0 of 2",
+      "Nov",
+    ]);
+    expect(screen.getByTestId("cme-training-term-chart")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByTestId("cme-training-term-chart-words")).toHaveTextContent(
+      "Term 1: 3, term 2: 2, term 3: 2, term 4: 0 so far, term 5 not started.",
+    );
+    expect(epas).toHaveTextContent("EPA 1 at least once each term. EPAs 2 to 4 at least twice a year.");
+    expect(screen.getByRole("button", { name: "Log an EPA assessment" })).toBeInTheDocument();
+    const grid = screen.getByTestId("cme-training-experience");
+    expect(grid).toHaveTextContent("Clinical experience · terms done");
+    expect(screen.getByTestId("cme-training-experience-A")).toHaveTextContent("AUndifferentiated illness");
+    expect(screen.getByTestId("cme-training-experience-A")).toHaveTextContent("2 of 3");
+    expect(screen.getByTestId("cme-training-experience-B")).toHaveTextContent("Chronic illness");
+    expect(screen.getByTestId("cme-training-experience-B")).toHaveTextContent("1 of 3");
+    expect(screen.getByTestId("cme-training-experience-C")).toHaveTextContent("2 of 3");
+    expect(screen.getByTestId("cme-training-experience-D")).toHaveTextContent("Peri-procedural care");
+    expect(screen.getByTestId("cme-training-experience-D")).toHaveTextContent("0 of 3");
+    expect(screen.getByTestId("cme-training-experience-A")).toHaveTextContent("Term 4: this term, not finished");
+    expect(grid).toHaveTextContent(
+      "Filled: covered in that term. Dashed: this term, not finished. Category D applies to PGY1.",
+    );
+    // The CPD rule is never worked out from the registrar example's record.
+    expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent("Not worked out here");
+    expect(screen.getByTestId("cme-training-eportfolio")).toHaveTextContent(
+      "Your ePortfolioThe official record of your training",
+    );
+    expect(screen.getByRole("link", { name: /Intern teaching/ })).toHaveAttribute("href", "/teaching");
+    expect(screen.getByTestId("cme-training-footer")).toHaveTextContent(
+      "Your term supervisor and medical education unit have the final word.",
+    );
+    // The registrar's parts are not on this example.
+    expect(screen.queryByTestId("cme-training-this-rotation")).toBeNull();
+    expect(screen.queryByTestId("cme-training-epas")).toBeNull();
+    expect(screen.queryByTestId("cme-training-position")).toBeNull();
+    expect(screen.getByRole("link", { name: "See the registrar example" })).toHaveAttribute("href", "/cme/training");
   });
 });
 
@@ -350,6 +532,33 @@ describe("CME training route", () => {
       now: new Date(NOW_ISO),
     });
     render(await CmeTrainingRoute());
-    expect(screen.getByTestId("cme-training-empty")).toBeInTheDocument();
+    expect(screen.getByTestId("cme-training-epas-figure")).toHaveTextContent("1 of 2marked attained");
+  });
+
+  it("switches the demo to the junior doctor example with ?example=intern", async () => {
+    mocks.load.mockResolvedValue({
+      state: "ready",
+      demoMode: true,
+      periods: SAMPLE_TRAINING_PERIODS,
+      milestones: SAMPLE_TRAINING_MILESTONES,
+      now: new Date(SAMPLE_TRAINING_NOW_ISO),
+    });
+    render(await CmeTrainingRoute({ searchParams: Promise.resolve({ example: "intern" }) }));
+    expect(screen.getByTestId("cme-training-epa-assessments-figure")).toHaveTextContent("7logged");
+    expect(screen.queryByTestId("cme-training-epas")).toBeNull();
+  });
+
+  it("never shows sample figures to a signed-in doctor, even with ?example=intern", async () => {
+    mocks.load.mockResolvedValue({
+      state: "ready",
+      demoMode: false,
+      periods: [],
+      milestones: [],
+      now: new Date(NOW_ISO),
+    });
+    render(await CmeTrainingRoute({ searchParams: Promise.resolve({ example: "intern" }) }));
+    expect(screen.getByTestId("cme-training-epa-assessments")).toHaveTextContent(NOT_RECORDED);
+    expect(screen.queryByTestId("cme-training-epa-assessments-figure")).toBeNull();
+    expect(screen.getByTestId("cme-training")).not.toHaveTextContent("Dr Example");
   });
 });
