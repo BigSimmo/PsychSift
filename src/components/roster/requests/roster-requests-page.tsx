@@ -1,22 +1,29 @@
 "use client";
 
-import { ArrowLeftRight, CalendarOff, CalendarX2, HandHelping, Inbox, Plane } from "lucide-react";
+import { ArrowLeftRight, CalendarDays, CalendarOff, CalendarX2, HandHelping, Inbox, Info, Plane } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { modeIconTile, modeModuleSurface } from "@/components/mode-kit/recipes";
-import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { SwapFlowSheet } from "@/components/roster/swaps/swap-flow-sheet";
 import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterNow } from "@/components/roster/roster-format";
+import {
+  RosterDateLead,
+  RosterFootnote,
+  RosterIconLead,
+  RosterLinkWord,
+  RosterList,
+  RosterNote,
+  RosterRow,
+  RosterSectionHead,
+  rosterOutlineButton,
+} from "@/components/roster/roster-list";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
-import { Button } from "@/components/ui/button";
-import { cn, eyebrowText } from "@/components/ui-primitives";
-import { formatDateSpan } from "@/components/roster/roster-format";
-import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { cn } from "@/components/ui-primitives";
+import { WEEKDAYS, addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterLeave } from "@/lib/roster/leave";
 
 import { RosterDatesSheet } from "./roster-dates-sheet";
@@ -24,7 +31,7 @@ import { RosterGiveAwaySheet } from "./roster-give-away-sheet";
 import { RosterLeaveSheet } from "./roster-leave-sheet";
 import { RosterSentBar, type SentReceipt } from "./roster-sent-bar";
 import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
-import { RosterEmpty, RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
+import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
 import { RosterNewButton } from "@/components/roster/roster-new-button";
 import { usePhoneFooterLayerScrollHidden } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 
@@ -48,34 +55,66 @@ const subscribeSearch = (notify: () => void) => {
 const searchSnapshot = () => window.location.search;
 const serverSearchSnapshot = () => "";
 
-function leaveStatus(status: RosterLeave["status"]): string {
-  return { planned: "Planned · also lodge in HR", applied: "Applied in HR", approved: "Approved in HR" }[status];
+/** What the doctor marked in the leave form; PsychSift never reads HR. */
+const LEAVE_MARK: Record<RosterLeave["status"], string> = {
+  planned: "not yet lodged in HR",
+  applied: "applied in HR",
+  approved: "approved in HR",
+};
+const LEAVE_KIND: Record<RosterLeave["kind"], string> = {
+  annual: "Annual leave",
+  pd_leave: "Professional development",
+};
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+const DAY_WORDS: Record<"cant" | "prefer_off", string> = { cant: "Can't work", prefer_off: "Prefer off" };
+
+const dayCount = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1;
+const weekdayOf = (date: string) => WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!;
+
+/** `Wed 7 Oct · 1 day · you marked it: not yet lodged in HR`. */
+function leaveLine(item: RosterLeave) {
+  const days = dayCount(item.startsOn, item.endsOn);
+  const span =
+    item.startsOn === item.endsOn
+      ? formatPerthDay(item.startsOn)
+      : `${formatPerthDay(item.startsOn)} to ${formatPerthDay(item.endsOn)}`;
+  return `${span} · ${days} ${days === 1 ? "day" : "days"} · you marked it: ${LEAVE_MARK[item.status]}`;
 }
 
-function requestRow(letter: string, title: string, detail: string, status: string, action: ReactNode, key: string) {
+/** Your marked dates, with back-to-back days of the same kind joined into one row. */
+function dateRuns(rows: readonly { date: string; kind: "cant" | "prefer_off" }[]) {
+  const runs: { from: string; to: string; kind: "cant" | "prefer_off" }[] = [];
+  for (const row of [...rows].sort((a, b) => a.date.localeCompare(b.date))) {
+    const last = runs.at(-1);
+    if (last && last.kind === row.kind && addDaysToDate(last.to, 1) === row.date) last.to = row.date;
+    else runs.push({ from: row.date, to: row.date, kind: row.kind });
+  }
+  return runs;
+}
+
+function TryAgainNote({ children, onRetry }: { children: ReactNode; onRetry: () => void }) {
   return (
-    <li
-      key={key}
-      className="flex min-w-0 items-center gap-3 border-b border-[color:var(--border)] px-3 py-3 last:border-0"
-    >
-      <span aria-hidden="true" className={cn(modeIconTile, "shrink-0")}>
-        {letter}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{title}</p>
-        <p className="text-sm text-[color:var(--text-muted)]">{detail}</p>
-        <p
-          className={
-            status === "Needs you"
-              ? "text-sm font-medium text-[color:var(--info)]"
-              : "text-sm text-[color:var(--text-muted)]"
-          }
-        >
-          {status}
-        </p>
-      </div>
-      {action}
-    </li>
+    <div className="grid gap-2">
+      <RosterNote icon={Info} role="alert">
+        <p>{children}</p>
+      </RosterNote>
+      <button type="button" className={cn(rosterOutlineButton, "justify-self-start px-4")} onClick={onRetry}>
+        Try again
+      </button>
+    </div>
   );
 }
 
@@ -97,6 +136,9 @@ export function RosterRequestsPage() {
   const range = useMemo(() => ({ from: addDaysToDate(today, -7), to: addDaysToDate(today, 54) }), [today]);
   const overview = useRosterRead(serviceId, "overview");
   const assignments = useRosterRead(serviceId, "assignments", range);
+  // The same window the dates sheet edits: tomorrow and the 55 days after.
+  const datesRange = useMemo(() => ({ from: addDaysToDate(today, 1), to: addDaysToDate(today, 56) }), [today]);
+  const unavailability = useRosterRead(serviceId, "unavailability", datesRange);
   const [leave, setLeave] = useState<RosterLeave[]>([]);
   const [leaveState, setLeaveState] = useState<"loading" | "ready" | "error">("loading");
   const [sheet, setSheet] = useState<ActiveSheet>(null);
@@ -107,7 +149,8 @@ export function RosterRequestsPage() {
   const reload = useCallback(() => {
     overview.reload();
     assignments.reload();
-  }, [overview, assignments]);
+    unavailability.reload();
+  }, [overview, assignments, unavailability]);
   const loadLeave = useCallback((signal?: AbortSignal) => {
     const sequence = ++leaveReadSequence.current;
     return Promise.resolve()
@@ -202,17 +245,21 @@ export function RosterRequestsPage() {
   const earlierLeave = leave.filter((item) => item.endsOn < today);
 
   function leaveRow(item: RosterLeave) {
-    return requestRow(
-      "L",
-      `Leave ${formatDateSpan(item.startsOn, item.endsOn)}`,
-      item.kind === "annual" ? "Annual leave" : "Professional development leave",
-      leaveStatus(item.status),
-      <Button size="sm" onClick={() => setSheet({ kind: "leave", leaveId: item.id })}>
-        Review
-      </Button>,
-      item.id,
+    return (
+      <RosterRow
+        key={item.id}
+        lead={<RosterIconLead icon={item.kind === "annual" ? Plane : CalendarDays} />}
+        title={LEAVE_KIND[item.kind]}
+        sub={leaveLine(item)}
+        label={`Review ${LEAVE_KIND[item.kind].toLowerCase()}, ${leaveLine(item)}`}
+        onClick={() => setSheet({ kind: "leave", leaveId: item.id })}
+      />
     );
   }
+  const myDates =
+    actorId && unavailability.status === "ready"
+      ? dateRuns((unavailability.data?.unavailability ?? []).filter((row) => row.userId === actorId))
+      : [];
 
   const canTeamAct = !!serviceId && !!actorId && overview.status === "ready";
   return (
@@ -250,104 +297,170 @@ export function RosterRequestsPage() {
           />
         }
       />
-      <RosterSampleNotice sample={teams.data?.sample} />
-      {enabled.length > 1 ? (
-        <label className="grid max-w-sm gap-1 text-sm">
-          Team
-          <select
-            value={selectedServiceId ?? ""}
-            onChange={(event) => setSelectedServiceId(event.target.value || null)}
-            className={rosterField}
-          >
-            <option value="">Choose a team</option>
-            {enabled.map((team) => (
-              <option value={team.serviceId} key={team.serviceId}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      {enabled.length > 1 && !selectedServiceId ? <p>Choose the team for a request before continuing.</p> : null}
-      {teams.status === "loading" ? <p role="status">Loading your teams…</p> : null}
-      {teams.status === "signed-out" ? (
-        <RosterSignInNotice testId="roster-requests-signed-out">
-          Sign in to see your leave and requests.
-        </RosterSignInNotice>
-      ) : null}
-      {teams.status === "not-confirmed" || teams.status === "unavailable" ? (
-        <ModeNotice testId="roster-requests-team-pending">
-          {teams.status === "not-confirmed" && teams.message
-            ? teams.message
-            : "Team requests aren\u2019t available yet. Try again later."}
-        </ModeNotice>
-      ) : null}
-      {teams.status === "error" ? (
-        <div role="alert" className="grid gap-2">
-          <p>{teams.message}</p>
-          <Button className="justify-self-start" onClick={teams.reload}>
-            Try again
-          </Button>
-        </div>
-      ) : null}
-      {teams.status === "ready" && !enabled.length ? (
-        <p>No confirmed team yet. You can still plan your own leave.</p>
-      ) : null}
-      {serviceId && (assignments.status === "error" || overview.status === "error") ? (
-        <div role="alert" className="grid gap-2">
-          <p>The team roster couldn&apos;t be checked.</p>
-          <Button className="justify-self-start" onClick={reload}>
-            Try again
-          </Button>
-        </div>
-      ) : null}
-      <RosterSentBar receipt={sent} clear={clearSent} />
-      <ModeGroupedList>
-        <ModeRow
-          title="Swaps and open shifts"
-          subtitle="Answer a swap, follow one you sent, or take an open shift."
-          href="/roster/swaps"
-        />
-      </ModeGroupedList>
-      <section>
-        <h2 className={cn(eyebrowText, "mb-2 flex items-center gap-2 px-1")}>
-          Leave
-          <span className="nums rounded-full bg-[color:var(--surface-wash)] px-2 text-xs text-[color:var(--text-muted)]">
-            {currentLeave.length}
-          </span>
-        </h2>
-        {currentLeave.length ? (
-          <ul className={modeModuleSurface}>{currentLeave.map(leaveRow)}</ul>
-        ) : teams.status === "loading" || (teams.status === "ready" && leaveState === "loading") ? (
-          <>
-            <p role="status" className="sr-only">
-              Loading your leave…
-            </p>
-            <ModeModuleSkeleton rows={2} twoLine testId="roster-requests-leave-loading" />
-          </>
-        ) : teams.status === "ready" && leaveState === "ready" ? (
-          <RosterEmpty icon={Plane}>Nothing yet. Tap New to plan leave or mark dates you can&apos;t work.</RosterEmpty>
+      <div className="grid min-w-0 gap-3" data-mode-identity="roster">
+        <RosterSampleNotice sample={teams.data?.sample} />
+        {enabled.length > 1 ? (
+          <label className="grid max-w-sm gap-1 text-sm text-[color:var(--text-muted)]">
+            Team
+            <select
+              value={selectedServiceId ?? ""}
+              onChange={(event) => setSelectedServiceId(event.target.value || null)}
+              className={rosterField}
+            >
+              <option value="">Choose a team</option>
+              {enabled.map((team) => (
+                <option value={team.serviceId} key={team.serviceId}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </label>
         ) : null}
-      </section>
-      {earlierLeave.length ? (
-        <section>
-          <h2 className={cn(eyebrowText, "mb-2 px-1")}>Earlier</h2>
-          <ul className={modeModuleSurface}>{earlierLeave.map(leaveRow)}</ul>
+        {enabled.length > 1 && !selectedServiceId ? (
+          <RosterNote icon={Info}>
+            <p>Choose the team for a request before continuing.</p>
+          </RosterNote>
+        ) : null}
+        {teams.status === "loading" ? (
+          <p role="status" className="mx-1 text-sm text-[color:var(--text-muted)]">
+            Loading your teams…
+          </p>
+        ) : null}
+        {teams.status === "signed-out" ? (
+          <RosterSignInNotice testId="roster-requests-signed-out">
+            Sign in to see your leave and requests.
+          </RosterSignInNotice>
+        ) : null}
+        {teams.status === "not-confirmed" || teams.status === "unavailable" ? (
+          <ModeNotice testId="roster-requests-team-pending">
+            {teams.status === "not-confirmed" && teams.message
+              ? teams.message
+              : "Team requests aren\u2019t available yet. Try again later."}
+          </ModeNotice>
+        ) : null}
+        {teams.status === "error" ? <TryAgainNote onRetry={teams.reload}>{teams.message}</TryAgainNote> : null}
+        {teams.status === "ready" && !enabled.length ? (
+          <RosterNote icon={Info}>
+            <p>No confirmed team yet. You can still plan your own leave.</p>
+          </RosterNote>
+        ) : null}
+        {serviceId && (assignments.status === "error" || overview.status === "error") ? (
+          <TryAgainNote onRetry={reload}>The team roster couldn&apos;t be checked.</TryAgainNote>
+        ) : null}
+        {sheet?.kind === "swap" && assignments.status === "ready" && !swapGive ? (
+          <RosterNote icon={Info} role="alert">
+            <p>
+              That shift couldn&apos;t be found. Open it from the{" "}
+              <Link href="/roster/team" className="underline underline-offset-2">
+                Team calendar
+              </Link>{" "}
+              to swap it.
+            </p>
+          </RosterNote>
+        ) : null}
+        <RosterSentBar receipt={sent} clear={clearSent} />
+        <RosterList>
+          <RosterRow
+            href="/roster/swaps"
+            lead={<RosterIconLead icon={ArrowLeftRight} />}
+            title="Swaps and open shifts"
+            sub="Answer a swap, follow one you sent, or take an open shift"
+          />
+        </RosterList>
+
+        <section aria-labelledby="roster-requests-leave" className="grid min-w-0 gap-3">
+          <RosterSectionHead
+            id="roster-requests-leave"
+            title="Leave"
+            right={
+              <RosterLinkWord label="Plan new leave" onClick={() => setSheet({ kind: "leave" })}>
+                Plan leave
+              </RosterLinkWord>
+            }
+          />
+          {currentLeave.length ? (
+            <RosterList label="Leave">{currentLeave.map(leaveRow)}</RosterList>
+          ) : teams.status === "loading" || (teams.status === "ready" && leaveState === "loading") ? (
+            <>
+              <p role="status" className="sr-only">
+                Loading your leave…
+              </p>
+              <ModeModuleSkeleton rows={2} twoLine testId="roster-requests-leave-loading" />
+            </>
+          ) : teams.status === "ready" && leaveState === "ready" ? (
+            <RosterList label="Leave">
+              <RosterRow
+                lead={<RosterIconLead icon={Plane} />}
+                title="Nothing yet"
+                sub="Plan leave here, then mark what HR has said"
+              />
+            </RosterList>
+          ) : null}
+          {leaveState === "error" ? (
+            <TryAgainNote onRetry={() => void loadLeave()}>Your leave couldn&apos;t be loaded.</TryAgainNote>
+          ) : null}
+          {earlierLeave.length ? (
+            <>
+              <RosterSectionHead title="Earlier leave" />
+              <RosterList label="Earlier leave">{earlierLeave.map(leaveRow)}</RosterList>
+            </>
+          ) : null}
+          <RosterFootnote>HR status is what you mark yourself. PsychSift does not talk to HR.</RosterFootnote>
         </section>
-      ) : null}
-      {sheet?.kind === "swap" && assignments.status === "ready" && !swapGive ? (
-        <p role="alert">
-          That shift couldn&apos;t be found. Open it from the <Link href="/roster/team">Team calendar</Link> to swap it.
-        </p>
-      ) : null}
-      {leaveState === "error" ? (
-        <div role="alert" className="grid gap-2">
-          <p>Your leave couldn&apos;t be loaded.</p>
-          <Button className="justify-self-start" onClick={() => void loadLeave()}>
-            Try again
-          </Button>
-        </div>
-      ) : null}
+
+        {serviceId && actorId ? (
+          <section aria-labelledby="roster-requests-dates" className="grid min-w-0 gap-3">
+            <RosterSectionHead
+              id="roster-requests-dates"
+              title="Dates I can't work"
+              right={
+                canTeamAct ? (
+                  <RosterLinkWord label="Add dates I can't work" onClick={() => setSheet({ kind: "dates" })}>
+                    Add
+                  </RosterLinkWord>
+                ) : null
+              }
+            />
+            {unavailability.status === "error" ? (
+              <TryAgainNote onRetry={unavailability.reload}>Your dates couldn&apos;t be loaded.</TryAgainNote>
+            ) : unavailability.status !== "ready" ? (
+              <>
+                <p role="status" className="sr-only">
+                  Loading your dates…
+                </p>
+                <ModeModuleSkeleton rows={2} twoLine testId="roster-requests-dates-loading" />
+              </>
+            ) : myDates.length ? (
+              <RosterList label="Dates I can't work">
+                {myDates.map((run) => {
+                  const days = dayCount(run.from, run.to);
+                  return (
+                    <RosterRow
+                      key={run.from}
+                      lead={<RosterDateLead weekday={weekdayOf(run.from)} day={Number(run.from.slice(8, 10))} />}
+                      title={DAY_WORDS[run.kind]}
+                      sub={
+                        days === 1
+                          ? MONTH_NAMES[Number(run.from.slice(5, 7)) - 1]
+                          : `${formatPerthDay(run.from)} to ${formatPerthDay(run.to)} · ${days} days`
+                      }
+                    />
+                  );
+                })}
+              </RosterList>
+            ) : (
+              <RosterList label="Dates I can't work">
+                <RosterRow
+                  lead={<RosterIconLead icon={CalendarOff} />}
+                  title="No dates marked"
+                  sub="For the next 8 weeks"
+                />
+              </RosterList>
+            )}
+            <RosterFootnote>Your manager sees these dates. Reasons are not saved.</RosterFootnote>
+          </section>
+        ) : null}
+      </div>
       {serviceId && actorId ? (
         <>
           {swapGive ? (

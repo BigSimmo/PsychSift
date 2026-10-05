@@ -122,7 +122,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const tabNames = () => screen.getAllByRole("tab").map((tab) => tab.textContent?.replace(/\d+$/, ""));
+const sectionNames = () => screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
 
 describe("Swaps page team link", () => {
   it("selects the team named by ?team= when the reader has more than one", () => {
@@ -145,14 +145,22 @@ describe("Swaps page team link", () => {
   });
 });
 
-describe("Swaps page tabs", () => {
-  it("gives a member Needs you, Sent, Open shifts and History, and no team tab", () => {
+describe("Swaps page sections", () => {
+  it("gives a member Waiting on you, You sent and Open shifts, and no team section", () => {
     render(<RosterSwapsPage />);
-    expect(tabNames()).toEqual(["Needs you", "Sent", "Open shifts", "History"]);
+    expect(sectionNames()).toEqual(["Waiting on you", "You sent", "Open shifts · 0"]);
   });
 
-  it("gives a manager an All team swaps tab that lists every swap with its progress", async () => {
+  it("shows History only when asked", async () => {
     const user = userEvent.setup();
+    render(<RosterSwapsPage />);
+    await user.click(screen.getByRole("button", { name: "Show history" }));
+    expect(sectionNames()).toEqual(["Waiting on you", "You sent", "History", "Open shifts · 0"]);
+    await user.click(screen.getByRole("button", { name: "Hide history" }));
+    expect(sectionNames()).not.toContain("History");
+  });
+
+  it("gives a manager an All team swaps section that lists every swap with its progress", () => {
     teamsState.data.teams[0]!.role = "manager";
     reads.manage.swaps = [
       {
@@ -164,15 +172,15 @@ describe("Swaps page tabs", () => {
       },
     ];
     render(<RosterSwapsPage />);
-    expect(tabNames()).toEqual(["Needs you", "Sent", "Open shifts", "History", "All team swaps"]);
-    await user.click(screen.getByRole("tab", { name: /All team swaps/ }));
-    expect(screen.getByText("Sam and Noor")).toBeTruthy();
-    expect(screen.getByText("Waiting on you")).toBeTruthy();
+    expect(sectionNames()).toEqual(["Waiting on you", "You sent", "Open shifts · 0", "All team swaps"]);
+    const team = screen.getByRole("list", { name: "All team swaps" });
+    expect(within(team).getByText("Sam and Noor")).toBeTruthy();
+    expect(within(team).getByText("Waiting on you")).toBeTruthy();
   });
 });
 
 describe("Swaps page swaps", () => {
-  it("shows a swap waiting on me in Needs you with Accept, and sends the accept", async () => {
+  it("shows a swap waiting on me in Waiting on you with Accept, and sends the accept", async () => {
     const user = userEvent.setup();
     render(<RosterSwapsPage />);
     expect(screen.getByText("Sam asks to swap")).toBeTruthy();
@@ -186,8 +194,8 @@ describe("Swaps page swaps", () => {
     reads.requests.swaps = [{ ...swap, expiresAt: "2020-01-01T00:00:00Z" }];
     render(<RosterSwapsPage />);
     expect(screen.queryByRole("button", { name: "Accept swap" })).toBeNull();
-    expect(screen.getByText("Nothing needs you right now.")).toBeTruthy();
-    await user.click(screen.getByRole("tab", { name: /History/ }));
+    expect(screen.getByText("Nothing needs you right now")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Show history" }));
     expect(screen.getByText("Expired")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Accept swap" })).toBeNull();
   });
@@ -198,35 +206,32 @@ describe("Swaps page swaps", () => {
       { ...swap, requesterId: ME, counterpartyId: SAM, requesterName: "You", counterpartyName: "Sam" },
     ];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /Sent/ }));
     expect(screen.getByText("Waiting on Sam, expires Thu 1 Jan")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Withdraw" }));
+    await user.click(screen.getByRole("button", { name: /^Withdraw swap for/ }));
     // Withdrawing asks first; nothing is sent until it is confirmed.
     expect(mocks.post).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Withdraw swap" }));
     expect(mocks.post).toHaveBeenCalledWith(SERVICE, { action: "swap.cancel", swapId: swap.id });
   });
 
-  it("says when a swap I sent runs out, in Perth time", async () => {
-    const user = userEvent.setup();
+  it("says when a swap I sent runs out, in Perth time", () => {
     reads.requests.swaps = [
       { ...swap, requesterId: ME, counterpartyId: SAM, requesterName: "You", counterpartyName: "Sam" },
     ];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /Sent/ }));
     expect(screen.getByText("Waiting on Sam, expires Thu 1 Jan")).toBeTruthy();
   });
 
   it("says when a swap waiting on me runs out", () => {
     render(<RosterSwapsPage />);
-    expect(screen.getByText("Waiting on you, expires Thu 1 Jan")).toBeTruthy();
+    expect(screen.getByText("Answer by Thu 1 Jan")).toBeTruthy();
   });
 
   it("shows a declined swap in History with its reason", async () => {
     const user = userEvent.setup();
     reads.requests.swaps = [{ ...swap, status: "declined" }];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /History/ }));
+    await user.click(screen.getByRole("button", { name: "Show history" }));
     expect(screen.getByText("Declined")).toBeTruthy();
     expect(screen.queryByText(/expires/)).toBeNull();
   });
@@ -235,36 +240,52 @@ describe("Swaps page swaps", () => {
     const user = userEvent.setup();
     reads.requests.swaps = [{ ...swap, status: "cancelled", cancelReason: "roster_changed" }];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /History/ }));
+    await user.click(screen.getByRole("button", { name: "Show history" }));
     expect(screen.getByText("Cancelled: the roster changed")).toBeTruthy();
   });
 
-  it("shows an ended swap in All team swaps without an expiry", async () => {
-    const user = userEvent.setup();
+  it("shows an ended swap in All team swaps without an expiry", () => {
     teamsState.data.teams[0]!.role = "manager";
     reads.manage.swaps = [
       { ...swap, status: "declined", counterpartyId: NOOR, counterpartyName: "Noor" },
       { ...swap, id: "5e000000-0000-4000-8000-000000000009", status: "requested", counterpartyId: NOOR },
     ];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /All team swaps/ }));
     expect(screen.getByText("Declined")).toBeTruthy();
     expect(screen.queryByText(/expires/)).toBeNull();
   });
 
-  it("marks the current step of the progress line", async () => {
-    const user = userEvent.setup();
+  it("marks the current step of the progress line", () => {
     reads.requests.swaps = [
       { ...swap, requesterId: ME, counterpartyId: SAM, requesterName: "You", counterpartyName: "Sam" },
     ];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /Sent/ }));
     const line = screen.getByRole("list", { name: "Swap progress" });
     const current = within(line)
       .getAllByRole("listitem")
       .filter((item) => item.getAttribute("aria-current") === "step");
     expect(current).toHaveLength(1);
     expect(current[0]!.textContent).toContain("Accepted");
+  });
+});
+
+describe("Swaps page sent rows", () => {
+  it("says who said yes when a swap I sent waits for the manager", () => {
+    reads.requests.swaps = [
+      {
+        ...swap,
+        status: "accepted",
+        needsManagerBecause: "within_7_days",
+        requesterId: ME,
+        counterpartyId: SAM,
+        requesterName: "You",
+        counterpartyName: "Sam",
+      },
+    ];
+    render(<RosterSwapsPage />);
+    expect(screen.getByText("Sam said yes · now waiting for your manager")).toBeTruthy();
+    // Only a swap still waiting for an answer can be withdrawn here.
+    expect(screen.queryByRole("button", { name: /^Withdraw swap for/ })).toBeNull();
   });
 });
 
@@ -282,29 +303,31 @@ describe("Swaps page open shifts", () => {
       message: "Someone else took this shift first.",
     });
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /Open shifts/ }));
-    await user.click(screen.getByRole("button", { name: "Take it" }));
+    await user.click(screen.getByRole("button", { name: /^Take the open/ }));
     expect(mocks.post).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Take shift" }));
     expect(mocks.post).toHaveBeenCalledWith(SERVICE, { action: "open.claim", openShiftId: OPEN });
     expect(await screen.findByText("Someone else took this shift first.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Take it" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Take the open/ })).toBeNull();
   });
 
-  it("hides an open shift that clashes with my team shift", async () => {
-    const user = userEvent.setup();
+  it("shows an open shift by its times and shift type, with the count in the heading", () => {
+    render(<RosterSwapsPage />);
+    expect(screen.getByRole("heading", { name: "Open shifts · 1" })).toBeTruthy();
+    expect(screen.getByText("08:00 to 16:00")).toBeTruthy();
+    expect(screen.getByText("Day")).toBeTruthy();
+  });
+
+  it("hides an open shift that clashes with my team shift", () => {
     reads.requests.openShifts = [{ ...open, startsAt: mine.startsAt, endsAt: mine.endsAt }];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /Open shifts/ }));
-    expect(screen.queryByRole("button", { name: "Take it" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Take the open/ })).toBeNull();
   });
 
-  it("hides Take it and explains grade setup when the actor has no known grade", async () => {
-    const user = userEvent.setup();
+  it("hides Take and explains grade setup when the actor has no known grade", () => {
     overview.me.grade = null;
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /Open shifts/ }));
-    expect(screen.queryByRole("button", { name: "Take it" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Take the open/ })).toBeNull();
     expect(screen.getByText("Add your grade in Your team before taking an open shift.")).toBeTruthy();
   });
 
@@ -312,8 +335,7 @@ describe("Swaps page open shifts", () => {
     const user = userEvent.setup();
     reads.requests.openShifts = [{ ...open, mine: true }];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("tab", { name: /Open shifts/ }));
-    await user.click(screen.getByRole("button", { name: "Withdraw" }));
+    await user.click(screen.getByRole("button", { name: /^Withdraw offer of/ }));
     expect(mocks.post).toHaveBeenCalledWith(SERVICE, { action: "open.cancel", openShiftId: OPEN });
   });
 });

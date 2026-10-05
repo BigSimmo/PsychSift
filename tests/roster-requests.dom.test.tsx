@@ -220,3 +220,53 @@ it("shows leave as loading, not as empty, until the leave read answers", async (
   answer(Response.json({ leave: [] }));
   expect(await screen.findByText(/Nothing yet/)).toBeTruthy();
 });
+
+it("lists leave with the HR status the doctor marked, and opens it for review", async () => {
+  const user = userEvent.setup();
+  const id = "5e000000-0000-4000-8000-00000000000a";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        leave: [
+          { id, kind: "annual", startsOn: "2099-10-07", endsOn: "2099-10-07", status: "planned", serviceId: null },
+        ],
+      }),
+    ),
+  );
+  render(<RosterRequestsPage />);
+  expect(await screen.findByText("Wed 7 Oct · 1 day · you marked it: not yet lodged in HR")).toBeTruthy();
+  expect(screen.getByText("HR status is what you mark yourself. PsychSift does not talk to HR.")).toBeTruthy();
+  await user.click(screen.getByRole("button", { name: /^Review annual leave/ }));
+  expect(await screen.findByRole("dialog")).toBeTruthy();
+});
+
+it("lists my dates I can't work, joining back-to-back days, and leaves out other people's", () => {
+  const original = reads.unavailability;
+  reads.unavailability = {
+    unavailability: [
+      { userId: ME, date: "2026-10-24", kind: "cant" },
+      { userId: ME, date: "2026-10-31", kind: "prefer_off" },
+      { userId: ME, date: "2026-11-01", kind: "prefer_off" },
+      { userId: MEI, date: "2026-10-25", kind: "cant" },
+    ],
+  } as never;
+  try {
+    render(<RosterRequestsPage />);
+    const list = screen.getByRole("list", { name: "Dates I can't work" });
+    expect(list.querySelectorAll("li")).toHaveLength(2);
+    expect(screen.getByText("Can't work")).toBeTruthy();
+    expect(screen.getByText("October")).toBeTruthy();
+    expect(screen.getByText("Sat 31 Oct to Sun 1 Nov · 2 days")).toBeTruthy();
+    expect(screen.getByText("Your manager sees these dates. Reasons are not saved.")).toBeTruthy();
+  } finally {
+    reads.unavailability = original;
+  }
+});
+
+it("opens the dates sheet from Add", async () => {
+  const user = userEvent.setup();
+  render(<RosterRequestsPage />);
+  await user.click(screen.getByRole("button", { name: "Add dates I can't work" }));
+  expect(await screen.findByRole("dialog", { name: "Dates I can't work" })).toBeTruthy();
+});

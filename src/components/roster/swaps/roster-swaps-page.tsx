@@ -3,65 +3,46 @@
 import Link from "next/link";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
+import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { modeIconTile, modeModuleSurface } from "@/components/mode-kit/recipes";
+import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { RosterSentBar, type SentReceipt } from "@/components/roster/requests/roster-sent-bar";
-import { kindOf, useRosterNow } from "@/components/roster/roster-format";
+import { kindOf, shiftTimes, useRosterNow } from "@/components/roster/roster-format";
+import {
+  RosterDateLead,
+  RosterFootnote,
+  RosterIconLead,
+  RosterInitials,
+  RosterLinkWord,
+  RosterList,
+  RosterNote,
+  RosterRow,
+  RosterSectionHead,
+  rosterOutlineButton,
+} from "@/components/roster/roster-list";
 import { SwapAnswerCard } from "@/components/roster/swaps/swap-flow-sheet";
 import { SwapProgressLine } from "@/components/roster/swaps/swap-progress-line";
 import { RosterSampleNotice } from "@/components/roster/team/roster-sample-notice";
 import { useRosterRead, useRosterTeams, postRosterAction } from "@/components/roster/use-roster-team";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { RosterSignInNotice } from "@/components/roster/invite/roster-sign-in-notice";
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Tabs } from "@/components/ui/tabs";
 import { cn } from "@/components/ui-primitives";
-import { SHIFT_KIND_LABEL, SHIFT_LETTER } from "@/lib/roster/shift-kind";
-import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
+import { WEEKDAYS, addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { gradeRank, placementProblem } from "@/lib/roster/team/eligibility";
 import type { RosterAction, RosterManageSwap, RosterOpenShift, RosterSwap } from "@/lib/roster/team/model";
 import { requestStatusWords } from "@/lib/roster/team/request-status";
 import { swapProgress } from "@/lib/roster/team/swap-progress";
-import { ArrowLeftRight, CalendarOff, CheckCircle2, Plane } from "lucide-react";
-import { RosterEmpty, RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
+import { ArrowLeftRight, CalendarOff, CheckCircle2, HandHelping, Info, Plane } from "lucide-react";
+import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
 import { RosterNewButton } from "@/components/roster/roster-new-button";
 import { usePhoneFooterLayerScrollHidden } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 
-type TabId = "needs_you" | "sent" | "open" | "history" | "all";
-
 const activeOpen = (item: RosterOpenShift) =>
   item.status === "reported" || item.status === "open" || item.status === "claimed";
-
-function Row({
-  letter,
-  title,
-  detail,
-  children,
-  action,
-}: {
-  letter: string;
-  title: string;
-  detail: string;
-  children?: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <li className="flex min-w-0 items-center gap-3 border-b border-[color:var(--border)] px-3 py-3 last:border-0">
-      <span aria-hidden="true" className={cn(modeIconTile, "shrink-0")}>
-        {letter}
-      </span>
-      <div className="grid min-w-0 flex-1 gap-1">
-        <p className="truncate font-medium">{title}</p>
-        <p className="text-sm text-[color:var(--text-muted)]">{detail}</p>
-        {children}
-      </div>
-      {action}
-    </li>
-  );
-}
 
 /** How an ended swap ended, with its reason (declined, withdrawn, roster changed...). */
 const endedWords = (swap: RosterSwap, progress: { ended: string | null }, meId: string, now: Date) =>
@@ -70,10 +51,39 @@ const endedWords = (swap: RosterSwap, progress: { ended: string | null }, meId: 
 const expiryOf = (swap: RosterSwap, progress: { ended: string | null }) =>
   swap.status === "requested" && progress.ended === null ? swap.expiresAt : null;
 
+const dayOf = (startsAt: string) => formatPerthDay(perthDateOf(startsAt));
+/** `Thu 8 Oct day`. */
 const shiftDay = (swap: RosterSwap | RosterManageSwap) =>
-  swap.give ? `${formatPerthDay(perthDateOf(swap.give.startsAt))} ${SHIFT_KIND_LABEL[swap.give.kind]}` : "a shift";
+  swap.give ? `${dayOf(swap.give.startsAt)} ${SHIFT_KIND_LABEL[swap.give.kind].toLowerCase()}` : "a shift";
 const returnLine = (swap: RosterSwap | RosterManageSwap) =>
-  swap.take ? `For ${formatPerthDay(perthDateOf(swap.take.startsAt))}` : "No shift in return";
+  swap.take ? `For ${dayOf(swap.take.startsAt)}` : "No shift in return";
+/** `08:30 to 17:00`, with "next day" when it ends after midnight. */
+const timeRange = (item: { startsAt: string; endsAt: string }) => {
+  const { start, end, plusOne } = shiftTimes(item);
+  return `${start} to ${end}${plusOne ? " next day" : ""}`;
+};
+const weekdayOf = (date: string) => WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!;
+
+function TryAgainNote({ children, onRetry }: { children: ReactNode; onRetry: () => void }) {
+  return (
+    <div className="grid gap-2">
+      <RosterNote icon={Info} role="alert">
+        <p>{children}</p>
+      </RosterNote>
+      <button type="button" className={cn(rosterOutlineButton, "justify-self-start px-4")} onClick={onRetry}>
+        Try again
+      </button>
+    </div>
+  );
+}
+
+function EmptyRow({ children }: { children: string }) {
+  return (
+    <RosterList>
+      <RosterRow lead={<RosterIconLead icon={CheckCircle2} />} title={children} />
+    </RosterList>
+  );
+}
 
 /** Swaps and open shifts for one team. Answers are session-only React state; nothing is stored on the device. */
 export function RosterSwapsPage() {
@@ -98,7 +108,7 @@ export function RosterSwapsPage() {
   const assignments = useRosterRead(serviceId, "assignments", range);
   const requests = useRosterRead(serviceId, "requests");
   const manage = useRosterRead(isManager ? serviceId : null, "manage");
-  const [tab, setTab] = useState<TabId>("needs_you");
+  const [showHistory, setShowHistory] = useState(false);
   const [sent, setSent] = useState<SentReceipt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hiddenOpenIds, setHiddenOpenIds] = useState<string[]>([]);
@@ -123,7 +133,7 @@ export function RosterSwapsPage() {
   );
 
   async function openAction(item: RosterOpenShift, action: "open.claim" | "open.cancel") {
-    if (!serviceId || !actorId) return;
+    if (!serviceId || !actorId || busyId === item.id) return;
     const rank = gradeRank(overview.data?.me.grade);
     const minimum = gradeRank(item.minGrade);
     if (action === "open.claim" && (rank === null || (minimum !== null && rank < minimum))) return;
@@ -140,7 +150,7 @@ export function RosterSwapsPage() {
   }
 
   async function swapAction(item: RosterSwap, action: "swap.cancel" | "swap.undo") {
-    if (!serviceId || !actorId) return;
+    if (!serviceId || !actorId || busyId === item.id) return;
     setBusyId(item.id);
     setError(null);
     const result = await postRosterAction(serviceId, { action, swapId: item.id } as RosterAction);
@@ -155,6 +165,8 @@ export function RosterSwapsPage() {
   const swaps = requests.data?.swaps ?? [];
   const openShifts = requests.data?.openShifts ?? [];
   const myAssignments = assignments.data?.assignments ?? [];
+  const siteName = (siteId: string | null) =>
+    siteId ? (overview.data?.sites.find((site) => site.id === siteId)?.name ?? null) : null;
   const ownPlacementRows =
     actorId && ownShifts.status === "ready"
       ? ownShifts.shifts
@@ -168,8 +180,10 @@ export function RosterSwapsPage() {
           }))
       : [];
   const actorGradeRank = gradeRank(overview.data?.me.grade);
+  // Open shifts are only offered once both the team roster and your own shifts have been checked for clashes.
+  const openChecked = !!actorId && ownShifts.status === "ready" && overview.status === "ready";
   const eligibleOpen =
-    actorId && ownShifts.status === "ready" && overview.status === "ready" && actorGradeRank !== null
+    openChecked && actorGradeRank !== null
       ? openShifts.filter((item) => {
           const minimum = gradeRank(item.minGrade);
           return (
@@ -209,69 +223,125 @@ export function RosterSwapsPage() {
 
   function swapRow({ swap, progress }: (typeof withProgress)[number]) {
     const mine = swap.requesterId === actorId;
+    const title = mine
+      ? swap.take
+        ? `Swap your ${shiftDay(swap)} for ${dayOf(swap.take.startsAt)}`
+        : `Give your ${shiftDay(swap)} to ${swap.counterpartyName ?? "a colleague"}`
+      : swap.take
+        ? `Swap your ${dayOf(swap.take.startsAt)} with ${swap.requesterName ?? "a colleague"}`
+        : `Take ${swap.requesterName ?? "a colleague"}'s ${shiftDay(swap)}`;
+    const agreedBy =
+      swap.status === "accepted" && progress.waitingOn === "Your manager"
+        ? mine
+          ? (swap.counterpartyName ?? "Your colleague")
+          : "You"
+        : null;
+    const canWithdraw = mine && swap.status === "requested" && progress.ended === null;
     return (
-      <Row
+      <RosterRow
         key={swap.id}
-        letter="S"
-        title={mine ? `Your ${shiftDay(swap)}` : `${swap.requesterName ?? "A colleague"} asks to swap`}
-        detail={returnLine(swap)}
-        action={
-          <div className="grid gap-1">
-            {mine && swap.status === "requested" && progress.ended === null ? (
-              <Button size="sm" disabled={busyId === swap.id} onClick={() => setConfirm({ kind: "withdraw", swap })}>
-                Withdraw
-              </Button>
-            ) : null}
-            {undoable(swap) ? (
-              <Button size="sm" disabled={busyId === swap.id} onClick={() => void swapAction(swap, "swap.undo")}>
-                Undo
-              </Button>
-            ) : null}
-          </div>
+        lead={<RosterIconLead icon={ArrowLeftRight} />}
+        title={title}
+        sub={
+          <SwapProgressLine
+            steps={progress.steps}
+            waitingOn={progress.waitingOn}
+            ended={endedWords(swap, progress, actorId!, now)}
+            expiresAt={expiryOf(swap, progress)}
+            agreedBy={agreedBy}
+          />
         }
-      >
-        <SwapProgressLine
-          steps={progress.steps}
-          waitingOn={progress.waitingOn}
-          ended={endedWords(swap, progress, actorId!, now)}
-          expiresAt={expiryOf(swap, progress)}
-        />
-      </Row>
-    );
-  }
-
-  function openRow(item: RosterOpenShift) {
-    return (
-      <Row
-        key={item.id}
-        letter={SHIFT_LETTER[item.kind]}
-        title={
-          item.mine
-            ? `Your ${formatPerthDay(perthDateOf(item.startsAt))} ${SHIFT_KIND_LABEL[item.kind].toLowerCase()}`
-            : "Open shift you took"
-        }
-        detail={requestStatusWords(item, actorId!, now)}
         action={
-          item.mine && (item.status === "open" || item.status === "reported") ? (
-            <Button size="sm" disabled={busyId === item.id} onClick={() => void openAction(item, "open.cancel")}>
-              Withdraw
-            </Button>
-          ) : null
+          canWithdraw || undoable(swap) ? (
+            <span className="grid justify-items-end">
+              {canWithdraw ? (
+                <RosterLinkWord
+                  label={`Withdraw swap for ${shiftDay(swap)}`}
+                  onClick={() => (busyId === swap.id ? undefined : setConfirm({ kind: "withdraw", swap }))}
+                >
+                  Withdraw
+                </RosterLinkWord>
+              ) : null}
+              {undoable(swap) ? (
+                <RosterLinkWord
+                  label={`Undo swap for ${shiftDay(swap)}`}
+                  onClick={() => void swapAction(swap, "swap.undo")}
+                >
+                  Undo
+                </RosterLinkWord>
+              ) : null}
+            </span>
+          ) : undefined
         }
       />
     );
   }
 
-  const empty = (text: string) => <RosterEmpty icon={CheckCircle2}>{text}</RosterEmpty>;
-  const openCount = eligibleOpen.length + openNow.length;
-  const items = [
-    { id: "needs_you", label: "Needs you", count: needsYou.length },
-    { id: "sent", label: "Sent", count: sentSwaps.length },
-    { id: "open", label: "Open shifts", count: openCount },
-    { id: "history", label: "History", count: historySwaps.length + openEarlier.length },
-    ...(isManager ? [{ id: "all", label: "All team swaps", count: teamSwaps.length }] : []),
-  ];
-  const activeTab = items.some((item) => item.id === tab) ? tab : "needs_you";
+  function openRow(item: RosterOpenShift) {
+    const day = `${dayOf(item.startsAt)} ${SHIFT_KIND_LABEL[item.kind].toLowerCase()}`;
+    const canWithdraw = item.mine && (item.status === "open" || item.status === "reported");
+    return (
+      <RosterRow
+        key={item.id}
+        lead={<RosterIconLead icon={HandHelping} />}
+        title={item.mine ? `Give away ${day}` : `Take the open ${day}`}
+        sub={requestStatusWords(item, actorId!, now)}
+        action={
+          canWithdraw ? (
+            <RosterLinkWord label={`Withdraw offer of ${day}`} onClick={() => void openAction(item, "open.cancel")}>
+              Withdraw
+            </RosterLinkWord>
+          ) : undefined
+        }
+      />
+    );
+  }
+
+  function waitingCard({ swap, progress }: (typeof withProgress)[number]) {
+    const iAnswer = swap.counterpartyId === actorId;
+    const expires = expiryOf(swap, progress);
+    const who = swap.requesterName ?? null;
+    return (
+      <div key={swap.id} className={cn(modeModuleSurface, "grid min-w-0 gap-3 p-4 shadow-none")}>
+        <div className="flex min-w-0 items-center gap-3">
+          {who ? <RosterInitials name={who} /> : <RosterIconLead icon={ArrowLeftRight} />}
+          <span className="grid min-w-0">
+            <span className="break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
+              {iAnswer
+                ? `${who ?? "A colleague"} asks to swap`
+                : `${who ?? "A colleague"} and ${swap.counterpartyName ?? "a colleague"} agreed a swap`}
+            </span>
+            <span className="nums text-sm leading-5 text-[color:var(--text-muted)]">
+              {iAnswer
+                ? expires
+                  ? `Answer by ${dayOf(expires)}`
+                  : "Waiting on you"
+                : "Waiting on you to approve it in Manage"}
+            </span>
+          </span>
+        </div>
+        <SwapAnswerCard swap={swap} serviceId={serviceId!} actorId={actorId!} onDone={onSent} />
+        {iAnswer ? (
+          <RosterFootnote>
+            {swap.needsManagerBecause
+              ? "Your roster only changes if you both agree and your manager approves."
+              : "Your roster only changes if you both agree."}
+          </RosterFootnote>
+        ) : (
+          <Link
+            href="/roster/manage"
+            className={cn(
+              focusRing,
+              "mx-1 inline-grid min-h-12 items-center justify-self-start text-sm font-medium text-[color:var(--mode-identity)]",
+            )}
+          >
+            Open Manage to approve or decline
+          </Link>
+        )}
+      </div>
+    );
+  }
+
   const ready = !!serviceId && !!actorId && requests.status === "ready";
 
   return (
@@ -309,164 +379,205 @@ export function RosterSwapsPage() {
           />
         }
       />
-      <RosterSampleNotice sample={teams.data?.sample} />
-      {enabled.length > 1 ? (
-        <label className="grid max-w-sm gap-1 text-sm">
-          Team
-          <select
-            value={selectedServiceId ?? ""}
-            onChange={(event) => setSelectedServiceId(event.target.value || null)}
-            className={rosterField}
-          >
-            <option value="">Choose a team</option>
-            {enabled.map((team) => (
-              <option value={team.serviceId} key={team.serviceId}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      {enabled.length > 1 && !selectedServiceId ? <p>Choose a team to see its swaps.</p> : null}
-      {teams.status === "loading" ? <p role="status">Loading your teams…</p> : null}
-      {teams.status === "signed-out" ? (
-        <RosterSignInNotice testId="roster-swaps-signed-out">Sign in to see your swaps.</RosterSignInNotice>
-      ) : null}
-      {teams.status === "not-confirmed" || teams.status === "unavailable" ? (
-        <ModeNotice testId="roster-swaps-team-pending">
-          {teams.status === "not-confirmed" && teams.message
-            ? teams.message
-            : "Team swaps aren\u2019t available yet. Try again later."}
-        </ModeNotice>
-      ) : null}
-      {teams.status === "error" ? (
-        <div role="alert" className="grid gap-2">
-          <p>{teams.message}</p>
-          <Button className="justify-self-start" onClick={teams.reload}>
-            Try again
-          </Button>
-        </div>
-      ) : null}
-      {teams.status === "ready" && !enabled.length ? (
-        <p>No confirmed team yet, so there are no swaps to show.</p>
-      ) : null}
-      {serviceId && (requests.status === "error" || assignments.status === "error" || overview.status === "error") ? (
-        <div role="alert" className="grid gap-2">
-          <p>The team roster couldn&apos;t be checked.</p>
-          <Button className="justify-self-start" onClick={reload}>
-            Try again
-          </Button>
-        </div>
-      ) : null}
-      {serviceId && ownShifts.status === "error" ? (
-        <p role="alert">Your own shifts couldn&apos;t be checked. Open shifts are hidden until they can be checked.</p>
-      ) : null}
-      {serviceId &&
-      overview.status === "ready" &&
-      actorGradeRank === null &&
-      openShifts.some((item) => !item.mine && item.status === "open") ? (
-        <p role="status">Add your grade in Your team before taking an open shift.</p>
-      ) : null}
-      {error ? <p role="alert">{error}</p> : null}
-      <RosterSentBar receipt={sent} clear={clearSent} />
-      {serviceId && actorId && requests.status === "loading" ? (
-        <>
-          <p role="status" className="sr-only">
-            Loading swaps and open shifts…
+      <div className="grid min-w-0 gap-3" data-mode-identity="roster">
+        <RosterSampleNotice sample={teams.data?.sample} />
+        {enabled.length > 1 ? (
+          <label className="grid max-w-sm gap-1 text-sm text-[color:var(--text-muted)]">
+            Team
+            <select
+              value={selectedServiceId ?? ""}
+              onChange={(event) => setSelectedServiceId(event.target.value || null)}
+              className={rosterField}
+            >
+              <option value="">Choose a team</option>
+              {enabled.map((team) => (
+                <option value={team.serviceId} key={team.serviceId}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {enabled.length > 1 && !selectedServiceId ? (
+          <RosterNote icon={Info}>
+            <p>Choose a team to see its swaps.</p>
+          </RosterNote>
+        ) : null}
+        {teams.status === "loading" ? (
+          <p role="status" className="mx-1 text-sm text-[color:var(--text-muted)]">
+            Loading your teams…
           </p>
-          <ModeModuleSkeleton rows={3} twoLine testId="roster-swaps-loading" />
-        </>
-      ) : null}
-      {ready ? (
-        <Tabs label="Swaps" items={items} value={activeTab} onChange={(id) => setTab(id as TabId)}>
-          {activeTab === "needs_you" ? (
-            needsYou.length ? (
-              <ul className="grid gap-3">
-                {needsYou.map(({ swap, progress }) => (
-                  <li key={swap.id} className={cn(modeModuleSurface, "grid gap-2 p-3")}>
-                    <p className="font-medium">{swap.requesterName ?? "A colleague"} asks to swap</p>
-                    <SwapProgressLine
-                      steps={progress.steps}
-                      waitingOn={progress.waitingOn}
-                      ended={progress.ended}
-                      expiresAt={expiryOf(swap, progress)}
-                    />
-                    <SwapAnswerCard swap={swap} serviceId={serviceId!} actorId={actorId!} onDone={onSent} />
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              empty("Nothing needs you right now.")
-            )
-          ) : null}
-          {activeTab === "sent" ? (
-            sentSwaps.length ? (
-              <ul className={modeModuleSurface}>{sentSwaps.map(swapRow)}</ul>
-            ) : (
-              empty("Nothing sent and waiting.")
-            )
-          ) : null}
-          {activeTab === "open" ? (
-            openCount ? (
-              <ul className={modeModuleSurface}>
-                {eligibleOpen.map((item) => (
-                  <Row
-                    key={item.id}
-                    letter={SHIFT_LETTER[item.kind]}
-                    title={`${formatPerthDay(perthDateOf(item.startsAt))} ${SHIFT_KIND_LABEL[item.kind]}`}
-                    detail="The team needs someone. Open to take."
-                    action={
-                      <Button
-                        size="sm"
-                        disabled={busyId === item.id}
-                        onClick={() => setConfirm({ kind: "take", item })}
-                      >
-                        Take it
-                      </Button>
-                    }
-                  />
-                ))}
-                {openNow.map(openRow)}
-              </ul>
-            ) : (
-              empty("No open shifts you can take.")
-            )
-          ) : null}
-          {activeTab === "history" ? (
-            historySwaps.length || openEarlier.length ? (
-              <ul className={modeModuleSurface}>
-                {historySwaps.map(swapRow)}
-                {openEarlier.map(openRow)}
-              </ul>
-            ) : (
-              empty("No earlier swaps.")
-            )
-          ) : null}
-          {activeTab === "all" ? (
-            manage.status === "error" ? (
-              <p role="alert">{manage.message}</p>
-            ) : teamSwaps.length ? (
-              <ul className={modeModuleSurface}>
-                {teamSwaps.map((swap) => {
-                  const progress = swapProgress(swap, actorId!, now);
-                  return (
-                    <Row
-                      key={swap.id}
-                      letter="S"
-                      title={`${swap.requesterName ?? "A colleague"} and ${swap.counterpartyName ?? "a colleague"}`}
-                      detail={`${shiftDay(swap)}. ${returnLine(swap)}`}
-                    >
-                      <SwapProgressLine steps={progress.steps} waitingOn={progress.waitingOn} ended={progress.ended} />
-                    </Row>
-                  );
-                })}
-              </ul>
-            ) : (
-              empty("No swaps in this team yet.")
-            )
-          ) : null}
-        </Tabs>
-      ) : null}
+        ) : null}
+        {teams.status === "signed-out" ? (
+          <RosterSignInNotice testId="roster-swaps-signed-out">Sign in to see your swaps.</RosterSignInNotice>
+        ) : null}
+        {teams.status === "not-confirmed" || teams.status === "unavailable" ? (
+          <ModeNotice testId="roster-swaps-team-pending">
+            {teams.status === "not-confirmed" && teams.message
+              ? teams.message
+              : "Team swaps aren’t available yet. Try again later."}
+          </ModeNotice>
+        ) : null}
+        {teams.status === "error" ? <TryAgainNote onRetry={teams.reload}>{teams.message}</TryAgainNote> : null}
+        {teams.status === "ready" && !enabled.length ? (
+          <RosterNote icon={Info}>
+            <p>No confirmed team yet, so there are no swaps to show.</p>
+          </RosterNote>
+        ) : null}
+        {serviceId && (requests.status === "error" || assignments.status === "error" || overview.status === "error") ? (
+          <TryAgainNote onRetry={reload}>The team roster couldn&apos;t be checked.</TryAgainNote>
+        ) : null}
+        {error ? (
+          <RosterNote icon={Info} tone="warning" role="alert">
+            <p>{error}</p>
+          </RosterNote>
+        ) : null}
+        <RosterSentBar receipt={sent} clear={clearSent} />
+        {serviceId && actorId && requests.status === "loading" ? (
+          <>
+            <p role="status" className="sr-only">
+              Loading swaps and open shifts…
+            </p>
+            <ModeModuleSkeleton rows={3} twoLine testId="roster-swaps-loading" />
+          </>
+        ) : null}
+        {ready ? (
+          <>
+            <section aria-labelledby="roster-swaps-waiting" className="grid min-w-0 gap-3">
+              <RosterSectionHead id="roster-swaps-waiting" title="Waiting on you" />
+              {needsYou.length ? needsYou.map(waitingCard) : <EmptyRow>Nothing needs you right now</EmptyRow>}
+            </section>
+
+            <section aria-labelledby="roster-swaps-sent" className="grid min-w-0 gap-3">
+              <RosterSectionHead
+                id="roster-swaps-sent"
+                title="You sent"
+                right={
+                  <RosterLinkWord
+                    label={showHistory ? "Hide history" : "Show history"}
+                    onClick={() => setShowHistory((open) => !open)}
+                  >
+                    History
+                  </RosterLinkWord>
+                }
+              />
+              {sentSwaps.length || openNow.length ? (
+                <RosterList label="You sent">
+                  {sentSwaps.map(swapRow)}
+                  {openNow.map(openRow)}
+                </RosterList>
+              ) : (
+                <EmptyRow>Nothing sent and waiting</EmptyRow>
+              )}
+            </section>
+
+            {showHistory ? (
+              <section aria-labelledby="roster-swaps-history" className="grid min-w-0 gap-3">
+                <RosterSectionHead id="roster-swaps-history" title="History" />
+                {historySwaps.length || openEarlier.length ? (
+                  <RosterList label="History">
+                    {historySwaps.map(swapRow)}
+                    {openEarlier.map(openRow)}
+                  </RosterList>
+                ) : (
+                  <EmptyRow>No earlier swaps</EmptyRow>
+                )}
+              </section>
+            ) : null}
+
+            <section aria-labelledby="roster-swaps-open" className="grid min-w-0 gap-3">
+              <RosterSectionHead
+                id="roster-swaps-open"
+                title={openChecked && actorGradeRank !== null ? `Open shifts · ${eligibleOpen.length}` : "Open shifts"}
+              />
+              {ownShifts.status === "error" ? (
+                <RosterNote icon={Info} role="alert">
+                  <p>Your own shifts couldn&apos;t be checked. Open shifts are hidden until they can be checked.</p>
+                </RosterNote>
+              ) : ownShifts.status !== "loading" && overview.status !== "loading" && !openChecked ? (
+                <RosterNote icon={Info}>
+                  <p>Open shifts are hidden until your roster and the team roster can be checked.</p>
+                </RosterNote>
+              ) : !openChecked ? (
+                <p role="status" className="mx-1 text-sm text-[color:var(--text-muted)]">
+                  Checking open shifts against your roster…
+                </p>
+              ) : actorGradeRank === null ? (
+                openShifts.some((item) => !item.mine && item.status === "open") ? (
+                  <RosterNote icon={Info}>
+                    <p>Add your grade in Your team before taking an open shift.</p>
+                  </RosterNote>
+                ) : (
+                  <EmptyRow>No open shifts you can take</EmptyRow>
+                )
+              ) : eligibleOpen.length ? (
+                <RosterList label="Open shifts">
+                  {eligibleOpen.map((item) => {
+                    const date = perthDateOf(item.startsAt);
+                    const site = siteName(item.siteId);
+                    return (
+                      <RosterRow
+                        key={item.id}
+                        lead={<RosterDateLead weekday={weekdayOf(date)} day={Number(date.slice(8, 10))} />}
+                        title={timeRange(item)}
+                        sub={`${SHIFT_KIND_LABEL[item.kind]}${site ? ` · ${site}` : ""}`}
+                        action={
+                          <RosterLinkWord
+                            label={`Take the open ${SHIFT_KIND_LABEL[item.kind].toLowerCase()} shift on ${formatPerthDay(date)}`}
+                            onClick={() => (busyId === item.id ? undefined : setConfirm({ kind: "take", item }))}
+                          >
+                            Take
+                          </RosterLinkWord>
+                        }
+                      />
+                    );
+                  })}
+                </RosterList>
+              ) : (
+                <EmptyRow>No open shifts you can take</EmptyRow>
+              )}
+            </section>
+
+            {isManager ? (
+              <section aria-labelledby="roster-swaps-team" className="grid min-w-0 gap-3">
+                <RosterSectionHead id="roster-swaps-team" title="All team swaps" />
+                {manage.status === "error" ? (
+                  <TryAgainNote onRetry={manage.reload}>
+                    {manage.message ?? "Team swaps couldn't be loaded."}
+                  </TryAgainNote>
+                ) : manage.status !== "ready" ? (
+                  <ModeModuleSkeleton rows={2} twoLine testId="roster-swaps-team-loading" />
+                ) : teamSwaps.length ? (
+                  <RosterList label="All team swaps">
+                    {teamSwaps.map((swap) => {
+                      const progress = swapProgress(swap, actorId!, now);
+                      return (
+                        <RosterRow
+                          key={swap.id}
+                          lead={<RosterIconLead icon={ArrowLeftRight} />}
+                          title={`${swap.requesterName ?? "A colleague"} and ${swap.counterpartyName ?? "a colleague"}`}
+                          sub={
+                            <>
+                              <span className="block">{`${shiftDay(swap)}. ${returnLine(swap)}`}</span>
+                              <SwapProgressLine
+                                steps={progress.steps}
+                                waitingOn={progress.waitingOn}
+                                ended={progress.ended}
+                              />
+                            </>
+                          }
+                        />
+                      );
+                    })}
+                  </RosterList>
+                ) : (
+                  <EmptyRow>No swaps in this team yet</EmptyRow>
+                )}
+              </section>
+            ) : null}
+          </>
+        ) : null}
+      </div>
       <ConfirmDialog
         open={confirm !== null}
         onCancel={() => setConfirm(null)}
@@ -480,7 +591,7 @@ export function RosterSwapsPage() {
         title={confirm?.kind === "take" ? "Take this shift?" : "Withdraw this swap?"}
         description={
           confirm?.kind === "take"
-            ? `This asks to take the open ${SHIFT_KIND_LABEL[confirm.item.kind].toLowerCase()} shift on ${formatPerthDay(perthDateOf(confirm.item.startsAt))}.`
+            ? `This asks to take the open ${SHIFT_KIND_LABEL[confirm.item.kind].toLowerCase()} shift on ${formatPerthDay(perthDateOf(confirm.item.startsAt))}, ${timeRange(confirm.item)}.`
             : confirm?.kind === "withdraw"
               ? `This cancels your swap request for ${shiftDay(confirm.swap)}. To swap later, send a new request.`
               : ""
