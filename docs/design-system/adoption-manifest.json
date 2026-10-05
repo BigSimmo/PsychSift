@@ -640,8 +640,7 @@
         "src/components/teaching/teaching-calendar-sheet.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
-        "src/components/teaching/teaching-teach.tsx",
-        "src/components/teaching/teaching-term.tsx"
+        "src/components/teaching/teaching-teach.tsx"
       ],
       "productImportFiles": [
         "src/components/admin/new-job/admin-credential-pack-page.tsx",
@@ -656,8 +655,7 @@
         "src/components/teaching/organise-sheets.tsx",
         "src/components/teaching/teaching-calendar-sheet.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
-        "src/components/teaching/teaching-resource-list.tsx",
-        "src/components/teaching/teaching-term.tsx"
+        "src/components/teaching/teaching-resource-list.tsx"
       ],
       "designSync": {
         "listedInSourceMap": true,

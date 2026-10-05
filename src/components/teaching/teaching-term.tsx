@@ -1,37 +1,42 @@
 "use client";
 
-import { CalendarClock, Check, ChevronRight, ExternalLink, Pencil } from "lucide-react";
-import Link from "next/link";
+import { Award, CalendarDays, Check, Clock, ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeFeaturedModule } from "@/components/mode-kit/featured-module";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { ModeNotice } from "@/components/mode-kit/notice";
-import { modeInsetHairline, modePressable } from "@/components/mode-kit/recipes";
-import { modeHeadingText, modeNameText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
+import { modeNameText } from "@/components/mode-kit/type";
+import {
+  T5Actions,
+  T5Check,
+  T5Date,
+  T5Heading,
+  T5Icon,
+  T5Kicker,
+  T5Link,
+  T5List,
+  T5Meta,
+  T5Note,
+  T5Page,
+  T5Panel,
+  T5Row,
+  T5Section,
+  T5Sub,
+} from "@/components/teaching/t5-kit";
 import { perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
-import { TeachingModule } from "@/components/teaching/teaching-modules";
 import { TeachingUndoBar } from "@/components/teaching/teaching-row";
-import {
-  NoPatientDetailsMark,
-  TermAddItem,
-  TermDateTile,
-  TermPips,
-  TermRemoveButton,
-  TermRing,
-} from "@/components/teaching/teaching-term-kit";
+import { NoPatientDetailsMark, TermAddItem, TermRemoveButton } from "@/components/teaching/teaching-term-kit";
+import { milestoneRows, overdueNote, termPanel } from "@/components/teaching/term-model";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/choice";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import {
   currentTerm,
-  dayMonth,
+  dayOfMonth,
   defaultMilestones,
   DEFAULT_EPA_TARGETS,
   epaLabels,
@@ -39,13 +44,10 @@ import {
   epaSummary,
   milestoneIds,
   milestoneLabels,
-  milestoneState,
+  monthShort,
   newItemId,
-  nextMilestone,
   sampleTermTracker,
   TERM_TRACKER_SOURCES,
-  termWeekCount,
-  termWeekOf,
   weekdayDayMonth,
   type EpaNumber,
   type MilestoneId,
@@ -92,7 +94,7 @@ function TermForm({
 
   return (
     <form
-      className="grid gap-3 p-3"
+      className="grid gap-3 pt-2"
       onSubmit={(event) => {
         event.preventDefault();
         if (!datesReady || !offered) {
@@ -203,7 +205,7 @@ function TermForm({
   );
 }
 
-/* ---------- the featured card: which week, and what is next ---------- */
+/* ---------- the panel: which week, and what is next ---------- */
 
 function TermSummary({
   term,
@@ -216,143 +218,111 @@ function TermSummary({
   onEdit: () => void;
   onNew: () => void;
 }) {
-  const total = termWeekCount(term);
-  const week = termWeekOf(term, today);
-  const next = nextMilestone(term);
-  const title = [term.number ? `Term ${term.number}` : null, term.unit].filter(Boolean).join(" · ");
-  let weekLine = `Week ${week} of ${total}`;
-  if (week === 0) weekLine = `Starts ${weekdayDayMonth(term.startsOn)}`;
-  if (week > total) weekLine = "Term finished";
+  const panel = termPanel(term, today);
   return (
-    <ModeFeaturedModule mode="teaching" testId="teaching-term-summary" className="grid gap-3 p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="grid min-w-0 gap-0.5">
-          <h2 className={cn(modeHeadingText, "text-lg-minus break-words text-[color:var(--text-heading)]")}>{title}</h2>
-          <p className={modeSecondaryText}>
-            {[term.site, `${dayMonth(term.startsOn)} to ${dayMonth(term.endsOn)}`].filter(Boolean).join(" · ")}
-          </p>
-        </div>
-        <Button type="button" variant="ghost" size="sm" icon={Pencil} onClick={onEdit}>
-          Edit
-        </Button>
-      </div>
-      <div className="flex items-baseline justify-between gap-3">
-        <p className={cn(modeNumberText, "text-xl text-[color:var(--text-heading)]")}>{weekLine}</p>
-        {next && week <= total ? (
-          <p className="text-sm font-medium text-[color:var(--mode-identity)]">
-            {milestoneLabels[next].short} {term.milestones[next].dueOn < today ? "was due" : "due"}{" "}
-            {dayMonth(term.milestones[next].dueOn)}
-          </p>
-        ) : null}
-      </div>
+    <T5Panel testId="teaching-term-summary">
+      <T5Kicker>{panel.kicker}</T5Kicker>
+      <T5Heading>{panel.heading}</T5Heading>
+      <T5Meta>{panel.meta}</T5Meta>
       <ol
-        aria-label={`Weeks of the term, week ${Math.min(Math.max(week, 0), total)} of ${total}`}
-        className="flex gap-1"
+        aria-label={`Weeks of the term, week ${Math.min(Math.max(panel.week, 0), panel.total)} of ${panel.total}`}
+        className="mt-1 grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${panel.total}, minmax(0, 1fr))` }}
       >
-        {Array.from({ length: total }, (_, index) => {
-          const n = index + 1;
-          const state = n < week ? "past" : n === week ? "now" : "later";
-          return (
-            <li
-              key={n}
-              aria-current={state === "now" ? "step" : undefined}
-              className={cn(
-                "grid h-7 min-w-0 flex-1 place-items-center rounded-md text-2xs",
-                modeNumberText,
-                state === "past" && "bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]",
-                state === "now" &&
-                  "bg-[color:var(--surface-raised)] text-[color:var(--mode-identity)] ring-2 ring-[color:var(--mode-identity)] ring-inset",
-                state === "later" && "bg-[color:var(--surface-inset)] text-[color:var(--text-muted)]",
-              )}
-            >
-              {n}
-            </li>
-          );
-        })}
+        {panel.weeks.map((state, index) => (
+          <li
+            key={index}
+            aria-current={state === "now" ? "step" : undefined}
+            className={cn(
+              "h-1 rounded-full",
+              state === "done" && "bg-[color:var(--mode-identity)]",
+              state === "now" && "bg-[color:var(--text-heading)]",
+              state === "later" && "bg-[color:var(--surface-inset)]",
+            )}
+          >
+            <span className="sr-only">Week {index + 1}</span>
+          </li>
+        ))}
       </ol>
-      {week > total ? (
-        <Button type="button" variant="secondary" onClick={onNew}>
-          Start the next term
-        </Button>
-      ) : null}
-    </ModeFeaturedModule>
+      <T5Actions className="mt-1">
+        {panel.finished ? (
+          <Button type="button" variant="primary" onClick={onNew}>
+            Start the next term
+          </Button>
+        ) : null}
+        <T5Link onClick={onEdit} quiet label="Edit this term">
+          Edit
+        </T5Link>
+      </T5Actions>
+    </T5Panel>
   );
 }
 
 /* ---------- term assessments ---------- */
 
+const MILESTONE_ICONS = { done: Check, due: Clock, overdue: Clock, later: Award } as const;
+
 function Milestones({ term, today, update }: { term: TermRecord; today: string; update: Update }) {
+  const overdue = overdueNote(term, today);
+  const toggle = (id: MilestoneId) =>
+    update((current) =>
+      withTerm(current, term.id, (t) => ({
+        ...t,
+        milestones: { ...t.milestones, [id]: { ...t.milestones[id], doneOn: t.milestones[id].doneOn ? null : today } },
+      })),
+    );
   return (
-    <TeachingModule title="Term assessments" icon={CalendarClock} testId="teaching-term-assessments">
-      <ul className="mt-1">
-        {milestoneIds.map((id) => {
-          const milestone = term.milestones[id];
-          const state = milestoneState(term, id, today);
-          let line = `Due ${weekdayDayMonth(milestone.dueOn)}`;
-          if (state === "done" && milestone.doneOn) line = `Done ${weekdayDayMonth(milestone.doneOn)}`;
-          if (state === "overdue") line = `Was due ${weekdayDayMonth(milestone.dueOn)}`;
-          return (
-            <li key={id} className={cn(modeInsetHairline, "flex min-h-13 items-center gap-3 py-1 pr-1 pl-3")}>
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "grid size-8 shrink-0 place-items-center rounded-full",
-                  state === "done"
-                    ? "bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]"
-                    : "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
-                  state === "due" && "ring-2 ring-[color:var(--mode-identity)]",
-                )}
-              >
-                {state === "done" ? (
-                  <Check aria-hidden="true" className="size-icon-sm" />
+    <>
+      {overdue ? (
+        <T5Note tone="warning" icon="alert" className="mt-3" testId="teaching-term-overdue">
+          {overdue}
+        </T5Note>
+      ) : null}
+      <T5Section
+        label="Term assessments"
+        right={
+          <T5Link href={TERM_TRACKER_SOURCES.pmcwaCla} external label="Open CLA ePortfolio, via PMCWA">
+            Open CLA
+          </T5Link>
+        }
+        testId="teaching-term-assessments"
+      >
+        <T5List ruled>
+          {milestoneRows(term, today).map((row) => (
+            <T5Row
+              key={row.id}
+              title={row.title}
+              meta={
+                row.state === "overdue" ? (
+                  <span className="text-[color:var(--warning-text)]">{row.meta}</span>
                 ) : (
-                  <CalendarClock aria-hidden="true" className="size-icon-sm" />
-                )}
-              </span>
-              <span className="grid min-w-0 flex-1 gap-0.5">
-                <span className={cn(modeNameText, "text-base-minus break-words text-[color:var(--text-heading)]")}>
-                  {milestoneLabels[id].long}
-                </span>
-                <span className={cn("text-sm", state === "overdue" ? "text-[color:var(--warning-text)]" : textMuted)}>
-                  {line}
-                  {state === "due" ? " · next" : ""}
-                </span>
-              </span>
-              <Button
-                type="button"
-                variant={state === "done" ? "ghost" : "secondary"}
-                size="sm"
-                aria-pressed={state === "done"}
-                onClick={() =>
-                  update((current) =>
-                    withTerm(current, term.id, (t) => ({
-                      ...t,
-                      milestones: {
-                        ...t.milestones,
-                        [id]: { ...t.milestones[id], doneOn: t.milestones[id].doneOn ? null : today },
-                      },
-                    })),
-                  )
-                }
-              >
-                {state === "done" ? "Undo" : "Mark done"}
-                <span className="sr-only"> {milestoneLabels[id].long}</span>
-              </Button>
-            </li>
-          );
-        })}
-      </ul>
-      <div className="grid gap-1 border-t border-[color:var(--border)] px-3 pt-2 pb-1">
-        <p className={cn("text-sm", textMuted)}>
-          The assessments themselves are signed in your CLA ePortfolio. This is your own checklist.
-        </p>
-        <a href={TERM_TRACKER_SOURCES.pmcwaCla} target="_blank" rel="noreferrer" className={externalLink}>
-          CLA ePortfolio, via PMCWA
-          <ExternalLink aria-hidden="true" className="size-icon-sm" />
-          <span className="sr-only">(opens in a new tab)</span>
-        </a>
-      </div>
-    </TeachingModule>
+                  row.meta
+                )
+              }
+              lead={<T5Icon icon={MILESTONE_ICONS[row.state]} />}
+              end={
+                row.action ? (
+                  <T5Link
+                    onClick={() => toggle(row.id)}
+                    quiet={row.action === "undo"}
+                    label={`${row.action === "undo" ? "Undo" : "Mark done"}: ${milestoneLabels[row.id].long}`}
+                  >
+                    {row.action === "undo" ? "Undo" : "Mark done"}
+                  </T5Link>
+                ) : (
+                  <span />
+                )
+              }
+            />
+          ))}
+        </T5List>
+        <T5Note className="mt-2">
+          {overdue
+            ? "If the meeting happened, mark it done. If it moved, change the date. Either way, the form itself is completed in your CLA ePortfolio."
+            : "You mark these off here. The assessments themselves are completed and signed in your CLA ePortfolio."}
+        </T5Note>
+      </T5Section>
+    </>
   );
 }
 
@@ -366,7 +336,7 @@ function EpaTargetForm({ update, onDone }: { update: Update; onDone: () => void 
     onDone();
   };
   return (
-    <div className="grid gap-3 border-t border-[color:var(--border)] p-3">
+    <div className="grid gap-3 border-t border-[color:var(--border)] py-3">
       <p className="text-sm text-[color:var(--text)]">
         The National Framework summary for PGY1 sets at least {DEFAULT_EPA_TARGETS.perTerm} a term and{" "}
         {DEFAULT_EPA_TARGETS.perYear} a year. Check it with your Medical Education Unit, then confirm it or set your
@@ -436,96 +406,111 @@ function Epas({
   const summary = epaSummary(state, term.id, today);
   const targets = state.targets;
   const [settingTarget, setSettingTarget] = useState(false);
+  const [logging, setLogging] = useState(false);
   const [lastAdded, setLastAdded] = useState<{ id: string; epa: EpaNumber } | null>(null);
-  const toGo = targets ? Math.max(0, targets.perYear - summary.year) : null;
   return (
-    <TeachingModule
-      title={`EPAs · ${today.slice(0, 4)}`}
-      testId="teaching-term-epas"
-      aside={
-        targets ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => setSettingTarget((open) => !open)}>
-            Target
-          </Button>
-        ) : null
+    <T5Section
+      label={targets || summary.year > 0 ? "EPAs this year" : "EPA target"}
+      right={
+        <T5Link onClick={() => setLogging((open) => !open)} label={logging ? "Stop logging EPAs" : "Log an EPA"}>
+          {logging ? "Done" : "Log one"}
+        </T5Link>
       }
+      testId="teaching-term-epas"
     >
-      <div className="flex items-center gap-4 p-3">
-        <TermRing
-          value={summary.year}
-          total={targets?.perYear ?? null}
-          label={targets ? `${summary.year} of ${targets.perYear} EPAs this year` : `${summary.year} EPAs this year`}
-        >
-          <span className={cn(modeNumberText, "text-2xl text-[color:var(--text-heading)]")}>{summary.year}</span>
-          {targets ? <span className={cn("text-xs", textMuted)}>of {targets.perYear}</span> : null}
-        </TermRing>
-        <div className="grid min-w-0 gap-1">
-          {targets ? (
-            <>
-              <p className={cn(modeNameText, "text-base-minus text-[color:var(--text-heading)]")}>
-                {toGo === 0 ? "Year target met" : `${toGo} to go this year`}
-              </p>
-              <p className={cn("text-sm", textMuted)}>
-                This term {summary.term} of {targets.perTerm}
-                {summary.term < targets.perTerm
-                  ? ` · ${targets.perTerm - summary.term} more by ${dayMonth(term.endsOn)}`
-                  : ""}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className={cn(modeNameText, "text-base-minus text-[color:var(--text-heading)]")}>
-                {summary.term} this term
-              </p>
-              {!settingTarget ? (
-                <Button type="button" variant="secondary" size="sm" onClick={() => setSettingTarget(true)}>
-                  Set a target
-                </Button>
-              ) : null}
-            </>
-          )}
+      <div className="grid gap-2 border-t border-[color:var(--border)] py-2.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-xl font-semibold text-[color:var(--text-heading)] tabular-nums">{summary.year}</span>
+            <T5Meta>{targets ? `logged by you, of ${targets.perYear}` : "logged by you"}</T5Meta>
+          </span>
+          {targets ? <T5Meta>{`This term ${summary.term} of ${targets.perTerm}`}</T5Meta> : null}
         </div>
+        {targets ? (
+          <span
+            aria-hidden="true"
+            className="grid gap-0.75"
+            style={{ gridTemplateColumns: `repeat(${Math.min(targets.perYear, 30)}, minmax(0, 1fr))` }}
+          >
+            {Array.from({ length: Math.min(targets.perYear, 30) }, (_, index) => (
+              <i
+                key={index}
+                className={cn(
+                  "block h-1.5 rounded-xs",
+                  index < summary.year ? "bg-[color:var(--mode-identity)]" : "bg-[color:var(--surface-inset)]",
+                )}
+              />
+            ))}
+          </span>
+        ) : null}
       </div>
-      {settingTarget ? <EpaTargetForm update={update} onDone={() => setSettingTarget(false)} /> : null}
-      <ul>
+      {logging ? <T5Meta className="pb-1">Choose the EPA you completed in CLA today.</T5Meta> : null}
+      <T5List ruled>
         {epaNumbers.map((epa) => (
-          <li key={epa} className={cn(modeInsetHairline, "flex min-h-13 items-center gap-3 py-1 pr-1 pl-3")}>
-            <span
-              aria-hidden="true"
-              className={cn(
-                modeNumberText,
-                "grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-sm text-[color:var(--mode-identity)]",
-              )}
-            >
-              {epa}
-            </span>
-            <span className="grid min-w-0 flex-1 gap-1">
-              <span className={cn(modeNameText, "text-base-minus break-words text-[color:var(--text-heading)]")}>
-                {epaLabels[epa].short}
+          <T5Row
+            key={epa}
+            title={epaLabels[epa].long}
+            lead={
+              <span
+                aria-hidden="true"
+                className="grid size-6 shrink-0 place-items-center rounded-full border border-[color:var(--border)] text-xs font-semibold text-[color:var(--text-muted)]"
+              >
+                {epa}
               </span>
-              <span className="flex items-center gap-2">
-                <TermPips count={summary.byEpa[epa]} />
-                <span className="sr-only">{summary.byEpa[epa]} this year</span>
-              </span>
-            </span>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                const id = newItemId("epa");
-                update((current) => ({ ...current, epas: [...current.epas, { id, termId: term.id, epa, on: today }] }));
-                setLastAdded({ id, epa });
-              }}
-            >
-              Log one<span className="sr-only">: {epaLabels[epa].long}</span>
-            </Button>
-          </li>
+            }
+            end={
+              logging ? (
+                <T5Link
+                  label={`Log one: ${epaLabels[epa].long}`}
+                  onClick={() => {
+                    const id = newItemId("epa");
+                    update((current) => ({
+                      ...current,
+                      epas: [...current.epas, { id, termId: term.id, epa, on: today }],
+                    }));
+                    setLastAdded({ id, epa });
+                  }}
+                >
+                  Log
+                </T5Link>
+              ) : (
+                <span className="shrink-0 text-sm font-semibold text-[color:var(--text-heading)] tabular-nums">
+                  {summary.byEpa[epa]}
+                  <span className="sr-only"> this year</span>
+                </span>
+              )
+            }
+          />
         ))}
-      </ul>
-      <p className={cn("px-3 pt-1 pb-3 text-sm", textMuted)}>
-        Log an EPA once it is done in CLA. Counts only, no case details.
-      </p>
+      </T5List>
+      {settingTarget ? (
+        <EpaTargetForm update={update} onDone={() => setSettingTarget(false)} />
+      ) : targets ? (
+        <T5Note className="mt-2">
+          {targets.perTerm === DEFAULT_EPA_TARGETS.perTerm && targets.perYear === DEFAULT_EPA_TARGETS.perYear
+            ? `Targets ${targets.perTerm} a term and ${targets.perYear} a year: you confirmed these from the National Framework PGY1 summary. `
+            : `Targets ${targets.perTerm} a term and ${targets.perYear} a year: your own. `}
+          <T5Link onClick={() => setSettingTarget(true)}>Change</T5Link>
+        </T5Note>
+      ) : (
+        <div className="grid gap-1 pt-2">
+          <p className="text-sm font-medium text-[color:var(--text-heading)]">No target yet</p>
+          <T5Meta>
+            Set it from your PMCWA term guide or the{" "}
+            <T5Link href={TERM_TRACKER_SOURCES.epaSummary} external>
+              National Framework PGY1 summary
+            </T5Link>
+            . Nothing counts against a target until you choose one.
+          </T5Meta>
+          <T5Actions>
+            <T5Link onClick={() => update((current) => ({ ...current, targets: { ...DEFAULT_EPA_TARGETS } }))}>
+              {`Use ${DEFAULT_EPA_TARGETS.perTerm} a term, ${DEFAULT_EPA_TARGETS.perYear} a year`}
+            </T5Link>
+            <T5Link onClick={() => setSettingTarget(true)}>Set my own</T5Link>
+          </T5Actions>
+        </div>
+      )}
+      <T5Meta className="mt-2">Log an EPA once it is done in CLA. Counts only, no case details.</T5Meta>
       {lastAdded ? (
         <TeachingUndoBar
           testId="teaching-term-epa-undo"
@@ -537,7 +522,7 @@ function Epas({
           Logged EPA {lastAdded.epa} for today
         </TeachingUndoBar>
       ) : null}
-    </TeachingModule>
+    </T5Section>
   );
 }
 
@@ -549,7 +534,7 @@ function MeetingForm({ term, update, onDone }: { term: TermRecord; update: Updat
   const [place, setPlace] = useState(term.meeting?.place ?? "");
   return (
     <form
-      className="grid gap-2 p-3"
+      className="grid gap-2 py-3"
       onSubmit={(event) => {
         event.preventDefault();
         update((current) => withTerm(current, term.id, (t) => ({ ...t, meeting: { on, time, place: place.trim() } })));
@@ -589,124 +574,105 @@ function Meeting({ term, today, update }: { term: TermRecord; today: string; upd
   const [editing, setEditing] = useState(false);
   const meeting = term.meeting;
   const upcoming = meeting && meeting.on >= today;
+  const removeX = (label: string, onRemove: () => void) => <TermRemoveButton label={label} onRemove={onRemove} />;
   return (
-    <TeachingModule
-      title="Supervisor meeting"
+    <T5Section
+      label="Supervisor meeting"
+      right={!editing ? <T5Link onClick={() => setEditing(true)}>{meeting ? "Reschedule" : "Add"}</T5Link> : null}
       testId="teaching-term-meeting"
-      aside={
-        !editing ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(true)}>
-            {meeting ? "Change" : "Add"}
-          </Button>
-        ) : null
-      }
     >
       {editing ? (
-        <MeetingForm term={term} update={update} onDone={() => setEditing(false)} />
-      ) : meeting ? (
-        <div className="flex items-center gap-3 p-3">
-          <TermDateTile date={meeting.on} />
-          <div className="grid min-w-0 gap-0.5">
-            <p className={cn(modeNameText, "text-base-minus text-[color:var(--text-heading)]")}>
-              {[weekdayDayMonth(meeting.on), meeting.time].filter(Boolean).join(" · ")}
-              {upcoming ? "" : " · past"}
-            </p>
-            <p className={modeSecondaryText}>
-              {[term.supervisor, meeting.place].filter(Boolean).join(" · ") || "Your supervisor"}
-            </p>
-          </div>
+        <div className="border-t border-[color:var(--border)]">
+          <MeetingForm term={term} update={update} onDone={() => setEditing(false)} />
         </div>
       ) : (
-        <p className={cn("p-3 text-sm", textMuted)}>No meeting booked. Add one to keep the date with your goals.</p>
+        <T5List ruled>
+          {meeting ? (
+            <T5Row
+              title={`${[weekdayDayMonth(meeting.on), meeting.time].filter(Boolean).join(", ")}${upcoming ? "" : " · past"}`}
+              meta={[term.supervisor, meeting.place].filter(Boolean).join(" · ") || "Your supervisor"}
+              lead={<T5Date day={String(dayOfMonth(meeting.on))} month={monthShort(meeting.on)} />}
+            />
+          ) : (
+            <li className="py-2.5">
+              <T5Meta>No meeting booked. Add one to keep the date with your goals.</T5Meta>
+            </li>
+          )}
+        </T5List>
       )}
 
-      <section aria-labelledby="term-goals" className="grid gap-1 border-t border-[color:var(--border)] p-3">
-        <h3 id="term-goals" className={cn(modeNameText, "text-sm text-[color:var(--text-heading)]")}>
-          Goals from the start of term
-        </h3>
-        {term.goals.length === 0 ? <p className={cn("text-sm", textMuted)}>Add the goals you agreed.</p> : null}
-        <ul className="grid">
-          {term.goals.map((goal) => (
-            <li key={goal.id} className="flex items-center gap-1">
-              <div className="min-w-0 flex-1">
-                <Checkbox
-                  label={goal.text}
-                  checked={goal.done}
-                  onChange={() =>
-                    update((current) =>
-                      withTerm(current, term.id, (t) => ({
-                        ...t,
-                        goals: t.goals.map((g) => (g.id === goal.id ? { ...g, done: !g.done } : g)),
-                      })),
-                    )
-                  }
-                />
-              </div>
-              <TermRemoveButton
-                label={`Remove goal: ${goal.text}`}
-                onRemove={() =>
-                  update((current) =>
-                    withTerm(current, term.id, (t) => ({ ...t, goals: t.goals.filter((g) => g.id !== goal.id) })),
-                  )
-                }
-              />
-            </li>
-          ))}
-        </ul>
-        <TermAddItem
-          label="Add a goal"
-          placeholder="Add a goal"
-          disabled={term.goals.length >= 20}
-          onAdd={(text) =>
-            update((current) =>
-              withTerm(current, term.id, (t) => ({
-                ...t,
-                goals: [...t.goals, { id: newItemId("goal"), text, done: false }],
-              })),
-            )
-          }
-        />
-      </section>
+      <T5Sub>Goals from the start of term</T5Sub>
+      {term.goals.length === 0 ? <T5Meta className="pb-1">Add the goals you agreed.</T5Meta> : null}
+      <T5List ruled>
+        {term.goals.map((goal) => (
+          <T5Check
+            key={goal.id}
+            label={goal.text}
+            checked={goal.done}
+            onChange={() =>
+              update((current) =>
+                withTerm(current, term.id, (t) => ({
+                  ...t,
+                  goals: t.goals.map((g) => (g.id === goal.id ? { ...g, done: !g.done } : g)),
+                })),
+              )
+            }
+            end={removeX(`Remove goal: ${goal.text}`, () =>
+              update((current) =>
+                withTerm(current, term.id, (t) => ({ ...t, goals: t.goals.filter((g) => g.id !== goal.id) })),
+              ),
+            )}
+          />
+        ))}
+        <li className="py-2">
+          <TermAddItem
+            label="Add a goal"
+            placeholder="Add a goal"
+            disabled={term.goals.length >= 20}
+            onAdd={(text) =>
+              update((current) =>
+                withTerm(current, term.id, (t) => ({
+                  ...t,
+                  goals: [...t.goals, { id: newItemId("goal"), text, done: false }],
+                })),
+              )
+            }
+          />
+        </li>
+      </T5List>
 
-      <section aria-labelledby="term-raise" className="grid gap-1 border-t border-[color:var(--border)] p-3">
-        <h3 id="term-raise" className={cn(modeNameText, "text-sm text-[color:var(--text-heading)]")}>
-          To raise
-        </h3>
-        {term.toRaise.length === 0 ? (
-          <p className={cn("text-sm", textMuted)}>Jot things down as the term goes.</p>
-        ) : null}
-        <ul className="grid">
-          {term.toRaise.map((item) => (
-            <li key={item.id} className="flex min-h-12 items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="inline-block size-1.5 shrink-0 rounded-full bg-[color:var(--mode-identity)]"
-              />
-              <span className="min-w-0 flex-1 text-base-minus break-words text-[color:var(--text)]">{item.text}</span>
-              <TermRemoveButton
-                label={`Remove: ${item.text}`}
-                onRemove={() =>
-                  update((current) =>
-                    withTerm(current, term.id, (t) => ({ ...t, toRaise: t.toRaise.filter((r) => r.id !== item.id) })),
-                  )
-                }
-              />
-            </li>
-          ))}
-        </ul>
-        <TermAddItem
-          label="Add something to raise"
-          placeholder="Add something to raise"
-          disabled={term.toRaise.length >= 20}
-          onAdd={(text) =>
-            update((current) =>
-              withTerm(current, term.id, (t) => ({ ...t, toRaise: [...t.toRaise, { id: newItemId("raise"), text }] })),
-            )
-          }
-        />
-        <NoPatientDetailsMark />
-      </section>
-    </TeachingModule>
+      <T5Sub>To raise</T5Sub>
+      {term.toRaise.length === 0 ? <T5Meta className="pb-1">Jot things down as the term goes.</T5Meta> : null}
+      <T5List ruled>
+        {term.toRaise.map((item) => (
+          <T5Row
+            key={item.id}
+            title={item.text}
+            end={removeX(`Remove: ${item.text}`, () =>
+              update((current) =>
+                withTerm(current, term.id, (t) => ({ ...t, toRaise: t.toRaise.filter((r) => r.id !== item.id) })),
+              ),
+            )}
+          />
+        ))}
+        <li className="py-2">
+          <TermAddItem
+            label="Add something to raise"
+            placeholder="Add something to raise"
+            disabled={term.toRaise.length >= 20}
+            onAdd={(text) =>
+              update((current) =>
+                withTerm(current, term.id, (t) => ({
+                  ...t,
+                  toRaise: [...t.toRaise, { id: newItemId("raise"), text }],
+                })),
+              )
+            }
+          />
+        </li>
+      </T5List>
+      <NoPatientDetailsMark />
+    </T5Section>
   );
 }
 
@@ -737,20 +703,26 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
   if (!today || !state || (demoMode && !sample)) body = <ModeModuleSkeleton rows={3} />;
   else if (!term || mode === "new")
     body = (
-      <TeachingModule title={term ? "Next term" : "Set up your term"} testId="teaching-term-setup">
+      <>
+        <T5Panel testId="teaching-term-setup">
+          <T5Heading>{term ? "Next term" : "Set up your term"}</T5Heading>
+          <T5Meta>Three dates, filled in from a usual 10-week term. Change any of them.</T5Meta>
+          <TermForm term={null} onSave={saveTerm} onCancel={term ? () => setMode("view") : undefined} />
+        </T5Panel>
         {!term ? (
-          <p className={cn("px-3 pt-2 text-sm", textMuted)}>
-            Track your three term assessments, your EPAs and what to take to your supervisor. It stays on this device.
-          </p>
+          <>
+            <T5Section label="EPAs this year" right={<T5Meta>None logged</T5Meta>} />
+            <NoPatientDetailsMark />
+          </>
         ) : null}
-        <TermForm term={null} onSave={saveTerm} onCancel={term ? () => setMode("view") : undefined} />
-      </TeachingModule>
+      </>
     );
   else if (mode === "edit")
     body = (
-      <TeachingModule title="Edit term" testId="teaching-term-edit">
+      <T5Panel testId="teaching-term-edit">
+        <T5Heading>Edit term</T5Heading>
         <TermForm term={term} onSave={saveTerm} onCancel={() => setMode("view")} />
-      </TeachingModule>
+      </T5Panel>
     );
   else
     body = (
@@ -759,30 +731,26 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
         <Milestones term={term} today={today} update={store.update} />
         <Epas state={state} term={term} today={today} update={store.update} />
         <Meeting term={term} today={today} update={store.update} />
-        <Link
-          href="/teaching/exam-prep"
-          className={cn(
-            "flex min-h-13 items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 no-underline",
-            modePressable,
-            focusRing,
-          )}
-        >
-          <span className="grid min-w-0 flex-1 gap-0.5 py-1">
-            <span className={cn(modeNameText, "text-base-minus text-[color:var(--text-heading)]")}>My exam prep</span>
-            <span className={modeSecondaryText}>Countdown, study days and topics</span>
-          </span>
-          <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-        </Link>
+        <T5List ruled className="mt-4.5">
+          <T5Row
+            title="My exam prep"
+            meta="Countdown, study days and topics"
+            lead={<T5Icon icon={CalendarDays} />}
+            href="/teaching/exam-prep"
+          />
+        </T5List>
       </>
     );
 
   return (
     <InformationPageShell width="narrow" gap={false} testId="teaching-term">
-      <div data-mode-identity="teaching" className="grid gap-3">
-        <h1 className="text-xl font-semibold text-[color:var(--text-heading)]">Term</h1>
-        {demoMode ? <ModeNotice>Made-up demo. Changes stay on this page and are not saved.</ModeNotice> : null}
+      <T5Page>
+        <h1 className="sr-only">This term</h1>
+        {demoMode ? (
+          <T5Note className="mt-0 mb-3.5">Made-up demo. Changes stay on this page and are not saved.</T5Note>
+        ) : null}
         {body}
-      </div>
+      </T5Page>
     </InformationPageShell>
   );
 }
