@@ -80,6 +80,17 @@ export const PSYCHIATRY_VISITS_STORAGE_KEY = "psychsift:psychiatry:visits-v1";
  * searches" is on, cleared with recent searches.
  */
 export const MEDICINES_RECENT_STORAGE_KEY = "psychsift:medicines:recent-v1";
+/**
+ * localStorage — Teaching's term tracker: the doctor's own term dates, assessment due dates, EPA
+ * counts, learning goals and "to raise" notes. Kept on this device only; the screen says no patient
+ * details. Cleared at sign-out, session expiry and account switch.
+ */
+export const TEACHING_TERM_TRACKER_STORAGE_KEY = "psychsift:teaching:term-tracker-v1";
+/**
+ * localStorage — Teaching's exam prep: exam name and date the doctor set, study minutes by day, topic
+ * progress and the next study group. Kept on this device only.
+ */
+export const TEACHING_EXAM_PREP_STORAGE_KEY = "psychsift:teaching:exam-prep-v1";
 
 function removeQuietly(storage: () => Storage, key: string): void {
   try {
@@ -126,6 +137,8 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
 }
 
