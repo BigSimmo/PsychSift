@@ -22,8 +22,8 @@ import {
 
 /**
  * DRAFTS — a half-finished activity, saved to the account, shown on the log
- * page in three groups: the owner's own next action, waiting for a
- * supervisor, waiting for workforce. A draft never counts toward hours (see
+ * page in three groups: yours to do (the Log tab's count), waiting on a
+ * supervisor, waiting on workforce. A draft never counts toward hours (see
  * `src/lib/cme/drafts.ts`), and marking one "waiting" is never itself an
  * approval — it is only a note to come back to.
  *
@@ -37,14 +37,18 @@ import {
  * can be gated and tested the same way without depending on that wiring.
  */
 
+/**
+ * "Yours to do" is exactly the count on the Log tab in the CPD header (drafts whose next step is
+ * the doctor's, `groupDrafts(...).nextAction`); the two waiting groups are never counted there.
+ */
 const WAITING_GROUP_LABEL = {
-  nextAction: "My next action",
-  supervisor: "Waiting for supervisor",
-  workforce: "Waiting for workforce",
+  nextAction: "Yours to do",
+  supervisor: "Waiting on others: your supervisor",
+  workforce: "Waiting on others: workforce",
 } as const;
 
 const waitingOnOptions: SelectOption[] = [
-  { value: "", label: "None — my next action" },
+  { value: "", label: "None, yours to do" },
   { value: "supervisor", label: "Waiting for supervisor" },
   { value: "workforce", label: "Waiting for workforce" },
 ];
@@ -296,10 +300,15 @@ export function CmeDraftsSection({
       <h2 id="cme-drafts-heading" className={cn(eyebrowText, "mb-2")}>
         Drafts
       </h2>
+      <p className={cn(textMuted, "mb-3 text-sm-minus")} data-testid="cme-drafts-count-note">
+        The number on the Log tab counts only the drafts that are yours to do.
+      </p>
       <div className="flex flex-col gap-5">
         {sections.map((group) => (
           <div key={group.key} data-testid={`cme-drafts-group-${group.key}`}>
-            <h3 className="text-sm font-semibold text-[color:var(--text)]">{WAITING_GROUP_LABEL[group.key]}</h3>
+            <h3 className="text-sm font-semibold text-[color:var(--text)]">
+              {`${WAITING_GROUP_LABEL[group.key]} · ${group.drafts.length}`}
+            </h3>
             <ul className="mt-1 flex flex-col">
               {group.drafts.map((draft) => (
                 <DraftRow
