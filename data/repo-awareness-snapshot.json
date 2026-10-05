@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-04"
+    "committed_at": "2026-10-05"
   },
   "routes": {
     "modes": [
@@ -470,6 +470,11 @@
       {
         "path": "/differentials/presentations/[slug]",
         "file": "src/app/(search-app)/differentials/presentations/[slug]/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/psychiatry/mha-clock",
+        "file": "src/app/(search-app)/psychiatry/mha-clock/page.tsx",
         "area": "product"
       },
       {
