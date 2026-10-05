@@ -106,8 +106,14 @@ export function FlatRow({
   testId,
   ariaLabel,
   muted = false,
+  renderLink,
 }: {
   readonly href?: string;
+  /**
+   * Draws the row's own link instead of `href`, for a destination the route-reachability check must
+   * see as a literal `<Link href>` (a page reached only from here).
+   */
+  readonly renderLink?: (className: string, body: ReactNode) => ReactNode;
   readonly icon?: LucideIcon | null;
   readonly title: ReactNode;
   readonly subtitle?: ReactNode;
@@ -136,12 +142,18 @@ export function FlatRow({
         {subtitle ? <span className="break-words text-xs text-[color:var(--dash-muted)]">{subtitle}</span> : null}
       </span>
       {end ??
-        (href ? <ChevronRight aria-hidden="true" className="size-icon-sm text-[color:var(--dash-faint)]" /> : <span />)}
+        (href || renderLink ? (
+          <ChevronRight aria-hidden="true" className="size-icon-sm text-[color:var(--dash-faint)]" />
+        ) : (
+          <span />
+        ))}
     </>
   );
   return (
     <li className="border-t border-[color:var(--dash-line)] first:border-t-0" data-testid={href ? undefined : testId}>
-      {href ? (
+      {renderLink ? (
+        renderLink(cn(focusRing, "focus-ring-contained", rowShell, "rounded-xl"), body)
+      ) : href ? (
         <Link
           href={href}
           data-testid={testId}

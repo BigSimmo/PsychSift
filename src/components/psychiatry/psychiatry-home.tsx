@@ -487,13 +487,16 @@ function ShiftToolsList({ clockLine }: { readonly clockLine: (clocks: readonly M
   return (
     <FlatList label="For a shift" testId="psychiatry-card-shift">
       <FlatRow
-        href="/psychiatry/mha-clock"
+        renderLink={(className, body) => (
+          <Link href="/psychiatry/mha-clock" className={className} data-testid="psychiatry-shift-mha-clock">
+            {body}
+          </Link>
+        )}
         icon={Timer}
         title="MHA clock"
         subtitle={
           <span data-testid="psychiatry-shift-mha-summary">{unreadable ? CLOCKS_UNREADABLE : clockLine(clocks)}</span>
         }
-        testId="psychiatry-shift-mha-clock"
       />
       <FlatRow
         href="/safety-plan"

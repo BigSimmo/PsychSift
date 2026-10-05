@@ -109,11 +109,11 @@ export function searchShellPropsForPathname(pathname: string): SearchShellPathPr
     return { initialMode: "cme", desktopSearchPlacement: "hero" };
   }
 
-  if (pathname === "/psychiatry") {
+  if (pathname === "/psychiatry" || pathname.startsWith("/psychiatry/")) {
     return { initialMode: "psychiatry", desktopSearchPlacement: "hero" };
   }
 
-  if (pathname === "/medicines") {
+  if (pathname === "/medicines" || pathname.startsWith("/medicines/")) {
     return { initialMode: "medicines", desktopSearchPlacement: "hero" };
   }
 

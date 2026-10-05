@@ -115,4 +115,15 @@ describe("searchShellPropsForPathname", () => {
       }
     }
   });
+
+  it("keeps Psychiatry and Medicines sub-pages in their own mode, not Answer", () => {
+    const psychiatry = { initialMode: "psychiatry", desktopSearchPlacement: "hero" } as const;
+    expect(searchShellPropsForPathname("/psychiatry")).toEqual(psychiatry);
+    expect(searchShellPropsForPathname("/psychiatry/mha-clock")).toEqual(psychiatry);
+    expect(searchShellPropsForPathname("/psychiatryx").initialMode).not.toBe("psychiatry");
+    expect(searchShellPropsForPathname("/medicines/anything")).toEqual({
+      initialMode: "medicines",
+      desktopSearchPlacement: "hero",
+    });
+  });
 });
