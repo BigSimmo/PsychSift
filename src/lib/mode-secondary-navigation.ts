@@ -187,8 +187,8 @@ export const modeSecondaryNavigationRegistry = {
   // who is not an organiser or admin (`src/lib/teaching/page-visibility.ts`);
   // Mock-up v5 (5 Oct 2026) folds the eight first-build pages into five: This
   // week (Today, Week, What's on), Presenting (Teach, Supervision) and My
-  // record (Logbook, Feedback, Weekly CPD review). The ids and routes stay, so
-  // bookmarks and the shared icons keep working; Week redirects to This week.
+  // record (Logbook, Feedback, Weekly CPD review). The folded pages' routes stay,
+  // so bookmarks keep working; /teaching/week renders This week itself.
   teaching: [
     { id: "today", label: "This week", href: "/teaching" },
     { id: "teach", label: "Presenting", href: "/teaching/teach" },

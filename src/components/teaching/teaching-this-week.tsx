@@ -1,14 +1,14 @@
 "use client";
 
 import { CalendarDays, ChevronLeft, ChevronRight, Network } from "lucide-react";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { withUnit } from "@/components/teaching/teaching-number";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { OnCallEntryEditor } from "@/components/on-call/on-call-entry-editor";
-import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
+import { focusOnCallEntryFromHash, onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import {
   T5Actions,
   T5Done,
@@ -206,6 +206,12 @@ function ThisWeekBody({
   const handbook = useHandbookTeaching(ready);
   const thisMonday = mondayOf(today);
   const current = monday === thisMonday;
+  // Links from My Day, On Call and work search end in #on-call-entry-…; the rows exist only once the
+  // week has loaded, so the browser's own jump has already missed them.
+  const relocatedCount = view.status === "ready" ? (view.week?.relocated.length ?? 0) : 0;
+  useEffect(() => {
+    if (relocatedCount > 0) focusOnCallEntryFromHash();
+  }, [relocatedCount]);
 
   if (view.status === "signed-out") return <TeachingSignInNotice />;
   // A read that failed with nothing loaded before: say so plainly. With an earlier read, keep it.
@@ -216,7 +222,12 @@ function ThisWeekBody({
       return <TeachingStateNotice state={view.status} onRetry={view.retry} />;
     return <ModeModuleSkeleton rows={4} twoLine eyebrow />;
   }
-  if (week.teams.length === 0 && week.relocated.length === 0 && week.sessions.length === 0)
+  if (
+    week.teams.length === 0 &&
+    week.relocated.length === 0 &&
+    week.sessions.length === 0 &&
+    !week.relocatedUnavailable
+  )
     return (
       <div className="grid gap-3">
         <TeachingStateNotice state="no-team" />
@@ -278,6 +289,7 @@ function ThisWeekBody({
       ) : null}
       {panel ? (
         <OnNowPanel
+          key={panel.session.occurrenceId}
           panel={panel}
           live={live}
           signedOut={signedOut}
@@ -294,7 +306,9 @@ function ThisWeekBody({
             title={`Next for you: ${next.title}`}
             meta={nextForYouMeta(next, today)}
             // A presenter's next talk opens Presenting, where the patient-details check lives.
-            href={next.isPresenter ? "/teaching/teach" : sessionHref(next)}
+            href={
+              next.isPresenter ? `/teaching/teach?talk=${encodeURIComponent(next.occurrenceId)}` : sessionHref(next)
+            }
           />
         </T5List>
       ) : null}
@@ -333,7 +347,7 @@ function ThisWeekBody({
             const list = sessionsOn(sessions, key);
             if (list.length === 0) return null;
             return (
-              <div key={key} id={`day-${key}`} className="scroll-mt-32">
+              <div key={key} id={`day-${key}`} tabIndex={-1} className="scroll-mt-32">
                 <h3
                   className={cn(
                     "mt-4.5 mb-0.5 text-xs font-semibold",
@@ -394,13 +408,15 @@ function ThisWeekBody({
           >
             {week.relocated.length > 0 ? (
               <T5List>
-                {sessionsForTeam(week.relocated, ALL_TEAMS).map((s) => {
+                {sessionsForTeam(week.relocated, ALL_TEAMS).map((s, index, list) => {
                   const entryId = relocatedEntryId(s.occurrenceId);
                   const entry = relocated.entries.get(entryId);
+                  // A repeating entry has one row per occurrence; only the first carries the anchor id.
+                  const first = list.findIndex((other) => relocatedEntryId(other.occurrenceId) === entryId) === index;
                   return (
                     <T5Row
                       key={s.occurrenceId}
-                      id={onCallEntryAnchorId(entryId)}
+                      id={first ? onCallEntryAnchorId(entryId) : undefined}
                       lead={<T5Time time={s.allDay ? "All day" : perthTime(s.startsAt)} />}
                       title={s.title}
                       meta={[dayHeading(perthDateKey(s.startsAt), today), s.venue].filter(Boolean).join(" · ")}
@@ -460,7 +476,6 @@ function WeekRow({ session, context }: { session: SessionSummaryRead; context: P
   const muted = row.state === "past" || row.state === "done" || row.state === "cancelled";
   return (
     <T5Row
-      id={row.fromOnCall ? onCallEntryAnchorId(relocatedEntryId(row.id)) : undefined}
       lead={<T5Time time={row.time} past={muted} />}
       title={row.state === "cancelled" ? <s>{row.title}</s> : row.title}
       meta={
@@ -520,7 +535,10 @@ function WeekHeader({
 
 function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
   function jump(key: string) {
-    document.getElementById(`day-${key}`)?.scrollIntoView?.({ block: "start" });
+    // Move focus with the view, so a keyboard or screen-reader user lands on the day they chose.
+    const target = document.getElementById(`day-${key}`);
+    target?.scrollIntoView?.({ block: "start" });
+    target?.focus({ preventScroll: true });
   }
   return (
     <div
@@ -545,14 +563,14 @@ function DayStrip({ days }: { days: ReturnType<typeof stripDays> }) {
                 "text-2xs",
                 day.today
                   ? "font-semibold text-[color:var(--text-heading)]"
-                  : "font-medium text-[color:var(--text-soft)]",
+                  : "font-medium text-[color:var(--text-muted)]",
               )}
             >
               {day.weekday}
             </small>
             <b
               className={cn(
-                "nums grid size-8 place-items-center rounded-full text-sm font-normal text-[color:var(--text-heading)]",
+                "nums grid min-h-8 min-w-8 place-items-center rounded-full px-1 text-sm font-normal text-[color:var(--text-heading)]",
                 day.today &&
                   "shadow-[inset_0_0_0_1.5px_var(--mode-identity)] forced-colors:border forced-colors:border-[Highlight]",
               )}
@@ -640,7 +658,7 @@ function OnNowPanel({
               Check in
             </Button>
             {offlineAt ? (
-              <T5Link onClick={() => window.location.reload()}>Try again</T5Link>
+              <T5Link onClick={onCheckedIn}>Try again</T5Link>
             ) : signedOut ? (
               <T5Meta>Check in after you sign in</T5Meta>
             ) : href ? (
@@ -652,6 +670,13 @@ function OnNowPanel({
               ? `As of ${offlineAt}. Check in needs a connection. You can still check in without the code for 7 days after the session.`
               : "Organisers of this session see that you checked in."}
           </T5Meta>
+        </>
+      ) : panel.checkIn === "code" && href && !unavailable ? (
+        <>
+          <T5Actions>
+            <T5Link href={`${href}?check-in=scan`}>Check in with the code</T5Link>
+          </T5Actions>
+          <T5Meta>{`One-tap check in opens when it starts at ${perthTime(session.startsAt)}.`}</T5Meta>
         </>
       ) : panel.checkIn === "done" ? (
         <T5Meta>
@@ -674,7 +699,9 @@ function OnNowPanel({
           role={message.tone === "error" ? "alert" : "status"}
           className={cn(
             "text-sm-minus",
-            message.tone === "error" ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-heading)]",
+            message.tone === "error"
+              ? "font-medium text-[color:var(--text-heading)]"
+              : "text-[color:var(--text-heading)]",
           )}
         >
           {message.text}

@@ -82,7 +82,7 @@ export function milestoneRows(term: TermRecord, today: string): MilestoneRow[] {
     const due = weekdayDayMonth(milestone.dueOn);
     const meta =
       state === "done" && milestone.doneOn
-        ? `Done ${weekdayDayMonth(milestone.doneOn)}`
+        ? `Marked done ${weekdayDayMonth(milestone.doneOn)}`
         : state === "overdue"
           ? `Overdue · was due ${due}`
           : state === "due"

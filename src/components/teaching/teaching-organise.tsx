@@ -284,7 +284,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                         ? undefined
                         : () => setOpen({ kind: "change", session: s });
                     const meta = risk ? (
-                      <span className="text-[color:var(--warning-text)]">
+                      <span className="font-medium text-[color:var(--text-heading)]">
                         {dayWord(s.startsAt, perthDateKey(now))} · {risk.text}
                       </span>
                     ) : (

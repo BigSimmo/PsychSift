@@ -200,7 +200,8 @@ describe("My record", () => {
     expect(within(chart).getByRole("img").getAttribute("aria-label")).toMatch(
       /^Sessions per week, 13 July to this week:/,
     );
-    expect(chart).toHaveTextContent("None in 10 weeks. This week so far: 0.");
+    // Weeks before the first check-in (16 September) are not gaps.
+    expect(chart).toHaveTextContent("None in the week of 21 September. This week so far: 0.");
     // jest-dom folds a real non-breaking space to a plain one, so read the raw text (U1 report).
     expect(screen.getByRole("region", { name: "September 2026" }).textContent).toContain(`2${NB}h`);
     fireEvent.click(screen.getAllByRole("button", { name: /Registrar teaching/ })[0]);

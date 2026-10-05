@@ -75,15 +75,21 @@ function ExamForm({
       className="grid gap-3 pt-2"
       onSubmit={(event) => {
         event.preventDefault();
+        if (!name.trim()) {
+          setError("Enter the exam's name.");
+          return;
+        }
         if (on <= today) {
           setError("Choose a date after today.");
           return;
         }
-        update((current) => ({
-          ...current,
-          // The plan starts the day it is first set, and keeps that start when the date moves.
-          exam: { name: name.trim(), on, planStartsOn: current.exam?.planStartsOn ?? today },
-        }));
+        update((current) => {
+          // The plan starts the day it is first set and keeps that start when the date moves, but a new
+          // exam after one that has passed, or a date earlier than the old start, starts a fresh plan.
+          const previous = current.exam;
+          const keep = previous && previous.on > today && on > previous.planStartsOn;
+          return { ...current, exam: { name: name.trim(), on, planStartsOn: keep ? previous.planStartsOn : today } };
+        });
         onDone?.();
       }}
     >
@@ -164,11 +170,12 @@ function Countdown({
 /* ---------- study log and heatmap ---------- */
 
 const heatClass: Record<HeatCell["level"], string> = {
-  0: "bg-[color:var(--surface-inset)]",
-  1: "bg-[color:var(--mode-identity)] opacity-25",
-  2: "bg-[color:var(--mode-identity)] opacity-50",
-  3: "bg-[color:var(--mode-identity)] opacity-75",
-  4: "bg-[color:var(--mode-identity)]",
+  // Forced colours drop backgrounds, so each level falls back to CanvasText at its own opacity.
+  0: "bg-[color:var(--surface-inset)] forced-colors:border forced-colors:border-[CanvasText]",
+  1: "bg-[color:var(--mode-identity)] opacity-25 forced-colors:bg-[CanvasText]",
+  2: "bg-[color:var(--mode-identity)] opacity-50 forced-colors:bg-[CanvasText]",
+  3: "bg-[color:var(--mode-identity)] opacity-75 forced-colors:bg-[CanvasText]",
+  4: "bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]",
 };
 
 function StudyHeatmap({ weeks, today, label }: { weeks: HeatCell[][]; today: string; label: string }) {
@@ -187,7 +194,7 @@ function StudyHeatmap({ weeks, today, label }: { weeks: HeatCell[][]; today: str
           />
         ))}
       </div>
-      <div className="flex items-center justify-between text-2xs text-[color:var(--text-soft)]">
+      <div className="flex items-center justify-between text-2xs text-[color:var(--text-muted)]">
         <span>{dayMonth(weeks[0][0].date)}</span>
         <span aria-hidden="true" className="flex items-center gap-1">
           Less
@@ -201,10 +208,12 @@ function StudyHeatmap({ weeks, today, label }: { weeks: HeatCell[][]; today: str
   );
 }
 
-function studyStepLabel(minutes: number): string {
+/** "30 min", "1 h", "1 h 30" on a button; `spoken` adds the minutes unit ("1 h 30 min") for reading. */
+function studyStepLabel(minutes: number, spoken = false): string {
   if (minutes < 60) return withUnit(minutes, "min");
   const rest = minutes % 60;
-  return rest ? `${withUnit(Math.floor(minutes / 60), "h")} ${rest}` : withUnit(minutes / 60, "h");
+  if (!rest) return withUnit(minutes / 60, "h");
+  return `${withUnit(Math.floor(minutes / 60), "h")} ${spoken ? withUnit(rest, "min") : rest}`;
 }
 
 function Study({ state, today, update }: { state: ExamPrepState; today: string; update: Update }) {
@@ -212,13 +221,13 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
   const total = studyMinutesSince(state.study, weeks[0][0].date, today);
   const streak = studyStreak(state.study, today);
   const todayMinutes = state.study[today] ?? 0;
-  const [undo, setUndo] = useState<{ before: number; added: number } | null>(null);
+  // The undo remembers the day and what was really added (a day is capped at 24 h), so an undo after
+  // midnight or at the cap restores exactly what was there.
+  const [undo, setUndo] = useState<{ day: string; before: number; added: number } | null>(null);
   const log = (minutes: number) => {
-    update((current) => {
-      const next = Math.min(24 * 60, (current.study[today] ?? 0) + minutes);
-      return { ...current, study: { ...current.study, [today]: next } };
-    });
-    setUndo({ before: todayMinutes, added: minutes });
+    const next = Math.min(24 * 60, todayMinutes + minutes);
+    update((current) => ({ ...current, study: { ...current.study, [today]: next } }));
+    setUndo({ day: today, before: todayMinutes, added: next - todayMinutes });
   };
   let streakLine = "Log today's study to start a run.";
   if (streak === 1) streakLine = "1 day in a row";
@@ -227,7 +236,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
     <>
       <T5Section
         label="Add study for today"
-        right={todayMinutes ? <T5Meta>{`${studyStepLabel(todayMinutes)} so far`}</T5Meta> : null}
+        right={todayMinutes ? <T5Meta>{`${studyStepLabel(todayMinutes, true)} so far`}</T5Meta> : null}
         testId="teaching-exam-log"
       >
         <div
@@ -240,7 +249,7 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
               key={minutes}
               type="button"
               onClick={() => log(minutes)}
-              aria-label={`Add ${studyStepLabel(minutes)}${"\u00a0"}of study for today`}
+              aria-label={`Add ${studyStepLabel(minutes, true)}${"\u00a0"}of study for today`}
               className={cn(
                 "relative grid h-10 flex-1 place-items-center rounded-md border border-[color:var(--border-strong)] text-sm-minus font-semibold text-[color:var(--text-heading)] after:absolute after:inset-x-0 after:top-1/2 after:h-12 after:-translate-y-1/2",
                 focusRing,
@@ -267,14 +276,14 @@ function Study({ state, today, update }: { state: ExamPrepState; today: string; 
           onUndo={() => {
             update((current) => {
               const study = { ...current.study };
-              if (undo.before) study[today] = undo.before;
-              else delete study[today];
+              if (undo.before) study[undo.day] = undo.before;
+              else delete study[undo.day];
               return { ...current, study };
             });
             setUndo(null);
           }}
         >
-          Added {undo.added} min for today
+          {`Added ${studyStepLabel(undo.added, true)} for ${undo.day === today ? "today" : "that day"}`}
         </TeachingUndoBar>
       ) : null}
     </>

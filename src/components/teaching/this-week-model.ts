@@ -1,6 +1,6 @@
 import { sessionPhase } from "@/components/teaching/session-phase";
 import { addDays, dayParts, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
-import { withUnit } from "@/components/teaching/teaching-number";
+import { durationText, withUnit } from "@/components/teaching/teaching-number";
 import type { SessionSummaryRead } from "@/components/teaching/teaching-reads";
 import { sessionHref, teamLabel } from "@/components/teaching/teaching-view-model";
 import { RELOCATED_SERVICE_ID, type AttendanceMark, type TeamSummary } from "@/lib/teaching/model";
@@ -55,7 +55,7 @@ export function dayHeading(dateKey: string, today: string): string {
 /** Monday to Friday, or the whole week when anything runs at the weekend. */
 export function weekDayKeys(monday: string, sessions: readonly SessionSummaryRead[]): string[] {
   const all = Array.from({ length: 7 }, (_, index) => addDays(monday, index));
-  const weekend = sessions.some((s) => running(s) && all.slice(5).includes(perthDateKey(s.startsAt)));
+  const weekend = sessions.some((s) => all.slice(5).includes(perthDateKey(s.startsAt)));
   return weekend ? all : all.slice(0, 5);
 }
 
@@ -86,7 +86,7 @@ export function weekCountLabel(
   prefix = "This week",
 ): string {
   const count = sessions.filter(running).length;
-  if (count === 0 && !partial) return `${prefix} · nothing booked yet`;
+  if (count === 0) return partial ? `${prefix} · none loaded` : `${prefix} · nothing booked yet`;
   const noun = count === 1 ? "session" : "sessions";
   return partial ? `${prefix} · at least ${withUnit(count, noun)}` : `${prefix} · ${withUnit(count, noun)}`;
 }
@@ -158,17 +158,11 @@ export type NowPanel = {
   meta: string;
   /** Elapsed share of a running session, 0–100; null before it starts. */
   elapsed: number | null;
-  checkIn: "open" | "done" | "not-yet" | "none";
+  /** "code" is the 15 minutes before the start: the server takes the six-digit code but not a one-tap check-in yet. */
+  checkIn: "open" | "code" | "done" | "not-yet" | "none";
   doneLabel: string | null;
   opensAt: string | null;
 };
-
-function duration(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return withUnit(rest, "min");
-  return rest ? `${withUnit(hours, "h")} ${withUnit(rest, "min")}` : withUnit(hours, "h");
-}
 
 /** The session on now, else the next one that has not ended; null when nothing is ahead. */
 export function nowPanel(
@@ -196,13 +190,13 @@ export function nowPanel(
   const kicker = live
     ? `On now · ${range}`
     : isToday
-      ? `Next · today ${perthTime(session.startsAt)} · in ${duration(Math.max(1, Math.ceil((start - time) / MINUTE)))}`
+      ? `Next · today ${perthTime(session.startsAt)} · in ${durationText(Math.max(1, Math.ceil((start - time) / MINUTE)))}`
       : `Next · ${dayParts(perthDateKey(session.startsAt)).weekday} ${dayParts(perthDateKey(session.startsAt)).day} ${dayParts(perthDateKey(session.startsAt)).month} ${perthTime(session.startsAt)}`;
   const meta = [
     session.venue ?? (session.hasJoinLink ? "Online" : "Room to confirm"),
     (context.showTeam || isFromOnCall(session)) && teamLabel(session, context.teams),
-    live && `${duration(Math.max(1, Math.ceil((end - time) / MINUTE)))} left`,
-    !live && duration(Math.round((end - start) / MINUTE)),
+    live && `${durationText(Math.max(1, Math.ceil((end - time) / MINUTE)))} left`,
+    !live && durationText(Math.round((end - start) / MINUTE)),
   ].filter((p): p is string => Boolean(p));
   return {
     session,
@@ -214,11 +208,13 @@ export function nowPanel(
       ? "none"
       : mark
         ? "done"
-        : phase === "checkin" && isToday
+        : phase === "checkin" && live
           ? "open"
-          : isToday
-            ? "not-yet"
-            : "none",
+          : phase === "checkin" && isToday
+            ? "code"
+            : isToday
+              ? "not-yet"
+              : "none",
     doneLabel: mark ? "You checked in" : null,
     opensAt: isToday && phase === "upcoming" ? perthTime(new Date(start - 15 * MINUTE).toISOString()) : null,
   };

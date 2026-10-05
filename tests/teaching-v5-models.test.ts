@@ -66,10 +66,10 @@ describe("This week", () => {
   it("shows the weekend only when something runs on it", () => {
     expect(weekDayKeys("2026-10-05", [session()])).toHaveLength(5);
     expect(weekDayKeys("2026-10-05", [session({ startsAt: "2026-10-10T02:00:00.000Z" })])).toHaveLength(7);
-    // A cancelled Saturday session does not open the weekend.
+    // A cancelled Saturday session still opens the weekend, so the cancellation is seen.
     expect(
       weekDayKeys("2026-10-05", [session({ startsAt: "2026-10-10T02:00:00.000Z", status: "cancelled" })]),
-    ).toHaveLength(5);
+    ).toHaveLength(7);
   });
 
   it("counts only sessions that run, and says 'at least' when a source failed", () => {
@@ -77,7 +77,7 @@ describe("This week", () => {
     expect(weekCountLabel(list, false)).toBe(`This week · 1${NB}session`);
     expect(weekCountLabel(list, true)).toBe(`This week · at least 1${NB}session`);
     expect(weekCountLabel([], false)).toBe("This week · nothing booked yet");
-    expect(weekCountLabel([], true)).toBe(`This week · at least 0${NB}sessions`);
+    expect(weekCountLabel([], true)).toBe("This week · none loaded");
   });
 
   it("builds a row's state and meta from the live session, never calling a gap 'missed'", () => {
@@ -113,6 +113,27 @@ describe("This week", () => {
     expect(later?.kicker).toBe(`Next · today 14:00 · in 1${NB}h 25${NB}min`);
     expect(later?.elapsed).toBeNull();
     expect(nowPanel([session({ status: "cancelled" })], { ...context, today: TODAY })).toBeNull();
+  });
+
+  it("offers one-tap check-in only from the start, the code in the 15 minutes before, and keeps it past midnight", () => {
+    const at = (iso: string) => ({ ...context, now: new Date(iso), today: TODAY });
+    // 12:20 Perth: inside the check-in window, before the start. The server refuses one-tap until 12:30.
+    expect(nowPanel([session()], at("2026-10-06T04:20:00Z"))).toMatchObject({ live: false, checkIn: "code" });
+    // 12:00 Perth: the window has not opened.
+    expect(nowPanel([session()], at("2026-10-06T04:00:00Z"))).toMatchObject({ checkIn: "not-yet", opensAt: "12:15" });
+    // A session from 23:30 to 00:30 is still open for one-tap check-in at 00:10 the next day.
+    const late = session({ startsAt: "2026-10-05T15:30:00.000Z", endsAt: "2026-10-05T16:30:00.000Z" });
+    expect(nowPanel([late], { ...context, now: new Date("2026-10-05T16:10:00Z"), today: TODAY })).toMatchObject({
+      live: true,
+      checkIn: "open",
+    });
+    // Already checked in reads as done whatever the time.
+    expect(
+      nowPanel([session()], {
+        ...at("2026-10-06T04:40:00Z"),
+        attendance: [{ occurrenceId: session().occurrenceId, method: "self", recordedAt: "2026-10-06T04:35:00Z" }],
+      }),
+    ).toMatchObject({ checkIn: "done", doneLabel: "You checked in" });
   });
 
   it("prefers your own talk for 'next for you', and counts other services' open sessions", () => {
@@ -273,19 +294,26 @@ describe("My record", () => {
     expect(recordChart([], TODAY)).toMatchObject({
       headline: `No teaching check-ins in the last 12${NB}weeks.`,
       average: null,
-      gapLine: `None in 11${NB}weeks. This week so far: 0.`,
+      gapLine: "This week so far: 0.",
     });
+    // A new starter: weeks before the first check-in are neither gaps nor part of the average.
+    const starter = recordChart([row("2026-09-22T04:30:00.000Z"), row("2026-09-23T04:30:00.000Z")], TODAY);
+    expect(starter.gapLine).toBe("None in the week of 28 September. This week so far: 0.");
+    expect(starter.averageLabel).toBe("average 1.0 a week");
+    expect(starter.description).toMatch(/Average 1\.0 a week over 2\u00a0full weeks\.$/);
   });
 
-  it("keeps CPD this week to the last seven days, with hours, what is already in, and older ones counted", () => {
-    const recent = row("2026-10-01T04:30:00.000Z");
+  it("keeps CPD this week to Monday onwards, with hours, what is already in, and older ones counted", () => {
+    const recent = row("2026-10-05T04:30:00.000Z");
     const old = row("2026-09-10T04:30:00.000Z");
-    const logged = row("2026-10-02T04:30:00.000Z", { cpdEntryId: "e" });
-    const review = [recent, old].map((r) => ({ ...r, hours: 1.5 }));
-    const week = cpdWeek(review, [recent, old, logged], NOW);
-    expect(week.rows.map((r) => [r.occurrenceId, r.meta])).toEqual([[recent.occurrenceId, "Thu 1 Oct"]]);
+    const logged = row("2026-10-06T01:30:00.000Z", { cpdEntryId: "e" });
+    // Last Thursday is inside the old rolling seven days but not this calendar week.
+    const lastWeek = row("2026-10-01T04:30:00.000Z");
+    const review = [recent, old, lastWeek].map((r) => ({ ...r, hours: 1.5 }));
+    const week = cpdWeek(review, [recent, old, lastWeek, logged], NOW);
+    expect(week.rows.map((r) => [r.occurrenceId, r.meta])).toEqual([[recent.occurrenceId, "Mon 5 Oct"]]);
     expect(week.right).toBe(`1.5${NB}h · 1 already logged`);
-    expect(week.older).toBe(1);
+    expect(week.older).toBe(2);
     expect(cpdButtonLabel(3)).toBe(`Log 3${NB}sessions to my CPD`);
     expect(cpdButtonLabel(1)).toBe(`Log 1${NB}session to my CPD`);
   });
@@ -297,11 +325,15 @@ describe("My record", () => {
     expect(supervisorSummary([inside, before], term, TODAY)).toEqual({
       title: "Term 4 attendance summary",
       meta: `1${NB}session · 1.5${NB}h`,
+      rows: [inside],
     });
     expect(supervisorSummary([], null, TODAY)).toEqual({
       title: `Attendance summary, last 12${NB}weeks`,
       meta: "No check-ins in this span yet",
+      rows: [],
     });
+    // A term with no number still reads as this term's summary.
+    expect(supervisorSummary([inside], { ...term, number: null }, TODAY).title).toBe("This term's attendance summary");
   });
 
   it("names the term row from the doctor's own term, or offers to set one up", () => {
@@ -310,6 +342,28 @@ describe("My record", () => {
       meta: `Mid-term due Thu 15 Oct · 7${NB}EPAs logged this year`,
     });
     expect(termRow({ ...sampleTermTracker(TODAY), currentTermId: null }, TODAY).title).toBe("Track your term");
+    // A milestone past its due date says so, rather than "due" a date already gone.
+    const state = sampleTermTracker(TODAY);
+    const [first] = state.terms;
+    const late = {
+      ...state,
+      terms: [{ ...first, milestones: { ...first.milestones, mid: { dueOn: "2026-10-01", doneOn: null } } }],
+    };
+    expect(termRow(late, TODAY).meta).toMatch(/^Mid-term overdue · was due Thu 1 Oct · /);
+    const allDone = {
+      ...state,
+      terms: [
+        {
+          ...first,
+          milestones: {
+            start: { ...first.milestones.start, doneOn: "2026-09-01" },
+            mid: { ...first.milestones.mid, doneOn: "2026-09-20" },
+            end: { ...first.milestones.end, doneOn: "2026-10-02" },
+          },
+        },
+      ],
+    };
+    expect(termRow(allDone, TODAY).meta).toMatch(/^All three marked done · /);
   });
 });
 
@@ -331,7 +385,7 @@ describe("Term", () => {
     const rows = milestoneRows(term(), later);
     expect(rows.map((r) => [r.title, r.meta, r.action])).toEqual([
       ["Mid-term", "Overdue · was due Thu 15 Oct", "mark"],
-      ["Beginning of term", "Done Wed 2 Sep", "undo"],
+      ["Beginning of term", "Marked done Wed 2 Sep", "undo"],
       ["End of term", "Due Fri 6 Nov", null],
     ]);
     expect(overdueNote(term(), later)).toBe("Mid-term was due Thu 15 Oct and is not marked done.");

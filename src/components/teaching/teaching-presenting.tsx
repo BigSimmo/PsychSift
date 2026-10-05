@@ -25,7 +25,6 @@ import {
   T5Section,
   T5Steps,
 } from "@/components/teaching/t5-kit";
-import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { dayParts, perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
@@ -40,12 +39,13 @@ import {
 } from "@/components/teaching/presenting-model";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
+import { useTeachingDemoMode } from "@/components/teaching/use-teaching-sample";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
+import { useAuthSession } from "@/lib/supabase/client";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
 import { demoFeedbackTotals, demoSupervision, demoTeach } from "@/lib/teaching/depth-demo";
 import {
-  FEEDBACK_PRIVACY_LINE,
   readinessItems,
   readinessLabels,
   supervisionTypeLabels,
@@ -63,15 +63,26 @@ import {
  * past talks landed, and your supervision hours. It replaces Teach and the Supervision landing; the
  * full Supervision page (logging, confirming, corrections) stays one tap away.
  *
- * Feedback is counts only: pace and usefulness for a talk once its organiser has released it, never a
- * name or an individual answer.
+ * Feedback is counts only: pace and usefulness, shown 7 days after a talk once 3 or more people have
+ * answered (the server's rule in `feedback.totals`), never a name or an individual answer.
  */
 
-export function TeachingPresenting(props: { demoMode: boolean }) {
-  return <TeachingAccountPage component={PresentingPage} {...props} />;
+/**
+ * TeachingAccountPage's remount-on-sign-in, written out here because that wrapper passes only
+ * `demoMode` and Presenting also takes `talkId`.
+ */
+export function TeachingPresenting({ demoMode, talkId = null }: { demoMode: boolean; talkId?: string | null }) {
+  const auth = useAuthSession();
+  const demo = useTeachingDemoMode(demoMode);
+  return <PresentingPage key={`${auth.authEpoch}:${demo}`} demoMode={demo} talkId={talkId} />;
 }
 
-function PresentingPage({ demoMode }: { demoMode: boolean }) {
+/**
+ * `talkId` (from `?talk=`) opens that talk in the panel instead of the next one, so the patient-details
+ * check can be done ahead for any booked talk; tapping a later talk does the same in place.
+ */
+function PresentingPage({ demoMode, talkId = null }: { demoMode: boolean; talkId?: string | null }) {
+  const [selectedId, setSelectedId] = useState<string | null>(talkId);
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const teach = useTeachingResource<TeachRead>(demoMode ? null : "/api/teaching/depth?view=teach");
@@ -91,7 +102,9 @@ function PresentingPage({ demoMode }: { demoMode: boolean }) {
   else if (!teachData || !now || !today) body = <ModeModuleSkeleton rows={4} twoLine eyebrow />;
   else {
     const upcoming = teachData.upcoming.filter((talk) => talk.status !== "cancelled");
-    const [next, ...after] = upcoming;
+    const next = upcoming.find((talk) => talk.occurrenceId === selectedId) ?? upcoming[0];
+    const isNext = next === upcoming[0];
+    const after = upcoming.filter((talk) => talk !== next);
     body = (
       <>
         {demoMode ? (
@@ -101,6 +114,7 @@ function PresentingPage({ demoMode }: { demoMode: boolean }) {
           <NextTalk
             key={next.occurrenceId}
             talk={next}
+            isNext={isNext}
             now={now}
             today={today}
             demoMode={demoMode}
@@ -115,7 +129,10 @@ function PresentingPage({ demoMode }: { demoMode: boolean }) {
           </T5Panel>
         )}
         {after.length > 0 ? (
-          <T5Section label={`After ${next ? "this one" : "today"} · ${after.length}`} testId="teaching-talks-after">
+          <T5Section
+            label={`${!next ? "After today" : isNext ? "After this one" : "Your other talks"} · ${after.length}`}
+            testId="teaching-talks-after"
+          >
             <T5List>
               {after.map((talk) => {
                 const parts = dayParts(perthDateKey(talk.startsAt));
@@ -125,7 +142,10 @@ function PresentingPage({ demoMode }: { demoMode: boolean }) {
                     lead={<T5Date day={parts.day} month={parts.month} />}
                     title={talk.title}
                     meta={upcomingTalkMeta(talk)}
-                    href={`/teaching/session/${talk.occurrenceId}`}
+                    onClick={() => {
+                      setSelectedId(talk.occurrenceId);
+                      document.getElementById("teaching-next-talk-panel")?.scrollIntoView?.({ block: "start" });
+                    }}
                   />
                 );
               })}
@@ -153,8 +173,10 @@ function NextTalk({
   today,
   demoMode,
   onSaved,
+  isNext,
 }: {
   talk: TeachSession;
+  isNext: boolean;
   now: Date;
   today: string;
   demoMode: boolean;
@@ -213,8 +235,8 @@ function NextTalk({
   const ready = readinessItems.filter((item) => local.items.includes(item)).length;
   const action = readinessAction(local);
   return (
-    <T5Panel label="Your next talk" testId="teaching-next-talk">
-      <T5Kicker>{talkKicker(talk, now, today)}</T5Kicker>
+    <T5Panel label={isNext ? "Your next talk" : "Your talk"} testId="teaching-next-talk" id="teaching-next-talk-panel">
+      <T5Kicker>{talkKicker(talk, now, today, isNext)}</T5Kicker>
       <T5Heading>{talk.title}</T5Heading>
       <T5Meta>{talkMeta(talk)}</T5Meta>
       <T5Pair label="Ready to present" value={readinessCount(local)} />
@@ -254,17 +276,17 @@ function NextTalk({
       </T5Actions>
       <T5Note icon="shield" className="mt-0.5">
         {local.deidConfirmedAt
-          ? `No patient details in your material. You confirmed this on ${(() => {
+          ? `You confirmed on ${(() => {
               const p = dayParts(perthDateKey(local.deidConfirmedAt));
               return `${p.day} ${p.month}`;
-            })()}.`
+            })()} that your material has no patient details.`
           : "Prepare your aims and reading list outside PsychSift. Do not upload slides, patient details or Teams passcodes."}
       </T5Note>
       <p role="status" className={cn("text-sm-minus text-[color:var(--text-muted)]", pending === 0 && "sr-only")}>
         {pending > 0 ? "Saving…" : ""}
       </p>
       {error ? (
-        <p role="alert" className="text-sm-minus text-[color:var(--warning-text)]">
+        <p role="alert" className="text-sm-minus font-medium text-[color:var(--text-heading)]">
           {error}
         </p>
       ) : null}
@@ -290,8 +312,13 @@ function TaughtBefore({ taught, demoMode }: { taught: readonly SessionRef[]; dem
                     key={session.occurrenceId}
                     lead={<T5Date day={parts.day} month={parts.month} />}
                     title={session.title}
+                    meta={`${parts.weekday} ${parts.day} ${parts.month}`}
                     end={
-                      <T5Link onClick={() => setOpenId(open ? null : session.occurrenceId)}>
+                      <T5Link
+                        onClick={() => setOpenId(open ? null : session.occurrenceId)}
+                        expanded={open}
+                        label={`${open ? "Hide feedback on" : "Feedback on"} ${session.title}`}
+                      >
                         {open ? "Hide feedback" : "Feedback"}
                       </T5Link>
                     }
@@ -303,7 +330,10 @@ function TaughtBefore({ taught, demoMode }: { taught: readonly SessionRef[]; dem
           ) : null}
         </>
       ) : (
-        <T5Empty>Talks you have given show here, with their feedback once the organiser releases it.</T5Empty>
+        <T5Empty>
+          Talks you have given show here. Feedback totals show 7 days after a talk, once at least 3 people have
+          answered.
+        </T5Empty>
       )}
     </T5Section>
   );
@@ -347,7 +377,9 @@ function FeedbackBlock({
       ) : !totals ? (
         <ModeModuleSkeleton rows={1} />
       ) : !summary ? (
-        <p className="text-sm-minus text-[color:var(--text-muted)]">Feedback is not released yet.</p>
+        <p className="text-sm-minus text-[color:var(--text-muted)]">
+          No totals yet. They show 7 days after the talk, once at least 3 people have answered.
+        </p>
       ) : (
         <>
           {compact ? (
@@ -373,7 +405,7 @@ function FeedbackBlock({
           {summary.usefulness ? (
             <T5Pair label="Usefulness" value={<T5BigFigure value={summary.usefulness} unit="out of 5" />} />
           ) : null}
-          {compact ? null : <T5Note className="mt-0">{`${FEEDBACK_PRIVACY_LINE}.`}</T5Note>}
+          {compact ? null : <T5Note className="mt-0">Totals only. You never see who answered.</T5Note>}
         </>
       )}
     </div>
@@ -392,6 +424,7 @@ function Supervision({
   const summary = pairings ? supervisionSummary(pairings) : null;
   return (
     <T5Section
+      id="supervision"
       label="Supervision"
       right={<T5Link href="/teaching/supervision">Log supervision</T5Link>}
       testId="teaching-supervision-summary"

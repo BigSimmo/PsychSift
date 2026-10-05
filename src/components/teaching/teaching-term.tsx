@@ -151,7 +151,7 @@ function TermForm({
         value={supervisor}
         onChange={(event) => setSupervisor(event.target.value)}
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 min-[26rem]:grid-cols-2">
         <TextField
           label="First day"
           type="date"
@@ -192,6 +192,7 @@ function TermForm({
           {error}
         </p>
       ) : null}
+      <NoPatientDetailsMark />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" variant="primary">
           {term ? "Save term" : "Start tracking this term"}
@@ -295,7 +296,7 @@ function Milestones({ term, today, update }: { term: TermRecord; today: string; 
               title={row.title}
               meta={
                 row.state === "overdue" ? (
-                  <span className="text-[color:var(--warning-text)]">{row.meta}</span>
+                  <span className="font-medium text-[color:var(--text-heading)]">{row.meta}</span>
                 ) : (
                   row.meta
                 )
@@ -358,7 +359,7 @@ function EpaTargetForm({ update, onDone }: { update: Update; onDone: () => void 
           save({ perTerm: Number(perTerm), perYear: Number(perYear) });
         }}
       >
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 min-[26rem]:grid-cols-2">
           <TextField
             label="A term"
             type="number"
@@ -505,10 +506,7 @@ function Epas({
           </T5Meta>
           <T5Actions>
             {/* Opens the form so the "check it with your Medical Education Unit" step stays before saving. */}
-            <T5Link onClick={() => setSettingTarget(true)}>
-              {`Use ${DEFAULT_EPA_TARGETS.perTerm} a term, ${DEFAULT_EPA_TARGETS.perYear} a year`}
-            </T5Link>
-            <T5Link onClick={() => setSettingTarget(true)}>Set my own</T5Link>
+            <T5Link onClick={() => setSettingTarget(true)}>Choose a target</T5Link>
           </T5Actions>
         </div>
       )}
@@ -543,7 +541,7 @@ function MeetingForm({ term, update, onDone }: { term: TermRecord; update: Updat
         onDone();
       }}
     >
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 min-[26rem]:grid-cols-2">
         <TextField label="Date" type="date" required value={on} onChange={(event) => setOn(event.target.value)} />
         <TextField label="Time" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
       </div>
@@ -711,12 +709,7 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
           <T5Meta>Three dates, filled in from a usual 10-week term. Change any of them.</T5Meta>
           <TermForm term={null} onSave={saveTerm} onCancel={term ? () => setMode("view") : undefined} />
         </T5Panel>
-        {!term ? (
-          <>
-            <T5Section label="EPAs this year" right={<T5Meta>None logged</T5Meta>} />
-            <NoPatientDetailsMark />
-          </>
-        ) : null}
+        {!term ? <T5Section label="EPAs this year" right={<T5Meta>None logged</T5Meta>} /> : null}
       </>
     );
   else if (mode === "edit")

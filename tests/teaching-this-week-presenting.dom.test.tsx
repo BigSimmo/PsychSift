@@ -53,6 +53,44 @@ describe("This week", () => {
     expect(await within(hero).findByRole("status")).toHaveTextContent("Checked in.");
   });
 
+  it("offers only the code in the 15 minutes before the start, when the server refuses one tap", async () => {
+    vi.setSystemTime(new Date("2026-09-30T04:20:00Z"));
+    serveFetch((url) => (url.startsWith("/api/teaching?view=week") ? json(200, week()) : sideReads(url)));
+    render(<TeachingThisWeek demoMode={false} />);
+    const hero = await screen.findByTestId("teaching-hero");
+    expect(within(hero).getByRole("link", { name: "Check in with the code" })).toHaveAttribute(
+      "href",
+      `/teaching/session/${OCC}?check-in=scan`,
+    );
+    expect(within(hero).queryByRole("button", { name: "Check in" })).toBeNull();
+    expect(hero).toHaveTextContent("One-tap check in opens when it starts at 12:30.");
+  });
+
+  it("keeps a checked-in row a link to its session", async () => {
+    vi.setSystemTime(DURING);
+    serveFetch((url) =>
+      url.startsWith("/api/teaching?view=week")
+        ? json(200, week({ attendance: [{ occurrenceId: OCC, method: "self", recordedAt: DURING.toISOString() }] }))
+        : sideReads(url),
+    );
+    render(<TeachingThisWeek demoMode={false} />);
+    const list = await screen.findByTestId("teaching-week-list");
+    expect(within(list).getByRole("link", { name: /Registrar teaching/ })).toHaveAttribute(
+      "href",
+      `/teaching/session/${OCC}`,
+    );
+  });
+
+  it("shows the partial notice, not the no-service notice, when the On Call read failed", async () => {
+    serveFetch((url) =>
+      url.startsWith("/api/teaching?view=week")
+        ? json(200, week({ teams: [], sessions: [], relocated: [], relocatedUnavailable: true }))
+        : sideReads(url),
+    );
+    render(<TeachingThisWeek demoMode={false} />);
+    expect(await screen.findByTestId("teaching-week-partial")).toBeInTheDocument();
+  });
+
   it("says sessions from On Call are missing instead of claiming the week is empty", async () => {
     serveFetch((url) =>
       url.startsWith("/api/teaching?view=week")
@@ -108,6 +146,58 @@ describe("Presenting", () => {
     fireEvent.click(within(panel).getByRole("button", { name: "I have checked: no patient details" }));
     await waitFor(() => expect(posts).toEqual([{ action: "readiness.deid.confirm", occurrenceId: OCC }]));
     await waitFor(() => expect(panel).not.toHaveTextContent("patient check open"));
-    expect(panel).toHaveTextContent("No patient details in your material.");
+    expect(panel).toHaveTextContent(/You confirmed on .+ that your material has no patient details\./);
+  });
+
+  it("opens a later talk in place, so its patient check can be done there too", async () => {
+    const later = {
+      ...talk,
+      occurrenceId: "44444444-4444-4444-8444-444444444444",
+      title: "Journal club",
+      startsAt: "2026-10-07T04:30:00.000Z",
+      endsAt: "2026-10-07T05:15:00.000Z",
+      items: [],
+    };
+    serveFetch((url) => {
+      if (url === "/api/teaching/depth?view=teach") return json(200, { upcoming: [talk, later], taught: [] });
+      if (url === "/api/teaching/depth?view=supervision") return json(200, { pairings: [] });
+      return null;
+    });
+    render(<TeachingPresenting demoMode={false} talkId={later.occurrenceId} />);
+    const panel = await screen.findByTestId("teaching-next-talk");
+    expect(panel).toHaveTextContent("Journal club");
+    expect(panel).toHaveTextContent(/^Your talk/);
+    expect(within(panel).getByRole("button", { name: "I have checked: no patient details" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Registrar teaching/ }));
+    await waitFor(() => expect(screen.getByTestId("teaching-next-talk")).toHaveTextContent("Registrar teaching"));
+    expect(screen.getByTestId("teaching-next-talk")).toHaveTextContent(/^Your next talk/);
+  });
+
+  it("explains when feedback totals appear, as the server releases them", async () => {
+    const taught = { ...talk, startsAt: "2026-09-28T04:30:00.000Z", endsAt: "2026-09-28T05:15:00.000Z" };
+    const older = {
+      ...taught,
+      occurrenceId: "55555555-5555-4555-8555-555555555555",
+      title: "Journal club",
+      startsAt: "2026-09-14T04:30:00.000Z",
+      endsAt: "2026-09-14T05:15:00.000Z",
+    };
+    serveFetch((url) => {
+      if (url === "/api/teaching/depth?view=teach") return json(200, { upcoming: [], taught: [taught, older] });
+      if (url === "/api/teaching/depth?view=supervision") return json(200, { pairings: [] });
+      if (url.startsWith(`/api/teaching/services/${TEAM_A}/depth?`)) return json(200, { released: false });
+      return null;
+    });
+    render(<TeachingPresenting demoMode={false} />);
+    expect(await screen.findByTestId("teaching-feedback-totals")).toHaveTextContent(
+      "No totals yet. They show 7 days after the talk, once at least 3 people have answered.",
+    );
+    const toggle = screen.getByRole("button", { name: "Feedback on Journal club" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(screen.getByRole("button", { name: "Hide feedback on Journal club" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 });

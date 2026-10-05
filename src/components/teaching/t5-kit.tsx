@@ -55,7 +55,7 @@ export function T5Section({
       className={cn("mt-5 grid min-w-0 scroll-mt-32", className)}
     >
       <div className="mb-0.5 flex min-h-6 items-center justify-between gap-2.5">
-        <h2 className={cn("truncate text-2xs font-semibold tracking-label uppercase", faint)}>{label}</h2>
+        <h2 className={cn("min-w-0 text-2xs font-semibold tracking-label break-words uppercase", sub)}>{label}</h2>
         {right}
       </div>
       {children}
@@ -77,6 +77,8 @@ export function T5Link({
   external = false,
   label,
   testId,
+  expanded,
+  download,
 }: {
   href?: string;
   onClick?: () => void;
@@ -85,6 +87,10 @@ export function T5Link({
   external?: boolean;
   label?: string;
   testId?: string;
+  /** A button that shows or hides something below it. */
+  expanded?: boolean;
+  /** A file link (a built CSV): a plain anchor with this file name. */
+  download?: string;
 }) {
   const className = cn(
     hitArea,
@@ -92,6 +98,12 @@ export function T5Link({
     quiet ? cn("font-medium", sub) : "font-semibold text-[color:var(--mode-identity)]",
     focusRing,
   );
+  if (href && download !== undefined)
+    return (
+      <a href={href} download={download} className={className} aria-label={label} data-testid={testId}>
+        {children}
+      </a>
+    );
   if (href)
     return external ? (
       <a href={href} target="_blank" rel="noreferrer" className={className} aria-label={label} data-testid={testId}>
@@ -103,7 +115,14 @@ export function T5Link({
       </Link>
     );
   return (
-    <button type="button" onClick={onClick} className={className} aria-label={label} data-testid={testId}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={className}
+      aria-label={label}
+      aria-expanded={expanded}
+      data-testid={testId}
+    >
       {children}
     </button>
   );
@@ -144,7 +163,7 @@ export function T5Icon({ icon: Icon }: { icon: LucideIcon }) {
 /** A 24-hour start time at the start of a row. */
 export function T5Time({ time, past = false }: { time: string; past?: boolean }) {
   return (
-    <span data-row-time className={cn("nums min-w-10 shrink-0 text-sm-minus font-normal", past ? faint : ink)}>
+    <span data-row-time className={cn("nums min-w-10 shrink-0 text-sm-minus font-normal", past ? sub : ink)}>
       {time}
     </span>
   );
@@ -155,14 +174,9 @@ export function T5Date({ day, month }: { day: string; month: string }) {
   return (
     <span aria-hidden="true" className={cn("grid min-w-8 shrink-0 justify-items-center leading-none", ink)}>
       <b className="nums text-base font-normal">{day}</b>
-      <small className={cn("mt-1 text-2xs font-semibold tracking-label uppercase", faint)}>{month}</small>
+      <small className={cn("mt-1 text-2xs font-semibold tracking-label uppercase", sub)}>{month}</small>
     </span>
   );
-}
-
-/** A number at the end of a row. */
-export function T5Figure({ children }: { children: ReactNode }) {
-  return <span className={cn("nums shrink-0 text-sm-minus font-normal", ink)}>{children}</span>;
 }
 
 /** The small round ✓ that marks something done at the end of a row. */
@@ -175,7 +189,7 @@ export function T5Done({ label }: { label: string }) {
   );
 }
 
-export type T5RowProps = {
+type T5RowProps = {
   title: ReactNode;
   meta?: ReactNode;
   lead?: ReactNode;
@@ -195,19 +209,55 @@ export type T5RowProps = {
 
 /** One row: optional lead, a title with up to two lines of meta, and an end. 48px minimum. */
 export function T5Row({ title, meta, lead, end, href, external, onClick, past, below, testId, id, busy }: T5RowProps) {
-  const body = (
+  const main = (
     <>
       {lead}
       <span data-row-body className="grid min-w-0 flex-1 gap-px">
-        <span className={cn("text-sm leading-snug font-medium", past ? sub : ink)}>{title}</span>
-        {meta ? <span className={cn("line-clamp-2 text-sm-minus leading-snug", sub)}>{meta}</span> : null}
+        <span className={cn("text-sm leading-snug font-medium break-words", past ? sub : ink)}>{title}</span>
+        {meta ? <span className={cn("text-sm-minus leading-snug break-words", sub)}>{meta}</span> : null}
         {below}
       </span>
+    </>
+  );
+  const body = (
+    <>
+      {main}
       {end ??
         (href || onClick ? <ChevronRight aria-hidden="true" className={cn("size-icon-sm shrink-0", faint)} /> : null)}
     </>
   );
   const shape = "flex min-h-12 w-full min-w-0 items-center gap-3 py-2 text-left";
+  // A row that opens something and also carries an end (a ✓, a figure, a link): the end sits beside
+  // the link or button rather than inside it, so the row stays tappable and no control nests in another.
+  if ((href || onClick) && end) {
+    const inner = "flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-sm py-2 text-left";
+    return (
+      <li id={id} data-testid={testId} className="flex min-w-0 items-center gap-3">
+        {href ? (
+          external ? (
+            <a href={href} target="_blank" rel="noreferrer" className={cn(inner, focusRing)}>
+              {main}
+            </a>
+          ) : (
+            <Link href={href} className={cn(inner, focusRing)}>
+              {main}
+            </Link>
+          )
+        ) : (
+          <button
+            type="button"
+            onClick={onClick}
+            disabled={busy}
+            aria-busy={busy || undefined}
+            className={cn(inner, focusRing)}
+          >
+            {main}
+          </button>
+        )}
+        {end}
+      </li>
+    );
+  }
   if (href && !end)
     return (
       <li id={id} data-testid={testId} className="min-w-0">
@@ -249,18 +299,21 @@ export function T5Panel({
   label,
   className,
   testId,
+  id,
 }: {
   children: ReactNode;
   label?: string;
   className?: string;
   testId?: string;
+  id?: string;
 }) {
   return (
     <section
+      id={id}
       aria-label={label}
       data-testid={testId}
       className={cn(
-        "grid min-w-0 gap-2 rounded-lg border bg-[color:var(--surface-raised)] p-3.5 forced-colors:border-[CanvasText]",
+        "scroll-mt-32 grid min-w-0 gap-2 rounded-lg border bg-[color:var(--surface-raised)] p-3.5 forced-colors:border-[CanvasText]",
         rule,
         className,
       )}
@@ -368,7 +421,8 @@ const NOTE_ICONS = { info: Info, alert: TriangleAlert, offline: WifiOff, shield:
 
 /**
  * A short note. Plain notes sit quietly under a list; `notice` puts it on its own bordered surface
- * (no connection); `warning` adds the amber edge, used only for a real problem.
+ * (no connection); `warning` adds a stronger edge and the alert icon for a real problem. It stays neutral:
+ * green, amber and red are reserved for source status (design-system SPEC §2.1).
  */
 export function T5Note({
   children,
@@ -395,7 +449,7 @@ export function T5Note({
           ? cn(
               "mb-3 rounded-lg border bg-[color:var(--surface-raised)] px-3 py-2.5 text-sm-minus forced-colors:border-[CanvasText]",
               ink,
-              tone === "warning" ? "border-[color:var(--warning-border)]" : rule,
+              tone === "warning" ? "border-[color:var(--border-strong)]" : rule,
             )
           : cn("mt-2.5 text-xs", sub),
         className,
@@ -403,7 +457,7 @@ export function T5Note({
     >
       <Icon
         aria-hidden="true"
-        className={cn("mt-px size-icon-sm shrink-0", tone === "warning" ? "text-[color:var(--warning-text)]" : faint)}
+        className={cn("mt-px size-icon-sm shrink-0", tone === "warning" ? ink : faint)}
         strokeWidth={1.6}
       />
       <span className="min-w-0">{children}</span>

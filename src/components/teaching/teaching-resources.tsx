@@ -123,7 +123,7 @@ export function TeachingResources({
     body = (
       <>
         <TeachingCatchUp status={week.status} week={catchUpWeek} resources={data.forThisWeek} now={now} />
-        <label className="mt-1 flex h-11 items-center gap-2 rounded-md bg-[color:var(--surface-inset)] px-3 text-[color:var(--text-muted)] focus-within:ring-2 focus-within:ring-[color:var(--focus)]">
+        <label className="mt-1 flex min-h-12 items-center gap-2 rounded-md bg-[color:var(--surface-inset)] px-3 text-[color:var(--text-muted)] focus-within:outline-2 focus-within:outline-[color:var(--focus)]">
           <Search aria-hidden="true" className="size-icon-md shrink-0" />
           <span className="sr-only">Filter resources</span>
           <input
@@ -343,7 +343,13 @@ function NewCollectionSheet({ services, onClose }: { services: readonly TeamSumm
       }
     >
       <div className="grid gap-3">
-        <TextField label="Name" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />
+        <TextField
+          label="Name"
+          hint="Everyone in the service sees this name. Do not add patient details."
+          value={name}
+          maxLength={80}
+          onChange={(event) => setName(event.target.value)}
+        />
         {services.length > 1 ? (
           <Select
             label="Service"

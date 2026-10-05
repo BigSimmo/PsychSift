@@ -82,10 +82,10 @@ function RecordBars({ chart }: { chart: RecordChart }) {
               className={cn(
                 "relative block",
                 week.count === 0 && !current
-                  ? "rounded-none border-b-2 border-dotted border-[color:var(--text-soft)]"
+                  ? "rounded-none border-b-2 border-dotted border-[color:var(--text-soft)] forced-colors:border-[CanvasText]"
                   : current
-                    ? "rounded-t-[3px] rounded-b-[1px] bg-[color:var(--mode-identity)] ring-[1.5px] ring-[color:var(--text-heading)]"
-                    : "rounded-t-[3px] rounded-b-[1px] bg-[color:var(--border)]",
+                    ? "rounded-t-[3px] rounded-b-[1px] bg-[color:var(--mode-identity)] ring-[1.5px] ring-[color:var(--text-heading)] forced-colors:bg-[Highlight]"
+                    : "rounded-t-[3px] rounded-b-[1px] bg-[color:var(--border)] forced-colors:bg-[CanvasText]",
               )}
               style={{ height: `${Math.max((week.count / max) * 100, 3)}%` }}
             />
@@ -103,7 +103,7 @@ function RecordBars({ chart }: { chart: RecordChart }) {
           </span>
         ) : null}
       </div>
-      <div aria-hidden="true" className="flex items-center justify-between text-2xs text-[color:var(--text-soft)]">
+      <div aria-hidden="true" className="flex items-center justify-between text-2xs text-[color:var(--text-muted)]">
         {chart.axis.map((label) => (
           <span key={label}>{label}</span>
         ))}
@@ -362,23 +362,24 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
           />
         )}
 
-        <T5Section label="For your supervisor" right={<T5Meta>Counts only</T5Meta>} testId="teaching-record-supervisor">
+        <T5Section
+          label="For your supervisor"
+          right={<T5Meta>From your check-ins</T5Meta>}
+          testId="teaching-record-supervisor"
+        >
           <T5List ruled>
             <T5Row
               title={summary.title}
               meta={summary.meta}
               lead={<T5Icon icon={FileText} />}
               end={
-                rows.length ? (
-                  <a
-                    href={csvHref(attendanceCsv(rows))}
-                    download="teaching-attendance.csv"
-                    className={cn(
-                      "relative shrink-0 text-sm font-semibold text-[color:var(--mode-identity)] after:absolute after:-inset-x-2 after:top-1/2 after:h-12 after:-translate-y-1/2",
-                    )}
+                summary.rows.length ? (
+                  <T5Link
+                    href={csvHref(attendanceCsv(summary.rows))}
+                    download={demoMode ? "teaching-attendance-demo.csv" : "teaching-attendance.csv"}
                   >
                     Download CSV
-                  </a>
+                  </T5Link>
                 ) : undefined
               }
             />

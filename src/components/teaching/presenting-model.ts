@@ -1,5 +1,5 @@
 import { dayParts, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
-import { withUnit } from "@/components/teaching/teaching-number";
+import { durationText, withUnit } from "@/components/teaching/teaching-number";
 import {
   feedbackPaceLabels,
   feedbackPaces,
@@ -16,30 +16,27 @@ import {
 
 const MINUTE = 60_000;
 
-function minutesText(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return withUnit(rest, "min");
-  return rest ? `${withUnit(hours, "h")} ${withUnit(rest, "min")}` : withUnit(hours, "h");
-}
-
-/** "Your next talk · today 14:00 · in 85 min", "Your next talk · Mon 12 Oct 08:00". */
-export function talkKicker(talk: TeachSession, now: Date, today: string): string {
+/**
+ * "Your next talk · today 14:00 · in 85 min", "Your next talk · Mon 12 Oct 08:00". A later talk opened
+ * from the list reads "Your talk · …", since it is not the next one.
+ */
+export function talkKicker(talk: TeachSession, now: Date, today: string, isNext = true): string {
+  const name = isNext ? "Your next talk" : "Your talk";
   const day = perthDateKey(talk.startsAt);
   const time = perthTime(talk.startsAt);
   if (day !== today) {
     const p = dayParts(day);
-    return `Your next talk · ${p.weekday} ${p.day} ${p.month} ${time}`;
+    return `${name} · ${p.weekday} ${p.day} ${p.month} ${time}`;
   }
   const until = Math.ceil((Date.parse(talk.startsAt) - now.getTime()) / MINUTE);
   if (until <= 0) return `Your talk · today ${time} · on now`;
-  return `Your next talk · today ${time} · in ${minutesText(until)}`;
+  return `${name} · today ${time} · in ${durationText(until)}`;
 }
 
 /** "Library meeting room · 45 min", or "Room not set · 45 min". */
 export function talkMeta(talk: TeachSession): string {
   const minutes = Math.round((Date.parse(talk.endsAt) - Date.parse(talk.startsAt)) / MINUTE);
-  return [talk.venue ?? "Room not set", minutesText(minutes)].join(" · ");
+  return [talk.venue ?? "Room not set", durationText(minutes)].join(" · ");
 }
 
 /**

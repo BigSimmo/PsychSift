@@ -14,6 +14,7 @@ import {
   currentTerm,
   epaSummary,
   milestoneLabels,
+  milestoneState,
   nextMilestone,
   termWeekCount,
   termWeekOf,
@@ -27,7 +28,6 @@ import {
  * so the headline, the chart, the gap line and the summaries can never disagree.
  */
 
-const DAY = 86_400_000;
 const MONTHS_LONG = [
   "January",
   "February",
@@ -65,11 +65,16 @@ export function termRow(state: TermTrackerState, today: string): { title: string
       .filter(Boolean)
       .join(" · ") || term.unit;
   const next = nextMilestone(term);
+  const overdue = next !== null && milestoneState(term, next, today) === "overdue";
   const epas = epaSummary(state, term.id, today).year;
   return {
     title,
     meta: [
-      next ? `${milestoneLabels[next].short} due ${weekdayDayMonth(term.milestones[next].dueOn)}` : "All three done",
+      next
+        ? overdue
+          ? `${milestoneLabels[next].short} overdue · was due ${weekdayDayMonth(term.milestones[next].dueOn)}`
+          : `${milestoneLabels[next].short} due ${weekdayDayMonth(term.milestones[next].dueOn)}`
+        : "All three marked done",
       `${withUnit(epas, epas === 1 ? "EPA" : "EPAs")} logged this year`,
     ].join(" · "),
   };
@@ -99,9 +104,14 @@ export function recordChart(rows: readonly LogbookRow[], today: string): RecordC
   const currentKey = mondayOf(today);
   const total = weeks.reduce((sum, week) => sum + week.count, 0);
   const attended = weeks.filter((week) => week.count > 0).length;
-  const full = weeks.slice(0, -1);
+  // Weeks before the doctor's first check-in in this window are not gaps: a new starter has no history yet.
+  const first = rows.reduce<string | null>((min, row) => {
+    const key = mondayOf(perthDateKey(row.startsAt));
+    return min === null || key < min ? key : min;
+  }, null);
+  const full = weeks.slice(0, -1).filter((week) => first !== null && week.key >= first);
   const fullTotal = full.reduce((sum, week) => sum + week.count, 0);
-  const average = fullTotal > 0 ? fullTotal / full.length : null;
+  const average = full.length > 0 && fullTotal > 0 ? fullTotal / full.length : null;
   const averageLabel = average === null ? null : `average ${average.toFixed(1)} a week`;
   const missed = full.filter((week) => week.count === 0);
   const thisWeek = weeks[weeks.length - 1].count;
@@ -125,7 +135,9 @@ export function recordChart(rows: readonly LogbookRow[], today: string): RecordC
     axis: [label(weeks[0]), label(weeks[6]), "This week"],
     gapLine: [gap, `This week so far: ${thisWeek}.`].filter(Boolean).join(" "),
     description: `Sessions per week, ${longDayMonth(weeks[0].key)} to this week: ${weeks.map((w) => w.count).join(", ")}.${
-      average === null ? "" : ` Average ${average.toFixed(1)} a week over the 11 full weeks.`
+      average === null
+        ? ""
+        : ` Average ${average.toFixed(1)} a week over ${withUnit(full.length, full.length === 1 ? "full week" : "full weeks")}.`
     }`,
   };
 }
@@ -143,10 +155,13 @@ export type CpdWeek = {
   older: number;
 };
 
-/** Attended sessions from the last seven days not yet in CPD, and how many of that week are already in. */
+/**
+ * Attended sessions this week (Perth, Monday to today) not yet in CPD, and how many of this week are
+ * already in. Earlier ones are counted as older and stay on the full review page.
+ */
 export function cpdWeek(review: readonly CpdReviewRow[], logbook: readonly LogbookRow[], now: Date): CpdWeek {
-  const since = now.getTime() - 7 * DAY;
-  const recent = (iso: string) => Date.parse(iso) >= since;
+  const monday = mondayOf(perthDateKey(now));
+  const recent = (iso: string) => perthDateKey(iso) >= monday;
   const rows = review
     .filter((row) => recent(row.startsAt))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
@@ -165,14 +180,15 @@ export function cpdButtonLabel(count: number): string {
 }
 
 /**
- * The supervisor summary: counts only. Within the current term when one is set up, else the last 12
+ * The supervisor summary, with the check-ins it counts (for the CSV). Within the current term when one
+ * is set up, else the last 12
  * weeks, so the row always says which span it covers.
  */
 export function supervisorSummary(
   rows: readonly LogbookRow[],
   term: TermRecord | null,
   today: string,
-): { title: string; meta: string } {
+): { title: string; meta: string; rows: LogbookRow[] } {
   const from = term ? term.startsOn : addDays(mondayOf(today), -77);
   const to = term ? term.endsOn : today;
   const inSpan = rows.filter((row) => {
@@ -181,9 +197,12 @@ export function supervisorSummary(
   });
   const hours = inSpan.reduce((sum, row) => sum + (Date.parse(row.endsAt) - Date.parse(row.startsAt)) / 3_600_000, 0);
   return {
-    title: term?.number
-      ? `Term ${term.number} attendance summary`
+    title: term
+      ? term.number
+        ? `Term ${term.number} attendance summary`
+        : "This term's attendance summary"
       : `Attendance summary, last ${withUnit(12, "weeks")}`,
     meta: inSpan.length ? `${sessions(inSpan.length)} · ${hoursText(hours)}` : "No check-ins in this span yet",
+    rows: inSpan,
   };
 }
