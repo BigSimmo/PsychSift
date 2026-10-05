@@ -231,7 +231,7 @@ export function T5Row({ title, meta, lead, end, href, external, onClick, past, b
       </li>
     );
   return (
-    <li id={id} data-testid={testId} className={shape}>
+    <li id={id} data-testid={testId} className={cn(shape, "relative")}>
       {body}
     </li>
   );

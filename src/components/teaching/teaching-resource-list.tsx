@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, BookmarkCheck, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, FileText, Link2, Play, X, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
@@ -14,6 +14,7 @@ import {
   resourceWriteError,
   type AddKind,
 } from "@/components/teaching/resources-model";
+import { T5Icon, T5List, T5Row } from "@/components/teaching/t5-kit";
 import type { SessionDetailRead } from "@/components/teaching/teaching-reads";
 import { TeachingRow } from "@/components/teaching/teaching-row";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
@@ -25,6 +26,14 @@ import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { teachingPost } from "@/lib/teaching/client";
 import type { ResourceRow } from "@/lib/teaching/model";
+
+const KIND_ICONS: Record<ResourceRow["kind"], LucideIcon> = {
+  slides: FileText,
+  reading: FileText,
+  library: FileText,
+  link: Link2,
+  recording: Play,
+};
 
 const rowControl = cn(focusRing, "grid min-h-12 min-w-12 place-items-center rounded-lg");
 
@@ -40,8 +49,11 @@ export function ResourceRows({
   meta,
   onRemove,
   sampleMode = false,
+  look = "grouped",
 }: {
   sampleMode?: boolean;
+  /** "t5": plain ruled rows with a grey type icon, for the v5 Resources page, whose section label names the list. */
+  look?: "grouped" | "t5";
   items: readonly ResourceRow[];
   label: string;
   id: string;
@@ -70,6 +82,59 @@ export function ResourceRows({
       setError(resourceWriteError(cause));
     }
   }
+
+  if (look === "t5")
+    return (
+      <>
+        <T5List ruled testId={id}>
+          {items.map((item) => {
+            const isSaved = saved[item.resourceId] ?? item.saved;
+            const href = resourceHref(item);
+            const subtitle = meta?.(item) ?? RESOURCE_KIND_WORDS[item.kind];
+            const control = (
+              <button
+                type="button"
+                aria-pressed={isSaved}
+                aria-label={`${isSaved ? "Unsave" : "Save"} ${item.title}`}
+                onClick={() => void toggle(item)}
+                className={cn(
+                  rowControl,
+                  "-mr-3",
+                  isSaved ? "text-[color:var(--mode-identity)]" : "text-[color:var(--text-soft)]",
+                )}
+              >
+                {isSaved ? (
+                  <BookmarkCheck aria-hidden="true" className="size-icon-md" />
+                ) : (
+                  <Bookmark aria-hidden="true" className="size-icon-md" />
+                )}
+              </button>
+            );
+            const title = href ? (
+              <a
+                href={href}
+                {...(item.libraryDocumentId ? {} : { target: "_blank", rel: "noreferrer" })}
+                className={cn(focusRing, "rounded-sm after:absolute after:inset-0 after:content-['']")}
+              >
+                {item.title}
+              </a>
+            ) : (
+              item.title
+            );
+            return (
+              <T5Row
+                key={item.resourceId}
+                title={title}
+                meta={subtitle}
+                lead={<T5Icon icon={KIND_ICONS[item.kind]} />}
+                end={<span className="relative z-1">{control}</span>}
+              />
+            );
+          })}
+        </T5List>
+        {error ? <ModeNotice tone="warning">{error}</ModeNotice> : null}
+      </>
+    );
 
   return (
     <>
