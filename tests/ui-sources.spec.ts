@@ -188,3 +188,15 @@ for (const colorScheme of ["light", "dark"] as const) {
     }
   });
 }
+
+test("the Currency check is reachable from the Sources pages and fits a phone", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/sources/currency", { waitUntil: "domcontentloaded" });
+  await expectSingleSettledOwner(page.getByTestId("sources-currency-main"));
+  await expect(page.getByRole("heading", { name: "Is my copy still the latest?" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Reviews coming up/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Needs review first/ })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  const results = await new AxeBuilder({ page }).include('[data-testid="sources-currency-main"]').analyze();
+  expect(results.violations.map((violation) => violation.id)).toEqual([]);
+});
