@@ -1,10 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
-
-import { cardSurface } from "@/components/card-recipes";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { useEffect, useState } from "react";
 
 /**
  * Teaching's own count of sessions given but not yet logged as CPD, or null
@@ -47,44 +43,5 @@ export function useCmeTeachingUnloggedCount(enabled = true): number | null {
   return count;
 }
 
-/** The Year page's own "Teaching you gave" row carries this attribute; while it is on the page, this card stays away. */
+/** The Year page's own "Teaching you gave" row carries this attribute (its "Also for you" row names the count). */
 export const CME_TEACHING_ROW_ATTRIBUTE = "data-cme-teaching-row";
-
-/** Re-reads the snapshot once after mount, when the page's other parts are in the DOM. */
-function subscribeAfterMount(callback: () => void) {
-  const frame = window.requestAnimationFrame(callback);
-  return () => window.cancelAnimationFrame(frame);
-}
-
-/** A quiet handoff: Teaching remains the owner of its unlogged count. */
-export function CmeTeachingPrompt() {
-  // The Year page now names the count in its own "Also for you" row; this card is only for pages without it.
-  // Before the page is in the browser, assume the row is there, so nothing is fetched twice.
-  const inPageRow = useSyncExternalStore(
-    subscribeAfterMount,
-    () => document.querySelector(`[${CME_TEACHING_ROW_ATTRIBUTE}]`) !== null,
-    () => true,
-  );
-  const count = useCmeTeachingUnloggedCount(!inPageRow);
-
-  if (inPageRow || count === null) return null;
-
-  return (
-    <section
-      className={cn(cardSurface, "mt-3 p-4")}
-      aria-label="Teaching sessions to log"
-      data-testid="cme-teaching-prompt"
-    >
-      <p className="text-sm font-semibold text-[color:var(--text)]">Next to log: Teaching</p>
-      <p className={cn("mt-1 text-sm", textMuted)}>
-        {count} {count === 1 ? "teaching session" : "teaching sessions"} to review in Teaching.
-      </p>
-      <Link
-        href="/teaching/review"
-        className="mt-2 inline-flex min-h-tap items-center text-sm font-semibold text-[color:var(--clinical-accent)] underline underline-offset-2"
-      >
-        Review & log
-      </Link>
-    </section>
-  );
-}

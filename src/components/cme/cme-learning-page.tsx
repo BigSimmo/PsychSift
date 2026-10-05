@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { CmeFlatList, CmeFlatRow, CmeGroup, CmeNote, CmeTextLink } from "@/components/cme/cme-flat-list";
+import { CmeSegmentedTabs } from "@/components/cme/cme-page-tabs";
 import { cmePageTitle, cmePageWidth } from "@/components/cme/cme-page-frame";
 import { EmptyState, cn } from "@/components/ui-primitives";
 import { formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
@@ -246,6 +247,17 @@ export function CmeLearningPage({
     <main data-testid="cme-learning" data-mode-identity="cme" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>
       <h1 className={cmePageTitle}>Learning</h1>
       <div className="mt-3 grid gap-6">
+        <CmeSegmentedTabs
+          label="Courses pages"
+          segments={[
+            {
+              label: `Upcoming · ${visibleUpcoming.length + visibleUnconfirmed.length}`,
+              href: "/cme/learning",
+              active: view !== "past",
+            },
+            { label: "Past", href: "/cme/learning?view=past", active: view === "past" },
+          ]}
+        />
         <div className="grid gap-1">
           <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-learning-checked">
             Western Australia. Checked {longDateWithWeekday(lastCheckedOn, today)}. A curated list, not an endorsement:

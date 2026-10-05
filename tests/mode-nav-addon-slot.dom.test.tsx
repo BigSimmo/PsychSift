@@ -373,7 +373,6 @@ describe("header addon slot ownership", () => {
       // header for one activity and Customise (`CmeDetailNavHeader`) lives
       // there too.
       "src/components/cme/cme-nav-header.tsx",
-      "src/components/cme/cme-page-tabs.tsx",
       "src/components/developer-area/developer-hub-nav-header.tsx",
       "src/components/dictionary/dictionary-catalogue-pages.tsx",
       "src/components/dictionary/dictionary-term-page.tsx",

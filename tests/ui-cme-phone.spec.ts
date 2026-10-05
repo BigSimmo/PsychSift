@@ -148,9 +148,9 @@ test.describe("CME core screens at phone widths", () => {
       .click();
     await expect(page).toHaveURL(/year=2025/);
     await expect(page.locator('[data-testid^="cme-log-row-"]')).toHaveCount(0);
-    await page.getByRole("navigation", { name: "Log tabs" }).getByRole("link", { name: "Routines" }).click();
+    await page.getByRole("navigation", { name: "Log pages" }).getByRole("link", { name: "Routines" }).click();
     await expect(page).toHaveURL(/\/cme\/routines\?year=2025/);
-    await page.getByRole("navigation", { name: "Log tabs" }).getByRole("link", { name: "Activities" }).click();
+    await page.getByRole("navigation", { name: "Log pages" }).getByRole("link", { name: "Activities" }).click();
     await expect(page).toHaveURL(/\/cme\/log\?year=2025/);
     await expect(page.locator('[data-testid^="cme-log-row-"]')).toHaveCount(0);
     // The year choice lives in the filter sheet on a phone.

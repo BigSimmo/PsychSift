@@ -8,7 +8,6 @@ import { CmeDashboard, type CmeReportingReminder } from "@/components/cme/cme-da
 import { useCmeOneTapRoutineLog } from "@/components/cme/cme-one-tap-routine-log";
 import { CmeQuickLog } from "@/components/cme/cme-quick-log";
 import { cmeRoutineLogHref } from "@/components/cme/cme-route-navigation";
-import { CmeTeachingPrompt } from "@/components/cme/cme-teaching-prompt";
 import type { CmePlanGoal } from "@/lib/cme/plan-goals";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { TrainingPosition } from "@/lib/cme/training-timeline";
@@ -86,7 +85,6 @@ export function CmeDashboardRoute({
         nextYearConfirmed={nextYearConfirmed}
         nextYearGoals={nextYearGoals}
       />
-      {!demoMode ? <CmeTeachingPrompt /> : null}
       {oneTap.notice}
       <CmeQuickLog set={set} entries={entries} routines={routines} nowIso={nowIso} demoMode={demoMode} />
     </>
