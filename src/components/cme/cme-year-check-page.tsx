@@ -128,22 +128,24 @@ export function CmeYearCheckPage({ set, entries }: { set: CmeRequirementSet; ent
             Your renewal asks for your {set.year} CPD home
           </h2>
           <p className={textMuted}>
-            If you log CPD with a CPD home, your registration renewal asks which one you used.{" "}
+            If you log CPD with a CPD home, your registration renewal asks which one you used.
+          </p>
+          <div className="flex flex-wrap gap-x-5">
+            <Link
+              href="/admin/renewals"
+              className="inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)]"
+            >
+              Open Renewals in Admin
+            </Link>
             <a
               href={MEDICAL_BOARD_CPD_URL}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)]"
+              className={cn(textMuted, "inline-flex min-h-tap items-center text-xs underline underline-offset-2")}
             >
-              Medical Board, checked 5 Oct 2026
+              Source: Medical Board, checked 5 Oct 2026
             </a>
-          </p>
-          <Link
-            href="/admin/renewals"
-            className="inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)]"
-          >
-            Open Renewals in Admin
-          </Link>
+          </div>
         </div>
       </section>
 

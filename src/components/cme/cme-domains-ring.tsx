@@ -26,7 +26,7 @@ export function isActivityCountRequirement(requirement: CmeRequirement): require
 }
 
 /** Gap between parts, in degrees, so four parts read as four. */
-const GAP_DEGREES = 8;
+const GAP_DEGREES = 22;
 const RADIUS = 15.5;
 
 function polar(degrees: number): { x: number; y: number } {
@@ -82,7 +82,7 @@ export function CmeDomainsRing({
               className={cn(
                 row.filled
                   ? "stroke-[color:var(--tone-indigo)] forced-colors:stroke-[CanvasText]"
-                  : "stroke-[color:var(--surface-inset)] forced-colors:stroke-[GrayText]",
+                  : "stroke-[color:var(--border-strong)] forced-colors:stroke-[GrayText]",
               )}
             />
           ))}
