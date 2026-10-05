@@ -185,14 +185,15 @@ export const modeSecondaryNavigationRegistry = {
   // absent from `MODE_NAV_ADOPTED_MODES`: the pill already opens these, so no
   // page mounts the shared bar. Organise is hidden from the pill for anyone
   // who is not an organiser or admin (`src/lib/teaching/page-visibility.ts`);
+  // Mock-up v5 (5 Oct 2026) folds the eight first-build pages into five: This
+  // week (Today, Week, What's on), Presenting (Teach, Supervision) and My
+  // record (Logbook, Feedback, Weekly CPD review). The ids and routes stay, so
+  // bookmarks and the shared icons keep working; Week redirects to This week.
   teaching: [
-    { id: "today", label: "Today", href: "/teaching" },
-    { id: "week", label: "Week", href: "/teaching/week" },
-    { id: "whats-on", label: "What's on", href: "/teaching/whats-on" },
+    { id: "today", label: "This week", href: "/teaching" },
+    { id: "teach", label: "Presenting", href: "/teaching/teach" },
+    { id: "logbook", label: "My record", href: "/teaching/logbook" },
     { id: "resources", label: "Resources", href: "/teaching/resources" },
-    { id: "logbook", label: "Logbook", href: "/teaching/logbook" },
-    { id: "teach", label: "Teach", href: "/teaching/teach" },
-    { id: "supervision", label: "Supervision", href: "/teaching/supervision" },
     { id: "organise", label: "Organise", href: "/teaching/organise" },
   ],
   // Psychiatry's home is itself the list of sections it gathers, and each
@@ -456,19 +457,19 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
   }
   if (modeId === "teaching") {
     // Exact match only, as for On Call and CME: a prefix test would mark
-    // Today current on every Teaching route as well as its own.
-    if (pathname === "/teaching") return "today";
-    if (pathname === "/teaching/week") return "week";
-    if (pathname === "/teaching/whats-on") return "whats-on";
+    // This week current on every Teaching route as well as its own.
+    if (pathname === "/teaching" || pathname === "/teaching/week" || pathname === "/teaching/whats-on") return "today";
     if (pathname === "/teaching/resources" || pathname.startsWith("/teaching/resources/")) return "resources";
-    if (pathname === "/teaching/teach") return "teach";
-    if (pathname === "/teaching/supervision") return "supervision";
-    if (pathname === "/teaching/review" || pathname === "/teaching/feedback" || pathname === "/teaching/term")
-      return "logbook";
     if (pathname === "/teaching/exam-prep") return "resources";
-    if (pathname === "/teaching/import") return "organise";
-    if (pathname === "/teaching/logbook") return "logbook";
-    if (pathname === "/teaching/organise") return "organise";
+    if (pathname === "/teaching/teach" || pathname === "/teaching/supervision") return "teach";
+    if (
+      pathname === "/teaching/logbook" ||
+      pathname === "/teaching/review" ||
+      pathname === "/teaching/feedback" ||
+      pathname === "/teaching/term"
+    )
+      return "logbook";
+    if (pathname === "/teaching/import" || pathname === "/teaching/organise") return "organise";
     return null;
   }
   if (modeId === "my-work") {
