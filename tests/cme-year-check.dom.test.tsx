@@ -39,6 +39,43 @@ const ENTRIES = [
 ];
 
 describe("year check page", () => {
+  it("rings the confirmed domains, counts tagged activities and offers to tag an empty one", () => {
+    render(
+      <CmeYearCheckPage
+        set={SET}
+        entries={[
+          entry({ id: "p1", buckets: ["Professionalism"] }),
+          entry({ id: "p2", buckets: ["Professionalism", "Ethical practice"] }),
+          entry({ id: "old", buckets: ["Culturally safe practice"], archivedAt: "2026-04-01T00:00:00Z" }),
+        ]}
+      />,
+    );
+    const ring = screen.getByTestId("cme-domains-ring-domains");
+    expect(within(ring).getByRole("heading")).toHaveTextContent("Professional development domains · 2 of 4");
+    expect(ring.querySelectorAll('path[data-filled="true"]')).toHaveLength(2);
+    expect(ring).toHaveTextContent("Professionalism2 activities");
+    // An archived activity does not count, so culturally safe practice still offers "Tag one".
+    expect(within(ring).getByRole("link", { name: "Tag one for Culturally safe practice" })).toHaveAttribute(
+      "href",
+      "/cme/log?year=2026",
+    );
+    expect(within(ring).getAllByRole("link", { name: /^Tag one/ })).toHaveLength(2);
+  });
+
+  it("points to Renewals for the CPD home question, with its source", () => {
+    render(<CmeYearCheckPage set={SET} entries={ENTRIES} />);
+    const renewal = screen.getByTestId("cme-check-renewal");
+    expect(renewal).toHaveTextContent("Your renewal asks for your 2026 CPD home");
+    expect(within(renewal).getByRole("link", { name: "Open Renewals in Admin" })).toHaveAttribute(
+      "href",
+      "/admin/renewals",
+    );
+    expect(within(renewal).getByRole("link", { name: /Medical Board/ })).toHaveAttribute(
+      "href",
+      expect.stringContaining("medicalboard.gov.au"),
+    );
+  });
+
   it("says how many rows are done and states each status in words", async () => {
     const user = userEvent.setup();
     render(<CmeYearCheckPage set={SET} entries={ENTRIES} />);

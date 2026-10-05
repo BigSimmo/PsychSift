@@ -6,7 +6,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { CmeDraftsSection } from "@/components/cme/cme-drafts-section";
 import { CmeLogCopySheet } from "@/components/cme/cme-log-copy-sheet";
-import { CmeLogMonthList, CmeLogMonthStrip } from "@/components/cme/cme-log-entry-list";
+import { CmeLogMonthList } from "@/components/cme/cme-log-entry-list";
+import { CmeLogMonthChart } from "@/components/cme/cme-log-month-chart";
 import { CmeLogFilterPanel, useWideLogLayout } from "@/components/cme/cme-log-filter-panel";
 import {
   ATTENTION_FILTERS,
@@ -69,7 +70,7 @@ export type CmeLogPageProps = {
  * filter sheet (a side column at `lg+`), and the button says which year is
  * showing and how many filters are on. The three audit questions (evidence,
  * reflection, copied) stay one tap away as a single sideways-scrolling chip
- * row. A twelve-bar month strip jumps through the year; entries below are
+ * row. A twelve-bar hours-per-month chart jumps through the year; entries below are
  * grouped by month, most recent first, under headers that stay pinned while
  * their month scrolls. Each row is a single link to its own entry screen
  * (`/cme/log/[id]`). Download CSV and the annual summary sit behind "More".
@@ -530,7 +531,7 @@ export function CmeLogPage({
 
             {!allYears && groups.length > 0 ? (
               <div className="mt-4">
-                <CmeLogMonthStrip year={effectiveYear} groups={groups} today={today} />
+                <CmeLogMonthChart year={effectiveYear} groups={groups} today={today} />
               </div>
             ) : null}
 

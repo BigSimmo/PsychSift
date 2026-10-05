@@ -108,6 +108,8 @@ describe("development plan page", () => {
     expect(tally).toHaveTextContent("1.5 h from 1 activity");
     expect(tally).toHaveTextContent("3 h from 2 activities");
     expect(screen.getAllByTestId("cme-plan-tally-bar")).toHaveLength(2);
+    // One split bar of every logged hour, with the total and how many activities are linked.
+    expect(screen.getByTestId("cme-plan-goal-split")).toHaveTextContent("4.5 h logged1 activity linked");
   });
 
   it("says when the plan is not yet marked written", () => {

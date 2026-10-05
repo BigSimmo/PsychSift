@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, ChevronRight, CircleDashed } from "lucide-react";
+import { BadgeCheck, Check, ChevronDown, ChevronRight, CircleDashed } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
@@ -14,7 +14,12 @@ import { formatCalendarDateShort } from "@/lib/cme/cpd-year";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { buildCmeYearCheck, type CmeYearCheckRow } from "@/lib/cme/year-check";
 import { cmePageTitle } from "@/components/cme/cme-page-frame";
+import { CmeDomainsRing, isActivityCountRequirement } from "@/components/cme/cme-domains-ring";
 import { CmeFractionBar } from "@/components/cme/cme-progress-visuals";
+
+/** Where the renewal note's claim comes from: the Board's own "what do I need to do" CPD page. */
+const MEDICAL_BOARD_CPD_URL =
+  "https://www.medicalboard.gov.au/Professional-Performance-Framework/CPD/What--do-I-need-to-do.aspx";
 
 /** How many proving activities a row names before "and N more". */
 const PROOF_LIMIT = 4;
@@ -48,6 +53,7 @@ export function CmeYearCheckPage({ set, entries }: { set: CmeRequirementSet; ent
   const openRow = openId ? (check.rows.find((row) => row.id === openId) ?? null) : null;
   const openProof = openRow ? proofFor(openRow, byId) : [];
   const share = check.rows.length > 0 ? check.readyCount / check.rows.length : 0;
+  const domainRequirements = set.requirements.filter(isActivityCountRequirement);
 
   function open(row: CmeYearCheckRow, opener: HTMLButtonElement) {
     openerRef.current = opener;
@@ -102,6 +108,44 @@ export function CmeYearCheckPage({ set, entries }: { set: CmeRequirementSet; ent
           </ul>
         </details>
       ) : null}
+
+      {domainRequirements.length > 0 ? (
+        <div className="mt-6 grid gap-3">
+          {domainRequirements.map((requirement) => (
+            <CmeDomainsRing key={requirement.id} requirement={requirement} entries={entries} year={set.year} />
+          ))}
+        </div>
+      ) : null}
+
+      <section
+        className={cn(modeModuleSurface, "mt-6 flex items-start gap-3 p-4")}
+        aria-labelledby="cme-check-renewal"
+        data-testid="cme-check-renewal"
+      >
+        <BadgeCheck aria-hidden="true" className={cn("mt-0.5 size-icon-md shrink-0", textMuted)} />
+        <div className="grid min-w-0 gap-1 text-sm">
+          <h2 id="cme-check-renewal" className="font-semibold text-[color:var(--text)]">
+            Your renewal asks for your {set.year} CPD home
+          </h2>
+          <p className={textMuted}>
+            If you log CPD with a CPD home, your registration renewal asks which one you used.{" "}
+            <a
+              href={MEDICAL_BOARD_CPD_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)]"
+            >
+              Medical Board, checked 5 Oct 2026
+            </a>
+          </p>
+          <Link
+            href="/admin/renewals"
+            className="inline-flex min-h-tap items-center font-semibold text-[color:var(--clinical-accent)]"
+          >
+            Open Renewals in Admin
+          </Link>
+        </div>
+      </section>
 
       <p className={cn(textMuted, "mt-6 text-sm")}>
         To hand it over, open your{" "}

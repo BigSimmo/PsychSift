@@ -15,8 +15,10 @@ import {
   filterLearningItems,
   groupLearningByMonth,
   isDirectoryStale,
+  learningCountdownLabel,
   learningItemLogHref,
   pastLearningItems,
+  splitUpcomingLearning,
   unconfirmedLearningItems,
   upcomingLearningItems,
   type LearningFormat,
@@ -29,6 +31,7 @@ const KIND_LABEL: Record<LearningDirectoryItem["kind"], string> = {
   recorded: "Recorded",
 };
 
+// The year always shows, so a date in a later year never reads as this year.
 function dateLabel(item: LearningDirectoryItem): string {
   const { startsOn, endsOn } = item;
   if (startsOn === null) return item.kind === "recorded" ? "Watch any time" : "Date not confirmed";
@@ -60,12 +63,23 @@ function downloadCalendarEvent(item: LearningDirectoryItem): void {
 function LearningItemCard({
   item,
   phase,
+  countdown,
 }: {
   item: LearningDirectoryItem;
   phase: "upcoming" | "past" | "unconfirmed";
+  /** Countdown chip text, for the next two dated courses only. */
+  countdown?: string;
 }) {
   return (
     <li data-testid="cme-learning-item" className={cn(raisedCard, "p-4")}>
+      {countdown ? (
+        <p
+          data-testid="cme-learning-countdown"
+          className="mb-1.5 inline-block rounded-full border border-[color:var(--tone-indigo-border)] bg-[color:var(--tone-indigo-soft)] px-2.5 py-0.5 text-xs font-semibold text-[color:var(--tone-indigo)]"
+        >
+          {countdown}
+        </p>
+      ) : null}
       <p className={cn(textMuted, "text-xs font-semibold")}>
         {KIND_LABEL[item.kind]} · {item.provider}
       </p>
@@ -153,6 +167,7 @@ export function CmeLearningPage({
   const visibleUpcoming = filterLearningItems(upcoming, filters);
   const visiblePast = filterLearningItems(past, filters);
   const visibleUnconfirmed = filterLearningItems(unconfirmed, filters);
+  const sections = splitUpcomingLearning(visibleUpcoming, today);
   const stale = isDirectoryStale(lastCheckedOn, today);
 
   return (
@@ -253,21 +268,69 @@ export function CmeLearningPage({
                   body="The list is checked about once a month. Past events appear in Past."
                 />
               </div>
-            ) : (
+            ) : sections.next.length > 0 ? (
               <div className="mt-3 space-y-6">
-                {groupLearningByMonth(visibleUpcoming).map((group) => (
+                {groupLearningByMonth(sections.next).map((group) => (
                   <section key={group.key} aria-label={group.label}>
                     <h3 className={cn(textMuted, "text-sm font-semibold")}>{group.label}</h3>
                     <ul className="mt-2 grid gap-3">
                       {group.items.map((item) => (
-                        <LearningItemCard key={item.id} item={item} phase="upcoming" />
+                        <LearningItemCard
+                          key={item.id}
+                          item={item}
+                          phase="upcoming"
+                          countdown={item.startsOn ? learningCountdownLabel(item.startsOn, today) : undefined}
+                        />
                       ))}
                     </ul>
                   </section>
                 ))}
               </div>
-            )}
+            ) : null}
           </section>
+
+          {[
+            {
+              id: "later-this-year",
+              testId: "cme-learning-later-this-year",
+              title: "Later this year",
+              items: sections.laterThisYear,
+            },
+            {
+              id: "next-year",
+              testId: "cme-learning-next-year",
+              title: "Next year and any time",
+              items: sections.nextYearAndAnyTime,
+            },
+          ].map((section) =>
+            section.items.length > 0 ? (
+              <section
+                key={section.id}
+                data-testid={section.testId}
+                aria-labelledby={`cme-learning-${section.id}-heading`}
+                className="mt-8"
+              >
+                <h2
+                  id={`cme-learning-${section.id}-heading`}
+                  className="text-base font-semibold text-[color:var(--text)]"
+                >
+                  {section.title} · {section.items.length}
+                </h2>
+                <div className="mt-3 space-y-6">
+                  {groupLearningByMonth(section.items).map((group) => (
+                    <section key={group.key} aria-label={group.label}>
+                      <h3 className={cn(textMuted, "text-sm font-semibold")}>{group.label}</h3>
+                      <ul className="mt-2 grid gap-3">
+                        {group.items.map((item) => (
+                          <LearningItemCard key={item.id} item={item} phase="upcoming" />
+                        ))}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              </section>
+            ) : null,
+          )}
 
           {visibleUnconfirmed.length > 0 ? (
             <section

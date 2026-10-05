@@ -217,13 +217,20 @@ describe("log page structure", () => {
     render(<CmeLogPage entries={ENTRIES} set={SET} today="2026-09-26" />);
     const strip = screen.getByRole("navigation", { name: "Jump to month" });
     expect(within(strip).getAllByRole("listitem")).toHaveLength(12);
-    const september = within(strip).getByRole("link", { name: "September, 1.5 hours" });
+    const september = within(strip).getByRole("link", { name: "September, 1.5 hours, jump to month" });
     expect(september).toHaveAttribute("href", "#cme-log-month-anchor-2026-09");
     expect(september).toHaveAttribute("aria-current", "date");
     expect(document.getElementById("cme-log-month-anchor-2026-09")).toBe(screen.getByTestId("cme-log-month-2026-09"));
     // An empty month is never a dead link.
     expect(within(strip).queryByRole("link", { name: /^October/ })).toBeNull();
-    expect(strip).toHaveTextContent("October, 0.0 hours");
+    expect(strip).toHaveTextContent("October, 0 hours");
+    expect(within(strip).getByRole("heading", { name: "Jump to month" })).toBeInTheDocument();
+    // The bars add up to the year total in the heading.
+    const bars = [...strip.querySelectorAll("[data-month-bar]")];
+    expect(bars).toHaveLength(12);
+    const sum = bars.reduce((acc, bar) => acc + Number(bar.getAttribute("data-hours")), 0);
+    expect(screen.getByTestId("cme-log-month-total")).toHaveTextContent(`${sum.toFixed(1)} hours in 2026`);
+    expect(screen.getByTestId("cme-log-month-hours-2026-09")).toHaveTextContent("1.5");
   });
 
   it("pins each month header within its month on a surface token", () => {

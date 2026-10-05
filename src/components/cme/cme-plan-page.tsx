@@ -29,7 +29,7 @@ import {
 } from "@/lib/cme/plan-goals";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { canCarryCmeGoals, carryableCmeGoals } from "@/lib/cme/year-close-actions";
-import { CmeFractionBar } from "@/components/cme/cme-progress-visuals";
+import { CmePlanGoalSplit } from "@/components/cme/cme-plan-goal-split";
 
 /**
  * DEVELOPMENT PLAN — the year's goals, written once near the start of the
@@ -91,7 +91,6 @@ export function CmePlanPage({
   const [editing, setEditing] = useState(() => !readOnly && goals.length === 0);
   const planRequirement = set.requirements.find((requirement) => requirement.id === "plan");
   const tally = hoursByGoal(goals, entries);
-  const tallyMax = Math.max(0, ...tally.map((row) => row.hours));
   const filled = drafts.filter((draft) => draft.goal.trim().length > 0);
   const tooShort = filled.some((draft) => draft.goal.trim().length < CME_PLAN_GOAL_MIN_LENGTH);
   const offerCarry = canCarryCmeGoals(set, now) && goals.length > 0;
@@ -399,28 +398,9 @@ export function CmePlanPage({
           <h2 id="cme-plan-tally" className={cn(eyebrowText, "mb-2")}>
             Hours by goal
           </h2>
-          <ul className="flex flex-col gap-2" data-testid="cme-plan-tally">
-            {tally.map((row) => (
-              <li key={row.goal?.id ?? "none"} className={cn(cardSurface, "flex flex-col gap-2 p-3")}>
-                <div className="flex items-start justify-between gap-3">
-                  <span className={cn("min-w-0 text-sm", row.goal ? "text-[color:var(--text)]" : textMuted)}>
-                    {row.goal ? row.goal.goal : "Not linked to a goal"}
-                  </span>
-                  <span className="nums shrink-0 text-sm font-normal text-[color:var(--text)]">
-                    {`${row.hours} h from ${row.entryCount} ${row.entryCount === 1 ? "activity" : "activities"}`}
-                  </span>
-                </div>
-                {/* A thin share-of-the-year bar: each goal's hours against the
-                    largest goal's, so the rows compare at a glance. Decorative —
-                    the sentence above carries the figure. */}
-                <CmeFractionBar
-                  testId="cme-plan-tally-bar"
-                  fraction={tallyMax > 0 ? row.hours / tallyMax : 0}
-                  className="h-1"
-                />
-              </li>
-            ))}
-          </ul>
+          <div className={cn(cardSurface, "p-4")}>
+            <CmePlanGoalSplit tally={tally} />
+          </div>
         </section>
       ) : null}
     </main>

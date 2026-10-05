@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  daysUntilLearningStart,
+  learningCountdownLabel,
+  splitUpcomingLearning,
+} from "@/lib/cme/learning-directory-view";
+
 import directoryJson from "@/data/cme/wa-learning-directory.json";
 import {
   defaultLearningSpecialty,
@@ -214,5 +220,33 @@ describe("learningItemLogHref", () => {
     expect([...url.searchParams.keys()]).toEqual(["title", "sourceUrl"]);
     expect(url.searchParams.get("title")).toBe("A & B");
     expect(url.searchParams.get("sourceUrl")).toBe("https://example.org/event");
+  });
+});
+
+describe("learning countdown and upcoming split", () => {
+  it("labels the countdown in plain words and never goes negative", () => {
+    expect(learningCountdownLabel("2026-09-26", TODAY_PERTH)).toBe("Today");
+    expect(learningCountdownLabel("2026-09-27", TODAY_PERTH)).toBe("Tomorrow");
+    expect(learningCountdownLabel("2026-10-16", TODAY_PERTH)).toBe("In 20 days");
+    expect(daysUntilLearningStart("2026-09-01", TODAY_PERTH)).toBe(0);
+  });
+
+  it("puts the next two first, then this year, then later years and any time", () => {
+    const upcoming = [
+      item({ id: "a", startsOn: "2026-10-01" }),
+      item({ id: "b", startsOn: "2026-10-05" }),
+      item({ id: "c", startsOn: "2026-12-01" }),
+      item({ id: "d", startsOn: "2027-01-05" }),
+      item({ id: "e", kind: "recorded", startsOn: null }),
+    ];
+    const split = splitUpcomingLearning(upcoming, TODAY_PERTH);
+    expect(split.next.map((i) => i.id)).toEqual(["a", "b"]);
+    expect(split.laterThisYear.map((i) => i.id)).toEqual(["c"]);
+    expect(split.nextYearAndAnyTime.map((i) => i.id)).toEqual(["d", "e"]);
+  });
+
+  it("skips undated items when choosing the next two", () => {
+    const split = splitUpcomingLearning([item({ id: "x", startsOn: null }), item({ id: "y" })], TODAY_PERTH);
+    expect(split.next.map((i) => i.id)).toEqual(["y"]);
   });
 });

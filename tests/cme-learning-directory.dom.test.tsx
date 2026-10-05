@@ -210,4 +210,29 @@ describe("CME learning directory page", () => {
     expect(screen.getByTestId("cme-learning-empty")).toBeInTheDocument();
     expect(screen.getByTestId("cme-learning-unconfirmed")).toBeInTheDocument();
   });
+
+  it("chips the next two, then splits this year from next year with the year shown", () => {
+    render(
+      <CmeLearningPage
+        items={[
+          item({ id: "a", title: "A", startsOn: "2026-09-27" }),
+          item({ id: "b", title: "B", startsOn: "2026-10-16" }),
+          item({ id: "c", title: "C", startsOn: "2026-12-01" }),
+          item({ id: "d", title: "D", startsOn: "2027-02-03" }),
+          item({ id: "e", title: "E", kind: "recorded", startsOn: null, endsOn: null }),
+        ]}
+        lastCheckedOn="2026-09-26"
+        nowIso={NOW_ISO}
+      />,
+    );
+    const chips = screen.getAllByTestId("cme-learning-countdown");
+    expect(chips.map((chip) => chip.textContent)).toEqual(["Tomorrow", "In 20 days"]);
+    const later = screen.getByTestId("cme-learning-later-this-year");
+    expect(later).toHaveTextContent("Later this year · 1");
+    expect(within(later).queryByTestId("cme-learning-countdown")).toBeNull();
+    const nextYear = screen.getByTestId("cme-learning-next-year");
+    expect(nextYear).toHaveTextContent("Next year and any time · 2");
+    expect(nextYear).toHaveTextContent("3 February 2027");
+    expect(within(nextYear).getAllByRole("link", { name: "Log as CPD" })).toHaveLength(2);
+  });
 });
