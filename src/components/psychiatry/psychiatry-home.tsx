@@ -1,16 +1,17 @@
 "use client";
 
 import {
-  Calculator,
   ChevronRight,
   Compass,
   FileText,
   GitCompareArrows,
+  LifeBuoy,
   Map as MapIcon,
   Network,
   Pill,
   Search,
   Tags,
+  Timer,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import { cn } from "@/components/ui-primitives";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
+import { EMPTY_MHA_CLOCKS, loadMhaClocks, subscribeMhaClocks, type MhaClock } from "@/lib/psychiatry-hub/mha-clocks";
 import {
   clearPsychiatryVisits,
   EMPTY_PSYCHIATRY_VISIT_STATE,
@@ -105,8 +107,13 @@ const QUICK_ACTIONS: readonly DashQuickAction[] = [
   },
   { label: "Compare diagnoses", href: "/dsm/compare", icon: GitCompareArrows, testId: "psychiatry-qa-compare" },
   { label: "MHA forms", href: "/forms/search", icon: FileText, testId: "psychiatry-qa-forms" },
-  { label: "Medication", href: appModeHomeHref("prescribing"), icon: Pill, testId: "psychiatry-qa-medication" },
-  { label: "Calculators", href: appModeHomeHref("calculators"), icon: Calculator, testId: "psychiatry-qa-calculators" },
+  { label: "Safety plan", href: "/safety-plan", icon: LifeBuoy, testId: "psychiatry-qa-safety-plan" },
+  {
+    label: "First Nations",
+    href: appModeHomeHref("first-nations"),
+    icon: appModeIcons["first-nations"],
+    testId: "psychiatry-qa-first-nations",
+  },
 ];
 
 const TOOL_LINKS: ReadonlyArray<{ readonly label: string; readonly href: string; readonly mode: AppModeId }> = [
@@ -435,6 +442,82 @@ function QuickActionGrid({ actions }: { readonly actions: readonly DashQuickActi
   );
 }
 
+/** Medication and calculators live in Medicines now: a signpost, not a copy. */
+function MedicinesSignpost() {
+  return (
+    <Link
+      href={appModeHomeHref("medicines")}
+      data-testid="psychiatry-medicines-signpost"
+      className={cn(
+        focusRing,
+        "grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-2xl px-1 text-sm text-[color:var(--dash-ink)] no-underline",
+      )}
+    >
+      <IconChip tint="neutral" size="sm">
+        <Pill aria-hidden="true" className="size-icon-sm" />
+      </IconChip>
+      <span className="min-w-0 break-words">Medication and calculators are in Medicines</span>
+      <ChevronRight aria-hidden="true" className="size-icon-sm text-[color:var(--dash-faint)]" />
+    </Link>
+  );
+}
+
+function useMhaClocks(): readonly MhaClock[] {
+  return useSyncExternalStore(subscribeMhaClocks, loadMhaClocks, () => EMPTY_MHA_CLOCKS);
+}
+
+function clockSummary(clocks: readonly MhaClock[]): string {
+  if (clocks.length === 0) return "No clocks running";
+  const codes = [...new Set(clocks.map((clock) => clock.formCode))];
+  return `${codes.length === 1 ? "Form" : "Forms"} ${codes.join(", ")}`;
+}
+
+/**
+ * "For a shift": the tools used during an after-hours shift, as a sideways row of rich cards.
+ * Only tools that exist are here; nothing clinical is shown on a card, and the MHA clock card
+ * shows a count and form codes from this device, never anything about a person.
+ */
+function ShiftToolsCard() {
+  const clocks = useMhaClocks();
+  const card =
+    "grid h-full min-h-32 content-between gap-3 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] p-3.5 text-[color:var(--dash-ink)] no-underline forced-colors:border";
+  return (
+    <DashCard title="For a shift" testId="psychiatry-card-shift" aside={<DashTag tint="blue">On this device</DashTag>}>
+      <ul role="list" aria-label="For a shift" className="grid grid-cols-2 gap-2">
+        <li className="min-w-0">
+          <Link href="/psychiatry/mha-clock" data-testid="psychiatry-shift-mha-clock" className={cn(focusRing, card)}>
+            <span className="flex items-center justify-between gap-2">
+              <IconChip tint="blue" size="md">
+                <Timer aria-hidden="true" className="size-icon-md" />
+              </IconChip>
+              {clocks.length > 0 ? <DashTag tint="blue">{`${clocks.length} running`}</DashTag> : null}
+            </span>
+            <span className="grid gap-0.5">
+              <span className="font-dash-title text-base-minus leading-tight">MHA clock</span>
+              <span className={dashMuted} data-testid="psychiatry-shift-mha-summary">
+                {clockSummary(clocks)}
+              </span>
+            </span>
+          </Link>
+        </li>
+        <li className="min-w-0">
+          <Link href="/safety-plan" data-testid="psychiatry-shift-safety-plan" className={cn(focusRing, card)}>
+            <span className="flex items-center justify-between gap-2">
+              <IconChip tint="blue" size="md">
+                <LifeBuoy aria-hidden="true" className="size-icon-md" />
+              </IconChip>
+            </span>
+            <span className="grid gap-0.5">
+              <span className="font-dash-title text-base-minus leading-tight">Safety plan</span>
+              <span className={dashMuted}>Build one together</span>
+            </span>
+          </Link>
+        </li>
+      </ul>
+    </DashCard>
+  );
+}
+
 function SectionChip({ mode }: { readonly mode: AppModeId }) {
   const ModeIcon = appModeIcons[mode];
   return (
@@ -662,6 +745,37 @@ const TOOL_ICON: Readonly<Record<string, LucideIcon>> = {
   "/forms/act": FileText,
 };
 
+function ShiftToolsListCard() {
+  const clocks = useMhaClocks();
+  return (
+    <DashCard title="For a shift" testId="psychiatry-card-shift-tools">
+      <LinkList label="For a shift">
+        <LinkRow
+          href="/psychiatry/mha-clock"
+          testId="psychiatry-tools-mha-clock"
+          chip={
+            <IconChip tint="blue-2" size="sm">
+              <Timer aria-hidden="true" className="size-icon-sm" />
+            </IconChip>
+          }
+          title="MHA clock"
+          subtitle={clocks.length > 0 ? `${clocks.length} running` : "Every running time limit"}
+        />
+        <LinkRow
+          href="/safety-plan"
+          chip={
+            <IconChip tint="blue-2" size="sm">
+              <LifeBuoy aria-hidden="true" className="size-icon-sm" />
+            </IconChip>
+          }
+          title="Safety plan"
+          subtitle="Build one together"
+        />
+      </LinkList>
+    </DashCard>
+  );
+}
+
 function BuildersCard() {
   return (
     <DashCard title="Builders and comparisons" testId="psychiatry-card-builders">
@@ -763,7 +877,9 @@ export function PsychiatryHome({
               <AskHero visits={state.visits} thisMonth={month.thisMonth} lastMonth={month.lastMonth} now={now} />
               <DashCard title="Quick actions" testId="psychiatry-card-quick-actions">
                 <QuickActionGrid actions={QUICK_ACTIONS} />
+                <MedicinesSignpost />
               </DashCard>
+              <ShiftToolsCard />
               <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
                 <ContinueCard visits={state.visits} now={now} />
                 <MentalHealthActCard visits={state.visits} opens={state.opens} />
@@ -774,7 +890,10 @@ export function PsychiatryHome({
             <>
               <SectionsCard counts={counts} />
               <div className="grid items-start gap-3 sm:gap-4 lg:grid-cols-2">
-                <BuildersCard />
+                <div className="grid gap-3 sm:gap-4">
+                  <ShiftToolsListCard />
+                  <BuildersCard />
+                </div>
                 <WeekCard week={week} />
               </div>
             </>

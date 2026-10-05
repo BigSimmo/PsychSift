@@ -1,40 +1,32 @@
 "use client";
 
-import {
-  BookMarked,
-  BookOpenText,
-  Brain,
-  Calculator,
-  GitCompareArrows,
-  Pill,
-  Search,
-  ShieldCheck,
-  Wrench,
-} from "lucide-react";
+import { ArrowRight, Brain, ChevronRight, ExternalLink, FileText, Search, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { DashCard } from "@/components/dashboard-kit/dash-card";
-import { IconChip } from "@/components/dashboard-kit/icon-chip";
-import type { DashQuickAction } from "@/components/dashboard-kit/quick-actions";
-import { dashMuted, dashSurface } from "@/components/dashboard-kit/recipes";
+import { dashLink, dashMuted, dashSurface, dashTitle } from "@/components/dashboard-kit/recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { cn } from "@/components/ui-primitives";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
+import { MEDICINES_REFERENCES, PBS_HOME_HREF, WA_STATEWIDE_CHARTS } from "@/lib/medicines-references";
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
 import { sharedHomePresentation } from "@/lib/ui-copy";
 
 /**
- * The Medicines & tools hub (modes review, phase 3): the Psychiatry hub's
- * layout reused for the medication and reference sections, on one page.
+ * The Medicines & tools hub (modes review, phase 3; Medicines mock-up of
+ * 5 Oct 2026): a front door, not clinical content.
  *
- * It is a front door, not clinical content: every card is a way into a section
- * that keeps its own address and search. Colour is decoration only; green,
- * amber and red are not used. The section counts are real (read on the
- * server); nothing here is stored or read from the device.
+ * The question and search sit on a light card, the sections appear once as a
+ * calm list with their real counts, and the outside references (the PBS
+ * Schedule, the WA statewide mental health medication charts, Formulary One,
+ * AMH, Therapeutic Guidelines and HealthPathways WA) are links only: nothing
+ * of theirs is copied or summarised here. Colour is blue and neutral only;
+ * green, amber and red mean source status on clinical pages and are not used.
+ * Nothing is stored or read from the device.
  */
 
 export interface MedicinesSectionCounts {
@@ -50,28 +42,15 @@ const SECTION_MODE_IDS: readonly AppModeId[] = (
   phoneModeGroups.find((group) => group.id === "care")?.modeIds ?? []
 ).filter((modeId) => modeId !== "medicines");
 
-const QUICK_ACTIONS: readonly DashQuickAction[] = [
-  { label: "Search medication", href: appModeHomeHref("prescribing"), icon: Pill, testId: "medicines-qa-medication" },
-  { label: "Calculators", href: appModeHomeHref("calculators"), icon: Calculator, testId: "medicines-qa-calculators" },
-  { label: "Safety plan", href: "/safety-plan", icon: ShieldCheck, testId: "medicines-qa-safety-plan" },
-  { label: "Factsheet topics", href: "/factsheets/topics", icon: BookOpenText, testId: "medicines-qa-factsheets" },
-  { label: "Browse the dictionary", href: "/dictionary/browse", icon: BookMarked, testId: "medicines-qa-dictionary" },
-  {
-    label: "Compare definitions",
-    href: "/dictionary/compare",
-    icon: GitCompareArrows,
-    testId: "medicines-qa-compare",
-  },
-  { label: "All tools", href: appModeHomeHref("tools"), icon: Wrench, testId: "medicines-qa-tools" },
-  { label: "Psychiatry", href: appModeHomeHref("psychiatry"), icon: Brain, testId: "medicines-qa-psychiatry" },
-];
-
 const LONG_DATE = new Intl.DateTimeFormat("en-AU", {
   weekday: "long",
   day: "numeric",
   month: "long",
   timeZone: "Australia/Perth",
 });
+
+const PERTH_MONTH = new Intl.DateTimeFormat("en-AU", { month: "long", timeZone: "Australia/Perth" });
+const PERTH_MONTH_SHORT = new Intl.DateTimeFormat("en-AU", { month: "short", timeZone: "Australia/Perth" });
 
 function plural(count: number, one: string, many: string): string {
   return `${count.toLocaleString("en-AU")} ${count === 1 ? one : many}`;
@@ -112,7 +91,31 @@ function useToday(nowProp?: Date): Date | null {
   return minute === null ? null : new Date(minute);
 }
 
-function FindHero() {
+/** A round tinted icon, the hub's one chip shape. Decorative: its row says the same in words. */
+function RoundChip({ children, className }: { readonly children: ReactNode; readonly className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "grid size-10 shrink-0 place-items-center rounded-full bg-[color:var(--dash-blue-tint)] font-dash-title text-2xs text-[color:var(--dash-blue)] forced-colors:border",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function OpensOutside() {
+  return (
+    <>
+      <ExternalLink aria-hidden="true" className="size-icon-xs shrink-0 text-[color:var(--dash-faint)]" />
+      <span className="sr-only">(opens in a new tab)</span>
+    </>
+  );
+}
+
+function FindCard() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const submit = (event: FormEvent<HTMLFormElement>) => {
@@ -122,15 +125,17 @@ function FindHero() {
     router.push(appModeHomeHref("prescribing", { query: trimmed, run: true }));
   };
   return (
-    <DashCard title="Find a medicine" showTitle={false} tone="hero" testId="medicines-card-find">
+    <DashCard title="Find a medicine" showTitle={false} testId="medicines-card-find" className="gap-3 p-4">
       <form role="search" aria-label="Search medication guidance" onSubmit={submit} className="grid min-w-0 gap-3">
         <div className="grid gap-0.5">
-          <span className="text-3xs font-dash-title uppercase tracking-widest opacity-80">Medication</span>
-          <p className="font-dash-figure text-2xl-minus leading-tight tracking-tight text-balance lg:text-3xl-minus">
+          <span className="font-dash-title text-2xs uppercase tracking-widest text-[color:var(--dash-blue)]">
+            Medication
+          </span>
+          <p className="font-dash-figure text-2xl-minus leading-tight tracking-tight text-balance text-[color:var(--dash-ink)]">
             Which medicine are you checking?
           </p>
         </div>
-        <div className="flex min-h-14 items-center gap-2 rounded-2xl bg-[color:var(--dash-raised)] py-1.5 pr-1.5 pl-3.5 text-[color:var(--dash-ink)] shadow-[var(--dash-shadow)] forced-colors:border">
+        <div className="flex min-h-14 items-center gap-2 rounded-full border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] py-1 pr-1 pl-4 text-[color:var(--dash-ink)] forced-colors:border">
           <Search aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--dash-muted)]" />
           <label htmlFor="medicines-find-input" className="sr-only">
             Medicine or question
@@ -147,24 +152,28 @@ function FindHero() {
           />
           <button
             type="submit"
+            aria-label="Search"
             data-testid="medicines-find-submit"
             className={cn(
               focusRing,
-              "min-h-12 shrink-0 rounded-xl bg-[color:var(--dash-hero-3)] px-4 text-sm font-dash-title text-[color:var(--dash-hero-ink)] forced-colors:border",
+              "grid size-12 shrink-0 place-items-center rounded-full bg-[color:var(--dash-blue)] text-[color:var(--dash-raised)] forced-colors:border",
             )}
           >
-            Search
+            <ArrowRight aria-hidden="true" className="size-icon-md" />
           </button>
         </div>
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0" data-testid="medicines-find-try">
-          <span className="text-xs opacity-85">Try</span>
+        <div
+          className="-mx-4 flex min-w-0 items-center gap-1.5 overflow-x-auto px-4 [scrollbar-width:none]"
+          data-testid="medicines-find-try"
+        >
+          <span className={cn(dashMuted, "shrink-0")}>Try</span>
           {sharedHomePresentation.medicines.suggestions.map((suggestion) => (
             <Link
               key={suggestion}
               href={appModeHomeHref("prescribing", { query: suggestion, run: true })}
-              className={cn(focusRing, "inline-flex min-h-12 items-center rounded-full no-underline")}
+              className={cn(focusRing, "inline-flex min-h-12 shrink-0 items-center rounded-full no-underline")}
             >
-              <span className="rounded-full border border-[color:var(--dash-hero-glass-line)] bg-[color:var(--dash-hero-glass)] px-3 py-1.5 text-xs font-dash-title text-[color:var(--dash-hero-ink)] forced-colors:border">
+              <span className="whitespace-nowrap rounded-full bg-[color:var(--dash-blue-tint)] px-3 py-1.5 text-xs font-dash-title text-[color:var(--dash-blue)] forced-colors:border">
                 {suggestion}
               </span>
             </Link>
@@ -175,72 +184,191 @@ function FindHero() {
   );
 }
 
-/** Two across on a phone, four on a wide screen, as on the Psychiatry hub. */
-function QuickActionGrid({ actions }: { readonly actions: readonly DashQuickAction[] }) {
-  return (
-    <ul
-      role="list"
-      aria-label="Quick actions"
-      data-testid="medicines-quick-actions"
-      className="grid grid-cols-2 gap-2 lg:grid-cols-4"
-    >
-      {actions.map(({ label, href, icon: ActionIcon, testId }) => (
-        <li key={label} className="min-w-0">
-          <Link
-            href={href}
-            data-testid={testId}
-            className={cn(
-              focusRing,
-              "flex min-h-14 items-center gap-2.5 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] py-2 pr-3 pl-2 font-dash-title text-sm leading-tight text-[color:var(--dash-ink)] no-underline forced-colors:border",
-            )}
-          >
-            <span
-              aria-hidden="true"
-              className="grid size-9 shrink-0 place-items-center rounded-lg bg-[color:var(--dash-blue-tint)] text-[color:var(--dash-blue)] forced-colors:border"
-            >
-              <ActionIcon aria-hidden="true" className="size-icon-lg" />
-            </span>
-            <span className="min-w-0 break-words">{label}</span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
+/** One calm list: round icon, the section's name, and its real count on the right. */
 function SectionsCard({ counts }: { readonly counts: MedicinesSectionCounts }) {
   return (
     <DashCard title="Sections" testId="medicines-card-sections">
       <ul
         role="list"
         aria-label="Medicines and tools sections"
-        className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid min-w-0 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] forced-colors:border"
       >
         {SECTION_MODE_IDS.map((modeId) => {
           const mode = appModeDefinition(modeId);
           const countLine = sectionCountLine(modeId, counts);
           const ModeIcon = appModeIcons[modeId];
           return (
-            <li key={modeId} className="min-w-0">
+            <li key={modeId} className="min-w-0 border-t border-[color:var(--dash-line)] first:border-t-0">
               <Link
                 href={appModeHomeHref(modeId)}
                 data-testid={`medicines-section-${modeId}`}
                 className={cn(
                   focusRing,
-                  "grid min-h-16 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2.5 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] px-3 py-2.5 text-[color:var(--dash-ink)] no-underline forced-colors:border",
+                  "grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-2xl px-3 py-1.5 text-[color:var(--dash-ink)] no-underline",
                 )}
               >
-                <IconChip tint="blue" size="md">
+                <RoundChip>
                   <ModeIcon aria-hidden="true" className="size-icon-md" />
-                </IconChip>
-                <span className="grid min-w-0 gap-0.5">
-                  <span className="break-words font-dash-title text-base-minus leading-tight">{mode.label}</span>
-                  <span className={cn(dashMuted, "nums break-words")}>{countLine ?? mode.description}</span>
+                </RoundChip>
+                <span className="break-words font-dash-title text-base-minus leading-tight">{mode.label}</span>
+                <span className={cn(dashMuted, "nums whitespace-nowrap text-right")}>
+                  {countLine ?? mode.description}
                 </span>
+                <ChevronRight aria-hidden="true" className="size-icon-sm text-[color:var(--dash-faint)]" />
               </Link>
             </li>
           );
         })}
+      </ul>
+    </DashCard>
+  );
+}
+
+/**
+ * The PBS Schedule is updated on the first day of every month (pbs.gov.au).
+ * This card only says so and opens the Schedule; it never claims what changed.
+ */
+function PbsMonthCard({ today }: { readonly today: Date | null }) {
+  const month = today ? PERTH_MONTH.format(today) : null;
+  const monthShort = today ? PERTH_MONTH_SHORT.format(today).toUpperCase() : null;
+  return (
+    <DashCard title="PBS Schedule" showTitle={false} testId="medicines-card-pbs">
+      <a
+        href={PBS_HOME_HREF}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          focusRing,
+          "grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl no-underline",
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className="grid w-12 shrink-0 overflow-hidden rounded-xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] text-center forced-colors:border"
+        >
+          <span className="bg-[color:var(--dash-blue)] py-0.5 font-dash-title text-3xs text-[color:var(--dash-raised)]">
+            {monthShort ?? "PBS"}
+          </span>
+          <span className="py-1 font-dash-figure text-lg leading-none text-[color:var(--dash-ink)]">1</span>
+        </span>
+        <span className="grid min-w-0 gap-0.5">
+          <span className={cn(dashTitle, "text-base-minus leading-tight")}>
+            {month ? `PBS updated 1 ${month}` : "PBS updates on the 1st of each month"}
+          </span>
+          <span className={dashMuted}>Check a listing on the PBS Schedule</span>
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <OpensOutside />
+        </span>
+      </a>
+    </DashCard>
+  );
+}
+
+/** A sideways shelf of the WA statewide mental health medication charts, each opening WA Health's page. */
+function StatewideChartsCard() {
+  return (
+    <DashCard title="Statewide charts and forms" testId="medicines-card-charts">
+      <ul
+        role="list"
+        aria-label="WA statewide mental health medication charts"
+        className="-mx-3 flex min-w-0 snap-x gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none]"
+      >
+        {WA_STATEWIDE_CHARTS.map((chart) => (
+          <li key={chart.id} className="w-56 shrink-0 snap-start">
+            <a
+              href={chart.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid={`medicines-chart-${chart.id}`}
+              className={cn(
+                focusRing,
+                "grid h-full min-h-28 content-between gap-3 rounded-2xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] p-3 no-underline forced-colors:border",
+              )}
+            >
+              <span className="flex items-start justify-between gap-2">
+                <RoundChip>
+                  <FileText aria-hidden="true" className="size-icon-md" />
+                </RoundChip>
+                <OpensOutside />
+              </span>
+              <span className="grid gap-0.5">
+                <span className={cn(dashTitle, "text-sm leading-snug")}>{chart.title}</span>
+                <span className={dashMuted}>{chart.publisher}</span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </DashCard>
+  );
+}
+
+/** Formulary One, AMH, Therapeutic Guidelines and HealthPathways WA: links out, never copied content. */
+function ReferencesCard() {
+  return (
+    <DashCard
+      title="My references"
+      testId="medicines-card-references"
+      aside={<span className={cn(dashMuted, "normal-case")}>Opens outside</span>}
+    >
+      <ul role="list" aria-label="Outside medicine references" className="grid grid-cols-4 gap-1">
+        {MEDICINES_REFERENCES.map((reference) => (
+          <li key={reference.id} className="min-w-0">
+            <a
+              href={reference.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid={`medicines-reference-${reference.id}`}
+              className={cn(
+                focusRing,
+                "grid min-h-12 justify-items-center gap-1.5 rounded-2xl px-1 py-1.5 text-center no-underline",
+              )}
+            >
+              <RoundChip className="size-12 text-xs">{reference.mark}</RoundChip>
+              <span className="w-full hyphens-auto break-words font-dash-title text-xs leading-tight text-[color:var(--dash-ink)] [overflow-wrap:anywhere]">
+                {reference.title}
+              </span>
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </DashCard>
+  );
+}
+
+const SIGNPOSTS = [
+  { label: "Safety plan", href: "/safety-plan", icon: ShieldCheck, testId: "medicines-signpost-safety-plan" },
+  {
+    label: "Psychiatry",
+    href: appModeHomeHref("psychiatry"),
+    icon: Brain,
+    testId: "medicines-signpost-psychiatry",
+  },
+] as const;
+
+/** Quiet routes to what lives in Psychiatry rather than here. */
+function SignpostsCard() {
+  return (
+    <DashCard title="Lives in Psychiatry" testId="medicines-card-signposts">
+      <ul role="list" className="grid gap-1">
+        {SIGNPOSTS.map(({ label, href, icon: SignIcon, testId }) => (
+          <li key={label}>
+            <Link
+              href={href}
+              data-testid={testId}
+              className={cn(
+                focusRing,
+                "flex min-h-12 items-center gap-3 rounded-xl px-1 text-[color:var(--dash-ink)] no-underline",
+              )}
+            >
+              <SignIcon aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--dash-muted)]" />
+              <span className="min-w-0 flex-1 font-dash-title text-sm">{label}</span>
+              <span className={dashLink}>Go</span>
+            </Link>
+          </li>
+        ))}
       </ul>
     </DashCard>
   );
@@ -257,12 +385,17 @@ export function MedicinesHome({ counts, now }: { readonly counts: MedicinesSecti
             Medicines &amp; tools
           </h1>
         </header>
-        <div className="grid gap-3 sm:gap-4">
-          <FindHero />
-          <DashCard title="Quick actions" testId="medicines-card-quick-actions">
-            <QuickActionGrid actions={QUICK_ACTIONS} />
-          </DashCard>
-          <SectionsCard counts={counts} />
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+          <div className="grid min-w-0 gap-3 sm:gap-4">
+            <FindCard />
+            <SectionsCard counts={counts} />
+          </div>
+          <div className="grid min-w-0 gap-3 sm:gap-4">
+            <PbsMonthCard today={today} />
+            <StatewideChartsCard />
+            <ReferencesCard />
+            <SignpostsCard />
+          </div>
         </div>
       </div>
     </InformationPageShell>
