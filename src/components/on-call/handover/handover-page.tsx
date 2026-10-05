@@ -21,6 +21,7 @@ import { onCallDeviceStateChangedEvent, onCallDeviceStoreChangedEvent } from "@/
 import {
   ON_CALL_HANDOVER_COLUMNS,
   ON_CALL_HANDOVER_FIELD_LIMITS,
+  ON_CALL_HANDOVER_GONE_MESSAGE,
   clearOnCallHandover,
   emptyOnCallHandoverDraft,
   onCallHandoverCell,
@@ -38,7 +39,11 @@ import {
   type OnCallHandoverReview,
   type OnCallHandoverTextField,
 } from "@/lib/on-call/handover";
-import { PATIENT_LABEL_EXPIRY_STORAGE_KEY, PATIENT_LABELS_CLEARED_EVENT } from "@/lib/patient-label-storage";
+import {
+  PATIENT_LABEL_EXPIRY_STORAGE_KEY,
+  PATIENT_LABELS_CLEARED_EVENT,
+  startPatientLabelRetention,
+} from "@/lib/patient-label-storage";
 
 /*
  * HANDOVER: one patient at a time, then one tap for the table.
@@ -518,36 +523,88 @@ export function OnCallHandoverPage() {
   const [problem, setProblem] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
-  // A wipe (end of shift, sign-out, another user) also drops the half-typed record.
+  // When this shift's labels are wiped (epoch ms). Checked before every write, as the call log does,
+  // so a draft left on screen past the end of the shift is cleared rather than saved under a fresh stamp.
+  const [draftExpiresAt, setDraftExpiresAt] = useState<number | null>(null);
+
+  const reset = useCallback(() => {
+    setDraft(emptyOnCallHandoverDraft);
+    setCurrentId(null);
+    setDraftExpiresAt(null);
+    setMode("form");
+  }, []);
+
+  // A wipe (end of shift, sign-out, another user, another tab) also drops the half-typed record.
   useEffect(() => {
     const onCleared = () => {
-      setDraft(emptyOnCallHandoverDraft);
-      setCurrentId(null);
+      reset();
       setProblem(null);
-      setMode("form");
+    };
+    // Another tab's wipe reaches this one only as a `storage` event: a full clear
+    // (key null) or the shift's expiry stamp being removed.
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || (event.key === PATIENT_LABEL_EXPIRY_STORAGE_KEY && event.newValue === null)) {
+        onCleared();
+      }
     };
     window.addEventListener(PATIENT_LABELS_CLEARED_EVENT, onCleared);
-    return () => window.removeEventListener(PATIENT_LABELS_CLEARED_EVENT, onCleared);
-  }, []);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(PATIENT_LABELS_CLEARED_EVENT, onCleared);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [reset]);
+
+  // The draft's shift ends while the page is open: clear it on time, not at the next keystroke.
+  useEffect(() => {
+    if (draftExpiresAt === null) return;
+    const check = () => {
+      if (Date.now() >= draftExpiresAt) reset();
+    };
+    const timer = window.setTimeout(check, Math.max(0, draftExpiresAt - Date.now()));
+    window.addEventListener("focus", check);
+    window.addEventListener("pageshow", check);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", check);
+      window.removeEventListener("pageshow", check);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [draftExpiresAt, reset]);
 
   // The record being edited vanished (deleted in another tab, or it lapsed): start a fresh one.
   const currentGone = currentId !== null && view !== null && !patients.some((patient) => patient.id === currentId);
   useEffect(() => {
     if (!currentGone) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCurrentId(null);
-    setDraft(emptyOnCallHandoverDraft);
-  }, [currentGone]);
+    reset();
+  }, [currentGone, reset]);
 
   /** Every change is kept as it is typed, so nothing is lost if the phone locks. */
   const commit = (next: OnCallHandoverDraft, id: string | null = currentId) => {
+    if (draftExpiresAt !== null && Date.now() >= draftExpiresAt) {
+      reset();
+      setProblem("The shift has ended. This handover was cleared.");
+      return;
+    }
     setDraft(next);
     if (onCallHandoverDraftIsEmpty(next)) {
       setProblem(null);
       return;
     }
+    let expiresAt = draftExpiresAt;
+    if (expiresAt === null) {
+      expiresAt = startPatientLabelRetention();
+      if (expiresAt === null) {
+        setProblem("The shift expiry could not be set. This handover cannot be kept on this device.");
+        return;
+      }
+      setDraftExpiresAt(expiresAt);
+    }
     const result = saveOnCallHandoverPatient(id, next);
     if (!result.ok) {
+      if (result.problem === ON_CALL_HANDOVER_GONE_MESSAGE) reset();
       setProblem(result.problem);
       return;
     }
@@ -566,6 +623,7 @@ export function OnCallHandoverPage() {
   };
 
   const pick = (patient: OnCallHandoverPatient) => {
+    setDraftExpiresAt(view?.expiresAt ?? null);
     setCurrentId(patient.id);
     setDraft({ ...patient });
     setProblem(null);

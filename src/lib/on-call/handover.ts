@@ -107,6 +107,8 @@ export const ON_CALL_HANDOVER_COLUMNS: readonly { readonly key: keyof OnCallHand
 
 export const ON_CALL_HANDOVER_FULL_MESSAGE = `The handover holds ${ON_CALL_HANDOVER_LIMIT} patients. Delete some before adding more.`;
 
+export const ON_CALL_HANDOVER_GONE_MESSAGE = "This patient was cleared from the handover, so the edit was not kept.";
+
 /** True when nothing has been typed or chosen. */
 export function onCallHandoverDraftIsEmpty(draft: OnCallHandoverDraft): boolean {
   return (Object.keys(emptyOnCallHandoverDraft) as (keyof OnCallHandoverDraft)[]).every(
@@ -211,6 +213,8 @@ export function saveOnCallHandoverPatient(
   if (typeof window === "undefined") return { ok: false, problem: "This device cannot keep the handover." };
   const current = readStored(now);
   const existing = id ? current.find((patient) => patient.id === id) : undefined;
+  // A record that was cleared (shift end, sign-out, another tab) is never brought back by a stale draft.
+  if (id && !existing) return { ok: false, problem: ON_CALL_HANDOVER_GONE_MESSAGE };
   if (!existing && current.length >= ON_CALL_HANDOVER_LIMIT)
     return { ok: false, problem: ON_CALL_HANDOVER_FULL_MESSAGE };
   const patient: OnCallHandoverPatient = existing

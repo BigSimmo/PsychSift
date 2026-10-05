@@ -12,6 +12,7 @@ import {
 import { ON_CALL_DEVICE_STATE_KEYS, onCallCallCountsStorageKey } from "@/lib/on-call/device-state-keys";
 import {
   ON_CALL_HANDOVER_FULL_MESSAGE,
+  ON_CALL_HANDOVER_GONE_MESSAGE,
   ON_CALL_HANDOVER_LIMIT,
   clearOnCallHandover,
   emptyOnCallHandoverDraft,
@@ -105,6 +106,17 @@ describe("handover store", () => {
       ok: false,
       problem: ON_CALL_HANDOVER_FULL_MESSAGE,
     });
+  });
+
+  it("never brings a cleared record back from a stale draft", () => {
+    const first = saveOnCallHandoverPatient(null, draft(), twoAm);
+    if (!first.ok) throw new Error("not saved");
+    clearOnCallHandover();
+    expect(saveOnCallHandoverPatient(first.patient.id, draft({ plan: "edited" }), twoAm)).toEqual({
+      ok: false,
+      problem: ON_CALL_HANDOVER_GONE_MESSAGE,
+    });
+    expect(window.localStorage.getItem(onCallHandoverStorageKey)).toBeNull();
   });
 
   it("is wiped with every other patient label at sign-out", () => {

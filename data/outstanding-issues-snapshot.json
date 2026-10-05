@@ -9,7 +9,7 @@
     "p2": 75,
     "p3": 60,
     "queued": 6,
-    "pending": 0,
+    "pending": 7,
     "resolved": 693
   },
   "queue": [
@@ -1477,5 +1477,48 @@
       "added": "2026-09-27"
     }
   ],
-  "pending": []
+  "pending": [
+    {
+      "request_id": "056472dd-22fc-423c-b880-d4deae61d3f8",
+      "action": "update",
+      "summary": "#22TMRM: summary → UI copy uses three full stops instead of an ellipsis character in 12 visible places; detail → Verified 2026-09-27: 12 user-visible occurrences under src/components. The 14-location list also counted master-search-header.tsx:272 (JSDoc example) and forms/form-detail-page.tsx:857 (JSX comment); those two comments are not rendered and require no UI-copy edit. Replace the 12 visible occurrences in one pass and update tests asserting old strings.; source → PR #3144 review, checked against current source 2026-09-27",
+      "created_at": "2026-09-27"
+    },
+    {
+      "request_id": "3c612f54-8d3e-4358-89d1-b0404f1ab60a",
+      "action": "update",
+      "summary": "#J8SJQ9: detail → UPDATE 2026-10-04 (read-only GitHub Actions log read of eval-canary runs 34773883150, 35528299276, 36218356438, 36264242906, 36339819587; no provider access): the 'failing for about five weeks on clozapine-monitoring, clozapine-monitoring-paraphrase and nocc-requirements' statement is STALE. Those three cases, metabolic-screening and direct-document-lookup-nocc PASSED in the answer-quality subset in every run 2026-09-13..27. The answer-targeting eval that originally graded them is dispatch-only and opt-in (answer_quality_eval=true; calls OpenAI), so the weekly schedule never runs it by design; it is not skipped because the quality step fails. What actually failed for clozapine 2026-09-13..26 was clozapine-fbc-acronym-threshold and clozapine-anc-withhold-threshold: source-backed review fallback (grounded=false, guideline passages shown, no written answer; numeric grounding failures 0 every run), i.e. conservative degradation, not a wrong figure. Cause: evidence-relevance rejected the NMHS clozapine red-range table row; fixed by PR #3134 (b602173fb, 2026-09-27; real code fix, eval cases not relaxed); both passed on run 36339819587. Still individually failing on 2026-09-27 (none unsafe on report data; answer texts unread because the artifact download was blocked): clozapine-missed-dose-table (expected visual evidence missing), assessment-documentation (MHSP.AssessmentDocumentation.pdf not matched; unrelated FSH pressure-injury and radiotherapy citations), admission-discharge-comparison and admission-discharge-coverage-paraphrase (MHSP.AdmissionCommunityPts.pdf missing from top 5). Fixes there touch a protected RAG surface and need an owner-approved canary pair. The metabolic-monitoring stub (quality-antipsychotic-metabolic-monitoring) needs an approved dispatched targeting run to re-measure.",
+      "created_at": "2026-10-04"
+    },
+    {
+      "request_id": "51cd89dd-3b34-43d8-acb7-d042126ba989",
+      "action": "done",
+      "summary": "#4NSKNS: Resolved before this reconciliation: service-entry-editor.tsx installs a beforeunload listener while the draft is dirty and removes it on cleanup; verified against the current PR head.",
+      "created_at": "2026-09-27"
+    },
+    {
+      "request_id": "84ee2e81-35fa-44a5-b152-3beaff6c37cc",
+      "action": "add",
+      "summary": "Teaching: organisers have no view of who did not attend (attendance-gap views)",
+      "created_at": "2026-10-02"
+    },
+    {
+      "request_id": "8b7f4d24-2154-42a6-8aaa-368313d426de",
+      "action": "add",
+      "summary": "Teaching: no in-app QR scanner; check-in relies on the phone's own camera app",
+      "created_at": "2026-10-02"
+    },
+    {
+      "request_id": "b1305954-1d47-44f3-9385-03dc624309b8",
+      "action": "done",
+      "summary": "#5K1788: Resolved before this reconciliation: the cited On Call components use the shared formatOnCallDate formatter, which converts timestamps to Australia/Perth before rendering; verified against the current PR head.",
+      "created_at": "2026-09-27"
+    },
+    {
+      "request_id": "d933ec56-4f46-444c-ae65-c2171d584871",
+      "action": "done",
+      "summary": "#846DP9: Resolved before this reconciliation: patient-safety-plan.tsx installs a beforeunload listener while isDirty and removes it on cleanup; no plan content is persisted.",
+      "created_at": "2026-09-27"
+    }
+  ]
 }
