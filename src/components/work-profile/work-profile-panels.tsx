@@ -32,8 +32,7 @@ import {
 import type { WorkProfileData } from "@/components/work-profile/use-work-profile-data";
 import { JURISDICTION_OPTIONS, workStageLabel } from "@/lib/account-preferences";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
-import { ruleGate } from "@/lib/admin/rule-sign-off";
-import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF } from "@/lib/roster/fatigue-rules-source";
+import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { ROSTER_GRADES } from "@/lib/roster/team/model";
 import { useAuthSession } from "@/lib/supabase/client";
 import {
@@ -42,6 +41,7 @@ import {
   onCallArea,
   payFortnightWeekday,
   restRules,
+  restRulesGate,
   restRulesProvenance,
   rosterArea,
   teachingArea,
@@ -133,7 +133,7 @@ export function ProfilePanel({
   const areas = [
     rosterArea(data.roster),
     teachingArea(data.teaching),
-    cpdArea(data.cpd, preferences.workStage),
+    cpdArea(data.cpd, preferences.workStage, preferences.ranzcpStage),
     adminArea(data.admin),
     onCallArea(data.hospitalPhone),
   ];
@@ -291,7 +291,7 @@ function AddLink({ href }: { readonly href: string }) {
 }
 
 export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
-  const rulesOn = ruleGate(FATIGUE_RULES_SIGN_OFF, FATIGUE_RULE_SET).on;
+  const rulesOn = restRulesGate().on;
   const weekday =
     data.payFortnightAnchor.status === "ready" ? payFortnightWeekday(data.payFortnightAnchor.value) : null;
   return (
@@ -389,16 +389,20 @@ export function PrivacyPanel({ data }: { readonly data: WorkProfileData }) {
   return (
     <div className="grid gap-6">
       <WorkProfileSection label="Where your work is kept" testId="work-profile-kept">
-        <WorkProfileRow icon={Cloud} title="Your account" subtitle="Roster, CPD, teaching, reminders, renewal dates" />
+        <WorkProfileRow
+          icon={Cloud}
+          title="Your account"
+          subtitle="Your stage, roster, CPD, teaching, reminders, renewal dates"
+        />
         <WorkProfileRow
           icon={Smartphone}
           title="Only this phone"
-          subtitle="Credential numbers, On Call lists, My Day note, pins and recent pages"
+          subtitle="Credential numbers, On Call checklist ticks, My Day note, pins and recent pages"
         />
       </WorkProfileSection>
       <WorkProfileNote icon={ShieldCheck} title="Patient labels stay on this phone" testId="work-profile-label-rule">
-        Cleared at the end of your rostered shift (or 12 hours after the first label if Roster doesn’t know when it
-        ends), when you sign out or your session ends, and before anyone else signs in here.
+        Cleared 12 hours after the first label of the shift, when you sign out or your session ends, and before anyone
+        else signs in here.
       </WorkProfileNote>
       <WorkProfileSection label="Searches">
         <PrivacyToggleRow

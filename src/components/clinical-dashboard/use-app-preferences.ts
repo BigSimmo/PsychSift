@@ -68,9 +68,12 @@ async function readAuthoritativePreferences(response: Response): Promise<AppPref
  * safe to send because it narrows retention.
  */
 function bootstrapPreferencePatch(preferences: AppPreferences): PreferencePatch {
-  if (!preferences.saveRecentSearches) return preferences;
   const patch: PreferencePatch = { ...preferences };
-  delete patch.saveRecentSearches;
+  // The work stage describes a person, not this device: a shared phone's copy
+  // may be the previous doctor's, so a new account never inherits it.
+  delete patch.workStage;
+  delete patch.ranzcpStage;
+  if (preferences.saveRecentSearches) delete patch.saveRecentSearches;
   return patch;
 }
 

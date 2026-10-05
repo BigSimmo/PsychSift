@@ -1,8 +1,9 @@
 import type { WorkStagePreference } from "@/lib/account-preferences";
-import { ruleGate, type RuleGate } from "@/lib/admin/rule-sign-off";
+import { RULE_GATE_REASON_WORDS, type RuleGate } from "@/lib/admin/rule-sign-off";
 import { setupRequirementRecorded, type SetupRequirement } from "@/lib/admin/setup";
 import { isComplianceEntry } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
+import { fatigueWarnings } from "@/lib/roster/fatigue-rules";
 import { FATIGUE_RULE_SET, FATIGUE_RULES_SIGN_OFF } from "@/lib/roster/fatigue-rules-source";
 
 /**
@@ -112,11 +113,14 @@ export function teachingArea(loaded: Loaded<{ teams: number }>): AreaRow {
 export function cpdArea(
   loaded: Loaded<{ configured: boolean; routines: number }>,
   stage: WorkStagePreference | null,
+  ranzcpStage: number | null = null,
 ): AreaRow {
   // The Medical Board (checked 5 Oct 2026): for PGY3+ doctors in college
   // training, "Your CPD is taken care of in your training."
-  if (stage === "registrar") {
-    return { id: "cpd", title: "CPD", subtitle: "Through your RANZCP training", state: "ready", label: "Ready" };
+  // Self-reported, so no tick: a neutral "Covered", and only once a RANZCP stage
+  // is chosen (a service registrar outside training still needs a CPD home).
+  if (stage === "registrar" && ranzcpStage) {
+    return { id: "cpd", title: "CPD", subtitle: "Through your RANZCP training", state: "optional", label: "Covered" };
   }
   if (loaded.status !== "ready") return notChecked("cpd", "CPD", loaded);
   if (!loaded.value.configured) {
@@ -162,7 +166,13 @@ export function adminArea(loaded: Loaded<AdminSummary>): AreaRow {
   const { recorded, missing, partial } = loaded.value;
   // A partial copy with nothing in it proves nothing: it may just be the part that didn't load.
   if (recorded === 0 && partial) {
-    return { id: "admin", title: "Admin", subtitle: "Only partly loaded", state: "not-checked", label: NOT_CHECKED };
+    return {
+      id: "admin",
+      title: "Admin",
+      subtitle: "Only partly loaded · not checked with Ahpra",
+      state: "not-checked",
+      label: NOT_CHECKED,
+    };
   }
   if (recorded === 0) {
     return {
@@ -178,7 +188,7 @@ export function adminArea(loaded: Loaded<AdminSummary>): AreaRow {
     return {
       id: "admin",
       title: "Admin",
-      subtitle: partial ? "Only partly loaded" : subtitle,
+      subtitle: partial ? "Only partly loaded · not checked with Ahpra" : subtitle,
       state: "count",
       label: partial ? `At least ${figure}` : figure,
     };
@@ -186,7 +196,7 @@ export function adminArea(loaded: Loaded<AdminSummary>): AreaRow {
   return {
     id: "admin",
     title: "Admin",
-    subtitle: partial ? "Only partly loaded" : subtitle,
+    subtitle: partial ? "Only partly loaded · not checked with Ahpra" : subtitle,
     state: "count",
     label: partial ? `At least ${recorded} recorded` : `${recorded} recorded`,
   };
@@ -245,14 +255,19 @@ function formatIsoDate(value: string | null): string | null {
  * Where the rest-rule figures come from, and whether Roster is using them.
  * Off reads plainly ("not signed off") rather than implying the limits apply.
  */
-export function restRulesProvenance(gate: RuleGate = ruleGate(FATIGUE_RULES_SIGN_OFF, FATIGUE_RULE_SET)): string {
+/** Whether Roster is applying the rest rules now: the same gate as its Hours check, review date included. */
+export function restRulesGate(now: number = Date.now()): RuleGate {
+  return fatigueWarnings([], FATIGUE_RULES_SIGN_OFF, undefined, now).gate;
+}
+
+export function restRulesProvenance(gate: RuleGate = restRulesGate()): string {
   const { source } = FATIGUE_RULE_SET;
   const checked = formatIsoDate(source.checkedOn);
   const expires = formatIsoDate(source.expiresOn);
   const signed = gate.on
-    ? `signed off by ${FATIGUE_RULES_SIGN_OFF.signedBy} on ${formatIsoDate(FATIGUE_RULES_SIGN_OFF.signedAt)}`
-    : "not signed off yet, so Roster doesn’t check them";
-  return `Quoted from the agreement, checked ${checked} and ${signed}. It expires on ${expires} but stays in force until a new one is made. These are the agreement’s limits, not a safety judgement.`;
+    ? `checked ${checked} and signed off by ${FATIGUE_RULES_SIGN_OFF.signedBy} on ${formatIsoDate(FATIGUE_RULES_SIGN_OFF.signedAt)}.`
+    : `checked ${checked}. Roster doesn’t check them now: ${RULE_GATE_REASON_WORDS[gate.reason].charAt(0).toLowerCase()}${RULE_GATE_REASON_WORDS[gate.reason].slice(1)}.`;
+  return `Quoted from the agreement, ${signed} It expires on ${expires} but stays in force until a new one is made. These are the agreement’s limits, not a safety judgement.`;
 }
 
 const WEEKDAY = new Intl.DateTimeFormat("en-AU", { weekday: "long", timeZone: "UTC" });

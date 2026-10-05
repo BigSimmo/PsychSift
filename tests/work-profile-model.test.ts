@@ -10,6 +10,7 @@ import {
   profileTabCount,
   readWorkProfileTab,
   restRules,
+  restRulesGate,
   restRulesProvenance,
   rosterArea,
   summariseAdmin,
@@ -64,10 +65,13 @@ describe("area rows", () => {
   });
 
   it("CPD: a registrar's CPD is through training, whatever the CPD read did", () => {
-    expect(cpdArea({ status: "failed" }, "registrar")).toMatchObject({
-      state: "ready",
+    expect(cpdArea({ status: "failed" }, "registrar", 2)).toMatchObject({
+      state: "optional",
+      label: "Covered",
       subtitle: "Through your RANZCP training",
     });
+    // No RANZCP stage chosen: not assumed to be in training.
+    expect(cpdArea({ status: "failed" }, "registrar", null).state).toBe("not-checked");
     expect(cpdArea({ status: "ready", value: { configured: false, routines: 0 } }, "consultant").state).toBe("start");
     expect(cpdArea({ status: "ready", value: { configured: true, routines: 2 } }, null).subtitle).toBe(
       "This year’s plan and 2 routines",
@@ -100,7 +104,7 @@ describe("Admin never shows a tick and never overstates", () => {
     const partial = summariseAdmin([vaccination], true);
     expect(adminArea({ status: "ready", value: partial })).toMatchObject({
       label: "At least 2 not recorded",
-      subtitle: "Only partly loaded",
+      subtitle: "Only partly loaded · not checked with Ahpra",
     });
     expect(adminArea({ status: "ready", value: summariseAdmin([registration, indemnity], true) }).label).toBe(
       "At least 2 recorded",
@@ -168,7 +172,10 @@ describe("tabs, stage, rules and helpers", () => {
 
   it("says plainly when the rules are not signed off", () => {
     const off = restRulesProvenance({ on: false, reason: "unsigned" });
-    expect(off).toContain("not signed off yet, so Roster doesn’t check them");
+    expect(off).toContain("Roster doesn’t check them now: not yet signed by a named clinician.");
+    expect(off).not.toContain("signed off by");
+    const lapsed = restRulesGate(Date.parse(`${FATIGUE_RULE_SET.source.reviewBy}T12:00:00Z`) + 2 * 86_400_000);
+    expect(lapsed).toEqual({ on: false, reason: "review-date-passed" });
     expect(off).toContain("not a safety judgement");
   });
 
