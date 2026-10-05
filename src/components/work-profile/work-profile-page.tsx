@@ -34,6 +34,7 @@ const PAGE_WIDTH = "mx-auto grid w-full max-w-2xl gap-5 lg:max-w-5xl";
 type HeaderStatus =
   | { kind: "saved"; at: Date | null }
   | { kind: "saving" }
+  | { kind: "checking" }
   | { kind: "failed" }
   | { kind: "read-failed" }
   | { kind: "offline" }
@@ -66,6 +67,8 @@ function StatusLine({ status, onRetry }: { readonly status: HeaderStatus; readon
       </>
     ) : status.kind === "saving" ? (
       "Saving…"
+    ) : status.kind === "checking" ? (
+      "Checking your saved settings…"
     ) : status.kind === "offline" ? (
       <>
         <CloudOff aria-hidden="true" className="size-icon-xs" />
@@ -220,7 +223,7 @@ export function WorkProfileSignedInView({
     : syncState === "error"
       ? { kind: wrote ? "failed" : "read-failed" }
       : syncState === "syncing"
-        ? { kind: "saving" }
+        ? { kind: wrote ? "saving" : "checking" }
         : nothingSetUp
           ? { kind: "none" }
           : { kind: "saved", at: savedAt };

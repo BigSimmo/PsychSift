@@ -174,8 +174,10 @@ export function adminArea(loaded: Loaded<AdminSummary>): AreaRow {
   if (recorded === 0) {
     return { ...row, subtitle: "Record registration and other renewal dates", state: "start", label: "Start" };
   }
-  const figure = missing.length > 0 ? `${missing.length} not recorded` : `${recorded} recorded`;
-  return { ...row, subtitle, state: "count", label: partial ? `At least ${figure}` : figure };
+  // A partial copy can only undercount what is recorded, so it never names a "not recorded" figure.
+  if (partial) return { ...row, subtitle, state: "count", label: `At least ${recorded} recorded` };
+  const label = missing.length > 0 ? `${missing.length} not recorded` : `${recorded} recorded`;
+  return { ...row, subtitle, state: "count", label };
 }
 
 export function onCallArea(hospitalPhone: boolean): AreaRow {

@@ -104,7 +104,7 @@ describe("Admin never shows a tick and never overstates", () => {
   it("a partial (offline) read says 'At least' rather than an exact figure", () => {
     const partial = summariseAdmin([vaccination], true);
     expect(adminArea({ status: "ready", value: partial })).toMatchObject({
-      label: "At least 2 not recorded",
+      label: "At least 1 recorded",
       subtitle: "Only partly loaded · not checked with Ahpra",
     });
     expect(adminArea({ status: "ready", value: summariseAdmin([registration, indemnity], true) }).label).toBe(

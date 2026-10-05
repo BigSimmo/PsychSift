@@ -152,6 +152,7 @@ describe("Work profile page", () => {
   it("opening the page never claims a save time", () => {
     prefs.syncState = "syncing";
     const { rerender } = render(<WorkProfilePage />);
+    expect(screen.getByTestId("work-profile-status").textContent).toBe("Checking your saved settings…");
     prefs.syncState = "synced";
     rerender(<WorkProfilePage />);
     expect(screen.getByTestId("work-profile-status").textContent).toBe("Saved to your account");
