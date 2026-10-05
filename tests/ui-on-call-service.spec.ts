@@ -101,9 +101,10 @@ test.describe("Invited handbook phone experience", () => {
       .filter({ has: page.getByText("Telephone advice structure", { exact: true }) })
       .last();
     await telephone.getByRole("button", { name: "Copy blank structure" }).click();
-    expect((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n")).toContain(
-      "Reason for call\nInformation provided",
-    );
+    // The copy runs after the click resolves, so poll rather than read once.
+    await expect
+      .poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"))
+      .toContain("Reason for call\nInformation provided");
     const resources = page.getByTestId("handbook-resources");
     await resources.getByRole("link", { name: "Log this learning", exact: true }).first().click();
     await expect(page).toHaveURL(/\/cme\/new\?title=/);
