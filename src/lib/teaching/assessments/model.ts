@@ -154,7 +154,7 @@ export const supReady = (s: AssessmentsState) => s.sup.status === "done";
 export const meetingHeld = (s: AssessmentsState) => s.meetingDay !== null;
 export const meetingDate = (s: AssessmentsState) => (s.meetingDay === null ? null : dayLabel(s.meetingDay));
 /** The doctor's self-assessment locks once the supervisor has seen it. */
-export const selfLocked = supReady;
+export const selfLocked = (s: AssessmentsState) => supReady(s);
 export const supLocked = (s: AssessmentsState) => s.sigs.sup !== null;
 
 export function stage(s: AssessmentsState): Stage {
