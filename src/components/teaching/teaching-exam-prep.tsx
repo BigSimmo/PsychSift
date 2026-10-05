@@ -309,15 +309,15 @@ function Topics({ state, update }: { state: ExamPrepState; update: Update }) {
                   </span>
                   <span className={cn(modeNumberText, "shrink-0 text-sm", textMuted)}>{topic.percent}%</span>
                 </span>
-                <span
+                <svg
                   aria-hidden="true"
-                  className="h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--surface-inset)]"
+                  viewBox="0 0 100 6"
+                  preserveAspectRatio="none"
+                  className="h-1.5 w-full overflow-hidden rounded-full"
                 >
-                  <span
-                    className="block h-full rounded-full bg-[color:var(--mode-identity)]"
-                    style={{ width: `${topic.percent}%` }}
-                  />
-                </span>
+                  <rect width="100" height="6" rx="3" className="fill-[color:var(--surface-inset)]" />
+                  <rect width={topic.percent} height="6" rx="3" className="fill-[color:var(--mode-identity)]" />
+                </svg>
               </button>
               <TermRemoveButton
                 label={`Remove topic: ${topic.name}`}
