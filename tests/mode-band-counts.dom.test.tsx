@@ -35,12 +35,27 @@ describe("mode band tab counts", () => {
     expect(screen.getByRole("link", { name: /^Log/ })).toHaveTextContent(/^Log$/);
   });
 
-  it("marks a signed-out band so its counts are hidden", () => {
+  it("shows no count, seen or spoken, on a signed-out sample", () => {
     render(
       <ModeBand modeId="cme" statusSlot>
         <YearPage drafts={3} sample />
       </ModeBand>,
     );
-    expect(screen.getByTestId("mode-band").querySelector('[data-mode-band-status="sample"]')).not.toBeNull();
+    expect(screen.getByRole("link", { name: /^Log/ })).toHaveTextContent(/^Log$/);
+    expect(screen.getByText(/Made-up example records/)).toBeTruthy();
+  });
+
+  it("shows no count when the page could not load what it counts", () => {
+    function FailedPage() {
+      useModeBandCount("log", 3);
+      return <ModeBandStatus value={{ kind: "failed", text: "Drafts didn't load · no count shown" }} />;
+    }
+    render(
+      <ModeBand modeId="cme" statusSlot>
+        <FailedPage />
+      </ModeBand>,
+    );
+    expect(screen.getByRole("link", { name: /^Log/ })).toHaveTextContent(/^Log$/);
+    expect(screen.getByText(/Drafts didn't load/)).toBeTruthy();
   });
 });

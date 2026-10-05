@@ -142,6 +142,11 @@
   align-items: center;
 }
 
+/* A slot no page has filled (a signed-in Roster) takes no room. */
+.mode-band__status:empty {
+  display: none;
+}
+
 .mode-band__saved {
   display: inline-flex;
   align-items: center;
@@ -176,8 +181,8 @@
 /* "Sign in" inside the sample line: a 48px tap area that a negative margin
    keeps from growing the line. */
 .mode-band__inline-action {
-  margin: calc(var(--spacing) * -3.25) 0;
-  padding: calc(var(--spacing) * 3.25) calc(var(--spacing) * 1);
+  margin: calc(var(--spacing) * -3.75) 0;
+  padding: calc(var(--spacing) * 3.75) calc(var(--spacing) * 1);
   border: 0;
   background: transparent;
   font: inherit;
@@ -192,8 +197,8 @@
    margin keeps from pushing the tabs down. */
 .mode-band__retry {
   display: inline-flex;
-  margin: calc(var(--spacing) * -3.25) 0;
-  padding: calc(var(--spacing) * 3.25) 0;
+  margin: calc(var(--spacing) * -3.75) 0;
+  padding: calc(var(--spacing) * 3.75) 0;
   border: 0;
   background: transparent;
   font: inherit;
@@ -292,7 +297,8 @@
 .mode-band__tab:focus-visible,
 .mode-band__back:focus-visible,
 .mode-band__customise:focus-visible,
-.mode-band__retry:focus-visible {
+.mode-band__retry:focus-visible,
+.mode-band__inline-action:focus-visible {
   outline: 2px solid var(--mode-identity);
   outline-offset: -2px;
   border-radius: calc(var(--radius-xs) * 2);
@@ -305,12 +311,6 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
-}
-
-/* No counts while they could be wrong or invented. */
-.mode-band:has([data-mode-band-status="offline"], [data-mode-band-status="loading"], [data-mode-band-status="sample"])
-  .mode-band__badge {
-  display: none;
 }
 
 .mode-band__tab[aria-current="page"] .mode-band__badge {
@@ -361,12 +361,11 @@
   }
 }
 
-/* A phone held sideways starts with the header folded: the title alone would
-   fill the screen, so only the tabs show. The heading stays for screen
+/* A phone held sideways drops the big title and the faint icon, which would
+   fill the screen. The back link, Customise, the status line (with any
+   "Not saved" or "Sign in") and the tabs stay. The heading stays for screen
    readers. */
 @media (orientation: landscape) and (max-height: 500px) {
-  .mode-band__utility,
-  .mode-band__status,
   .mode-band__mark {
     display: none;
   }
@@ -410,6 +409,7 @@ html[data-mode-band] [data-testid="chrome-safe-area-top"] {
 /* Under a band a page's own title is kept for screen readers only. A wrapper
    left holding nothing but that heading must not still take a gap in its
    grid, or the page starts a row lower than the band's tabs suggest. */
-html[data-mode-band] :is(div, header):has(> .sr-only:only-child) {
+html[data-mode-band] :is(div, header):has(> [data-under-band]:only-child),
+html[data-mode-band] :is(div, header):has(> div:only-child > [data-under-band]:only-child) {
   display: contents;
 }

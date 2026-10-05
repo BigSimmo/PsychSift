@@ -89,6 +89,10 @@ export type ModeBandProps = {
 
 const ModeBandShownContext = createContext(false);
 const ModeBandCountContext = createContext<(tabId: string, count: number | null) => void>(() => {});
+const ModeBandStatusKindContext = createContext<(kind: ModeBandStatusValue["kind"] | null) => void>(() => {});
+
+/** Counts could be wrong or invented while records are out of reach or examples. */
+const COUNTS_HIDDEN: ReadonlySet<ModeBandStatusValue["kind"]> = new Set(["offline", "loading", "sample", "failed"]);
 
 /**
  * Puts a page's to-do count on one of its mode's tabs ("Log 3") while that
@@ -229,6 +233,9 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
     });
   }, []);
   const allCounts = useMemo(() => ({ ...counts, ...pageCounts }), [counts, pageCounts]);
+  const [pageStatusKind, setPageStatusKind] = useState<ModeBandStatusValue["kind"] | null>(null);
+  const statusKind = pageStatusKind ?? props.status?.kind ?? null;
+  const hideCounts = statusKind !== null && COUNTS_HIDDEN.has(statusKind);
   const activeId = activeModeSecondaryNavigationId(props.modeId, pathname);
   const shown =
     !isHidden(pathname, props.hiddenOn) &&
@@ -236,8 +243,10 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   return (
     <ModeBandShownContext.Provider value={shown}>
       <ModeBandCountContext.Provider value={setCount}>
-        {shown ? <ModeBandHeader {...props} counts={allCounts} activeId={activeId} /> : null}
-        {children}
+        <ModeBandStatusKindContext.Provider value={setPageStatusKind}>
+          {shown ? <ModeBandHeader {...props} counts={hideCounts ? undefined : allCounts} activeId={activeId} /> : null}
+          {children}
+        </ModeBandStatusKindContext.Provider>
       </ModeBandCountContext.Provider>
     </ModeBandShownContext.Provider>
   );
@@ -283,7 +292,7 @@ function ModeBandHeader({
     status !== undefined || (Array.isArray(statusSlot) ? statusSlot.includes(pathname) : Boolean(statusSlot));
 
   return (
-    <header
+    <div
       ref={setBand}
       className="mode-band"
       data-testid="mode-band"
@@ -320,7 +329,11 @@ function ModeBandHeader({
         {hasStatus ? (
           <div id={modeBandStatusSlotId} className="mode-band__status" data-testid="mode-band-status">
             {status ? (
-              <span role="status" data-mode-band-status={status.kind} className="contents">
+              <span
+                role={status.kind === "error" ? "alert" : "status"}
+                data-mode-band-status={status.kind}
+                className="contents"
+              >
                 <StatusLine value={status} />
               </span>
             ) : null}
@@ -358,7 +371,7 @@ function ModeBandHeader({
       ) : (
         <div aria-hidden="true" className="mode-band__end" />
       )}
-    </header>
+    </div>
   );
 }
 
@@ -384,6 +397,14 @@ export function savedAtLabel(savedAt: Date, now: Date): string {
 export type ModeBandStatusValue =
   /** Records are in the account; the time is when they were last saved or loaded. */
   | { kind: "saved"; at: Date | string }
+  /**
+   * The page's records came from the account at this time. Used where the
+   * page knows when it loaded them but not when they were last saved, so it
+   * never claims a save it cannot see.
+   */
+  | { kind: "loaded"; at: Date | string }
+  /** Part of the page's records did not load: say so, and show no counts. */
+  | { kind: "failed"; text: string }
   /** Records live in the account, so offline they are simply out of reach. */
   | { kind: "offline" }
   /** Never say "Saved" when a save failed. The whole line retries. */
@@ -426,6 +447,22 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
         </span>
       );
     }
+    case "loaded": {
+      const at = typeof value.at === "string" ? new Date(value.at) : value.at;
+      return (
+        <span className="mode-band__saved">
+          <Check aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.5} />
+          In your account · loaded {savedAtLabel(at, time ? new Date(time) : at)}
+        </span>
+      );
+    }
+    case "failed":
+      return (
+        <span className="mode-band__warning">
+          <CircleAlert aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.25} />
+          {value.text}
+        </span>
+      );
     case "offline":
       return (
         <span className="mode-band__saved">
@@ -479,6 +516,12 @@ function useModeBandHost(slotId: string): HTMLElement | null | undefined {
 export function ModeBandStatus({ value, testId }: { value: ModeBandStatusValue | null; testId?: string }) {
   const shown = useModeBandShown();
   const host = useModeBandHost(modeBandStatusSlotId);
+  const setStatusKind = useContext(ModeBandStatusKindContext);
+  const kind = value?.kind ?? null;
+  useEffect(() => {
+    setStatusKind(kind);
+    return () => setStatusKind(null);
+  }, [setStatusKind, kind]);
   if (!value) return null;
   const line = (
     <span
@@ -501,7 +544,11 @@ export function ModeBandStatus({ value, testId }: { value: ModeBandStatusValue |
  */
 export function PageTitleUnderBand({ className, children }: { className?: string; children: ReactNode }) {
   const shown = useModeBandShown();
-  return <h1 className={shown ? "sr-only" : className}>{children}</h1>;
+  return (
+    <h1 className={shown ? "sr-only" : className} data-under-band={shown ? "" : undefined}>
+      {children}
+    </h1>
+  );
 }
 
 /**

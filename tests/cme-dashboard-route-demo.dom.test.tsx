@@ -18,12 +18,12 @@ describe("CmeDashboardRoute demo wording", () => {
   it("labels sample data as made-up examples rather than saved records", () => {
     render(<CmeDashboardRoute set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} nowIso={nowIso} routines={[]} demoMode />);
     expect(screen.getByText(/Made-up example records/)).toBeTruthy();
-    expect(screen.queryByText(/Saved to your account/)).toBeNull();
+    expect(screen.queryByText(/In your account/)).toBeNull();
   });
 
   it("keeps the saved-records line for a signed-in record", () => {
     render(<CmeDashboardRoute set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} nowIso={nowIso} routines={[]} />);
-    expect(screen.getByText(/Saved to your account \d{2}:\d{2}/)).toBeTruthy();
+    expect(screen.getByText(/In your account · loaded \d{2}:\d{2}/)).toBeTruthy();
     expect(screen.queryByText(/Made-up example records/)).toBeNull();
   });
 });
