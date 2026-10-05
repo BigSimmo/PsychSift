@@ -116,6 +116,35 @@ export function weekRows(shifts: readonly OverviewShift[], monday: string): Week
   });
 }
 
+/**
+ * The most nights in a row in any run of night shifts (by Perth start date)
+ * that ends within the last week or starts in the 14 days ahead. The signed
+ * rest-after-nights rule has no band beyond five nights, so a longer run here
+ * means rest after it is not checked, even when the run itself ended before
+ * the checked window; the page must say so rather than report nothing found.
+ */
+export function longestRecentNightRun(shifts: readonly OverviewShift[], now: Date): number {
+  const nights = shifts.filter((shift) => shift.kind === "night");
+  const dates = new Set(nights.map((shift) => perthDateOf(shift.startsAt)));
+  const today = perthDateOf(now);
+  const since = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+  let longest = 0;
+  for (const first of dates) {
+    if (dates.has(addDaysToDate(first, -1))) continue;
+    let last = first;
+    while (dates.has(addDaysToDate(last, 1))) last = addDaysToDate(last, 1);
+    const lastEnd = Math.max(
+      ...nights.filter((shift) => perthDateOf(shift.startsAt) === last).map((shift) => Date.parse(shift.endsAt)),
+    );
+    if (lastEnd <= since || first > addDaysToDate(today, 13)) continue;
+    longest = Math.max(
+      longest,
+      Math.round((Date.parse(`${last}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000) + 1,
+    );
+  }
+  return longest;
+}
+
 /** "4 shifts and 1 on call", "No shifts", "1 shift". Leave is not counted as a shift. */
 export function weekCountWords(rows: readonly WeekRow[]): string {
   const all = rows.flatMap((row) => row.shifts);

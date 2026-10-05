@@ -181,7 +181,8 @@ export function RosterSwapsPage() {
       : [];
   const actorGradeRank = gradeRank(overview.data?.me.grade);
   // Open shifts are only offered once both the team roster and your own shifts have been checked for clashes.
-  const openChecked = !!actorId && ownShifts.status === "ready" && overview.status === "ready";
+  const openChecked =
+    !!actorId && ownShifts.status === "ready" && overview.status === "ready" && assignments.status === "ready";
   const eligibleOpen =
     openChecked && actorGradeRank !== null
       ? openShifts.filter((item) => {
@@ -458,10 +459,7 @@ export function RosterSwapsPage() {
                 id="roster-swaps-sent"
                 title="You sent"
                 right={
-                  <RosterLinkWord
-                    label={showHistory ? "Hide history" : "Show history"}
-                    onClick={() => setShowHistory((open) => !open)}
-                  >
+                  <RosterLinkWord expanded={showHistory} onClick={() => setShowHistory((open) => !open)}>
                     History
                   </RosterLinkWord>
                 }
@@ -499,7 +497,10 @@ export function RosterSwapsPage() {
                 <RosterNote icon={Info} role="alert">
                   <p>Your own shifts couldn&apos;t be checked. Open shifts are hidden until they can be checked.</p>
                 </RosterNote>
-              ) : ownShifts.status !== "loading" && overview.status !== "loading" && !openChecked ? (
+              ) : ownShifts.status !== "loading" &&
+                overview.status !== "loading" &&
+                assignments.status !== "loading" &&
+                !openChecked ? (
                 <RosterNote icon={Info}>
                   <p>Open shifts are hidden until your roster and the team roster can be checked.</p>
                 </RosterNote>

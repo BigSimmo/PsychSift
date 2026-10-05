@@ -196,7 +196,7 @@ it("shows an anonymous leave overlap count", async () => {
   reads.requests.swaps = [];
   render(<RosterRequestsPage />);
   await user.click(screen.getByRole("button", { name: "New" }));
-  await user.click(screen.getByRole("button", { name: "Plan leave" }));
+  await user.click(screen.getByTestId("roster-new-entry-leave"));
   await user.type(screen.getByLabelText("From"), "2026-12-22");
   await user.type(screen.getByLabelText("To"), "2027-01-02");
   expect(await screen.findByText("2 of the team are already off these dates")).toBeTruthy();

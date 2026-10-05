@@ -293,7 +293,7 @@ export function RosterTeamsSection() {
             }
             action={
               teams.status === "error" ? (
-                <RosterLinkWord onClick={teams.reload} label="Check your teams again">
+                <RosterLinkWord onClick={teams.reload} label="Try again, check your teams">
                   Try again
                 </RosterLinkWord>
               ) : undefined

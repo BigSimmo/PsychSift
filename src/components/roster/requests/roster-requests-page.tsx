@@ -372,11 +372,7 @@ export function RosterRequestsPage() {
           <RosterSectionHead
             id="roster-requests-leave"
             title="Leave"
-            right={
-              <RosterLinkWord label="Plan new leave" onClick={() => setSheet({ kind: "leave" })}>
-                Plan leave
-              </RosterLinkWord>
-            }
+            right={<RosterLinkWord onClick={() => setSheet({ kind: "leave" })}>Plan leave</RosterLinkWord>}
           />
           {currentLeave.length ? (
             <RosterList label="Leave">{currentLeave.map(leaveRow)}</RosterList>
@@ -423,6 +419,10 @@ export function RosterRequestsPage() {
             />
             {unavailability.status === "error" ? (
               <TryAgainNote onRetry={unavailability.reload}>Your dates couldn&apos;t be loaded.</TryAgainNote>
+            ) : unavailability.status !== "ready" && unavailability.status !== "loading" ? (
+              <RosterNote icon={Info}>
+                <p>{unavailability.message ?? "Your dates couldn't be loaded."}</p>
+              </RosterNote>
             ) : unavailability.status !== "ready" ? (
               <>
                 <p role="status" className="sr-only">
@@ -459,6 +459,9 @@ export function RosterRequestsPage() {
             )}
             <RosterFootnote>Your manager sees these dates. Reasons are not saved.</RosterFootnote>
           </section>
+        ) : serviceId && teams.status === "ready" ? (
+          // The team loaded but your place in it could not be confirmed: say so rather than hide the section.
+          <TryAgainNote onRetry={teams.reload}>Your place on the team couldn&apos;t be confirmed.</TryAgainNote>
         ) : null}
       </div>
       {serviceId && actorId ? (

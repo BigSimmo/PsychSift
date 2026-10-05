@@ -207,7 +207,7 @@ export function RosterAskButton({
             strokeWidth={1.6}
             className="size-icon-md shrink-0 text-[color:var(--text-muted)]"
           />
-          <span className="min-w-0 flex-1 truncate text-base-minus text-[color:var(--text-muted)]">
+          <span className="min-w-0 flex-1 break-words text-base-minus leading-5 text-[color:var(--text-muted)]">
             Ask or change your roster
           </span>
           <span

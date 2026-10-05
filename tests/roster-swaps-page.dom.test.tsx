@@ -154,9 +154,11 @@ describe("Swaps page sections", () => {
   it("shows History only when asked", async () => {
     const user = userEvent.setup();
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("button", { name: "Show history" }));
+    const toggle = screen.getByRole("button", { name: "History", expanded: false });
+    await user.click(toggle);
     expect(sectionNames()).toEqual(["Waiting on you", "You sent", "History", "Open shifts · 0"]);
-    await user.click(screen.getByRole("button", { name: "Hide history" }));
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await user.click(toggle);
     expect(sectionNames()).not.toContain("History");
   });
 
@@ -195,7 +197,7 @@ describe("Swaps page swaps", () => {
     render(<RosterSwapsPage />);
     expect(screen.queryByRole("button", { name: "Accept swap" })).toBeNull();
     expect(screen.getByText("Nothing needs you right now")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Show history" }));
+    await user.click(screen.getByRole("button", { name: "History", expanded: false }));
     expect(screen.getByText("Expired")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Accept swap" })).toBeNull();
   });
@@ -231,7 +233,7 @@ describe("Swaps page swaps", () => {
     const user = userEvent.setup();
     reads.requests.swaps = [{ ...swap, status: "declined" }];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("button", { name: "Show history" }));
+    await user.click(screen.getByRole("button", { name: "History", expanded: false }));
     expect(screen.getByText("Declined")).toBeTruthy();
     expect(screen.queryByText(/expires/)).toBeNull();
   });
@@ -240,7 +242,7 @@ describe("Swaps page swaps", () => {
     const user = userEvent.setup();
     reads.requests.swaps = [{ ...swap, status: "cancelled", cancelReason: "roster_changed" }];
     render(<RosterSwapsPage />);
-    await user.click(screen.getByRole("button", { name: "Show history" }));
+    await user.click(screen.getByRole("button", { name: "History", expanded: false }));
     expect(screen.getByText("Cancelled: the roster changed")).toBeTruthy();
   });
 

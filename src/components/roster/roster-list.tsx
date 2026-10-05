@@ -52,6 +52,7 @@ export function RosterLinkWord({
   label,
   testId,
   disabled = false,
+  expanded,
 }: {
   readonly href?: string;
   readonly onClick?: () => void;
@@ -61,6 +62,8 @@ export function RosterLinkWord({
   /** A fuller accessible name when the word alone is vague ("Add" → "Add a date you can't work"). */
   readonly label?: string;
   readonly testId?: string;
+  /** For a word that shows or hides a section: whether it is shown. */
+  readonly expanded?: boolean;
 }) {
   const className = cn(
     focusRing,
@@ -78,6 +81,7 @@ export function RosterLinkWord({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
+      aria-expanded={expanded}
       className={className}
       data-mode-identity="roster"
       data-testid={testId}
@@ -183,7 +187,6 @@ export function RosterRow({
   action,
   dim = false,
   tone = "neutral",
-  clamp = false,
   label,
   testId,
   ...target
@@ -197,8 +200,6 @@ export function RosterRow({
   readonly action?: ReactNode;
   readonly dim?: boolean;
   readonly tone?: "neutral" | "warning";
-  /** Stop the second line at two lines (a very long workplace name). */
-  readonly clamp?: boolean;
   /** The row control's accessible name, when the visible words need more. */
   readonly label?: string;
   readonly testId?: string;
@@ -220,7 +221,6 @@ export function RosterRow({
             className={cn(
               "break-words text-sm leading-5",
               tone === "warning" ? "text-[color:var(--text)]" : "text-[color:var(--text-muted)]",
-              clamp && "line-clamp-2",
             )}
           >
             {sub}

@@ -156,6 +156,8 @@ export function RosterHoursPanel({
                 <span className="nums ml-auto text-xs text-[color:var(--text-muted)]">
                   plus {formatHours(summary.extraHours)} extra
                 </span>
+              ) : extra.status === "error" ? (
+                <span className="ml-auto text-xs text-[color:var(--text-muted)]">extra time not loaded</span>
               ) : null}
             </p>
           </section>

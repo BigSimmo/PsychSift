@@ -112,6 +112,22 @@ describe("Roster Settings", () => {
     expect(fetchCalls("/api/roster/shifts", "DELETE")[0]![1]).toEqual(expect.objectContaining({ keepalive: true }));
   });
 
+  it("after a failed delete, reloads and says some data may already be gone", async () => {
+    mockShifts([day("2026-10-12")]);
+    routes.set("DELETE /api/roster/shifts", () => Response.json({ error: "failed" }, { status: 500 }));
+    render(<RosterSettingsPage />);
+    await screen.findByText("Example Hospital");
+    vi.useFakeTimers();
+    await deleteMyData();
+    act(() => {
+      vi.advanceTimersByTime(31_000);
+    });
+    vi.useRealTimers();
+    expect(await screen.findByText(/Some of it may already be gone; this page now shows what is left\./)).toBeVisible();
+    // The shifts were read again after the failure, not shown from before it.
+    await waitFor(() => expect(fetchCalls("/api/roster/shifts", "GET").length).toBeGreaterThanOrEqual(2));
+  });
+
   it("says what Delete removes and what it keeps, and who sees what", async () => {
     mockShifts([day("2026-10-12")]);
     render(<RosterSettingsPage />);

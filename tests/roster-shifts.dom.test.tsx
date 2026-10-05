@@ -278,6 +278,38 @@ describe("Roster Shifts", () => {
     expect(screen.getByTestId("roster-after-night-note")).toHaveTextContent("Clause 15(6)(g)");
   });
 
+  it("says when rest after the nights is under the clause's band, in its own words", async () => {
+    // One night, then a day shift 8 hours after it ends: under the 24 hours for a single night.
+    mockShifts([night("2026-10-15"), shift("2026-10-16", "16:00", "22:00", "evening")]);
+    render(<RosterShiftsPage now={new Date("2026-10-15T15:40:00Z")} />);
+    const note = await screen.findByTestId("roster-after-night-note");
+    expect(note).toHaveTextContent(
+      "Your next evening shift starts 8 h after this shift ends, under the 24 hours free in clause 15(6)(g).",
+    );
+  });
+
+  it("does not report a long run of nights that just ended as checked", async () => {
+    // Six nights from Wed 7 Oct ended at 08:00 on Tue 13 Oct; it is now 10:00 that day.
+    mockShifts(
+      ["2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10", "2026-10-11", "2026-10-12"].map((date) => night(date)),
+    );
+    render(<RosterShiftsPage now={new Date("2026-10-13T02:00:00Z")} />);
+    const row = await screen.findByTestId("roster-hours-row");
+    expect(row).toHaveTextContent("Hours and rest: part checked");
+    expect(row).toHaveTextContent("Rest after more than 5 nights in a row isn't checked");
+    expect(row).not.toHaveTextContent("No warnings");
+  });
+
+  it("leads with on call running now and names it as on call", async () => {
+    mockShifts([shift("2026-10-12", "17:00", "08:00", "on_call", { workplace: null }), day("2026-10-13")]);
+    // 02:00 Perth on Tue 13 Oct, inside the on call.
+    render(<RosterShiftsPage now={new Date("2026-10-12T18:00:00Z")} />);
+    const card = await screen.findByTestId("roster-next-shift");
+    expect(card).toHaveAccessibleName("On call now");
+    expect(card).toHaveTextContent("On call now · Mon 12 Oct");
+    expect(card).toHaveTextContent("ends Tue 08:00");
+  });
+
   it("stores nothing about the doctor's roster on the device", async () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     mockShifts([night("2026-10-15")]);

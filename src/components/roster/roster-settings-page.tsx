@@ -79,7 +79,8 @@ export function RosterSettingsPage() {
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [shifts.shifts, settings.settings.codes]);
 
-  const { deleteAll } = shifts;
+  const { deleteAll, reload: reloadShifts } = shifts;
+  const { reload: reloadLinks } = links;
   const sendDelete = useCallback(() => {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = null;
@@ -89,9 +90,19 @@ export function RosterSettingsPage() {
     void deleteAll({ keepalive: true }).then((result) => {
       // A delete that removed your own data but left some team requests is done, with a note.
       setDeleteState(result.ok ? "deleted" : "idle");
-      if (result.message) setNotice({ tone: "warning", text: result.message });
+      if (result.ok) {
+        if (result.message) setNotice({ tone: "warning", text: result.message });
+        return;
+      }
+      // A failure can come part way through, so show what is actually left rather than the old list.
+      void reloadShifts();
+      void reloadLinks();
+      setNotice({
+        tone: "warning",
+        text: `${result.message ?? "Your roster data couldn't be deleted."} Some of it may already be gone; this page now shows what is left.`,
+      });
     });
-  }, [deleteAll]);
+  }, [deleteAll, reloadShifts, reloadLinks]);
 
   // Leaving the page during the 30 seconds, closed or navigated away from
   // inside the app, cancels the pending delete: nothing is sent.

@@ -7,7 +7,7 @@ import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { hoursRestCheck, type HoursRestBreak, type HoursRestGauge } from "@/lib/roster/hours-rest-check";
-import { formatSpanWords } from "@/lib/roster/shifts-overview";
+import { formatSpanWords, longestRecentNightRun } from "@/lib/roster/shifts-overview";
 import { WEEKDAYS, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
 
@@ -197,6 +197,21 @@ export function RosterHoursRestCheck({
     [shifts, now],
   );
   const startsAt = useMemo(() => new Map(shifts.map((shift) => [shift.id, shift.startsAt])), [shifts]);
+  // Includes a long run that ended before the window, whose rest the signed check cannot measure.
+  const recentNights = useMemo(
+    () =>
+      longestRecentNightRun(
+        shifts.map((shift) => ({
+          id: shift.id,
+          startsAt: shift.startsAt,
+          endsAt: shift.endsAt,
+          kind: kindOf(shift),
+          place: null,
+        })),
+        now,
+      ),
+    [shifts, now],
+  );
 
   if (!check.on) {
     return (
@@ -220,7 +235,8 @@ export function RosterHoursRestCheck({
   // rest after nights is not named as checked when such a run (or a nights warning) is present.
   const longestNights = check.gauges.find((gauge) => gauge.rule === "maxNightsInRow")?.value ?? 0;
   const restBands = FATIGUE_RULE_SET.rules.restAfterNights.bands;
-  const nightsUncovered = warned.has("maxNightsInRow") || longestNights > restBands[restBands.length - 1]!.upToNights;
+  const coveredNights = restBands[restBands.length - 1]!.upToNights;
+  const nightsUncovered = warned.has("maxNightsInRow") || Math.max(longestNights, recentNights) > coveredNights;
   const undrawn = UNDRAWN.filter(
     (item) => !warned.has(item.rule) && !(item.rule === "restAfterNights" && nightsUncovered),
   );
@@ -306,6 +322,13 @@ export function RosterHoursRestCheck({
           <RosterFootnote>No breaks between worked shifts in the next 14 days.</RosterFootnote>
         )}
       </section>
+
+      {nightsUncovered ? (
+        <RosterFootnote testId="roster-hours-rest-nights-unchecked">
+          Rest after more than {coveredNights} nights in a row isn&apos;t checked, because the signed rule only covers
+          runs of up to {coveredNights}.
+        </RosterFootnote>
+      ) : null}
 
       {!partial && undrawn.length ? (
         <RosterFootnote testId="roster-hours-rest-also-checked">
