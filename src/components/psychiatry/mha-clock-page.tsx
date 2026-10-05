@@ -365,7 +365,7 @@ function ClockCard({
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3">
           <span
             aria-hidden="true"
-            className="grid size-11 place-items-center rounded-full bg-[color:var(--dash-blue-tint)] font-dash-figure text-base text-[color:var(--dash-blue)] forced-colors:border"
+            className="grid size-12 place-items-center rounded-full bg-[color:var(--dash-blue-tint)] font-dash-figure text-base text-[color:var(--dash-blue)] forced-colors:border"
           >
             {clock.formCode}
           </span>
