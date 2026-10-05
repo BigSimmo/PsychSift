@@ -402,6 +402,7 @@
         "src/components/teaching/teaching-cpd-bridge-sheet.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
         "src/components/teaching/teaching-display.tsx",
+        "src/components/teaching/teaching-exam-prep.tsx",
         "src/components/teaching/teaching-feedback.tsx",
         "src/components/teaching/teaching-import.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
@@ -411,6 +412,7 @@
         "src/components/teaching/teaching-supervision-admin.tsx",
         "src/components/teaching/teaching-supervision.tsx",
         "src/components/teaching/teaching-teach.tsx",
+        "src/components/teaching/teaching-term.tsx",
         "src/components/teaching/teaching-week.tsx",
         "src/components/therapy-compass/pathway-picker-sheet.tsx",
         "src/components/therapy-compass/pathway-step-stack.tsx",
@@ -541,6 +543,7 @@
         "src/components/teaching/teaching-collection.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
         "src/components/teaching/teaching-display.tsx",
+        "src/components/teaching/teaching-exam-prep.tsx",
         "src/components/teaching/teaching-feedback.tsx",
         "src/components/teaching/teaching-import.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
@@ -550,6 +553,7 @@
         "src/components/teaching/teaching-supervision-admin.tsx",
         "src/components/teaching/teaching-supervision.tsx",
         "src/components/teaching/teaching-teach.tsx",
+        "src/components/teaching/teaching-term.tsx",
         "src/components/teaching/teaching-week.tsx",
         "src/components/therapy-compass/pathway-picker-sheet.tsx",
         "src/components/therapy-compass/pathway-step-stack.tsx",
@@ -624,7 +628,8 @@
         "src/components/teaching/teaching-calendar-sheet.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
-        "src/components/teaching/teaching-teach.tsx"
+        "src/components/teaching/teaching-teach.tsx",
+        "src/components/teaching/teaching-term.tsx"
       ],
       "productImportFiles": [
         "src/components/admin/new-job/admin-credential-pack-page.tsx",
@@ -640,7 +645,8 @@
         "src/components/teaching/teaching-calendar-sheet.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
-        "src/components/teaching/teaching-teach.tsx"
+        "src/components/teaching/teaching-teach.tsx",
+        "src/components/teaching/teaching-term.tsx"
       ],
       "designSync": {
         "listedInSourceMap": true,
@@ -733,6 +739,7 @@
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
         "src/components/clinical-dashboard/result-filter-control.tsx",
         "src/components/favourites/favourites-set-chips.tsx",
+        "src/components/teaching/teaching-exam-prep.tsx",
         "src/components/teaching/teaching-supervision.tsx",
         "src/components/therapy-compass/recommend-scenario-fields.tsx",
         "src/components/therapy-compass/screens/sheets-screen.tsx"
@@ -741,6 +748,7 @@
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
         "src/components/clinical-dashboard/result-filter-control.tsx",
         "src/components/favourites/favourites-set-chips.tsx",
+        "src/components/teaching/teaching-exam-prep.tsx",
         "src/components/teaching/teaching-supervision.tsx",
         "src/components/therapy-compass/recommend-scenario-fields.tsx",
         "src/components/therapy-compass/screens/sheets-screen.tsx"
@@ -2776,11 +2784,13 @@
         "src/components/teaching/organise-sheets.tsx",
         "src/components/teaching/teaching-collection.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
+        "src/components/teaching/teaching-exam-prep.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
         "src/components/teaching/teaching-resources.tsx",
         "src/components/teaching/teaching-scan-landing.tsx",
         "src/components/teaching/teaching-session.tsx",
         "src/components/teaching/teaching-supervision.tsx",
+        "src/components/teaching/teaching-term.tsx",
         "src/components/ui/catalogue-toolbar.tsx"
       ],
       "productImportFiles": [
@@ -2818,11 +2828,13 @@
         "src/components/teaching/organise-sheets.tsx",
         "src/components/teaching/teaching-collection.tsx",
         "src/components/teaching/teaching-cpd-review.tsx",
+        "src/components/teaching/teaching-exam-prep.tsx",
         "src/components/teaching/teaching-resource-list.tsx",
         "src/components/teaching/teaching-resources.tsx",
         "src/components/teaching/teaching-scan-landing.tsx",
         "src/components/teaching/teaching-session.tsx",
         "src/components/teaching/teaching-supervision.tsx",
+        "src/components/teaching/teaching-term.tsx",
         "src/components/ui/catalogue-toolbar.tsx"
       ],
       "designSync": {
@@ -3238,6 +3250,7 @@
         "src/app/(search-app)/sources/topics/page.tsx",
         "src/app/(search-app)/teaching/c/[token]/page.tsx",
         "src/app/(search-app)/teaching/c/complete/page.tsx",
+        "src/app/(search-app)/teaching/exam-prep/page.tsx",
         "src/app/(search-app)/teaching/feedback/page.tsx",
         "src/app/(search-app)/teaching/import/page.tsx",
         "src/app/(search-app)/teaching/logbook/page.tsx",
@@ -3250,6 +3263,7 @@
         "src/app/(search-app)/teaching/session/[id]/page.tsx",
         "src/app/(search-app)/teaching/supervision/page.tsx",
         "src/app/(search-app)/teaching/teach/page.tsx",
+        "src/app/(search-app)/teaching/term/page.tsx",
         "src/app/(search-app)/teaching/week/page.tsx",
         "src/app/(search-app)/teaching/whats-on/page.tsx"
       ],
@@ -4262,6 +4276,16 @@
           "sanctionedPatternsPresent": []
         },
         {
+          "file": "src/app/(search-app)/teaching/exam-prep/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
           "file": "src/app/(search-app)/teaching/feedback/page.tsx",
           "exists": true,
           "imports": [],
@@ -4373,6 +4397,16 @@
         },
         {
           "file": "src/app/(search-app)/teaching/teach/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/teaching/term/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5584,6 +5618,7 @@
       "src/app/(search-app)/specifiers/search/page.tsx",
       "src/app/(search-app)/teaching/c/[token]/page.tsx",
       "src/app/(search-app)/teaching/c/complete/page.tsx",
+      "src/app/(search-app)/teaching/exam-prep/page.tsx",
       "src/app/(search-app)/teaching/feedback/page.tsx",
       "src/app/(search-app)/teaching/import/page.tsx",
       "src/app/(search-app)/teaching/logbook/page.tsx",
@@ -5596,6 +5631,7 @@
       "src/app/(search-app)/teaching/session/[id]/page.tsx",
       "src/app/(search-app)/teaching/supervision/page.tsx",
       "src/app/(search-app)/teaching/teach/page.tsx",
+      "src/app/(search-app)/teaching/term/page.tsx",
       "src/app/(search-app)/teaching/week/page.tsx",
       "src/app/(search-app)/teaching/whats-on/page.tsx",
       "src/app/(search-app)/therapy-compass/[slug]/brief/page.tsx",
@@ -5740,6 +5776,7 @@
       "src/app/(search-app)/specifiers/search/page.tsx",
       "src/app/(search-app)/teaching/c/[token]/page.tsx",
       "src/app/(search-app)/teaching/c/complete/page.tsx",
+      "src/app/(search-app)/teaching/exam-prep/page.tsx",
       "src/app/(search-app)/teaching/feedback/page.tsx",
       "src/app/(search-app)/teaching/import/page.tsx",
       "src/app/(search-app)/teaching/logbook/page.tsx",
@@ -5752,6 +5789,7 @@
       "src/app/(search-app)/teaching/session/[id]/page.tsx",
       "src/app/(search-app)/teaching/supervision/page.tsx",
       "src/app/(search-app)/teaching/teach/page.tsx",
+      "src/app/(search-app)/teaching/term/page.tsx",
       "src/app/(search-app)/teaching/week/page.tsx",
       "src/app/(search-app)/teaching/whats-on/page.tsx",
       "src/app/(search-app)/therapy-compass/[slug]/brief/page.tsx",
@@ -5775,7 +5813,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 161,
+    "inheritedCkbV2RootCount": 163,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -5784,8 +5822,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 46,
-    "rootCount": 162,
-    "productionRouteCount": 154,
-    "nextUiEntryCount": 249
+    "rootCount": 164,
+    "productionRouteCount": 156,
+    "nextUiEntryCount": 251
   }
 }

@@ -21,6 +21,7 @@ import { LogbookLedger, TeachingModule } from "@/components/teaching/teaching-mo
 import { withUnit } from "@/components/teaching/teaching-number";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
+import { TeachingTermCard } from "@/components/teaching/teaching-term-card";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { cn } from "@/components/ui-primitives";
@@ -134,6 +135,7 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
     <InformationPageShell width="narrow" gap={false} testId="teaching-logbook">
       <div className="grid gap-3">
         <h1 className="sr-only">Logbook</h1>
+        {now ? <TeachingTermCard demoMode={demoMode} today={perthDateKey(now)} /> : null}
         <nav aria-label="Logbook actions">
           <ModeGroupedList mode="teaching" testId="teaching-logbook-links">
             {/* Real Links with literal hrefs, so the route-reachability scan sees each destination. */}
