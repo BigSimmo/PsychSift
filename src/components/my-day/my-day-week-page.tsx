@@ -7,13 +7,7 @@ import { useMemo } from "react";
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { focusRing } from "@/components/card-recipes";
-import {
-  modeDot,
-  modeIdentityIcon,
-  modeModuleSurface,
-  modePressable,
-  modeRowHeight,
-} from "@/components/mode-kit/recipes";
+import { modeDot, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { modeSecondaryText } from "@/components/mode-kit/type";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -307,9 +301,10 @@ function AgendaRow({ entry }: { readonly entry: AgendaEntry }) {
         <span
           aria-hidden="true"
           data-mode-identity={entry.identity}
-          className="grid size-10 shrink-0 place-items-center rounded-full border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)]"
+          className="relative grid size-10 shrink-0 place-items-center text-[color:var(--text-muted)]"
         >
-          <Icon aria-hidden="true" strokeWidth={1.5} className={modeIdentityIcon} />
+          <Icon aria-hidden="true" strokeWidth={1.6} className="size-icon-lg" />
+          <span className="absolute right-1 bottom-1.5 size-2 rounded-full bg-[color:var(--mode-identity)] ring-2 ring-[color:var(--surface)] forced-colors:bg-[CanvasText]" />
         </span>
         <span className="grid min-w-0 flex-1 gap-0.5">
           <span className="break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">

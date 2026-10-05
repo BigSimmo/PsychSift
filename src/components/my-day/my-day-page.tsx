@@ -357,7 +357,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
 
   return (
     <InformationPageShell testId="my-day-main">
-      <div className={cn(PAGE_WIDTH, dashSurface)}>
+      <div className={cn(PAGE_WIDTH, dashSurface, "my-day-quiet")}>
         <header className="flex min-w-0 items-end justify-between gap-3" data-testid="my-day-header">
           <div className="grid min-w-0 gap-0.5">
             <p className="text-sm text-[color:var(--dash-muted)]">{longDate(today)}</p>

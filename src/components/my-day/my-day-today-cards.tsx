@@ -72,6 +72,25 @@ export const MODE_CHIP: Readonly<
   roster: { code: "ROS", tint: "blue-2", icon: CalendarDays },
 };
 
+/**
+ * A grey outline icon with a small dot in the area's colour: colour marks
+ * meaning, not decoration. Decorative; the row says the same thing in words.
+ */
+export function AreaIcon({ mode, icon: Icon }: { readonly mode: MyDaySourceMode; readonly icon: LucideIcon }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="relative grid size-10 shrink-0 place-items-center text-[color:var(--dash-muted)]"
+    >
+      <Icon aria-hidden="true" className="size-icon-lg" strokeWidth={1.6} />
+      <span
+        data-mode-identity={mode}
+        className="absolute right-1 bottom-1.5 size-2 rounded-full bg-[color:var(--mode-identity)] ring-2 ring-[color:var(--dash-raised)] forced-colors:bg-[CanvasText]"
+      />
+    </span>
+  );
+}
+
 const MODE_NAME: Readonly<Record<MyDaySourceMode, string>> = {
   cme: "CPD",
   "my-work": "Admin",
@@ -350,7 +369,7 @@ export function FlagCard({ items, onHide }: { readonly items: readonly MyDayItem
       className="gap-1"
     >
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5" data-testid="my-day-flag">
-        <IconChip tint="green" size="md" className="bg-[color:var(--dash-raised)]">
+        <IconChip tint="neutral" size="md" className="bg-[color:var(--dash-card)]">
           !
         </IconChip>
         <span className="grid min-w-0 gap-0.5">
@@ -365,7 +384,7 @@ export function FlagCard({ items, onHide }: { readonly items: readonly MyDayItem
           data-testid="my-day-flag-action"
           className={cn(focusRing, "inline-flex min-h-12 items-center rounded-full no-underline")}
         >
-          <span className="rounded-full bg-[color:var(--dash-green-solid)] px-4 py-2 text-sm font-dash-title text-[color:var(--dash-green-solid-ink)] forced-colors:border">
+          <span className="rounded-full border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-4 py-2 text-sm font-dash-title text-[color:var(--dash-ink)] forced-colors:border">
             {action}
           </span>
         </Link>
@@ -391,9 +410,7 @@ export function FlagCard({ items, onHide }: { readonly items: readonly MyDayItem
                   aria-hidden="true"
                   className={cn(
                     "block h-1.5 rounded-full forced-colors:border",
-                    selected
-                      ? "w-5 bg-[color:var(--dash-green)]"
-                      : "w-1.5 bg-[color:color-mix(in_srgb,var(--dash-green)_35%,transparent)]",
+                    selected ? "w-5 bg-[color:var(--dash-ink)]" : "w-1.5 bg-[color:var(--dash-line-strong)]",
                   )}
                 />
               </button>
@@ -424,7 +441,13 @@ export const MY_DAY_QUICK_ACTIONS: readonly DashQuickAction[] = [
 
 export function QuickActionsCard({ onHide }: { readonly onHide?: () => void }) {
   return (
-    <DashCard title="Quick actions" showTitle={false} onHide={onHide} testId="my-day-card-quick-actions">
+    <DashCard
+      title="Quick actions"
+      showTitle={false}
+      onHide={onHide}
+      testId="my-day-card-quick-actions"
+      className="my-day-quiet-icons"
+    >
       <DashQuickActions
         actions={MY_DAY_QUICK_ACTIONS.map((action) => ({ ...action, href: withMyDayReturn(action.href) }))}
       />
@@ -629,7 +652,7 @@ function MonthView({
               subtitleTone={detail.passed ? "passed" : "muted"}
               actions={
                 detail.href ? (
-                  <DashPill href={detail.href} emphasis="primary" ariaLabel={`${detail.actionLabel}: ${detail.title}`}>
+                  <DashPill href={detail.href} ariaLabel={`${detail.actionLabel}: ${detail.title}`}>
                     {detail.actionLabel}
                   </DashPill>
                 ) : undefined
@@ -804,9 +827,7 @@ export function NeedsYouCard({
               data-testid={`my-day-item-${item.id}`}
               className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-3 border-t border-[color:var(--dash-line)] px-3 py-2.5 first:border-t-0"
             >
-              <IconChip tint={chip.tint} size="lg" className="rounded-full">
-                <chip.icon aria-hidden="true" className="size-icon-lg" />
-              </IconChip>
+              <AreaIcon mode={item.mode} icon={chip.icon} />
               <span className="grid min-w-0 gap-0.5">
                 <span className="break-words font-dash-title text-base-minus leading-tight text-[color:var(--dash-ink)]">
                   {item.title}
@@ -823,7 +844,6 @@ export function NeedsYouCard({
               <span className="col-start-2 -mb-2 flex items-center gap-1">
                 <DashPill
                   href={withMyDayReturn(item.href)}
-                  emphasis="primary"
                   ariaLabel={`${action}: ${item.title}`}
                   testId={`my-day-open-${item.id}`}
                 >
@@ -1114,9 +1134,7 @@ export function RenewalsRunwayCard({
     >
       {lead ? (
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3" data-testid="my-day-runway-lead">
-          <IconChip tint="amber" size="lg" className="rounded-full">
-            <Shield aria-hidden="true" className="size-icon-lg" />
-          </IconChip>
+          <AreaIcon mode="my-work" icon={Shield} />
           <span className="grid min-w-0 gap-0.5">
             <span className="break-words font-dash-title text-base-minus leading-tight text-[color:var(--dash-ink)]">
               {lead.title}
@@ -1127,7 +1145,6 @@ export function RenewalsRunwayCard({
           </span>
           <DashPill
             href={withMyDayReturn(lead.href)}
-            emphasis="primary"
             ariaLabel={`Renew: ${lead.title}`}
             testId="my-day-runway-lead-action"
           >

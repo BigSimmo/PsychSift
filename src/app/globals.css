@@ -1480,6 +1480,92 @@ body {
   }
 }
 
+/* My Day's quieter look (owner decision, 5 October 2026: the Work search v12
+   style). Scoped to My Day, so every other dashboard keeps the 3 October style:
+   semi-bold at most, one flat hero colour, no shadows, a neutral flag card and
+   flat wallet cards. Nested `.dash-surface` scopes (the signed-out sample)
+   re-declare the tokens, so they are listed too. */
+.dash-surface.my-day-quiet,
+.my-day-quiet .dash-surface {
+  --font-weight-dash-title: 600;
+  --font-weight-dash-figure: 600;
+  --dash-ink: #141920;
+  --dash-muted: #4f5967;
+  --dash-faint: #5c6676;
+  --dash-shadow: none;
+  --dash-flag: var(--dash-raised);
+  --dash-green-line: var(--dash-line);
+  --dash-hero-1: #1a5f9f;
+  --dash-hero-2: #1a5f9f;
+  --dash-hero-3: #1a5f9f;
+  --dash-hero-glass: rgb(255 255 255 / 0.1);
+  --dash-hero-glass-line: rgb(255 255 255 / 0.16);
+}
+
+.dark .dash-surface.my-day-quiet,
+.dark .my-day-quiet .dash-surface {
+  --dash-page: #121519;
+  --dash-card: #181c22;
+  --dash-raised: #1f242b;
+  --dash-line: #272d36;
+  --dash-line-strong: #353c47;
+  --dash-ink: #e6e8eb;
+  --dash-muted: #a3a9b2;
+  --dash-faint: #8f96a0;
+  --dash-blue-tint: #1c2836;
+  --dash-blue-tint-2: #22303f;
+  --dash-hero-1: #21364a;
+  --dash-hero-2: #21364a;
+  --dash-hero-3: #21364a;
+}
+
+/* Grey icons on My Day's quick actions: colour is kept for meaning. */
+.my-day-quiet .my-day-quiet-icons {
+  --dash-blue-tint: var(--dash-card);
+  --dash-blue: var(--dash-muted);
+}
+
+/* Initials as quiet grey discs rather than coloured gradients. */
+.my-day-quiet .dash-avatar-blue,
+.my-day-quiet .dash-avatar-green,
+.my-day-quiet .dash-avatar-amber {
+  background: var(--dash-card);
+  color: var(--dash-muted);
+  outline: 1px solid var(--dash-line);
+  outline-offset: -1px;
+}
+
+.my-day-quiet .dash-wallet-blue,
+.my-day-quiet .dash-wallet-green,
+.my-day-quiet .dash-wallet-amber {
+  background: var(--dash-hero-2);
+}
+
+@media (forced-colors: active) {
+  .dash-surface.my-day-quiet,
+  .my-day-quiet .dash-surface,
+  .dark .dash-surface.my-day-quiet,
+  .dark .my-day-quiet .dash-surface {
+    --dash-page: Canvas;
+    --dash-card: Canvas;
+    --dash-raised: Canvas;
+    --dash-line: CanvasText;
+    --dash-line-strong: CanvasText;
+    --dash-ink: CanvasText;
+    --dash-muted: CanvasText;
+    --dash-faint: CanvasText;
+    --dash-flag: Canvas;
+    --dash-green-line: CanvasText;
+    --dash-blue-tint: Canvas;
+    --dash-blue-tint-2: Canvas;
+    --dash-hero-1: Canvas;
+    --dash-hero-2: Canvas;
+    --dash-hero-3: Canvas;
+    --dash-hero-glass: Canvas;
+    --dash-hero-glass-line: CanvasText;
+  }
+}
+
 /* First Nations: olive (mode design standard v13.1 §3). Light 6.1:1 on white,
    dark 9.0:1 on a dark card, disc glyph 9.4:1. Used only on the pill, the
    current tab, module icon tiles, the hero's day track and quotation accents.

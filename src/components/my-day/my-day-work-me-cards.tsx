@@ -88,9 +88,9 @@ export function CallsCard({
         title="Tonight's calls"
         onHide={onHide}
         testId="my-day-card-calls"
-        className="gap-3 border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)]"
+        className="gap-3"
         aside={
-          <span className="inline-flex items-center rounded-full bg-[color:var(--dash-green-tint)] px-1.5 py-px font-dash-title text-3xs normal-case tracking-normal text-[color:var(--dash-green)] forced-colors:border">
+          <span className="inline-flex items-center text-3xs normal-case tracking-normal text-[color:var(--dash-muted)]">
             On this device
           </span>
         }
@@ -102,7 +102,7 @@ export function CallsCard({
               size={88}
               strokeWidth={7}
               stroke="stroke-[color:var(--mode-identity)]"
-              track="stroke-[color:var(--mode-identity-border)]"
+              track="stroke-[color:var(--dash-line)]"
               testId="my-day-calls-ring"
             >
               <span className={cn(dashFigure, "text-lg text-[color:var(--dash-ink)]")}>
@@ -111,7 +111,7 @@ export function CallsCard({
               <span className="mt-0.5 text-3xs font-dash-title text-[color:var(--dash-muted)]">left</span>
             </ProgressRing>
           ) : null}
-          <dl className="m-0 flex min-w-0 flex-1 items-stretch divide-x divide-[color:var(--mode-identity-border)]">
+          <dl className="m-0 flex min-w-0 flex-1 items-stretch divide-x divide-[color:var(--dash-line)]">
             <div className={stat}>
               <dd className={cn(dashFigure, "m-0 text-2xl text-[color:var(--dash-ink)]")}>{total}</dd>
               <dt className="text-xs text-[color:var(--dash-muted)]">{total === 1 ? "call" : "calls"}</dt>
@@ -133,14 +133,7 @@ export function CallsCard({
         {clamped !== null && startMs !== null && handoverAt && nowMs !== null ? (
           <div aria-hidden="true" className="grid gap-1">
             <svg viewBox="0 0 100 6" preserveAspectRatio="none" className="block h-2 w-full overflow-visible">
-              <rect
-                x="0"
-                y="1.5"
-                width="100"
-                height="3"
-                rx="1.5"
-                className="fill-[color:var(--mode-identity-border)]"
-              />
+              <rect x="0" y="1.5" width="100" height="3" rx="1.5" className="fill-[color:var(--dash-line)]" />
               <rect
                 x="0"
                 y="1.5"
@@ -245,7 +238,7 @@ export function PinnedNumbersCard({
                 >
                   <span
                     aria-hidden="true"
-                    className="grid size-10 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)] forced-colors:border"
+                    className="grid size-10 place-items-center rounded-full border border-[color:var(--dash-line-strong)] text-[color:var(--mode-identity)] forced-colors:border"
                   >
                     <Phone aria-hidden="true" className="size-icon-md" />
                   </span>
