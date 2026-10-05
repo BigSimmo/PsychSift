@@ -2,7 +2,13 @@ import { evaluateYear } from "@/lib/cme/evaluate";
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { addDaysToDate, formatPerthDay, MONTHS, perthDateOf, perthTimeOf } from "@/lib/perth-time";
 import type { ShiftKind } from "@/lib/roster/shift-kind";
-import { workSearchAreaLabels, type WorkAreaRead, type WorkItem, type WorkSearchArea } from "@/lib/work-search/model";
+import {
+  TEACHING_LOOKAHEAD_DAYS,
+  workSearchAreaLabels,
+  type WorkAreaRead,
+  type WorkItem,
+  type WorkSearchArea,
+} from "@/lib/work-search/model";
 
 /**
  * Built-in answers to the common plain questions, worked out in the browser from
@@ -54,6 +60,23 @@ export interface WorkAnswer {
   readonly action?: { readonly label: string; readonly href: string };
   /** Progress rows (CPD targets), short ones first. */
   readonly progress?: readonly WorkAnswerProgress[];
+  /** A plain explanation printed inside the card, under the headline. */
+  readonly note?: string;
+  /** A week strip for "free days" questions: each day of the week, and whether it has no rostered shift. */
+  readonly week?: readonly WorkAnswerDay[];
+  /** A timed shift the reader can add to their calendar from the card. */
+  readonly calendar?: WorkItem;
+  /** What a failed area may have left out, for the notice above the card: "Your talks". */
+  readonly missing?: string;
+}
+
+export interface WorkAnswerDay {
+  readonly date: string;
+  readonly free: boolean;
+  /** False for days of the week the question did not ask about (already past, say). */
+  readonly inRange: boolean;
+  /** False past the roster's last shift: whether that day is free isn't known yet. */
+  readonly known: boolean;
 }
 
 export interface WorkAnswerProgress {
@@ -242,26 +265,35 @@ function nextShift(
   let run = 1;
   while (days[run] === addDaysToDate(first.date, run)) run += 1;
   const onNow = underWay(first, now);
-  const after = onNow ? upcoming.find((item) => item.date !== first.date) : undefined;
+  const after = onNow ? upcoming[1] : undefined;
+  const parts = first.detail?.split(" · ") ?? [];
   return {
     area: "roster",
     icon,
     label: onNow ? `On now` : `Your next ${one}`,
     headline: onNow && first.endsAt ? `Until ${perthTimeOf(first.endsAt)}` : longDay(first.date),
+    // On now: what and where, then what comes next. Otherwise the times and place under the day.
     sub: onNow
-      ? after?.date
-        ? `Then ${formatPerthDay(after.date)}${after.startsAt ? `, ${perthTimeOf(after.startsAt)}` : ""}`
-        : first.title
-      : first.detail?.split(" · ").slice(1).join(" · ") || null,
-    meta: [
-      ...(run > 1 && !onNow ? [`First of ${run} ${many}`] : []),
-      ...(overnightOnCall(first) && kind === "night" ? ["On call overnight"] : []),
-      onNow ? "Under way" : inDays(input.today, first.date),
-    ],
+      ? [
+          first.title,
+          ...parts.slice(2),
+          ...(after?.date
+            ? [`then ${formatPerthDay(after.date)}${after.startsAt ? `, ${perthTimeOf(after.startsAt)}` : ""}`]
+            : []),
+        ].join(" · ")
+      : parts.slice(1).join(" · ") || null,
+    meta: onNow
+      ? []
+      : [
+          ...(run > 1 ? [`First of ${run} ${many}`] : []),
+          ...(overnightOnCall(first) && kind === "night" ? ["On call overnight"] : []),
+          inDays(input.today, first.date),
+        ],
     items: upcoming.slice(0, Math.max(run, 3)),
     understood,
     source: "From your Roster",
     action: { label: "Open shift", href: first.href },
+    ...(!onNow && first.startsAt && first.endsAt ? { calendar: first } : {}),
   };
 }
 
@@ -371,6 +403,19 @@ function shiftsInRange(input: WorkAnswerInput, range: Range): WorkAnswer {
   );
   const single = range.from === range.to;
   const first = work[0];
+  const now = nowOf(input);
+  // A night that started the day before and ends on this day: said, not counted as this day's shift.
+  const carried = single
+    ? input.items.find(
+        (item) =>
+          item.kind === "shift" &&
+          WORK_FACETS.has(item.facet ?? "other") &&
+          item.date === addDaysToDate(range.from, -1) &&
+          item.endsAt &&
+          perthDateOf(item.endsAt) === range.from,
+      )
+    : undefined;
+  const ahead = work.find((item) => item.startsAt && item.endsAt && Date.parse(item.startsAt) > now);
   const headline =
     work.length === 0
       ? leave.length > 0
@@ -386,19 +431,35 @@ function shiftsInRange(input: WorkAnswerInput, range: Range): WorkAnswer {
     icon: work.length === 0 ? "free" : "shift",
     label: single ? longDay(range.from) : rangeWords(range.from, range.to),
     headline,
-    sub: single && first ? first.title : null,
+    sub: single && first ? [first.title, ...(first.detail?.split(" · ").slice(2) ?? [])].join(" · ") : null,
     meta: [
       ...(leave.length > 0 ? [`Leave: ${leave.map((item) => item.title).join(", ")}`] : []),
+      ...(carried?.endsAt
+        ? [`Night from ${shortDay(carried.date as string)} ends ${perthTimeOf(carried.endsAt)}`]
+        : []),
       ...(single ? [inDays(input.today, range.from)] : []),
     ],
     items: [...work, ...leave].slice(0, 14),
     understood,
     source: "From your Roster",
     ...(first ? { action: { label: single ? "Open shift" : "Open Roster", href: first.href } } : {}),
+    ...(single && ahead ? { calendar: ahead } : {}),
   };
 }
 
-function freeDays(input: WorkAnswerInput, range: Range): WorkAnswer {
+/** "Wed 7, Fri 9, Sat 10": short enough to sit over a week strip that shows the month. */
+function shortDay(date: string): string {
+  return formatPerthDay(date).split(" ").slice(0, 2).join(" ");
+}
+
+/** Monday to Sunday of the week holding `date`. */
+function weekOf(date: string): string[] {
+  const back = (utcDay(date).getUTCDay() + 6) % 7;
+  const monday = addDaysToDate(date, -back);
+  return Array.from({ length: 7 }, (_, index) => addDaysToDate(monday, index));
+}
+
+function freeDays(input: WorkAnswerInput, range: Range, named: string | null): WorkAnswer {
   const understood = `Showing days with no shift ${range.words}`;
   const gap = notReady(input, ["roster"]);
   if (gap) return unavailableAnswer("roster", "free", understood, gap);
@@ -407,21 +468,55 @@ function freeDays(input: WorkAnswerInput, range: Range): WorkAnswer {
       .filter((item) => item.kind === "shift" && WORK_FACETS.has(item.facet ?? "other") && item.date !== null)
       .map((item) => item.date as string),
   );
+  // Days past the last rostered shift are not counted: an unpublished roster is not a day off.
+  const horizon = rosterHorizon(input);
+  const counted = (date: string) => horizon !== null && date <= horizon;
   const free: string[] = [];
   for (let date = range.from; date <= range.to; date = addDaysToDate(date, 1)) {
-    if (!worked.has(date)) free.push(date);
+    if (counted(date) && !worked.has(date)) free.push(date);
   }
+  const beyond =
+    horizon === null || horizon < range.to
+      ? horizon === null || horizon < range.from
+        ? "Your roster has no shifts for these days yet, so they aren't counted."
+        : `Your roster only holds shifts up to ${formatPerthDay(horizon)}. Later days aren't counted.`
+      : null;
+  // One calendar week fits a strip; anything longer is listed in words only.
+  const week = weekOf(range.from);
+  const strip = range.to <= (week[6] as string);
+  const rule =
+    "Teaching sessions don't count as shifts, and a night that ends in the morning doesn't count as a working day.";
   return {
     area: "roster",
     icon: "free",
-    label: "Days off",
-    headline: free.length === 0 ? "No free days" : plural(free.length, "day") + " with no shift",
-    sub: free.length > 0 ? free.slice(0, 8).map(formatPerthDay).join(", ") + (free.length > 8 ? " …" : "") : null,
-    meta: [rangeWords(range.from, range.to)],
+    label: named ? `Days off ${named}` : "Days off",
+    headline:
+      free.length === 0
+        ? horizon === null || horizon < range.from
+          ? "Roster not out yet"
+          : "No days without a rostered shift"
+        : `${plural(free.length, "day")} with no rostered shift`,
+    sub:
+      free.length > 0
+        ? strip
+          ? free.map(shortDay).join(", ")
+          : free.slice(0, 8).map(formatPerthDay).join(", ") + (free.length > 8 ? " …" : "")
+        : null,
+    meta: named ? [] : [rangeWords(range.from, range.to)],
     items: [],
     understood,
     source: "From your Roster",
-    footnote: "Counts days with no shift starting. A night ending that morning isn't counted as work.",
+    note: [strip ? `Shaded days have no rostered shift. ${rule}` : rule, beyond].filter(Boolean).join(" "),
+    ...(strip
+      ? {
+          week: week.map((date) => ({
+            date,
+            free: counted(date) && !worked.has(date),
+            inRange: date >= range.from && date <= range.to,
+            known: counted(date),
+          })),
+        }
+      : {}),
     action: { label: "Open Roster", href: "/roster/shifts" },
   };
 }
@@ -498,19 +593,19 @@ function nextLeave(input: WorkAnswerInput): WorkAnswer {
     icon: "leave",
     label: "Your next leave",
     headline:
-      first.until && first.until !== first.date
-        ? `${formatPerthDay(first.date)} to ${formatPerthDay(first.until)}`
-        : longDay(first.date),
+      first.date <= input.today ? `On leave until ${formatPerthDay(first.until ?? first.date)}` : longDay(first.date),
     sub: first.title,
     meta: [
-      plural(days, "calendar day"),
+      ...(first.date <= input.today
+        ? []
+        : [first.until && first.until !== first.date ? `Until ${formatPerthDay(first.until)}` : plural(days, "day")]),
       ...(status ? [status] : []),
       first.date <= input.today ? "On leave now" : inDays(input.today, first.date),
     ],
     items: leave.slice(0, 3),
     understood,
     source: "From your Roster",
-    action: { label: "View leave", href: first.href },
+    action: { label: "Open leave", href: first.href },
   };
 }
 
@@ -539,8 +634,20 @@ function dueWindow(query: string, today: string): { to: string; words: string; l
 function due(input: WorkAnswerInput, query: string): WorkAnswer {
   const window = dueWindow(query, input.today);
   const understood = `Showing renewals and talks due ${window.words}, overdue first`;
-  const gap = notReady(input, ["my-work", "teaching"]);
+  const gap =
+    notReady(input, ["my-work"]) ??
+    (areaRead(input, "teaching")?.status === "loading" ? notReady(input, ["teaching"]) : null);
   if (gap) return unavailableAnswer("all", "due", understood, gap);
+  // Teaching failed but Admin read: answer from Admin, and say the count may be short ("at least").
+  const partial = areaRead(input, "teaching")?.status !== "ready";
+  // Talks are only read six weeks ahead; past that, say how far they were checked rather than imply "none".
+  const talksTo = addDaysToDate(input.today, TEACHING_LOOKAHEAD_DAYS);
+  const talksShort = !partial && window.to > talksTo;
+  const read = partial
+    ? `Showing renewals due ${window.words}, overdue first`
+    : talksShort
+      ? `Showing renewals due ${window.words}, and talks up to ${formatPerthDay(talksTo)}, overdue first`
+      : understood;
   const overdue = input.items
     .filter((item) => item.kind === "renewal" && item.date !== null && item.date < input.today)
     .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
@@ -557,33 +664,33 @@ function due(input: WorkAnswerInput, query: string): WorkAnswer {
     (item) => item.kind === "renewal" && item.date === null && !item.detail?.includes("Not needed for this job"),
   ).length;
   const all = [...overdue, ...upcoming];
-  const first = upcoming[0];
   return {
     area: "all",
     icon: "due",
     label: window.label,
     headline:
       all.length === 0
-        ? "Nothing recorded as due"
+        ? partial
+          ? "Nothing recorded as due in Admin"
+          : "Nothing recorded as due"
         : [
             overdue.length > 0 ? `${overdue.length} overdue` : null,
-            upcoming.length > 0 && first?.date
-              ? upcoming.length === 1
-                ? `next due ${inDays(input.today, first.date).toLowerCase()}`
-                : `${upcoming.length} coming up, the first ${inDays(input.today, first.date).toLowerCase()}`
-              : null,
+            upcoming.length > 0 ? `${partial ? "at least " : ""}${upcoming.length} coming up` : null,
           ]
             .filter(Boolean)
-            .join(" · ")
+            .join(", ")
             .replace(/^./, (letter) => letter.toUpperCase()),
     sub: null,
-    meta: undated > 0 ? [`${plural(undated, "renewal")} with no date recorded`] : [],
+    meta: [],
     items: all,
-    understood,
-    source: upcoming.some((item) => item.facet === "presenting")
-      ? "From your Admin renewal dates and Teaching"
-      : "From your Admin renewal dates",
-    footnote: "Dates are shown as you recorded them",
+    understood: read,
+    source: partial
+      ? "From your Admin records. Teaching couldn't be checked."
+      : talksShort
+        ? `From your Admin and Teaching records. Talks are checked up to ${formatPerthDay(talksTo)}.`
+        : "From your Admin and Teaching records",
+    footnote: `${undated > 0 ? `${plural(undated, "renewal")} ${undated === 1 ? "has" : "have"} no date recorded. ` : ""}Dates are shown as you recorded them.`,
+    ...(partial ? { missing: "Your talks" } : {}),
   };
 }
 
@@ -650,15 +757,13 @@ function cpdHours(input: WorkAnswerInput): WorkAnswer {
     // Short targets first, the furthest behind at the top; reached ones last.
     .sort((a, b) => Number(a.met) - Number(b.met) || (a.fraction ?? 0) - (b.fraction ?? 0));
   const reached = progress.filter((row) => row.met).length;
+  const short = status.unmet.length;
   return {
     area: "cme",
     icon: "cpd",
     label: `CPD ${set.year}`,
-    headline:
-      status.unmet.length === 0
-        ? "Every target reached"
-        : `${status.unmet.length} of ${status.statuses.length} targets still short`,
-    sub: `${status.totalHours} h logged${reached > 0 && status.unmet.length > 0 ? ` · ${reached} reached` : ""}`,
+    headline: short === 0 ? "Every target reached" : `${short} ${short === 1 ? "target" : "targets"} still short`,
+    sub: `${reached} of ${status.statuses.length} targets met so far this year`,
     meta: [],
     progress,
     items: [],
@@ -684,7 +789,10 @@ function route(text: string, input: WorkAnswerInput): WorkAnswer | null {
 
   const range = parseDateRange(text, input.today);
   if (/\b(free days?|days? off|off days?|not rostered)\b/.test(text)) {
-    return freeDays(input, range ?? parseDateRange("this week", input.today)!);
+    const named =
+      /\b(this week|next week|this month|next month|this weekend|next weekend)\b/.exec(text)?.[1] ??
+      (range ? null : "this week");
+    return freeDays(input, range ?? parseDateRange("this week", input.today)!, named);
   }
   const shiftWord = SHIFT_WORDS.find(([pattern]) => pattern.test(text));
   if (/\bhow many\b/.test(text) && (shiftWord || /\bshifts?\b/.test(text))) {
