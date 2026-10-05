@@ -454,6 +454,10 @@ describe("CME training page, the mock-up's sample people", () => {
 
   it("shows the junior doctor example with the mock-up's values", () => {
     renderSample("intern");
+    // The example has a training record, so the rule note must not call it empty.
+    expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent(
+      "Whether an intern's or PGY2's programme covers their CPD is not worked out here yet",
+    );
     expect(screen.getByTestId("cme-training-this-term")).toHaveTextContent("This term · general medicine");
     expect(screen.getByTestId("cme-training-mid-term")).toHaveTextContent(
       "Mid-term assessmentWith your term supervisor · Fri 16 Oct, in 12 days",

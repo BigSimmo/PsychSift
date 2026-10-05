@@ -983,7 +983,9 @@ export function CmeTrainingPage({
               />
             </CmeFlatList>
             <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-training-cpd-rule-basis">
-              {cpdRule.basis}
+              {sampleView === "intern"
+                ? "Whether an intern's or PGY2's programme covers their CPD is not worked out here yet, so no rule is ticked."
+                : cpdRule.basis}
             </p>
           </CmeGroup>
         )}
