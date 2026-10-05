@@ -441,7 +441,9 @@ wiped at shift end, because a Form 3A detention can outlast a shift (owner decis
 once. An unreadable store says "Clocks could not be read on this phone" rather than "No clocks yet".
 Limits come only from `mhaTimers` (`src/lib/on-call/mha-timers.ts`), so a countdown shows only while
 the signed switch is on (a passed limit is red); otherwise the owner-approved quote-only lines from
-the form-page Timeline. The page also copies the running clocks for handover (form and made-at time
+the form-page Timeline. Every limit, countdown or not, carries the Act's own words and a
+section-labelled link to the Act (the hazard-analysis control). `/psychiatry/*` are information
+pages, so the clock page has no shared composer. The page also copies the running clocks for handover (form and made-at time
 only) and offers Undo after a removal. Linked from the hub's "For a shift" list on Ask and Tools.
 The hub and the clock page are drawn with the flat list parts in
 `src/components/psychiatry/psychiatry-flat.tsx`.
