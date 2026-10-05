@@ -1500,6 +1500,11 @@ body {
   --dash-hero-3: #1a5f9f;
   --dash-hero-glass: rgb(255 255 255 / 0.1);
   --dash-hero-glass-line: rgb(255 255 255 / 0.16);
+  --dash-hero-muted: #e3eefa;
+  --dash-line: #e4e8ee;
+  --dash-line-strong: #cfd6df;
+  --dash-blue: #1d6fb8;
+  --dash-warn-line: #e3c590;
 }
 
 .dark .dash-surface.my-day-quiet,
@@ -1517,6 +1522,9 @@ body {
   --dash-hero-1: #21364a;
   --dash-hero-2: #21364a;
   --dash-hero-3: #21364a;
+  --dash-hero-muted: #b9c9d8;
+  --dash-blue: #78bdf0;
+  --dash-warn-line: #5a4524;
 }
 
 /* Grey icons on My Day's quick actions: colour is kept for meaning. */
@@ -1558,6 +1566,8 @@ body {
     --dash-green-line: CanvasText;
     --dash-blue-tint: Canvas;
     --dash-blue-tint-2: Canvas;
+    --dash-warn-line: CanvasText;
+    --dash-hero-muted: CanvasText;
     --dash-hero-1: Canvas;
     --dash-hero-2: Canvas;
     --dash-hero-3: Canvas;

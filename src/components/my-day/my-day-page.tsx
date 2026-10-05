@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Sunrise } from "lucide-react";
+import { ChevronLeft, Sunrise, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -11,11 +11,13 @@ import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { listNames, MyDayItemRow, myDayModeLabel, useMyDayNow } from "@/components/my-day/my-day-page-parts";
+import { QuietNote, quietLink } from "@/components/my-day/my-day-quiet";
 import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
+import { perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import {
   myDayEnabledForAuth,
   myDayNeedsSignIn,
@@ -307,6 +309,13 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const now = useMyDayNow(nowProp);
   const today = perthCalendarDate(now);
   const state = useMyDayItems({ enabled, now });
+  // When the sources last answered, for "Checked … at 14:05" and the offline note. Set when the
+  // answer changes, never on the minute tick.
+  const [loaded, setLoaded] = useState<{ readonly state: typeof state; readonly at: string | null }>(() => ({
+    state,
+    at: state.status === "ready" ? perthTimeOf(now) : null,
+  }));
+  if (loaded.state !== state) setLoaded({ state, at: state.status === "ready" ? perthTimeOf(now) : null });
   // The full list has its own address, so the phone's Back returns to the dashboard.
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
@@ -413,14 +422,18 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
 
         {sampleView ? (
           <div className="grid gap-5" data-testid="my-day-sample">
-            <SignedOutSampleNotice
-              title="Sign in to see your day"
-              testId="my-day-signed-out"
-              noticeTestId="my-day-sample-notice"
-            >
-              Below is a sample day made of invented examples, so you can see how My Day works. Signed in, it gathers
-              your own On Call, Roster, CPD, Teaching and Admin records. Nothing is shared.
-            </SignedOutSampleNotice>
+            <div className="grid gap-2">
+              <SignedOutSampleNotice
+                title="Sign in to see your own day"
+                testId="my-day-signed-out"
+                noticeTestId="my-day-sample-notice"
+              >
+                Your shifts, on call, CPD and renewals appear here once you sign in. Nothing is shared.
+              </SignedOutSampleNotice>
+              <p className="px-1 text-sm-minus text-[color:var(--dash-muted)]" data-testid="my-day-sample-line">
+                Everything below is a made-up sample.
+              </p>
+            </div>
             {view === "all" ? (
               <MyDaySampleDashboard
                 now={now}
@@ -448,16 +461,25 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
         {ready ? (
           <div className="grid gap-5" data-testid="my-day-ready">
             {failed.length > 0 ? (
-              <div className="grid gap-2" data-testid="my-day-failed-notice">
-                <ModeNotice tone="warning">{`Couldn't load: ${failed.join(", ")}.${checked.length > 0 ? " Showing the rest." : ""}`}</ModeNotice>
-                {checked.length > 0 ? (
-                  <div>
-                    <Button variant="secondary" onClick={state.retry}>
-                      Retry
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
+              <QuietNote
+                icon={TriangleAlert}
+                warn
+                role="alert"
+                testId="my-day-failed-notice"
+                title={`Couldn't load: ${failed.join(", ")}.`}
+                body={
+                  checked.length > 0
+                    ? "Needs you may be missing items from these. Showing the rest."
+                    : "Nothing here can be relied on until it loads."
+                }
+                action={
+                  checked.length > 0 ? (
+                    <button type="button" onClick={state.retry} className={quietLink}>
+                      Try again
+                    </button>
+                  ) : null
+                }
+              />
             ) : null}
             {view === "all" ? (
               fullList(items, checked)
@@ -473,7 +495,10 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                   helpItems={helpItems}
                   adminEntries={adminEntries}
                   checked={checked}
+                  checkedAt={loaded.at}
+                  incomplete={failed.length > 0}
                   editing={editing}
+                  onToggleEditing={() => setEditing((value) => !value)}
                   page={page}
                   onShowAll={showAll}
                   onRetry={state.retry}

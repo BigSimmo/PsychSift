@@ -1,27 +1,28 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus, TriangleAlert, WifiOff } from "lucide-react";
 import dynamic from "next/dynamic";
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { pinnedHelpItems } from "@/components/admin/admin-pinned-numbers";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { focusRing } from "@/components/card-recipes";
 import { dashMuted } from "@/components/dashboard-kit/recipes";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
+import { QuietNote, quietLink } from "@/components/my-day/my-day-quiet";
 import { listNames } from "@/components/my-day/my-day-page-parts";
 import {
   CpdRingsCard,
+  CustomiseRow,
   FlagCard,
   HeroCard,
+  type HeroFinishedShift,
   type HeroNextTeaching,
-  MODE_CHIP,
   NeedsYouCard,
   QuickActionsCard,
   RenewalsRunwayCard,
   shiftName,
   ThisWeekCard,
-  type AgendaLine,
   type DayDetail,
 } from "@/components/my-day/my-day-today-cards";
 import {
@@ -41,7 +42,6 @@ import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { kindOf } from "@/components/roster/roster-format";
 import { sessionHref } from "@/components/teaching/teaching-view-model";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { displayPhoneNumber } from "@/lib/admin/phone-display";
@@ -55,14 +55,12 @@ import {
   selectNeedsYou,
   selectUpNext,
   snoozeUntil,
-  weekOf,
   type MyDayCardId,
   type MyDayPageId,
   type MyDaySnoozes,
   type MyDayTimedEvent,
 } from "@/lib/my-day/dashboard";
 import {
-  buildDayRibbon,
   cpdProjectedHours,
   hoursBars,
   kindsByDate as kindsByDateOf,
@@ -73,6 +71,8 @@ import {
   type RenewalRow,
 } from "@/lib/my-day/figures";
 import { duePerthDate } from "@/lib/my-day/merge";
+import { weekRows } from "@/lib/my-day/quiet-figures";
+import { myDayWeekDates } from "@/lib/my-day/week";
 import type { MyDayItem } from "@/lib/my-day/model";
 import { nextTeachingSession } from "@/lib/my-day/next-teaching";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
@@ -130,6 +130,12 @@ export interface MyDayDashboardProps {
   /** Names of the My Day sources that were checked, for the empty "Needs you" line. */
   readonly checked: readonly string[];
   readonly editing: boolean;
+  /** Opens or closes the show-and-hide mode from the "Customise My Day" row. */
+  readonly onToggleEditing?: () => void;
+  /** When the sources last answered, "14:05", for the "Checked … at" line. */
+  readonly checkedAt?: string | null;
+  /** A My Day item source failed, so the Needs you count is "at least". */
+  readonly incomplete?: boolean;
   /** Which page (tab) to draw. */
   readonly page?: MyDayPageId;
   readonly onShowAll: () => void;
@@ -193,6 +199,9 @@ export function MyDayDashboard({
   sources,
   checked,
   editing,
+  onToggleEditing,
+  checkedAt = null,
+  incomplete: itemsIncomplete = false,
   page = "today",
   onShowAll,
   onRetry,
@@ -254,30 +263,23 @@ export function MyDayDashboard({
   const shiftRunning = lead?.state === "on_now";
   // The shift already has the hero's ring, so Up next is the next thing after it.
   const upNext = selectUpNext(leadShift ? events.filter((event) => event.id !== `shift:${leadShift.id}`) : events, now);
-  const ribbon = useMemo(
-    () =>
-      buildDayRibbon(
-        [
-          ...todaysShifts.map((shift) => ({
-            id: `shift:${shift.id}`,
-            startsAt: shift.startsAt,
-            endsAt: shift.endsAt,
-            kind: "shift" as const,
-          })),
-          ...teachingSessions.map((session) => ({
-            id: `teaching:${session.occurrenceId}`,
-            startsAt: session.startsAt,
-            endsAt: session.endsAt,
-            kind: "other" as const,
-          })),
-        ],
-        now,
-      ),
-    [todaysShifts, teachingSessions, now],
-  );
+  // No shift left today: the one that ended earlier today, and the next one on a later day.
+  const finished: HeroFinishedShift | null = useMemo(() => {
+    if (lead?.state !== "day_off" || !lead.finishedToday) return null;
+    const at = now.getTime();
+    const ended = shifts
+      .filter(
+        (shift) => kindOf(shift) !== "leave" && Date.parse(shift.endsAt) <= at && perthDateOf(shift.endsAt) === today,
+      )
+      .sort((a, b) => Date.parse(b.endsAt) - Date.parse(a.endsAt))[0];
+    return ended ? { kind: kindOf(ended), endsAt: ended.endsAt } : null;
+  }, [lead, shifts, now, today]);
+  const heroShift = lead?.state === "day_off" ? null : leadShift;
+  const nextShift = lead?.state === "day_off" ? leadShift : null;
 
   // ---------------------------------------------------------------- this week
-  const week = useMemo(() => weekOf(today), [today]);
+  // Today and the six days after it, the same seven days as the Week page.
+  const week = useMemo(() => myDayWeekDates(today), [today]);
   const kindsByDate = useMemo(
     () =>
       rosterReady ? kindsByDateOf(shifts.map((shift) => ({ startsAt: shift.startsAt, kind: kindOf(shift) }))) : null,
@@ -286,34 +288,28 @@ export function MyDayDashboard({
   const dueByDate = useMemo(() => dueCountsByDate(items), [items]);
   const weekHasDue = week.some((date) => (dueByDate.get(date) ?? 0) > 0);
 
-  const agenda = useMemo<AgendaLine[]>(() => {
-    const at = now.getTime();
-    const lines: AgendaLine[] = [];
-    for (const event of events) {
-      lines.push({
-        key: event.id,
-        at: Date.parse(event.startsAt),
-        time: perthTimeOf(event.startsAt),
-        text: event.title,
-        past: Date.parse(event.endsAt) <= at,
-      });
-    }
-    for (const item of items) {
-      if (!item.due || /^\d{4}-\d{2}-\d{2}$/.test(item.due) || duePerthDate(item.due) !== today) continue;
-      const due = Date.parse(item.due);
-      lines.push({ key: `item:${item.id}`, at: due, time: perthTimeOf(item.due), text: item.title, past: due <= at });
-    }
-    const byTime = (a: AgendaLine, b: AgendaLine) => a.at - b.at || a.key.localeCompare(b.key);
-    // Unfinished and upcoming lines claim the six places first, so a busy
-    // morning that is over cannot push the rest of the day off the card.
-    const kept = [
-      ...lines.filter((line) => !line.past).sort(byTime),
-      ...lines.filter((line) => line.past).sort(byTime),
-    ];
-    return kept.slice(0, 6).sort(byTime);
-  }, [events, items, now, today]);
-
   const ahead = sources.teaching.ahead ?? NO_SESSIONS;
+  const rows = useMemo(
+    () =>
+      weekRows(
+        shifts
+          .filter((shift) => kindOf(shift) !== "leave")
+          .map((shift) => ({ id: shift.id, kind: kindOf(shift), startsAt: shift.startsAt, endsAt: shift.endsAt })),
+        [...teachingSessions, ...ahead].map((session) => ({
+          id: session.occurrenceId,
+          title: session.title,
+          startsAt: session.startsAt,
+          endsAt: session.endsAt,
+          venue: session.venue ?? null,
+          isPresenter: session.isPresenter,
+          allDay: session.allDay,
+          href: sessionHref(session) ?? "/teaching/week",
+        })),
+        today,
+        now,
+      ),
+    [shifts, teachingSessions, ahead, today, now],
+  );
   const detailFor = (date: string): DayDetail[] => {
     const details: DayDetail[] = [];
     for (const shift of shifts) {
@@ -321,8 +317,7 @@ export function MyDayDashboard({
       const kind: ShiftKind = kindOf(shift);
       details.push({
         key: `shift:${shift.id}`,
-        code: kind === "on_call" ? "OC" : kind === "night" ? "N" : kind === "leave" ? "L" : "D",
-        tint: kind === "on_call" ? "blue" : "blue-2",
+        mode: "roster",
         title:
           kind === "leave"
             ? "Leave"
@@ -334,19 +329,16 @@ export function MyDayDashboard({
       if (session.allDay || perthDateOf(session.startsAt) !== date) continue;
       details.push({
         key: `teaching:${session.occurrenceId}`,
-        code: "T",
-        tint: "blue-2",
+        mode: "teaching",
         title: `${session.title} ${perthTimeOf(session.startsAt)}`,
         subtitle: session.isPresenter ? "You're presenting" : (session.venue ?? undefined),
       });
     }
     for (const item of items) {
       if (duePerthDate(item.due) !== date) continue;
-      const chip = MODE_CHIP[item.mode];
       details.push({
         key: `item:${item.id}`,
-        code: chip.code,
-        tint: chip.tint,
+        mode: item.mode,
         title: item.title,
         subtitle: item.severity === "overdue" ? (item.mode === "my-work" ? "Date passed" : "Overdue") : "Due",
         passed: item.severity === "overdue",
@@ -426,6 +418,7 @@ export function MyDayDashboard({
       title: nextUp.title,
       when: `${formatPerthDay(date)}${times}`,
       href: href ?? "/teaching/week",
+      where: [nextUp.venue, nextUp.isPresenter ? "you lead" : null].filter(Boolean).join(" · "),
       actionLabel: href ? "Details" : "See in Week",
     };
   }, [nextUp, device.hidden]);
@@ -436,11 +429,12 @@ export function MyDayDashboard({
     "next-up": nextUp !== null,
     flag: flagItems.length > 0,
     "quick-actions": true,
-    "this-week": rosterReady || agenda.length > 0 || weekHasDue,
+    "this-week": rosterReady || rows.length > 0 || weekHasDue,
     "needs-you": true,
     cpd: cpdReady,
     renewals: runway.length > 0,
-    calls: callTotal > 0,
+    // During or before tonight's on call the panel shows, even with no calls logged yet.
+    calls: callTotal > 0 || handoverAt !== null,
     "pinned-numbers": pinnedNumbers.length > 0,
     "whos-on": whosOn?.status === "ready" && whosOn.colleagues.length > 0,
     "next-talk": nextTalk !== null,
@@ -463,20 +457,26 @@ export function MyDayDashboard({
     onRetry();
     sources.retry?.();
   };
+  const rosterFailed = sources.roster.status === "failed";
+  // The roster has its own amber note; the rest share one line.
   const failed = [
-    sources.roster.status === "failed" ? "Shifts" : null,
     sources.teaching.status === "failed" ? "Teaching sessions" : null,
     cpd.status === "failed" ? "CPD hours" : null,
   ].filter((name): name is string => name !== null);
+  // Any source missing or part-read: counts are "at least", never a clean "nothing due".
+  const incomplete = itemsIncomplete || rosterFailed || failed.length > 0 || partial.length > 0;
+  const online = useOnline();
+  const desktop = useDesktop();
 
   const cards: Record<MyDayCardId, () => ReactNode> = {
     "up-next": () => (
       <HeroCard
-        shift={leadShift}
+        shift={heroShift}
         running={shiftRunning}
         upNext={upNext}
-        ribbon={ribbon}
         nextTeaching={heroNext}
+        finished={finished}
+        nextShift={nextShift}
         now={now}
         onHide={onHide("up-next")}
         onHideNextTeaching={onHide("next-up")}
@@ -484,7 +484,7 @@ export function MyDayDashboard({
     ),
     // Drawn inside the hero (see `heroNext`), so the card itself draws nothing.
     "next-up": () => null,
-    flag: () => <FlagCard items={flagItems} onHide={onHide("flag")} />,
+    flag: () => <FlagCard items={flagItems} today={today} onHide={onHide("flag")} />,
     "quick-actions": () => <QuickActionsCard onHide={onHide("quick-actions")} />,
     "this-week": () => (
       <ThisWeekCard
@@ -492,7 +492,7 @@ export function MyDayDashboard({
         today={today}
         kindsByDate={kindsByDate}
         dueByDate={dueByDate}
-        agenda={agenda}
+        rows={rows}
         detailFor={detailFor}
         onHide={onHide("this-week")}
       />
@@ -503,6 +503,9 @@ export function MyDayDashboard({
         waiting={needsYou.waiting}
         total={needsYou.total}
         checked={checked}
+        checkedAt={checkedAt}
+        incomplete={incomplete}
+        today={today}
         undo={undo}
         onLater={later}
         onUndo={() => {
@@ -575,16 +578,50 @@ export function MyDayDashboard({
   const shownIds = pageCards.filter((id) => visible[id] && !device.hidden.has(id));
   const hiddenIds = pageCards.filter((id) => device.hidden.has(id));
 
+  const drawCards = (ids: readonly MyDayCardId[]) => ids.map((id) => <Fragment key={id}>{cards[id]()}</Fragment>);
+  // Today on a computer: two set columns, the day on the left and the planning on the right.
+  const twoColumns = page === "today" && desktop;
+  const leftIds = shownIds.filter((id) => TODAY_LEFT.has(id));
+  const rightIds = shownIds.filter((id) => !TODAY_LEFT.has(id));
+
   return (
-    <div className="grid gap-2.5" data-testid="my-day-dashboard" data-page={page}>
+    <div className="grid gap-3" data-testid="my-day-dashboard" data-page={page}>
+      {online ? null : (
+        <QuietNote
+          icon={WifiOff}
+          testId="my-day-offline"
+          role="status"
+          title="You are offline"
+          body={
+            checkedAt
+              ? `This is My Day as it loaded at ${checkedAt}. Reload when you are back online to see changes.`
+              : "Reload when you are back online to see changes."
+          }
+        />
+      )}
+      {rosterFailed ? (
+        <QuietNote
+          icon={TriangleAlert}
+          warn
+          testId="my-day-roster-failed"
+          role="alert"
+          title="Your roster did not load"
+          body="Shifts and on call may be missing here. Check Roster before you rely on this page."
+          action={
+            <button type="button" onClick={retryAll} className={quietLink} data-testid="my-day-roster-retry">
+              Try again
+            </button>
+          }
+        />
+      ) : null}
       {failed.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <p className={dashMuted} data-testid="my-day-card-failed">
             {`Couldn't load ${listNames(failed)}, so ${failed.length === 1 ? "that card is" : "those cards are"} not shown.`}
           </p>
-          <Button variant="secondary" onClick={retryAll} data-testid="my-day-card-retry">
-            Retry
-          </Button>
+          <button type="button" onClick={retryAll} className={quietLink} data-testid="my-day-card-retry">
+            Try again
+          </button>
         </div>
       ) : null}
       {partial.length > 0 ? (
@@ -592,14 +629,26 @@ export function MyDayDashboard({
           {`Couldn't load ${listNames(partial)}, so these cards may be missing some of it.`}
         </p>
       ) : null}
-      <div
-        className="grid gap-2.5 lg:block lg:columns-2 lg:gap-2.5 lg:*:mb-2.5 lg:*:break-inside-avoid"
-        data-editing={editing ? "" : undefined}
-      >
-        {shownIds.map((id) => (
-          <Fragment key={id}>{cards[id]()}</Fragment>
-        ))}
-      </div>
+      {twoColumns ? (
+        <div
+          className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start gap-6"
+          data-editing={editing ? "" : undefined}
+          data-testid="my-day-columns"
+        >
+          <div className="grid min-w-0 gap-5">{drawCards(leftIds)}</div>
+          <div className="grid min-w-0 gap-5">{drawCards(rightIds)}</div>
+        </div>
+      ) : (
+        <div
+          className={cn(
+            "grid gap-5",
+            page !== "today" && "lg:block lg:columns-2 lg:gap-6 lg:*:mb-5 lg:*:break-inside-avoid",
+          )}
+          data-editing={editing ? "" : undefined}
+        >
+          {drawCards(shownIds)}
+        </div>
+      )}
       {shownIds.length === 0 && !editing ? (
         <p className={cn(dashMuted, "px-1")} data-testid="my-day-all-hidden">
           {page === "work" && hiddenIds.length === 0 ? WORK_EMPTY : ALL_HIDDEN}
@@ -635,6 +684,45 @@ export function MyDayDashboard({
           ) : null}
         </div>
       ) : null}
+      {onToggleEditing ? <CustomiseRow editing={editing} onToggle={onToggleEditing} /> : null}
     </div>
+  );
+}
+
+/** Today's left column on a computer; the rest go on the right. */
+const TODAY_LEFT: ReadonlySet<MyDayCardId> = new Set(["up-next", "flag", "needs-you"]);
+
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
+function subscribeDesktop(onChange: () => void) {
+  const query = window.matchMedia(DESKTOP_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+/** True at the computer width. The server and the first paint draw the phone layout. */
+function useDesktop(): boolean {
+  return useSyncExternalStore(
+    subscribeDesktop,
+    () => window.matchMedia(DESKTOP_QUERY).matches,
+    () => false,
+  );
+}
+
+function subscribeOnline(onChange: () => void) {
+  window.addEventListener("online", onChange);
+  window.addEventListener("offline", onChange);
+  return () => {
+    window.removeEventListener("online", onChange);
+    window.removeEventListener("offline", onChange);
+  };
+}
+
+/** The browser's own offline signal. The server always says online. */
+function useOnline(): boolean {
+  return useSyncExternalStore(
+    subscribeOnline,
+    () => navigator.onLine,
+    () => true,
   );
 }
