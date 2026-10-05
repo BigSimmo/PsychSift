@@ -308,6 +308,11 @@
         "area": "product"
       },
       {
+        "path": "/on-call/pulse",
+        "file": "src/app/(search-app)/on-call/pulse/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/calculators-clinical-console",
         "file": "src/app/mockups/calculators-clinical-console/page.tsx",
         "area": "mockup"
@@ -1296,6 +1301,11 @@
         "path": "/mockups/phone-mode-sheet-yes",
         "file": "src/app/mockups/phone-mode-sheet-yes/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/on-call/handover",
+        "file": "src/app/(search-app)/on-call/handover/page.tsx",
+        "area": "product"
       },
       {
         "path": "/first-nations/going-home",
