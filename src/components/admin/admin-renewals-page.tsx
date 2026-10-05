@@ -431,16 +431,6 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
         </>
       ) : (
         <>
-          <RenewNextCard
-            next={next}
-            today={today}
-            canEdit={canEdit}
-            onRenew={(item) => {
-              setRenewSubject({ entry: item.row.entry });
-              setRenewOpen(true);
-            }}
-            onOpen={(item) => setDetailSubject({ kind: "catalogue", item: item.row.item, entry: item.row.entry })}
-          />
           <Tabs
             label="Renewals"
             value={tab}
@@ -470,6 +460,16 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
 
           {tab === "checklist" ? (
             <div className="grid gap-4">
+              <RenewNextCard
+                next={next}
+                today={today}
+                canEdit={canEdit}
+                onRenew={(item) => {
+                  setRenewSubject({ entry: item.row.entry });
+                  setRenewOpen(true);
+                }}
+                onOpen={(item) => setDetailSubject({ kind: "catalogue", item: item.row.item, entry: item.row.entry })}
+              />
               <ChecklistAtAGlance
                 rows={rows}
                 counts={bucketCounts}

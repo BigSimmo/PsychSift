@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Copy, FileDown } from "lucide-react";
+import { ChevronRight, Copy } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { useAccountData } from "@/components/account-data-provider";
@@ -25,7 +25,14 @@ import { selectNewJobRows } from "@/lib/admin/help-items";
 import { selectNewJobStart, setNewJobStart, setNewJobStepDone } from "@/lib/admin/new-job-progress";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { displayPhoneNumber } from "@/lib/admin/phone-display";
-import { formatUpdatedMonth } from "@/lib/admin/renewal-dates";
+import { formatRecordedDate, formatUpdatedMonth } from "@/lib/admin/renewal-dates";
+import {
+  buildComplianceOverview,
+  complianceNeedsActionCount,
+  type ComplianceOverview,
+} from "@/lib/admin/compliance-overview";
+import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
+import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { onCallEntrySchema, type OnCallEntry, type OnCallSection } from "@/lib/on-call/entry-model";
@@ -83,6 +90,53 @@ function ContactRow({ entry }: { entry: OnCallEntry }) {
  * "Your Admin records"). Order, not weeks, is what the page shows (owner
  * decision) — there is no week strip.
  */
+/** At most this many item names in the signpost before "and N more". */
+const PAPERWORK_NAMES = 4;
+
+function namesLine(titles: readonly string[]): string {
+  if (titles.length <= PAPERWORK_NAMES) return titles.join(", ");
+  return `${titles.slice(0, PAPERWORK_NAMES).join(", ")} and ${titles.length - PAPERWORK_NAMES} more`;
+}
+
+/**
+ * One signpost to the paperwork (5 Oct mock-up v2, screen 6): what is still to
+ * do before the recorded start date, from the same next-job pass Compliance
+ * reads, so the two pages cannot disagree. Without a start date it says what
+ * needs action now instead, never "nothing to do".
+ */
+function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview }) {
+  const nextJob = overview.nextJob;
+  const toDo = nextJob?.toDo ?? [];
+  const needsAction = complianceNeedsActionCount(overview);
+  const title = nextJob ? "Paperwork for your next job" : "Paperwork";
+  const count = nextJob ? toDo.length : needsAction;
+  return (
+    <Link
+      href={ADMIN_PAGE_HREFS.compliance}
+      data-testid="admin-new-job-paperwork"
+      className={cn(
+        cardSurface,
+        focusRing,
+        "flex min-h-12 items-center gap-2 px-3 py-2.5 no-underline text-[color:var(--text-heading)]",
+      )}
+    >
+      <span className="grid min-w-0 flex-1 gap-0.5">
+        <span className="text-sm font-medium">{title}</span>
+        <span className="text-sm text-[color:var(--text)]" data-testid="admin-new-job-paperwork-count">
+          {count === 0 ? "Nothing to do, in Compliance" : `${count} to do, in Compliance`}
+        </span>
+        {nextJob && toDo.length > 0 ? (
+          <span className={cn(textMuted, "text-xs")} data-testid="admin-new-job-paperwork-names">
+            {`Before ${formatRecordedDate(nextJob.startsOn)}: ${namesLine(toDo.map((todo) => todo.item.row.item.title))}`}
+          </span>
+        ) : null}
+        <span className={cn(textMuted, "text-xs")}>Your service&apos;s list may differ.</span>
+      </span>
+      <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+    </Link>
+  );
+}
+
 export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
   const { isAuthenticated } = useAccountData();
   const state = useOnCallEntries();
@@ -106,6 +160,10 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
   // The page's own start line: shown for as long as a date is stored (Today
   // hides it a week in; this page does not), read from the row that holds it.
   const start = selectNewJobStart({ own, shared });
+  const overview = useMemo(
+    () => buildComplianceOverview(ADMIN_REQUIREMENTS_CATALOGUE, own, now, start?.startsOn ?? null),
+    [own, now, start?.startsOn],
+  );
   const ownLogins = rows.logins.filter((row) => row.source === "you");
   const doneCount = ownLogins.filter((row) => {
     const details = row.entry.details;
@@ -238,9 +296,11 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                   className="text-sm font-medium text-[color:var(--text-heading)]"
                   data-testid="admin-new-job-progress"
                 >
-                  {doneCount} of {totalCount} done
+                  {`Logins and access: ${doneCount} of ${totalCount} done`}
                 </p>
               ) : null}
+
+              <PaperworkSignpost overview={overview} />
 
               <div className="grid gap-2">
                 <div className="flex items-center justify-between px-1">
@@ -294,33 +354,6 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
             </section>
 
             <section
-              id="admin-new-job-credential-pack"
-              aria-labelledby="admin-new-job-credential-pack-heading"
-              className={cn(inPageAnchor, "grid gap-3")}
-            >
-              <h2 id="admin-new-job-credential-pack-heading" className={eyebrowText}>
-                For your new employer
-              </h2>
-              <Link
-                href="/admin/new-job/pack"
-                data-testid="admin-new-job-credential-pack-link"
-                className={cn(
-                  cardSurface,
-                  focusRing,
-                  "flex min-h-12 items-center gap-2 px-3 py-2.5 no-underline text-[color:var(--text-heading)]",
-                )}
-              >
-                <FileDown aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-                <span className="grid min-w-0 flex-1 gap-0.5">
-                  <span className="text-sm font-medium">Credential pack</span>
-                  <span className={cn(textMuted, "text-xs")}>
-                    Registration numbers and renewal dates as one PDF, made on this device
-                  </span>
-                </span>
-                <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-              </Link>
-            </section>
-            <section
               id="admin-new-job-leaving"
               aria-labelledby="admin-new-job-leaving-heading"
               className={cn(inPageAnchor, "grid gap-3")}
@@ -355,19 +388,11 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                 href="/admin/new-job/pack"
                 data-testid="admin-new-job-leaving-pack-link"
                 className={cn(
-                  cardSurface,
                   focusRing,
-                  "flex min-h-12 items-center gap-2 px-3 py-2.5 no-underline text-[color:var(--text-heading)]",
+                  "inline-flex min-h-12 w-fit items-center px-1 text-sm text-[color:var(--clinical-accent)] underline-offset-2 hover:underline",
                 )}
               >
-                <FileDown aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-                <span className="grid min-w-0 flex-1 gap-0.5">
-                  <span className="text-sm font-medium">Credential pack</span>
-                  <span className={cn(textMuted, "text-xs")}>
-                    Registration numbers and renewal dates as one PDF for your next employer
-                  </span>
-                </span>
-                <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+                Credential pack, as a PDF on this device
               </Link>
             </section>
           </>

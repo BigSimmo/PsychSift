@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminNewJobPage } from "@/components/admin/admin-new-job-page";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
-import { onCallEntryFixture } from "./helpers/on-call-entry-fixture";
+import { complianceFixture, onCallEntryFixture } from "./helpers/on-call-entry-fixture";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin/new-job",
@@ -240,5 +240,25 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
     expect(link).toHaveTextContent("Changing site or starting a new job?");
     expect(link).toHaveTextContent("Your Admin records");
     expect(link).toHaveTextContent("Registration numbers and renewal dates");
+  });
+
+  it("signposts the paperwork still to do before the start date, from the same pass Compliance reads", () => {
+    entryState.entries = [
+      { ...loginOwn, details: { category: "Logins", jobStartsOn: "2026-11-02" } } as OnCallEntry,
+      complianceFixture("Fit test", { requirementId: "respirator-fit-testing", expiresOn: "2026-10-20" }),
+    ];
+    render(<AdminNewJobPage now={NOW} />);
+    const signpost = screen.getByTestId("admin-new-job-paperwork");
+    expect(signpost.getAttribute("href")).toBe("/admin/compliance");
+    expect(signpost).toHaveTextContent("Paperwork for your next job");
+    expect(screen.getByTestId("admin-new-job-paperwork-count").textContent).toMatch(/^\d+ to do, in Compliance$/);
+    expect(screen.getByTestId("admin-new-job-paperwork-names")).toHaveTextContent(/^Before 2 Nov 2026: /);
+    expect(signpost).toHaveTextContent("Your service's list may differ.");
+  });
+
+  it("keeps the credential pack as a quiet text link under Leaving", () => {
+    render(<AdminNewJobPage now={NOW} />);
+    expect(screen.queryByTestId("admin-new-job-credential-pack-link")).toBeNull();
+    expect(screen.getByTestId("admin-new-job-leaving-pack-link").getAttribute("href")).toBe("/admin/new-job/pack");
   });
 });
