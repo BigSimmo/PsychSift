@@ -77,7 +77,11 @@ export function parseMhaClockState(raw: string | null): MhaClockState {
   try {
     const parsed = JSON.parse(raw) as Partial<StoredClocks>;
     if (parsed?.v !== 1 || !Array.isArray(parsed.clocks)) return UNREADABLE_STATE;
-    const clocks = parsed.clocks.filter(isClock);
+    // Rebuild each row from its three fields, so nothing else a stored value carries (a label, a
+    // note) survives a read or is written back by the next change.
+    const clocks = parsed.clocks
+      .filter(isClock)
+      .map(({ id, formCode, madeAt }): MhaClock => ({ id, formCode, madeAt }));
     return {
       clocks: [...clocks].sort((a, b) => a.madeAt - b.madeAt).slice(0, MHA_CLOCK_LIMIT),
       unreadable: clocks.length !== parsed.clocks.length || clocks.length > MHA_CLOCK_LIMIT,
@@ -112,9 +116,11 @@ function writeRaw(raw: string | null): boolean {
 
 /**
  * Move clocks out of the patient-label store, once, when the new store is empty. The old copy is
- * removed only when it parsed completely and the new copy was written, so a refused write or an old
- * value this code cannot read leaves the clocks where they were. Run from `subscribeMhaClocks`,
- * outside render, because it writes. Returns true when it moved anything.
+ * removed only after the new copy was written, so a refused write leaves the clocks where they were.
+ * An old value this code cannot fully read is moved across exactly as it was, so the page says
+ * "Clocks could not be read" and offers to keep the readable ones, rather than saying "No clocks
+ * yet" over clocks it could not see. Run from `subscribeMhaClocks`, outside render, because it
+ * writes. Returns true when it moved anything.
  */
 function migrateLegacyClocks(): boolean {
   const { raw, failed } = readRaw();
@@ -122,10 +128,14 @@ function migrateLegacyClocks(): boolean {
   const legacy = readPatientLabels(LEGACY_MHA_CLOCK_STORE_NAME);
   if (legacy === null) return false;
   const { clocks, unreadable } = parseMhaClockState(legacy);
-  if (unreadable) return false;
-  if (clocks.length > 0 && !writeRaw(JSON.stringify({ v: 1, clocks } satisfies StoredClocks))) return false;
+  const moved = unreadable
+    ? legacy
+    : clocks.length > 0
+      ? JSON.stringify({ v: 1, clocks } satisfies StoredClocks)
+      : null;
+  if (moved !== null && !writeRaw(moved)) return false;
   removePatientLabels(LEGACY_MHA_CLOCK_STORE_NAME);
-  return clocks.length > 0;
+  return moved !== null;
 }
 
 // useSyncExternalStore needs the same object back while nothing changed.
@@ -192,9 +202,11 @@ export function removeMhaClock(id: string): boolean {
 
 /**
  * The reader's explicit choice after "Clocks could not be read": keep the clocks that could be read
- * and drop the rest. Returns false when the browser refused the change.
+ * and drop the rest. Returns false when the browser refused the change, or refused even to read the
+ * store: then nothing was seen, so nothing is dropped.
  */
 export function keepReadableMhaClocks(): boolean {
+  if (readRaw().failed) return false;
   return save(loadMhaClockState().clocks);
 }
 

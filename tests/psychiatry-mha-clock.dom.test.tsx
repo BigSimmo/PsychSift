@@ -86,7 +86,7 @@ describe("MHA clock store", () => {
     const raw = JSON.stringify({
       v: 1,
       clocks: [
-        { id: "abcdefgh-1", formCode: "2", madeAt: 1 },
+        { id: "abcdefgh-1", formCode: "2", madeAt: 1, label: "Bed 4 JS" },
         { id: "x", formCode: "2", madeAt: 1 },
         { id: "abcdefgh-2", formCode: "<b>", madeAt: 1 },
       ],
@@ -135,11 +135,41 @@ describe("MHA clock store", () => {
     expect(loadMhaClockState().unreadable).toBe(true);
   });
 
-  it("leaves an old value it cannot read where it is, rather than discarding it", () => {
-    writePatientLabels(LEGACY_MHA_CLOCK_STORE_NAME, JSON.stringify({ v: 1, clocks: [{ id: "x", formCode: "2" }] }));
+  it("moves an old value it cannot fully read across as it was, so the page says it could not be read", () => {
+    const good = { id: "abcdefgh-1", formCode: "2", madeAt: 1 };
+    const legacy = JSON.stringify({ v: 1, clocks: [good, { id: "x", formCode: "2" }] });
+    writePatientLabels(LEGACY_MHA_CLOCK_STORE_NAME, legacy);
     subscribeMhaClocks(() => undefined)();
+    expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).toBe(legacy);
+    expect(readPatientLabels(LEGACY_MHA_CLOCK_STORE_NAME)).toBeNull();
+    expect(loadMhaClockState()).toEqual({ clocks: [good], unreadable: true });
+  });
+
+  it("leaves the old copy where it is when the new store will not save", () => {
+    writePatientLabels(LEGACY_MHA_CLOCK_STORE_NAME, JSON.stringify({ v: 1, clocks: [{ id: "x", formCode: "2" }] }));
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("full");
+    });
+    try {
+      subscribeMhaClocks(() => undefined)();
+    } finally {
+      setItem.mockRestore();
+    }
     expect(readPatientLabels(LEGACY_MHA_CLOCK_STORE_NAME)).not.toBeNull();
     expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).toBeNull();
+  });
+
+  it("drops nothing when the reader keeps the readable clocks but storage refused even the read", () => {
+    window.localStorage.setItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY, "{broken");
+    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    try {
+      expect(keepReadableMhaClocks()).toBe(false);
+    } finally {
+      getItem.mockRestore();
+    }
+    expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).toBe("{broken");
   });
 
   it("refuses every change while some clocks cannot be read, until the reader keeps the readable ones", () => {
@@ -220,6 +250,23 @@ describe("MhaClockPage", () => {
     });
     expect(screen.queryByTestId("mha-clock-unreadable")).toBeNull();
     expect(screen.getByTestId("mha-clock-empty")).toBeTruthy();
+  });
+
+  it("says so when the browser will not save the choice to keep the readable clocks", () => {
+    window.localStorage.setItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY, "{broken");
+    render(<MhaClockPage forms={forms} now={now} />);
+    const removeItem = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    try {
+      act(() => {
+        fireEvent.click(screen.getByTestId("mha-clock-keep-readable"));
+      });
+    } finally {
+      removeItem.mockRestore();
+    }
+    expect(screen.getByTestId("mha-clock-unreadable")).toBeTruthy();
+    expect(screen.getByTestId("mha-clock-undo")).toHaveTextContent("This browser would not save the change.");
   });
 
   it("never puts a removed clock back after the account changes", () => {

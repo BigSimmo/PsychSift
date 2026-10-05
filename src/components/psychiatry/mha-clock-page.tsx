@@ -592,7 +592,8 @@ function useUndo() {
     const result = restoreMhaClock(removed);
     show(null, result === "added" ? `Form ${removed.formCode} clock put back` : ADD_MESSAGE[result]);
   };
-  return { removed, message, remove, undo };
+  const say = (text: string) => show(null, text);
+  return { removed, message, remove, undo, say };
 }
 
 export function MhaClockPage({
@@ -654,7 +655,11 @@ export function MhaClockPage({
             </p>
             <button
               type="button"
-              onClick={() => keepReadableMhaClocks()}
+              onClick={() => {
+                if (!keepReadableMhaClocks()) {
+                  undo.say("This browser would not save the change. Check that site storage is allowed.");
+                }
+              }}
               data-testid="mha-clock-keep-readable"
               className={cn(flatLink, "justify-self-end")}
             >
