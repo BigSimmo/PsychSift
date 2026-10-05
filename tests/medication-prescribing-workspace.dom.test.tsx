@@ -191,7 +191,7 @@ describe("MedicationPrescribingWorkspace — nothing found (mock-up v6, screen 4
     renderWorkspace({ query: "Examplex", showHome: false });
 
     const empty = screen.getByTestId("medication-nothing-found");
-    expect(empty).toHaveTextContent("No medicine called \u201cExamplex\u201d in PsychSift\u2019s list of 2");
+    expect(empty).toHaveTextContent("Nothing in PsychSift\u2019s list of 2 medicines matches \u201cExamplex\u201d");
     expect(empty).toHaveTextContent("Check the spelling. It may also be in your own PDFs");
     expect(within(empty).getByRole("link", { name: /Search your PDFs for Examplex/ })).toHaveAttribute(
       "href",
@@ -217,6 +217,21 @@ describe("MedicationPrescribingWorkspace — query interpretation", () => {
     expect(note).toHaveTextContent("No exact match for \u201csertaline\u201d. Showing results for sertraline instead.");
     expect(screen.getByText("Related terms were also included: zoloft.")).toBeInTheDocument();
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+
+  it("never promises results when the corrected spelling also finds nothing", () => {
+    catalogEmpty.current = true;
+    catalogInterpretation.current = {
+      correctedQuery: "sertraline",
+      corrections: [{ from: "sertaline", to: "sertraline" }],
+    };
+
+    renderWorkspace({ query: "sertaline", showHome: false });
+
+    const note = screen.getByTestId("medication-query-interpretation");
+    expect(note).toHaveTextContent("No exact match for \u201csertaline\u201d. No results for sertraline either.");
+    expect(note).not.toHaveTextContent("Showing results");
+    expect(note.closest('[role="status"]')).not.toBeNull();
   });
 
   it("distinguishes applied expansions from a corrected query", () => {

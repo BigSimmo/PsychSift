@@ -250,17 +250,27 @@ function MedicationDidYouMean({
   query,
   correctedQuery,
   expansions,
+  found,
 }: {
   query: string;
   correctedQuery: string;
   expansions: readonly string[];
+  found: boolean;
 }) {
   return (
     // Announced politely: the results below are for a different spelling than the one typed.
     <div role="status" className="medication-results-inset">
       <p data-testid="medication-query-interpretation" className="text-sm leading-6 text-[color:var(--text-heading)]">
-        No exact match for <strong className="font-semibold">&ldquo;{query}&rdquo;</strong>. Showing results for{" "}
-        <strong className="font-semibold">{correctedQuery}</strong> instead.
+        No exact match for <strong className="font-semibold">&ldquo;{query}&rdquo;</strong>.{" "}
+        {found ? (
+          <>
+            Showing results for <strong className="font-semibold">{correctedQuery}</strong> instead.
+          </>
+        ) : (
+          <>
+            No results for <strong className="font-semibold">{correctedQuery}</strong> either.
+          </>
+        )}
       </p>
       {expansions.length ? (
         <p className="mt-0.5 text-xs leading-snug text-[color:var(--text-muted)]">
@@ -274,9 +284,12 @@ function MedicationDidYouMean({
 function MedicationInterpretationChip({
   query,
   interpretation,
+  found,
 }: {
   query: string;
   interpretation?: MedicationCatalogInterpretation;
+  /** Whether the corrected search returned anything, so the notice never promises results that are not there. */
+  found: boolean;
 }) {
   const correctedQuery = interpretation?.correctedQuery?.trim();
   const hasCorrection = Boolean(correctedQuery) && correctedQuery?.toLowerCase() !== query.trim().toLowerCase();
@@ -284,7 +297,14 @@ function MedicationInterpretationChip({
     new Set(interpretation?.appliedExpansions?.map((term) => term.trim()).filter(Boolean) ?? []),
   );
   if (hasCorrection && correctedQuery) {
-    return <MedicationDidYouMean query={query.trim()} correctedQuery={correctedQuery} expansions={expansions} />;
+    return (
+      <MedicationDidYouMean
+        query={query.trim()}
+        correctedQuery={correctedQuery}
+        expansions={expansions}
+        found={found}
+      />
+    );
   }
   if (expansions.length === 0) return null;
 
@@ -329,8 +349,8 @@ function MedicationNothingFound({
   const trimmed = query.trim();
   const title =
     catalogueCount > 0
-      ? `No medicine called \u201c${trimmed}\u201d in PsychSift\u2019s list of ${catalogueCount.toLocaleString("en-AU")}`
-      : `No medicine called \u201c${trimmed}\u201d`;
+      ? `Nothing in PsychSift\u2019s list of ${catalogueCount.toLocaleString("en-AU")} medicines matches \u201c${trimmed}\u201d`
+      : `Nothing in PsychSift\u2019s medicines list matches \u201c${trimmed}\u201d`;
   return (
     <div className="medication-results-inset grid gap-3" data-testid="medication-nothing-found">
       <EmptyState
@@ -795,7 +815,11 @@ function MedicationResults({
 
       {catalog.data?.retainedSnapshot ? <RetainedSnapshotNotice /> : null}
 
-      <MedicationInterpretationChip query={query} interpretation={catalog.data?.interpretation} />
+      <MedicationInterpretationChip
+        query={query}
+        interpretation={catalog.data?.interpretation}
+        found={resultCount > 0}
+      />
 
       <ResultFilterSheet
         open={filterOpen}

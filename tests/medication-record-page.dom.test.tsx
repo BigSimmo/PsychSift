@@ -251,8 +251,9 @@ describe("MedicationRecordPage mock-up v6 states", () => {
   });
 
   it("says plainly when the record has no source linked, and not when it has one", () => {
-    mockDetail({ data: { record: fallbackDrug }, loading: false, error: null });
-    const { unmount } = render(<MedicationRecordPage slug="test-med" fallbackRecord={fallbackDrug} />);
+    const withNotes = { ...fallbackDrug, sections: [{ title: "Sources", type: "src", rows: [] }] };
+    mockDetail({ data: { record: withNotes }, loading: false, error: null });
+    const { unmount } = render(<MedicationRecordPage slug="test-med" fallbackRecord={withNotes} />);
     expect(screen.getByTestId("medication-no-source")).toHaveTextContent(
       "No source link confirmed for this record yet. Its own source notes are under Additional.",
     );
@@ -265,6 +266,15 @@ describe("MedicationRecordPage mock-up v6 states", () => {
       />,
     );
     expect(screen.queryByTestId("medication-no-source")).not.toBeInTheDocument();
+  });
+
+  it("does not point to Additional for source notes when the record has none", () => {
+    const noNotes = { ...fallbackDrug, sections: fallbackDrug.sections.filter((section) => section.type !== "src") };
+    mockDetail({ data: { record: noNotes }, loading: false, error: null });
+    render(<MedicationRecordPage slug="test-med" fallbackRecord={noNotes} />);
+    expect(screen.getByTestId("medication-no-source")).toHaveTextContent(
+      "No source link confirmed for this record yet, and no source notes are recorded for it.",
+    );
   });
 
   it("says nothing is linked from this page yet and offers the reader's own PDFs", () => {
@@ -323,5 +333,29 @@ describe("MedicationRecordPage mock-up v6 states", () => {
       "href",
       appModeHomeHref("prescribing"),
     );
+  });
+
+  it("blames the connection only when offline, and promises no reason when there is none", () => {
+    const retry = vi.fn();
+    useMedicationDetail.mockReturnValue({
+      data: null,
+      loading: false,
+      error: "You are offline. Connect to view this medication.",
+      notFound: false,
+      retry,
+    });
+    const { unmount } = render(<MedicationRecordPage slug="lithium-carbonate" />);
+    expect(screen.getByTestId("medication-load-failed")).toHaveTextContent(
+      "The server didn\u2019t answer. Check the connection, then try again.",
+    );
+    // Only the message is announced, not the button and links.
+    expect(screen.getByRole("alert")).not.toContainElement(screen.getByTestId("medication-retry"));
+    unmount();
+
+    useMedicationDetail.mockReturnValue({ data: null, loading: false, error: null, notFound: false, retry });
+    render(<MedicationRecordPage slug="lithium-carbonate" />);
+    const failed = screen.getByTestId("medication-load-failed");
+    expect(failed).toHaveTextContent("Try again in a moment.");
+    expect(failed).not.toHaveTextContent("reason is below");
   });
 });

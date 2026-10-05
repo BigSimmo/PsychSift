@@ -371,7 +371,10 @@ function MedicationRecordDetail({
                     className="mt-2 text-sm-minus leading-5 text-[color:var(--text-muted)]"
                     data-testid="medication-no-source"
                   >
-                    No source link confirmed for this record yet. Its own source notes are under Additional.
+                    {/* Three records carry no written source notes, so Additional is named only when it has them. */}
+                    {record.sections.some((section) => section.type === "src")
+                      ? "No source link confirmed for this record yet. Its own source notes are under Additional."
+                      : "No source link confirmed for this record yet, and no source notes are recorded for it."}
                   </p>
                 ) : null}
               </div>
@@ -586,7 +589,9 @@ function MedicationLoadFailed({ slug, error, onRetry }: { slug: string; error: s
         <p className="text-sm leading-6 text-[color:var(--text-muted)]">
           {offline
             ? "The server didn\u2019t answer. Check the connection, then try again."
-            : "Try again in a moment. If it keeps happening, the reason is below."}
+            : error
+              ? "Try again in a moment. If it keeps happening, the reason is below."
+              : "Try again in a moment."}
         </p>
         {/* The request's own reason, so a sign-in or server fault is never passed off as a bad connection. */}
         {error ? (
@@ -595,7 +600,7 @@ function MedicationLoadFailed({ slug, error, onRetry }: { slug: string; error: s
           </p>
         ) : null}
       </div>
-      <Button variant="primary" onClick={onRetry} data-testid="medication-retry" className="justify-self-start">
+      <Button variant="primary" onClick={onRetry} testId="medication-retry" className="justify-self-start">
         Try again
       </Button>
       <ul role="list" className="grid">
@@ -618,11 +623,11 @@ function MedicationLoadFailed({ slug, error, onRetry }: { slug: string; error: s
  * Notes this medicine on the device for the Medicines hub's "Recent" list:
  * slug and name only. Nothing is written while "Save recent searches" is off.
  */
-function useRecordMedicineVisit(slug: string, name: string | null) {
+function useRecordMedicineVisit(slug: string | null, name: string | null) {
   const { canRecordRecentSearches } = useAppPreferences();
   useEffect(() => {
-    if (!name || !canRecordRecentSearches || !mayRecordRecentSearches()) return;
-    recordMedicineVisit({ slug: slug.trim().toLowerCase(), name, at: Date.now() });
+    if (!slug || !name || !canRecordRecentSearches || !mayRecordRecentSearches()) return;
+    recordMedicineVisit({ slug, name, at: Date.now() });
   }, [slug, name, canRecordRecentSearches]);
 }
 
@@ -660,7 +665,8 @@ export function MedicationRecordPage({
   // (SSR fallback → live), and every record offers the same four tabs, so the
   // selection survives that swap rather than snapping back to Summary.
   const [activeTab, setActiveTab] = useState<MedicationTabId>("summary");
-  useRecordMedicineVisit(slug, record?.name ?? null);
+  // The record's own slug, never the address text, so Recent always links to a page that exists.
+  useRecordMedicineVisit(record?.slug ?? null, record?.name ?? null);
   // Where the catalogue's own "Key Interactions" section currently lives.
   const interactionsTab = medicationTabForSectionType("inter") ?? "more";
   const [patientOpen, setPatientOpen] = useState(false);
