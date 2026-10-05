@@ -34,6 +34,21 @@ const ANSWER_ICONS: Readonly<Record<WorkAnswerIcon, LucideIcon>> = {
   free: CalendarOff,
 };
 
+/** Bar widths in tenths, listed whole so the stylesheet keeps every one. The tick and words carry the state. */
+const BAR_WIDTHS = [
+  "w-0",
+  "w-[10%]",
+  "w-[20%]",
+  "w-[30%]",
+  "w-[40%]",
+  "w-1/2",
+  "w-[60%]",
+  "w-[70%]",
+  "w-[80%]",
+  "w-[90%]",
+  "w-full",
+] as const;
+
 function ProgressRows({ rows }: { rows: readonly WorkAnswerProgress[] }) {
   return (
     <ul className="grid gap-2.5">
@@ -59,10 +74,9 @@ function ProgressRows({ rows }: { rows: readonly WorkAnswerProgress[] }) {
             <span aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-[color:var(--surface-inset)]">
               <span
                 className={cn(
-                  "block h-full rounded-full",
-                  row.met ? "bg-[color:var(--success)]" : "bg-[color:var(--mode-identity)]",
+                  "block h-full rounded-full bg-[color:var(--mode-identity)]",
+                  BAR_WIDTHS[Math.min(10, Math.max(1, Math.round(row.fraction * 10)))],
                 )}
-                style={{ width: `${Math.max(4, Math.round(row.fraction * 100))}%` }}
               />
             </span>
           ) : null}
