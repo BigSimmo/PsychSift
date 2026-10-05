@@ -115,11 +115,10 @@ function BreakRow({ item, minBreakHours }: { readonly item: HoursRestBreak; read
     item.fromDate === item.toDate ? weekday(item.toDate) : `${weekday(item.fromDate)} to ${weekday(item.toDate)}`;
   return (
     <li
-      className="relative grid min-h-11 grid-cols-[minmax(0,7.5rem)_minmax(2.5rem,1fr)_auto] items-center gap-3 px-4 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden"
+      className="relative grid min-h-12 grid-cols-[minmax(0,7.5rem)_minmax(2.5rem,1fr)_auto] items-center gap-3 px-4 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-[color:var(--border)] before:content-[''] first:before:hidden"
       data-testid="roster-hours-rest-break"
       data-short={short ? "true" : undefined}
     >
-      <span className="sr-only">{`${span}: ${formatHours(item.hours)} break${short ? `, under ${minBreakHours} hours` : ""}`}</span>
       <span
         className={cn(
           "break-words text-sm",
@@ -129,7 +128,12 @@ function BreakRow({ item, minBreakHours }: { readonly item: HoursRestBreak; read
       >
         {span}
       </span>
-      <span aria-hidden="true" className="relative h-2">
+      {/* The bar carries the row's one spoken label; the words either side repeat it visually. */}
+      <span
+        role="img"
+        aria-label={`${span}: ${formatHours(item.hours)} break${short ? `, under ${minBreakHours} hours` : ""}`}
+        className="relative h-2"
+      >
         <BarFill
           share={Math.max(width, 0.02)}
           className={
