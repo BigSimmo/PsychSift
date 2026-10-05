@@ -177,7 +177,7 @@ function AreaNotices({
         onClick={onRetry}
         aria-label={`Retry loading ${names.join(" and ")}`}
         className={cn(
-          "inline-flex min-h-12 shrink-0 items-center self-center rounded-lg border border-[color:var(--border-strong)] px-3.5 text-sm font-semibold text-[color:var(--text-heading)]",
+          "inline-flex min-h-12 shrink-0 items-center self-center rounded-md border border-[color:var(--border-strong)] px-3.5 text-sm font-semibold text-[color:var(--text-heading)]",
           focusRing,
         )}
       >
@@ -216,7 +216,7 @@ function AskCard({ question, onAsk }: { question: string; onAsk: () => void }) {
       </span>
       <span
         aria-hidden="true"
-        className="grid size-6 shrink-0 place-items-center rounded-md border border-[color:var(--border-strong)] text-[color:var(--text-muted)]"
+        className="grid size-6 shrink-0 place-items-center rounded-sm border border-[color:var(--border-strong)] text-[color:var(--text-muted)]"
       >
         <CornerDownLeft aria-hidden="true" className="size-icon-xs" strokeWidth={1.6} />
       </span>
@@ -286,10 +286,13 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const exact = exactFor !== null && exactFor === trimmed;
   const hits = useMemo(
     () =>
-      collapseSeries(
-        searchWork({ items: records.items, entries: records.entries }, searchQuery, { currentArea, today, exact }),
-      ),
-    [records.items, records.entries, searchQuery, currentArea, today, exact],
+      // Patient details and clinical questions are not looked up at all: the notice is the whole answer.
+      patient || clinical
+        ? []
+        : collapseSeries(
+            searchWork({ items: records.items, entries: records.entries }, searchQuery, { currentArea, today, exact }),
+          ),
+    [patient, clinical, records.items, records.entries, searchQuery, currentArea, today, exact],
   );
   const allItems = useMemo(
     () => [...records.items, ...records.entries.map(({ item }) => item)],
@@ -420,7 +423,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 }}
                 aria-label={`See all ${group.hits.length} ${workSearchAreaLabels[group.area]} results`}
                 className={cn(
-                  "-my-3 min-h-12 px-1 text-sm font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text-heading)]",
+                  "-my-3 min-h-12 px-1 text-sm font-semibold text-[color:var(--text-muted)] [@media(hover:hover)]:hover:text-[color:var(--text-heading)]",
                   focusRing,
                 )}
               >
@@ -456,7 +459,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
       {patient ? (
         <div
           role="note"
-          className="flex items-center gap-3 rounded-xl border border-[color:var(--warning-border)] bg-[color:var(--surface-raised)] py-2 pl-4 pr-2"
+          className="flex items-center gap-3 rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--surface-raised)] py-2 pl-4 pr-2"
         >
           <Lock
             aria-hidden="true"
@@ -471,7 +474,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             type="button"
             onClick={() => runQuery("")}
             className={cn(
-              "inline-flex min-h-12 shrink-0 items-center rounded-lg bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)]",
+              "inline-flex min-h-12 shrink-0 items-center rounded-md bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)]",
               focusRing,
             )}
           >
@@ -500,7 +503,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
             href={clinicalSearchHref(trimmed)}
             onClick={onPlainClick(() => close(true))}
             className={cn(
-              "inline-flex min-h-12 items-center justify-self-start gap-1.5 rounded-lg border border-[color:var(--clinical-accent-border)] px-4 text-sm font-semibold text-[color:var(--clinical-accent)]",
+              "inline-flex min-h-12 items-center justify-self-start gap-1.5 rounded-md border border-[color:var(--clinical-accent-border)] px-4 text-sm font-semibold text-[color:var(--clinical-accent)]",
               focusRing,
             )}
           >
@@ -573,7 +576,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   inputRef.current?.blur();
                 }
               }}
-              className="search-shell flex min-h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-[color:var(--surface-inset)] pl-3.5 pr-1 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus)]"
+              className="search-shell flex min-h-12 min-w-0 flex-1 items-center gap-2.5 rounded-lg bg-[color:var(--surface-inset)] pl-3.5 pr-1 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus)]"
             >
               <WorkSearchGlyph className="size-icon-md text-[color:var(--text-heading)]" />
               <input
@@ -657,7 +660,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                     }}
                     data-mode-identity={area === "all" ? undefined : area}
                     className={cn(
-                      "relative inline-flex min-h-12 shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold",
+                      "relative inline-flex min-h-12 shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold focus-visible:outline-offset-[-2px] forced-colors:border-b-2 forced-colors:border-transparent",
+                      selected && "forced-colors:border-[Highlight]",
                       selected ? "text-[color:var(--text-heading)]" : "text-[color:var(--text-muted)]",
                       focusRing,
                     )}
@@ -721,7 +725,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               inputRef.current?.focus();
             }}
           />
-          {typed && correction ? (
+          {typed && correction && !patient && !clinical ? (
             <p className="text-sm text-[color:var(--text-muted)]">
               Showing matches for <b className="font-semibold text-[color:var(--text-heading)]">{correction.read}</b>.
               <br />

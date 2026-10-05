@@ -600,6 +600,7 @@ function due(input: WorkAnswerInput, query: string): WorkAnswer {
   if (gap) return unavailableAnswer("all", "due", understood, gap);
   // Teaching failed but Admin read: answer from Admin, and say the count may be short ("at least").
   const partial = areaRead(input, "teaching")?.status !== "ready";
+  const read = partial ? `Showing renewals due ${window.words}, overdue first` : understood;
   const overdue = input.items
     .filter((item) => item.kind === "renewal" && item.date !== null && item.date < input.today)
     .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
@@ -635,7 +636,7 @@ function due(input: WorkAnswerInput, query: string): WorkAnswer {
     sub: null,
     meta: [],
     items: all,
-    understood,
+    understood: read,
     source: partial ? "From your Admin records. Teaching couldn't be checked." : "From your Admin and Teaching records",
     footnote: `${undated > 0 ? `${plural(undated, "renewal")} ${undated === 1 ? "has" : "have"} no date recorded. ` : ""}Dates are shown as you recorded them.`,
     ...(partial ? { missing: "Your talks" } : {}),

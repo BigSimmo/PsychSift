@@ -58,7 +58,7 @@ export const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
 
 /** The quiet bordered card answers and notices sit in: no shadow, one hairline. */
-export const cardSurface = "rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)]";
+export const cardSurface = "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]";
 
 const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const WEEKDAY_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
@@ -247,7 +247,7 @@ export function RowTag({ children, tone }: { children: ReactNode; tone: "warning
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-0.5 text-2xs font-semibold",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-sm border px-2 py-0.5 text-2xs font-semibold",
         tone === "warning"
           ? "border-[color:var(--warning-border)] text-[color:var(--warning)]"
           : "border-[color:var(--border-strong)] text-[color:var(--text-muted)]",
@@ -292,7 +292,7 @@ export function ResultRow({
         data-work-search-result=""
         className={cn(
           // Room above for the sticky search box, so a row reached with the arrow keys is never hidden under it.
-          "flex min-h-14 scroll-mb-6 scroll-mt-44 items-center gap-3 py-2.5 transition-colors motion-reduce:transition-none [@media(hover:hover)]:hover:bg-[color:var(--surface-subtle)]",
+          "flex min-h-14 scroll-mb-6 scroll-mt-44 items-center gap-3 py-2.5 transition-colors focus-visible:outline-offset-[-2px] motion-reduce:transition-none [@media(hover:hover)]:hover:bg-[color:var(--surface-subtle)]",
           focusRing,
         )}
       >
@@ -363,7 +363,7 @@ export function ActionRow({
   onNavigate?: () => void;
 }) {
   const className = cn(
-    "flex min-h-12 w-full items-center gap-3 py-2.5 text-left text-sm text-[color:var(--text-heading)] transition-colors motion-reduce:transition-none [@media(hover:hover)]:hover:bg-[color:var(--surface-subtle)]",
+    "flex min-h-12 w-full items-center gap-3 py-2.5 text-left text-sm text-[color:var(--text-heading)] transition-colors focus-visible:outline-offset-[-2px] motion-reduce:transition-none [@media(hover:hover)]:hover:bg-[color:var(--surface-subtle)]",
     focusRing,
   );
   const body = (

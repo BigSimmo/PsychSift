@@ -81,7 +81,7 @@ function ProgressRows({ rows }: { rows: readonly WorkAnswerProgress[] }) {
               <span
                 className={cn(
                   "block h-full rounded-full bg-[color:var(--mode-identity)]",
-                  BAR_WIDTHS[Math.min(10, Math.max(1, Math.round(row.fraction * 10)))],
+                  BAR_WIDTHS[Math.min(10, Math.max(row.fraction > 0 ? 1 : 0, Math.round(row.fraction * 10)))],
                 )}
               />
             </span>
@@ -97,33 +97,35 @@ function CpdProgress({ rows }: { rows: readonly WorkAnswerProgress[] }) {
   const [all, setAll] = useState(false);
   const short = rows.filter((row) => !row.met);
   const shown = all || short.length === 0 ? rows : short;
+  const foldable = short.length > 0 && short.length < rows.length;
   return (
     <div className="grid justify-items-start gap-3">
       <div className="w-full">
         <ProgressRows rows={shown} />
       </div>
-      {shown.length < rows.length ? (
+      {foldable ? (
         <button
           type="button"
-          onClick={() => setAll(true)}
+          aria-expanded={all}
+          onClick={() => setAll((value) => !value)}
           className={cn("-my-3 min-h-12 text-sm font-semibold text-[color:var(--text-heading)]", focusRing)}
         >
-          Show all {rows.length} targets
+          {all ? "Show only targets still short" : `Show all ${rows.length} targets`}
         </button>
       ) : null}
     </div>
   );
 }
 
-const WEEKDAY_INITIAL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 /** Monday to Sunday, the free days shaded in the area's colour; the rest drawn as dashed outlines. */
-function WeekStrip({ days }: { days: readonly WorkAnswerDay[] }) {
+function WeekStrip({ days, label }: { days: readonly WorkAnswerDay[]; label: string }) {
   return (
-    <ol className="grid grid-cols-7 gap-1" aria-label="This week">
+    <ol className="grid grid-cols-7 gap-1" aria-label={label}>
       {days.map((day) => {
         const date = new Date(`${day.date}T00:00:00Z`);
-        const weekday = WEEKDAY_INITIAL[date.getUTCDay()];
+        const weekday = WEEKDAY_SHORT[date.getUTCDay()];
         const free = day.free && day.inRange;
         return (
           <li key={day.date} className="grid justify-items-center gap-1.5">
@@ -134,7 +136,7 @@ function WeekStrip({ days }: { days: readonly WorkAnswerDay[] }) {
                 free
                   ? "border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] font-semibold text-[color:var(--mode-identity)]"
                   : "border border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]",
-                !day.inRange && "opacity-50",
+                !day.inRange && "border-[color:var(--border)]",
               )}
             >
               {date.getUTCDate()}
@@ -169,7 +171,7 @@ function addShiftToCalendar(item: WorkItem) {
 }
 
 const outlineButton =
-  "inline-flex min-h-12 shrink-0 items-center gap-1.5 self-center rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-3.5 text-sm font-semibold text-[color:var(--text-heading)]";
+  "inline-flex min-h-12 shrink-0 items-center gap-1.5 self-center rounded-md border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-3.5 text-sm font-semibold text-[color:var(--text-heading)]";
 
 /** When an area the question needs has not loaded: say so, never "nothing". */
 function UnavailableCard({ answer, onRetry }: { answer: WorkAnswer; onRetry: () => void }) {
@@ -244,7 +246,7 @@ export function AnswerCard({
           <p className="text-sm text-[color:var(--text-muted)]">{answer.meta.join(" · ")}</p>
         ) : null}
       </div>
-      {answer.week ? <WeekStrip days={answer.week} /> : null}
+      {answer.week ? <WeekStrip days={answer.week} label={answer.label} /> : null}
       {answer.note ? <p className="text-sm text-[color:var(--text-muted)]">{answer.note}</p> : null}
       {answer.progress && answer.progress.length > 0 ? <CpdProgress rows={answer.progress} /> : null}
       {answer.area === "all" && answer.items.length > 0 ? (
@@ -262,7 +264,7 @@ export function AnswerCard({
               onClick={onPlainClick(onOpen)}
               data-work-search-primary=""
               className={cn(
-                "inline-flex min-h-12 items-center justify-center rounded-lg bg-[color:var(--mode-identity)] px-4 text-sm font-semibold text-[color:var(--mode-identity-contrast)]",
+                "inline-flex min-h-12 items-center justify-center rounded-md bg-[color:var(--mode-identity)] px-4 text-sm font-semibold text-[color:var(--mode-identity-contrast)]",
                 focusRing,
               )}
             >
