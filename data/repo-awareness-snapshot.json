@@ -723,6 +723,11 @@
         "area": "product"
       },
       {
+        "path": "/teaching/exam-prep",
+        "file": "src/app/(search-app)/teaching/exam-prep/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/verification-notice-subtle",
         "file": "src/app/mockups/verification-notice-subtle/page.tsx",
         "area": "mockup"
@@ -895,6 +900,11 @@
       {
         "path": "/therapy-compass/[slug]",
         "file": "src/app/(search-app)/therapy-compass/[slug]/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/teaching/term",
+        "file": "src/app/(search-app)/teaching/term/page.tsx",
         "area": "product"
       },
       {
