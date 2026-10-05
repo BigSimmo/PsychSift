@@ -54,6 +54,31 @@ describe("MedicinesHome", () => {
     expect(push).toHaveBeenCalledWith(appModeHomeHref("prescribing", { query: "lithium", run: true }));
   });
 
+  it("opens every outside reference and chart in a new tab, and never copies their content", () => {
+    render(<MedicinesHome counts={counts} now={now} />);
+    const references = within(screen.getByRole("list", { name: "Outside medicine references" })).getAllByRole("link");
+    expect(references.map((link) => link.textContent)).toEqual([
+      "F1Formulary One(opens in a new tab)",
+      "AMHMedicines Handbook(opens in a new tab)",
+      "TGTherapeutic Guidelines(opens in a new tab)",
+      "HPHealth\u00adPathways WA(opens in a new tab)",
+    ]);
+    const charts = within(
+      screen.getByRole("list", { name: "WA statewide mental health medication charts" }),
+    ).getAllByRole("link");
+    expect(charts).toHaveLength(3);
+    for (const link of [...references, ...charts, screen.getByTestId("medicines-card-pbs").querySelector("a")!]) {
+      expect(link.getAttribute("href")).toMatch(/^https:\/\//);
+      expect(link.getAttribute("target")).toBe("_blank");
+      expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    }
+  });
+
+  it("names this month's PBS update by the Perth calendar", () => {
+    render(<MedicinesHome counts={counts} now={new Date("2026-10-31T17:00:00Z")} />);
+    expect(screen.getByTestId("medicines-card-pbs")).toHaveTextContent("PBS updated 1 November");
+  });
+
   it("shows the Perth date in the header", () => {
     render(<MedicinesHome counts={counts} now={now} />);
     expect(screen.getByTestId("medicines-header")).toHaveTextContent("Saturday 3 October");
