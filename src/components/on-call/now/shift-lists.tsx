@@ -193,7 +193,7 @@ export function NowShiftLists({
         </button>
       </li>
       <Sheet open={open} onClose={() => setOpen(false)} title="This shift" testId="on-call-now-checklists-sheet">
-        <div className="grid min-w-0 gap-5">
+        <div data-mode-identity="on-call" className="grid min-w-0 gap-5">
           {context.kind === "roster" ? (
             <OnCallNextShift state={shifts} now={now} />
           ) : (

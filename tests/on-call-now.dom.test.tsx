@@ -320,7 +320,7 @@ describe("Now: Needs you", () => {
     render(<OnCallHome now={IN_HOURS} />);
     const needs = screen.getByTestId("on-call-now-needs-you");
     expect(within(needs).getByRole("heading")).toHaveTextContent("Escalating · Deteriorating patient");
-    expect(needs).toHaveTextContent(/Registrar called \d{2}:\d{2}/);
+    expect(needs).toHaveTextContent(/You called Registrar at \d{2}:\d{2}/);
     expect(needs).toHaveTextContent("6 min ago");
     expect(needs).toHaveTextContent(/Next: Consultant/);
     expect(needs).not.toHaveTextContent(/overdue|late/i);

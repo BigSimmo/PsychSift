@@ -46,8 +46,8 @@ function peakHours(peak: string | null): ReadonlySet<number> {
  * 17:00 to 08:00. Counts only: no bed, initials or note ever reaches it. It
  * opens the Shift pulse page.
  *
- * The mock-up's "Break 1 not taken yet" line needs a record of breaks, which
- * the app does not keep, so the card leads with the busy hours instead.
+ * Breaks are noted on the Shift pulse page (start and end times on this phone),
+ * so the card leads with the busy hours and points there for breaks.
  */
 export function NowShiftPulseCard({ now }: { readonly now: Date }) {
   const raw = useSyncExternalStore(subscribe, readCounts, () => undefined);

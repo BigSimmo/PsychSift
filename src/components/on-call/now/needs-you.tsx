@@ -137,7 +137,7 @@ export function NowNeedsYou({
           <p
             className={cn(modeNumberText, "break-words text-base-minus font-semibold text-[color:var(--text-heading)]")}
           >
-            {`${needs.waitingOn} called ${formatOnCallTime(needs.calledAt)}`}
+            {`You called ${needs.waitingOn} at ${formatOnCallTime(needs.calledAt)}`}
           </p>
           <p className={cn(modeNumberText, "text-sm text-[color:var(--text-muted)]")}>
             {waitEnds && minutesLeft !== null

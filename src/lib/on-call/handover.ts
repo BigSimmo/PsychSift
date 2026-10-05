@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED } from "@/lib/on-call/feature-flags";
 import { formTitleForCode, normalizeCode, officialForms, type OfficialForm } from "@/lib/form-register";
 
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/lib/on-call/call-log";
 import { onCallDeviceStoreChangedEvent } from "@/lib/on-call/device-state-keys";
 import {
+  PATIENT_LABEL_FALLBACK_LIFETIME_MS,
   parsePatientLabelExpiryStamp,
   patientLabelStorageKey,
   readPatientLabels,
@@ -26,9 +28,11 @@ import {
  * deliberately absent here (decisions-5-oct.md, "Handover"):
  *  - **No name or record-number field.** The patient is a bed number or up to
  *    four initials, exactly as the call log refuses a name in its label field.
- *  - **No pick lists.** Legal status, impression and referrals are typed, not
- *    chosen from the app's lists, because those lists need clinical sign-off.
- *  - **No share.** The handover leaves the device only by Copy or Print.
+ *  - **No unsigned pick lists.** Impression and referrals are typed. Legal
+ *    status can be typed as written or picked from the official forms register;
+ *    the two plain statuses wait behind `ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED`.
+ *  - **No share.** The handover leaves the device only by Copy or Print
+ *    (`ON_CALL_HANDOVER_SHARE_ENABLED` is off).
  *  - **Psychiatry only.** The other specialties' fields are not yet agreed.
  *
  * Privacy, the same as the call log it sits beside:
@@ -97,18 +101,6 @@ export const emptyOnCallHandoverDraft: OnCallHandoverDraft = {
   review: "",
   plan: "",
 };
-
-/** The table's columns, in the form's order. The heading words are the owner's own field names. */
-export const ON_CALL_HANDOVER_COLUMNS: readonly { readonly key: OnCallHandoverField; readonly label: string }[] = [
-  { key: "bed", label: "Bed" },
-  { key: "ward", label: "Ward" },
-  { key: "legal", label: "Legal" },
-  { key: "impression", label: "Impression" },
-  { key: "story", label: "Story" },
-  { key: "referrals", label: "Referrals" },
-  { key: "review", label: "Requires review" },
-  { key: "plan", label: "Plan" },
-];
 
 export const ON_CALL_HANDOVER_FULL_MESSAGE = `The handover holds ${ON_CALL_HANDOVER_LIMIT} patients. Delete some before adding more.`;
 
@@ -338,6 +330,7 @@ function matchesQuery(haystack: string, query: string): boolean {
 
 /** The plain statuses that match a search by words. */
 export function onCallHandoverLegalStatusesMatching(query: string): string[] {
+  if (!ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED) return [];
   return ON_CALL_HANDOVER_LEGAL_STATUSES.filter((status) => matchesQuery(status, query));
 }
 
@@ -454,8 +447,15 @@ export function onCallHandoverDateRange(startedAt: number, endsAt: number): stri
   return `${first.filter(Boolean).join(" ")} – ${[end.weekday, end.day, end.month].filter(Boolean).join(" ")}`;
 }
 
-export function onCallHandoverTitle(now: Date = new Date()): string {
-  return `Psychiatry handover, ${dateWords(now)}`;
+/**
+ * The date line for an export. The clear time is only a shift end when it came
+ * from the roster; with no roster it is the 12-hour fallback, which says nothing
+ * about when the shift finished, so only the start date is shown. The stamp does
+ * not record its source, so an exact fallback lifetime is read as "no roster".
+ */
+export function onCallHandoverShiftDates(startedAt: number, expiresAt: number): string {
+  const fromRoster = expiresAt - startedAt !== PATIENT_LABEL_FALLBACK_LIFETIME_MS;
+  return onCallHandoverDateRange(startedAt, fromRoster ? expiresAt : startedAt);
 }
 
 /** What the copies carry above the patients. All optional: an unknown is left out, never guessed. */

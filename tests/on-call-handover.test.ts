@@ -18,6 +18,7 @@ import {
   emptyOnCallHandoverDraft,
   onCallHandoverCallsNotIn,
   onCallHandoverDateRange,
+  onCallHandoverShiftDates,
   onCallHandoverDraftFromCall,
   onCallHandoverExportSummary,
   onCallHandoverHtmlTable,
@@ -197,7 +198,8 @@ describe("handover helpers (mock-up v10)", () => {
     const byWords = onCallHandoverLegalGroups("detention order").flatMap((group) => group.forms.map((f) => f.code));
     expect(byWords).toContain("3A");
     expect(onCallHandoverLegalGroups("zzzz")).toEqual([]);
-    expect(onCallHandoverLegalStatusesMatching("not under")).toEqual(["Not under the Act"]);
+    // Held until the wording is signed off (ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED).
+    expect(onCallHandoverLegalStatusesMatching("not under")).toEqual([]);
   });
 
   it("titles a register code and leaves a plain status untitled", () => {
@@ -234,6 +236,16 @@ describe("handover helpers (mock-up v10)", () => {
     );
     expect(onCallHandoverDateRange(Date.parse("2026-10-05T01:00:00Z"), Date.parse("2026-10-05T08:00:00Z"))).toBe(
       "Mon 5 Oct",
+    );
+  });
+
+  it("dates an export by its start alone when the clear time is the 12-hour fallback, not a roster end", () => {
+    // Started 14:00 Mon 5 Oct, Perth; the 12-hour fallback clears at 02:00 Tue 6 Oct.
+    const started = Date.parse("2026-10-05T06:00:00Z");
+    expect(onCallHandoverShiftDates(started, started + 12 * 60 * 60 * 1000)).toBe("Mon 5 Oct");
+    // A rostered night, 20:00 Sun 4 to 08:00 Mon 5 Oct, keeps its range.
+    expect(onCallHandoverShiftDates(Date.parse("2026-10-04T12:00:00Z"), Date.parse("2026-10-05T00:30:00Z"))).toBe(
+      "Sun 4 – Mon 5 Oct",
     );
   });
 

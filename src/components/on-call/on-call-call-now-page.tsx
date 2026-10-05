@@ -51,6 +51,7 @@ import {
   type HandbookDial,
   type OnCallPeriod,
 } from "@/lib/on-call/number-resolver";
+import { ISOBAR_HEADINGS, ISOBAR_SOURCE } from "@/lib/on-call/isobar-source";
 import { onCallHospitalPeriod, onCallLadderStepMarkId } from "@/lib/on-call/now-rows";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
 import { handbookLadders } from "@/lib/on-call/service-availability";
@@ -316,15 +317,18 @@ export function OnCallCallNowPage({ now: nowProp }: { now?: Date } = {}) {
         <div className="mt-2 grid min-w-0 gap-4">
           {body}
           {showCrisisLines ? <OnCallCrisisLines now={now} /> : null}
-          <OnCallGroupedList testId="on-call-now-related">
-            <OnCallRow
-              title="Calling a consultant"
-              subtitle="The handover headings · in People"
-              leading={<BookOpen aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
-              href="/on-call/call"
-              testId="on-call-now-consultant-link"
-            />
-          </OnCallGroupedList>
+          {/* Only once the WA source is captured: until then People has nothing to show. */}
+          {ISOBAR_SOURCE && ISOBAR_HEADINGS.length > 0 ? (
+            <OnCallGroupedList testId="on-call-now-related">
+              <OnCallRow
+                title="Calling a consultant"
+                subtitle="The handover headings · in People"
+                leading={<BookOpen aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+                href="/on-call/call"
+                testId="on-call-now-consultant-link"
+              />
+            </OnCallGroupedList>
+          ) : null}
           {selected ? <SourceLine ladder={selected} hospitalName={hospitalName} /> : null}
         </div>
       </InformationPageShell>

@@ -145,7 +145,11 @@ export function OnCallDialSheet({
 
   return (
     <Sheet open={open} onClose={onClose} title={title} testId={testId}>
-      <div className="grid min-w-0 gap-4" data-testid={testId ? `${testId}-body` : undefined}>
+      <div
+        data-mode-identity="on-call"
+        className="grid min-w-0 gap-4"
+        data-testid={testId ? `${testId}-body` : undefined}
+      >
         {hospitalName ? (
           <p className={cn(modeNameText, "break-words text-base-minus text-[color:var(--text-muted)]")}>
             {hospitalName}

@@ -8,7 +8,13 @@ import { entriesState, items, personalReferral, ready } from "./helpers/on-call-
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 
 const handbook = vi.hoisted(() => ({ state: null as unknown as ReturnType<typeof ready> }));
-const entries = vi.hoisted(() => ({ list: [] as OnCallEntry[], signedOut: false, demoMode: false }));
+const entries = vi.hoisted(() => ({
+  list: [] as OnCallEntry[],
+  signedOut: false,
+  demoMode: false,
+  loading: false,
+  loadError: null as "offline" | "failed" | null,
+}));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/on-call/refer",
@@ -20,7 +26,13 @@ vi.mock("@/components/on-call/use-hospital-handbook", async (importOriginal) => 
   useHospitalHandbook: () => handbook.state,
 }));
 vi.mock("@/lib/on-call/entry-store", () => ({
-  useOnCallEntries: () => entriesState(entries.list, { signedOut: entries.signedOut, demoMode: entries.demoMode }),
+  useOnCallEntries: () =>
+    entriesState(entries.list, {
+      signedOut: entries.signedOut,
+      demoMode: entries.demoMode,
+      loading: entries.loading,
+      loadError: entries.loadError,
+    }),
 }));
 
 import { OnCallReferPage } from "@/components/on-call/refer/refer-page";
@@ -32,6 +44,8 @@ beforeEach(() => {
   entries.list = [];
   entries.signedOut = false;
   entries.demoMode = false;
+  entries.loading = false;
+  entries.loadError = null;
 });
 afterEach(cleanup);
 
@@ -67,6 +81,22 @@ describe("Refer page", () => {
     expect(within(mine).getByText("Saved to your account. Notes marked private are only yours.")).toBeInTheDocument();
     expect(within(mine).getByRole("link", { name: "Add" })).toHaveAttribute("href", "/on-call/referrals");
     expect(screen.queryByText(/being built/i)).toBeNull();
+  });
+
+  it("never shows an empty notes list while the notes are still loading or failed to load", () => {
+    entries.loading = true;
+    render(<OnCallReferPage />);
+    expect(within(screen.getByTestId("on-call-refer-mine")).getByRole("status")).toHaveTextContent(
+      "Reading your referral notes…",
+    );
+    expect(screen.queryByText("No referral notes yet.")).toBeNull();
+    cleanup();
+    entries.loading = false;
+    entries.loadError = "failed";
+    render(<OnCallReferPage />);
+    expect(screen.getByTestId("on-call-refer-mine-error")).toHaveTextContent("Your referral notes could not be read.");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByText("No referral notes yet.")).toBeNull();
   });
 
   it("draws no team filter with fewer than two teams", () => {

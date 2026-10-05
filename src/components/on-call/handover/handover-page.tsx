@@ -42,7 +42,7 @@ import {
   clearOnCallHandover,
   emptyOnCallHandoverDraft,
   onCallHandoverCallsNotIn,
-  onCallHandoverDateRange,
+  onCallHandoverShiftDates,
   onCallHandoverDraftFromCall,
   onCallHandoverDraftIsEmpty,
   onCallHandoverLastWard,
@@ -186,7 +186,7 @@ function TypePicker({
 }) {
   return (
     <div
-      role="radiogroup"
+      role="group"
       aria-label="Handover type"
       className="grid grid-cols-4 gap-1 rounded-lg bg-[color:var(--surface-wash)] p-1"
       data-testid="on-call-handover-types"
@@ -198,14 +198,13 @@ function TypePicker({
           <button
             key={type.key}
             type="button"
-            role="radio"
-            aria-checked={checked}
+            aria-pressed={checked}
             onClick={() => onChange(type.key)}
             className={cn(
               focusRing,
               "grid min-h-14 min-w-0 place-items-center content-center gap-1 rounded-md px-1 py-1.5 text-xs forced-colors:border",
               checked
-                ? "bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)]"
+                ? "bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)] forced-colors:border-2 forced-colors:border-[Highlight]"
                 : "text-[color:var(--text-muted)]",
             )}
             data-testid={`on-call-handover-type-${type.key}`}
@@ -438,7 +437,7 @@ function ReviewChoice({
           focusRing,
           "inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-md border text-base-minus font-semibold forced-colors:border",
           pressed
-            ? "border-[color:var(--text-heading)] bg-[color:var(--surface-wash)] text-[color:var(--text-heading)]"
+            ? "border-[color:var(--text-heading)] bg-[color:var(--surface-wash)] text-[color:var(--text-heading)] forced-colors:border-2 forced-colors:border-[Highlight]"
             : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]",
         )}
         data-testid={`on-call-handover-review-${choice}`}
@@ -653,7 +652,7 @@ export function OnCallHandoverPage() {
     : "";
   const recentLegal = onCallHandoverRecentLegal(patients);
   const clearsAt = view.expiresAt ? clockTime(view.expiresAt) : null;
-  const dates = view.startedAt && view.expiresAt ? onCallHandoverDateRange(view.startedAt, view.expiresAt) : null;
+  const dates = view.startedAt && view.expiresAt ? onCallHandoverShiftDates(view.startedAt, view.expiresAt) : null;
   const tableOpen = mode === "table" && patients.length > 0;
   const ready = ON_CALL_HANDOVER_TYPES.find((item) => item.key === type)?.ready ?? false;
   const wardCopied = copiedWard !== "" && draft.ward === copiedWard;

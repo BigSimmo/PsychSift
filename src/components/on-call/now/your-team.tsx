@@ -109,7 +109,9 @@ export function NowYourTeam({
   }
   const chooser = (
     <Sheet open={open} onClose={() => setOpen(false)} title="Choose your team" testId="on-call-now-team-chooser">
-      <TeamChooser teams={teams} myTeam={myTeam} onChosen={() => setOpen(false)} />
+      <div data-mode-identity="on-call" className="min-w-0">
+        <TeamChooser teams={teams} myTeam={myTeam} onChosen={() => setOpen(false)} />
+      </div>
     </Sheet>
   );
   return (

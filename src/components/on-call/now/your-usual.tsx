@@ -1,7 +1,7 @@
 "use client";
 
 import { Phone, Pin, PinOff, Shield, Trash2, type LucideIcon } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useRef, useState, type RefObject } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { OnCallDialSheet, onCallMobileRoute } from "@/components/on-call/kit/dial-sheet";
@@ -279,16 +279,24 @@ const tilesGrid = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,4.5rem),1fr))
 function EditSheet({
   open,
   onClose,
+  returnFocusRef,
   tiles,
   canClear,
 }: {
+  readonly returnFocusRef: RefObject<HTMLElement | null>;
   readonly open: boolean;
   readonly onClose: () => void;
   readonly tiles: readonly UsualTile[];
   readonly canClear: boolean;
 }) {
   return (
-    <Sheet open={open} onClose={onClose} title="Your usual" testId="on-call-now-usual-edit">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      returnFocusRef={returnFocusRef}
+      title="Your usual"
+      testId="on-call-now-usual-edit"
+    >
       <div data-mode-identity="on-call" className="grid gap-3">
         <p className={modeSecondaryText}>Numbers you call join this list on their own. Pin one to keep it in place.</p>
         <ul role="list" className="min-w-0">
@@ -338,6 +346,8 @@ export function NowYourUsual({
   readonly now: Date;
 }) {
   const headingId = useId();
+  // Clearing the list can remove the Edit button itself, so focus comes back to the heading.
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const shown = expanded ? tiles : tiles.slice(0, ON_CALL_USUAL_TILE_LIMIT);
@@ -345,7 +355,7 @@ export function NowYourUsual({
   return (
     <section aria-labelledby={headingId} className="grid min-w-0 gap-1" data-testid="on-call-home-recent">
       <div className="flex min-h-12 min-w-0 items-center justify-between gap-2 px-3">
-        <h2 id={headingId} className={eyebrowText}>
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className={cn(eyebrowText, "focus:outline-none")}>
           Your usual
         </h2>
         {editable || (canClear && outlineCount === null) ? (
@@ -392,7 +402,13 @@ export function NowYourUsual({
           ) : null}
         </>
       )}
-      <EditSheet open={editing} onClose={() => setEditing(false)} tiles={tiles} canClear={canClear} />
+      <EditSheet
+        open={editing}
+        onClose={() => setEditing(false)}
+        returnFocusRef={headingRef}
+        tiles={tiles}
+        canClear={canClear}
+      />
     </section>
   );
 }

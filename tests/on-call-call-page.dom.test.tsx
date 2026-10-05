@@ -381,6 +381,16 @@ describe("Call page", () => {
     }
   });
 
+  it("sends My Day's old handover link on to the Handover page, keeping its query", () => {
+    window.history.replaceState(null, "", "/on-call/call?from=my-day#on-call-handover-heading");
+    try {
+      render(<OnCallCallPage />);
+      expect(router.replace).toHaveBeenCalledWith("/on-call/handover?from=my-day");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
   it("does not redirect without the old call-log hash", () => {
     render(<OnCallCallPage />);
     expect(router.replace).not.toHaveBeenCalled();

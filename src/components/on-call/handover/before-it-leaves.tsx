@@ -102,7 +102,7 @@ export function OnCallHandoverBeforeItLeaves({
       <div className="grid min-w-0 gap-3" data-mode-identity="on-call">
         <fieldset className="grid min-w-0 gap-1">
           <legend className={cn(eyebrowText, "mb-1 px-1")}>Send it to</legend>
-          <div role="radiogroup" aria-label="Send it to" className="grid min-w-0">
+          <div className="grid min-w-0">
             {choices.map((key) => {
               const option = DESTINATIONS[key];
               const Icon = option.icon;
@@ -111,8 +111,7 @@ export function OnCallHandoverBeforeItLeaves({
                 <button
                   key={key}
                   type="button"
-                  role="radio"
-                  aria-checked={selected}
+                  aria-pressed={selected}
                   onClick={() => onChoose(key)}
                   className={cn(
                     focusRing,
@@ -137,10 +136,14 @@ export function OnCallHandoverBeforeItLeaves({
                     aria-hidden="true"
                     className={cn(
                       "grid size-5 shrink-0 place-items-center rounded-full border forced-colors:border",
-                      selected ? "border-[color:var(--text-heading)]" : "border-[color:var(--border-strong)]",
+                      selected
+                        ? "border-[color:var(--text-heading)] forced-colors:border-[Highlight]"
+                        : "border-[color:var(--border-strong)]",
                     )}
                   >
-                    {selected ? <span className="size-2.5 rounded-full bg-[color:var(--text-heading)]" /> : null}
+                    {selected ? (
+                      <span className="size-2.5 rounded-full bg-[color:var(--text-heading)] forced-colors:bg-[Highlight]" />
+                    ) : null}
                   </span>
                 </button>
               );

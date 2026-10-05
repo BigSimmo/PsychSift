@@ -1,8 +1,7 @@
 import { modeDot } from "@/components/mode-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 import { onCallAgo } from "@/lib/on-call/display-dates";
-
-const PERTH_OFFSET_MS = 8 * 60 * 60 * 1000;
+import { PERTH_OFFSET_MS } from "@/lib/perth-time";
 
 /** A route not updated or confirmed for this many whole months says so (mock-up v10 s-3). */
 export const ON_CALL_ROUTE_STALE_MONTHS = 3;

@@ -63,6 +63,8 @@ const ROWS_BEFORE_SHOW_ALL = 8;
 /** The call log moved from this page to a "Log a call" sheet on Now; old links still carry this hash. */
 export const ON_CALL_OLD_CALL_LOG_HASH = "#on-call-call-log-heading";
 export const ON_CALL_LOG_A_CALL_PATH = "/on-call#log-a-call";
+/** The handover builder moved to its own page; My Day's Handover link still carries this hash. */
+export const ON_CALL_OLD_HANDOVER_HASH = "#on-call-handover-heading";
 
 const noSubscription = () => () => {};
 
@@ -265,9 +267,13 @@ export function OnCallCallPage() {
     () => false,
   );
 
-  // The call log moved to Now. A saved or My Day link to its old heading here
-  // goes straight on to Now's "Log a call" sheet, keeping its query string.
+  // The call log moved to Now and the handover to its own page. A saved or My
+  // Day link to either old heading here goes straight on, keeping its query string.
   useEffect(() => {
+    if (window.location.hash === ON_CALL_OLD_HANDOVER_HASH) {
+      router.replace(`/on-call/handover${window.location.search}`);
+      return;
+    }
     if (window.location.hash !== ON_CALL_OLD_CALL_LOG_HASH) return;
     const [path, hash] = ON_CALL_LOG_A_CALL_PATH.split("#");
     router.replace(`${path}${window.location.search}#${hash}`);

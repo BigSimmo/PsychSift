@@ -18,8 +18,9 @@ import {
 /*
  * LEGAL: a field that opens a bottom sheet of every form in the app's official
  * forms register (codes, titles and groups copied from it, nothing shortened),
- * with the two plain statuses a handover needs and the values already used this
- * shift. One tap picks and closes.
+ * and the values already used this shift. Searching also offers the words as
+ * typed, so any status can be written. The two plain statuses wait for clinical
+ * sign-off (`ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED`). One tap picks and closes.
  */
 
 /** The groups shown open first, as the owner's design does; every other category folds under "More forms". */
@@ -169,7 +170,9 @@ function PickRow({
   note,
   selected,
   onPick,
+  testId = "on-call-handover-legal-option",
 }: {
+  readonly testId?: string;
   readonly code?: string;
   readonly title: string;
   readonly note?: string;
@@ -188,7 +191,7 @@ function PickRow({
           "flex min-h-12 w-full min-w-0 items-center gap-3 rounded-sm px-3 py-2 text-left",
           selected && "bg-[color:var(--surface-wash)]",
         )}
-        data-testid="on-call-handover-legal-option"
+        data-testid={testId}
       >
         {code ? <span className={codeBadge}>{code}</span> : null}
         <span className="grid min-w-0 flex-1">
@@ -305,6 +308,20 @@ export function OnCallLegalSheet({
           </div>
         ) : null}
         <div role="radiogroup" aria-label="Legal status" className="grid min-w-0">
+          {searching ? (
+            // Any status can be written as it stands: the lists here are a help, never the only choice.
+            <section aria-label="As typed" data-testid="on-call-handover-legal-typed">
+              <GroupHeading>As typed</GroupHeading>
+              <ul role="list">
+                <PickRow
+                  title={`Use “${query.trim()}”`}
+                  selected={same(query.trim(), value)}
+                  onPick={() => pick(query.trim())}
+                  testId="on-call-handover-legal-typed-option"
+                />
+              </ul>
+            </section>
+          ) : null}
           {statuses.length > 0 ? (
             <section aria-label="Status">
               <GroupHeading>Status</GroupHeading>
@@ -359,7 +376,7 @@ export function OnCallLegalSheet({
           ) : null}
           {searching && statuses.length === 0 && groups.length === 0 ? (
             <p className={cn(modeSecondaryText, "px-1 py-4")} role="status">
-              No form or status matches &ldquo;{query.trim()}&rdquo;.
+              No form matches &ldquo;{query.trim()}&rdquo;.
             </p>
           ) : null}
         </div>

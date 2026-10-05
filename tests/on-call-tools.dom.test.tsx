@@ -205,7 +205,8 @@ describe("who to call now (Escalate)", () => {
     expect(emergency).toHaveTextContent("Calling criteria: the hospital's existing guidance, shown unchanged");
     // The hospital's emergency route is on screen, so the public lines step back.
     expect(screen.queryByTestId("on-call-crisis-lines")).toBeNull();
-    expect(screen.getByTestId("on-call-now-consultant-link")).toHaveAttribute("href", "/on-call/call");
+    // The WA consultant-call headings are not captured yet, so no link points at an empty card.
+    expect(screen.queryByTestId("on-call-now-consultant-link")).toBeNull();
     expect(screen.getByTestId("on-call-now-source")).toHaveTextContent("Ladder from Synthetic Hospital's handbook");
     expect(screen.queryByText(/families can escalate/i)).toBeNull();
     expect(screen.queryByText(/log this for handover/i)).toBeNull();

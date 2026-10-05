@@ -65,13 +65,25 @@ describe("handover page (mock-up v10, screens 6 to 10)", () => {
     expect(screen.getByText(/Patient 2/)).toHaveTextContent("Patient 2 of 2");
   });
 
+  it("takes any legal status as typed, so the register is a help and never the only choice", () => {
+    render(<OnCallHandoverPage />);
+    fill("on-call-handover-bed", "9");
+    fireEvent.click(screen.getByTestId("on-call-handover-legal"));
+    const sheet = screen.getByTestId("on-call-handover-legal-sheet");
+    fireEvent.change(within(sheet).getByTestId("on-call-handover-legal-search"), { target: { value: "Voluntary" } });
+    fireEvent.click(within(sheet).getByTestId("on-call-handover-legal-typed-option"));
+    expect(screen.queryByTestId("on-call-handover-legal-sheet")).toBeNull();
+    expect(screen.getByTestId("on-call-handover-legal")).toHaveTextContent("Voluntary");
+  });
+
   it("picks a legal status from the register in one tap and offers it again as recent", () => {
     render(<OnCallHandoverPage />);
     fill("on-call-handover-bed", "9");
     fireEvent.click(screen.getByTestId("on-call-handover-legal"));
     const sheet = screen.getByTestId("on-call-handover-legal-sheet");
     expect(sheet).toHaveTextContent("Codes and titles from the app's official forms register");
-    expect(within(sheet).getByText("Not under the Act")).toBeInTheDocument();
+    // The two plain statuses wait for clinical sign-off; nothing but the register is listed.
+    expect(within(sheet).queryByText("Not under the Act")).toBeNull();
     fireEvent.change(within(sheet).getByTestId("on-call-handover-legal-search"), { target: { value: "6A" } });
     fireEvent.click(within(sheet).getAllByTestId("on-call-handover-legal-option")[0]!);
     expect(screen.queryByTestId("on-call-handover-legal-sheet")).toBeNull();

@@ -107,7 +107,7 @@ export function OnCallDidntConnect({
         {children}
       </OnCallDialSheetActions>
       <Sheet open={open} onClose={() => setOpen(false)} title="Didn't connect" testId="on-call-didnt-connect-sheet">
-        <div className="grid min-w-0 gap-5">
+        <div data-mode-identity="on-call" className="grid min-w-0 gap-5">
           {showSwitchboard ? (
             <OnCallGroupedList eyebrow="Try switchboard" testId="on-call-didnt-connect-switchboard">
               <OnCallDialRow

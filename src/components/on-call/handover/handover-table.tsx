@@ -14,6 +14,7 @@ import { announce } from "@/components/ui/live-announcer";
 import { PrintOutput } from "@/components/ui/print-output";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+import { ON_CALL_HANDOVER_SHARE_ENABLED } from "@/lib/on-call/feature-flags";
 import {
   onCallHandoverCell,
   onCallHandoverExportSummary,
@@ -102,11 +103,13 @@ function subscribeNothing(): () => void {
 
 /** True only where this browser can hand text to another app. */
 function useCanShare(): boolean {
-  return useSyncExternalStore(
+  // Off until the owner decides on sharing a handover (feature-flags.ts).
+  const supported = useSyncExternalStore(
     subscribeNothing,
     () => typeof navigator !== "undefined" && typeof navigator.share === "function",
     () => false,
   );
+  return ON_CALL_HANDOVER_SHARE_ENABLED && supported;
 }
 
 const legalBadge =

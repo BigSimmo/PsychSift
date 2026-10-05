@@ -72,6 +72,23 @@ describe("break store", () => {
     clearOnCallDeviceState();
     expect(window.localStorage.getItem(onCallBreaksStorageKey)).toBeNull();
   });
+
+  it("does not let a break left running from an earlier shift block this shift's Start break", () => {
+    const earlier = new Date(NOW.getTime() - 14 * 60 * 60_000);
+    startOnCallBreak(earlier); // never ended
+    const shiftStart = new Date(NOW.getTime() - 60 * 60_000);
+    startOnCallBreak(NOW, shiftStart);
+    const raw = window.localStorage.getItem(onCallBreaksStorageKey);
+    const current = onCallBreaksFrom(raw, NOW, shiftStart);
+    expect(current).toHaveLength(1);
+    expect(current[0]!.startedAt).toBe(NOW.toISOString());
+    expect(current[0]!.endedAt).toBeNull();
+    // The stale running break is gone, not left to resurface.
+    expect(onCallBreaksFrom(raw, NOW)).toHaveLength(1);
+    endOnCallBreak(new Date(NOW.getTime() + 10 * 60_000), shiftStart);
+    const ended = onCallBreaksFrom(window.localStorage.getItem(onCallBreaksStorageKey), NOW, shiftStart);
+    expect(ended[0]!.endedAt).not.toBeNull();
+  });
 });
 
 describe("Shift pulse", () => {
@@ -92,17 +109,22 @@ describe("Shift pulse", () => {
 
   it("draws calls by hour from counts only, and says plainly when there are none", async () => {
     render(<OnCallShiftPulsePage />);
-    expect(await screen.findByTestId("on-call-pulse-calls-empty")).toHaveTextContent("No calls noted after hours");
-    expect(screen.getByTestId("on-call-pulse-call-log")).toHaveAttribute("href", "/on-call/call");
+    expect(await screen.findByTestId("on-call-pulse-calls-empty")).toHaveTextContent(
+      "No calls noted between 17:00 and 08:00",
+    );
+    expect(screen.getByTestId("on-call-pulse-call-log")).toHaveAttribute("href", "/on-call#log-a-call");
     cleanup();
     window.localStorage.setItem(
       onCallCallCountsStorageKey,
-      JSON.stringify({ v: 1, hours: { "2026-10-10T21": 3, "2026-10-10T22": 2, "2026-10-09T21": 1 } }),
+      JSON.stringify({
+        v: 1,
+        hours: { "2026-10-10T21": 3, "2026-10-10T22": 2, "2026-10-09T21": 1, "2026-10-09T22": 2, "2026-10-08T21": 2 },
+      }),
     );
     render(<OnCallShiftPulsePage />);
     const calls = await screen.findByTestId("on-call-pulse-calls");
     expect(within(calls).getByText("21:00, 3 calls")).toBeInTheDocument();
-    expect(screen.getByTestId("on-call-pulse-peak")).toHaveTextContent("Busiest 21:00–23:00");
+    expect(screen.getByTestId("on-call-pulse-peak")).toHaveTextContent("Busiest 21:00–23:00 on your last 4 nights");
     expect(screen.queryByTestId("on-call-pulse-calls-empty")).toBeNull();
   });
 

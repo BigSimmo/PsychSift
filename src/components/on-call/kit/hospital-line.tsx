@@ -45,7 +45,9 @@ export function OnCallHospitalLine({
             Change
           </button>
           <Sheet open={open} onClose={() => setOpen(false)} title="Choose hospital" testId={`${testId}-sheet`}>
-            <OnCallHospitalChooser handbook={handbook} onChosen={() => setOpen(false)} />
+            <div data-mode-identity="on-call" className="min-w-0">
+              <OnCallHospitalChooser handbook={handbook} onChosen={() => setOpen(false)} />
+            </div>
           </Sheet>
         </>
       ) : null}

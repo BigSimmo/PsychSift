@@ -2,7 +2,7 @@
 
 import { Copy, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import {
@@ -39,6 +39,8 @@ function countLine(count: number | null, one: string, many: (n: number) => strin
  */
 export function NowShiftShortcuts() {
   const [open, setOpen] = useState(false);
+  // Opened from #log-a-call there is no opener in focus, so closing returns to the button.
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const calls = useOnCallCallLog()?.entries.length ?? null;
   const drafted = useOnCallHandoverDraftCount();
 
@@ -62,6 +64,7 @@ export function NowShiftShortcuts() {
   return (
     <div className="grid grid-cols-2 gap-2" data-testid="on-call-now-shortcuts">
       <button
+        ref={buttonRef}
         type="button"
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
@@ -82,7 +85,13 @@ export function NowShiftShortcuts() {
           {draftedLine ? <span className={cn(modeSecondaryText, "text-xs")}>{draftedLine}</span> : null}
         </span>
       </Link>
-      <Sheet open={open} onClose={close} title="Log a call" testId="on-call-now-log-a-call-sheet">
+      <Sheet
+        open={open}
+        onClose={close}
+        returnFocusRef={buttonRef}
+        title="Log a call"
+        testId="on-call-now-log-a-call-sheet"
+      >
         <div data-mode-identity="on-call">
           <OnCallCallLogCard />
         </div>

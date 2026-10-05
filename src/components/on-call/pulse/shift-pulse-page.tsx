@@ -183,7 +183,11 @@ function BreaksCard({ breaks, shift }: { readonly breaks: readonly OnCallBreak[]
       <div>
         <button
           type="button"
-          onClick={() => (running ? endOnCallBreak(new Date()) : startOnCallBreak(new Date()))}
+          onClick={() => {
+            const since = shift ? new Date(shift.startsAt) : null;
+            if (running) endOnCallBreak(new Date(), since);
+            else startOnCallBreak(new Date(), since);
+          }}
           className={cn(onCallFilledButton, focusRing, "min-w-40")}
           data-testid="on-call-pulse-break-toggle"
         >
@@ -198,7 +202,8 @@ function BreaksCard({ breaks, shift }: { readonly breaks: readonly OnCallBreak[]
 // ---------------------------------------------------------------- calls by hour
 
 function CallsByHour({ nights }: { readonly nights: readonly OnCallPulseNight[] }) {
-  const peak = onCallPulsePeak(nights);
+  // The four nights before tonight, as Now's Shift pulse card counts them, so the two never disagree.
+  const peak = onCallPulsePeak(nights.slice(1));
   const total = nights.reduce((sum, night) => sum + night.counts.reduce((a, b) => a + b, 0), 0);
   return (
     <section
@@ -215,10 +220,14 @@ function CallsByHour({ nights }: { readonly nights: readonly OnCallPulseNight[] 
       {total === 0 ? (
         <div className="grid gap-1 px-1">
           <p className={modeSecondaryText} data-testid="on-call-pulse-calls-empty">
-            No calls noted after hours this week. Each call you note in the call log is counted here by its hour, and
-            nothing else about it is kept.
+            No calls noted between 17:00 and 08:00 this week. Each call you note in the call log is counted here by its
+            hour, and nothing else about it is kept.
           </p>
-          <Link href="/on-call/call" className={cn(onCallActionLink, focusRing)} data-testid="on-call-pulse-call-log">
+          <Link
+            href="/on-call#log-a-call"
+            className={cn(onCallActionLink, focusRing)}
+            data-testid="on-call-pulse-call-log"
+          >
             Note a call
           </Link>
         </div>
@@ -302,7 +311,7 @@ function CallsByHour({ nights }: { readonly nights: readonly OnCallPulseNight[] 
         </ul>
         {peak ? (
           <p className="nums text-xs font-semibold text-[color:var(--text-heading)]" data-testid="on-call-pulse-peak">
-            Busiest {peak.replace(" to ", "–")}
+            Busiest {peak.replace(" to ", "–")} on your last 4 nights
           </p>
         ) : null}
       </div>
@@ -426,10 +435,10 @@ export function OnCallShiftPulsePage() {
   const rest = shift && gateOn ? restBeforeNext(shift) : null;
   const breaks = useMemo(
     () =>
-      now === null || breaksRaw === undefined
+      now === null || breaksRaw === undefined || roster.status === "loading"
         ? null
         : onCallBreaksFrom(breaksRaw || null, now, shift?.current ? new Date(shift.current.startsAt) : null),
-    [breaksRaw, now, shift],
+    [breaksRaw, now, shift, roster.status],
   );
   const signedAt = FATIGUE_RULES_SIGN_OFF.signedAt;
 

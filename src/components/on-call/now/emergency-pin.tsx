@@ -8,6 +8,7 @@ import { onCallFilledButton, onCallOutlineButton } from "@/components/on-call/ki
 import { OnCallDialSheet, onCallExtensionRoute, onCallMobileRoute } from "@/components/on-call/kit/dial-sheet";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
 import { OnCallModuleSkeleton } from "@/components/on-call/kit/module-skeleton";
+import { OnCallUpdatedLine } from "@/components/on-call/kit/updated-line";
 import { modeDot, modeModuleSurface } from "@/components/mode-kit/recipes";
 import { modeNameText, modeNumberText } from "@/components/mode-kit/type";
 import { useOnCallYouCalledAt } from "@/components/on-call/kit/use-you-called";
@@ -125,6 +126,14 @@ function EmergencyRoute({
           className={cn(modeNumberText, "text-sm text-[color:var(--text-muted)]")}
         >{`You called ${formatOnCallTime(calledAt)}`}</p>
       ) : null}
+      {/* When the hospital last confirmed this route, always on screen, not only inside the sheet.
+          Its source links stay in the sheet, so the only links on the card are the call routes. */}
+      <OnCallUpdatedLine
+        updatedAt={item.updatedAt}
+        lastConfirmedAt={item.lastConfirmedAt}
+        now={now}
+        testId={`${testId}-updated`}
+      />
       {dial ? (
         <OnCallDialSheet
           open={sheetOpen}

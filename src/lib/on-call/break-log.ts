@@ -71,18 +71,28 @@ function write(breaks: readonly OnCallBreak[]): void {
   }
 }
 
-/** Start a break now. A break already running is left as it is. */
-export function startOnCallBreak(now: Date = new Date()): void {
+/**
+ * Start a break now. A break already running in this shift is left as it is.
+ * `since` is the current shift's start, when known: a break left running from
+ * an earlier shift is hidden from this shift's page, so it is dropped here
+ * rather than silently blocking the new one.
+ */
+export function startOnCallBreak(now: Date = new Date(), since?: Date | null): void {
   if (typeof window === "undefined") return;
-  const breaks = live(readStored(), now);
-  if (breaks.some((entry) => entry.endedAt === null)) return;
-  write([...breaks, { startedAt: now.toISOString(), endedAt: null }]);
+  const all = live(readStored(), now);
+  if (live(all, now, since).some((entry) => entry.endedAt === null)) return;
+  const kept = since
+    ? all.filter((entry) => entry.endedAt !== null || Date.parse(entry.startedAt) >= since.getTime())
+    : all;
+  write([...kept, { startedAt: now.toISOString(), endedAt: null }]);
 }
 
-/** End the running break now, if there is one. */
-export function endOnCallBreak(now: Date = new Date()): void {
+/** End this shift's running break now, if there is one. */
+export function endOnCallBreak(now: Date = new Date(), since?: Date | null): void {
   if (typeof window === "undefined") return;
-  const breaks = live(readStored(), now);
-  if (!breaks.some((entry) => entry.endedAt === null)) return;
-  write(breaks.map((entry) => (entry.endedAt === null ? { ...entry, endedAt: now.toISOString() } : entry)));
+  const all = live(readStored(), now);
+  const cutoff = since ? since.getTime() : Number.NEGATIVE_INFINITY;
+  const isCurrentRunning = (entry: OnCallBreak) => entry.endedAt === null && Date.parse(entry.startedAt) >= cutoff;
+  if (!all.some(isCurrentRunning)) return;
+  write(all.map((entry) => (isCurrentRunning(entry) ? { ...entry, endedAt: now.toISOString() } : entry)));
 }

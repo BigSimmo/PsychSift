@@ -73,14 +73,22 @@ export function onCallExternalLines(): OnCallExternalLine[] {
   const lifeline = crisisContact(LIFELINE_ID);
   const shelf = handbookResources
     .filter((resource) => resource.group === "contacts" && resource.phone)
-    .map((resource): OnCallExternalLine => ({
-      id: resource.id,
-      title: resource.title,
-      area: resource.jurisdiction,
-      dial: resolveHandbookPhone(resource.phone ?? "", "outside"),
-      updatedAt: resource.checkedOn,
-      sources: [{ label: resource.sourceLabel, url: resource.sourceUrl }],
-    }));
+    .map((resource): OnCallExternalLine => {
+      // The same number on the app's crisis list carries the hours and caveat its
+      // source states ("not an emergency service"), which must show with it.
+      const digits = onCallDigitsOf(resource.phone ?? "");
+      const listed = WA_CRISIS_CONTACTS.find((contact) => onCallDigitsOf(contact.telephoneDisplay) === digits);
+      return {
+        id: resource.id,
+        title: resource.title,
+        area: resource.jurisdiction,
+        availability: listed?.availability,
+        caveat: listed?.caveat ?? null,
+        dial: resolveHandbookPhone(resource.phone ?? "", "outside"),
+        updatedAt: resource.checkedOn,
+        sources: [{ label: resource.sourceLabel, url: resource.sourceUrl }],
+      };
+    });
   return [
     ...(emergency ? [fromCrisisContact(emergency)] : []),
     ...shelf,

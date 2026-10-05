@@ -18,7 +18,6 @@ import {
   ON_CALL_CALL_LOG_FIELD_LIMITS,
   addOnCallCallLogEntry,
   onCallCallLogTime,
-  onCallHandoverItems,
   onCallCallLogStorageKey,
   visibleOnCallCallLog,
   removeOnCallCallLogEntry,
@@ -269,13 +268,12 @@ export function OnCallCallLogCard() {
       <form onSubmit={onSubmit} noValidate className="grid min-w-0 gap-3" data-testid="on-call-call-log-form">
         <fieldset className="grid min-w-0 gap-1">
           <legend className="text-sm font-medium text-[color:var(--text-heading)]">Who called</legend>
-          <div className="flex min-w-0 flex-wrap gap-x-2" role="radiogroup" aria-label="Who called">
+          <div className="flex min-w-0 flex-wrap gap-x-2" role="group" aria-label="Who called">
             {[...ON_CALL_CALLER_CHIPS, "Other" as const].map((chip) => (
               <button
                 key={chip}
                 type="button"
-                role="radio"
-                aria-checked={callerChoice === chip}
+                aria-pressed={callerChoice === chip}
                 onClick={() => {
                   if (chip === "Other") {
                     setOtherCaller(true);
@@ -446,7 +444,7 @@ function AddToHandover({ entries }: { readonly entries: readonly OnCallCallLogEn
     const [list, stamp] = (handoverRaw ?? SNAPSHOT_SEPARATOR).split(SNAPSHOT_SEPARATOR);
     const patients = visibleOnCallHandover(list || null, stamp || null).patients;
     // The handover's own rule for "already added", so the two screens agree.
-    return onCallHandoverCallsNotIn(onCallHandoverItems(entries), patients).filter((entry) => entry.followUp);
+    return onCallHandoverCallsNotIn(entries, patients).filter((entry) => entry.followUp);
   }, [entries, handoverRaw]);
   if (pending.length === 0) return null;
   const add = () => {

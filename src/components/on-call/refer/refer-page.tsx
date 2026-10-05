@@ -220,7 +220,21 @@ export function OnCallReferPage() {
                 </p>
               </li>
             )}
-            {mineShown.length === 0 ? (
+            {mineShown.length === 0 && entries.loading ? (
+              <li className="flex min-h-12 min-w-0 items-center px-3" role="status">
+                <span className={cn(modeSecondaryText, "break-words")}>Reading your referral notes…</span>
+              </li>
+            ) : mineShown.length === 0 && entries.loadError ? (
+              <li
+                className="flex min-h-12 min-w-0 flex-wrap items-center gap-x-3 px-3"
+                data-testid="on-call-refer-mine-error"
+              >
+                <span className={cn(modeSecondaryText, "break-words")}>Your referral notes could not be read.</span>
+                <button type="button" onClick={entries.retry} className={cn(onCallActionLink, focusRing)}>
+                  Try again
+                </button>
+              </li>
+            ) : mineShown.length === 0 ? (
               <li className="flex min-h-12 min-w-0 items-center px-3">
                 <span className={cn(modeSecondaryText, "break-words")}>
                   {searching ? "No notes match." : "No referral notes yet."}
