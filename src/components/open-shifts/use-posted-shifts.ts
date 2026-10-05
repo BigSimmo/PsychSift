@@ -94,6 +94,7 @@ export function usePostedShifts(): PostedShiftsState {
   // The Post tab shows once the teams read confirms poster rights, whichever tab loaded first.
   useEffect(() => {
     if (teams.status === "ready") setOpenShiftsIsPoster(managed.length > 0);
+    if (teams.status === "signed-out") setOpenShiftsIsPoster(false);
   }, [teams.status, managed]);
 
   useEffect(() => {

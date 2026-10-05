@@ -46,12 +46,12 @@ export function OpenShiftsBrowsePage() {
   const [showHidden, setShowHidden] = useState(false);
 
   const summary = useMemo(
-    () => summariseBrowse(state.listings, state.roster, filters, now),
-    [state.listings, state.roster, filters, now],
+    () => summariseBrowse(state.listings, state.roster, filters, now, state.rosterStatus),
+    [state.listings, state.roster, filters, now, state.rosterStatus],
   );
   const rosteredDays = useMemo(
     () => new Set(state.sample ? [] : (state.roster ?? []).map((shift) => perthDateOf(shift.startsAt))),
-    [state.roster],
+    [state.roster, state.sample],
   );
   const coveredUntil = state.roster ? rosterCoveredUntil(state.roster) : null;
   const myGrade = state.listings.find((listing) => listing.myGrade)?.myGrade ?? null;
@@ -89,10 +89,15 @@ export function OpenShiftsBrowsePage() {
             <div className="relative">
               <div
                 className="flex gap-2 overflow-x-auto px-3 pt-3 pb-1 [scrollbar-width:none]"
-                role="toolbar"
+                role="group"
                 aria-label="Quick filters"
               >
-                <button type="button" className={filterCount ? chipOn : chipOff} onClick={() => setSheetOpen(true)}>
+                <button
+                  type="button"
+                  className={filterCount ? chipOn : chipOff}
+                  aria-haspopup="dialog"
+                  onClick={() => setSheetOpen(true)}
+                >
                   <ListFilter aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
                   Filters
                   {filterCount ? <span className="nums text-xs">{filterCount}</span> : null}
@@ -110,6 +115,7 @@ export function OpenShiftsBrowsePage() {
                   <button
                     type="button"
                     className={filters.siteIds.length ? chipOn : chipOff}
+                    aria-haspopup="dialog"
                     onClick={() => setSheetOpen(true)}
                   >
                     Sites
@@ -120,6 +126,7 @@ export function OpenShiftsBrowsePage() {
                 <button
                   type="button"
                   className={filters.includeLowerLevels ? chipOn : chipOff}
+                  aria-haspopup="dialog"
                   onClick={() => setSheetOpen(true)}
                 >
                   {filters.includeLowerLevels ? "All levels" : gradeLabel(myGrade)}
@@ -128,6 +135,7 @@ export function OpenShiftsBrowsePage() {
                 <button
                   type="button"
                   className={filters.starts.length ? chipOn : chipOff}
+                  aria-haspopup="dialog"
                   onClick={() => setSheetOpen(true)}
                 >
                   {startsLabel}
@@ -189,6 +197,19 @@ export function OpenShiftsBrowsePage() {
             ) : null}
           </div>
 
+          {state.rosterStatus === "error" && !sample ? (
+            <Note icon={<TriangleAlert aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />} tone="warn">
+              <b className="font-semibold">Your roster couldn&apos;t be read,</b> so clashes aren&apos;t checked or
+              hidden.{" "}
+              <button
+                type="button"
+                onClick={state.reload}
+                className="font-medium text-[color:var(--mode-identity)] underline"
+              >
+                Try again
+              </button>
+            </Note>
+          ) : null}
           {state.rosterStatus === "ready" && (!state.roster || state.roster.length === 0) && !sample ? (
             <Note icon={<CircleHelp aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}>
               <b className="font-semibold text-[color:var(--text-heading)]">No roster to check against.</b> Add your
@@ -239,12 +260,14 @@ export function OpenShiftsBrowsePage() {
                 className="size-icon-lg text-[color:var(--text-muted)]"
               />
               <h3 className="mt-3 text-base font-semibold text-[color:var(--text-heading)]">
-                No shifts match on this day
+                {partial ? "None found on this day in the teams read" : "No shifts match on this day"}
               </h3>
               <p className="mt-1 text-sm text-[color:var(--text-muted)]">
-                {day.hidden.length === 0
-                  ? `None are hidden by your filters either.${next ? ` The next day with a match is ${formatDayLong(next)}.` : ""}`
-                  : `${day.hidden.length} ${day.hidden.length === 1 ? "is" : "are"} hidden by your filters.`}
+                {partial
+                  ? `Some of your teams couldn't be read, so there may be more.${next ? ` The next day with a match is ${formatDayLong(next)}.` : ""}`
+                  : day.hidden.length === 0
+                    ? `None are hidden by your filters either.${next ? ` The next day with a match is ${formatDayLong(next)}.` : ""}`
+                    : `${day.hidden.length} ${day.hidden.length === 1 ? "is" : "are"} hidden by your filters.`}
               </p>
               {next ? (
                 <button

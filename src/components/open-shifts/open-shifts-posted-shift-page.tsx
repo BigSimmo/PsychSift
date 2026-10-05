@@ -65,7 +65,7 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
         : action === "decline"
           ? { action: "open.decline", openShiftId: shift.id }
           : action === "release"
-            ? { action: "open.release", openShiftId: shift.id }
+            ? { action: "open.release", openShiftId: shift.id, urgent: false }
             : { action: "open.cancel", openShiftId: shift.id };
     const result = await postRosterAction(shift.serviceId, body as RosterAction);
     if (!result.ok) return `Nothing changed. ${result.message}`;
@@ -232,7 +232,7 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
       >
         <ShiftSummary shift={shift} />
         <p className="text-[color:var(--text-muted)]">
-          The shift goes on their roster now and they get a Roster alert.
+          The shift goes on their roster now. Roster sends them an alert if they have alerts on.
         </p>
       </ConfirmSheet>
       <ConfirmSheet
@@ -247,8 +247,8 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
       >
         <ShiftSummary shift={shift} />
         <p className="text-[color:var(--text-muted)]">
-          The shift goes back on the list for others, and they get a Roster alert. Roster doesn&apos;t record a reason,
-          so tell them why yourself if it helps.
+          The shift goes back on the list for others. Roster sends them an alert if they have alerts on. Roster
+          doesn&apos;t record a reason, so tell them why yourself if it helps.
         </p>
       </ConfirmSheet>
       <ConfirmSheet

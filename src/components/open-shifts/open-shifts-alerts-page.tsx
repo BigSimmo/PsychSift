@@ -23,8 +23,8 @@ export function OpenShiftsAlertsPage() {
         Alerts
       </PageTitleUnderBand>
       <p className="px-3 pt-2 text-sm text-[color:var(--text-muted)]">
-        New open shifts and decisions on your requests arrive as Roster alerts. These are the same switches as in Roster
-        settings.
+        New open shifts and decisions on your requests can arrive as Roster alerts. These are the same switches as in
+        Roster settings.
       </p>
       {signedOut ? (
         <SignInAction label="Sign in to turn on alerts" />

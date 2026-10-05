@@ -10,7 +10,7 @@ import {
   type OpenShiftListing,
   type TimeOfDay,
 } from "./model";
-import { isClash, rosterCheck, type RosterCheck } from "./roster-check";
+import { isClash, rosterCheckFor, type RosterCheck } from "./roster-check";
 
 /**
  * Browse: every count on the page comes from here, from the same rows, so the
@@ -73,6 +73,7 @@ export function summariseBrowse(
   roster: readonly FatigueShift[] | null,
   filters: BrowseFilters,
   now: Date,
+  rosterStatus: "loading" | "ready" | "error" = "ready",
 ): BrowseSummary {
   const today = perthDateOf(now);
   const all: BrowseRow[] = listings
@@ -80,9 +81,10 @@ export function summariseBrowse(
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt) || a.id.localeCompare(b.id))
     .map((listing) => ({
       listing,
-      check: rosterCheck(
+      check: rosterCheckFor(
         { id: `open:${listing.id}`, startsAt: listing.startsAt, endsAt: listing.endsAt, kind: listing.kind },
         roster,
+        rosterStatus,
         now,
       ),
     }));

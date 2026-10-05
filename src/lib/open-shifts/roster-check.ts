@@ -17,15 +17,23 @@ import { myShiftsAsAssignments } from "@/lib/roster/rest-cues";
  * - Breaks and 14-day hours come from the signed fatigue rules
  *   (`fatigueWarnings`), so nothing is measured while they are switched off:
  *   the advert then says "Clash check only".
- * - Advice only: Roster's `open.claim` and `open.approve` recheck overlap and
- *   level in the database.
+ * - Advice only. Roster's `open.claim` and `open.approve` recheck level, and
+ *   overlap with TEAM roster shifts only, in the database. Imported and
+ *   hand-added shifts are checked here and nowhere else, so this check fails
+ *   honest (loading, couldn't read, beyond the roster) rather than green.
  */
 
 export type Candidate = Pick<FatigueShift, "id" | "startsAt" | "endsAt" | "kind">;
 
 export type RosterCheck =
-  /** No roster to compare with (none saved, or it hasn't loaded). */
+  /** No roster saved to compare with. */
   | { readonly state: "none" }
+  /** The roster is still being read. */
+  | { readonly state: "loading" }
+  /** The roster couldn't be read, so nothing was checked. */
+  | { readonly state: "unread" }
+  /** The shift is after the last date the saved roster reaches: no overlap, but nothing else is known. */
+  | { readonly state: "beyond"; readonly coveredUntil: string }
   /** The candidate overlaps a rostered shift. Blocks the request. */
   | { readonly state: "overlap"; readonly withShift: FatigueShift; readonly overlapMinutes: number }
   /** No overlap, and the fatigue rules are off: nothing else was checked. */
@@ -90,6 +98,9 @@ export function rosterCheck(
     return { state: "overlap", withShift: overlapping, overlapMinutes: minutes };
   }
 
+  // Past the end of the saved roster nothing is known about breaks or hours, so say so rather than green.
+  if (coveredUntil && perthDateOf(candidate.startsAt) > coveredUntil) return { state: "beyond", coveredUntil };
+
   const withCandidate = [...roster.filter((shift) => shift.id !== candidate.id), candidate];
   const signed = fatigueWarnings(withCandidate, signOff, approvedSigners, now.getTime());
   if (!signed.gate.on) return { state: "clash-only", coveredUntil };
@@ -129,6 +140,18 @@ export function rosterCheck(
     nightsBefore,
     coveredUntil,
   };
+}
+
+/** The check, or why it couldn't run: a roster that is still loading or failed is never "no roster". */
+export function rosterCheckFor(
+  candidate: Candidate,
+  roster: readonly FatigueShift[] | null,
+  rosterStatus: "loading" | "ready" | "error",
+  now: Date,
+): RosterCheck {
+  if (rosterStatus === "loading") return { state: "loading" };
+  if (rosterStatus === "error") return { state: "unread" };
+  return rosterCheck(candidate, roster, now);
 }
 
 /** Whether a check hides the shift under "Hide roster clashes". Only an overlap does. */

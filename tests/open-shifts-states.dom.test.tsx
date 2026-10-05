@@ -19,6 +19,7 @@ function state(overrides: Partial<OpenShiftsState>): OpenShiftsState {
     sample: null,
     offline: false,
     failedTeams: [],
+    refreshFailed: false,
     actorId: null,
     message: null,
     reload: () => undefined,
@@ -46,7 +47,7 @@ describe("Open shifts states", () => {
         <p>the list</p>
       </OpenShiftsGate>,
     );
-    expect(screen.getByRole("img", { name: "Loading open shifts" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Loading open shifts" })).toBeTruthy();
     expect(screen.queryByText(/nothing/i)).toBeNull();
   });
 

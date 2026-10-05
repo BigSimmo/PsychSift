@@ -36,13 +36,18 @@ function dayRange(from: string, to: string): string {
 
 function Segment({ hours, total, className }: { hours: number; total: number; className: string }) {
   if (hours <= 0 || total <= 0) return null;
-  return <span className={`h-full ${className}`} style={{ width: `${Math.min(100, (hours / total) * 100)}%` }} />;
+  return (
+    <span
+      className={`h-full [forced-color-adjust:none] ${className}`}
+      style={{ width: `${Math.min(100, (hours / total) * 100)}%` }}
+    />
+  );
 }
 
 function Key({ label, hours, swatch }: { label: string; hours: number; swatch: string }) {
   return (
     <li className="flex items-center gap-1.5">
-      <span aria-hidden="true" className={`inline-block size-2.5 rounded-sm ${swatch}`} />
+      <span aria-hidden="true" className={`inline-block size-2.5 rounded-sm [forced-color-adjust:none] ${swatch}`} />
       <span>{`${label} ${formatHours(hours)}`}</span>
     </li>
   );
@@ -73,14 +78,38 @@ function Meter({ meter }: { meter: HoursMeter }) {
         aria-label={`Rostered ${formatHours(meter.rostered)}, approved ${formatHours(meter.approved)}, requested ${formatHours(meter.requested)}`}
         className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--surface-subtle)] forced-colors:border forced-colors:border-[CanvasText]"
       >
-        <Segment hours={meter.rostered} total={scale} className="bg-[color:var(--text-muted)]" />
-        <Segment hours={meter.approved} total={scale} className="bg-[color:var(--mode-identity)]" />
-        <Segment hours={meter.requested} total={scale} className="bg-[color:var(--mode-identity-border)]" />
+        <Segment
+          hours={meter.rostered}
+          total={scale}
+          className="bg-[color:var(--text-muted)] forced-colors:bg-[CanvasText]"
+        />
+        <Segment
+          hours={meter.approved}
+          total={scale}
+          className="bg-[color:var(--mode-identity)] forced-colors:bg-[Highlight]"
+        />
+        <Segment
+          hours={meter.requested}
+          total={scale}
+          className="bg-[color:var(--mode-identity)] opacity-45 forced-colors:bg-[GrayText] forced-colors:opacity-100"
+        />
       </div>
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs nums text-[color:var(--text-muted)]">
-        <Key label="Rostered" hours={meter.rostered} swatch="bg-[color:var(--text-muted)]" />
-        <Key label="Approved" hours={meter.approved} swatch="bg-[color:var(--mode-identity)]" />
-        <Key label="Requested" hours={meter.requested} swatch="bg-[color:var(--mode-identity-border)]" />
+        <Key
+          label="Rostered"
+          hours={meter.rostered}
+          swatch="bg-[color:var(--text-muted)] forced-colors:bg-[CanvasText]"
+        />
+        <Key
+          label="Approved"
+          hours={meter.approved}
+          swatch="bg-[color:var(--mode-identity)] forced-colors:bg-[Highlight]"
+        />
+        <Key
+          label="Requested"
+          hours={meter.requested}
+          swatch="bg-[color:var(--mode-identity)] opacity-45 forced-colors:bg-[GrayText] forced-colors:opacity-100"
+        />
       </ul>
       <details className="mt-3 text-sm text-[color:var(--text-muted)]">
         <summary className="inline-flex min-h-12 cursor-pointer items-center font-medium text-[color:var(--mode-identity)]">
@@ -211,7 +240,23 @@ export function OpenShiftsMinePage() {
           render={(row) => <MineRow key={row.id} listing={row} status="Approved" tone="ok" />}
         />
 
-        {nothing ? (
+        {nothing && (state.failedTeams.length > 0 || state.offline) ? (
+          <div className="px-3 py-6">
+            <p className="text-base-minus font-medium text-[color:var(--text-heading)]">This list may be incomplete</p>
+            <p className="mt-1 text-sm text-[color:var(--text-muted)]">
+              {state.offline
+                ? "You're offline, so requests made since the list was read won't show."
+                : `Couldn't read ${state.failedTeams.join(", ")}, so requests there won't show.`}
+            </p>
+            <button
+              type="button"
+              onClick={state.reload}
+              className="mt-2 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)]"
+            >
+              Try again
+            </button>
+          </div>
+        ) : nothing ? (
           <div className="px-3 py-6">
             <p className="text-base-minus font-medium text-[color:var(--text-heading)]">No requests yet</p>
             <p className="mt-1 text-sm text-[color:var(--text-muted)]">

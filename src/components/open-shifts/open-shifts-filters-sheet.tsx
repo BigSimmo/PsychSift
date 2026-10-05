@@ -133,32 +133,31 @@ export function OpenShiftsFiltersSheet({
             <span>Level</span>
             <span className="text-xs font-normal text-[color:var(--text-muted)]">{`Yours: ${gradeLabel(myGrade)}`}</span>
           </legend>
-          <div
-            role="radiogroup"
-            aria-label="Level"
-            className="mt-2 grid grid-cols-2 rounded-md bg-[color:var(--surface-subtle)] p-0.5"
-          >
+          <div className="mt-2 grid grid-cols-2 rounded-md bg-[color:var(--surface-subtle)] p-0.5">
             {[
               { value: false, label: `${gradeLabel(myGrade)} only`, sub: null },
               { value: true, label: "Also lower levels", sub: `+${summary.lowerLevelCount}` },
             ].map((option) => {
               const selected = filters.includeLowerLevels === option.value;
               return (
-                <button
+                <label
                   key={option.label}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => onChange({ ...filters, includeLowerLevels: option.value })}
-                  className={`flex min-h-12 flex-col items-center justify-center rounded-[0.4rem] px-2 text-sm ${
+                  className={`flex min-h-12 cursor-pointer flex-col items-center justify-center rounded-[0.4rem] px-2 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[color:var(--command)] ${
                     selected
-                      ? "border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] shadow-[var(--e1)]"
+                      ? "border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] shadow-[var(--e1)] forced-colors:border-2 forced-colors:border-[Highlight]"
                       : "font-medium text-[color:var(--text-muted)]"
                   }`}
                 >
+                  <input
+                    type="radio"
+                    name="os-level"
+                    className="sr-only"
+                    checked={selected}
+                    onChange={() => onChange({ ...filters, includeLowerLevels: option.value })}
+                  />
                   <span>{option.label}</span>
                   {option.sub ? <span className="text-2xs nums">{option.sub}</span> : null}
-                </button>
+                </label>
               );
             })}
           </div>

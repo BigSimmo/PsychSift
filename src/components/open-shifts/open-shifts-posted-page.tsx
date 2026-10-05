@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
 
 import { ModeBandStatus, PageTitleUnderBand, type ModeBandStatusValue } from "@/components/mode-band/mode-band";
+import { Button } from "@/components/ui/button";
 import { modeInsetHairline, modePressable } from "@/components/mode-kit/recipes";
 import { formatHours, gradeLabel, hoursBetween, kindLabel } from "@/lib/open-shifts/model";
 import { groupPosted } from "@/lib/open-shifts/posted";
@@ -14,7 +15,6 @@ import { LoadFailed } from "./open-shifts-states";
 import {
   FlatList,
   ListSkeleton,
-  OPEN_SHIFTS_HREF,
   SectionHeading,
   formatShiftTimes,
   formatWeekday,
@@ -136,7 +136,9 @@ export function OpenShiftsPostedPage() {
               </FlatList>
             ) : (
               <p className="px-3 py-2 text-sm text-[color:var(--text-muted)]">
-                Nothing open. Shifts you post show here until someone is approved.
+                {state.failedTeams.length > 0
+                  ? `None in the teams read. Couldn't read ${state.failedTeams.join(", ")}.`
+                  : "Nothing open. Shifts you post show here until someone is approved."}
               </p>
             )}
           </section>
@@ -150,19 +152,26 @@ export function OpenShiftsPostedPage() {
                 ))}
               </FlatList>
             ) : (
-              <p className="px-3 py-2 text-sm text-[color:var(--text-muted)]">None yet.</p>
+              <p className="px-3 py-2 text-sm text-[color:var(--text-muted)]">
+                {state.failedTeams.length > 0 ? "None in the teams read." : "None yet."}
+              </p>
             )}
           </section>
 
           <div className="mt-6 flex flex-col gap-2 px-3">
-            <Link
-              href="/open-shifts/post/new"
-              aria-disabled={state.offline || undefined}
-              className={`flex min-h-12 items-center justify-center gap-2 rounded-md bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)] no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)] ${state.offline ? "pointer-events-none opacity-60" : ""}`}
-            >
-              <Plus aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
-              Post a shift
-            </Link>
+            {state.offline ? (
+              <Button variant="secondary" block disabled onClick={() => undefined}>
+                Offline: can&apos;t post
+              </Button>
+            ) : (
+              <Link
+                href="/open-shifts/post/new"
+                className="flex min-h-12 items-center justify-center gap-2 rounded-md bg-[color:var(--command)] px-4 text-sm font-semibold text-[color:var(--command-contrast)] no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--command)]"
+              >
+                <Plus aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
+                Post a shift
+              </Link>
+            )}
             <Link
               href="/open-shifts/board"
               className="hidden min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--border-strong)] px-4 text-sm font-medium text-[color:var(--text-heading)] no-underline focus-visible:outline-2 focus-visible:outline-[color:var(--command)] md:flex"

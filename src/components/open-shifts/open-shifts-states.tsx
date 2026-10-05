@@ -20,6 +20,9 @@ export function openShiftsStatus(state: OpenShiftsState): ModeBandStatusValue | 
     return { kind: "text", text: "Made-up example records · team rosters aren't open to real staff yet", info: true };
   }
   if (state.offline) return { kind: "offline" };
+  if (state.refreshFailed && state.readAt) {
+    return { kind: "failed", text: `Couldn't refresh · showing the list from ${perthTimeOf(state.readAt)}` };
+  }
   if (state.status === "loading") return { kind: "loading" };
   if (state.status === "error") return { kind: "failed", text: "Open shifts couldn't be reached" };
   if (state.failedTeams.length > 0) return { kind: "failed", text: `Couldn't read ${state.failedTeams.join(", ")}` };
@@ -58,7 +61,7 @@ export function LoadFailed({
     <div className="px-3 py-8">
       <h2 className="text-base font-semibold text-[color:var(--text-heading)]">{`${what} couldn't be reached`}</h2>
       <p className="mt-1 text-sm text-[color:var(--text-muted)]">
-        {`Nothing here means there are no shifts: the list didn't load.${message ? ` ${message}` : ""}`}
+        {`Nothing is shown because the list didn't load. It doesn't mean there are no shifts.${message ? ` ${message}` : ""}`}
       </p>
       <button
         type="button"

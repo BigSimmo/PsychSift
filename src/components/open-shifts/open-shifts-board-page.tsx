@@ -115,7 +115,11 @@ export function OpenShiftsBoardPage() {
           </div>
 
           {week.rows.length === 0 ? (
-            <p className="px-3 py-8 text-sm text-[color:var(--text-muted)]">No shifts posted this week.</p>
+            <p className="px-3 py-8 text-sm text-[color:var(--text-muted)]">
+              {state.failedTeams.length > 0
+                ? `None this week in the teams read. Couldn't read ${state.failedTeams.join(", ")}.`
+                : "No shifts posted this week."}
+            </p>
           ) : (
             <div className="mt-3 overflow-x-auto px-3">
               <table className="w-full min-w-[56rem] table-fixed border-collapse text-sm">

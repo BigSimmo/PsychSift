@@ -88,21 +88,16 @@ export function OpenShiftsCalendar({
           <ChevronRight aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
         </button>
       </div>
-      <div role="grid" aria-label={title} className="grid grid-cols-7 gap-y-1 text-center">
-        <div role="row" className="contents">
+      <div className="grid grid-cols-7 gap-y-1 text-center">
+        <div aria-hidden="true" className="contents">
           {DOW.map((letter, index) => (
-            <div
-              key={DOW_FULL[index]}
-              role="columnheader"
-              aria-label={DOW_FULL[index]}
-              className="py-1 text-2xs font-medium text-[color:var(--text-muted)]"
-            >
+            <div key={DOW_FULL[index]} className="py-1 text-2xs font-medium text-[color:var(--text-muted)]">
               {letter}
             </div>
           ))}
         </div>
         {Array.from({ length: cells.length / 7 }, (_, week) => (
-          <div role="row" className="contents" key={cells[week * 7]}>
+          <div className="contents" key={cells[week * 7]}>
             {cells.slice(week * 7, week * 7 + 7).map((date) => {
               const inMonth = monthOf(date) === month;
               const past = date < today;
@@ -127,11 +122,12 @@ export function OpenShiftsCalendar({
                 .filter(Boolean)
                 .join(", ");
               return (
-                <div role="gridcell" key={date} aria-selected={isSelected}>
+                <div key={date}>
                   <button
                     type="button"
                     aria-label={label}
                     aria-current={isToday ? "date" : undefined}
+                    aria-pressed={isSelected}
                     disabled={!inRange}
                     onClick={() => onSelect(date)}
                     className={`mx-auto flex min-h-12 w-full max-w-12 flex-col items-center justify-center gap-0.5 rounded-md text-sm nums ${
@@ -155,7 +151,7 @@ export function OpenShiftsCalendar({
                     </span>
                     <span
                       aria-hidden="true"
-                      className={`h-0.5 w-4 rounded-full ${rostered ? "bg-[color:var(--info,var(--command))]" : "bg-transparent"}`}
+                      className={`h-0.5 w-4 rounded-full [forced-color-adjust:none] ${rostered ? "bg-[color:var(--info,var(--command))] forced-colors:bg-[CanvasText]" : "bg-transparent"}`}
                     />
                   </button>
                 </div>

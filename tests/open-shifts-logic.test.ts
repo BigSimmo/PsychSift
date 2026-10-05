@@ -7,7 +7,7 @@ import { groupMine, hoursMeter } from "@/lib/open-shifts/mine";
 import { gapTimes, isBrowsable, isBelowMyLevel, timeOfDay, type OpenShiftListing } from "@/lib/open-shifts/model";
 import { parseOffer } from "@/lib/open-shifts/parse-offer";
 import { groupPosted } from "@/lib/open-shifts/posted";
-import { isClash, rosterCheck, rosterCoveredUntil } from "@/lib/open-shifts/roster-check";
+import { isClash, rosterCheck, rosterCheckFor, rosterCoveredUntil } from "@/lib/open-shifts/roster-check";
 import { sampleListings, sampleRoster } from "@/lib/open-shifts/sample";
 import type { FatigueShift } from "@/lib/roster/fatigue-rules";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
@@ -120,8 +120,8 @@ describe("roster check", () => {
   });
 
   it("checks only clashes while the rules are unsigned", () => {
-    const roster = [rostered("2026-10-06", "08:00", "16:30")];
-    expect(rosterCheck(candidate, roster, NOW, UNSIGNED)).toEqual({ state: "clash-only", coveredUntil: "2026-10-06" });
+    const roster = [rostered("2026-10-06", "08:00", "16:30"), rostered("2026-10-09", "08:00", "16:30")];
+    expect(rosterCheck(candidate, roster, NOW, UNSIGNED)).toEqual({ state: "clash-only", coveredUntil: "2026-10-09" });
   });
 
   it("gives breaks and the busiest 14 days when the signed rules find nothing", () => {
@@ -140,6 +140,16 @@ describe("roster check", () => {
     const check = rosterCheck(candidate, roster, NOW, signed, signers);
     expect(check.state).toBe("flag");
     expect(isClash(check)).toBe(false);
+  });
+
+  it("never reads a roster that is loading, failed or ends earlier as a clean check", () => {
+    const roster = [rostered("2026-10-06", "08:00", "16:30")];
+    expect(rosterCheckFor(candidate, null, "loading", NOW).state).toBe("loading");
+    expect(rosterCheckFor(candidate, null, "error", NOW).state).toBe("unread");
+    expect(rosterCheck(candidate, roster, NOW, signed, signers)).toEqual({
+      state: "beyond",
+      coveredUntil: "2026-10-06",
+    });
   });
 
   it("reports how far the saved roster reaches", () => {

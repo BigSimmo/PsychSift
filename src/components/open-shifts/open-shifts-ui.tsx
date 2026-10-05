@@ -91,7 +91,7 @@ type CheckTone = "ok" | "warn" | "bad" | "muted";
 export function checkSummary(check: RosterCheck): { tone: CheckTone; text: string } {
   switch (check.state) {
     case "ok":
-      return { tone: "ok", text: "No roster problems found" };
+      return { tone: "ok", text: "No flags on your PsychSift roster" };
     case "flag": {
       const shortest = [check.breakBefore, check.breakAfter].filter((hours): hours is number => hours !== null);
       const breakWarning = check.warnings.find((warning) => warning.rule === "minBreakHours");
@@ -105,6 +105,12 @@ export function checkSummary(check: RosterCheck): { tone: CheckTone; text: strin
       return { tone: "muted", text: "Clash check only" };
     case "none":
       return { tone: "muted", text: "Can't check: no roster" };
+    case "loading":
+      return { tone: "muted", text: "Checking your roster…" };
+    case "unread":
+      return { tone: "muted", text: "Can't check: your roster didn't load" };
+    case "beyond":
+      return { tone: "muted", text: "Can't check: your roster ends earlier" };
   }
 }
 
@@ -305,7 +311,7 @@ export function FootAction({ children, note }: { children: ReactNode; note?: Rea
 /** Loading rows: the shape of the list, never "nothing open". */
 export function ListSkeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <div role="img" aria-label="Loading open shifts" className="flex flex-col gap-3 px-3 py-4">
+    <div role="status" aria-label="Loading open shifts" className="flex flex-col gap-3 px-3 py-4">
       {Array.from({ length: rows }, (_, index) => (
         <div
           key={index}

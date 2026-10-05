@@ -38,6 +38,8 @@ export type OpenShiftsState = {
   readonly offline: boolean;
   /** Teams whose open shifts couldn't be read, so the list is incomplete. */
   readonly failedTeams: readonly string[];
+  /** The latest refresh failed, so the list shown is the earlier one. */
+  readonly refreshFailed: boolean;
   readonly actorId: string | null;
   readonly message: string | null;
   readonly reload: () => void;
@@ -45,6 +47,8 @@ export type OpenShiftsState = {
 
 type Loaded = {
   readonly key: string;
+  /** Whose list this is, so a later sign-in in the same tab never sees it. */
+  readonly actorId: string | null;
   readonly listings: OpenShiftListing[];
   readonly failedTeams: string[];
   readonly readAt: Date;
@@ -92,9 +96,15 @@ export function useOpenShifts(): OpenShiftsState {
     .sort()
     .join(",");
 
+  const actorId = teams.data?.actorId ?? null;
   useEffect(() => {
-    setOpenShiftsIsPoster(!releaseHeld && enabled.some((team) => team.role === "manager"));
-  }, [enabled, releaseHeld]);
+    if (teams.status === "ready")
+      setOpenShiftsIsPoster(!releaseHeld && enabled.some((team) => team.role === "manager"));
+    if (teams.status === "signed-out") {
+      setOpenShiftsIsPoster(false);
+      lastLoaded = null;
+    }
+  }, [teams.status, enabled, releaseHeld]);
 
   useEffect(() => {
     if (teams.status !== "ready" || enabled.length === 0 || releaseHeld || signedOutSample) return;
@@ -108,6 +118,7 @@ export function useOpenShifts(): OpenShiftsState {
       }
       const next: Loaded = {
         key,
+        actorId,
         listings: ok.flatMap((result) => result.rows ?? []),
         failedTeams: results.filter((result) => result.rows === null).map((result) => result.team.name),
         readAt: new Date(),
@@ -119,7 +130,7 @@ export function useOpenShifts(): OpenShiftsState {
     return () => {
       cancelled = true;
     };
-  }, [teams.status, enabled, key, generation, releaseHeld, signedOutSample]);
+  }, [teams.status, enabled, key, generation, releaseHeld, signedOutSample, actorId]);
 
   const now = useMemo(() => new Date(), []);
   const rosterRows = useMemo<FatigueShift[] | null>(() => {
@@ -149,6 +160,7 @@ export function useOpenShifts(): OpenShiftsState {
       readAt: null,
       sample: "signed-out",
       failedTeams: [],
+      refreshFailed: false,
       message: null,
     };
   }
@@ -166,13 +178,14 @@ export function useOpenShifts(): OpenShiftsState {
       readAt: null,
       sample: "release-held",
       failedTeams: [],
+      refreshFailed: false,
       message: null,
     };
   }
 
   // Offline (or the read failed) with a list already read in this tab: keep showing it, dated.
-  const current = loaded && loaded.key === key ? loaded : null;
-  const offlineCopy = !online && lastLoaded ? lastLoaded : null;
+  const current = loaded && loaded.key === key && loaded.actorId === actorId ? loaded : null;
+  const offlineCopy = !online && lastLoaded && lastLoaded.actorId === actorId ? lastLoaded : null;
   const shown = current ?? offlineCopy;
 
   if (teams.status === "ready" && enabled.length === 0) {
@@ -186,6 +199,7 @@ export function useOpenShifts(): OpenShiftsState {
       readAt: null,
       sample: null,
       failedTeams: [],
+      refreshFailed: false,
       message: null,
     };
   }
@@ -201,6 +215,7 @@ export function useOpenShifts(): OpenShiftsState {
       readAt: shown.readAt,
       sample: null,
       failedTeams: shown.failedTeams,
+      refreshFailed: failed !== null,
       message: null,
     };
   }
@@ -216,6 +231,7 @@ export function useOpenShifts(): OpenShiftsState {
       readAt: null,
       sample: null,
       failedTeams: [],
+      refreshFailed: false,
       message: failed ?? teams.message ?? "Open shifts couldn't be reached. Try again shortly.",
     };
   }
@@ -230,6 +246,7 @@ export function useOpenShifts(): OpenShiftsState {
     readAt: null,
     sample: null,
     failedTeams: [],
+    refreshFailed: false,
     message: null,
   };
 }

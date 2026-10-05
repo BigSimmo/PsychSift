@@ -8,7 +8,7 @@ import { postRosterAction } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { endsNextDay, formatHours, gradeLabel, hoursBetween, type OpenShiftListing } from "@/lib/open-shifts/model";
-import { rosterCheck, type RosterCheck } from "@/lib/open-shifts/roster-check";
+import { rosterCheckFor, type RosterCheck } from "@/lib/open-shifts/roster-check";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAction } from "@/lib/roster/team/model";
@@ -54,8 +54,8 @@ function InfoRow({ icon, title, children }: { icon: ReactNode; title: string; ch
 
 function breakWords(check: Extract<RosterCheck, { state: "ok" | "flag" }>): string | null {
   const parts = [
-    check.breakBefore !== null ? `${formatHours(check.breakBefore)} break after your shift before` : null,
-    check.breakAfter !== null ? `${formatHours(check.breakAfter)} before your next one` : null,
+    check.breakBefore !== null ? `At most ${formatHours(check.breakBefore)} break after your shift before` : null,
+    check.breakAfter !== null ? `at most ${formatHours(check.breakAfter)} before your next one` : null,
   ].filter(Boolean);
   return parts.length ? `${parts.join("; ")}.` : null;
 }
@@ -80,7 +80,7 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
     );
     if (!check.nightsBefore) items.push("No nights in the week before.");
   } else if (check.state === "flag") {
-    for (const warning of check.warnings) items.push(warning.words);
+    for (const warning of check.warnings) items.push(`${warning.words} (cl. ${warning.citation.clause})`);
     items.push("A flag never stops a request. Your roster manager still decides.");
   } else if (check.state === "overlap") {
     items.push(
@@ -90,8 +90,16 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
   } else if (check.state === "clash-only") {
     items.push("Doesn't overlap anything on your PsychSift roster.");
     items.push(
-      `Breaks, 14-day hours and night limits aren't checked yet: the fatigue rules are switched off until they're signed. Check them yourself against ${AGREEMENT}.`,
+      `Breaks, hours, shift length and night limits aren't checked yet: the fatigue rules are switched off until they're signed. Check them yourself against ${AGREEMENT}.`,
     );
+  } else if (check.state === "beyond") {
+    items.push(
+      `Your PsychSift roster ends ${formatDayShort(check.coveredUntil)}, so breaks and hours around this shift can't be checked.`,
+    );
+  } else if (check.state === "loading") {
+    items.push("Your roster is still loading. Requests wait until it has been checked.");
+  } else if (check.state === "unread") {
+    items.push("Your roster couldn't be read, so clashes weren't checked. Try again before requesting.");
   } else {
     items.push("There's no PsychSift roster to compare this shift with.");
   }
@@ -114,16 +122,16 @@ export function RosterCheckPanel({ check }: { check: RosterCheck }) {
           </li>
         ))}
       </ul>
-      {check.state === "none" ? (
+      {check.state === "none" || check.state === "beyond" ? (
         <Link
           href="/roster/shifts"
           className="mt-2 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)]"
         >
-          Add your roster
+          {check.state === "beyond" ? "Update your roster" : "Add your roster"}
         </Link>
-      ) : check.state !== "overlap" ? (
+      ) : check.state === "ok" || check.state === "flag" ? (
         <p className="mt-2 text-xs text-[color:var(--text-muted)]">
-          {`Your PsychSift roster, compared with ${AGREEMENT}. It can't see work outside PsychSift, so hours are "at least".`}
+          {`Your PsychSift roster, compared with ${AGREEMENT}. It can't see work outside PsychSift, so hours are "at least" and breaks "at most".`}
         </p>
       ) : null}
     </section>
@@ -186,7 +194,7 @@ export function RequestSheet({
           <p className="text-[color:var(--text-muted)]">{listing.siteName ?? listing.teamName}</p>
         </div>
         <p className="text-sm text-[color:var(--text-muted)]">
-          {`Your roster manager in ${listing.teamName} decides. Until then it shows in My shifts as "Requested". They see your name and level, as for any Roster request; nothing else is shared.`}
+          {`Your roster manager in ${listing.teamName} decides, unless your team approves same-level requests automatically. Until then it shows in My shifts as "Requested". They see your name and level, as for any Roster request; nothing else is shared.`}
         </p>
         <div className="flex min-h-12 items-start gap-3 border-t border-[color:var(--border)] pt-3">
           <input
@@ -254,9 +262,10 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
     );
   }
 
-  const check = rosterCheck(
+  const check = rosterCheckFor(
     { id: `open:${listing.id}`, startsAt: listing.startsAt, endsAt: listing.endsAt, kind: listing.kind },
     state.roster,
+    state.rosterStatus,
     now,
   );
   const startDate = perthDateOf(listing.startsAt);
@@ -296,7 +305,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
         <Fact label="Shift code" value={listing.shiftCode} />
       </dl>
 
-      <div className="mt-4">{sample ? null : <RosterCheckPanel check={check} />}</div>
+      <div className="mt-4">{sample || alreadyMine ? null : <RosterCheckPanel check={check} />}</div>
 
       <ul className="mt-4">
         <InfoRow
@@ -317,7 +326,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           icon={<Users aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />}
           title="Approved by your roster manager"
         >
-          {`A roster manager in ${listing.teamName} approves or declines each request.`}
+          {`A roster manager in ${listing.teamName} approves or declines each request, unless the team approves same-level requests automatically.`}
         </InfoRow>
         <InfoRow
           icon={<Scale aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />}
@@ -399,8 +408,20 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
             Overlaps your roster
           </Button>
         </FootAction>
+      ) : check.state === "loading" || check.state === "unread" ? (
+        <FootAction note={check.state === "loading" ? "Checking your roster first." : undefined}>
+          {check.state === "unread" ? (
+            <Button variant="secondary" block onClick={state.reload}>
+              Try reading my roster again
+            </Button>
+          ) : (
+            <Button variant="secondary" block disabled onClick={() => undefined}>
+              Checking your roster…
+            </Button>
+          )}
+        </FootAction>
       ) : (
-        <FootAction note="Your roster manager approves extra shifts. You'll confirm before anything is sent.">
+        <FootAction note="Your roster manager decides. You'll confirm before anything is sent.">
           <Button variant="primary" block onClick={() => setSheetOpen(true)}>
             Request this shift
           </Button>

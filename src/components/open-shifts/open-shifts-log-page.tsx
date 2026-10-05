@@ -12,6 +12,7 @@ import { parseOffer } from "@/lib/open-shifts/parse-offer";
 import { rosterCheck } from "@/lib/open-shifts/roster-check";
 import type { FatigueShift } from "@/lib/roster/fatigue-rules";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { useOnlineStatus } from "@/lib/use-online-status";
 
 import { SignInAction } from "./open-shifts-sign-in";
 import { CheckLine, FootAction, OPEN_SHIFTS_HREF, SubHeader, formatShiftTimes } from "./open-shifts-ui";
@@ -31,6 +32,7 @@ const field =
 export function OpenShiftsLogPage() {
   const signedOut = useSignedOutSample();
   const shifts = useRosterShifts();
+  const offline = !useOnlineStatus();
   const router = useRouter();
   const id = useId();
   const [nowMs] = useState(() => Date.now());
@@ -71,9 +73,13 @@ export function OpenShiftsLogPage() {
     if (parsed.start) setStart(parsed.start);
     if (parsed.end) setEnd(parsed.end);
     setReadNote(
-      parsed.date || parsed.start
-        ? "Filled in below; check each field."
-        : "Couldn't find a date or time in the message. Fill them in below.",
+      parsed.date && parsed.start
+        ? "Date and times filled in below; check each field."
+        : parsed.date
+          ? "Found the date; set the times yourself."
+          : parsed.start
+            ? "Found the times; set the date yourself."
+            : "Couldn't find a date or time in the message. Fill them in below.",
     );
   }
 
@@ -204,8 +210,14 @@ export function OpenShiftsLogPage() {
         ) : null}
 
         {signedOut ? null : (
-          <FootAction note="Saved to your roster as a hand-added shift. Only you can see it.">
-            <Button type="submit" variant="primary" block busy={busy} busyLabel="Saving" disabled={!times}>
+          <FootAction
+            note={
+              offline
+                ? "You're offline, so nothing can be saved."
+                : "Saved to your roster as a hand-added shift. Only you can see it."
+            }
+          >
+            <Button type="submit" variant="primary" block busy={busy} busyLabel="Saving" disabled={!times || offline}>
               Save to my roster
             </Button>
           </FootAction>
