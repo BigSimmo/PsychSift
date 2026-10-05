@@ -3,7 +3,7 @@
 import { useId } from "react";
 
 import { cn, textMuted } from "@/components/ui-primitives";
-import { formatCmeRowDate } from "@/lib/cme/cpd-year";
+import { formatCalendarDateLong, formatCalendarDateShort, formatCmeRowDate } from "@/lib/cme/cpd-year";
 import { currentPosition, type TrainingPeriod, type TrainingPosition } from "@/lib/cme/training-timeline";
 
 /**
@@ -226,6 +226,120 @@ export function CmeTrainingTimeline({
             Now
           </li>
         </ul>
+      </figcaption>
+    </figure>
+  );
+}
+
+/** A tick's date label is dropped when it would sit this close (in % of the track) to the start or end label. */
+const TICK_CLEARANCE = 14;
+
+function percentAlong(day: number, start: number, end: number): number {
+  const span = Math.max(1, end - start);
+  return Math.min(100, Math.max(0, ((day - start) / span) * 100));
+}
+
+function rotationInWords(rotation: TrainingPeriod & { endsOn: string }, today: string, todayPct: number): string {
+  const runs = `Rotation runs ${formatCalendarDateLong(rotation.startsOn)} to ${formatCalendarDateLong(rotation.endsOn)}.`;
+  if (today < rotation.startsOn) return `${runs} It has not started yet.`;
+  if (today > rotation.endsOn) return `${runs} It has ended.`;
+  return `${runs} Today is about ${Math.round(todayPct / 10) * 10}% of the way through.`;
+}
+
+/**
+ * THIS ROTATION — the current rotation alone as a thin line from its start to
+ * its end (the 5 Oct mock-up, screen 04): filled in CPD indigo up to today, a
+ * dark "Today" mark, a filled dot at the start, an open indigo dot at the
+ * trainee's next milestone when it falls inside the rotation, and an open grey
+ * dot at the end. Dates under the line.
+ *
+ * The drawing is `aria-hidden`; the same facts are in one sentence for screen
+ * readers, and the milestone and the end date are rows under it on the page.
+ * It reads the trainee's own dates only and adds nothing. Needs an end date.
+ */
+export function CmeRotationTrack({
+  rotation,
+  today,
+  marker = null,
+}: {
+  readonly rotation: TrainingPeriod & { readonly endsOn: string };
+  /** Perth calendar date, `YYYY-MM-DD`. */
+  readonly today: string;
+  /** The next open milestone's date, when it falls inside this rotation. */
+  readonly marker?: string | null;
+}) {
+  const start = dayNumber(rotation.startsOn);
+  const end = dayNumber(rotation.endsOn);
+  const todayPct = percentAlong(dayNumber(today), start, end);
+  const markerPct = marker ? percentAlong(dayNumber(marker), start, end) : null;
+  const showMarkerTick = markerPct !== null && markerPct > TICK_CLEARANCE && markerPct < 100 - TICK_CLEARANCE;
+  const todayLabelShift = todayPct < 8 ? "translate-x-0" : todayPct > 92 ? "-translate-x-full" : "-translate-x-1/2";
+  const node =
+    "absolute top-5 -ml-1.5 size-3 rounded-full border-[1.5px] forced-colors:border-[CanvasText] forced-color-adjust-none";
+
+  return (
+    <figure data-testid="cme-rotation-track" className="m-0 grid gap-0.5">
+      <div aria-hidden="true" className="relative h-10">
+        {today >= rotation.startsOn && today <= rotation.endsOn ? (
+          <span
+            className={cn(
+              "absolute top-0 whitespace-nowrap text-2xs font-medium text-[color:var(--text-heading)]",
+              todayLabelShift,
+            )}
+            style={{ left: `${todayPct}%` }}
+          >
+            Today
+          </span>
+        ) : null}
+        <span className="absolute inset-x-0 top-[25px] h-0.5 rounded-full bg-[color:var(--border)]">
+          <span
+            className="absolute inset-y-0 left-0 rounded-full bg-[color:var(--clinical-accent)] forced-colors:bg-[Highlight] forced-color-adjust-none"
+            style={{ width: `${todayPct}%` }}
+          />
+        </span>
+        <span
+          className={cn(
+            node,
+            today >= rotation.startsOn
+              ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] forced-colors:bg-[Highlight]"
+              : "border-[color:var(--border-strong)] bg-[color:var(--surface-raised)]",
+          )}
+          style={{ left: "0%" }}
+        />
+        {markerPct !== null ? (
+          <span
+            data-testid="cme-rotation-track-marker"
+            className={cn(node, "border-[color:var(--clinical-accent)] bg-[color:var(--surface-raised)]")}
+            style={{ left: `${markerPct}%` }}
+          />
+        ) : null}
+        <span
+          className={cn(
+            node,
+            today >= rotation.endsOn
+              ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] forced-colors:bg-[Highlight]"
+              : "border-[color:var(--border-strong)] bg-[color:var(--surface-raised)]",
+          )}
+          style={{ left: "100%" }}
+        />
+        {today >= rotation.startsOn && today <= rotation.endsOn ? (
+          <span
+            className="absolute top-4 -ml-px h-5 w-0.5 rounded-full bg-[color:var(--text-heading)] forced-colors:bg-[CanvasText] forced-color-adjust-none"
+            style={{ left: `${todayPct}%` }}
+          />
+        ) : null}
+      </div>
+      <div aria-hidden="true" className="nums relative flex justify-between text-2xs text-[color:var(--text-muted)]">
+        <span>{formatCalendarDateShort(rotation.startsOn)}</span>
+        {showMarkerTick && marker ? (
+          <span className="absolute -translate-x-1/2" style={{ left: `${markerPct}%` }}>
+            {formatCalendarDateShort(marker)}
+          </span>
+        ) : null}
+        <span>{formatCalendarDateShort(rotation.endsOn)}</span>
+      </div>
+      <figcaption className="sr-only" data-testid="cme-rotation-track-words">
+        {rotationInWords(rotation, today, todayPct)}
       </figcaption>
     </figure>
   );

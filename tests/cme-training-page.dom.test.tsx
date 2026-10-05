@@ -201,6 +201,87 @@ describe("CME training page", () => {
   });
 });
 
+describe("CME training page, mock-up layout", () => {
+  const MID_REVIEW: TrainingMilestone = {
+    id: "m2",
+    label: "Mid-rotation review",
+    dueKind: "date",
+    dueFteMonths: null,
+    dueOn: "2026-11-02",
+    completedOn: null,
+  };
+
+  it("draws this rotation with the doctor's own milestone and the rotation's end", () => {
+    render(
+      <CmeTrainingPage nowIso={NOW_ISO} initialPeriods={PERIODS} initialMilestones={[MID_REVIEW]} demoMode={false} />,
+    );
+    const group = screen.getByTestId("cme-training-this-rotation");
+    expect(group).toHaveTextContent("This rotation · Consultation liaison");
+    expect(screen.getByTestId("cme-rotation-track-marker")).toBeInTheDocument();
+    expect(screen.getByTestId("cme-rotation-track-words")).toHaveTextContent(
+      "Rotation runs 3 August 2026 to 29 January 2027. Today is about 30% of the way through.",
+    );
+    expect(screen.getByTestId("cme-training-rotation-milestone")).toHaveTextContent(
+      "Mid-rotation reviewYour milestone · Mon 2 Nov, in 5 weeks",
+    );
+    expect(screen.getByTestId("cme-training-rotation-end")).toHaveTextContent(
+      "End of rotationFri 29 Jan 2027 · in about 18 weeks",
+    );
+  });
+
+  it("shows rule figures with their source, check month and Not signed off, and counts nothing", () => {
+    render(<CmeTrainingPage nowIso={NOW_ISO} initialPeriods={PERIODS} initialMilestones={[]} demoMode={false} />);
+    const assessments = screen.getByTestId("cme-training-assessments");
+    expect(assessments).toHaveTextContent("PsychSift does not record EPAs, WBAs or term assessments yet");
+    expect(screen.getByTestId("cme-training-rule-ranzcp-epa")).toHaveTextContent(
+      "At least 2 for each 6-month full-time rotation, pro rata if part-time.",
+    );
+    expect(screen.getByTestId("cme-training-rule-ranzcp-epa")).toHaveTextContent("RANZCP · checked Oct 2026");
+    expect(screen.getByTestId("cme-training-rule-amc-epa")).toHaveTextContent("run in WA by PMCWA");
+    for (const id of ["cme-training-rule-ranzcp-epa", "cme-training-rule-amc-epa", "cme-training-cpd-rule"]) {
+      expect(screen.getByTestId(id)).toHaveTextContent("Not signed off");
+    }
+    expect(screen.getByTestId("cme-training")).not.toHaveTextContent(/\bAMA\b/);
+  });
+
+  it("works the CPD rule out from the training record, read-only, with a link to Set up", () => {
+    const { unmount } = render(
+      <CmeTrainingPage nowIso={NOW_ISO} initialPeriods={PERIODS} initialMilestones={[]} demoMode={false} />,
+    );
+    expect(screen.getByTestId("cme-training-cpd-rule")).toHaveTextContent("Medical Board · checked Oct 2026");
+    expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent(
+      "In a training programmeCovered by your training",
+    );
+    expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent("Consultation liaison covers today");
+    expect(screen.getByTestId("cme-training-cpd-rule-change")).toHaveAttribute("href", "/cme/setup");
+    unmount();
+
+    render(<CmeTrainingPage nowIso={NOW_ISO} initialPeriods={[]} initialMilestones={[]} demoMode={false} />);
+    expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent(
+      "Everyone else50 h a year with a CPD home, a written plan and category minimums",
+    );
+    expect(screen.getByTestId("cme-training-cpd-rule-basis")).toHaveTextContent(
+      "no stage, rotation or break covers today",
+    );
+  });
+
+  it("says a milestone marked done in the doctor's words, and deletes from inside the edit form", async () => {
+    const user = userEvent.setup();
+    render(
+      <CmeTrainingPage
+        nowIso={NOW_ISO}
+        initialPeriods={PERIODS}
+        initialMilestones={[{ ...MID_REVIEW, completedOn: "2026-09-14" }]}
+        demoMode={false}
+      />,
+    );
+    expect(screen.getByTestId("cme-training-milestones")).toHaveTextContent("You marked it done on 14 September 2026");
+    await user.click(screen.getByRole("button", { name: "Edit Mid-rotation review" }));
+    await user.click(screen.getByRole("button", { name: "Delete this milestone" }));
+    expect(screen.getByRole("button", { name: "Delete milestone" })).toBeInTheDocument();
+  });
+});
+
 describe("CME training route", () => {
   it("shows the sign-in notice when signed out", async () => {
     mocks.load.mockResolvedValue({

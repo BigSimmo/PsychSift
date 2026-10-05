@@ -109,12 +109,40 @@ describe("development plan page", () => {
     expect(tally).toHaveTextContent("3 h from 2 activities");
     expect(screen.getAllByTestId("cme-plan-tally-bar")).toHaveLength(2);
     // One split bar of every logged hour, with the total and how many activities are linked.
-    expect(screen.getByTestId("cme-plan-goal-split")).toHaveTextContent("4.5 h logged1 activity linked");
+    expect(screen.getByTestId("cme-plan-goal-split")).toHaveTextContent(/4\.5 h\s*logged · 1 of 3 activities linked/);
+    // "Not linked to a goal" is drawn grey, so it reads as the gap rather than as a goal.
+    const bars = screen.getAllByTestId("cme-plan-tally-bar");
+    expect(bars[0].getAttribute("class")).toContain("--cme-cat-1");
+    expect(bars[1].getAttribute("class")).toContain("--border-strong");
   });
 
   it("says when the plan is not yet marked written", () => {
     render(<CmePlanPage set={SET} goals={[]} entries={[]} />);
-    expect(screen.getByTestId("cme-plan-status")).toHaveTextContent("Not yet marked as written.");
+    expect(screen.getByTestId("cme-plan-status")).toHaveTextContent("Plan not marked written yet");
+    expect(screen.getByTestId("cme-plan-status-link")).toHaveAttribute("href", "/cme/setup#cme-setup-steps");
+  });
+
+  it("shows the date the plan was marked written, with a Change link", () => {
+    const written = {
+      ...SET,
+      requirements: SET.requirements.map((requirement) =>
+        requirement.id === "plan" ? { ...requirement, completedOn: "2026-02-03" } : requirement,
+      ),
+    };
+    render(<CmePlanPage set={written} goals={[GOAL]} entries={[]} />);
+    expect(screen.getByTestId("cme-plan-status")).toHaveTextContent("Plan marked writtenDone 3 February 2026");
+    expect(screen.getByTestId("cme-plan-status-link")).toHaveTextContent("Change");
+  });
+
+  it("counts the goals in the label, and Add a goal opens the editor with one more empty goal", async () => {
+    const user = userEvent.setup();
+    render(<CmePlanPage set={SET} goals={[GOAL]} entries={[]} />);
+    expect(screen.getByText("Goals · 1")).toBeInTheDocument();
+    expect(screen.queryByTestId("cme-plan-save")).toBeNull();
+    await user.click(screen.getByTestId("cme-plan-add-goal"));
+    expect(screen.getByLabelText("Goal 1")).toHaveValue("Document capacity well");
+    expect(screen.getByLabelText("Goal 2")).toHaveValue("");
+    expect(screen.getByTestId("cme-plan-save")).toHaveTextContent("Save plan");
   });
 
   it("offers each goal to carry only in the open year-end window and only on a tap", async () => {
