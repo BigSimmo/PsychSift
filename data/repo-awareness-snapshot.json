@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-04"
+    "committed_at": "2026-10-05"
   },
   "routes": {
     "modes": [
@@ -676,6 +676,11 @@
         "path": "/mockups/search-heading",
         "file": "src/app/mockups/search-heading/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/admin/compliance",
+        "file": "src/app/(search-app)/admin/compliance/page.tsx",
+        "area": "product"
       },
       {
         "path": "/sources/publishers",
