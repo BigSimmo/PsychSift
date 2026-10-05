@@ -102,7 +102,7 @@ describe("PsychiatryHome", () => {
       within(recent)
         .getAllByRole("link")
         .map((link) => link.getAttribute("href")),
-    ).toEqual(["/dsm/diagnoses/mdd", "/forms/form-1a"]);
+    ).toEqual(["/forms/form-1a"]); // the newest is the resume row above, not repeated
     expect(within(screen.getByTestId("psychiatry-mha-links")).getByText("Form 1A")).toBeTruthy();
     expect(within(screen.getByTestId("psychiatry-mha-links")).getByText("Opened once on this phone")).toBeTruthy();
 

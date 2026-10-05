@@ -393,10 +393,15 @@ function LimitRow({ item, nowMs }: { readonly item: MhaTimerItem; readonly nowMs
         target="_blank"
         rel="noreferrer"
         data-testid="mha-clock-act-section"
-        className={cn(focusRing, flatLink, "w-fit underline underline-offset-2")}
+        className={cn(
+          focusRing,
+          "flex min-h-12 w-fit items-center text-sm font-semibold text-[color:var(--dash-ink)] underline underline-offset-2",
+        )}
       >
-        {`Mental Health Act 2014 (WA) s ${entry.section}${heading ? ` — ${heading}` : ""}`}
-        <ExternalLink aria-hidden="true" className="size-icon-xs shrink-0" />
+        <span>
+          {`Mental Health Act 2014 (WA) s ${entry.section}${heading ? ` — ${heading}` : ""}`}
+          <ExternalLink aria-hidden="true" className="ml-1 inline-block size-icon-xs align-baseline" />
+        </span>
       </a>
       <p className="text-xs text-[color:var(--dash-muted)]">{`Counted from: ${entry.anchor}.`}</p>
     </li>

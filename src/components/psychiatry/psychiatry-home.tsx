@@ -500,14 +500,15 @@ function ShiftToolsList({ clockLine }: { readonly clockLine: (clocks: readonly M
 
 function ContinueSection({ visits, now }: { readonly visits: readonly PsychiatryVisit[]; readonly now: Date | null }) {
   const recordingOff = useRecordingOff();
-  const shown = visits.slice(0, 4);
+  // The newest record is already the "Pick up where you left off" row above, so it is not repeated.
+  const shown = visits.slice(1, 4);
   return (
     <section aria-labelledby="psychiatry-continue-title" className="grid gap-2" data-testid="psychiatry-card-continue">
       <FlatLabel
         id="psychiatry-continue-title"
         title="Continue"
         aside={
-          shown.length > 0 ? (
+          visits.length > 0 ? (
             <>
               <FlatTag>On this phone</FlatTag>
               <button
@@ -541,9 +542,11 @@ function ContinueSection({ visits, now }: { readonly visits: readonly Psychiatry
         </FlatList>
       ) : (
         <p className="text-sm text-[color:var(--dash-muted)]" data-testid="psychiatry-continue-empty">
-          {recordingOff
-            ? "Turn on Save recent searches in Settings to see what you opened here. It stays on this device."
-            : "Diagnoses, therapies and forms you open will appear here, on this device only."}
+          {visits.length > 0
+            ? "Nothing else opened yet."
+            : recordingOff
+              ? "Turn on Save recent searches in Settings to see what you opened here. It stays on this device."
+              : "Diagnoses, therapies and forms you open will appear here, on this device only."}
         </p>
       )}
     </section>
