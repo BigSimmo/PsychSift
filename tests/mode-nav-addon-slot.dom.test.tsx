@@ -372,6 +372,9 @@ describe("header addon slot ownership", () => {
       // whole mode's claim is registered in this one file. The breadcrumb
       // header for one activity and Customise (`CmeDetailNavHeader`) lives
       // there too.
+      // `cme-page-tabs.tsx` no longer claims the slot: the mode band now carries
+      // CPD's page tabs, and its sub-page chips sit in page flow under it. The
+      // `/cme` routes stay registered so the shell never adds a second nav.
       "src/components/cme/cme-nav-header.tsx",
       "src/components/developer-area/developer-hub-nav-header.tsx",
       "src/components/dictionary/dictionary-catalogue-pages.tsx",

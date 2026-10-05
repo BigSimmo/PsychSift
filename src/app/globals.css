@@ -8,6 +8,9 @@
    Production mounts that class on `<html>` (`src/app/layout.tsx`), so the
    layer is opted in at the document root rather than per subtree. */
 @import "./ckb-v2-tokens.css";
+/* The mode page header band (C4). Its own sheet keeps the block out of this
+   file, which every mode build edits. */
+@import "./mode-band.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant pointer-fine (@media (pointer: fine));

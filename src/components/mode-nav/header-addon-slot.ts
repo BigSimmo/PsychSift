@@ -71,11 +71,9 @@ export function isHeaderAddonSlotOwnedRoute(pathname: string): boolean {
   // the bare path, not a slug detail.
   if (isSlugDetail(pathname, "/on-call")) return true;
   if (pathname === "/on-call") return true;
-  // CPD's read views mount CmeNavHeader. Log, Plan and Learning mount
-  // CmePageTabs through the same collapse portal. Year (`/cme`, `/cme/check`)
-  // still claims the slot but deliberately draws nothing there, because the
-  // mode header's own tabs replace its old inner row. Detail, form and
-  // secondary routes do not claim the slot.
+  // CPD's read views mount CmeNavHeader. CmePageTabs renders in the page now,
+  // under the mode header band, and no longer uses the collapse portal. Detail,
+  // form and secondary routes do not claim the slot.
   if (pathname === "/cme/programme" || pathname === "/cme/setup") return true;
   if (
     [

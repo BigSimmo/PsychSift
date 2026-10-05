@@ -25,6 +25,7 @@ import {
   upcomingLearningItems,
 } from "@/lib/cme/learning-directory-view";
 import type { LearningDirectoryItem } from "@/lib/cme/learning-directory";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 
 const KIND_LABEL: Record<LearningDirectoryItem["kind"], string> = {
   course: "Course",
@@ -245,7 +246,7 @@ export function CmeLearningPage({
 
   return (
     <main data-testid="cme-learning" data-mode-identity="cme" className={cn(cmePageWidth, "px-4 pb-24 pt-6 sm:px-6")}>
-      <h1 className={cmePageTitle}>Courses</h1>
+      <PageTitleUnderBand className={cmePageTitle}>Courses</PageTitleUnderBand>
       <div className="mt-3 grid gap-6">
         <CmeSegmentedTabs
           label="Courses pages"

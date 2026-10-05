@@ -57,7 +57,7 @@ import {
   type ReminderSettings,
   type ReminderType,
 } from "@/lib/reminders/settings";
-import { cmePageTitle } from "@/components/cme/cme-page-frame";
+import { ModeBandStatus, useModeBandCount, useModeBandShown } from "@/components/mode-band/mode-band";
 
 /**
  * THE YEAR PAGE (`/cme`): the screen the whole mode is judged by, built to the
@@ -171,7 +171,7 @@ export type CmeDashboardProps = {
   /** Snoozes one reminder type for a week. Omitted: no snooze buttons. */
   readonly onSnoozeReminder?: (type: ReminderType) => void;
   /** Saved drafts whose next step is the owner's own. Shown as a chip to finish; never hours. */
-  readonly draftsToFinish?: number;
+  readonly draftsToFinish?: number | null;
   /** Current owner-scoped training position, when the server has loaded one. */
   readonly currentTrainingPosition?: TrainingPosition | null;
   /** A frozen demonstration never suggests that its records refresh. */
@@ -225,12 +225,10 @@ export function CmeDashboard({
   // Screen 08: a confirmed year with nothing logged in it yet.
   const nothingLogged = hasTarget && yearEntries.length === 0 && !(totalHours > 0);
 
+  const underBand = useModeBandShown();
+  // The drafts waiting to be finished live under Log, so its tab carries them.
+  useModeBandCount("log", draftsToFinish);
   const today = perthCalendarDate(now);
-  const loadedTime = new Intl.DateTimeFormat("en-AU", {
-    timeZone: "Australia/Perth",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(now);
   const loggedToday = entries.filter((entry) => !entry.archivedAt && entry.date === today);
   const loggedTodayHours = loggedToday.reduce(
     (sum, entry) => sum + entry.allocations.reduce((inner, allocation) => inner + allocation.hours, 0),
@@ -295,24 +293,26 @@ export function CmeDashboard({
 
   const status = (
     <>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className={cmePageTitle}>Year</h1>
-          <p data-testid="cme-data-freshness" className={cn(textMuted, "mt-1 flex items-center gap-1.5 text-xs")}>
-            <span
-              aria-hidden="true"
-              className={cn(
-                "size-1.5 rounded-full bg-[color:var(--clinical-accent)]",
-                !demoMode && "motion-safe:animate-pulse motion-reduce:animate-none",
-              )}
-            />
-            {demoMode ? "Demo records" : `Saved records loaded at ${loadedTime}`}
-          </p>
+      {/* The mode band above the page names the mode and carries Customise
+          and this status line; the h1 still names the page for screen readers. */}
+      <h1 className="sr-only">Year</h1>
+      <ModeBandStatus
+        testId="cme-data-freshness"
+        value={
+          demoMode
+            ? { kind: "sample" }
+            : draftsToFinish === null
+              ? { kind: "failed", text: "Drafts didn't load · no count shown" }
+              : { kind: "loaded", at: now }
+        }
+      />
+      {!underBand ? (
+        <div className="flex justify-end">
+          <Button variant="toolbar" size="sm" icon={Settings2} onClick={onOpenCustomise}>
+            Customise
+          </Button>
         </div>
-        <Button variant="toolbar" size="sm" icon={Settings2} onClick={onOpenCustomise}>
-          Customise
-        </Button>
-      </div>
+      ) : null}
 
       {currentTrainingPosition?.stage || currentTrainingPosition?.rotation || currentTrainingPosition?.breakPeriod ? (
         <Link

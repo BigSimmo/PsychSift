@@ -22,7 +22,8 @@ export type CmeDashboardRouteProps = {
   readonly routines: readonly CmeRoutine[];
   readonly demoMode?: boolean;
   readonly reportingReminder?: CmeReportingReminder | null;
-  readonly draftsToFinish?: number;
+  /** Null when the drafts could not be read. */
+  readonly draftsToFinish?: number | null;
   readonly currentTrainingPosition?: TrainingPosition | null;
   readonly goals?: readonly CmePlanGoal[];
   readonly nextYearConfirmed?: boolean | null;

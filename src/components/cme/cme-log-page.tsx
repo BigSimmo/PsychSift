@@ -31,6 +31,7 @@ import type { CmeMissedSession } from "@/lib/cme/missed-sessions";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { cmePageTitle } from "@/components/cme/cme-page-frame";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 
 export type { CmeLogAttention } from "@/components/cme/cme-log-shared";
 
@@ -269,7 +270,7 @@ export function CmeLogPage({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className={cmePageTitle}>{showFinish ? "To finish" : "Log"}</h1>
+          <PageTitleUnderBand className={cmePageTitle}>{showFinish ? "To finish" : "Log"}</PageTitleUnderBand>
           {showFinish ? null : (
             <p className={cn(textMuted, "mt-1 text-sm")}>Every activity you have recorded, by year.</p>
           )}
