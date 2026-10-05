@@ -104,8 +104,12 @@ describe("MHA clock with countdowns signed", () => {
 describe("MHA clock wording helpers", () => {
   const nowMs = new Date("2026-10-04T18:50:00Z").getTime();
 
-  it("names the day for times within six days, and the date beyond", () => {
+  it("names the day only within three days either side, so two weekdays on one card never clash", () => {
     expect(mhaClockWhen(madeForm2, nowMs)).toBe("Sun 23:40");
+    const day = 24 * 60 * 60_000;
+    expect(mhaClockWhen(nowMs - 3 * day, nowMs)).toBe("Fri 02:50");
+    expect(mhaClockWhen(nowMs - 3 * day - 60_000, nowMs)).toContain("2 Oct 2026");
+    expect(mhaClockWhen(nowMs + 4 * day, nowMs)).toContain("9 Oct 2026");
     expect(mhaClockWhen(new Date("2026-09-20T01:00:00Z"), nowMs)).toContain("20 Sep 2026");
   });
 

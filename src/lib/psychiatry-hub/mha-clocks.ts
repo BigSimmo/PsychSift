@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from "react";
+
 import { PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { readPatientLabels, removePatientLabels } from "@/lib/patient-label-storage";
 
@@ -32,6 +34,8 @@ export const LEGACY_MHA_CLOCK_STORE_NAME = "mha-clocks";
 /** A night's worth. More than this is refused rather than silently dropping the oldest. */
 export const MHA_CLOCK_LIMIT = 12;
 export const mhaClocksChangeEvent = "psychsift:mha-clocks-change";
+/** Said instead of any count or "No clocks" when this device could not read its clocks. */
+export const MHA_CLOCK_UNREADABLE = "Clocks could not be read on this phone.";
 
 export interface MhaClock {
   /** Opaque random id. Never derived from anything about the person. */
@@ -242,4 +246,9 @@ export function subscribeMhaClocks(listener: () => void): () => void {
     window.removeEventListener("storage", onStorage);
     stopTransition();
   };
+}
+
+/** The clocks and whether they could all be read, kept current across tabs and sign-out. */
+export function useMhaClockState(): MhaClockState {
+  return useSyncExternalStore(subscribeMhaClocks, loadMhaClockState, () => EMPTY_MHA_CLOCK_STATE);
 }

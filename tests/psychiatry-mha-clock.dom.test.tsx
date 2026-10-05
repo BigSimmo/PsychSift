@@ -340,9 +340,24 @@ describe("MhaClockPage", () => {
     render(<MhaClockPage forms={forms} now={now} />);
     const [clock] = loadMhaClocks();
     const engine = mhaTimers([{ timerId: clock.id, formCode: "2", madeAt: new Date(clock.madeAt) }], now);
-    const countdowns = engine.items.filter((item) => item.kind === "countdown");
+    // The page shows each limit once (a recurring review only at its next deadline).
+    const shown = [...new Map(engine.items.map((item) => [`${item.timerId}:${item.entry.id}`, item])).values()];
+    const countdowns = shown.filter((item) => item.kind === "countdown");
     expect(screen.queryAllByTestId("mha-clock-countdown")).toHaveLength(countdowns.length);
-    expect(screen.queryAllByTestId("mha-clock-quote-only")).toHaveLength(engine.items.length - countdowns.length);
+    expect(screen.queryAllByTestId("mha-clock-quote-only")).toHaveLength(shown.length - countdowns.length);
+  });
+
+  it("keeps the reader's half-typed time rather than snapping back to now", () => {
+    render(<MhaClockPage forms={forms} now={now} />);
+    const time = screen.getByTestId("mha-clock-time") as HTMLInputElement;
+    expect(time.value).toBe("2026-10-05T18:00");
+    fireEvent.change(time, { target: { value: "" } });
+    expect(time.value).toBe("");
+    fireEvent.change(screen.getByTestId("mha-clock-form"), { target: { value: "2" } });
+    fireEvent.click(screen.getByTestId("mha-clock-start"));
+    expect(screen.getByTestId("mha-clock-message")).toHaveTextContent("Choose a form and enter when it was made.");
+    expect(time).toHaveAttribute("aria-invalid", "true");
+    expect(loadMhaClocks()).toEqual([]);
   });
 
   it("refuses a start time later than now", () => {

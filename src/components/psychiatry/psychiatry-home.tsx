@@ -42,13 +42,7 @@ import { cn } from "@/components/ui-primitives";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
-import {
-  EMPTY_MHA_CLOCK_STATE,
-  loadMhaClockState,
-  subscribeMhaClocks,
-  type MhaClock,
-  type MhaClockState,
-} from "@/lib/psychiatry-hub/mha-clocks";
+import { MHA_CLOCK_UNREADABLE, useMhaClockState, type MhaClock } from "@/lib/psychiatry-hub/mha-clocks";
 import {
   clearPsychiatryVisits,
   EMPTY_PSYCHIATRY_VISIT_STATE,
@@ -463,13 +457,6 @@ function Signpost({
   );
 }
 
-function useMhaClockState(): MhaClockState {
-  return useSyncExternalStore(subscribeMhaClocks, loadMhaClockState, () => EMPTY_MHA_CLOCK_STATE);
-}
-
-/** Said instead of any count when this device could not read its clocks: never "No clocks running". */
-const CLOCKS_UNREADABLE = "Clocks could not be read on this phone";
-
 /** "2 running on this phone · Forms 2 and 3A". Exported for tests. */
 export function clockSummary(clocks: readonly MhaClock[]): string {
   if (clocks.length === 0) return "No clocks running";
@@ -495,7 +482,9 @@ function ShiftToolsList({ clockLine }: { readonly clockLine: (clocks: readonly M
         icon={Timer}
         title="MHA clock"
         subtitle={
-          <span data-testid="psychiatry-shift-mha-summary">{unreadable ? CLOCKS_UNREADABLE : clockLine(clocks)}</span>
+          <span data-testid="psychiatry-shift-mha-summary">
+            {unreadable ? MHA_CLOCK_UNREADABLE : clockLine(clocks)}
+          </span>
         }
       />
       <FlatRow
@@ -570,7 +559,9 @@ function MentalHealthActSection({
 }) {
   const forms = mostOpenedForms(visits, opens, 3);
   const opened = (href: string) => {
-    const count = Math.max(1, opens.filter((open) => open.href === href).length);
+    // Opens are kept for 90 days; a form known only from a visit is not given a made-up count.
+    const count = opens.filter((open) => open.href === href).length;
+    if (count === 0) return "Opened recently on this phone";
     return `Opened ${count === 1 ? "once" : `${count} times`} on this phone`;
   };
   return (
@@ -807,7 +798,11 @@ function WeekSection({
               </>
             ) : null}
           </>
-        ) : null}
+        ) : recordingOff ? null : (
+          <p className="text-sm text-[color:var(--dash-ink)]" data-testid="psychiatry-week-empty">
+            Nothing opened here yet.
+          </p>
+        )}
         <p className="text-xs text-[color:var(--dash-muted)]">
           {recordingOff && !hasData
             ? "Turn on Save recent searches in Settings to count what you open here. It stays on this phone."

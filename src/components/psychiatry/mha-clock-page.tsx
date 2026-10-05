@@ -31,16 +31,15 @@ import { formatPerthDateTime, parsePerthDateTimeInput } from "@/lib/mha-timeline
 import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
 import {
   addMhaClock,
-  EMPTY_MHA_CLOCK_STATE,
   keepReadableMhaClocks,
   loadMhaClockState,
   MHA_CLOCK_LIMIT,
+  MHA_CLOCK_UNREADABLE,
   removeMhaClock,
   restoreMhaClock,
-  subscribeMhaClocks,
+  useMhaClockState,
   type AddMhaClockResult,
   type MhaClock,
-  type MhaClockState,
 } from "@/lib/psychiatry-hub/mha-clocks";
 
 /**
@@ -67,14 +66,16 @@ export interface MhaClockForm {
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
-/** A weekday name alone is unambiguous only within this window. */
-const WEEKDAY_WINDOW_MS = 6 * 24 * HOUR_MS;
+/**
+ * A weekday name alone is used only within this window either side of now, so any two times on
+ * the page that both show a weekday are less than a week apart and can never share a name.
+ */
+const WEEKDAY_WINDOW_MS = 3 * 24 * HOUR_MS;
 /** How long the Undo bar stays after a clock is removed. */
 const UNDO_MS = 8_000;
 
 export const MHA_CLOCK_RETENTION_NOTE =
   "Only on this phone, not on your other devices. Kept until you remove it or you are signed out. A clock holds the form and the time only.";
-export const MHA_CLOCK_UNREADABLE = "Clocks could not be read on this phone.";
 export const MHA_CLOCK_HANDOVER_NOTE =
   "Copies the form and made-at time only. No names, and no running times, because those go out of date once pasted.";
 
@@ -94,10 +95,6 @@ function useNow(nowProp?: Date): Date | null {
   return minute === null ? null : new Date(minute);
 }
 
-function useClockState(): MhaClockState {
-  return useSyncExternalStore(subscribeMhaClocks, loadMhaClockState, () => EMPTY_MHA_CLOCK_STATE);
-}
-
 function hhmm(instant: Date | number): string {
   const { hour, minute } = toAwstParts(new Date(instant));
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
@@ -106,7 +103,7 @@ function hhmm(instant: Date | number): string {
 const WEEKDAY = new Intl.DateTimeFormat("en-AU", { weekday: "short", timeZone: "Australia/Perth" });
 
 /**
- * "Sun 23:40" within six days of now either way, so every time carries its day; further out the
+ * "Sun 23:40" within three days of now either way, so every time carries its day; further out the
  * full Perth date, because a weekday alone would be ambiguous.
  */
 export function mhaClockWhen(instant: Date | number, nowMs: number): string {
@@ -156,27 +153,36 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
   const timeId = useId();
   const messageId = useId();
   const [code, setCode] = useState("");
-  const [madeAt, setMadeAt] = useState("");
+  // Until the reader touches the time it follows now; once they do, it is theirs, even while a
+  // half-typed value reads as empty, so the box never snaps back to now mid-edit.
+  const [madeAt, setMadeAt] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [timeError, setTimeError] = useState(false);
+  const timeValue = madeAt ?? (now ? perthInputValue(now) : "");
 
+  const fail = (text: string, onTime: boolean) => {
+    setMessage(text);
+    setTimeError(onTime);
+  };
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const start = parsePerthDateTimeInput(madeAt || (now ? perthInputValue(now) : ""));
+    const start = parsePerthDateTimeInput(timeValue);
     if (!code || !start) {
-      setMessage(ADD_MESSAGE.invalid);
+      fail(ADD_MESSAGE.invalid, Boolean(code));
       return;
     }
     if (now && start.getTime() > now.getTime()) {
-      setMessage("That time is later than now. Enter when the form was made.");
+      fail("That time is later than now. Enter when the form was made.", true);
       return;
     }
     const result = addMhaClock(code, start);
     if (result === "added") {
       setCode("");
-      setMadeAt("");
+      setMadeAt(null);
       setMessage(null);
+      setTimeError(false);
     } else {
-      setMessage(ADD_MESSAGE[result]);
+      fail(ADD_MESSAGE[result], false);
     }
   };
 
@@ -222,12 +228,12 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
           <input
             id={timeId}
             type="datetime-local"
-            value={madeAt || (now ? perthInputValue(now) : "")}
+            value={timeValue}
             onChange={(event) => setMadeAt(event.target.value)}
             data-testid="mha-clock-time"
-            aria-invalid={message?.startsWith("That time") ? true : undefined}
+            aria-invalid={timeError ? true : undefined}
             aria-describedby={messageId}
-            className={cn(field, message?.startsWith("That time") && "border-[color:var(--danger-text)]")}
+            className={cn(field, timeError && "border-[color:var(--danger-text)]")}
           />
         </div>
         <p
@@ -315,7 +321,7 @@ function ShiftBand({ clocks, now }: { readonly clocks: readonly MhaClock[]; read
             key={tick}
             x={`${pct(tick)}%`}
             y={height - 3}
-            textAnchor={index === 0 ? "start" : index === ticks.length - 1 ? "end" : "middle"}
+            textAnchor={index === 0 ? "start" : pct(tick) >= 92 ? "end" : "middle"}
             className="fill-[color:var(--dash-faint)] text-2xs nums"
           >
             {hhmm(tick)}
@@ -621,6 +627,7 @@ function useUndo() {
   );
   const remove = (clock: MhaClock) => {
     if (removeMhaClock(clock.id)) show(clock, null);
+    else if (loadMhaClockState().unreadable) show(null, ADD_MESSAGE.unreadable);
     else show(null, "This browser would not remove the clock. Check that site storage is allowed.");
   };
   const undo = () => {
@@ -642,7 +649,7 @@ export function MhaClockPage({
   readonly now?: Date;
 }) {
   const now = useNow(nowProp);
-  const { clocks, unreadable } = useClockState();
+  const { clocks, unreadable } = useMhaClockState();
   const undo = useUndo();
   const formByCode = useMemo(() => new Map(forms.map((form) => [form.code, form])), [forms]);
   const result = useMemo(

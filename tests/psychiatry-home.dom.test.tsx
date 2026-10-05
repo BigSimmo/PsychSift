@@ -122,6 +122,12 @@ describe("PsychiatryHome", () => {
     );
   });
 
+  it("says in one line when nothing has been opened yet on the Tools page", () => {
+    render(<PsychiatryHome counts={counts} now={now} initialPage="tools" />);
+    expect(screen.getByTestId("psychiatry-week-empty")).toHaveTextContent("Nothing opened here yet.");
+    expect(screen.queryByTestId("psychiatry-month")).toBeNull();
+  });
+
   it("switches search off and says so when the browser is offline", () => {
     const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
     try {
