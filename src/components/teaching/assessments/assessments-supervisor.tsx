@@ -163,7 +163,7 @@ export function SupervisorHome({ s, dispatch, openSheet }: ScreenProps) {
                 }}
                 className={cn(
                   focusRing,
-                  "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[color:var(--border-strong)] px-4 py-2 text-sm-minus font-semibold text-[color:var(--text-muted)]",
+                  "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[color:var(--border-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--text-muted)]",
                 )}
               >
                 <Copy aria-hidden="true" className="size-icon-sm" />
@@ -371,7 +371,7 @@ export function SupervisorTimes({ s, dispatch }: ScreenProps) {
           <Card key={i} className="gap-2">
             <div className="flex items-baseline justify-between gap-2">
               <h2 className="text-sm font-semibold text-[color:var(--text-heading)]">{dayLabel(i)}</h2>
-              <span className="text-sm-minus text-[color:var(--text-muted)]">
+              <span className="text-sm text-[color:var(--text-muted)]">
                 {on.length ? `${on.length} offered` : "None offered"}
               </span>
             </div>

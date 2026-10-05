@@ -48,15 +48,12 @@ import {
   type SampleTerm,
 } from "@/lib/teaching/assessments/sample";
 
-function Meter({ percent, ok }: { percent: number; ok?: boolean }) {
+function Meter({ percent }: { percent: number; ok?: boolean }) {
   return (
     <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-[color:var(--border)]">
       <i
         data-mode-identity="teaching"
-        className={cn(
-          "block h-full rounded-full forced-colors:bg-[CanvasText]",
-          ok ? "bg-[color:var(--success-text)]" : "bg-[color:var(--mode-identity)]",
-        )}
+        className={cn("block h-full rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]")}
         style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
       />
     </div>
@@ -233,7 +230,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
             const note =
               x.id === 1 ? (need ? "needed this term" : "done this term") : need ? `${2 - n} more by Jan` : "met";
             return (
-              <div key={x.id} className="flex items-baseline justify-between gap-3 text-sm-minus">
+              <div key={x.id} className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="text-[color:var(--text-muted)]">
                   EPA {x.id} · {x.short}
                 </span>

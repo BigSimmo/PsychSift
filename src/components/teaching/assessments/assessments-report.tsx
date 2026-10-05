@@ -97,7 +97,7 @@ export function ComparisonChart({ rows, view }: { rows: ComparisonRow[]; view: "
         return (
           <div key={row.domain} className="grid gap-1.5">
             <div className="flex items-baseline justify-between gap-2">
-              <b className="text-sm-minus font-semibold text-[color:var(--text-heading)]">
+              <b className="text-sm font-semibold text-[color:var(--text-heading)]">
                 {row.domain} · {row.title}
               </b>
               <span className="text-xs text-[color:var(--text-muted)]">{row.message}</span>
@@ -466,7 +466,7 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
             ? `I have completed this assessment and discussed it with ${DOC.first}.`
             : "I confirm I have discussed this report with my term supervisor or delegate, and know that if I disagree with any point I may respond in writing to the Director of Clinical Training within 14 days."}
         </p>
-        <div className="flex items-baseline justify-between gap-3 text-sm-minus">
+        <div className="flex items-baseline justify-between gap-3 text-sm">
           <span className="text-[color:var(--text-muted)]">Meeting held</span>
           <b className="font-semibold text-[color:var(--text-heading)]">{meetingDate(s) ?? "Not recorded"}</b>
         </div>
@@ -475,7 +475,7 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
         end={
           <button
             type="button"
-            className={cn(focusRing, "min-h-12 text-sm-minus font-medium text-[color:var(--mode-identity)]")}
+            className={cn(focusRing, "min-h-12 text-sm font-medium text-[color:var(--mode-identity)]")}
             data-mode-identity="teaching"
             onClick={() => {
               setImage(null);

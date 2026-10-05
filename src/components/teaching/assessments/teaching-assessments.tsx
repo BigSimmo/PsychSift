@@ -112,12 +112,12 @@ function SampleBar({ s, dispatch, showDate }: Pick<ScreenProps, "s" | "dispatch"
       className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
       data-testid="teaching-assessments-sample"
     >
-      <p role="status" className={cn("flex items-center gap-1.5 text-sm-minus", textMuted)}>
+      <p role="status" className={cn("flex items-center gap-1.5 text-sm", textMuted)}>
         <Info aria-hidden="true" className="size-icon-sm shrink-0" />
         Made-up example records. Nothing is saved or sent.
       </p>
       {showDate ? (
-        <label className={cn("flex items-center gap-2 text-sm-minus", textMuted)}>
+        <label className={cn("flex items-center gap-2 text-sm", textMuted)}>
           Made-up date
           <select
             value={String(s.now)}

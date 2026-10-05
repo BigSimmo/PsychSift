@@ -275,7 +275,7 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
           onClick={() => dispatch({ type: "form-example", who })}
           className={cn(
             focusRing,
-            "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[color:var(--border-strong)] px-4 py-2 text-sm-minus font-semibold text-[color:var(--text-muted)]",
+            "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[color:var(--border-strong)] px-4 py-2 text-sm font-semibold text-[color:var(--text-muted)]",
           )}
         >
           <Copy aria-hidden="true" className="size-icon-sm" />

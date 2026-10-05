@@ -17,7 +17,7 @@ import {
 /*
  * The small parts every Assessments screen is built from, matched to mock-up v4:
  * a flat page, one bordered summary panel, and hairline lists without a card.
- * Type steps: 11px labels (text-2xs), 13px secondary (text-sm-minus), 14px titles
+ * Type steps: 11px labels (text-2xs), 13px secondary (text-sm), 14px titles
  * (text-sm), 20px headings (text-xl).
  */
 
@@ -46,7 +46,7 @@ export function viewHref(view: AssessmentsView, params: Record<string, string> =
   return query ? `${assessmentsPath}?${query}` : assessmentsPath;
 }
 
-export const secondaryText = "text-sm-minus leading-snug text-[color:var(--text-muted)]";
+export const secondaryText = "text-sm leading-snug text-[color:var(--text-muted)]";
 export const titleText = "text-sm font-semibold leading-snug text-[color:var(--text-heading)]";
 export const labelText = "text-2xs font-semibold uppercase tracking-label text-[color:var(--text-muted)]";
 const hairlineRow = "border-t border-[color:var(--border)] first:border-t-0";
@@ -93,7 +93,7 @@ export function SectionNote({ children }: { children: ReactNode }) {
 export function TextLink({ href, onClick, children }: { href?: string; onClick?: () => void; children: ReactNode }) {
   const cls = cn(
     focusRing,
-    "-my-3 inline-flex min-h-12 items-center text-sm-minus font-medium text-[color:var(--mode-identity)] no-underline",
+    "-my-3 inline-flex min-h-12 items-center text-sm font-medium text-[color:var(--mode-identity)] no-underline",
   );
   if (href)
     return (
@@ -324,7 +324,7 @@ export function Inset({
       role={role}
       data-mode-identity="teaching"
       className={cn(
-        "flex min-w-0 items-start gap-2.5 rounded-xl px-3 py-2.5 text-sm-minus forced-colors:border",
+        "flex min-w-0 items-start gap-2.5 rounded-xl px-3 py-2.5 text-sm forced-colors:border",
         tones[tone],
       )}
     >
@@ -379,7 +379,7 @@ export function ScreenHeader({
 /** A plain key-value line. */
 export function KeyValue({ k, v }: { k: ReactNode; v: ReactNode }) {
   return (
-    <div className="flex min-w-0 items-baseline justify-between gap-3 text-sm-minus">
+    <div className="flex min-w-0 items-baseline justify-between gap-3 text-sm">
       <span className="text-[color:var(--text-muted)]">{k}</span>
       <b className="text-right font-semibold text-[color:var(--text-heading)]">{v}</b>
     </div>
@@ -393,7 +393,7 @@ export function SmallPrint({ children, center }: { children: ReactNode; center?:
 /** Why a primary button is not available yet, said next to it. */
 export function WhyNot({ id, children }: { id: string; children: ReactNode }) {
   return (
-    <p id={id} className="px-1 text-center text-sm-minus text-[color:var(--warning-text)]">
+    <p id={id} className="px-1 text-center text-sm text-[color:var(--warning-text)]">
       {children}
     </p>
   );
@@ -479,7 +479,6 @@ export function NoteField({
       />
       <p
         id={noteId}
-        aria-live="polite"
         className={cn(
           "flex items-start gap-1.5 px-1 text-xs",
           hit ? "font-semibold text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]",
@@ -492,6 +491,9 @@ export function NoteField({
             : "Leave out anything that could identify a patient: names, initials, URNs, dates of birth, bed numbers. This check only catches some of these."}
         </span>
       </p>
+      <span className="sr-only" aria-live="polite">
+        {hit ? "This may be patient details. Please check and remove it." : ""}
+      </span>
     </div>
   );
 }
