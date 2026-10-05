@@ -51,6 +51,7 @@ export function OnCallGroupedList({
   count,
   note,
   action,
+  actionNode,
   surface = "flat",
   id,
   testId,
@@ -62,6 +63,8 @@ export function OnCallGroupedList({
   /** Quiet text at the eyebrow's right ("Cover as of 21:40"). */
   readonly note?: ReactNode;
   readonly action?: OnCallGroupAction;
+  /** A ready-made action, for a literal `<Link href>` the route-reachability guard can read. */
+  readonly actionNode?: ReactNode;
   readonly headerIcon?: LucideIcon;
   readonly surface?: "flat" | "card";
   readonly id?: string;
@@ -85,6 +88,7 @@ export function OnCallGroupedList({
           </h2>
           {note ? <span className={cn(modeSecondaryText, "text-xs")}>{note}</span> : null}
           {action ? <OnCallGroupActionControl action={action} /> : null}
+          {actionNode}
         </div>
       ) : null}
       <ul role="list" className={surface === "card" ? modeModuleSurface : "min-w-0"}>

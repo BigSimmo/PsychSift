@@ -38,11 +38,11 @@ const expectedLabels: Record<AppModeId, string[]> = {
   // segments and check constraints stay "education" and "logistics".
   "on-call": [
     "Now",
-    "Who's on",
-    "Call",
-    "Playbook",
+    "People",
     "Refer",
-    "Find",
+    "Handbook",
+    "Playbook",
+    "Who's on",
     "Pocket card",
     "Manage service",
     "Compliance",
@@ -518,10 +518,12 @@ describe("mode secondary navigation registry", () => {
     expect(MODE_NAV_ADOPTED_MODES).not.toContain("on-call");
   });
 
-  it("groups On Call into six shift pages, two tools and the pages moving out", () => {
+  it("groups On Call into four tabs, the shift tools and the pages moving out", () => {
+    // Owner choice, 5 Oct: four tabs (Now, People, Refer, Handbook); Playbook,
+    // Who's on and Pocket card move under tools.
     const { main, tools, more } = groupModeSecondaryNavigationEntries(modeSecondaryNavigationRegistry["on-call"]);
-    expect(main.map((entry) => entry.label)).toEqual(["Now", "Who's on", "Call", "Playbook", "Refer", "Find"]);
-    expect(tools.map((entry) => entry.label)).toEqual(["Pocket card", "Manage service"]);
+    expect(main.map((entry) => entry.label)).toEqual(["Now", "People", "Refer", "Handbook"]);
+    expect(tools.map((entry) => entry.label)).toEqual(["Playbook", "Who's on", "Pocket card", "Manage service"]);
     expect(more.map((entry) => entry.label)).toEqual([
       "Compliance",
       "Admin",

@@ -1,13 +1,15 @@
 "use client";
 
 import { ClipboardList, Feather, LayoutList } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { focusRing } from "@/components/card-recipes";
 import { useOnCallHospitalPhone } from "@/components/on-call/call/call-device-stores";
 import { OnCallHospitalPhoneSwitch } from "@/components/on-call/call/hospital-phone-switch";
 import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
 import { handbookFirstLine, OnCallHandbookItemRow } from "@/components/on-call/find/handbook-item-row";
-import { onCallLeadingIcon } from "@/components/on-call/kit/calm";
+import { onCallActionLink, onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
 import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
@@ -191,7 +193,16 @@ export function OnCallReferPage() {
 
       <OnCallGroupedList
         eyebrow="Your own referral notes"
-        action={{ label: "Add", href: "/on-call/referrals", testId: "on-call-refer-mine-link" }}
+        actionNode={
+          // A literal href: the route-reachability guard reads literal hrefs only.
+          <Link
+            href="/on-call/referrals"
+            data-testid="on-call-refer-mine-link"
+            className={cn(onCallActionLink, focusRing)}
+          >
+            Add
+          </Link>
+        }
         id={onCallGroupAnchorId("mine")}
         testId="on-call-refer-mine"
       >

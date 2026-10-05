@@ -4,8 +4,8 @@ import { Briefcase, Moon, WifiOff } from "lucide-react";
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
-import { onCallChipShape, onCallChipTap, onCallLeadingIcon } from "@/components/on-call/kit/calm";
-import { OnCallGroupActionControl, OnCallRow } from "@/components/on-call/kit/grouped-list";
+import { onCallActionLink, onCallChipShape, onCallChipTap, onCallLeadingIcon } from "@/components/on-call/kit/calm";
+import { OnCallRow } from "@/components/on-call/kit/grouped-list";
 import { NowShiftLists } from "@/components/on-call/now/shift-lists";
 import { ON_CALL_FIND_DOWNTIME_HREF, ON_CALL_ON_SITE_HREF } from "@/components/on-call/on-call-section-identity";
 import type { RosterShiftsState } from "@/components/roster/use-roster-shifts";
@@ -32,9 +32,9 @@ export function NowWhoToCall({ situations }: { readonly situations: readonly OnC
           Who do I call now?
         </h2>
         {/* A literal href: the route-reachability guard reads literal hrefs only. */}
-        <OnCallGroupActionControl
-          action={{ label: "Escalation ladder", href: "/on-call/now", testId: "on-call-home-call-now" }}
-        />
+        <Link href="/on-call/now" data-testid="on-call-home-call-now" className={cn(onCallActionLink, focusRing)}>
+          Escalation ladder
+        </Link>
       </div>
       {situations.length > 0 ? (
         <ul role="list" className="flex min-w-0 flex-wrap gap-x-2 px-3">
