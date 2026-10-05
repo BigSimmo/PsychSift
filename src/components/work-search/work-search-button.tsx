@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { LazyWorkSearchSheet, prefetchWorkSearchSheet } from "@/components/work-search/lazy-work-search-sheet";
 import { WorkSearchGlyph } from "@/components/work-search/work-search-glyph";
@@ -42,7 +42,20 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
   // Read from storage after hydration (the server snapshot says "seen"), then hidden for good once dismissed.
   const seen = useSyncExternalStore(subscribeNever, coachSeen, () => true);
   const [dismissed, setDismissed] = useState(false);
-  const coach = !seen && !dismissed;
+  // Any tap elsewhere hides the note for this visit, without counting it as read,
+  // so it never sits over the page the reader is trying to use.
+  const [setAside, setSetAside] = useState(false);
+  const coach = !seen && !dismissed && !setAside;
+  const coachRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!coach) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!coachRef.current?.contains(event.target as Node)) setSetAside(true);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [coach]);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const dismissCoach = () => {
@@ -79,9 +92,10 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
       </button>
       {coach ? (
         <span
+          ref={coachRef}
           id="work-search-coach"
           role="note"
-          className="absolute right-0 top-full z-[var(--z-popover)] mt-3 grid w-60 gap-1.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 text-left shadow-[var(--e4)]"
+          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 grid w-60 gap-1.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 text-left shadow-[var(--e4)]"
         >
           <span
             aria-hidden="true"
@@ -95,7 +109,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           <button
             type="button"
             onClick={dismissCoach}
-            className="inline-flex min-h-12 items-center justify-self-end focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+            className="pointer-events-auto inline-flex min-h-12 items-center justify-self-end focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >
             <span className="rounded-full border border-[color:var(--border-strong)] bg-[color:var(--surface-inset)] px-4 py-2 text-sm-minus font-bold text-[color:var(--text-heading)]">
               Got it
