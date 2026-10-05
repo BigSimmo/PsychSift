@@ -87,7 +87,7 @@ export function CmeRoutineEstimateDot() {
   return (
     <span
       aria-hidden="true"
-      className="inline-block size-2 shrink-0 rounded-full bg-[repeating-linear-gradient(135deg,var(--cme-cat-1)_0_1.5px,transparent_1.5px_3.5px)] shadow-[inset_0_0_0_1px_var(--cme-cat-2)] forced-colors:bg-[GrayText]"
+      className="inline-block size-2 shrink-0 rounded-full bg-[repeating-linear-gradient(135deg,var(--cme-cat-1)_0_1.5px,transparent_1.5px_3.5px)] ring-1 ring-inset ring-[color:var(--cme-cat-2)] forced-colors:bg-[GrayText]"
     />
   );
 }

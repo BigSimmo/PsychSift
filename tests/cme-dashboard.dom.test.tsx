@@ -200,7 +200,7 @@ describe("the dashboard", () => {
     expect(log).toHaveAttribute("data-cme-log-trigger");
     expect(
       container.querySelectorAll(
-        'a[class*="bg-[color:var(--clinical-accent)]"], button[class*="bg-[color:var(--clinical-accent)]"]',
+        'a[class*="bg-[color:var(--clinical-accent)]"], button[class*="bg-[color:var(--clinical-accent)]"], a[class*="bg-[color:var(--cme-filled)]"], button[class*="bg-[color:var(--cme-filled)]"]',
       ),
     ).toHaveLength(1);
     // No floating button to keep clear of: the page ends with ordinary room under the last block.

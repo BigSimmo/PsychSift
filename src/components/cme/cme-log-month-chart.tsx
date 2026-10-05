@@ -76,8 +76,8 @@ export function CmeLogMonthChart({
                     future
                       ? "h-0 border-b border-dashed border-[color:var(--border-strong)]"
                       : current
-                        ? "min-h-0.5 rounded-t-[2px] bg-[color:var(--clinical-accent)]"
-                        : "min-h-0.5 rounded-t-[2px] bg-[color:var(--border-strong)]",
+                        ? "min-h-0.5 rounded-t-xs bg-[color:var(--clinical-accent)]"
+                        : "min-h-0.5 rounded-t-xs bg-[color:var(--border-strong)]",
                   )}
                 />
               </span>

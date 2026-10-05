@@ -60,7 +60,7 @@ export function entryStatusWords(entry: CmeEntry): string[] {
  * light, a quiet indigo wash with heading text in dark.
  */
 export const cmeFilledButton =
-  "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-md bg-[color:var(--clinical-accent)] px-4 text-sm font-semibold text-[color:var(--clinical-accent-contrast)] no-underline transition-opacity duration-[var(--duration-instant)] hover:opacity-90 dark:bg-[color:color-mix(in_oklab,var(--clinical-accent)_38%,var(--surface-raised))] dark:text-[color:var(--text-heading)] forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]";
+  "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-md bg-[color:var(--cme-filled)] px-4 text-sm font-semibold text-[color:var(--cme-filled-text)] no-underline transition-opacity duration-[var(--duration-instant)] hover:opacity-90 forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]";
 
 /**
  * What the copy note and sheet call the owner's CPD home. "MyCPD" and

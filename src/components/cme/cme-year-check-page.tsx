@@ -253,7 +253,7 @@ export function CmeYearCheckPage({
           {check.readyCount} of {check.rows.length} checks done
         </p>
       </div>
-      <div aria-hidden="true" data-testid="cme-check-progress" className="mt-3 flex gap-[3px]">
+      <div aria-hidden="true" data-testid="cme-check-progress" className="mt-3 flex gap-0.75">
         {check.rows.map((row, index) => (
           <i
             key={row.id}
@@ -262,7 +262,7 @@ export function CmeYearCheckPage({
               "h-1.5 flex-1 rounded-full forced-color-adjust-none",
               index < check.readyCount
                 ? "bg-[color:var(--clinical-accent)] forced-colors:bg-[Highlight]"
-                : "bg-[color:var(--surface-inset)] shadow-[inset_0_0_0_1px_var(--border-strong)]",
+                : "bg-[color:var(--surface-inset)] ring-1 ring-inset ring-[color:var(--border-strong)]",
             )}
           />
         ))}

@@ -127,7 +127,7 @@ export function CmeYearInWeeks({
                   data-state={week.state}
                   data-hours={week.hours}
                   className={cn(
-                    "block w-0.75 rounded-[1px] forced-colors:bg-[CanvasText]",
+                    "block w-0.75 rounded-xs forced-colors:bg-[CanvasText]",
                     week.state === "now"
                       ? "h-full bg-[color:var(--clinical-accent)]"
                       : week.state === "future"

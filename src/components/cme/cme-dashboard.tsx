@@ -359,9 +359,7 @@ export function CmeDashboard({
       {...{ [CME_LOG_TRIGGER_ATTRIBUTE]: "" }}
       className={cn(
         focusRing,
-        "relative inline-flex min-h-12 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-[color:var(--clinical-accent)] px-4 text-sm-minus font-semibold text-[color:var(--clinical-accent-contrast)] no-underline lg:w-auto lg:justify-self-start",
-        // The mock-up's quiet dark fill, the same as the Log page's button (`cmeFilledButton`).
-        "dark:bg-[color:color-mix(in_oklab,var(--clinical-accent)_38%,var(--surface-raised))] dark:text-[color:var(--text-heading)]",
+        "relative inline-flex min-h-12 w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-[color:var(--cme-filled)] px-4 text-sm-minus font-semibold text-[color:var(--cme-filled-text)] no-underline lg:w-auto lg:justify-self-start",
         "forced-colors:border forced-colors:border-[ButtonText] forced-colors:bg-[ButtonFace] forced-colors:text-[ButtonText]",
       )}
     >

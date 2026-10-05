@@ -38,7 +38,7 @@ export function CmeSegmentedTabs({
               "relative inline-flex h-10 min-w-0 flex-1 items-center justify-center whitespace-nowrap rounded-sm px-1.5 text-sm-minus no-underline",
               "after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
               segment.active
-                ? "bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] ring-1 ring-[color:var(--border)] forced-colors:border forced-colors:border-[Highlight]"
+                ? "border border-[color:var(--border)] bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] forced-colors:border-[Highlight]"
                 : "font-medium text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
             )}
           >
