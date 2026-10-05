@@ -609,6 +609,13 @@ The owner-scoped calendar consent read enriches `week.read` from `teaching_calen
 failed reads never display a false opt-out. Legacy On Call teaching remains available until
 an approved service transfer; new recording resources remain deferred.
 
+`/teaching/assessments` (`src/components/teaching/assessments/`, logic in
+`src/lib/teaching/assessments/`) walks a prevocational doctor and their term supervisor through
+term assessments and EPAs, one route switched by `?view=` and `?as=supervisor`. It runs only on
+made-up records held in page memory: nothing is fetched, saved or sent, and signed-in readers see
+an honest "can't be kept yet" notice with an opt-in to the made-up records. The printable form
+(`assessments-pdf.tsx`) is lazy-loaded.
+
 `api.ts` and `repository.ts` wrap every database call and map its errors to plain words;
 `request.ts` parses request bodies while keeping Teaching's own plain messages, and
 `checkin-claim.ts` is the single-use claim cookie a scan leaves, scoped to `/api/teaching/checkin`
