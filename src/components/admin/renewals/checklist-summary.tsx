@@ -119,11 +119,11 @@ function ChecklistTimeline({
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Triangle aria-hidden="true" strokeWidth={1.75} className="size-3 fill-current" />
-            Expiry ahead
+            Renew by date ahead
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Diamond aria-hidden="true" strokeWidth={1.75} className="size-3 fill-current" />
-            Expiry passed
+            Date passed
           </span>
         </span>
       </div>
@@ -221,7 +221,10 @@ export function ChecklistAtAGlance({
                 className={cn(
                   focusRing,
                   "flex min-h-12 w-full min-w-0 items-center gap-3 rounded-lg px-2 text-left disabled:cursor-default",
-                  on ? "bg-[color:var(--surface-wash)]" : "enabled:hover:bg-[color:var(--surface-subtle)]",
+                  // The wash is a background, which forced-colors removes; an outline survives it.
+                  on
+                    ? "bg-[color:var(--surface-wash)] forced-colors:outline forced-colors:outline-2"
+                    : "enabled:hover:bg-[color:var(--surface-subtle)]",
                 )}
               >
                 <span className="w-8 shrink-0 text-right text-lg font-semibold tabular-nums text-[color:var(--text-heading)]">

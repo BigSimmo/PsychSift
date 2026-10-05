@@ -208,6 +208,9 @@ describe("AdminRenewalsPage — the checklist", () => {
     );
     expect(sheet.textContent ?? "").not.toMatch(/\bverified\b/i);
     expect(sheet.textContent ?? "").not.toMatch(/\bcompliant\b/i);
+    // WWC's date (3 Sep) has passed: the sheet names it as passed everywhere, never "Renew by".
+    expect(sheet.textContent ?? "").toMatch(/Date passed/);
+    expect(sheet.textContent ?? "").not.toMatch(/Renew by/);
   });
 
   it("records and clears the issuer-check stamp without Renewed setting it", async () => {

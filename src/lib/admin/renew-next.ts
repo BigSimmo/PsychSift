@@ -78,9 +78,18 @@ export function renewNextNothingDueLine(item: RenewNextItem): string {
  * made-up one.
  */
 export function renewWindowProgress(item: RenewNextItem, today: string): number | null {
-  if (!item.startOn) return null;
-  const start = utcDay(item.startOn);
-  const end = utcDay(item.row.expiresOn);
+  return windowProgress(item.startOn, item.row.expiresOn, today);
+}
+
+/** The same reading from plain dates, for the item sheet. */
+export function windowProgress(
+  startOn: string | null | undefined,
+  expiresOn: string | null | undefined,
+  today: string,
+): number | null {
+  if (!startOn || !expiresOn) return null;
+  const start = utcDay(startOn);
+  const end = utcDay(expiresOn);
   const now = utcDay(today);
   if (start === null || end === null || now === null || end <= start) return null;
   return Math.min(Math.max((now - start) / (end - start), 0), 1);

@@ -14,10 +14,20 @@ export function complianceLeadTimeDays(entry: OnCallEntry): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : ADMIN_DEFAULT_LEAD_TIME_DAYS;
 }
 
-/** The day to start renewing: the recorded date minus the lead time. Never a guessed date. */
+/**
+ * The day to start renewing: the recorded date minus the lead time. Never a
+ * guessed date. A stored date that has the right shape but is not a real day
+ * ("2026-02-30") has no window, rather than throwing and blanking every page
+ * that reads the checklist.
+ */
 export function renewalStartOn(entry: OnCallEntry): string | undefined {
   const expiresOn = complianceExpiresOn(entry);
-  return expiresOn ? addDays(expiresOn, -complianceLeadTimeDays(entry)) : undefined;
+  if (!expiresOn) return undefined;
+  try {
+    return addDays(expiresOn, -complianceLeadTimeDays(entry));
+  } catch {
+    return undefined;
+  }
 }
 
 /** `YYYY-MM-DD` as "12 Mar 2027", exactly as the Renewals page prints it. */

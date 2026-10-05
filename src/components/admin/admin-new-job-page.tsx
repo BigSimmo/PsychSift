@@ -84,12 +84,6 @@ function ContactRow({ entry }: { entry: OnCallEntry }) {
   );
 }
 
-/**
- * New job (Admin update 1, Task 8): Before (own and shared logins/access,
- * plus the job's contacts) and Leaving (an unsaved reminder list ending with
- * "Your Admin records"). Order, not weeks, is what the page shows (owner
- * decision) — there is no week strip.
- */
 /** At most this many item names in the signpost before "and N more". */
 const PAPERWORK_NAMES = 4;
 
@@ -104,6 +98,10 @@ function namesLine(titles: readonly string[]): string {
  * reads, so the two pages cannot disagree. Without a start date it says what
  * needs action now instead, never "nothing to do".
  */
+function needsActionPhrase(count: number): string {
+  return `${count} ${count === 1 ? "needs" : "need"} action`;
+}
+
 function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview }) {
   const nextJob = overview.nextJob;
   const toDo = nextJob?.toDo ?? [];
@@ -113,10 +111,12 @@ function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview
     ? toDo.length > 0
       ? `${toDo.length} to do before you start, in Compliance`
       : "Nothing due before you start, on the dates you recorded"
-    : `${needsAction} need action, in Compliance`;
+    : needsAction > 0
+      ? `${needsActionPhrase(needsAction)}, in Compliance`
+      : "Nothing needs action on the dates you recorded";
   const alsoLine =
     nextJob && needsAction > 0 && toDo.length < needsAction
-      ? `${needsAction} need action in Compliance overall.`
+      ? `${needsActionPhrase(needsAction)} in Compliance overall.`
       : null;
   return (
     <Link
@@ -152,6 +152,12 @@ function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview
   );
 }
 
+/**
+ * New job (Admin update 1, Task 8): Before (own and shared logins/access,
+ * plus the job's contacts) and Leaving (an unsaved reminder list ending with
+ * "Your Admin records"). Order, not weeks, is what the page shows (owner
+ * decision) — there is no week strip.
+ */
 export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
   const { isAuthenticated } = useAccountData();
   const state = useOnCallEntries();

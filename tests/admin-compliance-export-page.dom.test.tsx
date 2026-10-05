@@ -103,7 +103,7 @@ describe("AdminComplianceExportPage", () => {
     ]);
     const about = (workbook.getWorksheet("About this file")?.getSheetValues() ?? []).flat().join(" ");
     expect(about).toContain("Range: every item.");
-    expect(about).toContain("Columns left out: Before your next job, Source checked.");
+    expect(about).toContain("Columns left out: Before your next job, Rule updated.");
     expect(about).toContain("It does not mean anyone has checked your records");
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();

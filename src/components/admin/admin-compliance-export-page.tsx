@@ -49,7 +49,7 @@ const WIDTHS: Record<string, number> = {
   "Before your next job": 44,
   Rule: 16,
   Source: 34,
-  "Source checked": 16,
+  "Rule updated": 16,
 };
 const PREVIEW_ROWS = 6;
 
@@ -87,7 +87,7 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
   );
   const header = selection[0] ?? [];
   const body = selection.slice(1);
-  const fileName = complianceExportFileName(now);
+  const fileName = complianceExportFileName(now, state.demoMode);
 
   function toggleColumn(name: string) {
     setColumns((current) => (current.includes(name) ? current.filter((c) => c !== name) : [...current, name]));
@@ -155,6 +155,7 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
               <h2
                 id="export-preview"
                 className="min-w-0 flex-1 truncate text-sm font-medium text-[color:var(--text-heading)]"
+                title={fileName}
               >
                 {fileName}
               </h2>
@@ -170,7 +171,14 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
                 {`No recorded dates fall in the next 60 days.${overview.counts["not-recorded"] > 0 ? ` ${overview.counts["not-recorded"]} items have no date recorded yet.` : ""} Choose Everything to export every item.`}
               </p>
             ) : (
-              <div className="min-w-0 overflow-x-auto" data-testid="admin-compliance-export-preview">
+              <div
+                // A keyboard user scrolls the wide preview sideways once it has focus.
+                tabIndex={0}
+                role="region"
+                aria-label="Preview of the file"
+                className={cn(focusRing, "min-w-0 overflow-x-auto rounded-sm")}
+                data-testid="admin-compliance-export-preview"
+              >
                 <table aria-labelledby="export-preview" className="w-full min-w-0 border-collapse text-left text-xs">
                   <thead>
                     <tr>
@@ -237,7 +245,7 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
                       focusRing,
                       "inline-flex min-h-12 items-center rounded-full border px-4 text-sm",
                       on
-                        ? "border-[color:var(--text-heading)] font-medium text-[color:var(--text-heading)]"
+                        ? "border-[color:var(--text-heading)] font-medium text-[color:var(--text-heading)] forced-colors:border-2"
                         : "border-[color:var(--border)] text-[color:var(--text-muted)]",
                     )}
                   >
@@ -269,7 +277,7 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
               disabled={body.length === 0}
               testId="admin-compliance-export-save"
             >
-              Save to phone
+              Save to this device
             </Button>
             <p className={cn(textMuted, "px-1 text-xs")}>
               This file is for you. Nothing is sent to your health service.

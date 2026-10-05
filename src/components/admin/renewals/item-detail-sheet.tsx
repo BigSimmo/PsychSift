@@ -9,15 +9,10 @@ import { InlineNotice } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
 import { ExternalTextLink, TextLink } from "@/components/ui/link";
 import { Sheet } from "@/components/ui/sheet";
-import { cn, controlDisabled, textMuted } from "@/components/ui-primitives";
+import { cn, controlDisabled, eyebrowText, textMuted } from "@/components/ui-primitives";
 import { complianceBucket } from "@/lib/admin/compliance-overview";
-import {
-  formatDateEcho,
-  formatRecordedDate,
-  formatRelativeDate,
-  renewalStartOn,
-  utcDay,
-} from "@/lib/admin/renewal-dates";
+import { formatDateEcho, formatRecordedDate, formatRelativeDate, renewalStartOn } from "@/lib/admin/renewal-dates";
+import { windowProgress as renewWindowShare } from "@/lib/admin/renew-next";
 import { complianceExpiryHistory, issuerCheckStampLabel, renewalCalendarEvent } from "@/lib/admin/renewals";
 import type { AdminRequirementCatalogueItem, RequirementChecklistRow } from "@/lib/admin/requirements";
 import { downloadTextFile } from "@/lib/admin/download-file";
@@ -25,16 +20,6 @@ import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import { complianceExpiresOn, complianceIssuerCheckedOn, entryNotForThisJob } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
-
-/** Where today sits between the window opening and the recorded date, 0 to 1; null without a window. */
-function windowShare(startOn: string | null, expiresOn: string | undefined, today: string): number | null {
-  if (!startOn || !expiresOn) return null;
-  const start = utcDay(startOn);
-  const end = utcDay(expiresOn);
-  const now = utcDay(today);
-  if (start === null || end === null || now === null || end <= start) return null;
-  return Math.min(Math.max((now - start) / (end - start), 0), 1);
-}
 
 export type ChecklistItemSubject =
   | { readonly kind: "catalogue"; readonly item: AdminRequirementCatalogueItem; readonly entry: OnCallEntry | null }
@@ -90,7 +75,7 @@ export function ChecklistItemDetailSheet({
       : undefined;
   const today = perthCalendarDate(now);
   const startOn = entry && expiresOn ? (renewalStartOn(entry) ?? null) : null;
-  const windowProgress = windowShare(startOn, expiresOn, today);
+  const windowProgress = renewWindowShare(startOn, expiresOn, today);
   const row: RequirementChecklistRow | null =
     subject?.kind === "catalogue"
       ? {
@@ -100,6 +85,9 @@ export function ChecklistItemDetailSheet({
           state: !entry ? "not-recorded" : expiresOn ? "needs-action" : "no-end-date",
         }
       : null;
+  const bucket = row ? complianceBucket(row, today) : null;
+  /** A passed date is named as passed everywhere in the sheet, never "Renew by". */
+  const dateLabel = bucket === "date-passed" ? "Date passed" : "Renew by";
 
   async function toggleNotForThisJob() {
     if (!item || !onNotForThisJob) return;
@@ -177,13 +165,13 @@ export function ChecklistItemDetailSheet({
             <div className="grid gap-3" data-testid={`${testId}-status-block`}>
               <div className="grid gap-0.5">
                 <AdminStatusWord
-                  bucket={complianceBucket(row, today)}
+                  bucket={bucket ?? "not-recorded"}
                   testId={`${testId}-status`}
                   className="text-base-minus"
                 />
                 {expiresOn ? (
                   <p className="text-lg-minus font-medium text-[color:var(--text-heading)]">
-                    {`${complianceBucket(row, today) === "date-passed" ? "Date passed" : "Renew by"} ${formatDateEcho(expiresOn)}`}
+                    {`${dateLabel} ${formatDateEcho(expiresOn)}`}
                   </p>
                 ) : null}
                 {expiresOn ? (
@@ -200,12 +188,12 @@ export function ChecklistItemDetailSheet({
                   <AdminWindowBar progress={windowProgress} />
                   <span className={cn(textMuted, "flex justify-between gap-2 text-xs")}>
                     <span>{`Opens ${formatRecordedDate(startOn)}`}</span>
-                    <span>{`Renew by ${formatRecordedDate(expiresOn)}`}</span>
+                    <span>{`${dateLabel} ${formatRecordedDate(expiresOn)}`}</span>
                   </span>
                 </div>
               ) : null}
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                <dt className={textMuted}>Renew by</dt>
+                <dt className={textMuted}>{expiresOn ? dateLabel : "Renew by"}</dt>
                 <dd className="nums text-[color:var(--text-heading)]" data-testid={`${testId}-expiry`}>
                   {expiresOn
                     ? formatRecordedDate(expiresOn)
@@ -233,18 +221,16 @@ export function ChecklistItemDetailSheet({
                   </span>
                 </div>
               ) : null}
-              {entry?.details &&
-              typeof entry.details === "object" &&
-              (entry.details as { proofNote?: unknown }).proofNote ? (
+              {proofNote ? (
                 <p className={cn(textMuted, "text-sm")}>
                   Where your proof is
                   <br />
-                  {String((entry.details as { proofNote?: unknown }).proofNote)}
+                  {String(proofNote)}
                 </p>
               ) : null}
               {history.length > 0 ? (
                 <div className="grid gap-1">
-                  <p className="text-xs font-medium uppercase tracking-wide text-[color:var(--text-muted)]">History</p>
+                  <p className={eyebrowText}>History</p>
                   {history.map((date) => (
                     <p key={date} className={cn(textMuted, "text-sm")}>
                       {`Recorded before: ${formatRecordedDate(date)}`}
@@ -296,7 +282,7 @@ export function ChecklistItemDetailSheet({
 
           {item ? (
             <div className="grid gap-2" data-testid={`${testId}-rule`}>
-              <p className="text-xs font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Rule</p>
+              <p className={eyebrowText}>Rule</p>
               {item.status === "confirmed" ? (
                 <p className="text-sm leading-6 text-[color:var(--text)]">{item.rule}</p>
               ) : (

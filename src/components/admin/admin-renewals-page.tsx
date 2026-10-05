@@ -27,7 +27,7 @@ import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
 import { Tabs } from "@/components/ui/tabs";
 import { cn, controlDisabled, IconButton, textMuted } from "@/components/ui-primitives";
-import { COMPLIANCE_BUCKETS, complianceBucket, type ComplianceBucket } from "@/lib/admin/compliance-overview";
+import { complianceBucket, complianceBucketCounts, type ComplianceBucket } from "@/lib/admin/compliance-overview";
 import { renewNext } from "@/lib/admin/renew-next";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { downloadTextFile } from "@/lib/admin/download-file";
@@ -169,13 +169,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   const rows = useMemo(() => requirementChecklistRowsForJob(ADMIN_REQUIREMENTS_CATALOGUE, own), [own]);
   const today = perthCalendarDate(now);
   const bucketCounts = useMemo(
-    () =>
-      Object.fromEntries(
-        COMPLIANCE_BUCKETS.map((bucket) => [
-          bucket,
-          rows.filter((row) => complianceBucket(row, today) === bucket).length,
-        ]),
-      ) as Record<ComplianceBucket, number>,
+    () => complianceBucketCounts(rows.map((row) => complianceBucket(row, today))),
     [rows, today],
   );
   const next = useMemo(() => renewNext(rows, today), [rows, today]);

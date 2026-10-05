@@ -5,6 +5,7 @@ import { requirementRowUrgency } from "@/components/admin/renewals/urgency";
 import {
   buildComplianceOverview,
   complianceExportAboutRows,
+  complianceBucketCounts,
   complianceExportFileName,
   complianceExportRows,
   COMPLIANCE_EXPORT_HEADER,
@@ -23,6 +24,7 @@ import {
   renewNextNothingDueLine,
   renewNextThenLine,
   renewWindowProgress,
+  windowProgress,
 } from "@/lib/admin/renew-next";
 import { ADMIN_REQUIREMENTS_CATALOGUE, requirementChecklistRowsForJob } from "@/lib/admin/requirements";
 import { buildXlsx, crc32, xlsxSheetName } from "@/lib/admin/xlsx-lite";
@@ -138,6 +140,32 @@ describe("the Excel export", () => {
     const about = complianceExportAboutRows(overview, NOW).flat().join(" ");
     expect(about).toContain("Nothing here has been checked with the issuing body");
     expect(complianceExportFileName(NOW)).toBe("Compliance 2026-10-05.xlsx");
+    expect(complianceExportFileName(NOW, true)).toBe("Example compliance 2026-10-05.xlsx");
+    // The Rule column never says "Confirmed" next to a status, and the list's own date is named.
+    expect(rows.slice(1).map((row) => row[5])).not.toContain("Confirmed");
+    expect(new Set(rows.slice(1).map((row) => row[5]))).toEqual(new Set(["Stated by source", "Rule to confirm"]));
+    expect(about).toMatch(/statewide requirements list, last updated \d{1,2} [A-Z][a-z]{2} \d{4}\./);
+    expect(about).toContain("Stated by source means the source states the rule.");
+  });
+
+  it("says a 60-day file includes passed dates and names what it leaves out", () => {
+    const about = complianceExportAboutRows(overview, NOW, {
+      range: "next-60-days",
+      omittedColumns: [],
+      rows: 2,
+    })
+      .flat()
+      .join(" ");
+    expect(about).toContain("next 60 days only, dates already passed included");
+    expect(about).toContain(
+      "no recorded date, no end date, a date further ahead, or marked not for this job are left out",
+    );
+  });
+
+  it("counts statuses the same way for Compliance and Renewals", () => {
+    expect(complianceBucketCounts(overview.groups.flatMap((group) => group.items.map((item) => item.bucket)))).toEqual(
+      overview.counts,
+    );
   });
 
   it("is a real .xlsx that Excel's own reader opens, with text that cannot run as a formula", async () => {
@@ -263,5 +291,26 @@ describe("renewNext", () => {
     const share = renewWindowProgress(fit.then, today)!;
     expect(share).toBeGreaterThan(0);
     expect(share).toBeLessThan(1);
+  });
+});
+
+describe("a stored date that is not a real day", () => {
+  // The entry schema checks the shape (YYYY-MM-DD) but not the calendar, so
+  // "2026-02-30" can arrive from another client. It must never blank the pages.
+  const entries = [
+    complianceFixture("Life support", { requirementId: "resuscitation-competence", expiresOn: "2026-02-30" }),
+  ];
+
+  it("builds the overview and the Renew next card without throwing", () => {
+    expect(() => buildComplianceOverview(ADMIN_REQUIREMENTS_CATALOGUE, entries, NOW, null)).not.toThrow();
+    const rows = requirementChecklistRowsForJob(ADMIN_REQUIREMENTS_CATALOGUE, entries);
+    expect(() => renewNext(rows, "2026-10-05")).not.toThrow();
+    const row = rows.find((candidate) => candidate.item.id === "resuscitation-competence");
+    expect(row && requirementRowUrgency(row, NOW).word).toBeTruthy();
+  });
+
+  it("draws no renewal window for it", () => {
+    expect(windowProgress(null, "2026-02-30", "2026-10-05")).toBeNull();
+    expect(windowProgress("2026-09-01", "2026-10-01", "2026-09-16")).toBeCloseTo(0.5, 1);
   });
 });

@@ -2,7 +2,8 @@
  * The renewal window as one thin bar (5 Oct mock-up v2, screens 1 and 9): the
  * elapsed share from the day renewing opens to the recorded date, and a line
  * at today. Drawn as SVG attributes, so it needs no inline style. Decorative:
- * the dates under it, and the date line above, say the same in words.
+ * the dates under it, and the date line above, say the same in words. The
+ * corners use a narrow rx because the drawing stretches sideways.
  */
 export function AdminWindowBar({ progress, className }: { readonly progress: number; readonly className?: string }) {
   const at = Math.min(Math.max(progress, 0), 1) * 100;
@@ -18,7 +19,8 @@ export function AdminWindowBar({ progress, className }: { readonly progress: num
         y="2"
         width="100"
         height="4"
-        rx="2"
+        rx="0.6"
+        ry="2"
         className="fill-[color:var(--surface-inset)] forced-colors:fill-[GrayText]"
       />
       <rect
@@ -26,7 +28,8 @@ export function AdminWindowBar({ progress, className }: { readonly progress: num
         y="2"
         width={at}
         height="4"
-        rx="2"
+        rx="0.6"
+        ry="2"
         className="fill-[color:var(--text-muted)] forced-colors:fill-[CanvasText]"
       />
       <rect

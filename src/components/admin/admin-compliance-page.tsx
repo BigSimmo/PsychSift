@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
-import { ADMIN_STATUS_SHAPES, AdminRuleToConfirm, AdminStatusWord } from "@/components/admin/admin-status-word";
+import { AdminRuleToConfirm, AdminStatusWord } from "@/components/admin/admin-status-word";
 import { focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -18,7 +18,6 @@ import { Button, buttonFaceClass } from "@/components/ui/button";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
 import {
   buildComplianceOverview,
-  COMPLIANCE_BUCKET_LABELS,
   COMPLIANCE_BUCKETS,
   complianceDateLine,
   complianceFilterChips,
@@ -207,7 +206,9 @@ function FilterChips({
               modePressable,
               "inline-flex min-h-12 items-center gap-1.5 rounded-full border px-3 text-sm",
               selected
-                ? "border-[color:var(--text-heading)] font-medium text-[color:var(--text-heading)]"
+                ? // forced-colors repaints every border the same colour, so the
+                  // chosen chip also gets a thicker one there.
+                  "border-[color:var(--text-heading)] font-medium text-[color:var(--text-heading)] forced-colors:border-2"
                 : "border-[color:var(--border)] text-[color:var(--text)]",
             )}
           >
@@ -349,35 +350,29 @@ function FirstUse({ overview }: { readonly overview: ComplianceOverview }) {
           {`${overview.total} items on the statewide list`}
         </h2>
         <ul role="list" className={modeModuleSurface}>
-          {overview.groups.map((group) => {
-            const Shape = ADMIN_STATUS_SHAPES["not-recorded"];
-            return (
-              <li key={group.group} className={modeInsetHairline}>
-                <Link
-                  href={`${ADMIN_PAGE_HREFS.renewals}#admin-renewals-group-${group.group}`}
-                  data-testid={`admin-compliance-first-use-${group.group}`}
-                  className={cn(
-                    focusRing,
-                    modePressable,
-                    "flex min-h-13 min-w-0 items-center gap-3 py-1 pl-3 pr-2 no-underline",
-                  )}
-                >
-                  <span className="grid min-w-0 flex-1 gap-0.5">
-                    <span className="text-base-minus font-medium text-[color:var(--text-heading)]">{group.label}</span>
-                    <span className="flex flex-wrap items-center gap-x-2 text-sm text-[color:var(--text-muted)]">
-                      <span className="inline-flex items-center gap-1 font-medium text-[color:var(--text-heading)]">
-                        {Shape ? <Shape aria-hidden="true" strokeWidth={1.75} className="size-icon-xs" /> : null}
-                        {COMPLIANCE_BUCKET_LABELS["not-recorded"]}
-                      </span>
-                      <span className="nums">{`${group.items.length} ${group.items.length === 1 ? "item" : "items"}`}</span>
-                    </span>
-                    <span className="text-sm text-[color:var(--text-muted)]">{complianceGroupNames(group)}</span>
+          {overview.groups.map((group) => (
+            <li key={group.group} className={modeInsetHairline}>
+              <Link
+                href={`${ADMIN_PAGE_HREFS.renewals}#admin-renewals-group-${group.group}`}
+                data-testid={`admin-compliance-first-use-${group.group}`}
+                className={cn(
+                  focusRing,
+                  modePressable,
+                  "flex min-h-13 min-w-0 items-center gap-3 py-1 pl-3 pr-2 no-underline",
+                )}
+              >
+                <span className="grid min-w-0 flex-1 gap-0.5">
+                  <span className="text-base-minus font-medium text-[color:var(--text-heading)]">{group.label}</span>
+                  <span className="flex flex-wrap items-center gap-x-2 text-sm text-[color:var(--text-muted)]">
+                    <AdminStatusWord bucket="not-recorded" />
+                    <span className="nums">{`${group.items.length} ${group.items.length === 1 ? "item" : "items"}`}</span>
                   </span>
-                  <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-                </Link>
-              </li>
-            );
-          })}
+                  <span className="text-sm text-[color:var(--text-muted)]">{complianceGroupNames(group)}</span>
+                </span>
+                <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+              </Link>
+            </li>
+          ))}
         </ul>
       </section>
     </div>

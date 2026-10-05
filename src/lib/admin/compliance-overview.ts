@@ -121,6 +121,13 @@ export function nextJobReasonText(todo: NextJobToDo): string {
   return `Your date ends ${formatRecordedDate(todo.item.row.expiresOn as string)}, before you start`;
 }
 
+/** How many items sit in each status. Compliance and Renewals both count with this, so they cannot drift apart. */
+export function complianceBucketCounts(buckets: readonly ComplianceBucket[]): Record<ComplianceBucket, number> {
+  return Object.fromEntries(
+    COMPLIANCE_BUCKETS.map((bucket) => [bucket, buckets.filter((candidate) => candidate === bucket).length]),
+  ) as Record<ComplianceBucket, number>;
+}
+
 export function buildComplianceOverview(
   catalogue: readonly AdminRequirementCatalogueItem[],
   entries: readonly OnCallEntry[],
@@ -144,9 +151,7 @@ export function buildComplianceOverview(
     };
   }).filter((group) => group.items.length > 0);
 
-  const counts = Object.fromEntries(
-    COMPLIANCE_BUCKETS.map((bucket) => [bucket, items.filter((item) => item.bucket === bucket).length]),
-  ) as Record<ComplianceBucket, number>;
+  const counts = complianceBucketCounts(items.map((item) => item.bucket));
 
   const nextDeadlines = items
     .filter((item) => item.row.expiresOn !== undefined && item.row.expiresOn >= today)
@@ -178,6 +183,21 @@ export function buildComplianceOverview(
   };
 }
 
+/**
+ * The Rule column's word for a rule the source states. Never "Confirmed": next
+ * to the Status column that could read as "this item is confirmed".
+ */
+const RULE_STATED = "Stated by source";
+
+/** The latest "updated" day across the requirements list, for the About sheet. */
+function catalogueUpdatedOn(overview: ComplianceOverview): string | undefined {
+  const dates = [
+    ...overview.groups.flatMap((group) => group.items.map((item) => item.row.item.updated)),
+    ...overview.notForThisJob.map((item) => item.updated),
+  ].filter((date): date is string => typeof date === "string" && date.length > 0);
+  return dates.length > 0 ? dates.reduce((latest, date) => (date > latest ? date : latest)) : undefined;
+}
+
 /** The eight columns of the doctor's Excel export, in order. */
 export const COMPLIANCE_EXPORT_HEADER = [
   "Item",
@@ -187,7 +207,7 @@ export const COMPLIANCE_EXPORT_HEADER = [
   "Before your next job",
   "Rule",
   "Source",
-  "Source checked",
+  "Rule updated",
 ] as const;
 
 function exportDate(date: string | undefined): string {
@@ -216,7 +236,7 @@ export function complianceExportRows(overview: ComplianceOverview): string[][] {
         COMPLIANCE_BUCKET_LABELS[item.bucket],
         item.row.state === "no-end-date" ? "No end date" : exportDate(item.row.expiresOn),
         passWord(item),
-        item.ruleToConfirm ? "Rule to confirm" : "Confirmed",
+        item.ruleToConfirm ? "Rule to confirm" : RULE_STATED,
         catalogueItem.sourceName,
         exportDate(catalogueItem.updated),
       ]);
@@ -229,7 +249,7 @@ export function complianceExportRows(overview: ComplianceOverview): string[][] {
       "Not for this job",
       "",
       "",
-      item.status === "needs-checking" ? "Rule to confirm" : "Confirmed",
+      item.status === "needs-checking" ? "Rule to confirm" : RULE_STATED,
       item.sourceName,
       exportDate(item.updated),
     ]);
@@ -249,11 +269,12 @@ export function complianceExportAboutRows(
   },
 ): string[][] {
   const today = perthCalendarDate(now);
+  const updatedOn = catalogueUpdatedOn(overview);
   const selectionRows: string[][] = selection
     ? [
         selection.range === "next-60-days"
           ? [
-              `Range: next ${COMPLIANCE_EXPORT_SOON_DAYS} days only. ${selection.rows} of ${overview.total + overview.notForThisJob.length} items are in this file; items with no recorded date, or a date further ahead, are left out.`,
+              `Range: next ${COMPLIANCE_EXPORT_SOON_DAYS} days only, dates already passed included. ${selection.rows} of ${overview.total + overview.notForThisJob.length} items are in this file; items with no recorded date, no end date, a date further ahead, or marked not for this job are left out.`,
             ]
           : ["Range: every item."],
         selection.omittedColumns.length > 0
@@ -275,15 +296,20 @@ export function complianceExportAboutRows(
           `Next job starts ${formatRecordedDate(overview.nextJob.startsOn)}: ${overview.nextJob.carriesOver.length} carry over, ${overview.nextJob.toDo.length} still to do.`,
         ]
       : ["No start date for a next job is recorded in Admin · New job."],
-    ["Rules come from the statewide requirements list. Rule to confirm means the source did not state it clearly."],
-    ["Confirmed means the source states the rule. It does not mean anyone has checked your records against it."],
+    [
+      `Rules come from the statewide requirements list${updatedOn ? `, last updated ${formatRecordedDate(updatedOn)}` : ""}. Rule to confirm means the source did not state it clearly.`,
+    ],
+    [`${RULE_STATED} means the source states the rule. It does not mean anyone has checked your records against it.`],
     ...selectionRows,
   ];
 }
 
-/** "Compliance 2026-10-05.xlsx", dated by the Perth day. */
-export function complianceExportFileName(now: Date): string {
-  return `Compliance ${perthCalendarDate(now)}.xlsx`;
+/**
+ * "Compliance 2026-10-05.xlsx", dated by the Perth day. Example records say so
+ * in the name too, so a forwarded file is never taken for a real record.
+ */
+export function complianceExportFileName(now: Date, demo = false): string {
+  return `${demo ? "Example compliance" : "Compliance"} ${perthCalendarDate(now)}.xlsx`;
 }
 
 /**
@@ -351,7 +377,7 @@ export function complianceGroupNames(group: ComplianceGroup): string {
 /** The export page's date switch. "Next 60 days" keeps rows whose recorded date is on or before 60 days from today, passed dates included. */
 export type ComplianceExportRange = "everything" | "next-60-days";
 
-export const COMPLIANCE_EXPORT_SOON_DAYS = 60;
+const COMPLIANCE_EXPORT_SOON_DAYS = 60;
 
 /**
  * The first sheet, cut to the columns and range the doctor chose. Item is

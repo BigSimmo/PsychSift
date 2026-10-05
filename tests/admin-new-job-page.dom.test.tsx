@@ -275,9 +275,29 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
       "Nothing due before you start, on the dates you recorded",
     );
     expect(screen.getByTestId("admin-new-job-paperwork-also")).toHaveTextContent(
-      "1 need action in Compliance overall.",
+      "1 needs action in Compliance overall.",
     );
     expect(document.body.textContent).not.toMatch(/Nothing to do/);
+  });
+
+  it("says one item needs action in the singular, and never shows a zero count", () => {
+    // No start date recorded: the signpost counts what needs action now.
+    entryState.entries = ADMIN_REQUIREMENTS_CATALOGUE.map((item) =>
+      complianceFixture(item.title, {
+        requirementId: item.id,
+        expiresOn: item.id === "medical-registration-renewal" ? "2026-11-20" : "2028-01-01",
+      }),
+    );
+    const { unmount } = render(<AdminNewJobPage now={new Date("2026-10-25T01:00:00Z")} />);
+    expect(screen.getByTestId("admin-new-job-paperwork-count")).toHaveTextContent("1 needs action, in Compliance");
+    unmount();
+    entryState.entries = ADMIN_REQUIREMENTS_CATALOGUE.map((item) =>
+      complianceFixture(item.title, { requirementId: item.id, expiresOn: "2028-01-01" }),
+    );
+    render(<AdminNewJobPage now={new Date("2026-10-25T01:00:00Z")} />);
+    expect(screen.getByTestId("admin-new-job-paperwork-count")).toHaveTextContent(
+      "Nothing needs action on the dates you recorded",
+    );
   });
 
   it("keeps the credential pack as a quiet text link under Leaving", () => {

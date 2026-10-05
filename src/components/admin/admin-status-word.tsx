@@ -4,7 +4,7 @@ import { cn } from "@/components/ui-primitives";
 import { COMPLIANCE_BUCKET_LABELS, type ComplianceBucket } from "@/lib/admin/compliance-overview";
 
 /** The same grey shapes Renewals draws: shape and word, never colour alone (Admin design contract). */
-export const ADMIN_STATUS_SHAPES: Record<ComplianceBucket, LucideIcon | null> = {
+const ADMIN_STATUS_SHAPES: Record<ComplianceBucket, LucideIcon | null> = {
   recorded: null,
   "start-renewing": Triangle,
   "date-passed": Diamond,
