@@ -405,6 +405,15 @@ map each mode's existing selectors (Admin's `today-selectors`, On Call notificat
 progress, CPD routines and drafts, Teaching's needs-you counts) onto items, and
 `use-my-day-items.ts` merges them for the `/my-day` page and the home card. Read-only; nothing stored.
 
+**Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
+modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
+records (Roster shifts and leave, Teaching sessions, CPD activities, On Call / Admin entries) onto
+one `WorkItem` shape; `search.ts` ranks word matches (On Call entries through On Call's own search)
+and builds "Coming up"; `answers.ts` holds the built-in answers (next nights, what's due, CPD
+targets, next leave, presenting), worked out in the browser with no AI. The screen
+(`src/components/work-search/`) is a lazy chunk; its loaders call each area's existing routes when
+it opens and keep the records in tab memory only. It never reads the patient-label store.
+
 **Psychiatry hub history.** `src/lib/psychiatry-hub/` (`visits.ts`) is the `/psychiatry` hub's
 on-device record of psychiatry records the reader opened (not the query-driven tools) (path, page title, section,
 time; no patient detail), written by `src/components/psychiatry/psychiatry-visit-recorder.tsx` in
