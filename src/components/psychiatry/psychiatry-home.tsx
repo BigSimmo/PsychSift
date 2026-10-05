@@ -313,7 +313,7 @@ function AskSearch({ offline }: { readonly offline: boolean }) {
     >
       {offline ? (
         <p
-          className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-2.5 text-sm-minus text-[color:var(--dash-muted)] forced-colors:border"
+          className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-2.5 text-sm text-[color:var(--dash-muted)] forced-colors:border"
           data-testid="psychiatry-offline"
         >
           <WifiOff aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
@@ -360,7 +360,7 @@ function AskSearch({ offline }: { readonly offline: boolean }) {
         </button>
       </div>
       {offline ? null : (
-        <div className="flex flex-wrap items-center gap-x-3.5 text-sm-minus" data-testid="psychiatry-ask-try">
+        <div className="flex flex-wrap items-center gap-x-3.5 text-sm" data-testid="psychiatry-ask-try">
           <span className="text-[color:var(--dash-muted)]">Try</span>
           {sharedHomePresentation.psychiatry.suggestions.map((suggestion) => (
             <Link
@@ -425,7 +425,7 @@ function QuickActionGrid({ actions }: { readonly actions: readonly DashQuickActi
             data-testid={testId}
             className={cn(
               focusRing,
-              "focus-ring-contained flex h-full min-h-13 items-center gap-2.5 rounded-xl px-3 py-2 text-sm-minus font-medium leading-tight text-[color:var(--dash-ink)] no-underline",
+              "focus-ring-contained flex h-full min-h-13 items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium leading-tight text-[color:var(--dash-ink)] no-underline",
             )}
           >
             <ActionIcon aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
@@ -452,7 +452,7 @@ function Signpost({
   readonly testId?: string;
 }) {
   return (
-    <p className="flex min-h-10 items-center gap-2.5 px-0.5 text-sm-minus text-[color:var(--dash-muted)]">
+    <p className="flex min-h-10 items-center gap-2.5 px-0.5 text-sm text-[color:var(--dash-muted)]">
       <SignIcon aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
       <span className="min-w-0 flex-1">{text}</span>
       <Link href={href} data-testid={testId} className={cn(flatLink, "shrink-0")}>
@@ -551,7 +551,7 @@ function ContinueSection({ visits, now }: { readonly visits: readonly Psychiatry
           ))}
         </FlatList>
       ) : (
-        <p className="text-sm-minus text-[color:var(--dash-muted)]" data-testid="psychiatry-continue-empty">
+        <p className="text-sm text-[color:var(--dash-muted)]" data-testid="psychiatry-continue-empty">
           {recordingOff
             ? "Turn on Save recent searches in Settings to see what you opened here. It stays on this device."
             : "Diagnoses, therapies and forms you open will appear here, on this device only."}
@@ -694,7 +694,7 @@ function SectionsSection({ counts }: { readonly counts: PsychiatrySectionCounts 
               >
                 <ModeIcon aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
                 <span className="grid min-w-0">
-                  <span className="break-words text-sm-minus font-medium leading-tight">{mode.label}</span>
+                  <span className="break-words text-sm font-medium leading-tight">{mode.label}</span>
                   <span className="nums break-words text-xs text-[color:var(--dash-muted)]">
                     {sectionCountLine(modeId, counts) ?? mode.description}
                   </span>
@@ -765,7 +765,7 @@ function WeekSection({
           <>
             <p className="flex items-center gap-3" data-testid="psychiatry-month">
               <span className="nums text-xl font-semibold text-[color:var(--dash-ink)]">{thisMonth}</span>{" "}
-              <span className="text-sm-minus text-[color:var(--dash-ink)]">
+              <span className="text-sm text-[color:var(--dash-ink)]">
                 {thisMonth === 1 ? "record opened so far this month" : "records opened so far this month"}
               </span>
             </p>

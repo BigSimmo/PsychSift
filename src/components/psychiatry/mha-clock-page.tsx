@@ -406,7 +406,7 @@ function ClockItem({
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5">
           <span
             aria-hidden="true"
-            className="nums grid h-7 min-w-9 place-items-center rounded-lg border border-[color:var(--dash-line-strong)] px-1.5 text-sm-minus font-semibold text-[color:var(--dash-ink)] forced-colors:border"
+            className="nums grid h-7 min-w-9 place-items-center rounded-lg border border-[color:var(--dash-line-strong)] px-1.5 text-sm font-semibold text-[color:var(--dash-ink)] forced-colors:border"
           >
             {clock.formCode}
           </span>
@@ -514,7 +514,6 @@ function UndoBar({
   return (
     <div
       role="status"
-      aria-live="polite"
       className="pointer-events-none fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[var(--z-toast)] flex justify-center px-4"
     >
       {removed || message ? (
@@ -692,7 +691,7 @@ export function MhaClockPage({
                   <span className="nums text-xl font-semibold" data-testid="mha-clock-count">
                     {clocks.length}
                   </span>{" "}
-                  <span className="text-sm-minus font-medium">{clocks.length === 1 ? "clock" : "clocks"}</span>{" "}
+                  <span className="text-sm font-medium">{clocks.length === 1 ? "clock" : "clocks"}</span>{" "}
                   {passed > 0 ? (
                     <span
                       className="text-xs font-semibold text-[color:var(--danger-text)]"

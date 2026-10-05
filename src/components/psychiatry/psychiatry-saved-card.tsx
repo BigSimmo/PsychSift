@@ -49,7 +49,7 @@ function SignedOut() {
     >
       <Star aria-hidden="true" className="size-7 text-[color:var(--dash-faint)]" />
       <p className="text-base font-semibold text-[color:var(--dash-ink)]">Sign in to see what you’ve saved.</p>
-      <p className="max-w-[30ch] text-sm-minus text-[color:var(--dash-muted)]">
+      <p className="max-w-[30ch] text-sm text-[color:var(--dash-muted)]">
         Starred items are kept with your account, so they appear on any phone you sign in on.
       </p>
       <button
@@ -102,7 +102,7 @@ export function PsychiatrySavedCard() {
       {partial ? (
         <div
           data-testid="psychiatry-saved-partial"
-          className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-1 text-sm-minus text-[color:var(--dash-muted)] forced-colors:border"
+          className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-1 text-sm text-[color:var(--dash-muted)] forced-colors:border"
         >
           <TriangleAlert aria-hidden="true" className="mt-3 size-icon-sm shrink-0 text-[color:var(--dash-amber)]" />
           <span className="min-w-0 flex-1 py-2.5">
@@ -117,7 +117,7 @@ export function PsychiatrySavedCard() {
           <div
             role="group"
             aria-label="Show"
-            className="flex gap-3.5 overflow-x-auto border-b border-[color:var(--dash-line)] text-sm-minus font-semibold [scrollbar-width:none]"
+            className="flex gap-3.5 overflow-x-auto border-b border-[color:var(--dash-line)] text-sm font-semibold [scrollbar-width:none]"
           >
             {[
               { type: "all" as const, label: "All", count: allCount },
