@@ -27,6 +27,7 @@ import {
   windowProgress,
 } from "@/lib/admin/renew-next";
 import { ADMIN_REQUIREMENTS_CATALOGUE, requirementChecklistRowsForJob } from "@/lib/admin/requirements";
+import { formatRelativeDate } from "@/lib/admin/renewal-dates";
 import { buildXlsx, crc32, xlsxSheetName } from "@/lib/admin/xlsx-lite";
 import { complianceFixture } from "./helpers/on-call-entry-fixture";
 
@@ -206,14 +207,16 @@ describe("Compliance page helpers (5 Oct mock-up v2)", () => {
   const byId = (id: string) => all.find((item) => item.row.item.id === id)!;
   const today = "2026-10-05";
 
-  it("counts Needs action as passed, renewing and unrecorded, and offers only chips with items", () => {
+  it("counts Needs action as passed, renewing and unrecorded, and offers a chip for each status with items", () => {
     const needs = overview.counts["date-passed"] + overview.counts["start-renewing"] + overview.counts["not-recorded"];
     expect(complianceNeedsActionCount(overview)).toBe(needs);
     const chips = complianceFilterChips(overview);
     expect(chips[0]).toEqual({ filter: "all", label: "All", count: overview.total });
     expect(chips[1]).toEqual({ filter: "needs-action", label: "Needs action", count: needs });
     expect(chips.every((chip) => chip.count > 0)).toBe(true);
-    expect(chips.some((chip) => chip.filter === "recorded")).toBe(false);
+    expect(chips.some((chip) => chip.filter === "recorded")).toBe(overview.counts.recorded > 0);
+    expect(overview.counts.recorded).toBeGreaterThan(0);
+    expect(chips.at(-1)?.filter).toBe("recorded");
   });
 
   it("matches a filter to its items", () => {
@@ -307,6 +310,19 @@ describe("a stored date that is not a real day", () => {
     expect(() => renewNext(rows, "2026-10-05")).not.toThrow();
     const row = rows.find((candidate) => candidate.item.id === "resuscitation-competence");
     expect(row && requirementRowUrgency(row, NOW).word).toBeTruthy();
+  });
+
+  it("is never ranked or shown as a passed deadline", () => {
+    const overview = buildComplianceOverview(ADMIN_REQUIREMENTS_CATALOGUE, entries, NOW, null);
+    const item = overview.groups
+      .flatMap((group) => group.items)
+      .find((c) => c.row.item.id === "resuscitation-competence")!;
+    expect(item.row.expiresOn).toBeUndefined();
+    expect(item.bucket).not.toBe("date-passed");
+    const rows = requirementChecklistRowsForJob(ADMIN_REQUIREMENTS_CATALOGUE, entries);
+    const next = renewNext(rows, "2026-10-05");
+    expect(next.kind === "act" ? next.item.row.expiresOn : next.next?.row.expiresOn).not.toBe("2026-02-30");
+    expect(formatRelativeDate("2026-02-30", "2026-10-05")).toBe("");
   });
 
   it("draws no renewal window for it", () => {

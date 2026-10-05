@@ -211,7 +211,7 @@ export function ChecklistItemDetailSheet({
             </div>
           ) : null}
 
-          {(!row && expiresOn) || proofNote || history.length > 0 ? (
+          {(!row && expiresOn) || proofNote ? (
             <div className="grid gap-3">
               {!row && expiresOn ? (
                 <div className="flex items-start justify-between gap-3">
@@ -227,16 +227,6 @@ export function ChecklistItemDetailSheet({
                   <br />
                   {String(proofNote)}
                 </p>
-              ) : null}
-              {history.length > 0 ? (
-                <div className="grid gap-1">
-                  <p className={eyebrowText}>History</p>
-                  {history.map((date) => (
-                    <p key={date} className={cn(textMuted, "text-sm")}>
-                      {`Recorded before: ${formatRecordedDate(date)}`}
-                    </p>
-                  ))}
-                </div>
               ) : null}
             </div>
           ) : null}
@@ -279,6 +269,17 @@ export function ChecklistItemDetailSheet({
               No issuer check recorded
             </p>
           )}
+
+          {history.length > 0 ? (
+            <div className="grid gap-1" data-testid={`${testId}-history`}>
+              <p className={eyebrowText}>History</p>
+              {history.map((date) => (
+                <p key={date} className={cn(textMuted, "text-sm")}>
+                  {`Recorded before: ${formatRecordedDate(date)}`}
+                </p>
+              ))}
+            </div>
+          ) : null}
 
           {item ? (
             <div className="grid gap-2" data-testid={`${testId}-rule`}>

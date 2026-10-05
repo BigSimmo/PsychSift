@@ -71,7 +71,12 @@ const INDEMNITY = complianceFixture(
 );
 const REGISTRATION = complianceFixture(
   "Medical registration renewal",
-  { category: "registration", expiresOn: "2027-08-30", requirementId: "medical-registration-renewal" },
+  {
+    category: "registration",
+    expiresOn: "2027-08-30",
+    requirementId: "medical-registration-renewal",
+    expiryHistory: ["2026-08-30"],
+  },
   { slug: "med-reg" },
 );
 
@@ -217,6 +222,18 @@ describe("AdminRenewalsPage — the checklist", () => {
     const list = within(screen.getByTestId("admin-renewals-checklist"));
     expect(list.getByText("Working with Children Check")).toBeInTheDocument();
     expect(list.queryByText("ALS course certification")).toBeNull();
+  });
+
+  it("orders the sheet: issuer check, then history, then the rule", () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("admin-renewals-checklist-row-medical-registration-renewal"));
+    const sheet = within(screen.getByTestId("admin-renewals-item-sheet"));
+    const issuer = sheet.getByTestId("admin-renewals-item-sheet-issuer-check");
+    const history = sheet.getByTestId("admin-renewals-item-sheet-history");
+    const rule = sheet.getByTestId("admin-renewals-item-sheet-rule");
+    expect(history).toHaveTextContent("Recorded before: 30 Aug 2026");
+    expect(issuer.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(history.compareDocumentPosition(rule) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("shows the confirmed rule and the source link", () => {

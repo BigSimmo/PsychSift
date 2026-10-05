@@ -1,4 +1,5 @@
 import { addDays } from "@/lib/calendar/calendar-event";
+import { dateKeyToUtcMillis } from "@/lib/calendar/date-keys";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
@@ -53,9 +54,8 @@ const DAY_MS = 86_400_000;
 /** A `YYYY-MM-DD` calendar date as a whole day count, for subtracting two dates. Exported so every
  *  Admin selector that measures "how many days between two calendar dates" shares this one parse. */
 export function utcDay(date: string): number | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  const ms = Date.parse(`${date}T00:00:00Z`);
-  return Number.isNaN(ms) ? null : ms / DAY_MS;
+  const ms = dateKeyToUtcMillis(date);
+  return ms === null ? null : ms / DAY_MS;
 }
 
 /**

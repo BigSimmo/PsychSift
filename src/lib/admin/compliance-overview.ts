@@ -331,6 +331,9 @@ export function complianceFilterMatches(filter: ComplianceFilter, item: Complian
   return item.bucket === filter;
 }
 
+/** Status chips run most urgent first, ending with Recorded. */
+const CHIP_ORDER: readonly ComplianceBucket[] = [...NEEDS_ACTION, "recorded"];
+
 /** The chips to draw, in order: All, Needs action, then each status that has any items. */
 export function complianceFilterChips(
   overview: ComplianceOverview,
@@ -340,7 +343,7 @@ export function complianceFilterChips(
   ];
   const needsAction = complianceNeedsActionCount(overview);
   if (needsAction > 0) chips.push({ filter: "needs-action", label: "Needs action", count: needsAction });
-  for (const bucket of NEEDS_ACTION) {
+  for (const bucket of CHIP_ORDER) {
     if (overview.counts[bucket] > 0) {
       chips.push({ filter: bucket, label: COMPLIANCE_BUCKET_LABELS[bucket], count: overview.counts[bucket] });
     }
