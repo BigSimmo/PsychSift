@@ -31,9 +31,17 @@ export function extraKey(extra: RosterExtraTime): string {
   return `${extra.kind ?? "stayed_late"}|${Date.parse(extra.startedAt)}`;
 }
 
-/** The worked shift that finished most recently, if it ended in the last eight hours. */
+/**
+ * The worked shift that finished most recently, if it ended in the last eight
+ * hours. None while another worked shift is running, since the time since the
+ * last one ended is then that shift, not a late finish.
+ */
 export function justFinished(shifts: readonly OnCallShift[], now: Date): OnCallShift | null {
   const at = now.getTime();
+  const working = shifts.some(
+    (shift) => isWorkedKind(kindOf(shift)) && Date.parse(shift.startsAt) <= at && Date.parse(shift.endsAt) > at,
+  );
+  if (working) return null;
   let best: OnCallShift | null = null;
   for (const shift of shifts) {
     const end = Date.parse(shift.endsAt);
@@ -90,6 +98,8 @@ export function useRosterExtraTime(
   shifts: readonly OnCallShift[],
   now: Date,
   fortnight: { readonly start: string; readonly end: string },
+  /** False for sample or example shifts: a late finish is only offered against the doctor's own roster. */
+  enabled = true,
 ): RosterExtraTimeState {
   const [attempt, setAttempt] = useState(0);
   const saved = useSavedExtras(fortnight.start, fortnight.end, attempt);
@@ -101,7 +111,7 @@ export function useRosterExtraTime(
     for (const extra of [...saved.records, ...visit]) byStart.set(extraKey(extra), extra);
     return [...byStart.values()];
   }, [saved.records, visit]);
-  const finished = justFinished(shifts, now);
+  const finished = enabled ? justFinished(shifts, now) : null;
   const alreadyLogged = finished
     ? records.some(
         (extra) => extraKey(extra) === extraKey({ kind: "stayed_late", startedAt: finished.endsAt, endedAt: null }),

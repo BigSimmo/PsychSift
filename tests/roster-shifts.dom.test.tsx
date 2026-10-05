@@ -213,12 +213,17 @@ describe("Roster Shifts", () => {
     render(<RosterShiftsPage now={new Date("2026-10-13T02:00:00Z")} />);
     await screen.findByText(/12 to 18 Oct · No shifts/);
     const previous = () => screen.findByRole("button", { name: "Previous week" });
-    for (let step = 0; step < 3; step += 1) {
+    // Shifts load from 22 Sep: the weeks of 5 Oct and 28 Sep are whole; the week of 21 Sep is not.
+    for (let step = 0; step < 2; step += 1) {
       const button = await previous();
-      expect(button).toBeEnabled();
+      expect(button).not.toHaveAttribute("aria-disabled", "true");
       fireEvent.click(button);
     }
-    expect(await previous()).toBeDisabled();
+    const last = await previous();
+    expect(last).toHaveAttribute("aria-disabled", "true");
+    // It stays focusable, and a press does nothing.
+    fireEvent.click(last);
+    expect(await screen.findByText(/28 Sep to 4 Oct/)).toBeInTheDocument();
   });
 
   it("loads the newly selected month before displaying its team shifts", async () => {
@@ -300,7 +305,8 @@ describe("Roster Shifts", () => {
     render(<RosterShiftsPage now={new Date("2026-10-12T09:45:00Z")} />);
     const fortnight = await screen.findByTestId("roster-fortnight");
     expect(fortnight).toHaveTextContent(/19\sh\s*rostered/);
-    expect(screen.getByText("Rostered hours, not pay. Claiming extra time is in Admin.")).toBeInTheDocument();
+    expect(screen.getByText("Rostered hours, not pay.")).toBeInTheDocument();
+    expect(screen.getByText("16:30 to now, 1 h 15 min")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Add the time since your last shift ended" }));
     await screen.findByText("Saved");
@@ -315,6 +321,23 @@ describe("Roster Shifts", () => {
     expect(fortnight).toHaveTextContent(/plus 1\.25\sh extra/);
   });
 
+  it("never offers a late finish against sample shifts, or while the next shift is already running", async () => {
+    routes.set("GET /api/roster/extra-time", () => Response.json({ records: [] }));
+    routes.set("GET /api/roster/shifts", () =>
+      Response.json({ shifts: [day("2026-10-12")], latestImport: null, sample: true }),
+    );
+    const { unmount } = render(<RosterShiftsPage now={new Date("2026-10-12T09:45:00Z")} />);
+    await screen.findByTestId("roster-fortnight");
+    expect(screen.queryByTestId("roster-stayed-late")).toBeNull();
+    unmount();
+
+    // Day shift ended 16:30 and an evening shift started at 16:30: the time since is that shift, not a late finish.
+    mockShifts([day("2026-10-12"), shift("2026-10-12", "16:30", "23:00", "evening")]);
+    render(<RosterShiftsPage now={new Date("2026-10-12T09:45:00Z")} />);
+    await screen.findByTestId("roster-fortnight");
+    expect(screen.queryByTestId("roster-stayed-late")).toBeNull();
+  });
+
   it("counts saved extra time after a reload, and will not log the same late finish twice", async () => {
     mockShifts([day("2026-10-12"), night("2026-10-15")]);
     routes.set("GET /api/roster/extra-time", () =>
@@ -327,7 +350,6 @@ describe("Roster Shifts", () => {
     const extra = await screen.findByTestId("roster-hours-extra");
     expect(await within(extra).findByText(/Extra time · 1 h this fortnight/)).toBeInTheDocument();
     expect(within(extra).getByTestId("roster-hours-extra-row")).toHaveTextContent("16:30 to 17:30");
-    expect(within(extra).getByTestId("roster-hours-claim-link")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add the time since your last shift ended" })).toBeNull();
     const [read] = fetchMock.mock.calls.filter(([input]) => String(input).startsWith("/api/roster/extra-time?"));
     expect(String(read?.[0])).toMatch(/^\/api\/roster\/extra-time\?from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/);
@@ -529,7 +551,9 @@ describe("Roster Shifts", () => {
     ]);
     routes.set(`DELETE /api/roster/shifts/manual/${series}`, () => Response.json({ deleted: true }));
     render(<RosterShiftsPage now={new Date("2026-10-13T02:00:00Z")} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Remove Other work on Wed 14 Oct and its repeats" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Wed 14 Oct: Other work, 09:00 to 17:00. Remove it and its repeats" }),
+    );
     // It asks first, naming what goes, and removes nothing until confirmed.
     expect(fetchCalls(`/api/roster/shifts/manual/${series}`, "DELETE")).toHaveLength(0);
     expect(screen.getByTestId("confirm-dialog")).toHaveTextContent("every weekly repeat of it");

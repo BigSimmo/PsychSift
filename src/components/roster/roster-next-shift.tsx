@@ -87,9 +87,12 @@ export function RosterNextShift({
   const kind = kindOf(shift);
   const date = perthDateOf(shift.startsAt);
   const place = shift.workplace ?? shift.location;
-  const endWords = `${weekdayName(shift.endsAt)} ${perthTimeOf(shift.endsAt)}`;
+  // "Sat 08:00" for an overnight end, "24:00" for one ending at midnight, as the span reads.
+  const endWords = shiftSpan(shift).split(" to ")[1];
+  const onCall = kind === "on_call";
+  const nowWords = onCall ? "On call now" : "On shift now";
   const eyebrow = onNow
-    ? `On shift now · ${formatPerthDay(date)} ${SHIFT_KIND_LABEL[kind].toLowerCase()}`
+    ? `${nowWords} · ${formatPerthDay(date)}${onCall ? "" : ` ${SHIFT_KIND_LABEL[kind].toLowerCase()}`}`
     : `Next shift · ${relativeDay(date, perthDateOf(now))}`;
   const big = onNow ? shiftSpan(shift) : `${formatPerthDay(date)} · ${shiftSpan(shift)}`;
   const sub = onNow
@@ -100,7 +103,7 @@ export function RosterNextShift({
   return (
     <section
       data-mode-identity="roster"
-      aria-label={onNow ? "On shift now" : "Next shift"}
+      aria-label={onNow ? nowWords : "Next shift"}
       className={cn(modeModuleSurface, "grid gap-3 p-4 shadow-none")}
       data-testid="roster-next-shift"
     >

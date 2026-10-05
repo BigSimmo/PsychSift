@@ -34,6 +34,7 @@ import { fortnightFor, summariseHours } from "@/lib/roster/hours";
 import { restCuesByTeam } from "@/lib/roster/rest-cues";
 import { SHIFT_KIND_LABEL, SHIFT_LETTER } from "@/lib/roster/shift-kind";
 import {
+  formatSpanUntil,
   formatSpanWords,
   leadShift,
   shiftSpan,
@@ -104,12 +105,28 @@ const SHIFTS_HREF = "/roster/shifts";
 const HOURS_HREF = "/roster/shifts?view=hours";
 const MONTH_HREF = "/roster/shifts?view=month";
 
-const RosterHoursRow = dynamic(() => import("./roster-shifts-checks").then((module) => module.RosterHoursRow), {
-  ssr: false,
-  loading: () => <RosterRow lead={<RosterIconLead icon={Clock} />} title="Hours and rest" sub="Checking…" />,
-});
+/** If the checks fail to load, say they were not run rather than leaving a gap. */
+function HoursRowUnavailable() {
+  return (
+    <RosterRow
+      lead={<RosterIconLead icon={Clock} />}
+      title="Hours and rest: not checked"
+      sub="This part of the page didn't load. Reload to check."
+      testId="roster-hours-not-checked"
+    />
+  );
+}
+
+const RosterHoursRow = dynamic(
+  () => import("./roster-shifts-checks").then((module) => module.RosterHoursRow).catch(() => HoursRowUnavailable),
+  {
+    ssr: false,
+    loading: () => <RosterRow lead={<RosterIconLead icon={Clock} />} title="Hours and rest" sub="Checking…" />,
+  },
+);
+// Fails quietly: the hours row above, from the same file, then says nothing was checked.
 const RosterAfterNightNote = dynamic(
-  () => import("./roster-shifts-checks").then((module) => module.RosterAfterNightNote),
+  () => import("./roster-shifts-checks").then((module) => module.RosterAfterNightNote).catch(() => () => null),
   { ssr: false },
 );
 
@@ -242,7 +259,7 @@ function DayRow({
                   label: `${SHIFT_KIND_LABEL[kind].toLowerCase()} on ${formatPerthDay(row.date)}`,
                 })
               }
-              label={`Remove ${SHIFT_KIND_LABEL[kind]} on ${formatPerthDay(row.date)} and its repeats${warning ? `. ${warning}` : ""}`}
+              label={`${name}. Remove it and its repeats`}
             />
           );
         return <RosterRow key={item.id} {...common} label={name} />;
@@ -318,7 +335,12 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   // Sunday it moves on with the week list, which then opens on tomorrow's week.
   const weekStart = mondayOf(addDaysToDate(today, 1));
   const fortnight = fortnightFor(payAnchor || weekStart <= today ? today : weekStart, payAnchor);
-  const extra = useRosterExtraTime(shifts.shifts, now, fortnight);
+  const extra = useRosterExtraTime(
+    shifts.shifts,
+    now,
+    fortnight,
+    shifts.status === "ready" && !shifts.sample && !shifts.demoMode,
+  );
   const summary = useMemo(
     () =>
       summariseHours(
@@ -332,10 +354,16 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   );
   const overview = useMemo(() => shifts.shifts.map(toOverview), [shifts.shifts]);
   const byId = useMemo(() => new Map(shifts.shifts.map((shift) => [shift.id, shift])), [shifts.shifts]);
-  const leaveDates = useMemo(
-    () => new Set(overview.filter((shift) => shift.kind === "leave").map((shift) => perthDateOf(shift.startsAt))),
-    [overview],
-  );
+  // Every day a leave entry covers; one ending at midnight does not reach the next day.
+  const leaveDates = useMemo(() => {
+    const dates = new Set<string>();
+    for (const shift of overview) {
+      if (shift.kind !== "leave") continue;
+      const last = perthDateOf(new Date(Date.parse(shift.endsAt) - 1).toISOString());
+      for (let date = perthDateOf(shift.startsAt); date <= last; date = addDaysToDate(date, 1)) dates.add(date);
+    }
+    return dates;
+  }, [overview]);
   const cues = useCues(shifts.shifts, rulesByTeam);
   const events = useMemo(() => toCalendarEvents(shifts.shifts), [shifts.shifts]);
   const holidayEvents = useMemo<CalendarEvent[]>(
@@ -355,7 +383,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
   const leadDisplay = lead.state === "none" ? null : byId.get(lead.shift.id)!;
   const rows = weekRows(overview, monday);
   // The shifts API returns only the last LOADED_PAST_DAYS; a week wholly before that would falsely read as empty.
-  const previousWeekLoaded = addDaysToDate(monday, -1) >= addDaysToDate(today, -LOADED_PAST_DAYS);
+  const previousWeekLoaded = addDaysToDate(monday, -7) >= addDaysToDate(today, -LOADED_PAST_DAYS);
   const weekLabel =
     monday === mondayOf(today)
       ? "This week"
@@ -394,7 +422,12 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               This is a connection problem. Nothing in your roster has been changed.
             </p>
           </RosterNote>
-          <button type="button" className={rosterFilledButton} onClick={() => void shifts.reload()}>
+          <button
+            type="button"
+            className={rosterFilledButton}
+            data-mode-identity="roster"
+            onClick={() => void shifts.reload()}
+          >
             <RefreshCw aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
             Try again
           </button>
@@ -462,7 +495,9 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
         </div>
       );
 
-    const nothingYet = shifts.shifts.length === 0 && !shifts.teamLoading && enabledTeams.length === 0;
+    // Only once the team list has loaded: a failed team read is not "no team".
+    const nothingYet =
+      shifts.shifts.length === 0 && !shifts.teamLoading && teams.status === "ready" && enabledTeams.length === 0;
     if (nothingYet && !shifts.demoMode)
       return (
         <div className="grid min-w-0 gap-3" data-testid="roster-shifts-empty">
@@ -517,7 +552,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
               />
             ) : (
               <RosterNote icon={CalendarClock}>
-                <p>No more shifts in your roster.</p>
+                <p>
+                  {partial
+                    ? "No more shifts in the part of your roster that loaded."
+                    : "No more shifts in your roster."}
+                </p>
               </RosterNote>
             )}
 
@@ -548,7 +587,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                 <RosterRow
                   lead={<RosterIconLead icon={Clock} />}
                   title="Stayed late?"
-                  sub="Add the extra time while you remember"
+                  sub={
+                    extra.finished
+                      ? `${perthTimeOf(extra.finished.endsAt)} to now, ${formatSpanUntil(now.getTime() - Date.parse(extra.finished.endsAt))}`
+                      : "Add the extra time while you remember"
+                  }
                   action={
                     <RosterLinkWord
                       onClick={() => void extra.stayedLate()}
@@ -602,11 +645,14 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                 <button
                   type="button"
                   aria-label="Previous week"
-                  disabled={!previousWeekLoaded}
-                  onClick={() => setMonday(addDaysToDate(monday, -7))}
+                  // aria-disabled keeps focus on the button when the earliest loaded week is reached.
+                  aria-disabled={!previousWeekLoaded}
+                  onClick={() => {
+                    if (previousWeekLoaded) setMonday(addDaysToDate(monday, -7));
+                  }}
                   className={cn(
                     focusRing,
-                    "grid size-12 shrink-0 place-items-center rounded-md text-[color:var(--text-muted)] disabled:text-[color:var(--disabled)]",
+                    "grid size-12 shrink-0 place-items-center rounded-md text-[color:var(--text-muted)] aria-disabled:text-[color:var(--disabled)]",
                   )}
                 >
                   <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
@@ -614,7 +660,8 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                 <h2 id="roster-week-heading" className="grid flex-1 text-center">
                   <span className="text-lg-minus font-semibold text-[color:var(--text-heading)]">{weekLabel}</span>
                   <span className="nums text-xs text-[color:var(--text-muted)]">
-                    {formatSpanWords(monday, addDaysToDate(monday, 6))} · {weekCountWords(rows)}
+                    {formatSpanWords(monday, addDaysToDate(monday, 6))}
+                    {shifts.teamRefreshing ? null : ` · ${weekCountWords(rows)}${partial ? ", part loaded" : ""}`}
                   </span>
                 </h2>
                 <button
@@ -629,18 +676,25 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                   <ChevronRight aria-hidden="true" strokeWidth={1.6} className="size-icon-md" />
                 </button>
               </div>
-              <RosterList testId="roster-shifts-agenda" label="Shifts this week">
-                {rows.map((row) => (
-                  <DayRow
-                    key={row.date}
-                    row={row}
-                    byId={byId}
-                    cues={cues}
-                    onTeamShift={setTeamShift}
-                    onRemoveSeries={setConfirmSeries}
-                  />
-                ))}
-              </RosterList>
+              {shifts.teamRefreshing ? (
+                <ModeModuleSkeleton rows={7} testId="roster-shifts-agenda-loading" />
+              ) : (
+                <RosterList
+                  testId="roster-shifts-agenda"
+                  label={`Shifts, ${weekLabel.replace(/^\w+ week/, (words) => words.toLowerCase())}`}
+                >
+                  {rows.map((row) => (
+                    <DayRow
+                      key={row.date}
+                      row={row}
+                      byId={byId}
+                      cues={cues}
+                      onTeamShift={setTeamShift}
+                      onRemoveSeries={setConfirmSeries}
+                    />
+                  ))}
+                </RosterList>
+              )}
             </section>
 
             <RosterFortnight
@@ -694,7 +748,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
                 testId="roster-tools-month"
               />
             </RosterList>
-            <RosterFootnote>Rostered hours, not pay. Claiming extra time is in Admin.</RosterFootnote>
+            <RosterFootnote>Rostered hours, not pay.</RosterFootnote>
           </>
         )}
       </div>

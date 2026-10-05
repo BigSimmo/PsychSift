@@ -37,6 +37,12 @@ export type RosterShiftsState = {
   readonly teamMessage?: string | null;
   /** A selected team window is still being read; an empty period is not yet known to be free. */
   readonly teamLoading: boolean;
+  /**
+   * Team shifts for a newly asked range are on their way, and the last range's
+   * are shown meanwhile. Every range covers the days around today, so only the
+   * days outside the last range (a week further away) are not yet known.
+   */
+  readonly teamRefreshing?: boolean;
   readonly latestImport: OnCallShiftImportSummary | null;
   readonly demoMode: boolean;
   /** The shifts are the sample doctor's example roster; the reader's first saved shift replaces them. */
@@ -276,29 +282,33 @@ export function useRosterShifts(teamRange?: { from: string; to: string }): Roste
     await load();
   }, [reloadTeams, load]);
 
-  const currentTeamData =
-    actorId &&
-    teamData?.owner === actorId &&
+  const sameTeams =
+    teamData &&
+    Boolean(actorId) &&
+    teamData.owner === actorId &&
     teamData.payload === teamPayload &&
-    teamData.from === from &&
-    teamData.to === to &&
     teams.status === "ready"
       ? teamData
       : null;
+  const currentTeamData = sameTeams && sameTeams.from === from && sameTeams.to === to ? sameTeams : null;
+  // A new range for the same teams keeps the last one's shifts while it loads.
+  const previousTeamData = currentTeamData ? null : sameTeams;
+  const shownTeamData = currentTeamData ?? previousTeamData;
   const enabledTeamCount = Array.isArray(teamPayload?.teams)
     ? teamPayload.teams.filter((team) => team.enabled).length
     : 0;
 
   return {
     status,
-    shifts: currentTeamData && actorId ? mergeMyShifts(shifts, currentTeamData.rows, actorId) : shifts,
+    shifts: shownTeamData && actorId ? mergeMyShifts(shifts, shownTeamData.rows, actorId) : shifts,
     teamLoading:
       teams.status === "loading" ||
-      (teams.status === "ready" && Boolean(actorId) && enabledTeamCount > 0 && !currentTeamData),
+      (teams.status === "ready" && Boolean(actorId) && enabledTeamCount > 0 && !shownTeamData),
+    teamRefreshing: Boolean(previousTeamData) && enabledTeamCount > 0,
     teamMessage:
       teams.status === "error"
         ? "Team shifts could not be loaded. Your own shifts are shown."
-        : (currentTeamData?.message ?? null),
+        : (shownTeamData?.message ?? null),
     latestImport,
     demoMode,
     sample,

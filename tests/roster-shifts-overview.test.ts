@@ -84,4 +84,41 @@ describe("Roster Shifts words", () => {
     expect(weekCountWords(rows)).toBe("3 shifts and 1 on call");
     expect(weekCountWords(weekRows([], "2026-10-05"))).toBe("No shifts");
   });
+
+  it("leads with on call that is running now, not the shift after it", () => {
+    const shifts = [at("2026-10-11", "21:00", "08:00", "on_call"), at("2026-10-12", "08:30", "17:00", "day")];
+    expect(leadShift(shifts, new Date(perthWallToIso("2026-10-12", "02:00")!))).toMatchObject({
+      state: "on_now",
+      shift: { id: shifts[0]!.id },
+    });
+  });
+
+  it("says what is still running on a day with nothing starting", () => {
+    const longCall = {
+      id: "call",
+      startsAt: perthWallToIso("2026-10-05", "17:00")!,
+      endsAt: perthWallToIso("2026-10-08", "08:00")!,
+      kind: "on_call" as const,
+      place: null,
+    };
+    const leave = {
+      id: "leave",
+      startsAt: perthWallToIso("2026-10-09", "00:00")!,
+      endsAt: perthWallToIso("2026-10-12", "00:00")!,
+      kind: "leave" as const,
+      place: null,
+    };
+    const rows = weekRows([longCall, leave], "2026-10-05");
+    expect(rows.map((row) => row.offNote)).toEqual([
+      null,
+      "On call all day",
+      "On call all day",
+      "On call ends 08:00",
+      null,
+      "On leave",
+      "On leave",
+    ]);
+    // Leave ending at midnight does not reach the next Monday.
+    expect(weekRows([leave], "2026-10-12")[0]!.offNote).toBeNull();
+  });
 });

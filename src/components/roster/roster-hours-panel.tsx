@@ -15,7 +15,6 @@ import { formatSpanWords } from "@/lib/roster/shifts-overview";
 import { formatHours } from "./roster-format";
 import {
   RosterDateLead,
-  RosterIconLead,
   RosterLinkWord,
   RosterList,
   RosterNote,
@@ -23,7 +22,7 @@ import {
   RosterSectionHead,
   rosterOutlineButton,
 } from "./roster-list";
-import type { RosterExtraTimeState } from "./use-roster-extra-time";
+import { extraKey, type RosterExtraTimeState } from "./use-roster-extra-time";
 
 /**
  * Hours & rest, opened from Shifts: the signed check for the next 14 days,
@@ -90,7 +89,7 @@ function ExtraTime({ extra, summary }: { readonly extra: RosterExtraTimeState; r
           const hours = record.endedAt ? (Date.parse(record.endedAt) - Date.parse(record.startedAt)) / 3_600_000 : null;
           return (
             <RosterRow
-              key={`${record.kind ?? "stayed_late"}-${record.startedAt}`}
+              key={extraKey(record)}
               lead={
                 <RosterDateLead
                   weekday={WEEKDAYS[new Date(`${date}T00:00:00Z`).getUTCDay()]!}
@@ -107,13 +106,6 @@ function ExtraTime({ extra, summary }: { readonly extra: RosterExtraTimeState; r
         {extra.status === "ready" && records.length === 0 ? (
           <RosterRow title="No extra time this fortnight" dim />
         ) : null}
-        <RosterRow
-          href="/my-work"
-          lead={<RosterIconLead icon={ClipboardList} />}
-          title="Claim extra time"
-          sub="Claims and approvals are in Admin"
-          testId="roster-hours-claim-link"
-        />
       </RosterList>
     </section>
   );

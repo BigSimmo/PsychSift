@@ -54,7 +54,7 @@ export function leadShift(shifts: readonly OverviewShift[], now: Date): LeadShif
   const duty = shifts
     .filter((shift) => shift.kind !== "leave" && Date.parse(shift.endsAt) > at)
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
-  const current = duty.find((shift) => Date.parse(shift.startsAt) <= at && isWorkedKind(shift.kind));
+  const current = duty.find((shift) => Date.parse(shift.startsAt) <= at);
   if (current) return { state: "on_now", shift: current };
   const next = duty.find((shift) => Date.parse(shift.startsAt) > at);
   return next ? { state: "next", shift: next } : { state: "none" };
@@ -73,9 +73,19 @@ export type WeekRow = {
   readonly day: number;
   /** The shifts starting this day, in order; empty for a day off. */
   readonly shifts: readonly OverviewShift[];
-  /** For a day off: the end of a night that finished this morning ("Night shift ends 08:00"). */
+  /**
+   * For a day with no shift starting: what is still running from an earlier
+   * day ("Night shift ends 08:00", "On call ends 08:00", "On call all day",
+   * "On leave"), or null.
+   */
   readonly offNote: string | null;
 };
+
+function carriedNote(shift: OverviewShift, date: string): string {
+  if (shift.kind === "leave") return "On leave";
+  const what = shift.kind === "on_call" ? "On call" : `${SHIFT_KIND_LABEL[shift.kind]} shift`;
+  return perthDateOf(shift.endsAt) === date ? `${what} ends ${perthTimeOf(shift.endsAt)}` : `${what} all day`;
+}
 
 /** One row per day, Monday to Sunday, from the doctor's own shifts. */
 export function weekRows(shifts: readonly OverviewShift[], monday: string): WeekRow[] {
@@ -84,21 +94,24 @@ export function weekRows(shifts: readonly OverviewShift[], monday: string): Week
     const starting = shifts
       .filter((shift) => perthDateOf(shift.startsAt) === date)
       .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
-    const endingHere = starting.length
-      ? null
-      : shifts.find(
-          (shift) =>
-            isWorkedKind(shift.kind) &&
-            perthDateOf(shift.endsAt) === date &&
-            perthDateOf(shift.startsAt) !== date &&
-            perthTimeOf(shift.endsAt) !== "00:00",
-        );
+    // A shift ending exactly at midnight belongs wholly to the day before.
+    const carried = starting.length
+      ? undefined
+      : shifts
+          .filter((shift) => {
+            const endDate = perthDateOf(shift.endsAt);
+            return (
+              perthDateOf(shift.startsAt) < date &&
+              (endDate > date || (endDate === date && perthTimeOf(shift.endsAt) !== "00:00"))
+            );
+          })
+          .sort((a, b) => Date.parse(b.endsAt) - Date.parse(a.endsAt))[0];
     return {
       date,
       weekday: weekdayOf(date),
       day: Number(date.slice(8, 10)),
       shifts: starting,
-      offNote: endingHere ? `${SHIFT_KIND_LABEL[endingHere.kind]} shift ends ${perthTimeOf(endingHere.endsAt)}` : null,
+      offNote: carried ? carriedNote(carried, date) : null,
     };
   });
 }
