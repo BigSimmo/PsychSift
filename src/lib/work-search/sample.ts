@@ -6,7 +6,7 @@ import { addDaysToDate, perthDateOf } from "@/lib/perth-time";
 import { demoMyShifts, demoRosterLeave } from "@/lib/roster/team/demo-team";
 import { demoTeachingSessions } from "@/lib/teaching/demo-programme";
 import { cmeActivityWorkItems, leaveWorkItems, sessionWorkItems, shiftWorkItems } from "@/lib/work-search/items";
-import type { WorkItem } from "@/lib/work-search/model";
+import { TEACHING_LOOKAHEAD_DAYS, type WorkItem } from "@/lib/work-search/model";
 
 /**
  * The invented sample a signed-out visitor searches: the same demo records each
@@ -23,7 +23,9 @@ export function workSearchSample(now: Date): {
     items: [
       ...shiftWorkItems(demoMyShifts(now)),
       ...leaveWorkItems(demoRosterLeave(now)),
-      ...sessionWorkItems(demoTeachingSessions({ from: today, to: addDaysToDate(today, 41) }, now)),
+      ...sessionWorkItems(
+        demoTeachingSessions({ from: today, to: addDaysToDate(today, TEACHING_LOOKAHEAD_DAYS) }, now),
+      ),
       ...cmeActivityWorkItems(DEMO_CME_ENTRIES),
     ],
     entries: DEMO_ON_CALL_ENTRIES,
