@@ -122,7 +122,7 @@ export function OnCallRow({
   const twoLine = Boolean(subtitle) || Boolean(meta);
   const height = twoLine ? modeRowHeight.double : modeRowHeight.single;
   const text = (
-    <span className="grid min-w-0 flex-1 basis-40 gap-0.5 py-1.5">
+    <span className="grid min-w-0 flex-1 basis-40 gap-0.5 py-1">
       <span className={cn(modeNameText, "break-words text-base-minus leading-5 text-[color:var(--text-heading)]")}>
         {title}
       </span>
@@ -161,7 +161,10 @@ export function OnCallRow({
     );
   }
   return (
-    <li className={cn(modeInsetHairline, height, "flex min-w-0 items-center gap-x-3 pl-3 pr-1", className)} data-testid={testId}>
+    <li
+      className={cn(modeInsetHairline, height, "flex min-w-0 items-center gap-x-3 pl-3 pr-1", className)}
+      data-testid={testId}
+    >
       {lead}
       {text}
       {trailingSlot}

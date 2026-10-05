@@ -14,6 +14,10 @@ export type OnCallExternalLine = {
   readonly title: string;
   /** Where the line serves, as the source states it. */
   readonly area: string;
+  /** When the line answers ("24 hours, every day"), when its source says. */
+  readonly availability?: string;
+  /** A limitation the source states, shown wherever the number is shown ("not an emergency service"). */
+  readonly caveat?: string | null;
   readonly dial: HandbookDial;
   readonly updatedAt: string;
   readonly sources: readonly { readonly label: string; readonly url: string }[];
@@ -32,6 +36,8 @@ function fromCrisisContact(contact: PublicCrisisContact): OnCallExternalLine {
     id: contact.id.toLowerCase(),
     title: contact.name,
     area: contact.coverage,
+    availability: contact.availability,
+    caveat: contact.caveat,
     dial: resolveHandbookPhone(contact.telephoneDisplay, "outside"),
     updatedAt: contact.verifiedOn,
     sources: [{ label: hostLabel(contact.sourceUrl), url: contact.sourceUrl }],

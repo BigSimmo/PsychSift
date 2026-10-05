@@ -1,36 +1,55 @@
 "use client";
 
-import { ArrowLeft, Clipboard, ClipboardCheck, Flag, Lock, Plus, Table2, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  ArrowLeft,
+  BotOff,
+  Bone,
+  Brain,
+  Check,
+  CloudOff,
+  FileText,
+  Flag,
+  Lock,
+  Plus,
+  Scissors,
+  SearchX,
+  Stethoscope,
+  Table2,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react";
+import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
+import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
+import { OnCallHandoverTable } from "@/components/on-call/handover/handover-table";
+import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
+import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { modeInsetHairline, modeModuleSurface } from "@/components/mode-kit/recipes";
-import { modeNameText, modeSecondaryText } from "@/components/mode-kit/type";
+import { modeSecondaryText } from "@/components/mode-kit/type";
 import { Button } from "@/components/ui/button";
-import { FormField } from "@/components/ui/form-field";
 import { announce } from "@/components/ui/live-announcer";
-import { BrowserPrintButton, PrintOutput } from "@/components/ui/print-output";
-import { TextField } from "@/components/ui/text-field";
-import { cn, eyebrowText, fieldControlPlain } from "@/components/ui-primitives";
-import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
-import { onCallCallLogTime, onCallHandoverItems } from "@/lib/on-call/call-log";
+import { cn, fieldControlPlain } from "@/components/ui-primitives";
+import { onCallCallLogTime } from "@/lib/on-call/call-log";
 import { onCallDeviceStateChangedEvent, onCallDeviceStoreChangedEvent } from "@/lib/on-call/device-state-keys";
 import {
-  ON_CALL_HANDOVER_COLUMNS,
   ON_CALL_HANDOVER_FIELD_LIMITS,
   ON_CALL_HANDOVER_GONE_MESSAGE,
+  ON_CALL_HANDOVER_NOT_SET_UP,
+  ON_CALL_HANDOVER_TYPES,
   clearOnCallHandover,
   emptyOnCallHandoverDraft,
-  onCallHandoverCell,
+  onCallHandoverCallsNotIn,
+  onCallHandoverDateRange,
   onCallHandoverDraftFromCall,
   onCallHandoverDraftIsEmpty,
-  onCallHandoverHtmlTable,
-  onCallHandoverPlainText,
+  onCallHandoverLastWard,
+  onCallHandoverPatientLabel,
+  onCallHandoverRecentLegal,
+  onCallHandoverReviewCount,
   onCallHandoverStorageKey,
-  onCallHandoverTitle,
   removeOnCallHandoverPatient,
   saveOnCallHandoverPatient,
   visibleOnCallHandover,
@@ -38,7 +57,9 @@ import {
   type OnCallHandoverPatient,
   type OnCallHandoverReview,
   type OnCallHandoverTextField,
+  type OnCallHandoverType,
 } from "@/lib/on-call/handover";
+import { ON_CALL_SHIFT_PICK_TTL_MS, useOnCallShiftPick } from "@/lib/on-call/shift-context";
 import {
   PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABELS_CLEARED_EVENT,
@@ -46,12 +67,14 @@ import {
 } from "@/lib/patient-label-storage";
 
 /*
- * HANDOVER: one patient at a time, then one tap for the table.
+ * HANDOVER: one patient at a time, then one tap for the table (mock-up v10,
+ * screens 6 to 10).
  *
- * Josh's psychiatry handover, built from the parts already decided. The name
- * and record-number fields, the pick lists, Share and the other specialties
- * wait for his decisions (see `src/lib/on-call/handover.ts`). Everything here
- * reads and writes one store on this device; nothing talks to a server.
+ * Josh's psychiatry handover. There is deliberately no name or record-number
+ * field: the patient is a bed number or up to four initials, as everywhere else
+ * on this phone, until the owner approves otherwise. Only Psychiatry has agreed
+ * fields; the other three types say so plainly and show no form. Everything
+ * here reads and writes one store on this device; nothing talks to a server.
  */
 
 function subscribe(onChange: () => void): () => void {
@@ -82,7 +105,7 @@ function readRaw(): string {
 }
 
 /** The handover on screen, oldest first, or null before the device has been read. */
-function useOnCallHandover(): { readonly patients: OnCallHandoverPatient[]; readonly expiresAt: number | null } | null {
+function useOnCallHandover(): ReturnType<typeof visibleOnCallHandover> | null {
   const raw = useSyncExternalStore(subscribe, readRaw, () => undefined);
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -105,125 +128,219 @@ function clockTime(epochMs: number): string {
   return onCallCallLogTime(new Date(epochMs).toISOString());
 }
 
-function patientLabel(patient: OnCallHandoverDraft, index: number): string {
-  return patient.bed || `Patient ${index + 1}`;
-}
+const TYPE_ICONS: Record<OnCallHandoverType, LucideIcon> = {
+  psychiatry: Brain,
+  "general-medicine": Stethoscope,
+  "general-surgery": Scissors,
+  orthopaedics: Bone,
+};
 
 /** The privacy promise, first on the page, in the reader's words rather than ours. */
 function PrivacyBand({ expiresAt }: { readonly expiresAt: number | null }) {
   return (
     <section
       aria-label="Where this handover is kept"
-      className="grid gap-2 rounded-lg border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] p-3"
+      className="grid gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3 forced-colors:border"
       data-testid="on-call-handover-privacy"
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <span
-          aria-hidden="true"
-          className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:var(--surface-raised)] text-[color:var(--mode-identity)]"
-        >
-          <Lock aria-hidden="true" className="size-icon-sm" />
-        </span>
-        <p className={cn(modeNameText, "min-w-0 flex-1 text-[color:var(--text-heading)]")}>Private to this phone</p>
-        <p className="nums shrink-0 text-right text-sm font-semibold text-[color:var(--mode-identity)]">
-          {expiresAt ? `Clears ${clockTime(expiresAt)}` : "Clears at shift end"}
+      <div className="flex min-w-0 items-start gap-3">
+        <Lock aria-hidden="true" className="mt-0.5 size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+        <p className="min-w-0 flex-1 text-base-minus font-semibold text-[color:var(--text-heading)]">
+          Private to this phone
+        </p>
+        <p className="grid shrink-0 text-right leading-tight">
+          <span className="text-xs font-semibold text-[color:var(--text-muted)]">Clears</span>
+          <span className="nums text-lg-minus font-semibold text-[color:var(--text-heading)]">
+            {expiresAt ? clockTime(expiresAt) : "Shift end"}
+          </span>
         </p>
       </div>
-      <ul role="list" className="flex flex-wrap gap-1.5" aria-label="Privacy">
-        {["Not synced", "Not searched", "Never sent to AI"].map((label) => (
-          <li
-            key={label}
-            className="rounded-full bg-[color:var(--surface-raised)] px-2.5 py-1 text-xs font-semibold text-[color:var(--mode-identity)]"
-          >
+      <ul role="list" className="flex flex-wrap gap-x-3 gap-y-1" aria-label="Privacy">
+        {(
+          [
+            ["Not synced", CloudOff],
+            ["Not searched", SearchX],
+            ["No AI", BotOff],
+          ] as const
+        ).map(([label, Icon]) => (
+          <li key={label} className="flex items-center gap-1 text-xs font-semibold text-[color:var(--text-muted)]">
+            <Icon aria-hidden="true" className="size-icon-xs shrink-0" />
             {label}
           </li>
         ))}
       </ul>
       <p className={modeSecondaryText}>
-        Wiped when your shift ends{expiresAt ? "" : " (at most 12 hours after you start)"} or you sign out. It leaves
-        this phone only when you copy or print it.
+        Clears when your shift ends. Anyone who can unlock this phone can read it until then.
       </p>
     </section>
   );
 }
 
-/** "Patient 2 of 4": a round button per patient, a small amber dot on anyone flagged for review. */
+/** Psychiatry, Gen med, Gen surg, Ortho. Only Psychiatry has a form. */
+function TypePicker({
+  value,
+  onChange,
+}: {
+  readonly value: OnCallHandoverType;
+  readonly onChange: (value: OnCallHandoverType) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Handover type"
+      className="grid grid-cols-4 gap-1 rounded-lg bg-[color:var(--surface-wash)] p-1"
+      data-testid="on-call-handover-types"
+    >
+      {ON_CALL_HANDOVER_TYPES.map((type) => {
+        const Icon = TYPE_ICONS[type.key];
+        const checked = type.key === value;
+        return (
+          <button
+            key={type.key}
+            type="button"
+            role="radio"
+            aria-checked={checked}
+            onClick={() => onChange(type.key)}
+            className={cn(
+              focusRing,
+              "grid min-h-14 min-w-0 place-items-center content-center gap-1 rounded-md px-1 py-1.5 text-xs forced-colors:border",
+              checked
+                ? "bg-[color:var(--surface-raised)] font-semibold text-[color:var(--text-heading)] shadow-[var(--shadow-inset)]"
+                : "text-[color:var(--text-muted)]",
+            )}
+            data-testid={`on-call-handover-type-${type.key}`}
+          >
+            <Icon aria-hidden="true" className="size-icon-sm" />
+            <span className="max-w-full truncate">{type.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** "Patient 3 of 4": a circle per patient, a small dot on anyone flagged for review, then Add. */
 function PatientRail({
   patients,
   currentId,
+  draftBed,
   onPick,
   onAdd,
 }: {
   readonly patients: readonly OnCallHandoverPatient[];
   readonly currentId: string | null;
+  readonly draftBed: string;
   readonly onPick: (patient: OnCallHandoverPatient) => void;
   readonly onAdd: () => void;
 }) {
   const index = patients.findIndex((patient) => patient.id === currentId);
-  const position = index === -1 ? patients.length + 1 : index + 1;
-  const total = index === -1 ? patients.length + 1 : patients.length;
-  const forReview = patients.filter((patient) => patient.review === "yes").length;
+  const unsaved = index === -1;
+  const position = unsaved ? patients.length + 1 : index + 1;
+  const total = unsaved ? patients.length + 1 : patients.length;
+  const forReview = onCallHandoverReviewCount(patients);
+  const circle =
+    "relative grid size-9 place-items-center rounded-full border bg-[color:var(--surface-raised)] forced-colors:border";
+  const dot = (
+    <span
+      aria-hidden="true"
+      className="absolute -right-0.5 -top-0.5 size-2 rounded-full border border-[color:var(--surface-raised)] bg-[color:var(--text-heading)] forced-colors:bg-[CanvasText]"
+    />
+  );
+  const step = (key: string, content: ReactNode, label: string) => (
+    <li key={key} className="relative z-[5] grid shrink-0 justify-items-center">
+      {content}
+      <span className="max-w-16 truncate text-xs font-semibold text-[color:var(--text-muted)]">{label}</span>
+    </li>
+  );
   return (
-    <section
-      className={cn(modeModuleSurface, "grid gap-3 p-3")}
-      aria-label="Patients"
-      data-testid="on-call-handover-rail"
-    >
+    <section className="grid min-w-0 gap-2" aria-label="Patients" data-testid="on-call-handover-rail">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
-        <p className="text-lg font-semibold text-[color:var(--text-heading)]">
+        <p className="text-lg-minus font-semibold text-[color:var(--text-heading)]" aria-live="polite">
           Patient {position} <span className="text-[color:var(--text-muted)]">of {total}</span>
         </p>
-        {forReview > 0 ? <p className={modeSecondaryText}>{forReview} for review</p> : null}
+        {forReview > 0 ? <p className={cn(modeSecondaryText, "text-xs")}>{forReview} for review</p> : null}
       </div>
-      <ol className="flex min-w-0 gap-2 overflow-x-auto pb-1" role="list">
+      <ol
+        className="relative flex w-fit min-w-0 max-w-full gap-1 overflow-x-auto before:absolute before:inset-x-6 before:top-6 before:h-px before:bg-[color:var(--border)]"
+        role="list"
+      >
         {patients.map((patient, i) => {
           const current = patient.id === currentId;
-          const label = patientLabel(patient, i);
-          return (
-            <li key={patient.id} className="grid shrink-0 justify-items-center gap-1">
-              <button
-                type="button"
-                onClick={() => onPick(patient)}
-                aria-current={current ? "step" : undefined}
-                aria-label={`Edit ${label}${patient.review === "yes" ? ", flagged for review" : ""}`}
+          const label = onCallHandoverPatientLabel(patient.bed, i);
+          const flagged = patient.review === "yes";
+          return step(
+            patient.id,
+            <button
+              type="button"
+              onClick={() => onPick(patient)}
+              aria-current={current ? "step" : undefined}
+              aria-label={`${current ? "Editing" : "Edit"} ${label}${flagged ? ", flagged for review" : ""}`}
+              className={cn(focusRing, "grid size-12 place-items-center rounded-full")}
+              data-testid="on-call-handover-rail-patient"
+            >
+              <span
                 className={cn(
-                  "relative grid size-12 place-items-center rounded-full border-2 text-xs font-semibold",
+                  circle,
                   current
-                    ? "border-[color:var(--mode-identity)] bg-[color:var(--surface-raised)] text-[color:var(--mode-identity)]"
-                    : "border-transparent bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)]",
+                    ? "border-2 border-[color:var(--text-heading)] text-sm font-semibold text-[color:var(--text-heading)]"
+                    : "border-[color:var(--border-strong)] text-[color:var(--text-muted)]",
                 )}
-                data-testid="on-call-handover-rail-patient"
               >
-                <span className="nums">{i + 1}</span>
-                {patient.review === "yes" ? (
-                  <span
-                    aria-hidden="true"
-                    className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-[color:var(--surface-raised)] bg-[color:var(--warning)]"
-                  />
-                ) : null}
-              </button>
-              <span className="max-w-14 truncate text-2xs font-semibold text-[color:var(--text-muted)]">{label}</span>
-            </li>
+                {current ? (
+                  <span className="nums">{i + 1}</span>
+                ) : (
+                  <Check aria-hidden="true" className="size-icon-xs" />
+                )}
+                {flagged ? dot : null}
+              </span>
+            </button>,
+            label,
           );
         })}
-        <li className="grid shrink-0 justify-items-center gap-1">
+        {unsaved
+          ? step(
+              "new",
+              <span
+                aria-current="step"
+                className="grid size-12 place-items-center"
+                data-testid="on-call-handover-rail-new"
+              >
+                <span
+                  className={cn(
+                    circle,
+                    "border-2 border-[color:var(--text-heading)] text-sm font-semibold text-[color:var(--text-heading)]",
+                  )}
+                >
+                  <span className="nums">{position}</span>
+                </span>
+              </span>,
+              draftBed.trim() ? onCallHandoverPatientLabel(draftBed, position - 1) : "New",
+            )
+          : null}
+        {step(
+          "add",
           <button
             type="button"
             onClick={onAdd}
             aria-label="Add a patient"
-            className="grid size-12 place-items-center rounded-full border-2 border-dashed border-[color:var(--border-strong)] text-[color:var(--text-muted)]"
+            className={cn(focusRing, "grid size-12 place-items-center rounded-full")}
             data-testid="on-call-handover-rail-add"
           >
-            <Plus aria-hidden="true" className="size-icon-sm" />
-          </button>
-          <span className="text-2xs font-semibold text-[color:var(--text-muted)]">Add</span>
-        </li>
+            <span className={cn(circle, "border-[color:var(--border-strong)] text-[color:var(--text-muted)]")}>
+              <Plus aria-hidden="true" className="size-icon-sm" />
+            </span>
+          </button>,
+          "Add",
+        )}
       </ol>
     </section>
   );
 }
 
+const inputClass = cn(fieldControlPlain, "min-h-12 text-base-minus");
+
 function NoteArea({
+  number,
   label,
   placeholder,
   value,
@@ -232,6 +349,7 @@ function NoteArea({
   testId,
   rows = 3,
 }: {
+  readonly number: number;
   readonly label: string;
   readonly placeholder: string;
   readonly value: string;
@@ -240,34 +358,75 @@ function NoteArea({
   readonly testId: string;
   readonly rows?: number;
 }) {
+  const id = useId();
   return (
-    <FormField label={label}>
-      {(field) => (
-        <textarea
-          id={field.id}
-          aria-describedby={field.describedBy}
-          value={value}
-          maxLength={maxLength}
-          rows={rows}
-          placeholder={placeholder}
-          autoComplete="off"
-          spellCheck
-          onChange={(event) => onChange(event.target.value)}
-          data-testid={testId}
-          className={cn(fieldControlPlain, "min-h-20 py-2")}
-        />
-      )}
-    </FormField>
+    <div className="grid min-w-0 gap-1.5">
+      <FieldLabel number={number} htmlFor={id}>
+        {label}
+      </FieldLabel>
+      <textarea
+        id={id}
+        value={value}
+        maxLength={maxLength}
+        rows={rows}
+        placeholder={placeholder}
+        autoComplete="off"
+        spellCheck
+        onChange={(event) => onChange(event.target.value)}
+        data-testid={testId}
+        className={cn(fieldControlPlain, "min-h-20 py-2 text-base-minus")}
+      />
+    </div>
+  );
+}
+
+function TextLine({
+  number,
+  label,
+  placeholder,
+  value,
+  maxLength,
+  onChange,
+  testId,
+}: {
+  readonly number: number;
+  readonly label: string;
+  readonly placeholder?: string;
+  readonly value: string;
+  readonly maxLength: number;
+  readonly onChange: (value: string) => void;
+  readonly testId: string;
+}) {
+  const id = useId();
+  return (
+    <div className="grid min-w-0 gap-1.5">
+      <FieldLabel number={number} htmlFor={id}>
+        {label}
+      </FieldLabel>
+      <input
+        id={id}
+        value={value}
+        maxLength={maxLength}
+        placeholder={placeholder}
+        autoComplete="off"
+        onChange={(event) => onChange(event.target.value)}
+        data-testid={testId}
+        className={inputClass}
+      />
+    </div>
   );
 }
 
 function ReviewChoice({
+  number,
   value,
   onChange,
 }: {
+  readonly number: number;
   readonly value: OnCallHandoverReview;
   readonly onChange: (value: OnCallHandoverReview) => void;
 }) {
+  const labelId = useId();
   const option = (choice: "yes" | "no", label: string) => {
     const pressed = value === choice;
     return (
@@ -276,12 +435,11 @@ function ReviewChoice({
         aria-pressed={pressed}
         onClick={() => onChange(pressed ? "" : choice)}
         className={cn(
-          "inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg border text-base font-semibold",
-          pressed && choice === "yes"
-            ? "border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] text-[color:var(--warning-text)]"
-            : pressed
-              ? "border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
-              : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text)]",
+          focusRing,
+          "inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-md border text-base-minus font-semibold forced-colors:border",
+          pressed
+            ? "border-[color:var(--text-heading)] bg-[color:var(--surface-wash)] text-[color:var(--text-heading)]"
+            : "border-[color:var(--border)] bg-[color:var(--surface-raised)] text-[color:var(--text-muted)]",
         )}
         data-testid={`on-call-handover-review-${choice}`}
       >
@@ -291,235 +449,72 @@ function ReviewChoice({
     );
   };
   return (
-    <fieldset className="grid gap-2">
-      <legend className="mb-2 text-sm font-semibold text-[color:var(--text-heading)]">Requires review</legend>
+    <div role="group" aria-labelledby={labelId} className="grid min-w-0 gap-1.5">
+      <FieldLabel number={number} id={labelId}>
+        Requires review
+      </FieldLabel>
       <div className="flex gap-2">
         {option("yes", "Yes")}
         {option("no", "No")}
       </div>
-    </fieldset>
+    </div>
   );
 }
 
-type CopyState = "idle" | "copied" | "failed";
-
-/** Copies the table as a table where the browser allows it, and as plain text everywhere. */
-async function copyHandover(patients: readonly OnCallHandoverPatient[]): Promise<void> {
-  const plain = onCallHandoverPlainText(patients);
-  if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "text/html": new Blob([onCallHandoverHtmlTable(patients)], { type: "text/html" }),
-          "text/plain": new Blob([plain], { type: "text/plain" }),
-        }),
-      ]);
-      return;
-    } catch {
-      // Fall through to plain text.
-    }
-  }
-  await copyTextToClipboard(plain);
-}
-
-function HandoverTable({
+/** "1 to-do in tonight's call log is not in this handover · Add": one tap brings the oldest in as a patient. */
+function CallsToAdd({
   patients,
-  onBack,
-  onEdit,
+  onAdd,
 }: {
   readonly patients: readonly OnCallHandoverPatient[];
-  readonly onBack: () => void;
-  readonly onEdit: (patient: OnCallHandoverPatient) => void;
+  readonly onAdd: (draft: OnCallHandoverDraft) => void;
 }) {
-  const [copy, setCopy] = useState<CopyState>("idle");
-  const resetTimer = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
-    },
-    [],
-  );
-  const onCopy = useCallback(async () => {
-    try {
-      await copyHandover(patients);
-      setCopy("copied");
-      announce("Handover copied.");
-    } catch {
-      setCopy("failed");
-      announce("Not copied. Print it, or select the table and copy it by hand.");
-    }
-    if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
-    resetTimer.current = window.setTimeout(() => setCopy("idle"), 4000);
-  }, [patients]);
-  const now = new Date();
+  const entries = useOnCallCallLog()?.entries ?? null;
+  const open = useMemo(() => onCallHandoverCallsNotIn(entries ?? [], patients), [entries, patients]);
+  if (open.length === 0) return null;
+  const first = open[0]!;
+  const what = [onCallCallLogTime(first.at), first.label, first.caller].filter(Boolean).join(" · ");
   return (
     <section
-      className="grid min-w-0 gap-3"
-      aria-labelledby="on-call-handover-table-heading"
-      data-testid="on-call-handover-table"
+      aria-label="From tonight's call log"
+      className="flex min-w-0 items-center gap-3 border-t border-[color:var(--border)] pt-3"
+      data-testid="on-call-handover-calls"
     >
-      <div className="flex min-w-0 flex-wrap items-center gap-2 print:hidden">
-        <Button variant="ghost" icon={ArrowLeft} onClick={onBack} testId="on-call-handover-back">
-          Back to the form
-        </Button>
-      </div>
-      <PrintOutput
-        monochrome
-        confidential
-        printedAt={`Printed ${new Intl.DateTimeFormat("en-AU", {
-          timeZone: "Australia/Perth",
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(now)}`}
-        provenance="PsychSift On Call handover. Typed by the doctor on this phone; check it before relying on it."
-        testId="on-call-handover-print"
+      <FileText aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+      <p className={cn(modeSecondaryText, "min-w-0 flex-1")}>
+        {open.length === 1
+          ? "1 to-do in tonight's call log is not in this handover"
+          : `${open.length} to-dos in tonight's call log are not in this handover`}
+      </p>
+      <button
+        type="button"
+        onClick={() => onAdd(onCallHandoverDraftFromCall(first))}
+        aria-label={`Add the ${what} call as a patient`}
+        className={cn(onCallActionLink, focusRing)}
+        data-testid="on-call-handover-add-call"
       >
-        <h2
-          id="on-call-handover-table-heading"
-          className="mb-2 text-base font-semibold text-[color:var(--text-heading)]"
-        >
-          {onCallHandoverTitle(now)}
-        </h2>
-        <div className="max-w-full overflow-x-auto rounded-lg border border-[color:var(--border)] print:overflow-visible print:border-0">
-          <table className="w-max min-w-full border-collapse text-left text-sm print:w-full print:text-xs">
-            <caption className="sr-only">
-              {patients.length === 1 ? "One patient" : `${patients.length} patients`}, in the order entered
-            </caption>
-            <thead>
-              <tr className="bg-[color:var(--surface-subtle)]">
-                {ON_CALL_HANDOVER_COLUMNS.map(({ key, label }) => (
-                  <th
-                    key={key}
-                    scope="col"
-                    className={cn(
-                      "border-b border-[color:var(--border)] px-3 py-2 text-xs font-semibold text-[color:var(--text-heading)]",
-                      key === "bed" && "sticky left-0 bg-[color:var(--surface-subtle)] print:static",
-                    )}
-                  >
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {patients.map((patient, index) => {
-                const flagged = patient.review === "yes";
-                return (
-                  <tr
-                    key={patient.id}
-                    className={cn("align-top", flagged && "bg-[color:var(--warning-soft)]")}
-                    data-testid="on-call-handover-table-row"
-                  >
-                    {ON_CALL_HANDOVER_COLUMNS.map(({ key }) => {
-                      const value = onCallHandoverCell(patient, key);
-                      if (key === "bed") {
-                        return (
-                          <th
-                            key={key}
-                            scope="row"
-                            className={cn(
-                              "sticky left-0 border-b border-[color:var(--border)] px-3 py-2 font-semibold print:static",
-                              flagged ? "bg-[color:var(--warning-soft)]" : "bg-[color:var(--surface-raised)]",
-                            )}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => onEdit(patient)}
-                              className="text-left font-semibold text-[color:var(--mode-identity)] underline-offset-2 hover:underline print:text-[color:var(--text)] print:no-underline"
-                              aria-label={`Edit ${patientLabel(patient, index)}`}
-                            >
-                              {patientLabel(patient, index)}
-                            </button>
-                          </th>
-                        );
-                      }
-                      return (
-                        <td
-                          key={key}
-                          className={cn(
-                            "border-b border-[color:var(--border)] px-3 py-2 text-[color:var(--text)]",
-                            (key === "story" || key === "plan") && "min-w-56 max-w-80 whitespace-pre-wrap break-words",
-                            key === "review" && flagged && "font-semibold text-[color:var(--warning-text)]",
-                          )}
-                        >
-                          {value}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </PrintOutput>
-      <div className="flex min-w-0 flex-wrap items-center gap-3 print:hidden">
-        <Button
-          variant="secondary"
-          icon={copy === "copied" ? ClipboardCheck : Clipboard}
-          onClick={() => void onCopy()}
-          testId="on-call-handover-table-copy"
-        >
-          {copy === "copied" ? "Copied" : "Copy as table"}
-        </Button>
-        <BrowserPrintButton label="Print or save as PDF" />
-      </div>
-      {copy === "failed" ? (
-        <p className={cn(modeSecondaryText, "print:hidden")}>
-          Not copied. Print it, or select the table and copy it by hand.
-        </p>
-      ) : null}
+        Add
+      </button>
     </section>
   );
 }
 
-/** Open calls from tonight's log that are not in the handover yet, offered one tap away. */
-function CallsToAdd({ onAdd }: { readonly onAdd: (draft: OnCallHandoverDraft) => void }) {
-  const entries = useOnCallCallLog()?.entries ?? null;
-  const open = useMemo(() => onCallHandoverItems(entries ?? []), [entries]);
-  if (open.length === 0) return null;
-  return (
-    <section
-      aria-labelledby="on-call-handover-calls-heading"
-      className="grid min-w-0 gap-2"
-      data-testid="on-call-handover-calls"
-    >
-      <h2 id="on-call-handover-calls-heading" className={cn(eyebrowText, "px-3")}>
-        From tonight&apos;s call log
-      </h2>
-      <ul role="list" className={modeModuleSurface}>
-        {open.map((entry) => {
-          const title = [onCallCallLogTime(entry.at), entry.label, entry.caller].filter(Boolean).join(" · ");
-          return (
-            <li key={entry.id} className={cn(modeInsetHairline, "flex min-w-0 items-center gap-3 px-3 py-2")}>
-              <div className="min-w-0 flex-1">
-                <p className={cn(modeNameText, "break-words")}>{title}</p>
-                {entry.note ? <p className={cn(modeSecondaryText, "line-clamp-1 break-words")}>{entry.note}</p> : null}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={Plus}
-                onClick={() => onAdd(onCallHandoverDraftFromCall(entry))}
-                aria-label={`Add the ${title} call as a patient`}
-                testId="on-call-handover-add-call"
-              >
-                Add as patient
-              </Button>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
+function useNightShift(): boolean {
+  const pick = useOnCallShiftPick();
+  if (!pick || pick.period !== "night") return false;
+  const at = Date.parse(pick.at);
+  return Number.isFinite(at) && new Date().getTime() - at < ON_CALL_SHIFT_PICK_TTL_MS;
 }
 
 export function OnCallHandoverPage() {
   const view = useOnCallHandover();
   const patients = useMemo(() => view?.patients ?? [], [view]);
+  const night = useNightShift();
   const [mode, setMode] = useState<"form" | "table">("form");
+  const [type, setType] = useState<OnCallHandoverType>("psychiatry");
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [draft, setDraft] = useState<OnCallHandoverDraft>(emptyOnCallHandoverDraft);
+  const [copiedWard, setCopiedWard] = useState("");
   const [problem, setProblem] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -530,6 +525,7 @@ export function OnCallHandoverPage() {
   const reset = useCallback(() => {
     setDraft(emptyOnCallHandoverDraft);
     setCurrentId(null);
+    setCopiedWard("");
     setDraftExpiresAt(null);
     setMode("form");
   }, []);
@@ -614,20 +610,30 @@ export function OnCallHandoverPage() {
 
   const update = (key: OnCallHandoverTextField) => (value: string) => commit({ ...draft, [key]: value });
 
+  /** A fresh patient, with the ward copied from the last one typed. */
   const startNew = () => {
+    const ward = onCallHandoverLastWard(patients);
     setCurrentId(null);
-    setDraft(emptyOnCallHandoverDraft);
+    setDraft({ ...emptyOnCallHandoverDraft, ward });
+    setCopiedWard(ward);
     setProblem(null);
     setMode("form");
-    announce("New patient.");
+    announce(ward ? `New patient. Ward copied from the last: ${ward}.` : "New patient.");
   };
 
   const pick = (patient: OnCallHandoverPatient) => {
     setDraftExpiresAt(view?.expiresAt ?? null);
     setCurrentId(patient.id);
     setDraft({ ...patient });
+    setCopiedWard("");
     setProblem(null);
     setMode("form");
+  };
+
+  const showTable = () => {
+    setMode("table");
+    setConfirmClear(false);
+    window.scrollTo?.({ top: 0 });
   };
 
   if (view === null) {
@@ -641,166 +647,285 @@ export function OnCallHandoverPage() {
     );
   }
 
+  const index = patients.findIndex((patient) => patient.id === currentId);
+  const bedLabel = draft.bed.trim()
+    ? onCallHandoverPatientLabel(draft.bed, index === -1 ? patients.length : index)
+    : "";
+  const recentLegal = onCallHandoverRecentLegal(patients);
+  const clearsAt = view.expiresAt ? clockTime(view.expiresAt) : null;
+  const dates = view.startedAt && view.expiresAt ? onCallHandoverDateRange(view.startedAt, view.expiresAt) : null;
+  const tableOpen = mode === "table" && patients.length > 0;
+  const ready = ON_CALL_HANDOVER_TYPES.find((item) => item.key === type)?.ready ?? false;
+  const wardCopied = copiedWard !== "" && draft.ward === copiedWard;
+
   return (
     <>
       <OnCallToolNavHeader title="Handover" testIdPrefix="on-call-handover" />
       <InformationPageShell testId="on-call-handover-main" width="narrow">
-        <h1 className="sr-only">Handover</h1>
-        <div className="grid min-w-0 gap-4" data-mode-identity="on-call">
-          <div className="print:hidden">
-            <PrivacyBand expiresAt={view.expiresAt} />
-          </div>
-
-          {mode === "table" && patients.length > 0 ? (
-            <HandoverTable patients={patients} onBack={() => setMode("form")} onEdit={pick} />
+        <div className="grid min-w-0 gap-5" data-mode-identity="on-call">
+          {tableOpen ? (
+            <div className="grid min-w-0 gap-1 print:hidden">
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setMode("form")}
+                  className={cn(onCallActionLink, focusRing, "gap-1.5")}
+                  data-testid="on-call-handover-back"
+                >
+                  <ArrowLeft aria-hidden="true" className="size-icon-xs" />
+                  Back to the form
+                </button>
+              </div>
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Handover table</h1>
+                <button
+                  type="button"
+                  onClick={() => pick(patients[Math.max(0, index)] ?? patients[0]!)}
+                  className={cn(onCallActionLink, focusRing)}
+                  data-testid="on-call-handover-edit"
+                >
+                  Edit
+                </button>
+              </div>
+            </div>
           ) : (
-            <>
-              <p className={cn(eyebrowText, "px-3")}>Psychiatry handover</p>
-              {patients.length > 0 ? (
-                <PatientRail patients={patients} currentId={currentId} onPick={pick} onAdd={startNew} />
-              ) : null}
-
-              <form
-                onSubmit={(event) => event.preventDefault()}
-                noValidate
-                className={cn(modeModuleSurface, "grid min-w-0 gap-4 p-3")}
-                aria-label={currentId ? "Edit this patient" : "New patient"}
-                data-testid="on-call-handover-form"
-              >
-                <div className="grid min-w-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
-                  <TextField
-                    label="Bed"
-                    hint="Bed number or up to four initials"
-                    value={draft.bed}
-                    maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.bed}
-                    onChange={(event) => update("bed")(event.target.value)}
-                    autoComplete="off"
-                    data-testid="on-call-handover-bed"
-                  />
-                  <TextField
-                    label="Ward"
-                    value={draft.ward}
-                    maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.ward}
-                    onChange={(event) => update("ward")(event.target.value)}
-                    autoComplete="off"
-                    data-testid="on-call-handover-ward"
-                  />
-                </div>
-                <TextField
-                  label="Legal"
-                  value={draft.legal}
-                  maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.legal}
-                  onChange={(event) => update("legal")(event.target.value)}
-                  autoComplete="off"
-                  data-testid="on-call-handover-legal"
-                />
-                <TextField
-                  label="Impression"
-                  value={draft.impression}
-                  maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.impression}
-                  onChange={(event) => update("impression")(event.target.value)}
-                  autoComplete="off"
-                  data-testid="on-call-handover-impression"
-                />
-                <NoteArea
-                  label="Story"
-                  placeholder="What happened overnight"
-                  value={draft.story}
-                  maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.story}
-                  onChange={update("story")}
-                  testId="on-call-handover-story"
-                  rows={4}
-                />
-                <TextField
-                  label="Referrals"
-                  value={draft.referrals}
-                  maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.referrals}
-                  onChange={(event) => update("referrals")(event.target.value)}
-                  autoComplete="off"
-                  data-testid="on-call-handover-referrals"
-                />
-                <ReviewChoice value={draft.review} onChange={(review) => commit({ ...draft, review })} />
-                <NoteArea
-                  label="Plan"
-                  placeholder="What the day team needs to do"
-                  value={draft.plan}
-                  maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.plan}
-                  onChange={update("plan")}
-                  testId="on-call-handover-plan"
-                />
-                {problem ? (
-                  <ModeNotice tone="warning" testId="on-call-handover-problem">
-                    {problem}
-                  </ModeNotice>
+            <div className="grid min-w-0 gap-2 print:hidden">
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Handover</h1>
+                {patients.length > 0 && !confirmClear ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClear(true)}
+                    className={cn(onCallActionLink, focusRing)}
+                    data-testid="on-call-handover-clear"
+                  >
+                    Clear all
+                  </button>
                 ) : null}
-                {currentId ? (
-                  <div>
+              </div>
+              {patients.length > 0 && confirmClear ? (
+                <div
+                  className="grid min-w-0 gap-2 rounded-lg border border-[color:var(--border)] p-3 forced-colors:border"
+                  role="group"
+                  aria-label="Clear the handover"
+                >
+                  <p className="text-sm text-[color:var(--text-heading)]">
+                    {patients.length === 1
+                      ? "Clear the one patient from this phone? This cannot be undone."
+                      : `Clear all ${patients.length} patients from this phone? This cannot be undone.`}
+                  </p>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant="danger"
                       icon={Trash2}
                       onClick={() => {
-                        removeOnCallHandoverPatient(currentId);
-                        startNew();
+                        clearOnCallHandover();
+                        setConfirmClear(false);
+                        reset();
+                        announce("Handover cleared.");
                       }}
-                      testId="on-call-handover-delete"
+                      testId="on-call-handover-clear-confirm"
                     >
-                      Delete this patient
+                      {patients.length === 1 ? "Clear the patient" : `Clear all ${patients.length} patients`}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setConfirmClear(false)}
+                      testId="on-call-handover-clear-cancel"
+                    >
+                      Keep them
                     </Button>
                   </div>
-                ) : null}
-              </form>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="secondary" icon={Plus} onClick={startNew} testId="on-call-handover-next">
-                  Next patient
-                </Button>
-                <Button
-                  variant="primary"
-                  icon={Table2}
-                  onClick={() => setMode("table")}
-                  disabled={patients.length === 0}
-                  testId="on-call-handover-make-table"
-                >
-                  {patients.length > 0 ? `Make table (${patients.length})` : "Make table"}
-                </Button>
-              </div>
-
-              <CallsToAdd onAdd={(next) => commit(next, null)} />
-            </>
+                </div>
+              ) : null}
+            </div>
           )}
 
-          {patients.length > 0 ? (
-            <div className="flex min-w-0 flex-wrap items-center gap-3 print:hidden">
-              {confirmClear ? (
-                <>
-                  <Button
-                    variant="danger"
-                    onClick={() => {
-                      clearOnCallHandover();
-                      setConfirmClear(false);
-                      startNew();
-                    }}
-                    testId="on-call-handover-clear-confirm"
-                  >
-                    {patients.length === 1 ? "Clear the patient" : `Clear all ${patients.length} patients`}
-                  </Button>
-                  <Button variant="ghost" onClick={() => setConfirmClear(false)} testId="on-call-handover-clear-cancel">
-                    Keep them
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  variant="ghost"
-                  icon={Trash2}
-                  onClick={() => setConfirmClear(true)}
-                  testId="on-call-handover-clear"
+          {tableOpen ? (
+            <OnCallHandoverTable
+              patients={patients}
+              heading={{ dates, shift: night ? "Night to day" : null }}
+              clearsAt={clearsAt}
+              toTeam={night ? "Day team" : null}
+              onEdit={pick}
+            />
+          ) : (
+            <>
+              <PrivacyBand expiresAt={view.expiresAt} />
+              <TypePicker value={type} onChange={setType} />
+
+              {!ready ? (
+                <p
+                  className="rounded-lg border border-dashed border-[color:var(--border-strong)] p-3 text-sm text-[color:var(--text-heading)]"
+                  role="status"
+                  data-testid="on-call-handover-type-not-set-up"
                 >
-                  Clear the handover
-                </Button>
+                  {ON_CALL_HANDOVER_NOT_SET_UP}
+                </p>
+              ) : (
+                <>
+                  <PatientRail
+                    patients={patients}
+                    currentId={currentId}
+                    draftBed={draft.bed}
+                    onPick={pick}
+                    onAdd={startNew}
+                  />
+
+                  <form
+                    onSubmit={(event) => event.preventDefault()}
+                    noValidate
+                    className="grid min-w-0 gap-5"
+                    aria-labelledby="on-call-handover-form-heading"
+                    data-testid="on-call-handover-form"
+                  >
+                    <h2
+                      id="on-call-handover-form-heading"
+                      className="flex min-w-0 items-center gap-2 text-base-minus font-semibold text-[color:var(--text-heading)]"
+                    >
+                      <Brain aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+                      Psychiatry patient
+                      <span className="sr-only">{currentId ? ", editing" : ", new"}</span>
+                    </h2>
+
+                    <div className="grid min-w-0 gap-1.5">
+                      <FieldLabel number={1} note={wardCopied ? "Ward copied from last" : null}>
+                        Bed & Ward
+                      </FieldLabel>
+                      <div className="grid min-w-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">
+                        <input
+                          aria-label="Bed or initials"
+                          aria-describedby="on-call-handover-bed-hint"
+                          placeholder="Bed or initials"
+                          value={draft.bed}
+                          maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.bed}
+                          onChange={(event) => update("bed")(event.target.value)}
+                          autoComplete="off"
+                          data-testid="on-call-handover-bed"
+                          className={inputClass}
+                        />
+                        <input
+                          aria-label="Ward"
+                          placeholder="Ward"
+                          value={draft.ward}
+                          maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.ward}
+                          onChange={(event) => update("ward")(event.target.value)}
+                          autoComplete="off"
+                          data-testid="on-call-handover-ward"
+                          className={inputClass}
+                        />
+                      </div>
+                      <p id="on-call-handover-bed-hint" className={cn(modeSecondaryText, "text-xs")}>
+                        Bed number or up to four initials, never a name
+                      </p>
+                    </div>
+
+                    <OnCallLegalField
+                      number={2}
+                      value={draft.legal}
+                      recent={recentLegal}
+                      bedLabel={bedLabel}
+                      onChange={update("legal")}
+                    />
+                    <TextLine
+                      number={3}
+                      label="Impression"
+                      placeholder="Working impression"
+                      value={draft.impression}
+                      maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.impression}
+                      onChange={update("impression")}
+                      testId="on-call-handover-impression"
+                    />
+                    <NoteArea
+                      number={4}
+                      label="Story"
+                      placeholder="What happened overnight"
+                      value={draft.story}
+                      maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.story}
+                      onChange={update("story")}
+                      testId="on-call-handover-story"
+                      rows={4}
+                    />
+                    <TextLine
+                      number={5}
+                      label="Referrals"
+                      placeholder="Where to, or None"
+                      value={draft.referrals}
+                      maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.referrals}
+                      onChange={update("referrals")}
+                      testId="on-call-handover-referrals"
+                    />
+                    <ReviewChoice number={6} value={draft.review} onChange={(review) => commit({ ...draft, review })} />
+                    <NoteArea
+                      number={7}
+                      label="Plan"
+                      placeholder="What the day team needs to do"
+                      value={draft.plan}
+                      maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.plan}
+                      onChange={update("plan")}
+                      testId="on-call-handover-plan"
+                    />
+                    {problem ? (
+                      <ModeNotice tone="warning" testId="on-call-handover-problem">
+                        {problem}
+                      </ModeNotice>
+                    ) : null}
+                    {currentId ? (
+                      <div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={Trash2}
+                          onClick={() => {
+                            removeOnCallHandoverPatient(currentId);
+                            startNew();
+                          }}
+                          testId="on-call-handover-delete"
+                        >
+                          Delete this patient
+                        </Button>
+                      </div>
+                    ) : null}
+                  </form>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={startNew}
+                      className={cn(onCallOutlineButton, focusRing)}
+                      data-testid="on-call-handover-next"
+                    >
+                      <Plus aria-hidden="true" className="size-icon-sm" />
+                      Next patient
+                    </button>
+                    <button
+                      type="button"
+                      onClick={showTable}
+                      disabled={patients.length === 0}
+                      className={cn(
+                        onCallFilledButton,
+                        focusRing,
+                        "disabled:cursor-not-allowed disabled:bg-[color:var(--surface-wash)] disabled:text-[color:var(--text-muted)]",
+                      )}
+                      data-testid="on-call-handover-make-table"
+                    >
+                      <Table2 aria-hidden="true" className="size-icon-sm" />
+                      Make table
+                      {patients.length > 0 ? (
+                        <span className="nums text-sm opacity-80">
+                          <span className="sr-only">of </span>
+                          {patients.length}
+                          <span className="sr-only">{patients.length === 1 ? " patient" : " patients"}</span>
+                        </span>
+                      ) : null}
+                    </button>
+                  </div>
+
+                  <CallsToAdd patients={patients} onAdd={(next) => commit(next, null)} />
+                </>
               )}
-            </div>
-          ) : null}
+            </>
+          )}
         </div>
       </InformationPageShell>
     </>

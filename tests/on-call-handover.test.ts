@@ -16,8 +16,16 @@ import {
   ON_CALL_HANDOVER_LIMIT,
   clearOnCallHandover,
   emptyOnCallHandoverDraft,
+  onCallHandoverCallsNotIn,
+  onCallHandoverDateRange,
   onCallHandoverDraftFromCall,
+  onCallHandoverExportSummary,
   onCallHandoverHtmlTable,
+  onCallHandoverLegalGroups,
+  onCallHandoverLegalStatusesMatching,
+  onCallHandoverLegalTitle,
+  onCallHandoverPatientLabel,
+  onCallHandoverRecentLegal,
   onCallHandoverPlainText,
   onCallHandoverStorageKey,
   removeOnCallHandoverPatient,
@@ -25,6 +33,7 @@ import {
   visibleOnCallHandover,
   type OnCallHandoverDraft,
 } from "@/lib/on-call/handover";
+import { officialForms } from "@/lib/form-register";
 import {
   PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABEL_KEY_PREFIX,
@@ -142,9 +151,10 @@ describe("handover output", () => {
     saveOnCallHandoverPatient(null, draft({ legal: "<b>Voluntary</b>", review: "yes" }), twoAm);
     const patients = shown(twoAm).patients;
     const text = onCallHandoverPlainText(patients, twoAm);
-    expect(text).toContain("1. 9, Example Ward");
-    expect(text).toContain("Requires review: Yes");
-    expect(text).not.toContain("Impression:");
+    expect(text).toContain("1  Bed 9 · Example Ward");
+    expect(text).toContain("REVIEW: YES");
+    expect(text).toContain("Story  Settled overnight");
+    expect(text).not.toContain("Referral");
     const html = onCallHandoverHtmlTable(patients, twoAm);
     expect(html).toContain("&lt;b&gt;Voluntary&lt;/b&gt;");
     expect(html).not.toContain("<b>Voluntary</b>");
@@ -162,6 +172,79 @@ describe("handover output", () => {
     expect(record.plan).toBe("Bloods");
     expect(record.legal).toBe("");
     expect(record.impression).toBe("");
+  });
+});
+
+describe("handover helpers (mock-up v10)", () => {
+  it("groups every register form under the register's own categories, nothing added or dropped", () => {
+    const groups = onCallHandoverLegalGroups();
+    expect(groups.reduce((total, group) => total + group.forms.length, 0)).toBe(officialForms.length);
+    for (const group of groups) {
+      for (const form of group.forms) expect(form.category).toBe(group.category);
+    }
+    expect(groups.find((group) => group.category === "Inpatient treatment orders")?.forms.map((f) => f.code)).toEqual([
+      "6A",
+      "6B",
+      "6B attachment",
+      "6C",
+      "6D",
+    ]);
+  });
+
+  it("searches the register by code or by words", () => {
+    const byCode = onCallHandoverLegalGroups("3a").flatMap((group) => group.forms.map((form) => form.code));
+    expect(byCode).toContain("3A");
+    const byWords = onCallHandoverLegalGroups("detention order").flatMap((group) => group.forms.map((f) => f.code));
+    expect(byWords).toContain("3A");
+    expect(onCallHandoverLegalGroups("zzzz")).toEqual([]);
+    expect(onCallHandoverLegalStatusesMatching("not under")).toEqual(["Not under the Act"]);
+  });
+
+  it("titles a register code and leaves a plain status untitled", () => {
+    expect(onCallHandoverLegalTitle("6A")).toBe("Inpatient treatment order in authorised hospital");
+    expect(onCallHandoverLegalTitle("Voluntary")).toBeNull();
+    expect(onCallHandoverLegalTitle("")).toBeNull();
+  });
+
+  it("offers recent legal values only from this handover, newest first, each once", () => {
+    saveOnCallHandoverPatient(null, draft({ bed: "1", legal: "3A" }), twoAm);
+    saveOnCallHandoverPatient(null, draft({ bed: "2", legal: "Voluntary" }), halfThree);
+    saveOnCallHandoverPatient(null, draft({ bed: "3", legal: "3A" }), new Date(halfThree.getTime() + 60_000));
+    expect(onCallHandoverRecentLegal(shown(halfThree).patients)).toEqual(["3A", "Voluntary"]);
+  });
+
+  it("labels a bed number as a bed and initials as typed", () => {
+    expect(onCallHandoverPatientLabel("12", 0)).toBe("Bed 12");
+    expect(onCallHandoverPatientLabel("JS", 0)).toBe("JS");
+    expect(onCallHandoverPatientLabel("", 2)).toBe("Patient 3");
+  });
+
+  it("summarises an export by count and review, never by names", () => {
+    const summary = onCallHandoverExportSummary([draft({ review: "yes" }), draft({ bed: "JS" })]);
+    expect(summary).toEqual({
+      title: "This handover lists 2 patients",
+      detail: "Beds and initials only · 1 for review",
+    });
+  });
+
+  it("writes the shift's dates across midnight in Perth", () => {
+    // 20:00 Sun 4 Oct to 08:00 Mon 5 Oct, Perth.
+    expect(onCallHandoverDateRange(Date.parse("2026-10-04T12:00:00Z"), Date.parse("2026-10-05T00:00:00Z"))).toBe(
+      "Sun 4 – Mon 5 Oct",
+    );
+    expect(onCallHandoverDateRange(Date.parse("2026-10-05T01:00:00Z"), Date.parse("2026-10-05T08:00:00Z"))).toBe(
+      "Mon 5 Oct",
+    );
+  });
+
+  it("stops offering a call once it has been made into a record", () => {
+    const noted = addOnCallCallLogEntry({ label: "", caller: "ED", note: "Agitated", followUp: "" }, twoAm);
+    if (!noted.ok) throw new Error("not noted");
+    expect(onCallHandoverCallsNotIn([noted.entry], [])).toHaveLength(1);
+    const saved = saveOnCallHandoverPatient(null, onCallHandoverDraftFromCall(noted.entry), twoAm);
+    if (!saved.ok) throw new Error("not saved");
+    expect(saved.patient.fromCall).toBe(noted.entry.id);
+    expect(onCallHandoverCallsNotIn([noted.entry], shown(twoAm).patients)).toEqual([]);
   });
 });
 

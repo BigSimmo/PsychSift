@@ -107,7 +107,7 @@ describe("Now: the safety order", () => {
     expect(screen.getByTestId("on-call-now-hospital")).toHaveTextContent("Synthetic Hospital");
   });
 
-  it("pins only this site's clinical Emergency rows, three at most, with the quiet red dot", () => {
+  it("pins only this site's clinical Emergency rows, three at most, with the quiet red dot", async () => {
     handbook.state = readyHandbook(
       handbookItems([
         { id: "e1", title: "Emergency: Code A", phone: "55", kind: "clinical" },
@@ -124,10 +124,38 @@ describe("Now: the safety order", () => {
     expect(within(pin).getAllByRole("listitem")).toHaveLength(3);
     expect(pin.querySelectorAll('[data-testid$="-emergency-dot"]')).toHaveLength(3);
     expect(pin).not.toHaveTextContent(/Operational line|Other site|No site/);
-    // "55" is desk-only: it says so and has no call link of its own.
-    expect(within(pin).getAllByText("From a hospital phone").length).toBeGreaterThan(0);
-    expect(within(pin).queryByRole("link", { name: /^call code a/i })).toBeNull();
-    expect(screen.getByTestId("on-call-now-emergency-updated")).toHaveTextContent(/Updated/);
+    // "55" is desk-only and no mobile route is recorded beside it: on a mobile
+    // it has no call link at all, only "Dial 55 from a ward phone", which opens
+    // the dialling details rather than ringing.
+    expect(within(pin).queryByRole("link")).toBeNull();
+    expect(pin.querySelector('a[href^="tel:"]')).toBeNull();
+    const wardPhone = screen.getByTestId("on-call-now-emergency-e1-ward-phone");
+    expect(wardPhone.tagName).toBe("BUTTON");
+    expect(wardPhone).toHaveTextContent("Dial 55from a ward phone");
+    expect(wardPhone).toHaveAttribute("aria-haspopup", "dialog");
+    expect(wardPhone.className).toMatch(/\bmin-h-12\b/);
+    await userEvent.click(wardPhone);
+    const sheet = screen.getByTestId("on-call-now-emergency-e1-sheet");
+    expect(sheet).toHaveTextContent("From a hospital phone");
+    expect(sheet).toHaveTextContent(/Updated/);
+  });
+
+  it("puts the route for this phone first as the one filled button, named with its digits", () => {
+    const [emergency] = handbookItems([{ id: "e1", title: "Emergency: Code A", phone: "55", kind: "clinical" }]);
+    const [mobile] = handbookItems([{ id: "m", title: "Mobile route", phone: "9000 0000, 55" }]);
+    handbook.state = readyHandbook([{ ...emergency!, mobileDial: mobile!.dial }]);
+    render(<OnCallHome now={IN_HOURS} />);
+    const pin = screen.getByTestId("on-call-now-emergency");
+    const call = screen.getByTestId("on-call-now-emergency-e1-call");
+    expect(call).toHaveAttribute("href", "tel:0890000000,55");
+    expect(call).toHaveAccessibleName(/^Call Code A from your mobile, emergency, 9 0 0 0, 0 0 0 0/);
+    expect(call).toHaveTextContent("from your mobile");
+    expect(call.className).toMatch(/\bmin-h-12\b/);
+    // The mobile route is the only call link; 55 stays a ward-phone button.
+    expect(within(pin).getAllByRole("link")).toHaveLength(1);
+    expect(screen.getByTestId("on-call-now-emergency-e1-ward-phone").tagName).toBe("BUTTON");
+    expect(pin.querySelector('a[href="tel:55"]')).toBeNull();
+    expect(pin.querySelector('a[href="tel:000"]')).toBeNull();
   });
 
   it("pins nothing when no qualifying row is recorded, and never invents 000 for the hospital", () => {
@@ -144,8 +172,21 @@ describe("Now: the safety order", () => {
       expect.stringMatching(/^\/on-call\/service\?service=svc&site=/),
     );
     expect(notSetUp.querySelector('a[href^="tel:"]')).toBeNull();
-    // The hospital's numbers are on screen, so the public crisis lines step back too.
-    expect(container.querySelector('a[href="tel:000"]')).toBeNull();
+    expect(notSetUp).not.toHaveTextContent(/\b000\b/);
+    // The hospital's numbers are on screen, so the public crisis lines step
+    // back to the end of the page. 000 appears there only, as the public line,
+    // never as the hospital's emergency number.
+    const crisis = screen.getByTestId("on-call-now-crisis");
+    for (const link of Array.from(container.querySelectorAll('a[href="tel:000"]'))) {
+      expect(crisis.contains(link)).toBe(true);
+    }
+    order([
+      "on-call-now-hospital",
+      "on-call-now-emergency-not-set-up",
+      "on-call-now-right-now",
+      "on-call-now-footer",
+      "on-call-now-crisis",
+    ]);
   });
 
   it("keeps public crisis numbers in the loading placeholder", () => {
@@ -225,12 +266,20 @@ describe("Now: the safety order", () => {
 });
 
 describe("Now: Right now", () => {
-  it("answers with the hospital's switchboard on the dark hero until the hospital sets its hours", () => {
+  it("answers with the hospital's switchboard, flat on the page, until the hospital sets its hours", () => {
     handbook.state = readyHandbook(handbookItems([{ id: "sw", title: "Switchboard", phone: "9000 0000" }]));
     render(<OnCallHome now={AFTER_HOURS} />);
     const hero = screen.getByTestId("on-call-now-right-now");
-    expect(hero.className).toMatch(/--surface-summary/);
-    expect(within(hero).getByTestId("on-call-now-right-now-sw")).toHaveTextContent("Switchboard");
+    // The calm look: a light section on the page, not the dark hero.
+    expect(hero.outerHTML).not.toMatch(/--surface-summary|--text-on-summary/);
+    expect(within(hero).getByRole("heading", { name: "Right now" })).toBeInTheDocument();
+    expect(hero).toHaveTextContent("Switchboard");
+    expect(within(hero).getByTestId("on-call-now-right-now-sw")).toHaveTextContent("9000 0000");
+    expect(within(hero).getByRole("link", { name: "Call Switchboard, 9 0 0 0, 0 0 0 0" })).toHaveAttribute(
+      "href",
+      "tel:0890000000",
+    );
+    expect(screen.queryByTestId("on-call-now-right-now-until")).toBeNull();
     // No hospital hours today: no period line, no track, no "after hours" wording.
     expect(screen.queryByTestId("on-call-now-right-now-track")).toBeNull();
     expect(hero).not.toHaveTextContent(/after hours/i);
@@ -270,11 +319,17 @@ describe("Now: Needs you", () => {
     rememberOnCallYouCalled("ladder:pb1:1", new Date(IN_HOURS.getTime() - 6 * 60_000));
     render(<OnCallHome now={IN_HOURS} />);
     const needs = screen.getByTestId("on-call-now-needs-you");
-    expect(needs).toHaveTextContent("Waiting on Registrar");
+    expect(within(needs).getByRole("heading")).toHaveTextContent("Escalating · Deteriorating patient");
+    expect(needs).toHaveTextContent(/Registrar called \d{2}:\d{2}/);
     expect(needs).toHaveTextContent("6 min ago");
-    expect(needs).toHaveTextContent(/next: Consultant/);
+    expect(needs).toHaveTextContent(/Next: Consultant/);
     expect(needs).not.toHaveTextContent(/overdue|late/i);
-    expect(within(needs).getByTestId("on-call-now-needs-you-call").getAttribute("href")).toMatch(/^tel:.*90000012$/);
+    expect(within(needs).getByTestId("on-call-now-needs-you-answered")).toHaveTextContent("They answered");
+    expect(within(needs).getByTestId("on-call-now-needs-you-ladder")).toHaveTextContent("Open the ladder");
+    const call = within(needs).getByTestId("on-call-now-needs-you-call");
+    expect(call.getAttribute("href")).toMatch(/^tel:.*90000012$/);
+    expect(call).toHaveAccessibleName("Call Consultant, the next rung, 9 0 0 0, 0 0 1 2");
+    expect(call.className).toMatch(/\bmin-h-12\b/);
   });
 
   it("shows nothing when no rung of the reader's ladders was rung this shift", () => {
@@ -355,7 +410,8 @@ describe("Now: Your team", () => {
     );
     render(<OnCallHome now={IN_HOURS} />);
     const team = screen.getByTestId("on-call-now-team");
-    expect(team).toHaveTextContent("Your team · Medicine");
+    expect(within(team).getByRole("heading", { name: "Also on tonight" })).toBeInTheDocument();
+    expect(team).toHaveTextContent("Your team: Medicine");
     expect(within(team).getAllByRole("listitem")).toHaveLength(3);
     expect(team).not.toHaveTextContent("ICU");
   });
@@ -381,7 +437,10 @@ describe("Now: Your team", () => {
     const chooser = screen.getByTestId("on-call-now-team-chooser");
     await userEvent.click(within(chooser).getByRole("button", { name: "Medicine" }));
     expect(readOnCallMyTeam()).toBe("Medicine");
-    expect(screen.getByTestId("on-call-now-team")).toHaveTextContent("Your team · Medicine");
+    expect(screen.getByTestId("on-call-now-team")).toHaveTextContent("Your team: Medicine");
+    // Medicine has no cover recorded for this hour: the row says so, and never invents a number.
+    expect(screen.getByTestId("on-call-now-team-choose")).toHaveTextContent("Not set up for this hospital");
+    expect(screen.getByTestId("on-call-now-team").querySelector('a[href^="tel:"]')).toBeNull();
   });
 
   it("links to Who's on only while the flag is on", () => {
@@ -404,7 +463,7 @@ describe("Now: the footer group", () => {
       ]),
     );
     render(<OnCallHome now={IN_HOURS} />);
-    expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("Start of shift · 0 of 1 done");
+    expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("Start of shift · 0 of 1");
     await userEvent.click(screen.getByTestId("on-call-now-checklists"));
     const sheet = screen.getByTestId("on-call-now-checklists-sheet");
     expect(within(sheet).getByTestId("on-call-now-checklist-start")).toHaveTextContent("Collect the pager");
@@ -425,20 +484,26 @@ describe("Now: the footer group", () => {
     await userEvent.click(screen.getByTestId("on-call-now-checklist-item-o1"));
     expect(screen.getByTestId("on-call-now-checklist-item-o1")).toHaveAttribute("aria-pressed", "true");
     expect(Object.keys(window.localStorage)).toEqual(before);
-    expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("1 of 1 done");
+    expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("Start of shift · 1 of 1");
   });
 
-  it("ends with Who do I call now, Systems down, First night and On site", () => {
+  it("puts Who do I call now above More for this shift, which ends with Systems down, First night and On site", () => {
     render(<OnCallHome now={IN_HOURS} />);
+    const who = screen.getByTestId("on-call-now-who");
+    expect(within(who).getByRole("heading", { name: "Who do I call now?" })).toBeInTheDocument();
+    expect(within(who).getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
+    order(["on-call-now-who", "on-call-now-footer"]);
     const footer = screen.getByTestId("on-call-now-footer");
-    expect(within(footer).getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
-    expect(screen.getByTestId("on-call-now-systems-down")).toHaveAttribute(
+    expect(within(footer).getByRole("heading", { name: "More for this shift" })).toBeInTheDocument();
+    expect(within(footer).getByTestId("on-call-now-systems-down")).toHaveAttribute(
       "href",
       "/on-call/find#on-call-group-downtime",
     );
     expect(within(footer).getByTestId("on-call-home-first-night")).toHaveAttribute("href", "/on-call/first-night");
-    expect(screen.getByTestId("on-call-now-on-site")).toHaveAttribute("href", "/admin/help");
-    expect(screen.getByTestId("on-call-now-on-site")).toHaveTextContent("On site: access, food, taxi");
+    expect(within(footer).getByTestId("on-call-now-on-site")).toHaveAttribute("href", "/admin/help");
+    expect(screen.getByTestId("on-call-now-on-site")).toHaveTextContent("On site");
+    expect(screen.getByTestId("on-call-now-on-site")).toHaveTextContent("Parking, food, access · in Admin");
+    order(["on-call-now-checklists", "on-call-now-systems-down", "on-call-home-first-night", "on-call-now-on-site"]);
   });
 });
 

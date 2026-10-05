@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
@@ -269,16 +270,21 @@ describe("On Call home layout", () => {
     expect(usualCallHref("bed-manager")).toMatch(/90000011$/);
   });
 
-  it("dials the after-hours number at 22:00, which is when this page is read", () => {
+  it("dials the after-hours number at 22:00, which is when this page is read", async () => {
     storeState.entries = [dualLineContact()];
 
     // The same Wednesday at 22:00 local.
     render(<OnCallHome now={new Date(2026, 8, 16, 22, 0, 0)} />);
 
     expect(usualCallHref("bed-manager")).toMatch(/90000012$/);
-    // Named for what it is, so the screen never shows a number under the wrong
-    // label.
-    expect(screen.getByTestId("on-call-now-usual-bed-manager")).toHaveTextContent(/after hours/i);
+    // The round tile prints no number, so it can never show one under the
+    // wrong label: the call link names the digits it actually rings.
+    const tile = screen.getByTestId("on-call-now-usual-bed-manager");
+    expect(within(tile).getByRole("link")).toHaveAccessibleName("Call Bed manager, 9 0 0 0, 0 0 1 2");
+    expect(tile).not.toHaveTextContent(/9000 0011/);
+    // Its dialling details show the same after-hours number.
+    await userEvent.click(within(tile).getByRole("button", { name: /Dialling details/ }));
+    expect(screen.getByTestId("on-call-now-usual-bed-manager-sheet-number")).toHaveTextContent("9000 0012");
   });
 
   it("rolls a weekly session forward on the Teaching page rather than going blank once its date passes", () => {
@@ -337,7 +343,9 @@ describe("On Call home layout", () => {
       }
 
       expect(usualCallHref("bed-manager")).toMatch(/90000012$/);
-      expect(screen.getByTestId("on-call-now-usual-bed-manager")).toHaveTextContent(/after hours/i);
+      const tile = screen.getByTestId("on-call-now-usual-bed-manager");
+      expect(within(tile).getByRole("link")).toHaveAccessibleName("Call Bed manager, 9 0 0 0, 0 0 1 2");
+      expect(tile).not.toHaveTextContent(/9000 0011/);
     } finally {
       vi.useRealTimers();
     }

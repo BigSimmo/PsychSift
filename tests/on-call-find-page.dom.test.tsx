@@ -48,14 +48,36 @@ describe("Find page", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Systems down" })).toBeInTheDocument();
     expect(screen.queryByText("Car park after hours")).toBeNull();
     expect(within(document.getElementById("on-call-group-other")!).getByText("Parking permits")).toBeInTheDocument();
-    expect(within(screen.getByTestId("on-call-find-on-site")).getByRole("link")).toHaveAttribute("href", "/admin/help");
+    const onSite = within(screen.getByTestId("on-call-find-on-site")).getByRole("link");
+    expect(onSite).toHaveAttribute("href", "/admin/help");
+    expect(onSite).toHaveTextContent("Parking, food and access are in Admin");
+    expect(onSite).toHaveTextContent("Go");
     expect(screen.getByRole("link", { name: "Your manuals" })).toHaveAttribute("href", "/on-call/orientation");
     expect(screen.getAllByRole("searchbox")).toHaveLength(1);
-    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", "Search numbers, wards, roles");
+    expect(screen.getByRole("searchbox", { name: "Search the handbook" })).toHaveAttribute(
+      "placeholder",
+      "Ward, room or equipment",
+    );
+    // Systems down, then the First night panel, then the rest.
+    const order = Array.from(document.querySelectorAll('[id^="on-call-group-"], #on-call-first-night-panel')).map(
+      (node) => node.id,
+    );
+    expect(order.slice(0, 2)).toEqual(["on-call-group-downtime", "on-call-first-night-panel"]);
+    const jumps = within(screen.getByTestId("on-call-find-jumps")).getAllByRole("link");
+    expect(jumps.map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+      ["Systems down", "#on-call-group-downtime"],
+      ["Orientation", "/on-call/orientation"],
+      ["First night", "#on-call-first-night-panel"],
+      ["Wards", "#on-call-group-wards"],
+      ["Manuals", "#on-call-group-manuals"],
+    ]);
     await userEvent.type(screen.getByRole("searchbox"), "hdu");
     expect(screen.getByText("Synthetic ward 4B")).toBeInTheDocument();
     expect(screen.queryByText("If the electronic record is down")).toBeNull();
+    expect(screen.queryByTestId("on-call-find-first-night")).toBeNull();
     expect(screen.queryByText(/being built/i)).toBeNull();
+    // No job model exists, so no made-up orientation progress is drawn.
+    expect(screen.queryByText(/your job orientation/i)).toBeNull();
   });
 
   it("wraps a long ward name instead of truncating it (#8RWKA0, moved from Now)", () => {
@@ -97,6 +119,27 @@ describe("Find page", () => {
     const ward = screen.getByTestId("on-call-find-detail");
     expect(within(ward).getByText("Also known as HDU, high dependency")).toBeInTheDocument();
     expect(within(ward).queryByText(/Also known as:/)).toBeNull();
+  });
+
+  it("shows three rows of a long group with All N, and never shortens Systems down", async () => {
+    const wards = Array.from({ length: 5 }, (_, index) => ({
+      id: `w${index}`,
+      title: `Ward: Synthetic ward ${index + 1}`,
+      section: "resources" as const,
+    }));
+    const downtime = Array.from({ length: 4 }, (_, index) => ({
+      id: `d${index}`,
+      title: `Downtime: Synthetic outage ${index + 1}`,
+      section: "resources" as const,
+    }));
+    handbook.state = ready(items([...wards, ...downtime]));
+    render(<OnCallFindPage />);
+    const wardGroup = document.getElementById("on-call-group-wards")!;
+    expect(within(wardGroup).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(document.getElementById("on-call-group-downtime")!).getAllByRole("listitem")).toHaveLength(4);
+    await userEvent.click(within(wardGroup).getByRole("button", { name: "Show all 5 wards" }));
+    expect(within(wardGroup).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(wardGroup).queryByRole("button", { name: /Show all/ })).toBeNull();
   });
 
   it("shows a signed-out reader the sign-in state, the crisis lines and the On site link, and no hospital content", () => {

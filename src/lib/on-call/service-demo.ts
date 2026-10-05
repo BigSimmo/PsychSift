@@ -65,7 +65,8 @@ function hospitalRow(
 export const demoServiceDetail: ServiceDetail = {
   service: { id: DEMO_SERVICE_ID, name: "Synthetic Metro Psychiatry Service" },
   membership: { role: "admin", clinicalReviewer: true },
-  sites: [{ id: DEMO_SITE_ID, name: "Demonstration Hospital" }],
+  // After-hours times so the local demo shows Right now's period and track.
+  sites: [{ id: DEMO_SITE_ID, name: "Demonstration Hospital", afterHoursStart: "17:00", afterHoursEnd: "08:00" }],
   entries: [
     demoEntry(
       "61000000-0000-4000-8000-000000000019",

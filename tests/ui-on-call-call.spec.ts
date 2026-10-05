@@ -50,7 +50,7 @@ async function open(page: Page, path: string, colorScheme: "light" | "dark") {
 
 for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`On Call Call, Refer and Find (${colorScheme})`, () => {
-    test("Call names the hospital, dials the pause route and keeps short codes desk-only", async ({ page }) => {
+    test("People names the hospital, dials the pause route and keeps short codes desk-only", async ({ page }) => {
       await open(page, "/on-call/call", colorScheme);
       const main = page.getByTestId("on-call-call-main");
       await expect(main.getByTestId("on-call-hospital-line")).toContainText("Demonstration Hospital");
@@ -61,14 +61,26 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expect(emergency).toContainText("From a hospital phone");
       await expect(emergency.getByRole("link", { name: /from a mobile/i })).toHaveCount(1);
 
-      await clickWhenHydrated(main.getByRole("button", { name: /Dialling details for Switchboard/ }));
-      await expect(page.getByRole("dialog", { name: "Switchboard" })).toBeVisible();
-      await page.keyboard.press("Escape");
-
-      await clickWhenHydrated(main.getByRole("button", { name: "Didn't connect: Switchboard" }));
+      // "Didn't connect" is marked from the number's own sheet, not a button on every row.
+      await expect(main.getByRole("button", { name: /^Didn't connect/ })).toHaveCount(0);
+      await clickWhenHydrated(main.getByRole("button", { name: /^Switchboard, .*Dialling details$/ }));
+      const sheet = page.getByRole("dialog", { name: "Switchboard" });
+      await expect(sheet).toBeVisible();
+      await sheet.getByRole("button", { name: "Didn't connect: Switchboard" }).click();
       await expect(page.getByRole("dialog", { name: "Didn't connect" })).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog", { name: "Didn't connect" })).toHaveCount(0);
+      await expect(main.locator("li", { hasText: "Switchboard" }).first()).toContainText(
+        /Didn't connect at \d{2}:\d{2}/,
+      );
+
+      // People: search, then the Hospital / Outside lines / Mine switch; no call log here any more.
+      await expect(main.getByRole("radio", { name: "Hospital" })).toHaveAttribute("aria-checked", "true");
+      await expect(main).toContainText("Off: you're on your mobile, so full numbers are dialled");
+      await expect(main.getByTestId("on-call-call-handover")).toHaveCount(0);
+      await clickWhenHydrated(main.getByRole("radio", { name: "Outside lines" }));
+      await expect(main.getByTestId("on-call-call-external")).toContainText("Lifeline");
+      await clickWhenHydrated(main.getByRole("radio", { name: "Hospital" }));
 
       expect(await main.evaluate((el) => el.scrollWidth <= window.innerWidth)).toBe(true);
       expect(await shortTargets(main)).toEqual([]);
@@ -81,6 +93,8 @@ for (const colorScheme of ["light", "dark"] as const) {
       await clickWhenHydrated(main.getByRole("button", { name: /Example internal referral route/ }));
       await expect(page.getByTestId("on-call-refer-detail")).toBeVisible();
       await page.keyboard.press("Escape");
+      await expect(main.getByTestId("on-call-refer-services-link")).toHaveAttribute("href", "/services/search");
+      expect(await main.evaluate((el) => el.scrollWidth <= window.innerWidth)).toBe(true);
       expect(await shortTargets(main)).toEqual([]);
       if (colorScheme === "dark") expect(await brightBlocksOver48(main)).toEqual([]);
     });
@@ -88,13 +102,15 @@ for (const colorScheme of ["light", "dark"] as const) {
     test("Find puts Systems down first, leaves on-site items to Admin, and lands on the anchor", async ({ page }) => {
       await open(page, "/on-call/find#on-call-group-downtime", colorScheme);
       const main = page.getByTestId("on-call-find-main");
-      const search = main.getByRole("searchbox", { name: "Search Find" });
+      const search = main.getByRole("searchbox", { name: "Search the handbook" });
       await expectHydrated(search);
       const firstGroup = main.locator('[id^="on-call-group-"]').first();
       await expect(firstGroup).toHaveAttribute("id", "on-call-group-downtime");
       await expect(firstGroup).toBeInViewport();
       await expect(main).not.toContainText("Car park after hours");
       await expect(main.getByTestId("on-call-find-on-site").getByRole("link")).toHaveAttribute("href", "/admin/help");
+      await expect(main.getByTestId("on-call-find-first-night")).toContainText("Sort these in daylight");
+      expect(await main.evaluate((el) => el.scrollWidth <= window.innerWidth)).toBe(true);
       expect(await shortTargets(main)).toEqual([]);
       if (colorScheme === "dark") expect(await brightBlocksOver48(main)).toEqual([]);
     });

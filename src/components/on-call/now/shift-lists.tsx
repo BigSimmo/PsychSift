@@ -1,11 +1,12 @@
 "use client";
 
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, ListChecks } from "lucide-react";
 import { useId, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { modeInsetHairline, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { OnCallStateLabel } from "@/components/on-call/kit/state-label";
+import { onCallLeadingIcon, onCallTrack, onCallTrackFill } from "@/components/on-call/kit/calm";
 import { modeNameText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
 import { OnCallNextShift } from "@/components/on-call/on-call-next-shift";
 import type { RosterShiftsState } from "@/components/roster/use-roster-shifts";
@@ -163,15 +164,26 @@ export function NowShiftLists({
             "flex w-full min-w-0 items-center gap-3 pl-3 pr-2 text-left",
           )}
         >
-          <span className="grid min-w-0 flex-1 gap-0.5 py-1">
+          <ListChecks aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />
+          <span className="grid min-w-0 flex-1 gap-1 py-1">
             <span
               className={cn(modeNameText, "break-words text-base-minus leading-5 text-[color:var(--text-heading)]")}
             >
               Shift lists
             </span>
             {hasLists ? (
-              <span className={cn(modeSecondaryText, modeNumberText, "break-words leading-5")}>
-                {`${current.label} · ${doneCount} of ${current.items.length} done`}
+              <span className="flex min-w-0 items-center gap-2">
+                <span aria-hidden="true" className={cn(onCallTrack, "w-24 shrink-0")}>
+                  <span
+                    className={onCallTrackFill}
+                    style={{ width: `${current.items.length ? (doneCount / current.items.length) * 100 : 0}%` }}
+                  />
+                </span>
+                <span
+                  className={cn(modeNumberText, "break-words text-xs font-semibold text-[color:var(--mode-identity)]")}
+                >
+                  {`${current.label} · ${doneCount} of ${current.items.length}`}
+                </span>
               </span>
             ) : (
               <OnCallStateLabel state={{ kind: "not-set-up" }} />

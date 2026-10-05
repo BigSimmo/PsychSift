@@ -1,17 +1,19 @@
 "use client";
 
 import { PhoneOff } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { clearOnCallDidntConnect, markOnCallDidntConnect } from "@/components/on-call/call/call-device-stores";
-import { ModeActionButton } from "@/components/mode-kit/action-button";
+import { focusRing } from "@/components/card-recipes";
+import { onCallOutlineButton } from "@/components/on-call/kit/calm";
+import { OnCallDialSheetActions } from "@/components/on-call/kit/dial-sheet";
 import { OnCallDialRow } from "@/components/on-call/kit/dial-row";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
 import type { HandbookReportResult, HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
 import { InlineNotice } from "@/components/primitive-recipes/feedback";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
-import { eyebrowText } from "@/components/ui-primitives";
+import { cn, eyebrowText } from "@/components/ui-primitives";
 import type { HandbookItem } from "@/lib/on-call/handbook-items";
 import { HANDBOOK_REPORT_REASONS, type HandbookReportReason } from "@/lib/on-call/handbook-reports";
 import type { HandbookDial } from "@/lib/on-call/number-resolver";
@@ -26,14 +28,17 @@ const RESULT_NOTICE: Partial<Record<HandbookReportResult, { tone: "neutral"; tex
 };
 
 /**
- * "Didn't connect" (plan 3.3, idea 3): one quiet control at the end of a row.
+ * "Didn't connect" (plan 3.3, idea 3; mock-up v10 s-2). The mark is made from
+ * the number's own dial sheet, not from a button on every row: wrap a dial row
+ * in this and its sheet gains a "Didn't connect" button.
  *
- * A tap marks the row on this phone ("Didn't connect at 02:14", 12 hours) and
- * opens a sheet with the fallback, switchboard, as a dial row. A handbook row
- * can also be reported to the hospital's editors, with one of two fixed
- * reasons and no free text (review F9); an outside line or the reader's own
- * number has no one to report it to, so it gets the mark only. The mark never
- * hides, greys out or reorders the number.
+ * A tap marks the row on this phone ("Didn't connect at 02:14", 12 hours),
+ * closes the dial sheet and opens the "Didn't connect" sheet with the fallback,
+ * switchboard, as a dial row. A handbook row can also be reported to the
+ * hospital's editors, with one of two fixed reasons and no free text (review
+ * F9); an outside line or the reader's own number has no one to report it to,
+ * so it gets the mark only. The mark never hides, greys out or reorders the
+ * number.
  */
 export function OnCallDidntConnect({
   id,
@@ -43,6 +48,7 @@ export function OnCallDidntConnect({
   switchboardDial,
   hospitalName,
   hospitalPhone = false,
+  children,
 }: {
   readonly id: string;
   readonly title: string;
@@ -54,16 +60,12 @@ export function OnCallDidntConnect({
   readonly hospitalName: string | null;
   /** This phone is a hospital phone: a bare-extension switchboard rings its own digits. */
   readonly hospitalPhone?: boolean;
+  /** The dial row whose sheet carries the mark. */
+  readonly children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [result, setResult] = useState<HandbookReportResult | null>(null);
   const [sending, setSending] = useState<HandbookReportReason | null>(null);
-
-  const openSheet = () => {
-    markOnCallDidntConnect(id);
-    setResult(null);
-    setOpen(true);
-  };
 
   const send = async (reason: HandbookReportReason) => {
     if (!report) return;
@@ -82,12 +84,28 @@ export function OnCallDidntConnect({
 
   return (
     <>
-      <ModeActionButton
-        icon={PhoneOff}
-        label={`Didn't connect: ${title}`}
-        onClick={openSheet}
-        testId={`on-call-didnt-connect-${id}`}
-      />
+      <OnCallDialSheetActions
+        render={({ close }) => (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-label={`Didn't connect: ${title}`}
+            onClick={() => {
+              markOnCallDidntConnect(id);
+              setResult(null);
+              close();
+              setOpen(true);
+            }}
+            data-testid={`on-call-didnt-connect-${id}`}
+            className={cn(onCallOutlineButton, focusRing, "w-full")}
+          >
+            <PhoneOff aria-hidden="true" strokeWidth={1.5} className="size-icon-sm" />
+            Didn&apos;t connect
+          </button>
+        )}
+      >
+        {children}
+      </OnCallDialSheetActions>
       <Sheet open={open} onClose={() => setOpen(false)} title="Didn't connect" testId="on-call-didnt-connect-sheet">
         <div className="grid min-w-0 gap-5">
           {showSwitchboard ? (

@@ -13,6 +13,7 @@ import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
 import { onCallDetailsSchemaFor, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
+import { ON_CALL_FIRST_NIGHT_STAGES, type OnCallFirstNightStage } from "@/lib/on-call/first-night";
 
 /**
  * FIRST NIGHT — a guided path for a registrar's first on-call shifts, in three
@@ -29,7 +30,7 @@ import { useOnCallEntries } from "@/lib/on-call/entry-store";
  */
 
 type Stage = {
-  id: string;
+  id: OnCallFirstNightStage["id"];
   title: string;
   icon: typeof Sunrise;
   intro: string;
@@ -37,52 +38,25 @@ type Stage = {
   links: readonly { href: string; label: string; icon: typeof Phone }[];
 };
 
-const STAGES: readonly Stage[] = [
-  {
-    id: "before",
-    title: "Before your first shift",
-    icon: Sunrise,
-    intro: "Sort these in daylight, so the night is only about the work.",
-    prompts: [
-      { text: "Know where you park after hours, and how you get in once the main doors lock" },
-      { text: "Have your ID badge, swipe access and any keys you need" },
-      { text: "Log in to every system you will need, and check your passwords work" },
-      { text: "Know where the on-call room, the phone charger and food are" },
-      { text: "Know how handover works: where, when and who you hand over to" },
-      { text: "Print or save your pocket card" },
-    ],
-    links: [{ href: "/on-call/card", label: "Your pocket card", icon: Printer }],
-  },
-  {
-    id: "night",
-    title: "Your first night",
+const STAGE_EXTRAS: Record<OnCallFirstNightStage["id"], Pick<Stage, "icon" | "links">> = {
+  before: { icon: Sunrise, links: [{ href: "/on-call/card", label: "Your pocket card", icon: Printer }] },
+  night: {
     icon: Moon,
-    intro: "The numbers you will need are one tap away.",
-    prompts: [
-      { text: "Check the switchboard number and your consultant's number before you need them" },
-      { text: "Know which wards and emergency departments you cover tonight" },
-      { text: "Know where the forms and the Mental Health Act paperwork are kept" },
-      { text: "Agree with the nurse in charge how they will reach you" },
-    ],
     links: [
       { href: "/on-call/now", label: "Who to call now", icon: Phone },
       { href: "/on-call/contacts", label: "Contacts", icon: Phone },
     ],
   },
-  {
-    id: "wrong",
-    title: "If something goes wrong",
-    icon: ShieldAlert,
-    intro: "You are never expected to manage alone. These are the routes, not the decisions.",
-    prompts: [
-      { text: "Know that you can always ring the consultant on call, at any hour" },
-      { text: "Know how to reach security and the emergency response team" },
-      { text: "Know where the incident reporting system is, and log in to it once" },
-      { text: "Know who supports you the morning after a hard night" },
-    ],
-    links: [{ href: "/on-call/now", label: "Escalation steps", icon: Phone }],
-  },
-];
+  wrong: { icon: ShieldAlert, links: [{ href: "/on-call/now", label: "Escalation steps", icon: Phone }] },
+};
+
+const STAGES: readonly Stage[] = ON_CALL_FIRST_NIGHT_STAGES.map((stage) => ({
+  id: stage.id,
+  title: stage.title,
+  intro: stage.intro,
+  prompts: stage.prompts,
+  ...STAGE_EXTRAS[stage.id],
+}));
 
 /** Induction manuals from the owner's Orientation section, in their own order. */
 function inductionEntries(entries: readonly OnCallEntry[]): OnCallEntry[] {

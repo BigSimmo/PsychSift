@@ -2,43 +2,77 @@
 
 import { currentCover } from "@/lib/on-call/service-availability";
 import { useHospitalClock } from "@/components/on-call/use-hospital-clock";
-import { ChevronRight } from "lucide-react";
+import { ListChecks, Phone, Plus, Printer, Shield, Users } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
+import { useOptionalAccountData } from "@/components/account-data-provider";
 import { focusRing } from "@/components/card-recipes";
 import { useOnCallDidntConnectAt, useOnCallHospitalPhone } from "@/components/on-call/call/call-device-stores";
-import { onCallCallGroups, onCallSwitchboardItem, type OnCallCallGroup } from "@/components/on-call/call/call-groups";
+import {
+  onCallCallGroups,
+  onCallRowBadge,
+  onCallSwitchboardItem,
+  type OnCallCallGroup,
+} from "@/components/on-call/call/call-groups";
 import { OnCallDidntConnect } from "@/components/on-call/call/didnt-connect";
 import { OnCallCrisisLines, OnCallExternalLineRows } from "@/components/on-call/call/external-line-rows";
 import { onCallExternalLines, searchExternalLines } from "@/components/on-call/call/external-lines";
 import { OnCallHospitalPhoneSwitch } from "@/components/on-call/call/hospital-phone-switch";
-import { OnCallIsobarCard } from "@/components/on-call/call/isobar-card";
-import { OnCallCallLogCard, OnCallHandoverBuilder } from "@/components/on-call/handover/call-log";
+import { OnCallIsobarRow } from "@/components/on-call/call/isobar-card";
+import {
+  onCallActionLink,
+  onCallBadge,
+  onCallChipShape,
+  onCallChipTap,
+  onCallLeadingIcon,
+} from "@/components/on-call/kit/calm";
 import { OnCallDialRow, toHandbookDial } from "@/components/on-call/kit/dial-row";
-import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
+import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
 import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { OnCallHubPageFrame } from "@/components/on-call/kit/hub-page-frame";
-import { modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
-import { modeNameText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
+import { modeInsetHairline, modeRowHeight } from "@/components/mode-kit/recipes";
+import { modeSecondaryText } from "@/components/mode-kit/type";
 import { onCallGroupAnchorId } from "@/components/on-call/on-call-page-anchors";
-import { ON_CALL_HUB_GROUPS, onCallHubPageSections } from "@/components/on-call/on-call-page-sections";
 import { useHospitalHandbook, type HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
+import { formatOnCallTime } from "@/lib/on-call/display-dates";
 import { onCallDetailsSchemaFor, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { searchOnCallEntries } from "@/lib/on-call/entry-search";
-import { useOnCallEntries } from "@/lib/on-call/entry-store";
+import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import { pinnedEmergencyEntries, type HandbookItem } from "@/lib/on-call/handbook-items";
 import { searchHandbookItems } from "@/lib/on-call/handbook-search";
 import { msUntilOnCallPeriodChange, resolveOnCallNumber, type HandbookDial } from "@/lib/on-call/number-resolver";
+import { buildOnCallReviewQueue } from "@/lib/on-call/review-queue";
 import { partitionContactsEntries } from "@/lib/on-call/who-is-who";
+
+/** The entry editor loads only when "Add your own number" is tapped, so People's first paint does not carry it. */
+const OnCallEntryEditor = dynamic(
+  () => import("@/components/on-call/on-call-entry-editor").then((module) => module.OnCallEntryEditor),
+  { ssr: false },
+);
 
 /** About eight or nine rows fit a phone before "Show all" (standard §4). */
 const ROWS_BEFORE_SHOW_ALL = 8;
 
-const groupIcon = (slug: string) => ON_CALL_HUB_GROUPS.call.find((group) => group.slug === slug)?.icon;
+/** The call log moved from this page to a "Log a call" sheet on Now; old links still carry this hash. */
+export const ON_CALL_OLD_CALL_LOG_HASH = "#on-call-call-log-heading";
+export const ON_CALL_LOG_A_CALL_PATH = "/on-call#log-a-call";
+
+const noSubscription = () => () => {};
+
+type PeopleTab = "hospital" | "outside" | "mine";
+
+const PEOPLE_TABS: readonly { value: PeopleTab; label: string }[] = [
+  { value: "hospital", label: "Hospital" },
+  { value: "outside", label: "Outside lines" },
+  { value: "mine", label: "Mine" },
+];
 
 function hospitalName(handbook: HospitalHandbookState): string | null {
   return handbook.siteName ?? handbook.serviceName;
@@ -51,80 +85,61 @@ type Fallback = {
   readonly hospitalPhone: boolean;
 };
 
+const phoneSwitchInSheet = (on: boolean) => <OnCallHospitalPhoneSwitch on={on} testId="on-call-hospital-phone-sheet" />;
+
+/** A row's leading mark: its short badge when the label carries one, a shield on emergency rows, else a phone. */
+function rowLeading(item: HandbookItem, emergencyGroup: boolean): ReactNode {
+  if (emergencyGroup) return <Shield aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />;
+  const badge = onCallRowBadge(item);
+  if (badge) return <span className={onCallBadge}>{badge}</span>;
+  return <Phone aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />;
+}
+
 function HandbookCallRow({
   item,
   handbook,
   pinned,
+  emergencyGroup,
   hospitalPhone,
   fallback,
 }: {
   readonly item: HandbookItem;
   readonly handbook: HospitalHandbookState;
   readonly pinned: boolean;
+  readonly emergencyGroup: boolean;
   readonly hospitalPhone: boolean;
   readonly fallback: Fallback;
 }) {
   const didntConnectAt = useOnCallDidntConnectAt(item.id);
   const name = hospitalName(handbook);
   return (
-    <OnCallDialRow
+    <OnCallDidntConnect
       id={item.id}
-      source="handbook"
       title={item.parsed.label}
-      dial={item.dial}
-      hospitalPhone={hospitalPhone}
-      hospitalPhoneSwitch={<OnCallHospitalPhoneSwitch on={hospitalPhone} testId="on-call-hospital-phone-sheet" />}
-      mobileDial={item.mobileDial}
-      state={didntConnectAt ? { kind: "didnt-connect", at: didntConnectAt } : null}
-      updatedAt={item.updatedAt}
-      lastConfirmedAt={item.lastConfirmedAt}
-      sources={item.sources}
-      tone={pinned ? "emergency" : "default"}
+      report={handbook}
+      switchboard={fallback.item}
+      switchboardDial={fallback.dial}
+      hospitalPhone={fallback.hospitalPhone}
       hospitalName={name}
-      trailingAction={
-        <OnCallDidntConnect
-          id={item.id}
-          title={item.parsed.label}
-          report={handbook}
-          switchboard={fallback.item}
-          switchboardDial={fallback.dial}
-          hospitalPhone={fallback.hospitalPhone}
-          hospitalName={name}
-        />
-      }
-      testId={`on-call-call-row-${item.id}`}
-    />
-  );
-}
-
-function ShowAllRow({
-  count,
-  onShow,
-  label,
-}: {
-  readonly count: number;
-  readonly onShow: () => void;
-  readonly label: string;
-}) {
-  return (
-    <li className={cn(modeInsetHairline, "min-w-0")}>
-      <button
-        type="button"
-        onClick={onShow}
-        aria-label={`Show all ${count} in ${label}`}
-        className={cn(
-          modeRowHeight.single,
-          modePressable,
-          focusRing,
-          "flex w-full min-w-0 items-center gap-3 px-3 text-left text-[color:var(--text-heading)]",
-        )}
-      >
-        <span className={cn(modeNameText, "min-w-0 flex-1 text-base-minus")}>
-          Show all <span className={modeNumberText}>{count}</span>
-        </span>
-        <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-      </button>
-    </li>
+    >
+      <OnCallDialRow
+        id={item.id}
+        source="handbook"
+        title={item.parsed.label}
+        dial={item.dial}
+        leading={rowLeading(item, emergencyGroup)}
+        hospitalPhone={hospitalPhone}
+        hospitalPhoneSwitch={phoneSwitchInSheet(hospitalPhone)}
+        mobileDial={item.mobileDial}
+        state={didntConnectAt ? { kind: "didnt-connect", at: didntConnectAt } : null}
+        updatedAt={item.updatedAt}
+        lastConfirmedAt={item.lastConfirmedAt}
+        sources={item.sources}
+        tone={pinned ? "emergency" : "default"}
+        hospitalName={name}
+        testId={`on-call-call-row-${item.id}`}
+      />
+    </OnCallDidntConnect>
   );
 }
 
@@ -138,16 +153,27 @@ function HospitalGroup({
   readonly children: (items: readonly HandbookItem[]) => ReactNode;
 }) {
   const [showAll, setShowAll] = useState(false);
-  const limited = !searching && !showAll && group.items.length > ROWS_BEFORE_SHOW_ALL + 1;
+  const total = group.items.length;
+  const limited = !searching && !showAll && total > ROWS_BEFORE_SHOW_ALL + 1;
   const visible = limited ? group.items.slice(0, ROWS_BEFORE_SHOW_ALL) : group.items;
   return (
     <OnCallGroupedList
       eyebrow={group.label}
+      count={limited ? `${visible.length} of ${total}` : total}
+      action={
+        limited
+          ? {
+              label: "Show all",
+              ariaLabel: `Show all ${total} in ${group.label}`,
+              onClick: () => setShowAll(true),
+              testId: `on-call-call-group-${group.slug}-show-all`,
+            }
+          : undefined
+      }
       id={onCallGroupAnchorId(group.slug)}
       testId={`on-call-call-group-${group.slug}`}
     >
       {children(visible)}
-      {limited ? <ShowAllRow count={group.items.length} label={group.label} onShow={() => setShowAll(true)} /> : null}
     </OnCallGroupedList>
   );
 }
@@ -176,54 +202,76 @@ function MineCallRow({
   const resolved = contactNumber(entry, now);
   const dial = toHandbookDial(resolved);
   return (
-    <OnCallDialRow
+    <OnCallDidntConnect
       id={entry.id}
-      source="entry"
       title={entry.title}
-      subtitle={entry.subtitle ?? undefined}
-      dial={dial}
-      hospitalPhone={hospitalPhone}
-      hospitalPhoneSwitch={<OnCallHospitalPhoneSwitch on={hospitalPhone} testId="on-call-hospital-phone-sheet" />}
-      numberLabel={resolved?.label}
-      state={didntConnectAt ? { kind: "didnt-connect", at: didntConnectAt } : dial ? null : { kind: "not-recorded" }}
-      trailingAction={
-        <OnCallDidntConnect
-          id={entry.id}
-          title={entry.title}
-          report={null}
-          switchboard={fallback.item}
-          switchboardDial={fallback.dial}
-          hospitalPhone={fallback.hospitalPhone}
-          hospitalName={name}
-        />
-      }
-      testId={`on-call-call-mine-${entry.id}`}
-    />
+      report={null}
+      switchboard={fallback.item}
+      switchboardDial={fallback.dial}
+      hospitalPhone={fallback.hospitalPhone}
+      hospitalName={name}
+    >
+      <OnCallDialRow
+        id={entry.id}
+        source="entry"
+        title={entry.title}
+        subtitle={entry.subtitle ?? undefined}
+        dial={dial}
+        hospitalPhone={hospitalPhone}
+        hospitalPhoneSwitch={phoneSwitchInSheet(hospitalPhone)}
+        numberLabel={resolved?.label}
+        state={didntConnectAt ? { kind: "didnt-connect", at: didntConnectAt } : dial ? null : { kind: "not-recorded" }}
+        testId={`on-call-call-mine-${entry.id}`}
+      />
+    </OnCallDidntConnect>
   );
 }
 
 /**
- * Call: every number the reader may need tonight, in one place.
+ * People (mock-up v10 s-2): every number the reader may need tonight, in one
+ * searchable list.
  *
- * - **Hospital** (v6 figure 05): the hospital's published numbers by
- *   department, with Emergency first, then each team, then Wards and General.
- *   Quick-jump chips under the search box move between departments.
- * - **External**: the app's own sourced public lines, each with its area,
- *   source and date, in the outside form "(08) 9000 0012".
+ * Search comes first, then the Hospital / Outside lines / Mine switch and the
+ * department jump chips, because on this page the reader already knows who
+ * they want. There is no summary card.
+ *
+ * - **Hospital**: the hospital's published numbers, Emergency first, then the
+ *   cover on now, then each team, then Wards and General.
+ * - **Outside lines**: the app's own sourced public lines, each with its area,
+ *   source and date.
  * - **Mine**: the reader's own numbers, and the way to their editor.
  *
- * The page's two tabs (Hospital, External) sit in the header's bar. One
- * in-flow search box filters every group on the device; the query never
- * leaves the page (Global Constraint 7). Every row ends in "Didn't connect",
- * and a handbook row can be reported with one of two fixed reasons.
+ * One search box searches all three at once; the query never leaves the page
+ * (Global Constraint 7). "Didn't connect" is marked from a number's own sheet,
+ * and shows under the row as a state. The crisis lines show whenever the
+ * hospital's numbers are not on screen. The call log and handover builder
+ * live in Now's "Log a call" sheet; the old link to them is sent on there.
  */
 export function OnCallCallPage() {
+  const router = useRouter();
+  const account = useOptionalAccountData();
   const handbook = useHospitalHandbook();
   const hospitalNow = useHospitalClock();
   const entries = useOnCallEntries();
   const hospitalPhone = useOnCallHospitalPhone();
   const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<PeopleTab>("hospital");
+  const [adding, setAdding] = useState(false);
   const [clock, setClock] = useState(() => new Date());
+  // The time in "Cover as of 21:40" is drawn after hydration only, so the server's minute never mismatches the phone's.
+  const hydrated = useSyncExternalStore(
+    noSubscription,
+    () => true,
+    () => false,
+  );
+
+  // The call log moved to Now. A saved or My Day link to its old heading here
+  // goes straight on to Now's "Log a call" sheet, keeping its query string.
+  useEffect(() => {
+    if (window.location.hash !== ON_CALL_OLD_CALL_LOG_HASH) return;
+    const [path, hash] = ON_CALL_LOG_A_CALL_PATH.split("#");
+    router.replace(`${path}${window.location.search}#${hash}`);
+  }, [router]);
 
   // Re-read the clock when the in-hours period starts or ends (holidays count),
   // so a page left open shows your own numbers on the right daytime or after-hours line.
@@ -256,6 +304,7 @@ export function OnCallCallPage() {
   const allExternal = useMemo(() => onCallExternalLines(), []);
   const external = searching ? searchExternalLines(allExternal, query) : allExternal;
 
+  const signedOut = entries.signedOut || handbook.status === "signed-out";
   const personal = useMemo(
     () => partitionContactsEntries(entries.entries.filter((entry) => entry.isPersonal)).contacts,
     [entries.entries],
@@ -272,186 +321,275 @@ export function OnCallCallPage() {
     return searching ? searchHandbookItems(active, query) : active;
   }, [handbook.items, hospitalNow, query, ready, searching]);
 
+  // "Numbers to check" counts exactly what the Check these page lists, and only
+  // once the reader's entries have loaded: a failed load never reads as "none".
+  const checkQueue = useMemo(() => buildOnCallReviewQueue(entries.entries, clock), [entries.entries, clock]);
+  const checkCountKnown =
+    !entries.loading && !signedOut && !entries.sample && entries.loadError === null && checkQueue.assessed > 0;
+
   const hospitalCount = groups.reduce((sum, group) => sum + group.items.length, 0);
-  const externalCount = ready ? external.length : 0;
-  const sections = onCallHubPageSections(
-    "call",
-    new Map([
-      ["hospital", hospitalCount],
-      ["external", externalCount],
-    ]),
-  );
-  const resultCount = cover.length + hospitalCount + externalCount + mine.length;
-  const hasDeskOnly = contacts.some((item) => item.dial.kind === "extension");
-  const signedOut = entries.signedOut || handbook.status === "signed-out";
+  const resultCount = cover.length + hospitalCount + external.length + (signedOut ? 0 : mine.length);
+
+  const showHospital = searching || tab === "hospital";
+  const showOutside = searching || tab === "outside";
+  const showMine = searching ? !signedOut && mine.length > 0 : tab === "mine";
+  // The crisis lines show whenever the hospital's numbers are not on screen,
+  // unless the Outside lines list (which holds them) already is.
+  const showCrisis = !showOutside && (!ready || tab === "mine" || hospitalCount + cover.length === 0);
+
+  const canAdd = Boolean(account?.isAuthenticated) && !signedOut && !entries.demoMode;
+
+  const coverGroup =
+    cover.length > 0 ? (
+      <OnCallGroupedList
+        eyebrow="Cover"
+        count={cover.length}
+        note={hydrated ? `Cover as of ${formatOnCallTime(hospitalNow)}` : undefined}
+        testId="on-call-call-cover"
+      >
+        {cover.map((item) => (
+          <OnCallDialRow
+            key={item.id}
+            id={item.id}
+            source="handbook"
+            title={item.parsed.label}
+            subtitle={`${item.cover?.team ?? ""} · ${item.cover?.window.start}–${item.cover?.window.end}`}
+            dial={item.dial}
+            leading={rowLeading(item, false)}
+            hospitalPhone={hospitalPhone}
+            hospitalPhoneSwitch={phoneSwitchInSheet(hospitalPhone)}
+            mobileDial={item.mobileDial}
+            updatedAt={item.updatedAt}
+            lastConfirmedAt={item.lastConfirmedAt}
+            sources={item.sources}
+            hospitalName={name}
+            now={hospitalNow}
+            testId={`on-call-call-cover-${item.id}`}
+          />
+        ))}
+      </OnCallGroupedList>
+    ) : null;
 
   return (
-    <OnCallHubPageFrame page="call" sections={sections} lead={<OnCallHospitalLine handbook={handbook} />}>
-      <OnCallHandbookState handbook={handbook} page="call" />
-      {ready ? null : <OnCallCrisisLines />}
-      {cover.length > 0 ? (
-        <OnCallGroupedList eyebrow="Cover at this time" testId="on-call-call-cover">
-          {cover.map((item) => (
-            <OnCallDialRow
-              key={item.id}
-              id={item.id}
-              source="handbook"
-              title={item.parsed.label}
-              subtitle={`${item.cover?.team ?? ""} · ${item.cover?.window.start}–${item.cover?.window.end}`}
-              dial={item.dial}
-              hospitalPhone={hospitalPhone}
-              hospitalPhoneSwitch={
-                <OnCallHospitalPhoneSwitch on={hospitalPhone} testId="on-call-hospital-phone-sheet" />
-              }
-              mobileDial={item.mobileDial}
-              updatedAt={item.updatedAt}
-              lastConfirmedAt={item.lastConfirmedAt}
-              sources={item.sources}
-              now={hospitalNow}
-              testId={`on-call-call-cover-${item.id}`}
-            />
-          ))}
-        </OnCallGroupedList>
-      ) : null}
-
-      {ready ? (
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
-          <div data-testid="on-call-call-search">
-            <SearchField
-              label="Search Call"
-              placeholder="Search numbers, wards, roles"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onClear={() => setQuery("")}
-              clearLabel="Clear the Call search"
-              autoComplete="off"
-            />
-          </div>
-          <p role="status" aria-live="polite" className="sr-only">
-            {searching ? `${resultCount} ${resultCount === 1 ? "result" : "results"}` : ""}
-          </p>
-          {!searching && groups.length > 1 ? (
-            <nav aria-label="Departments" data-testid="on-call-call-departments">
-              <ul className="-mx-3 flex min-w-0 gap-2 overflow-x-auto px-3 [-webkit-overflow-scrolling:touch]">
-                {groups.map((group) => (
-                  <li key={group.slug} className="shrink-0">
-                    <a
-                      href={`#${onCallGroupAnchorId(group.slug)}`}
-                      className={cn(
-                        focusRing,
-                        modePressable,
-                        "inline-flex min-h-12 items-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-sm text-[color:var(--text)] no-underline",
-                      )}
-                    >
-                      {group.chip}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ) : null}
-        </div>
-      ) : null}
-
-      {ready && hospitalCount > 0 ? (
-        <div id={onCallGroupAnchorId("hospital")} className="grid min-w-0 scroll-mt-32 gap-5">
-          {groups.map((group, index) => (
-            <div key={group.slug} className="grid min-w-0 gap-5">
-              <HospitalGroup group={group} searching={searching}>
-                {(visible) =>
-                  visible.map((item) => (
-                    <HandbookCallRow
-                      key={item.id}
-                      item={item}
-                      handbook={handbook}
-                      pinned={pinnedIds.has(item.id)}
-                      hospitalPhone={hospitalPhone}
-                      fallback={fallback}
-                    />
-                  ))
-                }
-              </HospitalGroup>
-              {/* "Calling a consultant" sits after the first hospital group. */}
-              {index === 0 && !searching ? <OnCallIsobarCard /> : null}
-            </div>
-          ))}
-          {!searching && (hasDeskOnly || hospitalPhone) ? <OnCallHospitalPhoneSwitch on={hospitalPhone} /> : null}
-        </div>
-      ) : null}
-
-      {ready && externalCount > 0 ? (
-        <OnCallGroupedList
-          eyebrow="External"
-          headerIcon={groupIcon("external")}
-          id={onCallGroupAnchorId("external")}
-          testId="on-call-call-external"
-        >
-          <OnCallExternalLineRows
-            lines={external}
-            testIdPrefix="on-call-call-external"
-            trailingAction={(line) => (
-              <OnCallDidntConnect
-                id={line.id}
-                title={line.title}
-                report={null}
-                switchboard={fallback.item}
-                switchboardDial={fallback.dial}
-                hospitalPhone={fallback.hospitalPhone}
-                hospitalName={name}
-              />
-            )}
+    <OnCallHubPageFrame page="call" lead={<OnCallHospitalLine handbook={handbook} />}>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
+        <div data-testid="on-call-call-search">
+          <SearchField
+            label="Search People"
+            placeholder="Search numbers, wards, roles"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onClear={() => setQuery("")}
+            clearLabel="Clear the People search"
+            autoComplete="off"
           />
-        </OnCallGroupedList>
-      ) : null}
-
-      {searching && mine.length === 0 ? null : (
-        <OnCallGroupedList
-          eyebrow="Mine"
-          headerIcon={groupIcon("mine")}
-          id={onCallGroupAnchorId("mine")}
-          testId="on-call-call-mine"
-        >
-          {signedOut
-            ? null
-            : mine.map((entry) => (
-                <MineCallRow
-                  key={entry.id}
-                  entry={entry}
-                  hospitalPhone={hospitalPhone}
-                  fallback={fallback}
-                  name={name}
-                  now={clock}
-                />
+        </div>
+        <p role="status" aria-live="polite" className="sr-only">
+          {searching ? `${resultCount} ${resultCount === 1 ? "result" : "results"}` : ""}
+        </p>
+        {searching ? null : (
+          <SegmentedControl
+            label="Which numbers"
+            layout="equal"
+            value={tab}
+            onChange={setTab}
+            options={PEOPLE_TABS}
+            ariaControls="on-call-people-list"
+          />
+        )}
+        {!searching && tab === "hospital" && groups.length > 1 ? (
+          <nav aria-label="Departments" data-testid="on-call-call-departments">
+            <ul className="-mx-3 flex min-w-0 gap-2 overflow-x-auto px-3 [-webkit-overflow-scrolling:touch]">
+              {groups.map((group) => (
+                <li key={group.slug} className="shrink-0">
+                  <a
+                    href={`#${onCallGroupAnchorId(group.slug)}`}
+                    className={cn(onCallChipTap, focusRing, "rounded-md no-underline")}
+                  >
+                    <span className={onCallChipShape}>{group.chip}</span>
+                  </a>
+                </li>
               ))}
-          {signedOut ? (
-            <li className={cn(modeInsetHairline, modeRowHeight.single, "flex min-w-0 items-center px-3")}>
-              <span className={cn(modeSecondaryText, "break-words")}>Sign in to keep your own numbers.</span>
-            </li>
-          ) : null}
-          <li className={cn(modeInsetHairline, "min-w-0")}>
-            {/* A literal next/link href: route-reachability counts only those. */}
-            <Link
-              href="/on-call/contacts"
-              data-testid="on-call-call-mine-link"
-              className={cn(
-                modeRowHeight.single,
-                modePressable,
-                focusRing,
-                "flex min-w-0 items-center gap-3 px-3 text-[color:var(--text-heading)] no-underline",
+            </ul>
+          </nav>
+        ) : null}
+      </div>
+
+      <OnCallHandbookState handbook={handbook} page="call" />
+      {showCrisis ? <OnCallCrisisLines /> : null}
+
+      <div id="on-call-people-list" className="grid min-w-0 gap-5">
+        {searching && resultCount === 0 ? (
+          <p className={cn(modeSecondaryText, "break-words px-3")} data-testid="on-call-call-nothing-found">
+            {`Nothing matches "${query.trim()}".`}
+            {ready ? "" : " The hospital's numbers have not loaded, so only outside lines and your own were searched."}
+          </p>
+        ) : null}
+
+        {showHospital && ready && !searching ? <OnCallHospitalPhoneSwitch on={hospitalPhone} /> : null}
+
+        {showHospital && ready && hospitalCount + cover.length > 0 ? (
+          <div id={onCallGroupAnchorId("hospital")} className="grid min-w-0 scroll-mt-32 gap-5">
+            {groups.map((group, index) => (
+              <div key={group.slug} className="grid min-w-0 gap-5">
+                <HospitalGroup group={group} searching={searching}>
+                  {(visible) =>
+                    visible.map((item) => (
+                      <HandbookCallRow
+                        key={item.id}
+                        item={item}
+                        handbook={handbook}
+                        pinned={pinnedIds.has(item.id)}
+                        emergencyGroup={group.kind === "emergency"}
+                        hospitalPhone={hospitalPhone}
+                        fallback={fallback}
+                      />
+                    ))
+                  }
+                </HospitalGroup>
+                {/* Emergency stays first; the cover on now follows it, or leads when there is no Emergency group. */}
+                {index === 0 && group.kind === "emergency" ? coverGroup : null}
+              </div>
+            ))}
+            {groups[0]?.kind === "emergency" ? null : coverGroup}
+          </div>
+        ) : null}
+
+        {showOutside && external.length > 0 ? (
+          <OnCallGroupedList
+            eyebrow="Outside lines"
+            count={external.length}
+            id={onCallGroupAnchorId("external")}
+            testId="on-call-call-external"
+          >
+            <OnCallExternalLineRows
+              lines={external}
+              testIdPrefix="on-call-call-external"
+              wrapRow={(line, row) => (
+                <OnCallDidntConnect
+                  key={line.id}
+                  id={line.id}
+                  title={line.title}
+                  report={null}
+                  switchboard={fallback.item}
+                  switchboardDial={fallback.dial}
+                  hospitalPhone={fallback.hospitalPhone}
+                  hospitalName={name}
+                >
+                  {row}
+                </OnCallDidntConnect>
               )}
-            >
-              <span className={cn(modeNameText, "min-w-0 flex-1 break-words text-base-minus")}>Your own numbers</span>
-              <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
-            </Link>
-          </li>
-        </OnCallGroupedList>
+            />
+          </OnCallGroupedList>
+        ) : null}
+
+        {showMine ? (
+          <OnCallGroupedList
+            eyebrow="Mine"
+            count={signedOut ? undefined : mine.length}
+            id={onCallGroupAnchorId("mine")}
+            testId="on-call-call-mine"
+          >
+            {signedOut
+              ? null
+              : mine.map((entry) => (
+                  <MineCallRow
+                    key={entry.id}
+                    entry={entry}
+                    hospitalPhone={hospitalPhone}
+                    fallback={fallback}
+                    name={name}
+                    now={clock}
+                  />
+                ))}
+            {signedOut ? (
+              <li className={cn(modeInsetHairline, modeRowHeight.single, "flex min-w-0 items-center px-3")}>
+                <span className={cn(modeSecondaryText, "break-words")}>Sign in to keep your own numbers.</span>
+              </li>
+            ) : null}
+            {/* A literal next/link href: route-reachability counts only those. */}
+            <OnCallRow href="/on-call/contacts" title="Your own numbers" testId="on-call-call-mine-link" />
+          </OnCallGroupedList>
+        ) : null}
+      </div>
+
+      {searching ? null : (
+        <div className="grid min-w-0 gap-4" data-testid="on-call-call-more">
+          <ul role="list" className="min-w-0">
+            <OnCallIsobarRow />
+            <OnCallRow
+              href="/on-call/who-is-who"
+              title="Who's who"
+              subtitle="What the short role names mean"
+              leading={<Users aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              testId="on-call-call-whos-who"
+            />
+            <OnCallRow
+              href="/on-call/card"
+              title="Pocket card"
+              subtitle="The numbers flagged for it, to print"
+              leading={<Printer aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              testId="on-call-call-pocket-card"
+            />
+            <OnCallRow
+              href="/on-call/check"
+              title="Numbers to check"
+              subtitle={
+                checkCountKnown
+                  ? checkQueue.total > 0
+                    ? `${checkQueue.total} due for a check`
+                    : "None due for a check"
+                  : undefined
+              }
+              leading={<ListChecks aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+              testId="on-call-call-check"
+            />
+          </ul>
+          <div className="flex justify-center">
+            {canAdd ? (
+              <button
+                type="button"
+                onClick={() => setAdding(true)}
+                className={cn(onCallActionLink, focusRing, "gap-1.5 text-base-minus")}
+                data-testid="on-call-call-add"
+              >
+                <Plus aria-hidden="true" className="size-icon-sm" />
+                Add your own number
+              </button>
+            ) : (
+              <Link
+                href="/on-call/contacts"
+                className={cn(onCallActionLink, focusRing, "gap-1.5 text-base-minus")}
+                data-testid="on-call-call-add"
+              >
+                <Plus aria-hidden="true" className="size-icon-sm" />
+                Add your own number
+              </Link>
+            )}
+          </div>
+          {canAdd ? (
+            <p className={cn(modeSecondaryText, "px-3 text-center text-xs")} data-testid="on-call-call-saved-note">
+              Your own numbers are saved to your account.
+            </p>
+          ) : null}
+        </div>
       )}
 
-      {/* Hidden, not unmounted, while searching, so a half-typed call note survives a quick search. */}
-      <div className={cn("grid min-w-0 gap-5", searching && "hidden")} data-testid="on-call-call-handover">
-        <OnCallCallLogCard />
-        <OnCallHandoverBuilder />
-      </div>
+      {canAdd && adding ? (
+        <OnCallEntryEditor
+          open
+          onClose={() => setAdding(false)}
+          section="contacts"
+          entry={null}
+          onSaved={(saved) =>
+            cacheOnCallEntries(
+              entries.entries.some((existing) => existing.id === saved.id)
+                ? entries.entries.map((existing) => (existing.id === saved.id ? saved : existing))
+                : [...entries.entries, saved],
+            )
+          }
+        />
+      ) : null}
     </OnCallHubPageFrame>
   );
 }

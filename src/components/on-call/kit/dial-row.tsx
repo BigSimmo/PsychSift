@@ -203,53 +203,107 @@ export function OnCallDialRow({
       ) : null}
       {/* The name and number open the "Dial from a desk phone" sheet; the disc
           beside them is the call link. Siblings, never nested. */}
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        aria-label={hasNumber && dial ? `${title}, ${dial.display}. Dialling details` : undefined}
-        onClick={hasNumber ? () => setSheetOpen(true) : undefined}
-        disabled={!hasNumber}
-        data-dial-row-title=""
-        className={cn(
-          focusRing,
-          hasNumber ? modePressable : null,
-          "grid min-h-12 min-w-0 flex-1 content-center gap-0.5 rounded-md py-1.5 text-left disabled:cursor-default",
-        )}
-      >
-        <span className="flex min-w-0 items-center gap-1.5">
-          {emergency ? (
+      {hasNumber && dial ? (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-label={`${title}, ${dial.display}. Dialling details`}
+          onClick={() => setSheetOpen(true)}
+          data-dial-row-title=""
+          className={cn(
+            focusRing,
+            modePressable,
+            "grid min-h-12 min-w-0 flex-1 content-center gap-0.5 rounded-md py-1 text-left",
+          )}
+        >
+          <span className="flex min-w-0 items-center gap-1.5">
+            {emergency ? (
+              <span
+                aria-hidden="true"
+                data-testid={`${testId}-emergency-dot`}
+                className={cn(modeDot, "bg-[color:var(--danger)]")}
+              />
+            ) : null}
+            {starred ? (
+              <Star
+                aria-label="Starred"
+                data-testid={`${testId}-star`}
+                className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
+              />
+            ) : null}
             <span
-              aria-hidden="true"
-              data-testid={`${testId}-emergency-dot`}
-              className={cn(modeDot, "bg-[color:var(--danger)]")}
-            />
-          ) : null}
-          {starred ? (
-            <Star
-              aria-label="Starred"
-              data-testid={`${testId}-star`}
-              className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
-            />
-          ) : null}
-          <span className={cn(modeNameText, "min-w-0 break-words text-base-minus leading-5 text-[color:var(--text-heading)]")}>
-            {title}
+              className={cn(
+                modeNameText,
+                "min-w-0 break-words text-base-minus leading-5 text-[color:var(--text-heading)]",
+              )}
+            >
+              {title}
+            </span>
           </span>
+          {lineParts.length > 0 ? (
+            <span
+              className={cn(modeSecondaryText, "flex min-w-0 flex-wrap items-center gap-x-1.5 break-words leading-5")}
+            >
+              {lineParts.map((part, index) =>
+                index === 0 ? (
+                  part
+                ) : (
+                  // The dot travels with the part after it, so a wrap never strands it at a line end.
+                  <span key={`part-${index}`} className="inline-flex min-w-0 items-center gap-x-1.5">
+                    <span aria-hidden="true">·</span>
+                    {part}
+                  </span>
+                ),
+              )}
+            </span>
+          ) : null}
+        </button>
+      ) : (
+        // No number: plain text, never a dimmed button.
+        <span data-dial-row-title="" className="grid min-h-12 min-w-0 flex-1 content-center gap-0.5 py-1">
+          <span className="flex min-w-0 items-center gap-1.5">
+            {emergency ? (
+              <span
+                aria-hidden="true"
+                data-testid={`${testId}-emergency-dot`}
+                className={cn(modeDot, "bg-[color:var(--danger)]")}
+              />
+            ) : null}
+            {starred ? (
+              <Star
+                aria-label="Starred"
+                data-testid={`${testId}-star`}
+                className="size-icon-xs shrink-0 fill-[color:var(--mode-identity)] text-[color:var(--mode-identity)]"
+              />
+            ) : null}
+            <span
+              className={cn(
+                modeNameText,
+                "min-w-0 break-words text-base-minus leading-5 text-[color:var(--text-heading)]",
+              )}
+            >
+              {title}
+            </span>
+          </span>
+          {lineParts.length > 0 ? (
+            <span
+              className={cn(modeSecondaryText, "flex min-w-0 flex-wrap items-center gap-x-1.5 break-words leading-5")}
+            >
+              {lineParts.map((part, index) =>
+                index === 0 ? (
+                  part
+                ) : (
+                  // The dot travels with the part after it, so a wrap never strands it at a line end.
+                  <span key={`part-${index}`} className="inline-flex min-w-0 items-center gap-x-1.5">
+                    <span aria-hidden="true">·</span>
+                    {part}
+                  </span>
+                ),
+              )}
+            </span>
+          ) : null}
         </span>
-        {lineParts.length > 0 ? (
-          <span className={cn(modeSecondaryText, "flex min-w-0 flex-wrap items-center gap-x-1.5 break-words leading-5")}>
-            {lineParts.flatMap((part, index) =>
-              index === 0
-                ? [part]
-                : [
-                    <span key={`dot-${index}`} aria-hidden="true">
-                      ·
-                    </span>,
-                    part,
-                  ],
-            )}
-          </span>
-        ) : null}
-      </button>
+      )}
 
       {hasNumber || trailingAction ? (
         <span className="flex shrink-0 items-center">

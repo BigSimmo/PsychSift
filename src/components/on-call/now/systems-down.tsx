@@ -1,43 +1,65 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { Briefcase, Moon, WifiOff } from "lucide-react";
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
-import { OnCallRow } from "@/components/on-call/kit/grouped-list";
-import { modeInsetHairline, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
-import { modeNameText } from "@/components/mode-kit/type";
+import { onCallChipShape, onCallChipTap, onCallLeadingIcon } from "@/components/on-call/kit/calm";
+import { OnCallGroupActionControl, OnCallRow } from "@/components/on-call/kit/grouped-list";
 import { NowShiftLists } from "@/components/on-call/now/shift-lists";
-import {
-  ON_CALL_FIND_DOWNTIME_HREF,
-  ON_CALL_ON_SITE_HREF,
-  ON_CALL_ON_SITE_LABEL,
-} from "@/components/on-call/on-call-section-identity";
+import { ON_CALL_FIND_DOWNTIME_HREF, ON_CALL_ON_SITE_HREF } from "@/components/on-call/on-call-section-identity";
 import type { RosterShiftsState } from "@/components/roster/use-roster-shifts";
-import { cn } from "@/components/ui-primitives";
+import { cn, eyebrowText } from "@/components/ui-primitives";
+import { useOnCallChecklists } from "@/lib/on-call/checklist-storage";
+import { onCallFirstNightProgress } from "@/lib/on-call/first-night";
 import type { HandbookItem } from "@/lib/on-call/handbook-items";
 import type { OnCallShiftContext } from "@/lib/on-call/shift-context";
 
-const literalRow = cn(
-  modeRowHeight.single,
-  modePressable,
-  focusRing,
-  "flex min-w-0 items-center gap-3 pl-3 pr-2 no-underline",
-);
-const literalRowText = cn(modeNameText, "min-w-0 flex-1 break-words text-base-minus text-[color:var(--text-heading)]");
-const literalRowChevron = "size-icon-md shrink-0 text-[color:var(--text-muted)]";
+/** One situation chip: a ladder the reader or the hospital recorded. */
+export type OnCallSituation = { readonly id: string; readonly title: string; readonly href: string };
 
 /**
- * Now's footer group, 20px below the modules: "Who do I call now?" (the
- * Playbook's scenario picker), the shift lists, Systems down, First night and
- * the one-line On site link.
- *
- * v6 moves Shift lists and Systems down behind the mode button. The page menu
- * has no link slot yet and the registry no Shift lists page, so until the kit
- * adds them they stay here, at the bottom, where they never sit above a number.
- *
- * The Right now hero answers "who covers this hour"; "Who do I call now?"
- * stays one tap away for "what do I do about this", which the hero cannot say.
+ * "Who do I call now?" (mock-up v10 Now): one chip per recorded situation,
+ * each opening its ladder, and "Escalation ladder" at the right. Situations come
+ * only from ladders that exist (the reader's own Playbook and the hospital's);
+ * with none, the action still opens the page that says so.
+ */
+export function NowWhoToCall({ situations }: { readonly situations: readonly OnCallSituation[] }) {
+  return (
+    <section aria-labelledby="on-call-now-who-heading" className="grid min-w-0 gap-1" data-testid="on-call-now-who">
+      <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-3">
+        <h2 id="on-call-now-who-heading" className={eyebrowText}>
+          Who do I call now?
+        </h2>
+        {/* A literal href: the route-reachability guard reads literal hrefs only. */}
+        <OnCallGroupActionControl
+          action={{ label: "Escalation ladder", href: "/on-call/now", testId: "on-call-home-call-now" }}
+        />
+      </div>
+      {situations.length > 0 ? (
+        <ul role="list" className="flex min-w-0 flex-wrap gap-x-2 px-3">
+          {situations.map((situation) => (
+            <li key={situation.id} className="min-w-0">
+              <Link
+                href={situation.href}
+                data-testid={`on-call-now-situation-${situation.id}`}
+                className={cn(onCallChipTap, focusRing, "rounded-md no-underline")}
+              >
+                <span className={onCallChipShape}>{situation.title}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+/**
+ * "More for this shift" (mock-up v10 Now): the shift lists with their bar,
+ * Systems down, First night with its real tick count, and the one-line On site
+ * link to Admin. Handover and Shift pulse moved up the page as their own
+ * shortcuts; "Who do I call now?" became the situation chips.
  */
 export function NowFooter({
   context,
@@ -51,43 +73,37 @@ export function NowFooter({
   readonly items: readonly HandbookItem[];
   readonly now: Date;
 }) {
+  const ticked = useOnCallChecklists();
+  const firstNight = onCallFirstNightProgress(ticked);
   return (
-    <nav aria-label="More for this shift" className="grid min-w-0" data-testid="on-call-now-footer">
-      <ul role="list" className={modeModuleSurface}>
-        {/* Literal hrefs on Links: the route-reachability guard reads only
-            those, and these are their pages' only ways in from On Call. */}
-        <li className={modeInsetHairline}>
-          <Link href="/on-call/now" data-testid="on-call-home-call-now" className={literalRow}>
-            <span className={literalRowText}>Who do I call now?</span>
-            <ChevronRight aria-hidden="true" className={literalRowChevron} />
-          </Link>
-        </li>
-        <li className={modeInsetHairline}>
-          <Link href="/on-call/handover" data-testid="on-call-home-handover" className={literalRow}>
-            <span className={literalRowText}>Handover</span>
-            <ChevronRight aria-hidden="true" className={literalRowChevron} />
-          </Link>
-        </li>
-        <li className={modeInsetHairline}>
-          <Link href="/on-call/pulse" data-testid="on-call-home-pulse" className={literalRow}>
-            <span className={literalRowText}>Shift pulse</span>
-            <ChevronRight aria-hidden="true" className={literalRowChevron} />
-          </Link>
-        </li>
+    <nav aria-labelledby="on-call-now-footer-heading" className="grid min-w-0 gap-1" data-testid="on-call-now-footer">
+      <h2 id="on-call-now-footer-heading" className={cn(eyebrowText, "flex min-h-12 items-center px-3")}>
+        More for this shift
+      </h2>
+      <ul role="list" className="min-w-0">
         <NowShiftLists context={context} shifts={shifts} items={items} now={now} />
         <OnCallRow
           title="Systems down"
-          subtitle="Downtime plan needs a connection"
+          subtitle="When computers or phones fail"
+          leading={<WifiOff aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
           href={ON_CALL_FIND_DOWNTIME_HREF}
           testId="on-call-now-systems-down"
         />
-        <li className={modeInsetHairline}>
-          <Link href="/on-call/first-night" data-testid="on-call-home-first-night" className={literalRow}>
-            <span className={literalRowText}>First night</span>
-            <ChevronRight aria-hidden="true" className={literalRowChevron} />
-          </Link>
-        </li>
-        <OnCallRow title={ON_CALL_ON_SITE_LABEL} href={ON_CALL_ON_SITE_HREF} testId="on-call-now-on-site" />
+        {/* Literal hrefs: the route-reachability guard reads only those. */}
+        <OnCallRow
+          title="First night"
+          subtitle={`Guided path · ${firstNight.done} of ${firstNight.total} done`}
+          leading={<Moon aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+          href="/on-call/first-night"
+          testId="on-call-home-first-night"
+        />
+        <OnCallRow
+          title="On site"
+          subtitle="Parking, food, access · in Admin"
+          leading={<Briefcase aria-hidden="true" strokeWidth={1.5} className={onCallLeadingIcon} />}
+          href={ON_CALL_ON_SITE_HREF}
+          testId="on-call-now-on-site"
+        />
       </ul>
     </nav>
   );
