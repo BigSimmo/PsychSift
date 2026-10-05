@@ -355,12 +355,15 @@ function MedicationNothingFound({
       : `Nothing in PsychSift\u2019s medicines list matches \u201c${trimmed}\u201d`;
   return (
     <div className="medication-results-inset grid gap-3" data-testid="medication-nothing-found">
-      <EmptyState
-        icon={SearchX}
-        title={title}
-        body="Check the spelling. It may also be in your own PDFs, or listed under a brand or generic name."
-        live="polite"
-      />
+      {/* Plain heading and line (mock-up v6 screen 4), announced politely like the shared empty state. */}
+      <div role="status" className="grid gap-1">
+        <h2 className="text-lg font-semibold leading-snug text-balance break-words text-[color:var(--text-heading)]">
+          {title}
+        </h2>
+        <p className="text-sm leading-snug text-[color:var(--text-muted)]">
+          Check the spelling. It may also be in your own PDFs, or listed under a brand or generic name.
+        </p>
+      </div>
       <ul role="list" className="grid">
         <li className="min-w-0 border-t border-[color:var(--border)] first:border-t-0">
           <Link
