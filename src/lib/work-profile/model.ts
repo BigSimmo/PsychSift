@@ -1,8 +1,4 @@
-import {
-  WORK_STAGE_OPTIONS,
-  type RanzcpStagePreference,
-  type WorkStagePreference,
-} from "@/lib/account-preferences";
+import type { WorkStagePreference } from "@/lib/account-preferences";
 import { ruleGate, type RuleGate } from "@/lib/admin/rule-sign-off";
 import { setupRequirementRecorded, type SetupRequirement } from "@/lib/admin/setup";
 import { isComplianceEntry } from "@/lib/on-call/compliance";
@@ -80,7 +76,13 @@ export function rosterArea(loaded: Loaded<{ workplaces: number; rowName: string 
   if (loaded.status !== "ready") return notChecked("roster", "Roster", loaded);
   const { workplaces, rowName } = loaded.value;
   if (workplaces === 0 && !rowName) {
-    return { id: "roster", title: "Roster", subtitle: "Import your roster to see your shifts", state: "start", label: "Start" };
+    return {
+      id: "roster",
+      title: "Roster",
+      subtitle: "Import your roster to see your shifts",
+      state: "start",
+      label: "Start",
+    };
   }
   const parts = [plural(workplaces, "workplace", "workplaces")];
   if (rowName) parts.push(`your line ${rowName}`);
@@ -90,7 +92,13 @@ export function rosterArea(loaded: Loaded<{ workplaces: number; rowName: string 
 export function teachingArea(loaded: Loaded<{ teams: number }>): AreaRow {
   if (loaded.status !== "ready") return notChecked("teaching", "Teaching", loaded);
   if (loaded.value.teams === 0) {
-    return { id: "teaching", title: "Teaching", subtitle: "Follow your team’s teaching", state: "start", label: "Start" };
+    return {
+      id: "teaching",
+      title: "Teaching",
+      subtitle: "Follow your team’s teaching",
+      state: "start",
+      label: "Start",
+    };
   }
   return {
     id: "teaching",
@@ -112,7 +120,13 @@ export function cpdArea(
   }
   if (loaded.status !== "ready") return notChecked("cpd", "CPD", loaded);
   if (!loaded.value.configured) {
-    return { id: "cpd", title: "CPD", subtitle: "Set your CPD home and this year’s plan", state: "start", label: "Start" };
+    return {
+      id: "cpd",
+      title: "CPD",
+      subtitle: "Set your CPD home and this year’s plan",
+      state: "start",
+      label: "Start",
+    };
   }
   const year = "This year’s plan";
   const subtitle =
@@ -147,7 +161,13 @@ export function adminArea(loaded: Loaded<AdminSummary>): AreaRow {
   if (loaded.status !== "ready") return notChecked("admin", "Admin", loaded);
   const { recorded, missing, partial } = loaded.value;
   if (recorded === 0) {
-    return { id: "admin", title: "Admin", subtitle: "Record registration and other renewal dates", state: "start", label: "Start" };
+    return {
+      id: "admin",
+      title: "Admin",
+      subtitle: "Record registration and other renewal dates",
+      state: "start",
+      label: "Start",
+    };
   }
   if (missing.length > 0) {
     const figure = `${missing.length} not recorded`;
@@ -186,13 +206,6 @@ export function onCallArea(hospitalPhone: boolean): AreaRow {
 export function profileTabCount(admin: Loaded<AdminSummary>): number | undefined {
   if (admin.status !== "ready" || admin.value.partial || admin.value.recorded === 0) return undefined;
   return admin.value.missing.length > 0 ? admin.value.missing.length : undefined;
-}
-
-export function workStageLabel(stage: WorkStagePreference | null, ranzcp: RanzcpStagePreference | null): string | null {
-  if (!stage) return null;
-  const label = WORK_STAGE_OPTIONS.find((option) => option.value === stage)?.label ?? null;
-  if (stage === "registrar" && ranzcp) return `${label} · Stage ${ranzcp}`;
-  return label;
 }
 
 export type RestRule = { readonly label: string; readonly clause: string; readonly value: string };

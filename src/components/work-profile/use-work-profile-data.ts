@@ -34,7 +34,10 @@ export function useOnline(): boolean {
 
 type CpdStatus = { configured: boolean; routines: number };
 
-async function readJson(url: string, signal: AbortSignal): Promise<{ ok: boolean; unauthorized: boolean; body: unknown }> {
+async function readJson(
+  url: string,
+  signal: AbortSignal,
+): Promise<{ ok: boolean; unauthorized: boolean; body: unknown }> {
   const response = await fetch(url, { cache: "no-store", signal });
   return {
     ok: response.ok,
@@ -146,14 +149,13 @@ export function useWorkProfileData(now: Date): WorkProfileData {
           ? { status: "signed-out" }
           : { status: "failed" };
 
-  const admin: Loaded<AdminSummary> =
-    entries.loading
-      ? { status: "loading" }
-      : entries.signedOut
-        ? { status: "signed-out" }
-        : entries.isOffline && entries.entries.length === 0
-          ? { status: "failed" }
-          : { status: "ready", value: summariseAdmin(entries.entries, entries.isOffline) };
+  const admin: Loaded<AdminSummary> = entries.loading
+    ? { status: "loading" }
+    : entries.signedOut
+      ? { status: "signed-out" }
+      : entries.isOffline && entries.entries.length === 0
+        ? { status: "failed" }
+        : { status: "ready", value: summariseAdmin(entries.entries, entries.isOffline) };
 
   const payFortnightAnchor: Loaded<string | null> =
     oneTeamId === null

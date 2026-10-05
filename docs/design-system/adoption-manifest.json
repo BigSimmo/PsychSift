@@ -428,7 +428,8 @@
         "src/components/ui/applied-filters.tsx",
         "src/components/ui/confirm-dialog.tsx",
         "src/components/ui/copy-button.tsx",
-        "src/components/ui/print-output.tsx"
+        "src/components/ui/print-output.tsx",
+        "src/components/work-profile/work-profile-page.tsx"
       ],
       "productImportFiles": [
         "src/components/AccessibleTable.tsx",
@@ -568,7 +569,8 @@
         "src/components/ui/applied-filters.tsx",
         "src/components/ui/confirm-dialog.tsx",
         "src/components/ui/copy-button.tsx",
-        "src/components/ui/print-output.tsx"
+        "src/components/ui/print-output.tsx",
+        "src/components/work-profile/work-profile-page.tsx"
       ],
       "designSync": {
         "listedInSourceMap": true,
@@ -1921,8 +1923,8 @@
       "source": "src/components/ui/choice.tsx",
       "sourceExported": true,
       "entryExported": true,
-      "directImportFiles": [],
-      "productImportFiles": [],
+      "directImportFiles": ["src/components/work-profile/work-stage-sheet.tsx"],
+      "productImportFiles": ["src/components/work-profile/work-stage-sheet.tsx"],
       "designSync": {
         "listedInSourceMap": true,
         "listedInDtsProps": true,
@@ -1938,8 +1940,8 @@
       },
       "built": true,
       "locallyRegistered": true,
-      "v2ShellMounted": false,
-      "v2MountMode": "none",
+      "v2ShellMounted": true,
+      "v2MountMode": "inherited-global-root",
       "proofDeclared": true,
       "baselineCommitted": false
     },
@@ -2322,6 +2324,7 @@
         "src/components/therapy-compass/therapy-compare-tray.tsx",
         "src/components/tools/tools-search-results-page.tsx",
         "src/components/ui/confirm-dialog.tsx",
+        "src/components/work-profile/work-stage-sheet.tsx",
         "src/components/work-search/work-search-sheet.tsx"
       ],
       "productImportFiles": [
@@ -2412,6 +2415,7 @@
         "src/components/therapy-compass/therapy-compare-tray.tsx",
         "src/components/tools/tools-search-results-page.tsx",
         "src/components/ui/confirm-dialog.tsx",
+        "src/components/work-profile/work-stage-sheet.tsx",
         "src/components/work-search/work-search-sheet.tsx"
       ],
       "designSync": {
@@ -2702,13 +2706,15 @@
         "src/components/admin/admin-renewals-page.tsx",
         "src/components/roster/swaps/roster-swaps-page.tsx",
         "src/components/therapy-compass/screens/brief-screen.tsx",
-        "src/components/therapy-compass/screens/compare-screen.tsx"
+        "src/components/therapy-compass/screens/compare-screen.tsx",
+        "src/components/work-profile/work-profile-page.tsx"
       ],
       "productImportFiles": [
         "src/components/admin/admin-renewals-page.tsx",
         "src/components/roster/swaps/roster-swaps-page.tsx",
         "src/components/therapy-compass/screens/brief-screen.tsx",
-        "src/components/therapy-compass/screens/compare-screen.tsx"
+        "src/components/therapy-compass/screens/compare-screen.tsx",
+        "src/components/work-profile/work-profile-page.tsx"
       ],
       "designSync": {
         "listedInSourceMap": true,
@@ -3200,6 +3206,7 @@
         "src/app/(search-app)/medicines/page.tsx",
         "src/app/(search-app)/my-day/hours/page.tsx",
         "src/app/(search-app)/my-day/page.tsx",
+        "src/app/(search-app)/my-day/profile/page.tsx",
         "src/app/(search-app)/my-day/week/page.tsx",
         "src/app/(search-app)/my-work/page.tsx",
         "src/app/(search-app)/on-call/call/page.tsx",
@@ -3857,6 +3864,16 @@
         },
         {
           "file": "src/app/(search-app)/my-day/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": ["ModeHome"]
+        },
+        {
+          "file": "src/app/(search-app)/my-day/profile/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -5561,6 +5578,7 @@
       "src/app/(search-app)/medicines/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
+      "src/app/(search-app)/my-day/profile/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
       "src/app/(search-app)/my-work/page.tsx",
       "src/app/(search-app)/on-call/call/page.tsx",
@@ -5719,6 +5737,7 @@
       "src/app/(search-app)/medicines/page.tsx",
       "src/app/(search-app)/my-day/hours/page.tsx",
       "src/app/(search-app)/my-day/page.tsx",
+      "src/app/(search-app)/my-day/profile/page.tsx",
       "src/app/(search-app)/my-day/week/page.tsx",
       "src/app/(search-app)/my-work/page.tsx",
       "src/app/(search-app)/on-call/call/page.tsx",
@@ -5803,7 +5822,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 163,
+    "inheritedCkbV2RootCount": 164,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -5811,9 +5830,9 @@
   "summary": {
     "registeredComponentCount": 55,
     "previewCount": 55,
-    "productImportedComponentCount": 46,
-    "rootCount": 164,
-    "productionRouteCount": 156,
-    "nextUiEntryCount": 252
+    "productImportedComponentCount": 47,
+    "rootCount": 165,
+    "productionRouteCount": 157,
+    "nextUiEntryCount": 253
   }
 }

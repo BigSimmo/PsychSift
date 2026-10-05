@@ -225,3 +225,11 @@ export function normalizePreferences(input: unknown): AppPreferences {
     reminders: normalizeReminderSettings(input.reminders),
   };
 }
+
+/** "Psychiatry registrar · Stage 2", or null when the doctor has not said. Self-reported. */
+export function workStageLabel(stage: WorkStagePreference | null, ranzcp: RanzcpStagePreference | null): string | null {
+  if (!stage) return null;
+  const label = WORK_STAGE_OPTIONS.find((option) => option.value === stage)?.label ?? null;
+  if (stage === "registrar" && ranzcp) return `${label} · Stage ${ranzcp}`;
+  return label;
+}

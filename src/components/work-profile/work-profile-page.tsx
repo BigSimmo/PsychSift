@@ -18,12 +18,7 @@ import { useOnline, useWorkProfileData } from "@/components/work-profile/use-wor
 import { WorkProfileNote, WorkProfileRow, WorkProfileSection } from "@/components/work-profile/work-profile-list";
 import { AlertsPanel, PrivacyPanel, ProfilePanel, WorkPanel } from "@/components/work-profile/work-profile-panels";
 import { useAuthSession } from "@/lib/supabase/client";
-import {
-  WORK_PROFILE_TABS,
-  profileTabCount,
-  readWorkProfileTab,
-  type WorkProfileTab,
-} from "@/lib/work-profile/model";
+import { WORK_PROFILE_TABS, profileTabCount, readWorkProfileTab, type WorkProfileTab } from "@/lib/work-profile/model";
 
 // The sheet is opened rarely; it loads on first open, not with the page.
 const WorkStageSheet = dynamic(() => import("@/components/work-profile/work-stage-sheet"), { ssr: false });
@@ -96,8 +91,8 @@ function SignedOutBody() {
   return (
     <div className="grid gap-6" data-testid="work-profile-signed-out">
       <WorkProfileNote icon={Lock} title="Sign in to set up your work profile">
-        Your workplaces, alerts and roster settings are saved to your account, so most of them follow you to any
-        device. A few stay on this phone.
+        Your workplaces, alerts and roster settings are saved to your account, so most of them follow you to any device.
+        A few stay on this phone.
       </WorkProfileNote>
       <WorkProfileSection label="What you can set up">
         <WorkProfileRow icon={UserRound} title="Your stage and workplaces" subtitle="Where you work and your roster" />

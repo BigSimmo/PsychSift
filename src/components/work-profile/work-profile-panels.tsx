@@ -29,7 +29,7 @@ import {
   WorkProfileSection,
 } from "@/components/work-profile/work-profile-list";
 import type { WorkProfileData } from "@/components/work-profile/use-work-profile-data";
-import { JURISDICTION_OPTIONS } from "@/lib/account-preferences";
+import { JURISDICTION_OPTIONS, workStageLabel } from "@/lib/account-preferences";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
 import { ROSTER_GRADES } from "@/lib/roster/team/model";
@@ -43,7 +43,6 @@ import {
   restRulesProvenance,
   rosterArea,
   teachingArea,
-  workStageLabel,
   type AreaRow,
 } from "@/lib/work-profile/model";
 
@@ -195,7 +194,13 @@ export function ProfilePanel({
       ) : data.workplaces.status === "failed" ? (
         <WorkProfileRow icon={MapPin} title="Couldn’t load your workplaces" subtitle="Not checked" />
       ) : null}
-      <WorkProfileRow icon={Plus} title="Add a workplace" tone="link" href="/roster/settings" testId="work-profile-add-workplace" />
+      <WorkProfileRow
+        icon={Plus}
+        title="Add a workplace"
+        tone="link"
+        href="/roster/settings"
+        testId="work-profile-add-workplace"
+      />
     </WorkProfileSection>
   );
 
@@ -270,7 +275,8 @@ function AddLink({ href }: { readonly href: string }) {
 }
 
 export function WorkPanel({ data }: { readonly data: WorkProfileData }) {
-  const weekday = data.payFortnightAnchor.status === "ready" ? payFortnightWeekday(data.payFortnightAnchor.value) : null;
+  const weekday =
+    data.payFortnightAnchor.status === "ready" ? payFortnightWeekday(data.payFortnightAnchor.value) : null;
   return (
     <div className="grid gap-6">
       <WorkProfileSection label="Your agreement" testId="work-profile-agreement">

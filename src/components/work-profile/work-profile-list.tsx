@@ -25,11 +25,7 @@ export function WorkProfileSection({
 }) {
   const headingId = useId();
   return (
-    <section
-      aria-labelledby={label ? headingId : undefined}
-      className="grid min-w-0 gap-1"
-      data-testid={testId}
-    >
+    <section aria-labelledby={label ? headingId : undefined} className="grid min-w-0 gap-1" data-testid={testId}>
       {label ? (
         <h2 id={headingId} className={cn(eyebrowText, "pb-1")}>
           {label}
@@ -100,7 +96,13 @@ export function WorkProfileRow({
         />
       ) : null}
       <span className="grid min-w-0 flex-1 gap-0.5 py-1">
-        <span className={cn(modeNameText, "flex min-w-0 items-center gap-2 break-words text-base-minus leading-5", titleColour)}>
+        <span
+          className={cn(
+            modeNameText,
+            "flex min-w-0 items-center gap-2 break-words text-base-minus leading-5",
+            titleColour,
+          )}
+        >
           {dot ? <AreaDot mode={dot} /> : null}
           <span className="min-w-0 break-words">{title}</span>
         </span>
@@ -112,10 +114,7 @@ export function WorkProfileRow({
       ) : null}
     </>
   );
-  const rowClass = cn(
-    twoLine ? modeRowHeight.double : modeRowHeight.single,
-    "flex min-w-0 items-center gap-3 py-1",
-  );
+  const rowClass = cn(twoLine ? modeRowHeight.double : modeRowHeight.single, "flex min-w-0 items-center gap-3 py-1");
   if (href) {
     return (
       <li className={hairline}>
