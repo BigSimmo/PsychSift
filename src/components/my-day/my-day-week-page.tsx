@@ -1,23 +1,24 @@
 "use client";
 
-import { BookOpen, Briefcase, CalendarDays, ChevronRight, GraduationCap, Phone, type LucideIcon } from "lucide-react";
+import { CalendarDays, Info } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { focusRing } from "@/components/card-recipes";
-import { modeDot, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
-import { modeSecondaryText } from "@/components/mode-kit/type";
+import { dashSurface } from "@/components/dashboard-kit/recipes";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { listNames } from "@/components/my-day/my-day-page-parts";
+import { AreaIcon, DateBlock, QuietFoot, QuietTextLink } from "@/components/my-day/my-day-quiet";
+import { StripDay } from "@/components/my-day/my-day-today-cards";
 import { cmeRoutineItemsThrough } from "@/components/my-day/sources/cme";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
-import { formatShiftRange, kindOf } from "@/components/roster/roster-format";
+import { kindOf } from "@/components/roster/roster-format";
 import { useRosterShifts, type MyShift } from "@/components/roster/use-roster-shifts";
-import { perthDateKey, timeRange } from "@/components/teaching/teaching-dates";
+import { perthDateKey } from "@/components/teaching/teaching-dates";
 import type { SessionSummaryRead } from "@/components/teaching/teaching-reads";
 import { relocatedEntryId, sessionHref } from "@/components/teaching/teaching-view-model";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
@@ -27,7 +28,10 @@ import { cn } from "@/components/ui-primitives";
 import { appModeDefinition } from "@/lib/app-modes";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
+import { dueCountsByDate } from "@/lib/my-day/dashboard";
+import { kindsByDate as kindsByDateOf } from "@/lib/my-day/figures";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
+import { perthWeekday, shiftTitle, weekdayTime } from "@/lib/my-day/quiet-figures";
 import {
   groupByPerthDay,
   MY_DAY_WEEK_DAYS,
@@ -36,7 +40,6 @@ import {
   myDayWeekDayLabel,
 } from "@/lib/my-day/week";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
-import { SHIFT_KIND_LABEL } from "@/lib/roster/shift-kind";
 import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 /** The signed-out sample, downloaded only when a signed-out visitor opens this page. */
@@ -179,40 +182,42 @@ function MyDayWeekBody({ now }: { now: Date }) {
 
 type AgendaEntry = {
   readonly key: string;
-  /** The mode identity that tints the icon and the strip dot. */
+  /** The area that owns it: its colour is the dot before the title. */
   readonly identity: MyDaySourceMode;
-  readonly Icon: LucideIcon;
   readonly title: string;
-  /** `HH:MM` or a range, or null when the thing has no time of day. */
+  /** `HH:MM`, "All day", or null when the thing has no time of day. */
   readonly time: string | null;
+  /** When it is over (epoch ms), for greying finished rows; null when it has no end. */
+  readonly endsAt: number | null;
+  /** When it starts (epoch ms), for placing the now line; null when untimed. */
+  readonly startsAt: number | null;
   readonly area: string;
   readonly detail: string | null;
-  /** A state in words ("Date passed", "Cancelled"), shown in warn tone when `warn`. */
+  /** A state in words ("Date passed", "Cancelled"), shown in amber when `warn`. */
   readonly state: string | null;
   readonly warn: boolean;
   readonly href: string;
   readonly testId: string;
 };
 
-const MODE_ICON: Readonly<Record<MyDaySourceMode, LucideIcon>> = {
-  roster: CalendarDays,
-  teaching: GraduationCap,
-  cme: BookOpen,
-  "my-work": Briefcase,
-  "on-call": Phone,
-};
+/** "until 17:00", or "until Mon 08:00" when the shift ends on a later day. */
+function untilWords(startsAt: string, endsAt: string): string {
+  return perthDateOf(endsAt) === perthDateOf(startsAt)
+    ? `until ${perthTimeOf(endsAt)}`
+    : `until ${weekdayTime(endsAt)}`;
+}
 
 function shiftEntry(shift: MyShift): AgendaEntry {
   const kind = kindOf(shift);
-  const identity: MyDaySourceMode = kind === "on_call" ? "on-call" : "roster";
   return {
     key: `shift:${shift.id}`,
-    identity,
-    Icon: MODE_ICON[identity],
-    title: SHIFT_KIND_LABEL[kind],
-    time: formatShiftRange(shift),
+    identity: "roster",
+    title: shiftTitle(kind),
+    time: kind === "leave" ? null : perthTimeOf(shift.startsAt),
+    startsAt: kind === "leave" ? null : Date.parse(shift.startsAt),
+    endsAt: Date.parse(shift.endsAt),
     area: "Roster",
-    detail: shift.workplace ?? shift.location ?? null,
+    detail: kind === "leave" ? null : untilWords(shift.startsAt, shift.endsAt),
     state: null,
     warn: false,
     href: "/roster/shifts",
@@ -225,11 +230,12 @@ function teachingEntry(session: SessionSummaryRead): AgendaEntry {
   return {
     key: `teaching:${session.occurrenceId}`,
     identity: "teaching",
-    Icon: MODE_ICON.teaching,
     title: session.title,
-    time: session.allDay ? "All day" : timeRange(session.startsAt, session.endsAt),
+    time: session.allDay ? "All day" : perthTimeOf(session.startsAt),
+    startsAt: session.allDay ? null : Date.parse(session.startsAt),
+    endsAt: Date.parse(session.endsAt),
     area: "Teaching",
-    detail: session.venue ?? null,
+    detail: [session.venue, session.isPresenter ? "you lead" : null].filter(Boolean).join(" · ") || null,
     state: cancelled ? "Cancelled" : null,
     warn: cancelled,
     href: sessionHref(session) ?? `/teaching/week#${onCallEntryAnchorId(relocatedEntryId(session.occurrenceId))}`,
@@ -248,12 +254,14 @@ function itemEntry(item: MyDayItem): AgendaEntry {
     : item.severity === "soon"
       ? "Due soon"
       : null;
+  const timed = item.due && !DATE_ONLY.test(item.due) ? item.due : null;
   return {
     key: item.id,
     identity: item.mode,
-    Icon: MODE_ICON[item.mode],
     title: item.title,
-    time: item.due && !DATE_ONLY.test(item.due) ? perthTimeOf(item.due) : null,
+    time: timed ? perthTimeOf(timed) : null,
+    startsAt: timed ? Date.parse(timed) : null,
+    endsAt: null,
     area: appModeDefinition(item.mode).label,
     detail: item.detail ?? null,
     state,
@@ -268,56 +276,53 @@ function byTimeOfDay(entries: readonly AgendaEntry[]): AgendaEntry[] {
   return entries
     .map((entry, index) => ({ entry, index }))
     .sort((a, b) => {
-      const ta = a.entry.time && /^\d/.test(a.entry.time) ? a.entry.time : null;
-      const tb = b.entry.time && /^\d/.test(b.entry.time) ? b.entry.time : null;
-      if (ta && tb) return ta.localeCompare(tb) || a.index - b.index;
-      if (ta) return -1;
-      if (tb) return 1;
+      const ta = a.entry.startsAt;
+      const tb = b.entry.startsAt;
+      if (ta !== null && tb !== null) return ta - tb || a.index - b.index;
+      if (ta !== null) return -1;
+      if (tb !== null) return 1;
       return a.index - b.index;
     })
     .map(({ entry }) => entry);
 }
 
-/** `Sat 3 Oct` as its three parts: weekday, date number, month. */
-function dayParts(date: string): { weekday: string; number: string } {
-  const [weekday = "", number = ""] = formatPerthDay(date).split(" ");
-  return { weekday, number };
-}
-
-function AgendaRow({ entry }: { readonly entry: AgendaEntry }) {
-  const { Icon } = entry;
+function AgendaRow({ entry, done }: { readonly entry: AgendaEntry; readonly done: boolean }) {
   return (
     <li>
       <Link
         href={entry.href}
         data-testid={entry.testId}
+        data-done={done ? "" : undefined}
         className={cn(
-          modeRowHeight.double,
-          modePressable,
           focusRing,
-          "flex min-w-0 items-center gap-3 rounded-md py-1.5 pr-1 no-underline",
+          "grid min-h-13 min-w-0 grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-2 rounded-md py-2 no-underline",
         )}
       >
         <span
-          aria-hidden="true"
-          data-mode-identity={entry.identity}
-          className="relative grid size-10 shrink-0 place-items-center text-[color:var(--text-muted)]"
+          className={cn("text-sm-minus nums", done ? "text-[color:var(--dash-faint)]" : "text-[color:var(--dash-ink)]")}
         >
-          <Icon aria-hidden="true" strokeWidth={1.6} className="size-icon-lg" />
-          <span className="absolute right-1 bottom-1.5 size-2 rounded-full bg-[color:var(--mode-identity)] ring-2 ring-[color:var(--surface)] forced-colors:bg-[CanvasText]" />
+          {entry.time}
         </span>
-        <span className="grid min-w-0 flex-1 gap-0.5">
-          <span className="break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
-            {entry.title}
+        <span className="grid min-w-0">
+          <span
+            className={cn(
+              "flex min-w-0 items-baseline gap-1.5 text-sm",
+              done ? "text-[color:var(--dash-muted)]" : "text-[color:var(--dash-ink)]",
+            )}
+          >
+            <span
+              aria-hidden="true"
+              data-mode-identity={entry.identity}
+              className="size-1.5 shrink-0 -translate-y-0.5 rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]"
+            />
+            <span className="min-w-0 break-words">{entry.title}</span>
           </span>
-          <span className={cn(modeSecondaryText, "break-words leading-5")}>
-            {entry.time ? <span className="font-medium text-[color:var(--text-heading)]">{entry.time}</span> : null}
-            {entry.time ? " · " : null}
+          <span className="break-words text-sm-minus text-[color:var(--dash-muted)]">
             {entry.area}
             {entry.state ? (
               <>
                 {" · "}
-                <span className={entry.warn ? "font-medium text-[color:var(--warning)]" : undefined}>
+                <span className={entry.warn ? "font-medium text-[color:var(--dash-amber)]" : undefined}>
                   {entry.state}
                 </span>
               </>
@@ -325,16 +330,31 @@ function AgendaRow({ entry }: { readonly entry: AgendaEntry }) {
             {entry.detail ? ` · ${entry.detail}` : null}
           </span>
         </span>
-        <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
       </Link>
     </li>
   );
 }
 
+/** The blue line across today at the present minute. */
+function NowLine({ now }: { readonly now: Date }) {
+  return (
+    <li
+      aria-hidden="true"
+      data-testid="my-day-week-now"
+      className="grid min-h-8 grid-cols-[3.25rem_minmax(0,1fr)_auto] items-center gap-x-2 text-xs text-[color:var(--dash-blue)] nums"
+    >
+      <span>{perthTimeOf(now)}</span>
+      <span className="h-px bg-[color:var(--dash-blue)] forced-colors:bg-[CanvasText]" />
+      <span>now</span>
+    </li>
+  );
+}
+
 /**
- * The seven days as one strip card (weekday, date, a dot per area on) and one
- * agenda card, then a quiet pointer to Roster. Drawn from whatever shifts,
- * sessions and items it is given: the reader's own, or the signed-out sample.
+ * The seven days as a strip (the same codes as Today), then one list with a
+ * date block per day and its timed rows, then a pointer to Roster. Drawn from
+ * whatever shifts, sessions and items it is given: the reader's own, or the
+ * signed-out sample.
  */
 export function MyDayWeekDays({
   now,
@@ -354,6 +374,10 @@ export function MyDayWeekDays({
   const today = perthDateOf(now);
   const dates = useMemo(() => myDayWeekDates(today), [today]);
   const lastDate = dates[dates.length - 1]!;
+  const merged = useMemo(
+    () => mergeMyDayItems([items, cmeRoutineItemsThrough(cmeRoutines, lastDate, now, reminders)]),
+    [items, cmeRoutines, lastDate, now, reminders],
+  );
   const entriesByDay = useMemo(() => {
     const dayShifts = groupByPerthDay(shifts, dates, (shift) => perthDateOf(shift.startsAt));
     const daySessions = groupByPerthDay(
@@ -361,7 +385,6 @@ export function MyDayWeekDays({
       dates,
       (session) => perthDateKey(session.startsAt),
     );
-    const merged = mergeMyDayItems([items, cmeRoutineItemsThrough(cmeRoutines, lastDate, now, reminders)]);
     const dayItems = groupByPerthDay(merged, dates, (item) => myDayItemWeekDate(item, today, lastDate));
     return new Map(
       dates.map((date) => [
@@ -373,95 +396,72 @@ export function MyDayWeekDays({
         ]),
       ]),
     );
-  }, [shifts, sessions, items, cmeRoutines, dates, today, lastDate, now, reminders]);
-  const rosterHref = "/roster";
+  }, [shifts, sessions, merged, dates, today, lastDate]);
+  const kindsByDate = useMemo(
+    () => kindsByDateOf(shifts.map((shift) => ({ startsAt: shift.startsAt, kind: kindOf(shift) }))),
+    [shifts],
+  );
+  const dueByDate = useMemo(() => dueCountsByDate(merged), [merged]);
+  // An overnight shift that started the day before: an empty day says when it ends.
+  const endsOn = (date: string): MyShift | undefined =>
+    shifts.find(
+      (shift) => kindOf(shift) !== "leave" && perthDateOf(shift.startsAt) < date && perthDateOf(shift.endsAt) === date,
+    );
+  const at = now.getTime();
 
   return (
-    <>
-      {/* The strip repeats what the agenda below says in words, so it is hidden from screen readers. */}
-      <div
-        className={cn(modeModuleSurface, "grid grid-cols-7 gap-1 p-2")}
-        aria-hidden="true"
-        data-testid="my-day-week-strip"
-      >
-        {dates.map((date) => {
-          const { weekday, number } = dayParts(date);
-          const isToday = date === today;
-          const modes = [...new Set((entriesByDay.get(date) ?? []).map((entry) => entry.identity))].slice(0, 3);
-          return (
-            <div
-              key={date}
-              data-testid={`my-day-week-strip-${date}`}
-              className={cn(
-                "grid min-w-0 justify-items-center gap-0.5 rounded-lg py-2",
-                isToday
-                  ? "bg-[color:var(--primary)] text-[color:var(--primary-contrast)]"
-                  : "text-[color:var(--text-heading)]",
-              )}
-            >
-              <span className={cn("text-xs font-semibold uppercase", !isToday && "text-[color:var(--text-muted)]")}>
-                {weekday.charAt(0)}
-              </span>
-              <span className="text-lg-minus font-semibold nums">{number}</span>
-              <span className="flex h-1.5 items-center gap-0.5">
-                {modes.map((mode) => (
-                  <span
-                    key={mode}
-                    data-mode-identity={mode}
-                    className={cn(
-                      modeDot,
-                      isToday ? "bg-[color:var(--primary-contrast)]" : "bg-[color:var(--mode-identity)]",
-                    )}
-                  />
-                ))}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+    <div className={cn(dashSurface, "my-day-quiet grid gap-4")}>
+      <ol role="list" className="grid grid-cols-7 gap-0.5 text-center" data-testid="my-day-week-strip">
+        {dates.map((date) => (
+          <StripDay
+            key={date}
+            date={date}
+            today={today}
+            kinds={kindsByDate.get(date) ?? []}
+            due={dueByDate.get(date) ?? 0}
+          />
+        ))}
+      </ol>
 
-      <ul role="list" className={cn(modeModuleSurface, "divide-y divide-[color:var(--border)]")}>
+      <ul role="list" className="grid min-w-0 [&>li+li]:border-t [&>li+li]:border-[color:var(--dash-line)]">
         {dates.map((date) => {
           const entries = entriesByDay.get(date) ?? [];
-          const { weekday, number } = dayParts(date);
           const isToday = date === today;
+          const nowIndex = isToday ? entries.findIndex((entry) => entry.startsAt !== null && entry.startsAt > at) : -1;
+          const ending = entries.length === 0 ? endsOn(date) : undefined;
           return (
             <li
               key={date}
               data-testid={`my-day-week-day-${date}`}
-              className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-3 px-4 py-2"
+              className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-3 py-2.5"
             >
               <h2 className="sr-only">{myDayWeekDayLabel(date, today)}</h2>
-              <div aria-hidden="true" className="grid content-start justify-items-start pt-1.5 leading-none">
-                <span
-                  className={cn(
-                    "text-xs font-semibold uppercase tracking-wide",
-                    isToday ? "text-[color:var(--primary)]" : "text-[color:var(--text-muted)]",
-                  )}
-                >
-                  {weekday}
-                </span>
-                <span
-                  className={cn(
-                    "mt-1 text-xl font-semibold nums",
-                    isToday ? "text-[color:var(--primary)]" : "text-[color:var(--text-heading)]",
-                  )}
-                >
-                  {number}
-                </span>
-              </div>
+              <span className="pt-2">
+                <DateBlock number={Number(date.slice(8, 10))} word={perthWeekday(date)} today={isToday} />
+              </span>
               {entries.length > 0 ? (
-                <ul role="list" className="grid min-w-0">
-                  {entries.map((entry) => (
-                    <AgendaRow key={entry.key} entry={entry} />
+                <ul role="list" className="grid min-w-0 [&>li+li]:border-t [&>li+li]:border-[color:var(--dash-line)]">
+                  {entries.map((entry, index) => (
+                    <Fragment key={entry.key}>
+                      {index === nowIndex ? <NowLine now={now} /> : null}
+                      <AgendaRow
+                        entry={entry}
+                        done={(entry.endsAt ?? entry.startsAt ?? Number.POSITIVE_INFINITY) <= at}
+                      />
+                    </Fragment>
                   ))}
+                  {isToday && nowIndex === -1 && entries.some((entry) => entry.startsAt !== null) ? (
+                    <NowLine now={now} />
+                  ) : null}
                 </ul>
               ) : (
                 <p
-                  className="flex min-h-12 items-center text-base-minus font-medium text-[color:var(--text-muted)]"
+                  className="flex min-h-12 items-center text-sm-minus text-[color:var(--dash-muted)]"
                   data-testid={`my-day-week-empty-${date}`}
                 >
-                  Nothing on
+                  {ending
+                    ? `${shiftTitle(kindOf(ending))} ends ${perthTimeOf(ending.endsAt)} · nothing else on`
+                    : "Nothing on"}
                 </p>
               )}
             </li>
@@ -469,25 +469,16 @@ export function MyDayWeekDays({
         })}
       </ul>
 
-      <div
-        className="flex min-h-12 items-center gap-3 px-3 text-sm text-[color:var(--text-muted)]"
-        data-testid="my-day-week-footer"
-      >
-        <CalendarDays aria-hidden="true" className="size-icon-md shrink-0" />
-        <p className="min-w-0 flex-1">
-          All your shifts are in <strong className="font-semibold text-[color:var(--text-heading)]">Roster</strong>
-        </p>
-        <Link
-          href={rosterHref}
-          aria-label="Go to Roster"
-          className={cn(
-            focusRing,
-            "inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-md px-2 text-sm font-semibold text-[color:var(--primary)] no-underline",
-          )}
-        >
-          Go
-        </Link>
+      <div className="grid gap-3 border-t border-[color:var(--dash-line)] pt-2">
+        <div className="flex min-h-12 min-w-0 items-center gap-3" data-testid="my-day-week-footer">
+          <AreaIcon icon={CalendarDays} />
+          <p className="min-w-0 flex-1 text-sm text-[color:var(--dash-ink)]">All your shifts are in Roster</p>
+          <QuietTextLink href="/roster" ariaLabel="Open Roster">
+            Open Roster
+          </QuietTextLink>
+        </div>
+        <QuietFoot icon={Info}>From Roster, Teaching, CPD and Admin. Each item opens the page that owns it.</QuietFoot>
       </div>
-    </>
+    </div>
   );
 }

@@ -69,9 +69,9 @@ export function shiftTitle(kind: ShiftKind): string {
   return kind === "on_call" ? "On call" : `${SHIFT_KIND_LABEL[kind]} shift`;
 }
 
-/** The plural for grouped rows: "Day shifts", "On calls". */
+/** The plural for grouped rows: "Day shifts", "On call shifts". */
 function shiftTitlePlural(kind: ShiftKind): string {
-  return kind === "on_call" ? "On calls" : `${SHIFT_KIND_LABEL[kind]} shifts`;
+  return kind === "on_call" ? "On call shifts" : `${SHIFT_KIND_LABEL[kind]} shifts`;
 }
 
 /** "Tue, Wed and Thu". */

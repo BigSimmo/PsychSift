@@ -29,7 +29,6 @@ import { MY_DAY_ALL_VIEW_HREF, MY_DAY_PATH, withMyDayReturn } from "@/lib/my-day
 import { MY_DAY_PAGE_LABELS, myDayPageIds, parseMyDayPage, type MyDayPageId } from "@/lib/my-day/dashboard";
 import type { RenewalRow } from "@/lib/my-day/figures";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
-import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { focusRing } from "@/components/card-recipes";
 import { SignedOutSampleNotice } from "@/components/mode-kit/signed-out-sample";
 import { dashSurface } from "@/components/dashboard-kit/recipes";
@@ -37,7 +36,6 @@ import { cn } from "@/components/ui-primitives";
 
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
-const NO_ENTRIES: readonly OnCallEntry[] = [];
 import { useAuthSession } from "@/lib/supabase/client";
 
 /**
@@ -311,11 +309,13 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useMyDayItems({ enabled, now });
   // When the sources last answered, for "Checked … at 14:05" and the offline note. Set when the
   // answer changes, never on the minute tick.
-  const [loaded, setLoaded] = useState<{ readonly state: typeof state; readonly at: string | null }>(() => ({
-    state,
+  // A plain-text summary of what answered, so a re-read that changes nothing keeps the time.
+  const loadedKey = `${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}`;
+  const [loaded, setLoaded] = useState<{ readonly key: string; readonly at: string | null }>(() => ({
+    key: loadedKey,
     at: state.status === "ready" ? perthTimeOf(now) : null,
   }));
-  if (loaded.state !== state) setLoaded({ state, at: state.status === "ready" ? perthTimeOf(now) : null });
+  if (loaded.key !== loadedKey) setLoaded({ key: loadedKey, at: state.status === "ready" ? perthTimeOf(now) : null });
   // The full list has its own address, so the phone's Back returns to the dashboard.
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
@@ -349,7 +349,6 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const adminReal = allowSample || !myWorkSample;
   const renewals = adminReal ? (state.renewals ?? NO_RENEWALS) : NO_RENEWALS;
   const helpItems = adminReal ? (state.helpItems ?? NO_HELP) : NO_HELP;
-  const adminEntries = adminReal ? (state.adminEntries ?? NO_ENTRIES) : NO_ENTRIES;
   const demoNote = allowSample && state.demoMode;
   // Roster's "unavailable" is its team data (swaps); the others are whole modes not offered yet.
   const notYet = [...(rosterUnavailable ? ["Roster swaps"] : []), ...otherUnavailable];
@@ -493,7 +492,6 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                   items={items}
                   renewals={renewals}
                   helpItems={helpItems}
-                  adminEntries={adminEntries}
                   checked={checked}
                   checkedAt={loaded.at}
                   incomplete={failed.length > 0}

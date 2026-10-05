@@ -1,7 +1,6 @@
 "use client";
 
 import { Plus, TriangleAlert, WifiOff } from "lucide-react";
-import dynamic from "next/dynamic";
 import { Fragment, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { pinnedHelpItems } from "@/components/admin/admin-pinned-numbers";
@@ -26,11 +25,13 @@ import {
   type DayDetail,
 } from "@/components/my-day/my-day-today-cards";
 import {
+  CallNotesFoot,
   CallsCard,
+  ComingUpCard,
   CpdMonthCard,
   CredentialsCard,
+  GlanceCard,
   HoursCard,
-  MonthGlanceCard,
   NextTalkCard,
   PinnedNumbersCard,
   QuickNoteCard,
@@ -46,7 +47,6 @@ import { cn } from "@/components/ui-primitives";
 import type { AdminHelpItem } from "@/lib/admin/help-items";
 import { displayPhoneNumber } from "@/lib/admin/phone-display";
 import { useAdminPins } from "@/lib/admin/pins";
-import { selectRenewNext } from "@/lib/admin/today-selectors";
 import {
   dueCountsByDate,
   isSnoozed,
@@ -64,7 +64,6 @@ import {
   cpdProjectedHours,
   hoursBars,
   kindsByDate as kindsByDateOf,
-  monthGlance,
   myDayActionLabel,
   renewalsRunway,
   selectFlagItems,
@@ -75,10 +74,8 @@ import { weekRows } from "@/lib/my-day/quiet-figures";
 import { myDayWeekDates } from "@/lib/my-day/week";
 import type { MyDayItem } from "@/lib/my-day/model";
 import { nextTeachingSession } from "@/lib/my-day/next-teaching";
-import type { OnCallEntry } from "@/lib/on-call/entry-model";
-import type { CmeEntry } from "@/lib/cme/types";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
-import type { ShiftKind } from "@/lib/roster/shift-kind";
+import { isWorkedKind, type ShiftKind } from "@/lib/roster/shift-kind";
 import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { summariseToday } from "@/lib/roster/today";
 import type { RosterDisplayShift } from "@/lib/roster/team/team-view";
@@ -101,19 +98,6 @@ import type { SessionSummary } from "@/lib/teaching/model";
 const NO_RENEWALS: readonly RenewalRow[] = [];
 const NO_HELP: readonly AdminHelpItem[] = [];
 const NO_SESSIONS: readonly SessionSummary[] = [];
-const NO_ENTRIES: readonly OnCallEntry[] = [];
-const NO_CPD_ENTRIES: readonly CmeEntry[] = [];
-
-// The cards that moved here from CPD, Admin and Teaching load only when drawn.
-const MyDayCpdHoursCard = dynamic(() =>
-  import("@/components/my-day/my-day-moved-cards").then((m) => m.MyDayCpdHoursCard),
-);
-const MyDayRenewNextCard = dynamic(() =>
-  import("@/components/my-day/my-day-moved-cards").then((m) => m.MyDayRenewNextCard),
-);
-const MyDayRenewalsTimelineCard = dynamic(() =>
-  import("@/components/my-day/my-day-moved-cards").then((m) => m.MyDayRenewalsTimelineCard),
-);
 
 export interface MyDayDashboardProps {
   readonly now: Date;
@@ -124,8 +108,6 @@ export interface MyDayDashboardProps {
   readonly renewals?: readonly RenewalRow[];
   /** Admin's Help items, for pinned numbers. */
   readonly helpItems?: readonly AdminHelpItem[];
-  /** The reader's own Admin entries, for Renew next and the renewals timeline. */
-  readonly adminEntries?: readonly OnCallEntry[];
   readonly sources: MyDayDashboardSources;
   /** Names of the My Day sources that were checked, for the empty "Needs you" line. */
   readonly checked: readonly string[];
@@ -195,7 +177,6 @@ export function MyDayDashboard({
   items,
   renewals = NO_RENEWALS,
   helpItems = NO_HELP,
-  adminEntries = NO_ENTRIES,
   sources,
   checked,
   editing,
@@ -397,7 +378,26 @@ export function MyDayDashboard({
   );
   const weekHours = useMemo(() => hoursBars(hoursShifts, today, "week"), [hoursShifts, today]);
   const fortnightHours = useMemo(() => hoursBars(hoursShifts, today, "fortnight"), [hoursShifts, today]);
-  const glance = useMemo(() => monthGlance(hoursShifts, today), [hoursShifts, today]);
+  // Worked shifts in each window, for "84 h rostered · 9 shifts".
+  const shiftsIn = (bars: { readonly start: string; readonly end: string }) =>
+    hoursShifts.filter((shift) => {
+      const date = perthDateOf(shift.startsAt);
+      return isWorkedKind(shift.kind) && date >= bars.start && date <= bars.end;
+    }).length;
+  const nextLeave = summary?.nextLeave ?? null;
+  const nextRenewal = useMemo(
+    () => [...renewals].filter((row) => row.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null,
+    [renewals, today],
+  );
+  // An ordinary day's "Coming up": the next on-call shift still to start.
+  const nextOnCall = useMemo(() => {
+    const at = now.getTime();
+    return (
+      shifts
+        .filter((shift) => kindOf(shift) === "on_call" && Date.parse(shift.startsAt) > at)
+        .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0] ?? null
+    );
+  }, [shifts, now]);
 
   const cpd = sources.cpd;
   const cpdReady = cpd.status === "ready" && cpd.targetHours > 0;
@@ -422,7 +422,6 @@ export function MyDayDashboard({
       actionLabel: href ? "Details" : "See in Week",
     };
   }, [nextUp, device.hidden]);
-  const renewNext = useMemo(() => selectRenewNext(adminEntries, undefined, now), [adminEntries, now]);
 
   const visible: Record<MyDayCardId, boolean> = {
     "up-next": upNext !== null || leadShift !== null || heroNext !== null,
@@ -437,12 +436,11 @@ export function MyDayDashboard({
     calls: callTotal > 0 || handoverAt !== null,
     "pinned-numbers": pinnedNumbers.length > 0,
     "whos-on": whosOn?.status === "ready" && whosOn.colleagues.length > 0,
-    "next-talk": nextTalk !== null,
-    "cpd-hours": cpdReady && cpd.year !== null,
-    "renew-next": renewNext !== null,
-    "renewals-timeline": adminEntries.length > 0,
+    // During on call the next talk has its own section; otherwise it leads "Coming up".
+    "next-talk": nextTalk !== null && handoverAt !== null,
+    "coming-up": handoverAt === null && (nextTalk !== null || nextOnCall !== null),
+    glance: nextLeave !== null || nextRenewal !== null,
     hours: rosterReady && (weekHours.totalHours > 0 || fortnightHours.totalHours > 0),
-    "month-glance": rosterReady && glance.totalHours > 0,
     credentials: renewals.length > 0,
     "cpd-month": cpdReady,
     // The note is kept on this device; a signed-out sample must not keep one visitor's note for the next.
@@ -530,7 +528,6 @@ export function MyDayDashboard({
       <CallsCard
         total={callTotal}
         open={callOpen}
-        clearsAt={sample ? null : (callLog?.expiresAt ?? null)}
         handoverAt={handoverAt}
         shiftStartsAt={handoverAt && leadShift ? leadShift.startsAt : null}
         onHide={onHide("calls")}
@@ -540,30 +537,22 @@ export function MyDayDashboard({
     "whos-on": () => <WhosOnCard colleagues={whosOn?.colleagues ?? []} onHide={onHide("whos-on")} />,
     "next-talk": () =>
       nextTalk ? <NextTalkCard session={nextTalk} today={today} onHide={onHide("next-talk")} /> : null,
-    "cpd-hours": () =>
-      cpd.year !== null ? (
-        <MyDayCpdHoursCard
-          year={cpd.year}
-          today={today}
-          loggedHours={cpd.loggedHours}
-          targetHours={cpd.targetHours}
-          entries={cpd.entries ?? NO_CPD_ENTRIES}
-          closed={cpd.closed === true}
-          onHide={onHide("cpd-hours")}
-        />
-      ) : null,
-    "renew-next": () => (
-      <MyDayRenewNextCard entries={adminEntries} now={now} today={today} onHide={onHide("renew-next")} />
+    "coming-up": () => <ComingUpCard talk={nextTalk} onCall={nextOnCall} today={today} onHide={onHide("coming-up")} />,
+    glance: () => <GlanceCard leave={nextLeave} renewal={nextRenewal} today={today} onHide={onHide("glance")} />,
+    hours: () => (
+      <HoursCard
+        week={weekHours}
+        fortnight={fortnightHours}
+        weekShifts={shiftsIn(weekHours)}
+        fortnightShifts={shiftsIn(fortnightHours)}
+        onHide={onHide("hours")}
+      />
     ),
-    "renewals-timeline": () => (
-      <MyDayRenewalsTimelineCard entries={adminEntries} now={now} onHide={onHide("renewals-timeline")} />
-    ),
-    hours: () => <HoursCard week={weekHours} fortnight={fortnightHours} onHide={onHide("hours")} />,
-    "month-glance": () => <MonthGlanceCard glance={glance} today={today} onHide={onHide("month-glance")} />,
     credentials: () => <CredentialsCard rows={renewals} today={today} onHide={onHide("credentials")} />,
     "cpd-month": () => (
       <CpdMonthCard
         byMonth={cpd.byMonth}
+        byCategory={cpd.byCategory}
         loggedHours={cpd.loggedHours}
         targetHours={cpd.targetHours}
         projected={cpdProjectedHours(cpd.loggedHours, today)}
@@ -647,6 +636,7 @@ export function MyDayDashboard({
           data-editing={editing ? "" : undefined}
         >
           {drawCards(shownIds)}
+          {page === "work" && shownIds.includes("calls") ? <CallNotesFoot /> : null}
         </div>
       )}
       {shownIds.length === 0 && !editing ? (

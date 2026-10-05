@@ -11,7 +11,7 @@ import {
   Phone,
   Shield,
   SlidersHorizontal,
-  TriangleAlert,
+  Info,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -685,7 +685,7 @@ function MonthView({
 }
 
 /** One day in the strip: its letter, its date in a circle, and its roster code. */
-function StripDay({
+export function StripDay({
   date,
   today,
   kinds,
@@ -1043,7 +1043,7 @@ export function CpdRingsCard({
       }
     >
       <CpdSummary loggedHours={loggedHours} targetHours={targetHours} byCategory={byCategory} />
-      <QuietFoot icon={TriangleAlert}>
+      <QuietFoot icon={Info}>
         {`Hours you have logged in CPD. Your ${hoursText(targetHours)} h target is the one you confirmed in CPD.`}
       </QuietFoot>
     </QuietSection>
