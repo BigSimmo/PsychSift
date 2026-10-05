@@ -187,7 +187,7 @@ export function ChecklistItemDetailSheet({
                 <div className="grid gap-1" data-testid={`${testId}-window`}>
                   <AdminWindowBar progress={windowProgress} />
                   <span className={cn(textMuted, "flex justify-between gap-2 text-xs")}>
-                    <span>{`Opens ${formatRecordedDate(startOn)}`}</span>
+                    <span>{`${startOn <= today ? "Opened" : "Opens"} ${formatRecordedDate(startOn)}`}</span>
                     <span>{`${dateLabel} ${formatRecordedDate(expiresOn)}`}</span>
                   </span>
                 </div>

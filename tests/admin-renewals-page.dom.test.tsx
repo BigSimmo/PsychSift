@@ -468,6 +468,19 @@ describe("AdminRenewalsPage — a deep link to one entry (I3)", () => {
     expect(within(sheet).getByTestId("admin-renewals-item-sheet-renew").textContent).toBe("Renewed");
   });
 
+  it("scrolls to a group when Compliance links to it, once the list has drawn", async () => {
+    const scrolled: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id);
+    };
+    window.history.replaceState(null, "", "/admin/renewals#admin-renewals-group-training");
+    renderPage();
+    await waitFor(() => expect(scrolled).toContain("admin-renewals-group-training"));
+    Element.prototype.scrollIntoView = original;
+    window.history.replaceState(null, "", "/admin/renewals");
+  });
+
   it("opens a personal renewal on the Personal tab", () => {
     const car = complianceFixture("A car I lease for work", { category: "Personal", expiresOn: "2027-01-01" });
     storeState.entries = [...ALL, car];

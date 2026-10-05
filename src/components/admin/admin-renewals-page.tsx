@@ -240,7 +240,17 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
     if (!ready) return;
     function openFromHash() {
       const hash = window.location.hash.slice(1);
-      if (!hash.startsWith("on-call-entry-") || openedHash.current === hash) return;
+      if (openedHash.current === hash) return;
+      // Compliance's group rows link to `#admin-renewals-group-<group>`. The
+      // list renders after the rows load, too late for the browser's own jump,
+      // so scroll to the group once it is drawn.
+      if (hash.startsWith("admin-renewals-group-")) {
+        openedHash.current = hash;
+        setTab("checklist");
+        requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }));
+        return;
+      }
+      if (!hash.startsWith("on-call-entry-")) return;
       const entry = own.find((candidate) => onCallEntryAnchorId(candidate.id) === hash);
       if (!entry) return;
       const subject = detailSubjectForEntry(entry);
