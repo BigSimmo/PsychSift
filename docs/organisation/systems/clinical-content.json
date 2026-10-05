@@ -168,6 +168,7 @@
     "src/lib/medication-seed.ts",
     "src/lib/medication-snapshot.ts",
     "src/lib/medications.ts",
+    "src/lib/medicines-references.ts",
     "src/lib/mha-act-sections.ts",
     "src/lib/mha-timeline.ts",
     "src/lib/publication-manifest.ts",
