@@ -178,10 +178,17 @@
   color: var(--warning-text);
 }
 
+/* A sentence with a link in it wraps as ordinary text, at any text size. */
+.mode-band__sentence {
+  font-size: var(--text-sm-minus, 0.8125rem);
+  line-height: var(--mode-band-meta-leading);
+  color: var(--text-muted);
+}
+
 /* "Sign in" inside the sample line: a 48px tap area that a negative margin
    keeps from growing the line. */
 .mode-band__inline-action {
-  margin: calc(var(--spacing) * -3.75) 0;
+  margin: calc(var(--spacing) * -3.75) calc(var(--spacing) * -1);
   padding: calc(var(--spacing) * 3.75) calc(var(--spacing) * 1);
   border: 0;
   background: transparent;
@@ -395,6 +402,12 @@
 
   .mode-band__tab[aria-current="page"]::after {
     border-bottom-color: Highlight;
+  }
+
+  /* Forced colours paints even a transparent border, so only the current
+     tab keeps its underline. */
+  .mode-band__tab:not([aria-current="page"])::after {
+    display: none;
   }
 }
 

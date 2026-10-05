@@ -424,11 +424,11 @@ const AccountSetupDialog = dynamic(
 function SampleLine() {
   const [signInOpen, setSignInOpen] = useState(false);
   return (
-    <span className="mode-band__saved">
-      Made-up example records ·
+    <span className="mode-band__sentence">
+      Made-up example records ·{" "}
       <button type="button" className="mode-band__inline-action" onClick={() => setSignInOpen(true)}>
         Sign in
-      </button>
+      </button>{" "}
       to keep your own
       {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
     </span>
