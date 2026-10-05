@@ -162,6 +162,12 @@ const expectedPresentations = [
     subtitle: "Medication, calculators, clinical tools, factsheets and the dictionary.",
     iconClass: "lucide-pill-bottle",
   },
+  {
+    modeId: "open-shifts",
+    title: "Open shifts",
+    subtitle: "Extra shifts in your Roster teams.",
+    iconClass: "lucide-hand",
+  },
 ] as const satisfies ReadonlyArray<{
   modeId: AppModeId;
   title: string;

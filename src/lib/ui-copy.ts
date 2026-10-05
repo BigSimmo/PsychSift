@@ -170,7 +170,7 @@ export const sharedHomePresentation = {
   },
   "open-shifts": {
     title: "Open shifts",
-    subtitle: "Extra shifts in your Roster teams",
+    subtitle: "Extra shifts in your Roster teams.",
     suggestions: ["this weekend", "night shifts", "my applications"],
   },
 } as const satisfies Record<AppModeId, SharedHomePresentation>;

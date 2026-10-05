@@ -39,7 +39,7 @@ describe("phone mode groups", () => {
     expect(groupOf("my-day")).toMatchObject({
       id: "my-day",
       label: "My Day",
-      modeIds: ["my-day", "roster", "teaching", "cme", "my-work"],
+      modeIds: ["my-day", "roster", "open-shifts", "teaching", "cme", "my-work"],
     });
     // On Call stays a door of its own, second, so the urgent screen is never buried.
     expect(groupOf("on-call")).toMatchObject({ id: "on-call", label: "On Call", modeIds: ["on-call"] });

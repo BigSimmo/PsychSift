@@ -69,6 +69,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "End of life",
   ],
   "my-day": ["Today", "Week", "Hours"],
+  "open-shifts": ["Browse", "My shifts", "Alerts", "Post"],
 };
 
 const cleanLandingPath: Record<AppModeId, string> = {
@@ -97,6 +98,7 @@ const cleanLandingPath: Record<AppModeId, string> = {
   roster: "/roster",
   "first-nations": "/first-nations",
   "my-day": "/my-day",
+  "open-shifts": "/open-shifts",
 };
 
 /**
@@ -130,9 +132,9 @@ const emptyRegistryModes = [
 ] as const satisfies readonly AppModeId[];
 
 describe("mode secondary navigation registry", () => {
-  it("covers all 25 modes with the approved destinations and no Home item", () => {
+  it("covers all 26 modes with the approved destinations and no Home item", () => {
     expect(Object.keys(modeSecondaryNavigationRegistry).sort()).toEqual([...appModeIds].sort());
-    expect(appModeIds).toHaveLength(25);
+    expect(appModeIds).toHaveLength(26);
 
     for (const modeId of appModeIds) {
       const labels = modeSecondaryNavigationRegistry[modeId].map((item) => item.label);
