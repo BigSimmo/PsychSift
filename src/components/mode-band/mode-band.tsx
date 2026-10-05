@@ -13,6 +13,7 @@ import {
   useLayoutEffect,
   useMemo,
   useSyncExternalStore,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
@@ -164,6 +165,36 @@ function TodayDate() {
 }
 
 /**
+ * The faint mode icon, drawn as a mask on an empty box rather than as an
+ * inline svg. The design crops the icon at the band's right edge; an svg
+ * cropped that way still reports its paths' boxes past the screen edge, which
+ * the layout checks rightly read as cut-off content. The hidden svg is the
+ * source: once mounted, its markup becomes the mask, and the box itself stops
+ * at the band's edge.
+ */
+function ModeMark({ Icon }: { Icon: (typeof appModeIcons)[AppModeId] }) {
+  const [source, setSource] = useState<SVGSVGElement | null>(null);
+  const mask = useMemo(
+    () =>
+      source
+        ? `url("data:image/svg+xml,${encodeURIComponent(source.outerHTML.replace(/currentColor/g, "black"))}")`
+        : null,
+    [source],
+  );
+  return (
+    <>
+      <Icon ref={setSource} aria-hidden="true" className="hidden" strokeWidth={1.25} />
+      <span
+        aria-hidden="true"
+        className="mode-band__mark"
+        data-ready={mask ? "" : undefined}
+        style={mask ? ({ "--mode-band-mark": mask } as CSSProperties) : undefined}
+      />
+    </>
+  );
+}
+
+/**
  * Paints the top bar in the band's colour while a band is on the page. The
  * colour is read from the band itself, so it is always the mode's own tint in
  * the current theme, and re-read when the theme changes.
@@ -299,7 +330,7 @@ function ModeBandHeader({
       data-testid="mode-band"
       data-mode-identity={IDENTITY_MODES.has(modeId) ? modeId : undefined}
     >
-      <Icon aria-hidden="true" className="mode-band__mark" strokeWidth={1.25} />
+      <ModeMark Icon={Icon} />
       <div className="mode-band__inner">
         <div className="mode-band__utility">
           {lead.kind === "back" ? (
@@ -425,11 +456,11 @@ const AccountSetupDialog = dynamic(
 function SampleLine() {
   const [signInOpen, setSignInOpen] = useState(false);
   return (
-    <span className="mode-band__saved">
-      Made-up example records ·
+    <span className="mode-band__sentence">
+      Made-up example records ·{" "}
       <button type="button" className="mode-band__inline-action" onClick={() => setSignInOpen(true)}>
         Sign in
-      </button>
+      </button>{" "}
       to keep your own
       {signInOpen ? <AccountSetupDialog open onClose={() => setSignInOpen(false)} /> : null}
     </span>

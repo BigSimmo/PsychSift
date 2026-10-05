@@ -43,13 +43,21 @@
    bottom edge (owner, 5 Oct 05:55 UTC: "big and extending, not shrunk"). */
 .mode-band__mark {
   position: absolute;
-  right: -2.125rem;
+  /* The icon is 8.125rem square, with its right 2.125rem cropped. The box
+     stops at the band's edge and the mask is anchored left, so the crop comes
+     from the box, not from anything running past the screen (see ModeMark). */
+  right: 0;
   top: 2.5rem;
-  width: 8.125rem;
+  width: 6rem;
   height: 8.125rem;
-  color: var(--mode-identity);
+  background: var(--mode-identity);
+  mask: var(--mode-band-mark, none) left top / 8.125rem 8.125rem no-repeat;
   opacity: 0.07;
   pointer-events: none;
+}
+
+.mode-band__mark:not([data-ready]) {
+  visibility: hidden;
 }
 
 .dark .mode-band__mark {
@@ -178,10 +186,17 @@
   color: var(--warning-text);
 }
 
+/* A sentence with a link in it wraps as ordinary text, at any text size. */
+.mode-band__sentence {
+  font-size: var(--text-sm-minus, 0.8125rem);
+  line-height: var(--mode-band-meta-leading);
+  color: var(--text-muted);
+}
+
 /* "Sign in" inside the sample line: a 48px tap area that a negative margin
    keeps from growing the line. */
 .mode-band__inline-action {
-  margin: calc(var(--spacing) * -3.75) 0;
+  margin: calc(var(--spacing) * -3.75) calc(var(--spacing) * -1);
   padding: calc(var(--spacing) * 3.75) calc(var(--spacing) * 1);
   border: 0;
   background: transparent;
@@ -396,6 +411,12 @@
   .mode-band__tab[aria-current="page"]::after {
     border-bottom-color: Highlight;
   }
+
+  /* Forced colours paints even a transparent border, so only the current
+     tab keeps its underline. */
+  .mode-band__tab:not([aria-current="page"])::after {
+    display: none;
+  }
 }
 
 /* The top bar above a band wears the band's colour, so the two read as one
@@ -403,7 +424,7 @@
    mounted; nothing else about the top bar changes. */
 html[data-mode-band] .edge-glass-header,
 html[data-mode-band] [data-testid="chrome-safe-area-top"] {
-  background: var(--mode-band-surface);
+  background: var(--mode-band-surface, var(--background));
 }
 
 /* Under a band a page's own title is kept for screen readers only. A wrapper

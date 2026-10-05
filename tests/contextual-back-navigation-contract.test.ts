@@ -21,6 +21,9 @@ const internalArrowControls = new Set([
   // is no history entry to go back through — routing it that way would leave
   // the reader's actual page and close the menu they were still using.
   "components/clinical-dashboard/master-search-header.tsx",
+  // Returns from the finished handover table to the handover form on the
+  // same page; nothing has been navigated to.
+  "components/on-call/handover/handover-page.tsx",
 ]);
 
 function productionArrowFiles() {

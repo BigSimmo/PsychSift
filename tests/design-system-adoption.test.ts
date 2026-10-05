@@ -1494,9 +1494,10 @@ describe("design-system adoption manifest", () => {
     // 153 -> 154: the Medicines & tools hub (`/medicines`).
     // 154 -> 155: Admin's Compliance page (`/admin/compliance`).
     // 155 -> 156: the Psychiatry MHA clock (`/psychiatry/mha-clock`).
-    // 156 -> 165: the nine Open shifts routes (Browse, advert, My shifts, Alerts, Post, new post, posted shift, Board, Log).
+    // 156 -> 158: On Call Handover and Shift pulse (`/on-call/handover`, `/on-call/pulse`).
+    // 158 -> 167: the nine Open shifts routes (Browse, advert, My shifts, Alerts, Post, new post, posted shift, Board, Log).
     // The owner-only developer panel remains outside production route coverage.
-    expect(manifest.routeCoverage.discovered).toHaveLength(165);
+    expect(manifest.routeCoverage.discovered).toHaveLength(167);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);
