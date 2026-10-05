@@ -10,7 +10,7 @@ import { ModeBand } from "@/components/mode-band/mode-band";
  */
 export default async function TeachingLayout({ children }: { children: ReactNode }) {
   return (
-    <ModeBand modeId="teaching">
+    <ModeBand modeId="teaching" hiddenOn={["/teaching/resources/"]}>
       <TeachingSampleChrome cookieSample={await teachingSampleOn()} />
       {children}
     </ModeBand>

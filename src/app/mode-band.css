@@ -136,13 +136,6 @@
   color: var(--text-heading);
 }
 
-.mode-band__title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--spacing) * 3);
-}
-
 .mode-band__status {
   margin-top: calc(var(--spacing) * 1.5);
   min-height: 1.375rem;
@@ -150,9 +143,14 @@
   align-items: center;
 }
 
-/* A slot no page has filled (a signed-in Roster) takes no room. */
+/* A slot no page has filled (a signed-in Roster) takes no room, unless a page
+   rendered on the server has said a status is coming (ModeBandStatus). */
 .mode-band__status:empty {
   display: none;
+}
+
+:root:has([data-mode-band-reserve]) .mode-band__status:empty {
+  display: flex;
 }
 
 .mode-band__saved {
@@ -333,6 +331,10 @@
 }
 
 /* Fades the row's right edge so a cut-off tab reads as "more this way". */
+.mode-band__tabs:not([data-more]) .mode-band__tab-fade {
+  display: none;
+}
+
 .mode-band__tab-fade {
   position: absolute;
   top: 0;
@@ -349,12 +351,8 @@
 }
 
 /* Wide screens: the band's text sits in the same 720px column as a page's
-   content (the column plus the gutter each side), every tab fits, so no fade. */
-@media (min-width: 700px) {
-  .mode-band__tab-fade {
-    display: none;
-  }
-}
+   content (the column plus the gutter each side). The fade still shows there
+   while a tab is cut off (First Nations has nine). */
 
 /* Large text (about 200%): the band is narrower than 20 of its own rems, so
    Customise keeps only its icon. The title keeps its size and wraps, and the date stays in full. */
@@ -429,8 +427,9 @@ html[data-mode-band] [data-testid="chrome-safe-area-top"] {
 
 /* Under a band a page's own title is kept for screen readers only. A wrapper
    left holding nothing but that heading must not still take a gap in its
-   grid, or the page starts a row lower than the band's tabs suggest. */
-html[data-mode-band] :is(div, header):has(> [data-under-band]:only-child),
-html[data-mode-band] :is(div, header):has(> div:only-child > [data-under-band]:only-child) {
+   grid, or the page starts a row lower than the band's tabs suggest. The
+   marker is in the server HTML, so this holds from the first paint. */
+:is(div, header):has(> [data-under-band]:only-child),
+:is(div, header):has(> div:only-child > [data-under-band]:only-child) {
   display: contents;
 }

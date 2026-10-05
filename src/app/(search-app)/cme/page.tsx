@@ -58,10 +58,7 @@ export default async function CmeHomeRoute({ searchParams }: { searchParams: Pro
     loadCmePageData(year, { drafts: true, trainingPosition: true, nextYear: true }),
     isDemoMode() ? Promise.resolve(null) : loadReportingReminder(now, year ?? cpdYearOf(now)),
   ]);
-  // A year with no target yet but with logged activities still opens the dashboard,
-  // with no target and no requirements, so the activities are not hidden behind a notice.
-  const unconfiguredWithActivities = data.state === "unconfigured" && data.entries.some((entry) => !entry.archivedAt);
-  if (data.state !== "ready" && !unconfiguredWithActivities) {
+  if (data.state !== "ready") {
     return (
       <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
         <CmeStateNotice state={data.state} year={data.year} />
@@ -71,11 +68,7 @@ export default async function CmeHomeRoute({ searchParams }: { searchParams: Pro
   return (
     <CmeDashboardRoute
       reportingReminder={reportingReminder}
-      set={
-        unconfiguredWithActivities
-          ? { ...(data.set ?? placeholderSet(data.year)), totalHours: 0, requirements: [] }
-          : (data.set ?? placeholderSet(data.year))
-      }
+      set={data.set ?? placeholderSet(data.year)}
       entries={data.entries}
       nowIso={data.now.toISOString()}
       routines={data.routines}

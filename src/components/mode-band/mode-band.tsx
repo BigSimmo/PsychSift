@@ -93,7 +93,13 @@ const ModeBandCountContext = createContext<(tabId: string, count: number | null)
 const ModeBandStatusKindContext = createContext<(kind: ModeBandStatusValue["kind"] | null) => void>(() => {});
 
 /** Counts could be wrong or invented while records are out of reach or examples. */
-const COUNTS_HIDDEN: ReadonlySet<ModeBandStatusValue["kind"]> = new Set(["offline", "loading", "sample", "failed"]);
+const COUNTS_HIDDEN: ReadonlySet<ModeBandStatusValue["kind"]> = new Set([
+  "offline",
+  "loading",
+  "sample",
+  "failed",
+  "error",
+]);
 
 /**
  * Puts a page's to-do count on one of its mode's tabs ("Log 3") while that
@@ -131,7 +137,7 @@ function greetingFor(now: Date): string {
 
 /** The greeting, settled after hydration so a cached page never greets the wrong part of the day. */
 function GreetingTitle({ fallback }: { fallback: string }) {
-  const now = useClientTime();
+  const now = useClientTime({ updateInterval: 60_000 });
   return <>{now ? greetingFor(new Date(now)) : fallback}</>;
 }
 
@@ -153,11 +159,12 @@ function isHidden(pathname: string, hiddenOn: readonly string[] | undefined): bo
 
 /**
  * Today's date, rendered after hydration so a server in another timezone, or a
- * page cached across midnight, can never show yesterday. The row keeps its
- * height either way.
+ * page cached across midnight, can never show yesterday, and checked each
+ * minute so a page left open moves on at midnight. The row keeps its height
+ * either way.
  */
 function TodayDate() {
-  const time = useClientTime();
+  const time = useClientTime({ updateInterval: 60_000 });
   if (!time) return <span className="mode-band__date" />;
   const now = new Date(time);
   return <span className="mode-band__date">{dateLong.format(now)}</span>;
@@ -221,9 +228,10 @@ function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId) {
 
 /**
  * Scrolls the tab row sideways, never the page, so the current tab is in view
- * when a page opens on a tab past the phone's edge.
+ * when a page opens on a tab past the phone's edge, or when a tab that arrives
+ * after loading (Roster's Team, Teaching's Organise) pushes it there.
  */
-function useCurrentTabInView(activeId: string | null) {
+function useCurrentTabInView(activeId: string | null, tabKey: string) {
   const [row, setRow] = useState<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     const current = row?.querySelector<HTMLElement>('[aria-current="page"]');
@@ -233,7 +241,24 @@ function useCurrentTabInView(activeId: string | null) {
     if (left < row.scrollLeft || right > row.scrollLeft + row.clientWidth) {
       row.scrollTo({ left: Math.max(0, left - (row.clientWidth - current.offsetWidth) / 2) });
     }
-  }, [row, activeId]);
+  }, [row, activeId, tabKey]);
+  // The edge fade shows only while a tab is still cut off to the right, so it
+  // never dims the last tab once the row is scrolled to its end, or fits.
+  useLayoutEffect(() => {
+    const nav = row?.parentElement;
+    if (!row || !nav) return;
+    const update = () => {
+      nav.toggleAttribute("data-more", row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
+    };
+    update();
+    row.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(row);
+    return () => {
+      row.removeEventListener("scroll", update);
+      observer?.disconnect();
+    };
+  }, [row, tabKey]);
   return setRow;
 }
 
@@ -251,6 +276,18 @@ function useCurrentTabInView(activeId: string | null) {
  * Scrolling therefore takes the band with the page, and the top bar keeps its
  * own single hide-and-reveal (docs/search-chrome-behaviour.md).
  */
+/**
+ * The tab naming this page. The shared page list answers for most modes; a mode
+ * it has no rule for (First Nations) still marks a tab whose link is this page.
+ */
+function bandActiveId(modeId: AppModeId, pathname: string): string | null {
+  return (
+    activeModeSecondaryNavigationId(modeId, pathname) ??
+    modeSecondaryNavigationEntries(modeId).find((entry) => entry.href?.split(/[?#]/)[0] === pathname)?.id ??
+    null
+  );
+}
+
 export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   const pathname = usePathname() ?? "";
   const [pageCounts, setPageCounts] = useState<Readonly<Record<string, number>>>({});
@@ -267,7 +304,7 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   const [pageStatusKind, setPageStatusKind] = useState<ModeBandStatusValue["kind"] | null>(null);
   const statusKind = pageStatusKind ?? props.status?.kind ?? null;
   const hideCounts = statusKind !== null && COUNTS_HIDDEN.has(statusKind);
-  const activeId = activeModeSecondaryNavigationId(props.modeId, pathname);
+  const activeId = bandActiveId(props.modeId, pathname);
   const shown =
     !isHidden(pathname, props.hiddenOn) &&
     (activeId !== null || pathname === (props.homePath ?? modeHomePath(props.modeId)));
@@ -314,7 +351,7 @@ function ModeBandHeader({
   }, [tabs, modeId, teachingRoles, rosterHasTeam]);
 
   usePublishBandSurface(band, modeId);
-  const tabRow = useCurrentTabInView(activeId);
+  const tabRow = useCurrentTabInView(activeId, tabEntries.map((entry) => entry.id).join(" "));
 
   const Icon = appModeIcons[modeId];
   const modeName = appModeDefinition(modeId).label;
@@ -323,8 +360,11 @@ function ModeBandHeader({
     status !== undefined || (Array.isArray(statusSlot) ? statusSlot.includes(pathname) : Boolean(statusSlot));
 
   return (
-    <div
+    // A named region, so everything on the page sits in a landmark; a header
+    // element would add a second page banner beside the top bar's.
+    <section
       ref={setBand}
+      aria-label={modeName}
       className="mode-band"
       data-testid="mode-band"
       data-mode-identity={IDENTITY_MODES.has(modeId) ? modeId : undefined}
@@ -402,7 +442,7 @@ function ModeBandHeader({
       ) : (
         <div aria-hidden="true" className="mode-band__end" />
       )}
-    </div>
+    </section>
   );
 }
 
@@ -467,7 +507,7 @@ function SampleLine() {
 }
 
 function StatusLine({ value }: { value: ModeBandStatusValue }) {
-  const time = useClientTime();
+  const time = useClientTime({ updateInterval: 60_000 });
   switch (value.kind) {
     case "saved": {
       const at = typeof value.at === "string" ? new Date(value.at) : value.at;
@@ -506,7 +546,7 @@ function StatusLine({ value }: { value: ModeBandStatusValue }) {
         <button type="button" className="mode-band__retry" onClick={value.onRetry}>
           <span className="mode-band__warning">
             <CircleAlert aria-hidden="true" className="mode-band__saved-tick" strokeWidth={2.25} />
-            Not saved ·<span className="mode-band__retry-word">Try again</span>
+            Not saved · <span className="mode-band__retry-word">Try again</span>
           </span>
         </button>
       );
@@ -554,6 +594,9 @@ export function ModeBandStatus({ value, testId }: { value: ModeBandStatusValue |
     return () => setStatusKind(null);
   }, [setStatusKind, kind]);
   if (!value) return null;
+  // Before hydration the band's slot is empty and so takes no room; this marker
+  // tells it to keep the line, so the band does not grow when the status arrives.
+  if (shown && host === undefined) return <span hidden data-mode-band-reserve="" />;
   const line = (
     <span
       role={value.kind === "error" ? "alert" : "status"}
