@@ -230,7 +230,16 @@
         "src/app/(search-app)/roster/swaps/page.tsx",
         "src/app/(search-app)/roster/requests/page.tsx",
         "src/app/(search-app)/roster/manage/page.tsx",
-        "src/app/(search-app)/roster/join/page.tsx"
+        "src/app/(search-app)/roster/join/page.tsx",
+        "src/app/(search-app)/open-shifts/page.tsx",
+        "src/app/(search-app)/open-shifts/shift/[serviceId]/[openShiftId]/page.tsx",
+        "src/app/(search-app)/open-shifts/mine/page.tsx",
+        "src/app/(search-app)/open-shifts/alerts/page.tsx",
+        "src/app/(search-app)/open-shifts/post/page.tsx",
+        "src/app/(search-app)/open-shifts/post/new/page.tsx",
+        "src/app/(search-app)/open-shifts/post/[serviceId]/[openShiftId]/page.tsx",
+        "src/app/(search-app)/open-shifts/board/page.tsx",
+        "src/app/(search-app)/open-shifts/log/page.tsx"
       ],
       "routeRoots": true,
       "roots": [],
