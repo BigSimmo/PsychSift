@@ -106,7 +106,7 @@ function Screen(props: ScreenProps & { view: AssessmentsView }) {
 }
 
 /** The made-up records' own controls: a plain statement that nothing is kept, and a made-up date to move. */
-function SampleBar({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
+function SampleBar({ s, dispatch, showDate }: Pick<ScreenProps, "s" | "dispatch"> & { showDate: boolean }) {
   return (
     <div
       className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
@@ -116,20 +116,22 @@ function SampleBar({ s, dispatch }: Pick<ScreenProps, "s" | "dispatch">) {
         <Info aria-hidden="true" className="size-icon-sm shrink-0" />
         Made-up example records. Nothing is saved or sent.
       </p>
-      <label className={cn("flex items-center gap-2 text-sm-minus", textMuted)}>
-        Made-up date
-        <select
-          value={String(s.now)}
-          onChange={(event) => dispatch({ type: "set-now", now: Number(event.target.value) })}
-          className={cn(fieldControlPlain, "w-auto pr-8")}
-        >
-          {DATE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      {showDate ? (
+        <label className={cn("flex items-center gap-2 text-sm-minus", textMuted)}>
+          Made-up date
+          <select
+            value={String(s.now)}
+            onChange={(event) => dispatch({ type: "set-now", now: Number(event.target.value) })}
+            className={cn(fieldControlPlain, "w-auto pr-8")}
+          >
+            {DATE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
     </div>
   );
 }
@@ -147,20 +149,18 @@ function AssessmentsApp() {
   const home = view === "home";
   return (
     <div className="grid gap-3" data-mode-identity="teaching">
+      <SampleBar s={s} dispatch={dispatch} showDate={home} />
       {home ? (
-        <>
-          <SampleBar s={s} dispatch={dispatch} />
-          <SegmentedControl
-            label="Whose assessments"
-            layout="equal"
-            value={role}
-            onChange={(next) => go(viewHref("home", next === "supervisor" ? { as: "supervisor" } : {}))}
-            options={[
-              { value: "doctor", label: "My training" },
-              { value: "supervisor", label: "I supervise" },
-            ]}
-          />
-        </>
+        <SegmentedControl
+          label="Whose assessments"
+          layout="equal"
+          value={role}
+          onChange={(next) => go(viewHref("home", next === "supervisor" ? { as: "supervisor" } : {}))}
+          options={[
+            { value: "doctor", label: "My training" },
+            { value: "supervisor", label: "I supervise" },
+          ]}
+        />
       ) : null}
       <Screen {...props} view={view} />
       <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} />

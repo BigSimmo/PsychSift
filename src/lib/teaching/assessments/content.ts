@@ -244,7 +244,7 @@ export function supervisionLevelName(id: SupervisionLevel): string {
 }
 
 export const GLOSSARY: readonly [string, string][] = [
-  ["AMC", "Australian Medical Council. Sets the national rules for PGY1 and PGY2 training."],
+  ["AMC", "Australian Medical Council. Sets the national framework for PGY1 and PGY2 training."],
   ["PMCWA", "Postgraduate Medical Council of WA. Runs the framework in WA."],
   ["MEU", "Medical Education Unit. Your hospital's team for forms, due dates and support."],
   ["DCT", "Director of Clinical Training. Senior doctor responsible for junior doctors' training at your hospital."],
@@ -254,8 +254,8 @@ export const GLOSSARY: readonly [string, string][] = [
     "Entrustable professional activity. A short observed task (like a clinical assessment) rated by how much supervision you needed.",
   ],
   ["IPAP", "Improving Performance Action Plan. Extra support with goals and a review date."],
-  ["Assessment Review Panel", "Decides at the end of the year whether you've completed PGY1 or PGY2."],
-  ["CLA", "Clinical Learning Australia. The official WA e-portfolio."],
+  ["Assessment Review Panel", "Recommends at the end of the year whether you've completed PGY1 or PGY2."],
+  ["CLA", "Clinical Learning Australia. The national e-portfolio used in WA."],
   [
     "A, B, C, D",
     "Kinds of experience: undifferentiated illness, chronic illness, acute and critical illness, peri-operative/procedural.",

@@ -234,7 +234,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
               {mid
                 ? "There's no overall rating at mid-term."
                 : s.sigs.doc
-                  ? "Not final until the DCT countersigns. The Assessment Review Panel decides the year."
+                  ? "Not final until the DCT countersigns. The Assessment Review Panel reviews the year."
                   : "Not final until you've both signed and the DCT countersigns."}
             </p>
           </div>
@@ -409,7 +409,7 @@ function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => voi
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-[color:var(--text-muted)]"
         >
-          Sign here with your finger
+          Sign here with your finger, or type your name below
         </span>
       )}
       <canvas

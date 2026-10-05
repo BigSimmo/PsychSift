@@ -71,14 +71,14 @@ export function ConcernsHelp({ openSheet }: ScreenProps) {
         back={viewHref("home")}
         backLabel="Assessments"
         title="Concerns and help"
-        subtitle="Not shared with your supervisor"
+        subtitle="PsychSift doesn't tell your supervisor"
       />
       <Inset tone="warm" icon={Phone} title="In danger now? Call 000.">
         For urgent support, Lifeline is on 13 11 14, 24 hours.
       </Inset>
       <p className={cn(secondaryText, "px-1")}>
-        Opening this page isn&apos;t shared with anyone. PsychSift doesn&apos;t receive or pass on complaints; these are
-        the usual routes in WA.
+        PsychSift doesn&apos;t tell anyone you opened this page. PsychSift doesn&apos;t receive or pass on complaints;
+        these are the usual routes in WA.
       </p>
       <SectionLabel>About an assessment</SectionLabel>
       <List>
@@ -123,7 +123,7 @@ export function ConcernsHelp({ openSheet }: ScreenProps) {
           tag={<PhoneNumber>(08) 9222 4010</PhoneNumber>}
         />
       </List>
-      <SectionLabel end={<SectionNote>Confidential</SectionNote>}>Your wellbeing</SectionLabel>
+      <SectionLabel end={<SectionNote>Usually confidential</SectionNote>}>Your wellbeing</SectionLabel>
       <List>
         <Row
           icon={Heart}

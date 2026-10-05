@@ -148,6 +148,13 @@ describe("Teaching assessments: the end-of-term story", () => {
     expect(currentStepNumber(sent)).toBe(8);
   });
 
+  it("dates the request on the made-up day it was sent and never claims a real email", () => {
+    const s = run({ type: "set-now", now: 1 }, { type: "send-request" }, { type: "set-now", now: 4 });
+    expect(endOfTermSteps(s)[1]).toMatchObject({ state: "ok", detail: "Sent Tue 27 Oct" });
+    const sent = endOfTermSteps(assessmentsReducer(storyTo("doc-signed"), { type: "sent-to-meu" }));
+    expect(sent[6].detail).toBe("Marked as sent (made-up)");
+  });
+
   it("flags a late supervisor from Thu 5 Nov", () => {
     const late = run({ type: "send-request" }, { type: "set-now", now: 8 });
     expect(endOfTermSteps(late)[2]).toMatchObject({ state: "now", detail: "Not finished yet" });

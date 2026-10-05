@@ -62,7 +62,7 @@ export type AssessmentsState = {
   now: number;
   self: AssessmentForm;
   sup: AssessmentForm;
-  request: { sent: boolean; message: string; registrar: boolean };
+  request: { sent: boolean; sentOn: number; message: string; registrar: boolean };
   share: { epa: boolean; mid: boolean; log: boolean };
   booking: { day: number; time: string } | null;
   meetingDay: number | null;
@@ -100,7 +100,7 @@ export function initialAssessmentsState(): AssessmentsState {
     now: -1,
     self: blankForm(),
     sup: blankForm(),
-    request: { sent: false, message: "", registrar: false },
+    request: { sent: false, sentOn: -1, message: "", registrar: false },
     share: { epa: true, mid: true, log: false },
     booking: null,
     meetingDay: null,
@@ -302,7 +302,9 @@ export function endOfTermSteps(s: AssessmentsState): Step[] {
             "Rate yourself (optional)",
             s.self.status === "draft" ? `Saved at step ${s.self.step + 1} of 8` : "About 10 minutes",
           ),
-    sent ? step("ok", `Ask ${SUP}`, "Sent Mon 5 Oct") : step("now", `Ask ${SUP}`, "Due to the MEU Fri 20 Nov"),
+    sent
+      ? step("ok", `Ask ${SUP}`, `Sent ${dayLabel(s.request.sentOn)}`)
+      : step("now", `Ask ${SUP}`, "Due to the MEU Fri 20 Nov"),
     supReady(s)
       ? step("ok", `${SUP} prepares her view`, "Draft done")
       : sent
@@ -326,7 +328,7 @@ export function endOfTermSteps(s: AssessmentsState): Step[] {
         ? step("now", "You sign", "Read your report first")
         : step("lock", "You sign", `After ${SUP}`),
     s.sentToMeu
-      ? step("ok", "Email the PDF to your MEU", "Sent")
+      ? step("ok", "Email the PDF to your MEU", "Marked as sent (made-up)")
       : s.sigs.doc
         ? step("now", "Email the PDF to your MEU", "By Fri 20 Nov. PsychSift doesn't send it for you.")
         : step("lock", "Email the PDF to your MEU", "By Fri 20 Nov"),
@@ -591,7 +593,7 @@ export function assessmentsReducer(s: AssessmentsState, a: AssessmentsAction): A
     case "set-request-message":
       return s.request.sent ? s : { ...s, request: { ...s.request, message: a.value } };
     case "send-request":
-      return s.request.sent ? s : { ...s, request: { ...s.request, sent: true } };
+      return s.request.sent ? s : { ...s, request: { ...s.request, sent: true, sentOn: s.now } };
     case "toggle-remind-open":
       return { ...s, remindWhenOpen: !s.remindWhenOpen };
     case "toggle-my-day":

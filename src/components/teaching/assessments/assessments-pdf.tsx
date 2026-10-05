@@ -190,7 +190,7 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
       <Inset
         tone="plain"
         icon={Check}
-        title={s.sentToMeu ? "Signed by you both · emailed to your MEU" : "Signed by you both · not sent yet"}
+        title={s.sentToMeu ? "Signed by you both · marked as emailed (made-up)" : "Signed by you both · not sent yet"}
       >
         {s.sentToMeu
           ? "The DCT countersigns next. Your MEU tells you when it's done."
