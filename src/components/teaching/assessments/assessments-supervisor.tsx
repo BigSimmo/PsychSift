@@ -112,9 +112,9 @@ export function SupervisorHome({ s, dispatch, openSheet }: ScreenProps) {
       s.booking ? `Meeting ${bookingLabel(s.booking)}` : "Sam hasn't booked yet",
     ],
     met: [{ label: "Sign now", tone: "warm" }, viewHref("side", asSup), `Discussed ${meetingDate(s)}`],
-    "sup-signed": [{ label: "Signed", tone: "ok" }, viewHref("side", asSup), "Waiting for Sam to sign"],
+    "sup-signed": [{ label: "Signed", tone: "neutral" }, viewHref("side", asSup), "Waiting for Sam to sign"],
     "doc-signed": [
-      { label: "Done", tone: "ok" },
+      { label: "Awaiting DCT countersign", tone: "neutral" },
       viewHref("side", asSup),
       "Signed by you both · Sam emails it to the MEU",
     ],

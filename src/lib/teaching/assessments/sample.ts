@@ -167,13 +167,13 @@ export const INITIAL_AVAILABILITY: Readonly<Record<number, readonly string[]>> =
 export type Ticks = Record<DomainNumber, string[]>;
 export type Ratings = Record<DomainNumber, Rating | null>;
 
-export function ticksAllExcept(except: readonly string[]): Ticks {
+function ticksAllExcept(except: readonly string[]): Ticks {
   const ticks = {} as Ticks;
   for (const d of DOMAINS) ticks[d.n] = d.outcomes.map((o) => o.id).filter((id) => !except.includes(id));
   return ticks;
 }
 
-export type ExampleAnswers = {
+type ExampleAnswers = {
   sources: string[];
   ticks: Ticks;
   ratings: Record<DomainNumber, Rating>;

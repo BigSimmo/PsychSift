@@ -303,7 +303,6 @@ export function BookMeeting({ s, dispatch }: ScreenProps) {
           <Button
             variant={s.remindWhenOpen ? "secondary" : "primary"}
             icon={s.remindWhenOpen ? Check : Bell}
-            aria-pressed={s.remindWhenOpen}
             onClick={() => dispatch({ type: "toggle-remind-open" })}
           >
             {s.remindWhenOpen ? "Reminder set" : "Remind me when it opens"}

@@ -123,7 +123,11 @@ const sig = (text: string | null | undefined) =>
 export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
   const [zoom, setZoom] = useState(false);
   const [sentNote, setSentNote] = useState(false);
-  const of = params.get("of") ?? "blank";
+  // A past term with no saved form, or an unknown form, opens the blank form rather than a filled-looking one.
+  const asked = params.get("of");
+  const pastTerm = asked === "past" ? sampleTerm(params.get("term")) : null;
+  const hasPast = !!pastTerm && !!SAMPLE_PAST_FORMS[pastTerm.id as "t1" | "t2" | "t3"];
+  const of = (asked === "past" && hasPast) || asked === "mid" || asked === "eot" ? asked : "blank";
   const blank = of === "blank";
   const past = of === "past";
   let f: Filled = blankForm();
@@ -134,10 +138,9 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
   let supDate = "";
   let docDate = "";
   if (past) {
-    term = sampleTerm(params.get("term"));
+    term = pastTerm!;
     kind = params.get("kind") === "mid" ? "mid" : "eot";
-    const forms = SAMPLE_PAST_FORMS[term.id as "t1" | "t2" | "t3"];
-    if (forms) f = fromPast(forms[kind]);
+    f = fromPast(SAMPLE_PAST_FORMS[term.id as "t1" | "t2" | "t3"]![kind]);
     supSig = sig(term.supervisor.replace("Dr ", ""));
     docSig = sig("Sam Lee");
     supDate = docDate = (kind === "eot" ? term.signed : term.midSigned) ?? "";
@@ -211,17 +214,15 @@ export function FormPdf({ s, params, role, dispatch }: ScreenProps) {
       {status}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-[color:var(--text-muted)]">3 pages · A4</span>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={zoom ? Minus : Plus}
-          aria-pressed={zoom}
-          onClick={() => setZoom((z) => !z)}
-        >
+        <Button variant="secondary" size="sm" icon={zoom ? Minus : Plus} onClick={() => setZoom((z) => !z)}>
           {zoom ? "Fit to screen" : "Zoom to full size"}
         </Button>
       </div>
-      <div className={cn("grid gap-3", zoom ? "overflow-x-auto" : "")} data-testid="teaching-assessments-paper">
+      <div
+        className={cn("grid gap-3", zoom ? "overflow-x-auto" : "")}
+        data-testid="teaching-assessments-paper"
+        {...(zoom ? { tabIndex: 0, role: "region", "aria-label": "Form page, scroll sideways to read" } : {})}
+      >
         <div className={cn("grid gap-3", zoom ? "w-[600px] text-xs" : "text-2xs")}>
           <Paper page={1}>
             <div className="flex items-baseline justify-between gap-2 border-b-2 border-[color:var(--text-heading)] pb-1">

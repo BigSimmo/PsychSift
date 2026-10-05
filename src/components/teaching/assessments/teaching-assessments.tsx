@@ -3,7 +3,7 @@
 import { ClipboardCheck, Info } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useReducer, useState, type Dispatch } from "react";
+import { Suspense, useCallback, useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -147,8 +147,28 @@ function AssessmentsApp() {
   const go = useCallback((href: string) => router.push(href), [router]);
   const props: ScreenProps = { s, dispatch, params, role, openSheet: setSheet, go };
   const home = view === "home";
+  const root = useRef<HTMLDivElement>(null);
+  const place = params.toString();
+  const first = useRef(true);
+  useEffect(() => {
+    // On every move to another screen (not the first load): close any open sheet and put focus on the new screen's title.
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    setSheet(null);
+    const heading =
+      root.current?.querySelector<HTMLElement>("[data-screen-heading]") ??
+      root.current?.querySelector<HTMLElement>("h2");
+    if (heading && !heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+    heading?.focus({ preventScroll: true });
+  }, [place]);
   return (
-    <div className="grid gap-3" data-mode-identity="teaching">
+    <div
+      ref={root}
+      className="grid gap-3 [&_:is(input,textarea,select,button)]:scroll-mb-20"
+      data-mode-identity="teaching"
+    >
       <SampleBar s={s} dispatch={dispatch} showDate={home} />
       {home ? (
         <SegmentedControl

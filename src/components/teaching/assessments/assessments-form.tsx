@@ -64,7 +64,13 @@ function StepHeading({ eyebrow, title, detail }: { eyebrow: string; title: strin
   return (
     <div className="grid gap-1 px-0.5" data-mode-identity="teaching">
       <Eyebrow accent>{eyebrow}</Eyebrow>
-      <h3 className="text-lg font-semibold text-[color:var(--text-heading)]">{title}</h3>
+      <h3
+        tabIndex={-1}
+        data-step-heading
+        className="scroll-mt-24 text-lg font-semibold text-[color:var(--text-heading)] outline-none"
+      >
+        {title}
+      </h3>
       {detail ? <p className={secondaryText}>{detail}</p> : null}
     </div>
   );
@@ -187,7 +193,10 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
   const blind = sup && !supReady(s) ? <BlindNote /> : null;
   const setStep = (to: number) => {
     dispatch({ type: "form-step", who, step: to });
-    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0 });
+    // Move focus to the new step's heading, so keyboard and screen-reader users start at the top of it.
+    window.requestAnimationFrame(() => document.querySelector<HTMLElement>("[data-step-heading]")?.focus());
   };
 
   let body: React.ReactNode;
@@ -374,7 +383,7 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
           detail={
             sup
               ? "Progress towards completing PGY1: working safely, taking more responsibility, and using and learning knowledge and skills."
-              : `Optional. ${SUP}'s rating is the one that counts. Tap again to clear.`
+              : `Optional. ${SUP}'s rating is the one that counts.`
           }
         />
         <fieldset className="grid gap-2">
@@ -390,6 +399,12 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
             />
           ))}
         </fieldset>
+        {!sup && f.global ? (
+          // The reducer clears the doctor's own rating when the same rating is sent again.
+          <Button variant="secondary" onClick={() => dispatch({ type: "set-global", who, rating: f.global! })}>
+            Clear my rating
+          </Button>
+        ) : null}
         {sup && (f.global === "cond" || f.global === "unsat") ? (
           <Inset tone="bad" title="This needs the DCT involved">
             Before you finish, you&apos;ll be asked to notify the MEU so an improvement plan can start.
@@ -502,7 +517,8 @@ export function AssessmentForm({ s, dispatch, who, go }: ScreenProps & { who: Wh
         ) : null}
         {formMentionsPatient(f) ? (
           <Inset tone="warm" title="Check for patient details">
-            Something you wrote may be a name, URN, date or bed number. Please check before you finish.
+            Something you wrote looks like patient details (a name, URN, date or bed number). This check only catches
+            some, so please read it through before you finish.
           </Inset>
         ) : null}
         {locked ? null : (

@@ -202,7 +202,6 @@ export const EVIDENCE_SOURCES = [
 
 /** The eight steps of the form, in order. */
 export const FORM_STEPS = ["about", "d1", "d2", "d3", "d4", "global", "summary", "review"] as const;
-export type FormStep = (typeof FORM_STEPS)[number];
 export const LAST_FORM_STEP = FORM_STEPS.length - 1;
 
 export type EpaNumber = 1 | 2 | 3 | 4;

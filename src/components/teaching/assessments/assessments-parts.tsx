@@ -21,7 +21,7 @@ import {
  * (text-sm), 20px headings (text-xl).
  */
 
-export const assessmentsPath = "/teaching/assessments";
+const assessmentsPath = "/teaching/assessments";
 
 export type AssessmentsView =
   | "home"
@@ -368,7 +368,13 @@ export function ScreenHeader({
         <ChevronLeft aria-hidden="true" className="size-icon-md" />
       </Link>
       <div className="grid min-w-0 text-center">
-        <h2 className="truncate text-base font-semibold text-[color:var(--text-heading)]">{title}</h2>
+        <h2
+          tabIndex={-1}
+          data-screen-heading
+          className="truncate text-base font-semibold text-[color:var(--text-heading)] outline-none"
+        >
+          {title}
+        </h2>
         {subtitle ? <p className="truncate text-xs text-[color:var(--text-muted)]">{subtitle}</p> : null}
       </div>
       <div className="flex justify-end">{end}</div>

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Check,
   Clock,
   Copy,
   Flag,
@@ -186,7 +187,12 @@ function OptionList<T extends string | number>({
             )}
           >
             <input type="radio" name={name} checked={checked} onChange={() => onChange(o.id)} className="sr-only" />
-            <b className="text-sm font-semibold text-[color:var(--text-heading)]">{o.title}</b>
+            <span className="flex items-start justify-between gap-2">
+              <b className="text-sm font-semibold text-[color:var(--text-heading)]">{o.title}</b>
+              {checked ? (
+                <Check aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]" />
+              ) : null}
+            </span>
             <span className={secondaryText}>{o.detail}</span>
             {o.tag ? <span className="mt-1">{o.tag}</span> : null}
           </label>
@@ -280,6 +286,7 @@ function RecordEpaSheet({
         variant="primary"
         block
         disabled={!level}
+        aria-describedby={level ? undefined : "assess-save-epa-why"}
         onClick={() => {
           if (level) dispatch({ type: "record-epa", index, level });
           close();
@@ -287,6 +294,7 @@ function RecordEpaSheet({
       >
         Save EPA
       </Button>
+      {level ? null : <WhyNot id="assess-save-epa-why">Choose a supervision level first.</WhyNot>}
     </div>
   );
 }

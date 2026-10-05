@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, FileText, Flag, MessageSquare, PenLine, Target, TriangleAlert } from "lucide-react";
+import { FileText, Flag, MessageSquare, PenLine, Target, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, type PointerEvent } from "react";
 
@@ -9,6 +9,7 @@ import {
   Card,
   Eyebrow,
   Inset,
+  KeyValue,
   List,
   Panel,
   Pill,
@@ -158,7 +159,7 @@ function SignatureMark({ who, mid, s }: { who: "sup" | "doc"; mid: boolean; s: S
       <img
         src={sig.image}
         alt={`Signature of ${who === "sup" ? SAMPLE_SUPERVISOR.name : DOC.name}`}
-        className="h-8 w-auto"
+        className="h-8 w-auto dark:invert"
       />
     );
   return <span className="font-serif text-base text-[color:var(--text-heading)] italic">{sig.typed}</span>;
@@ -210,17 +211,14 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
             aria-hidden="true"
             className={cn(
               "grid size-10 shrink-0 place-items-center rounded-full",
-              mid
+              // Nothing shows green before the DCT countersigns, so a good rating stays neutral here.
+              mid || good
                 ? "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
-                : good
-                  ? "bg-[color:var(--success-bg)] text-[color:var(--success-text)]"
-                  : "bg-[color:var(--warning-bg)] text-[color:var(--warning-text)]",
+                : "bg-[color:var(--warning-bg)] text-[color:var(--warning-text)]",
             )}
           >
-            {mid ? (
+            {mid || good ? (
               <MessageSquare aria-hidden="true" className="size-icon-md" />
-            ) : good ? (
-              <Check aria-hidden="true" className="size-icon-md" />
             ) : (
               <TriangleAlert aria-hidden="true" className="size-icon-md" />
             )}
@@ -241,7 +239,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
         </div>
       </Panel>
       {ipap ? (
-        <Inset tone="warm" title="An improvement plan (IPAP) is needed">
+        <Inset tone="warm" title="Under the form, these ratings mean an improvement plan (IPAP) is needed">
           It is extra support with agreed goals and a review date. It is recorded, and the Assessment Review Panel sees
           it at the end of the year. Your DCT or MEU will contact you; you can also start the conversation.
         </Inset>
@@ -366,6 +364,7 @@ export function AssessmentReport({ s, params, openSheet }: ScreenProps) {
 function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => void; label: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  const moved = useRef(false);
   const [drawn, setDrawn] = useState(false);
   const point = (event: PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -375,15 +374,21 @@ function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => voi
     const c = canvas.current;
     const ctx = c?.getContext("2d");
     if (!c || !ctx) return;
-    if (c.width !== c.clientWidth) {
-      c.width = c.clientWidth;
-      c.height = c.clientHeight;
+    // Size the canvas once, at screen density, so later strokes never wipe earlier ones.
+    if (!c.dataset.sized) {
+      const ratio = window.devicePixelRatio || 1;
+      c.width = Math.round(c.clientWidth * ratio);
+      c.height = Math.round(c.clientHeight * ratio);
+      ctx.scale(ratio, ratio);
+      c.dataset.sized = "1";
     }
     c.setPointerCapture(event.pointerId);
     drawing.current = true;
+    moved.current = false;
     ctx.lineWidth = 2.2;
     ctx.lineCap = "round";
-    ctx.strokeStyle = getComputedStyle(c).color;
+    // Fixed ink, so the saved image reads the same in either theme (it is shown inverted in dark).
+    ctx.strokeStyle = "black";
     const [x, y] = point(event);
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -395,10 +400,13 @@ function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => voi
     const [x, y] = point(event);
     ctx.lineTo(x, y);
     ctx.stroke();
+    moved.current = true;
   };
   const end = () => {
     if (!drawing.current) return;
     drawing.current = false;
+    // A tap with no line drawn is not a signature.
+    if (!moved.current) return;
     setDrawn(true);
     onDraw(canvas.current?.toDataURL("image/png") ?? null);
   };
@@ -416,7 +424,7 @@ function SignaturePad({ onDraw, label }: { onDraw: (image: string | null) => voi
         ref={canvas}
         aria-label={label}
         role="img"
-        className="absolute inset-0 size-full touch-none text-[color:var(--text-heading)]"
+        className="absolute inset-0 size-full touch-none dark:invert"
         onPointerDown={begin}
         onPointerMove={move}
         onPointerUp={end}
@@ -466,10 +474,7 @@ export function SignForm({ s, dispatch, go, openSheet, who }: ScreenProps & { wh
             ? `I have completed this assessment and discussed it with ${DOC.first}.`
             : "I confirm I have discussed this report with my term supervisor or delegate, and know that if I disagree with any point I may respond in writing to the Director of Clinical Training within 14 days."}
         </p>
-        <div className="flex items-baseline justify-between gap-3 text-sm">
-          <span className="text-[color:var(--text-muted)]">Meeting held</span>
-          <b className="font-semibold text-[color:var(--text-heading)]">{meetingDate(s) ?? "Not recorded"}</b>
-        </div>
+        <KeyValue k="Meeting held" v={meetingDate(s) ?? "Not recorded"} />
       </Panel>
       <SectionLabel
         end={

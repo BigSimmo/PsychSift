@@ -52,7 +52,7 @@ export type AssessmentForm = {
 
 export type Signature = { typed: string; image: string | null; date: string; day: number };
 
-export type EpaRequest = {
+type EpaRequest = {
   epa: EpaNumber;
   who: "sup" | "reg";
   status: "requested" | "done";

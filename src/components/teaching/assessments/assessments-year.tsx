@@ -48,12 +48,15 @@ import {
   type SampleTerm,
 } from "@/lib/teaching/assessments/sample";
 
-function Meter({ percent }: { percent: number; ok?: boolean }) {
+/** Green only once the DCT has countersigned the term. */
+const SIGNED_PILL = <Pill pill={{ label: "Satisfactory · countersigned", tone: "ok" }} />;
+
+function Meter({ percent }: { percent: number }) {
   return (
     <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-[color:var(--border)]">
       <i
         data-mode-identity="teaching"
-        className={cn("block h-full rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]")}
+        className="block h-full rounded-full bg-[color:var(--mode-identity)] forced-colors:bg-[CanvasText]"
         style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
       />
     </div>
@@ -80,7 +83,7 @@ function Requirement({
         {ok ? <Pill pill={{ label: "On track", tone: "ok" }} /> : null}
       </div>
       <span className={secondaryText}>{value}</span>
-      <Meter percent={percent} ok={ok} />
+      <Meter percent={percent} />
       {note ? <p className="text-xs text-[color:var(--text-muted)]">{note}</p> : null}
     </li>
   );
@@ -143,7 +146,7 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
       <Panel>
         <div className="flex items-center justify-between gap-3">
           <div className="grid min-w-0 gap-1">
-            <Eyebrow accent>Weeks: on track</Eyebrow>
+            <Eyebrow accent>Weeks</Eyebrow>
             <h2 className="text-xl font-semibold text-[color:var(--text-heading)]">{YEAR_WEEKS - w} weeks to go</h2>
             <p className={secondaryText}>
               At least 47 weeks of supervised practice, including professional development leave. Your year runs 2 Feb
@@ -184,7 +187,6 @@ export function YearRequirements({ s, openSheet }: ScreenProps) {
           title="Largest subspecialty"
           value="Geriatric Medicine 23% planned · limit 25%"
           percent={92}
-          ok
           note="Close to the limit. Check with your MEU before swapping into another geriatric term."
         />
         <Requirement title="Service terms (relief, nights)" value="None · limit 20%" percent={0} ok />
@@ -324,7 +326,7 @@ export function TermDetails({ s, params, openSheet }: ScreenProps) {
           state="ok"
           title="End-of-term assessment"
           detail={`Signed ${t.signed} · countersigned by the DCT`}
-          tag={<Pill pill={{ label: "Satisfactory · countersigned", tone: "ok" }} />}
+          tag={SIGNED_PILL}
           href={viewHref("pdf", { of: "past", kind: "eot", term: t.id })}
         />
       </>
@@ -416,7 +418,7 @@ function allItems(s: AssessmentsState): Item[] {
       type: "eot",
       title: "End-of-term",
       detail: `Signed ${t.signed} · countersigned by the DCT`,
-      tag: <Pill pill={{ label: "Satisfactory · countersigned", tone: "ok" }} />,
+      tag: SIGNED_PILL,
       href: viewHref("pdf", { of: "past", kind: "eot", term: t.id }),
     });
     items.push({
