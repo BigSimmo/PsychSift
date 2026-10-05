@@ -1,4 +1,5 @@
-import { formatRecordedDate, renewalStartOn } from "@/lib/admin/renewal-dates";
+import { addDays } from "@/lib/calendar/calendar-event";
+import { formatRecordedDate, formatRelativeDate, renewalStartOn } from "@/lib/admin/renewal-dates";
 import {
   ADMIN_REQUIREMENT_GROUPS,
   requirementChecklistRowsForJob,
@@ -259,4 +260,99 @@ export function complianceExportAboutRows(overview: ComplianceOverview, now: Dat
 /** "Compliance 2026-10-05.xlsx", dated by the Perth day. */
 export function complianceExportFileName(now: Date): string {
   return `Compliance ${perthCalendarDate(now)}.xlsx`;
+}
+
+/**
+ * The page's filter chips (5 Oct mock-up v2): everything, the items that need
+ * the doctor ("Needs action": date passed, start renewing and not recorded
+ * yet), or one status.
+ */
+export type ComplianceFilter = "all" | "needs-action" | ComplianceBucket;
+
+const NEEDS_ACTION: readonly ComplianceBucket[] = ["date-passed", "start-renewing", "not-recorded"];
+
+export function complianceNeedsActionCount(overview: ComplianceOverview): number {
+  return NEEDS_ACTION.reduce((total, bucket) => total + overview.counts[bucket], 0);
+}
+
+export function complianceFilterMatches(filter: ComplianceFilter, item: ComplianceItem): boolean {
+  if (filter === "all") return true;
+  if (filter === "needs-action") return NEEDS_ACTION.includes(item.bucket);
+  return item.bucket === filter;
+}
+
+/** The chips to draw, in order: All, Needs action, then each status that has any items. */
+export function complianceFilterChips(
+  overview: ComplianceOverview,
+): readonly { readonly filter: ComplianceFilter; readonly label: string; readonly count: number }[] {
+  const chips: { filter: ComplianceFilter; label: string; count: number }[] = [
+    { filter: "all", label: "All", count: overview.total },
+  ];
+  const needsAction = complianceNeedsActionCount(overview);
+  if (needsAction > 0) chips.push({ filter: "needs-action", label: "Needs action", count: needsAction });
+  for (const bucket of NEEDS_ACTION) {
+    if (overview.counts[bucket] > 0) {
+      chips.push({ filter: bucket, label: COMPLIANCE_BUCKET_LABELS[bucket], count: overview.counts[bucket] });
+    }
+  }
+  return chips;
+}
+
+/**
+ * The date line under a row: "Renew by 30 Sep 2027 · in 11 months", "Date
+ * passed 28 Sep 2026 · 7 days ago", "No end date", or nothing when no date is
+ * recorded. Always the date the doctor typed, never a guessed one.
+ */
+export function complianceDateLine(item: ComplianceItem, today: string): string | null {
+  if (item.row.state === "not-recorded") return null;
+  if (item.row.state === "no-end-date" || !item.row.expiresOn) return "No end date";
+  const date = item.row.expiresOn;
+  const lead = item.bucket === "date-passed" ? "Date passed" : "Renew by";
+  const relative = formatRelativeDate(date, today);
+  return relative ? `${lead} ${formatRecordedDate(date)} · ${relative}` : `${lead} ${formatRecordedDate(date)}`;
+}
+
+/** Nothing recorded at all: the first-use state, a to-do list rather than a wall of "Not recorded yet". */
+export function complianceIsFirstUse(overview: ComplianceOverview): boolean {
+  return overview.total > 0 && overview.counts["not-recorded"] === overview.total;
+}
+
+/** "Ahpra, Medicare, prescriber, indemnity": the group's item titles as one short line, at most three named. */
+export function complianceGroupNames(group: ComplianceGroup): string {
+  const titles = group.items.map((item) => item.row.item.title);
+  if (titles.length <= 3) return titles.join(", ");
+  return `${titles.slice(0, 2).join(", ")} and ${titles.length - 2} more`;
+}
+
+/** The export page's date switch. "Next 60 days" keeps rows whose recorded date is on or before 60 days from today, passed dates included. */
+export type ComplianceExportRange = "everything" | "next-60-days";
+
+export const COMPLIANCE_EXPORT_SOON_DAYS = 60;
+
+/**
+ * The first sheet, cut to the columns and range the doctor chose. Item is
+ * always kept so no row is anonymous; "Next 60 days" drops rows with no date
+ * or a date further out, and the not-for-this-job rows.
+ */
+export function complianceExportSelection(
+  rows: readonly (readonly string[])[],
+  overview: ComplianceOverview,
+  columns: readonly string[],
+  range: ComplianceExportRange,
+  today: string,
+): string[][] {
+  const header = rows[0] ?? [];
+  const keep = header.map((name, index) => (index === 0 || columns.includes(name) ? index : -1)).filter((i) => i >= 0);
+  let body = rows.slice(1);
+  if (range === "next-60-days") {
+    const limit = addDays(today, COMPLIANCE_EXPORT_SOON_DAYS);
+    const soon = new Set(
+      overview.groups
+        .flatMap((group) => group.items)
+        .filter((item) => item.row.expiresOn !== undefined && item.row.expiresOn <= limit)
+        .map((item) => item.row.item.title),
+    );
+    body = body.filter((row) => soon.has(row[0] ?? "") && row[2] !== "Not for this job");
+  }
+  return [header, ...body].map((row) => keep.map((index) => row[index] ?? ""));
 }
