@@ -241,10 +241,12 @@ describe("CME visual contract", () => {
   describe("the pace projection", () => {
     it("is stated as a sentence tied to the year's end date, once the rate means something", () => {
       render(<CmeDashboard set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={DEMO_CME_INSTANT} />);
-      expect(screen.getByTestId("cme-pace-sentence")).toHaveTextContent(/About 1\.2 h a week reaches 50 h by 31 Dec/);
+      expect(screen.getByTestId("cme-pace-sentence")).toHaveTextContent(/^17\.5 h to go, about 1\.2 h a week\./);
+      // The year's end sits in the same card's label, so the rate is always read against it.
+      expect(screen.getByTestId("cme-year-label")).toHaveTextContent("2026 · about 15 weeks left");
     });
 
-    it("says nothing at all — no sentence, no mark — before 28 days have elapsed", () => {
+    it("gives no weekly rate and no mark before 28 days have elapsed", () => {
       const earlyYearSet: CmeRequirementSet = {
         ...DEMO_CME_YEAR,
         requirements: DEMO_CME_YEAR.requirements.map((requirement) =>
@@ -252,7 +254,7 @@ describe("CME visual contract", () => {
         ),
       };
       render(<CmeDashboard set={earlyYearSet} entries={DEMO_CME_ENTRIES} now={new Date("2026-01-06T02:00:00Z")} />);
-      expect(screen.queryByTestId("cme-pace-sentence")).toBeNull();
+      expect(screen.queryByTestId("cme-pace-sentence")?.textContent ?? "").not.toMatch(/a week/);
       expect(screen.queryByTestId("progress-mark")).toBeNull();
       expect(screen.getByTestId("cme-next-action")).toHaveTextContent(/development plan/i);
     });
@@ -271,7 +273,7 @@ describe("CME visual contract", () => {
     it("on the dashboard", () => {
       render(<CmeDashboard set={DEMO_CME_YEAR} entries={DEMO_CME_ENTRIES} now={DEMO_CME_INSTANT} />);
       const provenance = screen.getByTestId("cme-provenance");
-      expect(provenance).toHaveTextContent(/source recorded by you on/i);
+      expect(provenance).toHaveTextContent(/you confirmed .* on 8 Jan/i);
       expect(provenance).toHaveTextContent(DEMO_CME_YEAR.confirmedSource);
     });
 

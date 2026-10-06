@@ -1,5 +1,6 @@
+import { formatCalendarDateLong, formatCalendarDayMonth } from "@/lib/cme/cpd-year";
 import { evaluateRequirement, totalAllocatedHours } from "@/lib/cme/evaluate";
-import type { CmeEntry, CmeRequirement, CmeRequirementSet } from "@/lib/cme/types";
+import type { CmeEntry, CmeRequirement, CmeRequirementSet, CmeRequirementStatus } from "@/lib/cme/types";
 
 /**
  * The year read the way an audit reads it: every confirmed target, and then
@@ -24,8 +25,10 @@ export type CmeYearCheckRow = {
    * Such a row is never ready and never reported as missing: it says "Not checked".
    */
   readonly notChecked?: boolean;
-  /** One plain status: what is reached, or exactly what is still to go. */
+  /** One plain status: how far a target has come against its figure ("7 of 10 h"), or what a record check found. */
   readonly summary: string;
+  /** The target's own condition beside its figure, for the report ("at least 5 h in each"). */
+  readonly condition?: string;
   /** Activities that count toward this row (targets) or still need attention (records). */
   readonly entryIds: readonly string[];
   readonly action: { readonly label: string; readonly href: string } | null;
@@ -71,6 +74,47 @@ function requirementAction(requirement: CmeRequirement, year: number): CmeYearCh
   }
 }
 
+/**
+ * A target's second line as the CPD pages word it: how far it has come against
+ * its figure ("16.5 of 25 h", "16 of 12.5 h · reached"), the domain that still has
+ * nothing, or the day a task was done. Every figure is the one
+ * `evaluateRequirement` counted; only the wording is this page's.
+ */
+function targetSummary(
+  requirement: CmeRequirement,
+  status: CmeRequirementStatus,
+  entries: readonly CmeEntry[],
+  year: number,
+): string {
+  const spec = requirement.spec;
+  switch (spec.shape) {
+    case "hours-in-category":
+    case "credited-hours":
+    case "hours-across-categories": {
+      const value = status.progress?.value ?? 0;
+      const figure = `${value} of ${spec.minimumHours} h`;
+      if (status.met) return `${figure} · reached`;
+      // The combined figure is reached but one category is still short: name that gap.
+      return value >= spec.minimumHours ? `${figure} · ${status.summary}` : figure;
+    }
+    case "activity-count": {
+      if (status.met) return `All ${spec.buckets.length} covered`;
+      const empty = spec.buckets.filter(
+        (bucket) => entries.filter((entry) => entry.buckets.includes(bucket)).length < spec.minimumPerBucket,
+      );
+      return empty.length === 1
+        ? `${empty[0]} has nothing yet`
+        : `${empty.length} of ${spec.buckets.length} have nothing yet`;
+    }
+    case "task": {
+      const done = requirement.completedOn;
+      if (done === null) return "Not started";
+      // Within its own year the day reads without the year ("Done 3 February").
+      return `Done ${done.startsWith(`${year}-`) ? formatCalendarDayMonth(done) : formatCalendarDateLong(done)}`;
+    }
+  }
+}
+
 function activities(count: number): string {
   return `${count} ${count === 1 ? "activity" : "activities"}`;
 }
@@ -100,7 +144,10 @@ export function buildCmeYearCheck(set: CmeRequirementSet, allEntries: readonly C
       group: "targets",
       label: requirement.label,
       ready: status.met,
-      summary: status.summary,
+      summary: targetSummary(requirement, status, entries, set.year),
+      ...(requirement.spec.shape === "hours-across-categories"
+        ? { condition: `at least ${requirement.spec.minimumEachHours} h in each` }
+        : {}),
       entryIds: contributingEntries(requirement, entries).map((entry) => entry.id),
       action: status.met ? null : requirementAction(requirement, set.year),
     });
@@ -168,7 +215,7 @@ export function buildCmeYearCheck(set: CmeRequirementSet, allEntries: readonly C
     label: "Copied to your CPD home",
     ready: notCopied.length === 0,
     summary:
-      notCopied.length === 0 ? "Every activity is marked as copied" : `${activities(notCopied.length)} not yet copied`,
+      notCopied.length === 0 ? "Every activity is marked copied" : `${activities(notCopied.length)} not marked copied`,
     entryIds: notCopied.map((entry) => entry.id),
     action: notCopied.length === 0 ? null : { label: "Copy them now", href: `/cme/log?year=${set.year}&copy=todo` },
   });
