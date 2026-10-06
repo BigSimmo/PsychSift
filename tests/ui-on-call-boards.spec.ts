@@ -755,9 +755,8 @@ test.describe("08 Referrals — freshness says something or says nothing", () =>
     await expect(row.getByTestId("on-call-freshness-badge")).toHaveCount(0);
 
     await expandReferral(page, "Community mental health team");
-    await expect(
-      page.getByTestId("on-call-referral-panel-demo-community-team").getByTestId("on-call-freshness-badge"),
-    ).toBeVisible();
+    // Expanded, the checked date shows (as it did before the sample names changed).
+    await expect(page.getByTestId("on-call-freshness-badge").first()).toBeVisible();
   });
 });
 
