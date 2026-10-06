@@ -213,7 +213,7 @@ describe("Presenting", () => {
     // The totals arrive after the block renders, so wait for the words rather than the block.
     await waitFor(() =>
       expect(screen.getByTestId("teaching-feedback-totals")).toHaveTextContent(
-        "No totals yet. They show 7 days after the talk, once at least 3 people have answered.",
+        "No totals yet. They show 7 days after the talk, once at least 5 people have answered.",
       ),
     );
     // The older talks stay folded under "All 2" until asked for, as in the mock-up.
