@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeftRight, Bell, ShieldCheck, Smartphone, Users } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { managerWaiting, RosterWaitingBadge } from "@/components/roster/manage/roster-manage-waiting";
 import {

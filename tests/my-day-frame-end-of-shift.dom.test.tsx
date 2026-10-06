@@ -10,7 +10,7 @@ import { REMIND_ME_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 const shiftsState = vi.hoisted(() => ({
   current: {
     status: "ready" as const,
-    shifts: [] as { label: string; startsAt: string; endsAt: string }[],
+    shifts: [] as { title?: string; label?: string; startsAt: string; endsAt: string }[],
     teamLoading: false,
     demoMode: false,
     sample: false,
