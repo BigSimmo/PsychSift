@@ -14,6 +14,8 @@ export default async function CmeYearCheckRoute({ searchParams }: { searchParams
   const requestedYear = query.year ? Number(query.year) : undefined;
   const data = await loadCmePageData(
     Number.isInteger(requestedYear) && requestedYear! >= 2000 && requestedYear! <= 2100 ? requestedYear : undefined,
+    // The CPD rule is shown read-only from the training record (a current stage means a college trainee).
+    { trainingPosition: true },
   );
   if (data.state !== "ready" || !data.set) {
     return (
@@ -22,5 +24,13 @@ export default async function CmeYearCheckRoute({ searchParams }: { searchParams
       </main>
     );
   }
-  return <CmeYearCheckPage set={data.set} entries={data.entries} />;
+  return (
+    <CmeYearCheckPage
+      set={data.set}
+      entries={data.entries}
+      now={data.now}
+      goalCount={data.goals.length}
+      trainingPosition={data.trainingPosition}
+    />
+  );
 }
