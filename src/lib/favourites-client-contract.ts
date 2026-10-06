@@ -7,6 +7,8 @@
  * These parsers still fail closed on malformed successful responses.
  */
 
+import { isValidFavouriteSetName } from "@/lib/favourite-set-name";
+
 export const favouritesContractVersion = 1 as const;
 export const maxFavouritesPerAccount = 2000 as const;
 export const favouriteContentTypes = ["service", "form", "differential", "therapy"] as const;
@@ -20,7 +22,8 @@ export const favouriteSetNames = [
   "Teaching",
   "Reference",
 ] as const;
-export type FavouriteSetName = (typeof favouriteSetNames)[number];
+/** The six original names, now offered as suggestions. Any name passing the set-name rules is allowed. */
+export type FavouriteSetName = string;
 
 export type AccountFavourite = {
   contentType: FavouriteContentType;
@@ -78,7 +81,7 @@ function contentType(value: unknown): value is FavouriteContentType {
 }
 
 function setName(value: unknown): value is FavouriteSetName {
-  return typeof value === "string" && (favouriteSetNames as readonly string[]).includes(value);
+  return isValidFavouriteSetName(value);
 }
 
 function accountFavourite(value: unknown): value is AccountFavourite {

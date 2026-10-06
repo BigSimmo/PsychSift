@@ -6,8 +6,11 @@ import { useId, useState, type ReactNode } from "react";
 
 import { FavouriteTypeTile } from "@/components/favourites/favourite-type-tile";
 import { isSourceBacked, UNSORTED_SET_NAME, type FavouriteItem } from "@/components/favourites/favourites-view-model";
+import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
+import { checkFavouriteSetName, favouriteSetNameMaxLength } from "@/lib/favourite-set-name";
 import type { AccountFavouriteSet, FavouriteSetName } from "@/lib/favourites-client-contract";
 
 export type FavouriteSheetState =
@@ -29,7 +32,7 @@ function ActionIcon({ icon: Icon, className }: { icon: LucideIcon; className?: s
   return <Icon className={cn("size-icon-lg shrink-0 text-[color:var(--text-muted)]", className)} aria-hidden="true" />;
 }
 
-const setNamesNote = "Set names come from a fixed list, so a set name can never hold patient details.";
+const setNamesNote = "Name sets by workflow, never by patient. Set names are saved to your account.";
 
 /** Open, pin, copy, move and remove for one favourite. */
 export function FavouriteActionsSheet({
@@ -223,11 +226,13 @@ export function FavouriteMoveSheet({
   );
 }
 
-/** Create or rename a set by choosing one of the fixed names still free. */
+/** Create or rename a set: type a name, or tap one of the suggested names still free. */
 export function FavouriteSetNameSheet({
   mode,
   open,
-  availableNames,
+  currentName,
+  existingNames,
+  suggestedNames,
   movingCount,
   onClose,
   onChoose,
@@ -236,12 +241,38 @@ export function FavouriteSetNameSheet({
   mode: "create" | "rename";
   open: boolean;
   returnFocusTarget?: () => HTMLElement | null;
-  availableNames: readonly FavouriteSetName[];
+  /** The set's name today, when renaming. */
+  currentName?: string;
+  /** Every set name the account already uses, for the duplicate check. */
+  existingNames: readonly string[];
+  /** Suggested names not yet in use. */
+  suggestedNames: readonly FavouriteSetName[];
   /** Favourites that will move into a newly created set. */
   movingCount: number;
   onClose: () => void;
   onChoose: (name: FavouriteSetName) => void;
 }) {
+  const [draft, setDraft] = useState(currentName ?? "");
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  function submit(value: string) {
+    const check = checkFavouriteSetName(value);
+    if (!check.ok) {
+      setError(check.message);
+      return;
+    }
+    const taken = existingNames.some((name) => name.toLowerCase() === check.name.toLowerCase() && name !== currentName);
+    if (taken) {
+      setError(`You already have a set called ${check.name}.`);
+      return;
+    }
+    if (check.name === currentName) {
+      onClose();
+      return;
+    }
+    onChoose(check.name);
+  }
+
   return (
     <Sheet
       open={open}
@@ -252,20 +283,44 @@ export function FavouriteSetNameSheet({
       resolveReturnFocusTarget={returnFocusTarget}
       bodyClassName="p-2 sm:p-3"
     >
-      {availableNames.length === 0 ? (
-        <p className="px-2 py-3 text-sm text-[color:var(--text-muted)]">
-          Every set name is already in use. Move favourites between your existing sets instead.
-        </p>
-      ) : (
-        <ChoiceList>
-          {availableNames.map((name) => (
-            <button key={name} type="button" className={actionRow} onClick={() => onChoose(name)}>
-              <ActionIcon icon={Folder} />
-              {name}
-            </button>
-          ))}
-        </ChoiceList>
-      )}
+      <form
+        className="grid gap-3 px-2 pt-1"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit(draft);
+        }}
+      >
+        <TextField
+          label="Set name"
+          value={draft}
+          maxLength={favouriteSetNameMaxLength}
+          autoComplete="off"
+          enterKeyHint="done"
+          hint={`Up to ${favouriteSetNameMaxLength} characters.`}
+          error={error}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            if (error) setError(undefined);
+          }}
+        />
+        <Button type="submit" variant="primary" block>
+          {mode === "create" ? "Create set" : "Save name"}
+        </Button>
+      </form>
+      {suggestedNames.length > 0 ? (
+        <>
+          <p className="px-2 pt-4 pb-1 text-sm font-semibold text-[color:var(--text-muted)]">Suggestions</p>
+          <ChoiceList>
+            {suggestedNames.map((name) => (
+              <button key={name} type="button" className={actionRow} onClick={() => submit(name)}>
+                <ActionIcon icon={Folder} />
+                {name}
+              </button>
+            ))}
+          </ChoiceList>
+        </>
+      ) : null}
       {mode === "create" && movingCount > 0 ? (
         <p className="px-2 pt-2 text-sm text-[color:var(--text-muted)]">
           {movingCount === 1 ? "The favourite will move" : `${movingCount} favourites will move`} into the new set.
