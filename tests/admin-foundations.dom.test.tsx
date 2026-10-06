@@ -92,9 +92,9 @@ describe("every On Call link to the moved rows lands on Help (spec review 19)", 
     expect(identity.ON_CALL_VIEW_HREFS.logistics).toBe("/admin/help");
     expect(identity.ON_CALL_VIEW_HREFS.compliance).toBe("/admin/renewals");
 
-    const guide = demo("Demo payslips and pay queries");
-    const building = demo("Demo after-hours entry");
-    const logins = demo("Demo logins, paging and remote access");
+    const guide = demo("Payslips and pay queries");
+    const building = demo("After-hours entry");
+    const logins = demo("Logins, paging and remote access");
     const workforce = demo("What medical workforce does");
     const renewal = complianceFixture("Registration", { category: "Registration" });
     const anchor = (entry: { id: string }) => `#${onCallEntryAnchorId(entry.id)}`;
@@ -169,18 +169,18 @@ describe("phone numbers as Admin prints them (spec rule 11)", () => {
 
 describe("where an old On Call admin row lives in Admin", () => {
   it("sends logins and system access to New job, and building access to Help > On site", () => {
-    expect(adminPlacementForEntry(demo("Demo logins, paging and remote access"))).toBe("new-job");
-    expect(adminPlacementForEntry(demo("Demo after-hours entry"))).toBe("on-site");
-    expect(adminPlacementForEntry(demo("Demo locked wards"))).toBe("on-site");
+    expect(adminPlacementForEntry(demo("Logins, paging and remote access"))).toBe("new-job");
+    expect(adminPlacementForEntry(demo("After-hours entry"))).toBe("on-site");
+    expect(adminPlacementForEntry(demo("Locked wards"))).toBe("on-site");
   });
 
   it("sends the on-call room, food, taxi and security escort to On site, and leave, pay and forms to Guides", () => {
-    expect(adminPlacementForEntry(demo("Demo on-call room"))).toBe("on-site");
-    expect(adminPlacementForEntry(demo("Demo food after hours"))).toBe("on-site");
+    expect(adminPlacementForEntry(demo("On-call room"))).toBe("on-site");
+    expect(adminPlacementForEntry(demo("Food after hours"))).toBe("on-site");
     expect(adminPlacementForEntry(demo("A taxi home after a night shift"))).toBe("on-site");
-    expect(adminPlacementForEntry(demo("Demo security escort"))).toBe("on-site");
-    expect(adminPlacementForEntry(demo("Demo payslips and pay queries"))).toBe("guides");
-    expect(adminPlacementForEntry(demo("Demo leave application form"))).toBe("guides");
+    expect(adminPlacementForEntry(demo("Security escort"))).toBe("on-site");
+    expect(adminPlacementForEntry(demo("Payslips and pay queries"))).toBe("guides");
+    expect(adminPlacementForEntry(demo("Leave application form"))).toBe("guides");
   });
 
   it("places no compliance row and no row from another section", () => {
@@ -192,7 +192,7 @@ describe("where an old On Call admin row lives in Admin", () => {
 
   it("moves only the medical-workforce role explainer to Help > Contacts", () => {
     expect(isAdminWorkforceExplainer(demo("What medical workforce does"))).toBe(true);
-    expect(isAdminWorkforceExplainer(demo("Demo medical workforce unit"))).toBe(false);
+    expect(isAdminWorkforceExplainer(demo("Medical workforce unit"))).toBe(false);
   });
 });
 

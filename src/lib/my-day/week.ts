@@ -15,6 +15,24 @@ export function myDayWeekDates(today: string): string[] {
   return Array.from({ length: MY_DAY_WEEK_DAYS }, (_, index) => addDaysToDate(today, index));
 }
 
+const RANGE_PART = new Intl.DateTimeFormat("en-AU", { weekday: "short", day: "numeric", timeZone: "UTC" });
+const RANGE_MONTH = new Intl.DateTimeFormat("en-AU", { month: "long", timeZone: "UTC" });
+
+/**
+ * The window's range in words, `Sun 4 to Sat 10 October`. The month is named once when both ends share it,
+ * otherwise on each end (`Sun 27 September to Sat 3 October`). Counted from today, never a fixed week.
+ */
+export function myDayWeekRangeLabel(today: string): string {
+  const last = addDaysToDate(today, MY_DAY_WEEK_DAYS - 1);
+  const at = (date: string) => new Date(`${date}T12:00:00Z`);
+  const month = (date: string) => RANGE_MONTH.format(at(date));
+  const part = (date: string) => RANGE_PART.format(at(date)).replace(",", "");
+  const sameMonth = today.slice(0, 7) === last.slice(0, 7);
+  return sameMonth
+    ? `${part(today)} to ${part(last)} ${month(last)}`
+    : `${part(today)} ${month(today)} to ${part(last)} ${month(last)}`;
+}
+
 /** `Today · Sat 3 Oct`, `Tomorrow · Sun 4 Oct`, then `Mon 5 Oct`. */
 export function myDayWeekDayLabel(date: string, today: string): string {
   const day = formatPerthDay(date);

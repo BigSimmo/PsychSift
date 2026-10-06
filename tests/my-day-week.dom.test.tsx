@@ -9,7 +9,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { MyDayItem, MyDaySourceResult } from "@/lib/my-day/model";
 import { DEFAULT_REMINDER_SETTINGS } from "@/lib/reminders/settings";
-import { groupByPerthDay, myDayItemWeekDate, myDayWeekDayLabel, myDayWeekDates } from "@/lib/my-day/week";
+import {
+  groupByPerthDay,
+  myDayItemWeekDate,
+  myDayWeekDayLabel,
+  myDayWeekDates,
+  myDayWeekRangeLabel,
+} from "@/lib/my-day/week";
 
 type ItemsRead = {
   status: "loading" | "ready" | "signed-out";
@@ -150,6 +156,8 @@ describe("My Day week rules", () => {
       "2026-10-08",
       "2026-10-09",
     ]);
+    expect(myDayWeekRangeLabel("2026-10-04")).toBe("Sun 4 to Sat 10 October");
+    expect(myDayWeekRangeLabel("2026-09-27")).toBe("Sun 27 September to Sat 3 October");
     expect(myDayWeekDayLabel("2026-10-03", "2026-10-03")).toBe("Today · Sat 3 Oct");
     expect(myDayWeekDayLabel("2026-10-04", "2026-10-03")).toBe("Tomorrow · Sun 4 Oct");
     expect(myDayWeekDayLabel("2026-10-05", "2026-10-03")).toBe("Mon 5 Oct");
@@ -176,8 +184,8 @@ describe("My Day week rules", () => {
 describe("MyDayWeekPage", () => {
   it("shows seven day lists headed by the Perth date range", () => {
     render(<MyDayWeekPage now={NOW} />);
-    expect(screen.getByRole("heading", { level: 1, name: "Week" })).toBeTruthy();
-    expect(screen.getByTestId("my-day-week-header").textContent).toContain("Sat 3 Oct to Fri 9 Oct");
+    expect(screen.getByRole("heading", { level: 1, name: "This week" })).toBeTruthy();
+    expect(screen.getByTestId("my-day-week-header").textContent).toContain("Sat 3 to Fri 9 October");
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
     expect(headings).toEqual([
       "Today · Sat 3 Oct",

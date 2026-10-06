@@ -36,7 +36,7 @@ export interface MyDaySampleData {
   readonly checked: readonly string[];
 }
 
-const WORKPLACE = "Demo metro psychiatry";
+const WORKPLACE = "Metro psychiatry";
 const NO_HELP: readonly AdminHelpItem[] = [];
 
 /** An ISO instant for a Perth wall-clock time on a Perth date. */
@@ -129,7 +129,7 @@ function sampleItems(today: string, now: Date): MyDayItem[] {
       dated({
         id: "sample:cme:routine",
         mode: "cme",
-        title: "Demo journal club",
+        title: "Journal club",
         detail: "Routine due",
         due: due(-18),
         href: "/cme",
@@ -158,7 +158,7 @@ function sampleItems(today: string, now: Date): MyDayItem[] {
       dated({
         id: "sample:my-work:life-support",
         mode: "my-work",
-        title: "Demo life support course",
+        title: "Life support course",
         detail: "Date has passed",
         due: due(-12),
         href: "/admin/renewals",
@@ -166,7 +166,7 @@ function sampleItems(today: string, now: Date): MyDayItem[] {
       dated({
         id: "sample:my-work:registration",
         mode: "my-work",
-        title: "Demo registration renewal",
+        title: "Registration renewal",
         detail: "Recorded date",
         due: due(52),
         href: "/admin/renewals",
@@ -201,19 +201,19 @@ function sampleCpd(today: string): MyDayDashboardSources["cpd"] {
 export function buildMyDaySample(today: string, now: Date): MyDaySampleData {
   const day = (offset: number) => addDaysToDate(today, offset);
   const ahead = [
-    session("000000000001", today, "14:00", "15:00", "Registrar teaching: agitation", "Demo seminar room 3", false),
-    session("000000000002", day(5), "12:30", "13:30", "Demo journal club", "Demo library", false),
-    session("000000000003", day(12), "14:00", "15:00", "Lithium toxicity", "Demo seminar room 3", true),
-    session("000000000004", day(19), "12:30", "13:30", "Demo grand round", "Demo lecture theatre", false),
+    session("000000000001", today, "14:00", "15:00", "Registrar teaching: agitation", "Seminar room 3", false),
+    session("000000000002", day(5), "12:30", "13:30", "Journal club", "Library", false),
+    session("000000000003", day(12), "14:00", "15:00", "Lithium toxicity", "Seminar room 3", true),
+    session("000000000004", day(19), "12:30", "13:30", "Grand round", "Lecture theatre", false),
   ];
   const hoursFromNow = (hours: number) => new Date(now.getTime() + hours * 3_600_000).toISOString();
   return {
     items: sampleItems(today, now),
     renewals: [
-      { entryId: "sample-life-support", title: "Demo life support course", date: day(-12), href: "/admin/renewals" },
-      { entryId: "sample-registration", title: "Demo registration renewal", date: day(52), href: "/admin/renewals" },
-      { entryId: "sample-cpd-return", title: "Demo CPD annual return", date: day(95), href: "/admin/renewals" },
-      { entryId: "sample-indemnity", title: "Demo indemnity cover", date: day(126), href: "/admin/renewals" },
+      { entryId: "sample-life-support", title: "Life support course", date: day(-12), href: "/admin/renewals" },
+      { entryId: "sample-registration", title: "Registration renewal", date: day(52), href: "/admin/renewals" },
+      { entryId: "sample-cpd-return", title: "CPD annual return", date: day(95), href: "/admin/renewals" },
+      { entryId: "sample-indemnity", title: "Indemnity cover", date: day(126), href: "/admin/renewals" },
     ],
     sources: {
       roster: { status: "ready", shifts: sampleShifts(today), sample: true },

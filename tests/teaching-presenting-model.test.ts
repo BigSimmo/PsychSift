@@ -25,8 +25,8 @@ describe("Presenting's made-up presenter", () => {
 
   it("has the journal club next today at 14:00, three of four ready, its patient check confirmed", () => {
     expect(talkKicker(next, NOW, TODAY)).toBe(`Your next talk · today 14:00 · in 85${NB}min`);
-    expect(next.title).toBe("Demo journal club");
-    expect(next.venue).toBe("Demo library meeting room");
+    expect(next.title).toBe("Journal club");
+    expect(next.venue).toBe("Library meeting room");
     expect(readinessCount(next)).toBe(`3${NB}of 4`);
     expect(readinessAction(next)).toEqual({ kind: "item", item: "room", label: "Confirm the room" });
     expect(deidConfirmedNote(next.deidConfirmedAt!)).toBe(
@@ -38,18 +38,18 @@ describe("Presenting's made-up presenter", () => {
   it("lists three later talks after today, and six talks given", () => {
     expect(afterLabel(next, after, TODAY, true)).toBe("After today");
     expect(after.map((talk) => `${talk.title} · ${upcomingTalkMeta(talk)}`)).toEqual([
-      `Demo registrar teaching · Tue 16:00 · 1${NB}of 4 ready`,
-      "Demo grand rounds · Tue 17:00 · not started",
-      "Demo case presentation · Tue 12:30 · not started",
+      `Registrar teaching · Tue 16:00 · 1${NB}of 4 ready`,
+      "Grand rounds · Tue 17:00 · not started",
+      "Case presentation · Tue 12:30 · not started",
     ]);
     expect(read.taught).toHaveLength(6);
-    expect(read.taught[0].title).toBe("Demo case presentation");
+    expect(read.taught[0].title).toBe("Case presentation");
     expect(feedbackSummary(demoFeedbackTotals())).toMatchObject({ answers: "9 answers", usefulness: "4.4" });
   });
 
-  it("starts every made-up title and room with Demo", () => {
-    for (const talk of [...read.upcoming, ...read.taught]) expect(talk.title).toMatch(/^Demo /);
-    for (const talk of read.upcoming) expect(talk.venue).toMatch(/^Demo /);
+  it("names every made-up title and room plainly, without a Demo prefix", () => {
+    for (const talk of [...read.upcoming, ...read.taught]) expect(talk.title).not.toMatch(/^Demo /);
+    for (const talk of read.upcoming) expect(talk.venue).not.toMatch(/^Demo /);
   });
 
   it("moves the talk to tomorrow once today's has ended", () => {

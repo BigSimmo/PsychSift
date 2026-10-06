@@ -34,13 +34,13 @@ import { mergeMyDayItems } from "@/lib/my-day/merge";
 import { perthWeekday, shiftTitle, weekdayTime } from "@/lib/my-day/quiet-figures";
 import {
   groupByPerthDay,
-  MY_DAY_WEEK_DAYS,
   myDayItemWeekDate,
   myDayWeekDates,
   myDayWeekDayLabel,
+  myDayWeekRangeLabel,
 } from "@/lib/my-day/week";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
-import { addDaysToDate, formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 /** The signed-out sample, downloaded only when a signed-out visitor opens this page. */
 const MyDayWeekSample = dynamic(
@@ -58,7 +58,7 @@ const MyDayWeekSample = dynamic(
 export function MyDayWeekPage({ now }: { now?: Date } = {}) {
   return (
     <MyDayFrame
-      title="Week"
+      title="This week"
       testId="my-day-week"
       now={now}
       signedOutSample={{
@@ -80,10 +80,7 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
           </MyDayWeekSample>
         ),
       }}
-      subtitle={(at) => {
-        const today = perthDateOf(at);
-        return `${formatPerthDay(today)} to ${formatPerthDay(addDaysToDate(today, MY_DAY_WEEK_DAYS - 1))}`;
-      }}
+      subtitle={(at) => myDayWeekRangeLabel(perthDateOf(at))}
     >
       {(at) => <MyDayWeekBody now={at} />}
     </MyDayFrame>

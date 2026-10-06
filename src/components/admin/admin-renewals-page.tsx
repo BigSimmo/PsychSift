@@ -25,7 +25,7 @@ import { EmptyState, InlineNotice } from "@/components/primitive-recipes/feedbac
 import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
-import { Tabs } from "@/components/ui/tabs";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { cn, controlDisabled, IconButton, textMuted } from "@/components/ui-primitives";
 import { complianceBucket, complianceBucketCounts, type ComplianceBucket } from "@/lib/admin/compliance-overview";
 import { renewNext } from "@/lib/admin/renew-next";
@@ -438,13 +438,14 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
         </>
       ) : (
         <>
-          <Tabs
+          <SegmentedControl
             label="Renewals"
             value={tab}
-            onChange={(value) => setTab(value as "checklist" | "personal")}
-            items={[
-              { id: "checklist", label: "Checklist" },
-              { id: "personal", label: "Personal" },
+            onChange={setTab}
+            layout="equal"
+            options={[
+              { value: "checklist", label: "Checklist" },
+              { value: "personal", label: "Personal" },
             ]}
           />
 

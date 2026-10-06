@@ -34,6 +34,9 @@ function monthsFromToday(date: string, today: string): number {
   return (year - start.year) * 12 + (month - start.month) + (day - 1) / daysInMonth;
 }
 
+/** The most rows the chart draws: the soonest eight, as the mock-up shows. */
+const TIMELINE_ROWS = 8;
+
 const percent = (offset: number) => `${(offset / 12) * 100}%`;
 
 /**
@@ -46,7 +49,7 @@ const percent = (offset: number) => `${(offset / 12) * 100}%`;
  * The drawing is decorative to assistive technology: a plain list beside it
  * says the same thing in words (name, recorded date, status word).
  *
- * Shown for at most the five soonest rows with a usable date, so the chart
+ * Shown for at most the eight soonest rows with a usable date, so the chart
  * never grows taller than the list below it; the list itself carries the
  * full count.
  */
@@ -60,7 +63,7 @@ function ChecklistTimeline({
   readonly testId?: string;
 }) {
   const today = perthCalendarDate(now);
-  // The soonest five inside the twelve months the chart draws. A date further
+  // The soonest eight inside the twelve months the chart draws. A date further
   // out is left off rather than pinned to the right edge, where it would read
   // as due within the year.
   const dated = rows
@@ -68,7 +71,7 @@ function ChecklistTimeline({
     .filter((row) => monthsFromToday(row.expiresOn, today) < 12)
     .sort((a, b) => (a.expiresOn === b.expiresOn ? 0 : a.expiresOn < b.expiresOn ? -1 : 1));
   if (dated.length === 0) return null;
-  const items = dated.slice(0, 5);
+  const items = dated.slice(0, TIMELINE_ROWS);
   const startMonth = dateParts(today).month;
   const monthLabels = Array.from({ length: 12 }, (_, offset) => MONTH_NAMES[(startMonth + offset) % 12]);
   const todayLeft = percent(trackOffset(today, today));
