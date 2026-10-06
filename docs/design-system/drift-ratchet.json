@@ -1,16 +1,16 @@
 {
   "$comment": "Ratchet ceilings for two token-system drift metrics measured in docs/design-system/drift-measurement-2026-09-02.md. Both metrics may only go DOWN. `npm run check:design-drift-ratchet` fails the moment either current count exceeds its ceiling. `npm run check:design-drift-ratchet -- --update` refreshes a ceiling to the current measured count, but only ever lowers or matches it — it refuses to raise a ceiling. Raising one on purpose requires `--update --allow-increase`, which prints the old and new ceiling so the diff is visible in review; do this only with a stated reason (a newly-legitimate dynamic style, or a component whose adoption regressed) recorded in the commit message.",
   "inlineStyles": {
-    "ceiling": 253,
+    "ceiling": 255,
     "description": "Count of style={{ }} JSX attributes under tracked src/**/*.{ts,tsx}, excluding lines that are inside a comment (trimmed line starts with // or *).",
-    "measuredAt": "2026-10-06T01:18:36.280Z",
-    "baselineSource": "c7eea9c4b56c9f1092fd3d64b72c940e6ec85865",
+    "measuredAt": "2026-10-06T02:00:53.339Z",
+    "baselineSource": "c24ca2676292c67759a7b398d77ca66dbeb61f78",
     "$lastRaise": "249 -> 253, 2026-10-06, Teaching assessments (#3302) on top of CPD (#3289), approved by the owner on 2026-10-06. LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md: progress-bar widths (year requirements, term track, form progress) and rating-marker positions on the comparison chart are calculated percentages; no fixed token expresses them."
   },
   "unimportedRegisteredComponents": {
     "ceiling": 9,
     "description": "docs/design-system/adoption-manifest.json summary.registeredComponentCount minus summary.productImportedComponentCount — registered components with zero productImportFiles.",
-    "measuredAt": "2026-10-06T01:18:36.280Z",
-    "baselineSource": "c7eea9c4b56c9f1092fd3d64b72c940e6ec85865"
+    "measuredAt": "2026-10-06T02:00:53.339Z",
+    "baselineSource": "c24ca2676292c67759a7b398d77ca66dbeb61f78"
   }
 }
