@@ -1867,6 +1867,10 @@
         "file": "src/app/api/teaching/checkin/complete/route.ts"
       },
       {
+        "path": "/api/alerts/reminders",
+        "file": "src/app/api/alerts/reminders/route.ts"
+      },
+      {
         "path": "/api/calendar/feed",
         "file": "src/app/api/calendar/feed/route.ts"
       },
