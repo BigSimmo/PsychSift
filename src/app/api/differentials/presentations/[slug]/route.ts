@@ -48,7 +48,13 @@ import { z } from "zod";
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
-    const parsedSlug = z.string().trim().min(1).max(120).regex(/^[a-z0-9_-]+$/).parse(slug);
+    const parsedSlug = z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .regex(/^[a-z0-9_-]+$/)
+      .parse(slug);
     const normalizedSlug = normalizeDifferentialSlug(parsedSlug);
 
     if (isDemoMode() || isLocalNoAuthMode()) {

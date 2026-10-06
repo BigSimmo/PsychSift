@@ -47,7 +47,13 @@ function publicMedicationDetailPayload(slug: string) {
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
-    const parsedSlug = z.string().trim().min(1).max(120).regex(/^[a-z0-9_-]+$/).parse(slug);
+    const parsedSlug = z
+      .string()
+      .trim()
+      .min(1)
+      .max(120)
+      .regex(/^[a-z0-9_-]+$/)
+      .parse(slug);
     const normalizedSlug = normalizeMedicationSlug(parsedSlug);
 
     if (isDemoMode() || isLocalNoAuthMode()) {
