@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-06T06:10:52.437Z",
+  "generated_at": "2026-10-06T06:24:08.434Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "f4b63a927d412a1f3cdbf5111b6a598cd4ab3f41845b9faebdefccc6db9e63f0",
-  "replay_seconds": 14,
+  "schema_sha256": "ebb2a1d47a7e1aa52758aee17dd7b4514a73acc0ae518b5b6252533ceaf9191b",
+  "replay_seconds": 21,
   "snapshot": {
     "views": [
       {
@@ -155,94 +155,6 @@
             "name": "updated_at",
             "type": "timestamp with time zone",
             "default": "now()",
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          }
-        ],
-        "reloptions": null,
-        "rls_forced": false,
-        "rls_enabled": true
-      },
-      {
-        "acl": [
-          "postgres=arwdDxtm/postgres",
-          "service_role=arwd/postgres"
-        ],
-        "name": "alert_brief_sent",
-        "columns": [
-          {
-            "name": "owner_id",
-            "type": "uuid",
-            "default": null,
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          },
-          {
-            "name": "perth_date",
-            "type": "date",
-            "default": null,
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          },
-          {
-            "name": "sent_at",
-            "type": "timestamp with time zone",
-            "default": "now()",
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          }
-        ],
-        "reloptions": null,
-        "rls_forced": false,
-        "rls_enabled": true
-      },
-      {
-        "acl": [
-          "postgres=arwdDxtm/postgres",
-          "service_role=arwd/postgres"
-        ],
-        "name": "alert_reminder_times",
-        "columns": [
-          {
-            "name": "created_at",
-            "type": "timestamp with time zone",
-            "default": "now()",
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          },
-          {
-            "name": "due_at",
-            "type": "timestamp with time zone",
-            "default": null,
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          },
-          {
-            "name": "endpoint",
-            "type": "text",
-            "default": null,
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          },
-          {
-            "name": "owner_id",
-            "type": "uuid",
-            "default": null,
-            "identity": "",
-            "not_null": true,
-            "generated": ""
-          },
-          {
-            "name": "ref",
-            "type": "text",
-            "default": null,
             "identity": "",
             "not_null": true,
             "generated": ""
@@ -12821,24 +12733,6 @@
         "def_hash": "9165223f86198fef83600fe36b15dfbf"
       },
       {
-        "def": "CREATE UNIQUE INDEX alert_brief_sent_pkey ON public.alert_brief_sent USING btree (owner_id)",
-        "name": "alert_brief_sent_pkey",
-        "table": "alert_brief_sent",
-        "def_hash": "c9bc7db8555d94c9d18e4af04a570ba2"
-      },
-      {
-        "def": "CREATE INDEX alert_reminder_times_due_idx ON public.alert_reminder_times USING btree (due_at)",
-        "name": "alert_reminder_times_due_idx",
-        "table": "alert_reminder_times",
-        "def_hash": "ed0fa3ca8e08dfd463432986a7812a13"
-      },
-      {
-        "def": "CREATE UNIQUE INDEX alert_reminder_times_pkey ON public.alert_reminder_times USING btree (owner_id, ref)",
-        "name": "alert_reminder_times_pkey",
-        "table": "alert_reminder_times",
-        "def_hash": "cbb497fda0ce6a080f5c8ee95d572e75"
-      },
-      {
         "def": "CREATE INDEX api_rate_limit_subjects_bucket_updated_idx ON public.api_rate_limit_subjects USING btree (bucket, updated_at DESC)",
         "name": "api_rate_limit_subjects_bucket_updated_idx",
         "table": "api_rate_limit_subjects",
@@ -16526,11 +16420,6 @@
         "table": "admin_settings"
       },
       {
-        "def": "CREATE TRIGGER alert_reminder_times_cap BEFORE INSERT ON public.alert_reminder_times FOR EACH ROW EXECUTE FUNCTION public.alert_reminder_times_cap()",
-        "name": "alert_reminder_times_cap",
-        "table": "alert_reminder_times"
-      },
-      {
         "def": "CREATE TRIGGER audit_logs_append_only BEFORE DELETE OR UPDATE ON public.audit_logs FOR EACH ROW EXECUTE FUNCTION public.audit_logs_prevent_mutation()",
         "name": "audit_logs_append_only",
         "table": "audit_logs"
@@ -16933,29 +16822,6 @@
         ],
         "def_hash": "02b808d7dc7092a601dcd244892d3712",
         "signature": "public.activate_site_content_release(uuid,text,bigint,text,jsonb)"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
-        ],
-        "def_hash": "87f0e529f9c5c6c042edd61af17cc539",
-        "signature": "public.alert_claim_due_reminders(timestamp with time zone,integer)"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres",
-          "service_role=X/postgres"
-        ],
-        "def_hash": "d48d6242da4367027548b85f815c6063",
-        "signature": "public.alert_claim_morning_brief(uuid,date)"
-      },
-      {
-        "acl": [
-          "postgres=X/postgres"
-        ],
-        "def_hash": "4b09597dc37eea9b1b6d8613b44cb087",
-        "signature": "public.alert_reminder_times_cap()"
       },
       {
         "acl": [
@@ -18727,7 +18593,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "4f64ab00fd052ba13cd7a7ec22f90fc1",
+        "def_hash": "a614e81532918d22c3a44d3d4008c54e",
         "signature": "public.teaching_depth_command(uuid,uuid,text,jsonb)"
       },
       {
@@ -19047,36 +18913,6 @@
         "def": "PRIMARY KEY (owner_id)",
         "name": "admin_settings_pkey",
         "table": "admin_settings"
-      },
-      {
-        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
-        "name": "alert_brief_sent_owner_id_fkey",
-        "table": "alert_brief_sent"
-      },
-      {
-        "def": "PRIMARY KEY (owner_id)",
-        "name": "alert_brief_sent_pkey",
-        "table": "alert_brief_sent"
-      },
-      {
-        "def": "CHECK (((endpoint ~ '^https://'::text) AND (char_length(endpoint) <= 1000)))",
-        "name": "alert_reminder_times_endpoint_check",
-        "table": "alert_reminder_times"
-      },
-      {
-        "def": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE",
-        "name": "alert_reminder_times_owner_id_fkey",
-        "table": "alert_reminder_times"
-      },
-      {
-        "def": "PRIMARY KEY (owner_id, ref)",
-        "name": "alert_reminder_times_pkey",
-        "table": "alert_reminder_times"
-      },
-      {
-        "def": "CHECK ((ref ~ '^[A-Za-z0-9_-]{1,64}$'::text))",
-        "name": "alert_reminder_times_ref_check",
-        "table": "alert_reminder_times"
       },
       {
         "def": "CHECK ((btrim(bucket) <> ''::text))",

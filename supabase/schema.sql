@@ -24445,7 +24445,7 @@ begin
     if not found then raise exception 'teaching_not_found'; end if;
     if (v_occ.presenter_id = p_actor_id or v_role = 'organiser') is not true then raise exception 'teaching_role_denied'; end if;
     select count(*) into v_count from public.teaching_feedback_answers where occurrence_id = v_occ.id;
-    if now() < v_occ.ends_at + interval '7 days' or v_count < 3 then
+    if now() < v_occ.ends_at + interval '7 days' or v_count < 5 then
       return jsonb_build_object('released', false);
     end if;
     perform public.teaching_audit(p_service_id, p_actor_id, 'feedback.totals', v_occ.id);
@@ -26129,7 +26129,7 @@ end $$;
 revoke all on function public.roster_team_members(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.roster_team_members(uuid, uuid) to service_role;
 
--- Timed alert sender (20261006050000_alerts_timed_sender.sql): the server holds only when a Remind me
+-- Timed alert sender (20261006070000_alerts_timed_sender.sql): the server holds only when a Remind me
 -- note is due, never its words; alert_brief_sent records the Perth day the morning brief last went out.
 create table public.alert_reminder_times (
   owner_id uuid not null references auth.users (id) on delete cascade,
