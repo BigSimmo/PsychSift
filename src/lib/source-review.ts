@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { hasWaDocumentControlEndorsement } from "@/lib/clinical-validation-basis";
+import { perthCalendarDate } from "@/lib/perth-time";
 import { sourceAuthorityForPublisherCode } from "@/lib/source-authority-registry";
 
 export const BMJ_THIRD_PARTY_ATTESTATION_POLICY_VERSION = "bmj-third-party-reference-attestation-v1" as const;
@@ -51,17 +52,6 @@ function isValidNonFutureAttestationTimestamp(value: unknown, now: Date) {
   if (!candidate || !offsetDateTimeSchema.safeParse(candidate).success) return false;
   const timestamp = Date.parse(candidate);
   return Number.isFinite(timestamp) && timestamp <= now.getTime();
-}
-
-const PERTH_CALENDAR_DATE_FORMAT = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Australia/Perth",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-function perthCalendarDate(now = new Date()) {
-  return PERTH_CALENDAR_DATE_FORMAT.format(now);
 }
 
 export function isValidReviewDate(value: string, now = new Date()) {
