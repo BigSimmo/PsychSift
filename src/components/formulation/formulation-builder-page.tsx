@@ -15,7 +15,8 @@ import {
   Target,
   Waypoints,
 } from "lucide-react";
-import { useMemo, useState, useDeferredValue } from "react";
+import { useMemo, useState, useDeferredValue, useEffect } from "react";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 
 import {
   FormulationPageShell,
@@ -243,6 +244,30 @@ export function FormulationBuilderPage({
   const draft = editedDraft ?? generatedDraft;
   const completedQuality = formulationQualityPrompts.filter((prompt) => qualityNotes[prompt.id]?.trim()).length;
   const activeIndex = builderSteps.findIndex((step) => step.id === activeStep);
+
+  const isDirty = Object.values(sectionNotes).some((n) => n.trim().length > 0) || Object.values(qualityNotes).some((n) => n.trim().length > 0) || editedDraft !== null;
+  useDirtyStateGuard(isDirty);
+
+  useEffect(() => {
+    try {
+      const draftStr = sessionStorage.getItem("psychsift_formulation_draft");
+      if (draftStr && !isDirty) {
+        const parsed = JSON.parse(draftStr);
+        if (parsed.sectionNotes) setSectionNotes(parsed.sectionNotes);
+        if (parsed.qualityNotes) setQualityNotes(parsed.qualityNotes);
+        if (parsed.selectedIds) setSelectedIds(parsed.selectedIds);
+        if (parsed.templateId) setTemplateId(parsed.templateId);
+        if (parsed.editedDraft !== undefined) setEditedDraft(parsed.editedDraft);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (isDirty || selectedIds.length > 0) {
+      sessionStorage.setItem("psychsift_formulation_draft", JSON.stringify({ sectionNotes, qualityNotes, selectedIds, templateId, editedDraft }));
+    }
+  }, [isDirty, sectionNotes, qualityNotes, selectedIds, templateId, editedDraft]);
 
   function toggleMechanism(id: string) {
     setSelectedIds((current) =>

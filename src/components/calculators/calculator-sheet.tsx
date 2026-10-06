@@ -4,6 +4,7 @@ import { Info, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 
 import { cn } from "@/components/ui-primitives";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { canRestoreFocusTo, isTopmostSheet, popSheet, pushSheet, updateSheetRoot } from "@/components/ui/sheet-focus";
 import { MissingValue } from "@/components/ui/missing-value";
 
@@ -43,17 +44,43 @@ export function CalculatorSheet({
   isOpen = true,
 }: CalculatorSheetProps) {
   const derived = deriveCalculator(calc, answers);
+  useDirtyStateGuard(derived.started);
   const internalSheetId = useId();
   const effectiveSheetId = sheetId ?? internalSheetId;
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+  const startedRef = useRef(derived.started);
+  useEffect(() => {
+    startedRef.current = derived.started;
+  }, [derived.started]);
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const Icon = calc.icon;
+
+  useEffect(() => {
+    try {
+      const draft = sessionStorage.getItem("psychsift_calc_draft_" + calc.id);
+      if (draft && Object.keys(answers).length === 0) {
+        const parsed = JSON.parse(draft);
+        if (Object.keys(parsed).length > 0) {
+          onAnswersChange(parsed);
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calc.id]);
+
+  useEffect(() => {
+    if (Object.keys(answers).length > 0) {
+      sessionStorage.setItem("psychsift_calc_draft_" + calc.id, JSON.stringify(answers));
+    }
+  }, [calc.id, answers]);
 
   // A backdrop click discards the whole assessment, and in the centred-dialog
   // layout the scroll body's bottom clip boundary IS the panel's bottom edge,
@@ -76,7 +103,11 @@ export function CalculatorSheet({
   // named close rather than leaving the click silently inert.
   const dismissFromBackdrop = () => {
     if (derived.started) {
-      closeRef.current?.focus();
+      if (window.confirm("Discard unsaved calculator inputs?")) {
+        onClose();
+      } else {
+        closeRef.current?.focus();
+      }
       return;
     }
     onClose();
@@ -90,7 +121,13 @@ export function CalculatorSheet({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape" && isTopmostSheet(effectiveSheetId)) {
         event.preventDefault();
-        onCloseRef.current();
+        if (startedRef.current) {
+          if (window.confirm("Discard unsaved calculator inputs?")) {
+            onCloseRef.current();
+          }
+        } else {
+          onCloseRef.current();
+        }
       }
     };
 
