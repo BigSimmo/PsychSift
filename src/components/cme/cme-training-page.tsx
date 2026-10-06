@@ -1,19 +1,61 @@
 "use client";
 
-import { GraduationCap, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Award,
+  BookOpen,
+  CalendarDays,
+  ChevronRight,
+  ClipboardList,
+  Clock,
+  GraduationCap,
+  Layers,
+  Plus,
+} from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import { cardSurface } from "@/components/card-recipes";
-import { CmeTrainingTimeline } from "@/components/cme/cme-training-timeline";
+import { cardSurface, focusRing } from "@/components/card-recipes";
+import { CmeFlatList, CmeGroup, CmeGroupLabel, CmeNote, CmeRowMark, CmeTextLink } from "@/components/cme/cme-flat-list";
+import { CmeRotationTrack, CmeTrainingTimeline } from "@/components/cme/cme-training-timeline";
 import { CmeDateField, useCmeDateChecks } from "@/components/cme/cme-date-field";
+import { cmeFilledButton } from "@/components/cme/cme-log-shared";
+import { formatSourceMonth } from "@/components/cme/cme-plan-goal-split";
+import { modeInsetHairline, modePressable } from "@/components/mode-kit/recipes";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
-import { cn, EmptyState, eyebrowText, InlineNotice, textMuted } from "@/components/ui-primitives";
-import { formatCalendarDateLong, perthCalendarDate } from "@/lib/cme/cpd-year";
+import { cn, InlineNotice, textMuted } from "@/components/ui-primitives";
+import { CPD_CATEGORY_RULE_SET } from "@/lib/cme/category-rules-source";
+import { CPD_STANDARD_RULE_TEXT, cpdRuleFromTraining } from "@/lib/cme/cpd-rule";
+import { formatCalendarDateLong, formatCmeRowDate, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
+import {
+  attainedEpas,
+  epaAssessmentsLogged,
+  epaAssessmentsRuleLine,
+  epaNextBySentence,
+  epaRowDetail,
+  epaSegmentsSentence,
+  epasInProgress,
+  experienceCell,
+  experienceCount,
+  milestoneSummary,
+  termBars,
+  termChartSentence,
+  termRowDetail,
+  timeUntil,
+  trainingRecordSummary,
+  xOfY,
+  type CmeTrainingAssessments,
+  type ExperienceCellState,
+  type InternAssessments,
+  type RegistrarAssessments,
+} from "@/lib/cme/training-assessments";
+import { TERM_TRACKER_SOURCES } from "@/lib/teaching/term-tracker";
 import {
   currentPosition,
   formatFteMonths,
@@ -40,12 +82,20 @@ import { cmePageTitle } from "@/components/cme/cme-page-frame";
  * trainee's to enter from the college's current requirements; this page only
  * does arithmetic on what they wrote. It never reads or changes CPD targets.
  *
+ * EPAs, WBAs, term assessments and clinical experience (A to D) are drawn as
+ * the owner's approved mock-up shows them, but PsychSift stores none of them:
+ * only the invented sample (signed-out sample and demo mode) carries figures,
+ * and a signed-in doctor gets the headings with an honest "not recorded" line
+ * and no counts. See `src/lib/cme/training-assessments.ts`.
+ *
  * Every write goes through `/api/cme/training`; the server re-checks the whole
  * timeline before saving, and the same check runs here first so a problem is
  * shown beside the form rather than after a round trip.
  */
 
 type RecordType = "period" | "milestone";
+
+const NOT_RECORDED: CmeTrainingAssessments = { status: "not-recorded" };
 
 const periodKindLabels: Record<TrainingPeriodKind, string> = {
   stage: "Stage",
@@ -169,11 +219,18 @@ export function CmeTrainingPage({
   initialPeriods,
   initialMilestones,
   demoMode,
+  assessments = NOT_RECORDED,
 }: {
   readonly nowIso: string;
   readonly initialPeriods: readonly TrainingPeriod[];
   readonly initialMilestones: readonly TrainingMilestone[];
   readonly demoMode: boolean;
+  /**
+   * EPAs, WBAs, term assessments and clinical experience. Only the sample
+   * fixture ever carries figures; everyone signed in gets `not-recorded`,
+   * because PsychSift has no storage for any of them.
+   */
+  readonly assessments?: CmeTrainingAssessments;
 }) {
   const router = useRouter();
   const today = perthCalendarDate(new Date(nowIso));
@@ -193,6 +250,14 @@ export function CmeTrainingPage({
   const [error, setError] = useState<string | null>(null);
   const dateChecks = useCmeDateChecks();
   const [pendingDelete, setPendingDelete] = useState<{ type: RecordType; id: string; label: string } | null>(null);
+  const [sampleMessage, setSampleMessage] = useState<string | null>(null);
+  // The record's two parts open from their summary rows. A new, empty record
+  // starts open so the doctor sees where to begin.
+  const startsEmpty = initialPeriods.length === 0 && initialMilestones.length === 0;
+  const [periodsOpen, setPeriodsOpen] = useState(startsEmpty);
+  const [milestonesOpen, setMilestonesOpen] = useState(startsEmpty);
+  const periodsSectionId = useId();
+  const milestonesSectionId = useId();
 
   const periodHeadingRef = useRef<HTMLHeadingElement>(null);
   const milestoneHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -219,6 +284,7 @@ export function CmeTrainingPage({
   function openPeriod(period?: TrainingPeriod) {
     setPeriodDraft(period ? periodToDraft(period) : emptyPeriodDraft);
     setPeriodEditing(period ? period.id : "new");
+    setPeriodsOpen(true);
     setPeriodErrors({});
     setPeriodProblems([]);
     setError(null);
@@ -227,6 +293,7 @@ export function CmeTrainingPage({
   function openMilestone(milestone?: TrainingMilestone) {
     setMilestoneDraft(milestone ? milestoneToDraft(milestone) : emptyMilestoneDraft);
     setMilestoneEditing(milestone ? milestone.id : "new");
+    setMilestonesOpen(true);
     setMilestoneErrors({});
     setError(null);
   }
@@ -455,13 +522,21 @@ export function CmeTrainingPage({
           </span>
         </InlineNotice>
       ) : null}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" variant="primary" busy={saving} busyLabel="Saving…">
           Save period
         </Button>
         <Button type="button" variant="secondary" onClick={() => setPeriodEditing(null)}>
           Cancel
         </Button>
+        {periodEditing !== "new" ? (
+          <CmeTextLink
+            className="ml-auto"
+            onClick={() => setPendingDelete({ type: "period", id: periodEditing, label: periodDraft.label })}
+          >
+            Delete <span className="sr-only">this period</span>
+          </CmeTextLink>
+        ) : null}
       </div>
     </form>
   ) : null;
@@ -540,248 +615,392 @@ export function CmeTrainingPage({
         hint="Leave empty until it is done."
         onChange={(completedOn) => setMilestoneDraft((current) => ({ ...current, completedOn }))}
       />
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" variant="primary" busy={saving} busyLabel="Saving…">
           Save milestone
         </Button>
         <Button type="button" variant="secondary" onClick={() => setMilestoneEditing(null)}>
           Cancel
         </Button>
+        {milestoneEditing !== "new" ? (
+          <CmeTextLink
+            className="ml-auto"
+            onClick={() => setPendingDelete({ type: "milestone", id: milestoneEditing, label: milestoneDraft.label })}
+          >
+            Delete <span className="sr-only">this milestone</span>
+          </CmeTextLink>
+        ) : null}
       </div>
     </form>
   ) : null;
 
+  const rotation = position.rotation;
+  const rotationWithEnd = rotation && rotation.endsOn ? { ...rotation, endsOn: rotation.endsOn } : null;
+  // The next open milestone gets a dot on the rotation line only when its date falls inside this rotation.
+  const rotationMilestone =
+    rotation && next?.projectedOn && next.projectedOn >= today && next.projectedOn >= rotation.startsOn
+      ? rotation.endsOn === null || next.projectedOn <= rotation.endsOn
+        ? { ...next, projectedOn: next.projectedOn }
+        : null
+      : null;
+
+  // Which example person the sample shows. A signed-in doctor is shown both
+  // sets of headings, with nothing counted.
+  const sampleView = assessments.status === "sample" ? assessments.view : null;
+  const showRegistrar = sampleView !== "intern";
+  const showIntern = sampleView !== "registrar";
+  // An empty record is not a reading, so nothing is ticked until a period has
+  // been entered. The junior doctor example has no training record of its own,
+  // so its rule is never worked out from the registrar's.
+  const cpdRule = cpdRuleFromTraining(periods.length && sampleView !== "intern" ? position : null);
+
+  function sampleAction() {
+    setSampleMessage(SAMPLE_ACTION_MESSAGE);
+  }
+
   return (
-    <main data-testid="cme-training" className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
+    <main data-testid="cme-training" data-mode-identity="cme" className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6">
       <h1 className={cmePageTitle}>Training</h1>
       <p className={cn(textMuted, "mt-1 text-sm")}>
         Your own record of your training. It is not the college&apos;s record, and nothing here changes your CPD
         targets.
       </p>
-
-      {error ? (
-        <div className="mt-4">
-          <InlineNotice tone="danger">{error}</InlineNotice>
-        </div>
+      {sampleView ? (
+        <p className="mt-1 text-sm-minus text-[color:var(--text-muted)]" data-testid="cme-training-example-switch">
+          {sampleView === "registrar" ? "A psychiatry registrar example. " : "A junior doctor example. "}
+          <CmeTextLink href={sampleView === "registrar" ? "/cme/training?example=intern" : "/cme/training"}>
+            {sampleView === "registrar" ? "See the junior doctor example" : "See the registrar example"}
+          </CmeTextLink>
+        </p>
       ) : null}
 
-      {isEmpty ? (
-        <div className="mt-6">
-          <EmptyState
+      <div className="mt-6 grid gap-6">
+        {error ? (
+          <CmeNote tone="warn" role="alert" icon={<AlertTriangle aria-hidden="true" strokeWidth={1.6} />}>
+            {error}
+          </CmeNote>
+        ) : null}
+
+        {showRegistrar && isEmpty ? (
+          <CmeNote
             testId="cme-training-empty"
-            icon={GraduationCap}
+            icon={<GraduationCap aria-hidden="true" strokeWidth={1.6} />}
             title="Nothing is preloaded here."
-            body="Enter your own stages, rotations, breaks and milestones from your college's current requirements. The page then shows where you are, your training time so far, and what is due next."
-          />
-        </div>
-      ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <section
-            aria-labelledby="cme-training-position-heading"
-            data-testid="cme-training-position"
-            className={cn(cardSurface, "p-4")}
           >
-            <h2 id="cme-training-position-heading" className={eyebrowText}>
-              You are here
-            </h2>
-            <p className="mt-2 font-semibold text-[color:var(--text)]" data-testid="cme-training-stage">
-              {position.stage ? position.stage.label : "No stage covers today"}
-            </p>
-            {position.onBreak && position.breakPeriod ? (
-              <p className="mt-1 text-sm text-[color:var(--text)]" data-testid="cme-training-on-break">
-                On a break: {position.breakPeriod.label}. Your training clock is paused.
-              </p>
-            ) : position.rotation ? (
-              <p className="mt-1 text-sm text-[color:var(--text)]" data-testid="cme-training-rotation">
-                {position.rotation.label}
-                {position.rotationIndex !== null && position.rotationCount !== null
-                  ? `, rotation ${position.rotationIndex} of ${position.rotationCount}`
-                  : ""}
-                {position.rotation.fte < 1 ? `, at ${formatFte(position.rotation.fte)}` : ""}
-              </p>
-            ) : (
-              <p className={cn(textMuted, "mt-1 text-sm")}>No rotation covers today.</p>
-            )}
-            <p className="mt-3 text-sm text-[color:var(--text)]" data-testid="cme-training-clock">
-              Training time so far: <span className="nums font-normal">{formatFteMonths(clock)}</span>
-            </p>
-            <p className={cn(textMuted, "mt-1 text-xs")}>
-              Only rotations count. Half-time counts half, and breaks pause the clock.
-            </p>
-          </section>
+            Enter your own stages, rotations, breaks and milestones from your college&apos;s current requirements. The
+            page then shows where you are, your training time so far, and what is due next.
+          </CmeNote>
+        ) : null}
 
-          <section
-            aria-labelledby="cme-training-next-heading"
-            data-testid="cme-training-next"
-            className={cn(cardSurface, "p-4")}
-          >
-            <h2 id="cme-training-next-heading" className={eyebrowText}>
-              Next due
-            </h2>
-            {next ? (
-              <>
-                <p className="mt-2 font-semibold text-[color:var(--text)]">{next.milestone.label}</p>
-                <p
-                  className={cn(
-                    "mt-1 text-sm",
-                    next.overdue ? "font-semibold text-[color:var(--danger)]" : "text-[color:var(--text)]",
-                  )}
-                  data-testid="cme-training-next-detail"
-                >
-                  {nextDueDetail(next, today)}
+        {showRegistrar && rotation ? (
+          <CmeGroup label={`This rotation · ${rotation.label}`} testId="cme-training-this-rotation">
+            <div className={cardShell}>
+              {rotationWithEnd ? (
+                <CmeRotationTrack rotation={rotationWithEnd} today={today} marker={rotationMilestone?.projectedOn} />
+              ) : (
+                <p className={cn(textMuted, "text-sm-minus")}>
+                  This rotation has no end date yet, so it cannot be drawn. Add one with Edit below.
                 </p>
-              </>
+              )}
+              {rotationMilestone || rotation.endsOn ? (
+                <CmeFlatList label="Dates in this rotation">
+                  {rotationMilestone ? (
+                    <RecordRow
+                      testId="cme-training-rotation-milestone"
+                      lead={<CalendarDays aria-hidden="true" strokeWidth={1.6} />}
+                      title={rotationMilestone.milestone.label}
+                      subtitle={`Your milestone · ${formatCmeRowDate(rotationMilestone.projectedOn, today)}, ${timeUntil(
+                        today,
+                        rotationMilestone.projectedOn,
+                      )}${rotationMilestone.milestone.dueKind === "fte-months" ? " (estimated from your FTE)" : ""}`}
+                    />
+                  ) : null}
+                  {rotation.endsOn ? (
+                    <RecordRow
+                      testId="cme-training-rotation-end"
+                      lead={<ClipboardList aria-hidden="true" strokeWidth={1.6} />}
+                      title="End of rotation"
+                      subtitle={`${formatCmeRowDate(rotation.endsOn, today)} · ${timeUntil(today, rotation.endsOn)}`}
+                    />
+                  ) : null}
+                </CmeFlatList>
+              ) : null}
+            </div>
+          </CmeGroup>
+        ) : null}
+
+        {assessments.status === "sample" && assessments.view === "registrar" ? (
+          <>
+            <CmeRegistrarEpaSummary registrar={assessments.registrar} />
+            <CmeRegistrarEpaList
+              registrar={assessments.registrar}
+              onSampleAction={sampleAction}
+              sampleMessage={sampleMessage}
+            />
+          </>
+        ) : null}
+        {assessments.status === "not-recorded" ? <CmeRegistrarEpasNotRecorded /> : null}
+
+        {showRegistrar ? (
+          <CmeGroup
+            label="Your training record"
+            testId="cme-training-position"
+            end={
+              periodEditing ? null : (
+                <CmeTextLink onClick={() => openPeriod()} testId="cme-training-add-period">
+                  Add <span className="sr-only">stage, rotation or break</span>
+                </CmeTextLink>
+              )
+            }
+          >
+            <CmeFlatList label="Your training record">
+              <DisclosureRow
+                testId="cme-training-record-periods"
+                controls={periodsSectionId}
+                open={periodsOpen}
+                onToggle={() => setPeriodsOpen((open) => !open)}
+                lead={<Layers aria-hidden="true" strokeWidth={1.6} />}
+                title="Stages, rotations and breaks"
+                subtitle={trainingRecordSummary(periods, position, today)}
+              />
+              <DisclosureRow
+                testId="cme-training-record-milestones"
+                controls={milestonesSectionId}
+                open={milestonesOpen}
+                onToggle={() => setMilestonesOpen((open) => !open)}
+                lead={<CalendarDays aria-hidden="true" strokeWidth={1.6} />}
+                title="Milestones"
+                subtitle={milestoneSummary(milestones, next, today)}
+              />
+              <RecordLinkRow
+                testId="cme-training-portal"
+                href={TRAINING_PORTAL_HREF}
+                external
+                lead={<ArrowUpRight aria-hidden="true" strokeWidth={1.6} />}
+                title="Open your college training portal"
+                subtitle="InTrain is the official record"
+              />
+            </CmeFlatList>
+          </CmeGroup>
+        ) : null}
+
+        {showRegistrar && periodsOpen ? (
+          <section id={periodsSectionId} aria-label="Stages, rotations and breaks" className="grid min-w-0 gap-1">
+            <CmeGroupLabel as="h3" label="Stages, rotations and breaks" />
+            {isEmpty ? null : (
+              <CmeFlatList label="Where you are">
+                <RecordRow
+                  lead={<Layers aria-hidden="true" strokeWidth={1.6} />}
+                  title={
+                    <span data-testid="cme-training-stage">
+                      {position.stage ? position.stage.label : "No stage covers today"}
+                    </span>
+                  }
+                  subtitle={
+                    position.onBreak && position.breakPeriod ? (
+                      <span data-testid="cme-training-on-break">
+                        On a break: {position.breakPeriod.label}. Your training clock is paused.
+                      </span>
+                    ) : position.rotation ? (
+                      <span data-testid="cme-training-rotation">
+                        {position.rotation.label}
+                        {position.rotationIndex !== null && position.rotationCount !== null
+                          ? `, rotation ${position.rotationIndex} of ${position.rotationCount}`
+                          : ""}
+                        {position.rotation.fte < 1 ? `, at ${formatFte(position.rotation.fte)}` : ""}
+                      </span>
+                    ) : (
+                      "No rotation covers today."
+                    )
+                  }
+                />
+                <RecordRow
+                  lead={<Clock aria-hidden="true" strokeWidth={1.6} />}
+                  title="Training time so far"
+                  subtitle="Only rotations count. Half-time counts half, and breaks pause the clock."
+                  end={
+                    <span
+                      data-testid="cme-training-clock"
+                      className="nums whitespace-nowrap text-sm font-normal text-[color:var(--text-heading)]"
+                    >
+                      {formatFteMonths(clock)}
+                    </span>
+                  }
+                />
+              </CmeFlatList>
+            )}
+            {storedProblems.length > 0 ? (
+              <CmeNote tone="warn" icon={<AlertTriangle aria-hidden="true" strokeWidth={1.6} />}>
+                <span data-testid="cme-training-timeline-problems">
+                  Your timeline has a problem to fix: {storedProblems.map((problem) => problem.message).join(" ")}
+                </span>
+              </CmeNote>
+            ) : null}
+            {orderedPeriods.length > 0 ? (
+              <div className={cn(cardShell, "mt-1")}>
+                <CmeTrainingTimeline periods={periods} today={today} />
+              </div>
+            ) : null}
+            {orderedPeriods.length > 0 ? (
+              <CmeFlatList testId="cme-training-periods" label="Stages, rotations and breaks" className="mt-1">
+                {orderedPeriods.map((period) => {
+                  const rowProblems = storedProblems.filter((problem) => problem.periodIds.includes(period.id));
+                  return (
+                    <RecordRow
+                      key={period.id}
+                      title={period.label}
+                      subtitle={
+                        <>
+                          {`${periodKindLabels[period.kind]} · ${periodDates(period)}`}
+                          {period.kind === "rotation" ? ` · ${formatFte(period.fte)}` : ""}
+                          {rowProblems.length > 0 ? (
+                            <span className="block font-medium text-[color:var(--warning)]">
+                              Overlaps another period. Change a date to fix it.
+                            </span>
+                          ) : null}
+                        </>
+                      }
+                      end={
+                        <CmeTextLink onClick={() => openPeriod(period)}>
+                          Edit <span className="sr-only">{period.label}</span>
+                        </CmeTextLink>
+                      }
+                    />
+                  );
+                })}
+              </CmeFlatList>
             ) : (
-              <p className={cn(textMuted, "mt-2 text-sm")} data-testid="cme-training-next-detail">
-                {milestones.length === 0 ? "No milestones yet." : "Every milestone is marked done."}
+              <p className={cn(textMuted, "text-sm-minus")}>No periods yet.</p>
+            )}
+            {periodForm}
+          </section>
+        ) : null}
+
+        {showRegistrar && milestonesOpen ? (
+          <section id={milestonesSectionId} aria-label="Milestones" className="grid min-w-0 gap-1">
+            <CmeGroupLabel
+              as="h3"
+              label="Milestones"
+              end={
+                milestoneEditing ? null : (
+                  <CmeTextLink onClick={() => openMilestone()} testId="cme-training-add-milestone">
+                    Add <span className="sr-only">milestone</span>
+                  </CmeTextLink>
+                )
+              }
+            />
+            {isEmpty ? null : (
+              <p data-testid="cme-training-next" className="text-sm-minus text-[color:var(--text-muted)]">
+                <span className="font-medium text-[color:var(--text-heading)]">
+                  {next ? `Next due: ${next.milestone.label}. ` : "Next due: "}
+                </span>
+                <span
+                  data-testid="cme-training-next-detail"
+                  className={next?.overdue ? "font-medium text-[color:var(--text-heading)]" : undefined}
+                >
+                  {next
+                    ? nextDueDetail(next, today)
+                    : milestones.length === 0
+                      ? "No milestones yet."
+                      : "Every milestone is marked done."}
+                </span>
               </p>
             )}
+            {milestones.length > 0 ? (
+              <CmeFlatList testId="cme-training-milestones" label="Milestones">
+                {milestones.map((milestone) => (
+                  <RecordRow
+                    key={milestone.id}
+                    lead={<CmeRowMark state={milestone.completedOn ? "done" : "open"} />}
+                    title={milestone.label}
+                    subtitle={
+                      milestone.completedOn
+                        ? `You marked it done on ${formatCalendarDateLong(milestone.completedOn)}`
+                        : ["Your milestone", milestoneDueText(milestone)].filter(Boolean).join(" · ")
+                    }
+                    end={
+                      <>
+                        {milestone.completedOn ? (
+                          <CmeTextLink onClick={() => void setCompleted(milestone, null)}>
+                            Not done<span className="sr-only">: {milestone.label}</span>
+                          </CmeTextLink>
+                        ) : (
+                          <CmeTextLink onClick={() => void setCompleted(milestone, today)}>
+                            Mark done<span className="sr-only">: {milestone.label}</span>
+                          </CmeTextLink>
+                        )}
+                        <CmeTextLink onClick={() => openMilestone(milestone)}>
+                          Edit <span className="sr-only">{milestone.label}</span>
+                        </CmeTextLink>
+                      </>
+                    }
+                  />
+                ))}
+              </CmeFlatList>
+            ) : (
+              <p className={cn(textMuted, "text-sm-minus")}>No milestones yet.</p>
+            )}
+            {milestoneForm}
           </section>
-        </div>
-      )}
-
-      <section aria-labelledby="cme-training-periods-heading" className="mt-8">
-        <h2 id="cme-training-periods-heading" className={eyebrowText}>
-          Stages, rotations and breaks
-        </h2>
-        {storedProblems.length > 0 ? (
-          <div className="mt-3">
-            <InlineNotice tone="warning">
-              <span data-testid="cme-training-timeline-problems">
-                Your timeline has a problem to fix: {storedProblems.map((problem) => problem.message).join(" ")}
-              </span>
-            </InlineNotice>
-          </div>
         ) : null}
-        {orderedPeriods.length > 0 ? (
-          <div className={cn(cardSurface, "mt-3 p-3")}>
-            <CmeTrainingTimeline periods={periods} today={today} />
-          </div>
-        ) : null}
-        {orderedPeriods.length > 0 ? (
-          <ul data-testid="cme-training-periods" className="mt-3 space-y-3">
-            {orderedPeriods.map((period) => {
-              const rowProblems = storedProblems.filter((problem) => problem.periodIds.includes(period.id));
-              return (
-                <li key={period.id} className={cn(cardSurface, "flex items-start justify-between gap-4 p-4")}>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[color:var(--text)]">
-                      <span className={cn(eyebrowText, "mr-2")}>{periodKindLabels[period.kind]}</span>
-                      {period.label}
-                    </p>
-                    <p className={cn(textMuted, "text-sm")}>
-                      {periodDates(period)}
-                      {period.kind === "rotation" ? ` · ${formatFte(period.fte)}` : ""}
-                    </p>
-                    {rowProblems.length > 0 ? (
-                      <p className="mt-1 text-sm font-medium text-[color:var(--danger)]">
-                        Overlaps another period. Change a date to fix it.
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                    <Button
-                      variant="toolbar"
-                      size="sm"
-                      aria-label={`Edit ${period.label}`}
-                      onClick={() => openPeriod(period)}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="toolbar"
-                      size="sm"
-                      aria-label={`Delete ${period.label}`}
-                      onClick={() => setPendingDelete({ type: "period", id: period.id, label: period.label })}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className={cn(textMuted, "mt-3 text-sm")}>No periods yet.</p>
-        )}
-        {periodForm}
-        {periodEditing ? null : (
-          <div className="mt-3">
-            <Button variant="secondary" icon={Plus} onClick={() => openPeriod()}>
-              Add stage, rotation or break
-            </Button>
-          </div>
-        )}
-      </section>
 
-      <section aria-labelledby="cme-training-milestones-heading" className="mt-8">
-        <h2 id="cme-training-milestones-heading" className={eyebrowText}>
-          Milestones
-        </h2>
-        {milestones.length > 0 ? (
-          <ul data-testid="cme-training-milestones" className="mt-3 space-y-3">
-            {milestones.map((milestone) => (
-              <li key={milestone.id} className={cn(cardSurface, "flex items-start justify-between gap-4 p-4")}>
-                <div className="min-w-0">
-                  <p className="font-semibold text-[color:var(--text)]">{milestone.label}</p>
-                  <p className={cn(textMuted, "text-sm")}>
-                    {milestone.completedOn
-                      ? `Done ${formatCalendarDateLong(milestone.completedOn)}`
-                      : milestoneDueText(milestone)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-                  {milestone.completedOn ? (
-                    <Button
-                      variant="toolbar"
-                      size="sm"
-                      aria-label={`Mark ${milestone.label} not done`}
-                      onClick={() => void setCompleted(milestone, null)}
-                    >
-                      Not done
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      aria-label={`Mark ${milestone.label} done`}
-                      onClick={() => void setCompleted(milestone, today)}
-                    >
-                      Mark done
-                    </Button>
-                  )}
-                  <Button
-                    variant="toolbar"
-                    size="sm"
-                    aria-label={`Edit ${milestone.label}`}
-                    onClick={() => openMilestone(milestone)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="toolbar"
-                    size="sm"
-                    aria-label={`Delete ${milestone.label}`}
-                    onClick={() => setPendingDelete({ type: "milestone", id: milestone.id, label: milestone.label })}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={cn(textMuted, "mt-3 text-sm")}>No milestones yet.</p>
+        {assessments.status === "sample" && assessments.view === "intern" ? (
+          <>
+            <CmeInternThisTerm intern={assessments.intern} today={today} />
+            <CmeInternEpaAssessments
+              intern={assessments.intern}
+              onSampleAction={sampleAction}
+              sampleMessage={sampleMessage}
+            />
+            <CmeInternExperience intern={assessments.intern} />
+          </>
+        ) : null}
+        {assessments.status === "not-recorded" ? <CmeInternNotRecorded /> : null}
+
+        {sampleView === "registrar" ? null : (
+          <CmeGroup
+            label="Your CPD rule"
+            testId="cme-training-cpd-rule"
+            end={<RuleSource source="Medical Board" checkedOn={CPD_CATEGORY_RULE_SET.source.checkedOn} />}
+          >
+            <CmeFlatList label="Your CPD rule">
+              <RecordRow
+                testId="cme-training-cpd-rule-result"
+                title={
+                  cpdRule.lane === "trainee"
+                    ? "Trainee in an accredited college programme"
+                    : cpdRule.lane === "everyone"
+                      ? "Everyone else"
+                      : "Not worked out here"
+                }
+                subtitle={
+                  cpdRule.lane === "trainee"
+                    ? "Covered by your training"
+                    : cpdRule.lane === "everyone"
+                      ? CPD_STANDARD_RULE_TEXT
+                      : "The Report lists each rule"
+                }
+              />
+            </CmeFlatList>
+            <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-training-cpd-rule-basis">
+              {sampleView === "intern"
+                ? "Whether an intern's or PGY2's programme covers their CPD is not worked out here yet, so no rule is ticked."
+                : cpdRule.basis}
+            </p>
+          </CmeGroup>
         )}
-        {milestoneForm}
-        {milestoneEditing ? null : (
-          <div className="mt-3">
-            <Button variant="secondary" icon={Plus} onClick={() => openMilestone()}>
-              Add milestone
-            </Button>
-          </div>
-        )}
-      </section>
+
+        {showIntern ? <CmeInternLinks teaching={sampleView === "intern"} /> : null}
+
+        <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-training-footer">
+          {demoMode ? "" : "Saved privately in your PsychSift account. "}
+          {sampleView === "registrar"
+            ? "Your Director of Training has the final word on every requirement."
+            : sampleView === "intern"
+              ? "Your term supervisor and medical education unit have the final word."
+              : "Your Director of Training, term supervisor or medical education unit has the final word on every requirement."}
+        </p>
+      </div>
 
       <ConfirmDialog
         open={pendingDelete !== null}
@@ -794,5 +1013,569 @@ export function CmeTrainingPage({
         busyLabel="Deleting…"
       />
     </main>
+  );
+}
+
+/** A summary row that opens and closes its part of the record below the group. */
+function DisclosureRow({
+  lead,
+  title,
+  subtitle,
+  open,
+  onToggle,
+  controls,
+  testId,
+}: {
+  readonly lead: ReactNode;
+  readonly title: string;
+  readonly subtitle: string;
+  readonly open: boolean;
+  readonly onToggle: () => void;
+  readonly controls: string;
+  readonly testId?: string;
+}) {
+  return (
+    <li className={cn(modeInsetHairline, "flex min-w-0 items-center before:left-0")}>
+      <button
+        type="button"
+        data-testid={testId}
+        aria-expanded={open}
+        aria-controls={open ? controls : undefined}
+        onClick={onToggle}
+        className={cn(modePressable, focusRing, "flex min-h-13 min-w-0 flex-1 items-center gap-3 text-left")}
+      >
+        <span
+          aria-hidden="true"
+          className="flex shrink-0 items-center text-[color:var(--text-muted)] [&_svg]:size-icon-md"
+        >
+          {lead}
+        </span>
+        <span className="grid min-w-0 flex-1 gap-px py-2">
+          <span className="break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]">{title}</span>
+          <span className="break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">{subtitle}</span>
+        </span>
+        <ChevronMark open={open} />
+      </button>
+    </li>
+  );
+}
+
+/**
+ * The EPA, WBA, term and clinical-experience parts of the Training page, as the
+ * owner's approved mock-up draws them (screens 04 and 05).
+ *
+ * PsychSift stores none of these. The parts with figures are only ever drawn
+ * from the invented sample (signed-out sample and demo mode); a signed-in
+ * doctor gets the same headings with `NOT_RECORDED_LINE` and no counts, and no
+ * button that would look like it saves.
+ */
+
+const NOT_RECORDED_LINE = "Not recorded in PsychSift yet. Keep them in InTrain (RANZCP) or your ePortfolio (interns).";
+
+/** What a sample button says when pressed: nothing is saved or drafted from an example. */
+const SAMPLE_ACTION_MESSAGE =
+  "This is an example. PsychSift does not record EPAs, WBAs or term assessments yet, so nothing is added or drafted.";
+
+/** Where the official records live. The ePortfolio link is the one Teaching already uses. */
+const TRAINING_PORTAL_HREF = "https://www.ranzcp.org/";
+const EPORTFOLIO_HREF = TERM_TRACKER_SOURCES.pmcwaCla;
+
+/**
+ * Assessment rule figures shown beside the EPA parts. The words are copied
+ * from Josh's 5 Oct mock-up; they were not checked against the source for this
+ * build, so `checkedOn` stays null and the page says so, and they are NOT
+ * signed off, so every one is shown with "Not signed off". Agents never sign
+ * these.
+ */
+const TRAINING_RULE_FIGURES = {
+  ranzcpEpa: { id: "ranzcp-epa", source: "RANZCP", checkedOn: null },
+  amcEpa: {
+    id: "amc-epa",
+    source: "AMC framework",
+    checkedOn: null,
+    perEpa: "EPA 1 at least once each term. EPAs 2 to 4 at least twice a year.",
+  },
+} as const;
+
+/** The quiet card the mock-up puts around a drawing and its rows. */
+const cardShell =
+  "grid min-w-0 gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4 forced-colors:border-[CanvasText]";
+
+/** A rule figure's source and check month, always marked as not signed off. */
+function RuleSource({ source, checkedOn }: { readonly source: string; readonly checkedOn: string | null }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1 text-xs font-normal normal-case tracking-normal text-[color:var(--text-muted)]">
+      <BookOpen aria-hidden="true" strokeWidth={1.6} className="size-3.5 shrink-0" />
+      <span>
+        {checkedOn
+          ? `${source} · checked ${formatSourceMonth(checkedOn)}`
+          : `${source} · not yet checked against the source`}
+      </span>
+      <span>· Not signed off</span>
+    </span>
+  );
+}
+
+/**
+ * One row of a record list: like `CmeFlatRow`, but the second line is never
+ * cut short, because here it can carry a caveat or a problem to fix, and the
+ * end slot can hold two text links.
+ */
+function RecordRow({
+  lead,
+  title,
+  subtitle,
+  end,
+  testId,
+}: {
+  readonly lead?: ReactNode;
+  readonly title: ReactNode;
+  readonly subtitle?: ReactNode;
+  readonly end?: ReactNode;
+  readonly testId?: string;
+}) {
+  return (
+    <li
+      data-testid={testId}
+      className={cn(modeInsetHairline, "flex min-h-13 min-w-0 items-center gap-3 before:left-0")}
+    >
+      {lead ? (
+        <span
+          aria-hidden="true"
+          className="flex shrink-0 items-center text-[color:var(--text-muted)] [&_svg]:size-icon-md"
+        >
+          {lead}
+        </span>
+      ) : null}
+      <span className="grid min-w-0 flex-1 gap-px py-2">
+        <span className="break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]">{title}</span>
+        {subtitle ? (
+          <span className="break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">{subtitle}</span>
+        ) : null}
+      </span>
+      {end ? <span className="flex shrink-0 items-center gap-4">{end}</span> : null}
+    </li>
+  );
+}
+
+/** A row that opens something: an outside link (new tab) or an app route, ending in a chevron. */
+function RecordLinkRow({
+  href,
+  external = false,
+  lead,
+  title,
+  subtitle,
+  testId,
+}: {
+  readonly href: string;
+  readonly external?: boolean;
+  readonly lead: ReactNode;
+  readonly title: string;
+  readonly subtitle: string;
+  readonly testId?: string;
+}) {
+  const body = (
+    <>
+      <span
+        aria-hidden="true"
+        className="flex shrink-0 items-center text-[color:var(--text-muted)] [&_svg]:size-icon-md"
+      >
+        {lead}
+      </span>
+      <span className="grid min-w-0 flex-1 gap-px py-2">
+        <span className="break-words text-sm font-medium leading-5 text-[color:var(--text-heading)]">{title}</span>
+        <span className="break-words text-sm-minus leading-4.5 text-[color:var(--text-muted)]">{subtitle}</span>
+      </span>
+      {external ? <span className="sr-only">(opens in a new tab)</span> : null}
+      <ChevronMark />
+    </>
+  );
+  const classes = cn(modePressable, focusRing, "flex min-h-13 min-w-0 flex-1 items-center gap-3 no-underline");
+  return (
+    <li data-testid={testId} className={cn(modeInsetHairline, "flex min-w-0 items-center before:left-0")}>
+      {external ? (
+        <a href={href} target="_blank" rel="noreferrer" className={classes}>
+          {body}
+        </a>
+      ) : (
+        <Link href={href} className={classes}>
+          {body}
+        </Link>
+      )}
+    </li>
+  );
+}
+
+/** The grey chevron at the end of a row that opens something; turned down when its part is open. */
+function ChevronMark({ open = false }: { readonly open?: boolean }) {
+  return (
+    <ChevronRight
+      aria-hidden="true"
+      className={cn("size-icon-sm shrink-0 text-[color:var(--text-muted)]", open ? "rotate-90" : null)}
+    />
+  );
+}
+
+function NotRecorded({ testId }: { readonly testId?: string }) {
+  return (
+    <p data-testid={testId} className="text-sm-minus text-[color:var(--text-muted)]">
+      {NOT_RECORDED_LINE}
+    </p>
+  );
+}
+
+function SampleActionStatus({ message }: { readonly message: string | null }) {
+  return (
+    <p role="status" className="text-sm-minus text-[color:var(--text-muted)]">
+      {message}
+    </p>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Registrar (screen 04)
+// ---------------------------------------------------------------------------
+
+/** "1 of 2 marked attained": the figure, two small segments, and what is still needed by when. */
+function CmeRegistrarEpaSummary({ registrar }: { readonly registrar: RegistrarAssessments }) {
+  const attained = attainedEpas(registrar).length;
+  const minimum = registrar.minimumEpas;
+  const filled = Math.min(attained, minimum);
+  return (
+    <CmeGroup
+      label="EPAs this rotation"
+      testId="cme-training-epas"
+      end={
+        <RuleSource
+          source={TRAINING_RULE_FIGURES.ranzcpEpa.source}
+          checkedOn={TRAINING_RULE_FIGURES.ranzcpEpa.checkedOn}
+        />
+      }
+    >
+      <div className={cardShell}>
+        <p className="flex flex-wrap items-baseline gap-x-1.5" data-testid="cme-training-epas-figure">
+          <span className="nums whitespace-nowrap text-xl font-normal text-[color:var(--text-heading)]">
+            {xOfY(attained, minimum)}
+          </span>
+          <span className="text-sm-minus text-[color:var(--text-muted)]">marked attained</span>
+        </p>
+        <div aria-hidden="true" className="flex gap-1" data-testid="cme-training-epas-segments">
+          {Array.from({ length: minimum }, (_, index) => (
+            <span
+              key={index}
+              data-filled={index < filled ? "true" : "false"}
+              className={cn(
+                "h-1.5 flex-1 rounded-full border",
+                index < filled
+                  ? "border-[color:var(--cme-cat-1)] bg-[color:var(--cme-cat-1)] forced-colors:bg-[CanvasText]"
+                  : "border-[color:var(--border)] bg-[color:var(--surface-inset)] forced-colors:border-[CanvasText]",
+              )}
+            />
+          ))}
+        </div>
+        <p className="sr-only">{epaSegmentsSentence(attained, minimum)}</p>
+        <p className="text-sm text-[color:var(--text)]" data-testid="cme-training-epas-next">
+          {epaNextBySentence(attained, minimum, registrar.rotationEndsOn)}
+        </p>
+      </div>
+    </CmeGroup>
+  );
+}
+
+/** The EPA list: each EPA's WBAs, or the day it was marked attained. Sample only. */
+function CmeRegistrarEpaList({
+  registrar,
+  onSampleAction,
+  sampleMessage,
+}: {
+  readonly registrar: RegistrarAssessments;
+  readonly onSampleAction: () => void;
+  readonly sampleMessage: string | null;
+}) {
+  const inProgress = epasInProgress(registrar);
+  const ordered = [...inProgress, ...attainedEpas(registrar)];
+  return (
+    <CmeGroup
+      label={`EPAs in progress · ${inProgress.length}`}
+      testId="cme-training-epa-list"
+      end={
+        <CmeTextLink onClick={onSampleAction} testId="cme-training-add-epa">
+          Add an EPA
+        </CmeTextLink>
+      }
+    >
+      <CmeFlatList label="EPAs this rotation">
+        {ordered.map((epa) => (
+          <RecordRow
+            key={epa.id}
+            testId={`cme-training-epa-${epa.id}`}
+            lead={epa.attainedOn ? <CmeRowMark state="done" /> : <Award aria-hidden="true" strokeWidth={1.6} />}
+            title={epa.title}
+            subtitle={epaRowDetail(epa, registrar.wbasPerEpa)}
+            end={
+              epa.attainedOn ? null : (
+                <CmeTextLink onClick={onSampleAction} wrap>
+                  Draft a WBA request<span className="sr-only">: {epa.title}</span>
+                </CmeTextLink>
+              )
+            }
+          />
+        ))}
+      </CmeFlatList>
+      <p className="mt-1 text-xs text-[color:var(--text-muted)]" data-testid="cme-training-wba-note">
+        A WBA request opens a draft for you to send. PsychSift sends nothing. Three WBAs do not by themselves mean an
+        EPA is attained (RANZCP).
+      </p>
+      <SampleActionStatus message={sampleMessage} />
+    </CmeGroup>
+  );
+}
+
+/** The registrar heading with no figures: what a signed-in doctor sees. */
+function CmeRegistrarEpasNotRecorded() {
+  return (
+    <CmeGroup
+      label="EPAs this rotation"
+      testId="cme-training-epas"
+      end={
+        <RuleSource
+          source={TRAINING_RULE_FIGURES.ranzcpEpa.source}
+          checkedOn={TRAINING_RULE_FIGURES.ranzcpEpa.checkedOn}
+        />
+      }
+    >
+      <p className="text-sm text-[color:var(--text)]">
+        The minimum is 2 for each 6-month full-time rotation, pro rata if part-time. Three WBAs do not by themselves
+        mean an EPA is attained (RANZCP).
+      </p>
+      <NotRecorded testId="cme-training-epas-not-recorded" />
+    </CmeGroup>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Junior doctor (screen 05)
+// ---------------------------------------------------------------------------
+
+function CmeInternThisTerm({ intern, today }: { readonly intern: InternAssessments; readonly today: string }) {
+  const term = intern.terms.find((candidate) => candidate.number === intern.currentTerm);
+  return (
+    <CmeGroup label={`This term · ${intern.termName}`} testId="cme-training-this-term">
+      <CmeFlatList label="This term">
+        <RecordRow
+          testId="cme-training-mid-term"
+          lead={<CalendarDays aria-hidden="true" strokeWidth={1.6} />}
+          title="Mid-term assessment"
+          subtitle={`With your term supervisor · ${formatCmeRowDate(intern.midTermAssessmentOn, today)}, ${timeUntil(
+            today,
+            intern.midTermAssessmentOn,
+          )}`}
+        />
+        {term ? (
+          <RecordRow
+            testId="cme-training-term"
+            lead={<Clock aria-hidden="true" strokeWidth={1.6} />}
+            title={`Term ${term.number}`}
+            subtitle={termRowDetail(today, term)}
+          />
+        ) : null}
+      </CmeFlatList>
+    </CmeGroup>
+  );
+}
+
+const TERM_BLOCK = "h-2 w-9 rounded-sm";
+
+function CmeInternEpaAssessments({
+  intern,
+  onSampleAction,
+  sampleMessage,
+}: {
+  readonly intern: InternAssessments;
+  readonly onSampleAction: () => void;
+  readonly sampleMessage: string | null;
+}) {
+  const bars = termBars(intern);
+  return (
+    <CmeGroup label={`EPA assessments · ${intern.year}`} testId="cme-training-epa-assessments">
+      <RuleSource source={TRAINING_RULE_FIGURES.amcEpa.source} checkedOn={TRAINING_RULE_FIGURES.amcEpa.checkedOn} />
+      <div className={cardShell}>
+        <p className="flex flex-wrap items-baseline gap-x-1.5" data-testid="cme-training-epa-assessments-figure">
+          <span className="nums text-xl font-normal text-[color:var(--text-heading)]">
+            {epaAssessmentsLogged(intern)}
+          </span>
+          <span className="text-sm-minus text-[color:var(--text-muted)]">{epaAssessmentsRuleLine(intern)}</span>
+        </p>
+        <div aria-hidden="true" className="grid grid-cols-5 gap-1 pt-2" data-testid="cme-training-term-chart">
+          {bars.map((bar) => (
+            <div key={bar.number} className="grid justify-items-center gap-1" data-state={bar.state}>
+              <div className="flex min-h-10 flex-col-reverse items-center justify-start gap-0.5">
+                {bar.state === "future"
+                  ? null
+                  : Array.from({ length: bar.count }, (_, index) => (
+                      <span
+                        key={`count-${index}`}
+                        className={cn(TERM_BLOCK, "bg-[color:var(--cme-cat-1)] forced-colors:bg-[CanvasText]")}
+                      />
+                    ))}
+                {bar.state === "current"
+                  ? Array.from({ length: Math.max(0, intern.perTermMinimum - bar.count) }, (_, index) => (
+                      <span
+                        key={`still-${index}`}
+                        className={cn(TERM_BLOCK, "border border-dashed border-[color:var(--border-strong)]")}
+                      />
+                    ))
+                  : null}
+              </div>
+              <span
+                className={cn(
+                  "text-sm-minus font-semibold",
+                  bar.state === "current" ? "text-[color:var(--clinical-accent)]" : "text-[color:var(--text-heading)]",
+                )}
+              >
+                {`T${bar.number}`}
+              </span>
+              <span
+                className="nums text-xs text-[color:var(--text-muted)]"
+                data-testid={`cme-training-term-${bar.number}`}
+              >
+                {bar.caption}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="sr-only" data-testid="cme-training-term-chart-words">
+          {termChartSentence(bars)}
+        </p>
+        <p className="text-sm text-[color:var(--text)]">{TRAINING_RULE_FIGURES.amcEpa.perEpa}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onSampleAction}
+        data-testid="cme-training-log-epa"
+        className={cn(focusRing, cmeFilledButton, "mt-2 w-full")}
+      >
+        <Plus aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+        Log an EPA assessment
+      </button>
+      <SampleActionStatus message={sampleMessage} />
+    </CmeGroup>
+  );
+}
+
+const CELL_WORDS: Record<ExperienceCellState, string> = {
+  covered: "covered",
+  current: "this term, not finished",
+  open: "not covered",
+};
+
+const CELL_CLASS: Record<ExperienceCellState, string> = {
+  covered: "bg-[color:var(--cme-cat-1)] forced-colors:bg-[CanvasText]",
+  current: "border border-dashed border-[color:var(--border-strong)]",
+  open: "border border-[color:var(--border-strong)]",
+};
+
+function CmeInternExperience({ intern }: { readonly intern: InternAssessments }) {
+  const termNumbers = intern.terms.map((term) => term.number);
+  return (
+    <CmeGroup label="Clinical experience · terms done" testId="cme-training-experience">
+      <table className="w-full border-separate border-spacing-y-1 text-sm" data-testid="cme-training-experience-grid">
+        <caption className="sr-only">Clinical experience categories covered in each term</caption>
+        <thead>
+          <tr>
+            <th scope="col" className="w-5">
+              <span className="sr-only">Category</span>
+            </th>
+            <th scope="col">
+              <span className="sr-only">Experience</span>
+            </th>
+            {termNumbers.map((number) => (
+              <th
+                key={number}
+                scope="col"
+                className="w-7 text-center text-xs font-normal text-[color:var(--text-muted)]"
+              >{`T${number}`}</th>
+            ))}
+            <th scope="col">
+              <span className="sr-only">Terms done</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {intern.experience.map((row) => (
+            <tr key={row.category} data-testid={`cme-training-experience-${row.category}`}>
+              <th scope="row" className="pr-2 text-left font-semibold text-[color:var(--text-heading)]">
+                {row.category}
+              </th>
+              <td className="pr-2 text-[color:var(--text)]">{row.label}</td>
+              {termNumbers.map((number) => {
+                const state = experienceCell(row, number, intern.currentTerm);
+                return (
+                  <td key={number} className="text-center" data-state={state}>
+                    <span
+                      aria-hidden="true"
+                      className={cn("inline-block size-5 rounded-sm align-middle", CELL_CLASS[state])}
+                    />
+                    <span className="sr-only">{`Term ${number}: ${CELL_WORDS[state]}`}</span>
+                  </td>
+                );
+              })}
+              <td className="nums whitespace-nowrap pl-2 text-right text-sm-minus text-[color:var(--text-muted)]">
+                {experienceCount(row, intern.experienceTermsNeeded)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-xs text-[color:var(--text-muted)]">
+        Filled: covered in that term. Dashed: this term, not finished. Category D applies to PGY1.
+      </p>
+    </CmeGroup>
+  );
+}
+
+/** The junior doctor's headings with no figures: what a signed-in doctor sees. */
+function CmeInternNotRecorded() {
+  return (
+    <>
+      <CmeGroup label="This term" testId="cme-training-this-term">
+        <NotRecorded />
+      </CmeGroup>
+      <CmeGroup label="EPA assessments" testId="cme-training-epa-assessments">
+        <RuleSource source={TRAINING_RULE_FIGURES.amcEpa.source} checkedOn={TRAINING_RULE_FIGURES.amcEpa.checkedOn} />
+        <p className="text-sm text-[color:var(--text)]">
+          At least 10 a year, at least 2 each term. {TRAINING_RULE_FIGURES.amcEpa.perEpa}
+        </p>
+        <NotRecorded testId="cme-training-epa-assessments-not-recorded" />
+      </CmeGroup>
+      <CmeGroup label="Clinical experience · terms done" testId="cme-training-experience">
+        <NotRecorded />
+      </CmeGroup>
+    </>
+  );
+}
+
+/** The official record and Teaching links at the foot of the junior doctor's page. */
+function CmeInternLinks({ teaching }: { readonly teaching: boolean }) {
+  return (
+    <CmeFlatList label="Official records" testId="cme-training-intern-links">
+      <RecordLinkRow
+        testId="cme-training-eportfolio"
+        href={EPORTFOLIO_HREF}
+        external
+        lead={<ArrowUpRight aria-hidden="true" strokeWidth={1.6} />}
+        title="Your ePortfolio"
+        subtitle="The official record of your training"
+      />
+      {teaching ? (
+        <RecordLinkRow
+          testId="cme-training-teaching"
+          href="/teaching"
+          lead={<GraduationCap aria-hidden="true" strokeWidth={1.6} />}
+          title="Intern teaching"
+          subtitle="In Teaching"
+        />
+      ) : null}
+    </CmeFlatList>
   );
 }

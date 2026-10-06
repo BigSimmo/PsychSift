@@ -151,7 +151,7 @@ export type CmeDraftGroups = {
   readonly workforce: readonly CmeDraft[];
 };
 
-/** My next action / Waiting for supervisor / Waiting for workforce, most-recently-edited first. */
+/** Yours to do (the Log tab's count) / waiting on a supervisor / waiting on workforce, most-recently-edited first. */
 export function groupDrafts(drafts: readonly CmeDraft[]): CmeDraftGroups {
   const sorted = [...drafts].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return {

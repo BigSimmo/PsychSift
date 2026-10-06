@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -7,30 +7,42 @@ vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({ Account
 import { CmeStateNotice } from "@/components/cme/cme-state-notice";
 
 describe("CPD states", () => {
-  it("says offline plainly, with an outlined 48 px Try again", async () => {
+  it("says offline plainly, with a 48 px Try again link and no figures", async () => {
     const user = userEvent.setup();
     const onRetry = vi.fn();
-    render(<CmeStateNotice state="offline" year={2026} onRetry={onRetry} />);
+    const { container } = render(<CmeStateNotice state="offline" year={2026} onRetry={onRetry} />);
     expect(screen.getByTestId("cme-offline")).toHaveTextContent(
       "Your CPD record isn’t kept on this phone. It opens again as soon as you’re back online.",
     );
-    const retry = screen.getByRole("button", { name: "Try again" });
-    expect(retry.className).toMatch(/\bmin-h-tap\b/);
+    const retry = within(screen.getByTestId("cme-offline")).getByRole("button", { name: "Try again" });
+    expect(retry.className).toMatch(/\bmin-h-12\b/);
     expect(retry.className).not.toContain("bg-[color:var(--command)]");
     await user.click(retry);
     expect(onRetry).toHaveBeenCalledTimes(1);
+    // Grey outlines stand where the figures would be: never a number, so never a zero.
+    expect(screen.getByTestId("cme-state-placeholder")).toHaveAttribute("aria-hidden", "true");
+    expect(container.textContent).not.toMatch(/\d/);
   });
 
-  it.each(["error", "unavailable"] as const)("shows %s as the error state, which changed nothing", async (state) => {
-    const user = userEvent.setup();
-    const onRetry = vi.fn();
-    render(<CmeStateNotice state={state} year={2026} onRetry={onRetry} />);
-    expect(screen.getByTestId("cme-error")).toHaveTextContent(
-      "Nothing was changed. Try again, or come back in a few minutes.",
-    );
-    await user.click(screen.getByRole("button", { name: "Try again" }));
-    expect(onRetry).toHaveBeenCalledTimes(1);
-  });
+  it.each(["error", "unavailable"] as const)(
+    "shows %s as records that did not load: amber note, no numbers, nothing changed",
+    async (state) => {
+      const user = userEvent.setup();
+      const onRetry = vi.fn();
+      const { container } = render(<CmeStateNotice state={state} year={2026} onRetry={onRetry} />);
+      const note = screen.getByTestId("cme-error");
+      expect(note).toHaveTextContent("Your CPD records did not load");
+      expect(note).toHaveTextContent("Nothing was changed or lost. Check your connection, then try again.");
+      expect(note.className).toContain("border-[color:var(--warning-border)]");
+      expect(screen.getByTestId("cme-state-placeholder")).toBeInTheDocument();
+      expect(container).toHaveTextContent(
+        "No hours or counts are shown until your records load, so nothing here can look like a zero.",
+      );
+      expect(container.textContent).not.toMatch(/\d/);
+      await user.click(screen.getByRole("button", { name: "Try again" }));
+      expect(onRetry).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it("tells a signed-out doctor the record is theirs alone", () => {
     render(<CmeStateNotice state="signed-out" year={2026} />);
@@ -38,13 +50,17 @@ describe("CPD states", () => {
       "It is linked to your account only, and it is not shared with your health service.",
     );
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByTestId("cme-state-placeholder")).toBeNull();
   });
 
-  it("shows a year not yet set up as the empty state: one line and where to start, with no dark button", () => {
+  it("shows a year with no confirmed target as one line and where to start, with no dark button", () => {
     const { container } = render(<CmeStateNotice state="unconfigured" year={2026} />);
-    expect(screen.getByTestId("cme-unconfigured")).toHaveTextContent("Choose your CPD home in Set up, then tap + Log.");
-    expect(screen.getByRole("link", { name: "Open Set up" })).toHaveAttribute("href", "/cme/setup?year=2026");
+    expect(screen.getByTestId("cme-unconfigured")).toHaveTextContent(
+      "You have not confirmed a yearly target for 2026.",
+    );
+    expect(screen.getByRole("link", { name: "Set up your year" })).toHaveAttribute("href", "/cme/setup?year=2026");
     expect(container.innerHTML).not.toContain("bg-[color:var(--command)]");
+    expect(container.innerHTML).not.toContain("--warning");
   });
 
   it("keeps the page's own heading above the state", () => {

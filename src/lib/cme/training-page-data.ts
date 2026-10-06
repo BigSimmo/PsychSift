@@ -1,6 +1,10 @@
 import "server-only";
 
-import { DEMO_CME_INSTANT } from "@/lib/cme/demo-year";
+import {
+  SAMPLE_TRAINING_MILESTONES,
+  SAMPLE_TRAINING_NOW_ISO,
+  SAMPLE_TRAINING_PERIODS,
+} from "@/lib/cme/training-assessments-sample";
 import { fetchOwnerTrainingMilestones, fetchOwnerTrainingPeriods } from "@/lib/cme/training-repository";
 import type { TrainingMilestone, TrainingPeriod } from "@/lib/cme/training-timeline";
 import { isDemoMode } from "@/lib/env";
@@ -21,15 +25,22 @@ export type CmeTrainingPageData = {
  * Resolves the owner exactly as `loadCmePageData` does (the server session's
  * verified user, then the service-role client scoped to that owner), and
  * keeps the same distinction between signed out and unavailable, so an outage
- * never reads as an empty record. Demo mode has no training record at all:
- * nothing is preloaded, even synthetically.
+ * never reads as an empty record. Demo mode shows the invented registrar
+ * example from the owner's mock-up (`training-assessments-sample.ts`), on the
+ * mock-up's own "today" so its dates read as drawn.
  *
  * The timeline is not tied to a CPD year, so an unconfigured year does not
  * block this page.
  */
 export async function loadCmeTrainingPageData(): Promise<CmeTrainingPageData> {
   if (isDemoMode()) {
-    return { state: "ready", demoMode: true, periods: [], milestones: [], now: DEMO_CME_INSTANT };
+    return {
+      state: "ready",
+      demoMode: true,
+      periods: SAMPLE_TRAINING_PERIODS,
+      milestones: SAMPLE_TRAINING_MILESTONES,
+      now: new Date(SAMPLE_TRAINING_NOW_ISO),
+    };
   }
   const now = new Date();
   const empty = { demoMode: false, periods: [], milestones: [], now };
