@@ -37,74 +37,84 @@ describe("Lighthouse requirement matches its producer", () => {
                 for (const refresh of [false, true])
                   for (const proven of [false, true])
                     for (const scope of ["full", "browser-matrix"]) {
-                    // Drafts and labels exist only on PRs, the refresh and scope inputs only on
-                    // dispatch, and the tree proof only on main pushes and PR updates.
-                    if ((draft || label || skip) && event !== "pull_request") continue;
-                    if (refresh && event !== "workflow_dispatch") continue;
-                    if (scope !== "full" && event !== "workflow_dispatch") continue;
-                    if (proven && event !== "push" && event !== "pull_request") continue;
-                    const github = {
-                      event_name: event,
-                      event: {
-                        pull_request:
-                          event === "pull_request"
-                            ? {
-                                draft,
-                                labels: [
-                                  ...(label ? [{ name: "lighthouse-budget" }] : []),
-                                  ...(skip ? [{ name: "skip-lighthouse-budget" }] : []),
-                                ],
-                              }
-                            : { labels: [] },
-                        inputs: event === "workflow_dispatch" ? { refresh_lighthouse_baseline: String(refresh) } : {},
-                      },
-                    };
-                    // `inputs` is null off-dispatch, exactly as in Actions.
-                    const inputs = event === "workflow_dispatch" ? { scope } : {};
-                    const needs = {
-                      "ui-playwright-build": { result: "success" },
-                      changes: {
-                        result: "success",
-                        outputs: {
-                          perf_changed: String(perf),
-                          lockfile_changed: String(lock),
-                          tree_proven_lighthouse: proven ? "true" : "",
+                      // Drafts and labels exist only on PRs, the refresh and scope inputs only on
+                      // dispatch, and the tree proof only on main pushes and PR updates.
+                      if ((draft || label || skip) && event !== "pull_request") continue;
+                      if (refresh && event !== "workflow_dispatch") continue;
+                      if (scope !== "full" && event !== "workflow_dispatch") continue;
+                      if (proven && event !== "push" && event !== "pull_request") continue;
+                      const github = {
+                        event_name: event,
+                        event: {
+                          pull_request:
+                            event === "pull_request"
+                              ? {
+                                  draft,
+                                  labels: [
+                                    ...(label ? [{ name: "lighthouse-budget" }] : []),
+                                    ...(skip ? [{ name: "skip-lighthouse-budget" }] : []),
+                                  ],
+                                }
+                              : { labels: [] },
+                          inputs: event === "workflow_dispatch" ? { refresh_lighthouse_baseline: String(refresh) } : {},
                         },
-                      },
-                    };
-                    const expected = Boolean(
-                      Function(
-                        "github",
-                        "needs",
-                        "inputs",
-                        "contains",
-                        "cancelled",
-                        `return (${producer});`,
-                      )(github, needs, inputs, (values: string[], value: string) => values.includes(value), () => false),
-                    );
-                    const env: Record<string, string> = {
-                      EVENT_NAME: event,
-                      PR_DRAFT: String(draft),
-                      LIGHTHOUSE_LABEL: String(label),
-                      SKIP_LIGHTHOUSE_LABEL: String(skip),
-                      REFRESH_LIGHTHOUSE_BASELINE: event === "workflow_dispatch" ? String(refresh) : "",
-                      PERF_CHANGED: String(perf),
-                      LOCKFILE_CHANGED: String(lock),
-                      TREE_PROVEN_LIGHTHOUSE: proven ? "true" : "",
-                      DISPATCH_SCOPE: event === "workflow_dispatch" ? scope : "",
-                    };
-                    for (const key of Object.keys(aggregate.env)) {
-                      if (!(key in env))
-                        env[key] = key.endsWith("_RESULT") ? "success" : key.startsWith("TREE_PROVEN_") ? "" : "false";
+                      };
+                      // `inputs` is null off-dispatch, exactly as in Actions.
+                      const inputs = event === "workflow_dispatch" ? { scope } : {};
+                      const needs = {
+                        "ui-playwright-build": { result: "success" },
+                        changes: {
+                          result: "success",
+                          outputs: {
+                            perf_changed: String(perf),
+                            lockfile_changed: String(lock),
+                            tree_proven_lighthouse: proven ? "true" : "",
+                          },
+                        },
+                      };
+                      const expected = Boolean(
+                        Function(
+                          "github",
+                          "needs",
+                          "inputs",
+                          "contains",
+                          "cancelled",
+                          `return (${producer});`,
+                        )(
+                          github,
+                          needs,
+                          inputs,
+                          (values: string[], value: string) => values.includes(value),
+                          () => false,
+                        ),
+                      );
+                      const env: Record<string, string> = {
+                        EVENT_NAME: event,
+                        PR_DRAFT: String(draft),
+                        LIGHTHOUSE_LABEL: String(label),
+                        SKIP_LIGHTHOUSE_LABEL: String(skip),
+                        REFRESH_LIGHTHOUSE_BASELINE: event === "workflow_dispatch" ? String(refresh) : "",
+                        PERF_CHANGED: String(perf),
+                        LOCKFILE_CHANGED: String(lock),
+                        TREE_PROVEN_LIGHTHOUSE: proven ? "true" : "",
+                        DISPATCH_SCOPE: event === "workflow_dispatch" ? scope : "",
+                      };
+                      for (const key of Object.keys(aggregate.env)) {
+                        if (!(key in env))
+                          env[key] = key.endsWith("_RESULT")
+                            ? "success"
+                            : key.startsWith("TREE_PROVEN_")
+                              ? ""
+                              : "false";
+                      }
+                      for (const result of ["success", "skipped", "failure", "cancelled"]) {
+                        cases.push({
+                          env: { ...env, LIGHTHOUSE_RESULT: result },
+                          pass: result === "success" || (!expected && result === "skipped"),
+                          label: `${event} perf=${perf} lock=${lock} draft=${draft} label=${label} skip=${skip} refresh=${refresh} proven=${proven} scope=${scope} result=${result}`,
+                        });
+                      }
                     }
-                    for (const result of ["success", "skipped", "failure", "cancelled"]) {
-                      cases.push({
-                        env: { ...env, LIGHTHOUSE_RESULT: result },
-                        pass: result === "success" || (!expected && result === "skipped"),
-                        label: `${event} perf=${perf} lock=${lock} draft=${draft} label=${label} skip=${skip} refresh=${refresh} proven=${proven} scope=${scope} result=${result}`,
-                      });
-                    }
-                  }
     }
     const input = cases
       .map((testCase, index) => {
@@ -126,17 +136,20 @@ describe("Lighthouse requirement matches its producer", () => {
     // A browser-matrix dispatch skips Lighthouse by design, so its skip must pass.
     expect(
       cases.some(
-        (testCase) => /^workflow_dispatch .*refresh=false .*scope=browser-matrix result=skipped/.test(testCase.label) && testCase.pass,
+        (testCase) =>
+          /^workflow_dispatch .*refresh=false .*scope=browser-matrix result=skipped/.test(testCase.label) &&
+          testCase.pass,
       ),
     ).toBe(true);
     expect(
       cases.some(
-        (testCase) => /^push perf=false lock=true .*proven=false scope=full result=skipped/.test(testCase.label) && !testCase.pass,
+        (testCase) =>
+          /^push perf=false lock=true .*proven=false scope=full result=skipped/.test(testCase.label) && !testCase.pass,
       ),
     ).toBe(true);
-    expect(cases.some((testCase) => /^push .*proven=true scope=full result=skipped/.test(testCase.label) && testCase.pass)).toBe(
-      true,
-    );
+    expect(
+      cases.some((testCase) => /^push .*proven=true scope=full result=skipped/.test(testCase.label) && testCase.pass),
+    ).toBe(true);
   }, 60_000);
 });
 
