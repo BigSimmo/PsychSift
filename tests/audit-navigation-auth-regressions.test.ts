@@ -18,6 +18,7 @@ function source(relativePath: string) {
 }
 
 const clinicalDashboardSource = source("src/components/ClinicalDashboard.tsx");
+const dashboardDocumentActionsSource = source("src/components/clinical-dashboard/use-dashboard-document-actions.ts");
 const dashboardModeSurfaceSource = source("src/components/clinical-dashboard/dashboard-mode-surface.ts");
 const masterSearchHeaderSource = source("src/components/clinical-dashboard/master-search-header.tsx");
 const universalAlsoMatchesSource = source("src/components/clinical-dashboard/universal-search-also-matches.tsx");
@@ -355,8 +356,12 @@ describe("audit navigation and auth regressions", () => {
     expect(pollingContract).toContain("setDocuments([]);");
     expect(pollingContract).toContain("return;");
 
+    // The label mutation moved out of ClinicalDashboard with the other per-document actions; the
+    // dashboard must still hand it the same private-API capability.
+    expect(clinicalDashboardSource).toContain("useDashboardDocumentActions({");
+    expect(clinicalDashboardSource).toMatch(/useDashboardDocumentActions\(\{[\s\S]*?canUsePrivateApis,[\s\S]*?\}\)/);
     const labelMutationContract = sourceSegment(
-      clinicalDashboardSource,
+      dashboardDocumentActionsSource,
       "const mutateDocumentLabel =",
       "const handleDocumentDeleted =",
       { label: "private label mutation" },
