@@ -29,8 +29,8 @@ import {
  *  - **No name or record-number field.** The patient is a bed number or up to
  *    four initials, exactly as the call log refuses a name in its label field.
  *  - **No unsigned pick lists.** Impression and referrals are typed. Legal
- *    status can be typed as written or picked from the official forms register;
- *    the two plain statuses wait behind `ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED`.
+ *    status can be typed as written, picked from the official forms register,
+ *    or picked as "Voluntary" (`ON_CALL_HANDOVER_LEGAL_STATUSES_ENABLED`).
  *  - **No share.** The handover leaves the device only by Copy or Print
  *    (`ON_CALL_HANDOVER_SHARE_ENABLED` is off).
  *  - **Psychiatry only.** The other specialties' fields are not yet agreed.
@@ -293,8 +293,12 @@ export const ON_CALL_HANDOVER_NOT_SET_UP =
  * the app's official forms register, exactly as the register words them.
  * ------------------------------------------------------------------------- */
 
-/** Not forms, so not in the register: shown as plain statuses (wording awaits the owner's confirmation). */
-export const ON_CALL_HANDOVER_LEGAL_STATUSES = ["Voluntary", "Not under the Act"] as const;
+/**
+ * Not a form, so not in the register: shown as a plain status. "Not under the
+ * Act" is never offered, because it reads wrongly for a patient on a referral or
+ * detention order, who is not involuntary but is under the Act.
+ */
+export const ON_CALL_HANDOVER_LEGAL_STATUSES = ["Voluntary"] as const;
 
 /** The register's official title for a stored legal value, or null for a status or anything else. */
 export function onCallHandoverLegalTitle(value: string): string | null {
