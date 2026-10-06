@@ -76,7 +76,7 @@ describe("signed-out Teaching sample, the default", () => {
     const { fetchMock } = signedOutWith();
     render(<TeachingLogbook demoMode={false} />);
     await waitFor(() => expect(screen.queryByTestId("teaching-state-signed-out")).not.toBeInTheDocument());
-    expect(await screen.findAllByText(/Demo/)).not.toHaveLength(0);
+    expect(await screen.findAllByText(/journal club/i)).not.toHaveLength(0);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

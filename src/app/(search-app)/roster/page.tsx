@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 
-import { RosterTodayPage } from "@/components/roster/roster-today-page";
+import { RosterShiftsPage } from "@/components/roster/roster-shifts-page";
 import { RosterSampleGate } from "@/components/roster/roster-sample-gate";
 
 export const metadata: Metadata = {
-  title: "Today | Roster | PsychSift",
-  description: "Your next shift, this week and your next nights and leave, from your own roster.",
+  title: "Shifts | Roster | PsychSift",
+  description: "Your shifts by week and month, and your rostered hours, private to your account.",
 };
 
-export default function RosterTodayRoute() {
+export default function RosterHomeRoute() {
   return (
     <RosterSampleGate>
-      <RosterTodayPage />
+      <RosterShiftsPage />
     </RosterSampleGate>
   );
 }

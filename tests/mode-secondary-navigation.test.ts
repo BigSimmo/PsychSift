@@ -53,10 +53,10 @@ const expectedLabels: Record<AppModeId, string[]> = {
   ],
   cme: ["Year", "Log", "Plan", "Courses", "Report"],
   teaching: ["This week", "Presenting", "Assessments", "My record", "Resources", "Organise"],
-  psychiatry: [],
+  psychiatry: ["Ask", "Tools", "Saved"],
   medicines: [],
   "my-work": ["Renewals", "Compliance", "New job", "Help"],
-  roster: ["Today", "Shifts", "Team", "Swaps", "Requests", "Settings"],
+  roster: ["Shifts", "Swaps & leave", "Team", "Settings", "Today"],
   "first-nations": [
     "Bedside",
     "Contacts",
@@ -102,8 +102,8 @@ const cleanLandingPath: Record<AppModeId, string> = {
 };
 
 /**
- * The modes that register nothing. Psychiatry's home is
- * itself the list of pages it gathers.
+ * The modes that register nothing. Psychiatry left this list when its
+ * hub pages became the band tabs.
  *
  * Each used to carry one `action: "search"` entry rendering a lone <button>
  * inside its own <nav> landmark, whose only effect was focusing a composer
@@ -127,7 +127,6 @@ const emptyRegistryModes = [
   "prescribing",
   "tools",
   "calculators",
-  "psychiatry",
   "medicines",
 ] as const satisfies readonly AppModeId[];
 
@@ -185,6 +184,16 @@ describe("mode secondary navigation registry", () => {
     ] as const) {
       expect(activeModeSecondaryNavigationId("cme", pathname)).toBe(page);
     }
+  });
+
+  it("registers Psychiatry's Ask, Tools and Saved as the band's tabs, Ask current on the hub", () => {
+    expect(modeSecondaryNavigationRegistry.psychiatry.map(({ id, href }) => [id, href])).toEqual([
+      ["psychiatry-ask", "/psychiatry"],
+      ["psychiatry-tools", "/psychiatry?page=tools"],
+      ["psychiatry-saved", "/psychiatry?page=saved"],
+    ]);
+    expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry")).toBe("psychiatry-ask");
+    expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry/mha-clock")).toBeNull();
   });
 
   it("suppresses clean landing pages, and still opens the bar after a submitted search", () => {
@@ -613,7 +622,7 @@ describe("mode secondary navigation registry", () => {
     expect(visible("teaching")).toHaveLength(6);
     // Compliance joined Admin with the 5 Oct mock-up (Renewals · Compliance · New job · Help).
     expect(visible("my-work")).toHaveLength(4);
-    expect(visible("roster")).toHaveLength(6);
+    expect(visible("roster")).toHaveLength(5);
     expect(visible("first-nations")).toHaveLength(9);
     expect(visible("my-day")).toHaveLength(3);
     expect(visible("on-call").filter((entry) => entry.group === "more")).toHaveLength(5);
@@ -768,8 +777,10 @@ describe("differentials mode secondary navigation active destinations", () => {
 });
 
 describe("Roster mode secondary navigation active destinations", () => {
-  it("marks Today, Shifts and Settings, and nothing else", () => {
-    expect(activeModeSecondaryNavigationId("roster", "/roster")).toBe("today");
+  it("marks Shifts (Roster's home), Today and Settings, and nothing else", () => {
+    expect(activeModeSecondaryNavigationId("roster", "/roster")).toBe("shifts");
+    expect(activeModeSecondaryNavigationId("roster", "/roster/today")).toBe("today");
+    expect(activeModeSecondaryNavigationId("roster", "/roster/requests")).toBe("swaps");
     expect(activeModeSecondaryNavigationId("roster", "/roster/shifts")).toBe("shifts");
     expect(activeModeSecondaryNavigationId("roster", "/roster/settings")).toBe("settings");
     expect(activeModeSecondaryNavigationId("roster", "/roster/swaps")).toBe("swaps");

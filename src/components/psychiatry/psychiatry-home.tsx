@@ -20,8 +20,8 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import type { DashQuickAction } from "@/components/dashboard-kit/quick-actions";
@@ -58,7 +58,7 @@ import {
   type PsychiatryVisitKind,
 } from "@/lib/psychiatry-hub/visits";
 import { sharedHomePresentation } from "@/lib/ui-copy";
-import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
+import { PageTitleUnderBand, useModeBandCurrentTab, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
  * The Psychiatry hub, in three pages: Ask, Tools and Saved, drawn to the approved mock-up v3
@@ -86,7 +86,11 @@ export interface PsychiatrySectionCounts {
 
 const PAGE_IDS = ["ask", "tools", "saved"] as const;
 type PsychiatryPageId = (typeof PAGE_IDS)[number];
-const PAGE_LABELS: Readonly<Record<PsychiatryPageId, string>> = { ask: "Ask", tools: "Tools", saved: "Saved" };
+
+/** ?page= names the page; anything else (or none) falls back to `fallback`. */
+function parsePsychiatryPage(value: string | null | undefined, fallback: PsychiatryPageId): PsychiatryPageId {
+  return PAGE_IDS.find((id) => id === value) ?? fallback;
+}
 
 /** The sections, read from the menu's Psychiatry group so the hub and the menu never list different ones. */
 const SECTION_MODE_IDS: readonly AppModeId[] = (
@@ -204,68 +208,6 @@ function useRecordingOff(): boolean {
     subscribeAppPreferences,
     () => !readAppPreferences().saveRecentSearches,
     () => false,
-  );
-}
-
-function PsychiatryTabs({
-  page,
-  onChange,
-}: {
-  readonly page: PsychiatryPageId;
-  readonly onChange: (page: PsychiatryPageId) => void;
-}) {
-  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const move = (delta: number) => {
-    const index = PAGE_IDS.indexOf(page);
-    const next = PAGE_IDS[(index + delta + PAGE_IDS.length) % PAGE_IDS.length] ?? "ask";
-    onChange(next);
-    refs.current[next]?.focus();
-  };
-  return (
-    <div
-      role="tablist"
-      aria-label="Psychiatry pages"
-      data-testid="psychiatry-tabs"
-      className="flex gap-1 rounded-full border border-[color:var(--dash-line)] bg-[color:var(--dash-card)] p-1 sm:max-w-md forced-colors:border"
-    >
-      {PAGE_IDS.map((id) => {
-        const selected = id === page;
-        return (
-          <button
-            key={id}
-            ref={(node) => {
-              refs.current[id] = node;
-            }}
-            type="button"
-            role="tab"
-            id={`psychiatry-tab-${id}`}
-            aria-selected={selected}
-            aria-controls="psychiatry-panel"
-            tabIndex={selected ? 0 : -1}
-            data-testid={`psychiatry-tab-${id}`}
-            onClick={() => onChange(id)}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowRight") {
-                event.preventDefault();
-                move(1);
-              } else if (event.key === "ArrowLeft") {
-                event.preventDefault();
-                move(-1);
-              }
-            }}
-            className={cn(
-              focusRing,
-              "min-h-12 flex-1 rounded-full text-sm font-dash-title",
-              selected
-                ? "bg-[color:var(--dash-raised)] text-[color:var(--dash-ink)] shadow-[var(--dash-shadow)] forced-colors:border"
-                : "text-[color:var(--dash-muted)]",
-            )}
-          >
-            {PAGE_LABELS[id]}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -867,7 +809,10 @@ export function PsychiatryHome({
   readonly now?: Date;
   readonly initialPage?: PsychiatryPageId;
 }) {
-  const [page, setPage] = useState<PsychiatryPageId>(initialPage);
+  // The band's Ask / Tools / Saved tabs are links to ?page=, so the address names the page.
+  const searchParams = useSearchParams();
+  const page = parsePsychiatryPage(searchParams?.get("page"), initialPage);
+  useModeBandCurrentTab(`psychiatry-${page}`);
   const now = useNow(nowProp);
   const state = usePsychiatryVisits();
   const nowMs = now?.getTime() ?? null;
@@ -886,14 +831,7 @@ export function PsychiatryHome({
           </PageTitleUnderBand>
         </header>
 
-        <PsychiatryTabs page={page} onChange={setPage} />
-
-        <div
-          id="psychiatry-panel"
-          role="tabpanel"
-          aria-labelledby={`psychiatry-tab-${page}`}
-          className="grid gap-3 sm:gap-4"
-        >
+        <div id="psychiatry-panel" className="grid gap-3 sm:gap-4">
           {page === "ask" ? <AskPage visits={state.visits} opens={state.opens} now={now} /> : null}
           {page === "tools" ? <ToolsPage counts={counts} week={week} thisMonth={month.thisMonth} /> : null}
           {page === "saved" ? <PsychiatrySavedCard /> : null}

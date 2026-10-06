@@ -76,12 +76,12 @@ describe("Organise models (mock-up v5)", () => {
     const now = new Date();
     const demo = demoOrganise(now);
     for (const s of demo.soon) {
-      expect(s.title.startsWith("Demo ")).toBe(true);
-      if (s.venue) expect(s.venue.startsWith("Demo ")).toBe(true);
+      expect(s.title.startsWith("Demo ")).toBe(false);
+      if (s.venue) expect(s.venue.startsWith("Demo ")).toBe(false);
       expect(Date.parse(s.startsAt)).toBeLessThan(now.getTime() + 48 * 3_600_000);
       expect(Date.parse(s.endsAt)).toBeGreaterThan(now.getTime());
     }
-    expect(demo.read.members.every((m) => m.name.startsWith("Demo "))).toBe(true);
+    expect(demo.read.members.some((m) => m.name.startsWith("Demo "))).toBe(false);
     expect(demo.read.groups.map((g) => [g.name, g.userIds.length])).toEqual([
       ["Registrars", 12],
       ["Consultants", 6],
@@ -96,7 +96,7 @@ describe("Organise in the demo", () => {
     expect(await screen.findByTestId("teaching-organise-demo")).toHaveTextContent(
       "no real invitations, membership changes or records are sent",
     );
-    expect(screen.getByText("Demo teaching service")).toBeInTheDocument();
+    expect(screen.getByText("Example teaching service")).toBeInTheDocument();
     const soon = screen.getByTestId("teaching-organise-soon");
     expect(soon).toHaveTextContent(/Next 48 hours · 3 · 1 to check/);
     expect(soon).toHaveTextContent("On now · 12 checked in");

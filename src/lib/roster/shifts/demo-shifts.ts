@@ -15,7 +15,7 @@ export function demoOnCallShifts(now: Date): OnCallShift[] {
     id,
     startsAt: perthWallToIso(day, start)!,
     endsAt: perthWallToIso(endDay, end)!,
-    title: "Registrar on call (demo)",
+    title: "Registrar on call",
     location: "Example Hospital",
     sourceUid: null,
     kind: null,

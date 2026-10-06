@@ -41,7 +41,7 @@ export const DEMO_TEACHING_SERVICE_ID = "00000000-0000-4000-9000-000000000001";
 
 export const DEMO_TEACHING_TEAM: TeamSummary = {
   id: DEMO_TEACHING_SERVICE_ID,
-  name: "Demo teaching service",
+  name: "Example teaching service",
   role: "doctor",
   acceptsRealData: true,
   isDemo: true,
@@ -70,43 +70,43 @@ type DemoOpenSeries = DemoSeries & { readonly serviceId: string; readonly teamNa
 const DEMO_SERIES: readonly DemoSeries[] = [
   {
     key: 21,
-    title: "Demo morning report",
+    title: "Morning report",
     anchor: "2026-01-05",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "08:00",
     minutes: 60,
-    venue: "Demo room 4",
+    venue: "Room 4",
     presenter: false,
     joinLink: false,
   },
   {
     key: 3,
-    title: "Demo education meeting",
+    title: "Education meeting",
     anchor: "2026-01-05",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "12:30",
     minutes: 50,
-    venue: "Demo lecture theatre",
+    venue: "Lecture theatre",
     presenter: true,
     joinLink: false,
   },
   {
     key: 22,
-    title: "Demo case presentation",
+    title: "Case presentation",
     anchor: "2026-01-06",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "12:30",
     minutes: 60,
-    venue: "Demo seminar room 2",
+    venue: "Seminar room 2",
     presenter: true,
     joinLink: false,
   },
   {
     key: 2,
-    title: "Demo journal club",
+    title: "Journal club",
     anchor: "2026-01-06",
     anchorOffsetDays: 0,
     frequency: "weekly",
@@ -119,43 +119,43 @@ const DEMO_SERIES: readonly DemoSeries[] = [
   },
   {
     key: 5,
-    title: "Demo grand rounds",
+    title: "Grand rounds",
     anchor: "2026-01-06",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "17:00",
     minutes: 60,
-    venue: "Demo lecture theatre",
+    venue: "Lecture theatre",
     presenter: true,
     joinLink: false,
   },
   {
     key: 23,
-    title: "Demo psychotherapy seminar",
+    title: "Psychotherapy seminar",
     anchor: "2026-01-07",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "09:00",
     minutes: 60,
-    venue: "Demo seminar room 1",
+    venue: "Seminar room 1",
     presenter: true,
     joinLink: false,
   },
   {
     key: 7,
-    title: "Demo supervision group",
+    title: "Supervision group",
     anchor: "2026-01-07",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "13:00",
     minutes: 60,
-    venue: "Demo room 4",
+    venue: "Room 4",
     presenter: false,
     joinLink: false,
   },
   {
     key: 24,
-    title: "Demo research meeting",
+    title: "Research meeting",
     anchor: "2026-01-08",
     anchorOffsetDays: 0,
     frequency: "weekly",
@@ -167,38 +167,38 @@ const DEMO_SERIES: readonly DemoSeries[] = [
   },
   {
     key: 6,
-    title: "Demo clinical skills workshop",
+    title: "Clinical skills workshop",
     anchor: "2026-01-08",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "12:00",
     minutes: 60,
-    venue: "Demo simulation suite",
+    venue: "Simulation suite",
     presenter: true,
     joinLink: false,
     audience: "registrars",
   },
   {
     key: 25,
-    title: "Demo case discussion",
+    title: "Case discussion",
     anchor: "2026-01-08",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "15:00",
     minutes: 60,
-    venue: "Demo room 4",
+    venue: "Room 4",
     presenter: true,
     joinLink: false,
   },
   {
     key: 26,
-    title: "Demo mental health update",
+    title: "Mental health update",
     anchor: "2026-01-09",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "10:00",
     minutes: 60,
-    venue: "Demo lecture theatre",
+    venue: "Lecture theatre",
     presenter: true,
     joinLink: false,
   },
@@ -206,21 +206,21 @@ const DEMO_SERIES: readonly DemoSeries[] = [
 
 export const DEMO_OLDER_ADULT_SERVICE_ID = "00000000-0000-4000-9000-000000000002";
 export const DEMO_YOUTH_SERVICE_ID = "00000000-0000-4000-9000-000000000003";
-const OLDER_ADULT = { serviceId: DEMO_OLDER_ADULT_SERVICE_ID, teamName: "Demo older adult service" } as const;
-const YOUTH = { serviceId: DEMO_YOUTH_SERVICE_ID, teamName: "Demo youth service" } as const;
+const OLDER_ADULT = { serviceId: DEMO_OLDER_ADULT_SERVICE_ID, teamName: "Older adult service" } as const;
+const YOUTH = { serviceId: DEMO_YOUTH_SERVICE_ID, teamName: "Youth service" } as const;
 
 /** Keys 11 to 14, so their occurrence ids never meet the demo service's own (2 to 7 and 21 to 26). */
 const DEMO_OPEN_SERIES: readonly DemoOpenSeries[] = [
   {
     ...OLDER_ADULT,
     key: 11,
-    title: "Demo psychopharmacology update",
+    title: "Psychopharmacology update",
     anchor: "2026-01-07",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "11:15",
     minutes: 60,
-    venue: "Demo older adult unit, also on Teams",
+    venue: "Older adult unit, also on Teams",
     presenter: true,
     joinLink: true,
   },
@@ -228,13 +228,13 @@ const DEMO_OPEN_SERIES: readonly DemoOpenSeries[] = [
   {
     ...OLDER_ADULT,
     key: 13,
-    title: "Demo delirium teaching",
+    title: "Delirium teaching",
     anchor: "2026-01-08",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "08:00",
     minutes: 60,
-    venue: "Demo education centre",
+    venue: "Education centre",
     presenter: true,
     joinLink: false,
     audience: "interns",
@@ -242,25 +242,25 @@ const DEMO_OPEN_SERIES: readonly DemoOpenSeries[] = [
   {
     ...YOUTH,
     key: 14,
-    title: "Demo eating disorders case conference",
+    title: "Eating disorders case conference",
     anchor: "2026-01-07",
     anchorOffsetDays: 0,
     frequency: "weekly",
     startTime: "14:00",
     minutes: 60,
-    venue: "Demo youth unit, also on Teams",
+    venue: "Youth unit, also on Teams",
     presenter: true,
     joinLink: true,
     audience: "consultants",
   },
 ];
 
-const DEMO_PRESENTER = "Demo presenter";
+const DEMO_PRESENTER = "Presenter";
 const DEMO_JOIN_URL = "https://example.org/demo-teaching-join";
-const DEMO_MATERIAL = { label: "Demo reading list", url: "https://example.org/demo-reading" };
+const DEMO_MATERIAL = { label: "Reading list", url: "https://example.org/demo-reading" };
 /** The next education meeting is shown moved, so the change notice has something to show. */
 const MOVED_SERIES_KEY = 3;
-const MOVED_VENUE = "Demo seminar room 1";
+const MOVED_VENUE = "Seminar room 1";
 const MAX_DEMO_OCCURRENCES = 60;
 const ID_PATTERN = /^00000000-0000-4000-9(\d{3})-(\d{8})0000$/;
 
@@ -536,13 +536,13 @@ export function demoTeachingFeedbackOwed(now: Date = new Date()): SessionRef[] {
 const ON_CALL_REGISTRAR_ENTRY_ID = "00000000-0000-4000-8000-000000000050";
 const ON_CALL_REGISTRAR: DemoSeries = {
   key: 0,
-  title: "Demo registrar teaching",
+  title: "Registrar teaching",
   anchor: "2026-01-06",
   anchorOffsetDays: 0,
   frequency: "weekly",
   startTime: "16:00",
   minutes: 60,
-  venue: "Demo seminar room",
+  venue: "Seminar room",
   presenter: false,
   joinLink: false,
 };

@@ -404,7 +404,7 @@ describe("AdminRenewalsPage — Not for this job", () => {
 describe("AdminRenewalsPage — Personal tab", () => {
   it("shows the empty state when nothing is off-catalogue", () => {
     renderPage();
-    fireEvent.click(screen.getByRole("tab", { name: "Personal" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Personal" }));
     expect(screen.getByText("No personal renewals")).toBeInTheDocument();
     expect(screen.getByTestId("admin-renewals-personal-empty-add")).toBeInTheDocument();
   });
@@ -415,7 +415,7 @@ describe("AdminRenewalsPage — Personal tab", () => {
       complianceFixture("A car I lease for work", { category: "Personal", expiresOn: "2027-01-01" }),
     ];
     renderPage();
-    fireEvent.click(screen.getByRole("tab", { name: "Personal" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Personal" }));
     expect(screen.getByText("A car I lease for work")).toBeInTheDocument();
     expect(screen.queryByText("Working with Children Check")).toBeNull();
   });
@@ -428,7 +428,7 @@ describe("AdminRenewalsPage — Personal tab", () => {
       onCallEntryFixture({ section: "logistics", title: "Staff car park", details: { category: "Facilities" } }),
     ];
     renderPage();
-    fireEvent.click(screen.getByRole("tab", { name: "Personal" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Personal" }));
     expect(screen.getByText("No personal renewals")).toBeInTheDocument();
     expect(screen.queryByText("Ward 4 switchboard")).toBeNull();
     expect(screen.queryByText("Agitation first steps")).toBeNull();
@@ -525,7 +525,7 @@ describe("AdminRenewalsPage — a deep link to one entry (I3)", () => {
     storeState.entries = [...ALL, car];
     window.history.replaceState(null, "", `/admin/renewals#on-call-entry-${car.id}`);
     renderPage();
-    expect(screen.getByRole("tab", { name: "Personal" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("radio", { name: "Personal" })).toBeChecked();
     expect(within(screen.getByTestId("admin-renewals-item-sheet")).getAllByText("A car I lease for work").length).toBe(
       1,
     );
