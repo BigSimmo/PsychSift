@@ -27,6 +27,7 @@ function query(table: string) {
     eq: () => q,
     gte: () => q,
     lt: () => q,
+    order: () => q,
     limit: () => q,
     then: (resolve: (value: { error: null; data: unknown[] }) => void) =>
       resolve({ error: null, data: mocks.tables[table] ?? [] }),
@@ -107,6 +108,37 @@ describe("morning brief", () => {
     ];
     expect(await sendMorningBriefs(client, perth("2026-10-07", "09:01"))).toBe(0);
     expect(await sendMorningBriefs(client, perth("2026-10-07", "14:00"))).toBe(1);
+  });
+
+  it("sends yesterday's brief that quiet hours held past midnight, once", async () => {
+    mocks.tables.web_push_subscriptions = [{ owner_id: ME }];
+    mocks.tables.user_preferences = [
+      {
+        user_id: ME,
+        preferences: {
+          reminders: {
+            brief: { enabled: true, workday: "07:00", dayOff: "22:00" },
+            quietHours: { enabled: true, start: "21:00", end: "07:00" },
+          },
+        },
+      },
+    ];
+    mocks.rpc.mockResolvedValue({ error: null, data: true });
+    expect(await sendMorningBriefs(client, perth("2026-10-07", "07:01"))).toBe(1);
+    expect(mocks.rpc).toHaveBeenCalledWith("alert_claim_morning_brief", { p_owner_id: ME, p_perth_date: "2026-10-07" });
+  });
+
+  it("keeps sending the rest when one reminder's device check fails", async () => {
+    const due = perth("2026-10-07", "09:59").toISOString();
+    mocks.rpc.mockResolvedValue({
+      error: null,
+      data: [
+        { owner_id: ME, ref: "r1", due_at: due, endpoint: PHONE },
+        { owner_id: ME, ref: "r2", due_at: due, endpoint: PHONE },
+      ],
+    });
+    mocks.toDevice.mockRejectedValueOnce(new Error("storage")).mockResolvedValueOnce(true);
+    expect(await sendDueReminders(client, perth("2026-10-07", "10:00"))).toBe(1);
   });
 
   it("does nothing for an owner who left the brief off", async () => {

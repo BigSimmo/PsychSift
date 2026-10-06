@@ -36,11 +36,18 @@ export async function sendDueReminders(client: RosterAdminClient, now: Date): Pr
   });
   if (error) throw new Error("Reminder claim unavailable");
   let sent = 0;
+  let failed = 0;
   for (const row of (data ?? []) as ClaimedReminder[]) {
     if (now.getTime() - Date.parse(row.due_at) >= REMINDER_LATE_LIMIT_MS) continue;
     // Only the phone that holds the words is buzzed; another device would have nothing to show.
-    if (await pushCodeToOwnerDevice(client, row.owner_id, row.endpoint, "reminder", 15 * 60)) sent += 1;
+    // One failure must not lose the rest of this batch, which is already taken.
+    try {
+      if (await pushCodeToOwnerDevice(client, row.owner_id, row.endpoint, "reminder", 15 * 60)) sent += 1;
+    } catch {
+      failed += 1;
+    }
   }
+  if (failed) console.warn("[alerts] some due reminders could not be sent");
   return sent;
 }
 
@@ -49,20 +56,23 @@ export async function sendMorningBriefs(client: RosterAdminClient, now: Date): P
   const linked = await client
     .from("web_push_subscriptions")
     .select("owner_id")
-    .limit(OWNER_LIMIT * 2);
+    .order("owner_id")
+    .limit(OWNER_LIMIT * 10);
   if (linked.error) throw new Error("Subscriptions unavailable");
-  const linkedOwners = [...new Set((linked.data ?? []).map((row) => row.owner_id as string))].slice(0, OWNER_LIMIT);
+  const linkedOwners = [...new Set((linked.data ?? []).map((row) => row.owner_id as string))];
+  // Each device is one row, so this is generous for one hospital's doctors; say so rather than skip quietly.
+  if (linkedOwners.length > OWNER_LIMIT) console.warn("[alerts] morning brief owner limit reached");
   if (!linkedOwners.length) return 0;
   const prefs = await client
     .from("user_preferences")
     .select("user_id, preferences")
-    .in("user_id", linkedOwners)
+    .in("user_id", linkedOwners.slice(0, OWNER_LIMIT))
     .eq("preferences->reminders->brief->>enabled", "true");
   if (prefs.error) throw new Error("Preferences unavailable");
   const wanting = prefs.data ?? [];
   if (!wanting.length) return 0;
 
-  const from = perthWallToIso(addDaysToDate(today, -1), "00:00");
+  const from = perthWallToIso(addDaysToDate(today, -2), "00:00");
   const to = perthWallToIso(addDaysToDate(today, 1), "00:00");
   const shifts = await client
     .from("on_call_shifts")
@@ -73,6 +83,7 @@ export async function sendMorningBriefs(client: RosterAdminClient, now: Date): P
     )
     .gte("ends_at", from!)
     .lt("starts_at", to!)
+    .order("starts_at")
     .limit(5000);
   if (shifts.error) throw new Error("Shifts unavailable");
   const byOwner = new Map<string, BriefShift[]>();
@@ -87,8 +98,12 @@ export async function sendMorningBriefs(client: RosterAdminClient, now: Date): P
     const ownerId = row.user_id as string;
     const settings = normalizeReminderSettings((row.preferences as { reminders?: unknown })?.reminders);
     if (!settings.brief.enabled) continue;
-    const time = morningBriefTime(settings.brief, settings.quietHours, today, byOwner.get(ownerId) ?? []);
-    if (!time || !briefIsDue(time, now)) continue;
+    // Yesterday's brief can land today when quiet hours held it past midnight; one brief a day either way.
+    const ownShifts = byOwner.get(ownerId) ?? [];
+    const time = [addDaysToDate(today, -1), today]
+      .map((date) => morningBriefTime(settings.brief, settings.quietHours, date, ownShifts))
+      .find((candidate) => candidate && perthDateOf(candidate.at) === today && briefIsDue(candidate, now));
+    if (!time) continue;
     const claim = await client.rpc("alert_claim_morning_brief", { p_owner_id: ownerId, p_perth_date: today });
     if (!claim.error && claim.data === true) due.push(ownerId);
   }

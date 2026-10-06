@@ -88,7 +88,13 @@ function AlertsBody({ now }: { now: Date }) {
       <ModeGroupedList eyebrow="Morning brief" testId="alerts-brief" className="lg:col-start-1 lg:row-start-1">
         <AlertsButtonRow
           title="Morning brief"
-          subtitle={reminders.brief.enabled ? "On · one alert instead of many" : "Off"}
+          subtitle={
+            !reminders.brief.enabled
+              ? "Off"
+              : alerts.state === "on"
+                ? "On · one alert instead of many"
+                : "On · turn on phone alerts below to get it"
+          }
           onSelect={() => setSheet({ kind: "brief" })}
           testId="alerts-brief-row"
         />

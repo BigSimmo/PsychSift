@@ -442,7 +442,8 @@ export function AlertsBriefSheet({
         ) : null}
         <SheetNote>
           A workday is a day with a shift in your roster. After a night shift the brief waits until 14:00, and in quiet
-          hours it waits until they end. Your lock screen only says that your brief is ready.
+          hours it waits until they end, so a time inside quiet hours means it comes when they finish. Your lock screen
+          only says that your brief is ready.
         </SheetNote>
         {brief.enabled && !phoneOn ? (
           <SheetNote>Turn on phone alerts under This phone for the brief to reach you.</SheetNote>

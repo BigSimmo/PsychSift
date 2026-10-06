@@ -46,6 +46,11 @@ export async function POST(request: Request) {
           { owner_id: ownerId, ref: body.ref, due_at: new Date(due).toISOString(), endpoint: body.endpoint },
           { onConflict: "owner_id,ref" },
         );
+      if (error?.message?.includes("alerts_limit")) {
+        throw new PublicApiError("Twenty reminders are already waiting to buzz this phone.", 409, {
+          code: "roster_limit",
+        });
+      }
       if (error) {
         throw new PublicApiError("This reminder can't buzz your phone right now.", 503, {
           code: "roster_unavailable",
@@ -62,7 +67,12 @@ export async function DELETE(request: Request) {
     request,
     async (client, ownerId) => {
       const body = await parseJsonBody(request, removeBodySchema, "Choose a reminder.");
-      await client.from("alert_reminder_times").delete().eq("owner_id", ownerId).eq("ref", body.ref);
+      const { error } = await client.from("alert_reminder_times").delete().eq("owner_id", ownerId).eq("ref", body.ref);
+      if (error) {
+        throw new PublicApiError("This reminder may still buzz your phone. Try again shortly.", 503, {
+          code: "roster_unavailable",
+        });
+      }
       return { ok: true };
     },
     { demo: () => ({ ok: true }) },

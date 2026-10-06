@@ -207,8 +207,8 @@ export function YourRemindersSheet({
           </ul>
         )}
         <p className="text-sm leading-5 text-[color:var(--text-muted)]">
-          With phone alerts on, each one also buzzes this phone at its time, even in quiet hours and with the app
-          closed. The words stay on this phone. Signing out clears them.
+          With phone alerts on, a reminder set for the next week also buzzes this phone at its time, even in quiet hours
+          and with the app closed. The lock screen never shows the words. Signing out clears them.
         </p>
       </div>
     </Sheet>

@@ -26146,6 +26146,10 @@ create function public.alert_reminder_times_cap() returns trigger
 language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
 begin
   perform pg_advisory_xact_lock(hashtextextended(new.owner_id::text, 74818));
+  -- An upsert that moves an existing note's time fires this trigger too; it adds nothing.
+  if exists (select 1 from public.alert_reminder_times where owner_id = new.owner_id and ref = new.ref) then
+    return new;
+  end if;
   if (select count(*) from public.alert_reminder_times where owner_id = new.owner_id) >= 20 then
     raise exception 'alerts_limit';
   end if;
