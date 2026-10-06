@@ -49,7 +49,8 @@ describe("Roster mode registration", () => {
   it("declares the violet identity tokens beside On Call and CME", () => {
     const globalsCss = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
     expect(globalsCss).toContain('[data-mode-identity="roster"]');
-    expect(globalsCss).toContain("--mode-identity: #634f8f;");
+    // Work-mode redesign, owner request 6 Oct 2026: the mockup's violet.
+    expect(globalsCss).toContain("--mode-identity: #5a45a6;");
     expect(globalsCss).toContain("--mode-identity: #b0a0d8;");
   });
 

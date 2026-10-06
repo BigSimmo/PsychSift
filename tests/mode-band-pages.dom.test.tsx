@@ -7,6 +7,8 @@ const auth = vi.hoisted(() => ({ status: "loading", session: null, authEpoch: 1 
 vi.mock("next/navigation", () => ({
   usePathname: () => nav.pathname,
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+  // Work-mode redesign, owner request 6 Oct 2026: the work frame reads the query.
+  useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => auth }));
 

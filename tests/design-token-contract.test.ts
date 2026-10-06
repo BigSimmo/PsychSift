@@ -402,7 +402,7 @@ describe("mode identity accent", () => {
    */
   const identityBlock = (selector: string) =>
     declarations(sourceSegment(globals, `\n${selector} {`, "\n}", { label: `${selector} block` }));
-  // Every mode that names an identity: On Call's teal, CME's indigo and Admin's brown
+  // Every mode that names an identity: On Call's teal, CME's indigo and Admin's slate
   // (mode id `my-work`). Each case below runs once per theme of each.
   const identityThemes = (["on-call", "cme", "my-work"] as const).flatMap((mode) => [
     { name: `${mode} light`, theme: "light", tokens: identityBlock(`[data-mode-identity="${mode}"]`) },
@@ -453,25 +453,26 @@ describe("mode identity accent", () => {
     expect(forced).toContain("--mode-identity-contrast: ButtonText;");
   });
 
-  it("paints Admin in the app's forms brown, and flattens it under forced colours", () => {
-    expect(identityBlock('[data-mode-identity="my-work"]').get("--mode-identity")).toBe("#7d5a2c");
-    expect(identityBlock('.dark [data-mode-identity="my-work"]').get("--mode-identity")).toBe("#d6bd8a");
+  it("paints Admin in the work-mode slate, and flattens it under forced colours", () => {
+    // Work-mode redesign, owner request 6 Oct 2026: Admin moved from the forms brown to slate.
+    expect(identityBlock('[data-mode-identity="my-work"]').get("--mode-identity")).toBe("#44566e");
+    expect(identityBlock('.dark [data-mode-identity="my-work"]').get("--mode-identity")).toBe("#a9b8cc");
     const forced = sourceSegment(globals, '  [data-mode-identity="my-work"] {', "\n  }", {
       label: "forced-colors Admin identity block",
     });
     expect(forced).toContain("--mode-identity: LinkText;");
   });
 
-  it("keeps Admin's brown, soft and border shades equal to the forms tokens they copy", () => {
-    // The identity block writes `--type-form`'s values out as literals (the
-    // contrast cases above measure declarations directly), so pin each shade
-    // to its source token: a change to one without the other fails here.
-    for (const suffix of ["", "-soft", "-border"]) {
-      expect(identityBlock('[data-mode-identity="my-work"]').get(`--mode-identity${suffix}`)).toBe(
-        v2Light.get(`--type-form${suffix}`),
-      );
+  it("keeps Admin's slate, soft and border shades pinned to the work-mode palette", () => {
+    // Work-mode redesign, owner request 6 Oct 2026: Admin no longer copies `--type-form`
+    // (the forms brown); it uses the mockup's slate. Each shade stays pinned, so a
+    // change to one without the others still fails here.
+    const slateLight = { "": "#44566e", "-soft": "#eef1f5", "-border": "#cfd7e1" } as const;
+    const slateDark = { "": "#a9b8cc", "-soft": "#1b222c", "-border": "#323d4b" } as const;
+    for (const suffix of ["", "-soft", "-border"] as const) {
+      expect(identityBlock('[data-mode-identity="my-work"]').get(`--mode-identity${suffix}`)).toBe(slateLight[suffix]);
       expect(identityBlock('.dark [data-mode-identity="my-work"]').get(`--mode-identity${suffix}`)).toBe(
-        v2Dark.get(`--type-form${suffix}`),
+        slateDark[suffix],
       );
     }
   });

@@ -4,7 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ModeBand, ModeBandStatus, useModeBandCount } from "@/components/mode-band/mode-band";
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/cme" }));
+// Work-mode redesign, owner request 6 Oct 2026: the work frame also reads the
+// query (which More page is current) and the router (side swipe between tabs).
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/cme",
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 function YearPage({ drafts, sample }: { drafts: number; sample?: boolean }) {
   useModeBandCount("log", drafts);

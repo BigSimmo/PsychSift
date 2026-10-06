@@ -204,7 +204,7 @@ html[data-work-frame] .universal-header[data-work-frame]::after {
   position: absolute;
   inset: 0.4375rem 0;
   z-index: -1;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
   box-shadow: inset 0 0 0 1px var(--work-glass-line);
   backdrop-filter: var(--work-glass-blur);
@@ -359,7 +359,7 @@ html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-back
   position: absolute;
   inset: 2px;
   z-index: -1;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
   box-shadow: inset 0 0 0 1px var(--work-glass-line);
   backdrop-filter: var(--work-glass-blur);
@@ -383,7 +383,7 @@ html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-back
   height: var(--spacing-tap, 3rem);
   flex: none;
   place-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--work-ink-muted);
 }
 
@@ -417,7 +417,7 @@ html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-back
   position: absolute;
   inset: 0.25rem 0;
   z-index: -1;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
   box-shadow: inset 0 0 0 1px var(--work-glass-line);
   backdrop-filter: var(--work-glass-blur);
@@ -508,7 +508,7 @@ html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-back
   margin-right: -0.5rem;
   place-items: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--work-ink-muted);
   cursor: pointer;
@@ -518,7 +518,7 @@ html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-back
   content: "";
   position: absolute;
   inset: 0.5625rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgb(var(--work-ink-rgb) / 6%);
 }
 
@@ -620,7 +620,7 @@ html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-back
   height: 1.125rem;
   flex: none;
   place-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--mode-identity);
   color: var(--mode-identity-contrast);
 }
@@ -699,7 +699,7 @@ html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-back
   height: 1.875rem;
   flex: none;
   place-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--mode-identity-soft);
   color: var(--mode-identity);
 }
@@ -1005,7 +1005,7 @@ a.work-hero:focus-visible {
 .work-tag {
   display: inline-block;
   padding: 0.1875rem 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 0.59375rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -1079,7 +1079,7 @@ a.work-hero:focus-visible {
   position: absolute;
   inset: 0.5625rem 0;
   z-index: -1;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--work-surface);
   box-shadow: inset 0 0 0 1px var(--work-line-strong);
 }
@@ -1110,7 +1110,7 @@ a.work-hero:focus-visible {
 .work-chip:focus-visible {
   outline: 2px solid var(--mode-identity);
   outline-offset: -4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 @media (forced-colors: active) {
@@ -1152,7 +1152,7 @@ a.work-hero:focus-visible {
   position: absolute;
   inset: 0.4375rem 0;
   z-index: -1;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .work-button > svg {
@@ -1211,7 +1211,7 @@ a.work-hero:focus-visible {
 .work-button:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: -3px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 
 .work-button:disabled,
@@ -1241,7 +1241,7 @@ a.work-hero:focus-visible {
   flex: none;
   place-items: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--mode-identity);
   cursor: pointer;
@@ -1253,7 +1253,7 @@ a.work-hero:focus-visible {
   position: absolute;
   inset: 0.4375rem;
   z-index: -1;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
   box-shadow: inset 0 0 0 1px var(--work-glass-line);
   backdrop-filter: var(--work-glass-blur);
@@ -1291,7 +1291,7 @@ a.work-hero:focus-visible {
   flex: 1;
   gap: 0.3125rem;
   padding: 0.3125rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
   box-shadow:
     inset 0 0 0 1px var(--work-glass-line),
@@ -1343,7 +1343,7 @@ a.work-hero:focus-visible {
   width: 3rem;
   height: 3rem;
   place-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--mode-identity-soft);
   color: var(--mode-identity);
 }
@@ -1412,7 +1412,7 @@ button.work-week__day {
 .work-week__mark {
   width: 1.125rem;
   height: 0.25rem;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
 }
 
@@ -1477,7 +1477,7 @@ button.work-week__day {
   height: 1.25rem;
   flex: none;
   place-items: center;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--success-bg);
   color: var(--success-text);
 }

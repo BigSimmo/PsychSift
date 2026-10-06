@@ -37,15 +37,16 @@ const light = declarations(sourceSegment(globals, '\n[data-mode-identity="teachi
 const dark = declarations(sourceSegment(globals, '\n.dark [data-mode-identity="teaching"] {', "\n}"));
 
 describe("Teaching identity tokens", () => {
-  it("uses the spec's plum in light and the calmer v4.2 plum in dark", () => {
-    expect(light.get("--mode-identity")).toBe("#7a3b6e");
-    expect(light.get("--mode-identity-soft")).toBe("#f8eff6");
-    expect(light.get("--mode-identity-border")).toBe("#ead6e5");
+  it("uses the work-mode green in light and a calmer green in dark", () => {
+    // Work-mode redesign, owner request 6 Oct 2026: Teaching moved from plum to green.
+    expect(light.get("--mode-identity")).toBe("#2f6e4a");
+    expect(light.get("--mode-identity-soft")).toBe("#ebf4ee");
+    expect(light.get("--mode-identity-border")).toBe("#c5dfcf");
     expect(light.get("--mode-identity-contrast")).toBe("#ffffff");
-    expect(dark.get("--mode-identity")).toBe("#cfa3c6");
-    expect(dark.get("--mode-identity-soft")).toBe("#2a1d27");
-    expect(dark.get("--mode-identity-border")).toBe("#45303f");
-    expect(dark.get("--mode-identity-contrast")).toBe("#2a0f24");
+    expect(dark.get("--mode-identity")).toBe("#93cba8");
+    expect(dark.get("--mode-identity-soft")).toBe("#142a1d");
+    expect(dark.get("--mode-identity-border")).toBe("#24412f");
+    expect(dark.get("--mode-identity-contrast")).toBe("#0d2a19");
   });
 
   it("clears 4.5:1 as a fill and as text in both themes, and 7:1 for heading ink on the dark tint", () => {
