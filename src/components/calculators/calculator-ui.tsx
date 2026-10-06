@@ -519,7 +519,7 @@ export function ResetButton({ onReset, disabled }: { onReset: () => void; disabl
       )}
     >
       <RotateCcw className="size-icon-sm" aria-hidden="true" />
-      Clear draft
+      Clear
     </button>
   );
 }
