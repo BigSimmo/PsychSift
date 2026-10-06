@@ -237,8 +237,6 @@ const EMPTY_ENTRIES: Record<StepKey, Entry[]> = {
   environment: [],
 };
 
-const SAFETY_PLAN_STORAGE_KEY = "psychsift:draft:patient-safety-plan";
-
 const SEED_ENTRY_IDS = new Set([
   ...Object.values(SEED).flatMap((rows) => rows.map((entry) => entry.id)),
   ...SEED_REASONS.map((entry) => entry.id),
@@ -528,31 +526,6 @@ export function PatientSafetyPlan() {
     };
   }, []);
 
-  // Restore draft from sessionStorage on mount (DEF-008)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const saved = window.sessionStorage.getItem(SAFETY_PLAN_STORAGE_KEY);
-      if (!saved) return;
-      const parsed = JSON.parse(saved);
-      if (parsed && typeof parsed === "object") {
-        queueMicrotask(() => {
-          if (parsed.entries && typeof parsed.entries === "object") {
-            setEntries(parsed.entries);
-          }
-          if (Array.isArray(parsed.reasons)) {
-            setReasons(parsed.reasons);
-          }
-          if (typeof parsed.planDate === "string") {
-            setPlanDate(parsed.planDate);
-          }
-        });
-      }
-    } catch {
-      /* ignore storage read error */
-    }
-  }, []);
-
   const addEntry = useCallback(
     (key: StepKey, primary: string, secondary?: string) => {
       setEntries((prev) => ({ ...prev, [key]: [...prev[key], { id: uid(key), primary, secondary }] }));
@@ -603,20 +576,6 @@ export function PatientSafetyPlan() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [isDirty]);
-
-  // Continuous sessionStorage draft caching for crash / reload recovery (DEF-008)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      if (!isDirty || planContainsSeedEntries(entries, reasons)) {
-        return;
-      }
-      const draft = { entries, reasons, planDate };
-      window.sessionStorage.setItem(SAFETY_PLAN_STORAGE_KEY, JSON.stringify(draft));
-    } catch {
-      /* ignore quota or privacy errors */
-    }
-  }, [entries, isDirty, planDate, reasons]);
 
   const planText = useMemo(() => {
     const guardLines = exampleActive
@@ -698,13 +657,6 @@ export function PatientSafetyPlan() {
     setReasons([]);
     setPlanDate("");
     setFinalised(false);
-    try {
-      if (typeof window !== "undefined") {
-        window.sessionStorage.removeItem(SAFETY_PLAN_STORAGE_KEY);
-      }
-    } catch {
-      /* ignore storage removal error */
-    }
   };
 
   return (

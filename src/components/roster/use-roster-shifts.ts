@@ -1,16 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAuthSession } from "@/lib/supabase/client";
-
-function useAuthSessionIfAvailable() {
-  try {
-    return useAuthSession();
-  } catch (error) {
-    if (error instanceof Error && error.message === "useAuthSession must be used within AuthProvider.") return null;
-    throw error;
-  }
-}
 import { useRosterTeams, rosterTeamUrl } from "./use-roster-team";
 import { mergeMyShifts, type RosterDisplayShift } from "@/lib/roster/team/team-view";
 import { rosterAssignmentsSchema, type RosterAssignment, type RosterTeam } from "@/lib/roster/team/model";
@@ -187,18 +177,11 @@ export function useRosterShifts(teamRange?: { from: string; to: string }): Roste
 
   const load = useCallback(async () => apply(await fetchShifts()), [apply]);
 
-  const auth = useAuthSessionIfAvailable();
-  const signedOut = auth?.status === "signed_out";
-
   useEffect(() => {
-    if (signedOut) {
-      queueMicrotask(() => setStatus("signed-out"));
-      return;
-    }
     const controller = new AbortController();
     fetchShifts(controller.signal).then(apply, () => undefined);
     return () => controller.abort();
-  }, [apply, signedOut]);
+  }, [apply]);
 
   const save = useCallback(
     async (request: OnCallShiftImportRequest) => {

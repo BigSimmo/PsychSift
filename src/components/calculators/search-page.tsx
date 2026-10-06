@@ -214,7 +214,7 @@ function DensityControl({ density, onDensity }: { density: Density; onDensity: (
           title={`${label} density`}
           onClick={() => onDensity(value)}
           className={cn(
-            "relative grid h-tap w-tap place-items-center rounded-md transition motion-reduce:transition-none",
+            "relative grid size-9 place-items-center rounded-md transition motion-reduce:transition-none before:absolute before:-inset-y-1.5 before:inset-x-0",
             density === value
               ? "bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
               : "text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
