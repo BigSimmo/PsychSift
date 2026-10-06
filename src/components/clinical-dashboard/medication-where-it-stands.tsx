@@ -71,7 +71,7 @@ function RowBody({ row }: { readonly row: StandRow }) {
         <span className="text-2xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
           {row.label}
         </span>
-        <span className="break-words text-sm font-semibold leading-snug">{row.action}</span>
+        <span className="break-words text-base-minus font-medium leading-snug">{row.action}</span>
       </span>
       {row.external ? (
         <>
@@ -94,7 +94,7 @@ export function MedicationWhereItStands({ medicineName }: { readonly medicineNam
     >
       <h2
         id="medication-where-it-stands-heading"
-        className="text-lg font-semibold leading-tight text-[color:var(--text-heading)]"
+        className="text-base font-semibold leading-tight text-[color:var(--text-heading)]"
       >
         Where it stands
       </h2>

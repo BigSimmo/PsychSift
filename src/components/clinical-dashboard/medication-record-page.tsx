@@ -348,7 +348,7 @@ function MedicationRecordDetail({
                 <Pill className="h-[46%] w-[46%]" aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
-                <h1 className="break-words text-2xl font-semibold leading-tight tracking-normal text-balance text-[color:var(--text-heading)] sm:text-3xl">
+                <h1 className="break-words text-lg font-semibold leading-tight tracking-normal text-balance text-[color:var(--text-heading)] sm:text-xl">
                   {record.name}
                 </h1>
                 <p className="mt-1 text-sm-minus font-medium leading-5 text-[color:var(--text-muted)] sm:text-sm">
@@ -477,8 +477,8 @@ function OnwardRow({
       >
         <Icon className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
         <span className="grid min-w-0 gap-0.5">
-          <span className="break-words text-sm font-semibold leading-snug">{title}</span>
-          {detail ? <span className="text-xs leading-snug text-[color:var(--text-muted)]">{detail}</span> : null}
+          <span className="break-words text-base-minus font-medium leading-snug">{title}</span>
+          {detail ? <span className="text-sm leading-snug text-[color:var(--text-muted)]">{detail}</span> : null}
         </span>
         <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
       </Link>

@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { dashLink, dashMuted, dashSurface, dashTitle } from "@/components/dashboard-kit/recipes";
+import { dashLink, dashMuted, dashSurface } from "@/components/dashboard-kit/recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { cn } from "@/components/ui-primitives";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -113,7 +113,7 @@ function useToday(nowProp?: Date): Date | null {
 }
 
 /** The group heading: small capitals in the muted ink, so it stays readable (the faint rung is below 4.5:1). */
-const groupLabel = "font-dash-title text-2xs uppercase tracking-eyebrow text-[color:var(--dash-muted)]";
+const groupLabel = "text-2xs font-semibold uppercase tracking-eyebrow text-[color:var(--dash-muted)]";
 
 /** A flat titled group: heading row over its content, no card. */
 function Group({
@@ -146,7 +146,9 @@ const hairlineList = "grid min-w-0";
 const hairlineItem = "min-w-0 border-t border-[color:var(--dash-line)] first:border-t-0";
 const rowLink = "grid min-h-14 items-center gap-x-3 py-2 text-[color:var(--dash-ink)] no-underline";
 const rowIcon = "size-icon-md shrink-0 text-[color:var(--dash-muted)]";
-const rowTitle = "break-words font-dash-title text-base-minus leading-tight";
+const rowTitle = "break-words text-base-minus font-medium leading-tight";
+/** Row subtitle: 13px, one step above the 12px card caption, as in the mock-up. */
+const rowSub = "text-sm leading-snug text-[color:var(--dash-muted)]";
 const rowEnd = "size-icon-sm shrink-0 text-[color:var(--dash-faint)]";
 
 function OpensOutside() {
@@ -174,12 +176,12 @@ function OfflineNote() {
     <div
       role="status"
       data-testid="medicines-offline"
-      className="flex min-w-0 items-start gap-3 rounded-xl border border-[color:var(--dash-line)] bg-[color:var(--dash-raised)] p-3 forced-colors:border"
+      className="flex min-w-0 items-start gap-3 border-b border-[color:var(--dash-line)] pt-1 pb-3"
     >
       <CloudOff aria-hidden="true" className={cn(rowIcon, "mt-0.5")} />
       <div className="grid min-w-0 gap-0.5">
-        <p className={cn(dashTitle, "text-sm")}>No connection</p>
-        <p className={dashMuted}>
+        <p className="text-base-minus font-semibold text-[color:var(--dash-ink)]">No connection</p>
+        <p className={rowSub}>
           Search, sections and outside links need a connection. They open again when you reconnect.
         </p>
       </div>
@@ -203,7 +205,7 @@ function FindArea() {
           <span className={groupLabel}>Medication</span>
           <h2
             id="medicines-find-heading"
-            className="font-dash-title text-2xl-minus leading-tight tracking-tight text-balance text-[color:var(--dash-ink)]"
+            className="text-lg font-semibold leading-tight tracking-tight text-balance text-[color:var(--dash-ink)]"
           >
             Which medicine are you checking?
           </h2>
@@ -303,7 +305,7 @@ function RecentGroup() {
               <Pill aria-hidden="true" className={rowIcon} />
               <span className="grid min-w-0 gap-0.5">
                 <span className={rowTitle}>{visit.name}</span>
-                <span className={dashMuted}>Medication</span>
+                <span className={rowSub}>Medication</span>
               </span>
               <ChevronRight aria-hidden="true" className={rowEnd} />
             </Link>
@@ -366,14 +368,14 @@ function PbsMonthGroup({ today, online }: { readonly today: Date | null; readonl
           aria-hidden="true"
           className="grid min-w-12 shrink-0 rounded-lg px-1 border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] py-1 text-center forced-colors:border"
         >
-          <span className="font-dash-title text-3xs uppercase tracking-widest text-[color:var(--dash-muted)]">
+          <span className="text-2xs font-semibold uppercase tracking-eyebrow text-[color:var(--dash-muted)]">
             {monthShort ?? "PBS"}
           </span>
-          <span className="font-dash-figure text-lg leading-none text-[color:var(--dash-ink)]">1</span>
+          <span className="nums text-base font-semibold leading-none text-[color:var(--dash-ink)]">1</span>
         </span>
         <span className="grid min-w-0 gap-0.5">
           <span className={rowTitle}>{month ? `PBS updated 1 ${month}` : "PBS updates on the 1st of each month"}</span>
-          <span className={dashMuted}>{online ? "Check a listing on the PBS Schedule" : "Needs a connection"}</span>
+          <span className={rowSub}>{online ? "Check a listing on the PBS Schedule" : "Needs a connection"}</span>
         </span>
         <OutsideEnd online={online} />
       </a>
@@ -407,7 +409,7 @@ function StatewideChartsGroup({ online }: { readonly online: boolean }) {
               <FileText aria-hidden="true" className={rowIcon} />
               <span className="grid min-w-0 gap-0.5">
                 <span className={rowTitle}>{chart.title}</span>
-                <span className={dashMuted}>{online ? chart.publisher : "Needs a connection"}</span>
+                <span className={rowSub}>{online ? chart.publisher : "Needs a connection"}</span>
               </span>
               <OutsideEnd online={online} />
             </a>
@@ -452,7 +454,7 @@ function ReferencesGroup({ online }: { readonly online: boolean }) {
             >
               <span
                 aria-hidden="true"
-                className="grid size-12 shrink-0 place-items-center rounded-full border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] font-dash-title text-xs text-[color:var(--dash-ink)] forced-colors:border"
+                className="grid size-12 shrink-0 place-items-center rounded-full border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] text-xs font-semibold text-[color:var(--dash-ink)] forced-colors:border"
               >
                 {reference.mark}
               </span>

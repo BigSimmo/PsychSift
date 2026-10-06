@@ -357,7 +357,7 @@ function MedicationNothingFound({
     <div className="medication-results-inset grid gap-3" data-testid="medication-nothing-found">
       {/* Plain heading and line (mock-up v6 screen 4), announced politely like the shared empty state. */}
       <div role="status" className="grid gap-1">
-        <h2 className="text-lg font-semibold leading-snug text-balance break-words text-[color:var(--text-heading)]">
+        <h2 className="text-base font-semibold leading-snug text-balance break-words text-[color:var(--text-heading)]">
           {title}
         </h2>
         <p className="text-sm leading-snug text-[color:var(--text-muted)]">
@@ -376,8 +376,10 @@ function MedicationNothingFound({
           >
             <FileSearch className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
             <span className="grid min-w-0 gap-0.5">
-              <span className="break-words text-sm font-semibold leading-snug">Search your PDFs for {trimmed}</span>
-              <span className="text-xs leading-snug text-[color:var(--text-muted)]">Opens Documents</span>
+              <span className="break-words text-base-minus font-medium leading-snug">
+                Search your PDFs for {trimmed}
+              </span>
+              <span className="text-sm leading-snug text-[color:var(--text-muted)]">Opens Documents</span>
             </span>
             <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
           </Link>
@@ -394,7 +396,7 @@ function MedicationNothingFound({
               )}
             >
               <Pill className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
-              <span className="break-words text-sm font-semibold leading-snug">Browse all medicines</span>
+              <span className="break-words text-base-minus font-medium leading-snug">Browse all medicines</span>
               <span className="nums text-sm text-[color:var(--text-muted)]">
                 {catalogueCount > 0 ? catalogueCount.toLocaleString("en-AU") : null}
               </span>
