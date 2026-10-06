@@ -21,7 +21,8 @@ describe("screens name the CPD home, never the internal preset id", () => {
   it("on Today's source line", () => {
     render(<CmeDashboard set={PRESET_YEAR} entries={[]} now={new Date("2026-09-19T02:00:00Z")} />);
     const provenance = screen.getByTestId("cme-provenance");
-    expect(provenance).toHaveTextContent(LABEL);
+    // The Year page names the preset as the mock-up does: "the RANZCP starting set".
+    expect(provenance).toHaveTextContent("the RANZCP starting set");
     expect(provenance).not.toHaveTextContent(CME_PRESET_VERSION);
   });
 
