@@ -3,6 +3,7 @@
 import { useLayoutEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 import { claimPhoneOverlayAddonReserve } from "@/components/clinical-dashboard/use-phone-overlay-chrome-reserve";
 import { phoneHeaderCollapseAddonSlotId } from "@/lib/mode-home-composer";
 
@@ -36,13 +37,17 @@ import { phoneHeaderCollapseAddonSlotId } from "@/lib/mode-home-composer";
  * `isHeaderAddonSlotOwnedRoute` names the claimants and
  * `tests/mode-nav-addon-slot.dom.test.tsx` fails when a new one falls outside
  * that cover.
+ *
+ * Under a mode band the bar stays in the page, below the band, as
+ * `PhoneHeaderCollapsePortal` explains.
  */
 export function ModeNavHeaderPortal({ children }: { children: ReactNode }) {
+  const underBand = useModeBandShown();
   const [host, setHost] = useState<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
     const sync = () => {
-      const next = document.getElementById(phoneHeaderCollapseAddonSlotId);
+      const next = underBand ? null : document.getElementById(phoneHeaderCollapseAddonSlotId);
       setHost((current) => (current === next ? current : next));
     };
 
@@ -53,7 +58,7 @@ export function ModeNavHeaderPortal({ children }: { children: ReactNode }) {
     observer.observe(document.body, { childList: true, subtree: true });
 
     return () => observer.disconnect();
-  }, []);
+  }, [underBand]);
 
   // The bar is ~49px of page flow until this portal claims it, so the phone
   // reserve must grow in the same commit that removes it. Deferring to the

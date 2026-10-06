@@ -28,6 +28,7 @@ import {
 } from "@/lib/mode-secondary-navigation";
 import { modePageVisible, useRosterHasEnabledTeam, useTeachingRoles } from "@/lib/teaching/page-visibility";
 import { useClientTime } from "@/lib/use-client-time";
+import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
 
 /**
  * Modes that carry their own identity colour (`data-mode-identity` in
@@ -88,7 +89,6 @@ export type ModeBandProps = {
   children?: ReactNode;
 };
 
-const ModeBandShownContext = createContext(false);
 const ModeBandCountContext = createContext<(tabId: string, count: number | null) => void>(() => {});
 const ModeBandStatusKindContext = createContext<(kind: ModeBandStatusValue["kind"] | null) => void>(() => {});
 
@@ -116,15 +116,7 @@ export function useModeBandCount(tabId: string, count: number | null) {
   }, [setCount, tabId, count]);
 }
 
-/**
- * Whether this page sits under a mode band. Decided from the address alone, so
- * the server and the browser agree on the first paint. Pages use it to drop
- * their own copy of something the band now carries (a visible title, a
- * Customise button), so nothing shows twice, and keep it where no band is.
- */
-export function useModeBandShown(): boolean {
-  return useContext(ModeBandShownContext);
-}
+export { useModeBandShown };
 
 function greetingFor(now: Date): string {
   const hour = Number(
