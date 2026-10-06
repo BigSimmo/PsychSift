@@ -72,8 +72,10 @@ describe("release-browser-matrix duration shards", () => {
         const seen: string[] = [];
         for (let index = 1; index <= count; index += 1) {
           const args = releaseShardArgs([`--project=${project}`, `--shard=${index}/${count}`]);
-          const filters = args.filter((arg) => !arg.startsWith("--"));
-          const selected = specs.filter((file) => filters.some((filter) => matchesLikePlaywright(filter, file)));
+          const filters = args.filter((arg: string) => !arg.startsWith("--"));
+          const selected = specs.filter((file) =>
+            filters.some((filter: string) => matchesLikePlaywright(filter, file)),
+          );
           expect(selected).toEqual(releaseShardGroups(project, count)[index - 1].files);
           seen.push(...selected);
         }
@@ -134,6 +136,8 @@ describe("release-browser-matrix duration shards", () => {
     expect(() => releaseShardArgs(["--project=chromium-mockups", "--shard=1/2"])).toThrow(/no release shard timings/);
     expect(() => releaseShardArgs(["--project=firefox", "--shard=3/2"])).toThrow(/--shard must be/);
     // Playwright's own --shard is never forwarded alongside the file group.
-    expect(releaseShardArgs(["--project=firefox", "--shard=1/2"]).some((arg) => arg.startsWith("--shard"))).toBe(false);
+    expect(
+      releaseShardArgs(["--project=firefox", "--shard=1/2"]).some((arg: string) => arg.startsWith("--shard")),
+    ).toBe(false);
   });
 });
