@@ -36,6 +36,7 @@ const registryModeNavSource = read("src/components/mode-nav/registry-mode-nav.ts
 const modeNavSource = read("src/components/mode-nav/mode-nav.tsx");
 const modeNavPortalSource = read("src/components/mode-nav/mode-nav-portal.tsx");
 const documentViewerSource = read("src/components/DocumentViewer.tsx");
+const documentSearchComposerSource = read("src/components/document-viewer/document-viewer-search-composer.tsx");
 const calculatorSearchSource = read("src/components/calculators/search-page.tsx");
 const documentViewerChromeHookSource = read("src/components/clinical-dashboard/use-document-viewer-chrome-scroll.ts");
 const differentialDetailSource = read("src/components/differentials/differential-detail-page.tsx");
@@ -496,7 +497,8 @@ describe("shared header hide/reveal wiring", () => {
     expect(shellSource).toContain("<PhoneFooterLayerFrame");
     expect(dashboardSource).toContain("<PhoneFooterLayerFrame");
     expect(calculatorSearchSource).not.toContain("<PhoneFooterLayerPortal>");
-    expect(documentViewerSource).toContain("<PhoneFooterLayerPortal>");
+    expect(documentSearchComposerSource).toContain("<PhoneFooterLayerPortal>");
+    expect(documentViewerSource).toContain("<DocumentViewerSearchComposer");
     expect(differentialPresentationSource).toContain("<PhoneFooterLayerPortal>");
     expect(differentialPresentationSource).toContain('data-testid="differential-presentation-phone-footer"');
   });

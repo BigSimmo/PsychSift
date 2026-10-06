@@ -14,6 +14,10 @@ const comparePicker = readFileSync(
   "utf8",
 );
 const documentViewer = readFileSync(new URL("../src/components/DocumentViewer.tsx", import.meta.url), "utf8");
+const documentSearchComposer = readFileSync(
+  new URL("../src/components/document-viewer/document-viewer-search-composer.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("search / field focus is quiet and shell-owned", () => {
   it("does not paint a 2px inset --focus rectangle on text fields", () => {
@@ -75,8 +79,9 @@ describe("search / field focus is quiet and shell-owned", () => {
   });
 
   it("gives document search a search-shell owner so the nested input is not ringless", () => {
-    expect(documentViewer).toContain("search-shell");
-    expect(documentViewer).toContain("searchShellInput");
+    expect(documentViewer).toContain("<DocumentViewerSearchComposer");
+    expect(documentSearchComposer).toContain("search-shell");
+    expect(documentSearchComposer).toContain("searchShellInput");
   });
 
   it("does not put a second 2px --focus outline on the composer pill", () => {

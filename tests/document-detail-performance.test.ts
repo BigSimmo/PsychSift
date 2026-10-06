@@ -100,7 +100,8 @@ describe("document viewer latency guards", () => {
   it("loads window-scoped navigation details and renders one indexed-text panel", () => {
     const viewer = source("src/components/DocumentViewer.tsx");
     const routeHook = source("src/components/document-viewer/use-document-viewer-route.ts");
-    const panelInstances = viewer.match(/<IndexedTextPanel\b/g) ?? [];
+    const contentPanels = source("src/components/document-viewer/document-viewer-content-panels.tsx");
+    const panelInstances = contentPanels.match(/<IndexedTextPanel\b/g) ?? [];
     // `useEffect` as an end marker is an arbitrary token, not a structure —
     // DocumentViewer has several. Guarded so a reorder fails loudly instead of
     // widening this window to the rest of the file.
@@ -126,6 +127,7 @@ describe("document viewer latency guards", () => {
     expect(viewer).not.toContain("mergeRowsById");
     expect(viewer).toContain("Never retain evidence from the previous page");
     expect(panelInstances).toHaveLength(1);
+    expect(viewer).not.toMatch(/<IndexedTextPanel\b/);
   });
 
   it("mints preview and download URLs only from explicit actions", () => {
@@ -142,11 +144,14 @@ describe("document viewer latency guards", () => {
     const viewer = source("src/components/DocumentViewer.tsx");
     const panels = source("src/components/document-viewer/source-panels.tsx");
 
-    expect(viewer).toContain("const currentDocumentSearchResults =");
-    expect(viewer).toContain("documentSearchState.query === normalizedSourceSearch");
+    const searchComposer = source("src/components/document-viewer/document-viewer-search-composer.tsx");
+    expect(viewer).toMatch(
+      /const currentDocumentSearchResults =\s*documentSearchState\.query === normalizedSourceSearch/,
+    );
     expect(viewer).toContain("submitSourceSearch");
     expect(viewer).toContain("sourceSearchInputRef.current?.focus()");
-    expect(viewer).toContain("Search within this document");
+    expect(viewer).toContain("<DocumentViewerSearchComposer");
+    expect(searchComposer).toContain("Search within this document");
     expect(viewer).toContain("documentsSearchHref({ query: tag.searchText || tag.label, run: true })");
     expect(viewer).not.toContain("Search or answer from this document");
     expect(panels).toContain("Enter at least 2 characters to search all indexed passages.");
@@ -162,7 +167,9 @@ describe("document viewer latency guards", () => {
     const filmstrip = source("src/components/document-viewer/document-image-filmstrip.tsx");
     const routeHook = source("src/components/document-viewer/use-document-viewer-route.ts");
 
-    expect(viewer).toContain("onSelectPage={navigateToPage}");
+    const contentPanels = source("src/components/document-viewer/document-viewer-content-panels.tsx");
+    expect(contentPanels).toContain("onSelectPage={navigateToPage}");
+    expect(viewer).toContain("navigateToPage={navigateToPage}");
     expect(viewer).toContain("activePage={activePage}");
     expect(visuals).toContain("DocumentImageFilmstrip");
     expect(visuals).toContain("onSelectPage={onSelectPage}");
