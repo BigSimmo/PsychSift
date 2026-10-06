@@ -816,6 +816,11 @@ jobs:
           # build); the incremental .next/cache above is the real speedup. Kept as
           # a tunable so the local default stays cpus:1 (WasmHash-crash-safe).
           NEXT_BUILD_CPUS: "4"
+          # build:internal already passes --max-old-space-size=8192 to the next
+          # binary, but Next's TypeScript check runs in a child that only inherits
+          # NODE_OPTIONS. Without this, that child stays near the ~4 GB default and
+          # OOMs on the large mode-batch type graph (PR #3329, ubuntu-24.04 ~7 GB).
+          NODE_OPTIONS: "--max-old-space-size=6144"
         run: npm run build
 
       # Step timeout (not job timeout): a stuck exit must fail this step quickly

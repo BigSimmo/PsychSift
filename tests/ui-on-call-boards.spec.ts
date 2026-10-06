@@ -423,8 +423,10 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // only once the page has resolved two or more groups from the list. WebKit reaches
     // this read before that, found no bar, and compared the pill's teal against null.
     // Wait for both elements this test compares, then read them.
+    // Contacts is the editor behind People (kit 1.7), so the pill names People — same as
+    // the assertion in "names the page once, in the pill, with the mode beneath it".
     await expect(await sectionBar(page)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Mode On Call, page Call" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mode On Call, page People" })).toBeVisible();
     const identity = await page.evaluate(() => {
       const read = (selector: string) => {
         const element = document.querySelector(selector);
