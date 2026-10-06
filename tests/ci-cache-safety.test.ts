@@ -177,6 +177,31 @@ describe("CI cache safety", () => {
     expect(installStep).toBeGreaterThan(nodeSetup.indexOf("cache: npm"));
   });
 
+  it("keys every workflow's own npm cache exactly like setup-node-cached", () => {
+    // A workflow that runs npm ci behind its own `cache: npm` step must hash the same files as the
+    // shared action, so the six scheduled workflows restore the ~/.npm CI's npm ci jobs saved
+    // instead of the lockfile-only key that setup-node's automatic cache may have filled empty.
+    const yaml = createRequire(import.meta.url)("js-yaml");
+    const dir = new URL("../.github/workflows/", import.meta.url);
+    const keyed: string[] = [];
+    for (const file of readdirSync(dir).filter((name) => /\.ya?ml$/.test(name))) {
+      const parsed = yaml.load(readFileSync(new URL(file, dir), "utf8")) as {
+        jobs?: Record<string, { steps?: Array<{ uses?: string; with?: Record<string, unknown> }> }>;
+      };
+      for (const [jobId, job] of Object.entries(parsed.jobs ?? {})) {
+        for (const step of job.steps ?? []) {
+          if (!step.uses?.startsWith("actions/setup-node@") || step.with?.cache !== "npm") continue;
+          keyed.push(`${file}#${jobId}`);
+          expect(String(step.with?.["cache-dependency-path"]).trim().split(/\s+/), `${file} ${jobId}`).toEqual([
+            "package-lock.json",
+            ".nvmrc",
+          ]);
+        }
+      }
+    }
+    expect(keyed.length).toBeGreaterThanOrEqual(6);
+  });
+
   it("keeps quarantined and mockup UI specs in one advisory lane", () => {
     expect(workflow).toContain("ui-advisory:");
     expect(workflow).toContain("uses: ./.github/actions/setup-ui-e2e");
