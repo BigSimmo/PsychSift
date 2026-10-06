@@ -8,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function OnCallFirstNightRoute() {
-  return <OnCallFirstNightPage />;
+  return (
+    <div className="min-h-[56px]">
+      <OnCallFirstNightPage />
+    </div>
+  );
 }

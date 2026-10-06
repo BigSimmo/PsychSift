@@ -42,6 +42,10 @@ const geistSans = localFont({
   src: "../fonts/geist-latin.woff2",
   variable: "--font-geist-sans",
   display: "swap",
+  declarations: [
+    { prop: "size-adjust", value: "100%" },
+    { prop: "ascent-override", value: "95%" },
+  ],
   // next/font/local only emits font-weight when this is set. The vendored
   // WOFF2s are variable (wght 100–900); without the range, @font-face has no
   // font-weight and browsers faux-bold headings.

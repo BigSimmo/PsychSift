@@ -2138,6 +2138,44 @@ export function MasterSearchHeader({
   const collapsesAtEveryWidth = wideCollapseBehaviour === "collapse";
   const sticksAbovePhones = wideCollapseBehaviour === "sticky";
 
+  const handlePickRecent = useCallback(
+    (recent: string) => {
+      onQueryChange(recent);
+      if (onPickRecent) {
+        onPickRecent(recent);
+        return;
+      }
+      onAsk();
+    },
+    [onAsk, onPickRecent, onQueryChange],
+  );
+
+  const handleCrossMode = useCallback(
+    (targetMode: AppModeId, crossQuery: string) => {
+      if (targetMode === "favourites" && !canAccessFavourites) {
+        onRequestAccountSetup?.();
+        return;
+      }
+      if (onCrossModeSearch) {
+        onCrossModeSearch(targetMode, crossQuery);
+        return;
+      }
+      onQueryChange(crossQuery);
+      onSearchModeChange(targetMode);
+      onAsk();
+    },
+    [canAccessFavourites, onAsk, onCrossModeSearch, onQueryChange, onRequestAccountSetup, onSearchModeChange],
+  );
+
+  const handleComposerInputKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement>) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && canAsk) {
+        onAsk();
+      }
+    },
+    [canAsk, onAsk],
+  );
+
   function renderSearchComposer(placement: "default" | "desktop-home" | "desktop-page") {
     const isDesktopHomeComposer = placement === "desktop-home";
     const isDesktopPageComposer = placement === "desktop-page";
@@ -2313,27 +2351,8 @@ export function MasterSearchHeader({
           onDropdownOpenChange={setCommandDropdownOpen}
           onQueryChange={onQueryChange}
           onSearch={onAsk}
-          onPickRecent={(recent) => {
-            onQueryChange(recent);
-            if (onPickRecent) {
-              onPickRecent(recent);
-              return;
-            }
-            onAsk();
-          }}
-          onCrossMode={(targetMode, crossQuery) => {
-            if (targetMode === "favourites" && !canAccessFavourites) {
-              onRequestAccountSetup?.();
-              return;
-            }
-            if (onCrossModeSearch) {
-              onCrossModeSearch(targetMode, crossQuery);
-              return;
-            }
-            onQueryChange(crossQuery);
-            onSearchModeChange(targetMode);
-            onAsk();
-          }}
+          onPickRecent={handlePickRecent}
+          onCrossMode={handleCrossMode}
           onRunModeAction={runModeAction}
           onListboxIdReady={setCommandListboxId}
           onActiveItemIdChange={setCommandActiveItemId}
@@ -2429,9 +2448,7 @@ export function MasterSearchHeader({
                 // onInput called onQueryChange twice per keystroke, doubling the
                 // controlled-state work on a large parent tree.
                 onChange={(event) => onQueryChange(event.target.value)}
-                onKeyDown={(event) => {
-                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && canAsk) onAsk();
-                }}
+                onKeyDown={handleComposerInputKeyDown}
                 aria-label={`Search indexed guidelines by question or keyword - ${selectedSearch.inputAriaLabel}`}
                 placeholder={queryPlaceholder}
                 className={cn(chatComposerInput, "w-full min-w-0", "answer-footer-search-input")}
@@ -2567,8 +2584,9 @@ export function MasterSearchHeader({
   // NOT part of this node: on tablet/desktop hide-on-scroll must reclaim the top
   // bar without taking the search field with it. Phone bottom docks are fixed and
   // escape any collapse wrapper; hero composers portal out of this tree.
-  const topBar = (
-    <header
+  const topBar = useMemo(
+    () => (
+      <header
       id="search"
       data-scroll-hidden={hideStrategy === "overlay" && headerChromeHidden ? "true" : undefined}
       className={cn(
@@ -3010,6 +3028,40 @@ export function MasterSearchHeader({
         </Sheet>
       ) : null}
     </header>
+    ),
+    [
+      activeModePage,
+      chromeFocusProps,
+      closeModeMenu,
+      collapsesAtEveryWidth,
+      desktopModeMenuOptions,
+      dismissModeMenu,
+      handleModeMenuSearchKeyDown,
+      handleModeTriggerKeyDown,
+      headerChromeHidden,
+      hideStrategy,
+      isServicesMode,
+      modeHasConversation,
+      modeMenuOpen,
+      modeMenuOptions,
+      modeMenuQuery,
+      modeSheetView,
+      normalizedModeMenuQuery,
+      onNewChat,
+      onOpenMobileSidebar,
+      overlayAllBreakpoints,
+      renderGroupedDesktopModeMenuOptions,
+      renderModeMenuOption,
+      renderModeMenuOptions,
+      renderModeSectionLevel,
+      selectedAppMode,
+      selectedModeIndex,
+      sharedHomeIdentity,
+      showDesktopNewChat,
+      sticksAbovePhones,
+      toggleModeMenu,
+      usesPhoneSearchLayout,
+    ],
   );
 
   const portalPlacement = desktopHomeComposerSlotId ? "desktop-home" : "desktop-page";

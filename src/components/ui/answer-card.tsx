@@ -300,7 +300,7 @@ export function AnswerCard({
          */}
         {retrievalStatePlacement === "header" &&
         (state.kind === "stale_evidence" || state.kind === "partial_retrieval") ? (
-          <div className={bare ? "w-full" : undefined}>
+          <div className={cn("min-h-[56px]", bare ? "w-full" : undefined)}>
             <RetrievalStateBanner
               state={state}
               onOpenSource={onOpenSource as (sourceId: string, locator?: string) => void}

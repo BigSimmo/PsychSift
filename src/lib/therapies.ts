@@ -1,3 +1,5 @@
+import "server-only";
+
 import therapiesIndexJson from "@/data/therapies-index.json";
 import { rankTherapyCandidates } from "@/lib/therapy-ranking";
 
