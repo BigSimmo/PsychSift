@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CircleCheck,
   ChevronRight,
+  FileSearch,
   Lock,
   Pill,
   SearchX,
@@ -17,10 +18,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { appModeIcons } from "@/lib/app-mode-icons";
+import { appModeHomeHref } from "@/lib/app-modes";
 import { sharedHomePresentation } from "@/lib/ui-copy";
 import { RetainedSnapshotNotice } from "@/components/clinical-dashboard/dashboard-notices";
 import { SearchResultsHeaderBand } from "@/components/clinical-dashboard/search-results-header-band";
@@ -73,6 +75,7 @@ import {
 } from "@/lib/result-filter-url";
 import { SEMANTIC_TONE_META } from "@/lib/semantic-tone";
 import { isDeployedClinicalKb } from "@/lib/deployed-app";
+import { focusRing } from "@/components/card-recipes";
 import { cn, EmptyState, pageContainer } from "@/components/ui-primitives";
 
 type MedicationPrescribingWorkspaceProps = {
@@ -237,22 +240,79 @@ function StatusNotice({
   );
 }
 
-function MedicationInterpretationChip({ interpretation }: { interpretation?: MedicationCatalogInterpretation }) {
+/**
+ * A misspelt medicine name (Medicines mock-up v6, screen 3; owner decision 2 of
+ * 5 Oct 2026: never swap silently, because look-alike medicine names are a
+ * known error source). The catalogue already ranks by the corrected spelling,
+ * so the line says so outright rather than only asking "Did you mean", which
+ * would leave the corrected results below unlabelled.
+ */
+function MedicationDidYouMean({
+  query,
+  correctedQuery,
+  expansions,
+  found,
+}: {
+  query: string;
+  correctedQuery: string;
+  expansions: readonly string[];
+  found: boolean;
+}) {
+  return (
+    // Announced politely: the results below are for a different spelling than the one typed.
+    <div role="status" className="medication-results-inset">
+      <p data-testid="medication-query-interpretation" className="text-sm leading-6 text-[color:var(--text-heading)]">
+        No exact match for <strong className="font-semibold">&ldquo;{query}&rdquo;</strong>.{" "}
+        {found ? (
+          <>
+            Showing results for <strong className="font-semibold">{correctedQuery}</strong> instead.
+          </>
+        ) : (
+          <>
+            No results for <strong className="font-semibold">{correctedQuery}</strong> either.
+          </>
+        )}
+      </p>
+      {expansions.length ? (
+        <p className="mt-0.5 text-xs leading-snug text-[color:var(--text-muted)]">
+          Related terms were also included: {expansions.join(", ")}.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function MedicationInterpretationChip({
+  query,
+  interpretation,
+  found,
+}: {
+  query: string;
+  interpretation?: MedicationCatalogInterpretation;
+  /** Whether the corrected search returned anything, so the notice never promises results that are not there. */
+  found: boolean;
+}) {
   const correctedQuery = interpretation?.correctedQuery?.trim();
-  const hasCorrection = Boolean(correctedQuery);
+  const hasCorrection = Boolean(correctedQuery) && correctedQuery?.toLowerCase() !== query.trim().toLowerCase();
   const expansions = Array.from(
     new Set(interpretation?.appliedExpansions?.map((term) => term.trim()).filter(Boolean) ?? []),
   );
-  if (!hasCorrection && expansions.length === 0) return null;
+  if (hasCorrection && correctedQuery) {
+    return (
+      <MedicationDidYouMean
+        query={query.trim()}
+        correctedQuery={correctedQuery}
+        expansions={expansions}
+        found={found}
+      />
+    );
+  }
+  if (expansions.length === 0) return null;
 
-  const displayTerms = hasCorrection && correctedQuery ? correctedQuery : expansions.slice(0, 3).join(", ");
-  const hiddenExpansionCount = hasCorrection ? expansions.length : Math.max(0, expansions.length - 3);
-  const leadingLabel = hasCorrection ? "Did you mean" : "Search also included";
-  const accessibleLabel = hasCorrection
-    ? `Did you mean ${correctedQuery}?${
-        expansions.length ? ` Related terms were also included: ${expansions.join(", ")}.` : ""
-      }`
-    : `Search also included related terms: ${expansions.join(", ")}.`;
+  const displayTerms = expansions.slice(0, 3).join(", ");
+  const hiddenExpansionCount = Math.max(0, expansions.length - 3);
+  const leadingLabel = "Search also included";
+  const accessibleLabel = `Search also included related terms: ${expansions.join(", ")}.`;
 
   return (
     <div className="medication-results-inset">
@@ -269,6 +329,82 @@ function MedicationInterpretationChip({ interpretation }: { interpretation?: Med
         <span className="min-w-0 truncate">{displayTerms}</span>
         {hiddenExpansionCount ? <span className="shrink-0">+{hiddenExpansionCount}</span> : null}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Nothing matched (mock-up v6, screen 4): what was searched, why it may have
+ * failed, and two ways forward: the reader's own PDFs, or the full list with
+ * its real count. Never a dead end.
+ */
+function MedicationNothingFound({
+  query,
+  catalogueCount,
+  onBrowseAll,
+}: {
+  query: string;
+  catalogueCount: number;
+  /** Absent when it could change nothing: already showing every match, or no catalogue loaded. */
+  onBrowseAll?: () => void;
+}) {
+  const trimmed = query.trim();
+  const title =
+    catalogueCount > 0
+      ? `Nothing in PsychSift\u2019s list of ${catalogueCount.toLocaleString("en-AU")} medicines matches \u201c${trimmed}\u201d`
+      : `Nothing in PsychSift\u2019s medicines list matches \u201c${trimmed}\u201d`;
+  return (
+    <div className="medication-results-inset grid gap-3" data-testid="medication-nothing-found">
+      {/* Plain heading and line (mock-up v6 screen 4), announced politely like the shared empty state. */}
+      <div role="status" className="grid gap-1">
+        <h2 className="text-base font-semibold leading-snug text-balance break-words text-[color:var(--text-heading)]">
+          {title}
+        </h2>
+        <p className="text-sm leading-snug text-[color:var(--text-muted)]">
+          Check the spelling. It may also be in your own PDFs, or listed under a brand or generic name.
+        </p>
+      </div>
+      <ul role="list" className="grid">
+        <li className="min-w-0 border-t border-[color:var(--border)] first:border-t-0">
+          <Link
+            // Prefilled, not run: this is the reader's own free text, so they press search in Documents.
+            href={appModeHomeHref("documents", { query: trimmed })}
+            className={cn(
+              focusRing,
+              "grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg py-2 text-[color:var(--text-heading)] no-underline",
+            )}
+          >
+            <FileSearch className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+            <span className="grid min-w-0 gap-0.5">
+              <span className="break-words text-base-minus font-medium leading-snug">
+                Search your PDFs for {trimmed}
+              </span>
+              <span className="text-sm leading-snug text-[color:var(--text-muted)]">Opens Documents</span>
+            </span>
+            <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+          </Link>
+        </li>
+        {onBrowseAll ? (
+          <li className="min-w-0 border-t border-[color:var(--border)] first:border-t-0">
+            <button
+              type="button"
+              onClick={onBrowseAll}
+              data-testid="medication-browse-all"
+              className={cn(
+                focusRing,
+                "grid min-h-14 w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-lg py-2 text-left text-[color:var(--text-heading)]",
+              )}
+            >
+              <Pill className="size-icon-md shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+              <span className="break-words text-base-minus font-medium leading-snug">Browse all medicines</span>
+              <span className="nums text-sm text-[color:var(--text-muted)]">
+                {catalogueCount > 0 ? catalogueCount.toLocaleString("en-AU") : null}
+              </span>
+              <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden="true" />
+            </button>
+          </li>
+        ) : null}
+      </ul>
     </div>
   );
 }
@@ -418,6 +554,7 @@ function MedicationResults({
   const { profile, isEmpty: profileEmpty } = usePatientProfile();
   const searchParams = useSearchParams();
   const filterPanelId = useId();
+  const resultsRef = useRef<HTMLDivElement | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const { bestRows, allRows } = useMemo(() => {
     const governance = catalog.data?.governance;
@@ -647,7 +784,11 @@ function MedicationResults({
   const catalogRefetching = catalog.loading && Boolean(catalog.data);
 
   return (
-    <div className={cn(pageContainer, "medication-results-workspace space-y-3 py-0 sm:py-2")}>
+    <div
+      ref={resultsRef}
+      tabIndex={-1}
+      className={cn(pageContainer, "medication-results-workspace space-y-3 py-0 outline-none sm:py-2")}
+    >
       <SearchResultsHeaderBand
         modeId="prescribing"
         query={query}
@@ -689,7 +830,13 @@ function MedicationResults({
 
       {catalog.data?.retainedSnapshot ? <RetainedSnapshotNotice /> : null}
 
-      <MedicationInterpretationChip interpretation={catalog.data?.interpretation} />
+      <MedicationInterpretationChip
+        query={query}
+        // Only once the catalogue answers this query: a kept response would pair the new words with an old correction.
+        interpretation={catalog.loading ? undefined : catalog.data?.interpretation}
+        // Before filters: a filter hiding every match is not "no results" for the corrected spelling.
+        found={totalAvailable > 0}
+      />
 
       <ResultFilterSheet
         open={filterOpen}
@@ -758,14 +905,25 @@ function MedicationResults({
             </button>
           </div>
         ) : (
-          <div className="medication-results-inset">
-            <EmptyState
-              icon={SearchX}
-              title="No prescribing matches"
-              body="Try a different medication name, class, or indication."
-              live="polite"
-            />
-          </div>
+          <MedicationNothingFound
+            query={query}
+            catalogueCount={catalog.data?.records?.length ?? 0}
+            onBrowseAll={
+              scope === "all" || (catalog.data?.records?.length ?? 0) === 0
+                ? undefined
+                : () => {
+                    // Every match, with the narrowing filters dropped, so the list is never empty for a filter.
+                    replaceResultFilterUrl((params) => {
+                      writeResultFilterValue(params, "scope", "all", "best", medicationScopeValues);
+                      params.delete("match");
+                      params.delete("class");
+                      params.delete("signal");
+                    });
+                    // The button goes with the empty state; keep focus on the results.
+                    resultsRef.current?.focus();
+                  }
+            }
+          />
         )
       ) : null}
 

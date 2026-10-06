@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
 import type { MedicationRecord, MedicationSearchResult } from "@/lib/medications";
@@ -313,6 +313,8 @@ export type MedicationDetailState = AsyncState<MedicationDetailResponse> & {
    * stays in `error`, so an outage never reads as "that drug is not here".
    */
   notFound: boolean;
+  /** Fetch the record again (the failed page's "Try again"). */
+  retry: () => void;
 };
 
 // Auth states in which the request carried the credential the user will keep. While
@@ -335,6 +337,12 @@ export function useMedicationDetail(slug?: string): MedicationDetailState {
     error: null,
     notFoundCode: false,
   }));
+  // Bumped by `retry`; the fetch effect re-runs on it.
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => {
+    setState((current) => ({ ...current, loading: true, error: null }));
+    setAttempt((count) => count + 1);
+  }, []);
 
   // A new slug or a new identity (including sign-in resolving) starts from a clean
   // slate: a 404 from the anonymous pre-sign-in fetch must never stand for the
@@ -386,13 +394,13 @@ export function useMedicationDetail(slug?: string): MedicationDetailState {
     };
     // authIdentity: loading -> signed_out keeps the same memoised header object, so the
     // identity reset above must also restart the fetch or the page stays on its skeleton.
-  }, [normalized, authorizationHeader, authIdentity]);
+  }, [normalized, authorizationHeader, authIdentity, attempt]);
 
   const { notFoundCode, ...asyncState } = state;
   // While sign-in is still loading, a `medication_not_found` from the anonymous fetch
   // is not an answer yet: show loading, not a red error, until the identity settles.
   if (notFoundCode && authStatus === "loading") {
-    return { data: null, loading: true, error: null, notFound: false };
+    return { data: null, loading: true, error: null, notFound: false, retry };
   }
-  return { ...asyncState, notFound: notFoundCode && resolvedAuthStatuses.has(authStatus) };
+  return { ...asyncState, notFound: notFoundCode && resolvedAuthStatuses.has(authStatus), retry };
 }

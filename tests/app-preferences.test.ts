@@ -47,6 +47,8 @@ describe("app preference normalisation", () => {
         quietHours: { enabled: true, start: "22:00", end: "06:00" },
         maxAlertsPerDay: 5,
       },
+      workStage: "registrar",
+      ranzcpStage: 2,
     };
     expect(normalizePreferences(stored)).toEqual(stored);
   });

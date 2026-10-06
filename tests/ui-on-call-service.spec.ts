@@ -1,5 +1,5 @@
 import { expect, test } from "playwright/test";
-import { clickWhenHydrated, expectHydrated } from "./playwright-settlement";
+import { clickWhenHydrated, clickWhenSettled, expectHydrated } from "./playwright-settlement";
 
 test.describe("Invited handbook phone experience", () => {
   for (const width of [320, 390, 430, 1280]) {
@@ -100,14 +100,21 @@ test.describe("Invited handbook phone experience", () => {
       .locator("div")
       .filter({ has: page.getByText("Telephone advice structure", { exact: true }) })
       .last();
-    // A click before hydration is dropped and nothing is copied.
-    await clickWhenHydrated(telephone.getByRole("button", { name: "Copy blank structure" }));
+    // The button sits below the fold of the 1280x720 Desktop Chrome project. A plain click()
+    // scrolls it into view and dispatches ~10 ms later; on a loaded runner the header collapse
+    // and late layout above it land in that gap, so the press hit the neighbouring template text
+    // and click() still reported success (trace on PR #3303, 22beaba13: first point
+    // intercepted, retry at y=695 of 720, clipboard empty for 10 s). clickWhenSettled waits for
+    // hydration, scrolls, and clicks only once the button holds still across frames.
+    await clickWhenSettled(telephone.getByRole("button", { name: "Copy blank structure" }));
+    // The page's own success state proves the press reached the copy handler.
+    await expect(telephone.getByRole("status")).toHaveText("Telephone advice structure copied.");
     // The copy runs after the click resolves, so poll rather than read once.
     await expect
       .poll(async () => (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"))
       .toContain("Reason for call\nInformation provided");
     const resources = page.getByTestId("handbook-resources");
-    await resources.getByRole("link", { name: "Log this learning", exact: true }).first().click();
+    await clickWhenSettled(resources.getByRole("link", { name: "Log this learning", exact: true }).first());
     await expect(page).toHaveURL(/\/cme\/new\?title=/);
     await expect(page.getByRole("button", { name: /^Save/ })).toBeDisabled();
   });

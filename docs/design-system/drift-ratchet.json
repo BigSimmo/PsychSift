@@ -1,11 +1,11 @@
 {
   "$comment": "Ratchet ceilings for two token-system drift metrics measured in docs/design-system/drift-measurement-2026-09-02.md. Both metrics may only go DOWN. `npm run check:design-drift-ratchet` fails the moment either current count exceeds its ceiling. `npm run check:design-drift-ratchet -- --update` refreshes a ceiling to the current measured count, but only ever lowers or matches it — it refuses to raise a ceiling. Raising one on purpose requires `--update --allow-increase`, which prints the old and new ceiling so the diff is visible in review; do this only with a stated reason (a newly-legitimate dynamic style, or a component whose adoption regressed) recorded in the commit message.",
   "inlineStyles": {
-    "ceiling": 253,
+    "ceiling": 262,
     "description": "Count of style={{ }} JSX attributes under tracked src/**/*.{ts,tsx}, excluding lines that are inside a comment (trimmed line starts with // or *).",
-    "measuredAt": "2026-10-06T01:18:36.280Z",
-    "baselineSource": "c7eea9c4b56c9f1092fd3d64b72c940e6ec85865",
-    "$lastRaise": "249 -> 253, 2026-10-06, Teaching assessments (#3302) on top of CPD (#3289), approved by the owner on 2026-10-06. LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md: progress-bar widths (year requirements, term track, form progress) and rating-marker positions on the comparison chart are calculated percentages; no fixed token expresses them."
+    "measuredAt": "2026-10-06T02:28:39.497Z",
+    "baselineSource": "10870cd57bfcbab83f9f4579d4056941216257f7",
+    "$lastRaise": "253 -> 262, 2026-10-06, one combined raise approved by the owner on 2026-10-06 so the gated mode PRs stop conflicting on this file: My Day #3287 (+2: today-track fill and now-marker positions), Open shifts #3303 (+1: hours meter width), Teaching v5 #3304 (+4: progress width, logbook bar heights and average line, feedback split flex-grow) and On Call #3306 (+2 net: track-bar fill, cover-progress marker and label, shift-pulse bar heights, replacing two older right-now track styles). Each count was measured by merging that PR alone into main; all four merged together measure exactly 262. LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md: every new site is a calculated percentage or proportion; no fixed token expresses them. If any of these PRs does not merge, the next --update lowers the ceiling back to the measured count. Previous raise: 249 -> 253 for Teaching assessments #3302 on top of CPD #3289 (owner-approved 2026-10-06)."
   },
   "unimportedRegisteredComponents": {
     "ceiling": 9,

@@ -20,8 +20,12 @@ write fixtures if both credentials resolve to the same user.
 The staging app used by this check must:
 
 - target the same dedicated staging Supabase project;
-- set `RAG_PROVIDER_MODE=offline`, which the harness proves by requiring the exact
-  `provider_offline` public answer fallback code;
+- set `RAG_PROVIDER_MODE=offline` with no OpenAI key, which the harness proves by
+  requiring `GET /api/health` to report `checks.openaiConfig: "skipped"` alongside the
+  deployed SHA. The source-only answer step then accepts only provider-free fallback codes
+  (`provider_offline`, `low_signal`, `coverage_gap`, `no_candidates`, `unsupported`).
+  The synthetic fixture cannot support a clinical answer, so an offline app answers it
+  through an evidence gate rather than with `provider_offline`;
 - use two distinct, non-human test accounts that are not used interactively; and
 - avoid running an ingestion worker during the short check, because full reindex is
   exercised last and the harness owns cleanup.

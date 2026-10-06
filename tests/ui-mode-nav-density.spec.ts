@@ -98,7 +98,7 @@ const MODES = [
   { modeId: "therapy-compass", route: "/therapy-compass/search?q=CBT&run=1", items: 5, profile: "extended" },
   { modeId: "dsm", route: "/dsm/compare", items: 2, profile: "two-item" },
   { modeId: "specifiers", route: "/specifiers/compare", items: 4, profile: "compact-four" },
-  { modeId: "sources", route: "/sources/search?q=RANZCP", items: 4, profile: "balanced-four" },
+  { modeId: "sources", route: "/sources/search?q=RANZCP", items: 5, profile: "balanced-four" },
   { modeId: "formulation", route: "/formulation/compare", items: 4, profile: "compact-four" },
   { modeId: "differentials", route: "/differentials/diagnoses", items: 4, profile: "balanced-four" },
   { modeId: "factsheets", route: "/factsheets/search", items: 2, profile: "two-item" },

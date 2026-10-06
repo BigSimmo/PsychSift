@@ -68,49 +68,78 @@ describe("AdminCompliancePage", () => {
     for (const banned of ["compliant", "valid", "expired", "lapsed"]) expect(text).not.toContain(banned);
   });
 
-  it("splits the next job into what carries over and what is still to do", () => {
+  it("names the next job's start date over the summary, and drops it when none is recorded", () => {
     render(<AdminCompliancePage now={NOW} />);
-    const card = screen.getByTestId("admin-compliance-next-job");
-    expect(within(card).getByText(/Starts .*2 Nov/)).toBeTruthy();
-    expect(screen.getByTestId("admin-compliance-next-job-counts").textContent).toMatch(
-      /1 carry over · \d+ still to do/,
-    );
+    expect(screen.getByText(/Before your next job, Mon 2 Nov 2026/)).toBeTruthy();
+    cleanup();
+    storeState.entries = storeState.entries.filter((entry) => entry.title !== "Hospital email account");
+    render(<AdminCompliancePage now={NOW} />);
+    expect(screen.getByText("Your requirements")).toBeTruthy();
+  });
+
+  it("names a date that runs out before the next job, which no status word shows", () => {
+    render(<AdminCompliancePage now={NOW} />);
+    const section = screen.getByTestId("admin-compliance-before-next-job");
+    expect(section.textContent).toMatch(/To do before Mon 2 Nov 2026/);
     expect(
       within(screen.getByTestId("admin-compliance-todo-respirator-fit-testing")).getByText(
         "Your date ends 20 Oct 2026, before you start",
       ),
     ).toBeTruthy();
-  });
-
-  it("signposts New job when no start date is recorded", () => {
-    storeState.entries = storeState.entries.filter((entry) => entry.title !== "Hospital email account");
-    render(<AdminCompliancePage now={NOW} />);
-    expect(screen.queryByTestId("admin-compliance-next-job")).toBeNull();
-    expect(within(screen.getByTestId("admin-compliance-next-job-empty")).getByRole("link").getAttribute("href")).toBe(
-      "/admin/new-job",
+    expect(screen.getByTestId("admin-compliance-before-next-job-others").textContent).toMatch(
+      /date passed or not recorded yet/,
     );
   });
 
-  it("filters to one status from the summary, and Show all clears it", () => {
+  it("filters with chips: Needs action, then one status, and All brings everything back", () => {
     render(<AdminCompliancePage now={NOW} />);
-    fireEvent.click(screen.getByTestId("admin-compliance-count-date-passed"));
-    expect(screen.getByTestId("admin-compliance-count-date-passed").getAttribute("aria-pressed")).toBe("true");
+    const all = screen.getByTestId("admin-compliance-filter-all");
+    expect(all.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByTestId("admin-compliance-filter-date-passed"));
     expect(screen.queryByTestId("admin-compliance-item-medical-registration-renewal")).toBeNull();
     expect(screen.getByTestId("admin-compliance-item-resuscitation-competence")).toBeTruthy();
-    fireEvent.click(screen.getByTestId("admin-compliance-show-all"));
+    fireEvent.click(screen.getByTestId("admin-compliance-filter-needs-action"));
+    expect(screen.getByTestId("admin-compliance-item-respirator-fit-testing")).toBeTruthy();
+    expect(screen.queryByTestId("admin-compliance-item-medical-registration-renewal")).toBeNull();
+    fireEvent.click(all);
     expect(screen.getByTestId("admin-compliance-item-medical-registration-renewal")).toBeTruthy();
   });
 
-  it("saves an .xlsx to the device and sends nothing", () => {
+  it("offers one Record dates action and an export row, and saves nothing itself", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(<AdminCompliancePage now={NOW} />);
-    fireEvent.click(screen.getByTestId("admin-compliance-export-excel"));
-    const [content, name, type] = vi.mocked(downloadTextFile).mock.calls[0] ?? [];
-    expect(content).toBeInstanceOf(Uint8Array);
-    expect(name).toBe("Compliance 2026-10-05.xlsx");
-    expect(type).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    expect(screen.getByTestId("admin-compliance-record-dates").getAttribute("href")).toBe(
+      "/admin/renewals?record=missing",
+    );
+    expect(screen.getByTestId("admin-compliance-export-link").getAttribute("href")).toBe("/admin/compliance/export");
+    expect(downloadTextFile).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+
+  it("shows the first-use page when nothing is recorded yet, never an empty all-clear", () => {
+    storeState.entries = [];
+    render(<AdminCompliancePage now={NOW} />);
+    expect(screen.getByTestId("admin-compliance-first-use")).toBeTruthy();
+    expect(screen.queryByTestId("admin-compliance-recorded")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/nothing due|all clear/i);
+  });
+
+  it("never says it has loaded when the records failed to load", () => {
+    storeState.loadError = "failed";
+    storeState.entries = [];
+    render(<AdminCompliancePage now={NOW} />);
+    expect(screen.getByTestId("admin-compliance-failed")).toBeTruthy();
+    expect(screen.queryByTestId("admin-compliance-first-use")).toBeNull();
+    expect(screen.queryByTestId("admin-compliance-ready")).toBeNull();
+  });
+
+  it("blames the server, not the connection, when the server failed while online", () => {
+    // The store marks every failed fetch isOffline (it is serving the cache); only loadError says why.
+    Object.assign(storeState, { loadError: "failed", isOffline: true, entries: [] });
+    render(<AdminCompliancePage now={NOW} />);
+    expect(screen.getByTestId("admin-compliance-failed")).toHaveTextContent("The server did not answer");
+    expect(screen.getByTestId("admin-compliance-failed")).not.toHaveTextContent("offline");
   });
 
   it("asks a signed-out reader to sign in and says the example records are made up in demo", () => {

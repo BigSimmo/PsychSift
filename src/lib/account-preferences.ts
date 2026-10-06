@@ -17,6 +17,14 @@ export type MotionPreference = "system" | "reduced" | "full";
 export type PopulationPreference = "adults" | "older-adults" | "adolescents" | "all";
 export type AnswerStylePreference = "conservative" | "balanced" | "comprehensive";
 export type LandingPreference = "ask" | "search" | "browse";
+/**
+ * The doctor's own description of where they are in their career, chosen on
+ * Work profile. It is self-reported and never checked: a roster team's grade
+ * is set by its manager and stays separate (`src/lib/roster/team/model.ts`).
+ * Null until the doctor chooses.
+ */
+export type WorkStagePreference = "intern" | "resident" | "registrar" | "consultant" | "other";
+export type RanzcpStagePreference = 1 | 2 | 3;
 
 export type AppPreferences = {
   density: DensityPreference;
@@ -38,6 +46,9 @@ export type AppPreferences = {
   notifyGuidelineUpdates: boolean;
   notifyProductNews: boolean;
   notifySavedChanges: boolean;
+  workStage: WorkStagePreference | null;
+  /** Only meaningful when `workStage` is "registrar"; kept otherwise so a mistaken tap loses nothing. */
+  ranzcpStage: RanzcpStagePreference | null;
   /**
    * Reminder controls: in-app visibility, snooze, calendar alerts, quiet hours
    * and the daily alert cap. See `@/lib/reminders/settings-model`. The defaults
@@ -84,6 +95,16 @@ export const ANSWER_STYLE_OPTIONS: ReadonlyArray<{
   { value: "comprehensive", label: "Comprehensive", description: "Fuller detail and alternatives" },
 ];
 
+export const WORK_STAGE_OPTIONS: ReadonlyArray<{ value: WorkStagePreference; label: string; description: string }> = [
+  { value: "intern", label: "Intern", description: "PGY1" },
+  { value: "resident", label: "Resident", description: "PGY2 and beyond, not in training" },
+  { value: "registrar", label: "Psychiatry registrar", description: "In RANZCP training; choose your stage next" },
+  { value: "consultant", label: "Consultant psychiatrist", description: "" },
+  { value: "other", label: "Other", description: "" },
+];
+
+export const RANZCP_STAGE_OPTIONS: ReadonlyArray<RanzcpStagePreference> = [1, 2, 3];
+
 export const DENSITY_OPTIONS: ReadonlyArray<{ value: DensityPreference; label: string }> = [
   { value: "comfortable", label: "Comfortable" },
   { value: "compact", label: "Compact" },
@@ -116,6 +137,8 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   notifyGuidelineUpdates: true,
   notifyProductNews: false,
   notifySavedChanges: true,
+  workStage: null,
+  ranzcpStage: null,
   reminders: DEFAULT_REMINDER_SETTINGS,
 };
 
@@ -145,6 +168,8 @@ export const PREFERENCE_FIELD_KEYS = [
   "notifyGuidelineUpdates",
   "notifyProductNews",
   "notifySavedChanges",
+  "workStage",
+  "ranzcpStage",
   "reminders",
 ] as const satisfies ReadonlyArray<keyof AppPreferences>;
 
@@ -191,6 +216,20 @@ export function normalizePreferences(input: unknown): AppPreferences {
     notifyGuidelineUpdates: coerceBoolean(input.notifyGuidelineUpdates, DEFAULT_PREFERENCES.notifyGuidelineUpdates),
     notifyProductNews: coerceBoolean(input.notifyProductNews, DEFAULT_PREFERENCES.notifyProductNews),
     notifySavedChanges: coerceBoolean(input.notifySavedChanges, DEFAULT_PREFERENCES.notifySavedChanges),
+    workStage: WORK_STAGE_OPTIONS.some((option) => option.value === input.workStage)
+      ? (input.workStage as WorkStagePreference)
+      : null,
+    ranzcpStage: (RANZCP_STAGE_OPTIONS as ReadonlyArray<unknown>).includes(input.ranzcpStage)
+      ? (input.ranzcpStage as RanzcpStagePreference)
+      : null,
     reminders: normalizeReminderSettings(input.reminders),
   };
+}
+
+/** "Psychiatry registrar · Stage 2", or null when the doctor has not said. Self-reported. */
+export function workStageLabel(stage: WorkStagePreference | null, ranzcp: RanzcpStagePreference | null): string | null {
+  if (!stage) return null;
+  const label = WORK_STAGE_OPTIONS.find((option) => option.value === stage)?.label ?? null;
+  if (stage === "registrar" && ranzcp) return `${label} · Stage ${ranzcp}`;
+  return label;
 }

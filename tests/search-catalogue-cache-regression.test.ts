@@ -71,6 +71,17 @@ function fakeSupabase(calls: RpcCall[]): SearchSupabase {
   } as unknown as SearchSupabase;
 }
 
+/**
+ * A canned RPC result that also supports `.select(...)`, as the real PostgREST builder does. Search
+ * projects its columns, so a stub without `select` would fail for the wrong reason and leave the
+ * canned rejection unobserved.
+ */
+function rpcResult<T>(result: () => Promise<T>) {
+  const promise = result();
+  promise.catch(() => {});
+  return Object.assign(promise, { select: () => promise });
+}
+
 function catalogueReads(calls: RpcCall[]) {
   return calls.filter((call) => call.name === "read_site_content_public_records");
 }
@@ -106,10 +117,14 @@ describe("registry catalogue reads stay cached on the search path", () => {
     const reads = catalogueReads(calls);
     expect(reads).toHaveLength(registryDomains.length);
     expect(new Set(reads.map((read) => read.args.p_kind))).toEqual(new Set(["form", "service", "medication"]));
-    expect(reads.find((read) => read.args.p_kind === "medication")?.columns).toBe(
+    // Every search read asks for the render projection only. Search never reads `record` when a
+    // render payload is present, and leaving it out roughly halves the service and form payloads
+    // (2026-10-06: service 2.6 MB -> 1.4 MB, form 1.0 MB -> 0.6 MB).
+    expect(reads.map((read) => read.columns)).toEqual([
       "initialized,render_payload,snapshot",
-    );
-    expect(reads.filter((read) => read.args.p_kind !== "medication").every((read) => !read.columns)).toBe(true);
+      "initialized,render_payload,snapshot",
+      "initialized,render_payload,snapshot",
+    ]);
     // A healthy catalogue is never marked degraded, so the flag stays a real signal.
     expect(response.groups.every((group) => group.degraded === undefined)).toBe(true);
   });
@@ -176,7 +191,9 @@ describe("registry catalogue reads stay cached on the search path", () => {
 
       const supabase = {
         rpc: (name: string) =>
-          name === "read_site_content_public_records" ? rpcBehaviour() : Promise.resolve({ data: [], error: null }),
+          name === "read_site_content_public_records"
+            ? rpcResult(rpcBehaviour)
+            : Promise.resolve({ data: [], error: null }),
       } as unknown as SearchSupabase;
 
       const response = await runUniversalSearch({
@@ -290,7 +307,7 @@ describe("the degraded flag is per request, not shared state", () => {
     const supabase = {
       rpc: (name: string, args: Record<string, unknown>) => {
         if (name !== "read_site_content_public_records") return Promise.resolve({ data: [], error: null });
-        if (args?.p_kind === "form") return Promise.reject(new Error("canonical read failed"));
+        if (args?.p_kind === "form") return rpcResult(() => Promise.reject(new Error("canonical read failed")));
         const kind = typeof args?.p_kind === "string" ? args.p_kind : "service";
         const row = catalogueRow(kind);
         return Object.assign(Promise.resolve({ data: [row], error: null }), {
@@ -328,7 +345,7 @@ describe("the degraded flag is per request, not shared state", () => {
         // Simulates the concurrent recovery: the cooldown this request opened is wiped while the
         // rest of the fan-out is still running.
         queueMicrotask(() => fallback.clearCatalogueSeedFallbackCooldown());
-        return Promise.reject(new Error("canonical read failed"));
+        return rpcResult(() => Promise.reject(new Error("canonical read failed")));
       },
     } as unknown as SearchSupabase;
 
