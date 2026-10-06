@@ -1,4 +1,5 @@
 import {
+  UserRound,
   BedDouble,
   Ban,
   Bell,
@@ -13,7 +14,6 @@ import {
   CalendarDays,
   CalendarRange,
   CalendarX2,
-  Clock,
   ClipboardCheck,
   ClipboardList,
   Feather,
@@ -151,8 +151,8 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   // My Day. Today wears the mode's own Sunrise (as Admin's Today does), Week the
   // seven-day range, Hours the clock.
   "my-day-today": Sunrise,
-  "my-day-week": CalendarRange,
-  "my-day-hours": Clock,
+  "my-day-work": BriefcaseBusiness,
+  "my-day-me": UserRound,
   // First Nations. Prefixed ids, so On Call's "contacts" icon is not shared —
   // each mode's rail slots wear their own mark even where the idea overlaps.
   "first-nations-bedside": LayoutGrid,
