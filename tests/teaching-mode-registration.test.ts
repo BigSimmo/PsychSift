@@ -69,9 +69,11 @@ describe("Teaching mode registration", () => {
       ["logbook", "/teaching/logbook"],
       ["teach", "/teaching/teach"],
       ["supervision", "/teaching/supervision"],
+      ["assessments", "/teaching/assessments"],
       ["organise", "/teaching/organise"],
     ]);
     expect(activeModeSecondaryNavigationId("teaching", "/teaching/logbook")).toBe("logbook");
+    expect(activeModeSecondaryNavigationId("teaching", "/teaching/assessments")).toBe("assessments");
     expect(activeModeSecondaryNavigationId("teaching", `/teaching/session/${OCC}`)).toBeNull();
     expect(modeUsesHeaderModeNav("teaching")).toBe(false);
     expect(["today", "week", "logbook", "organise"].map((id) => modeSectionIcon(id)?.displayName)).toEqual([

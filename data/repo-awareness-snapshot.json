@@ -1208,6 +1208,11 @@
         "area": "mockup"
       },
       {
+        "path": "/teaching/assessments",
+        "file": "src/app/(search-app)/teaching/assessments/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan/patients/[patientId]/presentations",
         "file": "src/app/mockups/care-plan/patients/[patientId]/presentations/page.tsx",
         "area": "mockup"
