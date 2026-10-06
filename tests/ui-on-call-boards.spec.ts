@@ -417,6 +417,12 @@ test.describe("02 More — the second row is about the page you are on", () => {
 
   test("carries the mode's own colour on the pill and the bar, and only there", async ({ page }) => {
     await openBoard(page, ROUTES.contacts);
+    // openBoard settles on the list, but the bar mounts a frame or more later: it renders
+    // only once the page has resolved two or more groups from the list. WebKit reaches
+    // this read before that, found no bar, and compared the pill's teal against null.
+    // Wait for both elements this test compares, then read them.
+    await expect(await sectionBar(page)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mode On Call, page Call" })).toBeVisible();
     const identity = await page.evaluate(() => {
       const read = (selector: string) => {
         const element = document.querySelector(selector);
