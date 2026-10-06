@@ -49,6 +49,10 @@ const DIRECTIVE_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
     pattern:
       /\b(?:consider|arrange|ensure|usually indicated)\b[^"]{0,60}\badmission\b|\badmission\b[^"]{0,40}\bindicated\b/i,
   },
+  {
+    name: "bipolarity screening directive",
+    pattern: /\bscreen for bipolarity\b/i,
+  },
 ];
 
 /** Only the human-facing copy fields can carry clinical instructions to a reader. */

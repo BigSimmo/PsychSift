@@ -49,7 +49,8 @@ import { PriorityFactsSection } from "@/components/forms/form-priority-facts-sec
 import { MhaTimelinePanel } from "@/components/forms/mha-timeline-panel";
 import { DisclosureGroup, disclosureBodyText } from "@/components/ui/disclosure";
 import { appModeHomeHref } from "@/lib/app-modes";
-import { formCatalogDetails, formTitleForCode, type FormRecord } from "@/lib/form-catalog";
+import { formCatalogDetails, type FormRecord } from "@/lib/form-ranker";
+import { formTitleForCode } from "@/lib/form-register";
 import { hasMhaTimeline } from "@/lib/mha-timeline";
 import type { ServiceChipTone, ServiceContact, ServiceCriterion, ServiceSummaryCard } from "@/lib/service-ranker";
 import { useAccountData } from "@/components/account-data-provider";

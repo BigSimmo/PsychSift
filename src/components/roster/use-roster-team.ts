@@ -1,6 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useAuthSession } from "@/lib/supabase/client";
+
+function useAuthSessionIfAvailable() {
+  try {
+    return useAuthSession();
+  } catch (error) {
+    if (error instanceof Error && error.message === "useAuthSession must be used within AuthProvider.") return null;
+    throw error;
+  }
+}
 
 import {
   ROSTER_FOLLOW_UP_READS,
@@ -105,7 +115,14 @@ export type RosterTeamsPayload = { teams: RosterTeam[]; actorId?: string; sample
 
 /** The teams I belong to. */
 export function useRosterTeams(): RosterReadState<RosterTeamsPayload> {
-  return useLoaded<RosterTeamsPayload>("/api/roster/team", "teams");
+  const auth = useAuthSessionIfAvailable();
+  const signedOut = auth?.status === "signed_out";
+  const url = signedOut ? null : "/api/roster/team";
+  const loaded = useLoaded<RosterTeamsPayload>(url, "teams");
+  if (signedOut) {
+    return { status: "signed-out", data: null, message: SIGNED_OUT_MESSAGE, readAt: null, reload: loaded.reload };
+  }
+  return loaded;
 }
 
 /** Rules remain scoped to their team; changing membership discards the previous answers. */

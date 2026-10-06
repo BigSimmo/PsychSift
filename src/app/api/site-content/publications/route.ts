@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { jsonError, publicErrorResponse } from "@/lib/http";
+import { parseJsonBody } from "@/lib/validation/body";
 import {
   publishSiteContentCommand,
   recordSiteContentReconciliationPlan,
@@ -54,26 +55,22 @@ export async function POST(request: Request) {
     const { publicationClient } = await requireAuthenticatedUserContext(request, sourceSupabase, {
       administrator: true,
     });
-    let json: unknown;
+    let parsed: z.infer<typeof commandSchema>;
     try {
-      json = await request.json();
+      parsed = await parseJsonBody(request, commandSchema);
     } catch {
       return publicErrorResponse("Invalid site-content publication command.", 400);
     }
-    const parsed = commandSchema.safeParse(json);
-    if (!parsed.success) {
-      return publicErrorResponse("Invalid site-content publication command.", 400);
-    }
     const result =
-      parsed.data.action === "record_reconciliation"
+      parsed.action === "record_reconciliation"
         ? await recordSiteContentReconciliationPlan({
             publicationSupabase: publicationClient as never,
-            plan: parsed.data.plan,
+            plan: parsed.plan,
           })
         : await publishSiteContentCommand({
             sourceSupabase: sourceSupabase as never,
             publicationSupabase: publicationClient as never,
-            command: parsed.data,
+            command: parsed,
           });
     if (result.outcome === "conflict") {
       return publicErrorResponse("Site-content publication conflict or no-op.", 409);

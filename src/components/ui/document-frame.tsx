@@ -18,7 +18,7 @@ import {
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { VIEWER_MAX_ZOOM, VIEWER_MIN_ZOOM, VIEWER_ZOOM_STEP } from "@/components/document-viewer/viewer-zoom";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { cn, controlDisabled, textMuted } from "@/components/ui-primitives";
 
 export type DocumentFrameSource =
   | { kind: "pdf-page"; url?: string; page: number; pageCount?: number }
@@ -92,15 +92,13 @@ type DocumentFrameStateProps =
 
 export type DocumentFrameProps = DocumentFrameBaseProps & DocumentFrameStateProps;
 
-const frameControl =
-  "inline-flex min-h-tap min-w-tap shrink-0 items-center justify-center gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2 text-xs font-semibold text-[color:var(--text-muted)] shadow-[var(--shadow-inset)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed disabled:opacity-45";
+const frameControl = `inline-flex min-h-tap min-w-tap shrink-0 items-center justify-center gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2 text-xs font-semibold text-[color:var(--text-muted)] shadow-[var(--shadow-inset)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] ${controlDisabled}`;
 
 const frameControlActive =
   "border-[color:var(--clinical-accent)]/35 bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]";
 
 /** Overflow-menu row: full width, left-aligned, same tap target as the toolbar. */
-const overflowItem =
-  "inline-flex min-h-tap w-full items-center gap-2.5 rounded-md px-3 text-left text-sm font-semibold text-[color:var(--text)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed disabled:opacity-45";
+const overflowItem = `inline-flex min-h-tap w-full items-center gap-2.5 rounded-md px-3 text-left text-sm font-semibold text-[color:var(--text)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)] ${controlDisabled}`;
 
 function boundedZoom(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
@@ -247,7 +245,7 @@ function PageControls({
               event.currentTarget.blur();
             }
           }}
-          className="nums h-tap w-10 shrink-0 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-center text-xs font-semibold text-[color:var(--text)] outline-none transition focus:border-[color:var(--focus)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="nums h-tap w-10 shrink-0 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] text-center text-xs font-semibold text-[color:var(--text)] outline-none transition focus:border-[color:var(--focus)] disabled:cursor-not-allowed disabled:bg-[color:var(--surface-subtle)] disabled:text-[color:var(--disabled)]"
         />
         <span className={cn("nums shrink-0 whitespace-nowrap text-xs font-semibold", textMuted)}>
           {finalPage ? `/ ${finalPage}` : "/ ?"}

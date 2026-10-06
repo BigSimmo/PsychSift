@@ -16,15 +16,12 @@
 # Individual non-auto-merge guards also have their own override flags.
 set -eu
 
-# By default, disable heavy local scratch-worktree format checks, in-flight CI waits,
-# and markdown ledger write blockers. CI handles formatting and queues in the cloud.
-export SKIP_IN_FLIGHT_CI_GUARD="${SKIP_IN_FLIGHT_CI_GUARD:-1}"
-export SKIP_FORMAT_GUARD="${SKIP_FORMAT_GUARD:-1}"
-export SKIP_LEDGER_WRITE_GUARD="${SKIP_LEDGER_WRITE_GUARD:-1}"
-
 if [ "${GUARD_PUSH_DISABLE:-}" = "1" ]; then
+  export SKIP_IN_FLIGHT_CI_GUARD=1
+  export SKIP_FORMAT_GUARD=1
   export SKIP_DRIFT_GUARD=1
   export SKIP_STATIC_GUARD=1
+  export SKIP_LEDGER_WRITE_GUARD=1
 fi
 
 # Resolve node; if unavailable, do not block the push (fail open).

@@ -37,6 +37,7 @@ import {
 
 import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import { PrivacyInputNotice } from "@/components/privacy-input-notice";
+import { identifierShapeWarning } from "@/lib/clinical-ask/context";
 import { restoreFocusUnlessMoved, useDismissableLayer } from "@/components/use-dismissable-layer";
 import { useHideOnScroll } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
@@ -376,6 +377,8 @@ export function MasterSearchHeader({
   // and End walk) must be that same drawn order, not registry order.
   const modeMenuOptions = orderByPhoneModeGroups(visibleAppModeOptions);
   const trimmedQuery = query.trim();
+  const hasPhiWarning = Boolean(query && identifierShapeWarning(query));
+  const composerPhiWarningId = "composer-phi-warning";
   const selectedSearch = appModeSearchConfig(searchMode);
   // The trigger names the route the user is viewing. Session filtering still
   // keeps gated modes out of the selectable menu below.
@@ -2400,6 +2403,8 @@ export function MasterSearchHeader({
               <input
                 type="search"
                 ref={bindQueryInputRef}
+                id="global-search-input"
+                name="query"
                 data-testid="global-search-input"
                 autoFocus={queryInputAutoFocus}
                 disabled={searchSetupNotReady}
@@ -2415,7 +2420,13 @@ export function MasterSearchHeader({
                 aria-controls={commandDropdownOpen ? commandListboxId : undefined}
                 aria-autocomplete="list"
                 aria-activedescendant={commandDropdownOpen ? (commandActiveItemId ?? undefined) : undefined}
-                aria-describedby={showsComposerPrivacyNotice ? composerPrivacyWarningId : undefined}
+                aria-describedby={
+                  hasPhiWarning
+                    ? composerPhiWarningId
+                    : showsComposerPrivacyNotice
+                      ? composerPrivacyWarningId
+                      : undefined
+                }
                 // React's onChange already fires on every input event; a duplicate
                 // onInput called onQueryChange twice per keystroke, doubling the
                 // controlled-state work on a large parent tree.
@@ -2478,6 +2489,16 @@ export function MasterSearchHeader({
               returnMode={searchMode === "answer" ? undefined : searchMode}
             />
           </div>
+        ) : null}
+        {hasPhiWarning ? (
+          <p
+            id={composerPhiWarningId}
+            role="alert"
+            data-testid={composerPhiWarningId}
+            className="mt-1.5 px-3 text-center text-2xs font-medium text-[color:var(--danger)]"
+          >
+            Remove identifiable patient details before searching.
+          </p>
         ) : null}
         {/* Scope popover is a form sibling so the "+" menu's "Set scope" action can
             open it even when the footer chip row is not shown. */}

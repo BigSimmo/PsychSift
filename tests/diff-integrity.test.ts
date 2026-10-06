@@ -9,6 +9,7 @@ import {
   assessAggregate,
   assessTestFile,
   changedPaths,
+  countAssertions,
   countTestCases,
   evaluate,
   isTestFile,
@@ -107,6 +108,30 @@ describe("countTestCases", () => {
 
   it("parses TSX specs", () => {
     expect(countTestCases('it("renders", () => { render(<A />); });', "a.dom.test.tsx")).toBe(1);
+  });
+});
+
+describe("countAssertions", () => {
+  it("counts expect and expect.soft assertions via AST while ignoring comments and strings", () => {
+    const source = [
+      'test("example", () => {',
+      "  expect(1 + 1).toBe(2);",
+      "  expect.soft(foo).toBeDefined();",
+      "  // expect(bar).toBe(false);",
+      '  const msg = "expect(4).toBe(4)";',
+      "});",
+    ].join("\n");
+    expect(countAssertions(source)).toBe(2);
+  });
+
+  it("counts assertions in TSX test files", () => {
+    const source = [
+      'it("renders component", () => {',
+      "  render(<MyComponent />);",
+      "  expect(screen.getByRole('button')).toBeInTheDocument();",
+      "});",
+    ].join("\n");
+    expect(countAssertions(source, "button.dom.test.tsx")).toBe(1);
   });
 });
 

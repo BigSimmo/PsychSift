@@ -28,7 +28,7 @@ import {
   type FavouriteSetName,
   useOptionalAccountData,
 } from "@/components/account-data-provider";
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
+import { SidebarAccountSetupDialog as AccountSetupDialog } from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
 import { cn, EmptyState } from "@/components/ui-primitives";
 import { Chip, type ChipAppearance } from "@/components/ui/chip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";

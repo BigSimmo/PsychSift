@@ -40,6 +40,7 @@ from the public `/privacy` transparency page.
 **Status: updated 2026-10-03.** PsychSift operates as an educational and clinical reference tool, following the transparent reference aid model (analogous to MDCalc, UpToDate, and Therapeutic Guidelines / eTG).
 
 Standard, published clinical instruments (e.g. Hunter Serotonin Toxicity Criteria, Bush-Francis Catatonia Rating Scale, 4AT delirium screening) may present their published criteria items, transparent scoring formulas, and published cut-offs for clinician reference, provided:
+
 1. **Source Attribution:** The primary validated source or statutory guideline is explicitly cited.
 2. **Transparent Calculation:** Criteria and formulas are shown openly rather than computed by unexplainable "black-box" models.
 3. **Reference Disclaimer:** Clinical copy transparently notes that reference scoring aids support but never substitute for bedside clinical assessment, local hospital protocol, and patient context.

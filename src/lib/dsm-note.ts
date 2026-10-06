@@ -4,7 +4,7 @@ import {
   type DsmDiagnosis,
   type DsmLabeledText,
   type DsmSpecifier,
-} from "@/lib/dsm";
+} from "@/lib/dsm-criteria-view";
 import { plainClinicalText } from "@/lib/plain-clinical-text";
 
 export { plainClinicalText };

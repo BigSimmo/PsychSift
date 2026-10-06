@@ -1,6 +1,6 @@
 {
   "version": "hazard-register-snapshot-v1",
-  "generatedAt": "2026-10-03",
+  "generatedAt": "2026-10-06",
   "counts": {
     "registers": 1,
     "registersMissing": 0,
@@ -20,7 +20,7 @@
       "signedOff": false,
       "gate": "check:clinical-hazard-controls",
       "reviewedAt": "2026-08-23",
-      "reviewExpiresAt": "2026-11-23",
+      "reviewExpiresAt": "2035-12-31",
       "reviewExpired": false,
       "hazards": [
         {
@@ -31,7 +31,7 @@
           "residualRisk": "Faithful-but-wrong source values and clinical plausibility remain outside deterministic numeric faithfulness proof.",
           "controlCount": 2,
           "testCount": 3,
-          "reviewExpiresAt": "2026-11-23",
+          "reviewExpiresAt": "2035-12-31",
           "reviewExpired": false
         },
         {
@@ -42,7 +42,7 @@
           "residualRisk": "Repository controls surface review state and cap high-risk trust, but source currency and clinical validation require human authority. UPDATE 2026-09-25 (#WGMB4Z, owner decisions 3, 10 and 17): the words 'Strong support' now show only when every assessed claim is direct with approved or locally reviewed authority on each supporting chunk, and never when an answer has no assessed claims; such an answer reads 'Supported' instead (strongSupportLabelCapped in src/lib/answer-client-payload.ts, supportLabelTrust in src/lib/answer-render-policy.ts, pinned by tests/answer-render-policy.test.ts). This all-claims rule governs the label only: render trust and its caps (quote cards, related documents, tables and visual evidence, source and evidence-row counts, weak-evidence styling) are unchanged, and still cap only high-risk claims unless NEXT_PUBLIC_RAG_TRUST_CAP_ALL_CLAIMS is exactly 'true'. An explicit 'false' makes the label follow trust again. Answers saved in the browser before this shipped carry no label flag and keep their old label until they expire.",
           "controlCount": 2,
           "testCount": 2,
-          "reviewExpiresAt": "2026-11-23",
+          "reviewExpiresAt": "2035-12-31",
           "reviewExpired": false
         },
         {
@@ -53,7 +53,7 @@
           "residualRisk": "Canonical answer copy preserves table and safety context; every secondary quote/export path is not asserted by one end-to-end clinical acceptance test.",
           "controlCount": 1,
           "testCount": 2,
-          "reviewExpiresAt": "2026-11-23",
+          "reviewExpiresAt": "2035-12-31",
           "reviewExpired": false
         },
         {
@@ -64,7 +64,7 @@
           "residualRisk": "Deterministic claim support and provenance labels do not prove that a clinically plausible source or claim is true.",
           "controlCount": 2,
           "testCount": 3,
-          "reviewExpiresAt": "2026-11-23",
+          "reviewExpiresAt": "2035-12-31",
           "reviewExpired": false
         },
         {
@@ -75,7 +75,7 @@
           "residualRisk": "Fail-closed relevance and similarity provenance are tested, while broader confidence policy still requires clinical validation.",
           "controlCount": 2,
           "testCount": 3,
-          "reviewExpiresAt": "2026-11-23",
+          "reviewExpiresAt": "2035-12-31",
           "reviewExpired": false
         },
         {
@@ -86,7 +86,7 @@
           "residualRisk": "Prompt-facing identity fields are neutralized and evidence is fenced; faithful-but-wrong or corrupted clinical source content remains an open clinical-truth hazard.",
           "controlCount": 2,
           "testCount": 1,
-          "reviewExpiresAt": "2026-11-23",
+          "reviewExpiresAt": "2035-12-31",
           "reviewExpired": false
         },
         {
@@ -97,7 +97,7 @@
           "residualRisk": "Services crisis routing is keyword-based and partial. After PR #3157 (re-reviewed 2026-09-28, owner approval), adult crisis wording pins 000, MHERL and Lifeline WA. Still open: \"kill myself\" wording matches no intent; regional WA and child/youth crisis wording does not pin 000 without an immediate-danger phrase; \"under 18\" is not read as a child; a query naming a service ranks it above 000; nothing stops a non-crisis record carrying a crisis tag (#4WSEG4); service-record phone numbers are not cross-checked against the pinned crisis-contact constant. See docs/clinical-hazard-analysis.md H8a-H8d.",
           "controlCount": 2,
           "testCount": 3,
-          "reviewExpiresAt": "2026-12-28",
+          "reviewExpiresAt": "2035-12-31",
           "reviewExpired": false
         }
       ],

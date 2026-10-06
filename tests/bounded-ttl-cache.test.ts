@@ -31,4 +31,20 @@ describe("bounded TTL cache", () => {
 
     expect([...cache.keys()]).toEqual(["second", "third"]);
   });
+
+  it("refreshes access order on read to guarantee true LRU eviction", () => {
+    const cache = new Map([
+      ["first", { expiresAt: 200, value: 1 }],
+      ["second", { expiresAt: 200, value: 2 }],
+    ]);
+
+    // Read 'first' so it becomes most recently used
+    const accessed = readExpiringCacheEntry(cache, "first", 100);
+    expect(accessed?.value).toBe(1);
+
+    // Write 'third' with bound 2: should evict 'second', retaining 'first' and 'third'
+    writeBoundedExpiringCacheEntry(cache, "third", { expiresAt: 200, value: 3 }, 2, 100);
+
+    expect([...cache.keys()]).toEqual(["first", "third"]);
+  });
 });

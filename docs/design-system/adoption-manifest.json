@@ -1812,8 +1812,14 @@
       "source": "src/components/ui-primitives.tsx",
       "sourceExported": true,
       "entryExported": true,
-      "directImportFiles": ["src/components/DocumentViewer.tsx", "src/components/document-viewer/source-panels.tsx"],
-      "productImportFiles": ["src/components/DocumentViewer.tsx", "src/components/document-viewer/source-panels.tsx"],
+      "directImportFiles": [
+        "src/components/document-viewer/generated-summary-panel.tsx",
+        "src/components/document-viewer/source-panels.tsx"
+      ],
+      "productImportFiles": [
+        "src/components/document-viewer/generated-summary-panel.tsx",
+        "src/components/document-viewer/source-panels.tsx"
+      ],
       "designSync": {
         "listedInSourceMap": true,
         "listedInDtsProps": true,
@@ -1972,7 +1978,6 @@
       "sourceExported": true,
       "entryExported": true,
       "directImportFiles": [
-        "src/components/DocumentViewer.tsx",
         "src/components/clinical-dashboard/answer-content.tsx",
         "src/components/clinical-dashboard/answer-inline-sections.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
@@ -1980,10 +1985,10 @@
         "src/components/clinical-dashboard/output-panel.tsx",
         "src/components/document-viewer/document-clinical-summary.tsx",
         "src/components/document-viewer/document-rail-panels.tsx",
+        "src/components/document-viewer/generated-summary-panel.tsx",
         "src/components/document-viewer/source-panels.tsx"
       ],
       "productImportFiles": [
-        "src/components/DocumentViewer.tsx",
         "src/components/clinical-dashboard/answer-content.tsx",
         "src/components/clinical-dashboard/answer-inline-sections.tsx",
         "src/components/clinical-dashboard/document-admin.tsx",
@@ -1991,6 +1996,7 @@
         "src/components/clinical-dashboard/output-panel.tsx",
         "src/components/document-viewer/document-clinical-summary.tsx",
         "src/components/document-viewer/document-rail-panels.tsx",
+        "src/components/document-viewer/generated-summary-panel.tsx",
         "src/components/document-viewer/source-panels.tsx"
       ],
       "designSync": {
@@ -4923,12 +4929,12 @@
         {
           "file": "src/components/DocumentViewer.tsx",
           "exists": true,
-          "imports": ["InlineNotice", "PanelHeading", "SafeBoldText", "Sheet"],
+          "imports": ["InlineNotice", "Sheet"],
           "importedFamilies": ["feedback", "layout"],
           "literalCkbV2": false,
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
-          "sanctionedPatternsPresent": ["DocumentViewer", "SourceEvidence"]
+          "sanctionedPatternsPresent": ["DocumentViewer"]
         }
       ]
     },

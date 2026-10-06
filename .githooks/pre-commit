@@ -73,8 +73,10 @@ if [ "$sync_organisation_areas" = "1" ]; then
   mixed_inputs=$(printf '%s\n%s\n' "$mixed_inputs" "$organisation_inputs" | sed '/^$/d' | sort -u)
 fi
 if [ -n "$mixed_inputs" ]; then
-  echo "[pre-commit] Note: Documentation inputs have unstaged or untracked changes; skipping automatic sync." >&2
-  exit 0
+  echo "[pre-commit] Refusing commit: Documentation inputs have unstaged or untracked changes:" >&2
+  printf '%s\n' "$mixed_inputs" | sed 's/^/[pre-commit]   /' >&2
+  echo "[pre-commit] Stage these files, or stash them before committing." >&2
+  exit 1
 fi
 
 docs_to_check=""
