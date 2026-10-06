@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "eaa0964c-48c7-40c7-9b6a-091554a48c6e",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#WY625D",
+    "detail": "17 dictionary sources now have dates; only 9 sources still lack dates (PR #3067).",
+    "source": "PR #3067 review",
+    "baseRowFingerprint": "5ff2aeb45e6998d9251ab4cfae4d1d0ccd139cd39e36f58ed0a898bc0999afaf"
+  }
+}

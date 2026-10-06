@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "8c6bd69c-d60b-45cf-963c-b5edbd116f1a",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#9Z197J",
+    "detail": "Failure count substantially reduced by layout tolerance and settled-click repairs; main-failure-routing active.",
+    "source": "Release matrix review",
+    "baseRowFingerprint": "36853e18c29c7447487377d1639571f9acc025587a91746b763db9f0fbd13fec"
+  }
+}

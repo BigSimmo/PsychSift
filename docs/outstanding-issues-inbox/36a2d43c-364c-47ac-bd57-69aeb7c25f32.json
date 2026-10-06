@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "36a2d43c-364c-47ac-bd57-69aeb7c25f32",
+  "createdOn": "2026-10-06",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "rec",
+    "summary": "Search My Work: extend v12 question grammar and indexers to cover Teaching Assessments and Alerts",
+    "detail": "Search My Work v12 (PR #3295) indexes Roster, Teaching events, CPD, Admin, and On Call. Expand the indexer and search grammar to cover EPA milestones and active reminder alerts.",
+    "source": "PR #3295 post-merge audit",
+    "issueUlid": "01M484CB8DPT83FGA4TJ8DAR04"
+  }
+}

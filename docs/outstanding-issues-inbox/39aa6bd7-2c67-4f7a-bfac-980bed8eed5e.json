@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "39aa6bd7-2c67-4f7a-bfac-980bed8eed5e",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#D2M0NW",
+    "detail": "Canonical perth-time.ts created in PR #3150 (89040e2507); adopted by Roster and Caring Contacts.",
+    "source": "PR #3150 review",
+    "baseRowFingerprint": "9da0b6ae504c0f548119a9cbd0e13b0e6e588b4d8a412dcf7679f0c2711d3a9d"
+  }
+}

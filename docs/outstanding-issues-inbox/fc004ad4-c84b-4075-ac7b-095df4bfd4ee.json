@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "fc004ad4-c84b-4075-ac7b-095df4bfd4ee",
+  "createdOn": "2026-10-06",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "CPD: database storage and sync for registrar training milestones (EPAs, WBAs, term assessments)",
+    "detail": "On the CPD Training page (PR #3289), signed-in doctors are shown 'not-recorded'. Build the storage schema and sync pipeline for registrar milestones.",
+    "source": "PR #3289 post-merge audit",
+    "issueUlid": "01M484CAZ0T983N99JM3YHZ84T"
+  }
+}

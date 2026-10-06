@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "903d30a2-0d62-47fb-a7b0-5a9676bcbeba",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#V3E3BV",
+    "detail": "15 candidate sources reviewed to locally_reviewed in PR #3143; 47 therapies still need citations adopted.",
+    "source": "PR #3143 review",
+    "baseRowFingerprint": "c69bb31bdafe14a9dc9d5385e639ffbda37de31305cd2b341881d90e327c433c"
+  }
+}

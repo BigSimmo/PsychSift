@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "f2f013a3-7f74-4a32-9fd4-106daa8d411a",
+  "createdOn": "2026-10-06",
+  "action": "done",
+  "payload": {
+    "id": "#PTTS7X",
+    "outcome": "Resolved across PRs #3247-#3315: eliminated WebKit and Firefox flakiness in account settings, document Back navigation, and clipboard assertions.",
+    "baseRowFingerprint": "011d932abd9fa9a950378763254073fb4b0404977f314305239f368a58325c88"
+  }
+}

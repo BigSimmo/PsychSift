@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "f440d0a3-446f-4e05-9fc8-f21ec795877c",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#NB4SHF",
+    "detail": "view.ts abstraction layer landed in PR #3139 (c88c56f98d); repo derivation pending.",
+    "source": "PR #3139 review",
+    "baseRowFingerprint": "d3638b080062d8d0082844f3bdf779bfb210101ce4802f9b5255849a1612636c"
+  }
+}

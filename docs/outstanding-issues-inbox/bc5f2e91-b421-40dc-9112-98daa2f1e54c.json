@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "bc5f2e91-b421-40dc-9112-98daa2f1e54c",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#TCT5ZM",
+    "detail": "Superseded by migrations 20260926041000 and 20260926041100, which retired the old worker but explicitly preserved cron_ingestion_jwt in Vault for invoke_indexing_v3_agent.",
+    "source": "Migration 20260926041100 verification",
+    "baseRowFingerprint": "6632527c7adf8f659cd0a8445c232f82afa8537ab23d9fa3b3c56aa80c7802ec"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b2e662b1-7ab9-48b9-baea-341ec2e71b16",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#87GR24",
+    "detail": "8 of 10 original signed off in PR #3081; only 3 emergency records remain drafted (NMS, Serotonin Toxicity, Acute Dystonia).",
+    "source": "PR #3081 review",
+    "baseRowFingerprint": "d23d8f6fddddfeec88d3e5f132ef4109540b91e252bfb8a53d8486a8cf2f542e"
+  }
+}

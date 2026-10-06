@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "05e3b2d3-1f4f-446b-a81a-36c2345a167c",
+  "createdOn": "2026-10-06",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "rec",
+    "summary": "Teaching Assessments: tokenized magic-link or external supervisor access flow",
+    "detail": "Visiting hospital supervisors frequently lack hospital clinical accounts. Build a tokenized magic-link / secure invite flow so supervisors can complete and sign EPA forms without full accounts.",
+    "source": "PR #3302 post-merge audit",
+    "issueUlid": "01M484CAW5MAAXAX35108YZ443"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "b0d5aa5d-59cb-4763-8583-847094fdfdfc",
+  "createdOn": "2026-10-06",
+  "action": "update",
+  "payload": {
+    "id": "#HPPMXH",
+    "detail": "8 of 11 assertions fixed in PR #3164 (5c1d88366f); only 3 remain.",
+    "source": "PR #3164 review",
+    "baseRowFingerprint": "73ed84481402bd8f44651d9e1caaad35f7dee211875c25b32e4042c71d096839"
+  }
+}
