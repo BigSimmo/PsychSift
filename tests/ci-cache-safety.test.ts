@@ -1056,3 +1056,28 @@ describe("Lighthouse budget routing", () => {
     expect(refreshJob).not.toContain("playwright install");
   });
 });
+
+describe("setup-node automatic npm cache", () => {
+  it("never lets a setup-node step without an npm install save an npm cache", () => {
+    // package.json declares "packageManager", so setup-node turns its npm cache on by default.
+    // A job that never runs npm ci would save an empty ~/.npm under the lockfile key, and a
+    // primary-key hit is never re-saved.
+    const yaml = createRequire(import.meta.url)("js-yaml");
+    const dir = new URL("../.github/workflows/", import.meta.url);
+    let checked = 0;
+    for (const file of readdirSync(dir).filter((name) => /\.ya?ml$/.test(name))) {
+      const parsed = yaml.load(readFileSync(new URL(file, dir), "utf8")) as {
+        jobs?: Record<string, { steps?: Array<{ uses?: string; with?: Record<string, unknown> }> }>;
+      };
+      for (const [jobId, job] of Object.entries(parsed.jobs ?? {})) {
+        for (const step of job.steps ?? []) {
+          if (!step.uses?.startsWith("actions/setup-node@")) continue;
+          checked += 1;
+          if (step.with?.cache === "npm") continue;
+          expect(step.with?.["package-manager-cache"], `${file} ${jobId}`).toBe(false);
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+});
