@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Check, ChevronLeft, CloudOff, Lock, Shield, TriangleAlert, UserRound } from "lucide-react";
+import { BriefcaseBusiness, Check, ChevronLeft, CloudOff, Lock, MapPin, TriangleAlert, UserRound } from "lucide-react";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -89,22 +89,86 @@ function StatusLine({ status, onRetry }: { readonly status: HeaderStatus; readon
   );
 }
 
+/** The mock-up's made-up doctor, shown read-only so a signed-out visitor sees what the page holds. */
+const EXAMPLE_AREAS = [
+  { id: "roster", mode: "roster", title: "Roster", subtitle: "2 workplaces · your line EXAMPLE A", label: "Ready" },
+  { id: "teaching", mode: "teaching", title: "Teaching", subtitle: "2 teams followed", label: "Ready" },
+  { id: "cpd", mode: "cme", title: "CPD", subtitle: "2026 plan and 3 routines", label: "Ready" },
+  {
+    id: "admin",
+    mode: "admin",
+    title: "Admin",
+    subtitle: "Dates you entered; not checked with Ahpra",
+    label: "1 not recorded",
+  },
+  { id: "on-call", mode: "on-call", title: "On Call", subtitle: "Hospital phone off", label: "Ready" },
+] as const;
+
 function SignedOutBody() {
   const [open, setOpen] = useState(false);
   return (
     <div className="grid gap-6" data-testid="work-profile-signed-out">
-      <WorkProfileNote icon={Lock} title="Sign in to set up your work profile">
+      <WorkProfileNote
+        icon={Lock}
+        title="Made-up example. Sign in to set up your own"
+        action={
+          <Button variant="primary" onClick={() => setOpen(true)}>
+            Sign in
+          </Button>
+        }
+      >
         Your workplaces, alerts and roster settings are saved to your account, so most of them follow you to any device.
         A few stay on this phone.
       </WorkProfileNote>
-      <WorkProfileSection label="What you can set up">
-        <WorkProfileRow icon={UserRound} title="Your stage and workplaces" subtitle="Where you work and your roster" />
-        <WorkProfileRow icon={Bell} title="Alerts and calendar" subtitle="One link for shifts, teaching and CPD" />
-        <WorkProfileRow icon={Shield} title="Privacy" subtitle="See what stays on this phone" />
+      <div className="flex min-w-0 items-center gap-3.5" data-testid="work-profile-example-identity">
+        <span
+          aria-hidden="true"
+          className="grid size-12 shrink-0 place-items-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-inset)] text-base font-semibold text-[color:var(--text-heading)]"
+        >
+          AE
+        </span>
+        <div className="grid min-w-0">
+          <p className="break-words text-base font-semibold text-[color:var(--text-heading)]">Dr Alex Example</p>
+          <p className="break-all text-sm text-[color:var(--text-muted)]">alex@example.health</p>
+        </div>
+      </div>
+      <WorkProfileSection label="About you">
+        <WorkProfileRow icon={UserRound} title="Stage" subtitle="Consultant psychiatrist · you chose this" />
+        <WorkProfileRow title="Guidelines for" subtitle="Western Australia" />
+        <WorkProfileRow title="Roster grade" subtitle="Consultant · set by the Gen Psych 2 team" />
       </WorkProfileSection>
-      <Button variant="primary" onClick={() => setOpen(true)} block>
-        Sign in
-      </Button>
+      <WorkProfileSection label="Where you work">
+        <WorkProfileRow
+          icon={MapPin}
+          title="Example Hospital"
+          subtitle="Main workplace · Gen Psych 2 · roster linked"
+        />
+        <WorkProfileRow
+          icon={BriefcaseBusiness}
+          title="Example Private Clinic"
+          subtitle="Sessional · your own indemnity · roster linked"
+        />
+      </WorkProfileSection>
+      <WorkProfileSection label="Set up each area" testId="work-profile-example-areas">
+        {EXAMPLE_AREAS.map((row) => (
+          <WorkProfileRow
+            key={row.id}
+            dot={row.mode}
+            title={row.title}
+            subtitle={row.subtitle}
+            trailing={
+              row.label === "Ready" ? (
+                <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
+                  <Check aria-hidden="true" className="size-icon-sm" />
+                  {row.label}
+                </span>
+              ) : (
+                <span className="text-[color:var(--text-muted)]">{row.label}</span>
+              )
+            }
+          />
+        ))}
+      </WorkProfileSection>
       <AccountSetupDialog open={open} onClose={() => setOpen(false)} />
     </div>
   );
