@@ -22,7 +22,12 @@
  *   4. tree(HEAD) == tree(H) — byte-identical repository, workflows included;
  *   5. a completed, successful `pull_request` run of THIS workflow file exists for H, finished
  *      no more than MAX_PROOF_AGE_HOURS ago (default 24; bounds date/external drift);
- *   6. in that run, every leg of the job being skipped concluded `success`. A job that was
+ *   6. that run RECORDED the tree it actually tested (the `CI tested tree` notice its own Change
+ *      scope job writes via --record-tested-tree from the checked-out GITHUB_SHA), and that
+ *      recorded tree equals tree(HEAD). The API's `head_sha` is the PR head, not the checkout the
+ *      run tested (refs/pull/N/merge), so the proof is the run's own record, not a derivation;
+ *   7. the PR comes from this repository, not a fork;
+ *   8. in that run, every leg of the job being skipped concluded `success`. A job that was
  *      skipped on the PR (out of PR scope, draft, label) proves nothing and is NOT skipped on
  *      main — e.g. a lockfile-only merge still runs Lighthouse on main, as it does today.
  *
@@ -34,8 +39,9 @@
  * main-failure routing. The weekly scheduled run and every dispatch never take this path.
  *
  * Outputs (GITHUB_OUTPUT): coverage, ui, lighthouse ("true"/"false"), proof_run_url, reason.
- * Uses only the job's GITHUB_TOKEN (actions: read, pull-requests: read) — about three REST
- * calls per main push.
+ * Uses only the job's GITHUB_TOKEN (actions: read, pull-requests: read) — about four REST
+ * calls per main push. Every proved job checks out the run's GITHUB_SHA (no `ref:` override,
+ * pinned by tests/ci-main-tree-proof.test.ts), so the Change scope record covers every leg.
  *
  * Run:  node scripts/ci-main-tree-proof.mjs              (in CI)
  *       node scripts/ci-main-tree-proof.mjs --self-test  (offline unit checks)
@@ -45,6 +51,8 @@ import { appendFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 export const CI_WORKFLOW_PATH = ".github/workflows/ci.yml";
+export const TESTED_TREE_TITLE = "CI tested tree";
+const TESTED_TREE_MESSAGE = /^event=(\S+) sha=([0-9a-f]{40}) tree=([0-9a-f]{40})$/;
 export const DEFAULT_MAX_PROOF_AGE_HOURS = 24;
 
 /**
@@ -73,6 +81,21 @@ export function classifyProof(jobs) {
     });
   }
   return result;
+}
+
+/** The `CI tested tree` record a run's Change scope job wrote, or null unless exactly one. Pure. */
+export function parseTestedTree(annotations) {
+  const records = (Array.isArray(annotations) ? annotations : [])
+    .filter((annotation) => annotation?.title === TESTED_TREE_TITLE)
+    .map((annotation) =>
+      String(annotation?.message ?? "")
+        .trim()
+        .match(TESTED_TREE_MESSAGE),
+    )
+    .filter(Boolean);
+  if (records.length !== 1) return null;
+  const [, event, sha, tree] = records[0];
+  return { event, sha, tree };
 }
 
 /** The one merged-into-main PR whose merge commit is `sha`, or null. Pure. */
@@ -152,6 +175,9 @@ export async function evaluate({
   if (!pull) return { proof: NONE, reason: "no single merged PR has this commit as its merge commit" };
   const head = pull.head.sha;
   if (!/^[0-9a-f]{40}$/.test(head)) return { proof: NONE, reason: "PR head SHA is malformed" };
+  if (pull.head?.repo?.full_name !== repo) {
+    return { proof: NONE, reason: `PR #${pull.number} comes from a fork; its run's record is not trusted` };
+  }
 
   if (!runGitOk(["cat-file", "-e", `${head}^{commit}`])) {
     // Squash merges leave the head outside main's history; the PR ref survives branch deletion.
@@ -187,9 +213,20 @@ export async function evaluate({
   if (!Array.isArray(jobs?.jobs) || jobs.total_count > jobs.jobs.length) {
     return { proof: NONE, reason: "could not read the proving run's complete job list" };
   }
+  const scopeJobs = jobs.jobs.filter((job) => job?.name === "Change scope");
+  if (scopeJobs.length !== 1 || scopeJobs[0].conclusion !== "success") {
+    return { proof: NONE, reason: "the proving run has no single successful Change scope job" };
+  }
+  const tested = parseTestedTree(await request(`/repos/${repo}/check-runs/${scopeJobs[0].id}/annotations?per_page=50`));
+  if (!tested || tested.event !== "pull_request") {
+    return { proof: NONE, reason: `run ${run.id} did not record the tree it tested` };
+  }
+  if (tested.tree !== mainTree) {
+    return { proof: NONE, reason: `run ${run.id} tested tree ${tested.tree.slice(0, 12)}, not this main tree` };
+  }
   return {
     proof: classifyProof(jobs.jobs),
-    reason: `tree identical to PR #${pull.number} head ${head.slice(0, 12)}, proven by run ${run.id}`,
+    reason: `run ${run.id} (PR #${pull.number}) recorded testing ${tested.sha.slice(0, 12)} whose tree equals this main tree`,
     runUrl: run.html_url ?? "",
   };
 }
@@ -229,6 +266,7 @@ function assert(condition, message) {
 async function selfTest() {
   const ok = (name, extra = {}) => ({ name, status: "completed", conclusion: "success", ...extra });
   const full = [
+    { ...ok("Change scope"), id: 501 },
     ok("Unit coverage partition (1)"),
     ok("Unit coverage partition (2)"),
     ok("Unit coverage"),
@@ -265,7 +303,7 @@ async function selfTest() {
     merged_at: "2026-10-06T00:00:00Z",
     merge_commit_sha: sha,
     base: { ref: "main" },
-    head: { sha: "b".repeat(40) },
+    head: { sha: "b".repeat(40), repo: { full_name: "o/r" } },
   };
   assert(pickMergedPull([pr], sha) === pr, "the merged PR is picked");
   assert(pickMergedPull([{ ...pr, merged_at: null }], sha) === null, "an unmerged PR is ignored");
@@ -338,9 +376,12 @@ async function selfTest() {
       if (args[0] === "fetch") return "";
       throw new Error(`unexpected git ${key}`);
     };
-  const request = (runsOverride, jobsOverride) => async (path) => {
+  const record = (message, title = TESTED_TREE_TITLE) => [{ title, message, annotation_level: "notice" }];
+  const testedRecord = record(`event=pull_request sha=${"9".repeat(40)} tree=${tree}`);
+  const request = (runsOverride, jobsOverride, annotationsOverride) => async (path) => {
     if (path.includes("/commits/")) return [pr];
     if (path.includes("/workflows/")) return { workflow_runs: runsOverride ?? [run] };
+    if (path.includes("/check-runs/501/annotations")) return annotationsOverride ?? testedRecord;
     if (path.includes("/jobs")) return jobsOverride ?? { total_count: full.length, jobs: full };
     throw new Error(`unexpected ${path}`);
   };
@@ -365,11 +406,91 @@ async function selfTest() {
   assert(!result.proof.ui, "a truncated job list is a full run");
   result = await evaluate({ ...base, env: { ...env, BEFORE_SHA: "0".repeat(40) } });
   assert(!result.proof.ui, "a branch-creation push is a full run");
+  // Risk 1: the proof is the run's own record of the checkout it tested, never the API head_sha.
+  result = await evaluate({ ...base, request: request(undefined, undefined, []) });
+  assert(!result.proof.ui, "a run without a tested-tree record proves nothing");
+  result = await evaluate({
+    ...base,
+    request: request(undefined, undefined, record(`event=pull_request sha=${"9".repeat(40)} tree=${"3".repeat(40)}`)),
+  });
+  assert(!result.proof.ui, "a run that tested a different tree (stale merge ref) proves nothing");
+  result = await evaluate({
+    ...base,
+    request: request(undefined, undefined, record(`event=push sha=${"9".repeat(40)} tree=${tree}`)),
+  });
+  assert(!result.proof.ui, "only a pull_request run's record counts");
+  result = await evaluate({ ...base, request: request(undefined, undefined, [...testedRecord, ...testedRecord]) });
+  assert(!result.proof.ui, "an ambiguous double record proves nothing");
+  result = await evaluate({
+    ...base,
+    request: request(undefined, undefined, record(`event=pull_request sha=${"9".repeat(40)} tree=${tree}`, "Other")),
+  });
+  assert(!result.proof.ui, "a differently titled annotation is not a record");
+  result = await evaluate({
+    ...base,
+    request: request(undefined, { total_count: full.length - 1, jobs: full.slice(1) }),
+  });
+  assert(!result.proof.ui, "no Change scope job means no record");
+  result = await evaluate({
+    ...base,
+    request: request(undefined, {
+      total_count: full.length,
+      jobs: full.map((job) => (job.name === "Change scope" ? { ...job, conclusion: "cancelled" } : job)),
+    }),
+  });
+  assert(!result.proof.ui, "a cancelled Change scope job proves nothing");
+  result = await evaluate({
+    ...base,
+    request: async (path) =>
+      path.includes("/commits/") ? [{ ...pr, head: { ...pr.head, repo: { full_name: "fork/r" } } }] : request()(path),
+  });
+  assert(!result.proof.ui, "a fork PR's self-reported record is not trusted");
+  result = await evaluate({ ...base, request: request([{ ...run, conclusion: "cancelled" }]) });
+  assert(!result.proof.ui, "a cancelled run proves nothing");
+  assert(parseTestedTree(testedRecord)?.tree === tree, "a well-formed record parses");
+  const recorded = [];
+  const originalLog = console.log;
+  console.log = (line) => recorded.push(line);
+  try {
+    recordTestedTree({ env: { GITHUB_SHA: sha, GITHUB_EVENT_NAME: "pull_request" }, runGit: gitMap() });
+    recordTestedTree({ env: { GITHUB_SHA: "4".repeat(40), GITHUB_EVENT_NAME: "pull_request" }, runGit: gitMap() });
+  } finally {
+    console.log = originalLog;
+  }
+  assert(
+    recorded[0] === `::notice title=${TESTED_TREE_TITLE}::event=pull_request sha=${sha} tree=${tree}`,
+    "the record names the checkout",
+  );
+  assert(recorded[1].startsWith("::warning::") && recorded.length === 2, "a moved checkout writes no record");
   console.log("ci-main-tree-proof self-test passed.");
+}
+
+/**
+ * --record-tested-tree: run first in every CI run's Change scope job. Writes the checked-out
+ * commit and tree as a check-run annotation, the reviewable record a later proof must match.
+ * Writes nothing (so nothing can be proved from this run) if the checkout is not GITHUB_SHA.
+ */
+function recordTestedTree({ env = process.env, runGit = git } = {}) {
+  const sha = runGit(["rev-parse", "HEAD"]);
+  if (sha !== env.GITHUB_SHA) {
+    console.log(`::warning::checkout ${sha} is not GITHUB_SHA ${env.GITHUB_SHA}; no tested-tree record written.`);
+    return null;
+  }
+  const line = `event=${env.GITHUB_EVENT_NAME} sha=${sha} tree=${runGit(["rev-parse", "HEAD^{tree}"])}`;
+  console.log(`::notice title=${TESTED_TREE_TITLE}::${line}`);
+  return line;
 }
 
 async function main() {
   if (process.argv.includes("--self-test")) return selfTest();
+  if (process.argv.includes("--record-tested-tree")) {
+    try {
+      recordTestedTree();
+    } catch (error) {
+      console.log(`::warning::tested-tree record failed: ${String(error?.message ?? error)}`);
+    }
+    return;
+  }
   let outcome;
   try {
     outcome = await evaluate();

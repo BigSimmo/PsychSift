@@ -96,6 +96,7 @@ describe("main tree proof script", () => {
     const runGitOk = (args: string[]) => (args[0] === "cat-file" ? headLocal : true);
     const ok = (name: string) => ({ name, status: "completed", conclusion: "success" });
     const prJobs = [
+      "Change scope",
       "Unit coverage partition (1)",
       "Unit coverage partition (2)",
       "Unit coverage",
@@ -105,7 +106,7 @@ describe("main tree proof script", () => {
       "Production UI (2)",
       "Production UI (3)",
       "Lighthouse budget",
-    ].map(ok);
+    ].map((name, index) => ({ ...ok(name), id: 700 + index }));
     const request = async (path: string) => {
       if (path.includes("/commits/")) {
         return [
@@ -114,7 +115,7 @@ describe("main tree proof script", () => {
             merged_at: "2026-10-06T01:59:00Z",
             merge_commit_sha: sha,
             base: { ref: "main" },
-            head: { sha: head },
+            head: { sha: head, repo: { full_name: "o/r" } },
           },
         ];
       }
@@ -133,6 +134,10 @@ describe("main tree proof script", () => {
             },
           ],
         };
+      }
+      // The proving run's own record of the merge-ref checkout it tested (not the PR head SHA).
+      if (path.includes("/check-runs/700/annotations")) {
+        return [{ title: "CI tested tree", message: `event=pull_request sha=${"f".repeat(40)} tree=${tree}` }];
       }
       if (path.includes("/jobs")) return { total_count: prJobs.length, jobs: prJobs };
       throw new Error(`unexpected ${path}`);
@@ -205,6 +210,28 @@ describe("main tree proof workflow wiring", () => {
     // The changes job checks out full history, which HEAD^1 and the ancestry check rely on.
     const checkout = steps.find((step) => String(step.uses ?? "").startsWith("actions/checkout@"));
     expect(checkout?.with?.["fetch-depth"]).toBe(0);
+  });
+
+  it("records the tested tree on every event, and every proved job tests that same checkout", () => {
+    const record = steps.find((step) => step.name === "Record tested tree");
+    expect(record?.run).toBe("node scripts/ci-main-tree-proof.mjs --record-tested-tree");
+    expect(record?.if).toBeUndefined();
+    for (const job of [
+      "changes",
+      "coverage-shards",
+      "coverage",
+      "ui-playwright-build",
+      "ui-critical-fast",
+      "ui-critical",
+      "lighthouse-budget",
+    ]) {
+      const checkouts = (jobs[job].steps as Step[]).filter((step) =>
+        String(step.uses ?? "").startsWith("actions/checkout@"),
+      );
+      expect(checkouts.length, job).toBeGreaterThan(0);
+      // No `ref:` override: each job tests the run's GITHUB_SHA, the commit Change scope records.
+      for (const checkout of checkouts) expect(checkout.with?.ref, job).toBeUndefined();
+    }
   });
 
   it("gates exactly the tree-determined jobs on their own group", () => {

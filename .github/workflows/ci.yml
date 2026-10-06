@@ -148,6 +148,13 @@ jobs:
       # safety, Build + deployment boot smoke, visual baselines and the Firefox/WebKit
       # release-browser-matrix still run on every main push, and the weekly schedule and
       # dispatches never take this path — they are the scheduled full run for drift.
+      # Every run records the commit and tree it actually tested (this job's checkout is the run's
+      # GITHUB_SHA, as is every other job's). A later main push only skips work when the proving
+      # PR run's own record matches its tree; the API's head_sha is the PR head, not the
+      # refs/pull/N/merge checkout a pull_request run tests.
+      - name: Record tested tree
+        run: node scripts/ci-main-tree-proof.mjs --record-tested-tree
+
       - name: Main tree proof
         id: tree-proof
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
