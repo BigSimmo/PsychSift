@@ -423,6 +423,15 @@ header bell: which work homes show it, how waiting items group by mode, and the 
 "Something needs attention" wording. The sheet is `src/components/needs-you/`. It reuses My Day
 items plus On Call notifications; it is not OS push and it does not say "alerts".
 
+**Work-mode frame.** `src/lib/work-frame/areas.ts` is the frame's own pin table for every work area
+(My Day, Roster with Open shifts, Teaching with its Assessments sub-area, CPD, Admin, On Call): each
+area's three pinned tabs, its More sheet groups and their routes, gates and page actions.
+`ModeBand` (`src/components/mode-band/mode-band.tsx`) reads it through `workAreaFor()` and draws
+`WorkFrameHeader` (`src/components/work-frame/`): the tinted band, underline tabs, More sheet and
+side swipe. Styles and the area palettes' partner tokens live in `src/app/work-mode.css`; the
+shared content pieces (cards, rows, hero, rings, chips, buttons, dock, week strip, Undo toast) are
+in `src/components/mode-kit/work.tsx`. Clinical modes keep the old band.
+
 **Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
 modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
 records (Roster shifts and leave, Teaching sessions, CPD activities, On Call / Admin entries) onto

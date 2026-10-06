@@ -11,6 +11,7 @@
 /* The mode page header band (C4). Its own sheet keeps the block out of this
    file, which every mode build edits. */
 @import "./mode-band.css";
+@import "./work-mode.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant pointer-fine (@media (pointer: fine));
@@ -1100,10 +1101,17 @@ body {
    the contrast partner is declared rather than assumed white. Pinned by
    `tests/design-token-contract.test.ts`. */
 [data-mode-identity="on-call"] {
-  --mode-identity: #175f63;
-  --mode-identity-soft: #eef7f6;
-  --mode-identity-border: #cfe6e4;
+  --mode-identity: #11695e;
+  --mode-identity-soft: #e8f3f1;
+  --mode-identity-border: #c2dfd8;
   --mode-identity-contrast: #ffffff;
+  /* Work-mode palette (work-mode redesign, owner request 6 Oct 2026): the
+     mockup\'s m2, deep, s2, hb and rgb partners (tokens.json). */
+  --mode-identity-2: #258a7c;
+  --mode-identity-deep: #0c4f46;
+  --mode-identity-soft-2: #d3e9e4;
+  --mode-identity-band: #e5f1ee;
+  --mode-identity-rgb: 17 105 94;
 
   /* The local remap is the whole delivery mechanism. Everything already
      painting this chrome reads `var(--clinical-accent)` — the pill's filled
@@ -1121,10 +1129,10 @@ body {
 }
 
 .dark [data-mode-identity="on-call"] {
-  --mode-identity: #8fc9c5;
-  --mode-identity-soft: #12302f;
-  --mode-identity-border: #22474a;
-  --mode-identity-contrast: #062b2c;
+  --mode-identity: #86cbbf;
+  --mode-identity-soft: #12302c;
+  --mode-identity-border: #22473f;
+  --mode-identity-contrast: #062b26;
 }
 
 @media (forced-colors: active) {
@@ -1138,7 +1146,8 @@ body {
   }
 }
 
-/* CME: indigo. The design record's identity colour, already sanctioned in
+/* CME: copper since the work-mode redesign (owner request 6 Oct 2026); it was
+   indigo. What follows describes the indigo record. The design record's identity colour, already sanctioned in
    ckb-v2-tokens.css. Sits beside On Call's teal without inventing a new hue.
    Light 7.6:1 and dark 7.8:1 against their own contrast token, and 7.4:1 /
    7.7:1 as text on the page surface — both values cleared as a FILL as well as
@@ -1146,10 +1155,17 @@ body {
    white. Same delivery mechanism as On Call above: the local `--clinical-accent`
    remap, scoped to the elements carrying the attribute. */
 [data-mode-identity="cme"] {
-  --mode-identity: #43508f;
-  --mode-identity-soft: #eef1f9;
-  --mode-identity-border: #d2d9e8;
+  --mode-identity: #9a5418;
+  --mode-identity-soft: #f9f0e7;
+  --mode-identity-border: #e8cfb5;
   --mode-identity-contrast: #ffffff;
+  /* Work-mode palette (work-mode redesign, owner request 6 Oct 2026): the
+     mockup\'s m2, deep, s2, hb and rgb partners (tokens.json). */
+  --mode-identity-2: #b56d2c;
+  --mode-identity-deep: #7a3f0e;
+  --mode-identity-soft-2: #f1e0cd;
+  --mode-identity-band: #f8efe5;
+  --mode-identity-rgb: 154 84 24;
 
   --clinical-accent: var(--mode-identity);
   --clinical-accent-soft: var(--mode-identity-soft);
@@ -1167,10 +1183,10 @@ body {
 }
 
 .dark [data-mode-identity="cme"] {
-  --mode-identity: #97a3df;
-  --mode-identity-soft: #1b2340;
-  --mode-identity-border: #333c52;
-  --mode-identity-contrast: #0b1019;
+  --mode-identity: #e0a46b;
+  --mode-identity-soft: #2d1d0f;
+  --mode-identity-border: #4a3220;
+  --mode-identity-contrast: #2a1405;
 
   --cme-cat-2: color-mix(in oklab, var(--mode-identity) 70%, var(--surface-raised));
   --cme-cat-3: color-mix(in oklab, var(--mode-identity) 46%, var(--surface-raised));
@@ -1190,13 +1206,21 @@ body {
   }
 }
 
-/* Admin (mode id `my-work`): the existing forms brown as its identity.
+/* Admin (mode id `my-work`): slate since the work-mode redesign (owner request
+   6 Oct 2026); it was the forms brown.
    The explicit values also let the design token contract check contrast. */
 [data-mode-identity="my-work"] {
-  --mode-identity: #7d5a2c;
-  --mode-identity-soft: #f8f4ec;
-  --mode-identity-border: #e8dbc4;
+  --mode-identity: #44566e;
+  --mode-identity-soft: #eef1f5;
+  --mode-identity-border: #cfd7e1;
   --mode-identity-contrast: #ffffff;
+  /* Work-mode palette (work-mode redesign, owner request 6 Oct 2026): the
+     mockup\'s m2, deep, s2, hb and rgb partners (tokens.json). */
+  --mode-identity-2: #5d7089;
+  --mode-identity-deep: #333f52;
+  --mode-identity-soft-2: #dde3eb;
+  --mode-identity-band: #ecf0f4;
+  --mode-identity-rgb: 68 86 110;
 
   --clinical-accent: var(--mode-identity);
   --clinical-accent-soft: var(--mode-identity-soft);
@@ -1205,10 +1229,10 @@ body {
 }
 
 .dark [data-mode-identity="my-work"] {
-  --mode-identity: #d6bd8a;
-  --mode-identity-soft: #2b2317;
-  --mode-identity-border: #4d4028;
-  --mode-identity-contrast: #1f1810;
+  --mode-identity: #a9b8cc;
+  --mode-identity-soft: #1b222c;
+  --mode-identity-border: #323d4b;
+  --mode-identity-contrast: #121a24;
 }
 
 @media (forced-colors: active) {
@@ -1227,10 +1251,17 @@ body {
    delivery mechanism as On Call and CME above: the local `--clinical-accent`
    remap, scoped to the elements carrying the attribute. */
 [data-mode-identity="roster"] {
-  --mode-identity: #634f8f;
-  --mode-identity-soft: #f2eef9;
-  --mode-identity-border: #ddd3ee;
+  --mode-identity: #5a45a6;
+  --mode-identity-soft: #f1eef9;
+  --mode-identity-border: #d4cbee;
   --mode-identity-contrast: #ffffff;
+  /* Work-mode palette (work-mode redesign, owner request 6 Oct 2026): the
+     mockup\'s m2, deep, s2, hb and rgb partners (tokens.json). */
+  --mode-identity-2: #7560c0;
+  --mode-identity-deep: #463587;
+  --mode-identity-soft-2: #e3ddf3;
+  --mode-identity-band: #efecf8;
+  --mode-identity-rgb: 90 69 166;
 
   --clinical-accent: var(--mode-identity);
   --clinical-accent-soft: var(--mode-identity-soft);
@@ -1256,16 +1287,24 @@ body {
   }
 }
 
-/* Open shifts: a deeper violet than Roster's, its parent team mode, so the
-   two read as related but distinct. Light #5b3f8f, dark #bba5e8 with a
+/* Open shifts: Roster's violet since the work-mode redesign (owner request
+   6 Oct 2026), because its pages now sit inside the Roster frame. It was a
+   deeper violet, so the two read as related but distinct. Light #5b3f8f, dark #bba5e8 with a
    declared dark contrast partner, as Roster's is. Same delivery mechanism:
    the local `--clinical-accent` remap, scoped to the elements carrying the
    attribute. */
 [data-mode-identity="open-shifts"] {
-  --mode-identity: #5b3f8f;
-  --mode-identity-soft: #f1ecf9;
-  --mode-identity-border: #dcd0ef;
+  --mode-identity: #5a45a6;
+  --mode-identity-soft: #f1eef9;
+  --mode-identity-border: #d4cbee;
   --mode-identity-contrast: #ffffff;
+  /* Work-mode palette (work-mode redesign, owner request 6 Oct 2026): the
+     mockup\'s m2, deep, s2, hb and rgb partners (tokens.json). */
+  --mode-identity-2: #7560c0;
+  --mode-identity-deep: #463587;
+  --mode-identity-soft-2: #e3ddf3;
+  --mode-identity-band: #efecf8;
+  --mode-identity-rgb: 90 69 166;
 
   --clinical-accent: var(--mode-identity);
   --clinical-accent-soft: var(--mode-identity-soft);
@@ -1274,9 +1313,9 @@ body {
 }
 
 .dark [data-mode-identity="open-shifts"] {
-  --mode-identity: #bba5e8;
-  --mode-identity-soft: #251c3c;
-  --mode-identity-border: #3d3158;
+  --mode-identity: #b0a0d8;
+  --mode-identity-soft: #241c3a;
+  --mode-identity-border: #3b3054;
   --mode-identity-contrast: #170f26;
 }
 
@@ -1291,17 +1330,25 @@ body {
   }
 }
 
-/* Teaching: plum, for the pill, the current tab and module icon tiles only.
+/* Teaching: green since the work-mode redesign (owner request 6 Oct 2026),
+   shared with Assessments; it was plum. Used for the pill, the current tab and module icon tiles only.
    Light #7a3b6e (spec §6). Dark is the calmer #cfa3c6 of v4.2, cleared as a
    fill under #2a0f24 as well as as text. Buttons, links and selection stay
    product colours (`--primary`), which this block does not remap. The hero's
    colours are the mode kit's `--surface-summary*`. The QR pair is not
    redefined for dark: a camera needs dark modules on a light quiet zone. */
 [data-mode-identity="teaching"] {
-  --mode-identity: #7a3b6e;
-  --mode-identity-soft: #f8eff6;
-  --mode-identity-border: #ead6e5;
+  --mode-identity: #2f6e4a;
+  --mode-identity-soft: #ebf4ee;
+  --mode-identity-border: #c5dfcf;
   --mode-identity-contrast: #ffffff;
+  /* Work-mode palette (work-mode redesign, owner request 6 Oct 2026): the
+     mockup\'s m2, deep, s2, hb and rgb partners (tokens.json). */
+  --mode-identity-2: #448a62;
+  --mode-identity-deep: #235538;
+  --mode-identity-soft-2: #d6e9dd;
+  --mode-identity-band: #e8f2ec;
+  --mode-identity-rgb: 47 110 74;
 
   --clinical-accent: var(--mode-identity);
   --clinical-accent-soft: var(--mode-identity-soft);
@@ -1315,10 +1362,10 @@ body {
 }
 
 .dark [data-mode-identity="teaching"] {
-  --mode-identity: #cfa3c6;
-  --mode-identity-soft: #2a1d27;
-  --mode-identity-border: #45303f;
-  --mode-identity-contrast: #2a0f24;
+  --mode-identity: #93cba8;
+  --mode-identity-soft: #142a1d;
+  --mode-identity-border: #24412f;
+  --mode-identity-contrast: #0d2a19;
 
   --teaching-segment-on: var(--surface-lux);
   --teaching-segment-line: #3a434c;
@@ -1334,6 +1381,90 @@ body {
     --teaching-segment-on: Canvas;
     --teaching-segment-line: CanvasText;
   }
+}
+
+/* My Day: blue (work-mode redesign, owner request 6 Oct 2026). The mockup's
+   `.day` palette. Light 6.5:1 on white and against its white contrast label,
+   dark cleared against its own dark label. Same delivery mechanism as the
+   other identities: the local `--clinical-accent` remap. */
+[data-mode-identity="my-day"] {
+  --mode-identity: #1c5f9f;
+  --mode-identity-soft: #ecf2f9;
+  --mode-identity-border: #c8d9ec;
+  --mode-identity-contrast: #ffffff;
+  --mode-identity-2: #3a7fc0;
+  --mode-identity-deep: #154a7c;
+  --mode-identity-soft-2: #d9e6f4;
+  --mode-identity-band: #e9f0f8;
+  --mode-identity-rgb: 28 95 159;
+
+  --clinical-accent: var(--mode-identity);
+  --clinical-accent-soft: var(--mode-identity-soft);
+  --clinical-accent-border: var(--mode-identity-border);
+  --clinical-accent-contrast: var(--mode-identity-contrast);
+}
+
+.dark [data-mode-identity="my-day"] {
+  --mode-identity: #8fb8e6;
+  --mode-identity-soft: #14233a;
+  --mode-identity-border: #26395a;
+  --mode-identity-contrast: #0b1a2b;
+}
+
+@media (forced-colors: active) {
+  /* Its own rule: the token test reads each block by its exact selector. */
+  [data-mode-identity="my-day"] {
+    --mode-identity: LinkText;
+    --mode-identity-soft: Canvas;
+    --mode-identity-border: ButtonBorder;
+    --mode-identity-contrast: ButtonText;
+  }
+}
+
+/* Work-mode roster shift codes (work-mode redesign, owner request 6 Oct
+   2026; tokens.json `color.shift-code.bar`). Fixed colours, not mode
+   variables: a Late is the same violet in every area. Colour only helps, the
+   code is always written beside it. */
+:root {
+  --work-shift-d: #1c5f9f;
+  --work-shift-l: #5a45a6;
+  --work-shift-n: #2b2f6b;
+  --work-shift-oc: #11695e;
+  --work-shift-al: #1d6e44;
+  --work-shift-t: #2f6e4a;
+  /* The Undo toast's tick and action on its dark ink (both themes). */
+  --work-toast-ok: #7fd3a6;
+  --work-toast-action: #9cc7ff;
+}
+
+.dark {
+  --work-shift-d: #8fb8e6;
+  --work-shift-l: #b0a0d8;
+  --work-shift-n: #a5a9e0;
+  --work-shift-oc: #86cbbf;
+  --work-shift-al: #8fd0aa;
+  --work-shift-t: #93cba8;
+}
+
+/* The work-mode palette partners (work-mode redesign, owner request 6 Oct
+   2026). A mode with no work palette falls back to its identity, so these are
+   safe to read anywhere. Dark themes derive every partner from the dark
+   identity rather than restating the light mockup values: the band is the
+   identity mixed quietly into the page, as the mode band always was. */
+:root {
+  --mode-identity-2: var(--mode-identity);
+  --mode-identity-deep: var(--mode-identity);
+  --mode-identity-soft-2: var(--mode-identity-soft);
+  --mode-identity-band: var(--mode-identity-soft);
+  --mode-identity-rgb: 16 26 41;
+}
+
+.dark [data-mode-identity] {
+  --mode-identity-2: color-mix(in srgb, var(--mode-identity) 82%, white);
+  --mode-identity-deep: color-mix(in srgb, var(--mode-identity) 70%, black);
+  --mode-identity-soft-2: color-mix(in srgb, var(--mode-identity) 18%, var(--background));
+  --mode-identity-band: color-mix(in srgb, var(--mode-identity) 11%, var(--background));
+  --mode-identity-rgb: 0 0 0;
 }
 
 /* The live dot's one pulse (LiveLabel). The kit's state label has no live

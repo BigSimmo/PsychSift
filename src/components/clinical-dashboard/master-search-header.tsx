@@ -78,6 +78,8 @@ import { UniversalSearchCommandSurface } from "@/components/clinical-dashboard/u
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
 import { Sheet } from "@/components/ui/sheet";
 import { StaffWorkHeaderControls } from "@/components/needs-you/staff-work-header-controls";
+import { useWorkFramePill } from "@/components/work-frame/work-frame-store";
+import { workAreaFor } from "@/lib/work-frame/areas";
 import {
   appModeDefinition,
   appModeDefinitions,
@@ -576,7 +578,19 @@ export function MasterSearchHeader({
   const activeModePageId = modeOwnPagesAvailable
     ? activeModeSecondaryNavigationId(selectedAppMode.id, currentPathname ?? "")
     : null;
-  const activeModePage = activeModePageId ? (modeOwnPages.find((page) => page.id === activeModePageId) ?? null) : null;
+  const registryModePage = activeModePageId
+    ? (modeOwnPages.find((page) => page.id === activeModePageId) ?? null)
+    : null;
+  /**
+   * A work area's frame names the page and the area itself (work-mode
+   * redesign, owner request 6 Oct 2026): "Swaps" over "ROSTER", and Open
+   * shifts' pages over Roster, Assessments' over its own name. Published by
+   * the band while it is up; null elsewhere, so every other mode is unchanged.
+   */
+  const workFramePill = useWorkFramePill();
+  const workPill = workFramePill?.modeId === selectedAppMode.id ? workFramePill : null;
+  const activeModePage = workPill?.page ? { id: "work-frame", label: workPill.page } : registryModePage;
+  const pillModeLabel = workPill?.area ?? selectedAppMode.label;
   /** A mode that shows no results has nowhere for a new conversation to land. */
   const modeHasConversation = selectedAppMode.search.resultsSurface !== "none";
   const pendingModeSelectionFocusRef = useRef<AppModeId | null>(null);
@@ -2543,6 +2557,9 @@ export function MasterSearchHeader({
     <header
       id="search"
       data-scroll-hidden={hideStrategy === "overlay" && headerChromeHidden ? "true" : undefined}
+      // The work-mode frame's round glass buttons and glass pill (work-mode.css).
+      // Decided from the mode and address alone, so it is in the server HTML.
+      data-work-frame={workAreaFor(selectedAppMode.id, currentPathname ?? "")?.id}
       className={cn(
         // No backdrop-filter on the header itself: it would form a backdrop
         // root and starve the .edge-glass-header-backdrop scrim (the single
@@ -2593,12 +2610,16 @@ export function MasterSearchHeader({
       {...(hideStrategy === "overlay" ? chromeFocusProps : undefined)}
     >
       <div className="edge-glass-header-backdrop" aria-hidden="true" />
-      <div className="relative mx-auto grid min-h-14 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="universal-header-row relative mx-auto grid min-h-14 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="universal-header-leading flex min-w-0 items-center gap-2 sm:gap-3">
+          {/* A work page reached from its area's More sheet draws its back
+              button here (`WorkFrameBack`); CSS then stands the menu button
+              down, so the round left control is one or the other. */}
+          <div id="universal-header-leading" className="contents" />
           <button
             type="button"
             onClick={onOpenMobileSidebar}
-            className="universal-header-icon-control grid h-tap w-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] md:hidden"
+            className="universal-header-menu universal-header-icon-control grid h-tap w-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] md:hidden"
             aria-label="Open PsychSift menu"
           >
             <Menu aria-hidden="true" className="size-icon-lg" />
@@ -2682,7 +2703,7 @@ export function MasterSearchHeader({
             // `globals.css`.
             data-mode-identity={selectedAppMode.id}
           >
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
+            <span className="universal-header-mode-badge grid h-8 w-8 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
               {/* 16px in the 32px pill, not the 14px metadata step: this is a
                   primary control, and 2.25 keeps its absolute stroke in line
                   with the larger glyphs beside it. */}
@@ -2704,8 +2725,8 @@ export function MasterSearchHeader({
                   <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
                     {activeModePage.label}
                   </span>
-                  <span className="block truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--clinical-accent)]">
-                    {selectedAppMode.label}
+                  <span className="universal-header-mode-area block truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--clinical-accent)]">
+                    {pillModeLabel}
                   </span>
                 </>
               ) : (

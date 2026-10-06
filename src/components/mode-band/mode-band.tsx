@@ -1,9 +1,9 @@
 "use client";
 
-import { Check, ChevronLeft, CircleAlert, CloudOff, Info, Settings2 } from "lucide-react";
+import { Check, ChevronLeft, CircleAlert, CloudOff, Info, Settings2, SlidersHorizontal } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -13,6 +13,7 @@ import {
   useLayoutEffect,
   useMemo,
   useSyncExternalStore,
+  Suspense,
   type CSSProperties,
   type ReactNode,
 } from "react";
@@ -33,6 +34,14 @@ import {
   useTeachingRoles,
 } from "@/lib/teaching/page-visibility";
 import { useClientTime } from "@/lib/use-client-time";
+import {
+  workAreaFor,
+  workFrameCurrentItem,
+  workFrameItemById,
+  type WorkArea,
+  type WorkFrameItem,
+} from "@/lib/work-frame/areas";
+import { WorkFrameHeader } from "@/components/work-frame/work-frame-header";
 import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
 
 /**
@@ -98,6 +107,27 @@ export type ModeBandProps = {
 const ModeBandCountContext = createContext<(tabId: string, count: number | null) => void>(() => {});
 const ModeBandCurrentTabContext = createContext<(tabId: string | null) => void>(() => {});
 const ModeBandStatusKindContext = createContext<(kind: ModeBandStatusValue["kind"] | null) => void>(() => {});
+
+/** A work page's own eyebrow and title for its band (work-mode frame only). */
+export type ModeBandHeading = { readonly eyebrow?: ReactNode; readonly title?: ReactNode };
+const ModeBandHeadingContext = createContext<(heading: ModeBandHeading | null) => void>(() => {});
+
+/**
+ * Names this page in its work-mode band: the small eyebrow line ("5 to 11
+ * October") and the large title ("This week"). Either may be left out to keep
+ * the frame's default (today's date, and the page's name). The override ends
+ * when the page closes. Clinical bands ignore it.
+ */
+export function useModeBandHeading(heading: ModeBandHeading | null) {
+  const setHeading = useContext(ModeBandHeadingContext);
+  const eyebrow = heading?.eyebrow;
+  const title = heading?.title;
+  const active = heading !== null;
+  useEffect(() => {
+    setHeading(active ? { eyebrow, title } : null);
+    return () => setHeading(null);
+  }, [setHeading, active, eyebrow, title]);
+}
 
 /** Counts could be wrong or invented while records are out of reach or examples. */
 const COUNTS_HIDDEN: ReadonlySet<ModeBandStatusValue["kind"]> = new Set([
@@ -217,13 +247,25 @@ function ModeMark({ Icon }: { Icon: (typeof appModeIcons)[AppModeId] }) {
  * colour is read from the band itself, so it is always the mode's own tint in
  * the current theme, and re-read when the theme changes.
  */
-function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId) {
+function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId, workArea?: string, identity?: string) {
   useLayoutEffect(() => {
     if (!band) return;
     const root = document.documentElement;
     const publish = () => {
       root.style.setProperty("--mode-band-surface", getComputedStyle(band).backgroundColor);
       root.dataset.modeBand = modeId;
+      if (workArea) {
+        // The work frame repaints the top bar above it (round glass buttons, the
+        // glass pill, the band's dot texture), and lines the band's dots up
+        // with the top bar's so the two read as one surface.
+        root.dataset.workFrame = workArea;
+        // Sheets, toasts and the work search portal out of the page, so the
+        // area's palette also rides on <body> while the frame is up (not on
+        // <html>, where `.dark [data-mode-identity]` could not match it).
+        if (identity) document.body.dataset.modeIdentity = identity;
+        const top = band.getBoundingClientRect().top + window.scrollY;
+        band.style.setProperty("--work-band-offset", `${-Math.round(top)}px`);
+      }
     };
     publish();
     const observer = new MutationObserver(publish);
@@ -234,8 +276,10 @@ function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId) {
         delete root.dataset.modeBand;
         root.style.removeProperty("--mode-band-surface");
       }
+      if (workArea && root.dataset.workFrame === workArea) delete root.dataset.workFrame;
+      if (identity && document.body.dataset.modeIdentity === identity) delete document.body.dataset.modeIdentity;
     };
-  }, [band, modeId]);
+  }, [band, modeId, workArea, identity]);
 }
 
 /**
@@ -317,24 +361,152 @@ export function ModeBand({ children, counts, ...props }: ModeBandProps) {
   const statusKind = pageStatusKind ?? props.status?.kind ?? null;
   const hideCounts = statusKind !== null && COUNTS_HIDDEN.has(statusKind);
   const [pageTabId, setPageTabId] = useState<string | null>(null);
+  const [heading, setHeading] = useState<ModeBandHeading | null>(null);
+  // The work-mode frame (work-mode redesign, owner request 6 Oct 2026). Null
+  // for every clinical mode, whose band is drawn exactly as before.
+  const area = workAreaFor(props.modeId, pathname);
+  const [search, setSearch] = useState("");
+  const workCurrent: WorkFrameItem | null = area
+    ? ((pageTabId ? workFrameItemById(area, pageTabId) : null) ?? workFrameCurrentItem(area, pathname, search))
+    : null;
   const activeId = pageTabId ?? bandActiveId(props.modeId, pathname);
+  const homePath = props.homePath ?? modeHomePath(props.modeId);
   const shown =
     !isHidden(pathname, props.hiddenOn) &&
-    (activeId !== null || pathname === (props.homePath ?? modeHomePath(props.modeId)));
+    (area
+      ? workCurrent
+        ? workCurrent.band !== false
+        : pathname === homePath
+      : activeId !== null || pathname === homePath);
+  const header = !shown ? null : area ? (
+    <WorkModeBandHeader
+      {...props}
+      area={area}
+      current={workCurrent}
+      heading={heading}
+      counts={hideCounts ? undefined : allCounts}
+    />
+  ) : (
+    <ModeBandHeader {...props} counts={hideCounts ? undefined : allCounts} activeId={activeId} />
+  );
   return (
     <ModeBandShownContext.Provider value={shown}>
       <ModeBandCountContext.Provider value={setCount}>
         <ModeBandStatusKindContext.Provider value={setPageStatusKind}>
           <ModeBandCurrentTabContext.Provider value={setPageTabId}>
-            {shown ? (
-              <ModeBandHeader {...props} counts={hideCounts ? undefined : allCounts} activeId={activeId} />
-            ) : null}
-            {children}
+            <ModeBandHeadingContext.Provider value={setHeading}>
+              {area ? (
+                // The query string decides a few More pages (My Day's On shift,
+                // Roster's Hours and rest). Read after hydration, inside its own
+                // boundary, so the band never waits on it.
+                <Suspense fallback={null}>
+                  <ModeBandSearch onSearch={setSearch} />
+                </Suspense>
+              ) : null}
+              {header}
+              {area ? (
+                // The area's palette for everything on its pages: custom
+                // properties inherit through `contents`, so this adds no box.
+                <div data-mode-identity={area.identity} data-work-frame={area.id} className="contents">
+                  {children}
+                </div>
+              ) : (
+                children
+              )}
+            </ModeBandHeadingContext.Provider>
           </ModeBandCurrentTabContext.Provider>
         </ModeBandStatusKindContext.Provider>
       </ModeBandCountContext.Provider>
     </ModeBandShownContext.Provider>
   );
+}
+
+function ModeBandSearch({ onSearch }: { onSearch: (search: string) => void }) {
+  const search = useSearchParams()?.toString() ?? "";
+  useEffect(() => {
+    onSearch(search);
+  }, [onSearch, search]);
+  return null;
+}
+
+/**
+ * The band for a work area: the work-mode frame's header, fed with the same
+ * status line, action slot and counts as the clinical band.
+ */
+function WorkModeBandHeader({
+  modeId,
+  area,
+  current,
+  heading,
+  title,
+  customiseHref,
+  counts,
+  statusSlot = false,
+  status,
+}: Omit<ModeBandProps, "children" | "hiddenOn" | "homePath"> & {
+  area: WorkArea;
+  current: WorkFrameItem | null;
+  heading: ModeBandHeading | null;
+}) {
+  const pathname = usePathname() ?? "";
+  const [band, setBand] = useState<HTMLElement | null>(null);
+  usePublishBandSurface(band, modeId, area.id, area.identity);
+  const onHome = !current || current.id === area.tabs[0].id;
+  const fallbackTitle = current ? (current.title ?? current.label) : area.name;
+  // The layout's own title (My Day's greeting) is the home page's; every other
+  // page is named for itself.
+  const baseTitle =
+    onHome && title === "greeting" ? (
+      <GreetingTitle fallback={area.name} />
+    ) : onHome && title ? (
+      title
+    ) : (
+      fallbackTitle
+    );
+  const hasStatus =
+    status !== undefined || (Array.isArray(statusSlot) ? statusSlot.includes(pathname) : Boolean(statusSlot));
+  return (
+    <WorkFrameHeader
+      area={area}
+      modeId={modeId}
+      current={current}
+      bandRef={setBand}
+      eyebrow={heading?.eyebrow ?? <TodayDateText />}
+      title={heading?.title ?? baseTitle}
+      counts={counts}
+      status={
+        hasStatus ? (
+          <div id={modeBandStatusSlotId} className="mode-band__status work-band__status" data-testid="mode-band-status">
+            {status ? (
+              <span
+                role={status.kind === "error" ? "alert" : "status"}
+                data-mode-band-status={status.kind}
+                className="contents"
+              >
+                <StatusLine value={status} />
+              </span>
+            ) : null}
+          </div>
+        ) : null
+      }
+      action={
+        customiseHref ? (
+          <Link href={customiseHref} className="work-glass-button work-band__action" aria-label="Customise">
+            <SlidersHorizontal aria-hidden="true" className="size-icon-md" strokeWidth={2} />
+          </Link>
+        ) : (
+          // A page's own action (My Day's Edit) takes the glass action's place.
+          <span id={modeBandActionSlotId} className="work-band__action-slot" />
+        )
+      }
+    />
+  );
+}
+
+/** Today's date as plain text, settled after hydration (see TodayDate). */
+function TodayDateText() {
+  const time = useClientTime({ updateInterval: 60_000 });
+  return time ? <>{dateLong.format(new Date(time))}</> : <>&nbsp;</>;
 }
 
 function ModeBandHeader({

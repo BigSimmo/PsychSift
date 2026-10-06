@@ -1,0 +1,1597 @@
+/* Work-mode frame and kit (work-mode redesign, owner request 6 Oct 2026).
+   ------------------------------------------------------------------------
+   The locked work-mode mockup, built into the app for My Day, Roster (with
+   Open shifts), Teaching (with Assessments), CPD, Admin and On Call. Clinical
+   modes never carry `data-work-frame`, so nothing here reaches them.
+
+   Colour comes only from tokens: the area palettes are the mode identity
+   blocks in globals.css (`--mode-identity`, `-2`, `-deep`, `-soft`, `-soft-2`,
+   `-border`, `-band`, `-rgb`), selected by `data-mode-identity`. This file adds
+   the work-mode recipes (glass, hairlines, radii) and the components.
+
+   Flat by the owner's decision (6 Oct, 19:58): content cards are white with a
+   hairline and at most a barely visible shadow; icon circles are flat tints;
+   the hero has no glow; a selected item is a soft tint or a 1px line; glass is
+   only for floating layers (the header's round buttons and pill, the dock,
+   sheets) and is blur plus a hairline, with no sheen.
+
+   Tap targets stay 48px (`--spacing-tap`); drawn shapes may be smaller inside
+   them. Motion respects reduced motion. Forced colours keep every edge. */
+
+/* ---------------------------------------------------------------- tokens */
+
+:root[data-work-frame],
+[data-work-frame],
+.work-band,
+.work-more-sheet,
+.universal-header[data-work-frame] {
+  --work-ink-rgb: 16 26 41;
+  --work-line: var(--border);
+  --work-line-strong: var(--neutral-300, var(--border-strong));
+  --work-wash: var(--surface-wash);
+  --work-surface: var(--surface-raised);
+  --work-ink: var(--text-heading);
+  --work-ink-muted: var(--text-muted);
+  /* Glass: the one recipe for floating controls. Blur and a hairline, no sheen. */
+  --work-glass-fill: rgb(255 255 255 / 72%);
+  --work-glass-line: rgb(var(--work-ink-rgb) / 9%);
+  --work-glass-blur: blur(18px) saturate(180%);
+  /* The two-layer shadows, flattened: a card has a barely visible one; a sheet
+     and the dock have one very soft lift; nothing else casts. */
+  --work-shadow-card: 0 1px 2px rgb(var(--work-ink-rgb) / 3%);
+  --work-shadow-float: 0 1px 2px rgb(var(--work-ink-rgb) / 4%), 0 8px 24px -12px rgb(var(--work-ink-rgb) / 18%);
+  --work-radius-card: 14px;
+  --work-radius-hero: 18px;
+  --work-radius-field: 13px;
+  --work-radius-sheet: 32px;
+  --work-gutter: 1rem;
+  /* The hero and the primary button: the mode colour, or a gentle two-stop
+     gradient. In dark themes the identity is a light tint, so both fall back to
+     a deep mix that keeps white text readable. */
+  --work-hero-from: var(--mode-identity-2);
+  --work-hero-to: var(--mode-identity-deep);
+  --work-primary: var(--mode-identity);
+  --work-primary-text: var(--mode-identity-contrast);
+}
+
+.dark:root[data-work-frame],
+.dark [data-work-frame],
+.dark .work-band,
+.dark .work-more-sheet,
+.dark .universal-header[data-work-frame] {
+  --work-ink-rgb: 0 0 0;
+  --work-glass-fill: color-mix(in srgb, var(--surface-raised) 78%, transparent);
+  --work-glass-line: rgb(255 255 255 / 10%);
+  --work-shadow-card: none;
+  --work-shadow-float: 0 12px 32px -12px rgb(0 0 0 / 60%);
+}
+
+.dark [data-work-frame],
+.dark .work-band,
+.dark .work-more-sheet {
+  --work-hero-from: color-mix(in srgb, var(--mode-identity) 46%, black);
+  --work-hero-to: color-mix(in srgb, var(--mode-identity) 30%, black);
+  --work-primary: color-mix(in srgb, var(--mode-identity) 34%, var(--surface-raised));
+  --work-primary-text: var(--text-heading);
+}
+
+/* Work pages sit on crisp white, under the tinted band. */
+html[data-work-frame] body,
+html[data-work-frame] main {
+  background-color: var(--surface-raised);
+}
+
+/* ------------------------------------------------------------ the band */
+
+.work-band {
+  --mode-band-bg: var(--mode-identity-band);
+  --mode-band-line: var(--mode-identity-border);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--mode-band-bg);
+  border-bottom: 1px solid var(--mode-band-line);
+  color: var(--work-ink);
+  container-type: inline-size;
+  container-name: mode-band;
+}
+
+/* The dot texture, lined up with the top bar's so the two read as one. */
+.work-band::before,
+html[data-work-frame] .universal-header[data-work-frame]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(var(--mode-identity-border) 0.7px, transparent 0.8px);
+  background-size: 12px 12px;
+  background-position: 0 var(--work-band-offset, 0);
+  opacity: 0.55;
+}
+
+/* The faint line drawing, cropped by its own box at the band's corner. */
+.work-band__mark {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  width: 10.5rem;
+  height: 10.375rem;
+  background: var(--mode-identity);
+  mask: var(--work-band-mark, none) left top / 12.25rem 12.25rem no-repeat;
+  -webkit-mask: var(--work-band-mark, none) left top / 12.25rem 12.25rem no-repeat;
+  opacity: 0.11;
+  pointer-events: none;
+}
+
+.dark .work-band__mark {
+  opacity: 0.14;
+}
+
+.work-band__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.625rem;
+  max-width: calc(45rem + var(--work-gutter) * 2);
+  margin: 0 auto;
+  padding: 0.375rem var(--work-gutter) 0;
+}
+
+.work-band__heading {
+  min-width: 0;
+}
+
+.work-band__eyebrow {
+  margin: 0 0 0.125rem;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  line-height: 1rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--work-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.work-band__title {
+  margin: 0;
+  font-size: 1.5625rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  text-wrap: balance;
+  color: var(--work-ink);
+}
+
+.work-band__status {
+  max-width: calc(45rem + var(--work-gutter) * 2);
+  margin: 0.375rem auto 0;
+  padding: 0 var(--work-gutter);
+  box-sizing: border-box;
+}
+
+.work-band__action-slot {
+  display: contents;
+}
+
+/* A page's own action under the band (My Day's Edit): a glass pill. */
+.work-band .mode-band__customise,
+.work-band__action {
+  flex: none;
+  margin-bottom: -0.375rem;
+}
+
+.work-band .mode-band__customise {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--spacing-tap, 3rem);
+  margin-right: -0.25rem;
+  padding: 0 0.875rem;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 700;
+  color: var(--mode-identity);
+  cursor: pointer;
+}
+
+.work-band .mode-band__customise::before {
+  content: "";
+  position: absolute;
+  inset: 0.4375rem 0;
+  z-index: -1;
+  border-radius: 999px;
+  background: var(--work-glass-fill);
+  box-shadow: inset 0 0 0 1px var(--work-glass-line);
+  backdrop-filter: var(--work-glass-blur);
+  -webkit-backdrop-filter: var(--work-glass-blur);
+}
+
+/* Tabs: three pinned pages and More, underlined in the mode colour. */
+.work-band__tabs {
+  display: flex;
+  gap: 1.25rem;
+  max-width: calc(45rem + var(--work-gutter) * 2);
+  margin: 0.25rem auto 0;
+  padding: 0 var(--work-gutter);
+  box-sizing: border-box;
+}
+
+.work-band__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  height: var(--spacing-tap, 3rem);
+  padding: 0.25rem 0 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.84375rem;
+  font-weight: 600;
+  color: var(--work-ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.work-band__tab[aria-current="page"],
+.work-band__more[data-current] {
+  font-weight: 700;
+  color: var(--work-ink);
+}
+
+.work-band__tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 0;
+  border-bottom: 2.5px solid transparent;
+  border-radius: 2px 2px 0 0;
+}
+
+.work-band__tab[aria-current="page"]::after {
+  border-bottom-color: var(--mode-identity);
+}
+
+.work-band__more-chev {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-left: -0.125rem;
+}
+
+.work-band__count {
+  font-size: var(--text-xs, 0.75rem);
+}
+
+.work-band__tab:focus-visible,
+.work-band .mode-band__customise:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .work-band__mark {
+    display: none;
+  }
+
+  .work-band__title {
+    font-size: var(--text-lg-minus, 1.0625rem);
+  }
+}
+
+@media (forced-colors: active) {
+  .work-band {
+    border-bottom-color: CanvasText;
+  }
+
+  .work-band::before,
+  .work-band__mark {
+    display: none;
+  }
+
+  .work-band__tab[aria-current="page"]::after {
+    border-bottom-color: Highlight;
+  }
+}
+
+/* A swipe between tabs eases the new page in sideways. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-work-swipe="next"] [data-work-frame] > *,
+  html[data-work-swipe="previous"] [data-work-frame] > * {
+    animation: work-swipe-in var(--duration-moderate, 240ms) var(--ease-out, ease-out) both;
+  }
+
+  html[data-work-swipe="previous"] [data-work-frame] > * {
+    --work-swipe-from: -1.5rem;
+  }
+}
+
+@keyframes work-swipe-in {
+  from {
+    opacity: 0.4;
+    transform: translateX(var(--work-swipe-from, 1.5rem));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ----------------------------------------------------------- the top bar */
+
+/* The top bar above a work band wears the band's tint and its dots. */
+html[data-work-frame] .universal-header[data-work-frame] {
+  position: relative;
+  isolation: isolate;
+}
+
+html[data-work-frame] .universal-header[data-work-frame] .edge-glass-header-backdrop {
+  display: none;
+}
+
+/* The pill sits in the true centre of the row on phones. */
+@media (max-width: 1023px) {
+  .universal-header[data-work-frame] .universal-header-row {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+}
+
+/* Round glass buttons: a 48px tap, a 44px glass circle. */
+.universal-header[data-work-frame] .universal-header-icon-control {
+  position: relative;
+  isolation: isolate;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--work-ink-muted);
+}
+
+.universal-header[data-work-frame] .universal-header-icon-control::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border-radius: 999px;
+  background: var(--work-glass-fill);
+  box-shadow: inset 0 0 0 1px var(--work-glass-line);
+  backdrop-filter: var(--work-glass-blur);
+  -webkit-backdrop-filter: var(--work-glass-blur);
+}
+
+.universal-header[data-work-frame] .universal-header-icon-control:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--work-ink);
+}
+
+/* A page reached from More shows Back, so the menu button stands down. */
+.universal-header-leading:has(> #universal-header-leading > *) > .universal-header-menu {
+  display: none;
+}
+
+.work-frame-back {
+  display: grid;
+  width: var(--spacing-tap, 3rem);
+  height: var(--spacing-tap, 3rem);
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--work-ink-muted);
+}
+
+.work-frame-back:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The mode pill: glass, a flat mode-colour badge, page over area. */
+.universal-header[data-work-frame] .universal-header-mode-button {
+  position: relative;
+  isolation: isolate;
+  width: auto;
+  min-width: 0;
+  max-width: min(15rem, calc(100vw - 15rem));
+  gap: 0.5rem;
+  padding: 0 0.75rem 0 0.375rem;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+@media (min-width: 640px) {
+  .universal-header[data-work-frame] .universal-header-mode-button {
+    max-width: 18rem;
+  }
+}
+
+.universal-header[data-work-frame] .universal-header-mode-button::before {
+  content: "";
+  position: absolute;
+  inset: 0.25rem 0;
+  z-index: -1;
+  border-radius: 999px;
+  background: var(--work-glass-fill);
+  box-shadow: inset 0 0 0 1px var(--work-glass-line);
+  backdrop-filter: var(--work-glass-blur);
+  -webkit-backdrop-filter: var(--work-glass-blur);
+}
+
+.universal-header[data-work-frame] .universal-header-mode-button:hover {
+  border-color: transparent;
+  background: transparent;
+}
+
+.universal-header[data-work-frame] .universal-header-mode-badge {
+  background: var(--mode-identity);
+  color: var(--mode-identity-contrast);
+  box-shadow: none;
+}
+
+.universal-header[data-work-frame] .universal-header-mode-button .text-sm {
+  font-size: 0.84375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+}
+
+.universal-header[data-work-frame] .universal-header-mode-area {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  line-height: 1.2;
+  color: var(--mode-identity);
+}
+
+@media (forced-colors: active) {
+  .universal-header[data-work-frame] .universal-header-icon-control::before,
+  .universal-header[data-work-frame] .universal-header-mode-button::before {
+    border: 1px solid ButtonBorder;
+  }
+}
+
+/* ---------------------------------------------------------- More sheet */
+
+.work-more-sheet.work-more-sheet {
+  margin: 0 0.5rem max(0.5rem, var(--safe-area-bottom, 0px));
+  width: calc(100% - 1rem);
+  border: 0;
+  border-radius: var(--work-radius-sheet);
+  background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--work-glass-line),
+    var(--work-shadow-float);
+  backdrop-filter: var(--work-glass-blur);
+  -webkit-backdrop-filter: var(--work-glass-blur);
+  max-height: min(86dvh, calc(100dvh - 2rem));
+}
+
+@media (min-width: 640px) {
+  .work-more-sheet.work-more-sheet {
+    margin: 0;
+    width: 100%;
+    max-width: 30rem;
+  }
+}
+
+.work-more-sheet__header.work-more-sheet__header {
+  border-bottom: 0;
+  padding: 0.25rem 1rem 0.5rem;
+}
+
+.work-more-sheet__title.work-more-sheet__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.work-more-sheet__header p {
+  margin-top: 0;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 600;
+  line-height: 1rem;
+}
+
+/* The close control: a 30px soft circle inside a 48px tap. */
+.work-more-sheet__close {
+  position: relative;
+  display: grid;
+  width: var(--spacing-tap, 3rem);
+  height: var(--spacing-tap, 3rem);
+  margin-right: -0.5rem;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--work-ink-muted);
+  cursor: pointer;
+}
+
+.work-more-sheet__close::before {
+  content: "";
+  position: absolute;
+  inset: 0.5625rem;
+  border-radius: 999px;
+  background: rgb(var(--work-ink-rgb) / 6%);
+}
+
+.dark .work-more-sheet__close::before {
+  background: rgb(255 255 255 / 8%);
+}
+
+.work-more-sheet__close > svg {
+  position: relative;
+}
+
+.work-more-sheet__close:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.work-more-sheet__body.work-more-sheet__body {
+  padding: 0 1rem 1.25rem;
+}
+
+.work-more-sheet__groups {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.work-more-sheet__group {
+  display: grid;
+  gap: 0.4375rem;
+}
+
+.work-more-sheet__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-more-tile {
+  display: flex;
+  width: 100%;
+  min-height: 3.25rem;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5625rem;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--work-line);
+  border-radius: var(--work-radius-card);
+  background: var(--work-surface);
+  font: inherit;
+  text-align: left;
+  color: var(--work-ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--duration-instant, 80ms);
+}
+
+.work-more-tile:active {
+  background: var(--work-wash);
+}
+
+.work-more-tile[data-current] {
+  border-color: var(--mode-identity);
+  background: var(--mode-identity-soft);
+}
+
+.work-more-tile:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: 1px;
+}
+
+.work-more-tile__text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.2;
+}
+
+.work-more-tile__name {
+  overflow: hidden;
+  font-size: 0.78125rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-more-tile__sub {
+  overflow: hidden;
+  font-size: 0.6875rem;
+  color: var(--work-ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-more-tile__tick {
+  display: grid;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--mode-identity);
+  color: var(--mode-identity-contrast);
+}
+
+.work-more-tile__tick > svg {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+@media (forced-colors: active) {
+  .work-more-tile[data-current] {
+    border: 2px solid Highlight;
+  }
+}
+
+/* ---------------------------------------------------------------- kit */
+
+/* Section label: small caps, with an optional count or link at the right. */
+.work-label {
+  display: flex;
+  min-height: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1rem;
+  text-transform: uppercase;
+  color: var(--work-ink-muted);
+}
+
+.work-label__count {
+  font-size: 0.71875rem;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.work-label__link {
+  display: inline-flex;
+  min-height: var(--spacing-tap, 3rem);
+  margin: -1rem 0;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--mode-identity);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Card: white, hairline, a barely visible shadow. */
+.work-card {
+  overflow: hidden;
+  border: 1px solid var(--work-line);
+  border-radius: var(--work-radius-card);
+  background: var(--work-surface);
+  box-shadow: var(--work-shadow-card);
+}
+
+.work-card--pad {
+  padding: 0.75rem 0.875rem;
+}
+
+/* Icon circle: a flat tint with the colour of where a tap goes. */
+.work-ic {
+  display: grid;
+  width: 1.875rem;
+  height: 1.875rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--mode-identity-soft);
+  color: var(--mode-identity);
+}
+
+.work-ic > svg {
+  width: 0.9375rem;
+  height: 0.9375rem;
+}
+
+.work-ic--sm {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.work-ic--sm > svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.work-ic--lg {
+  width: 2.375rem;
+  height: 2.375rem;
+}
+
+.work-ic--lg > svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.work-ic[data-tone="amber"] {
+  background: var(--warning-bg, var(--dash-amber-tint));
+  color: var(--warning-text);
+}
+
+.work-ic[data-tone="red"] {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.work-ic[data-tone="green"] {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.work-ic[data-tone="neutral"] {
+  background: var(--work-wash);
+  color: var(--work-ink-muted);
+}
+
+/* Rows: icon or date tile, two lines, an end slot. 48px at least. */
+.work-row {
+  display: flex;
+  min-height: var(--spacing-tap, 3rem);
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5625rem 0.75rem;
+  color: var(--work-ink);
+  text-decoration: none;
+}
+
+a.work-row,
+button.work-row {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-instant, 80ms);
+}
+
+a.work-row:active,
+button.work-row:active {
+  background: var(--work-wash);
+}
+
+a.work-row:focus-visible,
+button.work-row:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: -2px;
+}
+
+.work-row + .work-row,
+* + .work-row-item > .work-row,
+.work-rows > * + * {
+  border-top: 1px solid var(--work-line);
+}
+
+.work-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-row__text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+.work-row__title {
+  font-size: var(--text-sm, 0.8125rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.work-row__sub {
+  margin-top: 1px;
+  font-size: 0.71875rem;
+  line-height: 1.3;
+  color: var(--work-ink-muted);
+}
+
+.work-row__end {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  gap: 0.1875rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--work-ink-muted);
+}
+
+.work-row__chev {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+  color: var(--decoration-soft, var(--work-ink-muted));
+}
+
+/* Date tile: small caps month over a big day. */
+.work-date {
+  display: grid;
+  width: 2.125rem;
+  flex: none;
+  justify-items: center;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.work-date__month {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mode-identity);
+}
+
+.work-date__day {
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hero: the one mode-colour card per screen. Flat, no glow. */
+.work-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 0.8125rem 0.875rem;
+  border-radius: var(--work-radius-hero);
+  background: linear-gradient(150deg, var(--work-hero-from), var(--mode-identity) 55%, var(--work-hero-to));
+  color: var(--mode-identity-contrast);
+  text-decoration: none;
+}
+
+.dark .work-hero {
+  background: linear-gradient(150deg, var(--work-hero-from), var(--work-hero-to));
+  color: var(--text-heading);
+}
+
+a.work-hero:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.work-hero__layout {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.work-hero__text {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 0.125rem;
+}
+
+.work-hero__eyebrow {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+
+.work-hero__title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.work-hero__sub {
+  font-size: var(--text-xs, 0.75rem);
+  line-height: 1.35;
+  opacity: 0.86;
+}
+
+.work-hero__foot {
+  margin-top: 0.625rem;
+}
+
+@media (forced-colors: active) {
+  .work-hero {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+}
+
+/* Rings: a white ring on the hero, a mode ring on white. Flat strokes. */
+.work-ring {
+  position: relative;
+  display: grid;
+  width: 4rem;
+  height: 4rem;
+  flex: none;
+  place-items: center;
+  text-align: center;
+}
+
+.work-ring > svg,
+.work-mring > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.work-ring__track {
+  stroke: rgb(255 255 255 / 22%);
+}
+
+.work-ring__value {
+  stroke: currentColor;
+}
+
+.work-ring__figure {
+  position: relative;
+  display: block;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.work-ring__label {
+  position: relative;
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.59375rem;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.work-mring {
+  position: relative;
+  display: grid;
+  width: 2.875rem;
+  height: 2.875rem;
+  flex: none;
+  place-items: center;
+}
+
+.work-mring__track {
+  stroke: var(--work-wash);
+}
+
+.work-mring__value {
+  stroke: var(--mode-identity);
+}
+
+.work-mring[data-tone="amber"] .work-mring__value {
+  stroke: var(--warning-text);
+}
+
+.work-mring[data-tone="green"] .work-mring__value {
+  stroke: var(--success-text);
+}
+
+.work-mring__figure {
+  position: relative;
+  font-size: var(--text-xs, 0.75rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tags: small caps status words. Flat tints. */
+.work-tag {
+  display: inline-block;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.59375rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--mode-identity-soft);
+  color: var(--mode-identity);
+}
+
+.work-tag[data-tone="green"] {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.work-tag[data-tone="amber"] {
+  background: var(--warning-bg, var(--dash-amber-tint));
+  color: var(--warning-text);
+}
+
+.work-tag[data-tone="red"] {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.work-tag[data-tone="neutral"] {
+  background: var(--work-wash);
+  color: var(--work-ink-muted);
+}
+
+@media (forced-colors: active) {
+  .work-tag {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Chips: filters and choices. A 30px shape inside a 48px tap. */
+.work-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.375rem;
+}
+
+.work-chips[data-scroll] {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.work-chip {
+  position: relative;
+  display: inline-flex;
+  min-height: var(--spacing-tap, 3rem);
+  flex: none;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0 0.75rem;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.78125rem;
+  font-weight: 600;
+  color: var(--work-ink-muted);
+  text-decoration: none;
+  cursor: pointer;
+  isolation: isolate;
+}
+
+.work-chip::before {
+  content: "";
+  position: absolute;
+  inset: 0.5625rem 0;
+  z-index: -1;
+  border-radius: 999px;
+  background: var(--work-surface);
+  box-shadow: inset 0 0 0 1px var(--work-line-strong);
+}
+
+.work-chip[aria-pressed="true"],
+.work-chip[aria-current="page"],
+.work-chip[aria-checked="true"] {
+  color: var(--mode-identity);
+}
+
+.work-chip[aria-pressed="true"]::before,
+.work-chip[aria-current="page"]::before,
+.work-chip[aria-checked="true"]::before {
+  background: var(--mode-identity-soft);
+  box-shadow: inset 0 0 0 1px var(--mode-identity-border);
+}
+
+.work-chip > svg {
+  width: 0.8125rem;
+  height: 0.8125rem;
+}
+
+.work-chip__count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.work-chip:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: -4px;
+  border-radius: 999px;
+}
+
+@media (forced-colors: active) {
+  .work-chip::before {
+    border: 1px solid ButtonBorder;
+  }
+
+  .work-chip[aria-pressed="true"]::before,
+  .work-chip[aria-current="page"]::before,
+  .work-chip[aria-checked="true"]::before {
+    border: 2px solid Highlight;
+  }
+}
+
+/* Buttons: flat. Primary is the mode colour, secondary white with a line,
+   tinted the mode's soft fill. A 34px shape inside a 48px tap; `wide` fills
+   its row at 46px. */
+.work-button {
+  position: relative;
+  display: inline-flex;
+  min-height: var(--spacing-tap, 3rem);
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0 0.8125rem;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.78125rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  isolation: isolate;
+}
+
+.work-button::before {
+  content: "";
+  position: absolute;
+  inset: 0.4375rem 0;
+  z-index: -1;
+  border-radius: 999px;
+}
+
+.work-button > svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.work-button[data-variant="primary"] {
+  color: var(--work-primary-text);
+}
+
+.work-button[data-variant="primary"]::before {
+  background: var(--work-primary);
+}
+
+.work-button[data-variant="secondary"] {
+  color: var(--work-ink);
+}
+
+.work-button[data-variant="secondary"]::before {
+  background: var(--work-surface);
+  box-shadow: inset 0 0 0 1px var(--work-line-strong);
+}
+
+.work-button[data-variant="tinted"] {
+  color: var(--mode-identity);
+}
+
+.work-button[data-variant="tinted"]::before {
+  background: var(--mode-identity-soft);
+}
+
+.work-button[data-variant="amber"] {
+  color: var(--warning-text);
+}
+
+.work-button[data-variant="amber"]::before {
+  background: var(--warning-bg, var(--dash-amber-tint));
+  box-shadow: inset 0 0 0 1px var(--warning-border);
+}
+
+.work-button[data-variant="quiet"] {
+  color: var(--work-ink);
+}
+
+.work-button[data-size="wide"] {
+  width: 100%;
+  min-height: 3rem;
+  font-size: 0.90625rem;
+}
+
+.work-button[data-size="wide"]::before {
+  inset: 1px 0;
+}
+
+.work-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -3px;
+  border-radius: 999px;
+}
+
+.work-button:disabled,
+.work-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  color: var(--disabled);
+}
+
+.work-button:disabled::before,
+.work-button[aria-disabled="true"]::before {
+  background: var(--surface-subtle);
+  box-shadow: none;
+}
+
+@media (forced-colors: active) {
+  .work-button::before {
+    border: 1px solid ButtonBorder;
+  }
+}
+
+/* Round glass button: a floating control (header action, a page's corner). */
+.work-glass-button {
+  position: relative;
+  display: grid;
+  width: var(--spacing-tap, 3rem);
+  height: var(--spacing-tap, 3rem);
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mode-identity);
+  cursor: pointer;
+  isolation: isolate;
+}
+
+.work-glass-button::before {
+  content: "";
+  position: absolute;
+  inset: 0.4375rem;
+  z-index: -1;
+  border-radius: 999px;
+  background: var(--work-glass-fill);
+  box-shadow: inset 0 0 0 1px var(--work-glass-line);
+  backdrop-filter: var(--work-glass-blur);
+  -webkit-backdrop-filter: var(--work-glass-blur);
+}
+
+.work-glass-button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.work-band__action.work-glass-button {
+  margin-right: -0.4375rem;
+  margin-bottom: -0.4375rem;
+}
+
+/* The dock: a glass capsule of actions that floats at the foot of the page,
+   in flow (sticky), so it never needs a reserve and never covers the end. */
+.work-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-raised, 10);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem calc(var(--work-gutter) * -0.375) 0;
+  padding: 1.5rem 0 max(0.875rem, var(--safe-area-bottom, 0px));
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--surface-raised) 92%, transparent) 55%);
+  pointer-events: none;
+}
+
+.work-dock__capsule {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 0.3125rem;
+  padding: 0.3125rem;
+  border-radius: 999px;
+  background: var(--work-glass-fill);
+  box-shadow:
+    inset 0 0 0 1px var(--work-glass-line),
+    var(--work-shadow-float);
+  backdrop-filter: var(--work-glass-blur);
+  -webkit-backdrop-filter: var(--work-glass-blur);
+  pointer-events: auto;
+}
+
+.work-dock__capsule > .work-button {
+  flex: 1;
+  min-height: 2.625rem;
+  font-size: var(--text-sm, 0.8125rem);
+}
+
+.work-dock__capsule > .work-button::before {
+  inset: 0;
+}
+
+.work-dock__capsule > .work-button[data-variant="secondary"]::before {
+  background: transparent;
+  box-shadow: none;
+}
+
+.work-dock__orb {
+  pointer-events: auto;
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.work-dock__orb::before {
+  inset: 0;
+  box-shadow:
+    inset 0 0 0 1px var(--work-glass-line),
+    var(--work-shadow-float);
+}
+
+/* Empty state: a flat badge, a line, an optional action. */
+.work-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.375rem;
+  padding: 1.625rem 1.125rem;
+  text-align: center;
+}
+
+.work-empty__badge {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--mode-identity-soft);
+  color: var(--mode-identity);
+}
+
+.work-empty__badge > svg {
+  width: 1.3125rem;
+  height: 1.3125rem;
+}
+
+.work-empty__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.work-empty__body {
+  max-width: 16.25rem;
+  margin: 0 0 0.375rem;
+  font-size: 0.78125rem;
+  line-height: 1.45;
+  color: var(--work-ink-muted);
+}
+
+/* Week strip: seven day tiles; today or the chosen day takes a soft tint. */
+.work-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-week__day {
+  display: grid;
+  min-height: var(--spacing-tap, 3rem);
+  width: 100%;
+  justify-items: center;
+  gap: 0.25rem;
+  padding: 0.4375rem 0;
+  border: 1px solid var(--work-line);
+  border-radius: var(--work-radius-field);
+  background: var(--work-surface);
+  font: inherit;
+  font-size: 0.59375rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--work-ink-muted);
+  text-decoration: none;
+  cursor: default;
+}
+
+a.work-week__day,
+button.work-week__day {
+  cursor: pointer;
+}
+
+.work-week__num {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--work-ink);
+}
+
+.work-week__mark {
+  width: 1.125rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.work-week__day[data-selected],
+.work-week__day[aria-current] {
+  border-color: var(--mode-identity);
+  background: var(--mode-identity-soft);
+  color: var(--mode-identity);
+}
+
+.work-week__day[data-selected] .work-week__num,
+.work-week__day[aria-current] .work-week__num {
+  color: var(--mode-identity);
+}
+
+.work-week__day:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: 1px;
+}
+
+.work-week__mark[data-code="D"] {
+  background: var(--work-shift-d);
+}
+
+.work-week__mark[data-code="L"] {
+  background: var(--work-shift-l);
+}
+
+.work-week__mark[data-code="N"] {
+  background: var(--work-shift-n);
+}
+
+.work-week__mark[data-code="OC"] {
+  background: var(--work-shift-oc);
+}
+
+.work-week__mark[data-code="AL"] {
+  background: var(--work-shift-al);
+}
+
+.work-week__mark[data-code="T"] {
+  background: var(--work-shift-t);
+}
+
+/* Check rows: a green tick or an amber flag, a line, an optional value. */
+.work-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5625rem;
+  padding: 0.4375rem 0;
+  font-size: 0.78125rem;
+  font-weight: 600;
+}
+
+.work-check + .work-check {
+  border-top: 1px solid var(--work-line);
+}
+
+.work-check__mark {
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.work-check[data-tone="warn"] .work-check__mark {
+  background: var(--warning-bg, var(--dash-amber-tint));
+  color: var(--warning-text);
+}
+
+.work-check__mark > svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.work-check__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.work-check__value {
+  font-size: 0.71875rem;
+  font-weight: 600;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  color: var(--work-ink-muted);
+}
+
+/* Page body: the mockup's column, 12px gutters and 9px between blocks. */
+.work-body {
+  display: grid;
+  align-content: start;
+  gap: 0.5625rem;
+  width: 100%;
+  max-width: calc(45rem + 1.5rem);
+  margin: 0 auto;
+  padding: 0.75rem 0.75rem 1.875rem;
+  box-sizing: border-box;
+}
+
+/* The Undo toast: dark ink on a work page, above any dock. */
+html[data-work-frame] .app-toast {
+  border-radius: var(--work-radius-card);
+  background: rgb(16 26 41 / 92%);
+  color: white;
+  box-shadow: 0 10px 24px -12px rgb(16 26 41 / 50%);
+  --tw-ring-color: transparent;
+}
+
+html[data-work-frame] .app-toast__bar {
+  display: none;
+}
+
+html[data-work-frame] .app-toast__title {
+  color: white;
+}
+
+html[data-work-frame] .app-toast__body {
+  color: rgb(255 255 255 / 78%);
+}
+
+html[data-work-frame] .app-toast__icon {
+  color: var(--work-toast-icon, currentColor);
+}
+
+html[data-work-frame] .app-toast[data-tone="success"] {
+  --work-toast-icon: var(--work-toast-ok);
+}
+
+html[data-work-frame] .app-toast__action {
+  color: var(--work-toast-action);
+}
+
+html[data-work-frame] .app-toast__action:hover,
+html[data-work-frame] .app-toast__dismiss:hover {
+  background: rgb(255 255 255 / 10%);
+  color: white;
+}
+
+html[data-work-frame] .app-toast__dismiss {
+  color: rgb(255 255 255 / 70%);
+}
+
+html[data-work-frame] .app-toast-region {
+  padding-bottom: max(6rem, calc(env(safe-area-inset-bottom) + 5rem));
+}
+
+@media (forced-colors: active) {
+  html[data-work-frame] .app-toast {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* The watermark drawings, one per area (the mockup's wm-* symbols). */
+.work-band[data-work-area="day"] .work-band__mark {
+  --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='60' cy='60' r='20'/%3E%3Cpath d='M60 14v18M60 88v18M14 60h18M88 60h18M27.5 27.5l12.7 12.7M79.8 79.8l12.7 12.7M27.5 92.5l12.7-12.7M79.8 40.2l12.7-12.7'/%3E%3C/svg%3E");
+}
+
+.work-band[data-work-area="call"] .work-band__mark {
+  --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M30 16h20l10 26-13 8a56 56 0 0 0 25 25l8-13 26 10v20a10 10 0 0 1-10 10C51 102 18 69 18 26a10 10 0 0 1 12-10zM74 18a30 30 0 0 1 28 28M74 32a16 16 0 0 1 14 14'/%3E%3C/svg%3E");
+}
+
+.work-band[data-work-area="rost"] .work-band__mark {
+  --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='16' y='24' width='88' height='80' rx='10'/%3E%3Cpath d='M16 48h88M40 14v20M80 14v20M34 66h12M54 66h12M74 66h12M34 84h12M54 84h12'/%3E%3C/svg%3E");
+}
+
+.work-band[data-work-area="teach"] .work-band__mark,
+.work-band[data-work-area="assess"] .work-band__mark {
+  --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 18h96M20 18v50a6 6 0 0 0 6 6h68a6 6 0 0 0 6-6V18M60 74v16M40 104l20-14 20 14M36 52l14-12 12 10 22-18'/%3E%3C/svg%3E");
+}
+
+.work-band[data-work-area="cpd"] .work-band__mark {
+  --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='60' cy='46' r='30'/%3E%3Ccircle cx='60' cy='46' r='17'/%3E%3Cpath d='M42 70l-8 38 26-14 26 14-8-38'/%3E%3C/svg%3E");
+}
+
+.work-band[data-work-area="admin"] .work-band__mark {
+  --work-band-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120' fill='none' stroke='black' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='14' y='36' width='92' height='66' rx='10'/%3E%3Cpath d='M44 36V26a6 6 0 0 1 6-6h20a6 6 0 0 1 6 6v10M14 64h92M54 60h12v10H54z'/%3E%3C/svg%3E");
+}
