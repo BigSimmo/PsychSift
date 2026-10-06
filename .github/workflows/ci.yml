@@ -17,6 +17,15 @@ on:
           machine. Nothing is committed or pushed by this run.
         type: boolean
         default: false
+      scope:
+        description: >
+          browser-matrix (default) runs the Firefox/WebKit/iPhone release matrix — the one lane pull
+          requests never run — plus the static checks, Playwright build and production Chromium it
+          builds on. full also runs unit coverage, build, Lighthouse, migration replay and the rest,
+          which a PR or push to main already ran. Ignored when refresh_lighthouse_baseline is set.
+        type: choice
+        options: [browser-matrix, full]
+        default: browser-matrix
   schedule:
     - cron: "0 18 * * 0"
 
@@ -110,12 +119,21 @@ jobs:
           # same as interpolating a blank ${{ }} into the script, without putting
           # GitHub context into a shell.
           REFRESH_LIGHTHOUSE_BASELINE: ${{ github.event.inputs.refresh_lighthouse_baseline }}
+          DISPATCH_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.scope || '' }}
         run: |
           if [ "$REFRESH_LIGHTHOUSE_BASELINE" = "true" ]; then
             # A baseline refresh is a focused measurement operation, not a
             # synthetic full repository change. Keep the trusted workflow/perf
             # contracts without starting unrelated build, UI, DB or container jobs.
             node scripts/ci-change-scope.mjs --files .github/actions/setup-lighthouse-chromium/action.yml
+          elif [ "$DISPATCH_SCOPE" = "browser-matrix" ]; then
+            # A manual run asks for the cross-browser matrix, which pull requests never run.
+            # 12 of 13 manual runs in the week to 6 Oct 2026 were agents dispatching CI on
+            # their own branches for Firefox/WebKit results, and each also re-ran unit
+            # coverage, build, Lighthouse and migration replay (~50 job-minutes) that the
+            # branch's PR already runs. UI scope alone keeps static-pr, the shared Playwright
+            # build, production Chromium and the full matrix. `scope: full` is the old run.
+            node scripts/ci-change-scope.mjs --files .github/actions/setup-ui-e2e/action.yml
           else
             node scripts/ci-change-scope.mjs
           fi
@@ -1192,8 +1210,11 @@ jobs:
     #                       the subsequent push to main and leave only the weekly schedule.
     #   schedule          – weekly; resolves to the full-run sentinel, which trips perf
     #                       scope (asserted in ci-change-scope.mjs's self-tests).
-    #   workflow_dispatch – always, except a run dispatched to refresh the baseline
-    #                       (that belongs to lighthouse-baseline-refresh below).
+    #   workflow_dispatch – `scope: full` only. Not a baseline refresh (that belongs to
+    #                       lighthouse-baseline-refresh below) and not the default
+    #                       `scope: browser-matrix` run. `inputs.scope` (not
+    #                       github.event.inputs) because only the inputs context is
+    #                       guaranteed to carry the default; it is null off-dispatch.
     #
     # Labels mirror the codex-review / skip-codex-review convention; an explicit skip
     # always wins. `on.pull_request.types` has no `labeled`, so the opt-in label takes
@@ -1224,7 +1245,8 @@ jobs:
         )
       ) &&
       !contains(github.event.pull_request.labels.*.name, 'skip-lighthouse-budget') &&
-      github.event.inputs.refresh_lighthouse_baseline != 'true'
+      github.event.inputs.refresh_lighthouse_baseline != 'true' &&
+      inputs.scope != 'browser-matrix'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:

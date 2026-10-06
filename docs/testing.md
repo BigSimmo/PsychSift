@@ -215,6 +215,8 @@ and recorded in no line here).
 | `mobile-webkit`         | Release matrix **full-suite path only** — see the decision below          |
 | `mobile-pwa-standalone` | Release matrix **full-suite path only** — see the decision below          |
 
+Manual dispatch defaults to `scope: browser-matrix` (static checks, Playwright build, production Chromium and this matrix); `scope: full` adds the rest of the suite.
+
 **Decision (2026-09-04, L68): the two iPhone-14 projects stay release-only.** They execute when the
 release matrix runs the whole suite — that is, when UI did not change or in-run Chromium proof is
 missing — and not on the matrix's ordinary UI-change path, which names Chromium mockups plus
