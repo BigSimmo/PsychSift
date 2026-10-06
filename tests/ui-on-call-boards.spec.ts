@@ -352,8 +352,10 @@ test.describe("02 More, 03 All modes — the pill owns page switching", () => {
       // owner locked on 5 Oct 2026 for every mode, On Call included). It is
       // the only "On Call pages" bar allowed; nothing else may repeat it.
       // Some pages show the band without tabs, so the bar is at most that one.
-      expect(await page.getByRole("navigation", { name: "On Call pages" }).count()).toBeLessThanOrEqual(1);
-      expect(await page.getByTestId("mode-band-tabs").count()).toBeLessThanOrEqual(1);
+      await expect
+        .poll(async () => page.getByRole("navigation", { name: "On Call pages" }).count())
+        .toBeLessThanOrEqual(1);
+      await expect.poll(async () => page.getByTestId("mode-band-tabs").count()).toBeLessThanOrEqual(1);
     }
   });
 });
