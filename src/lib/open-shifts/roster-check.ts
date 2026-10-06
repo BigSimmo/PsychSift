@@ -37,7 +37,7 @@ export type RosterCheck =
   /** The candidate overlaps a rostered shift. Blocks the request. */
   | { readonly state: "overlap"; readonly withShift: FatigueShift; readonly overlapMinutes: number }
   /** No overlap, and the fatigue rules are off: nothing else was checked. */
-  | { readonly state: "clash-only"; readonly coveredUntil: string | null }
+  | { readonly state: "clash-only"; readonly coveredUntil: string | null; readonly nothingNearby: boolean }
   /** No overlap, and the signed rules flag something. Never blocks. */
   | {
       readonly state: "flag";
@@ -45,6 +45,7 @@ export type RosterCheck =
       readonly breakBefore: number | null;
       readonly breakAfter: number | null;
       readonly coveredUntil: string | null;
+      readonly nothingNearby: boolean;
     }
   /** No overlap and nothing flagged. */
   | {
@@ -56,9 +57,17 @@ export type RosterCheck =
       readonly limit14d: number;
       readonly nightsBefore: boolean;
       readonly coveredUntil: string | null;
+      /**
+       * Nothing at all is saved within three days either side of the shift. The
+       * roster is treated as complete up to `coveredUntil`, so one hand-added
+       * shift weeks ahead would otherwise make the empty days before it read as
+       * checked. The advert asks the doctor to check the roster is complete.
+       */
+      readonly nothingNearby: boolean;
     };
 
 const HOUR_MS = 3_600_000;
+const NEARBY_MS = 3 * 24 * HOUR_MS;
 
 function round(hours: number): number {
   return Math.round(hours * 10) / 10;
@@ -103,7 +112,14 @@ export function rosterCheck(
 
   const withCandidate = [...roster.filter((shift) => shift.id !== candidate.id), candidate];
   const signed = fatigueWarnings(withCandidate, signOff, approvedSigners, now.getTime());
-  if (!signed.gate.on) return { state: "clash-only", coveredUntil };
+  // Any saved entry, leave included, shows the roster was filled in around this date.
+  const nothingNearby = !roster.some(
+    (shift) =>
+      shift.id !== candidate.id &&
+      Date.parse(shift.endsAt) > start - NEARBY_MS &&
+      Date.parse(shift.startsAt) < end + NEARBY_MS,
+  );
+  if (!signed.gate.on) return { state: "clash-only", coveredUntil, nothingNearby };
 
   const worked = roster.filter((shift) => isWorkedKind(shift.kind));
   const before = worked
@@ -121,7 +137,7 @@ export function rosterCheck(
     const shift = withCandidate.find((row) => row.id === warning.shiftId);
     return shift ? Math.abs(Date.parse(shift.startsAt) - start) <= 14 * 24 * HOUR_MS : false;
   });
-  if (warnings.length > 0) return { state: "flag", warnings, breakBefore, breakAfter, coveredUntil };
+  if (warnings.length > 0) return { state: "flag", warnings, breakBefore, breakAfter, coveredUntil, nothingNearby };
 
   const rows = myShiftsAsAssignments(withCandidate.map((shift) => ({ ...shift, title: "" })));
   const workedRows = rows.filter((row) => isWorkedKind(row.kind));
@@ -139,6 +155,7 @@ export function rosterCheck(
     limit14d: FATIGUE_RULE_SET.rules.maxHours14d.hours,
     nightsBefore,
     coveredUntil,
+    nothingNearby,
   };
 }
 
