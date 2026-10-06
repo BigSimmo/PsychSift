@@ -11,7 +11,15 @@ runs:
       with:
         node-version-file: ".nvmrc"
         cache: npm
-        cache-dependency-path: package-lock.json
+        # .nvmrc is part of the key so this entry is distinct from the
+        # package-lock-only key that setup-node's automatic package-manager
+        # cache (triggered by package.json "packageManager") writes from jobs
+        # that never run npm ci. Those jobs saved an empty ~/.npm (686 B)
+        # under the shared key first, and a primary-key hit is never re-saved,
+        # so every npm ci downloaded all packages from the registry.
+        cache-dependency-path: |
+          package-lock.json
+          .nvmrc
 
     - name: Install dependencies
       shell: bash
