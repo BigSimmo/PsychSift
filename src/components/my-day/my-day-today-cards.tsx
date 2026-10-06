@@ -1008,7 +1008,9 @@ export function CpdSummary({
       <span className="sr-only">
         {`${hoursText(loggedHours)} of ${hoursText(targetHours)} CPD hours logged this year: ${cmeCategories
           .map((category) => `${CPD_LABEL[category]} ${hoursText(byCategory[category])}`)
-          .join(", ")}. ${left > 0 ? `${hoursText(left)} hours to go by 31 December.` : "Target reached."}`}
+          .join(
+            ", ",
+          )}. ${left > 0 ? `${hoursText(left)} hours to go by 31 December.` : "Your target hours are logged."}`}
       </span>
       <QuietRing fraction={loggedHours / Math.max(1, targetHours)} mode="cme" testId="my-day-cpd-ring">
         <span className="text-base font-dash-title text-[color:var(--dash-ink)] nums">{`${hoursText(loggedHours)} h`}</span>
@@ -1020,7 +1022,7 @@ export function CpdSummary({
         ))}
         <QuietKeyValue
           total
-          label={left > 0 ? "To go by 31 Dec" : "Target reached"}
+          label={left > 0 ? "To go by 31 Dec" : "Target hours logged"}
           value={left > 0 ? `${hoursText(left)} h` : ""}
         />
       </span>
