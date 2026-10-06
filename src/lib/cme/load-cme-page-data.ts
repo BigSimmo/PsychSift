@@ -198,7 +198,8 @@ async function load(
       loadRecords(admin, auth.user.id, options),
       options.trainingPosition
         ? fetchOwnerTrainingPeriods(admin, auth.user.id)
-            .then((periods) => currentPosition(periods, perthCalendarDate(now)))
+            // An empty record is not a reading: the CPD rule is left unticked rather than "Everyone else".
+            .then((periods) => (periods.length ? currentPosition(periods, perthCalendarDate(now)) : null))
             .catch(() => null)
         : null,
     ]);

@@ -302,7 +302,7 @@ describe("Empirical Challenger M4-2 Verification Suite", () => {
     });
 
     it("verifies var(--safe-area-bottom) is used in cme-dashboard.tsx:509", () => {
-      expect(cmeContent).toContain("pb-[calc(max(1rem,var(--safe-area-bottom))+6rem)]");
+      expect(cmeContent).toContain("pb-[calc(max(1rem,var(--safe-area-bottom))+2.5rem)]");
     });
 
     it("confirms zero raw env(safe-area-inset-bottom) occurrences in differential presentation and cme dashboard", () => {

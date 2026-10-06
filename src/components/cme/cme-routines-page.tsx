@@ -78,7 +78,7 @@ export function CmeRoutinesPage({
     );
 
   return (
-    <main className={cn(cmePageWidth, "px-4 py-6 sm:px-6")}>
+    <main data-mode-identity="cme" className={cn(cmePageWidth, "px-4 py-6 sm:px-6")}>
       <h1 className={cmePageTitle}>Routines</h1>
       <p className={cn(textMuted, "mt-1 text-sm")}>
         The things you do every month or term. Log one whenever it happens.
