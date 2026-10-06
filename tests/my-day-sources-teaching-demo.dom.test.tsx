@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/components/teaching/use-teaching-resource", () => ({
   useTeachingResource: (url: string | null) => ({
-    ...(url ? mocks.byUrl[url] : { status: "idle", code: null }),
+    ...(url ? (mocks.byUrl[url] ?? { status: "ready", code: null }) : { status: "idle", code: null }),
     data: null,
     refreshing: false,
     retry: () => {},
