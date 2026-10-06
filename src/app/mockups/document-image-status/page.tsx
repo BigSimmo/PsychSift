@@ -1,7 +1,5 @@
-"use client";
-
-import { DocumentImage } from "@/components/document-viewer/source-panels";
 import type { ImageRow } from "@/components/document-viewer/types";
+import { DocumentImageStatusClient } from "./document-image-status-client";
 
 const sourceImageOnlyTable: ImageRow = {
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
@@ -26,7 +24,7 @@ export default function DocumentImageStatusFixturePage() {
       className="mx-auto min-h-screen w-full max-w-lg bg-[color:var(--background)] px-3 py-6 text-[color:var(--text)]"
     >
       <h1 className="sr-only">Document image status browser fixture</h1>
-      <DocumentImage image={sourceImageOnlyTable} activePage={2} onSelectPage={() => undefined} />
+      <DocumentImageStatusClient image={sourceImageOnlyTable} />
     </main>
   );
 }

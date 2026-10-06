@@ -421,7 +421,7 @@ export function DictionaryCataloguePage() {
                   disabled={empty}
                   onClick={() => setOne("letter", value, "all")}
                   className={cn(
-                    "grid min-h-tap min-w-tap place-items-center rounded-md border text-xs font-semibold sm:min-h-10 sm:min-w-10",
+                    "grid min-h-tap min-w-tap min-w-[44px] min-h-[44px] place-items-center rounded-md border text-xs font-semibold sm:min-h-11 sm:min-w-11 sm:min-w-[44px] sm:min-h-[44px]",
                     params.letter === value
                       ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]"
                       : empty
@@ -621,7 +621,7 @@ export function DictionaryTopicsPage() {
               <button
                 type="button"
                 onClick={() => setFilterOpen(true)}
-                className="inline-flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm font-semibold text-[color:var(--text)] hover:border-[color:var(--border-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:min-h-10"
+                className="inline-flex min-h-tap min-h-11 items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm font-semibold text-[color:var(--text)] hover:border-[color:var(--border-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:min-h-11"
               >
                 <Filter className="size-icon-sm" aria-hidden="true" />
                 Filter
