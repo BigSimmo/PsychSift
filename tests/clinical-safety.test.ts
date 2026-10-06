@@ -521,7 +521,7 @@ describe("safety findings are counted once per passage", () => {
       label: "Monitoring",
       text: "Monitor ANC weekly.",
       href: "",
-      citation: undefined as any,
+      citation: undefined as unknown as never,
     };
     const finding2 = {
       id: "red_flag:chunk-2",
@@ -529,7 +529,7 @@ describe("safety findings are counted once per passage", () => {
       label: "Red flag",
       text: "Monitor ANC weekly. Urgent review if fever develops.",
       href: "",
-      citation: null as any,
+      citation: null as unknown as never,
     };
 
     // Should not throw TypeError when computing passageKey

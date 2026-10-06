@@ -1560,10 +1560,13 @@ export function MasterSearchHeader({
   }
 
   const restoreActionMenuFocusRef = useRef(false);
-  const closeScope = useCallback((restoreFocus = false) => {
-    restoreActionMenuFocusRef.current = restoreFocus;
-    setScopeOpen(false);
-  }, []);
+  const closeScope = useCallback(
+    (restoreFocus = false) => {
+      restoreActionMenuFocusRef.current = restoreFocus;
+      setScopeOpen(false);
+    },
+    [setScopeOpen],
+  );
 
   useEffect(() => {
     if (scopeOpen || !restoreActionMenuFocusRef.current) return;
@@ -1578,7 +1581,7 @@ export function MasterSearchHeader({
     window.requestAnimationFrame(() => {
       restoreFocusUnlessMoved(actionMenuTriggerRef.current);
     });
-  }, []);
+  }, [setScopeSheetOpen]);
   const handleFocusSearchInput = useEventCallback(() => {
     queryInputRef?.current?.focus();
   });
@@ -2584,76 +2587,75 @@ export function MasterSearchHeader({
   // NOT part of this node: on tablet/desktop hide-on-scroll must reclaim the top
   // bar without taking the search field with it. Phone bottom docks are fixed and
   // escape any collapse wrapper; hero composers portal out of this tree.
-  const topBar = useMemo(
-    () => (
-      <header
-        id="search"
-        data-scroll-hidden={hideStrategy === "overlay" && headerChromeHidden ? "true" : undefined}
-        className={cn(
-          // No backdrop-filter on the header itself: it would form a backdrop
-          // root and starve the .edge-glass-header-backdrop scrim (the single
-          // source of the bar's frost) of the real page behind it.
-          // Collapse hosts own the OS top inset via `chrome-safe-area-top`, so
-          // this bar only needs its aesthetic 0.5rem pad. On phones that spacer
-          // releases with hidden chrome; wider sticky hosts keep it pinned.
-          // Overlay hosts still paint the inset themselves (answer mode keeps an
-          // equivalent reserve on <main>).
-          "edge-glass-header universal-header z-30 py-2 text-[color:var(--text)]",
-          hideStrategy === "collapse" ? "pt-2" : "pt-[max(0.5rem,var(--safe-area-top))]",
-          // Collapse hosts keep the top bar above an internally scrolling <main>,
-          // so sticky is unnecessary wherever the row collapses and fights the
-          // 0fr grid by pinning the bar inside the viewport. Sticky hosts pin an
-          // outer stack (top bar + search) instead; this <header> stays relative
-          // inside that stack. All-breakpoints overlay hosts take the bar out of
-          // flow entirely (absolute over the padded <main>). Legacy overlay hosts
-          // keep sticky (they ride document scroll) and translate away with no
-          // layout shift.
-          hideStrategy === "collapse"
-            ? sticksAbovePhones || collapsesAtEveryWidth
-              ? "relative"
-              : "max-sm:relative sm:sticky sm:top-0"
-            : overlayAllBreakpoints
-              ? "phone-overlay-header sm:absolute sm:inset-x-0 sm:top-0"
-              : "sticky top-0",
-          // Overlay hide-on-scroll: a plain translate reveals the content already
-          // flowing beneath it. No transform is applied while visible so the
-          // fixed-position mobile mode menu keeps the viewport as its containing block.
-          hideStrategy === "overlay" &&
-            (overlayAllBreakpoints
-              ? cn(
-                  "transition-transform motion-reduce:transition-none",
-                  headerChromeHidden
-                    ? "duration-[var(--duration-slow)] ease-[var(--ease-chrome-hide)]"
-                    : "duration-[var(--duration-moderate)] ease-[var(--ease-chrome-reveal)]",
-                )
-              : cn(
-                  "max-sm:transition-transform motion-reduce:transition-none",
-                  headerChromeHidden
-                    ? "max-sm:duration-[var(--duration-slow)] max-sm:ease-[var(--ease-chrome-hide)]"
-                    : "max-sm:duration-[var(--duration-moderate)] max-sm:ease-[var(--ease-chrome-reveal)]",
-                )),
-          hideStrategy === "overlay" &&
-            headerChromeHidden &&
-            (overlayAllBreakpoints ? "-translate-y-full" : "max-sm:-translate-y-full"),
-        )}
-        {...(hideStrategy === "overlay" ? chromeFocusProps : undefined)}
-      >
-        <div className="edge-glass-header-backdrop" aria-hidden="true" />
-        <div className="relative mx-auto grid min-h-14 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={onOpenMobileSidebar}
-              className="universal-header-icon-control grid h-tap w-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] md:hidden"
-              aria-label="Open PsychSift menu"
-            >
-              <Menu aria-hidden="true" className="size-icon-lg" />
-            </button>
-            {sharedHomeIdentity ? (
-              <div data-testid="shared-home-brand" className="hidden min-w-0 items-center gap-3 lg:flex">
-                <BrandMark tone="emphasis" className="h-10 w-10" />
-                <span className="min-w-0">
-                  {/* The name leads and the strapline supports, which is a weight and a
+  const topBar = (
+    <header
+      id="search"
+      data-scroll-hidden={hideStrategy === "overlay" && headerChromeHidden ? "true" : undefined}
+      className={cn(
+        // No backdrop-filter on the header itself: it would form a backdrop
+        // root and starve the .edge-glass-header-backdrop scrim (the single
+        // source of the bar's frost) of the real page behind it.
+        // Collapse hosts own the OS top inset via `chrome-safe-area-top`, so
+        // this bar only needs its aesthetic 0.5rem pad. On phones that spacer
+        // releases with hidden chrome; wider sticky hosts keep it pinned.
+        // Overlay hosts still paint the inset themselves (answer mode keeps an
+        // equivalent reserve on <main>).
+        "edge-glass-header universal-header z-30 py-2 text-[color:var(--text)]",
+        hideStrategy === "collapse" ? "pt-2" : "pt-[max(0.5rem,var(--safe-area-top))]",
+        // Collapse hosts keep the top bar above an internally scrolling <main>,
+        // so sticky is unnecessary wherever the row collapses and fights the
+        // 0fr grid by pinning the bar inside the viewport. Sticky hosts pin an
+        // outer stack (top bar + search) instead; this <header> stays relative
+        // inside that stack. All-breakpoints overlay hosts take the bar out of
+        // flow entirely (absolute over the padded <main>). Legacy overlay hosts
+        // keep sticky (they ride document scroll) and translate away with no
+        // layout shift.
+        hideStrategy === "collapse"
+          ? sticksAbovePhones || collapsesAtEveryWidth
+            ? "relative"
+            : "max-sm:relative sm:sticky sm:top-0"
+          : overlayAllBreakpoints
+            ? "phone-overlay-header sm:absolute sm:inset-x-0 sm:top-0"
+            : "sticky top-0",
+        // Overlay hide-on-scroll: a plain translate reveals the content already
+        // flowing beneath it. No transform is applied while visible so the
+        // fixed-position mobile mode menu keeps the viewport as its containing block.
+        hideStrategy === "overlay" &&
+          (overlayAllBreakpoints
+            ? cn(
+                "transition-transform motion-reduce:transition-none",
+                headerChromeHidden
+                  ? "duration-[var(--duration-slow)] ease-[var(--ease-chrome-hide)]"
+                  : "duration-[var(--duration-moderate)] ease-[var(--ease-chrome-reveal)]",
+              )
+            : cn(
+                "max-sm:transition-transform motion-reduce:transition-none",
+                headerChromeHidden
+                  ? "max-sm:duration-[var(--duration-slow)] max-sm:ease-[var(--ease-chrome-hide)]"
+                  : "max-sm:duration-[var(--duration-moderate)] max-sm:ease-[var(--ease-chrome-reveal)]",
+              )),
+        hideStrategy === "overlay" &&
+          headerChromeHidden &&
+          (overlayAllBreakpoints ? "-translate-y-full" : "max-sm:-translate-y-full"),
+      )}
+      {...(hideStrategy === "overlay" ? chromeFocusProps : undefined)}
+    >
+      <div className="edge-glass-header-backdrop" aria-hidden="true" />
+      <div className="relative mx-auto grid min-h-14 max-w-7xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={onOpenMobileSidebar}
+            className="universal-header-icon-control grid h-tap w-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] md:hidden"
+            aria-label="Open PsychSift menu"
+          >
+            <Menu aria-hidden="true" className="size-icon-lg" />
+          </button>
+          {sharedHomeIdentity ? (
+            <div data-testid="shared-home-brand" className="hidden min-w-0 items-center gap-3 lg:flex">
+              <BrandMark tone="emphasis" className="h-10 w-10" />
+              <span className="min-w-0">
+                {/* The name leads and the strapline supports, which is a weight and a
                     colour apart, not just a size. The wordmark takes the display
                     tracking the rest of the interface's headings use — at 20px/800 the
                     untracked default reads loose. The strapline drops from 600 to 500:
@@ -2664,228 +2666,224 @@ export function MasterSearchHeader({
                     and 11px made the block bottom-light for no gain. Tracking stays on
                     the ladder's zero step; positive tracking belongs to uppercase
                     labels, and this is a sentence. */}
-                  <span className="block truncate text-lg font-extrabold leading-5 tracking-[var(--tracking-display)] text-[color:var(--text-heading)]">
-                    PsychSift
-                  </span>
-                  <span className="block truncate text-xs font-medium text-[color:var(--text-muted)]">
-                    From question to source
-                  </span>
+                <span className="block truncate text-lg font-extrabold leading-5 tracking-[var(--tracking-display)] text-[color:var(--text-heading)]">
+                  PsychSift
                 </span>
-              </div>
-            ) : isServicesMode ? (
-              <div className="hidden min-w-0 items-center gap-3 lg:flex">
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
-                  <ShieldCheck className="h-5 w-5" aria-hidden />
+                <span className="block truncate text-xs font-medium text-[color:var(--text-muted)]">
+                  From question to source
                 </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-lg font-extrabold leading-5 text-[color:var(--text-heading)]">
-                    Services Navigator
-                  </span>
-                  <span className="block truncate text-xs font-semibold text-[color:var(--text-muted)]">
-                    Psychiatry referral directory
-                  </span>
-                </span>
-              </div>
-            ) : null}
-          </div>
-
-          <div
-            ref={modeMenuRef}
-            onBlur={(event) => {
-              // Phone Mode menu is portaled into Sheet; blur-leave on this wrapper
-              // would close the sheet as soon as focus moved into the dialog.
-              if (usesPhoneSearchLayout) return;
-              const nextFocusedElement = event.relatedTarget;
-              if (nextFocusedElement instanceof Node && event.currentTarget.contains(nextFocusedElement)) return;
-              closeModeMenu();
-            }}
-            className="relative z-[60] min-w-0 justify-self-center"
-          >
-            <button
-              ref={modeButtonRef}
-              type="button"
-              onClick={toggleModeMenu}
-              onKeyDown={handleModeTriggerKeyDown}
-              className={cn(
-                "universal-header-mode-button inline-grid h-12 w-[min(13rem,calc(100vw-9rem))] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:w-auto sm:min-w-[13rem] sm:pr-3",
-              )}
-              aria-haspopup="dialog"
-              aria-expanded={modeMenuOpen}
-              aria-controls={modeMenuOpen ? "app-mode-menu" : undefined}
-              // Still prefixed `Mode …`, and that is load-bearing: twelve test
-              // files and the shared `tests/playwright-app-mode.ts` helper find
-              // this control by that exact opening. The page is appended rather
-              // than substituted, so the name gains information without any of
-              // them going looking for a control that no longer answers.
-              aria-label={
-                activeModePage
-                  ? `Mode ${selectedAppMode.label}, page ${activeModePage.label}`
-                  : `Mode ${selectedAppMode.label}`
-              }
-              // The mode's own hue, on the mode's own control. Resolves to the
-              // product accent for every mode that names no identity, so this is
-              // inert everywhere but On Call — see the `--mode-identity` block in
-              // `globals.css`.
-              data-mode-identity={selectedAppMode.id}
-            >
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
-                {/* 16px in the 32px pill, not the 14px metadata step: this is a
-                  primary control, and 2.25 keeps its absolute stroke in line
-                  with the larger glyphs beside it. */}
-                <SelectedAppModeIcon aria-hidden="true" className="size-icon-md" strokeWidth={2.25} />
+              </span>
+            </div>
+          ) : isServicesMode ? (
+            <div className="hidden min-w-0 items-center gap-3 lg:flex">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
+                <ShieldCheck className="h-5 w-5" aria-hidden />
               </span>
               <span className="min-w-0">
-                {activeModePage ? (
-                  // Page first, mode underneath. The order is the point: the big
-                  // line answers "where am I", which changes, and the small
-                  // coloured line answers "which mode", which does not. Reversing
-                  // them puts the constant in the loud slot.
-                  //
-                  // The mode line shows at EVERY width, unlike the "Mode" eyebrow
-                  // it replaces. That eyebrow was a word for the control's kind
-                  // and could be dropped on a phone without losing anything; this
-                  // one is the only place the mode is named once the big line
-                  // stops naming it.
-                  <>
-                    <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
-                      {activeModePage.label}
-                    </span>
-                    <span className="block truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--clinical-accent)]">
-                      {selectedAppMode.label}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="hidden truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--text-muted)] sm:block">
-                      Mode
-                    </span>
-                    <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
-                      {selectedAppMode.label}
-                    </span>
-                  </>
-                )}
+                <span className="block truncate text-lg font-extrabold leading-5 text-[color:var(--text-heading)]">
+                  Services Navigator
+                </span>
+                <span className="block truncate text-xs font-semibold text-[color:var(--text-muted)]">
+                  Psychiatry referral directory
+                </span>
               </span>
-              <ChevronDown
-                aria-hidden="true"
-                className={cn(
-                  "size-icon-md text-[color:var(--decoration-soft)] transition-transform motion-reduce:transition-none",
-                  modeMenuOpen && "rotate-180",
-                )}
-              />
-            </button>
+            </div>
+          ) : null}
+        </div>
 
-            {!usesPhoneSearchLayout && modeMenuOpen && modeSheetView === "sections" ? (
-              // The same popover, one level in. No "Find a mode" field here: this
-              // list is nine rows at most, and a filter over nine rows is furniture.
-              <div
-                id="app-mode-menu"
-                role="dialog"
-                aria-label={`${selectedAppMode.label} pages`}
-                className={cn(glassOverlaySurface, modeMenuPopoverShell)}
-              >
-                <div className="flex items-center gap-1.5 border-b border-[color:var(--border)] px-2 py-2">
-                  <button
-                    type="button"
-                    onClick={() => setModeSheetView("modes")}
-                    aria-label="Back to all modes"
-                    data-testid="app-mode-popover-back"
-                    className="grid size-8 shrink-0 place-items-center rounded-md text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
-                  >
-                    <ArrowLeft aria-hidden="true" className="size-icon-md" />
-                  </button>
-                  <h2 className={cn(modePagesSheetTitleClass, "min-w-0 break-words text-[color:var(--text-heading)]")}>
-                    {`${selectedAppMode.label} pages`}
-                  </h2>
-                </div>
-                <div className="p-2">{renderModeSectionLevel()}</div>
-              </div>
-            ) : null}
+        <div
+          ref={modeMenuRef}
+          onBlur={(event) => {
+            // Phone Mode menu is portaled into Sheet; blur-leave on this wrapper
+            // would close the sheet as soon as focus moved into the dialog.
+            if (usesPhoneSearchLayout) return;
+            const nextFocusedElement = event.relatedTarget;
+            if (nextFocusedElement instanceof Node && event.currentTarget.contains(nextFocusedElement)) return;
+            closeModeMenu();
+          }}
+          className="relative z-[60] min-w-0 justify-self-center"
+        >
+          <button
+            ref={modeButtonRef}
+            type="button"
+            onClick={toggleModeMenu}
+            onKeyDown={handleModeTriggerKeyDown}
+            className={cn(
+              "universal-header-mode-button inline-grid h-12 w-[min(13rem,calc(100vw-9rem))] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:w-auto sm:min-w-[13rem] sm:pr-3",
+            )}
+            aria-haspopup="dialog"
+            aria-expanded={modeMenuOpen}
+            aria-controls={modeMenuOpen ? "app-mode-menu" : undefined}
+            // Still prefixed `Mode …`, and that is load-bearing: twelve test
+            // files and the shared `tests/playwright-app-mode.ts` helper find
+            // this control by that exact opening. The page is appended rather
+            // than substituted, so the name gains information without any of
+            // them going looking for a control that no longer answers.
+            aria-label={
+              activeModePage
+                ? `Mode ${selectedAppMode.label}, page ${activeModePage.label}`
+                : `Mode ${selectedAppMode.label}`
+            }
+            // The mode's own hue, on the mode's own control. Resolves to the
+            // product accent for every mode that names no identity, so this is
+            // inert everywhere but On Call — see the `--mode-identity` block in
+            // `globals.css`.
+            data-mode-identity={selectedAppMode.id}
+          >
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
+              {/* 16px in the 32px pill, not the 14px metadata step: this is a
+                  primary control, and 2.25 keeps its absolute stroke in line
+                  with the larger glyphs beside it. */}
+              <SelectedAppModeIcon aria-hidden="true" className="size-icon-md" strokeWidth={2.25} />
+            </span>
+            <span className="min-w-0">
+              {activeModePage ? (
+                // Page first, mode underneath. The order is the point: the big
+                // line answers "where am I", which changes, and the small
+                // coloured line answers "which mode", which does not. Reversing
+                // them puts the constant in the loud slot.
+                //
+                // The mode line shows at EVERY width, unlike the "Mode" eyebrow
+                // it replaces. That eyebrow was a word for the control's kind
+                // and could be dropped on a phone without losing anything; this
+                // one is the only place the mode is named once the big line
+                // stops naming it.
+                <>
+                  <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
+                    {activeModePage.label}
+                  </span>
+                  <span className="block truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--clinical-accent)]">
+                    {selectedAppMode.label}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="hidden truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--text-muted)] sm:block">
+                    Mode
+                  </span>
+                  <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
+                    {selectedAppMode.label}
+                  </span>
+                </>
+              )}
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className={cn(
+                "size-icon-md text-[color:var(--decoration-soft)] transition-transform motion-reduce:transition-none",
+                modeMenuOpen && "rotate-180",
+              )}
+            />
+          </button>
 
-            {!usesPhoneSearchLayout && modeMenuOpen && modeSheetView === "modes" ? (
-              <div
-                id="app-mode-menu"
-                role="dialog"
-                aria-label="Choose app mode"
-                className={cn(glassOverlaySurface, modeMenuPopoverShell)}
-              >
-                <div className="border-b border-[color:var(--border)] p-3 pb-2.5">
-                  <div className="search-shell grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface)] px-3 shadow-[var(--shadow-inset)] transition-[border-color,box-shadow]">
-                    <Search
-                      aria-hidden="true"
-                      className="size-icon-md text-[color:var(--text-muted)]"
-                      strokeWidth={2}
-                    />
-                    <input
-                      ref={desktopModeMenuSearchRef}
-                      type="text"
-                      value={modeMenuQuery}
-                      onChange={(event) => {
-                        setModeMenuQuery(event.target.value);
-                        setModeMenuFocusIndex(0);
-                      }}
-                      onKeyDown={handleModeMenuSearchKeyDown}
-                      placeholder="Find a mode"
-                      aria-label="Find a mode"
-                      aria-controls="app-mode-options"
-                      autoComplete="off"
-                      spellCheck={false}
-                      className="search-shell-input min-w-0 bg-transparent text-sm font-semibold text-[color:var(--text-heading)] outline-none placeholder:font-medium placeholder:text-[color:var(--text-muted)]"
-                    />
-                    {modeMenuQuery ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setModeMenuQuery("");
-                          setModeMenuFocusIndex(selectedModeIndex);
-                          desktopModeMenuSearchRef.current?.focus();
-                        }}
-                        aria-label="Clear mode search"
-                        className="grid size-8 place-items-center rounded-md text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
-                      >
-                        <X aria-hidden="true" className="size-icon-md" />
-                      </button>
-                    ) : (
-                      <span aria-hidden="true" className="size-8" />
-                    )}
-                  </div>
-                  <p
-                    role="status"
-                    className="nums mt-2 px-1 text-2xs font-bold uppercase tracking-kicker text-[color:var(--text-muted)]"
-                  >
-                    {normalizedModeMenuQuery
-                      ? `${desktopModeMenuOptions.length} ${desktopModeMenuOptions.length === 1 ? "match" : "matches"}`
-                      : `${desktopModeMenuOptions.length} modes`}
-                  </p>
-                </div>
-
-                <div className="polished-scroll max-h-[min(34rem,calc(100dvh-13rem))] overflow-y-auto p-1.5">
-                  <div id="app-mode-options" role="menu" aria-label="Choose app mode">
-                    {desktopModeMenuOptions.length === 0 ? (
-                      <p className="px-3 py-8 text-center text-sm font-medium text-[color:var(--text-muted)]">
-                        No modes match that search.
-                      </p>
-                    ) : normalizedModeMenuQuery ? (
-                      <div className="grid gap-0.5">{renderModeMenuOptions()}</div>
-                    ) : (
-                      renderGroupedDesktopModeMenuOptions()
-                    )}
-                  </div>
-                </div>
-
-                <div
-                  aria-hidden="true"
-                  className="flex items-center justify-center gap-3 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)]/70 px-3 py-2 text-2xs font-medium text-[color:var(--text-muted)]"
+          {!usesPhoneSearchLayout && modeMenuOpen && modeSheetView === "sections" ? (
+            // The same popover, one level in. No "Find a mode" field here: this
+            // list is nine rows at most, and a filter over nine rows is furniture.
+            <div
+              id="app-mode-menu"
+              role="dialog"
+              aria-label={`${selectedAppMode.label} pages`}
+              className={cn(glassOverlaySurface, modeMenuPopoverShell)}
+            >
+              <div className="flex items-center gap-1.5 border-b border-[color:var(--border)] px-2 py-2">
+                <button
+                  type="button"
+                  onClick={() => setModeSheetView("modes")}
+                  aria-label="Back to all modes"
+                  data-testid="app-mode-popover-back"
+                  className="grid size-8 shrink-0 place-items-center rounded-md text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
                 >
-                  <span>↑↓ Navigate</span>
-                  <span>Enter Select</span>
-                  <span>Esc Close</span>
+                  <ArrowLeft aria-hidden="true" className="size-icon-md" />
+                </button>
+                <h2 className={cn(modePagesSheetTitleClass, "min-w-0 break-words text-[color:var(--text-heading)]")}>
+                  {`${selectedAppMode.label} pages`}
+                </h2>
+              </div>
+              <div className="p-2">{renderModeSectionLevel()}</div>
+            </div>
+          ) : null}
+
+          {!usesPhoneSearchLayout && modeMenuOpen && modeSheetView === "modes" ? (
+            <div
+              id="app-mode-menu"
+              role="dialog"
+              aria-label="Choose app mode"
+              className={cn(glassOverlaySurface, modeMenuPopoverShell)}
+            >
+              <div className="border-b border-[color:var(--border)] p-3 pb-2.5">
+                <div className="search-shell grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface)] px-3 shadow-[var(--shadow-inset)] transition-[border-color,box-shadow]">
+                  <Search aria-hidden="true" className="size-icon-md text-[color:var(--text-muted)]" strokeWidth={2} />
+                  <input
+                    ref={desktopModeMenuSearchRef}
+                    type="text"
+                    value={modeMenuQuery}
+                    onChange={(event) => {
+                      setModeMenuQuery(event.target.value);
+                      setModeMenuFocusIndex(0);
+                    }}
+                    onKeyDown={handleModeMenuSearchKeyDown}
+                    placeholder="Find a mode"
+                    aria-label="Find a mode"
+                    aria-controls="app-mode-options"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="search-shell-input min-w-0 bg-transparent text-sm font-semibold text-[color:var(--text-heading)] outline-none placeholder:font-medium placeholder:text-[color:var(--text-muted)]"
+                  />
+                  {modeMenuQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModeMenuQuery("");
+                        setModeMenuFocusIndex(selectedModeIndex);
+                        desktopModeMenuSearchRef.current?.focus();
+                      }}
+                      aria-label="Clear mode search"
+                      className="grid size-8 place-items-center rounded-md text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
+                    >
+                      <X aria-hidden="true" className="size-icon-md" />
+                    </button>
+                  ) : (
+                    <span aria-hidden="true" className="size-8" />
+                  )}
+                </div>
+                <p
+                  role="status"
+                  className="nums mt-2 px-1 text-2xs font-bold uppercase tracking-kicker text-[color:var(--text-muted)]"
+                >
+                  {normalizedModeMenuQuery
+                    ? `${desktopModeMenuOptions.length} ${desktopModeMenuOptions.length === 1 ? "match" : "matches"}`
+                    : `${desktopModeMenuOptions.length} modes`}
+                </p>
+              </div>
+
+              <div className="polished-scroll max-h-[min(34rem,calc(100dvh-13rem))] overflow-y-auto p-1.5">
+                <div id="app-mode-options" role="menu" aria-label="Choose app mode">
+                  {desktopModeMenuOptions.length === 0 ? (
+                    <p className="px-3 py-8 text-center text-sm font-medium text-[color:var(--text-muted)]">
+                      No modes match that search.
+                    </p>
+                  ) : normalizedModeMenuQuery ? (
+                    <div className="grid gap-0.5">{renderModeMenuOptions()}</div>
+                  ) : (
+                    renderGroupedDesktopModeMenuOptions()
+                  )}
                 </div>
               </div>
-            ) : null}
-          </div>
 
-          <div className="universal-header-trailing relative flex min-w-0 shrink-0 items-center justify-end gap-1.5 justify-self-end sm:gap-2">
-            {/* The one extension point in this row.
+              <div
+                aria-hidden="true"
+                className="flex items-center justify-center gap-3 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)]/70 px-3 py-2 text-2xs font-medium text-[color:var(--text-muted)]"
+              >
+                <span>↑↓ Navigate</span>
+                <span>Enter Select</span>
+                <span>Esc Close</span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="universal-header-trailing relative flex min-w-0 shrink-0 items-center justify-end gap-1.5 justify-self-end sm:gap-2">
+          {/* The one extension point in this row.
               A page that owns a control belonging in the header portals it here
               through `UniversalHeaderTrailingPortal`; CSS then hides the new-chat
               button beside it, so the region still holds exactly one control and
@@ -2899,8 +2897,8 @@ export function MasterSearchHeader({
 
               On Call is the first and only occupant: it has no "new chat" to
               start, and its page menu is the control a shift actually needs. */}
-            <div id={universalHeaderTrailingSlotId} className="contents" />
-            {/* A mode with no results surface has no conversation to start, so the
+          <div id={universalHeaderTrailingSlotId} className="contents" />
+          {/* A mode with no results surface has no conversation to start, so the
               button would open nothing. Gated on that declaration rather than on
               a mode id, for the same reason `modeOwnPages` above is: the next
               chat-less mode inherits the behaviour without editing this file.
@@ -2910,162 +2908,128 @@ export function MasterSearchHeader({
               a chat-less mode that own their control somewhere else — On Call's
               section pages moved the page menu into their own in-page header, and
               the button reappeared in a mode that has never had a chat. */}
-            {modeHasConversation ? (
-              <button
-                type="button"
-                onClick={onNewChat}
-                className={cn(
-                  "universal-header-new-chat universal-header-icon-control inline-flex h-tap w-tap shrink-0 items-center justify-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)] transition hover:border-[color:var(--clinical-accent-border)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] xl:w-auto xl:px-3 xl:text-xs xl:font-semibold xl:text-[color:var(--text)]",
-                  !showDesktopNewChat && "md:hidden",
-                )}
-                aria-label="Start a new chat"
-                title="New chat"
-              >
-                <MessageSquarePlus aria-hidden="true" className="size-icon-lg xl:size-icon-md" />
-                <span className="hidden whitespace-nowrap xl:inline">New chat</span>
-              </button>
-            ) : null}
-            {/* "Search my work" on the staff work modes (Josh, 2026-10-04: top right on
+          {modeHasConversation ? (
+            <button
+              type="button"
+              onClick={onNewChat}
+              className={cn(
+                "universal-header-new-chat universal-header-icon-control inline-flex h-tap w-tap shrink-0 items-center justify-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)] transition hover:border-[color:var(--clinical-accent-border)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] xl:w-auto xl:px-3 xl:text-xs xl:font-semibold xl:text-[color:var(--text)]",
+                !showDesktopNewChat && "md:hidden",
+              )}
+              aria-label="Start a new chat"
+              title="New chat"
+            >
+              <MessageSquarePlus aria-hidden="true" className="size-icon-lg xl:size-icon-md" />
+              <span className="hidden whitespace-nowrap xl:inline">New chat</span>
+            </button>
+          ) : null}
+          {/* "Search my work" on the staff work modes (Josh, 2026-10-04: top right on
               every staff page). Declared on the mode as `workSearch`, never a mode-id
               branch here. It is the one deliberate second control in this region: on
               On Call it sits right of the page menu in the slot, and the staff modes
               have no new-chat button to stand beside. The icon is all the header
               loads; the search itself is a lazy chunk fetched on tap. */}
-            {appModeHasWorkSearch(selectedAppMode.id) ? <WorkSearchButton modeId={selectedAppMode.id} /> : null}
-          </div>
+          {appModeHasWorkSearch(selectedAppMode.id) ? <WorkSearchButton modeId={selectedAppMode.id} /> : null}
         </div>
+      </div>
 
-        {/* Portaled outside the 3-column header grid so a non-portal regression
+      {/* Portaled outside the 3-column header grid so a non-portal regression
             cannot steal a grid track and shove trailing actions onto a new row. */}
-        {usesPhoneSearchLayout ? (
-          <Sheet
-            open={modeMenuOpen}
-            onClose={dismissModeMenu}
-            title={modeSheetView === "sections" ? `${selectedAppMode.label} pages` : "Choose mode"}
-            headerLeading={
-              // Only at the section level, and it goes UP a level rather than
-              // closing: the sheet must not dismiss and drop the reader back on the
-              // page they were already looking at.
-              modeSheetView === "sections" ? (
-                <button
-                  type="button"
-                  onClick={() => setModeSheetView("modes")}
-                  aria-label="Back to all modes"
-                  data-testid="app-mode-sheet-back"
-                  className="grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none"
-                >
-                  <ArrowLeft aria-hidden="true" className="size-icon-lg" />
-                </button>
-              ) : undefined
-            }
-            descriptionContent={
-              <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs leading-5 text-[color:var(--text-muted)]">
-                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                  <SelectedAppModeIcon aria-hidden="true" className="size-icon-xs" strokeWidth={1.9} />
-                </span>
-                <span className="min-w-0 truncate">
-                  Currently{" "}
-                  <span className="font-semibold text-[color:var(--text-heading)]">{selectedAppMode.label}</span>
-                </span>
+      {usesPhoneSearchLayout ? (
+        <Sheet
+          open={modeMenuOpen}
+          onClose={dismissModeMenu}
+          title={modeSheetView === "sections" ? `${selectedAppMode.label} pages` : "Choose mode"}
+          headerLeading={
+            // Only at the section level, and it goes UP a level rather than
+            // closing: the sheet must not dismiss and drop the reader back on the
+            // page they were already looking at.
+            modeSheetView === "sections" ? (
+              <button
+                type="button"
+                onClick={() => setModeSheetView("modes")}
+                aria-label="Back to all modes"
+                data-testid="app-mode-sheet-back"
+                className="grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none"
+              >
+                <ArrowLeft aria-hidden="true" className="size-icon-lg" />
+              </button>
+            ) : undefined
+          }
+          descriptionContent={
+            <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs leading-5 text-[color:var(--text-muted)]">
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
+                <SelectedAppModeIcon aria-hidden="true" className="size-icon-xs" strokeWidth={1.9} />
               </span>
-            }
-            closeLabel="Close mode menu"
-            returnFocusRef={modeButtonRef}
-            portal
-            mobilePlacement="bottom"
-            mobileSize="content"
-            mobileHeaderSafeArea="padding"
-            testId="app-mode-menu-sheet"
-            contentClassName="max-h-[calc(100dvh-0.75rem)] rounded-t-3xl bg-[color:var(--surface-lux)] sm:max-w-md sm:rounded-2xl"
-            bodyClassName="bg-[color:var(--surface-lux)] px-2.5 pb-2 pt-0.5"
-            headerClassName="bg-[color:var(--surface-lux)] px-4 pb-3 pt-1.5"
-            titleClassName={
-              modeSheetView === "sections" ? modePagesSheetTitleClass : "tracking-[var(--tracking-display)]"
-            }
-            closeButtonClassName="grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] forced-colors:border motion-reduce:transition-none"
-          >
-            {modeSheetView === "sections" ? (
-              renderModeSectionLevel()
-            ) : (
-              <div ref={phoneModeMenuListRef} id="app-mode-menu" role="menu" aria-label="Choose app mode">
-                {phoneModeGroups.map((group) => {
-                  const groupModes = group.modeIds.flatMap((modeId) => {
-                    const mode = modeMenuOptions.find((candidate) => candidate.id === modeId);
-                    return mode ? [mode] : [];
-                  });
-                  if (groupModes.length === 0) return null;
-                  const headingId = `app-mode-group-${group.id}`;
-                  return (
-                    <section
-                      key={group.id}
-                      role="group"
-                      aria-labelledby={headingId}
-                      data-mode-group={group.id}
-                      className="pt-3 first:pt-1"
-                    >
-                      <div className="sticky top-0 z-[5] -mx-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-lux)]/96 px-3 py-1.5 backdrop-blur-md">
-                        <div className="flex min-w-0 items-baseline gap-2">
-                          <h3
-                            id={headingId}
-                            className="shrink-0 text-2xs font-black uppercase tracking-kicker text-[color:var(--text-muted)]"
-                          >
-                            {group.label}
-                          </h3>
-                          <p className="min-w-0 truncate text-2xs font-medium text-[color:var(--text-muted)]">
-                            {group.hint}
-                          </p>
-                        </div>
+              <span className="min-w-0 truncate">
+                Currently{" "}
+                <span className="font-semibold text-[color:var(--text-heading)]">{selectedAppMode.label}</span>
+              </span>
+            </span>
+          }
+          closeLabel="Close mode menu"
+          returnFocusRef={modeButtonRef}
+          portal
+          mobilePlacement="bottom"
+          mobileSize="content"
+          mobileHeaderSafeArea="padding"
+          testId="app-mode-menu-sheet"
+          contentClassName="max-h-[calc(100dvh-0.75rem)] rounded-t-3xl bg-[color:var(--surface-lux)] sm:max-w-md sm:rounded-2xl"
+          bodyClassName="bg-[color:var(--surface-lux)] px-2.5 pb-2 pt-0.5"
+          headerClassName="bg-[color:var(--surface-lux)] px-4 pb-3 pt-1.5"
+          titleClassName={
+            modeSheetView === "sections" ? modePagesSheetTitleClass : "tracking-[var(--tracking-display)]"
+          }
+          closeButtonClassName="grid size-tap shrink-0 place-items-center rounded-full text-[color:var(--text-muted)] transition-colors duration-[var(--duration-fast)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] forced-colors:border motion-reduce:transition-none"
+        >
+          {modeSheetView === "sections" ? (
+            renderModeSectionLevel()
+          ) : (
+            <div ref={phoneModeMenuListRef} id="app-mode-menu" role="menu" aria-label="Choose app mode">
+              {phoneModeGroups.map((group) => {
+                const groupModes = group.modeIds.flatMap((modeId) => {
+                  const mode = modeMenuOptions.find((candidate) => candidate.id === modeId);
+                  return mode ? [mode] : [];
+                });
+                if (groupModes.length === 0) return null;
+                const headingId = `app-mode-group-${group.id}`;
+                return (
+                  <section
+                    key={group.id}
+                    role="group"
+                    aria-labelledby={headingId}
+                    data-mode-group={group.id}
+                    className="pt-3 first:pt-1"
+                  >
+                    <div className="sticky top-0 z-[5] -mx-2.5 border-b border-[color:var(--border)] bg-[color:var(--surface-lux)]/96 px-3 py-1.5 backdrop-blur-md">
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <h3
+                          id={headingId}
+                          className="shrink-0 text-2xs font-black uppercase tracking-kicker text-[color:var(--text-muted)]"
+                        >
+                          {group.label}
+                        </h3>
+                        <p className="min-w-0 truncate text-2xs font-medium text-[color:var(--text-muted)]">
+                          {group.hint}
+                        </p>
                       </div>
-                      <div className="mt-1.5 grid gap-1">
-                        {groupModes.map((mode) =>
-                          renderModeMenuOption(
-                            mode,
-                            modeMenuOptions.findIndex((candidate) => candidate.id === mode.id),
-                          ),
-                        )}
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-            )}
-          </Sheet>
-        ) : null}
-      </header>
-    ),
-    [
-      activeModePage,
-      chromeFocusProps,
-      closeModeMenu,
-      collapsesAtEveryWidth,
-      desktopModeMenuOptions,
-      dismissModeMenu,
-      handleModeMenuSearchKeyDown,
-      handleModeTriggerKeyDown,
-      headerChromeHidden,
-      hideStrategy,
-      isServicesMode,
-      modeHasConversation,
-      modeMenuOpen,
-      modeMenuOptions,
-      modeMenuQuery,
-      modeSheetView,
-      normalizedModeMenuQuery,
-      onNewChat,
-      onOpenMobileSidebar,
-      overlayAllBreakpoints,
-      renderGroupedDesktopModeMenuOptions,
-      renderModeMenuOption,
-      renderModeMenuOptions,
-      renderModeSectionLevel,
-      selectedAppMode,
-      selectedModeIndex,
-      sharedHomeIdentity,
-      showDesktopNewChat,
-      sticksAbovePhones,
-      toggleModeMenu,
-      usesPhoneSearchLayout,
-    ],
+                    </div>
+                    <div className="mt-1.5 grid gap-1">
+                      {groupModes.map((mode) =>
+                        renderModeMenuOption(
+                          mode,
+                          modeMenuOptions.findIndex((candidate) => candidate.id === mode.id),
+                        ),
+                      )}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </Sheet>
+      ) : null}
+    </header>
   );
 
   const portalPlacement = desktopHomeComposerSlotId ? "desktop-home" : "desktop-page";

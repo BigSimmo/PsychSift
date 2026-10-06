@@ -40,11 +40,21 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
   // wording on screen matches the wording the note will carry.
   const rowNoun = isDsmCriteria ? "criterion" : "key feature";
 
-  const [statuses, setStatuses] = useState<Record<string, DsmCriterionStatus>>({});
-  const [specifiers, setSpecifiers] = useState<string[]>([]);
-  const [specifierText, setSpecifierText] = useState("");
-  const [excluded, setExcluded] = useState<string[]>([]);
-  const [includeCriterionText, setIncludeCriterionText] = useState(true);
+  const initialDraft = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const draft = sessionStorage.getItem(`psychsift_dsm_draft_${record.icdCode}`);
+      return draft ? JSON.parse(draft) : null;
+    } catch {
+      return null;
+    }
+  }, [record.icdCode]);
+
+  const [statuses, setStatuses] = useState<Record<string, DsmCriterionStatus>>(() => initialDraft?.statuses ?? {});
+  const [specifiers, setSpecifiers] = useState<string[]>(() => initialDraft?.specifiers ?? []);
+  const [specifierText, setSpecifierText] = useState(() => initialDraft?.specifierText ?? "");
+  const [excluded, setExcluded] = useState<string[]>(() => initialDraft?.excluded ?? []);
+  const [includeCriterionText, setIncludeCriterionText] = useState(() => initialDraft?.includeCriterionText ?? true);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const copyTimer = useRef<number | null>(null);
 
@@ -53,21 +63,6 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
   const isDirty =
     Object.keys(statuses).length > 0 || specifiers.length > 0 || specifierText.trim().length > 0 || excluded.length > 0;
   useDirtyStateGuard(isDirty);
-
-  useEffect(() => {
-    try {
-      const draft = sessionStorage.getItem(`psychsift_dsm_draft_${record.icdCode}`);
-      if (draft && !isDirty) {
-        const parsed = JSON.parse(draft);
-        if (parsed.statuses) setStatuses(parsed.statuses);
-        if (parsed.specifiers) setSpecifiers(parsed.specifiers);
-        if (parsed.specifierText !== undefined) setSpecifierText(parsed.specifierText);
-        if (parsed.excluded) setExcluded(parsed.excluded);
-        if (parsed.includeCriterionText !== undefined) setIncludeCriterionText(parsed.includeCriterionText);
-      }
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [record.icdCode]);
 
   useEffect(() => {
     if (isDirty || !includeCriterionText) {

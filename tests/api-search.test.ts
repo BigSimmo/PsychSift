@@ -384,9 +384,10 @@ describe("/api/search route defensive hardening (Task #342)", () => {
     mockRuntime({ demoMode: false });
     const { POST } = await import("../src/app/api/search/route");
     const { searchChunksWithTelemetry } = await import("@/lib/rag/rag");
-    const error: any = new Error("Database connection failed");
-    error.name = "PostgresError";
-    error.sqlState = "08006";
+    const error = Object.assign(new Error("Database connection failed"), {
+      name: "PostgresError",
+      sqlState: "08006",
+    });
     vi.mocked(searchChunksWithTelemetry).mockRejectedValueOnce(error);
 
     const response = await POST(jsonRequest("/api/search", { query: "lithium" }, true));
@@ -406,7 +407,10 @@ describe("/api/search route defensive hardening (Task #342)", () => {
     mockRuntime({ demoMode: false });
     const { POST } = await import("../src/app/api/search/route");
     const { searchChunksWithTelemetry } = await import("@/lib/rag/rag");
-    vi.mocked(searchChunksWithTelemetry).mockResolvedValueOnce({ results: [], telemetry: {} as any });
+    vi.mocked(searchChunksWithTelemetry).mockResolvedValueOnce({
+      results: [],
+      telemetry: {} as unknown as Awaited<ReturnType<typeof searchChunksWithTelemetry>>["telemetry"],
+    });
 
     const response = await POST(jsonRequest("/api/search", { query: "lithium" }, true));
     const body = await payload(response);
@@ -426,9 +430,12 @@ describe("/api/search route defensive hardening (Task #342)", () => {
       remaining: 0,
       retryAfterSeconds: 60,
       resetAt: new Date(Date.now() + 60_000).toISOString(),
-    } as any);
+    } as unknown as Awaited<ReturnType<typeof consumeSubjectApiRateLimit>>);
     vi.mocked(rateLimitJsonResponse).mockImplementationOnce(
-      () => Response.json({ error: "Rate limit exceeded" }, { status: 429 }) as any,
+      () =>
+        Response.json({ error: "Rate limit exceeded" }, { status: 429 }) as unknown as ReturnType<
+          typeof rateLimitJsonResponse
+        >,
     );
 
     const response = await POST(jsonRequest("/api/search", { query: "lithium" }, true));

@@ -205,15 +205,35 @@ export function FormulationBuilderPage({
   const validInitialTemplate = formulationTemplates.some((template) => template.id === initialTemplate)
     ? initialTemplate!
     : formulationTemplates[0].id;
+  const initialDraft = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem("psychsift_formulation_draft");
+      return raw
+        ? (JSON.parse(raw) as {
+            selectedIds?: string[];
+            templateId?: string;
+            sectionNotes?: Record<string, string>;
+            qualityNotes?: Record<string, string>;
+            editedDraft?: string | null;
+          })
+        : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const [activeStep, setActiveStep] = useState<BuilderStepId>("select");
-  const [selectedIds, setSelectedIds] = useState(() => normalizeMechanismSelection(initialMechanisms));
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    () => initialDraft?.selectedIds ?? normalizeMechanismSelection(initialMechanisms),
+  );
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [domain, setDomain] = useState("all");
-  const [templateId, setTemplateId] = useState(validInitialTemplate);
-  const [sectionNotes, setSectionNotes] = useState<Record<string, string>>({});
-  const [qualityNotes, setQualityNotes] = useState<Record<string, string>>({});
-  const [editedDraft, setEditedDraft] = useState<string | null>(null);
+  const [templateId, setTemplateId] = useState<string>(() => initialDraft?.templateId ?? validInitialTemplate);
+  const [sectionNotes, setSectionNotes] = useState<Record<string, string>>(() => initialDraft?.sectionNotes ?? {});
+  const [qualityNotes, setQualityNotes] = useState<Record<string, string>>(() => initialDraft?.qualityNotes ?? {});
+  const [editedDraft, setEditedDraft] = useState<string | null>(() => initialDraft?.editedDraft ?? null);
   const [copied, setCopied] = useState(false);
 
   const selectedMechanisms = useMemo(
@@ -250,21 +270,6 @@ export function FormulationBuilderPage({
     Object.values(qualityNotes).some((n) => n.trim().length > 0) ||
     editedDraft !== null;
   useDirtyStateGuard(isDirty);
-
-  useEffect(() => {
-    try {
-      const draftStr = sessionStorage.getItem("psychsift_formulation_draft");
-      if (draftStr && !isDirty) {
-        const parsed = JSON.parse(draftStr);
-        if (parsed.sectionNotes) setSectionNotes(parsed.sectionNotes);
-        if (parsed.qualityNotes) setQualityNotes(parsed.qualityNotes);
-        if (parsed.selectedIds) setSelectedIds(parsed.selectedIds);
-        if (parsed.templateId) setTemplateId(parsed.templateId);
-        if (parsed.editedDraft !== undefined) setEditedDraft(parsed.editedDraft);
-      }
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (isDirty || selectedIds.length > 0) {
