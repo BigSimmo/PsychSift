@@ -5,6 +5,7 @@ import { isAuthRetryableFetchError, type Session, type SupabaseClient } from "@s
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import { clearAdminPins } from "@/lib/admin/pin-storage-keys";
+import { removeThisDevicePushSubscription } from "@/lib/alerts/device-push";
 import { clearPersistedAnswerThread } from "@/lib/answer-thread-storage";
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
 import { clearOnCallEntryCache } from "@/lib/on-call/entry-cache-keys";
@@ -103,6 +104,10 @@ function clearAccountScopedBrowserState() {
   // The raw keys are removed here, synchronously, whether or not those modules
   // are loaded in this page; the stores drop their caches on the event it fires.
   clearAccountScopedBrowserStorage();
+  // Phone alerts belong to the person too. Sign-out has already awaited this so
+  // it can say if it failed; expiry and an account switch drop it here in the
+  // background, so the next person at a shared computer gets nothing of theirs.
+  void removeThisDevicePushSubscription();
 }
 let browserSupabaseClient: SupabaseClient | null | undefined;
 let browserSupabaseClientConfig: string | null = null;
@@ -506,6 +511,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     if (!client) return;
     invalidateAuthRequests();
+    // Phone alerts belong to the account, not the device: stop them here while
+    // the session can still tell the server which subscription to drop.
+    const alertsRemoved = await removeThisDevicePushSubscription();
     let remoteSignOutFailed = false;
     try {
       const result = await client.auth.signOut();
@@ -520,7 +528,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setStatus("signed_out");
     if (remoteSignOutFailed) {
-      setNotice("Signed out on this device. Reconnect to complete server sign-out.");
+      setNotice(
+        alertsRemoved
+          ? "Signed out on this device. Reconnect to complete server sign-out."
+          : "Signed out on this device. Reconnect to complete server sign-out. Phone alerts may still be on for this device; turn them off in its settings.",
+      );
+    } else if (!alertsRemoved) {
+      // Said plainly rather than hidden: on a shared computer the next person should know.
+      setError(null);
+      setNotice("Signed out. Phone alerts may still be on for this device; turn them off in its settings.");
     } else {
       setError(null);
       setNotice(null);

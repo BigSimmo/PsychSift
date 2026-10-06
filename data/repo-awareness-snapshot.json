@@ -583,6 +583,11 @@
         "area": "product"
       },
       {
+        "path": "/my-day/alerts",
+        "file": "src/app/(search-app)/my-day/alerts/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/dictionary/topics/[slug]",
         "file": "src/app/(search-app)/dictionary/topics/[slug]/page.tsx",
         "area": "product"
@@ -1574,6 +1579,10 @@
       {
         "path": "/api/on-call/shifts",
         "file": "src/app/api/on-call/shifts/route.ts"
+      },
+      {
+        "path": "/api/alerts/test",
+        "file": "src/app/api/alerts/test/route.ts"
       },
       {
         "path": "/api/on-call/entries",
@@ -3949,6 +3958,11 @@
         "path": "docs/branch-cleanup-guide.md",
         "section": "root",
         "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-05-alerts-agreed-decisions.md",
+        "section": "decisions",
+        "catalogued": false
       },
       {
         "path": "docs/redesign/crisp-white-colour-system-plan.md",
