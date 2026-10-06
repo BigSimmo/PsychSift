@@ -354,7 +354,7 @@ export function FormulationBuilderPage({
                   search={{
                     query,
                     onQueryChange: setQuery,
-                    placeholder: "Search mechanisms or patient language...",
+                    placeholder: "Search mechanisms or patient language…",
                     label: "Search formulation mechanisms",
                   }}
                   sort={{
@@ -529,7 +529,7 @@ export function FormulationBuilderPage({
                           onChange={(event) => updateSection(section.id, event.target.value)}
                           rows={3}
                           aria-label={section.label}
-                          placeholder="Add de-identified case evidence..."
+                          placeholder="Add de-identified case evidence…"
                           className={cn(fieldControlPlain, "mt-3 h-auto min-h-24 resize-y p-3 font-medium leading-6")}
                         />
                         {suggestions.length ? (
@@ -591,7 +591,7 @@ export function FormulationBuilderPage({
                         }}
                         rows={4}
                         aria-label={prompt.label}
-                        placeholder="Record a concise review note..."
+                        placeholder="Record a concise review note…"
                         className={cn(fieldControlPlain, "mt-3 h-auto min-h-28 resize-y p-3 font-medium leading-6")}
                       />
                       {starter.length ? (

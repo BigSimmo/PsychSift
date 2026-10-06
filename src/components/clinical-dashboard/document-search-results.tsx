@@ -764,7 +764,7 @@ function RecordRegistryNotice({ status, mode }: { status: RegistryRequestStatus;
   const noun = mode === "forms" ? "forms" : "services";
   const config =
     status === "loading"
-      ? { Icon: Loader2, spin: true, tone: "info" as const, text: `Loading your ${noun} registry...` }
+      ? { Icon: Loader2, spin: true, tone: "info" as const, text: `Loading your ${noun} registry…` }
       : status === "unauthorized"
         ? {
             Icon: Shield,

@@ -182,7 +182,7 @@ function PhoneHome({ style }: { style: ButtonStyle }) {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search calculators..."
+                placeholder="Search calculators…"
                 className="w-full min-w-0 bg-transparent text-sm font-medium text-[color:var(--text)] placeholder:text-[color:var(--text-placeholder)] focus:outline-none"
               />
             </label>

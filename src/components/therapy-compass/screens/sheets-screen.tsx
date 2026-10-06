@@ -355,7 +355,7 @@ function TherapyPicker() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search therapies..."
+              placeholder="Search therapies…"
               aria-label="Search therapies for the patient sheet"
               autoFocus
               className="w-full h-tap pt-0 pr-3 pb-0 pl-8.5 border border-[color:var(--border)] rounded-md bg-[color:var(--surface)] text-[color:var(--text)] text-sm-minus"

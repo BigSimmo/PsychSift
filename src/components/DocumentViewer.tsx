@@ -1683,7 +1683,7 @@ export function DocumentViewer({
                     ref={sourceSearchInputRef}
                     value={sourceSearch}
                     onChange={(event) => setSourceSearch(event.target.value)}
-                    placeholder="Search within this document..."
+                    placeholder="Search within this document…"
                     className={cn(
                       searchShellInput,
                       "min-h-tap px-2 text-base font-medium text-[color:var(--text)] placeholder:text-[color:var(--text-placeholder)]",

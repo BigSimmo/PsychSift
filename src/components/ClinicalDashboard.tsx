@@ -3116,7 +3116,7 @@ function ClinicalDashboardContent({
           showPhoneSuggestionTickerOnHome={heroOwnsPhoneComposer}
           sharedHomeIdentity={showSharedHome}
           searchComposerVisible={!toolsDirectoryWithoutComposer}
-          composerPlaceholder={searchMode === "answer" && latestAnswerQuery ? "Ask a follow-up..." : undefined}
+          composerPlaceholder={searchMode === "answer" && latestAnswerQuery ? "Ask a follow-up…" : undefined}
           mobileSearchPlacement={hasMobileBottomSearch ? "bottom" : "default"}
           // Every phone dock is the compact single-row pill so content keeps
           // maximum screen space (mode homes and result views alike).
