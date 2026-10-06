@@ -115,6 +115,7 @@ export const modeSecondaryNavigationRegistry = {
     { id: "catalogue", label: "Catalogue", href: "/sources/search" },
     { id: "topics", label: "Topics", href: "/sources/topics" },
     { id: "publishers", label: "Publishers", href: "/sources/publishers" },
+    { id: "currency", label: "Currency", href: "/sources/currency" },
     { id: "method", label: "Method", href: SOURCE_METHOD_ROUTE },
   ],
   // On Call's destinations, restored. They were removed once, and the reason is
@@ -445,6 +446,7 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     if (pathname === "/sources/search") return "catalogue";
     if (pathname === "/sources/topics") return "topics";
     if (pathname === "/sources/publishers") return "publishers";
+    if (pathname === "/sources/currency") return "currency";
     if (pathname === SOURCE_METHOD_ROUTE) return "method";
     return null;
   }
@@ -491,7 +493,7 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
   }
   if (modeId === "my-work") {
     if (pathname === "/admin/renewals") return "renewals";
-    if (pathname === "/admin/compliance") return "admin-compliance";
+    if (pathname === "/admin/compliance" || pathname === "/admin/compliance/export") return "admin-compliance";
     if (pathname === "/admin/new-job" || pathname === "/admin/new-job/records" || pathname === "/admin/new-job/pack")
       return "new-job";
     if (pathname === "/admin/help") return "help";
@@ -581,7 +583,13 @@ export function isModeSecondaryNavigationRoute(params: {
     );
   }
   if (modeId === "sources") {
-    return ["/sources/search", "/sources/topics", "/sources/publishers", SOURCE_METHOD_ROUTE].includes(pathname);
+    return [
+      "/sources/search",
+      "/sources/topics",
+      "/sources/publishers",
+      "/sources/currency",
+      SOURCE_METHOD_ROUTE,
+    ].includes(pathname);
   }
   if (modeId === "my-day") return pathname === "/my-day/week" || pathname === "/my-day/hours";
   if (modeId === "roster") {
@@ -792,7 +800,7 @@ export function modeSecondaryNavigationHref(params: {
   }
 
   if (modeId === "sources") {
-    if (itemId === "method") return href;
+    if (itemId === "method" || itemId === "currency") return href;
     const entries: Array<readonly [string, string]> = [];
     if (query) entries.push(["q", query]);
     for (const usage of currentSearchParams.getAll("usedBy")) entries.push(["usedBy", usage]);

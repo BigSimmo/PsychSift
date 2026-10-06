@@ -78,6 +78,7 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   sources: BookMarked,
   catalogue: LibraryBig,
   publishers: Landmark,
+  currency: CalendarClock,
   method: Scale,
   // On Call. READ from the identity maps, never restated: a section must wear
   // one mark in the rail, on its own page header and in the home's tile grid,

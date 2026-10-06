@@ -1,4 +1,5 @@
 import { addDays } from "@/lib/calendar/calendar-event";
+import { dateKeyToUtcMillis } from "@/lib/calendar/date-keys";
 import { complianceExpiresOn } from "@/lib/on-call/compliance";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
@@ -14,10 +15,20 @@ export function complianceLeadTimeDays(entry: OnCallEntry): number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : ADMIN_DEFAULT_LEAD_TIME_DAYS;
 }
 
-/** The day to start renewing: the recorded date minus the lead time. Never a guessed date. */
+/**
+ * The day to start renewing: the recorded date minus the lead time. Never a
+ * guessed date. A stored date that has the right shape but is not a real day
+ * ("2026-02-30") has no window, rather than throwing and blanking every page
+ * that reads the checklist.
+ */
 export function renewalStartOn(entry: OnCallEntry): string | undefined {
   const expiresOn = complianceExpiresOn(entry);
-  return expiresOn ? addDays(expiresOn, -complianceLeadTimeDays(entry)) : undefined;
+  if (!expiresOn) return undefined;
+  try {
+    return addDays(expiresOn, -complianceLeadTimeDays(entry));
+  } catch {
+    return undefined;
+  }
 }
 
 /** `YYYY-MM-DD` as "12 Mar 2027", exactly as the Renewals page prints it. */
@@ -43,9 +54,8 @@ const DAY_MS = 86_400_000;
 /** A `YYYY-MM-DD` calendar date as a whole day count, for subtracting two dates. Exported so every
  *  Admin selector that measures "how many days between two calendar dates" shares this one parse. */
 export function utcDay(date: string): number | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  const ms = Date.parse(`${date}T00:00:00Z`);
-  return Number.isNaN(ms) ? null : ms / DAY_MS;
+  const ms = dateKeyToUtcMillis(date);
+  return ms === null ? null : ms / DAY_MS;
 }
 
 /**

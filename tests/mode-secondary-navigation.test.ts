@@ -32,7 +32,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
   "therapy-compass": ["Search", "Recommend", "Compare", "Pathways", "Review"],
   factsheets: ["Search", "Topics"],
   dictionary: ["Terms", "Topics", "Compare", "Sources"],
-  sources: ["Catalogue", "Topics", "Publishers", "Method"],
+  sources: ["Catalogue", "Topics", "Publishers", "Currency", "Method"],
   // Six shift pages, two tools, then the pages moving out to their own modes
   // (kit 1.7). "Teaching" and "Admin" stay label-only: their ids, route
   // segments and check constraints stay "education" and "logistics".
@@ -237,7 +237,13 @@ describe("mode secondary navigation registry", () => {
         hasSubmittedSearch: false,
       }),
     ).toBe(false);
-    for (const pathname of ["/sources/search", "/sources/topics", "/sources/publishers", "/sources/method"]) {
+    for (const pathname of [
+      "/sources/search",
+      "/sources/topics",
+      "/sources/publishers",
+      "/sources/currency",
+      "/sources/method",
+    ]) {
       expect(isModeSecondaryNavigationRoute({ modeId: "sources", pathname, hasSubmittedSearch: false })).toBe(true);
     }
     expect(
@@ -651,6 +657,7 @@ describe("mode secondary navigation registry", () => {
     expect(activeModeSecondaryNavigationId("sources", "/sources/search")).toBe("catalogue");
     expect(activeModeSecondaryNavigationId("sources", "/sources/topics")).toBe("topics");
     expect(activeModeSecondaryNavigationId("sources", "/sources/publishers")).toBe("publishers");
+    expect(activeModeSecondaryNavigationId("sources", "/sources/currency")).toBe("currency");
     expect(activeModeSecondaryNavigationId("sources", "/sources/method")).toBe("method");
     expect(activeModeSecondaryNavigationId("sources", "/sources/src_detail")).toBeNull();
 
@@ -715,6 +722,7 @@ describe("information page classification", () => {
     "/sources",
     "/sources/topics",
     "/sources/publishers",
+    "/sources/currency",
     "/sources/method",
   ])("does not classify workflow route %s as an information page", (pathname) => {
     expect(isInformationPage(pathname)).toBe(false);

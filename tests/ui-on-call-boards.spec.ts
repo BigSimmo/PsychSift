@@ -419,6 +419,12 @@ test.describe("02 More — the second row is about the page you are on", () => {
 
   test("carries the mode's own colour on the pill and the bar, and only there", async ({ page }) => {
     await openBoard(page, ROUTES.contacts);
+    // openBoard settles on the list, but the bar mounts a frame or more later: it renders
+    // only once the page has resolved two or more groups from the list. WebKit reaches
+    // this read before that, found no bar, and compared the pill's teal against null.
+    // Wait for both elements this test compares, then read them.
+    await expect(await sectionBar(page)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mode On Call, page Call" })).toBeVisible();
     const identity = await page.evaluate(() => {
       const read = (selector: string) => {
         const element = document.querySelector(selector);
@@ -894,31 +900,38 @@ test.describe("11 Admin: Help", () => {
  * (Admin update 1) it moved again: `/on-call/compliance` redirects to
  * `/admin/renewals`, which is rebuilt as a checklist of the statewide
  * Requirements catalogue crossed with the doctor's own recorded dates. It has
- * no section rail and no consequence bands any more; rows are grouped by
- * state ("Soonest first", "No end date", "Not recorded yet").
+ * no section rail and no consequence bands any more; rows are grouped by the
+ * catalogue's own groups (Registration, Checks, Health, Training, Job — the
+ * 5 Oct mock-up v2), and inside each group a recorded date comes before the
+ * slots nobody has filled in yet.
  *
- * With no artboard to check it against, this block checks what ships: the
- * groups in that order with the demo corpus's recorded rows in the first, the
+ * This block checks what ships: the groups in catalogue order with the demo
+ * corpus's recorded rows first in their group, the
  * "not a check" line above the list, and a Personal tab that holds only the
  * reader's own off-catalogue renewals — never a contact or a guide.
  */
 test.describe("Compliance — the view the boards never drew", () => {
-  test("files the requirements under state groups, soonest first", async ({ page }) => {
+  test("files the requirements under the catalogue's groups, recorded dates first", async ({ page }) => {
     await openBoard(page, ROUTES.compliance);
 
-    // The demo corpus links three rows to catalogue items (registration,
-    // indemnity, Working with Children Check), so both groups have rows.
-    const soonest = visibleByTestId(page, "admin-renewals-checklist-group-Soonest first");
-    const notRecorded = visibleByTestId(page, "admin-renewals-checklist-group-Not recorded yet");
-    await expect(soonest, "the demo corpus's recorded rows do not render").toBeVisible();
-    await expect(notRecorded).toBeVisible();
-    await expect(soonest).toContainText("Medical registration renewal");
-    await expect(soonest).toContainText("Working with Children Check");
+    // The demo corpus links seven rows to catalogue items (registration and
+    // indemnity, Working with Children Check and police clearance, among
+    // others), so these groups have rows.
+    const registration = visibleByTestId(page, "admin-renewals-checklist-group-registration");
+    const checks = visibleByTestId(page, "admin-renewals-checklist-group-checks");
+    await expect(registration, "the demo corpus's recorded rows do not render").toBeVisible();
+    await expect(checks).toBeVisible();
+    await expect(registration).toContainText("Medical registration renewal");
+    await expect(checks).toContainText("Working with Children Check");
 
-    // Order is the page's argument: a recorded date to act on comes before
-    // the slots nobody has filled in yet.
-    const [soonestBox, notRecordedBox] = [await soonest.boundingBox(), await notRecorded.boundingBox()];
-    expect(notRecordedBox!.y, "Not recorded yet is above Soonest first").toBeGreaterThan(soonestBox!.y);
+    // Groups follow the catalogue's order.
+    const [registrationBox, checksBox] = [await registration.boundingBox(), await checks.boundingBox()];
+    expect(checksBox!.y, "Checks is above Registration").toBeGreaterThan(registrationBox!.y);
+
+    // Inside a group, a recorded date to act on comes before the slots nobody
+    // has filled in yet.
+    const firstCheck = checks.getByRole("listitem").first();
+    await expect(firstCheck).toContainText("Working with Children Check");
   });
 
   test("says on the page that these are dates the reader entered, not a check", async ({ page }) => {
@@ -934,7 +947,7 @@ test.describe("Compliance — the view the boards never drew", () => {
     // sentence in this position is the control that keeps it rejected.
     const [summaryBox, firstGroup] = [
       await summary.boundingBox(),
-      await visibleByTestId(page, "admin-renewals-checklist-group-Soonest first").boundingBox(),
+      await visibleByTestId(page, "admin-renewals-checklist-group-registration").boundingBox(),
     ];
     expect(summaryBox!.y, "the 'not a check' line has slipped below the list").toBeLessThan(firstGroup!.y);
   });
@@ -947,7 +960,7 @@ test.describe("Compliance — the view the boards never drew", () => {
     const personal = visibleByTestId(page, "admin-renewals-personal");
     await expect(personal).toBeVisible();
     // A demo compliance row that matches no catalogue item.
-    await expect(personal).toContainText("Demo basic life support module");
+    await expect(personal).toContainText("Demo fire and evacuation module");
     // Never a row from another On Call section: offering "Renewed" on a
     // contact or a guide would plant compliance keys that hide it from every
     // colleague's shared read.

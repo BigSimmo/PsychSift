@@ -11,7 +11,8 @@ import { catalogueItemForEntry, isPersonalRenewal } from "@/components/admin/ren
 import { ChecklistList, type RecordDatesSlot } from "@/components/admin/renewals/checklist-list";
 import { ChecklistKindChips, type ChecklistKindFilter } from "@/components/admin/renewals/kind-chips";
 import { ChecklistItemDetailSheet, type ChecklistItemSubject } from "@/components/admin/renewals/item-detail-sheet";
-import { ChecklistSummary } from "@/components/admin/renewals/checklist-summary";
+import { ChecklistAtAGlance } from "@/components/admin/renewals/checklist-summary";
+import { RenewNextCard } from "@/components/admin/renewals/renew-next-card";
 import { PersonalRenewalsList } from "@/components/admin/renewals/personal-list";
 import { RecordDatesSheet, type RecordDatesReadOnly } from "@/components/admin/renewals/record-dates-sheet";
 import { RenewalsShowFilterList } from "@/components/admin/renewals/show-filter-list";
@@ -26,6 +27,9 @@ import { announce } from "@/components/ui/live-announcer";
 import { Sheet } from "@/components/ui/sheet";
 import { Tabs } from "@/components/ui/tabs";
 import { cn, controlDisabled, IconButton, textMuted } from "@/components/ui-primitives";
+import { complianceBucket, complianceBucketCounts, type ComplianceBucket } from "@/lib/admin/compliance-overview";
+import { renewNext } from "@/lib/admin/renew-next";
+import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { downloadTextFile } from "@/lib/admin/download-file";
 import {
   buildIssuerCheckStampBody,
@@ -39,7 +43,6 @@ import {
   ADMIN_REQUIREMENTS_CATALOGUE,
   requirementChecklistRowsForJob,
   requirementsNotForThisJob,
-  requirementsRecordedCount,
 } from "@/lib/admin/requirements";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { parseRenewalsShow, renewalsShowMatches } from "@/lib/admin/renewals-filters";
@@ -144,6 +147,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
 
   const [tab, setTab] = useState<"checklist" | "personal">("checklist");
   const [kindFilter, setKindFilter] = useState<ChecklistKindFilter>("all");
+  const [glance, setGlance] = useState<ComplianceBucket | null>(null);
   const [detailSubject, setDetailSubject] = useState<ChecklistItemSubject | null>(null);
   // `renewSubject` is kept across a close (not nulled) so a dismissed
   // half-filled sheet stays in memory for the same subject, per Addendum A;
@@ -164,7 +168,12 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
 
   // Items marked not for this job are left out here: they show once, in their own closing section.
   const rows = useMemo(() => requirementChecklistRowsForJob(ADMIN_REQUIREMENTS_CATALOGUE, own), [own]);
-  const counts = useMemo(() => requirementsRecordedCount(ADMIN_REQUIREMENTS_CATALOGUE, own), [own]);
+  const today = perthCalendarDate(now);
+  const bucketCounts = useMemo(
+    () => complianceBucketCounts(rows.map((row) => complianceBucket(row, today))),
+    [rows, today],
+  );
+  const next = useMemo(() => renewNext(rows, today), [rows, today]);
   // The same selector Today's "N not for this job" reads, so the two agree.
   const notForThisJob = useMemo(
     () => requirementsNotForThisJob(ADMIN_REQUIREMENTS_CATALOGUE, own).map(({ entry }) => entry),
@@ -232,7 +241,17 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
     if (!ready) return;
     function openFromHash() {
       const hash = window.location.hash.slice(1);
-      if (!hash.startsWith("on-call-entry-") || openedHash.current === hash) return;
+      if (openedHash.current === hash) return;
+      // Compliance's group rows link to `#admin-renewals-group-<group>`. The
+      // list renders after the rows load, too late for the browser's own jump,
+      // so scroll to the group once it is drawn.
+      if (hash.startsWith("admin-renewals-group-")) {
+        openedHash.current = hash;
+        setTab("checklist");
+        requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ block: "start" }));
+        return;
+      }
+      if (!hash.startsWith("on-call-entry-")) return;
       const entry = own.find((candidate) => onCallEntryAnchorId(candidate.id) === hash);
       if (!entry) return;
       const subject = detailSubjectForEntry(entry);
@@ -448,12 +467,25 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
 
           {tab === "checklist" ? (
             <div className="grid gap-4">
-              <ChecklistSummary
+              <RenewNextCard
+                next={next}
+                notRecorded={bucketCounts["not-recorded"]}
+                today={today}
+                canEdit={canEdit}
+                onRenew={(item) => {
+                  setRenewSubject({ entry: item.row.entry });
+                  setRenewOpen(true);
+                }}
+                onOpen={(item) => setDetailSubject({ kind: "catalogue", item: item.row.item, entry: item.row.entry })}
+              />
+              <ChecklistAtAGlance
                 rows={rows}
-                recorded={counts.recorded}
-                total={counts.total}
+                counts={bucketCounts}
+                total={rows.length}
                 notForThisJob={notForThisJob.length}
                 now={now}
+                active={glance}
+                onFilter={setGlance}
                 testId="admin-renewals-summary"
               />
               {showFilter ? (
@@ -487,6 +519,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
                     onAddDate={addDate}
                     onMoveBack={(entry) => void moveBack(entry)}
                     recordDates={recordDatesSlot}
+                    bucket={glance}
                   />
                 </>
               )}

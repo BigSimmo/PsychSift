@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearSiteContentRecordCache,
   readSiteContentRecordsCached,
+  siteContentRecordCacheFlightTimeoutMs,
   siteContentRecordCacheMaxEntries,
-  siteContentRecordCacheRefreshTimeoutMs,
   siteContentRecordCacheStaleMs,
   siteContentRecordCacheTtlMs,
   type SiteContentRecordRows,
@@ -336,7 +336,7 @@ describe("readSiteContentRecordsCached", () => {
       await readSiteContentRecordsCached({ kind: "form", slug: null, read, now: time.now });
       expect(refreshSignal?.aborted).toBe(false);
 
-      vi.advanceTimersByTime(siteContentRecordCacheRefreshTimeoutMs);
+      vi.advanceTimersByTime(siteContentRecordCacheFlightTimeoutMs);
       expect(refreshSignal?.aborted).toBe(true);
       expect((refreshSignal?.reason as DOMException).name).toBe("TimeoutError");
     } finally {
@@ -473,7 +473,12 @@ describe("readSiteContentRecordsCached", () => {
     await expect(survivor).resolves.toMatchObject({ rows: rows("current") });
   });
 
-  it("cancels the underlying query when its last waiter aborts", async () => {
+  // THE 2026-10 LIVE DEFECT. This case used to assert the opposite: that the query was cancelled
+  // when its last waiter left. Search's waiter is the 1200 ms seed-fallback budget, and from
+  // Railway the service and medication reads take longer than that, so the waiter always left
+  // first, the query was always cancelled, nothing was ever stored, and both domains served seeds
+  // until the process restarted (live domain monitor: 25 of 29 runs failing).
+  it("lets the query finish and fill the cache when its last waiter gives up", async () => {
     const time = clock();
     const gate = deferred<SiteContentRecordRows>();
     let readSignal: AbortSignal | undefined;
@@ -484,40 +489,119 @@ describe("readSiteContentRecordsCached", () => {
 
     const caller = new AbortController();
     const pending = readSiteContentRecordsCached({
-      kind: "form",
+      kind: "service",
       slug: null,
+      projection: "render",
       signal: caller.signal,
       read,
       now: time.now,
     });
 
-    caller.abort();
-    await expect(pending).rejects.toThrow();
-    expect(readSignal?.aborted).toBe(true);
+    caller.abort(new DOMException("Canonical service read exceeded 1200ms.", "TimeoutError"));
+    await expect(pending).rejects.toThrow(/exceeded 1200ms/);
+    expect(readSignal?.aborted).toBe(false);
+
+    // The read answers after the caller has gone. The next reader is served from cache.
+    gate.resolve(rows("current", 2));
+    await gate.promise;
+    await Promise.resolve();
+    const next = await readSiteContentRecordsCached({
+      kind: "service",
+      slug: null,
+      projection: "render",
+      read,
+      now: time.now,
+    });
+    expect(next).toMatchObject({ age: "fresh", rows: rows("current", 2) });
+    expect(read).toHaveBeenCalledTimes(1);
   });
 
-  it("starts a fresh flight rather than joining one that was already cancelled", async () => {
+  it("lets a later caller join a flight every earlier caller abandoned, rather than start another", async () => {
     const time = clock();
-    const first = deferred<SiteContentRecordRows>();
-    const second = deferred<SiteContentRecordRows>();
-    const read = vi.fn<(signal?: AbortSignal) => Promise<SiteContentRecordRows>>();
-    read.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    const gate = deferred<SiteContentRecordRows>();
+    const read = vi.fn(() => gate.promise);
 
     const caller = new AbortController();
-    const cancelled = readSiteContentRecordsCached({
-      kind: "form",
+    const abandoned = readSiteContentRecordsCached({
+      kind: "medication",
       slug: null,
       signal: caller.signal,
       read,
       now: time.now,
     });
     caller.abort();
-    await expect(cancelled).rejects.toThrow();
+    await expect(abandoned).rejects.toThrow();
 
-    const healthy = readSiteContentRecordsCached({ kind: "form", slug: null, read, now: time.now });
-    second.resolve(rows("current"));
-    await expect(healthy).resolves.toMatchObject({ age: "miss" });
-    expect(read).toHaveBeenCalledTimes(2);
+    // The cold retry in `catalogue-seed-fallback` arrives here: it should wait on the query that is
+    // already most of the way through, not start a second cold one.
+    const retry = readSiteContentRecordsCached({ kind: "medication", slug: null, read, now: time.now });
+    gate.resolve(rows("current"));
+    await expect(retry).resolves.toMatchObject({ age: "miss", rows: rows("current") });
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  // The bound that replaces cancellation. A flight that every caller has left must still die.
+  it("still cuts an abandoned flight off at its deadline, stores nothing, and starts afresh after", async () => {
+    vi.useFakeTimers();
+    try {
+      const time = clock();
+      const hung = deferred<SiteContentRecordRows>();
+      let firstSignal: AbortSignal | undefined;
+      const read = vi
+        .fn<(signal?: AbortSignal) => Promise<SiteContentRecordRows>>()
+        .mockImplementationOnce((signal) => {
+          firstSignal = signal;
+          // Honours its signal, as the Supabase client does.
+          signal?.addEventListener("abort", () => hung.reject(signal.reason), { once: true });
+          return hung.promise;
+        })
+        .mockResolvedValueOnce(rows("current"));
+
+      const caller = new AbortController();
+      const abandoned = readSiteContentRecordsCached({
+        kind: "form",
+        slug: null,
+        signal: caller.signal,
+        read,
+        now: time.now,
+      });
+      caller.abort();
+      await expect(abandoned).rejects.toThrow();
+      expect(firstSignal?.aborted).toBe(false);
+
+      await vi.advanceTimersByTimeAsync(siteContentRecordCacheFlightTimeoutMs);
+      expect(firstSignal?.aborted).toBe(true);
+      expect((firstSignal?.reason as DOMException).name).toBe("TimeoutError");
+
+      const healthy = readSiteContentRecordsCached({ kind: "form", slug: null, read, now: time.now });
+      await expect(healthy).resolves.toMatchObject({ age: "miss" });
+      expect(read).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not store rows from a read that ignored its signal and answered after the deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      const time = clock();
+      const late = deferred<SiteContentRecordRows>();
+      const read = vi
+        .fn<(signal?: AbortSignal) => Promise<SiteContentRecordRows>>()
+        .mockReturnValueOnce(late.promise)
+        .mockResolvedValueOnce(rows("current", 4));
+
+      const first = readSiteContentRecordsCached({ kind: "form", slug: null, read, now: time.now });
+      const firstOutcome = expect(first).rejects.toThrow(/timed out/);
+      await vi.advanceTimersByTimeAsync(siteContentRecordCacheFlightTimeoutMs);
+      late.resolve(rows("current", 9));
+      await firstOutcome;
+
+      const next = await readSiteContentRecordsCached({ kind: "form", slug: null, read, now: time.now });
+      expect(next).toMatchObject({ age: "miss", rows: rows("current", 4) });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("rejects an already-aborted caller without serving the cache", async () => {
