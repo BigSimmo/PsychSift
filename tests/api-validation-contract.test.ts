@@ -39,7 +39,12 @@ function apiRouteFiles(directory: string): string[] {
   });
 }
 
-type QueryError = { message: string };
+type QueryError = {
+  message: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+};
 type QueryResult = { data: unknown; error: QueryError | null; count?: number | null };
 type QueryFilter = { column: string; value: unknown };
 type QueryInFilter = { column: string; values: unknown[] };

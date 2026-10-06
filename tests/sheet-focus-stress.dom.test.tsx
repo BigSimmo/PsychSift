@@ -178,20 +178,24 @@ describe("Sheet focus stress", () => {
   });
 
   it("does not crash or leak when the sheet has no focusable target", async () => {
-    const timeoutSpy = vi.spyOn(window, "setTimeout");
+    vi.useFakeTimers();
     const { unmount } = render(
       <Sheet open onClose={() => {}} ariaLabel="Untitled test sheet" portal>
         <p>Untitled body with no controls</p>
       </Sheet>,
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 60));
+    act(() => {
+      vi.advanceTimersByTime(60);
+    });
     expect(document.querySelector('[role="dialog"]')).not.toBeNull();
 
     unmount();
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    act(() => {
+      vi.advanceTimersByTime(40);
+    });
     expect(markerCount()).toBe(0);
-    timeoutSpy.mockRestore();
+    vi.useRealTimers();
   });
 
   it("releases every document listener it registered", async () => {
@@ -213,14 +217,20 @@ describe("Sheet focus stress", () => {
       return Document.prototype.removeEventListener.apply(this, args);
     });
 
+    vi.useFakeTimers();
     const { unmount } = render(
       <Sheet open onClose={() => {}} title="Listeners" portal>
         <p>Body</p>
       </Sheet>,
     );
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    act(() => {
+      vi.advanceTimersByTime(40);
+    });
     unmount();
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    act(() => {
+      vi.advanceTimersByTime(40);
+    });
+    vi.useRealTimers();
 
     for (const type of ["focusin", "pointerdown", "keydown"]) {
       expect(removed.get(type) ?? 0).toBeGreaterThanOrEqual(added.get(type) ?? 0);

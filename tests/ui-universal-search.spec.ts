@@ -703,19 +703,30 @@ test.describe("universal search smart affordances", () => {
   });
 
   test("clearing a pending Answer request stays on the shared home after the response settles", async ({ page }) => {
+    let unblockRoute!: () => void;
+    const routeBlocked = new Promise<void>((resolve) => {
+      unblockRoute = resolve;
+    });
+    let routeSettled!: () => void;
+    const routeSettledPromise = new Promise<void>((resolve) => {
+      routeSettled = resolve;
+    });
+
     await page.route(/\/api\/answer(?:\/stream)?(?:\?.*)?$/, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      await routeBlocked;
       try {
         await route.fulfill({ json: syntheticAnswer });
       } catch {
         // Aborting the request is the expected clear-path outcome.
+      } finally {
+        routeSettled();
       }
     });
 
     const input = await openComposer(page, "/?mode=answer&focus=1");
     await input.fill("acamprosat");
     await page.getByRole("button", { name: "Generate source-backed answer" }).click();
-    await expect(page.getByTestId("answer-progress")).toBeVisible();
+    await expect(page.getByTestId("answer-progress")).toBeVisible({ timeout: 5000 });
 
     await page
       .getByRole("button", { name: /clear search question|clear search/i })
@@ -723,10 +734,11 @@ test.describe("universal search smart affordances", () => {
       .click();
 
     await expect(page).toHaveURL(/\/\?mode=answer&focus=1$/);
-    await expect(page.getByTestId("shared-home-empty-state")).toBeVisible();
-    await page.waitForTimeout(1_250);
+    await expect(page.getByTestId("shared-home-empty-state")).toBeVisible({ timeout: 5000 });
+    unblockRoute();
+    await routeSettledPromise;
     await expect(page).toHaveURL(/\/\?mode=answer&focus=1$/);
-    await expect(page.getByTestId("shared-home-empty-state")).toBeVisible();
+    await expect(page.getByTestId("shared-home-empty-state")).toBeVisible({ timeout: 5000 });
     await expect(page.locator('[data-dashboard-stage="answer-surface"]')).toHaveCount(0);
   });
 

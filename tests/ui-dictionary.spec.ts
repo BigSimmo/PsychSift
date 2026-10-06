@@ -138,16 +138,12 @@ test("merges search and browse into one catalogue with a measured phone header",
   });
   await expect(page).toHaveURL(/\/dictionary\/search\?view=abbreviations/);
 
-  // The phone chrome stack is position:fixed and mounts collapsed, so every
-  // offset below it is wrong until it settles (#XPY409, docs/testing.md).
-  await page.waitForTimeout(1200);
-
+  const dock = page.locator("form.answer-footer-search-dock");
+  await expect(dock).toBeVisible({ timeout: 5000 });
+  await expect(dock.getByTestId("global-search-input")).toBeVisible({ timeout: 5000 });
+  await expect(page.getByRole("heading", { name: "Dictionary catalogue", level: 1 })).toBeVisible({ timeout: 5000 });
   await expect(page.getByRole("heading", { name: "Clinical terms" })).toHaveCount(0);
   await expect(page.getByText("Clinical dictionary", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Dictionary catalogue", level: 1 })).toHaveCount(1);
-  const dock = page.locator("form.answer-footer-search-dock");
-  await expect(dock).toBeVisible();
-  await expect(dock.getByTestId("global-search-input")).toBeVisible();
   await expect(page.getByTestId("dictionary-catalogue-composer")).toBeHidden();
   await expect(page.locator("#main-content [data-testid='global-search-input']")).toHaveCount(0);
 
