@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-
 import {
   allowRateLimitInMemoryFallbackOnUnavailable,
   consumeSubjectApiRateLimit,
@@ -47,7 +46,10 @@ function publicMedicationDetailPayload(slug: string) {
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
-    const normalizedSlug = normalizeMedicationSlug(slug);
+    const normalizedSlug = normalizeMedicationSlug(slug ?? "");
+    if (!normalizedSlug || !/^[a-z0-9_-]+$/.test(normalizedSlug) || normalizedSlug.length > 120) {
+      return notFoundResponse(normalizedSlug || "unknown");
+    }
 
     if (isDemoMode() || isLocalNoAuthMode()) {
       const payload = publicMedicationDetailPayload(normalizedSlug);

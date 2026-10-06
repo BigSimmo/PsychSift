@@ -1,7 +1,8 @@
 "use client";
 
 import { MessageSquareText, RotateCcw } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { Button } from "@/components/ui/button";
@@ -39,15 +40,38 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
   // wording on screen matches the wording the note will carry.
   const rowNoun = isDsmCriteria ? "criterion" : "key feature";
 
-  const [statuses, setStatuses] = useState<Record<string, DsmCriterionStatus>>({});
-  const [specifiers, setSpecifiers] = useState<string[]>([]);
-  const [specifierText, setSpecifierText] = useState("");
-  const [excluded, setExcluded] = useState<string[]>([]);
-  const [includeCriterionText, setIncludeCriterionText] = useState(true);
+  const initialDraft = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const draft = sessionStorage.getItem(`psychsift_dsm_draft_${record.icdCode}`);
+      return draft ? JSON.parse(draft) : null;
+    } catch {
+      return null;
+    }
+  }, [record.icdCode]);
+
+  const [statuses, setStatuses] = useState<Record<string, DsmCriterionStatus>>(() => initialDraft?.statuses ?? {});
+  const [specifiers, setSpecifiers] = useState<string[]>(() => initialDraft?.specifiers ?? []);
+  const [specifierText, setSpecifierText] = useState(() => initialDraft?.specifierText ?? "");
+  const [excluded, setExcluded] = useState<string[]>(() => initialDraft?.excluded ?? []);
+  const [includeCriterionText, setIncludeCriterionText] = useState(() => initialDraft?.includeCriterionText ?? true);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const copyTimer = useRef<number | null>(null);
 
   const criterionKey = (label: string, index: number) => label || String(index + 1);
+
+  const isDirty =
+    Object.keys(statuses).length > 0 || specifiers.length > 0 || specifierText.trim().length > 0 || excluded.length > 0;
+  useDirtyStateGuard(isDirty);
+
+  useEffect(() => {
+    if (isDirty || !includeCriterionText) {
+      sessionStorage.setItem(
+        `psychsift_dsm_draft_${record.icdCode}`,
+        JSON.stringify({ statuses, specifiers, specifierText, excluded, includeCriterionText }),
+      );
+    }
+  }, [record.icdCode, isDirty, statuses, specifiers, specifierText, excluded, includeCriterionText]);
 
   const note = useMemo(
     () =>

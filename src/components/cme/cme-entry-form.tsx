@@ -25,7 +25,8 @@ import type { CmeDraftPayload } from "@/lib/cme/drafts";
 import { parseCmeHours } from "@/lib/cme/hours-input";
 import { cmeSaveErrorText } from "@/lib/cme/load-state";
 import { cmeEntryCreateSchema } from "@/lib/cme/schemas";
-import { cmeCategories, cmeCategoryLabels, type CmeAllocation, type CmeCategory, type CmeEntry } from "@/lib/cme/types";
+import { cmeCategoryLabels, cmeCategories, type CmeAllocation, type CmeCategory, type CmeEntry } from "@/lib/cme/types";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 
 /**
@@ -380,12 +381,10 @@ export function CmeEntryForm({
   );
   const dirty = JSON.stringify(draft) !== initialFingerprint;
 
+  useDirtyStateGuard(dirty && !saving);
+
   useEffect(() => {
     onDirtyChange?.(dirty);
-    const warn = (event: BeforeUnloadEvent) => {
-      if (!dirty || saving) return;
-      event.preventDefault();
-    };
     const guardLink = (event: MouseEvent) => {
       if (!dirty || saving || !(event.target instanceof Element)) return;
       const link = event.target.closest("a[href]");
@@ -396,10 +395,8 @@ export function CmeEntryForm({
       event.preventDefault();
       event.stopPropagation();
     };
-    window.addEventListener("beforeunload", warn);
     document.addEventListener("click", guardLink, true);
     return () => {
-      window.removeEventListener("beforeunload", warn);
       document.removeEventListener("click", guardLink, true);
     };
   }, [dirty, draftStorageKey, onDirtyChange, saving]);
