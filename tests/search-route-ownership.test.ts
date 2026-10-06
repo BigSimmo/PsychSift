@@ -397,6 +397,11 @@ describe("shared-search route ownership", () => {
     expect(shellSource).not.toContain("isStandaloneModeHome || isDictionaryCatalogue ? modeHomeDesktopComposerSlotId");
     expect(dictionaryCatalogueSource).not.toContain("Clinical terms");
     expect(dictionaryCatalogueSource).not.toContain("Clinical dictionary");
+    // Equal-layout padding and tracking grow at `sm`. `sm:w-72` clips
+    // "Abbreviations" on mobile-webkit (scrollWidth 63 vs clientWidth 56).
+    expect(dictionaryCatalogueSource).toContain(
+      'data-testid="dictionary-scope-toggle" className="w-56 shrink-0 min-[360px]:w-64 sm:w-80"',
+    );
 
     // Desktop page composer slot in GlobalSearchShell reserves height to avoid 0.118 CLS layout jump
     expect(shellSource).toContain("data-composer-reserve={modeHomeComposerReservePendingValue}");
