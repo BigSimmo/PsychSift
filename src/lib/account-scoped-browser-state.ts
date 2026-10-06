@@ -81,6 +81,13 @@ export const PSYCHIATRY_VISITS_STORAGE_KEY = "psychsift:psychiatry:visits-v1";
  */
 export const PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY = "psychsift:psychiatry:mha-clocks-v1";
 /**
+ * localStorage — the Medicines hub's recently opened medicine pages: slug,
+ * catalogue name and time (time used for order only, never shown). Reference
+ * records only, never patient detail; recorded only while "Save recent
+ * searches" is on, cleared with recent searches.
+ */
+export const MEDICINES_RECENT_STORAGE_KEY = "psychsift:medicines:recent-v1";
+/**
  * localStorage — Teaching's term tracker: the doctor's own term dates, assessment due dates, EPA
  * counts, learning goals and "to raise" notes. Kept on this device only; the screen says no patient
  * details. Cleared at sign-out, session expiry and account switch.
@@ -137,6 +144,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, MY_DAY_QUICK_NOTE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_EXAM_PREP_STORAGE_KEY);
   window.dispatchEvent(new Event(ACCOUNT_TRANSITION_EVENT));
