@@ -84,6 +84,16 @@ function AlertsBody({ now }: { now: Date }) {
           reason="One alert instead of many · arrives with the next update"
           testId="alerts-brief-row"
         />
+        <AlertsQuietRow
+          title="Time"
+          reason="Workdays and days off · arrives with the next update"
+          testId="alerts-brief-time-row"
+        />
+        <AlertsQuietRow
+          title="After a night shift"
+          reason="Held until 14:00 · arrives with the next update"
+          testId="alerts-brief-night-row"
+        />
         <AlertsButtonRow
           title="Alerts a day"
           subtitle={`Up to ${reminders.maxAlertsPerDay} calendar ${reminders.maxAlertsPerDay === 1 ? "alert" : "alerts"}`}
