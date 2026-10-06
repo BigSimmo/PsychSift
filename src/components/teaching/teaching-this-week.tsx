@@ -483,7 +483,8 @@ function ThisWeekBody({
 
 function WeekRow({ session, context }: { session: SessionSummaryRead; context: Parameters<typeof weekRow>[1] }) {
   const row = weekRow(session, context);
-  const muted = row.state === "past" || row.state === "done" || row.state === "cancelled";
+  // Attended and cancelled rows recede; a missed one stays readable beside its Watch link, as in the mock-up.
+  const muted = row.state === "done" || row.state === "cancelled";
   return (
     <T5Row
       lead={<T5Time time={row.time} past={muted} />}
@@ -496,7 +497,15 @@ function WeekRow({ session, context }: { session: SessionSummaryRead; context: P
       }
       past={muted}
       href={row.href}
-      end={row.state === "done" ? <T5Done label="Checked in" /> : undefined}
+      end={
+        row.state === "done" ? (
+          <T5Done label="Attended" />
+        ) : row.watch ? (
+          <T5Link href={row.watch} label={`Watch ${row.title}`}>
+            Watch
+          </T5Link>
+        ) : undefined
+      }
     />
   );
 }

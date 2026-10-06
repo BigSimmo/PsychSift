@@ -202,6 +202,9 @@ describe("My record", () => {
     );
     // Weeks before the first check-in (16 September) are not gaps.
     expect(chart).toHaveTextContent("None in the week of 21 September. This week so far: 0.");
+    // Every check-in stays folded under the supervisor summary until asked for, as the mock-up ends there.
+    expect(screen.queryByRole("region", { name: "September 2026" })).toBeNull();
+    fireEvent.click(within(screen.getByTestId("teaching-record-ledger")).getByRole("button", { name: "Show" }));
     // jest-dom folds a real non-breaking space to a plain one, so read the raw text (U1 report).
     expect(screen.getByRole("region", { name: "September 2026" }).textContent).toContain(`2${NB}h`);
     fireEvent.click(screen.getAllByRole("button", { name: /Registrar teaching/ })[0]);
@@ -320,7 +323,7 @@ describe("Organise", () => {
     expect(await screen.findByText("Organise is for your service's organisers.")).toBeInTheDocument();
   });
 
-  it("offers Import a timetable only to organisers and admins, never in the demo", async () => {
+  it("offers Import a timetable to organisers and admins, and in the preview-only demo", async () => {
     serveOrganise([teamA]);
     const first = render(<TeachingOrganise demoMode={false} />);
     expect(await screen.findByText("Organise is for your service's organisers.")).toBeInTheDocument();
@@ -335,7 +338,7 @@ describe("Organise", () => {
     second.unmount();
     render(<TeachingOrganise demoMode />);
     expect(await screen.findByTestId("teaching-organise-demo")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /^Import a timetable/ })).toBeNull();
+    expect(screen.getByRole("link", { name: /^Import a timetable/ })).toHaveAttribute("href", "/teaching/import");
   });
 
   it("shows Download attendance as busy while the export is read", async () => {
@@ -361,11 +364,9 @@ describe("Organise", () => {
     serveOrganise([organiser]);
     render(<TeachingOrganise demoMode={false} />);
     const risky = await screen.findByTestId(`teaching-row-${OCC}`);
-    expect(risky).toHaveTextContent("Room not confirmed");
+    expect(risky).toHaveTextContent("Today · no room set");
     expect(within(risky).getByRole("button", { name: "Set room" })).toBeInTheDocument();
     expect(screen.getByTestId("teaching-organise-soon")).toHaveTextContent(/Next 48 hours · 1 · 1 to check/);
-    expect(screen.getByText("1 thing to fix")).toBeInTheDocument();
-    expect(screen.getByText("Checked 11:50")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Members/ })).toHaveTextContent(/3\smembers/);
     expect(screen.getByText(/^Series · 0$/)).toBeInTheDocument();
   });

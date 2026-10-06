@@ -11,6 +11,7 @@ import {
   isHttpsLink,
   RESOURCE_KIND_WORDS,
   resourceHref,
+  resourceTypeWords,
   resourceWriteError,
   type AddKind,
 } from "@/components/teaching/resources-model";
@@ -51,6 +52,8 @@ export function ResourceRows({
   sampleMode = false,
   look = "grouped",
   shared,
+  saveToggle = true,
+  leadIcon,
 }: {
   /**
    * Bookmark state shared by every list on one page, so the same resource never shows two states, and a
@@ -64,6 +67,13 @@ export function ResourceRows({
   sampleMode?: boolean;
   /** "t5": plain ruled rows with a grey type icon, for the v5 Resources page, whose section label names the list. */
   look?: "grouped" | "t5";
+  /**
+   * t5 only. False gives the mock-up's plain rows: type icon, title and a chevron, the whole row opening the
+   * resource. Saving then happens on the collection pages, which keep the bookmark.
+   */
+  saveToggle?: boolean;
+  /** t5 only: one lead icon for every row (Saved shows a star) instead of each row's type icon. */
+  leadIcon?: LucideIcon;
   items: readonly ResourceRow[];
   label: string;
   id: string;
@@ -103,7 +113,19 @@ export function ResourceRows({
           {items.map((item) => {
             const isSaved = saved[item.resourceId] ?? item.saved;
             const href = resourceHref(item);
-            const subtitle = meta?.(item) ?? RESOURCE_KIND_WORDS[item.kind];
+            const subtitle = meta?.(item) ?? resourceTypeWords(item);
+            const lead = <T5Icon icon={leadIcon ?? KIND_ICONS[item.kind]} />;
+            if (!saveToggle)
+              return (
+                <T5Row
+                  key={item.resourceId}
+                  title={item.title}
+                  meta={subtitle}
+                  lead={lead}
+                  href={href ?? undefined}
+                  external={Boolean(href) && !item.libraryDocumentId}
+                />
+              );
             const control = (
               <button
                 type="button"
@@ -139,7 +161,7 @@ export function ResourceRows({
                 key={item.resourceId}
                 title={title}
                 meta={subtitle}
-                lead={<T5Icon icon={KIND_ICONS[item.kind]} />}
+                lead={lead}
                 end={<span className="relative">{control}</span>}
               />
             );
@@ -155,7 +177,7 @@ export function ResourceRows({
         {items.map((item) => {
           const isSaved = saved[item.resourceId] ?? item.saved;
           const href = resourceHref(item);
-          const subtitle = meta?.(item) ?? RESOURCE_KIND_WORDS[item.kind];
+          const subtitle = meta?.(item) ?? resourceTypeWords(item);
           const control = onRemove ? (
             <button
               type="button"
@@ -375,7 +397,7 @@ export function SessionMaterials({ detail }: { detail: SessionDetailRead }) {
           )}
           {items.map((item) => {
             const href = resourceHref(item);
-            const subtitle = RESOURCE_KIND_WORDS[item.kind];
+            const subtitle = resourceTypeWords(item);
             if (href && item.libraryDocumentId)
               return <ModeRow key={item.resourceId} title={item.title} subtitle={subtitle} href={href} />;
             if (href)

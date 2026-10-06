@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, CalendarDays, Search } from "lucide-react";
+import { Award, CalendarDays, Search, Star } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -12,12 +12,13 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import {
   examPrepRow,
   filterResources,
-  RESOURCE_KIND_WORDS,
+  resourceTypeWords,
   resourceWriteError,
+  thisWeekMeta,
 } from "@/components/teaching/resources-model";
 import { T5Icon, T5Link, T5List, T5Meta, T5Page, T5Row, T5Section } from "@/components/teaching/t5-kit";
 import { addDays, mondayOf, perthDateKey, shortDayLabel } from "@/components/teaching/teaching-dates";
-import { TeachingCatchUp } from "@/components/teaching/teaching-catch-up";
+import { catchUpSessions, TeachingCatchUp } from "@/components/teaching/teaching-catch-up";
 import { TeachingContextBar } from "@/components/teaching/teaching-modules";
 import { withUnit } from "@/components/teaching/teaching-number";
 import { ResourceRows } from "@/components/teaching/teaching-resource-list";
@@ -33,7 +34,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
 import { teachingPost } from "@/lib/teaching/client";
-import type { CollectionRead, ResourcesForWeek, TeamSummary } from "@/lib/teaching/model";
+import type { CollectionRead, ResourceRow, ResourcesForWeek, TeamSummary } from "@/lib/teaching/model";
 import { sampleExamPrep } from "@/lib/teaching/term-tracker";
 import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
 import {
@@ -42,15 +43,16 @@ import {
   useTeachingSignedOut,
 } from "@/components/teaching/use-teaching-sample";
 
-type WeekItem = ResourcesForWeek["forThisWeek"][number];
-
 const itemCount = (n: number) => withUnit(n, n === 1 ? "item" : "items");
 
 /**
- * Resources (spec §5a): this week's materials first, after the catch-up list of ended sessions with no check-in recorded, then
- * the collections as tiles (organiser-made, Recordings and Saved), then the way to CPD's learning
- * directory, which lives there and is never copied here. The filter box looks only through what is
- * already on screen: no request, no search, no AI, no mic (standard §13).
+ * Resources (spec §5a), in the approved v5 mock-up's order: the filter, this week's materials, My exam prep,
+ * recordings, collections, saved items, then the way to CPD's learning directory, which lives there and is
+ * never copied here. This week's recordings sit under Recordings, not twice. The catch-up list of ended
+ * sessions with no check-in recorded (`#catch-up`, which Today links to) follows Saved, and only when it has
+ * something in it; the made-up sample marks its missed recording in Recordings instead, as the mock-up does.
+ * The filter box looks only through what is already on screen: no request, no search, no AI, no mic
+ * (standard §13).
  */
 export function TeachingResources({
   demoMode: serverDemoMode,
@@ -79,13 +81,13 @@ export function TeachingResources({
   const [team, setTeam] = useState<string>(ALL_TEAMS);
   const [filter, setFilter] = useState("");
   const [creating, setCreating] = useState(false);
-  const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({});
   const today = now ? perthDateKey(now) : null;
   const examSample = useMemo(() => (demoMode && today ? sampleExamPrep(today) : null), [demoMode, today]);
   const examPrep = useExamPrepStore(examSample);
   const extras = useResourceExtras(signedOut, Boolean(monday));
   // Master plan R19: organisers only. `collection.save` refuses an admin who does not organise.
   const organised = teams.filter((candidate) => !sampleData && candidate.role === "organiser");
+  const sample = demoMode || Boolean(sampleData);
 
   let body;
   if (read.status === "signed-out") body = <TeachingSignInNotice />;
@@ -94,22 +96,36 @@ export function TeachingResources({
   else if (!read.data) body = <ModeModuleSkeleton rows={4} twoLine eyebrow />;
   else {
     const data = read.data;
-    const bookmarks = {
-      saved: savedOverrides,
-      setSaved: setSavedOverrides,
-      // Re-read the lists and counts so Saved shows what was just saved.
-      onWritten: () => {
-        extras.retry();
-        read.retry();
-      },
-    };
     const inTeam = (serviceId: string) => team === ALL_TEAMS || serviceId === team;
     const needle = filter.trim().toLowerCase();
     const thisWeek = filterResources(
-      data.forThisWeek.filter((item) => inTeam(item.serviceId)),
+      data.forThisWeek.filter((item) => inTeam(item.serviceId) && item.kind !== "recording"),
       "all",
       filter,
     );
+    const sessions = new Map((week.week?.sessions ?? []).map((session) => [session.occurrenceId, session]));
+    const sessionOf = (item: ResourceRow) => (item.occurrenceId ? sessions.get(item.occurrenceId) : undefined);
+    const catchUpIds = new Set(data.forThisWeek.filter((item) => item.catchUp).map((item) => item.resourceId));
+    const weekMeta = (item: ResourceRow) => {
+      const session = sessionOf(item);
+      return today
+        ? thisWeekMeta(
+            { ...item, catchUp: catchUpIds.has(item.resourceId) },
+            session ? { dateKey: perthDateKey(session.startsAt), isPresenter: session.isPresenter } : null,
+            today,
+          )
+        : resourceTypeWords(item);
+    };
+    // A recording of this week's session shows that session's day; any other shows the day it was added.
+    const recordingMeta = (item: ResourceRow) => {
+      const session = sessionOf(item);
+      return [
+        session ? shortDayLabel(perthDateKey(session.startsAt)) : `Added ${shortDayLabel(perthDateKey(item.addedAt))}`,
+        catchUpIds.has(item.resourceId) ? "no check-in recorded" : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    };
     const collections = [
       ...data.collections
         .filter((collection) => inTeam(collection.serviceId))
@@ -127,6 +143,13 @@ export function TeachingResources({
           attendance: week.week.attendance,
         }
       : null;
+    const catchUpShown =
+      !sample &&
+      !needle &&
+      week.status === "ready" &&
+      catchUpWeek !== null &&
+      now !== null &&
+      catchUpSessions(catchUpWeek, data.forThisWeek, now).length > 0;
     const recordings = filterResources(
       (extras.recordings ?? []).filter((item) => inTeam(item.serviceId)),
       "all",
@@ -142,8 +165,7 @@ export function TeachingResources({
     const exam = today ? examPrepRow(examPrep.state, today) : null;
     body = (
       <>
-        <TeachingCatchUp status={week.status} week={catchUpWeek} resources={data.forThisWeek} now={now} />
-        <label className="mt-1 flex min-h-12 items-center gap-2 rounded-md bg-[color:var(--surface-inset)] px-3 text-[color:var(--text-muted)] focus-within:outline-2 focus-within:outline-[color:var(--focus)]">
+        <label className="mt-3 flex min-h-12 items-center gap-2 rounded-md bg-[color:var(--surface-inset)] px-3 text-[color:var(--text-muted)] focus-within:outline-2 focus-within:outline-[color:var(--focus)]">
           <Search aria-hidden="true" className="size-icon-md shrink-0" />
           <span className="sr-only">Filter resources</span>
           <input
@@ -163,12 +185,10 @@ export function TeachingResources({
           {thisWeek.length > 0 ? (
             <ResourceRows
               look="t5"
-              shared={bookmarks}
-              sampleMode={Boolean(sampleData)}
               items={thisWeek}
               label="For this week"
               id="teaching-resources-week"
-              meta={(item) => `${RESOURCE_KIND_WORDS[item.kind]}${(item as WeekItem).catchUp ? " · catch-up" : ""}`}
+              meta={weekMeta}
             />
           ) : (
             <T5Meta className="border-t border-[color:var(--border)] py-2.5">
@@ -192,6 +212,8 @@ export function TeachingResources({
         <T5Section
           label={`Recordings · ${allTeams ? data.recordingsCount : recordings.length}`}
           right={<T5Link href="/teaching/resources/recordings">All</T5Link>}
+          // The sample has no catch-up list, so Today's catch-up link lands on its missed recording here.
+          id={sample ? "catch-up" : undefined}
         >
           {extras.recordings === null ? (
             <T5Meta className="border-t border-[color:var(--border)] py-2.5">
@@ -200,12 +222,11 @@ export function TeachingResources({
           ) : recordings.length > 0 ? (
             <ResourceRows
               look="t5"
-              shared={bookmarks}
-              sampleMode={Boolean(sampleData)}
+              saveToggle={false}
               items={recordings.slice(0, 4)}
               label="Recordings"
               id="teaching-resources-recordings"
-              meta={(item) => `Recording · added ${shortDayLabel(perthDateKey(item.addedAt))}`}
+              meta={recordingMeta}
             />
           ) : (
             <T5Meta className="border-t border-[color:var(--border)] py-2.5">
@@ -216,7 +237,9 @@ export function TeachingResources({
         {collections.length > 0 || organised.length > 0 ? (
           <T5Section
             label={`Collections · ${collections.length}`}
-            right={organised.length > 0 ? <T5Link onClick={() => setCreating(true)}>New collection</T5Link> : null}
+            right={
+              organised.length > 0 || sample ? <T5Link onClick={() => setCreating(true)}>New collection</T5Link> : null
+            }
           >
             {collections.length > 0 ? (
               <ul
@@ -256,18 +279,23 @@ export function TeachingResources({
           ) : savedItems.length > 0 ? (
             <ResourceRows
               look="t5"
-              shared={bookmarks}
-              sampleMode={Boolean(sampleData)}
+              saveToggle={false}
+              leadIcon={Star}
               items={savedItems.slice(0, 4)}
               label="Saved"
               id="teaching-resources-saved"
             />
           ) : (
             <T5Meta className="border-t border-[color:var(--border)] py-2.5">
-              {needle ? "No saved items match." : "Nothing saved yet. Tap the bookmark on any resource."}
+              {needle ? "No saved items match." : "Nothing saved yet. Tap the bookmark on any item in a collection."}
             </T5Meta>
           )}
         </T5Section>
+        {catchUpShown ? (
+          <div className="mt-5">
+            <TeachingCatchUp status={week.status} week={catchUpWeek} resources={data.forThisWeek} now={now} />
+          </div>
+        ) : null}
         <T5List ruled className="mt-4.5">
           <T5Row
             title="WA courses and modules are in CPD"
@@ -276,7 +304,13 @@ export function TeachingResources({
             testId="teaching-resources-learning"
           />
         </T5List>
-        {creating ? <NewCollectionSheet services={organised} onClose={() => setCreating(false)} /> : null}
+        {creating ? (
+          <NewCollectionSheet
+            services={sample ? teams : organised}
+            sampleMode={sample}
+            onClose={() => setCreating(false)}
+          />
+        ) : null}
       </>
     );
   }
@@ -320,23 +354,31 @@ function useResourceExtras(signedOut: boolean, ready: boolean) {
     recordings: built?.recordings ?? recordings.data?.items ?? null,
     saved: built?.saved ?? saved.data?.items ?? null,
     failed: !built && (failed(recordings.status) || failed(saved.status)),
-    retry: () => {
-      recordings.retry();
-      saved.retry();
-    },
   };
 }
 
-function NewCollectionSheet({ services, onClose }: { services: readonly TeamSummary[]; onClose: () => void }) {
+function NewCollectionSheet({
+  services,
+  sampleMode,
+  onClose,
+}: {
+  services: readonly TeamSummary[];
+  sampleMode: boolean;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const ready = name.trim().length > 0 && Boolean(serviceId);
+  const ready = name.trim().length > 0 && (Boolean(serviceId) || sampleMode);
 
   async function create() {
     if (!ready || busy) return;
+    if (sampleMode) {
+      setError("The sample doesn’t save changes.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

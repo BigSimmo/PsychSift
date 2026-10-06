@@ -11,7 +11,7 @@ import { TeachingImport } from "@/components/teaching/teaching-import";
 import { TeachingSupervision } from "@/components/teaching/teaching-supervision";
 import { TeachingTeach } from "@/components/teaching/teaching-teach";
 import { useDelayedPost } from "@/components/teaching/use-delayed-post";
-import { demoFeedbackOpen, demoSupervision, demoTeach } from "@/lib/teaching/depth-demo";
+import { demoFeedbackOpen, demoSupervision } from "@/lib/teaching/depth-demo";
 import { IMPORT_TEMPLATE_HEADERS, readinessLabels } from "@/lib/teaching/depth-model";
 import { entry, pairingView, NOTE } from "./helpers/teaching-depth-fixtures";
 
@@ -26,6 +26,23 @@ const row = {
   endsAt: "2026-09-20T05:00:00Z",
   hours: 1,
 };
+/** One talk still to prepare: room and slides ticked, the patient-details check open. */
+const teachFixture = () => ({
+  upcoming: [
+    {
+      occurrenceId: "33333333-3333-4333-8333-333333333333",
+      serviceId,
+      title: "Demo case-based discussion",
+      startsAt: "2026-10-03T00:00:00.000Z",
+      endsAt: "2026-10-03T00:45:00.000Z",
+      venue: "Demo tutorial room",
+      status: "scheduled",
+      items: ["room", "slides_link"],
+      deidConfirmedAt: null,
+    },
+  ],
+  taught: [],
+});
 const reply = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
 const posts = () => vi.mocked(fetch).mock.calls.filter(([, options]) => options?.method === "POST");
@@ -186,7 +203,7 @@ describe("Teaching depth journeys", () => {
 
   it("does not mark presenter readiness saved when the request fails", async () => {
     vi.mocked(fetch).mockImplementation(async (_url, options) =>
-      options?.method === "POST" ? reply({}, 503) : reply(demoTeach("2026-09-27")),
+      options?.method === "POST" ? reply({}, 503) : reply(teachFixture()),
     );
     render(<TeachingTeach demoMode={false} />);
     const aims = await screen.findByRole("checkbox", { name: "Aims written" });
@@ -232,9 +249,10 @@ describe("Teaching depth journeys", () => {
 
   it("keeps the synthetic depth demo away from all API writes", async () => {
     render(<TeachingFeedback demoMode />);
-    fireEvent.click(await screen.findByRole("radio", { name: "5" }));
-    fireEvent.click(screen.getByRole("radio", { name: "About right" }));
-    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    // The demo owes feedback on two sessions, as My record says; answer the first.
+    fireEvent.click((await screen.findAllByRole("radio", { name: "5" }))[0]);
+    fireEvent.click(screen.getAllByRole("radio", { name: "About right" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Send feedback" })[0]);
     await waitFor(() => expect(screen.getByText("Demo answer recorded on this page.")).toBeInTheDocument());
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -265,7 +283,7 @@ describe("Teaching depth journeys", () => {
     vi.mocked(fetch).mockImplementation(async (_url, options) => {
       if (options?.method === "POST") return new Promise<Response>((resolve) => (finishPost = resolve));
       // The refetch after the save never answers, so the page must keep its data on screen.
-      return ++reads === 1 ? reply(demoTeach("2026-09-27")) : new Promise<Response>(() => {});
+      return ++reads === 1 ? reply(teachFixture()) : new Promise<Response>(() => {});
     });
     const view = render(<TeachingTeach demoMode={false} />);
     const aims = await screen.findByRole("checkbox", { name: "Aims written" });
@@ -283,7 +301,7 @@ describe("Teaching depth journeys", () => {
     const finishPosts: Array<(response: Response) => void> = [];
     vi.mocked(fetch).mockImplementation(async (_url, options) => {
       if (options?.method === "POST") return new Promise<Response>((resolve) => finishPosts.push(resolve));
-      return reply(demoTeach("2026-09-27"));
+      return reply(teachFixture());
     });
     render(<TeachingTeach demoMode={false} />);
     const aims = await screen.findByRole("checkbox", { name: "Aims written" });
@@ -310,8 +328,12 @@ describe("Teaching depth journeys", () => {
   });
 
   it("moves focus to the confirmation once de-identification is confirmed", async () => {
-    vi.mocked(fetch).mockImplementation(async () => reply(demoTeach("2026-09-27")));
-    render(<TeachingTeach demoMode />);
+    vi.mocked(fetch).mockImplementation(async (_url, options) =>
+      options?.method === "POST"
+        ? reply({ items: ["room", "slides_link"], deidConfirmedAt: "2026-09-27T01:00:00.000Z" })
+        : reply(teachFixture()),
+    );
+    render(<TeachingTeach demoMode={false} />);
     const confirm = await screen.findByRole("button", { name: "I have checked that my material is de-identified" });
     confirm.focus();
     fireEvent.click(confirm);
@@ -320,7 +342,7 @@ describe("Teaching depth journeys", () => {
 
   it("rolls a failed readiness tick back and says so", async () => {
     vi.mocked(fetch).mockImplementation(async (_url, options) =>
-      options?.method === "POST" ? reply({}, 503) : reply(demoTeach("2026-09-27")),
+      options?.method === "POST" ? reply({}, 503) : reply(teachFixture()),
     );
     render(<TeachingTeach demoMode={false} />);
     const aims = await screen.findByRole("checkbox", { name: "Aims written" });

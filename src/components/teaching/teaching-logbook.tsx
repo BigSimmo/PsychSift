@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, FileText, GraduationCap, Users } from "lucide-react";
+import { CalendarDays, FileText, GraduationCap, ListChecks, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -42,8 +42,8 @@ import { useTeachingResource } from "@/components/teaching/use-teaching-resource
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
-import { demoTeachingLogbook } from "@/lib/teaching/demo-programme";
-import { demoCpdReview, demoFeedbackOpen } from "@/lib/teaching/depth-demo";
+import { demoTeachingFeedbackOwed, demoTeachingLogbook } from "@/lib/teaching/demo-programme";
+import { demoCpdReview } from "@/lib/teaching/depth-demo";
 import {
   CPD_REVIEW_MAX_ROWS,
   cpdReviewBodySchema,
@@ -277,8 +277,8 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
     [demoMode, now, resource.data],
   );
   const owed = useMemo(
-    () => (demoMode ? (today ? demoFeedbackOpen(today) : null) : (feedback.data?.sessions ?? null)),
-    [demoMode, today, feedback.data],
+    () => (demoMode ? (now ? demoTeachingFeedbackOwed(now) : null) : (feedback.data?.sessions ?? null)),
+    [demoMode, now, feedback.data],
   );
   const reviewRows = useMemo(
     () => (demoMode ? (now ? demoCpdReview(now) : null) : (review.data?.rows ?? null)),
@@ -288,6 +288,7 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
   const { state: termState } = useTermTrackerStore(sample);
   const [logging, setLogging] = useState<LogbookRow | null>(null);
   const [demoNote, setDemoNote] = useState(false);
+  const [ledgerOpen, setLedgerOpen] = useState(false);
   // The demo's rows are made up, so nothing is ever sent to CPD from them.
   const onLog = demoMode ? () => setDemoNote(true) : setLogging;
 
@@ -368,11 +369,7 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
           />
         )}
 
-        <T5Section
-          label="For your supervisor"
-          right={<T5Meta>From your check-ins</T5Meta>}
-          testId="teaching-record-supervisor"
-        >
+        <T5Section label="For your supervisor" right={<T5Meta>Counts only</T5Meta>} testId="teaching-record-supervisor">
           <T5List ruled>
             <T5Row
               title={summary.title}
@@ -398,18 +395,35 @@ function TeachingLogbookContent({ demoMode }: { demoMode: boolean }) {
           </T5List>
         </T5Section>
 
-        <T5Section label="Every check-in" testId="teaching-record-ledger">
-          {rows.length === 0 ? (
+        {rows.length === 0 ? (
+          <T5Section label="Every check-in" testId="teaching-record-ledger">
             <T5Meta className="border-t border-[color:var(--border)] py-2.5">
               No check-ins yet. Sessions you check in to show here.
             </T5Meta>
-          ) : (
-            <>
-              {demoNote ? <T5Note className="mb-2">The demo doesn&apos;t save to CPD.</T5Note> : null}
-              <LogbookLedger groups={logbookGroups(rows, onLog)} />
-            </>
-          )}
-        </T5Section>
+          </T5Section>
+        ) : (
+          // The mock-up ends at the supervisor summary, so every check-in stays folded until asked for.
+          <div className="mt-4.5" data-testid="teaching-record-ledger">
+            <T5List ruled>
+              <T5Row
+                title="Every check-in"
+                meta={`${withUnit(rows.length, rows.length === 1 ? "session" : "sessions")}, by month`}
+                lead={<T5Icon icon={ListChecks} />}
+                end={
+                  <T5Link onClick={() => setLedgerOpen((open) => !open)} expanded={ledgerOpen}>
+                    {ledgerOpen ? "Hide" : "Show"}
+                  </T5Link>
+                }
+              />
+            </T5List>
+            {ledgerOpen ? (
+              <div className="mt-2">
+                {demoNote ? <T5Note className="mb-2">The demo doesn&apos;t save to CPD.</T5Note> : null}
+                <LogbookLedger groups={logbookGroups(rows, onLog)} />
+              </div>
+            ) : null}
+          </div>
+        )}
         {logging ? (
           <LogToCpdSheet
             open

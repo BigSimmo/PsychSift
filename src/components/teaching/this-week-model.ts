@@ -102,7 +102,12 @@ export type ThisWeekRow = {
   state: RowState;
   fromOnCall: boolean;
   checkedIn: string | null;
+  /** A missed session of your own service: where its recording or slides would be (Resources' catch-up). */
+  watch: string | null;
 };
+
+/** Resources' first section lists the week's ended sessions with their recordings and slides. */
+export const CATCH_UP_HREF = "/teaching/resources#catch-up";
 
 export function weekRow(
   session: SessionSummaryRead,
@@ -135,8 +140,8 @@ export function weekRow(
     !cancelled && session.venue && session.hasJoinLink && "also online",
     !cancelled && session.isPresenter && "you present",
     context.showTeam && !fromOnCall && teamLabel(session, context.teams),
-    state === "done" && "checked in",
-    state === "past" && !fromOnCall && "no check-in recorded",
+    state === "done" && "attended",
+    state === "past" && !fromOnCall && "missed",
   ].filter((p): p is string => Boolean(p));
   return {
     id: session.occurrenceId,
@@ -147,6 +152,8 @@ export function weekRow(
     state,
     fromOnCall,
     checkedIn: mark ? mark.method : null,
+    // An On Call item has no Teaching page and no recording here, so nothing to watch.
+    watch: state === "past" && !fromOnCall ? CATCH_UP_HREF : null,
   };
 }
 

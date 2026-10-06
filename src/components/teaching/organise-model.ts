@@ -53,6 +53,68 @@ export const AUDIENCE_LABELS: Record<SeriesAudience, string> = {
   all_doctors: "All doctors",
 };
 
+/** Mock-up v5: a series row reads "Weekly · Tue 12:30 · everyone". */
+const REPEAT_SHORT: Record<string, string> = {
+  once: "Once",
+  weekly: "Weekly",
+  fortnightly: "Fortnightly",
+  monthly_nth: "Monthly",
+};
+
+export function seriesMeta(series: SeriesRow): string {
+  const weekday = /^\d{4}-\d{2}-\d{2}$/.test(series.firstDate) ? dayParts(series.firstDate).weekday : null;
+  const audience = series.audience
+    ? series.audience === "all_doctors"
+      ? "everyone"
+      : AUDIENCE_LABELS[series.audience].toLowerCase()
+    : null;
+  return [REPEAT_SHORT[series.repeat] ?? null, [weekday, series.startTime].filter(Boolean).join(" "), audience]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** One change already posted to members: a session moved or cancelled. */
+export type SentChange = {
+  id: string;
+  title: string;
+  /** Perth date key of the changed session. */
+  date: string;
+  status: "moved" | "cancelled";
+  venue: string | null;
+  /** Only known when the change was read with its reason; the week read does not carry one. */
+  reason: string | null;
+};
+
+/** The changes the week read shows: this service's own sessions that were moved or cancelled. */
+export function sentChanges(sessions: readonly SessionSummary[]): SentChange[] {
+  return sessions
+    .filter((s) => s.source === "teaching" && (s.status === "moved" || s.status === "cancelled"))
+    .map((s) => ({
+      id: s.occurrenceId,
+      title: s.title,
+      date: perthDateKey(s.startsAt),
+      status: s.status === "cancelled" ? ("cancelled" as const) : ("moved" as const),
+      venue: s.venue,
+      reason: null,
+    }));
+}
+
+/** "Clinical skills workshop, Thu 12 Nov" over "Moved to Simulation suite B · room clash". */
+export function sentChangeLines(change: SentChange): { title: string; meta: string } {
+  const { weekday, day, month } = dayParts(change.date);
+  const what = change.status === "cancelled" ? "Cancelled" : change.venue ? `Moved to ${change.venue}` : "Moved";
+  return {
+    title: `${change.title}, ${weekday} ${day} ${month}`,
+    meta: [what, change.reason].filter(Boolean).join(" · "),
+  };
+}
+
+/** The 48-hour list names a risk in a short lower-case phrase after the day: "Today · no room set". */
+export function riskPhrase(risk: Risk): string {
+  if (risk.rule === "room") return "no room set";
+  return risk.text.charAt(0).toLowerCase() + risk.text.slice(1);
+}
+
 const overlaps = (a: SessionSummary, b: SessionSummary) =>
   Date.parse(a.startsAt) < Date.parse(b.endsAt) && Date.parse(b.startsAt) < Date.parse(a.endsAt);
 

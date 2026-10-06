@@ -23,16 +23,19 @@ import {
   T5Row,
   T5Section,
 } from "@/components/teaching/t5-kit";
-import { perthDateKey } from "@/components/teaching/teaching-dates";
+import { mondayOf, perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { TeachingUndoBar } from "@/components/teaching/teaching-row";
 import { NoPatientDetailsMark, TermAddItem, TermRemoveButton } from "@/components/teaching/teaching-term-kit";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
+import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
+import { useTeachingSignedOut } from "@/components/teaching/use-teaching-sample";
 import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
 import { Button } from "@/components/ui/button";
 import { ChoiceChip } from "@/components/ui/chip";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
+import type { ResourcesForWeek } from "@/lib/teaching/model";
 import {
   addDays,
   dayMonth,
@@ -436,7 +439,7 @@ function StudyGroup({ state, today, update }: { state: ExamPrepState; today: str
   return (
     <T5Section
       label="Study group"
-      right={!editing ? <T5Link onClick={() => setEditing(true)}>{group ? "Change" : "Add"}</T5Link> : null}
+      right={!editing && !group ? <T5Link onClick={() => setEditing(true)}>Add</T5Link> : null}
       testId="teaching-exam-group"
     >
       {editing ? (
@@ -456,6 +459,11 @@ function StudyGroup({ state, today, update }: { state: ExamPrepState; today: str
                 .filter(Boolean)
                 .join(" · ")}
               lead={<T5Icon icon={Users} />}
+              end={
+                <T5Link onClick={() => setEditing(true)} label={`Change study group: ${group.title}`}>
+                  Change
+                </T5Link>
+              }
             />
           ) : (
             <li className="py-2.5">
@@ -468,6 +476,26 @@ function StudyGroup({ state, today, update }: { state: ExamPrepState; today: str
   );
 }
 
+/* ---------- the organisers' exam prep collection ---------- */
+
+/**
+ * The organisers' own exam prep collection, when the doctor's service has one: "Exam prep collection · 9 items
+ * from organisers". It reads the same week summary Resources reads; with none, or when that read fails, the row
+ * falls back to Resources itself. This page's own records never leave the device.
+ */
+function useExamCollection(today: string | null) {
+  const signedOut = useTeachingSignedOut();
+  const read = useTeachingResource<ResourcesForWeek>(
+    today && !signedOut ? `/api/teaching/resources?action=resources.read&weekStart=${mondayOf(today)}` : null,
+  );
+  const collections = read.data?.collections ?? [];
+  return (
+    collections.find((collection) => /\bexam prep\b/i.test(collection.name)) ??
+    collections.find((collection) => /\bexam\b/i.test(collection.name)) ??
+    null
+  );
+}
+
 /* ---------- the page ---------- */
 
 function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
@@ -477,6 +505,7 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
   const store = useExamPrepStore(sample);
   const [editingExam, setEditingExam] = useState(false);
   const state = store.state;
+  const examCollection = useExamCollection(today);
 
   let body;
   if (!today || !state || (demoMode && !sample)) body = <ModeModuleSkeleton rows={3} />;
@@ -512,12 +541,22 @@ function TeachingExamPrepContent({ demoMode }: { demoMode: boolean }) {
               lead={<T5Icon icon={CalendarDays} />}
               href="/roster/requests"
             />
-            <T5Row
-              title="Teaching resources"
-              meta="Collections, recordings and saved items"
-              lead={<T5Icon icon={Layers} />}
-              href="/teaching/resources"
-            />
+            {examCollection ? (
+              <T5Row
+                title={`${examCollection.name} collection`}
+                meta={`${withUnit(examCollection.count, examCollection.count === 1 ? "item" : "items")} from organisers`}
+                lead={<T5Icon icon={Layers} />}
+                href={`/teaching/resources/${examCollection.collectionId}`}
+                testId="teaching-exam-collection"
+              />
+            ) : (
+              <T5Row
+                title="Teaching resources"
+                meta="Collections, recordings and saved items"
+                lead={<T5Icon icon={Layers} />}
+                href="/teaching/resources"
+              />
+            )}
           </T5List>
         </nav>
         <T5Note icon="shield" className="mt-3">

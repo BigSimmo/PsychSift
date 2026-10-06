@@ -4,6 +4,10 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
+vi.mock("next/navigation", async (original) => ({
+  ...(await original<typeof import("next/navigation")>()),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
+}));
 
 import {
   filterResources,
@@ -22,7 +26,6 @@ import {
   NOW,
   OCC,
   TEAM_A,
-  apiError,
   byId,
   detail,
   fetchCalls,
@@ -103,11 +106,23 @@ describe("resources-model", () => {
 });
 
 describe("Resources", () => {
-  it("shows this week's materials with catch-up, recordings, collections, saved, and the way to CPD's learning directory", async () => {
+  it("shows this week's materials, recordings, collections, saved, and the way to CPD's learning directory", async () => {
+    const slides = item({
+      resourceId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      title: "Registrar teaching slides",
+      kind: "slides",
+      url: "https://example.org/slides.pdf",
+      collectionId: null,
+      sectionId: null,
+      occurrenceId: OCC,
+    });
     serveFetch((url) => {
       if (url === WEEK_RESOURCES_URL)
         return json(200, {
-          forThisWeek: [{ ...recording, catchUp: true }],
+          forThisWeek: [
+            { ...recording, catchUp: true },
+            { ...slides, catchUp: false },
+          ],
           collections: [{ collectionId: EXAM, serviceId: TEAM_A, name: "Exam prep", count: 12 }],
           recordingsCount: 3,
           savedCount: 1,
@@ -119,18 +134,26 @@ describe("Resources", () => {
     });
     render(<TeachingResources demoMode={false} />);
     const thisWeek = await waitFor(() => byId("teaching-resources-week"));
-    expect(within(thisWeek).getByText("Recording · catch-up")).toBeInTheDocument();
+    // This week's recording is listed once, under Recordings; a .pdf link reads "PDF", with its session's day.
+    expect(within(thisWeek).queryByText("Grand round recording")).toBeNull();
+    await waitFor(() => expect(within(thisWeek).getByText(/^PDF · /)).toBeInTheDocument());
+    expect(within(thisWeek).getByRole("link", { name: /Registrar teaching slides/ })).toHaveAttribute(
+      "href",
+      "https://example.org/slides.pdf",
+    );
+    // Save stays on this week's rows: an item in no collection could not be saved anywhere else.
+    expect(within(thisWeek).getAllByRole("button", { name: /^Save / }).length).toBeGreaterThan(0);
     expect(screen.getByText("For this week · 1")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Exam prep/ })).toHaveAttribute("href", `/teaching/resources/${EXAM}`);
     expect(screen.getByRole("link", { name: /^Exam prep/ }).textContent).toContain(`12${NB}items`);
     expect(screen.getByText("Recordings · 3")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "All" })).toHaveAttribute("href", "/teaching/resources/recordings");
     const recordings = await waitFor(() => byId("teaching-resources-recordings"));
-    expect(within(recordings).getByText("Recording · added Tue 1 Sep")).toBeInTheDocument();
+    expect(within(recordings).getByText(`Added Tue 1 Sep · no check-in recorded`)).toBeInTheDocument();
     const saved = await waitFor(() => byId("teaching-resources-saved"));
-    expect(within(saved).getByRole("button", { name: "Unsave MCQ practice paper" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    expect(within(saved).getByRole("link", { name: /MCQ practice paper/ })).toHaveAttribute(
+      "href",
+      "https://example.org/mcq",
     );
     expect(screen.getByRole("link", { name: /^My exam prep/ })).toHaveAttribute("href", "/teaching/exam-prep");
     expect(screen.getByRole("link", { name: /WA courses and modules are in CPD/ })).toHaveAttribute(
@@ -153,25 +176,28 @@ describe("Resources", () => {
     expect(await screen.findByText("Recordings did not load. Open All to try again.")).toBeInTheDocument();
   });
 
-  it("renders the demo's made-up resources in demo mode, and says the demo doesn't save a bookmark", async () => {
-    const fetchMock = serveFetch((url, body) => {
+  it("renders the demo's made-up resources in demo mode, offers New collection, and saves nothing", async () => {
+    const fetchMock = serveFetch((url) => {
       if (url === WEEK_RESOURCES_URL)
         return json(200, {
-          forThisWeek: [{ ...recording, catchUp: false }],
-          collections: [],
+          forThisWeek: [{ ...item({ collectionId: null, sectionId: null }), catchUp: false }],
+          collections: [{ collectionId: EXAM, serviceId: TEAM_A, name: "Exam prep", count: 1 }],
           recordingsCount: 1,
           savedCount: 0,
         });
-      if (url === "/api/teaching/whats-on" && body?.action === "resource_save.set")
-        return apiError(400, "demo_mode_unavailable");
+      if (url === RECORDINGS_URL) return builtIn([recording]);
+      if (url === SAVED_URL) return builtIn([]);
       return null;
     });
     render(<TeachingResources demoMode />);
-    expect(await screen.findByText("Grand round recording")).toBeInTheDocument();
+    expect(await screen.findByText("MCQ practice paper")).toBeInTheDocument();
     expect(fetchCalls(fetchMock, "/api/teaching?view=week")).toBe(0); // the demo week is made on the device
-    fireEvent.click(screen.getByRole("button", { name: "Save Grand round recording" }));
-    expect(await screen.findByText("The demo doesn't save changes.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save Grand round recording" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByTestId("teaching-catch-up")).toBeNull(); // the sample marks catch-up in Recordings
+    fireEvent.click(screen.getByRole("button", { name: "New collection" }));
+    fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "Reading list" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create collection" }));
+    expect(await screen.findByText("The sample doesn’t save changes.")).toBeInTheDocument();
+    expect(fetchCalls(fetchMock, "/api/teaching/resources/services")).toBe(0);
   });
 
   it("offers New collection to an organiser, never to an admin who does not organise (R19)", async () => {

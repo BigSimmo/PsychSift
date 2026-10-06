@@ -269,13 +269,14 @@ describe("the made-up demo (master plan R8)", () => {
     }
   }
 
-  it("shows the demo service's week plus five sessions two other made-up services open to it", async () => {
+  it("shows the demo service's week plus three sessions two other made-up services open to it", async () => {
     const response = await whatsOnGet(get(`/api/teaching/whats-on?weekStart=${weekStart}`));
     expect(response.status).toBe(200);
     const read = whatsOnReadResultSchema.parse(await response.json());
     expect(read.healthServices).toEqual(["demo"]);
     const open = read.sessions.filter((session) => !session.own);
-    expect(open).toHaveLength(5);
+    // The v5 mock-up: "3 sessions from other services are open to you".
+    expect(open).toHaveLength(3);
     expect(new Set(open.map((session) => session.serviceId))).toEqual(
       new Set([DEMO_OLDER_ADULT_SERVICE_ID, DEMO_YOUTH_SERVICE_ID]),
     );
@@ -309,7 +310,7 @@ describe("the made-up demo (master plan R8)", () => {
     expect(detail.presenterName).toBeNull();
     expect(detail.canShowCode).toBe(false);
     expect(detail.serviceId).toBe(DEMO_OLDER_ADULT_SERVICE_ID);
-    const own = sessionDetailSchema.parse(demoTeachingSessionDetail(demoOccurrenceId(1, "2026-09-30")));
+    const own = sessionDetailSchema.parse(demoTeachingSessionDetail(demoOccurrenceId(23, "2026-09-30")));
     expect(own.visitor).toBe(false);
   });
 
@@ -317,18 +318,32 @@ describe("the made-up demo (master plan R8)", () => {
     const response = await resourcesGet(get(`/api/teaching/resources?action=resources.read&weekStart=${weekStart}`));
     expect(response.status).toBe(200);
     const read = resourcesForWeekSchema.parse(await response.json());
-    expect(read.forThisWeek.map((item) => item.title)).toEqual([
-      "Demo case conference reading",
-      "Demo case conference recording",
-      "Demo registrar teaching slides",
+    // The v5 mock-up's four materials, each on one of the week's own sessions, plus the ended conference's recording.
+    const materials = read.forThisWeek.filter((item) => item.kind !== "recording");
+    expect(materials.map((item) => item.title).sort()).toEqual([
+      "Demo case presentation handout",
+      "Demo journal club slides",
+      "Demo psychotherapy reading",
+      "Demo workshop checklist",
     ]);
-    expect(read.forThisWeek.find((item) => item.kind === "recording")?.catchUp).toBe(true);
-    expect(read.forThisWeek.find((item) => item.kind === "library")?.catchUp).toBe(false);
+    for (const item of materials) {
+      expect(item.occurrenceId).not.toBeNull();
+      expect(item.catchUp).toBe(false);
+    }
+    const recordings = read.forThisWeek.filter((item) => item.kind === "recording");
+    expect(recordings).toHaveLength(1);
+    expect(recordings[0].catchUp).toBe(true);
+    const starts = read.forThisWeek.map((item) => item.occurrenceId?.slice(-12) ?? "");
+    expect([...starts].sort()).toEqual(starts);
     expect(read.collections.map((collection) => [collection.name, collection.count])).toEqual([
-      ["Exam prep", 6],
-      ["Orientation", 0],
+      ["Case series", 14],
+      ["Journal club", 22],
+      ["Exam prep", 9],
+      ["Supervision", 6],
+      ["Handouts", 31],
+      ["Workshops", 5],
     ]);
-    expect(read.recordingsCount).toBe(3);
+    expect(read.recordingsCount).toBe(4);
     expect(read.savedCount).toBe(2);
     expectMadeUp(read.forThisWeek);
     // Slides always name one session (master plan R27).
@@ -344,7 +359,7 @@ describe("the made-up demo (master plan R8)", () => {
     );
     expect(response.status).toBe(200);
     const read = resourcesForSessionSchema.parse(await response.json());
-    expect(read.items.map((item) => item.kind)).toEqual(["library", "recording"]);
+    expect(read.items.map((item) => item.kind)).toEqual(["recording"]);
     const missing = await resourcesGet(
       get(`/api/teaching/resources?action=resources.read&occurrenceId=${occurrenceId}`),
     );
@@ -363,7 +378,7 @@ describe("the made-up demo (master plan R8)", () => {
     );
     expect(exam.collection?.name).toBe("Exam prep");
     expect(exam.sections.map((section) => section.name)).toEqual(["Written exam", "Clinical exam"]);
-    expect(exam.items).toHaveLength(6);
+    expect(exam.items).toHaveLength(9);
     for (const item of exam.items) expect(exam.sections.map((s) => s.sectionId)).toContain(item.sectionId);
     expectMadeUp(exam.items);
 
@@ -371,15 +386,28 @@ describe("the made-up demo (master plan R8)", () => {
       await (await resourcesGet(get("/api/teaching/resources?action=collection.read&builtIn=saved"))).json(),
     );
     expect(saved.collection).toBeNull();
-    expect(saved.items.map((item) => item.title).sort()).toEqual([
-      "Demo MCQ technique",
-      "Demo registrar teaching slides",
+    expect(saved.items.map((item) => item.title)).toEqual([
+      "Demo formulation seminar slides",
+      "Demo exam tips handout",
     ]);
     const recordings = collectionReadResultSchema.parse(
       await (await resourcesGet(get("/api/teaching/resources?action=collection.read&builtIn=recordings"))).json(),
     );
-    expect(recordings.items).toHaveLength(3);
+    expect(recordings.items).toHaveLength(4);
     for (const item of recordings.items) expect(item.kind).toBe("recording");
+    expectMadeUp(recordings.items);
+    // Every collection page holds as many items as its tile says.
+    for (const collection of week.collections) {
+      const read = collectionReadResultSchema.parse(
+        await (
+          await resourcesGet(
+            get(`/api/teaching/resources?action=collection.read&collectionId=${collection.collectionId}`),
+          )
+        ).json(),
+      );
+      expect(read.items).toHaveLength(collection.count);
+      expectMadeUp(read.items);
+    }
 
     const unknown = await resourcesGet(get(`/api/teaching/resources?action=collection.read&collectionId=${actor}`));
     expect(unknown.status).toBe(404);

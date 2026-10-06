@@ -146,7 +146,7 @@ describe("Presenting", () => {
     fireEvent.click(within(panel).getByRole("button", { name: "I have checked: no patient details" }));
     await waitFor(() => expect(posts).toEqual([{ action: "readiness.deid.confirm", occurrenceId: OCC }]));
     await waitFor(() => expect(panel).not.toHaveTextContent("patient check open"));
-    expect(panel).toHaveTextContent(/You confirmed on .+ that your material has no patient details\./);
+    expect(panel).toHaveTextContent(/No patient details in the slides\. You confirmed this on \d+\s\w{3}\./);
   });
 
   it("opens a later talk in place, so its patient check can be done there too", async () => {
@@ -216,6 +216,9 @@ describe("Presenting", () => {
         "No totals yet. They show 7 days after the talk, once at least 3 people have answered.",
       ),
     );
+    // The older talks stay folded under "All 2" until asked for, as in the mock-up.
+    expect(screen.queryByRole("button", { name: "Feedback on Journal club" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "All 2" }));
     const toggle = screen.getByRole("button", { name: "Feedback on Journal club" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(toggle);

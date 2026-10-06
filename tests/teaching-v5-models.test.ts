@@ -80,13 +80,18 @@ describe("This week", () => {
     expect(weekCountLabel([], true)).toBe("This week · none loaded");
   });
 
-  it("builds a row's state and meta from the live session, never calling a gap 'missed'", () => {
+  it("builds a row's state and meta from the live session, with a missed one pointing to catch-up", () => {
     expect(weekRow(session(), context)).toMatchObject({ state: "now", time: "12:30", meta: "On now · Seminar Room 2" });
     const past = weekRow(
       session({ startsAt: "2026-10-05T04:30:00.000Z", endsAt: "2026-10-05T05:30:00.000Z" }),
       context,
     );
-    expect(past).toMatchObject({ state: "past", meta: "Seminar Room 2 · no check-in recorded" });
+    // The mock-up's words: a past session with no check-in reads "missed", with Watch beside it.
+    expect(past).toMatchObject({
+      state: "past",
+      meta: "Seminar Room 2 · missed",
+      watch: "/teaching/resources#catch-up",
+    });
     const moved = weekRow(
       session({
         startsAt: "2026-10-07T06:00:00.000Z",
@@ -184,7 +189,7 @@ describe("Presenting", () => {
   });
 
   it("says when the next talk is, and how ready later ones are", () => {
-    expect(talkKicker(talk(), NOW, TODAY)).toBe(`Your next talk · today 14:00 · in 1${NB}h 25${NB}min`);
+    expect(talkKicker(talk(), NOW, TODAY)).toBe(`Your next talk · today 14:00 · in 85${NB}min`);
     expect(talkKicker(talk({ startsAt: "2026-10-12T00:00:00.000Z" }), NOW, TODAY)).toBe(
       "Your next talk · Mon 12 Oct 08:00",
     );
@@ -330,16 +335,21 @@ describe("My record", () => {
     expect(starter.description).toMatch(/Average 1\.0 a week over 2\u00a0full weeks\.$/);
   });
 
-  it("keeps CPD this week to Monday onwards, with hours, what is already in, and older ones counted", () => {
+  it("keeps CPD this week to the last seven days, with hours, what is already in, and older ones counted", () => {
     const recent = row("2026-10-05T04:30:00.000Z");
     const old = row("2026-09-10T04:30:00.000Z");
     const logged = row("2026-10-06T01:30:00.000Z", { cpdEntryId: "e" });
-    // Last Thursday is inside the old rolling seven days but not this calendar week.
+    // Last Thursday is inside the seven days, as the mock-up's Tuesday still offers last Wednesday to Friday.
     const lastWeek = row("2026-10-01T04:30:00.000Z");
-    const review = [recent, old, lastWeek].map((r) => ({ ...r, hours: 1.5 }));
-    const week = cpdWeek(review, [recent, old, lastWeek, logged], NOW);
-    expect(week.rows.map((r) => [r.occurrenceId, r.meta])).toEqual([[recent.occurrenceId, "Mon 5 Oct"]]);
-    expect(week.right).toBe(`1.5${NB}h · 1 already logged`);
+    // Eight days back is not.
+    const tooOld = row("2026-09-28T04:30:00.000Z");
+    const review = [recent, old, lastWeek, tooOld].map((r) => ({ ...r, hours: 1.5 }));
+    const week = cpdWeek(review, [recent, old, lastWeek, tooOld, logged], NOW);
+    expect(week.rows.map((r) => [r.occurrenceId, r.meta])).toEqual([
+      [lastWeek.occurrenceId, "Thu 1 Oct"],
+      [recent.occurrenceId, "Mon 5 Oct"],
+    ]);
+    expect(week.right).toBe(`3${NB}h · 1 already logged`);
     expect(week.older).toBe(2);
     expect(cpdButtonLabel(3)).toBe(`Log 3${NB}sessions to my CPD`);
     expect(cpdButtonLabel(1)).toBe(`Log 1${NB}session to my CPD`);
@@ -424,8 +434,8 @@ describe("Term", () => {
 describe("Resources: My exam prep row", () => {
   it("counts down to the doctor's own exam date, with the plan week and the run", () => {
     expect(examPrepRow(sampleExamPrep(TODAY), TODAY)).toEqual({
-      title: "Written exam in 113 days",
-      meta: `Study plan week 6${NB}of 22 · 10 days in a row`,
+      title: "Written exam in 111 days",
+      meta: `Study plan week 6${NB}of 22 · 9 days in a row`,
     });
     expect(examPrepRow(null, TODAY).title).toBe("My exam prep");
     const passed = {

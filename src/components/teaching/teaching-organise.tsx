@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Download, GraduationCap, Network, Plus, Presentation, Upload, Users } from "lucide-react";
+import { CalendarDays, Clock, Download, Network, Plus, Upload, Users, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { TeachingSupervisionAdmin } from "@/components/teaching/teaching-supervision-admin";
@@ -8,29 +8,34 @@ import { TeachingSupervisionAdmin } from "@/components/teaching/teaching-supervi
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import {
-  AUDIENCE_LABELS,
   changeBody,
   csvHref,
   csvText,
   expectedMemberCount,
+  riskPhrase,
+  sentChangeLines,
+  sentChanges,
+  seriesMeta,
   sessionRisks,
   type GroupRow,
   type OrganiseRead,
+  type SentChange,
   type SeriesRow,
 } from "@/components/teaching/organise-model";
 import {
   ChangeSheet,
-  CheckedLine,
   GroupSheet,
   InviteSheet,
   MembersSheet,
   membersWord,
-  REPEAT_LABELS,
+  PickSessionSheet,
   SeriesSheet,
 } from "@/components/teaching/organise-sheets";
 import {
+  T5Done,
   T5Icon,
   T5Kicker,
+  T5LiveDot,
   T5Link,
   T5List,
   T5Meta,
@@ -42,7 +47,6 @@ import {
   T5Time,
 } from "@/components/teaching/t5-kit";
 import { addDays, dayParts, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
-import { withUnit } from "@/components/teaching/teaching-number";
 import { TeachingUndoBar } from "@/components/teaching/teaching-row";
 import { TeachingSignInNotice } from "@/components/teaching/teaching-sign-in";
 import { TeachingStateNotice } from "@/components/teaching/teaching-states";
@@ -54,6 +58,7 @@ import { useTeachingWeek } from "@/components/teaching/use-teaching-week";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { teachingErrorMessage, teachingGet, teachingServiceUrl } from "@/lib/teaching/client";
+import { demoOrganise } from "@/lib/teaching/demo-organise";
 import {
   attendanceLabels,
   memberLabel,
@@ -75,6 +80,7 @@ type Open =
   | { kind: "group"; group: GroupRow | null }
   | { kind: "members" }
   | { kind: "invite" }
+  | { kind: "pick" }
   | null;
 
 const HOUR = 3_600_000;
@@ -86,7 +92,7 @@ function ServicePicker({
   value,
   onChange,
 }: {
-  teams: readonly TeamSummary[];
+  teams: readonly Pick<TeamSummary, "id" | "name">[];
   value: string;
   onChange: (id: string) => void;
 }) {
@@ -122,6 +128,21 @@ const dayWord = (iso: string, today: string) => {
   return dayParts(key).weekday;
 };
 
+type SoonSession = SessionSummary & { checkedIn?: number };
+
+/** What the organiser screen draws: the real service's reads, or the made-up demo service. */
+type OrganiserScreen = {
+  demo: boolean;
+  serviceId: string;
+  /** This service's own sessions in the coming week. */
+  mine: SessionSummary[];
+  soon: SoonSession[];
+  data: OrganiseRead;
+  changes: SentChange[];
+};
+
+const DEMO_NOT_SAVED = "Demo only. Nothing was saved or sent.";
+
 function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
@@ -133,73 +154,30 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
   const organise = useTeachingResource<OrganiseRead>(
     serviceId && !demoMode ? teachingServiceUrl(serviceId, { action: "organise.read" }) : null,
   );
+  const demo = useMemo(() => (demoMode && now ? demoOrganise(now) : null), [demoMode, now]);
   const [open, setOpen] = useState<Open>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const delayed = useDelayedPost();
   // R9: the change reaches the session's series' groups, and the occurrence read names its series.
   const changing = open?.kind === "change" ? open.session : null;
-  const changingDetail = useSessionDetail(changing?.occurrenceId ?? null, demoMode, now);
+  const changingDetail = useSessionDetail(demoMode ? null : (changing?.occurrenceId ?? null), demoMode, now);
 
+  let screen: OrganiserScreen | null = null;
   let body;
   if (view.status === "signed-out") body = <TeachingSignInNotice />;
   else if (view.status === "offline" || view.status === "error" || view.status === "setup")
     body = <TeachingStateNotice state={view.status} onRetry={view.retry} />;
   else if (!now || !view.week) body = <ModeModuleSkeleton rows={4} eyebrow />;
-  else if (demoMode)
-    body = (
-      <>
-        <T5Note className="mt-0">
-          Made-up demo service. Explore the programme and roles; no real invitations, membership changes or records are
-          sent.
-        </T5Note>
-        <T5Section label={`Demo programme · ${view.week.sessions.length}`}>
-          <T5List ruled testId="teaching-organise-demo">
-            {view.week.sessions.map((session) => (
-              <T5Row
-                key={session.occurrenceId}
-                title={session.title}
-                meta={[dayWord(session.startsAt, perthDateKey(now)), session.venue ?? "Room not set"].join(" · ")}
-                lead={<T5Time time={perthTime(session.startsAt)} />}
-                href={`/teaching/session/${session.occurrenceId}`}
-              />
-            ))}
-          </T5List>
-        </T5Section>
-        <T5Section label="Explore the roles">
-          <T5List ruled>
-            <T5Row
-              title="Learner"
-              meta="Choose attendance and personal CPD actions"
-              lead={<T5Icon icon={GraduationCap} />}
-              href="/teaching/logbook"
-            />
-            <T5Row
-              title="Presenter"
-              meta="Readiness, de-identification and feedback"
-              lead={<T5Icon icon={Presentation} />}
-              href="/teaching/teach"
-            />
-            <T5Row
-              title="Registrar and supervisor"
-              meta="Log, review and confirm synthetic supervision"
-              lead={<T5Icon icon={Users} />}
-              href="/teaching/supervision"
-            />
-            <T5Row
-              title="Organiser"
-              meta="Preview a timetable without saving it"
-              lead={<T5Icon icon={Upload} />}
-              href="/teaching/import"
-            />
-          </T5List>
-        </T5Section>
-        <T5Note className="mt-3" icon="shield">
-          In an approved service, organisers manage series, groups, invitations and supervision pairings. Service admins
-          manage programme access. Neither role can read a doctor&apos;s private CPD figures.
-        </T5Note>
-      </>
-    );
+  else if (demoMode && demo)
+    screen = {
+      demo: true,
+      serviceId: demo.service.id,
+      mine: demo.soon,
+      soon: demo.soon,
+      data: demo.read,
+      changes: demo.changes,
+    };
   else if (teams.length === 0 || !serviceId)
     body = <T5Note className="mt-0">Organise is for your service&apos;s organisers.</T5Note>;
   else if (organise.status === "loading" || organise.status === "idle") body = <ModeModuleSkeleton rows={4} eyebrow />;
@@ -211,31 +189,51 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
       />
     );
   else {
-    const data = organise.data;
-    const service = serviceId;
-    const mine = view.week.sessions.filter((s) => s.serviceId === service);
-    const soon = mine.filter(
-      (s) => Date.parse(s.startsAt) < now.getTime() + 48 * HOUR && Date.parse(s.endsAt) > now.getTime(),
-    );
+    const mine = view.week.sessions.filter((s) => s.serviceId === serviceId);
+    screen = {
+      demo: false,
+      serviceId,
+      mine,
+      soon: mine.filter(
+        (s) => Date.parse(s.startsAt) < now.getTime() + 48 * HOUR && Date.parse(s.endsAt) > now.getTime(),
+      ),
+      data: organise.data,
+      changes: sentChanges(mine),
+    };
+  }
+
+  if (screen && now) {
+    const { data, mine, soon, changes } = screen;
+    const isDemo = screen.demo;
+    const service = screen.serviceId;
+    const todayKey = perthDateKey(now);
     const soonIds = new Set(soon.map((s) => s.occurrenceId));
     const risks = sessionRisks(mine).filter((r) => soonIds.has(r.occurrenceId));
     // At most one amber mark in the list: the first risk, in time order.
     const firstRisk = soon.flatMap((s) => risks.filter((r) => r.occurrenceId === s.occurrenceId))[0] ?? null;
+    const changeable = mine.filter(
+      (s) => s.status !== "cancelled" && s.source === "teaching" && Date.parse(s.endsAt) > now.getTime(),
+    );
     const refresh = () => {
       view.retry();
       organise.retry();
     };
     const saved = () => {
       setOpen(null);
-      refresh();
+      if (isDemo) setNotice(DEMO_NOT_SAVED);
+      else refresh();
     };
     const reach =
-      changing && changingDetail.status === "ready"
+      !isDemo && changing && changingDetail.status === "ready"
         ? expectedMemberCount(data, changingDetail.data?.seriesId ?? null)
         : data.members.length;
 
     async function download() {
       if (downloading) return;
+      if (isDemo) {
+        setNotice("Demo only. The made-up service has no attendance to download.");
+        return;
+      }
       const to = perthDateKey(now!);
       const from = addDays(to, -83);
       setNotice(null);
@@ -266,10 +264,14 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
       }
     }
 
+    // Phone order follows the mock-up: 48 hours, series, groups, changes, tools. On a computer the
+    // left column keeps what needs checking and what changed; series, groups and tools sit right.
+    const left = "min-w-0 lg:col-start-1";
+    const right = "min-w-0 lg:col-start-2";
     body = (
       <>
-        <div className="grid gap-x-8 lg:grid-cols-2 lg:items-start">
-          <div className="grid min-w-0 content-start">
+        <div className="grid gap-x-8 lg:grid-flow-dense lg:grid-cols-2 lg:items-start">
+          <div className={left}>
             <T5Panel className="mt-3" testId="teaching-organise-soon">
               <T5Kicker>
                 {`Next 48 hours · ${soon.length}${risks.length ? ` · ${risks.length} to check` : ""}`}
@@ -279,19 +281,34 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                   {soon.map((s) => {
                     const risk = firstRisk?.occurrenceId === s.occurrenceId ? firstRisk : null;
                     const live = Date.parse(s.startsAt) <= now.getTime();
+                    const day = dayWord(s.startsAt, todayKey);
                     const change =
                       delayed.pending || s.status === "cancelled" || s.source !== "teaching"
                         ? undefined
                         : () => setOpen({ kind: "change", session: s });
+                    const ready =
+                      !live && s.status !== "cancelled" && !risks.some((r) => r.occurrenceId === s.occurrenceId);
                     const meta = risk ? (
-                      <span className="font-medium text-[color:var(--text-heading)]">
-                        {dayWord(s.startsAt, perthDateKey(now))} · {risk.text}
+                      <span className="font-medium text-[color:var(--warning-text)]">
+                        {day} · {riskPhrase(risk)}
+                      </span>
+                    ) : live ? (
+                      <span className="inline-flex items-center">
+                        <T5LiveDot />
+                        {[
+                          "On now",
+                          s.checkedIn !== undefined ? `${s.checkedIn} checked in` : null,
+                          s.checkedIn === undefined ? (s.venue ?? (s.hasJoinLink ? "Online" : null)) : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
                     ) : (
                       [
-                        live ? "On now" : dayWord(s.startsAt, perthDateKey(now)),
+                        day,
                         s.status === "cancelled" ? "Cancelled" : s.status === "moved" ? "Moved" : null,
                         s.venue ?? (s.hasJoinLink ? "Online" : null),
+                        ready ? "ready" : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")
@@ -309,6 +326,8 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                             <Button type="button" variant="primary" size="sm" onClick={change}>
                               {risk.rule === "room" ? "Set room" : "Fix"}
                             </Button>
+                          ) : ready ? (
+                            <T5Done label="Ready" />
                           ) : undefined
                         }
                       />
@@ -318,33 +337,14 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
               ) : (
                 <T5Meta>Nothing in the next 48 hours.</T5Meta>
               )}
-              <CheckedLine at={now} count={risks.length} />
             </T5Panel>
             {notice ? (
-              <T5Note tone="warning" icon="alert" className="mt-3">
+              <T5Note tone={isDemo ? "notice" : "warning"} icon={isDemo ? "info" : "alert"} className="mt-3">
                 {notice}
               </T5Note>
             ) : null}
-            <T5Section label="Tools">
-              <T5List ruled>
-                <T5Row
-                  title="Download attendance"
-                  meta={downloading ? "Preparing the spreadsheet…" : `Last ${withUnit(12, "weeks")}, as a spreadsheet`}
-                  lead={<T5Icon icon={Download} />}
-                  onClick={() => void download()}
-                  busy={downloading}
-                  testId="teaching-organise-download"
-                />
-                <T5Row
-                  title="Import a timetable"
-                  meta="CSV or XLSX, up to 1 MB. You see a preview before anything saves."
-                  lead={<T5Icon icon={Upload} />}
-                  href="/teaching/import"
-                />
-              </T5List>
-            </T5Section>
           </div>
-          <div className="grid min-w-0 content-start">
+          <div className={right}>
             <T5Section
               label={`Series · ${data.series.length}`}
               right={<T5Link onClick={() => setOpen({ kind: "series", series: null })}>New series</T5Link>}
@@ -354,14 +354,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                   <T5Row
                     key={s.seriesId}
                     title={s.title}
-                    meta={[
-                      REPEAT_LABELS[s.repeat as keyof typeof REPEAT_LABELS] ?? null,
-                      s.startTime,
-                      s.venue ?? "Room not set",
-                      s.audience ? AUDIENCE_LABELS[s.audience] : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    meta={seriesMeta(s)}
                     lead={<T5Icon icon={CalendarDays} />}
                     onClick={() => setOpen({ kind: "series", series: s })}
                   />
@@ -373,6 +366,8 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
                 ) : null}
               </T5List>
             </T5Section>
+          </div>
+          <div className={right}>
             <T5Section
               label="Groups and members"
               right={<T5Link onClick={() => setOpen({ kind: "group", group: null })}>New group</T5Link>}
@@ -402,15 +397,72 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
               </T5List>
             </T5Section>
           </div>
+          <div className={left}>
+            <T5Section
+              label={`Changes sent · ${changes.length}`}
+              right={
+                <T5Link onClick={() => (delayed.pending ? undefined : setOpen({ kind: "pick" }))}>New change</T5Link>
+              }
+            >
+              <T5List ruled testId="teaching-organise-changes">
+                {changes.map((change) => {
+                  const lines = sentChangeLines(change);
+                  return (
+                    <T5Row
+                      key={change.id}
+                      title={lines.title}
+                      meta={lines.meta}
+                      lead={<T5Icon icon={change.status === "cancelled" ? X : Clock} />}
+                      end={<span className="shrink-0 text-sm text-[color:var(--text-muted)]">Sent</span>}
+                    />
+                  );
+                })}
+                {changes.length === 0 ? (
+                  <li className="py-2.5">
+                    <T5Meta>Moves and cancellations for the coming week show here.</T5Meta>
+                  </li>
+                ) : null}
+              </T5List>
+            </T5Section>
+          </div>
+          <div className={right}>
+            <T5Section label="Tools">
+              <T5List ruled>
+                <T5Row
+                  title="Download attendance"
+                  meta={downloading ? "Preparing the spreadsheet…" : "Spreadsheet for this service"}
+                  lead={<T5Icon icon={Download} />}
+                  onClick={() => void download()}
+                  busy={downloading}
+                  testId="teaching-organise-download"
+                />
+                <T5Row
+                  title="Import a timetable"
+                  meta="CSV or XLSX, up to 1 MB. You see a preview before anything saves."
+                  lead={<T5Icon icon={Upload} />}
+                  href="/teaching/import"
+                />
+              </T5List>
+            </T5Section>
+          </div>
         </div>
-        <TeachingSupervisionAdmin
-          key={service}
-          serviceId={service}
-          data={data}
-          today={perthDateKey(now)}
-          isAdmin={teams.find((team) => team.id === service)?.role === "admin"}
-          onSaved={refresh}
-        />
+        {isDemo ? null : (
+          <TeachingSupervisionAdmin
+            key={service}
+            serviceId={service}
+            data={data}
+            today={todayKey}
+            isAdmin={teams.find((team) => team.id === service)?.role === "admin"}
+            onSaved={refresh}
+          />
+        )}
+        {open?.kind === "pick" ? (
+          <PickSessionSheet
+            sessions={changeable}
+            onClose={() => setOpen(null)}
+            onPick={(session) => setOpen({ kind: "change", session })}
+          />
+        ) : null}
         {open?.kind === "change" ? (
           <ChangeSheet
             session={open.session}
@@ -421,6 +473,10 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
             onPost={(draft, count) => {
               const session = open.session;
               setOpen(null);
+              if (isDemo) {
+                setNotice(`Demo only. Nothing was sent; in a real service this goes to ${membersWord(count)}.`);
+                return;
+              }
               setNotice(null);
               delayed.schedule({
                 label: `Posting to ${membersWord(count)}`,
@@ -437,6 +493,7 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
             serviceId={service}
             series={open.series}
             organise={data}
+            demo={isDemo}
             onClose={() => setOpen(null)}
             onSaved={saved}
           />
@@ -446,21 +503,33 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
             serviceId={service}
             group={open.group}
             organise={data}
+            demo={isDemo}
             onClose={() => setOpen(null)}
             onSaved={saved}
           />
         ) : null}
         {open?.kind === "members" ? <MembersSheet organise={data} onClose={() => setOpen(null)} /> : null}
-        {open?.kind === "invite" ? <InviteSheet serviceId={service} onClose={() => setOpen(null)} /> : null}
+        {open?.kind === "invite" ? (
+          <InviteSheet serviceId={service} demo={isDemo} onClose={() => setOpen(null)} />
+        ) : null}
       </>
     );
   }
 
+  const demoTeams = demo ? [demo.service] : [];
   return (
     <InformationPageShell gap={false} testId="teaching-organise">
       <div className="mx-auto w-full max-w-reading lg:max-w-5xl">
         <T5Page>
           <h1 className="sr-only">Organise</h1>
+          {demoMode && demo && view.status !== "signed-out" ? (
+            <>
+              <T5Note className="mt-0" testId="teaching-organise-demo">
+                Made-up demo service. Try any action here; no real invitations, membership changes or records are sent.
+              </T5Note>
+              <ServicePicker teams={demoTeams} value={demo.service.id} onChange={() => {}} />
+            </>
+          ) : null}
           {teams.length > 0 && serviceId && !demoMode ? (
             <ServicePicker teams={teams} value={serviceId} onChange={setChosen} />
           ) : null}

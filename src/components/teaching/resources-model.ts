@@ -15,6 +15,48 @@ export const RESOURCE_KIND_WORDS: Record<ResourceKind, string> = {
   library: "Library document",
 };
 
+/**
+ * The type in words, as the v5 Resources rows show it: "PDF" when the link itself ends in .pdf (read from the
+ * address, never guessed), otherwise the kind the presenter chose. A recording and a library document keep
+ * their own words.
+ */
+export function resourceTypeWords(item: Pick<ResourceRow, "kind" | "url">): string {
+  if (item.kind !== "recording" && item.kind !== "library" && item.url) {
+    try {
+      if (new URL(item.url).pathname.toLowerCase().endsWith(".pdf")) return "PDF";
+    } catch {
+      // Not a parseable link: fall back to the kind.
+    }
+  }
+  return RESOURCE_KIND_WORDS[item.kind];
+}
+
+/** "today", or the weekday in full ("Wednesday"), for a Perth date key in this week. */
+export function weekDayWord(dateKey: string, today: string): string {
+  if (dateKey === today) return "today";
+  return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString("en-AU", { weekday: "long", timeZone: "UTC" });
+}
+
+/**
+ * A "For this week" row's second line: "PDF · today", "Link · today · yours", "Slides · Monday · catch-up".
+ * The day comes from the session the material belongs to; "yours" only when the reader presents it. Nothing
+ * here knows a file's page count, so none is shown.
+ */
+export function thisWeekMeta(
+  item: Pick<ResourceRow, "kind" | "url"> & { catchUp?: boolean },
+  session: { dateKey: string; isPresenter: boolean } | null,
+  today: string,
+): string {
+  return [
+    resourceTypeWords(item),
+    session ? weekDayWord(session.dateKey, today) : null,
+    session?.isPresenter ? "yours" : null,
+    item.catchUp ? "catch-up" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /** What the add sheet offers. A library document is chosen from the library, never typed, so it is not here. */
 export const ADD_KINDS = ["slides", "reading", "link"] as const;
 export type AddKind = (typeof ADD_KINDS)[number];

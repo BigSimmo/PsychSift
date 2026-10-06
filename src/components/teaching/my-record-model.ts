@@ -156,12 +156,14 @@ export type CpdWeek = {
 };
 
 /**
- * Attended sessions this week (Perth, Monday to today) not yet in CPD, and how many of this week are
- * already in. Earlier ones are counted as older and stay on the full review page.
+ * Attended sessions from the last seven days (Perth, today and the six days before it) not yet in CPD,
+ * and how many of those days' check-ins are already in. This is the mock-up's weekly review: on a
+ * Tuesday it still offers last Wednesday to Friday. Earlier ones are counted as older and stay on the
+ * full review page.
  */
 export function cpdWeek(review: readonly CpdReviewRow[], logbook: readonly LogbookRow[], now: Date): CpdWeek {
-  const monday = mondayOf(perthDateKey(now));
-  const recent = (iso: string) => perthDateKey(iso) >= monday;
+  const from = addDays(perthDateKey(now), -6);
+  const recent = (iso: string) => perthDateKey(iso) >= from;
   const rows = review
     .filter((row) => recent(row.startsAt))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))

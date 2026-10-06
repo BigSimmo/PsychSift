@@ -1,5 +1,5 @@
 import { dayParts, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
-import { durationText, withUnit } from "@/components/teaching/teaching-number";
+import { NBSP, durationText, withUnit } from "@/components/teaching/teaching-number";
 import {
   feedbackPaceLabels,
   pendingConfirmations,
@@ -31,7 +31,49 @@ export function talkKicker(talk: TeachSession, now: Date, today: string, isNext 
   }
   const until = Math.ceil((Date.parse(talk.startsAt) - now.getTime()) / MINUTE);
   if (until <= 0) return `Your talk · today ${time} · on now`;
-  return `${name} · today ${time} · in ${durationText(until)}`;
+  // Under two hours reads as minutes ("in 85 min", as the mock-up has it); longer reads as hours.
+  return `${name} · today ${time} · in ${until < 120 ? withUnit(until, "min") : durationText(until)}`;
+}
+
+/** The readiness items as Presenting's tick list names them (mock-up v5). */
+export const presentingItemLabels: Record<ReadinessItem, string> = {
+  reading_list: "Reading list",
+  aims: "Aims written",
+  slides_link: "Slides link",
+  room: "Room confirmed",
+};
+
+/**
+ * "After today" when the next talk is today and every other talk is on a later day; "After this one"
+ * when the next talk is not today; "Your other talks" when a later talk is open in the panel.
+ */
+export function afterLabel(
+  next: TeachSession | undefined,
+  after: readonly TeachSession[],
+  today: string,
+  isNext: boolean,
+) {
+  if (!next) return "After today";
+  if (!isNext) return "Your other talks";
+  const laterDays = after.every((talk) => perthDateKey(talk.startsAt) > today);
+  return perthDateKey(next.startsAt) === today && laterDays ? "After today" : "After this one";
+}
+
+/** "No patient details in the slides. You confirmed this on 4 Oct." */
+export function deidConfirmedNote(confirmedAt: string): string {
+  const p = dayParts(perthDateKey(confirmedAt));
+  return `No patient details in the slides. You confirmed this on ${p.day}${NBSP}${p.month}.`;
+}
+
+/**
+ * "Supervision this year" while every pairing of yours began this calendar year, so the hours shown are
+ * this year's; otherwise plain "Supervision", since a pairing's totals can reach back into last year.
+ */
+export function supervisionLabel(pairings: readonly SupervisionPairingView[], today: string): string {
+  const mine = pairings.filter((p) => p.access === "registrar");
+  return mine.length > 0 && mine.every((p) => p.startsOn.slice(0, 4) === today.slice(0, 4))
+    ? "Supervision this year"
+    : "Supervision";
 }
 
 /** "Library meeting room · 45 min", or "Room not set · 45 min". */
