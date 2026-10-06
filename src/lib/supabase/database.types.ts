@@ -4717,6 +4717,11 @@ export type Database = {
         };
         Relationships: [];
       };
+      alert_reminder_times: GeneratedTable<
+        { owner_id: string; ref: string; due_at: string; endpoint: string; created_at: string },
+        "owner_id" | "ref" | "due_at" | "endpoint"
+      >;
+      alert_brief_sent: GeneratedTable<{ owner_id: string; perth_date: string; sent_at: string }, "owner_id" | "perth_date">;
     };
     Views: {
       document_strict_gate_status: {
@@ -4786,6 +4791,11 @@ export type Database = {
         Returns: Json;
       };
       roster_team_members: { Args: { p_actor_id: string; p_service_id: string }; Returns: Json };
+      alert_claim_due_reminders: {
+        Args: { p_now: string; p_limit: number };
+        Returns: { owner_id: string; ref: string; due_at: string; endpoint: string }[];
+      };
+      alert_claim_morning_brief: { Args: { p_owner_id: string; p_perth_date: string }; Returns: boolean };
       roster_set_cutoff: {
         Args: { p_actor_id: string; p_service_id: string; p_cutoff: string | null };
         Returns: Json;

@@ -92,6 +92,23 @@ describe("playwright settlement contract (#093)", () => {
     expect(source).not.toMatch(/getByTestId\(\s*["']sources-topics-main["']\s*\)/);
   });
 
+  it("ui-visual-artifacts waits for a visible #main-content and retries compositor failures (#093)", () => {
+    // Production UI shard 1 on PR #3332: Chromium refused Page.captureScreenshot
+    // on the CME captures after fonts loaded, with the first-visit "Search my
+    // work" note sitting over the header. `.first()` on #main-content is the
+    // same hidden-twin trap as the route-coverage cases above.
+    const source = readFileSync("tests/ui-visual-artifacts.spec.ts", "utf8");
+    const button = readFileSync("src/components/work-search/work-search-button.tsx", "utf8");
+    expect(source).toContain("#main-content:visible");
+    expect(source).not.toMatch(/locator\("#main-content"\)\.first\(\)/);
+    expect(source).toContain('animations: "disabled"');
+    expect(source).toMatch(/Unable to capture screenshot/);
+    expect(source).toContain("psychsift:work-search-coach-seen");
+    expect(button).toContain("psychsift:work-search-coach-seen");
+    expect(source).toContain("/cme/setup");
+    expect(source).not.toContain("/cme/programme");
+  });
+
   it("keeps absence assertions bare, because a visible filter would hide the duplicate", () => {
     // `visibleByText` narrows to the visible owner. On a `toHaveCount(0)` the
     // narrowing is the bug: a hidden duplicate of copy that must not render at
