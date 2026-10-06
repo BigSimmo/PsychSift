@@ -68,8 +68,7 @@ import {
 import { UniversalSearchCommandSurface } from "@/components/clinical-dashboard/universal-search-command-surface";
 import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
 import { Sheet } from "@/components/ui/sheet";
-import { WorkSearchButton } from "@/components/work-search/work-search-button";
-import { NeedsYouButton } from "@/components/needs-you/needs-you-button";
+import { StaffWorkHeaderControls } from "@/components/needs-you/staff-work-header-controls";
 import {
   appModeDefinition,
   appModeDefinitions,
@@ -2905,14 +2904,7 @@ export function MasterSearchHeader({
               <span className="hidden whitespace-nowrap xl:inline">New chat</span>
             </button>
           ) : null}
-          {appModeHasWorkSearch(selectedAppMode.id) ? <NeedsYouButton modeId={selectedAppMode.id} /> : null}
-          {/* "Search my work" on the staff work modes (Josh, 2026-10-04: top right on
-              every staff page). Declared on the mode as `workSearch`, never a mode-id
-              branch here. The Needs you bell sits before it on signed-in mode homes
-              only; inner pages keep this icon alone so the row never grows a third
-              round control. The icon is all the header loads; the search itself is a
-              lazy chunk fetched on tap. */}
-          {appModeHasWorkSearch(selectedAppMode.id) ? <WorkSearchButton modeId={selectedAppMode.id} /> : null}
+          {appModeHasWorkSearch(selectedAppMode.id) ? <StaffWorkHeaderControls modeId={selectedAppMode.id} /> : null}
         </div>
       </div>
 
