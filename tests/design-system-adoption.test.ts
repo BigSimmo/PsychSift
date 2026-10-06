@@ -1495,10 +1495,11 @@ describe("design-system adoption manifest", () => {
     // 154 -> 155: Admin's Compliance page (`/admin/compliance`).
     // 155 -> 156: the Psychiatry MHA clock (`/psychiatry/mha-clock`).
     // 156 -> 158: On Call Handover and Shift pulse (`/on-call/handover`, `/on-call/pulse`).
-    // 158 -> 161: Teaching's Term and Exam prep (`/teaching/term`, `/teaching/exam-prep`) and
-    // My Day's Work profile (`/my-day/profile`).
+    // 158 -> 160: Teaching's Term and Exam prep (`/teaching/term`, `/teaching/exam-prep`).
+    // 160 -> 161: Teaching Assessments (`/teaching/assessments`).
+    // 161 -> 162: My Day's Work profile (`/my-day/profile`).
     // The owner-only developer panel remains outside production route coverage.
-    expect(manifest.routeCoverage.discovered).toHaveLength(161);
+    expect(manifest.routeCoverage.discovered).toHaveLength(162);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-05"
+    "committed_at": "2026-10-06"
   },
   "routes": {
     "modes": [
@@ -1211,6 +1211,11 @@
         "path": "/mockups/care-plan/patients/[patientId]/management-plan/review",
         "file": "src/app/mockups/care-plan/patients/[patientId]/management-plan/review/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/teaching/assessments",
+        "file": "src/app/(search-app)/teaching/assessments/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/care-plan/patients/[patientId]/presentations",
