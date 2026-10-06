@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "b01d85b9-9c64-4c92-a984-ff75d8fe4d45",
+  "createdOn": "2026-10-06",
+  "action": "cancel",
+  "payload": {
+    "requestId": "b0d5aa5d-59cb-4763-8583-847094fdfdfc",
+    "reason": "Superseded by the completion request for the same item in this pull request. The close is the record that should land."
+  }
+}
