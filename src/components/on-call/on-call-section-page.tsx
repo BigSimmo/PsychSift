@@ -412,29 +412,10 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
 
   return (
     <>
-      {/* Two controls, each in the one place the whole mode keeps it.
-          -----------------------------------------------------------------
-          The universal header above names this page in its pill and carries
-          the page's actions in its trailing slot — the same slot, the same
-          menu and the same trigger the mode home uses, so the two surfaces
-          cannot drift into different menus. This header is then only the bar
-          of the page's own groups, and renders nothing at all on a page that
-          has none. */}
-      <OnCallPageMenu
-        view={view}
-        entryCount={visibleCount}
-        summary={`${visibleCount} ${visibleCount === 1 ? "entry" : "entries"}. ${ON_CALL_VIEW_DESCRIPTIONS[view]}`}
-        order={view === "contacts" ? contactsOrder : undefined}
-        onOrderChange={view === "contacts" ? setContactsOrder : undefined}
-        onAdd={isAuthenticated ? () => setEditorState({ open: true, entry: null }) : undefined}
-        addLabel={`Add ${ON_CALL_ADD_NOUN[view]}`}
-        addHint={ON_CALL_ADD_HINT[view]}
-        onVerifyAll={offersBulkVerify && isAuthenticated && !verifyAllState.running ? verifyAllStale : undefined}
-        // Zero rather than the real count on a view that offers no bulk
-        // control, so the number and the button it describes can never be
-        // wired to different conditions.
-        staleCount={offersBulkVerify ? staleEntries.length : 0}
-      />
+      {/* The section bar is only the page's own groups. Page tools (add, bulk
+          verify, pocket card, order) live in-page beside the list, not in the
+          universal header — that trailing slot is Search my work, and on the
+          home a Needs you bell. */}
       <OnCallSectionNavHeader title={title} sections={pageSections} />
       <InformationPageShell testId={`on-call-${view}-main`}>
         {/* No hero above the list.
@@ -488,6 +469,18 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
                 {`Add ${ON_CALL_ADD_NOUN[view]}`}
               </Button>
             ) : null}
+            <OnCallPageMenu
+              view={view}
+              entryCount={visibleCount}
+              summary={`${visibleCount} ${visibleCount === 1 ? "entry" : "entries"}. ${ON_CALL_VIEW_DESCRIPTIONS[view]}`}
+              order={view === "contacts" ? contactsOrder : undefined}
+              onOrderChange={view === "contacts" ? setContactsOrder : undefined}
+              onAdd={isAuthenticated ? () => setEditorState({ open: true, entry: null }) : undefined}
+              addLabel={`Add ${ON_CALL_ADD_NOUN[view]}`}
+              addHint={ON_CALL_ADD_HINT[view]}
+              onVerifyAll={offersBulkVerify && isAuthenticated && !verifyAllState.running ? verifyAllStale : undefined}
+              staleCount={offersBulkVerify ? staleEntries.length : 0}
+            />
           </div>
           {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
           {verifyAllState.error ? (

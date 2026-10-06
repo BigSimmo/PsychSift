@@ -20,9 +20,16 @@ describe("Search my work header icon", () => {
     // The header loads on every page; it may import the icon only. The icon may
     // import its glyph and the lazy wrapper, which loads the screen with a dynamic import.
     const header = readFileSync("src/components/clinical-dashboard/master-search-header.tsx", "utf8");
-    expect(header.match(/@\/components\/work-search\/[\w-]+/g)).toEqual([
+    expect(header.match(/@\/components\/(?:work-search|needs-you)\/[\w-]+/g)).toEqual([
+      "@/components/needs-you/staff-work-header-controls",
+    ]);
+
+    const controls = readFileSync("src/components/needs-you/staff-work-header-controls.tsx", "utf8");
+    expect(controls.match(/@\/components\/(?:work-search|needs-you)\/[\w-]+/g)).toEqual([
+      "@/components/needs-you/needs-you-button",
       "@/components/work-search/work-search-button",
     ]);
+    expect(controls.indexOf("<NeedsYouButton")).toBeLessThan(controls.indexOf("<WorkSearchButton"));
 
     const button = readFileSync("src/components/work-search/work-search-button.tsx", "utf8");
     expect(button.match(/@\/(?:components|lib)\/work-search\/[\w-]+/g)?.sort()).toEqual([

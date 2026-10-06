@@ -81,6 +81,19 @@ export function NowFooter({
         More for this shift
       </h2>
       <ul role="list" className="min-w-0">
+        <OnCallRow title="My shifts" subtitle="Your own roster" href="/roster" testId="on-call-now-footer-shifts" />
+        <OnCallRow
+          title="Pocket card"
+          subtitle="One printable page"
+          href="/on-call/card"
+          testId="on-call-now-footer-card"
+        />
+        <OnCallRow
+          title="Calendar"
+          subtitle="Teaching and recorded dates"
+          href="/on-call/calendar"
+          testId="on-call-now-footer-calendar"
+        />
         <NowShiftLists context={context} shifts={shifts} items={items} now={now} />
         <OnCallRow
           title="Systems down"
