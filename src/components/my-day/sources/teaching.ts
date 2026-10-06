@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo } from "react";
 
+import { catchUpCount } from "@/components/teaching/teaching-catch-up";
+import { addDays, mondayOf } from "@/components/teaching/teaching-dates";
 import { nextPresentedSession, presenterPrep } from "@/components/teaching/teaching-presenter-prep";
 import { withUnit } from "@/components/teaching/teaching-number";
 import { useTeachingResource, type TeachingResourceStatus } from "@/components/teaching/use-teaching-resource";
@@ -15,10 +17,12 @@ import {
   type ReminderSettings,
 } from "@/lib/reminders/settings";
 import type { SessionRef, TeachRead } from "@/lib/teaching/depth-model";
+import type { TeachingWeekResponse } from "@/lib/teaching/model";
 
 /**
  * Teaching's "Needs you" rows, read the way `teaching-needs-you.tsx` reads them
- * (three counts-only GETs) and worded by the same code. In the synthetic demo the
+ * (three counts-only GETs, plus this week's sessions for the catch-up count) and
+ * worded by the same code. In the synthetic demo the
  * depth routes refuse with `demo_mode_unavailable`, which reads as unavailable;
  * the signed-out sample path is deliberately unused.
  *
@@ -31,6 +35,8 @@ export interface TeachingMyDayInput {
   readonly unloggedCount: number | null;
   readonly teach: TeachRead | null;
   readonly feedbackOpen: { readonly sessions: readonly SessionRef[] } | null;
+  /** This week's ended sessions with no check-in, from `catchUpCount`. */
+  readonly catchUp?: number | null;
 }
 
 export function teachingMyDayItems(
@@ -82,6 +88,19 @@ export function teachingMyDayItems(
       href: "/teaching/feedback",
     });
   }
+
+  const catchUp = input.catchUp ?? 0;
+  if (catchUp > 0) {
+    items.push({
+      id: "teaching:catch-up",
+      mode: "teaching",
+      title: `Catch up on ${withUnit(catchUp, catchUp === 1 ? "session" : "sessions")}`,
+      detail: "This week, no check-in recorded",
+      due: null,
+      severity: "info",
+      href: "/teaching/resources#catch-up",
+    });
+  }
   return items;
 }
 
@@ -107,29 +126,38 @@ export function useTeachingMyDaySource({ enabled, now }: { enabled: boolean; now
   const feedback = useTeachingResource<{ sessions: SessionRef[] }>(
     enabled ? "/api/teaching/depth?view=feedback-open" : null,
   );
+  // The same Monday-to-a-week-ahead range Teaching's own week read uses.
+  const today = perthDateKey(now);
+  const weekUrl = enabled
+    ? `/api/teaching?${new URLSearchParams({ view: "week", from: mondayOf(today), to: addDays(today, 6) })}`
+    : null;
+  const week = useTeachingResource<TeachingWeekResponse>(weekUrl);
   const { preferences } = useAppPreferences();
   const reminders = preferences.reminders;
 
-  const status: MyDaySourceStatus = enabled ? combine([unlogged, teach, feedback]) : "signed-out";
+  const status: MyDaySourceStatus = enabled ? combine([unlogged, teach, feedback, week]) : "signed-out";
   const unloggedCount = unlogged.data?.count ?? null;
   const teachData = teach.data;
   const feedbackData = feedback.data;
+  const catchUp = week.data ? catchUpCount(week.data, now) : null;
   const items = useMemo(
     () =>
       status === "ready"
-        ? teachingMyDayItems({ unloggedCount, teach: teachData, feedbackOpen: feedbackData }, now, reminders)
+        ? teachingMyDayItems({ unloggedCount, teach: teachData, feedbackOpen: feedbackData, catchUp }, now, reminders)
         : [],
-    [status, unloggedCount, teachData, feedbackData, now, reminders],
+    [status, unloggedCount, teachData, feedbackData, catchUp, now, reminders],
   );
   const result = useMemo<MyDaySourceResult>(() => ({ mode: "teaching", status, items }), [status, items]);
 
   const retryUnlogged = unlogged.retry;
   const retryTeach = teach.retry;
   const retryFeedback = feedback.retry;
+  const retryWeek = week.retry;
   const retry = useCallback(() => {
     retryUnlogged();
     retryTeach();
     retryFeedback();
-  }, [retryUnlogged, retryTeach, retryFeedback]);
+    retryWeek();
+  }, [retryUnlogged, retryTeach, retryFeedback, retryWeek]);
   return { result, retry };
 }
