@@ -161,7 +161,7 @@
   "reviewedPathDigests": {
     "docs/audit/2026-09-17-external-audit-refutations.md": "c32a15b9c364c35fe7134784d28d4598dbf26f62dc8fdf01aa4a6646b5bd1d82",
     "docs/clinical-governance.md": "770e25a4cd66054c8f2dc99941bd3f35495634856aefd81422967fa573d15e5b",
-    "docs/clinical-hazard-analysis.md": "7df917fa274414ed7c5c438f88d5cdb34a76c35b7deaff51933177b713e9ccf5",
+    "docs/clinical-hazard-analysis.md": "bfe6f132263ffcbd7dc78433463224f07c6d51cfd913ea9a980b323ee9d4d7f4",
     "src/components/clinical-dashboard/patient-profile-panel.tsx": "7c438a015dbde4870e7ce6bcb8ef53b502e6e4489f18b498d0d80dcdf32f8342",
     "src/data/dictionary-source-dispositions.json": "afc5760d7567803c512c7e0a2cf5826cdc27b3c152db9c0aadf7f66d3e1c6141",
     "src/lib/answer-render-policy.ts": "5936ee270770ea088641040e20986284b7bd2594a64d7543021148b67c0ecda1",
