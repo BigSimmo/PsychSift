@@ -89,7 +89,12 @@ describe("audit navigation and auth regressions", () => {
     expect(medicationsPage).toContain("readSearchNavigationContext");
     expect(medicationsPage).toContain("redirect(");
     expect(medicationsPage).not.toContain('redirect("/?mode=prescribing")');
-    expect(headApplications).toBe(redirectApplications);
+    const applicationsRequest = new NextRequest("https://clinical-kb.test/applications?q=lithium");
+    const applicationsGet = redirectApplications(applicationsRequest);
+    const applicationsHead = headApplications(applicationsRequest);
+    expect(applicationsHead.status).toBe(applicationsGet.status);
+    expect(applicationsHead.headers.get("location")).toBe("/tools?q=lithium");
+    expect(applicationsHead.headers.get("location")).toBe(applicationsGet.headers.get("location"));
   });
 
   it.each([
