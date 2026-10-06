@@ -1155,6 +1155,15 @@ body {
   --clinical-accent-soft: var(--mode-identity-soft);
   --clinical-accent-border: var(--mode-identity-border);
   --clinical-accent-contrast: var(--mode-identity-contrast);
+
+  /* CPD's three categories as shades of its indigo, darkest first. Colour only
+     helps: every use names the category in text beside it. */
+  --cme-cat-1: var(--mode-identity);
+  /* The one filled button per CPD page (5 Oct mock-up): indigo in light, a quiet indigo fill in dark. */
+  --cme-filled: var(--mode-identity);
+  --cme-filled-text: var(--mode-identity-contrast);
+  --cme-cat-2: color-mix(in oklab, var(--mode-identity) 58%, var(--surface-raised));
+  --cme-cat-3: color-mix(in oklab, var(--mode-identity) 30%, var(--surface-raised));
 }
 
 .dark [data-mode-identity="cme"] {
@@ -1162,6 +1171,11 @@ body {
   --mode-identity-soft: #1b2340;
   --mode-identity-border: #333c52;
   --mode-identity-contrast: #0b1019;
+
+  --cme-cat-2: color-mix(in oklab, var(--mode-identity) 70%, var(--surface-raised));
+  --cme-cat-3: color-mix(in oklab, var(--mode-identity) 46%, var(--surface-raised));
+  --cme-filled: color-mix(in oklab, var(--mode-identity) 38%, var(--surface-raised));
+  --cme-filled-text: var(--text-heading);
 }
 
 @media (forced-colors: active) {

@@ -89,6 +89,21 @@ describe("CPD signed-out sample", () => {
     expect((await screen.findAllByText(entry.title)).length).toBeGreaterThan(0);
   });
 
+  it("shows the mock-up's registrar on Training, and the junior doctor with ?example=intern", async () => {
+    nav.pathname = "/cme/training";
+    const view = renderBoundary();
+    expect((await screen.findByTestId("cme-training-epas-figure", {}, { timeout: 8000 })).textContent).toContain(
+      "1 of 2",
+    );
+    view.unmount();
+    nav.search = "example=intern";
+    renderBoundary();
+    expect(
+      (await screen.findByTestId("cme-training-epa-assessments-figure", {}, { timeout: 8000 })).textContent,
+    ).toContain("7");
+    expect(screen.queryByTestId("cme-training-epas")).toBeNull();
+  });
+
   it("shows the sample even when the server could not verify a session", async () => {
     renderBoundary(false);
     expect(await screen.findByTestId("cme-signed-out-sample", {}, { timeout: 8000 })).toBeTruthy();

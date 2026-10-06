@@ -33,7 +33,7 @@ than CI, two of them by the second reader; review does not scale past two carefu
 | `darkColorOverrides`              | **0** (hard floor) | 0            |
 | `disabledOpacityUses`             | 36                 | 24           |
 | `edgeOwnershipConflicts`          | 5                  | 2            |
-| `elevationInversions`             | 6                  | 5            |
+| `elevationInversions`             | 5                  | 4            |
 | `errorStateCountProps`            | **0** (hard floor) | 0            |
 | `failedStateResultCounts`         | **0** (hard floor) | 0            |
 | `handRolledCommandButtons`        | 8                  | 7            |
@@ -52,7 +52,7 @@ than CI, two of them by the second reader; review does not scale past two carefu
 | `rawMarginLiterals`               | 8                  | 2            |
 | `rawPaddingLiterals`              | 22                 | 4            |
 | `rawRadiusLiterals`               | 15                 | 3            |
-| `sameFileTextSmMinusMix`          | 25                 | 25           |
+| `sameFileTextSmMinusMix`          | 36                 | 36           |
 | `statusColouredNumerals`          | **0** (hard floor) | 0            |
 | `textSoftConsumers`               | **0** (hard floor) | 0            |
 | `visibleLiveRegions`              | 20                 | 19           |

@@ -1,16 +1,16 @@
 {
-  "$comment": "Ratchet ceilings for two token-system drift metrics measured in docs/design-system/drift-measurement-2026-09-02.md. Both metrics may only go DOWN. `npm run check:design-drift-ratchet` fails the moment either current count exceeds its ceiling. `npm run check:design-drift-ratchet -- --update` refreshes a ceiling to the current measured count, but only ever lowers or matches it — it refuses to raise a ceiling. Raising one on purpose requires `--update --allow-increase`, which prints the old and new ceiling so the diff is visible in review; do this only with a stated reason (a newly-legitimate dynamic style, or a component whose adoption regressed) recorded in the commit message.",
+  "$comment": "Ratchet ceilings for two token-system drift metrics measured in docs/design-system/drift-measurement-2026-09-02.md. Both metrics may only go DOWN. `npm run check:design-drift-ratchet` fails the moment either current count exceeds its ceiling. `npm run check:design-drift-ratchet -- --update` refreshes a ceiling to the current measured count, but only ever lowers or matches it \u2014 it refuses to raise a ceiling. Raising one on purpose requires `--update --allow-increase`, which prints the old and new ceiling so the diff is visible in review; do this only with a stated reason (a newly-legitimate dynamic style, or a component whose adoption regressed) recorded in the commit message.",
   "inlineStyles": {
-    "ceiling": 249,
+    "ceiling": 251,
     "description": "Count of style={{ }} JSX attributes under tracked src/**/*.{ts,tsx}, excluding lines that are inside a comment (trimmed line starts with // or *).",
-    "measuredAt": "2026-10-05T17:57:51.874Z",
-    "baselineSource": "ea5658f05b384c6af23a2ca07ab3c969f9eee87f",
-    "$lastRaise": "240 -> 244, 2026-09-27, Admin Update 1. LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md: one renewal timeline mark and three Today window bar positions use percentages calculated from dates; no fixed token expresses them. Removed the redundant fixed 0% inline style."
+    "measuredAt": "2026-10-06T01:17:24.934Z",
+    "baselineSource": "39f8c66c521273988862963516dc3d94ad3467ec",
+    "$lastRaise": "249 -> 251, 2026-10-06, Teaching v5 (#3304) merged after CPD (#3289); both raised from 245 independently. LEGITIMATE data-driven layout per drift-measurement-2026-09-02.md: Teaching chart bar heights, average line and progress widths, and feedback split proportions are computed from counts; no fixed token expresses them."
   },
   "unimportedRegisteredComponents": {
     "ceiling": 9,
-    "description": "docs/design-system/adoption-manifest.json summary.registeredComponentCount minus summary.productImportedComponentCount — registered components with zero productImportFiles.",
-    "measuredAt": "2026-10-05T17:57:51.874Z",
-    "baselineSource": "ea5658f05b384c6af23a2ca07ab3c969f9eee87f"
+    "description": "docs/design-system/adoption-manifest.json summary.registeredComponentCount minus summary.productImportedComponentCount \u2014 registered components with zero productImportFiles.",
+    "measuredAt": "2026-10-06T01:17:24.934Z",
+    "baselineSource": "39f8c66c521273988862963516dc3d94ad3467ec"
   }
 }
