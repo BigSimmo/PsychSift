@@ -165,6 +165,7 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   organise: SlidersHorizontal,
   resources: LibraryBig,
   teach: Presentation,
+  assessments: ClipboardCheck,
 };
 
 /**

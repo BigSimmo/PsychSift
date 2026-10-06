@@ -191,9 +191,11 @@ export const modeSecondaryNavigationRegistry = {
   // week (Today, Week, What's on), Presenting (Teach, Supervision) and My
   // record (Logbook, Feedback, Weekly CPD review). The folded pages' routes stay,
   // so bookmarks keep working; /teaching/week renders This week itself.
+  // Assessments (5 Oct assessments build) sits after Presenting (Josh, 6 Oct).
   teaching: [
     { id: "today", label: "This week", href: "/teaching" },
     { id: "teach", label: "Presenting", href: "/teaching/teach" },
+    { id: "assessments", label: "Assessments", href: "/teaching/assessments" },
     { id: "logbook", label: "My record", href: "/teaching/logbook" },
     { id: "resources", label: "Resources", href: "/teaching/resources" },
     { id: "organise", label: "Organise", href: "/teaching/organise" },
@@ -461,6 +463,7 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     // This week current on every Teaching route as well as its own.
     if (pathname === "/teaching" || pathname === "/teaching/week" || pathname === "/teaching/whats-on") return "today";
     if (pathname === "/teaching/resources" || pathname.startsWith("/teaching/resources/")) return "resources";
+    if (pathname === "/teaching/assessments") return "assessments";
     if (pathname === "/teaching/exam-prep") return "resources";
     if (pathname === "/teaching/teach" || pathname === "/teaching/supervision") return "teach";
     if (

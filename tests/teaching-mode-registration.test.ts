@@ -66,6 +66,7 @@ describe("Teaching mode registration", () => {
       // bookmarks and icons keep working; Week, What's on and Supervision now sit behind those tabs.
       ["today", "/teaching"],
       ["teach", "/teaching/teach"],
+      ["assessments", "/teaching/assessments"],
       ["logbook", "/teaching/logbook"],
       ["resources", "/teaching/resources"],
       ["organise", "/teaching/organise"],
@@ -73,6 +74,7 @@ describe("Teaching mode registration", () => {
     expect(modeSecondaryNavigationRegistry.teaching.map(({ label }) => label)).toEqual([
       "This week",
       "Presenting",
+      "Assessments",
       "My record",
       "Resources",
       "Organise",
@@ -82,6 +84,7 @@ describe("Teaching mode registration", () => {
       ["/teaching/week", "today"],
       ["/teaching/whats-on", "today"],
       ["/teaching/supervision", "teach"],
+      ["/teaching/assessments", "assessments"],
       ["/teaching/feedback", "logbook"],
       ["/teaching/review", "logbook"],
       ["/teaching/term", "logbook"],

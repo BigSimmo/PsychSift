@@ -52,7 +52,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
     "Orientation checklists",
   ],
   cme: ["Year", "Log", "Plan", "Courses", "Report"],
-  teaching: ["This week", "Presenting", "My record", "Resources", "Organise"],
+  teaching: ["This week", "Presenting", "Assessments", "My record", "Resources", "Organise"],
   psychiatry: [],
   medicines: [],
   "my-work": ["Renewals", "Compliance", "New job", "Help"],
@@ -599,8 +599,8 @@ describe("mode secondary navigation registry", () => {
   it("does not grow the mode menus past their current pages", () => {
     const visible = (modeId: AppModeId) =>
       modeSecondaryNavigationEntries(modeId).filter((entry) => entry.href && !entry.hidden);
-    // Teaching v5 (5 Oct mock-up): five tabs; What's on, Supervision, Feedback, Term and Exam prep sit behind them.
-    expect(visible("teaching")).toHaveLength(5);
+    // Teaching v5 (5 Oct mock-up): five tabs plus Assessments; What's on, Supervision, Feedback, Term and Exam prep sit behind them.
+    expect(visible("teaching")).toHaveLength(6);
     // Compliance joined Admin with the 5 Oct mock-up (Renewals · Compliance · New job · Help).
     expect(visible("my-work")).toHaveLength(4);
     expect(visible("roster")).toHaveLength(6);
