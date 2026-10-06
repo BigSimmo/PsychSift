@@ -26,7 +26,12 @@ import {
   modeSecondaryNavigationEntries,
   visibleModeSecondaryNavigationEntries,
 } from "@/lib/mode-secondary-navigation";
-import { modePageVisible, useRosterHasEnabledTeam, useTeachingRoles } from "@/lib/teaching/page-visibility";
+import {
+  modePageVisible,
+  useOpenShiftsIsPoster,
+  useRosterHasEnabledTeam,
+  useTeachingRoles,
+} from "@/lib/teaching/page-visibility";
 import { useClientTime } from "@/lib/use-client-time";
 import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
 
@@ -38,6 +43,7 @@ import { ModeBandShownContext, useModeBandShown } from "./mode-band-shown";
 const IDENTITY_MODES: ReadonlySet<AppModeId> = new Set([
   "cme",
   "roster",
+  "open-shifts",
   "teaching",
   "my-work",
   "on-call",
@@ -327,6 +333,7 @@ function ModeBandHeader({
   const [band, setBand] = useState<HTMLElement | null>(null);
   const teachingRoles = useTeachingRoles();
   const rosterHasTeam = useRosterHasEnabledTeam();
+  const openShiftsPoster = useOpenShiftsIsPoster();
 
   // The same pages the top bar's page list offers this reader, in its order:
   // flagged-off and editor-only pages, and the "tools" and "more" groups, stay
@@ -335,12 +342,12 @@ function ModeBandHeader({
     if (!tabs) return [];
     const visible = visibleModeSecondaryNavigationEntries(
       modeSecondaryNavigationEntries(modeId).filter((entry) =>
-        modePageVisible(modeId, entry.id, teachingRoles, rosterHasTeam),
+        modePageVisible(modeId, entry.id, teachingRoles, rosterHasTeam, openShiftsPoster),
       ),
       { isEditor: false },
     );
     return groupModeSecondaryNavigationEntries(visible).main.filter((entry) => entry.href);
-  }, [tabs, modeId, teachingRoles, rosterHasTeam]);
+  }, [tabs, modeId, teachingRoles, rosterHasTeam, openShiftsPoster]);
 
   usePublishBandSurface(band, modeId);
   const tabRow = useCurrentTabInView(activeId, tabEntries.map((entry) => entry.id).join(" "));

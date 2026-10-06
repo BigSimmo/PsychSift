@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 
 import { useTeachingResource, type TeachingResourceStatus } from "@/components/teaching/use-teaching-resource";
-import { demoTeachingWeek } from "@/lib/teaching/demo-programme";
+import { demoRelocatedTeaching, demoTeachingWeek } from "@/lib/teaching/demo-programme";
 import type { TeachingWeekResponse } from "@/lib/teaching/model";
 import { setTeachingRoles } from "@/lib/teaching/page-visibility";
 
@@ -35,7 +35,12 @@ export function useTeachingWeek(
   const demoWeek = useMemo<TeachingWeekResponse | null>(
     () =>
       wantsDemo && from && to && now
-        ? { ...demoTeachingWeek({ from, to }, now), relocated: [], relocatedUnavailable: false }
+        ? {
+            ...demoTeachingWeek({ from, to }, now),
+            // The made-up reader keeps one weekly session in On Call, so the "From On Call" row shows.
+            relocated: demoRelocatedTeaching({ from, to }, now),
+            relocatedUnavailable: false,
+          }
         : null,
     [wantsDemo, from, to, now],
   );

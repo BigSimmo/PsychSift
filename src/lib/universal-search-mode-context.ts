@@ -51,6 +51,9 @@ const preferredDomainsByMode: Record<AppModeId, readonly UniversalSearchDomain[]
   "first-nations": [],
   // My Day searches nothing; it only gathers the owner's own items.
   "my-day": [],
+  // Open shifts lists adverts from the reader's own Roster teams; it
+  // contributes no cross-entity universal-search domain.
+  "open-shifts": [],
 };
 
 const modeByDomain: Record<UniversalSearchDomain, AppModeId> = {

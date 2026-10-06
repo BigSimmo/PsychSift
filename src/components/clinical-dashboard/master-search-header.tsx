@@ -108,7 +108,12 @@ import {
   visibleModeSecondaryNavigationEntries,
 } from "@/lib/mode-secondary-navigation";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
-import { modePageVisible, useRosterHasEnabledTeam, useTeachingRoles } from "@/lib/teaching/page-visibility";
+import {
+  modePageVisible,
+  useOpenShiftsIsPoster,
+  useRosterHasEnabledTeam,
+  useTeachingRoles,
+} from "@/lib/teaching/page-visibility";
 import { orderByPhoneModeGroups, phoneModeGroups } from "@/lib/phone-mode-groups";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import type { CommandSurfacePlacement } from "@/lib/search-command-surface";
@@ -583,14 +588,15 @@ export function MasterSearchHeader({
    */
   const teachingRoles = useTeachingRoles();
   const rosterHasTeam = useRosterHasEnabledTeam();
+  const openShiftsPoster = useOpenShiftsIsPoster();
   const modeOwnPages = useMemo(
     () =>
       selectedAppMode.search.resultsSurface === "none"
         ? modeSecondaryNavigationEntries(selectedAppMode.id).filter((entry) =>
-            modePageVisible(selectedAppMode.id, entry.id, teachingRoles, rosterHasTeam),
+            modePageVisible(selectedAppMode.id, entry.id, teachingRoles, rosterHasTeam, openShiftsPoster),
           )
         : [],
-    [selectedAppMode, teachingRoles, rosterHasTeam],
+    [selectedAppMode, teachingRoles, rosterHasTeam, openShiftsPoster],
   );
   const modeOwnPagesAvailable = modeOwnPages.length > 0;
   /**

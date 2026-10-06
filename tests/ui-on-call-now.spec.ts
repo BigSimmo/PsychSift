@@ -35,8 +35,9 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expect(visibleByTestId(page, "on-call-now-hospital")).toContainText("Demonstration Hospital");
       const emergency = visibleByTestId(page, "on-call-now-emergency");
       await expect(emergency).toContainText("55");
-      await expect(emergency).toContainText("From a hospital phone");
-      await expect(emergency.getByRole("link", { name: /from a mobile/i })).toHaveAttribute(
+      // Mock-up v10: the mobile pause route leads, the short code sits beneath it.
+      await expect(emergency).toContainText("from a ward phone");
+      await expect(emergency.getByRole("link", { name: /from your mobile/i })).toHaveAttribute(
         "href",
         "tel:0855500000,55",
       );

@@ -1,21 +1,17 @@
 "use client";
 
-import { Phone, Pin, PinOff, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
+import { Phone, Pin, PinOff, Shield, Trash2, type LucideIcon } from "lucide-react";
+import { useId, useRef, useState, type RefObject } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { OnCallDialSheet, onCallMobileRoute } from "@/components/on-call/kit/dial-sheet";
 import { toHandbookDial } from "@/components/on-call/kit/dial-row";
-import {
-  modeCallDiscShape,
-  modeIdentityIcon,
-  modeIconTile,
-  modeModuleSurface,
-  modePressable,
-  modeTapArea,
-} from "@/components/mode-kit/recipes";
+import { onCallActionLink, onCallOutlineButton, onCallOutlineDisc } from "@/components/on-call/kit/calm";
+import { OnCallRow } from "@/components/on-call/kit/grouped-list";
+import { modePressable, modeTapArea } from "@/components/mode-kit/recipes";
+import { Sheet } from "@/components/ui/sheet";
 import { OnCallStateLabel } from "@/components/on-call/kit/state-label";
-import { modeNameText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
+import { modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
 import { useOnCallYouCalledAt } from "@/components/on-call/kit/use-you-called";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { rememberOnCallYouCalled } from "@/lib/on-call/call-marks";
@@ -125,24 +121,6 @@ function recordCall(tile: Extract<UsualTile, { kind: "handbook" | "entry" }>): v
   if (ON_CALL_YOU_CALLED_ENABLED) rememberOnCallYouCalled(tile.id);
 }
 
-function CallDisc({
-  href,
-  name,
-  onCall,
-}: {
-  readonly href: string;
-  readonly name: string;
-  readonly onCall: () => void;
-}) {
-  return (
-    <a href={href} onClick={onCall} aria-label={name} className={cn(modeTapArea, focusRing, "rounded-full")}>
-      <span aria-hidden="true" className={modeCallDiscShape.neutral}>
-        <Phone aria-hidden="true" strokeWidth={1.5} className="size-icon-md" />
-      </span>
-    </a>
-  );
-}
-
 function PinToggle({ tile }: { readonly tile: Extract<UsualTile, { kind: "handbook" | "entry" }> }) {
   if (!tile.pinnable) return null;
   const Icon = tile.pinned ? PinOff : Pin;
@@ -153,14 +131,36 @@ function PinToggle({ tile }: { readonly tile: Extract<UsualTile, { kind: "handbo
       aria-label={`${tile.pinned ? "Unpin" : "Pin"} ${tile.title}`}
       onClick={() => setOnCallUsualPinned(tile.id, !tile.pinned)}
       data-testid={`on-call-now-usual-${tile.id}-pin`}
-      className={cn(modeTapArea, focusRing, "-mr-2 -mt-3 rounded-md text-[color:var(--text-muted)]")}
+      className={cn(modeTapArea, focusRing, "rounded-md text-[color:var(--mode-identity)]")}
     >
       <Icon aria-hidden="true" strokeWidth={1.5} className="size-icon-sm" />
     </button>
   );
 }
 
-const tileSurface = cn(modeModuleSurface, "grid min-h-24 min-w-0 content-between gap-1 py-3 pl-3 pr-1");
+/**
+ * A tile's badge: a short label the title already carries ("W2" for "Ward 2",
+ * "ED"), or a glyph. Never invented: anything else wears the phone glyph.
+ */
+function usualBadge(title: string): { readonly text: string } | { readonly icon: LucideIcon } {
+  const ward = /\bward\s+([0-9][0-9a-z]{0,2}|[a-z][0-9]{1,2})\b/i.exec(title);
+  if (ward) return { text: `W${ward[1]!.toUpperCase()}`.slice(0, 3) };
+  if (/\b(ED|emergency department|emergency dept)\b/i.test(title)) return { text: "ED" };
+  if (/\bsecurity\b/i.test(title)) return { icon: Shield };
+  return { icon: Phone };
+}
+
+function BadgeFace({ title }: { readonly title: string }) {
+  const badge = usualBadge(title);
+  return (
+    <span aria-hidden="true" className={cn(onCallOutlineDisc, "size-12 text-sm font-semibold")}>
+      {"text" in badge ? badge.text : <badge.icon aria-hidden="true" strokeWidth={1.5} className="size-icon-md" />}
+    </span>
+  );
+}
+
+const tileClass = "grid min-w-0 justify-items-center gap-1.5 text-center";
+const tileLabel = cn(modeSecondaryText, "line-clamp-2 break-words text-[color:var(--text)]");
 
 function DialTile({
   tile,
@@ -175,8 +175,8 @@ function DialTile({
   const calledAt = useOnCallYouCalledAt(tile.id);
   let dial: HandbookDial | null;
   let mobileDial: HandbookDial | null = null;
-  let label: string | null = null;
   let withhold = false;
+  let label: string | null = null;
   if (tile.kind === "handbook") {
     dial = tile.item.dial.kind === "none" ? null : tile.item.dial;
     mobileDial = tile.item.mobileDial;
@@ -186,61 +186,60 @@ function DialTile({
     // A personal number does not print on Now, as Contacts treats it; the
     // tile still dials it.
     withhold = tile.entry.isPersonal;
-    label = resolved?.label ?? null;
+    // "After hours", "Pager": which of the entry's lines this tile rings now.
+    label = resolved?.label && resolved.label !== "Direct" ? resolved.label : null;
   }
   const route = dial ? onCallMobileRoute(dial, mobileDial) : null;
   const viaMobile = Boolean(route && route !== dial);
   const onCall = () => recordCall(tile);
-  const secondary: string[] = [];
-  if (label && (withhold || label !== "Direct")) secondary.push(label);
-  if (dial?.route === "hospital-phone") secondary.push("From a hospital phone");
-  if (calledAt) secondary.push(`You called ${formatOnCallTime(calledAt)}`);
+  const name = withhold
+    ? `Call ${tile.title}`
+    : route
+      ? `Call ${tile.title}${viaMobile ? " from a mobile" : ""}, ${spokenOnCallNumber(route.display)}`
+      : "";
 
   return (
-    <li className={tileSurface} data-testid={`on-call-now-usual-${tile.id}`}>
-      <span className="flex min-w-0 items-start gap-1">
-        <span
-          className={cn(modeNameText, "min-w-0 flex-1 break-words text-sm leading-5 text-[color:var(--text-heading)]")}
+    <li className={tileClass} data-testid={`on-call-now-usual-${tile.id}`}>
+      {route?.tel ? (
+        <a href={route.tel} onClick={onCall} aria-label={name} className={cn(focusRing, "rounded-full")}>
+          <BadgeFace title={tile.title} />
+        </a>
+      ) : dial && !withhold ? (
+        // A desk-only number: the badge opens its dialling details instead.
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-label={`${tile.title}, ${dial.display}. From a hospital phone. Dialling details`}
+          onClick={() => setSheetOpen(true)}
+          className={cn(focusRing, "rounded-full")}
         >
-          {tile.title}
-        </span>
-        <PinToggle tile={tile} />
-      </span>
-      <span className="flex min-w-0 items-end gap-1">
-        <span className="grid min-w-0 flex-1 gap-0.5">
-          {dial && !withhold ? (
-            <button
-              type="button"
-              aria-haspopup="dialog"
-              aria-label={`${dial.display}. Dialling details for ${tile.title}`}
-              onClick={() => setSheetOpen(true)}
-              className={cn(
-                focusRing,
-                modePressable,
-                modeNumberText,
-                "-ml-1 min-h-12 rounded-md px-1 text-left text-base-minus text-[color:var(--text)]",
-              )}
-            >
-              <span className="whitespace-nowrap">{dial.display}</span>
-            </button>
+          <BadgeFace title={tile.title} />
+        </button>
+      ) : (
+        <BadgeFace title={tile.title} />
+      )}
+      {dial && !withhold ? (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-label={`${tile.title}, ${dial.display}. Dialling details`}
+          onClick={() => setSheetOpen(true)}
+          className={cn(focusRing, modePressable, "min-h-12 w-full rounded-md px-0.5")}
+        >
+          <span className={tileLabel}>{tile.title}</span>
+          {label ? <span className="block text-xs text-[color:var(--text-muted)]">{label}</span> : null}
+          {calledAt ? (
+            <span className={cn(modeNumberText, "block text-xs text-[color:var(--text-muted)]")}>
+              {`Called ${formatOnCallTime(calledAt)}`}
+            </span>
           ) : null}
+        </button>
+      ) : (
+        <span className="grid min-h-12 content-start">
+          <span className={tileLabel}>{tile.title}</span>
           {!dial ? <OnCallStateLabel state={{ kind: "not-recorded" }} /> : null}
-          {secondary.length > 0 ? (
-            <span className={cn(modeSecondaryText, "break-words")}>{secondary.join(" · ")}</span>
-          ) : null}
         </span>
-        {route?.tel ? (
-          <CallDisc
-            href={route.tel}
-            onCall={onCall}
-            name={
-              withhold
-                ? `Call ${tile.title}`
-                : `Call ${tile.title}${viaMobile ? " from a mobile" : ""}, ${spokenOnCallNumber(route.display)}`
-            }
-          />
-        ) : null}
-      </span>
+      )}
       {dial && !withhold ? (
         <OnCallDialSheet
           open={sheetOpen}
@@ -264,20 +263,72 @@ function TileOutlines({ count }: { readonly count: number }) {
   return (
     <ul aria-hidden="true" className={tilesGrid} data-testid="on-call-now-usual-outlines">
       {Array.from({ length: count }, (_, index) => (
-        <li key={index} data-skeleton-row="" className={tileSurface}>
+        <li key={index} data-skeleton-row="" className={tileClass}>
+          <span className="size-12 rounded-full bg-[color:var(--surface-subtle)]" />
           <span className="h-3 w-3/5 rounded-sm bg-[color:var(--surface-subtle)]" />
-          <span className="h-3 w-2/5 rounded-sm bg-[color:var(--surface-subtle)]" />
         </li>
       ))}
     </ul>
   );
 }
 
-/** Two across on a phone; one column once text is enlarged (nothing is cut off). */
-// 10rem, not 9rem: at 320px two 9rem tiles left the number too narrow and it
-// broke mid-number ("0000 000 / 001"). Small phones now get one tile per row;
-// 390px phones still get two. A number never wraps.
-const tilesGrid = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2";
+/** Four across; enlarged text drops to two, so a label is never cut off. */
+const tilesGrid = "grid grid-cols-[repeat(auto-fit,minmax(min(100%,4.5rem),1fr))] gap-2";
+
+/** "Edit": pin or unpin each tile, or clear the list, in one sheet. */
+function EditSheet({
+  open,
+  onClose,
+  returnFocusRef,
+  tiles,
+  canClear,
+}: {
+  readonly returnFocusRef: RefObject<HTMLElement | null>;
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly tiles: readonly UsualTile[];
+  readonly canClear: boolean;
+}) {
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      returnFocusRef={returnFocusRef}
+      title="Your usual"
+      testId="on-call-now-usual-edit"
+    >
+      <div data-mode-identity="on-call" className="grid gap-3">
+        <p className={modeSecondaryText}>Numbers you call join this list on their own. Pin one to keep it in place.</p>
+        <ul role="list" className="min-w-0">
+          {tiles.map((tile) =>
+            tile.kind === "removed" ? null : (
+              <OnCallRow
+                key={tile.id}
+                title={tile.title}
+                trailing={<PinToggle tile={tile} />}
+                testId={`on-call-now-usual-edit-${tile.id}`}
+              />
+            ),
+          )}
+        </ul>
+        {canClear ? (
+          <button
+            type="button"
+            onClick={() => {
+              clearOnCallRecent();
+              onClose();
+            }}
+            data-testid="on-call-home-recent-clear"
+            className={cn(onCallOutlineButton, focusRing)}
+          >
+            <Trash2 aria-hidden="true" strokeWidth={1.5} className="size-icon-sm" />
+            Clear the list
+          </button>
+        ) : null}
+      </div>
+    </Sheet>
+  );
+}
 
 export function NowYourUsual({
   tiles,
@@ -295,29 +346,27 @@ export function NowYourUsual({
   readonly now: Date;
 }) {
   const headingId = useId();
+  // Clearing the list can remove the Edit button itself, so focus comes back to the heading.
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
   const shown = expanded ? tiles : tiles.slice(0, ON_CALL_USUAL_TILE_LIMIT);
+  const editable = outlineCount === null && tiles.some((tile) => tile.kind !== "removed" && tile.pinnable);
   return (
-    <section aria-labelledby={headingId} className="grid min-w-0 gap-2" data-testid="on-call-home-recent">
-      <div className="flex min-w-0 items-center gap-2 px-3">
-        <span aria-hidden="true" data-mode-identity="on-call" className={modeIconTile}>
-          <Pin aria-hidden="true" strokeWidth={1.5} className={modeIdentityIcon} />
-        </span>
-        <h2 id={headingId} className={cn(eyebrowText, "min-w-0 flex-1")}>
+    <section aria-labelledby={headingId} className="grid min-w-0 gap-1" data-testid="on-call-home-recent">
+      <div className="flex min-h-12 min-w-0 items-center justify-between gap-2 px-3">
+        <h2 id={headingId} ref={headingRef} tabIndex={-1} className={cn(eyebrowText, "focus:outline-none")}>
           Your usual
         </h2>
-        {canClear && outlineCount === null ? (
+        {editable || (canClear && outlineCount === null) ? (
           <button
             type="button"
-            onClick={() => clearOnCallRecent()}
-            data-testid="on-call-home-recent-clear"
-            className={cn(
-              focusRing,
-              "-my-3 inline-flex min-h-12 items-center gap-1 rounded-md px-2 text-sm text-[color:var(--text-muted)]",
-            )}
+            aria-haspopup="dialog"
+            onClick={() => setEditing(true)}
+            data-testid="on-call-now-usual-edit-open"
+            className={cn(onCallActionLink, focusRing)}
           >
-            <Trash2 aria-hidden="true" strokeWidth={1.5} className="size-icon-sm" />
-            Clear
+            Edit
           </button>
         ) : null}
       </div>
@@ -329,10 +378,10 @@ export function NowYourUsual({
         </p>
       ) : (
         <>
-          <ul role="list" className={tilesGrid} data-testid="on-call-now-usual">
+          <ul role="list" className={cn(tilesGrid, "px-1")} data-testid="on-call-now-usual">
             {shown.map((tile) =>
               tile.kind === "removed" ? (
-                <li key={tile.id} className={tileSurface} data-testid={`on-call-now-usual-${tile.id}`}>
+                <li key={tile.id} className={tileClass} data-testid={`on-call-now-usual-${tile.id}`}>
                   <OnCallStateLabel state={{ kind: "removed" }} />
                 </li>
               ) : (
@@ -346,16 +395,20 @@ export function NowYourUsual({
               aria-expanded={expanded}
               onClick={() => setExpanded((open) => !open)}
               data-testid="on-call-now-usual-more"
-              className={cn(
-                focusRing,
-                "inline-flex min-h-12 items-center justify-self-start rounded-md px-3 text-sm font-medium text-[color:var(--text-heading)]",
-              )}
+              className={cn(onCallActionLink, focusRing, "justify-self-start px-3")}
             >
               {expanded ? "Show fewer" : `Show all ${tiles.length}`}
             </button>
           ) : null}
         </>
       )}
+      <EditSheet
+        open={editing}
+        onClose={() => setEditing(false)}
+        returnFocusRef={headingRef}
+        tiles={tiles}
+        canClear={canClear}
+      />
     </section>
   );
 }

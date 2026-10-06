@@ -15,6 +15,7 @@ import {
   FileSignature,
   FileText,
   GraduationCap,
+  Hand,
   Heart,
   LibraryBig,
   MessagesSquare,
@@ -79,6 +80,7 @@ const categoryIcons: Record<CategoryIconKey, LucideIcon> = {
   calendarRange: CalendarRange,
   sunrise: Sunrise,
   pillBottle: PillBottle,
+  hand: Hand,
 };
 
 /** Component form, for the call sites that still take a `LucideIcon` prop. */

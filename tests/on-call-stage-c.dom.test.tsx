@@ -122,7 +122,10 @@ describe("Stage C editor controls", () => {
 import { ServiceGovernancePanel } from "@/components/on-call/service-governance-panel";
 it("shows the exact ladder and cover fields to the independent reviewer before approval", () => {
   const entries = demoServiceDetail.entries
-    .filter((entry) => entry.content.section === "cover" || entry.content.section === "playbook")
+    // The named Medicine cover row and the hospital ladder; the unnamed psychiatry cover rows are not under review here.
+    .filter((entry) =>
+      ["61000000-0000-4000-8000-000000000019", "61000000-0000-4000-8000-000000000020"].includes(entry.id),
+    )
     .map((entry) => ({ ...entry, status: "pending_review" as const, revision: 2 }));
   render(
     <ServiceGovernancePanel

@@ -569,6 +569,12 @@ describe("production dynamic route reachability", () => {
       "/forms/[slug]",
       "/formulation/[slug]",
       "/medications/[slug]",
+      // Open shifts: one advert, and one shift a manager posted. Reached from
+      // the Browse, My shifts and Post lists, which build
+      // `/open-shifts/shift/${serviceId}/${openShiftId}` and
+      // `/open-shifts/post/${serviceId}/${openShiftId}` template literals.
+      "/open-shifts/post/[serviceId]/[openShiftId]",
+      "/open-shifts/shift/[serviceId]/[openShiftId]",
       "/services/[slug]",
       "/sources/[sourceId]",
       "/specifiers/[slug]",

@@ -1,7 +1,7 @@
 "use client";
 
 import { Phone, Share2 } from "lucide-react";
-import { useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { ModeActionButton } from "@/components/mode-kit/action-button";
@@ -56,6 +56,28 @@ export function onCallCallRoute(
   return extension ?? onCallMobileRoute(dial, mobileDial);
 }
 
+/** What a row's own page adds to its dial sheet, given a way to close the sheet. */
+export type OnCallDialSheetActionsRender = (sheet: { readonly close: () => void }) => ReactNode;
+
+const OnCallDialSheetActionsContext = createContext<OnCallDialSheetActionsRender | null>(null);
+
+/**
+ * Extra actions for every dial sheet opened inside it, such as People's
+ * "Didn't connect" mark (mock-up v10: the mark is made from the number's
+ * sheet, not from a button on every row). A context rather than a prop, so the
+ * shared dial row needs no new prop to carry it; it reaches the portalled sheet
+ * because React context follows the component tree, not the DOM.
+ */
+export function OnCallDialSheetActions({
+  render,
+  children,
+}: {
+  readonly render: OnCallDialSheetActionsRender;
+  readonly children: ReactNode;
+}) {
+  return <OnCallDialSheetActionsContext.Provider value={render}>{children}</OnCallDialSheetActionsContext.Provider>;
+}
+
 const noSubscription = () => () => {};
 const canShareNow = () => typeof navigator !== "undefined" && typeof navigator.share === "function";
 
@@ -108,6 +130,7 @@ export function OnCallDialSheet({
   readonly testId?: string;
 }) {
   const canShare = useSyncExternalStore(noSubscription, canShareNow, () => false);
+  const extraActions = useContext(OnCallDialSheetActionsContext);
   const hospitalText = onCallHospitalPhoneText(dial);
   const mobile = onCallMobileRoute(dial, mobileDial);
   const extensionCall = hospitalPhone ? onCallExtensionRoute(dial) : null;
@@ -122,7 +145,11 @@ export function OnCallDialSheet({
 
   return (
     <Sheet open={open} onClose={onClose} title={title} testId={testId}>
-      <div className="grid min-w-0 gap-4" data-testid={testId ? `${testId}-body` : undefined}>
+      <div
+        data-mode-identity="on-call"
+        className="grid min-w-0 gap-4"
+        data-testid={testId ? `${testId}-body` : undefined}
+      >
         {hospitalName ? (
           <p className={cn(modeNameText, "break-words text-base-minus text-[color:var(--text-muted)]")}>
             {hospitalName}
@@ -206,6 +233,8 @@ export function OnCallDialSheet({
             />
           ) : null}
         </div>
+
+        {extraActions ? extraActions({ close: onClose }) : null}
 
         <OnCallUpdatedLine
           updatedAt={updatedAt ?? null}

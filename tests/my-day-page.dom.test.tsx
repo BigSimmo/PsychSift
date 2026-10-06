@@ -140,7 +140,7 @@ describe("MyDayPage", () => {
     setState({ status: "signed-out" });
     render(<MyDayPage now={NOW} />);
     const panel = screen.getByTestId("my-day-signed-out");
-    expect(within(panel).getByText("Sign in to see your day")).toBeTruthy();
+    expect(within(panel).getByText("Sign in to see your own day")).toBeTruthy();
     expect(screen.queryByTestId("account-dialog")).toBeNull();
     fireEvent.click(within(panel).getByRole("button", { name: "Sign in" }));
     expect(screen.getByTestId("account-dialog")).toBeTruthy();
@@ -150,7 +150,8 @@ describe("MyDayPage", () => {
     auth.status = "signed_out";
     setState({ status: "signed-out" });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-sample-notice").textContent).toContain("invented examples");
+    expect(screen.getByTestId("my-day-sample-notice").textContent).toContain("appear here once you sign in");
+    expect(screen.getByTestId("my-day-sample-line").textContent).toBe("Everything below is a made-up sample.");
     expect(within(screen.getByTestId("my-day-signed-out")).getByText("Sample")).toBeTruthy();
     expect(screen.getByTestId("my-day-tabs")).toBeTruthy();
     const dashboard = await screen.findByTestId("my-day-dashboard", undefined, { timeout: 5000 });
@@ -192,7 +193,7 @@ describe("MyDayPage", () => {
       items: [item("a", "overdue"), item("b", "soon"), item("c", "info", { mode: "cme", detail: "Extra line" })],
     });
     const first = render(<MyDayPage now={NOW} />);
-    openAll("All 3", first.rerender);
+    openAll("See all 3", first.rerender);
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
     expect(headings).toEqual(["Needs you now", "Due soon", "Later"]);
     const later = screen.getByTestId("my-day-item-c");
@@ -205,7 +206,7 @@ describe("MyDayPage", () => {
     cleanup();
     window.history.replaceState(null, "", "/my-day");
     const second = render(<MyDayPage now={NOW} />);
-    openAll("All 1", second.rerender);
+    openAll("See all 1", second.rerender);
     expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual(["Due soon"]);
   });
 
@@ -214,7 +215,7 @@ describe("MyDayPage", () => {
       items: [item("a", "overdue"), item("o", "overdue", { mode: "cme" }), item("b", "soon"), item("c", "info")],
     });
     const { rerender } = render(<MyDayPage now={NOW} />);
-    openAll("All 4", rerender);
+    openAll("See all 4", rerender);
     expect(screen.getByTestId("my-day-item-a").textContent).toContain("Admin · Date passed · ");
     expect(screen.getByTestId("my-day-item-o").textContent).toContain("CPD · Overdue · ");
     expect(screen.getByTestId("my-day-item-b").textContent).toContain("Admin · Due soon · ");
@@ -231,14 +232,13 @@ describe("MyDayPage", () => {
       ),
     });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-failed-notice").textContent).toContain(
-      "Couldn't load: Roster, CPD. Showing the rest.",
-    );
+    expect(screen.getByTestId("my-day-failed-notice").textContent).toContain("Couldn't load: Roster, CPD.");
+    expect(screen.getByTestId("my-day-failed-notice").textContent).toContain("Showing the rest.");
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
-    expect(
-      screen.getByTestId("my-day-failed-notice").querySelector('[class*="border-l-[color:var(--warning)]"]'),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    // Amber, and read out as soon as it appears.
+    expect(screen.getByTestId("my-day-failed-notice").getAttribute("data-warn")).toBe("");
+    expect(screen.getByTestId("my-day-failed-notice").getAttribute("role")).toBe("alert");
+    fireEvent.click(within(screen.getByTestId("my-day-failed-notice")).getByRole("button", { name: "Try again" }));
     expect(retry).toHaveBeenCalledTimes(1);
   });
 
@@ -288,7 +288,7 @@ describe("MyDayPage", () => {
     expect(screen.queryByTestId("my-day-item-a")).toBeNull();
     expect(screen.getByTestId("my-day-item-b")).toBeTruthy();
     expect(screen.queryByTestId("my-day-demo-notice")).toBeNull();
-    openAll("All 1", rerender);
+    openAll("See all 1", rerender);
     expect(screen.queryByTestId("my-day-item-a")).toBeNull();
   });
 
@@ -300,7 +300,7 @@ describe("MyDayPage", () => {
     expect(screen.getByTestId("my-day-dashboard")).toBeTruthy();
     expect(screen.queryByTestId("my-day-item-d")).toBeNull();
     const before = window.history.length;
-    openAll("All 4", rerender);
+    openAll("See all 4", rerender);
     expect(window.history.length).toBe(before + 1);
     expect(screen.getByTestId("my-day-full-list")).toBeTruthy();
     expect(screen.getByTestId("my-day-item-d")).toBeTruthy();
@@ -378,7 +378,14 @@ describe("MyDayPage", () => {
     expect(retry).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a calm empty state naming only the modes that were checked", () => {
+  it("says nothing needs you, and when it checked, only when every source answered", () => {
+    render(<MyDayPage now={NOW} />);
+    const empty = screen.getByTestId("my-day-empty");
+    expect(empty.textContent).toContain("Nothing needs you right now");
+    expect(empty.textContent).toMatch(/Checked .* at \d{2}:\d{2}\./);
+  });
+
+  it("names only the modes that were checked, and never says nothing needs you while one failed", () => {
     setState({
       sources: readySources.map((source) =>
         source.mode === "roster" ? { ...source, status: "failed" as const } : source,
@@ -386,7 +393,8 @@ describe("MyDayPage", () => {
     });
     render(<MyDayPage now={NOW} />);
     const empty = screen.getByTestId("my-day-empty");
-    expect(empty.textContent).toContain("Nothing needs you right now");
+    expect(empty.textContent).toContain("Nothing found in the sources that loaded");
+    expect(empty.textContent).not.toContain("Nothing needs you right now");
     expect(empty.textContent).toContain("On Call");
     expect(empty.textContent).toContain("Teaching");
     expect(empty.textContent).not.toContain("Roster");

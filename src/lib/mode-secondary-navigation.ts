@@ -127,9 +127,8 @@ export const modeSecondaryNavigationRegistry = {
   // does. `docs/superpowers/specs/2026-09-04-on-call-mode-design.md` §8.3 always
   // intended this ("On Call joins the adopted-nav set with a density profile").
   //
-  // The six shift pages lead (kit 1.7): Now is the mode home and the page a
-  // shift opens; Who's on, Call, Playbook, Refer and Find follow in the order a
-  // night uses them. Two tools sit under their own heading, and the pages that
+  // The four shift pages lead: Now is the mode home and the page a shift
+  // opens. The tools sit under their own heading, and the pages that
   // are moving out to their own modes sit under More until each sibling mode's
   // build removes its row with a redirect.
   //
@@ -140,13 +139,17 @@ export const modeSecondaryNavigationRegistry = {
   // route with a real URL, and a `ModeNavItem` takes an href by design so deep
   // links, back and prefetch keep working.
   "on-call": [
+    // Four tabs (owner, 5 Oct 2026, mock-up v10): Now, People, Refer,
+    // Handbook. People is the Call page and Handbook the Find page, renamed in
+    // place so every address and bookmark keeps working; Playbook and Who's on
+    // stay one tap away under Tools.
     { id: "now", label: "Now", href: "/on-call" },
-    // Routed and built, but left out of the sheet until the owner turns it on.
-    { id: "whoson", label: "Who's on", href: "/on-call/whos-on", hidden: !ON_CALL_WHOS_ON_ENABLED },
-    { id: "call", label: "Call", href: "/on-call/call" },
-    { id: "playbook", label: "Playbook", href: "/on-call/playbook" },
+    { id: "call", label: "People", href: "/on-call/call" },
     { id: "refer", label: "Refer", href: "/on-call/refer" },
-    { id: "find", label: "Find", href: "/on-call/find" },
+    { id: "find", label: "Handbook", href: "/on-call/find" },
+    { id: "playbook", label: "Playbook", href: "/on-call/playbook", group: "tools" },
+    // Routed and built, but left out of the sheet until the owner turns it on.
+    { id: "whoson", label: "Who's on", href: "/on-call/whos-on", group: "tools", hidden: !ON_CALL_WHOS_ON_ENABLED },
     { id: "card", label: "Pocket card", href: "/on-call/card", group: "tools" },
     // The invited multi-clinician service handbook, shown to editors only (F24).
     { id: "service", label: "Manage service", href: "/on-call/service", group: "tools", audience: "editors" },
@@ -188,15 +191,17 @@ export const modeSecondaryNavigationRegistry = {
   // absent from `MODE_NAV_ADOPTED_MODES`: the pill already opens these, so no
   // page mounts the shared bar. Organise is hidden from the pill for anyone
   // who is not an organiser or admin (`src/lib/teaching/page-visibility.ts`);
+  // Mock-up v5 (5 Oct 2026) folds the eight first-build pages into five: This
+  // week (Today, Week, What's on), Presenting (Teach, Supervision) and My
+  // record (Logbook, Feedback, Weekly CPD review). The folded pages' routes stay,
+  // so bookmarks keep working; /teaching/week renders This week itself.
+  // Assessments (5 Oct assessments build) sits after Presenting (Josh, 6 Oct).
   teaching: [
-    { id: "today", label: "Today", href: "/teaching" },
-    { id: "week", label: "Week", href: "/teaching/week" },
-    { id: "whats-on", label: "What's on", href: "/teaching/whats-on" },
-    { id: "resources", label: "Resources", href: "/teaching/resources" },
-    { id: "logbook", label: "Logbook", href: "/teaching/logbook" },
-    { id: "teach", label: "Teach", href: "/teaching/teach" },
-    { id: "supervision", label: "Supervision", href: "/teaching/supervision" },
+    { id: "today", label: "This week", href: "/teaching" },
+    { id: "teach", label: "Presenting", href: "/teaching/teach" },
     { id: "assessments", label: "Assessments", href: "/teaching/assessments" },
+    { id: "logbook", label: "My record", href: "/teaching/logbook" },
+    { id: "resources", label: "Resources", href: "/teaching/resources" },
     { id: "organise", label: "Organise", href: "/teaching/organise" },
   ],
   // Psychiatry's home is itself the list of sections it gathers, and each
@@ -250,6 +255,16 @@ export const modeSecondaryNavigationRegistry = {
     { id: "my-day-today", label: "Today", href: "/my-day" },
     { id: "my-day-week", label: "Week", href: "/my-day/week" },
     { id: "my-day-hours", label: "Hours", href: "/my-day/hours" },
+  ],
+  // Open shifts' pages. Post is for Roster team managers only: the registry is
+  // the same for everyone, so `modePageVisible` hides it until an Open shifts
+  // read confirms poster rights (`setOpenShiftsIsPoster`), as Roster hides Team
+  // and Swaps. Ids are prefixed so they stay unique across modes.
+  "open-shifts": [
+    { id: "open-shifts-browse", label: "Browse", href: "/open-shifts" },
+    { id: "open-shifts-mine", label: "My shifts", href: "/open-shifts/mine" },
+    { id: "open-shifts-alerts", label: "Alerts", href: "/open-shifts/alerts" },
+    { id: "open-shifts-post", label: "Post", href: "/open-shifts/post" },
   ],
 } as const satisfies Record<AppModeId, readonly ModeSecondaryNavigationEntry[]>;
 
@@ -460,20 +475,20 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
   }
   if (modeId === "teaching") {
     // Exact match only, as for On Call and CME: a prefix test would mark
-    // Today current on every Teaching route as well as its own.
-    if (pathname === "/teaching") return "today";
-    if (pathname === "/teaching/week") return "week";
-    if (pathname === "/teaching/whats-on") return "whats-on";
+    // This week current on every Teaching route as well as its own.
+    if (pathname === "/teaching" || pathname === "/teaching/week" || pathname === "/teaching/whats-on") return "today";
     if (pathname === "/teaching/resources" || pathname.startsWith("/teaching/resources/")) return "resources";
-    if (pathname === "/teaching/teach") return "teach";
-    if (pathname === "/teaching/supervision") return "supervision";
     if (pathname === "/teaching/assessments") return "assessments";
-    if (pathname === "/teaching/review" || pathname === "/teaching/feedback" || pathname === "/teaching/term")
-      return "logbook";
     if (pathname === "/teaching/exam-prep") return "resources";
-    if (pathname === "/teaching/import") return "organise";
-    if (pathname === "/teaching/logbook") return "logbook";
-    if (pathname === "/teaching/organise") return "organise";
+    if (pathname === "/teaching/teach" || pathname === "/teaching/supervision") return "teach";
+    if (
+      pathname === "/teaching/logbook" ||
+      pathname === "/teaching/review" ||
+      pathname === "/teaching/feedback" ||
+      pathname === "/teaching/term"
+    )
+      return "logbook";
+    if (pathname === "/teaching/import" || pathname === "/teaching/organise") return "organise";
     return null;
   }
   if (modeId === "my-work") {
@@ -502,6 +517,14 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     // prefix test here would mark Today current on every Roster route as well
     // as its own.
     if (pathname === "/roster") return "today";
+    return null;
+  }
+  if (modeId === "open-shifts") {
+    // Exact matches only, for Roster's reason.
+    if (pathname === "/open-shifts/mine") return "open-shifts-mine";
+    if (pathname === "/open-shifts/alerts") return "open-shifts-alerts";
+    if (pathname === "/open-shifts/post") return "open-shifts-post";
+    if (pathname === "/open-shifts") return "open-shifts-browse";
     return null;
   }
   // Every mode with destinations has a branch above; the rest register none, so
@@ -573,6 +596,9 @@ export function isModeSecondaryNavigationRoute(params: {
     return ["/roster/shifts", "/roster/team", "/roster/swaps", "/roster/requests", "/roster/settings"].includes(
       pathname,
     );
+  }
+  if (modeId === "open-shifts") {
+    return ["/open-shifts/mine", "/open-shifts/alerts", "/open-shifts/post"].includes(pathname);
   }
   return false;
 }

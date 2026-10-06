@@ -538,7 +538,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(21),
     section: "playbook",
     slug: "demo-escalation-second",
-    title: "Demo escalation — system unavailable",
+    title: "Systems unavailable",
     subtitle: null,
     body: null,
     details: {
@@ -566,7 +566,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(22),
     section: "playbook",
     slug: "demo-escalation-registrar-unreachable",
-    title: "Demo escalation — the registrar is not answering",
+    title: "Registrar not answering",
     subtitle: "Do not sit on this one",
     body: null,
     details: {
@@ -603,7 +603,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(23),
     section: "playbook",
     slug: "demo-escalation-no-bed",
-    title: "Demo escalation — no bed available after hours",
+    title: "No bed after hours",
     subtitle: null,
     body: null,
     details: {
@@ -630,7 +630,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(24),
     section: "playbook",
     slug: "demo-escalation-security-incident",
-    title: "Demo escalation — a safety incident on the ward",
+    title: "Safety incident on the ward",
     subtitle: "Security first, then the people who have to know",
     body: null,
     details: {
@@ -653,7 +653,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(25),
     section: "playbook",
     slug: "demo-escalation-complaint-overnight",
-    title: "Demo escalation — a complaint raised overnight",
+    title: "Complaint overnight",
     subtitle: "A ladder with no phone numbers on it, which is allowed",
     body: null,
     // Deliberately numberless: an escalation step is a person and a moment,

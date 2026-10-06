@@ -49,15 +49,15 @@ const DESKTOP = 1280;
 /** This repository's production tap floor, in CSS pixels. */
 const TAP_FLOOR = 48;
 
-// Now carries no search (ruling F6): the one search box lives on Call.
-test("Call search narrows to the exact contact on a narrow phone", async ({ page }) => {
+// Now carries no search (ruling F6): the one search box lives on People.
+test("People search narrows to the exact contact on a narrow phone", async ({ page }) => {
   await page.setViewportSize({ width: NARROW, height: BOARD_HEIGHT });
   await page.goto("/on-call/call");
   const main = page.getByTestId("on-call-call-main");
   const status = main.getByRole("status").filter({ hasText: /result/ });
   // Text typed before hydration is dropped (mobile WebKit, release matrix 2026-09-25).
   await expect(async () => {
-    await main.getByRole("searchbox", { name: "Search Call" }).fill("coordination");
+    await main.getByRole("searchbox", { name: "Search People" }).fill("coordination");
     await expect(status).toHaveText("1 result", { timeout: 2_000 });
   }).toPass({ timeout: 20_000 });
   await expect(main).toContainText("Example after-hours coordination extension");
@@ -281,15 +281,17 @@ test.describe("01 Home", () => {
     await expectTapFloor(allRoles, "Right now's All roles link");
   });
 
-  test("keeps First night and Who do I call now live in the footer group", async ({ page }) => {
+  test("keeps First night in the footer group and the escalation ladder under Who do I call now", async ({ page }) => {
     await openBoard(page, ROUTES.home);
     const footer = visibleByTestId(page, "on-call-now-footer");
     const firstNight = footer.getByTestId("on-call-home-first-night");
     await expect(firstNight).toHaveAttribute("href", "/on-call/first-night");
     await expectTapFloor(firstNight, "First night row");
-    // The literal href the route-reachability guard reads; the click test
-    // above proves the destination actually renders.
-    await expect(footer.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
+    // Mock-up v10: "Who do I call now?" is its own group with the ladder link
+    // at its right. The literal href is what the route-reachability guard reads;
+    // the click test above proves the destination actually renders.
+    const who = visibleByTestId(page, "on-call-now-who");
+    await expect(who.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
   });
 
   test("puts the page menu in the universal header, and offers no chat there", async ({ page }) => {
@@ -316,7 +318,7 @@ test.describe("Coming up — moved off Home to Teaching (plan C25)", () => {
   test("legacy /on-call/education hard-redirects to Teaching Week", async ({ page }) => {
     await page.goto("/on-call/education", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/\/teaching\/week/);
-    await expect(visibleByTestId(page, "teaching-week")).toBeVisible({ timeout: 20_000 });
+    await expect(visibleByTestId(page, "teaching-this-week")).toBeVisible({ timeout: 20_000 });
   });
 });
 
@@ -393,10 +395,10 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // The pill's accessible name still opens `Mode …` — twelve test files and
     // the shared helper find this control by that prefix — and now says the
     // page as well.
-    // Contacts is the editor behind Call (kit 1.7), so the pill names Call.
-    const pill = page.getByRole("button", { name: "Mode On Call, page Call" });
+    // Contacts is the editor behind People (kit 1.7), so the pill names People.
+    const pill = page.getByRole("button", { name: "Mode On Call, page People" });
     await expect(pill).toBeVisible();
-    await expect(pill).toContainText("Call");
+    await expect(pill).toContainText("People");
     await expect(pill).toContainText("On Call");
 
     // And nothing else on the page paints the name. Measured, not counted by
@@ -421,8 +423,10 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // only once the page has resolved two or more groups from the list. WebKit reaches
     // this read before that, found no bar, and compared the pill's teal against null.
     // Wait for both elements this test compares, then read them.
+    // Contacts is the editor behind People (kit 1.7), so the pill names People — same as
+    // the assertion in "names the page once, in the pill, with the mode beneath it".
     await expect(await sectionBar(page)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Mode On Call, page Call" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mode On Call, page People" })).toBeVisible();
     const identity = await page.evaluate(() => {
       const read = (selector: string) => {
         const element = document.querySelector(selector);

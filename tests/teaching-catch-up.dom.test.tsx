@@ -8,7 +8,7 @@ vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
 import { catchUpCount, catchUpSessions, TeachingCatchUp } from "@/components/teaching/teaching-catch-up";
 import { TeachingResources } from "@/components/teaching/teaching-resources";
 import { demoTeachingResources } from "@/lib/teaching/demo-resources";
-import { RELOCATED_SERVICE_ID, type ResourceRow, type ResourcesForWeek } from "@/lib/teaching/model";
+import { RELOCATED_SERVICE_ID, type ResourceRow } from "@/lib/teaching/model";
 
 import {
   AFTER,
@@ -128,7 +128,7 @@ describe("the catch-up section", () => {
 });
 
 describe("Resources with catch-up", () => {
-  it("leads the page with the catch-up list from the week and this week's resources", async () => {
+  it("follows Saved with the catch-up list from the week and this week's resources", async () => {
     serveFetch((url) => {
       if (url === WEEK_RESOURCES_URL)
         return json(200, {
@@ -141,12 +141,16 @@ describe("Resources with catch-up", () => {
       return null;
     });
     render(<TeachingResources demoMode={false} />);
+    const section = await screen.findByTestId("teaching-catch-up");
     const list = within(await screen.findByTestId("teaching-catch-up-list"));
     expect(list.getByRole("link", { name: /^Journal club/ })).toBeInTheDocument();
     expect(list.getByRole("link", { name: /Registrar teaching slides/ })).toBeInTheDocument();
+    // The mock-up's order: the filter and this week's materials come first, catch-up after Saved.
+    const saved = screen.getByRole("region", { name: /^Saved/ });
+    expect(saved.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("shows a quiet notice, not an empty list, when the week cannot load", async () => {
+  it("leaves the list out, claiming nothing, when the week cannot load", async () => {
     serveFetch((url) => {
       if (url === WEEK_RESOURCES_URL)
         return json(200, { forThisWeek: [], collections: [], recordingsCount: 0, savedCount: 0 });
@@ -154,22 +158,23 @@ describe("Resources with catch-up", () => {
       return null;
     });
     render(<TeachingResources demoMode={false} />);
-    expect(await screen.findByText("Catch-up list unavailable right now.")).toBeInTheDocument();
+    expect(await screen.findByText("Nothing is linked to this week's sessions yet.")).toBeInTheDocument();
+    expect(screen.queryByTestId("teaching-catch-up")).toBeNull();
     expect(screen.queryByText("Nothing to catch up on this week.")).toBeNull();
   });
 
-  it("shows the demo's ended sessions with their made-up materials", async () => {
-    serveFetch((url) =>
-      url === WEEK_RESOURCES_URL
-        ? json(
-            200,
-            demoTeachingResources({ action: "resources.read", weekStart: "2026-09-28" }, AFTER) as ResourcesForWeek,
-          )
-        : null,
-    );
-    render(<TeachingResources demoMode />);
-    const list = within(await screen.findByTestId("teaching-catch-up-list"));
-    expect(list.getByRole("link", { name: /^Demo case conference\s*Mon 28 Sep/ })).toBeInTheDocument();
-    expect(list.getByRole("link", { name: /Demo case conference recording/ })).toBeInTheDocument();
+  it("marks the demo's missed recording in Recordings, where Today's catch-up link lands", async () => {
+    const at = (query: Parameters<typeof demoTeachingResources>[0]) => json(200, demoTeachingResources(query, AFTER));
+    serveFetch((url) => {
+      if (url === WEEK_RESOURCES_URL) return at({ action: "resources.read", weekStart: "2026-09-28" });
+      if (url.endsWith("builtIn=recordings")) return at({ action: "collection.read", builtIn: "recordings" });
+      if (url.endsWith("builtIn=saved")) return at({ action: "collection.read", builtIn: "saved" });
+      return null;
+    });
+    const { container } = render(<TeachingResources demoMode />);
+    const recordings = within(await screen.findByTestId("teaching-resources-recordings"));
+    expect(recordings.getByText(/^Mon 28 Sep · no check-in recorded$/)).toBeInTheDocument();
+    expect(container.querySelector("#catch-up")).toHaveAttribute("aria-label", "Recordings · 4");
+    expect(screen.queryByTestId("teaching-catch-up")).toBeNull();
   });
 });

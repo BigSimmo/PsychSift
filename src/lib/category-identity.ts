@@ -103,6 +103,7 @@ export const CATEGORY_ICON_KEYS = [
   "calendarRange",
   "sunrise",
   "pillBottle",
+  "hand",
 ] as const;
 
 export type CategoryIconKey = (typeof CATEGORY_ICON_KEYS)[number];
@@ -139,6 +140,8 @@ export const APP_MODE_ICON: Record<AppModeId, CategoryIconKey> = {
   "my-day": "sunrise",
   // A pill bottle, not Medication's pill: every mode wears a glyph of its own.
   medicines: "pillBottle",
+  // A raised hand: putting your hand up for an extra shift.
+  "open-shifts": "hand",
 };
 
 /**
@@ -185,6 +188,7 @@ export const APP_MODE_ACCENT: Record<AppModeId, CategoryAccent> = {
   "first-nations": "slate",
   "my-day": "slate",
   medicines: "rose",
+  "open-shifts": "purple",
 };
 
 /**

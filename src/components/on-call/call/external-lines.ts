@@ -14,6 +14,10 @@ export type OnCallExternalLine = {
   readonly title: string;
   /** Where the line serves, as the source states it. */
   readonly area: string;
+  /** When the line answers ("24 hours, every day"), when its source says. */
+  readonly availability?: string;
+  /** A limitation the source states, shown wherever the number is shown ("not an emergency service"). */
+  readonly caveat?: string | null;
   readonly dial: HandbookDial;
   readonly updatedAt: string;
   readonly sources: readonly { readonly label: string; readonly url: string }[];
@@ -32,6 +36,8 @@ function fromCrisisContact(contact: PublicCrisisContact): OnCallExternalLine {
     id: contact.id.toLowerCase(),
     title: contact.name,
     area: contact.coverage,
+    availability: contact.availability,
+    caveat: contact.caveat,
     dial: resolveHandbookPhone(contact.telephoneDisplay, "outside"),
     updatedAt: contact.verifiedOn,
     sources: [{ label: hostLabel(contact.sourceUrl), url: contact.sourceUrl }],
@@ -67,14 +73,22 @@ export function onCallExternalLines(): OnCallExternalLine[] {
   const lifeline = crisisContact(LIFELINE_ID);
   const shelf = handbookResources
     .filter((resource) => resource.group === "contacts" && resource.phone)
-    .map((resource): OnCallExternalLine => ({
-      id: resource.id,
-      title: resource.title,
-      area: resource.jurisdiction,
-      dial: resolveHandbookPhone(resource.phone ?? "", "outside"),
-      updatedAt: resource.checkedOn,
-      sources: [{ label: resource.sourceLabel, url: resource.sourceUrl }],
-    }));
+    .map((resource): OnCallExternalLine => {
+      // The same number on the app's crisis list carries the hours and caveat its
+      // source states ("not an emergency service"), which must show with it.
+      const digits = onCallDigitsOf(resource.phone ?? "");
+      const listed = WA_CRISIS_CONTACTS.find((contact) => onCallDigitsOf(contact.telephoneDisplay) === digits);
+      return {
+        id: resource.id,
+        title: resource.title,
+        area: resource.jurisdiction,
+        availability: listed?.availability,
+        caveat: listed?.caveat ?? null,
+        dial: resolveHandbookPhone(resource.phone ?? "", "outside"),
+        updatedAt: resource.checkedOn,
+        sources: [{ label: resource.sourceLabel, url: resource.sourceUrl }],
+      };
+    });
   return [
     ...(emergency ? [fromCrisisContact(emergency)] : []),
     ...shelf,

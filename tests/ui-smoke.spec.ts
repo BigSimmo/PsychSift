@@ -2025,10 +2025,13 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ })).toBeAttached();
     // My Day leads the list (design review 2026-10-03, item 4), so the first
     // option is My Day and the active Answer option is checked under Search.
-    await expect(modeOptions.first()).toBeInViewport();
+    // The sheet opens scrolled to the checked option, so on a phone whose
+    // My Day group runs past the fold it is Answer, not My Day, that starts
+    // in view.
     await expect(modeOptions.first()).toContainText("My Day");
     const answerOption = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
     await expect(answerOption).toHaveAttribute("aria-checked", "true");
+    await expect(answerOption).toBeInViewport();
     await expect(answerOption).toContainText("Source-backed clinical answer");
 
     // Icon tiles and glyphs use one optical scale even though the canonical
@@ -4632,7 +4635,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(modeDialog).toBeVisible();
     await expect(appModeMenu).toBeVisible();
     await expect(modeSearch).toBeFocused();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(25);
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(26);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
@@ -4659,7 +4662,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     // "My Day" carries a "d" too.
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
     await modeDialog.getByRole("button", { name: "Clear mode search" }).click();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(25);
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(26);
 
     const answerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
     await answerMode.focus();
