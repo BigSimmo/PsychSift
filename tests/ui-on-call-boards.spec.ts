@@ -748,14 +748,16 @@ test.describe("08 Referrals", () => {
 test.describe("08 Referrals — freshness says something or says nothing", () => {
   test("keeps a current service's checked date out of the collapsed row", async ({ page }) => {
     await openBoard(page, ROUTES.referrals);
-    const row = page.getByRole("button", { name: /Community/ }).first();
+    const row = page.getByRole("button", { name: "Community mental health team", exact: true });
     await expect(row).toBeVisible();
     // "Checked <date>" on a row where nothing is wrong is a pill wider than
     // the service's own name; the name truncated to make room for it.
     await expect(row.getByTestId("on-call-freshness-badge")).toHaveCount(0);
 
-    await row.click();
-    await expect(page.getByTestId("on-call-freshness-badge").first()).toBeVisible();
+    await expandReferral(page, "Community mental health team");
+    await expect(
+      page.getByTestId("on-call-referral-panel-demo-community-team").getByTestId("on-call-freshness-badge"),
+    ).toBeVisible();
   });
 });
 
