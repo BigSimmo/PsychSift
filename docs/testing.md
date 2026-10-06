@@ -373,6 +373,12 @@ following the same shape as `check:bundle-budget`.
   confirmation samples; only that failing route/strategy is repeated, all three reports are retained,
   and their majority is graded. Missing or incomplete confirmation evidence retains the initial
   breach and fails closed. Passing cells are never re-run.
+- In CI the job reuses the same run's `ui-playwright-build` artifact (`LIGHTHOUSE_REUSE_BUILD_ROOT_ID`)
+  instead of building again: same checkout, same isolated offline/demo `next build --webpack`, same
+  environment overrides (pinned by `tests/check-lighthouse-budget.test.ts`). A missing `BUILD_ID` in
+  the reused root fails closed, and the reused root is never deleted. When the producer is out of
+  scope (skipped) the job builds its own as before. Grading (initial sample, majority-of-three
+  confirmation, baseline and tolerances) is unchanged.
 - The 45-minute required CI job reserves 10 minutes for the isolated build, 2 minutes for server
   readiness, and 28 minutes for the complete measurement suite. Each Lighthouse process receives
   the lesser of its 120-second cap and the suite time remaining. If time runs out, unmeasured cells
