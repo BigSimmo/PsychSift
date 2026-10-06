@@ -315,7 +315,7 @@ describe("mode menu destination prefetch", () => {
     expect(trigger).not.toHaveFocus();
   });
 
-  it("opens on the current side and keeps a search when switching to the other side's matches", async () => {
+  it("opens on the current side and switches the list without a search field", async () => {
     const user = userEvent.setup();
     render(<MasterSearchHeader {...headerProps()} />);
 
@@ -323,24 +323,17 @@ describe("mode menu destination prefetch", () => {
     const dialog = await screen.findByRole("dialog", { name: "Choose app mode" });
     expect(within(dialog).getByRole("radio", { name: "Clinical" })).toHaveAttribute("aria-checked", "true");
     expect(within(dialog).getByText("Care, diagnosis and reference")).toBeTruthy();
+    expect(within(dialog).queryByRole("textbox", { name: "Find a mode" })).toBeNull();
     expect(within(dialog).queryByRole("menuitemradio", { name: /^On Call\b/i })).toBeNull();
     expect(within(dialog).getByRole("menuitemradio", { name: /^Answer\b/i })).toBeTruthy();
+    expect(within(dialog).getByRole("status")).toHaveTextContent("18 in Clinical");
 
     await user.click(within(dialog).getByRole("radio", { name: "Work" }));
     expect(within(dialog).getByRole("menuitemradio", { name: /^On Call\b/i })).toBeTruthy();
     expect(within(dialog).queryByRole("menuitemradio", { name: /^Answer\b/i })).toBeNull();
     expect(within(dialog).getByText("Your working day")).toBeTruthy();
     expect(within(dialog).getByText(/One list of what needs you today/i)).toBeTruthy();
-
-    await user.click(within(dialog).getByRole("radio", { name: "Clinical" }));
-    const search = within(dialog).getByRole("textbox", { name: "Find a mode" });
-    await user.type(search, "d");
-    expect(within(dialog).getByRole("status")).toHaveTextContent("6 matches");
-    await user.click(within(dialog).getByRole("button", { name: "Show 3 matches in Work" }));
-    expect(search).toHaveValue("d");
-    expect(within(dialog).getByRole("menuitemradio", { name: /^CPD\b/i })).toBeTruthy();
-    expect(within(dialog).getByRole("menuitemradio", { name: /^My Day\b/i })).toBeTruthy();
-    expect(within(dialog).queryByRole("menuitemradio", { name: /^Documents\b/i })).toBeNull();
+    expect(within(dialog).getByRole("status")).toHaveTextContent("7 in Work");
   });
 
   it("returns from On Call's pages into the Work list", async () => {

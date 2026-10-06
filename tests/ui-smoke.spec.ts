@@ -4635,11 +4635,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     await appModeButton.click();
     const modeDialog = page.getByRole("dialog", { name: "Choose app mode" });
     const appModeMenu = modeDialog.getByRole("menu", { name: "Choose app mode" });
-    const modeSearch = modeDialog.getByRole("textbox", { name: "Find a mode" });
     await expect(modeDialog).toBeVisible();
     await expect(appModeMenu).toBeVisible();
-    await expect(modeSearch).toBeFocused();
+    await expect(modeDialog.getByRole("textbox", { name: "Find a mode" })).toHaveCount(0);
     await expect(modeDialog.getByRole("radio", { name: "Clinical" })).toBeChecked();
+    await expect(modeDialog.getByRole("status")).toHaveText("19 in Clinical");
     await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
@@ -4649,27 +4649,13 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Roster\b/ })).toHaveCount(0);
 
-    await modeSearch.fill("d");
-    await expect(modeDialog.getByRole("status")).toHaveText("6 matches");
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(6);
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toBeAttached();
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Differentials\b/ })).toBeAttached();
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^DSM-5 Diagnosis\b/ })).toBeAttached();
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
-    // "Medicines & tools", the hub that leads its group, carries a "d" too.
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines & tools\b/ })).toBeAttached();
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
-    // CPD, Admin and My Day match too, on the Work side.
-    await expect(modeDialog.getByRole("button", { name: "Show 3 matches in Work" })).toBeVisible();
-    await modeDialog.getByRole("button", { name: "Show 3 matches in Work" }).click();
-    await expect(modeSearch).toHaveValue("d");
-    await expect(modeDialog.getByRole("status")).toHaveText("3 matches");
+    await modeDialog.getByRole("radio", { name: "Work" }).click();
+    await expect(modeDialog.getByRole("status")).toHaveText("7 in Work");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Admin\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toHaveCount(0);
     await modeDialog.getByRole("radio", { name: "Clinical" }).click();
-    await modeDialog.getByRole("button", { name: "Clear mode search" }).click();
     await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
 
     const answerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
@@ -4713,12 +4699,10 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     await appModeButton.click();
     await expect(appModeMenu).toBeVisible();
-    // Opening schedules the search autofocus in a requestAnimationFrame. Focusing an
-    // option before that frame runs lets the autofocus steal focus back into the search
-    // box, where Tab is not a dismiss key, so the menu stays open and this fails.
-    await expect(modeSearch).toBeFocused();
+    // Opening focuses the current mode on the next frame. Wait for that before Tab,
+    // or a late focus move keeps the menu open.
     const reopenedAnswerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
-    await reopenedAnswerMode.focus();
+    await expect(reopenedAnswerMode).toBeFocused();
     await expect(reopenedAnswerMode).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(appModeMenu).toBeHidden();
