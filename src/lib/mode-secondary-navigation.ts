@@ -126,9 +126,8 @@ export const modeSecondaryNavigationRegistry = {
   // does. `docs/superpowers/specs/2026-09-04-on-call-mode-design.md` §8.3 always
   // intended this ("On Call joins the adopted-nav set with a density profile").
   //
-  // The six shift pages lead (kit 1.7): Now is the mode home and the page a
-  // shift opens; Who's on, Call, Playbook, Refer and Find follow in the order a
-  // night uses them. Two tools sit under their own heading, and the pages that
+  // The four shift pages lead: Now is the mode home and the page a shift
+  // opens. The tools sit under their own heading, and the pages that
   // are moving out to their own modes sit under More until each sibling mode's
   // build removes its row with a redirect.
   //
@@ -139,13 +138,17 @@ export const modeSecondaryNavigationRegistry = {
   // route with a real URL, and a `ModeNavItem` takes an href by design so deep
   // links, back and prefetch keep working.
   "on-call": [
+    // Four tabs (owner, 5 Oct 2026, mock-up v10): Now, People, Refer,
+    // Handbook. People is the Call page and Handbook the Find page, renamed in
+    // place so every address and bookmark keeps working; Playbook and Who's on
+    // stay one tap away under Tools.
     { id: "now", label: "Now", href: "/on-call" },
-    // Routed and built, but left out of the sheet until the owner turns it on.
-    { id: "whoson", label: "Who's on", href: "/on-call/whos-on", hidden: !ON_CALL_WHOS_ON_ENABLED },
-    { id: "call", label: "Call", href: "/on-call/call" },
-    { id: "playbook", label: "Playbook", href: "/on-call/playbook" },
+    { id: "call", label: "People", href: "/on-call/call" },
     { id: "refer", label: "Refer", href: "/on-call/refer" },
-    { id: "find", label: "Find", href: "/on-call/find" },
+    { id: "find", label: "Handbook", href: "/on-call/find" },
+    { id: "playbook", label: "Playbook", href: "/on-call/playbook", group: "tools" },
+    // Routed and built, but left out of the sheet until the owner turns it on.
+    { id: "whoson", label: "Who's on", href: "/on-call/whos-on", group: "tools", hidden: !ON_CALL_WHOS_ON_ENABLED },
     { id: "card", label: "Pocket card", href: "/on-call/card", group: "tools" },
     // The invited multi-clinician service handbook, shown to editors only (F24).
     { id: "service", label: "Manage service", href: "/on-call/service", group: "tools", audience: "editors" },

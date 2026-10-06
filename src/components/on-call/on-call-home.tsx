@@ -15,9 +15,11 @@ import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { NowCrisisLines } from "@/components/on-call/now/crisis-lines";
 import { NowEmergencyPin } from "@/components/on-call/now/emergency-pin";
-import { NowNeedsYou, useOnCallCallMarks } from "@/components/on-call/now/needs-you";
+import { NowNeedsYou, onCallNeedsYouAnswered, useOnCallCallMarks } from "@/components/on-call/now/needs-you";
 import { NowRightNow } from "@/components/on-call/now/right-now";
-import { NowFooter } from "@/components/on-call/now/systems-down";
+import { NowShiftPulseCard } from "@/components/on-call/now/shift-pulse-card";
+import { NowShiftShortcuts } from "@/components/on-call/now/shift-shortcuts";
+import { NowFooter, NowWhoToCall, type OnCallSituation } from "@/components/on-call/now/systems-down";
 import { NowYourTeam } from "@/components/on-call/now/your-team";
 import { NowYourUsual, usualTiles } from "@/components/on-call/now/your-usual";
 import { OnCallDemoContentControl, useOnCallDemoContentState } from "@/components/on-call/on-call-demo-content-control";
@@ -198,7 +200,19 @@ export function OnCallHome({ now: pinnedNow }: { now?: Date } = {}) {
     }
     return keys;
   }, [handbookItems, entries, now]);
-  const needs = useMemo(() => selectNeedsYou({ ladders, marks, dialKeys }), [ladders, marks, dialKeys]);
+  const selectedNeeds = useMemo(() => selectNeedsYou({ ladders, marks, dialKeys }), [ladders, marks, dialKeys]);
+  // "They answered" closes the card on this phone until the next call is made.
+  const needs = onCallNeedsYouAnswered(selectedNeeds, marks) ? null : selectedNeeds;
+  // "Who do I call now?": one chip per ladder that exists, never an invented situation.
+  const situations = useMemo<OnCallSituation[]>(
+    () =>
+      ladders.map((ladder) => ({
+        id: ladder.id,
+        title: ladder.title,
+        href: `/on-call/now?situation=${encodeURIComponent(ladder.id)}`,
+      })),
+    [ladders],
+  );
   const ladderEntry = needs ? ladderEntries.find((entry) => entry.id === needs.ladderId) : undefined;
 
   // What this reader can do with the example corpus, or null while that is
@@ -299,6 +313,8 @@ export function OnCallHome({ now: pinnedNow }: { now?: Date } = {}) {
                 now={now}
                 live={!pinnedNow}
               />
+              <NowShiftShortcuts />
+              <NowShiftPulseCard now={now} />
             </>
           }
           comingUp={
@@ -320,9 +336,17 @@ export function OnCallHome({ now: pinnedNow }: { now?: Date } = {}) {
                   now={now}
                 />
               ) : null}
+              <NowWhoToCall situations={situations} />
             </>
           }
-          shortcuts={<NowFooter context={context} shifts={shifts} items={handbookItems} now={now} />}
+          shortcuts={
+            <>
+              <NowFooter context={context} shifts={shifts} items={handbookItems} now={now} />
+              {/* The public lines close the page whenever the hospital's own
+                  numbers are on screen; otherwise they sit near the top. */}
+              {numbersOnScreen ? <NowCrisisLines now={now} /> : null}
+            </>
+          }
         />
 
         {exampleContent ? (

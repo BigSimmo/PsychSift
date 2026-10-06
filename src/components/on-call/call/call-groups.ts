@@ -83,3 +83,28 @@ export function onCallCallGroups(items: readonly HandbookItem[]): OnCallCallGrou
   );
   return groups;
 }
+
+/** The short role names the mock-up draws in a row's badge, read from the role word that starts a label. */
+const ROLE_BADGES: Readonly<Record<string, string>> = {
+  registrar: "REG",
+  consultant: "CON",
+  resident: "RES",
+  intern: "INT",
+};
+
+/**
+ * A row's short badge (REG, CON, W2, 4B), or null when its label carries none.
+ * It is read from the label only, never guessed: a role badge when the label
+ * starts with one of the four grades, a ward badge when a `Ward:` row names a
+ * ward by a short code ("Ward 2" → W2, "Synthetic ward 4B" → 4B).
+ */
+export function onCallRowBadge(item: HandbookItem): string | null {
+  const label = item.parsed.label.trim();
+  if (item.parsed.prefix === "Ward") {
+    const ward = /\bward\s+([0-9]{1,2}[A-Za-z]?|[A-Za-z][0-9]{1,2})\b/i.exec(label)?.[1];
+    if (!ward) return null;
+    return /^\d+$/.test(ward) ? `W${ward}` : ward.toUpperCase();
+  }
+  const first = /^([A-Za-z]+)\b/.exec(label)?.[1]?.toLowerCase();
+  return first ? (ROLE_BADGES[first] ?? null) : null;
+}

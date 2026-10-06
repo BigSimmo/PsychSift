@@ -140,9 +140,9 @@ export type OnCallHubPage = "now" | "whos-on" | "call" | "refer" | "find";
 export const ON_CALL_HUB_PAGE_TITLES: Record<OnCallHubPage, string> = {
   now: "Now",
   "whos-on": "Who's on",
-  call: "Call",
+  call: "People",
   refer: "Refer",
-  find: "Find",
+  find: "Handbook",
 };
 
 export const ON_CALL_HUB_PAGE_ICONS: Record<OnCallHubPage, LucideIcon> = {

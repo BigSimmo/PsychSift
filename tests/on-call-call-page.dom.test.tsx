@@ -8,11 +8,16 @@ import { entriesState, items, personalContact, ready } from "./helpers/on-call-h
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 
 const handbook = vi.hoisted(() => ({ state: null as unknown as ReturnType<typeof ready> }));
-const entries = vi.hoisted(() => ({ list: [] as OnCallEntry[], signedOut: false }));
+const entries = vi.hoisted(() => ({
+  list: [] as OnCallEntry[],
+  signedOut: false,
+  extra: {} as Record<string, unknown>,
+}));
+const router = vi.hoisted(() => ({ replace: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/on-call/call",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: router.replace, back: vi.fn(), prefetch: vi.fn() }),
 }));
 vi.mock("@/lib/supabase/client", () => ({ useAuthSession: () => ({ status: "authenticated", authEpoch: 1 }) }));
 vi.mock("@/components/on-call/use-hospital-handbook", async (importOriginal) => ({
@@ -20,14 +25,14 @@ vi.mock("@/components/on-call/use-hospital-handbook", async (importOriginal) => 
   useHospitalHandbook: () => handbook.state,
 }));
 vi.mock("@/lib/on-call/entry-store", () => ({
-  useOnCallEntries: () => entriesState(entries.list, { signedOut: entries.signedOut }),
+  useOnCallEntries: () => entriesState(entries.list, { signedOut: entries.signedOut, ...entries.extra }),
 }));
 
 import {
   onCallDidntConnectStorageKey,
   onCallHospitalPhoneStorageKey,
 } from "@/components/on-call/call/call-device-stores";
-import { onCallCallGroups } from "@/components/on-call/call/call-groups";
+import { onCallCallGroups, onCallRowBadge } from "@/components/on-call/call/call-groups";
 import { OnCallCallPage } from "@/components/on-call/call/call-page";
 import { onCallCallRoute } from "@/components/on-call/kit/dial-sheet";
 import { clearOnCallDeviceState } from "@/lib/on-call/device-state-keys";
@@ -39,11 +44,23 @@ beforeEach(() => {
   handbook.state = ready(items([]));
   entries.list = [];
   entries.signedOut = false;
+  entries.extra = {};
+  router.replace.mockReset();
 });
 afterEach(cleanup);
 
+/** People's Hospital / Outside lines / Mine switch. */
+const showTab = (name: "Hospital" | "Outside lines" | "Mine") => userEvent.click(screen.getByRole("radio", { name }));
+
+/** "Didn't connect" is marked from the number's own sheet: open the row's sheet, then tap the mark. */
+async function markDidntConnect(rowTestId: string, id: string) {
+  const row = screen.getByTestId(rowTestId);
+  await userEvent.click(row.querySelector<HTMLButtonElement>("[data-dial-row-title]")!);
+  await userEvent.click(screen.getByTestId(`on-call-didnt-connect-${id}`));
+}
+
 describe("Call page", () => {
-  it("groups the hospital's numbers by department, wards, outside lines and the reader's own, under the hospital's name", () => {
+  it("splits the hospital's numbers, outside lines and the reader's own across the Hospital / Outside lines / Mine switch", async () => {
     handbook.state = ready(
       items([
         { id: "sw", title: "Switchboard", phone: "9000 0000" },
@@ -54,11 +71,23 @@ describe("Call page", () => {
     entries.list = [personalContact("p1", "My consultant", "0400 000 111")];
     render(<OnCallCallPage />);
     expect(screen.getByTestId("on-call-hospital-line")).toHaveTextContent("Site A");
-    for (const slug of ["hospital", "icu", "wards", "general", "external", "mine"]) {
+    expect(screen.getByRole("radio", { name: "Hospital" })).toHaveAttribute("aria-checked", "true");
+    for (const slug of ["hospital", "icu", "wards", "general"]) {
       expect(document.getElementById(`on-call-group-${slug}`), slug).not.toBeNull();
     }
+    expect(screen.getByTestId("on-call-call-group-general")).toHaveTextContent(/General · 1/i);
     expect(within(document.getElementById("on-call-group-wards")!).getByText("Synthetic ward 4B")).toBeInTheDocument();
+    expect(document.getElementById("on-call-group-external")).toBeNull();
+    expect(document.getElementById("on-call-group-mine")).toBeNull();
+
+    await showTab("Outside lines");
+    expect(document.getElementById("on-call-group-external")).not.toBeNull();
+    expect(document.getElementById("on-call-group-hospital")).toBeNull();
+
+    await showTab("Mine");
     expect(within(document.getElementById("on-call-group-mine")!).getByText("My consultant")).toBeInTheDocument();
+    // The hospital's numbers are off screen on Mine, so the crisis lines show.
+    expect(screen.getByTestId("on-call-crisis-lines")).toHaveTextContent("Lifeline");
     expect(
       within(document.getElementById("on-call-group-mine")!).getByRole("link", { name: "Your own numbers" }),
     ).toHaveAttribute("href", "/on-call/contacts");
@@ -132,6 +161,9 @@ describe("Call page", () => {
       vi.setSystemTime(new Date(2026, 8, 29, 16, 59, 30));
       entries.list = [personalContact("p1", "My consultant", "0400 000 111", "0400 000 222")];
       render(<OnCallCallPage />);
+      act(() => {
+        screen.getByRole("radio", { name: "Mine" }).click();
+      });
       const row = () => screen.getByTestId("on-call-call-mine-p1");
       expect(row()).toHaveTextContent("0400 000 111");
       act(() => {
@@ -156,7 +188,7 @@ describe("Call page", () => {
     handbook.state = ready(items([{ id: "i", title: "ICU: Registrar", phone: "4456" }]));
     render(<OnCallCallPage />);
     await userEvent.click(screen.getByRole("switch", { name: "I'm on a hospital phone" }));
-    await userEvent.click(screen.getByRole("button", { name: /Dialling details for Registrar$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Registrar, .*Dialling details$/ }));
 
     const sheet = screen.getByTestId("on-call-call-row-i-sheet-body");
     expect(within(sheet).getByText("Not recorded")).toBeInTheDocument();
@@ -165,16 +197,23 @@ describe("Call page", () => {
     expect(within(sheet).getByTestId("on-call-hospital-phone-sheet")).toBeInTheDocument();
   });
 
-  it("shows every outside line in the outside form, with its area, source and date", () => {
+  it("shows every outside line in the outside form, with its area, and its source and date one tap away", async () => {
     render(<OnCallCallPage />);
+    await showTab("Outside lines");
     const external = document.getElementById("on-call-group-external")!;
-    const dates = within(external).getAllByTestId("on-call-updated-date");
-    expect(dates.length).toBeGreaterThan(0);
-    expect(dates[0].textContent).toMatch(/^Updated \d{1,2} [A-Z][a-z]{2} \d{4}/);
-    expect(within(external).getAllByRole("link", { name: /Health Service|Hospital/ })[0]).toHaveAttribute(
-      "href",
-      expect.stringMatching(/^https:\/\//),
+    // One quiet line names every source with its https link, so no outside number shows without one.
+    const sources = within(external).getByTestId("on-call-call-external-sources");
+    for (const link of within(sources).getAllByRole("link")) {
+      expect(link).toHaveAttribute("href", expect.stringMatching(/^https:\/\//));
+    }
+    expect(within(sources).getByRole("link", { name: /MHERL/ })).toBeInTheDocument();
+    // Each number's own sheet carries its date and source.
+    await userEvent.click(
+      screen.getByTestId("on-call-call-external-wa-mherl").querySelector<HTMLButtonElement>("[data-dial-row-title]")!,
     );
+    const sheet = screen.getByTestId("on-call-call-external-wa-mherl-sheet-body");
+    expect(within(sheet).getByText(/^Updated \d{1,2} [A-Z][a-z]{2} \d{4}/)).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
     expect(external).toHaveTextContent("Perth metropolitan area and Peel");
     expect(external).toHaveTextContent("1300 555 788");
   });
@@ -182,8 +221,11 @@ describe("Call page", () => {
   it("reports a handbook number with one of two fixed reasons, once, and never offers free text", async () => {
     handbook.state = ready(items([{ id: "i", title: "ICU: Registrar", phone: "4456" }]));
     render(<OnCallCallPage />);
-    await userEvent.click(screen.getByTestId("on-call-didnt-connect-i"));
+    // No per-row button: the mark lives in the number's sheet.
+    expect(screen.queryByTestId("on-call-didnt-connect-i")).toBeNull();
+    await markDidntConnect("on-call-call-row-i", "i");
     const sheet = screen.getByRole("dialog", { name: "Didn't connect" });
+    expect(screen.queryByTestId("on-call-call-row-i-sheet")).toBeNull();
     expect(within(sheet).queryByRole("textbox")).toBeNull();
     expect(
       within(sheet).getAllByRole("button", { name: /Number not in service|Reaches the wrong department/ }),
@@ -201,7 +243,7 @@ describe("Call page", () => {
       hasReported: vi.fn((_id: string, reason: string) => reason === "not-in-service"),
     });
     render(<OnCallCallPage />);
-    await userEvent.click(screen.getByTestId("on-call-didnt-connect-i"));
+    await markDidntConnect("on-call-call-row-i", "i");
     const sheet = screen.getByRole("dialog", { name: "Didn't connect" });
     expect(within(sheet).getByRole("button", { name: "Reported" })).toBeDisabled();
     expect(within(sheet).getByRole("button", { name: "Reaches the wrong department" })).toBeEnabled();
@@ -215,7 +257,7 @@ describe("Call page", () => {
       ]),
     );
     render(<OnCallCallPage />);
-    await userEvent.click(screen.getByTestId("on-call-didnt-connect-i"));
+    await markDidntConnect("on-call-call-row-i", "i");
     const sheet = screen.getByRole("dialog", { name: "Didn't connect" });
     expect(within(sheet).getByRole("link", { name: /^call switchboard/i })).toHaveAttribute("href", "tel:0890000000");
     await userEvent.click(within(sheet).getByRole("button", { name: "Clear mark" }));
@@ -225,8 +267,12 @@ describe("Call page", () => {
   it("only marks an outside line or the reader's own number; there is no one to report it to", async () => {
     entries.list = [personalContact("p1", "My consultant", "0400 000 111")];
     render(<OnCallCallPage />);
-    for (const id of ["wa-mherl", "p1"]) {
-      await userEvent.click(screen.getByTestId(`on-call-didnt-connect-${id}`));
+    for (const [tab, rowTestId, id] of [
+      ["Outside lines", "on-call-call-external-wa-mherl", "wa-mherl"],
+      ["Mine", "on-call-call-mine-p1", "p1"],
+    ] as const) {
+      await showTab(tab);
+      await markDidntConnect(rowTestId, id);
       const sheet = screen.getByRole("dialog", { name: "Didn't connect" });
       expect(
         within(sheet).queryByRole("button", { name: /Number not in service|Reaches the wrong department/ }),
@@ -278,7 +324,7 @@ describe("Call page", () => {
     expect(screen.getByText("1 result")).toBeInTheDocument();
   });
 
-  it("shows the crisis lines, and no hospital numbers, while signed out", () => {
+  it("shows the crisis lines, and no hospital numbers, while signed out", async () => {
     handbook.state = ready([], { status: "signed-out" });
     entries.signedOut = true;
     render(<OnCallCallPage />);
@@ -286,7 +332,16 @@ describe("Call page", () => {
     const crisis = screen.getByTestId("on-call-crisis-lines");
     expect(within(crisis).getByRole("link", { name: /^call emergency services/i })).toHaveAttribute("href", "tel:000");
     expect(crisis).toHaveTextContent("Lifeline");
+    expect(within(crisis).getByRole("heading", { name: "Public crisis lines" })).toBeInTheDocument();
+    expect(within(crisis).getByTestId("on-call-crisis-line-syn-crisis-contact-002-caveat")).toHaveTextContent(
+      "not an emergency service",
+    );
+    expect(screen.getByTestId("on-call-crisis-line-syn-crisis-contact-001-emergency-dot")).toBeInTheDocument();
     expect(document.getElementById("on-call-group-hospital")).toBeNull();
+    expect(screen.queryByTestId("on-call-call-saved-note")).toBeNull();
+    expect(screen.getByTestId("on-call-call-add")).toHaveAttribute("href", "/on-call/contacts");
+    await showTab("Mine");
+    expect(screen.getByTestId("on-call-crisis-lines")).toBeInTheDocument();
     expect(screen.getByText("Sign in to keep your own numbers.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Your own numbers" })).toHaveAttribute("href", "/on-call/contacts");
   });
@@ -314,5 +369,115 @@ describe("Call page", () => {
   it("draws the consultant card only with a source", () => {
     render(<OnCallCallPage />);
     expect(screen.queryByTestId("on-call-call-isobar") === null).toBe(ISOBAR_SOURCE === null);
+  });
+
+  it("sends the old call-log link on to Now's Log a call sheet, keeping its query", () => {
+    window.history.replaceState(null, "", "/on-call/call?from=my-day#on-call-call-log-heading");
+    try {
+      render(<OnCallCallPage />);
+      expect(router.replace).toHaveBeenCalledWith("/on-call?from=my-day#log-a-call");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("sends My Day's old handover link on to the Handover page, keeping its query", () => {
+    window.history.replaceState(null, "", "/on-call/call?from=my-day#on-call-handover-heading");
+    try {
+      render(<OnCallCallPage />);
+      expect(router.replace).toHaveBeenCalledWith("/on-call/handover?from=my-day");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("does not redirect without the old call-log hash", () => {
+    render(<OnCallCallPage />);
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it("no longer carries the call log or the handover builder", () => {
+    render(<OnCallCallPage />);
+    expect(screen.queryByTestId("on-call-call-handover")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Note this call" })).toBeNull();
+  });
+
+  it("says what the hospital-phone switch means, off and on", async () => {
+    handbook.state = ready(items([{ id: "i", title: "ICU: Registrar", phone: "4456" }]));
+    render(<OnCallCallPage />);
+    const row = screen.getByTestId("on-call-hospital-phone");
+    expect(row).toHaveTextContent("Off: you're on your mobile, so full numbers are dialled");
+    await userEvent.click(screen.getByRole("switch", { name: "I'm on a hospital phone" }));
+    expect(screen.getByTestId("on-call-hospital-phone")).toHaveTextContent(
+      "On: you're on a hospital phone, so short extensions are dialled",
+    );
+  });
+
+  it("reads a row's badge from its label only, and draws a shield on emergency rows", () => {
+    const badges = Object.fromEntries(
+      items([
+        { id: "r", title: "Medicine: Registrar on call", phone: "9000 0012" },
+        { id: "c", title: "Medicine: Consultant on call", phone: "9000 0013" },
+        { id: "w2", title: "Ward: Ward 2 nurses", phone: "4021" },
+        { id: "w4", title: "Ward: Synthetic ward 4B", phone: "4401" },
+        { id: "p", title: "Pharmacy after hours", phone: "9000 0014" },
+      ]).map((item) => [item.id, onCallRowBadge(item)]),
+    );
+    expect(badges).toEqual({ r: "REG", c: "CON", w2: "W2", w4: "4B", p: null });
+
+    handbook.state = ready(
+      items([
+        { id: "e", title: "Emergency: Synthetic emergency line", phone: "55" },
+        { id: "r", title: "Medicine: Registrar on call", phone: "9000 0012" },
+      ]),
+    );
+    render(<OnCallCallPage />);
+    expect(screen.getByTestId("on-call-call-row-r")).toHaveTextContent("REG");
+    expect(screen.getByTestId("on-call-call-row-e").querySelector("svg.lucide-shield")).not.toBeNull();
+  });
+
+  it("counts a long group and offers Show all from its eyebrow", async () => {
+    handbook.state = ready(
+      items(
+        Array.from({ length: 10 }, (_, index) => ({
+          id: `w${index}`,
+          title: `Ward: Synthetic ward ${index + 1}`,
+          phone: `90000${String(index).padStart(3, "0")}`,
+        })),
+      ),
+    );
+    render(<OnCallCallPage />);
+    const wards = screen.getByTestId("on-call-call-group-wards");
+    expect(wards).toHaveTextContent(/Wards · 8 of 10/i);
+    await userEvent.click(within(wards).getByRole("button", { name: "Show all 10 in Wards" }));
+    expect(screen.getByTestId("on-call-call-group-wards")).toHaveTextContent(/Wards · 10/i);
+    expect(within(screen.getByTestId("on-call-call-group-wards")).getAllByRole("listitem")).toHaveLength(10);
+  });
+
+  it("links Who's who, Pocket card and Numbers to check, counting only what Check these lists", () => {
+    const never = { ...personalContact("p1", "Never checked", "0400 000 111"), lastVerifiedAt: null } as OnCallEntry;
+    entries.list = [never, personalContact("p2", "Checked", "0400 000 222")];
+    render(<OnCallCallPage />);
+    expect(screen.getByTestId("on-call-call-whos-who")).toHaveAttribute("href", "/on-call/who-is-who");
+    expect(screen.getByTestId("on-call-call-pocket-card")).toHaveAttribute("href", "/on-call/card");
+    const check = screen.getByTestId("on-call-call-check");
+    expect(check).toHaveAttribute("href", "/on-call/check");
+    expect(check).toHaveTextContent("1 due for a check");
+  });
+
+  it("never states a check count when the reader's entries failed to load", () => {
+    entries.list = [{ ...personalContact("p1", "Never checked", "0400 000 111"), lastVerifiedAt: null } as OnCallEntry];
+    entries.extra = { loadError: "failed", isOffline: true };
+    render(<OnCallCallPage />);
+    expect(screen.getByTestId("on-call-call-check")).not.toHaveTextContent(/due for a check/);
+  });
+
+  it("says nothing matches, and that the hospital was not searched when it did not load", async () => {
+    handbook.state = ready([], { status: "unavailable" });
+    render(<OnCallCallPage />);
+    await userEvent.type(screen.getByRole("searchbox"), "zzzz");
+    expect(screen.getByTestId("on-call-call-nothing-found")).toHaveTextContent(
+      "The hospital's numbers have not loaded",
+    );
   });
 });

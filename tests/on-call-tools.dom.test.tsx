@@ -3,7 +3,11 @@ import { renderToString } from "react-dom/server";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
+import { readOnCallYouCalled, rememberOnCallYouCalled } from "@/lib/on-call/call-marks";
+import { onCallLadderStepMarkId } from "@/lib/on-call/now-rows";
+import { handbookItems, readyHandbook } from "./helpers/on-call-handbook-fixtures";
 
 const state = {
   entries: [] as OnCallEntry[],
@@ -21,6 +25,11 @@ vi.mock("@/lib/on-call/entry-store", () => ({
   useOnCallEntries: () => state,
   cacheOnCallEntries: (entries: OnCallEntry[]) => cacheOnCallEntries(entries),
 }));
+const hospital = vi.hoisted(() => ({ state: null as unknown as HospitalHandbookState }));
+vi.mock("@/components/on-call/use-hospital-handbook", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/on-call/use-hospital-handbook")>()),
+  useHospitalHandbook: () => hospital.state,
+}));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
   usePathname: () => "/on-call/now",
@@ -31,6 +40,24 @@ import { OnCallCallNowPage } from "@/components/on-call/on-call-call-now-page";
 import { OnCallCheckPage } from "@/components/on-call/on-call-check-page";
 import { OnCallCalendarPage } from "@/components/on-call/on-call-calendar-page";
 import { OnCallFirstNightPage } from "@/components/on-call/on-call-first-night-page";
+import { onCallLadderAnsweredMarkId } from "@/components/on-call/now/needs-you";
+
+const AFTER_HOURS = new Date("2026-09-26T14:00:00.000Z"); // Saturday 22:00 Perth
+const HOSPITAL_LADDER_ID = "40000000-0000-4000-8000-000000000001";
+const EMERGENCY_ID = "40000000-0000-4000-8000-000000000002";
+const HOSPITAL_LADDER = handbookItems([
+  { id: HOSPITAL_LADDER_ID, title: "Deteriorating patient", section: "playbook", kind: "clinical" },
+]).map((item) => ({
+  ...item,
+  steps: [
+    { order: 1, whoToCall: "Registrar on call", when: "First", phone: "08 9000 0001", waitMinutes: 10 },
+    { order: 2, whoToCall: "Consultant on call", when: "No answer from step 1, or any time", phone: "08 9000 0002" },
+    { order: 3, whoToCall: "Nurse in charge", when: "Any time" },
+  ],
+}));
+const EMERGENCY = handbookItems([
+  { id: EMERGENCY_ID, title: "Emergency: Synthetic medical emergency team", phone: "08 9000 0055", kind: "clinical" },
+]);
 
 function entry(overrides: Partial<OnCallEntry> & Pick<OnCallEntry, "id" | "section">): OnCallEntry {
   return {
@@ -64,6 +91,8 @@ const LADDER = entry({
 });
 
 beforeEach(() => {
+  window.localStorage.clear();
+  hospital.state = readyHandbook([], { status: "no-service" });
   state.entries = [];
   state.loading = false;
   state.isOffline = false;
@@ -77,12 +106,12 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("who to call now", () => {
+describe("who to call now (Escalate)", () => {
   it("does not present the historical anchor as the current working-hours period on the server", () => {
     state.entries = [LADDER];
     const markup = renderToString(<OnCallCallNowPage />);
     expect(markup).toContain("Loading current on-call context");
-    expect(markup).not.toContain("Working hours: working-hours steps are listed first.");
+    expect(markup).not.toContain("Working hours ladder");
     expect(markup).not.toContain("tel:0890000001");
     expect(markup).toContain('href="tel:000"');
     expect(markup).toContain('href="tel:1300555788"');
@@ -91,6 +120,7 @@ describe("who to call now", () => {
   it("keeps the public crisis lines on screen while the playbook is still loading", () => {
     state.loading = true;
     state.entries = [];
+    hospital.state = readyHandbook([], { status: "loading" });
     render(<OnCallCallNowPage />);
     const crisis = screen.getByTestId("on-call-crisis-lines");
     expect(screen.getByTestId("on-call-now-loading")).toBeInTheDocument();
@@ -108,21 +138,114 @@ describe("who to call now", () => {
         .getAllByRole("listitem")
         .map((item) => item.textContent),
     ).toEqual([expect.stringContaining("Nurse in charge"), expect.stringContaining("Consultant on call")]);
-    expect(within(now).getByRole("link", { name: /Call 08 9000 0002/ })).toHaveAttribute("href", "tel:0890000002");
+    expect(within(now).getByRole("link", { name: /^Call Consultant on call,/ })).toHaveAttribute(
+      "href",
+      "tel:0890000002",
+    );
     expect(screen.getByTestId("on-call-now-other-steps")).toHaveTextContent("Day consultant");
   });
 
-  it("finds a scenario by search", async () => {
+  it("switches the ladder with the situation chips", async () => {
     const user = userEvent.setup();
     state.entries = [LADDER, { ...LADDER, id: "fire", slug: "fire", title: "Fire alarm", sortOrder: 1 }];
     render(<OnCallCallNowPage now={new Date(2026, 8, 22, 10, 0)} />);
-    await user.type(screen.getByLabelText("What is happening?"), "fire");
+    const chips = screen.getByTestId("on-call-now-scenarios");
+    expect(within(chips).getByRole("button", { name: "Agitated patient on the ward" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(within(chips).getByRole("button", { name: "Fire alarm" }));
     expect(screen.getByTestId("on-call-now-ladder")).toHaveTextContent("Fire alarm");
+    expect(within(chips).getByRole("button", { name: "Fire alarm" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("opens the situation Now linked to, and falls back quietly when the link matches nothing", () => {
+    state.entries = [LADDER, { ...LADDER, id: "fire", slug: "fire", title: "Fire alarm", sortOrder: 1 }];
+    window.history.replaceState(null, "", "/on-call/now?situation=fire");
+    render(<OnCallCallNowPage now={new Date(2026, 8, 22, 10, 0)} />);
+    expect(screen.getByRole("button", { name: "Fire alarm" })).toHaveAttribute("aria-pressed", "true");
+    cleanup();
+    window.history.replaceState(null, "", "/on-call/now?situation=nothing-here");
+    render(<OnCallCallNowPage now={new Date(2026, 8, 22, 10, 0)} />);
+    expect(screen.getByRole("button", { name: "Agitated patient on the ward" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    window.history.replaceState(null, "", "/on-call/now");
   });
 
   it("points to the Playbook when there are no scenarios", () => {
     render(<OnCallCallNowPage now={new Date(2026, 8, 22, 10, 0)} />);
     expect(screen.getByTestId("on-call-now-empty")).toBeInTheDocument();
+  });
+
+  it("runs the hospital ladder from the call marks, with the hospital-set wait and the emergency rung", async () => {
+    const user = userEvent.setup();
+    hospital.state = readyHandbook([...HOSPITAL_LADDER, ...EMERGENCY]);
+    rememberOnCallYouCalled(
+      onCallLadderStepMarkId(HOSPITAL_LADDER_ID, 1),
+      new Date(AFTER_HOURS.getTime() - 3 * 60_000),
+    );
+    render(<OnCallCallNowPage now={AFTER_HOURS} />);
+
+    expect(screen.getByRole("button", { name: "Deteriorating patient" })).toHaveAttribute("aria-pressed", "true");
+    const run = screen.getByTestId("on-call-now-ladder-run");
+    expect(run).toHaveTextContent("Started 21:57");
+    expect(run).toHaveTextContent("Step 1: Registrar on call called");
+    expect(run).toHaveTextContent("Next step suggested at 22:07");
+    expect(within(run).getByTestId("on-call-now-ring")).toHaveTextContent("7min left");
+    expect(run).toHaveTextContent("You can call any step, or the emergency team, at any time.");
+    expect(screen.getByTestId("on-call-now-wait")).toHaveTextContent("Hospital-set wait7 min left");
+    expect(screen.getByTestId("on-call-now-step-called")).toHaveTextContent("called 21:57");
+
+    // The emergency rung keeps its quiet red dot and red disc, and writes no criteria of its own.
+    const emergency = screen.getByTestId(`on-call-now-emergency-${EMERGENCY_ID}`);
+    expect(within(emergency).getByTestId(`on-call-now-emergency-${EMERGENCY_ID}-dot`)).toBeInTheDocument();
+    expect(within(emergency).getByRole("link", { name: /emergency/ })).toHaveAttribute("href", "tel:0890000055");
+    expect(emergency).toHaveTextContent("Calling criteria: the hospital's existing guidance, shown unchanged");
+    // The hospital's emergency route is on screen, so the public lines step back.
+    expect(screen.queryByTestId("on-call-crisis-lines")).toBeNull();
+    // The WA consultant-call headings are not captured yet, so no link points at an empty card.
+    expect(screen.queryByTestId("on-call-now-consultant-link")).toBeNull();
+    expect(screen.getByTestId("on-call-now-source")).toHaveTextContent("Ladder from Synthetic Hospital's handbook");
+    expect(screen.queryByText(/families can escalate/i)).toBeNull();
+    expect(screen.queryByText(/log this for handover/i)).toBeNull();
+
+    // "They answered" leaves Now's own mark, so Now's Escalating card closes too.
+    await user.click(within(run).getByRole("button", { name: "They answered" }));
+    expect(screen.queryByTestId("on-call-now-ladder-run")).toBeNull();
+    expect(readOnCallYouCalled(AFTER_HOURS).map((mark) => mark.entryId)).toContain(
+      onCallLadderAnsweredMarkId(HOSPITAL_LADDER_ID),
+    );
+  });
+
+  it("never suggests a next-step time when the hospital recorded no wait", () => {
+    hospital.state = readyHandbook([...HOSPITAL_LADDER, ...EMERGENCY]);
+    rememberOnCallYouCalled(
+      onCallLadderStepMarkId(HOSPITAL_LADDER_ID, 2),
+      new Date(AFTER_HOURS.getTime() - 4 * 60_000),
+    );
+    render(<OnCallCallNowPage now={AFTER_HOURS} />);
+    const run = screen.getByTestId("on-call-now-ladder-run");
+    expect(run).toHaveTextContent("Step 2: Consultant on call called");
+    expect(within(run).queryByTestId("on-call-now-next-at")).toBeNull();
+    expect(within(run).getByTestId("on-call-now-ring")).toHaveTextContent("4min ago");
+    expect(screen.queryByTestId("on-call-now-wait")).toBeNull();
+  });
+
+  it("marks a rung with no number as done, and keeps the crisis lines when no emergency route is set up", async () => {
+    const user = userEvent.setup();
+    hospital.state = readyHandbook(HOSPITAL_LADDER);
+    render(<OnCallCallNowPage now={AFTER_HOURS} />);
+    expect(screen.getByTestId("on-call-now-emergency-not-set-up")).toHaveTextContent(
+      "Emergency number not set up for this hospital",
+    );
+    expect(screen.getByTestId("on-call-crisis-lines")).toBeInTheDocument();
+    expect(screen.queryByTestId("on-call-now-ladder-run")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Mark Nurse in charge as done now" }));
+    expect(readOnCallYouCalled(new Date()).map((mark) => mark.entryId)).toContain(
+      onCallLadderStepMarkId(HOSPITAL_LADDER_ID, 3),
+    );
   });
 });
 
