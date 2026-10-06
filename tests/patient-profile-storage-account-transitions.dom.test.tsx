@@ -68,6 +68,7 @@ import {
 import {
   ACCOUNT_TRANSITION_EVENT,
   PLAN_DRAFT_STORAGE_KEY,
+  PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY,
   clearAccountScopedBrowserStorage,
   subscribeAccountTransition,
 } from "@/lib/account-scoped-browser-state";
@@ -511,6 +512,29 @@ describe("the boot-time SIGNED_IN replay is not an account transition (M4, L2, L
   // holding the last published user id stays null — and the next SIGNED_IN must
   // still clear, exactly as it did before the gate existed. Without this the
   // gate would open a leak path on the error branch.
+  it("forgets MHA clocks when the auth server rejects the stored session on boot", async () => {
+    window.localStorage.setItem(
+      PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY,
+      JSON.stringify({ v: 1, clocks: [{ id: "abcdefgh-1", formCode: "2", madeAt: 1 }] }),
+    );
+    authApi.getUser.mockImplementationOnce(
+      async () =>
+        ({
+          data: { user: null },
+          error: { status: 401, message: "invalid JWT" },
+        }) as unknown as Awaited<ReturnType<typeof authApi.getUser>>,
+    );
+
+    render(
+      <AuthProvider>
+        <AuthActions />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId("status")).toHaveTextContent("signed_out"));
+
+    expect(window.localStorage.getItem(PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY)).toBeNull();
+  });
+
   it("still clears when the boot could not be verified and someone then signs in", async () => {
     seedEveryRefreshSurvivingStore();
 

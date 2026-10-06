@@ -34,6 +34,10 @@ const srcRoot = path.join(repoRoot, "src");
 /** Intentionally-unlinked static page routes, each with the reason it is exempt. */
 const REACHABILITY_ALLOWLIST = new Map<string, string>([
   [
+    "/admin/compliance/export",
+    "Reached from the 'Export a copy for yourself' ModeRow on Admin Compliance (ADMIN_PAGE_HREFS.complianceExport), which this Link-only scan does not model.",
+  ],
+  [
     "/roster/join",
     "Invite-link landing page reached from shared invite URLs; in-app entry is a ModeRow on Roster Today/Team, which this Link-only scan does not model.",
   ],

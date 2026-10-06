@@ -100,13 +100,11 @@ describe("adminMyDayItems", () => {
     expect(adminMyDayItems(many.slice(0, 6), NOW).some((item) => item.id === "my-work:more")).toBe(false);
   });
 
-  it("returns nothing when compliance-date reminders are switched off", () => {
-    expect(adminMyDayItems([passed, soon], NOW, remindersOff("compliance-dates"))).toEqual([]);
-  });
-
-  it("returns nothing while compliance-date reminders are snoozed", () => {
-    const snoozed = updateReminderType(DEFAULT_REMINDER_SETTINGS, "compliance-dates", { snoozedUntil: "2026-10-03" });
-    expect(adminMyDayItems([passed], NOW, snoozed)).toEqual([]);
+  it("takes no reminder settings: renewal dates always stay in My Day (owner decision, 5 Oct 2026)", () => {
+    // Switching the compliance-date reminder off or snoozing it quietens On Call's own
+    // nudges only; My Day still lists the date.
+    expect(adminMyDayItems.length).toBe(2);
+    expect(adminMyDayItems([passed, soon], NOW).length).toBeGreaterThan(0);
   });
 });
 

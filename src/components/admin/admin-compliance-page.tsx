@@ -1,24 +1,12 @@
 "use client";
 
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
-import {
-  Briefcase,
-  CalendarClock,
-  CircleDashed,
-  Diamond,
-  FileSpreadsheet,
-  Fingerprint,
-  GraduationCap,
-  IdCard,
-  Syringe,
-  Triangle,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronRight, ClipboardList, PenLine } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
-import { requirementDateLine } from "@/components/admin/renewals/urgency";
+import { AdminRuleToConfirm, AdminStatusWord } from "@/components/admin/admin-status-word";
 import { focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -27,71 +15,32 @@ import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { modeInsetHairline, modeModuleSurface, modePressable } from "@/components/mode-kit/recipes";
 import { EmptyState } from "@/components/primitive-recipes/feedback";
-import { Button } from "@/components/ui/button";
-import { announce } from "@/components/ui/live-announcer";
+import { Button, buttonFaceClass } from "@/components/ui/button";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
 import {
   buildComplianceOverview,
-  COMPLIANCE_BUCKET_LABELS,
   COMPLIANCE_BUCKETS,
-  complianceExportAboutRows,
-  complianceExportFileName,
-  complianceExportRows,
-  nextJobReasonText,
-  type ComplianceBucket,
+  complianceDateLine,
+  complianceFilterChips,
+  complianceFilterMatches,
+  complianceGroupNames,
+  complianceIsFirstUse,
+  type ComplianceFilter,
   type ComplianceItem,
   type ComplianceOverview,
+  nextJobReasonText,
 } from "@/lib/admin/compliance-overview";
-import { downloadTextFile } from "@/lib/admin/download-file";
 import { selectNewJobStart } from "@/lib/admin/new-job-progress";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
-import { formatDateEcho, formatRecordedDate, formatRelativeDate } from "@/lib/admin/renewal-dates";
-import { ADMIN_REQUIREMENTS_CATALOGUE, type AdminRequirementGroup } from "@/lib/admin/requirements";
-import { buildXlsx, XLSX_MIME } from "@/lib/admin/xlsx-lite";
+import { formatDateEcho } from "@/lib/admin/renewal-dates";
+import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 
-const GROUP_ICONS: Record<AdminRequirementGroup, LucideIcon> = {
-  registration: IdCard,
-  checks: Fingerprint,
-  health: Syringe,
-  training: GraduationCap,
-  job: Briefcase,
-};
-
-/** The same grey shapes Renewals draws: shape and word, never colour. */
-const BUCKET_SHAPES: Record<ComplianceBucket, LucideIcon | null> = {
-  recorded: null,
-  "start-renewing": Triangle,
-  "date-passed": Diamond,
-  "not-recorded": CircleDashed,
-};
-
 /** Each item opens on Renewals, where its dates are recorded and edited, so there is one editor. */
-function itemHref(item: ComplianceItem): string {
-  return `${ADMIN_PAGE_HREFS.renewals}?item=${encodeURIComponent(item.row.item.id)}`;
-}
-
-function BucketWord({ bucket, testId }: { readonly bucket: ComplianceBucket; readonly testId?: string }) {
-  const Shape = BUCKET_SHAPES[bucket];
-  return (
-    <span
-      data-testid={testId}
-      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm text-[color:var(--text-muted)]"
-    >
-      {Shape ? <Shape aria-hidden="true" strokeWidth={1.75} className="size-icon-xs shrink-0" /> : null}
-      {COMPLIANCE_BUCKET_LABELS[bucket]}
-    </span>
-  );
-}
-
-function RuleToConfirm() {
-  return (
-    <span className="inline-flex w-fit items-center rounded-full border border-[color:var(--border)] px-2 text-xs leading-5 text-[color:var(--text-muted)]">
-      Rule to confirm
-    </span>
-  );
+function itemHref(itemId: string): string {
+  return `${ADMIN_PAGE_HREFS.renewals}?item=${encodeURIComponent(itemId)}`;
 }
 
 /**
@@ -125,241 +74,316 @@ function RecordedRing({ recorded, total }: { readonly recorded: number; readonly
   );
 }
 
-function SummaryCard({
+/**
+ * The summary (mock-up v2, screen 8): an eyebrow naming the next start date
+ * when one is recorded, the ring with its four-status legend beside it, then
+ * one plain sentence. The legend is a key, not a set of buttons: the chips
+ * below the actions filter.
+ */
+function SummaryCard({ overview }: { readonly overview: ComplianceOverview }) {
+  const recorded = overview.total - overview.counts["not-recorded"];
+  const startsOn = overview.nextJob?.startsOn;
+  return (
+    <section aria-labelledby="admin-compliance-summary-heading" className={cn(modeModuleSurface, "grid gap-3 p-3")}>
+      <h2 id="admin-compliance-summary-heading" className={eyebrowText} data-testid="admin-compliance-summary-eyebrow">
+        {startsOn ? `Before your next job, ${formatDateEcho(startsOn)}` : "Your requirements"}
+      </h2>
+      <div className="flex min-w-0 items-center gap-4">
+        <RecordedRing recorded={recorded} total={overview.total} />
+        <ul role="list" aria-label="By status" className="grid min-w-0 flex-1 gap-1">
+          {COMPLIANCE_BUCKETS.map((bucket) => (
+            <li
+              key={bucket}
+              className="flex min-w-0 items-center justify-between gap-2"
+              data-testid={`admin-compliance-count-${bucket}`}
+            >
+              <AdminStatusWord bucket={bucket} className="whitespace-normal" />
+              <span className="nums text-sm font-medium text-[color:var(--text-heading)]">
+                {overview.counts[bucket]}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="text-sm text-[color:var(--text)]" data-testid="admin-compliance-recorded">
+        <span className="font-medium text-[color:var(--text-heading)]">{`${recorded} of ${overview.total} recorded.`}</span>
+        {overview.notForThisJob.length > 0 ? ` ${overview.notForThisJob.length} not for this job.` : null}
+        {" Dates you entered, not a check."}
+      </p>
+    </section>
+  );
+}
+
+/**
+ * What is still to do before the recorded start date, with the reason in
+ * words, including dates that run out before the start (which no status word
+ * shows). Kept from the live page although the mock-up drops it, because New
+ * job's signpost points here and the reader must be able to see what it counts.
+ */
+function BeforeNextJob({ overview }: { readonly overview: ComplianceOverview }) {
+  const pass = overview.nextJob;
+  if (!pass || pass.toDo.length === 0) return null;
+  // Passed and unrecorded items already carry their status word in the lists below;
+  // a date that runs out before the start has no status word, so it is named here.
+  const endsBefore = pass.toDo.filter((todo) => todo.reason === "ends-before-start");
+  const others = pass.toDo.length - endsBefore.length;
+  return (
+    <section
+      aria-labelledby="admin-compliance-before-next-job-heading"
+      className="grid min-w-0 gap-2"
+      data-testid="admin-compliance-before-next-job"
+    >
+      <h2 id="admin-compliance-before-next-job-heading" className={cn(eyebrowText, "px-3")}>
+        {`To do before ${formatDateEcho(pass.startsOn)} · ${pass.toDo.length}`}
+      </h2>
+      {endsBefore.length > 0 ? (
+        <ModeGroupedList testId="admin-compliance-before-next-job-list">
+          {endsBefore.map((todo) => (
+            <ModeRow
+              key={todo.item.row.item.id}
+              href={itemHref(todo.item.row.item.id)}
+              title={todo.item.row.item.title}
+              subtitle={nextJobReasonText(todo)}
+              testId={`admin-compliance-todo-${todo.item.row.item.id}`}
+            />
+          ))}
+        </ModeGroupedList>
+      ) : null}
+      {others > 0 ? (
+        <p className={cn(textMuted, "px-3 text-sm")} data-testid="admin-compliance-before-next-job-others">
+          {`${endsBefore.length > 0 ? "And " : ""}${others} ${others === 1 ? "item" : "items"} with a date passed or not recorded yet, marked in the lists below.`}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** The one filled button (record dates on Renewals) and the plain export row under it. */
+function Actions() {
+  return (
+    <div className="grid min-w-0 gap-3">
+      <Link
+        href={`${ADMIN_PAGE_HREFS.renewals}?record=missing`}
+        data-testid="admin-compliance-record-dates"
+        className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
+      >
+        <PenLine aria-hidden="true" className="size-icon-md shrink-0" />
+        <span>Record dates</span>
+      </Link>
+      <ModeGroupedList testId="admin-compliance-actions">
+        <ModeRow
+          href={ADMIN_PAGE_HREFS.complianceExport}
+          title="Export a copy for yourself"
+          subtitle="Excel, saved on this device"
+          testId="admin-compliance-export-link"
+        />
+      </ModeGroupedList>
+    </div>
+  );
+}
+
+function FilterChips({
   overview,
   filter,
   onFilter,
 }: {
   readonly overview: ComplianceOverview;
-  readonly filter: ComplianceBucket | null;
-  readonly onFilter: (bucket: ComplianceBucket | null) => void;
+  readonly filter: ComplianceFilter;
+  readonly onFilter: (filter: ComplianceFilter) => void;
 }) {
-  const recorded = overview.total - overview.counts["not-recorded"];
   return (
-    <section aria-labelledby="admin-compliance-summary-heading" className={cn(modeModuleSurface, "grid gap-3 p-3")}>
-      <div className="flex min-w-0 items-center gap-4">
-        <RecordedRing recorded={recorded} total={overview.total} />
-        <div className="grid min-w-0 gap-0.5">
-          <h2
-            id="admin-compliance-summary-heading"
-            className="text-base-minus font-medium text-[color:var(--text-heading)]"
-            data-testid="admin-compliance-recorded"
+    <div role="group" aria-label="Show" className="flex min-w-0 flex-wrap gap-2">
+      {complianceFilterChips(overview).map((chip) => {
+        const selected = chip.filter === filter;
+        return (
+          <button
+            key={chip.filter}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onFilter(chip.filter)}
+            data-testid={`admin-compliance-filter-${chip.filter}`}
+            className={cn(
+              focusRing,
+              modePressable,
+              "inline-flex min-h-12 items-center gap-1.5 rounded-full border px-3 text-sm",
+              selected
+                ? // forced-colors repaints every border the same colour, so the
+                  // chosen chip also gets a thicker one there.
+                  "border-[color:var(--text-heading)] font-medium text-[color:var(--text-heading)] forced-colors:border-2"
+                : "border-[color:var(--border)] text-[color:var(--text)]",
+            )}
           >
-            {`${recorded} of ${overview.total} recorded`}
-            {overview.notForThisJob.length > 0 ? (
-              <span
-                className={cn(textMuted, "font-normal")}
-              >{` · ${overview.notForThisJob.length} not for this job`}</span>
-            ) : null}
-          </h2>
-          <p className={cn(textMuted, "text-xs")}>Dates you entered, not a check</p>
-        </div>
-      </div>
-      <ul role="list" aria-label="Show only" className="grid border-t border-[color:var(--border)]">
-        {COMPLIANCE_BUCKETS.map((bucket) => {
-          const count = overview.counts[bucket];
-          const selected = filter === bucket;
-          return (
-            <li key={bucket} className={modeInsetHairline}>
-              <button
-                type="button"
-                aria-pressed={selected}
-                disabled={count === 0 && !selected}
-                onClick={() => onFilter(selected ? null : bucket)}
-                data-testid={`admin-compliance-count-${bucket}`}
-                className={cn(
-                  focusRing,
-                  modePressable,
-                  "flex min-h-12 w-full items-center justify-between gap-3 px-1 text-left disabled:cursor-default",
-                  selected && "bg-[color:var(--clinical-accent-soft)]",
-                )}
-              >
-                <BucketWord bucket={bucket} />
-                <span className="nums text-base-minus font-medium text-[color:var(--text-heading)]">{count}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+            {chip.label}
+            <span className="nums">{chip.count}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
-function NextDeadlines({ overview, today }: { readonly overview: ComplianceOverview; readonly today: string }) {
-  if (overview.nextDeadlines.length === 0) return null;
+/** One row: the title, the status word first, the date the doctor typed, and the rule mark. */
+function ItemRow({ item, today }: { readonly item: ComplianceItem; readonly today: string }) {
+  const dateLine = complianceDateLine(item, today);
   return (
-    <ModeGroupedList eyebrow="Next dates" testId="admin-compliance-next-dates">
-      {overview.nextDeadlines.map(({ item, date }) => (
-        <ModeRow
-          key={item.row.item.id}
-          href={itemHref(item)}
-          title={item.row.item.title}
-          subtitle={`${formatRecordedDate(date)} · ${formatRelativeDate(date, today)}`}
-        />
-      ))}
-    </ModeGroupedList>
-  );
-}
-
-/**
- * Before the next job: one mark per item (filled carries over, hollow still to
- * do) and the short list of what to do, with why. Built only from a start date
- * the doctor recorded in New job; without one, a signpost to add it.
- */
-function NextJobCard({ overview, today }: { readonly overview: ComplianceOverview; readonly today: string }) {
-  const pass = overview.nextJob;
-  if (!pass) {
-    return (
-      <ModeGroupedList eyebrow="Before your next job" testId="admin-compliance-next-job-empty">
-        <ModeRow
-          href={ADMIN_PAGE_HREFS.newJob}
-          title="Add your start date"
-          subtitle="In New job. Then this shows what carries over and what to do first."
-        />
-      </ModeGroupedList>
-    );
-  }
-  const relative = formatRelativeDate(pass.startsOn, today);
-  return (
-    <section
-      aria-labelledby="admin-compliance-next-job-heading"
-      className="grid min-w-0 gap-2"
-      data-testid="admin-compliance-next-job"
-    >
-      <h2 id="admin-compliance-next-job-heading" className={cn(eyebrowText, "px-3")}>
-        Before your next job
-      </h2>
-      <div className={cn(modeModuleSurface, "grid gap-3 p-3")}>
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            aria-hidden="true"
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--clinical-accent-soft)]"
-          >
-            <CalendarClock
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-icon-md text-[color:var(--clinical-accent)]"
-            />
+    <ModeRow
+      href={itemHref(item.row.item.id)}
+      title={item.row.item.title}
+      subtitle={<AdminStatusWord bucket={item.bucket} testId={`admin-compliance-status-${item.row.item.id}`} />}
+      meta={
+        dateLine || item.ruleToConfirm ? (
+          <span className="grid justify-items-start gap-1 text-sm text-[color:var(--text-muted)]">
+            {dateLine ? <span>{dateLine}</span> : null}
+            {item.ruleToConfirm ? <AdminRuleToConfirm /> : null}
           </span>
-          <div className="grid min-w-0 gap-0.5">
-            <p className="text-base-minus font-medium text-[color:var(--text-heading)]">
-              {`Starts ${formatDateEcho(pass.startsOn)}`}
-            </p>
-            <p className={cn(textMuted, "text-sm")} data-testid="admin-compliance-next-job-counts">
-              {`${relative ? `${relative[0].toUpperCase()}${relative.slice(1)} · ` : ""}${pass.carriesOver.length} carry over · ${pass.toDo.length} still to do`}
-            </p>
-          </div>
-        </div>
-        <span aria-hidden="true" className="flex flex-wrap gap-1">
-          {pass.carriesOver.map((item) => (
-            <span key={item.row.item.id} className="h-2 w-3 rounded-full bg-[color:var(--clinical-accent)]" />
-          ))}
-          {pass.toDo.map(({ item }) => (
-            <span key={item.row.item.id} className="h-2 w-3 rounded-full border border-[color:var(--text-muted)]" />
-          ))}
-        </span>
-        {pass.toDo.length > 0 ? (
-          <ul role="list" aria-label="Still to do" className="-mx-3 -mb-3 border-t border-[color:var(--border)]">
-            {pass.toDo.map((todo) => (
-              <ModeRow
-                key={todo.item.row.item.id}
-                href={itemHref(todo.item)}
-                title={todo.item.row.item.title}
-                subtitle={nextJobReasonText(todo)}
-                testId={`admin-compliance-todo-${todo.item.row.item.id}`}
-              />
-            ))}
-          </ul>
-        ) : (
-          <p className={cn(textMuted, "text-sm")}>Every recorded date runs past your start date.</p>
-        )}
-      </div>
-    </section>
+        ) : undefined
+      }
+      testId={`admin-compliance-item-${item.row.item.id}`}
+    />
+  );
+}
+
+/** A group's eyebrow with its recorded count on the right (mock-up v2). */
+function GroupHeading({ id, label, aside }: { readonly id: string; readonly label: string; readonly aside: string }) {
+  return (
+    <div className="flex min-w-0 items-baseline justify-between gap-2 px-3">
+      <h2 id={id} className={eyebrowText}>
+        {label}
+      </h2>
+      <span className={cn(textMuted, "nums shrink-0 text-xs")}>{aside}</span>
+    </div>
   );
 }
 
 function GroupLists({
   overview,
   filter,
-  now,
+  today,
 }: {
   readonly overview: ComplianceOverview;
-  readonly filter: ComplianceBucket | null;
-  readonly now: Date;
+  readonly filter: ComplianceFilter;
+  readonly today: string;
 }) {
   return (
     <>
       {overview.groups.map((group) => {
-        const items = filter ? group.items.filter((item) => item.bucket === filter) : group.items;
+        const items = group.items.filter((item) => complianceFilterMatches(filter, item));
         if (items.length === 0) return null;
+        const headingId = `admin-compliance-group-${group.group}-heading`;
         return (
-          <ModeGroupedList
+          <section
             key={group.group}
-            eyebrow={`${group.label} · ${group.recorded} of ${group.items.length} recorded`}
-            headerIcon={GROUP_ICONS[group.group]}
-            mode="my-work"
             id={`admin-compliance-group-${group.group}`}
-            testId={`admin-compliance-group-${group.group}`}
+            aria-labelledby={headingId}
+            className="grid min-w-0 gap-2 scroll-mt-32"
+            data-testid={`admin-compliance-group-${group.group}`}
           >
-            {items.map((item) => {
-              const dateLine =
-                item.row.state === "no-end-date"
-                  ? "No end date"
-                  : item.row.state === "not-recorded"
-                    ? null
-                    : requirementDateLine(item.row.expiresOn, now);
-              return (
-                <ModeRow
-                  key={item.row.item.id}
-                  href={itemHref(item)}
-                  title={item.row.item.title}
-                  subtitle={dateLine ?? undefined}
-                  meta={
-                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <BucketWord bucket={item.bucket} testId={`admin-compliance-status-${item.row.item.id}`} />
-                      {item.ruleToConfirm ? <RuleToConfirm /> : null}
-                    </span>
-                  }
-                  testId={`admin-compliance-item-${item.row.item.id}`}
-                />
-              );
-            })}
-          </ModeGroupedList>
+            <GroupHeading
+              id={headingId}
+              label={group.label}
+              aside={`${group.recorded} of ${group.items.length} recorded`}
+            />
+            <ul role="list" className={modeModuleSurface}>
+              {items.map((item) => (
+                <ItemRow key={item.row.item.id} item={item} today={today} />
+              ))}
+            </ul>
+          </section>
         );
       })}
+      {filter === "all" && overview.notForThisJob.length > 0 ? (
+        <section
+          aria-labelledby="admin-compliance-not-for-this-job-heading"
+          className="grid min-w-0 gap-2"
+          data-testid="admin-compliance-not-for-this-job"
+        >
+          <GroupHeading
+            id="admin-compliance-not-for-this-job-heading"
+            label="Not for this job"
+            aside={`${overview.notForThisJob.length}`}
+          />
+          <ul role="list" className={modeModuleSurface}>
+            {overview.notForThisJob.map((item) => (
+              <ModeRow
+                key={item.id}
+                href={itemHref(item.id)}
+                title={item.title}
+                subtitle={<AdminStatusWord bucket="recorded" label="Not for this job" />}
+                meta={item.status === "needs-checking" ? <AdminRuleToConfirm /> : undefined}
+              />
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </>
   );
 }
 
-function ExportCard({ onSave }: { readonly onSave: () => void }) {
+/**
+ * First use (mock-up v2, screen 22): nothing recorded yet, so a to-do list
+ * rather than twenty rows of "Not recorded yet". One job: record dates.
+ */
+function FirstUse({ overview }: { readonly overview: ComplianceOverview }) {
   return (
-    <section aria-labelledby="admin-compliance-export-heading" className="grid min-w-0 gap-2">
-      <h2 id="admin-compliance-export-heading" className={cn(eyebrowText, "px-3")}>
-        Export for work
-      </h2>
-      <div className={cn(modeModuleSurface, "grid gap-3 p-3")}>
-        <p className="text-sm text-[color:var(--text)]">
-          A spreadsheet of every item, its status, the date you recorded and the rule&apos;s source. It saves to this
-          device; nothing is sent.
-        </p>
-        <Button
-          variant="primary"
-          icon={FileSpreadsheet}
-          onClick={onSave}
-          testId="admin-compliance-export-excel"
-          className="w-full sm:w-fit"
+    <div className="grid min-w-0 gap-5" data-testid="admin-compliance-first-use">
+      <div className="grid justify-items-center gap-2 px-3 pt-2 text-center">
+        <span
+          aria-hidden="true"
+          className="inline-flex size-12 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--text-muted)]"
         >
-          Save as Excel
-        </Button>
+          <ClipboardList aria-hidden="true" strokeWidth={1.5} className="size-icon-md" />
+        </span>
+        <h2 className="text-lg-minus font-semibold text-[color:var(--text-heading)]">Add your dates once</h2>
+        <p className={cn(textMuted, "max-w-sm text-sm")}>
+          Type the end dates from your certificates. Compliance then shows what to renew next and what to sort out
+          before your next job.
+        </p>
       </div>
-    </section>
+      <Link
+        href={`${ADMIN_PAGE_HREFS.renewals}?record=missing`}
+        data-testid="admin-compliance-record-dates"
+        className={cn(buttonFaceClass({ variant: "primary", block: true }), "no-underline")}
+      >
+        <span>Record dates</span>
+      </Link>
+      <section aria-labelledby="admin-compliance-first-use-heading" className="grid min-w-0 gap-2">
+        <h2 id="admin-compliance-first-use-heading" className={cn(eyebrowText, "px-3")}>
+          {`${overview.total} items on the statewide list`}
+        </h2>
+        <ul role="list" className={modeModuleSurface}>
+          {overview.groups.map((group) => (
+            <li key={group.group} className={modeInsetHairline}>
+              <Link
+                href={`${ADMIN_PAGE_HREFS.renewals}#admin-renewals-group-${group.group}`}
+                data-testid={`admin-compliance-first-use-${group.group}`}
+                className={cn(
+                  focusRing,
+                  modePressable,
+                  "flex min-h-13 min-w-0 items-center gap-3 py-1 pl-3 pr-2 no-underline",
+                )}
+              >
+                <span className="grid min-w-0 flex-1 gap-0.5">
+                  <span className="text-base-minus font-medium text-[color:var(--text-heading)]">{group.label}</span>
+                  <span className="flex flex-wrap items-center gap-x-2 text-sm text-[color:var(--text-muted)]">
+                    <AdminStatusWord bucket="not-recorded" />
+                    <span className="nums">{`${group.items.length} ${group.items.length === 1 ? "item" : "items"}`}</span>
+                  </span>
+                  <span className="text-sm text-[color:var(--text-muted)]">{complianceGroupNames(group)}</span>
+                </span>
+                <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
   );
 }
 
 /**
- * Admin · Compliance (doctor's side, 5 Oct mock-up): the requirements a
- * health service asks for, grouped, with what is recorded, what falls due
- * next, what to do before the next job, and an Excel export. A view over the
+ * Admin · Compliance (doctor's side, 5 Oct mock-up v2, screens 8 and 22): the
+ * requirements a health service asks for, grouped, with what is recorded, one
+ * "Record dates" action, filter chips and an Excel export. A view over the
  * same rows as Renewals (`src/lib/admin/compliance-overview.ts`), which stays
  * the one place dates are recorded.
  */
@@ -370,7 +394,7 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
   const today = perthCalendarDate(now);
   const loadState = adminLoadState(state);
   const [signInOpen, setSignInOpen] = useState(false);
-  const [filter, setFilter] = useState<ComplianceBucket | null>(null);
+  const [filter, setFilter] = useState<ComplianceFilter>("all");
 
   const overview = useMemo(() => {
     const own = selectAdminOwnEntries(state);
@@ -378,15 +402,6 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
     const start = selectNewJobStart({ own, shared });
     return buildComplianceOverview(ADMIN_REQUIREMENTS_CATALOGUE, own, now, start?.startsOn ?? null);
   }, [state, now]);
-
-  function saveExcel() {
-    const bytes = buildXlsx([
-      { name: "Compliance", rows: complianceExportRows(overview), widths: [34, 14, 18, 18, 44, 16, 34, 16] },
-      { name: "About", rows: complianceExportAboutRows(overview, now), widths: [110] },
-    ]);
-    downloadTextFile(bytes, complianceExportFileName(now), XLSX_MIME);
-    announce("Compliance spreadsheet saved.");
-  }
 
   return (
     <InformationPageShell testId="admin-compliance-main">
@@ -400,11 +415,7 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
       {loadState === "loading" ? (
         <ModeModuleSkeleton rows={6} twoLine testId="admin-compliance-loading" />
       ) : loadState === "failed" ? (
-        <AdminLoadFailed
-          reason={state.isOffline ? "offline" : "failed"}
-          onRetry={state.retry}
-          testId="admin-compliance-failed"
-        />
+        <AdminLoadFailed reason={state.loadError ?? "failed"} onRetry={state.retry} testId="admin-compliance-failed" />
       ) : loadState === "signed-out" ? (
         <>
           <EmptyState
@@ -426,37 +437,17 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
               Example records. These dates are made up, and nothing here is your own.
             </ModeNotice>
           ) : null}
-          <SummaryCard overview={overview} filter={filter} onFilter={setFilter} />
-          {filter ? null : <NextJobCard overview={overview} today={today} />}
-          {filter ? null : <NextDeadlines overview={overview} today={today} />}
-          {filter ? (
-            <div className="flex min-w-0 items-center justify-between gap-2 px-3">
-              <p className="text-sm text-[color:var(--text)]" data-testid="admin-compliance-filter-line">
-                {`Showing ${COMPLIANCE_BUCKET_LABELS[filter].toLowerCase()} only`}
-              </p>
-              <button
-                type="button"
-                onClick={() => setFilter(null)}
-                className={cn(focusRing, "min-h-tap px-2 text-sm font-medium text-[color:var(--clinical-accent)]")}
-                data-testid="admin-compliance-show-all"
-              >
-                Show all
-              </button>
-            </div>
-          ) : null}
-          <GroupLists overview={overview} filter={filter} now={now} />
-          {overview.notForThisJob.length > 0 && !filter ? (
-            <p className={cn(textMuted, "px-3 text-sm")}>
-              {`${overview.notForThisJob.length} not for this job. `}
-              <Link
-                href={ADMIN_PAGE_HREFS.renewals}
-                className={cn(focusRing, "font-medium text-[color:var(--clinical-accent)]")}
-              >
-                See them in Renewals
-              </Link>
-            </p>
-          ) : null}
-          {filter ? null : <ExportCard onSave={saveExcel} />}
+          {complianceIsFirstUse(overview) ? (
+            <FirstUse overview={overview} />
+          ) : (
+            <>
+              <SummaryCard overview={overview} />
+              <Actions />
+              <BeforeNextJob overview={overview} />
+              <FilterChips overview={overview} filter={filter} onFilter={setFilter} />
+              <GroupLists overview={overview} filter={filter} today={today} />
+            </>
+          )}
           <p className={cn(textMuted, "px-3 text-xs")}>
             Linked to your account only, not shared with your health service. Rules from the statewide requirements
             list; Rule to confirm means its source did not state it clearly.
