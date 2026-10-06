@@ -138,7 +138,6 @@ export function useModeBandCurrentTab(tabId: string | null) {
   }, [setCurrentTab, tabId]);
 }
 
-
 function greetingFor(now: Date): string {
   const hour = Number(
     new Intl.DateTimeFormat("en-AU", { hour: "numeric", hourCycle: "h23", timeZone: "Australia/Perth" }).format(now),
